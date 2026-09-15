@@ -461,6 +461,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // same bars in-house renders, glide included. `stripped` is what THIS
   // maximize collapsed, so restore puts back only those.
   let maximized: MaximizeRecord | null = null;
+  // The design pins holding the maximized panel whose clamps the maximize
+  // lifted — a pin is min=max, so a pinned maximized group would otherwise
+  // hold its design width beside a dock of bars instead of filling it. Lives
+  // exactly as long as `maximized` (set by maximizePanel, drained by
+  // releaseMaximize). The records themselves stay in `designPins`
+  // throughout, so a save taken mid-maximize still persists them.
+  let suspendedPins: readonly DesignPinRecord[] = [];
 
   // The in-house engine glides a collapse / expand / maximize / restore over
   // 0.34s (its `.cell` / `.panel` transitions) and NOTHING else — a sash drag
@@ -758,6 +765,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     maximized = null;
 
+    // The maximize is over: every pin it suspended clamps again — now that
+    // its members are no longer maximize-forced strips, so the clamp lands
+    // on the groups themselves (a member the USER collapsed has its strip
+    // record patched instead). Constraints before sizes: this runs ahead of
+    // the callers' settleStrips and size restores. A pin a sash drag released
+    // meanwhile (unpinSplit dropped its record) or one whose shape dissolved
+    // stays released.
+    for (const record of suspendedPins) {
+      if (designPins.includes(record) && pinStillShaped(record, groupOf)) {
+        clampPinMembers(record);
+      }
+    }
+
+    suspendedPins = [];
+
     return restores;
   }
 
@@ -978,37 +1000,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         continue;
       }
 
-      const orientation = pinOrientationOf(record.pin);
-      const released = new Set<Element>();
-
-      for (const member of record.members) {
-        const strip = records.get(member.panelId);
-
-        if (strip !== undefined) {
-          if (orientation === strip.natural) {
-            strip.minimum = member.previousMinimum;
-            strip.maximum = member.previousMaximum;
-          } else {
-            strip.orthogonalMinimum = member.previousMinimum;
-            strip.orthogonalMaximum = member.previousMaximum;
-          }
-
-          patchedStrips = true;
-          continue;
-        }
-
-        const group = groupOf(member.panelId);
-
-        if (group === undefined || released.has(group.element)) {
-          continue;
-        }
-
-        released.add(group.element);
-        axisOf(group, orientation).constrain(
-          member.previousMinimum,
-          member.previousMaximum,
-        );
-      }
+      // A pin the live maximize suspended is already released; releasing
+      // it again is idempotent, and dropping its record here is what keeps
+      // releaseMaximize from re-clamping it on exit.
+      patchedStrips = releasePinMembers(record) || patchedStrips;
     }
 
     designPins = kept;
@@ -1016,6 +1011,100 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     if (patchedStrips) {
       settleStrips();
     }
+  }
+
+  /** Puts every member of `record` back to the constraints it had before the
+   * pin, on the pin's axis only. A member that is currently a STRIP has its
+   * strip record patched instead (the pin lives on in the record's captured
+   * constraints, which settleStrips and expand would otherwise re-assert).
+   * True when any strip record was patched — the caller owes a settleStrips. */
+  function releasePinMembers(record: DesignPinRecord): boolean {
+    const orientation = pinOrientationOf(record.pin);
+    const released = new Set<Element>();
+    let patchedStrips = false;
+
+    for (const member of record.members) {
+      const strip = records.get(member.panelId);
+
+      if (strip !== undefined) {
+        patchStripAxis(
+          strip,
+          orientation,
+          member.previousMinimum,
+          member.previousMaximum,
+        );
+        patchedStrips = true;
+        continue;
+      }
+
+      const group = groupOf(member.panelId);
+
+      if (group === undefined || released.has(group.element)) {
+        continue;
+      }
+
+      released.add(group.element);
+      axisOf(group, orientation).constrain(
+        member.previousMinimum,
+        member.previousMaximum,
+      );
+    }
+
+    return patchedStrips;
+  }
+
+  /** Re-applies `record`'s clamp to every member — the inverse of
+   * {@link releasePinMembers}: each GROUP clamped once at the pin's model
+   * width (card + gap, as applyDesignPins does), a member that is a strip
+   * having its strip record patched to the clamp so its expand lands pinned. */
+  function clampPinMembers(record: DesignPinRecord): void {
+    const orientation = pinOrientationOf(record.pin);
+    const model = record.pin.px + GROUP_GAP_PX;
+    const clamped = new Set<Element>();
+
+    for (const member of record.members) {
+      const strip = records.get(member.panelId);
+
+      if (strip !== undefined) {
+        patchStripAxis(strip, orientation, model, model);
+        continue;
+      }
+
+      const group = groupOf(member.panelId);
+
+      if (group === undefined || clamped.has(group.element)) {
+        continue;
+      }
+
+      clamped.add(group.element);
+      clampTo(axisOf(group, orientation), model);
+    }
+  }
+
+  /** Lifts the clamp of every design pin holding `panelId` whose declaring
+   * split lies inside the maximize `boundary` — the pins that divide the
+   * space the maximize claims. A rail's width pin is declared by the row
+   * ABOVE a nearest-column boundary, so that maximize (which fills only its
+   * column's height) keeps it. Only the pin's own axis is lifted. Returns the
+   * suspended records for releaseMaximize to re-clamp. */
+  function suspendPinsHolding(
+    panelId: string,
+    boundary: Element,
+  ): readonly DesignPinRecord[] {
+    const suspended = designPins.filter((record) => {
+      return (
+        boundary.contains(record.ownerSplit) &&
+        record.members.some((member) => {
+          return member.panelId === panelId;
+        })
+      );
+    });
+
+    for (const record of suspended) {
+      releasePinMembers(record);
+    }
+
+    return suspended;
   }
 
   /** The pins worth persisting: drops (and releases) any whose groups no
@@ -1270,6 +1359,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
 
         maximized = { panelId, stripped };
+        // After the strips are recorded (a pinned rail sibling's record
+        // captures the pin, then is patched off it) and before settleStrips
+        // clamps the bars — whose freed space the maximized group can only
+        // absorb once its own pin is lifted. Constraints before sizes.
+        suspendedPins = suspendPinsHolding(panelId, boundary);
         settleStrips();
       });
     },
@@ -1485,6 +1579,24 @@ interface DesignPinRecord {
   readonly pin: DockDesignPin;
   readonly members: readonly PinMember[];
   readonly ownerSplit: Element;
+}
+
+/** Overwrites the constraints a strip record will restore on `orientation`'s
+ * axis — its natural pair when that is the strip's natural axis, else the
+ * orthogonal pair. How a pin reaches a panel while it is a strip. */
+function patchStripAxis(
+  strip: StripRecord,
+  orientation: DockStripOrientation,
+  minimum: number,
+  maximum: number,
+): void {
+  if (orientation === strip.natural) {
+    strip.minimum = minimum;
+    strip.maximum = maximum;
+  } else {
+    strip.orthogonalMinimum = minimum;
+    strip.orthogonalMaximum = maximum;
+  }
 }
 
 /** The axisOf key for a pin's dimension: axisOf names axes by STRIP

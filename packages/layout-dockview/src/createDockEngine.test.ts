@@ -1425,6 +1425,176 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   }
 });
 
+describe("maximize over a design pin (R15a — the maximized panel fills)", () => {
+  // A pin is min=max on its axis, and a maximize only STRIPS the others: a
+  // pinned maximized group would hold its design width beside a dock of bars
+  // (measured live: [32,32,32,32,360,32,32]). In-house fills the dock, so the
+  // maximize suspends the pin's clamp — the RECORD stays (a save mid-maximize
+  // still carries it) — and every exit path re-clamps it.
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
+  const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
+
+  it("lifts a maximized dynamic panel's pin clamp so it fills, and exit restores the exact clamp", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...base(), ...seen.options });
+    engine.addDynamicPanel(DYN);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+
+    engine.maximizePanel("panel-dyn-1");
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    await vi.waitFor(() => {
+      expect(seen.sizeOf("panel-dyn-1")).toBeGreaterThan(360 * 2);
+    });
+    // The record outlives the suspension: a save taken now still pins.
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    engine.exitMaximize();
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    await waitForSize(seen, "panel-dyn-1", 360);
+    engine.dispose();
+  });
+
+  it("re-clamps the first panel's pin when the maximize switches to another panel", () => {
+    // fx-analytics is nearest-column scoped here: the switch's boundary is
+    // the rail column, so the dynamic panel is NOT re-stripped — its clamp
+    // is readable right after the switch.
+    const engine = createDockEngine(railBase());
+    engine.addDynamicPanel(DYN);
+
+    engine.maximizePanel("panel-dyn-1");
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+
+    engine.maximizePanel("fx-analytics");
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    engine.dispose();
+  });
+
+  it("suspends a seeded rail pin across all its members for a root-scope maximize", async () => {
+    const seen = trackLayout();
+    const opts: DockEngineOptions = {
+      ...railBase(),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+      panels: { ...railBase().panels, maximizeScope: rootScope },
+    };
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+
+    engine.maximizePanel("fx-analytics");
+    // The maximized group AND its stripped rail sibling: the rail column's
+    // width is the meet of both, so lifting one alone would still hold it.
+    expect(widthClampOf("fx-analytics")).not.toEqual(PINNED);
+    expect(widthClampOf("fx-positions")).not.toEqual(PINNED);
+    await vi.waitFor(() => {
+      expect(seen.branchSizeOf("fx-analytics")).toBeGreaterThan(360 * 2);
+    });
+
+    engine.exitMaximize();
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+    expect(widthClampOf("fx-positions")).toEqual(PINNED);
+    await waitForBranchSize(seen, "fx-analytics", 360);
+    engine.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("keeps a rail pin whose split lies outside a nearest-column maximize's boundary", () => {
+    // The rail's width pin is declared by the ROOT row; a nearest-column
+    // maximize claims only its column's height, so the width stays held.
+    const engine = createDockEngine({
+      ...railBase(),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    });
+
+    engine.maximizePanel("fx-analytics");
+    expect(widthClampOf("fx-analytics")).toEqual(PINNED);
+    engine.dispose();
+  });
+
+  it("removing a pinned owner of the maximize leaves no suspended state behind", async () => {
+    // Baseline FIRST: its throwaway twin replaces lastDockviewApi().
+    const rates = baselineSize(base(), "fx-rates");
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+    engine.addDynamicPanel(DYN_2);
+
+    engine.maximizePanel("panel-dyn-1");
+    engine.removeDynamicPanel("panel-dyn-1");
+
+    // The survivor comes back from its strip at its own pin, unlocked.
+    expect(widthClampOf("panel-dyn-2")).toEqual(PINNED);
+    expect(
+      opts.container.querySelectorAll(".dv-locked-groupview"),
+    ).toHaveLength(0);
+    await waitForSizeWithin(seen, "fx-rates", rates, 8);
+
+    // A later maximize of the survivor suspends and restores only ITS pin.
+    engine.maximizePanel("panel-dyn-2");
+    expect(widthClampOf("panel-dyn-2")).not.toEqual(PINNED);
+    engine.exitMaximize();
+    expect(widthClampOf("panel-dyn-2")).toEqual(PINNED);
+    await waitForPins(seen, 1);
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-2"], px: 360, axis: "width" },
+    ]);
+    engine.dispose();
+  });
+
+  it("a sash drag mid-maximize releases the pin for good — exit does not re-clamp it", () => {
+    const opts = base();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+    engine.addDynamicPanel(DYN);
+
+    engine.maximizePanel("panel-dyn-1");
+    dragSash(opts.container, ".dv-horizontal");
+    engine.exitMaximize();
+
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    engine.dispose();
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("a blob saved mid-maximize carries the pin; the reload clamps it and a replayed maximize suspends it again", () => {
+    const firstOpts = base();
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    first.maximizePanel("panel-dyn-1");
+    touchContainer(firstOpts.container);
+    first.dispose();
+    expect(seen.pins()).toEqual([
+      { panelIds: ["panel-dyn-1"], px: 360, axis: "width" },
+    ]);
+
+    const second = createDockEngine({
+      ...base(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+      dynamicPanels: [DYN],
+    });
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    second.maximizePanel("panel-dyn-1"); // the bridge's replay
+    expect(widthClampOf("panel-dyn-1")).not.toEqual(PINNED);
+    second.exitMaximize();
+    expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
+    second.dispose();
+  });
+
+  function rootScope(): DockMaximizeScope {
+    return "root";
+  }
+});
+
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   // The blob serialises the layout AS RENDERED — a collapsed panel's group is
   // in it at the bar size. Reloading such a blob restores the tiny group (at
@@ -2359,6 +2529,19 @@ function lastDockviewApi(): DockviewApi {
   }
 
   return capturedDockview.api as DockviewApi;
+}
+
+/** `[minimumWidth, maximumWidth]` of `panelId`'s group on the last engine —
+ * a design pin reads as both equal to its model width (card + gap). jsdom
+ * lays nothing out, so constraints are the witness, not rendered pixels. */
+function widthClampOf(panelId: string): readonly [number, number] {
+  const panel = lastDockviewApi().getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return [panel.group.minimumWidth, panel.group.maximumWidth];
 }
 
 /** Polls the persisted layout until its `rtcDesignPins` sidecar holds
