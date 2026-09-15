@@ -9,6 +9,7 @@ import type {
   PlotFraction,
 } from "../contracts/EquitiesChart";
 import { TESTIDS } from "../contracts/testids";
+import { readBoxWhenLaidOut } from "./geometry";
 
 /**
  * Minimum plot-percent change in the drawing's SHAPE (`x2-x1`/`y2-y1`, not
@@ -187,14 +188,11 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   }
 
   async dragNavigatorWindowBy(stripWidthFrac: number): Promise<void> {
-    const strip = await this.navigator().boundingBox();
-    const windowBox = await this.page
-      .getByTestId(TESTIDS.equities.chart.navigatorWindow)
-      .boundingBox();
-
-    if (!strip || !windowBox) {
-      throw new Error("navigator strip/window not laid out");
-    }
+    const strip = await readBoxWhenLaidOut(this.navigator(), "navigator strip");
+    const windowBox = await readBoxWhenLaidOut(
+      this.page.getByTestId(TESTIDS.equities.chart.navigatorWindow),
+      "navigator window",
+    );
 
     const fromX = windowBox.x + windowBox.width / 2;
     const y = strip.y + strip.height / 2;
@@ -207,14 +205,11 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   }
 
   async dragNavigatorRightHandleToLiveEdge(): Promise<void> {
-    const strip = await this.navigator().boundingBox();
-    const handle = await this.page
-      .getByTestId(TESTIDS.equities.chart.navigatorHandleRight)
-      .boundingBox();
-
-    if (!strip || !handle) {
-      throw new Error("navigator strip/handle not laid out");
-    }
+    const strip = await readBoxWhenLaidOut(this.navigator(), "navigator strip");
+    const handle = await readBoxWhenLaidOut(
+      this.page.getByTestId(TESTIDS.equities.chart.navigatorHandleRight),
+      "navigator right handle",
+    );
 
     const y = strip.y + strip.height / 2;
     await this.page.mouse.move(handle.x + handle.width / 2, y);
@@ -305,11 +300,7 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   }
 
   async dragOnPlot(from: PlotFraction, to: PlotFraction): Promise<void> {
-    const box = await this.plot().boundingBox();
-
-    if (!box) {
-      throw new Error("plot not laid out");
-    }
+    const box = await readBoxWhenLaidOut(this.plot(), "plot");
 
     const fromX = box.x + from.x * box.width;
     const fromY = box.y + from.y * box.height;
@@ -336,11 +327,12 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     // is. Instead, read its geometry and drive a real mouse click at the
     // plot underneath, at the drawing's own midpoint (the same coordinates
     // the app's own hit-testing runs against).
-    const box = await this.drawing().boundingBox();
-
-    if (!box) {
-      throw new Error("drawing not laid out");
-    }
+    //
+    // Read through `readBoxWhenLaidOut`, not a bare `boundingBox()`: the
+    // caller has just awaited `toBeVisible`, but the chart re-renders off a
+    // live price stream, so the very next sample could still come back
+    // `null`. That is what "drawing not laid out" was reporting in CI.
+    const box = await readBoxWhenLaidOut(this.drawing(), "drawing");
 
     await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   }
@@ -372,11 +364,11 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
     const [cx, cy, plotBox] = await Promise.all([
       handle.getAttribute("cx"),
       handle.getAttribute("cy"),
-      this.plot().boundingBox(),
+      readBoxWhenLaidOut(this.plot(), "plot"),
     ]);
 
-    if (cx === null || cy === null || !plotBox) {
-      throw new Error("drawing handle or plot not laid out");
+    if (cx === null || cy === null) {
+      throw new Error("drawing handle carries no cx/cy");
     }
 
     const fromX = plotBox.x + (Number(cx) / 100) * plotBox.width;
@@ -481,11 +473,7 @@ export class PlaywrightEquitiesChart implements EquitiesChartPO {
   }
 
   async moveCrosshairOnPlot(at: PlotFraction): Promise<void> {
-    const box = await this.plot().boundingBox();
-
-    if (!box) {
-      throw new Error("plot not laid out");
-    }
+    const box = await readBoxWhenLaidOut(this.plot(), "plot");
 
     // A single real mouse move (no down/up) — the crosshair-only half of
     // `dragOnPlot`'s pointer path (see this method's contract doc).
