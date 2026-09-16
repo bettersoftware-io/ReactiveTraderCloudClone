@@ -6,9 +6,6 @@ import { keyedStream } from "#/keyedStream.js";
 import { out } from "#/operators.js";
 import type { Inbound, Outbound } from "#/types.js";
 
-const SUB = "subscribe.pricing";
-const UNSUB = "unsubscribe.pricing";
-
 describe("keyedStream", () => {
   let scheduler: TestScheduler;
   beforeEach(() => {
@@ -159,3 +156,7 @@ interface KeyPayload {
 function keyOf(payload: unknown): string {
   return (payload as KeyPayload).symbol;
 }
+
+const SUB = "subscribe.pricing";
+
+const UNSUB = "unsubscribe.pricing";

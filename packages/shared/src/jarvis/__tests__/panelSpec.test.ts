@@ -11,8 +11,6 @@ import {
   parsePanelSpec,
 } from "../panelSpec.js";
 
-const knownSymbols = ["EURUSD", "GBPUSD", "USDJPY"];
-
 describe("parsePanelSpec — valid input", () => {
   it("accepts a minimal valid spec (fxTicks + line)", () => {
     const result = parsePanelSpec(minimalValidSpec(), knownSymbols);
@@ -638,3 +636,5 @@ interface AnnotationsToneSchemaShape {
     };
   };
 }
+
+const knownSymbols = ["EURUSD", "GBPUSD", "USDJPY"];

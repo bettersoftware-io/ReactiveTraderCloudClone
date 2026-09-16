@@ -85,6 +85,90 @@ describe("x", () => {
 const AFTER = 1;
 `,
     },
+    {
+      name: "fixtures option OFF (the default): a const above the tests is left alone",
+      code: `import { describe, it, expect } from "vitest";
+
+const FIXTURE = { a: 1 };
+
+describe("x", () => {
+  it("works", () => {
+    expect(FIXTURE.a).toBe(1);
+  });
+});
+`,
+    },
+    {
+      name: "fixtures ON: a const referenced in a DESCRIBE BODY runs at collection time — not movable",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const CASES = [1, 2];
+
+describe("x", () => {
+  for (const c of CASES) {
+    it(\`works \${c}\`, () => {
+      expect(c).toBe(c);
+    });
+  }
+});
+`,
+    },
+    {
+      name: "fixtures ON: a const reached through a helper the DESCRIBE BODY calls is not movable",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const SEED = { a: 1 };
+
+describe("x", () => {
+  const seeded = build();
+  it("works", () => {
+    expect(seeded.a).toBe(1);
+  });
+});
+
+function build() {
+  return SEED;
+}
+`,
+    },
+    {
+      name: "fixtures ON: a const reached through a helper CALLED at module level is not movable",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const SEED = { a: 1 };
+
+build();
+
+describe("x", () => {
+  it("works", () => {
+    expect(build().a).toBe(1);
+  });
+});
+
+function build() {
+  return SEED;
+}
+`,
+    },
+    {
+      name: "fixtures ON: a vi.hoisted const stays put",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect, vi } from "vitest";
+
+const captured = vi.hoisted(() => {
+  return { seen: [] };
+});
+
+describe("x", () => {
+  it("works", () => {
+    expect(captured.seen).toEqual([]);
+  });
+});
+`,
+    },
   ],
   invalid: [
     {
@@ -270,6 +354,130 @@ function b() {
 }
 `,
       errors: [{ messageId: "moveDown", data: { count: "2" } }],
+    },
+    {
+      name: "fixtures ON: a const referenced only inside it() is moved to the bottom",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const FIXTURE = { a: 1 };
+
+describe("x", () => {
+  it("works", () => {
+    expect(FIXTURE.a).toBe(1);
+  });
+});
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(FIXTURE.a).toBe(1);
+  });
+});
+
+const FIXTURE = { a: 1 };
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "fixtures ON: a let referenced only inside a hook callback is moved down",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, afterEach, expect } from "vitest";
+
+let attached = [];
+
+afterEach(() => {
+  attached = [];
+});
+
+describe("x", () => {
+  it("works", () => {
+    expect(attached).toEqual([]);
+  });
+});
+`,
+      output: `import { describe, it, afterEach, expect } from "vitest";
+
+afterEach(() => {
+  attached = [];
+});
+
+describe("x", () => {
+  it("works", () => {
+    expect(attached).toEqual([]);
+  });
+});
+
+let attached = [];
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "fixtures ON: a const and a function above the tests both move, order preserved",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const FIXTURE = { a: 1 };
+
+function helper() {
+  return 2;
+}
+
+describe("x", () => {
+  it("works", () => {
+    expect(FIXTURE.a + helper()).toBe(3);
+  });
+});
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(FIXTURE.a + helper()).toBe(3);
+  });
+});
+
+const FIXTURE = { a: 1 };
+
+function helper() {
+  return 2;
+}
+`,
+      errors: [{ messageId: "moveDown", data: { count: "2" } }],
+    },
+    {
+      name: "fixtures ON: a const reached through a helper only it() calls IS movable (transitive)",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const SEED = { a: 1 };
+
+describe("x", () => {
+  it("works", () => {
+    expect(build().a).toBe(1);
+  });
+});
+
+function build() {
+  return SEED;
+}
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(build().a).toBe(1);
+  });
+});
+
+function build() {
+  return SEED;
+}
+
+const SEED = { a: 1 };
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },
   ],
 });

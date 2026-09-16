@@ -2,8 +2,6 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { timelinePanePage } from "#tests/pages/TimelinePanePage";
 
-const pane = timelinePanePage();
-
 afterEach(() => {
   pane.unmountAll();
 });
@@ -194,3 +192,5 @@ test("detaching re-centers the >500-row render window on the first row still on 
   expect(pane.rowSeq(pane.rowCount() - 1)).toBe("750");
   expect(pane.hasSeqInList("timeline-rows", "1000")).toBe(false);
 }, 20_000);
+
+const pane = timelinePanePage();
