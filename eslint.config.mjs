@@ -414,6 +414,13 @@ export default tseslint.config(
       "packages/client-solid/**/*.{spec,test}.{ts,tsx}",
       "packages/client-react/**/*.{spec,test}.{ts,tsx}",
       "packages/ui-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/boot-splash/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-api/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-async/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-effect/**/*.{spec,test}.{ts,tsx}",
+      "packages/react-bindings/**/*.{spec,test}.{ts,tsx}",
+      "packages/solid-bindings/**/*.{spec,test}.{ts,tsx}",
       // The `tests` workspace is not under packages/ — it needs its own glob.
       "tests/**/*.{spec,test}.{ts,tsx}",
     ],
