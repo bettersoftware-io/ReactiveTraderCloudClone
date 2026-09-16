@@ -4,8 +4,6 @@ import type { SerializedValue } from "@rtc/devtools-core";
 
 import { valueViewPage } from "#tests/pages/ValueViewPage";
 
-const view = valueViewPage();
-
 afterEach(() => {
   view.unmountAll();
 });
@@ -189,3 +187,5 @@ test("falls back to an empty entry list for a map tag missing its entries field"
 
   expect(view.hasText("Map(0)")).toBe(true);
 });
+
+const view = valueViewPage();

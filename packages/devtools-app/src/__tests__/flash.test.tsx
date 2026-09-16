@@ -2,8 +2,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { flashHookPage } from "#tests/pages/FlashHookPage";
 
-let animateSpy: ReturnType<typeof vi.fn>;
-
 beforeEach(() => {
   animateSpy = vi.fn();
   Element.prototype.animate =
@@ -38,3 +36,5 @@ test("flashes once per lastSeq advance past 0, never on unrelated re-renders", (
   flash.advanceSeq(4);
   expect(animateSpy).toHaveBeenCalledTimes(2);
 });
+
+let animateSpy: ReturnType<typeof vi.fn>;

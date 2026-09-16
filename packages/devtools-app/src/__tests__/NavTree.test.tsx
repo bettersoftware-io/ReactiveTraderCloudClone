@@ -8,13 +8,9 @@ import type { Scope } from "#/nav/scope";
 import { ALL_SCOPE, scopeKey } from "#/nav/scope";
 import { navTreePage } from "#tests/pages/NavTreePage";
 
-const tree = navTreePage();
-
 afterEach(() => {
   tree.unmountAll();
 });
-
-let animateSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   animateSpy = vi.fn(() => {
@@ -393,3 +389,7 @@ function leaf(
     children: [],
   };
 }
+
+const tree = navTreePage();
+
+let animateSpy: ReturnType<typeof vi.fn>;

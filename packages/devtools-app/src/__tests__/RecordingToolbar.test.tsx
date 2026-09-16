@@ -13,14 +13,9 @@ import {
 import type { RecordingModel } from "#/recording/useRecording";
 import { recordingToolbarPage } from "#tests/pages/RecordingToolbarPage";
 
-const toolbar = recordingToolbarPage();
-
 afterEach(() => {
   toolbar.unmountAll();
 });
-
-let createObjectURL: ReturnType<typeof vi.fn>;
-let revokeObjectURL: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   // jsdom does not implement object URLs; the export path may touch them.
@@ -190,3 +185,9 @@ function sampleRecording(): Recording {
     ],
   };
 }
+
+const toolbar = recordingToolbarPage();
+
+let createObjectURL: ReturnType<typeof vi.fn>;
+
+let revokeObjectURL: ReturnType<typeof vi.fn>;

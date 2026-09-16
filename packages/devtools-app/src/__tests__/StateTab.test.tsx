@@ -5,8 +5,6 @@ import type { InspectorState, MachineRow, StreamRow } from "@rtc/devtools-core";
 import { ALL_SCOPE } from "#/nav/scope";
 import { stateTabPage } from "#tests/pages/StateTabPage";
 
-const stateTab = stateTabPage();
-
 afterEach(() => {
   stateTab.unmountAll();
 });
@@ -167,3 +165,5 @@ function machine(
     transitions: 0,
   };
 }
+
+const stateTab = stateTabPage();

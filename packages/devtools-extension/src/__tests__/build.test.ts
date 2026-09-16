@@ -4,8 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-const pkgRoot = fileURLToPath(new URL("../../", import.meta.url));
-
 describe("extension build", () => {
   it("produces a loadable unpacked MV3 bundle", () => {
     // Force a production build: vitest runs with NODE_ENV=test, which the
@@ -41,3 +39,5 @@ describe("extension build", () => {
 function dist(p: string): string {
   return `${pkgRoot}dist/${p}`;
 }
+
+const pkgRoot = fileURLToPath(new URL("../../", import.meta.url));
