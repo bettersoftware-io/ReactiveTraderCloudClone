@@ -1048,6 +1048,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       const members: PinMember[] = [];
       const clamped = new Set<Element>();
+      // A member that is already OUT OF THE GRID at construction means the
+      // blob restored a FLOAT holding this pin — floats are layer-3 persisted
+      // (design §3.3) and `fromJSON` brings them back before this runs. The
+      // pin must land SUSPENDED, exactly as `suspendPinsFor` would have left
+      // it live: clamping min=max onto a floating member is the very state R5
+      // exists to prevent, and it reaches the user as a float that reloads
+      // stuck at its old rail width and refuses every resize.
+      const absentMemberId = pin.panelIds.find((panelId) => {
+        const group = groupOf(panelId);
+
+        return group !== undefined && !isInGrid(group);
+      });
 
       for (const panelId of pin.panelIds) {
         const group = groupOf(panelId);
@@ -1067,13 +1079,29 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // each GROUP once (the branch's constraint is the meet of its
         // children's), not once per panel. Pins persist the PUBLIC design
         // width — the card the user sees — so the model adds the gap.
-        if (!clamped.has(group.element)) {
+        if (absentMemberId === undefined && !clamped.has(group.element)) {
           clamped.add(group.element);
           clampTo(axis, pin.px + GROUP_GAP_PX);
         }
       }
 
-      designPins.push({ pin, members, ownerSplit });
+      const record = { pin, members, ownerSplit };
+
+      if (absentMemberId === undefined) {
+        designPins.push(record);
+        continue;
+      }
+
+      // Keyed by the FIRST non-grid member, which is what the live path does
+      // too: `suspendPinsFor` moves the record out of `designPins` on the
+      // first float, so a second member floating later finds nothing to file.
+      // `ownerSplit` above is the float's own private gridview wrapper here
+      // and is never read for a suspended record — `clampPinsFloatSuspendedFor`
+      // re-derives the real one through `pinStillShaped`.
+      floatSuspendedPins.set(absentMemberId, [
+        ...(floatSuspendedPins.get(absentMemberId) ?? []),
+        record,
+      ]);
     }
   }
 
@@ -2627,7 +2655,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // R5, the other half: the panel is back in the grid, so a pin this
       // float suspended is re-applied — but only if it still describes
       // reality (the panel may have docked somewhere the pin never named).
-      clampPinsFloatSuspendedFor(panelId);
+      // Gated on the panel having actually landed: with no grid group to dock
+      // onto, neither branch above ran and the panel is still floating, where
+      // re-clamping is precisely what R5 forbids.
+      if (isInGrid(panel.group)) {
+        clampPinsFloatSuspendedFor(panelId);
+      }
+
       // Ruling 10: a returning panel can absorb again, exactly as a reopen
       // can — and this call is also what re-suspends the re-clamped pin if
       // the grid still has nothing to trade against it.
@@ -2951,7 +2985,7 @@ const GROUP_SELECTOR = ".dv-groupview";
 const VIEW_SELECTOR = ".dv-view";
 /** The two elements dockview 8.3.1 starts its shift-drag-to-float gesture
  * from — a tab, and the tab bar's void container — each through its own
- * `pointerdown` listener. See `cancelShiftFloatDuringMaximize`. */
+ * `pointerdown` listener. See `cancelRefusedShiftFloat`. */
 const FLOAT_GESTURE_SELECTOR = ".dv-tab, .dv-void-container";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:

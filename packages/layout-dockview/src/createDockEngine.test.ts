@@ -4253,14 +4253,15 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
    * FALSE, where `preventDefault()` is silently a no-op and
    * `defaultPrevented` never flips — the veto would look broken for a reason
    * that exists only in the test. */
-  function shiftPointerDown(target: Element): void {
-    target.dispatchEvent(
-      new MouseEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        shiftKey: true,
-      }),
-    );
+  function shiftPointerDown(target: Element): MouseEvent {
+    const event = new MouseEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      shiftKey: true,
+    });
+    target.dispatchEvent(event);
+
+    return event;
   }
 
   // R1 — a strip has no slot to build around a float and no home to restore
@@ -4354,6 +4355,32 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // The veto's own SCOPE, which is a separate claim from the veto working.
+  // On a group that is already floating, the identical shift-pointerdown is
+  // dockview's REDOCK gesture rather than a create-a-float one: the void
+  // container is that float's move handle, and its html5 drag source is
+  // cancelled for a plain drag but NOT when shiftKey is held
+  // (`dockview-core` VoidContainer's `isCancelled`). Preventing the default
+  // there would break dragging a float home. The state is reachable — R7
+  // deliberately permits maximizing a docked panel while a float is open — so
+  // `defaultPrevented` is the witness, not the panel's location: the location
+  // would not change on a mere pointerdown either way.
+  it("leaves a float's own redock gesture alone while a maximize is live (R4 scope)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.maximizePanel("fx-rates");
+
+    const event = shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(event.defaultPrevented).toBe(false);
+    engine.dispose();
+  });
+
   // R8 — the mirror of R1, read from the other side: a collapsed panel is a
   // strip member and a float has no strip, so the two states are mutually
   // exclusive by construction. Floating a strip would carry its min=max bar
@@ -4432,6 +4459,37 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // dockPanel's no-op path: with nothing grid-resident to dock onto, neither
+  // move branch runs and the panel stays floating — so the re-clamp must not
+  // run either. FX_LIKE's lone analytics leaf carries the pin by itself here,
+  // so the record survives into floatSuspendedPins before the grid empties.
+  //
+  // A CALL CENSUS, not a clamp reading, and the reason is measured: on this
+  // path the grid is necessarily empty (that is what makes dockPanel no-op),
+  // and dockview discards `setConstraints` on a group with no grid view
+  // backing it — the clamp reads [100, MAX] whether or not the re-clamp ran,
+  // so a clamp assertion here passes for a reason unrelated to the guard. The
+  // census sees the call itself.
+  it("does not re-clamp a pin when there is nowhere to dock back to (R5)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+      seed: { ...FX_LIKE, initialPx: [undefined, 360] },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    const touched = spyOnGroupSizing("fx-analytics");
+
+    engine.dockPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(touched.calls()).toEqual([]);
+    engine.dispose();
+  });
+
   // R5 + Ruling 6 — floating's suspension is NOT the absorber suspension.
   // An absorber returning elsewhere in the dock re-clamps `unabsorbedPins`;
   // it must not reach a float, or a panel reopening across the dock would
@@ -4469,7 +4527,12 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
-  it("persists a float-suspended pin, so a reload still knows the width (R5)", () => {
+  // Both SIDES of the round trip, deliberately in one test. Asserting only
+  // the sidecar certifies half its own claim: the write is what this code
+  // changed, and the read is `applyDesignPins` running over those pins at
+  // construction with the float already restored by `fromJSON`. A test that
+  // re-reads its own write would have missed exactly that.
+  it("persists a float-suspended pin and restores it unclamped (R5)", () => {
     const opts = pinnedRailBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
@@ -4478,12 +4541,32 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     touchContainer(opts.container);
     engine.dispose();
 
-    // Suspended, never forgotten — the same contract the absorber suspension
-    // keeps. A float IS persisted (design §3.3), so the reload that restores
-    // it must still know what to re-clamp when it docks home.
+    // Write side. Suspended, never forgotten — the same contract the absorber
+    // suspension keeps. A float IS persisted (design §3.3), so the reload that
+    // restores it must still know what to re-clamp when it docks home.
     expect(seen.pins()).toEqual([
       { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
     ]);
+
+    const reloaded = createDockEngine({
+      ...pinnedRailBase(),
+      blob: seen.blob(),
+    });
+
+    // Read side. The float came back (asserted first, so the clamp assertion
+    // below cannot pass because there is no float to clamp), and it came back
+    // UNCLAMPED — min=max on a floating group is the state R5 exists to
+    // prevent, and construction is a second place that can create it.
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+
+    // ...and SUSPENDED rather than discarded: docking home re-clamps at the
+    // design width, which only a record the load KEPT can do. This is what
+    // separates "routed into the suspended list" from "skipped".
+    reloaded.dockPanel("fx-analytics");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    reloaded.dispose();
   });
 
   /** An engine holding two chart instances, with the container handle a
