@@ -11,6 +11,9 @@ export interface PanelHeadControlsPage {
   exists(testId: string): boolean;
   disabled(testId: string): boolean;
   click(testId: string): void;
+  /** The control's `aria-label` — the float control's label swaps between
+   * "Float …" and "Dock …" with `floatingHere`. */
+  label(testId: string): string | null;
 }
 
 /** The framework surface for `PanelHeadControls.test.tsx`. */
@@ -30,6 +33,9 @@ export function panelHeadControlsPage(): PanelHeadControlsPage {
     },
     click(testId: string): void {
       fireEvent.click(screen.getByTestId(testId));
+    },
+    label(testId: string): string | null {
+      return screen.getByTestId(testId).getAttribute("aria-label");
     },
   };
 }
