@@ -214,6 +214,73 @@ describe("DockviewLayoutEngine (shared harness)", () => {
   });
 });
 
+/** Floating groups (Phase 6a task 6-7): a panel's group can float as a box
+ * over the grid via its head control, tracked whole by the engine
+ * (`onFloatsChange` → `data-floating`), the same idiom as `popped` above.
+ * Unlike pop-out, collapse/maximize are HIDDEN (not disabled) while a panel
+ * floats — the shared assertions here prove both clients agree on the
+ * float/dock round trip AND on the hidden-while-floating contract. */
+describe("DockviewLayoutEngine floating groups", () => {
+  it("floats a panel via its head control and reports it in floatingPanelIds", async () => {
+    const page = mount(DockviewEngine, { props: {} });
+    expect(page.floatingPanelIds()).toEqual([]);
+
+    page.floatPanel("fx-rates");
+
+    // `onFloatsChange` publishes off dockview's own microtask-deferred
+    // layout-change notification, not synchronously with the click — see
+    // `waitForFloating`.
+    await page.waitForFloating(["fx-rates"]);
+  });
+
+  it("docks a floating panel back and clears floatingPanelIds", async () => {
+    const page = mount(DockviewEngine, { props: {} });
+    page.floatPanel("fx-rates");
+    await page.waitForFloating(["fx-rates"]);
+
+    page.dockPanel("fx-rates");
+
+    await page.waitForFloating([]);
+  });
+
+  it("refuses to dock a panel that isn't floating, rather than silently floating it", () => {
+    const page = mount(DockviewEngine, { props: {} });
+    expect(page.floatingPanelIds()).toEqual([]);
+
+    expect(() => {
+      page.dockPanel("fx-rates");
+    }).toThrow();
+    // The guard threw BEFORE clicking — the panel is still docked, not
+    // now floating from the click the guard was supposed to prevent.
+    expect(page.floatingPanelIds()).toEqual([]);
+  });
+
+  it("hides collapse and maximize while a panel floats, both back once docked", async () => {
+    const page = mount(DockviewEngine, { props: {} });
+    // Prove presence FIRST, in the same docked state the hidden assertion
+    // below claims to differ from — an absence check alone can't tell
+    // "hidden by floating" from "never rendered, e.g. a typo'd testid".
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+
+    page.floatPanel("fx-rates");
+    await page.waitForFloating(["fx-rates"]);
+
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(false);
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(false);
+    // Floating is scoped to the panel that floated — its siblings are
+    // unaffected grid members still.
+    expect(page.bodyVisible("panel-fx-blotter-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-blotter-maximize")).toBe(true);
+
+    page.dockPanel("fx-rates");
+    await page.waitForFloating([]);
+
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+  });
+});
+
 /** Docked desk panels under Dockview (Task 7). Unlike
  * `LayoutEngine.contract.spec.ts`'s world-driven "InhouseLayoutEngine docked
  * desk panels" block (which mounts the real `App` shell and dispatches a
