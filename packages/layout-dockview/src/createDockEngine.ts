@@ -1970,8 +1970,36 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
-  /** Cancels dockview's shift-drag-to-float gesture while a maximize is live
-   * (R4) — the gesture half of `floatPanel`'s own refusal.
+  /** True while any panel of `group` is a STRIP — the group is a collapsed
+   * panel's 32px bar. A strip is always alone in its group (`recordStrip`
+   * ejects a panel into its own group before clamping it), so for a collapsed
+   * panel this is exactly `records.has(panelId)` — spelled over the GROUP for
+   * the callers that have one rather than an id. One predicate, two callers,
+   * so the button and gesture refusals cannot drift apart (Ruling 11's
+   * lesson). */
+  function holdsStrippedPanel(group: SizableGroup): boolean {
+    return group.panels.some((panel) => {
+      return records.has(panel.id);
+    });
+  }
+
+  /** The group a shift-drag float gesture would act on: the one whose
+   * `.dv-groupview` element encloses the pointerdown's target. The same
+   * element-identity lookup `directMembersOf` uses — `group.element` IS the
+   * `.dv-groupview`. */
+  function gestureGroupOf(target: Element): SizableGroup | undefined {
+    const element = target.closest(GROUP_SELECTOR);
+
+    return element === null
+      ? undefined
+      : api.groups.find((candidate) => {
+          return candidate.element === element;
+        });
+  }
+
+  /** Cancels a shift-drag-to-float gesture that `floatPanel` would refuse —
+   * a live maximize (R4) or a collapsed panel (R8). The gesture half of
+   * `floatPanel`'s own refusals, on the same two conditions.
    *
    * MEASURED, and NOT the mechanism the design named. dockview 8.3.1 starts
    * that gesture from a POINTERDOWN — one listener on a tab, one on the tab
@@ -1984,29 +2012,35 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * that pointerdown, taken in the CAPTURE phase on our own container, ahead
    * of dockview's target-phase listeners.
    *
-   * Scoped to the two elements that own the gesture rather than every
-   * shift-click in the dock, so a future dockview shift affordance is not
-   * silently disabled here too. */
-  function cancelShiftFloatDuringMaximize(event: Event): void {
+   * Scoped twice over, so the veto is exactly as wide as the refusal:
+   * - to the two elements that own the gesture, so a future dockview shift
+   *   affordance is not silently disabled here too;
+   * - to a group that is IN THE GRID, because on a group that is ALREADY
+   *   floating the very same shift-pointerdown is dockview's REDOCK gesture
+   *   (`VoidContainer`'s `isFloatingMoveHandle`), and preventing the default
+   *   there would break dragging a float home. */
+  function cancelRefusedShiftFloat(event: Event): void {
     if (
-      maximized === null ||
       !(event instanceof MouseEvent) ||
       !event.shiftKey ||
-      !(event.target instanceof Element)
+      !(event.target instanceof Element) ||
+      event.target.closest(FLOAT_GESTURE_SELECTOR) === null
     ) {
       return;
     }
 
-    if (event.target.closest(FLOAT_GESTURE_SELECTOR) !== null) {
+    const group = gestureGroupOf(event.target);
+
+    if (group === undefined || !isInGrid(group)) {
+      return;
+    }
+
+    if (maximized !== null || holdsStrippedPanel(group)) {
       event.preventDefault();
     }
   }
 
-  opts.container.addEventListener(
-    "pointerdown",
-    cancelShiftFloatDuringMaximize,
-    true,
-  );
+  opts.container.addEventListener("pointerdown", cancelRefusedShiftFloat, true);
 
   // Whether a user has been inside the dock since construction — the ORIGIN
   // test for what dispose may persist. Layer 3 persists ARRANGEMENT (sash
@@ -2497,11 +2531,24 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const panel = api.getPanel(panelId);
 
       // R3 (Phase 6 design §3.2): a float while a strip owns the grid has no
-      // coherent home to return to, so a live maximize refuses one outright —
-      // the same refusal the shift-drag gesture gets from
-      // cancelShiftFloatDuringMaximize, which is the gesture's only reachable
-      // veto point (see that function).
-      if (panel === undefined || maximized !== null || !isInGrid(panel.group)) {
+      // coherent home to return to, so a live maximize refuses one outright.
+      //
+      // R8, the same reasoning one panel down: a COLLAPSED panel is a strip
+      // member, and a float has no strip — the two states are mutually
+      // exclusive by construction, exactly as R1/R2 read it from the other
+      // side. Without this, floating a collapsed panel carries the strip's
+      // min=max bar clamp into the float: a ~39px box that cannot be resized
+      // until the panel is expanded again.
+      //
+      // Both refusals are mirrored for the shift-drag gesture by
+      // cancelRefusedShiftFloat, which is the gesture's only reachable veto
+      // point (see that function) and shares this predicate.
+      if (
+        panel === undefined ||
+        maximized !== null ||
+        !isInGrid(panel.group) ||
+        holdsStrippedPanel(panel.group)
+      ) {
         return false;
       }
 
@@ -2594,7 +2641,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
       opts.container.removeEventListener(
         "pointerdown",
-        cancelShiftFloatDuringMaximize,
+        cancelRefusedShiftFloat,
         true,
       );
       opts.container.removeEventListener("pointerdown", markUserArranged, true);

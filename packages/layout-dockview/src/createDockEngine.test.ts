@@ -4354,6 +4354,58 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // R8 — the mirror of R1, read from the other side: a collapsed panel is a
+  // strip member and a float has no strip, so the two states are mutually
+  // exclusive by construction. Floating a strip would carry its min=max bar
+  // clamp into the float — a ~39px box no resize can open.
+  it("refuses to float a collapsed panel (R8)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.collapsePanel("fx-analytics");
+
+    expect(engine.floatPanel("fx-analytics")).toBe(false);
+    expect(locationOf("fx-analytics")).toBe("grid");
+    engine.dispose();
+  });
+
+  // R8's gesture half, through the SAME capture-phase veto R4 added — one
+  // more condition on an existing mechanism. The gesture is attributed to a
+  // specific group at pointerdown (the `.dv-groupview` enclosing the target),
+  // and a strip is always alone in its group, so this refuses the collapsed
+  // panel specifically rather than every shift-drag in a dock that holds one.
+  it("cancels the shift-drag float gesture on a collapsed panel (R8)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.collapsePanel("fx-analytics");
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    engine.dispose();
+  });
+
+  // ...and the attribution is real, not "veto everything while any panel is
+  // collapsed": an UNCOLLAPSED sibling still floats by gesture while another
+  // panel sits collapsed. Without this the conservative veto would pass the
+  // test above for the wrong reason.
+  it("still shift-drag floats an expanded panel while a sibling is collapsed (R8 control)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.collapsePanel("fx-analytics");
+    shiftPointerDown(voidContainerOf("fx-blotter"));
+
+    expect(locationOf("fx-blotter")).toBe("floating");
+    engine.dispose();
+  });
+
   // R5 — a pin is min=max; carrying one into a float would hold the box at
   // the rail's design width and refuse every resize. The clamp IS the pin,
   // so lifting it is the whole observable effect.
