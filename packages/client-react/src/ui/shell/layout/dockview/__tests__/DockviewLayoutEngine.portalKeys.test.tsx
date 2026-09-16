@@ -31,24 +31,7 @@ describe("dockview portal keys", () => {
     // moment. Driven here by the REAL popout rather than a hand-called
     // hook — the same crossing the browser performs.
     const errors = await page.captureConsoleErrors(async () => {
-      page.mount(
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />,
-      );
+      page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
       await page.waitFor(() => {
         expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);

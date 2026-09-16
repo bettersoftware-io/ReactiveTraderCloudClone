@@ -1,9 +1,48 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import type { ReactElement } from "react";
+import { type ReactElement, StrictMode } from "react";
 import { vi } from "vitest";
+
+import type {
+  DockLayoutStore,
+  LayoutPanelInstance,
+  PanelId,
+} from "@rtc/client-core";
+
+import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
+import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
 interface WaitForOptions {
   timeout: number;
+}
+
+function noop(): void {}
+
+/** What the four specs sharing this page may vary. Everything optional carries
+ * the default a case that does not name it wants, so a mount states only the
+ * arrangement under test.
+ *
+ * `registry` stays REQUIRED: its panel bodies carry the testids each spec
+ * asserts on, so the spec owns them. `onCloseInstance` is exposed because the
+ * instances spec genuinely varies it (it asserts the intent fires); the other
+ * four `on*` intents never varied in any case, so they stay the page's
+ * business. */
+interface DockviewLayoutEngineMountProps {
+  registry: PanelRegistry;
+  /** Pass one explicitly to share it across a mount/rerender pair, or to read
+   * back what was saved. */
+  store: DockLayoutStore;
+  /** Default `[]` — no panel collapsed to a strip. */
+  collapsed?: readonly PanelId[];
+  /** Default `[]` — no panel closed from the View menu. */
+  closed?: readonly PanelId[];
+  /** Default `[]` — no Jarvis-docked dynamic panel. */
+  docked?: readonly PanelId[];
+  /** Default `[]` — no pinned chart instance. */
+  instances?: readonly LayoutPanelInstance[];
+  /** Default `0`. A bump rebuilds the engine in place. */
+  layoutResets?: number;
+  /** Default a no-op. The instances spec asserts this intent fires. */
+  onCloseInstance?: (id: PanelId) => void;
 }
 
 /** A jsdom stand-in for the OS window a pop-out opens into. dockview calls
@@ -27,10 +66,19 @@ interface PopoutWindowHarness {
 }
 
 export interface DockviewLayoutEngineStrictModePage {
-  mount(element: ReactElement): void;
-  /** Re-renders the LAST mount with new props — the prop-flip half of a
-   * replay spec (a fresh mount would rebuild the engine instead). */
-  rerender(element: ReactElement): void;
+  /** Mounts the engine bare — the three specs whose subject is NOT
+   * StrictMode (popout, portalKeys, instances). */
+  mount(props: DockviewLayoutEngineMountProps): void;
+  /** Mounts the engine inside `<StrictMode>`, whose double-invoked effects
+   * ARE the subject of `DockviewLayoutEngine.strictMode.test.tsx`. Spelled as
+   * its own method rather than a `strict: true` flag so a reader of the spec
+   * sees what is mounted from the call alone — the concern that originally
+   * kept the wrapper spec-side, now met without handing the page an element. */
+  mountInStrictMode(props: DockviewLayoutEngineMountProps): void;
+  /** Re-renders the LAST mount with new props, preserving whichever wrapper
+   * it was mounted with — the prop-flip half of a replay spec (a fresh mount
+   * would rebuild the engine instead). */
+  rerender(props: DockviewLayoutEngineMountProps): void;
   unmountAll(): void;
   /** Runs `assertion` until it stops throwing (or `options.timeout` elapses)
    * — the spec supplies the assertion, this page owns the polling mechanic. */
@@ -62,26 +110,79 @@ export interface DockviewLayoutEngineStrictModePage {
   captureConsoleErrors(work: () => Promise<void>): Promise<readonly string[]>;
 }
 
-/** The framework surface for `DockviewLayoutEngine.strictMode.test.tsx`. The
- * spec composes its own `<StrictMode>` wrapper around `DockviewLayoutEngine`
- * (kept spec-side — moving it page-side would obscure what the test actually
- * mounts), so this page owns only the render/waitFor mechanics. */
+/** The framework surface shared by the four `DockviewLayoutEngine` specs whose
+ * subject is the engine's lifecycle rather than its `docked` prop —
+ * strictMode, instances, popout and portalKeys.
+ *
+ * This page CONSTRUCTS the engine; it does not accept one. An earlier cut took
+ * a `ReactElement`, so all four specs wrote the engine's full fifteen-prop
+ * block at each of their eight render sites, eight of those props identical
+ * every time. `rtc/page-objects-own-their-component` now forbids that shape.
+ *
+ * The StrictMode wrapper stayed spec-side under the old design on the stated
+ * grounds that moving it page-side "would obscure what the test actually
+ * mounts". That concern was right, and `mountInStrictMode` answers it: the
+ * method name carries the wrapper, so the call site still says exactly what is
+ * mounted — without the spec having to hand over a built element. */
 export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrictModePage {
   let last: ReturnType<typeof render> | null = null;
+  let lastWrapper: ((engine: ReactElement) => ReactElement) | null = null;
+
+  function engineOf(props: DockviewLayoutEngineMountProps): ReactElement {
+    return (
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={props.registry}
+        store={props.store}
+        maximized={null}
+        collapsed={props.collapsed ?? []}
+        closed={props.closed ?? []}
+        docked={props.docked ?? []}
+        instances={props.instances ?? []}
+        layoutResets={props.layoutResets ?? 0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={props.onCloseInstance ?? noop}
+      />
+    );
+  }
+
+  function bare(engine: ReactElement): ReactElement {
+    return engine;
+  }
+
+  function strict(engine: ReactElement): ReactElement {
+    return <StrictMode>{engine}</StrictMode>;
+  }
+
+  function mountWith(
+    wrapper: (engine: ReactElement) => ReactElement,
+    props: DockviewLayoutEngineMountProps,
+  ): void {
+    lastWrapper = wrapper;
+    last = render(wrapper(engineOf(props)));
+  }
 
   return {
-    mount(element: ReactElement): void {
-      last = render(element);
+    mount(props: DockviewLayoutEngineMountProps): void {
+      mountWith(bare, props);
     },
-    rerender(element: ReactElement): void {
-      if (last === null) {
+    mountInStrictMode(props: DockviewLayoutEngineMountProps): void {
+      mountWith(strict, props);
+    },
+    rerender(props: DockviewLayoutEngineMountProps): void {
+      if (last === null || lastWrapper === null) {
         throw new Error("rerender before mount");
       }
 
-      last.rerender(element);
+      last.rerender(lastWrapper(engineOf(props)));
     },
     unmountAll(): void {
       cleanup();
+      last = null;
+      lastWrapper = null;
     },
     waitFor(assertion: () => void, options?: WaitForOptions): Promise<void> {
       return waitFor(assertion, options);
