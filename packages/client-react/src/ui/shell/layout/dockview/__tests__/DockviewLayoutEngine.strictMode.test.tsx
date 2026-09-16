@@ -83,26 +83,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       },
     };
 
-    page.mount(
-      <StrictMode>
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={store}
-          maximized={null}
-          collapsed={["fx-analytics"]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      </StrictMode>,
-    );
+    page.mountInStrictMode({ registry, store, collapsed: ["fx-analytics"] });
 
     // B's debounced save of its own collapse.
     await page.waitFor(
@@ -146,26 +127,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       },
     };
 
-    page.mount(
-      <StrictMode>
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={store}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={["panel-dyn-1"]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      </StrictMode>,
-    );
+    page.mountInStrictMode({ registry, store, docked: ["panel-dyn-1"] });
 
     // fx's 4 seed leaves plus the reconciled dynamic panel.
     expect(page.groupsAttr()).toBe("5");
@@ -192,30 +154,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       },
     };
 
-    function tree(closed: readonly string[]): ReactElement {
-      return (
-        <StrictMode>
-          <DockviewLayoutEngine
-            tab="fx"
-            registry={registry}
-            store={store}
-            maximized={null}
-            collapsed={[]}
-            closed={closed}
-            docked={[]}
-            instances={[]}
-            layoutResets={0}
-            onMaximize={noop}
-            onRestore={noop}
-            onCollapse={noop}
-            onExpand={noop}
-            onCloseInstance={noop}
-          />
-        </StrictMode>
-      );
-    }
-
-    page.mount(tree(["fx-analytics"]));
+    page.mountInStrictMode({ registry, store, closed: ["fx-analytics"] });
     await page.waitFor(
       () => {
         const last = saved[saved.length - 1] ?? "";
@@ -226,7 +165,7 @@ describe("DockviewLayoutEngine under StrictMode", () => {
       { timeout: 3000 },
     );
 
-    page.rerender(tree([]));
+    page.rerender({ registry, store });
     await page.waitFor(
       () => {
         const last = saved[saved.length - 1] ?? "";

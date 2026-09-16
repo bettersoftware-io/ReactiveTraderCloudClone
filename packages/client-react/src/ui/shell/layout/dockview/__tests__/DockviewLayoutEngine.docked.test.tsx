@@ -8,8 +8,6 @@ import {
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineDockedPage } from "#tests/ui/pages/DockviewLayoutEngineDockedPage";
 
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
-
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
 // (see DockviewLayoutEngine.strictMode.test.tsx). `ResizeObserverCtor` /
 // `GlobalWithResizeObserver` (below, with the file's other helpers) exist
@@ -55,24 +53,11 @@ const registry: PanelRegistry = {
 
 describe("DockviewLayoutEngine docked prop", () => {
   it("holds a docked panel as its own group, rendering the registry's content through the body portal", () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      docked: ["panel-dyn-1"],
+    });
 
     // fx's 4 seed leaves plus the one docked panel.
     expect(page.groupsAttr()).toBe("5");
@@ -97,24 +82,12 @@ describe("DockviewLayoutEngine docked prop", () => {
   // pins that: no crash, and the docked panel stays exactly as live as an
   // empty `closed` would leave it.
   it("ignores a dynamic panel id sitting in the closed set — the seed-only reconciliation never visits it", () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={["panel-dyn-1"]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      closed: ["panel-dyn-1"],
+      docked: ["panel-dyn-1"],
+    });
 
     // fx's 4 seed leaves plus the docked panel — nothing got closed.
     expect(page.groupsAttr()).toBe("5");
@@ -124,45 +97,16 @@ describe("DockviewLayoutEngine docked prop", () => {
   it("keeps a live docked panel visible when closed grows to include its id on rerender", () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, docked: ["panel-dyn-1"] });
 
     expect(page.groupsAttr()).toBe("5");
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={["panel-dyn-1"]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({
+      registry,
+      store,
+      closed: ["panel-dyn-1"],
+      docked: ["panel-dyn-1"],
+    });
 
     // No group ever leaves — the reconciliation effect never looked
     // "panel-dyn-1" up because it is not one of fx's seed ids.
@@ -176,45 +120,11 @@ describe("DockviewLayoutEngine docked prop", () => {
     // rebuild (which `store` changing would also trigger, confounding it).
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, docked: ["panel-dyn-1"] });
 
     expect(page.groupsAttr()).toBe("5");
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({ registry, store });
 
     // `data-groups` only refreshes off dockview's own debounced
     // `onLayoutChange` — the removal fires it, but not synchronously.
@@ -235,45 +145,11 @@ describe("DockviewLayoutEngine docked prop", () => {
   it("clears the docked panel's group-root panel-<id> tag on undock, not just its body", async () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, docked: ["panel-dyn-1"] });
 
     expect(page.bodyVisible("panel-panel-dyn-1")).toBe(true);
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({ registry, store });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("4");
@@ -318,24 +194,7 @@ describe("DockviewLayoutEngine docked prop", () => {
       },
     };
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, docked: ["panel-dyn-1"] });
 
     // The stacked pair's own group, plus fx-analytics, fx-positions, and
     // the reconciled dynamic panel — NOT 5 (fx-rates and fx-blotter share
@@ -354,24 +213,12 @@ describe("DockviewLayoutEngine docked prop", () => {
     inner.clear("fx");
     saved.length = 0;
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={1}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({
+      registry,
+      store,
+      docked: ["panel-dyn-1"],
+      layoutResets: 1,
+    });
 
     // Seed's 4 separate leaves plus the re-reconciled docked panel — the
     // fresh engine's OWN shape, not whatever the discarded blob held.
@@ -407,45 +254,16 @@ describe("DockviewLayoutEngine docked prop", () => {
   it("re-applies the seeded collapse set to the engine a workspace reset rebuilds", async () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={["fx-analytics"]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, collapsed: ["fx-analytics"] });
 
     expect(page.stripMarked("fx-analytics")).toBe(true);
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={["fx-analytics"]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={1}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({
+      registry,
+      store,
+      collapsed: ["fx-analytics"],
+      layoutResets: 1,
+    });
 
     // The fresh engine re-collapsed fx-analytics on its own — `collapsed`
     // never changed value across this render, so only the rebuild's own
@@ -454,24 +272,7 @@ describe("DockviewLayoutEngine docked prop", () => {
       expect(page.stripMarked("fx-analytics")).toBe(true);
     });
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={1}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({ registry, store, layoutResets: 1 });
 
     expect(page.stripMarked("fx-analytics")).toBe(false);
   });
@@ -501,43 +302,14 @@ describe("DockviewLayoutEngine docked prop", () => {
       },
     };
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, docked: ["panel-dyn-1"] });
 
-    page.rerender(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={["panel-dyn-1"]}
-        instances={[]}
-        layoutResets={1}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.rerender({
+      registry,
+      store,
+      docked: ["panel-dyn-1"],
+      layoutResets: 1,
+    });
 
     // Let the rebuilt (post-reset) engine's own reconciliation save land
     // before unmounting — the bug this guards is specific to what UNMOUNT
@@ -597,24 +369,7 @@ describe("DockviewLayoutEngine docked prop", () => {
       },
     };
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={3}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store, layoutResets: 3 });
 
     expect(loads).toBe(1);
     expect(saved).toEqual([]);

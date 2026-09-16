@@ -12,6 +12,7 @@ import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mjs";
 import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
+import { pageObjectsOwnTheirComponent } from "./eslint-rules/page-objects-own-their-component.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
 // the client-`src` block (which appends the inline-style ban). Flat config
@@ -116,6 +117,7 @@ const rtcPlugin = {
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
     "no-minified-json-literal": noMinifiedJsonLiteral,
     "json-fixtures-in-factories": jsonFixturesInFactories,
+    "page-objects-own-their-component": pageObjectsOwnTheirComponent,
   },
 };
 
@@ -516,6 +518,24 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // A page object CONSTRUCTS the component it is named for; its published
+    // contract takes props, never a rendered element. `no-framework-calls-in-
+    // specs` states the same doctrine but enforces it by banning framework
+    // IMPORTS, so a `mount(element: ReactElement)` contract passes it cleanly
+    // while leaving the whole ARRANGE half in the spec — that is how
+    // client-react sat "migrated" while its docked spec wrote 15 props at each
+    // of 16 render sites, 9 of them identical every time.
+    //
+    // NO IGNORE LIST, deliberately. An earlier cut carried one as a
+    // "migration ledger"; that is a suppression whatever it is called, and the
+    // files on it were exactly the ones the rule existed for. Every page
+    // object in the repo now satisfies this, so the rule is unconditional and
+    // a regression cannot be parked.
+    files: ["**/tests/**/pages/**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/page-objects-own-their-component": "error" },
   },
   {
     // Large JSON fixtures live in a named create* factory, not inline in a
