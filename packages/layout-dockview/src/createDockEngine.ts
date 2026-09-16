@@ -1158,6 +1158,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return suspended;
   }
 
+  /** True while `group` is still laid out in THIS window's grid.
+   *
+   * `api.groups` is not pruned when a group leaves the grid, so every "what
+   * is in the dock" question has to ask this rather than assume it. A panel
+   * can stop being present in three ways — closed, popped out, floated — and
+   * only the first removes it from `api.groups`. Named for the question, not
+   * for today's answer, so a fourth way to leave the grid is one edit here.
+   *
+   * `?? "grid"` is deliberate: treating an unreported location as present is
+   * the safe direction, since wrongly excluding a group would release a
+   * constraint that is still doing its job. */
+  function isInGrid(group: SizableGroup): boolean {
+    return (group.api.location?.type ?? "grid") === "grid";
+  }
+
   /** True while some panel can still absorb the container's spare space —
    * any panel that is IN THE GRID, not a member of `held`, and not currently
    * a STRIP. A collapsed panel sits at the strip extent, so it absorbs
@@ -1181,7 +1196,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     return api.groups.some((group) => {
-      if ((group.api.location?.type ?? "grid") !== "grid") {
+      if (!isInGrid(group)) {
         return false;
       }
 
@@ -2508,6 +2523,10 @@ type DockLockState = boolean | "no-drop-target";
 interface SizableGroupApi {
   readonly width: number;
   readonly height: number;
+  /** Where the group actually lives. Optional because this narrowed view is
+   * also satisfied by test doubles that do not model it; `isInGrid` treats an
+   * absent location as `"grid"`. */
+  readonly location?: { readonly type: string };
   locked: DockLockState;
   setSize(event: GroupSizeEvent): void;
   setConstraints(constraints: GroupConstraints): void;
