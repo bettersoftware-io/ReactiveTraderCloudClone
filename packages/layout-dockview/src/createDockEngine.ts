@@ -983,6 +983,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // pointer MOVE of a sash drag inside the declaring split (a grab that
   // never moves keeps the pin, as in-house does).
   let designPins: DesignPinRecord[] = [];
+  // Pins whose clamp is currently LIFTED because nothing is left to absorb
+  // the container's spare space (see settlePinAbsorption). They are still
+  // live pins — persisted in the blob, re-clamped as soon as an absorbing
+  // panel returns — just not holding a min=max that would starve the grid.
+  let unabsorbedPins: DesignPinRecord[] = [];
   // The unpinned dynamic panels (chart instances) and their design widths —
   // the members the R17 sharing rule sizes. Seeded from the construction
   // list too, so an unpinned panel a blob restored in place (reconcile never
@@ -1191,6 +1196,114 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return suspended;
   }
 
+  /** True while `group` is still laid out in THIS window's grid.
+   *
+   * `api.groups` is not pruned when a group leaves the grid, so every "what
+   * is in the dock" question has to ask this rather than assume it. A panel
+   * can stop being present in three ways — closed, popped out, floated — and
+   * only the first removes it from `api.groups`. Named for the question, not
+   * for today's answer, so a fourth way to leave the grid is one edit here.
+   *
+   * `?? "grid"` is deliberate: treating an unreported location as present is
+   * the safe direction, since wrongly excluding a group would release a
+   * constraint that is still doing its job. */
+  function isInGrid(group: SizableGroup): boolean {
+    return (group.api.location?.type ?? "grid") === "grid";
+  }
+
+  /** True while some panel can still absorb the container's spare space —
+   * any panel that is IN THE GRID, not a member of `held`, and not currently
+   * a STRIP. A collapsed panel sits at the strip extent, so it absorbs
+   * nothing either.
+   *
+   * The grid filter is not defensive padding: `api.groups` is NOT pruned when
+   * a group leaves the grid, so a popped-out panel (and, once Phase 6a lands,
+   * a floating one) is still listed. Counting one as an absorber would hold
+   * the pin clamped while the GRID has nothing left to fill it — the exact
+   * starvation this function exists to detect, now invisible because a panel
+   * in another window looked like it was helping. `publishPoppedPanels` reads
+   * the same `location.type`; the `?? "grid"` keeps a group whose location
+   * dockview does not report treated as present, which is the safe default. */
+  function someGroupAbsorbs(held: readonly DesignPinRecord[]): boolean {
+    const pinned = new Set<string>();
+
+    for (const record of held) {
+      for (const member of record.members) {
+        pinned.add(member.panelId);
+      }
+    }
+
+    return api.groups.some((group) => {
+      if (!isInGrid(group)) {
+        return false;
+      }
+
+      return group.panels.some((panel) => {
+        return !pinned.has(panel.id) && !records.has(panel.id);
+      });
+    });
+  }
+
+  /** Suspends every design pin while nothing is left to trade against it,
+   * and re-clamps it the moment something is — STATUS Phase-4 follow-up (b).
+   *
+   * A pin is a RELATIVE design width: the rail holds its pixels while some
+   * other panel absorbs whatever the container has spare. A pin is min=max,
+   * so once the last absorber goes the grid has no child able to take the
+   * remaining space — dockview clamps the WHOLE GRID to the pinned extent
+   * and the dock renders a void beside it. Measured on the FX rail pinned at
+   * 360 in a 1200-wide dock: closing both unpinned panels took the grid from
+   * 1200 to 367. The same seed with no pin hands the rail all 1200.
+   *
+   * SUSPEND, not release: the starved state is usually transient — closing
+   * the last static panel and then opening a chart instance is the R18 path,
+   * and that instance restores an absorber, so the rail must come back to its
+   * design width rather than having forgotten it. Suspended pins keep their
+   * records (so the blob still persists them) and re-clamp on the next call
+   * that finds an absorber. Releasing outright is what a sash drag does, and
+   * that stays the only way to lose a pin for good. */
+  function settlePinAbsorption(): void {
+    if (designPins.length === 0 && unabsorbedPins.length === 0) {
+      return;
+    }
+
+    const absorbs = someGroupAbsorbs([...designPins, ...unabsorbedPins]);
+
+    if (absorbs && unabsorbedPins.length > 0) {
+      for (const record of unabsorbedPins) {
+        clampPinMembers(record);
+      }
+
+      designPins = [...designPins, ...unabsorbedPins];
+      unabsorbedPins = [];
+    } else if (!absorbs && designPins.length > 0) {
+      let patchedStrips = false;
+
+      for (const record of designPins) {
+        patchedStrips = releasePinMembers(record) || patchedStrips;
+      }
+
+      unabsorbedPins = [...unabsorbedPins, ...designPins];
+      designPins = [];
+
+      if (patchedStrips) {
+        settleStrips();
+      }
+    } else {
+      return;
+    }
+
+    // Changing min/max does not itself redistribute — dockview only reflows
+    // on a layout pass, and two things conspire against a plain one here.
+    // `api.width` is no use as the size: a starved grid ALREADY reads the
+    // clamped extent, so laying out at it would keep the void; the
+    // container's tracked size is the real dock. And when the grid did NOT
+    // shrink (a strip absorbed the collapse instead) the tracked size EQUALS
+    // the current one, which `DockviewComponent.layout` de-dupes away. Hence
+    // forceResize: the distribution, not the dimensions, is what changed.
+    api.layout(trackedWidth, trackedHeight, true);
+  }
+
   /** The pins worth persisting: drops (and releases) any whose groups no
    * longer hold exactly the pinned panels — a tab dragged into or out of a
    * pinned group dissolves the pin rather than clamping a stranger. */
@@ -1219,7 +1332,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     designPins = kept;
 
-    return designPins.map((record) => {
+    // Suspended pins are still pins — their clamp is lifted so the grid can
+    // fill, but the design width must survive a reload, or closing the last
+    // absorbing panel would silently forget the rail's width for good.
+    return [...designPins, ...unabsorbedPins].map((record) => {
       return record.pin;
     });
   }
@@ -1282,6 +1398,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         axis: "width",
       });
     }
+
+    // The newcomer may be the absorber a suspended pin was waiting for —
+    // re-clamp BEFORE the share rule runs, so the rail is back at its design
+    // width when the instances divide what is left.
+    settlePinAbsorption();
 
     if (maximized !== null) {
       // A panel docked while a maximize is live must not land full-size next
@@ -2091,6 +2212,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStrips();
         restore();
         settleStripFreeWorlds();
+        // An expanded panel absorbs again, unlike the strip it just was.
+        settlePinAbsorption();
 
         if (reclaimedWidthSplit !== null) {
           settleOwedShares((_cause, split) => {
@@ -2146,6 +2269,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // membership (drifted worlds void rather than re-assert).
         settleStrips();
         settleStripFreeWorlds();
+        // The panel that just left may have been the last one able to absorb
+        // the container's spare space — a pin with no absorber starves the
+        // whole grid rather than just itself.
+        settlePinAbsorption();
 
         if (endedBoundary !== null) {
           settleMaximizeShares(endedBoundary);
@@ -2179,6 +2306,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         });
         settleStrips();
         settleStripFreeWorlds();
+        // A reopened panel can absorb again — re-clamp any pin suspended
+        // while the grid had nothing to trade against it.
+        settlePinAbsorption();
       });
     },
     popoutPanel: async (panelId: string): Promise<boolean> => {
@@ -2515,6 +2645,10 @@ type DockLockState = boolean | "no-drop-target";
 interface SizableGroupApi {
   readonly width: number;
   readonly height: number;
+  /** Where the group actually lives. Optional because this narrowed view is
+   * also satisfied by test doubles that do not model it; `isInGrid` treats an
+   * absent location as `"grid"`. */
+  readonly location?: { readonly type: string };
   locked: DockLockState;
   setSize(event: GroupSizeEvent): void;
   setConstraints(constraints: GroupConstraints): void;

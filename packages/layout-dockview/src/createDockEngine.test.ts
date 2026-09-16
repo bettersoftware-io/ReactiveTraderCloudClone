@@ -1,4 +1,8 @@
-import type { DockviewApi } from "dockview";
+import {
+  type DockviewApi,
+  Orientation,
+  type SerializedDockview,
+} from "dockview";
 import {
   afterEach,
   beforeAll,
@@ -3476,8 +3480,89 @@ describe("stacked visual fixture (Phase 2)", () => {
   // the wrappers' self-contained convention). This test is the fixture's
   // shape witness: if the blob format ever moves, fixture and test fail
   // together, loudly, here.
-  const STACKED_FX_BLOB =
-    '{"grid":{"root":{"type":"branch","data":[{"type":"branch","data":[{"type":"leaf","data":{"views":["fx-rates","fx-analytics"],"activeView":"fx-rates","id":"group-1"},"size":419},{"type":"leaf","data":{"views":["fx-blotter"],"activeView":"fx-blotter","id":"group-2"},"size":281}],"size":942},{"type":"leaf","data":{"views":["fx-positions"],"activeView":"fx-positions","id":"group-4"},"size":318}],"size":700},"width":1260,"height":700,"orientation":"HORIZONTAL"},"panels":{"fx-rates":{"id":"fx-rates","contentComponent":"rtc-panel","title":"fx-rates"},"fx-analytics":{"id":"fx-analytics","contentComponent":"rtc-panel","title":"fx-analytics"},"fx-blotter":{"id":"fx-blotter","contentComponent":"rtc-panel","title":"fx-blotter"},"fx-positions":{"id":"fx-positions","contentComponent":"rtc-panel","title":"fx-positions"}},"activeGroup":"group-1","rtcBlobVersion":2,"rtcDesignPins":[]}';
+  // Spelled as a literal + `JSON.stringify` rather than a minified string
+  // so the shape this test witnesses is readable; `JSON.stringify` emits
+  // the captured blob byte for byte (key order is insertion order). The
+  // `rtc*` keys are the wrapper's own sidecar, hence the intersection.
+  /** A serialized Dockview grid plus the wrapper's own sidecar keys — what
+   * a save actually stamps (see dockBlob.ts). Dockview's own type covers
+   * only the `grid`/`panels`/`activeGroup` half. */
+  type RtcDockBlob = SerializedDockview & {
+    rtcBlobVersion: number;
+    rtcDesignPins: readonly unknown[];
+  };
+  const STACKED_FX_LAYOUT: RtcDockBlob = {
+    grid: {
+      root: {
+        type: "branch",
+        data: [
+          {
+            type: "branch",
+            data: [
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-rates", "fx-analytics"],
+                  activeView: "fx-rates",
+                  id: "group-1",
+                },
+                size: 419,
+              },
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-blotter"],
+                  activeView: "fx-blotter",
+                  id: "group-2",
+                },
+                size: 281,
+              },
+            ],
+            size: 942,
+          },
+          {
+            type: "leaf",
+            data: {
+              views: ["fx-positions"],
+              activeView: "fx-positions",
+              id: "group-4",
+            },
+            size: 318,
+          },
+        ],
+        size: 700,
+      },
+      width: 1260,
+      height: 700,
+      orientation: Orientation.HORIZONTAL,
+    },
+    panels: {
+      "fx-rates": {
+        id: "fx-rates",
+        contentComponent: "rtc-panel",
+        title: "fx-rates",
+      },
+      "fx-analytics": {
+        id: "fx-analytics",
+        contentComponent: "rtc-panel",
+        title: "fx-analytics",
+      },
+      "fx-blotter": {
+        id: "fx-blotter",
+        contentComponent: "rtc-panel",
+        title: "fx-blotter",
+      },
+      "fx-positions": {
+        id: "fx-positions",
+        contentComponent: "rtc-panel",
+        title: "fx-positions",
+      },
+    },
+    activeGroup: "group-1",
+    rtcBlobVersion: 2,
+    rtcDesignPins: [],
+  };
+  const STACKED_FX_BLOB = JSON.stringify(STACKED_FX_LAYOUT);
 
   // Seeded with RAIL_LIKE, not base()'s FX_LIKE: the fixture blob carries
   // all four real FX panels, and a panel a blob names but the SEED does not
@@ -3603,6 +3688,165 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
     expect(dock.getPanel("fx-analytics")).toBeDefined();
     expect(columnOf("fx-analytics")).toBe(columnOf("fx-positions"));
     second.dispose();
+  });
+});
+
+/**
+ * A design pin is a RELATIVE width: the rail holds its pixels while some
+ * other panel absorbs whatever the container has spare. Close the last
+ * absorber and the pin — which is min=max — leaves the grid with no child
+ * able to take the remaining space, so dockview shrinks the WHOLE GRID to
+ * the pinned extent and the dock shows a void beside it.
+ *
+ * Measured on the `RAIL_LIKE` seed pinned at 360 in a 1200-wide dock:
+ *
+ *   seed                      dock 1200 :: rates 833 | blotter 833 | rail 367
+ *   close fx-rates            dock 1200 :: blotter 833 | rail 367
+ *   close fx-blotter          dock  367 :: rail 367            ← 833px gone
+ *
+ * The same seed with NO pin keeps the dock at 1200 and hands the rail all
+ * 1200, which is the control proving the pin is the cause.
+ *
+ * STATUS Phase-4 follow-up (b).
+ */
+describe("closing the last absorber releases a design pin (follow-up b)", () => {
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+  }
+
+  function dockWidth(): number {
+    return lastDockviewApi().width;
+  }
+
+  function widthOf(panelId: string): number {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.width;
+  }
+
+  it("holds the pin while an absorber survives", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+
+    // fx-blotter is still there to absorb: the rail keeps its design width
+    // and the grid still fills the dock.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("fills the dock once the last absorbing panel is closed", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    // Nothing is left to absorb, so the pin yields — exactly as a sash drag
+    // makes it yield — rather than starving the grid.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
+  });
+
+  it("re-clamps the pin when a reopened panel can absorb again", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    expect(widthOf("fx-analytics")).toBe(1200);
+
+    // SUSPENDED, not forgotten: the moment something can absorb again, the
+    // rail goes back to its design width. This is why the fix cannot simply
+    // drop the pin — R18's "close both statics, then open a chart instance"
+    // path depends on the rail still being 360 when the instance lands.
+    engine.reopenPanel("fx-blotter");
+
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("keeps a suspended pin in the blob, so a reload still knows the width", () => {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    // The clamp is lifted, but the design width is not lost — persisting it
+    // is the difference between "suspended" and "released".
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("does not count a panel in another window as an absorber", () => {
+    // jsdom cannot open a real pop-out window, so stand the state in the way
+    // the ENGINE reads it: dockview reports a group's real home through
+    // `api.location.type`, and `api.groups` is NOT pruned when a group leaves
+    // the grid — the same read `publishPoppedPanels` uses.
+    //
+    // The stub can only lie about LOCATION, not vacate the pixels, so the
+    // witness is the clamp itself rather than a width: a pin is min=max, and
+    // suspending it is exactly what lifts that. Asserted against the same
+    // sequence with the panel left in the grid, so the popout filter is the
+    // only difference between the two.
+    function railClampedAfterClosingRates(poppedOut: boolean): boolean {
+      const engine = createDockEngine(pinnedRailBase());
+      const blotter = lastDockviewApi().getPanel("fx-blotter");
+
+      if (blotter === undefined) {
+        throw new Error("fx-blotter is not in the dock");
+      }
+
+      if (poppedOut) {
+        Object.defineProperty(blotter.group.api, "location", {
+          configurable: true,
+          get: () => {
+            return { type: "popout" };
+          },
+        });
+      }
+
+      engine.closePanel("fx-rates");
+
+      const rail = lastDockviewApi().getPanel("fx-analytics");
+
+      if (rail === undefined) {
+        throw new Error("fx-analytics is not in the dock");
+      }
+
+      const clamped = rail.group.minimumWidth === rail.group.maximumWidth;
+      engine.dispose();
+
+      return clamped;
+    }
+
+    // In the grid, fx-blotter absorbs — the rail stays pinned.
+    expect(railClampedAfterClosingRates(false)).toBe(true);
+    // In another window it absorbs nothing here, so the pin must yield
+    // rather than starve a grid that has nothing left to fill it.
+    expect(railClampedAfterClosingRates(true)).toBe(false);
+  });
+
+  it("leaves an unpinned seed alone — the control", () => {
+    const engine = createDockEngine(railBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
   });
 });
 
