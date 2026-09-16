@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
 
-const page = flipGridPage();
-
 describe("useFlipGrid", () => {
   it("re-measures origins on window resize so the next FLIP starts fresh", () => {
     const tile = createTile();
@@ -365,3 +363,5 @@ function createTile(): FakeTile {
 
   return tile;
 }
+
+const page = flipGridPage();

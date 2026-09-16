@@ -115,11 +115,6 @@ describe("appPanelRegistry", () => {
   });
 });
 
-const INSTANCES: readonly LayoutPanelInstance[] = [
-  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
-  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
-];
-
 describe("instanceRegistryFor", () => {
   it("maps each instance id to a ChartPanel pinned to its own symbol", () => {
     const registry = instanceRegistryFor(INSTANCES);
@@ -177,3 +172,8 @@ interface NewRfqProps {
 interface PinnedSymbolProps {
   pinnedSymbol?: string;
 }
+
+const INSTANCES: readonly LayoutPanelInstance[] = [
+  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+];

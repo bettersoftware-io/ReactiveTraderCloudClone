@@ -26,27 +26,7 @@ import type { Drawing, DrawingSceneItem } from "./drawingScene.js";
 import { drawingScene } from "./drawingScene.js";
 import { paneScene } from "./paneScene.js";
 
-const SIZE = { w: 100, h: 100 };
 const BUCKET_MS = 60_000;
-
-const PALETTE: ChartPalette = {
-  up: "up-color",
-  down: "down-color",
-  grid: "grid-color",
-  line: "line-color",
-  sma20: "sma20-color",
-  ema50: "ema50-color",
-  compare: "compare-color",
-  drawing: "drawing-color",
-  drawingLevel: "drawing-level-color",
-  grip: "grip-color",
-  crosshair: "crosshair-color",
-  paneRsi: "pane-rsi-color",
-  paneMacd: "pane-macd-color",
-  paneSignal: "pane-signal-color",
-  paneGuide: "pane-guide-color",
-  histogram: "histogram-color",
-};
 
 const CANDLE_COUNT = 6;
 const CANDLES: readonly ChartCandle[] = Array.from(
@@ -65,35 +45,6 @@ const COMPARE_CANDLES: readonly ChartCandle[] = CANDLES.map((_, i) => {
 const candleChartScene = chartScene(CANDLES, LIVE_RATE, true);
 const lineScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "line" });
 const areaScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "area" });
-const compareScene = chartScene(CANDLES, LIVE_RATE, false, {
-  kind: "line",
-  compare: { series: COMPARE_CANDLES },
-});
-
-const OVERLAYS: readonly OverlayLine[] = [
-  {
-    id: "sma20",
-    points: [
-      { x: 0, y: 10 },
-      { x: 100, y: 20 },
-    ],
-  },
-  {
-    id: "ema50",
-    points: [
-      { x: 0, y: 30 },
-      { x: 100, y: 40 },
-    ],
-  },
-  {
-    id: "mystery-overlay",
-    points: [
-      { x: 0, y: 50 },
-      { x: 100, y: 60 },
-    ],
-  },
-];
-
 const DRAWINGS_INPUT: readonly Drawing[] = [
   {
     id: "draft",
@@ -103,21 +54,6 @@ const DRAWINGS_INPUT: readonly Drawing[] = [
   },
   { id: "h1", kind: "hline", price: 100 },
 ];
-
-const drawingsScene: readonly DrawingSceneItem[] = drawingScene(
-  DRAWINGS_INPUT,
-  VIEWPORT,
-  candleChartScene.scale,
-  "draft",
-);
-
-const crosshair: CrosshairScene | null = crosshairScene(
-  0.5,
-  0.5,
-  CANDLES,
-  VIEWPORT,
-  candleChartScene.scale,
-);
 
 describe("drawPlotScene: candles", () => {
   const plot = plotOf(candleChartScene);
@@ -963,3 +899,68 @@ function rampUp(n: number): number[] {
     return 100 + i;
   });
 }
+
+const SIZE = { w: 100, h: 100 };
+
+const PALETTE: ChartPalette = {
+  up: "up-color",
+  down: "down-color",
+  grid: "grid-color",
+  line: "line-color",
+  sma20: "sma20-color",
+  ema50: "ema50-color",
+  compare: "compare-color",
+  drawing: "drawing-color",
+  drawingLevel: "drawing-level-color",
+  grip: "grip-color",
+  crosshair: "crosshair-color",
+  paneRsi: "pane-rsi-color",
+  paneMacd: "pane-macd-color",
+  paneSignal: "pane-signal-color",
+  paneGuide: "pane-guide-color",
+  histogram: "histogram-color",
+};
+
+const compareScene = chartScene(CANDLES, LIVE_RATE, false, {
+  kind: "line",
+  compare: { series: COMPARE_CANDLES },
+});
+
+const OVERLAYS: readonly OverlayLine[] = [
+  {
+    id: "sma20",
+    points: [
+      { x: 0, y: 10 },
+      { x: 100, y: 20 },
+    ],
+  },
+  {
+    id: "ema50",
+    points: [
+      { x: 0, y: 30 },
+      { x: 100, y: 40 },
+    ],
+  },
+  {
+    id: "mystery-overlay",
+    points: [
+      { x: 0, y: 50 },
+      { x: 100, y: 60 },
+    ],
+  },
+];
+
+const drawingsScene: readonly DrawingSceneItem[] = drawingScene(
+  DRAWINGS_INPUT,
+  VIEWPORT,
+  candleChartScene.scale,
+  "draft",
+);
+
+const crosshair: CrosshairScene | null = crosshairScene(
+  0.5,
+  0.5,
+  CANDLES,
+  VIEWPORT,
+  candleChartScene.scale,
+);

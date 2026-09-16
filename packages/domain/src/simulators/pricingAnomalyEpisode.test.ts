@@ -256,19 +256,9 @@ describe("burstStepMultiplier / burstSignBias", () => {
   });
 });
 
-// --- Detector integration -------------------------------------------------
-//
-// Proves DEFAULT_EPISODE_CONFIG's peak/duration bounds actually cross
-// DEFAULT_ANOMALY_CONFIG's (unmodified) 3σ thresholds — the whole point of
-// this module. Ticks are built directly from the pure episode functions,
-// independent of PricingSimulator's timers/live-stream plumbing: this is a
-// test of the episode SHAPE's effect on the detector, not of the
-// probabilistic start trigger (covered above) or of the live scheduling
-// (covered in PricingSimulator.test.ts).
-
-const EURUSD_HALF_SPREAD = 0.00007; // typicalSpreadPips 1.4 / 2 * pipUnit(4)
-const EURUSD_STEP_SIZE = 0.00018; // stepSizeFor(EURUSD): 1.8 * pipUnit(4)
-const EURUSD_RATE_PRECISION = 5; // KNOWN_CURRENCY_PAIRS EURUSD.ratePrecision
+// typicalSpreadPips 1.4 / 2 * pipUnit(4)
+// stepSizeFor(EURUSD): 1.8 * pipUnit(4)
+// KNOWN_CURRENCY_PAIRS EURUSD.ratePrecision
 
 describe("detector integration (proves the calibration actually fires)", () => {
   it("a forced spreadWidening episode trips detectAnomalies' spreadWidening channel at least once", async () => {
@@ -418,3 +408,19 @@ function createTickSequence(
 
   return ticks;
 }
+
+// --- Detector integration -------------------------------------------------
+//
+// Proves DEFAULT_EPISODE_CONFIG's peak/duration bounds actually cross
+// DEFAULT_ANOMALY_CONFIG's (unmodified) 3σ thresholds — the whole point of
+// this module. Ticks are built directly from the pure episode functions,
+// independent of PricingSimulator's timers/live-stream plumbing: this is a
+// test of the episode SHAPE's effect on the detector, not of the
+// probabilistic start trigger (covered above) or of the live scheduling
+// (covered in PricingSimulator.test.ts).
+
+const EURUSD_HALF_SPREAD = 0.00007;
+
+const EURUSD_STEP_SIZE = 0.00018;
+
+const EURUSD_RATE_PRECISION = 5;

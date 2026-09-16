@@ -31,8 +31,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineBridgePage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -47,34 +45,6 @@ const MSFT: LayoutPanelInstance = {
   id: instanceIdFor("eq-chart", "MSFT"),
   kind: "eq-chart",
   symbol: "MSFT",
-};
-
-// The instance entries stand in for `instanceRegistryFor`'s pinned
-// ChartPanel (covered by appPanelRegistry.test.ts) — what THIS bridge owns is
-// portalling whatever the registry holds for an instance id into the panel
-// dockview opened for it.
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div data-testid="fx-rates-body">RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-  "panel-dyn-1": () => {
-    return <div data-testid="panel-dyn-1-body">DYN</div>;
-  },
-  [AAPL.id]: () => {
-    return <div data-testid="chart-AAPL-body">AAPL CHART</div>;
-  },
-  [MSFT.id]: () => {
-    return <div data-testid="chart-MSFT-body">MSFT CHART</div>;
-  },
 };
 
 describe("DockviewLayoutEngine instances prop", () => {
@@ -625,3 +595,33 @@ type ResizeObserverCtor = typeof ResizeObserver;
 interface GlobalWithResizeObserver {
   ResizeObserver: ResizeObserverCtor;
 }
+
+const page = dockviewLayoutEngineBridgePage();
+
+// The instance entries stand in for `instanceRegistryFor`'s pinned
+// ChartPanel (covered by appPanelRegistry.test.ts) — what THIS bridge owns is
+// portalling whatever the registry holds for an instance id into the panel
+// dockview opened for it.
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div data-testid="fx-rates-body">RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
+  [AAPL.id]: () => {
+    return <div data-testid="chart-AAPL-body">AAPL CHART</div>;
+  },
+  [MSFT.id]: () => {
+    return <div data-testid="chart-MSFT-body">MSFT CHART</div>;
+  },
+};

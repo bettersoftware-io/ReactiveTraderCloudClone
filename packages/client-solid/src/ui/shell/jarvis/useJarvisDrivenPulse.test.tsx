@@ -25,8 +25,6 @@ import { jarvisDrivenPulsePage } from "#tests/ui/pages/UseJarvisDrivenPulsePage"
 
 import { useJarvisDrivenPulse } from "./useJarvisDrivenPulse";
 
-const page = jarvisDrivenPulsePage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -165,3 +163,5 @@ function createFakeViewModel(
     },
   } as unknown as ViewModel;
 }
+
+const page = jarvisDrivenPulsePage();

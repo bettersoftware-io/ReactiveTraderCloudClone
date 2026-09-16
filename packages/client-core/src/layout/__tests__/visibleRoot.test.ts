@@ -3,47 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { LayoutNode } from "#/layout/layoutPort";
 import { visibleRootOf } from "#/layout/visibleRoot";
 
-/** FX-like shape: main column (rates over blotter) beside a rail column
- * (analytics over positions) — the rail carries a design-width initialPx. */
-const FX_LIKE_ROOT: LayoutNode = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.73, 0.27],
-  initialPx: [undefined, 360],
-  children: [
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.65, 0.35],
-      children: [
-        { kind: "panel", panelId: "fx-rates" },
-        { kind: "panel", panelId: "fx-blotter" },
-      ],
-    },
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.55, 0.45],
-      children: [
-        { kind: "panel", panelId: "fx-analytics" },
-        { kind: "panel", panelId: "fx-positions" },
-      ],
-    },
-  ],
-};
-
-const THREE_STACK: LayoutNode = {
-  kind: "split",
-  dir: "column",
-  sizes: [0.5, 0.3, 0.2],
-  fixedPx: [undefined, 120, undefined],
-  children: [
-    { kind: "panel", panelId: "a" },
-    { kind: "panel", panelId: "b" },
-    { kind: "panel", panelId: "c" },
-  ],
-};
-
 describe("visibleRootOf", () => {
   it("prunes a closed leaf of a 2-split and hoists the survivor into its slot", () => {
     const pruned = visibleRootOf(FX_LIKE_ROOT, ["fx-analytics"]);
@@ -122,3 +81,44 @@ function sumSizesOf(node: LayoutNode): number {
     return total + size;
   }, 0);
 }
+
+/** FX-like shape: main column (rates over blotter) beside a rail column
+ * (analytics over positions) — the rail carries a design-width initialPx. */
+const FX_LIKE_ROOT: LayoutNode = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.73, 0.27],
+  initialPx: [undefined, 360],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.65, 0.35],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+      ],
+    },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.55, 0.45],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+  ],
+};
+
+const THREE_STACK: LayoutNode = {
+  kind: "split",
+  dir: "column",
+  sizes: [0.5, 0.3, 0.2],
+  fixedPx: [undefined, 120, undefined],
+  children: [
+    { kind: "panel", panelId: "a" },
+    { kind: "panel", panelId: "b" },
+    { kind: "panel", panelId: "c" },
+  ],
+};

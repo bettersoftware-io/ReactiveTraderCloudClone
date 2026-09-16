@@ -8,18 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const BOOK: DepthBook = {
-  symbol: "AAPL",
-  bids: [
-    { price: 99.9, size: 500 },
-    { price: 99.8, size: 300 },
-  ],
-  asks: [
-    { price: 100.1, size: 400 },
-    { price: 100.2, size: 200 },
-  ],
-};
-
 describe("DepthLadder", () => {
   it("shows an empty-state placeholder when there is no book", () => {
     const ladder = mount(DepthLadder, { props: { symbol: "AAPL" } });
@@ -51,3 +39,15 @@ describe("DepthLadder", () => {
     expect(ladder.spread()).toMatch(/spread —/i);
   });
 });
+
+const BOOK: DepthBook = {
+  symbol: "AAPL",
+  bids: [
+    { price: 99.9, size: 500 },
+    { price: 99.8, size: 300 },
+  ],
+  asks: [
+    { price: 100.1, size: 400 },
+    { price: 100.2, size: 200 },
+  ],
+};

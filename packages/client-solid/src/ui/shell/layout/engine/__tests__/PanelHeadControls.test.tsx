@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PanelHeadControlsProps } from "#/ui/shell/layout/engine/PanelHeadControls";
 import { panelHeadControlsPage } from "#tests/ui/pages/PanelHeadControlsPage";
 
-const page = panelHeadControlsPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -75,3 +73,5 @@ function createBase(): PanelHeadControlsProps {
     onRestore: vi.fn(),
   };
 }
+
+const page = panelHeadControlsPage();

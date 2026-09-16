@@ -3,10 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
-// 2026-07-01T00:00:00Z — any fixed instant works; never change it, the
-// snapshot is keyed to it.
-const FIXED_NOW = 1_782_864_000_000;
-
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(FIXED_NOW);
@@ -37,3 +33,7 @@ describe("EquityMarketDataSimulator 1D OHLC pin", () => {
     expect(newest60).toMatchSnapshot();
   });
 });
+
+// 2026-07-01T00:00:00Z — any fixed instant works; never change it, the
+// snapshot is keyed to it.
+const FIXED_NOW = 1_782_864_000_000;

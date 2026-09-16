@@ -10,19 +10,6 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-const doneTrade: Trade = {
-  tradeId: 9001,
-  tradeName: "Trader",
-  currencyPair: "EURUSD",
-  notional: 2_500_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.09221,
-  status: TradeStatus.Done,
-  tradeDate: "2026-06-13",
-  valueDate: "2026-06-15",
-};
-
 describe("TileConfirmation", () => {
   it("renders nothing while the tile is ready", () => {
     const c = mount(TileConfirmation, {
@@ -202,3 +189,16 @@ describe("TileConfirmation", () => {
     expect(dismissed).toBe(0);
   });
 });
+
+const doneTrade: Trade = {
+  tradeId: 9001,
+  tradeName: "Trader",
+  currencyPair: "EURUSD",
+  notional: 2_500_000,
+  dealtCurrency: "EUR",
+  direction: Direction.Buy,
+  spotRate: 1.09221,
+  status: TradeStatus.Done,
+  tradeDate: "2026-06-13",
+  valueDate: "2026-06-15",
+};

@@ -9,12 +9,6 @@ import {
   WatchlistPresenter,
 } from "#/presenters/index";
 
-const AAPL: EquityInstrument = {
-  symbol: "AAPL",
-  name: "Apple Inc",
-  exchange: "NASDAQ",
-};
-
 describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", () => {
   it("resolves the first symbol once the watchlist arrives, and never before", async () => {
     const source$ = new Subject<readonly EquityInstrument[]>();
@@ -121,3 +115,9 @@ function createAsyncMarketDataPort(
     },
   } as unknown as MarketDataPort;
 }
+
+const AAPL: EquityInstrument = {
+  symbol: "AAPL",
+  name: "Apple Inc",
+  exchange: "NASDAQ",
+};

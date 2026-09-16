@@ -22,35 +22,9 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-  "panel-dyn-1": () => {
-    return <div data-testid="panel-dyn-1-body">DYN</div>;
-  },
-};
-
-/** The 32px bar plus dockview's gap share for a two-child column (7 × 1/2):
- * what a collapsed group's MODEL height serialises as. Dockview's default
- * group minimum is ~100px, so a strip that was never re-applied to a rebuilt
- * engine reads far above this. */
-const STRIP_MODEL_HEIGHT_MAX = 40;
 
 describe("DockviewLayoutEngine under StrictMode", () => {
   // StrictMode double-invokes effects: the layout effect's cleanup disposes
@@ -198,3 +172,29 @@ function leafSizeIn(node: any, panelId: string): number | null {
 
   return null;
 }
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
+};
+
+/** The 32px bar plus dockview's gap share for a two-child column (7 × 1/2):
+ * what a collapsed group's MODEL height serialises as. Dockview's default
+ * group minimum is ~100px, so a strip that was never re-applied to a rebuilt
+ * engine reads far above this. */
+const STRIP_MODEL_HEIGHT_MAX = 40;

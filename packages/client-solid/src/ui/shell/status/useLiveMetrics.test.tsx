@@ -9,8 +9,6 @@ import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
 
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 
-const page = liveMetricsPage();
-
 describe("useLiveMetrics (solid)", () => {
   let rafCb: FrameRequestCallback | null;
 
@@ -122,3 +120,5 @@ function withPowerSaver(
     });
   };
 }
+
+const page = liveMetricsPage();

@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createRfqCountdownMachine } from "../RfqCountdownMachine";
 
-const TOTAL_MS = 500;
-const INTERVAL = 100;
-
 describe("createRfqCountdownMachine", () => {
   // Freeze the wall clock so the machine's internal Date.now() (RfqCountdownMachine
   // line 19) returns the same instant as the creationTimestamp each test passes,
@@ -132,3 +129,7 @@ function run(totalMs: number): Array<FrameEmission> {
   });
   return seen;
 }
+
+const TOTAL_MS = 500;
+
+const INTERVAL = 100;

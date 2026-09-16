@@ -13,16 +13,6 @@ import { UsageMeter } from "../services/UsageMeter.js";
 import { adminJarvisUsageEffects } from "./adminJarvisUsage.effects.js";
 import type { Ctx } from "./context.js";
 
-/** The default stand-in gate config for every test below that doesn't
- * itself exercise the budget-gate envelope — never gates, so the pushed
- * payload's `budgetUsd`/`softBudgetUsd` read `null` and `gateLevel` reads
- * `"none"` throughout. */
-const UNGATED_CONFIG: JarvisGateConfig = {
-  budgetUsd: "off",
-  softRatio: 0.8,
-  forceLevel: null,
-};
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -328,3 +318,13 @@ function createSnapshot(
     ...overrides,
   };
 }
+
+/** The default stand-in gate config for every test below that doesn't
+ * itself exercise the budget-gate envelope — never gates, so the pushed
+ * payload's `budgetUsd`/`softBudgetUsd` read `null` and `gateLevel` reads
+ * `"none"` throughout. */
+const UNGATED_CONFIG: JarvisGateConfig = {
+  budgetUsd: "off",
+  softRatio: 0.8,
+  forceLevel: null,
+};

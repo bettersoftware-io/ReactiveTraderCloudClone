@@ -2,8 +2,6 @@ import { expect, test } from "vitest";
 
 import { project3d } from "./project3d.js";
 
-const FLAT = { yaw: 0, pitch: 0, perspectiveK: 0 };
-
 test("with no rotation and no perspective, x and y pass through unchanged", () => {
   const p = project3d(0.5, 0.25, 0, FLAT);
   expect(p.x).toBeCloseTo(0.5);
@@ -51,3 +49,5 @@ test("is pure — repeated calls with the same inputs agree", () => {
     project3d(0.3, 0.4, 0.5, params),
   );
 });
+
+const FLAT = { yaw: 0, pitch: 0, perspectiveK: 0 };

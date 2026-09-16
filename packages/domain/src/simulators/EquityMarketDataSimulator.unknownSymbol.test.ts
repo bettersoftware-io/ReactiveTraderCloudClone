@@ -3,14 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
-// All three per-symbol streams guard an unknown symbol the same way, and none
-// of the existing specs asks for one. The guard matters because the failure is
-// otherwise silent-by-omission: without it a typo'd symbol yields a stream
-// that simply never emits, which reads in the UI as "still loading" forever
-// rather than as an error.
-
-const UNKNOWN = "NOTREAL";
-
 describe("EquityMarketDataSimulator unknown symbols", () => {
   it("errors the quotes stream", async () => {
     const sim = new EquityMarketDataSimulator(42);
@@ -49,3 +41,11 @@ describe("EquityMarketDataSimulator unknown symbols", () => {
     expect(quote.last).toBeGreaterThan(0);
   });
 });
+
+// All three per-symbol streams guard an unknown symbol the same way, and none
+// of the existing specs asks for one. The guard matters because the failure is
+// otherwise silent-by-omission: without it a typo'd symbol yields a stream
+// that simply never emits, which reads in the UI as "still loading" forever
+// rather than as an error.
+
+const UNKNOWN = "NOTREAL";

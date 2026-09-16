@@ -14,8 +14,6 @@ import {
 
 const VP: ChartViewport = { start: 240, end: 300 };
 const LIN: ChartScale = { cmin: 100, cmax: 200 };
-const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
-
 describe("pointerToAnchor", () => {
   it("snaps x to the crosshair's candle-index rule and inverts y through the scale", () => {
     // xFrac 0.5 → rawIdx = 240 + 0.5·60 − 0.5 = 269.5 → 270 (round).
@@ -353,3 +351,5 @@ describe("dragDrawing", () => {
     expect(out).toBe(tl);
   });
 });
+
+const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };

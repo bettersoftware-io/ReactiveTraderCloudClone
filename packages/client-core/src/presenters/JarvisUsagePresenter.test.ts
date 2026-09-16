@@ -7,13 +7,6 @@ import type { JarvisUsagePort } from "#/adapters/jarvisUsagePort";
 
 import { JarvisUsagePresenter } from "./JarvisUsagePresenter";
 
-const SNAPSHOT: JarvisUsageSnapshot = {
-  windowStartMs: 1_000,
-  windowEndMs: 2_000,
-  currentWindow: [],
-  sinceBoot: [],
-};
-
 /** A JarvisUsagePort test double whose `usage$()` is a plain pass-through of
  * an injected Subject, and which counts how many times `usage$()` itself was
  * invoked (to prove warmReplay's single-subscription behaviour). */
@@ -94,3 +87,10 @@ describe("JarvisUsagePresenter", () => {
     expect(port.callCount).toBe(1);
   });
 });
+
+const SNAPSHOT: JarvisUsageSnapshot = {
+  windowStartMs: 1_000,
+  windowEndMs: 2_000,
+  currentWindow: [],
+  sinceBoot: [],
+};

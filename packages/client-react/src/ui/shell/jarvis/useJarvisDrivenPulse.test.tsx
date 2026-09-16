@@ -23,8 +23,6 @@ import type { ViewModel } from "@rtc/react-bindings";
 
 import { jarvisDrivenPulsePage } from "#tests/ui/pages/JarvisDrivenPulsePage";
 
-const page = jarvisDrivenPulsePage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -93,3 +91,5 @@ function createFakeViewModel(
     },
   } as unknown as ViewModel;
 }
+
+const page = jarvisDrivenPulsePage();

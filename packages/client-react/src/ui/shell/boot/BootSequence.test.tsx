@@ -11,8 +11,6 @@ import type { ViewModel } from "@rtc/react-bindings";
 
 import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
 
-const page = bootSequencePage();
-
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
   let cafSpy: ReturnType<typeof vi.spyOn>;
@@ -257,3 +255,5 @@ function createCtxStub(): CanvasRenderingContext2D {
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
 }
+
+const page = bootSequencePage();

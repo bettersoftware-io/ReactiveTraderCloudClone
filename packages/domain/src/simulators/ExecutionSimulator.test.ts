@@ -5,10 +5,6 @@ import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import { Direction, TradeStatus } from "../fx/trade.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 
-// Same constants as in ExecutionSimulator
-const DELAYED_PAIR_MS = 4_000;
-const NORMAL_MAX_DELAY_MS = 2_000;
-
 describe("ExecutionSimulator", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -127,3 +123,8 @@ function createRequest(pair: string): ExecutionRequest {
     dealtCurrency: pair.slice(0, 3),
   };
 }
+
+// Same constants as in ExecutionSimulator
+const DELAYED_PAIR_MS = 4_000;
+
+const NORMAL_MAX_DELAY_MS = 2_000;

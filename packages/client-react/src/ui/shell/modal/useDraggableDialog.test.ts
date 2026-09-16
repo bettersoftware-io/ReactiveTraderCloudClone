@@ -11,10 +11,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
 
-const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
-
-const page = draggableDialogPage();
-
 afterEach(() => {
   vi.unstubAllGlobals();
   page.unmountAll();
@@ -155,3 +151,7 @@ function pointerEvent(init: PointerEventInit): ReactPointerEvent<HTMLElement> {
     currentTarget: { setPointerCapture } as unknown as HTMLElement,
   } as unknown as ReactPointerEvent<HTMLElement>;
 }
+
+const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
+
+const page = draggableDialogPage();

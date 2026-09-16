@@ -25,24 +25,6 @@ import {
 } from "./paneScene.js";
 import { priceTicks } from "./priceTicks.js";
 
-const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
-  const dir = i % 2 === 0 ? 1 : -1;
-  return {
-    time: 1_782_864_000_000 + i * 60_000,
-    open: 100 + dir * i,
-    high: 106 + i,
-    low: 94 - i,
-    close: 100 - dir * i * 0.5,
-    volume: 1_000 + i * 137,
-  };
-});
-
-// A close series long enough to clear both RSI's and MACD's warm-ups, for
-// the paneScene neutrality checks below.
-const PANE_CLOSES: readonly number[] = Array.from({ length: 60 }, (_, i) => {
-  return 100 + Math.sin(i / 3) * 5;
-});
-
 describe("chartScene / volumeScene: CSS-neutral numeric output", () => {
   it("chartScene carries no % / calc( strings and no --keyed fields", () => {
     const scene = chartScene(TWELVE_MIXED, 0, false, {
@@ -275,33 +257,6 @@ describe("crosshairScene in log mode", () => {
     expect(cross?.price).not.toBe("539.53");
   });
 });
-
-// Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
-// two series align by time exactly; closes climb twice as fast so the pct
-// ranges genuinely differ (union must widen).
-const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
-  { length: 12 },
-  (_, i) => {
-    return {
-      time: 1_782_864_000_000 + i * 60_000,
-      open: 50 + i * 2,
-      high: 53 + i * 2,
-      low: 48 + i * 2,
-      close: 50 + i * 2,
-      volume: 1_000,
-    };
-  },
-);
-
-// A primary-only pct range engineered to straddle zero with round ±10/±20
-// ticks (base=close=100, low=75 -> -25%, high=125 -> +25%; priceTicks(-25,
-// 25) lands exactly on -20/-10/0/10/20), so formatPctLabel's sign and
-// zero-unsigned rules can be pinned with literal string values instead of
-// just the regex shape check above.
-const STRADDLE_SERIES: readonly ChartCandle[] = [
-  { time: 0, open: 100, high: 125, low: 75, close: 100, volume: 1 },
-  { time: 60_000, open: 100, high: 125, low: 75, close: 100, volume: 1 },
-];
 
 describe("percent scale (comparison series)", () => {
   const VP: ChartViewport = { start: 0, end: 12 };
@@ -555,3 +510,48 @@ function assertSceneNeutral(node: unknown, path: string): void {
     }
   }
 }
+
+const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
+  const dir = i % 2 === 0 ? 1 : -1;
+  return {
+    time: 1_782_864_000_000 + i * 60_000,
+    open: 100 + dir * i,
+    high: 106 + i,
+    low: 94 - i,
+    close: 100 - dir * i * 0.5,
+    volume: 1_000 + i * 137,
+  };
+});
+
+// A close series long enough to clear both RSI's and MACD's warm-ups, for
+// the paneScene neutrality checks below.
+const PANE_CLOSES: readonly number[] = Array.from({ length: 60 }, (_, i) => {
+  return 100 + Math.sin(i / 3) * 5;
+});
+
+// Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
+// two series align by time exactly; closes climb twice as fast so the pct
+// ranges genuinely differ (union must widen).
+const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
+  { length: 12 },
+  (_, i) => {
+    return {
+      time: 1_782_864_000_000 + i * 60_000,
+      open: 50 + i * 2,
+      high: 53 + i * 2,
+      low: 48 + i * 2,
+      close: 50 + i * 2,
+      volume: 1_000,
+    };
+  },
+);
+
+// A primary-only pct range engineered to straddle zero with round ±10/±20
+// ticks (base=close=100, low=75 -> -25%, high=125 -> +25%; priceTicks(-25,
+// 25) lands exactly on -20/-10/0/10/20), so formatPctLabel's sign and
+// zero-unsigned rules can be pinned with literal string values instead of
+// just the regex shape check above.
+const STRADDLE_SERIES: readonly ChartCandle[] = [
+  { time: 0, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+  { time: 60_000, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+];

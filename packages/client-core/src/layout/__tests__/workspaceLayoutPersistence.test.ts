@@ -22,14 +22,6 @@ const REAL_TABS: readonly WorkspaceTab[] = [
   "equities",
 ];
 
-const VALID_SPEC: PanelSpecV1 = {
-  v: 1,
-  title: "P&L overview",
-  source: { kind: "analytics" },
-  transforms: [],
-  viz: { kind: "table" },
-};
-
 describe("serializeWorkspaceLayout / parseWorkspaceLayout — round trip", () => {
   it.each(REAL_TABS)(
     "round-trips the real default tree for %s plus a docked entry",
@@ -726,3 +718,11 @@ function corruptedJson(mutate: (payload: RawPayload) => unknown): string {
   ) as RawPayload;
   return JSON.stringify(mutate(parsed));
 }
+
+const VALID_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "P&L overview",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};

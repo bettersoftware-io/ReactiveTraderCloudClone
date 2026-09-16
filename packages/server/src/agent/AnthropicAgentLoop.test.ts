@@ -23,14 +23,6 @@ import {
 } from "./jarvisRunnerConfig.js";
 import { RENDER_PANEL_TOOL_NAME } from "./renderPanelTool.js";
 
-const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
-const DESK_LINK_FALTERED_MESSAGE =
-  "The desk link faltered, sir — do try again.";
-
-const SESSION_CAP_MESSAGE =
-  "We've had quite the session, sir — do reconnect for a fresh one.";
-const CANCELLED_MESSAGE = "Cancelled, sir.";
-
 describe("AnthropicAgentLoop", () => {
   it("(a) text-only turn reassembles deltas, completes, and grows session history by one user + one assistant message", async () => {
     const first = createFakeStream(
@@ -1671,3 +1663,13 @@ function createToolsFixture(
 ): (confirmTrade: ConfirmGate) => readonly JarvisToolDefinition[] {
   return buildExtra;
 }
+
+const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
+
+const DESK_LINK_FALTERED_MESSAGE =
+  "The desk link faltered, sir — do try again.";
+
+const SESSION_CAP_MESSAGE =
+  "We've had quite the session, sir — do reconnect for a fresh one.";
+
+const CANCELLED_MESSAGE = "Cancelled, sir.";

@@ -5,12 +5,6 @@ import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
 import { navigatorBrushPage } from "#tests/ui/pages/UseNavigatorBrushPage";
 
-const SERIES_LEN = 300;
-const VIEWPORT: ChartViewport = { start: 240, end: 300 };
-const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
-
-const page = navigatorBrushPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -265,3 +259,11 @@ function brushEvent(
 function moveEvent(clientX: number): ReactPointerEvent<HTMLDivElement> {
   return brushEvent("track", clientX);
 }
+
+const SERIES_LEN = 300;
+
+const VIEWPORT: ChartViewport = { start: 240, end: 300 };
+
+const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
+
+const page = navigatorBrushPage();

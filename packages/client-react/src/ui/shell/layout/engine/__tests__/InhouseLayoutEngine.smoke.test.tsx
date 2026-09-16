@@ -7,36 +7,9 @@ import { inhouseLayoutEnginePage } from "#tests/ui/pages/InhouseLayoutEnginePage
 import type { PanelRegistry } from "../panelRegistry";
 import { ThrowingPanel } from "./panelErrorFixtures";
 
-const page = inhouseLayoutEnginePage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const state: LayoutState = {
-  root: {
-    kind: "split",
-    dir: "row",
-    sizes: [0.6, 0.4],
-    children: [
-      { kind: "panel", panelId: "fx-rates" },
-      { kind: "panel", panelId: "fx-analytics" },
-    ],
-  },
-  maximized: null,
-  collapsed: [],
-  closed: [],
-  instances: [],
-};
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div data-testid="rates-body">RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div data-testid="analytics-body">ANALYTICS</div>;
-  },
-};
 
 describe("InhouseLayoutEngine", () => {
   it("renders each panel's registry body inside a split", () => {
@@ -494,3 +467,30 @@ describe("InhouseLayoutEngine", () => {
     page.pointerUp("handle--0", { pointerId: 2, clientX: 0, clientY: 70 });
   });
 });
+
+const page = inhouseLayoutEnginePage();
+
+const state: LayoutState = {
+  root: {
+    kind: "split",
+    dir: "row",
+    sizes: [0.6, 0.4],
+    children: [
+      { kind: "panel", panelId: "fx-rates" },
+      { kind: "panel", panelId: "fx-analytics" },
+    ],
+  },
+  maximized: null,
+  collapsed: [],
+  closed: [],
+  instances: [],
+};
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div data-testid="rates-body">RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div data-testid="analytics-body">ANALYTICS</div>;
+  },
+};

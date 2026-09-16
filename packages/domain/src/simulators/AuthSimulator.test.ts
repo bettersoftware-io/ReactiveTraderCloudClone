@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import { AuthSimulator } from "#/simulators/AuthSimulator.js";
 
-const sim = new AuthSimulator({ demo: "localpass", astark: "localpass" });
-
 describe("AuthSimulator", () => {
   it("returns ok + roster profile + a token on correct dev credentials", async () => {
     const r = await firstValueFrom(sim.login("demo", "localpass"));
@@ -39,3 +37,5 @@ describe("AuthSimulator", () => {
     }
   });
 });
+
+const sim = new AuthSimulator({ demo: "localpass", astark: "localpass" });

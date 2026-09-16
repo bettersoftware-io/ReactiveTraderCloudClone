@@ -16,8 +16,6 @@ import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { type App, createApp } from "#/composition";
 
-const PASSWORD = "pw";
-
 describe("jarvisPreferences presenter", () => {
   it("writes both preferences through the port", () => {
     const prefs = new PreferencesSimulator({});
@@ -95,3 +93,5 @@ function readOnce<T>(source$: Observable<T>): T {
 
   return value;
 }
+
+const PASSWORD = "pw";

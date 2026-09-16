@@ -20,18 +20,6 @@ if (!_pairOrUndef) {
   throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const pair: CurrencyPair = _pairOrUndef;
-
-const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
-
-const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
-const REQUESTED: RfqState = {
-  status: "requested",
-  quote: null,
-  remainingMs: 0,
-};
-const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };
-
 describe("createRfqTileMachine", () => {
   it("starts in the init state (synchronous default)", () => {
     const ts = scheduler();
@@ -432,3 +420,17 @@ function run(
 function never(ts: TestScheduler): Observable<RfqQuoteResult> {
   return ts.createColdObservable<RfqQuoteResult>("-");
 }
+
+const pair: CurrencyPair = _pairOrUndef;
+
+const quoteResult: RfqQuoteResult = { bid: 1.0921, ask: 1.0925, mid: 1.0923 };
+
+const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
+
+const REQUESTED: RfqState = {
+  status: "requested",
+  quote: null,
+  remainingMs: 0,
+};
+
+const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };

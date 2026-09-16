@@ -41,19 +41,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-];
-
-// 300 candles, matching every other CandleChart contract spec: long enough
-// that the 1D default visible window (60) is a small slice, so the default
-// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-const DEFAULT_VIEWPORT = { start: 240, end: 300 };
-
 describe("Drawing tools — pill drives the real plot (EqChartHead + ChartPanel, shared eqDrawings)", () => {
   it("the TL pill activates, and clicking it again reverts to cursor", async () => {
     const { head } = mountPillWorkspace();
@@ -770,3 +757,19 @@ function createTrendline(
 function createHline(id: string, price: number): EqDrawing {
   return { id, kind: "hline", price };
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+];
+
+// 300 candles, matching every other CandleChart contract spec: long enough
+// that the 1D default visible window (60) is a small slice, so the default
+// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);
+
+const DEFAULT_VIEWPORT = { start: 240, end: 300 };

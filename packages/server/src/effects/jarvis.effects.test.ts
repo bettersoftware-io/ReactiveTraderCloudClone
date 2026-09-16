@@ -32,15 +32,6 @@ import { JARVIS_USAGE_WINDOW_MS, UsageMeter } from "../services/UsageMeter.js";
 import type { Ctx } from "./context.js";
 import { jarvisEffects } from "./jarvis.effects.js";
 
-const QUOTE_REPLY =
-  "EURUSD is trading at 1.0921, up 0 pips since the start of the session. " +
-  "Spread 1 pips; short-term momentum is positive. Anything else, sir?";
-
-const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.";
-
-const FILL_REPLY =
-  "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";
-
 const STUB_TURN_ID = "turn-stub";
 
 const STUB_PANEL_SPEC: PanelSpecV1 = {
@@ -1935,3 +1926,12 @@ function findConfirmRequest(sent: readonly Outbound[]): Outbound {
 
   return confirmRequest;
 }
+
+const QUOTE_REPLY =
+  "EURUSD is trading at 1.0921, up 0 pips since the start of the session. " +
+  "Spread 1 pips; short-term momentum is positive. Anything else, sir?";
+
+const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.";
+
+const FILL_REPLY =
+  "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";

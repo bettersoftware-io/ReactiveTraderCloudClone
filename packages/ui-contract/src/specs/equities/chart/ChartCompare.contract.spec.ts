@@ -32,36 +32,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ" },
-];
-
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
-// A second deterministic series on the SAME time buckets as candleFixture
-// (time = i × 60_000) so time-alignment matches every visible index, with a
-// steeper close slope so the two series' pct paths genuinely differ.
-const COMPARE_CANDLES: readonly Candle[] = Array.from(
-  { length: 300 },
-  (_, i) => {
-    const open = 50 + i * 2;
-    return {
-      time: i * 60_000,
-      open,
-      high: open + 2,
-      low: open - 2,
-      close: open + 1,
-      volume: 1_000,
-    };
-  },
-);
-
-const PCT_LABEL = /^(\+|-)?\d+\.\d{2}%$/;
-
 describe("Comparison series — VS pills drive the real chart column (shared eqWorkspace)", () => {
   it("candidates exclude the selected symbol", () => {
     const { head } = mountPillWorkspace();
@@ -462,3 +432,35 @@ function mountCompareBackfillChart(
     },
   });
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ" },
+];
+
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);
+
+// A second deterministic series on the SAME time buckets as candleFixture
+// (time = i × 60_000) so time-alignment matches every visible index, with a
+// steeper close slope so the two series' pct paths genuinely differ.
+const COMPARE_CANDLES: readonly Candle[] = Array.from(
+  { length: 300 },
+  (_, i) => {
+    const open = 50 + i * 2;
+    return {
+      time: i * 60_000,
+      open,
+      high: open + 2,
+      low: open - 2,
+      close: open + 1,
+      volume: 1_000,
+    };
+  },
+);
+
+const PCT_LABEL = /^(\+|-)?\d+\.\d{2}%$/;

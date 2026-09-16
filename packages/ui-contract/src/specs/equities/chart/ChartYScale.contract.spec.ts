@@ -33,17 +33,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-];
-
-// 300 candles, matching every other CandleChart contract spec: long enough
-// that the 1D default visible window (60) is a small slice, so the default
-// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
 describe("Y-scale pill — head pill drives the real chart column (shared eqWorkspace)", () => {
   it("LOG pill toggles the axis mode on and off, and the panel's chart follows", async () => {
     const { head, panel } = mountPillWorkspace();
@@ -189,3 +178,16 @@ function mountChart({ yScale }: MountChartOptions = {}): CandleChartPage {
     },
   });
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+];
+
+// 300 candles, matching every other CandleChart contract spec: long enough
+// that the 1D default visible window (60) is a small slice, so the default
+// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);

@@ -8,8 +8,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { jarvisStatusChipPage } from "#tests/ui/pages/JarvisStatusChipPage";
 
-const page = jarvisStatusChipPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -64,3 +62,5 @@ describe("JarvisStatusChip", () => {
     expect(page.text()).toBe("JARVIS · scripted · budget exhausted");
   });
 });
+
+const page = jarvisStatusChipPage();

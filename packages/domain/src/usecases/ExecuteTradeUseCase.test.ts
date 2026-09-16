@@ -9,28 +9,6 @@ import { Direction, ExecutionStatus, TradeStatus } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
-const PRICE: Price = {
-  symbol: "EURUSD",
-  bid: 1.1,
-  ask: 1.1002,
-  mid: 1.1001,
-  valueDate: "2024-01-02",
-  creationTimestamp: 1,
-  movementType: PriceMovementType.UP,
-  spread: "2.0",
-};
-
 describe("ExecuteTradeUseCase", () => {
   it("for Direction.Buy uses ask as spot rate and base currency as dealt", async () => {
     const { port, lastRequest } = createStubExecution(
@@ -154,3 +132,25 @@ function createTrade(status: TradeStatus): Trade {
     tradeDate: "2024-01-02",
   };
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};
+
+const PRICE: Price = {
+  symbol: "EURUSD",
+  bid: 1.1,
+  ask: 1.1002,
+  mid: 1.1001,
+  valueDate: "2024-01-02",
+  creationTimestamp: 1,
+  movementType: PriceMovementType.UP,
+  spread: "2.0",
+};

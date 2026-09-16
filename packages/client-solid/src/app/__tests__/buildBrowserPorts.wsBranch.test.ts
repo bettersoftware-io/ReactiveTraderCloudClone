@@ -85,10 +85,6 @@ describe("buildBrowserPorts (ws-real branch)", () => {
   });
 });
 
-// `demo` is a committed demo-roster account (packages/domain/src/auth/roster.ts).
-const DEMO_USER = "demo";
-const DEMO_PASS = "mcdc2026";
-
 describe("buildBrowserPorts dev-auth parsing (simulator branch)", () => {
   it("accepts a roster login when VITE_DEV_AUTH holds the credential", () => {
     expect(loginOutcome(JSON.stringify({ [DEMO_USER]: DEMO_PASS })).ok).toBe(
@@ -139,3 +135,8 @@ function loginOutcome(devAuth: string): LoginProbe {
 
   return outcome;
 }
+
+// `demo` is a committed demo-roster account (packages/domain/src/auth/roster.ts).
+const DEMO_USER = "demo";
+
+const DEMO_PASS = "mcdc2026";

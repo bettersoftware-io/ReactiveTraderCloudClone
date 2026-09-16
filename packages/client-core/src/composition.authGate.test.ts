@@ -19,8 +19,6 @@ import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
-const PASSWORD = "pw";
-
 describe("createApp transport auth gate", () => {
   it("does not open the transport for an unauthenticated boot", () => {
     const transport = createFakeTransport();
@@ -109,3 +107,5 @@ function portsWith(
     transport,
   };
 }
+
+const PASSWORD = "pw";

@@ -8,17 +8,6 @@ import { PriceMovementType } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import { PriceStreamUseCase } from "./PriceStreamUseCase.js";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
 describe("PriceStreamUseCase", () => {
   it("enriches each tick with spread and movement, tracking previous mid across ticks", async () => {
     const ticks: PriceTick[] = [
@@ -97,3 +86,14 @@ function createStubPricing(ticks: PriceTick[]): PricingPort {
     },
   };
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};

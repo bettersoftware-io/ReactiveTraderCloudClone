@@ -2,15 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 
-const svc = new AuthService({
-  secret: "s",
-  ttlMs: 60_000,
-  credentials: parseAuthUsers("demo:localpass,astark:hunter2"),
-  now: (): number => {
-    return 1_000_000;
-  },
-});
-
 describe("AuthService", () => {
   it("issues a token + profile on valid credentials", () => {
     const r = svc.login("demo", "localpass");
@@ -103,3 +94,12 @@ describe("AuthService", () => {
 interface TokenPayload {
   exp: number;
 }
+
+const svc = new AuthService({
+  secret: "s",
+  ttlMs: 60_000,
+  credentials: parseAuthUsers("demo:localpass,astark:hunter2"),
+  now: (): number => {
+    return 1_000_000;
+  },
+});
