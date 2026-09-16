@@ -3,8 +3,6 @@ import { WebSocket } from "ws";
 
 import { createRelayServer, type RelayServer } from "#/relayServer";
 
-let relay: RelayServer | null = null;
-
 afterEach(async () => {
   await relay?.close();
   relay = null;
@@ -78,3 +76,5 @@ function nextMessage(ws: WebSocket): Promise<string> {
     });
   });
 }
+
+let relay: RelayServer | null = null;
