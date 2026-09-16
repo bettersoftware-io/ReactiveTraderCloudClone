@@ -1,7 +1,8 @@
 import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
-import { assertGreaterThanZero, assertTrue } from "./assert";
+import { assertGreaterThanZero, assertGte, assertTrue } from "./assert";
+import * as common from "./common";
 
 // Drag the first splitter boundary a healthy distance along its axis; large
 // enough that the resulting size-fraction change clears the assertion margin
@@ -20,6 +21,11 @@ const ENGINE_SWITCH_TIMEOUT_MS = 3_000;
 // (`TESTIDS.layout.dockTab`), not by a label: the tab shows the panel's
 // header, which for the blotter is its "FX Blotter" / "Activity" sub-tabs.
 const BLOTTER_PANEL_ID = "fx-blotter";
+
+// FX_ROOT's left-hand column stacks fx-rates (0.66) over fx-blotter (0.34)
+// (packages/client-core/src/layout/defaultLayoutPort.ts) — fx-rates is the
+// column sibling that should grow once fx-blotter floats out of it.
+const RATES_PANEL_ID = "fx-rates";
 
 // The FX rates panel's own content carries no testid of its own; its
 // CurrencyFilter row (LiveRatesPanel.tsx) is always mounted (no view-mode
@@ -185,4 +191,56 @@ export async function popoutBlotterShowsLiveContentAndDocksHomeOnClose(
   await popup.closeFromInside();
   await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
   await ctx.po.layout.waitDockGroupCount(4, POPUP_TIMEOUT_MS);
+}
+
+// fx-rates starts at 0.66 of the shared column's height; once fx-blotter
+// (0.34) floats out, fx-rates alone should claim the WHOLE column (a ~1.52x
+// grow). 1.2x is a generous floor well below that, safe against header
+// chrome / gutter rounding while still failing hard if the sibling didn't
+// reflow at all.
+const MIN_SIBLING_GROWTH_FACTOR = 1.2;
+
+/**
+ * Floats the blotter panel and proves two things no jsdom witness can see,
+ * because jsdom lays nothing out: first, that fx-rates — its column sibling
+ * in FX_ROOT's left-hand split — actually grows to fill the vacated space
+ * (the real-DOM proof the row was actually left, not merely that the
+ * `data-floating` bookkeeping flipped); second, that the float survives a
+ * reload before docking back home, restoring both fx-rates' height and the
+ * group count. Dockview-engine only — callers must already be on
+ * `engine: "dockview"`.
+ */
+export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
+  ctx: TestContext,
+): Promise<void> {
+  const ratesHeightDocked = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const ratesHeightFloating = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  assertGte(
+    ratesHeightFloating,
+    ratesHeightDocked * MIN_SIBLING_GROWTH_FACTOR,
+    `expected fx-rates to grow once fx-blotter floated out of their shared column (docked height=${ratesHeightDocked}, floating height=${ratesHeightFloating})`,
+  );
+
+  // A plain reload always lands back on the default tab (see the "switching
+  // the layout engine" test above), so the FX tab must be re-selected
+  // before re-asserting the floating witness.
+  await common.reloadPage(ctx);
+  await common.clickTab(ctx, "fx");
+  await expectEngine(ctx, "dockview");
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+  await expectDockGroups(ctx, 4, 5);
 }

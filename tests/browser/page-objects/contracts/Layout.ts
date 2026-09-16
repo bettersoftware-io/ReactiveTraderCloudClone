@@ -70,6 +70,39 @@ export interface LayoutPO {
    * bridge's popped panel ids, space-joined, fed by the engine's
    * onPopoutsChange) to equal `panelIds`. */
   waitDockPopped(panelIds: readonly string[], timeoutMs: number): Promise<void>;
+  /** Clicks `panelId`'s float control (`TESTIDS.layout.floatControl`) —
+   * the head's single toggle button, `Float ${title}` while docked. Floats
+   * its group as a box over the grid, and waits out the engine's debounced
+   * layout-persistence write before returning (unlike a pop-out, a float
+   * persists deliberately — see the Playwright driver's doc), so a caller
+   * that reloads right after never races it. Dockview-engine only. */
+  floatPanel(panelId: string): Promise<void>;
+  /** Clicks `panelId`'s float control to dock it back home — the SAME
+   * button as `floatPanel`, now reading `Dock ${title}`. Asserts the panel
+   * is actually floating first (reading the live `data-floating` witness,
+   * not merely waiting on it): the button always exists and always
+   * responds to a click, so a click alone cannot distinguish "docked it"
+   * from "floated a panel that was already docked" — a mis-click here
+   * would otherwise read as a clean dock. Mirrors the shared ui-contract
+   * tier's `DockviewEnginePage.dockPanel`, the house rule for this guard. */
+  dockPanel(panelId: string): Promise<void>;
+  /** Waits for the dockview engine root's `data-floating` witness (the
+   * bridge's floating panel ids, space-joined, fed by the engine's
+   * onFloatsChange) to equal `panelIds` — `onFloatsChange` is
+   * microtask-deferred, so a synchronous read right after a float/dock
+   * click is not reliable; this is `waitDockPopped`'s twin for the
+   * float/dock channel. */
+  waitDockFloating(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void>;
+  /** The on-screen height (px) of `panelId`'s dockview group — read off the
+   * `.dv-groupview` ancestor of its `.dv-tab` mount (the same element
+   * `dragDockTabOnto`/`dragDockTabToEdge` key off), re-sampled until laid
+   * out. Dockview-engine only. Exists so a scenario can prove a sibling
+   * panel actually grows once another panel floats out of their shared
+   * column — a real-DOM geometry claim no jsdom witness can make. */
+  panelHeight(panelId: string): Promise<number>;
 }
 
 /** A live pop-out child window, as far as a scenario needs to drive it. */

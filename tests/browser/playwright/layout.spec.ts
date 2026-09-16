@@ -84,4 +84,18 @@ test.describe("Layout engine", () => {
 
     await layout.popoutBlotterShowsLiveContentAndDocksHomeOnClose(ctx);
   });
+
+  test("floating a panel grows its column sibling, survives a reload, and docks home", async ({
+    ctx,
+  }) => {
+    // Floating groups are a dockview-only feature, so this test opens by
+    // switching engines — same reasoning as the pop-out test above.
+    await layout.expectEngine(ctx, "inhouse");
+
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatBlotterGrowsRatesSurvivesReloadAndDocksHome(ctx);
+  });
 });

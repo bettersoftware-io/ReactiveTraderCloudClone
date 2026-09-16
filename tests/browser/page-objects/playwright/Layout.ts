@@ -3,6 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { LayoutPO, PopoutWindowPO } from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
+import { readBoxWhenLaidOut } from "./geometry";
 
 const HANDLE = `hr[data-testid^="${TESTIDS.layout.handlePrefix}"]`;
 // dockview-core's own draggable tab wrapper (see dockview-core's Tab
@@ -11,6 +12,35 @@ const HANDLE = `hr[data-testid^="${TESTIDS.layout.handlePrefix}"]`;
 // tabs or title). The drag gesture must target THIS element: it is the one
 // dockview attaches its `draggable` + drop-zone listeners to.
 const DOCK_TAB = ".dv-tab";
+// dockview-core's own group wrapper class — the ancestor a tab and its
+// content container share (see the module doc above) — used here to read a
+// whole panel's real on-screen box, header + body together.
+const DOCK_GROUPVIEW_CLASS = "dv-groupview";
+
+// The prefix `LocalStorageDockLayoutStore` keys every per-tab blob under
+// (packages/{client-react,client-solid}/src/app/adapters/LocalStorageDockLayoutStore.ts).
+const DOCK_LAYOUT_STORAGE_PREFIX = "rtc-dock-layout-";
+
+/**
+ * `createDockEngine`'s own layout-blob write is DEBOUNCED (`debounceMs`,
+ * default 250ms — packages/layout-dockview/src/createDockEngine.ts) before
+ * it lands in `localStorage` under `DOCK_LAYOUT_STORAGE_PREFIX`. A float
+ * persists deliberately (design §3.3 — unlike a pop-out, which is
+ * scrubbed from the blob on purpose, so `popoutPanel` needs no such wait),
+ * which means a `floatPanel` call immediately followed by a reload — this
+ * suite's persistence test does exactly that — races the debounce and can
+ * lose the float on restore: a real gap no jsdom test (which never drives a
+ * real `page.reload()`) would ever surface. Generous margin over 250ms for
+ * CI jitter — same idiom as `Jarvis.ts`'s `dockPanel`, which waits out a
+ * DIFFERENT (500ms) debounce the same way.
+ */
+const DOCK_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
+
+/** The one field of `createDockEngine`'s serialized blob this driver reads —
+ * dockview-core's own `floatingGroups` key (see the doc above). */
+interface DockLayoutBlobShape {
+  floatingGroups?: unknown[];
+}
 
 export class PlaywrightLayout implements LayoutPO {
   constructor(private readonly page: Page) {}
@@ -25,6 +55,23 @@ export class PlaywrightLayout implements LayoutPO {
 
   private engineRoot(): Locator {
     return this.page.getByTestId(TESTIDS.layout.engineRoot);
+  }
+
+  private floatControl(panelId: string): Locator {
+    return this.page.getByTestId(TESTIDS.layout.floatControl(panelId));
+  }
+
+  /** `panelId`'s dockview group element — walked up from its `.dv-tab`
+   * mount (present for docked AND floating groups alike) to the shared
+   * `.dv-groupview` ancestor, so its bounding box covers the whole panel
+   * (header + body), not just the tab strip. */
+  private group(panelId: string): Locator {
+    return this.page
+      .getByTestId(TESTIDS.layout.dockTab(panelId))
+      .locator(
+        `xpath=ancestor::*[contains(concat(' ', @class, ' '), ' ${DOCK_GROUPVIEW_CLASS} ')]`,
+      )
+      .first();
   }
 
   async resizeHandleCount(): Promise<number> {
@@ -248,5 +295,83 @@ export class PlaywrightLayout implements LayoutPO {
       panelIds.join(" "),
       { timeout: timeoutMs },
     );
+  }
+
+  async floatPanel(panelId: string): Promise<void> {
+    await this.floatControl(panelId).click();
+    // See DOCK_LAYOUT_PERSIST_TIMEOUT_MS's doc: fold the debounced
+    // dock-layout write into the action itself, so a caller that reloads
+    // right after never races it.
+    await this.page.waitForFunction(
+      ({ prefix, id }) => {
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+
+          if (key === null || !key.startsWith(prefix)) {
+            continue;
+          }
+
+          const raw = localStorage.getItem(key);
+
+          if (raw === null) {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(raw) as DockLayoutBlobShape;
+
+            if (
+              Array.isArray(parsed.floatingGroups) &&
+              parsed.floatingGroups.length > 0 &&
+              raw.includes(id)
+            ) {
+              return true;
+            }
+          } catch {
+            // Not a dock-layout blob (or caught mid-write) — keep scanning.
+          }
+        }
+
+        return false;
+      },
+      { prefix: DOCK_LAYOUT_STORAGE_PREFIX, id: panelId },
+      { timeout: DOCK_LAYOUT_PERSIST_TIMEOUT_MS },
+    );
+  }
+
+  async dockPanel(panelId: string): Promise<void> {
+    // Read the LIVE witness, not `waitDockFloating` — this must fail fast
+    // on a panel that was never floating, rather than waiting out a full
+    // timeout for a state that will never arrive.
+    const raw = (await this.engineRoot().getAttribute("data-floating")) ?? "";
+    const floating = raw === "" ? [] : raw.split(" ");
+
+    if (!floating.includes(panelId)) {
+      throw new Error(
+        `dockPanel(${panelId}): panel is not floating, so this click would float it instead of docking it`,
+      );
+    }
+
+    await this.floatControl(panelId).click();
+  }
+
+  async waitDockFloating(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-floating",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async panelHeight(panelId: string): Promise<number> {
+    const box = await readBoxWhenLaidOut(
+      this.group(panelId),
+      `panel ${panelId}'s dockview group`,
+    );
+
+    return box.height;
   }
 }
