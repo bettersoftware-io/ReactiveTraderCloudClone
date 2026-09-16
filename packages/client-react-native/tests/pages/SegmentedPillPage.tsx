@@ -1,9 +1,10 @@
 // packages/client-react-native/tests/pages/SegmentedPillPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
-import { StyleSheet, type ViewStyle } from "react-native";
+import type { ViewStyle } from "react-native";
 
 import { type PillSegment, SegmentedPill } from "#/ui/SegmentedPill";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 export interface SegmentedPillPage {
@@ -65,9 +66,7 @@ export function segmentedPillPage(): SegmentedPillPage {
       await fireEvent.press(screen.getByTestId(testId));
     },
     cellStyleOf(testId: string): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
   };
 }
