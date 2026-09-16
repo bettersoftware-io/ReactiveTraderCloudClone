@@ -2,13 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { serializeValue } from "../serialize";
 
-// The truncation limits and exotic-type branches are what stop the inspector
-// serialising an unbounded live state tree into the transport. When one breaks
-// the failure is quiet: either a 50k-entry Map is shipped whole, or a value
-// silently becomes `undefined` on the panel side. MAX_ENTRIES is 50.
-
-const OVER_LIMIT = 60;
-
 describe("serializeValue — collection limits", () => {
   it("truncates a Map past the entry cap and reports how many were dropped", () => {
     const map = new Map(
@@ -105,3 +98,10 @@ interface SerializedError {
   $t?: string;
   message?: string;
 }
+
+// The truncation limits and exotic-type branches are what stop the inspector
+// serialising an unbounded live state tree into the transport. When one breaks
+// the failure is quiet: either a 50k-entry Map is shipped whole, or a value
+// silently becomes `undefined` on the panel side. MAX_ENTRIES is 50.
+
+const OVER_LIMIT = 60;

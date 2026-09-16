@@ -23,25 +23,6 @@ beforeAll(() => {
   }
 });
 
-const RAIL = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.73, 0.27],
-  initialPx: [undefined, 360],
-  children: [
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.66, 0.34],
-      children: [
-        { kind: "panel", panelId: "rates" },
-        { kind: "panel", panelId: "blotter" },
-      ],
-    },
-    { kind: "panel", panelId: "rail" },
-  ],
-} as const;
-
 describe("migrateDockBlob", () => {
   it("returns a current-version blob untouched", () => {
     const blob = { ...legacyRailBlob(), rtcBlobVersion: DOCK_BLOB_VERSION };
@@ -536,3 +517,22 @@ function legacyRailBlob(): Record<string, unknown> {
     },
   };
 }
+
+const RAIL = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.73, 0.27],
+  initialPx: [undefined, 360],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.66, 0.34],
+      children: [
+        { kind: "panel", panelId: "rates" },
+        { kind: "panel", panelId: "blotter" },
+      ],
+    },
+    { kind: "panel", panelId: "rail" },
+  ],
+} as const;

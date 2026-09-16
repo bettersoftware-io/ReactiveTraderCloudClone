@@ -12,8 +12,6 @@ import {
 import { formatLogTime } from "#/panels/formatLogTime";
 import { inspectorAppPage } from "#tests/pages/InspectorAppPage";
 
-const app = inspectorAppPage();
-
 afterEach(() => {
   app.unmountAll();
 });
@@ -731,3 +729,5 @@ function emissionBatches(): readonly AppToInspector[] {
 
   return frames;
 }
+
+const app = inspectorAppPage();

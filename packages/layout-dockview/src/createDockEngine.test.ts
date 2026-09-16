@@ -35,62 +35,6 @@ beforeAll(() => {
   }
 });
 
-const FX_LIKE = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.75, 0.25],
-  children: [
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.6, 0.4],
-      children: [
-        { kind: "panel", panelId: "fx-rates" },
-        { kind: "panel", panelId: "fx-blotter" },
-      ],
-    },
-    { kind: "panel", panelId: "fx-analytics" },
-  ],
-} as const;
-
-/** The real FX tab's shape: the main column (rates over blotter) beside a
- * RAIL column (analytics over positions) — the tree the maximize scopes are
- * about, where FX_LIKE's lone analytics leaf has no column to scope to. */
-const RAIL_LIKE = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.75, 0.25],
-  children: [
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.6, 0.4],
-      children: [
-        { kind: "panel", panelId: "fx-rates" },
-        { kind: "panel", panelId: "fx-blotter" },
-      ],
-    },
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.5, 0.5],
-      children: [
-        { kind: "panel", panelId: "fx-analytics" },
-        { kind: "panel", panelId: "fx-positions" },
-      ],
-    },
-  ],
-} as const;
-
-/** A single-panel seed — the real shape of the Admin tab. With one dynamic
- * panel docked, its root serializes as exactly `[static leaf, dynamic
- * leaf]`: the reproduction for the root-collapse scrub bug (a corrupt
- * dynamic leaf's removal must not turn this root into a bare, dockview-
- * rejected leaf). */
-const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
-
-const attachedContainers: HTMLElement[] = [];
-
 afterEach(() => {
   for (const el of attachedContainers.splice(0)) {
     el.remove();
@@ -988,7 +932,6 @@ describe("collapse / expand", () => {
   });
 });
 
-const STRIP = 32;
 const STRIP_HEIGHT = 32;
 
 describe("a fully-stripped column (the in-house stripDir rule)", () => {
@@ -4542,3 +4485,61 @@ vi.mock("dockview", async (importOriginal) => {
     },
   };
 });
+
+const FX_LIKE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.6, 0.4],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
+
+/** The real FX tab's shape: the main column (rates over blotter) beside a
+ * RAIL column (analytics over positions) — the tree the maximize scopes are
+ * about, where FX_LIKE's lone analytics leaf has no column to scope to. */
+const RAIL_LIKE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.6, 0.4],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+      ],
+    },
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+  ],
+} as const;
+
+/** A single-panel seed — the real shape of the Admin tab. With one dynamic
+ * panel docked, its root serializes as exactly `[static leaf, dynamic
+ * leaf]`: the reproduction for the root-collapse scrub bug (a corrupt
+ * dynamic leaf's removal must not turn this root into a bare, dockview-
+ * rejected leaf). */
+const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+
+const attachedContainers: HTMLElement[] = [];
+
+const STRIP = 32;

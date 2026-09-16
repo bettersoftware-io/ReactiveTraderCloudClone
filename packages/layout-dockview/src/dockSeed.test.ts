@@ -20,45 +20,6 @@ beforeAll(() => {
   }
 });
 
-const FX_LIKE = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.75, 0.25],
-  children: [
-    {
-      kind: "split",
-      dir: "column",
-      sizes: [0.6, 0.4],
-      children: [
-        { kind: "panel", panelId: "fx-rates" },
-        { kind: "panel", panelId: "fx-blotter" },
-      ],
-    },
-    { kind: "panel", panelId: "fx-analytics" },
-  ],
-} as const;
-
-// A `row` split whose first child is itself a `row` split — exercises the
-// same-direction flattening path (flattenSplit), distinct from FX_LIKE above
-// (whose nested split alternates row/column and so never flattens).
-const NESTED_SAME_DIR = {
-  kind: "split",
-  dir: "row",
-  sizes: [0.5, 0.5],
-  children: [
-    {
-      kind: "split",
-      dir: "row",
-      sizes: [0.4, 0.6],
-      children: [
-        { kind: "panel", panelId: "a" },
-        { kind: "panel", panelId: "b" },
-      ],
-    },
-    { kind: "panel", panelId: "c" },
-  ],
-} as const;
-
 describe("toSerializedDockview", () => {
   it("maps a nested row/column tree to a branch/leaf grid with px sizes", () => {
     const s = toSerializedDockview(FX_LIKE, 1000, 800);
@@ -543,3 +504,42 @@ function collectLeaves(node: SerializedNode): SerializedNode[] {
     return collectLeaves(child);
   });
 }
+
+const FX_LIKE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.6, 0.4],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
+
+// A `row` split whose first child is itself a `row` split — exercises the
+// same-direction flattening path (flattenSplit), distinct from FX_LIKE above
+// (whose nested split alternates row/column and so never flattens).
+const NESTED_SAME_DIR = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.5, 0.5],
+  children: [
+    {
+      kind: "split",
+      dir: "row",
+      sizes: [0.4, 0.6],
+      children: [
+        { kind: "panel", panelId: "a" },
+        { kind: "panel", panelId: "b" },
+      ],
+    },
+    { kind: "panel", panelId: "c" },
+  ],
+} as const;
