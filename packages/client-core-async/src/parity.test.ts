@@ -12,23 +12,6 @@ import { composeMachinesWithBase, composeWithBase } from "#/composition";
 import parity from "#/parity.json" with { type: "json" };
 
 describe("parity manifest", () => {
-  const ports = {
-    ...createSimulatorPorts({
-      preferences: new PreferencesSimulator(),
-      auth: new AuthSimulator({ demo: "demo" }),
-      sessionStore: new InMemorySessionStore(),
-    }),
-    connectionEvents: {
-      events: () => {
-        return reconnect$;
-      },
-    },
-  };
-  const { base, app } = composeWithBase(ports);
-  const { base: baseMachines, machines } = composeMachinesWithBase(
-    app.presenters,
-  );
-
   it("lists every contract member exactly once", () => {
     const listed = [
       ...Object.keys(parity.presenters).map((k) => {
@@ -68,6 +51,25 @@ describe("parity manifest", () => {
       );
     }
   });
+
+  const ports = {
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({ demo: "demo" }),
+      sessionStore: new InMemorySessionStore(),
+    }),
+    connectionEvents: {
+      events: () => {
+        return reconnect$;
+      },
+    },
+  };
+
+  const { base, app } = composeWithBase(ports);
+
+  const { base: baseMachines, machines } = composeMachinesWithBase(
+    app.presenters,
+  );
 });
 
 type Provenance = "native" | "delegated";

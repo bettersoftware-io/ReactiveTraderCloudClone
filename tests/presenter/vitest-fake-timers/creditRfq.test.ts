@@ -8,7 +8,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: Credit RFQ", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -19,4 +18,6 @@ describe("@presenter Feature: Credit RFQ", () => {
   it("credit RFQ list is empty when no RFQs have been created", async () => {
     await credit.expectRfqListEmptyWithin(w, 3);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

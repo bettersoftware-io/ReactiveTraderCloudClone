@@ -201,19 +201,6 @@ describe("composition — jarvis history-source wiring", () => {
 });
 
 describe("historyEntriesExcludingInFlightTurn (direct unit test)", () => {
-  // Independent of the "PINS THE REAL MECHANISM" integration tests above —
-  // this exercises the guard function's OWN logic directly, so a change to
-  // it can't hide behind those tests happening to pass for an unrelated
-  // reason (today, `ask()`'s eager read means this function's `slice`
-  // branch never actually fires in production — see its doc comment in
-  // composition.ts).
-  const GREETING_ENTRY: JarvisEntry = {
-    id: 0,
-    role: "jarvis",
-    text: JARVIS_GREETING,
-    done: true,
-  };
-
   it("drops the trailing in-flight pair when the last entry isn't done", () => {
     const inFlightUser: JarvisEntry = {
       id: 1,
@@ -261,6 +248,19 @@ describe("historyEntriesExcludingInFlightTurn (direct unit test)", () => {
       ]),
     ).toEqual([GREETING_ENTRY, finishedUser, finishedJarvis]);
   });
+
+  // Independent of the "PINS THE REAL MECHANISM" integration tests above —
+  // this exercises the guard function's OWN logic directly, so a change to
+  // it can't hide behind those tests happening to pass for an unrelated
+  // reason (today, `ask()`'s eager read means this function's `slice`
+  // branch never actually fires in production — see its doc comment in
+  // composition.ts).
+  const GREETING_ENTRY: JarvisEntry = {
+    id: 0,
+    role: "jarvis",
+    text: JARVIS_GREETING,
+    done: true,
+  };
 });
 
 function createDeps(): PortFactoryDeps {

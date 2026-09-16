@@ -16,14 +16,6 @@ import {
 } from "#/bridge/out";
 
 describe("bridge/out", () => {
-  const hosts: EffectHost[] = [];
-
-  function useHost(): EffectHost {
-    const host = createHost();
-    hosts.push(host);
-    return host;
-  }
-
   afterEach(async () => {
     while (hosts.length > 0) {
       const host = hosts.pop();
@@ -186,6 +178,14 @@ describe("bridge/out", () => {
     expect(second).toEqual([7]);
     secondSub.unsubscribe();
   });
+
+  const hosts: EffectHost[] = [];
+
+  function useHost(): EffectHost {
+    const host = createHost();
+    hosts.push(host);
+    return host;
+  }
 });
 
 /** A host of the same shape `composeWithBase` builds: a ManagedRuntime plus

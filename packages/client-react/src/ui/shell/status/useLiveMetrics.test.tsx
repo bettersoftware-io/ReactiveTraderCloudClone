@@ -9,8 +9,6 @@ import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 
 describe("useLiveMetrics", () => {
-  let rafCb: FrameRequestCallback | null;
-
   beforeEach(() => {
     rafCb = null;
     vi.spyOn(performance, "now").mockReturnValue(0);
@@ -25,16 +23,6 @@ describe("useLiveMetrics", () => {
     vi.restoreAllMocks();
     Reflect.deleteProperty(performance, "memory");
   });
-
-  // Drive one frame: the mock captured the pending callback; call it with the
-  // frame's timestamp, then let the hook re-arm rAF (captures the next callback).
-  function frame(ts: number): void {
-    const cb = rafCb;
-    rafCb = null;
-    page.commit(() => {
-      cb?.(ts);
-    });
-  }
 
   it("returns the frozen value and never starts a loop when a provider is present", () => {
     function Wrapper({ children }: WrapperProps): ReactElement {
@@ -113,6 +101,18 @@ describe("useLiveMetrics", () => {
 
     expect(handle.state.mem).toBeNull();
   });
+
+  let rafCb: FrameRequestCallback | null;
+
+  // Drive one frame: the mock captured the pending callback; call it with the
+  // frame's timestamp, then let the hook re-arm rAF (captures the next callback).
+  function frame(ts: number): void {
+    const cb = rafCb;
+    rafCb = null;
+    page.commit(() => {
+      cb?.(ts);
+    });
+  }
 });
 
 interface WrapperProps {

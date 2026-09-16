@@ -672,17 +672,6 @@ describe("composePanelStream", () => {
   });
 
   describe("transform order (the fold is neither associative nor commutative)", () => {
-    // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
-    // t=3000(120).
-    function createOrderedTicks(): readonly PriceTick[] {
-      return [
-        createTick("EURUSD", 100, 0),
-        createTick("EURUSD", 110, 1_000),
-        createTick("EURUSD", 99, 2_000),
-        createTick("EURUSD", 120, 3_000),
-      ];
-    }
-
     it("[window, returns] differs from [returns, window] over the same ticks (hand-computed)", () => {
       const depsWindowThenReturns = createDeps({
         pricing: createFakePricing({ EURUSD: from(createOrderedTicks()) }),
@@ -769,6 +758,17 @@ describe("composePanelStream", () => {
         rows: [],
       } satisfies PanelData);
     });
+
+    // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
+    // t=3000(120).
+    function createOrderedTicks(): readonly PriceTick[] {
+      return [
+        createTick("EURUSD", 100, 0),
+        createTick("EURUSD", 110, 1_000),
+        createTick("EURUSD", 99, 2_000),
+        createTick("EURUSD", 120, 3_000),
+      ];
+    }
   });
 
   describe("spread transform: unequal tick rates", () => {

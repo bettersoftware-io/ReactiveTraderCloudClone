@@ -12,8 +12,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
 
-const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
-const VIEWPORT = { width: 1000, height: 800 };
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -159,6 +157,10 @@ function pointerEvent(init: PointerEventInit): PointerEvent {
 }
 
 const page = draggableDialogPage();
+
+const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
+
+const VIEWPORT = { width: 1000, height: 800 };
 
 // clampDragOffset's travel range: (viewport - dialog) / 2 - margin(24).
 const RANGE_X: number = (VIEWPORT.width - DIALOG_RECT.width) / 2 - 24;

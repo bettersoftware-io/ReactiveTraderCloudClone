@@ -10,7 +10,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: FX trading", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -59,4 +58,6 @@ describe("@presenter Feature: FX trading", () => {
     await trading.buyNTimesWithDismissals(w, 5);
     await trading.expectAtLeastOneRejection(w);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

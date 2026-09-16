@@ -128,8 +128,6 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
 });
 
 describe("DevtoolsHub — disposed-machine retention", () => {
-  const MAX_DISPOSED_RETAINED = 500;
-
   it("evicts the oldest disposed machines past the retention cap", () => {
     const { hub, sent, inbound$ } = createHarness();
 
@@ -175,6 +173,8 @@ describe("DevtoolsHub — disposed-machine retention", () => {
     expect(retainedIds).toContain(secondOldestId);
     expect(retainedIds).toHaveLength(MAX_DISPOSED_RETAINED);
   });
+
+  const MAX_DISPOSED_RETAINED = 500;
 });
 
 interface Harness {

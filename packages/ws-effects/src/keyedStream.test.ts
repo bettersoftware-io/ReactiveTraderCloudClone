@@ -7,7 +7,6 @@ import { out } from "#/operators.js";
 import type { Inbound, Outbound } from "#/types.js";
 
 describe("keyedStream", () => {
-  let scheduler: TestScheduler;
   beforeEach(() => {
     scheduler = new TestScheduler((actual, expected) => {
       expect(actual).toEqual(expected);
@@ -147,6 +146,8 @@ describe("keyedStream", () => {
       expectObservable(effect(in$, undefined)).toBe("-|");
     });
   });
+
+  let scheduler: TestScheduler;
 });
 
 interface KeyPayload {

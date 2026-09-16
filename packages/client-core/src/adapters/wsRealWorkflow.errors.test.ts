@@ -15,16 +15,6 @@ import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 describe("wsRealWorkflow :: error paths", () => {
-  function createReq(): CreateRfqRequest {
-    return {
-      instrumentId: 1,
-      dealerIds: [0],
-      quantity: 1000,
-      direction: Direction.Buy,
-      expirySecs: 60,
-    };
-  }
-
   it("rejects createRfq on nack", async () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws, {
@@ -66,4 +56,14 @@ describe("wsRealWorkflow :: error paths", () => {
     await expect(promise).rejects.toThrow(/Failed to accept quote/);
     ws.dispose();
   });
+
+  function createReq(): CreateRfqRequest {
+    return {
+      instrumentId: 1,
+      dealerIds: [0],
+      quantity: 1000,
+      direction: Direction.Buy,
+      expirySecs: 60,
+    };
+  }
 });

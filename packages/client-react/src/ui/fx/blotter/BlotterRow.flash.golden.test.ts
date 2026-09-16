@@ -10,8 +10,6 @@ import { describe, expect, it } from "vitest";
 import { loadGolden } from "#tests/ui/__golden__/loadGolden";
 
 describe("new-row flash CSS matches rtc-original (golden)", () => {
-  const golden = loadGolden<FlashCase>("row-highlight-animation");
-
   it("applies the original's animation shorthand on a highlighted row", () => {
     const c = golden.cases.find((x) => {
       return x.input === "new-row";
@@ -88,6 +86,8 @@ describe("new-row flash CSS matches rtc-original (golden)", () => {
     const baseRule = css.match(/\.row\s*\{[\s\S]*?\}/)?.[0] ?? "";
     expect(baseRule).not.toContain("animation");
   });
+
+  const golden = loadGolden<FlashCase>("row-highlight-animation");
 });
 
 interface FlashCase {

@@ -12,10 +12,6 @@ import type { ViewModel } from "@rtc/react-bindings";
 import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
 
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-  let cafSpy: ReturnType<typeof vi.spyOn>;
-  let ctxStub: CanvasRenderingContext2D;
-
   beforeEach(() => {
     ctxStub = createCtxStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
@@ -156,6 +152,12 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
+
+  let rafSpy: ReturnType<typeof vi.spyOn>;
+
+  let cafSpy: ReturnType<typeof vi.spyOn>;
+
+  let ctxStub: CanvasRenderingContext2D;
 });
 
 describe("BootSequence — boot log lines (visibility by progress)", () => {

@@ -119,9 +119,6 @@ describe("navigatorWindowScene", () => {
 });
 
 describe("priceToY / yToPrice — the pluggable scale seam", () => {
-  const LINEAR: ChartScale = { cmin: 100, cmax: 200 };
-  const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
-
   it("linear branch reproduces the historical mapping verbatim", () => {
     // ((cmax − p) / crng) · Y_SPAN + Y_TOP with p=150, crng=100:
     expect(priceToY(LINEAR, 150)).toBeCloseTo(0.5 * 86 + 6, 10);
@@ -151,16 +148,13 @@ describe("priceToY / yToPrice — the pluggable scale seam", () => {
     expect(priceToY(bad, 50)).toBeCloseTo(0.5 * 86 + 6, 10);
     expect(yToPrice(bad, 49)).toBeCloseTo(50, 9);
   });
+
+  const LINEAR: ChartScale = { cmin: 100, cmax: 200 };
+
+  const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
 });
 
 describe("chartScene in log mode", () => {
-  // 3 candles spanning a wide ratio so log vs linear geometry is unambiguous.
-  const SERIES: ChartCandle[] = [
-    { time: 0, open: 100, high: 110, low: 100, close: 110, volume: 1 },
-    { time: 60_000, open: 110, high: 400, low: 110, close: 400, volume: 1 },
-    { time: 120_000, open: 400, high: 1000, low: 400, close: 1000, volume: 1 },
-  ];
-
   it("stamps yScale onto scene.scale and moves candle geometry", () => {
     const linear = chartScene(SERIES, 1000, false);
     const log = chartScene(SERIES, 1000, false, { yScale: "log" });
@@ -228,6 +222,13 @@ describe("chartScene in log mode", () => {
       }),
     );
   });
+
+  // 3 candles spanning a wide ratio so log vs linear geometry is unambiguous.
+  const SERIES: ChartCandle[] = [
+    { time: 0, open: 100, high: 110, low: 100, close: 110, volume: 1 },
+    { time: 60_000, open: 110, high: 400, low: 110, close: 400, volume: 1 },
+    { time: 120_000, open: 400, high: 1000, low: 400, close: 1000, volume: 1 },
+  ];
 });
 
 describe("crosshairScene in log mode", () => {
@@ -259,8 +260,6 @@ describe("crosshairScene in log mode", () => {
 });
 
 describe("percent scale (comparison series)", () => {
-  const VP: ChartViewport = { start: 0, end: 12 };
-
   it("priceToY's percent branch is numerically identical to linear for the primary", () => {
     const linear: ChartScale = { cmin: 90, cmax: 110 };
     const percent: ChartScale = {
@@ -463,6 +462,8 @@ describe("percent scale (comparison series)", () => {
     const cross = crosshairScene(0.5, y / 100, TWELVE_MIXED, VP, scale);
     expect(cross?.price).toBe("0.00%");
   });
+
+  const VP: ChartViewport = { start: 0, end: 12 };
 });
 
 // Type-level neutrality: no field of SceneCandle/ChartScene is `--`-keyed.

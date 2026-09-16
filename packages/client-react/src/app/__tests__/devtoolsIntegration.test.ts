@@ -31,32 +31,6 @@ describe("devtools integration — composition root ↔ inspector", () => {
     vi.useRealTimers();
   });
 
-  function wireAppToInspector(): WiredHarness {
-    const hub = new DevtoolsHub({ appId: "rtc-web-test" });
-    const [appSide, inspectorSide] = createInMemoryDuplexPair<
-      AppToInspector,
-      InspectorToApp
-    >();
-    hub.attachTransport(appSide);
-
-    const { presenters } = createApp(buildBrowserPorts());
-    const instrumented = instrumentPresenters(
-      presenters,
-      PRESENTER_MANIFEST,
-      hub,
-    );
-
-    const factories = instrumentMachineFactories(
-      createMachineFactories(instrumented),
-      hub,
-    );
-
-    const store = new InspectorStore();
-    const client = new InspectorClient(inspectorSide, store);
-
-    return { hub, store, client, factories };
-  }
-
   it("streams the app's manifest-registered props to the inspector after handshake", () => {
     const { hub, store, client } = wireAppToInspector();
 
@@ -118,6 +92,32 @@ describe("devtools integration — composition root ↔ inspector", () => {
     client.dispose();
     hub.dispose();
   });
+
+  function wireAppToInspector(): WiredHarness {
+    const hub = new DevtoolsHub({ appId: "rtc-web-test" });
+    const [appSide, inspectorSide] = createInMemoryDuplexPair<
+      AppToInspector,
+      InspectorToApp
+    >();
+    hub.attachTransport(appSide);
+
+    const { presenters } = createApp(buildBrowserPorts());
+    const instrumented = instrumentPresenters(
+      presenters,
+      PRESENTER_MANIFEST,
+      hub,
+    );
+
+    const factories = instrumentMachineFactories(
+      createMachineFactories(instrumented),
+      hub,
+    );
+
+    const store = new InspectorStore();
+    const client = new InspectorClient(inspectorSide, store);
+
+    return { hub, store, client, factories };
+  }
 });
 
 interface WiredHarness {

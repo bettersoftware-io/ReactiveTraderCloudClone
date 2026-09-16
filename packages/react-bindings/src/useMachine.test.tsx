@@ -100,63 +100,6 @@ describe("useMachine", () => {
     expect(factory).toHaveBeenCalledTimes(1);
   });
 
-  /** Build a machine that faithfully mirrors TileExecutionMachine's lifecycle:
-   * a Subject feeds a derived state$, an intent PUSHES into that Subject, a WARM
-   * subscription keeps state$ alive, and dispose() COMPLETES the Subject and
-   * unsubscribes the warm sub. After dispose, the intent is a no-op (it pushes
-   * into a completed Subject) and state$ can never emit again — exactly the
-   * conditions that froze tiles in the real app under StrictMode. */
-  function createLifecycleMachine(): LifecycleMachine {
-    const source$ = new Subject<number>();
-    const state$ = state(source$, 0);
-    const warm = state$.subscribe();
-
-    let count = 0;
-    const dispose = vi.fn(() => {
-      source$.complete();
-      warm.unsubscribe();
-    });
-
-    const machine: Machine<number, LifecycleMachineIntents> = {
-      state$,
-      intents: {
-        bump: () => {
-          return source$.next(++count);
-        },
-      },
-      dispose,
-    };
-    return { machine, dispose };
-  }
-
-  /** A real component that consumes useMachine, mirroring how Tile.tsx uses it:
-   * it renders the current state and exposes the intent via a button. Rendered
-   * inside <React.StrictMode>, React 19 double-invokes the mount effect
-   * (setup -> cleanup -> setup) — UNLIKE renderHook, which suppresses it
-   * (verified: a render() probe shows setup:2 cleanup:1, a renderHook probe
-   * setup:1 cleanup:0). This is the only faithful unit-level reproduction of the
-   * production StrictMode lifecycle that froze the tiles. */
-  interface ProbeProps {
-    machine: Machine<number, LifecycleMachineIntents>;
-  }
-
-  function Probe({ machine }: ProbeProps): ReactElement {
-    const { state, bump } = useMachine(() => {
-      return machine;
-    });
-    return (
-      <button
-        type="button"
-        data-testid="probe"
-        onClick={(): void => {
-          bump();
-        }}
-      >
-        {state}
-      </button>
-    );
-  }
-
   it("keeps the machine LIVE across a StrictMode mount cycle: an intent fired after the cycle updates state (regression)", async () => {
     const { machine, dispose } = createLifecycleMachine();
 
@@ -214,6 +157,63 @@ describe("useMachine", () => {
     });
     expect(dispose).toHaveBeenCalledTimes(1);
   });
+
+  /** Build a machine that faithfully mirrors TileExecutionMachine's lifecycle:
+   * a Subject feeds a derived state$, an intent PUSHES into that Subject, a WARM
+   * subscription keeps state$ alive, and dispose() COMPLETES the Subject and
+   * unsubscribes the warm sub. After dispose, the intent is a no-op (it pushes
+   * into a completed Subject) and state$ can never emit again — exactly the
+   * conditions that froze tiles in the real app under StrictMode. */
+  function createLifecycleMachine(): LifecycleMachine {
+    const source$ = new Subject<number>();
+    const state$ = state(source$, 0);
+    const warm = state$.subscribe();
+
+    let count = 0;
+    const dispose = vi.fn(() => {
+      source$.complete();
+      warm.unsubscribe();
+    });
+
+    const machine: Machine<number, LifecycleMachineIntents> = {
+      state$,
+      intents: {
+        bump: () => {
+          return source$.next(++count);
+        },
+      },
+      dispose,
+    };
+    return { machine, dispose };
+  }
+
+  /** A real component that consumes useMachine, mirroring how Tile.tsx uses it:
+   * it renders the current state and exposes the intent via a button. Rendered
+   * inside <React.StrictMode>, React 19 double-invokes the mount effect
+   * (setup -> cleanup -> setup) — UNLIKE renderHook, which suppresses it
+   * (verified: a render() probe shows setup:2 cleanup:1, a renderHook probe
+   * setup:1 cleanup:0). This is the only faithful unit-level reproduction of the
+   * production StrictMode lifecycle that froze the tiles. */
+  interface ProbeProps {
+    machine: Machine<number, LifecycleMachineIntents>;
+  }
+
+  function Probe({ machine }: ProbeProps): ReactElement {
+    const { state, bump } = useMachine(() => {
+      return machine;
+    });
+    return (
+      <button
+        type="button"
+        data-testid="probe"
+        onClick={(): void => {
+          bump();
+        }}
+      >
+        {state}
+      </button>
+    );
+  }
 });
 
 interface TestMachineIntents {

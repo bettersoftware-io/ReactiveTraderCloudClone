@@ -32,18 +32,6 @@ afterEach(() => {
   page.unmountAll();
 });
 
-const AAPL: LayoutPanelInstance = {
-  id: instanceIdFor("eq-chart", "AAPL"),
-  kind: "eq-chart",
-  symbol: "AAPL",
-};
-
-const MSFT: LayoutPanelInstance = {
-  id: instanceIdFor("eq-chart", "MSFT"),
-  kind: "eq-chart",
-  symbol: "MSFT",
-};
-
 describe("DockviewLayoutEngine instances prop", () => {
   it("holds a mounted instance as a live panel, rendering its registry content", () => {
     page.mount({
@@ -460,6 +448,18 @@ interface GlobalWithResizeObserver {
 }
 
 const page = dockviewLayoutEngineStrictModePage();
+
+const AAPL: LayoutPanelInstance = {
+  id: instanceIdFor("eq-chart", "AAPL"),
+  kind: "eq-chart",
+  symbol: "AAPL",
+};
+
+const MSFT: LayoutPanelInstance = {
+  id: instanceIdFor("eq-chart", "MSFT"),
+  kind: "eq-chart",
+  symbol: "MSFT",
+};
 
 // The instance entries stand in for `instanceRegistryFor`'s pinned
 // ChartPanel (covered by appPanelRegistry.test.tsx) — what THIS bridge owns
