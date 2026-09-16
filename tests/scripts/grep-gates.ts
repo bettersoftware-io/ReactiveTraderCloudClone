@@ -233,6 +233,41 @@ const PIXEL_SPECS = [
 ];
 
 /**
+ * The spec statements that DRIVE a scenario to its photographable state. The
+ * settled-capture wait has to sit after all of them: the click and the step
+ * loop are what resize the dock, so a wait hoisted above them runs before the
+ * flash it is meant to outlast even exists, and passes instantly.
+ */
+const SCENARIO_READINESS_STATEMENTS = [
+  "if (action.click)",
+  "for (const step of action.steps",
+  "if (action.waitForText)",
+];
+
+/** The class `dockTabStripsAreSettled` keys on to tell "no dock" from "not yet". */
+const DOCK_THEME_CLASS = "dockview-theme-rtc";
+
+/** The per-client engine bridges that must keep that class on their container. */
+const DOCK_ENGINE_BRIDGES = [
+  "../packages/client-react/src/ui/shell/layout/dockview/DockviewLayoutEngine.tsx",
+  "../packages/client-solid/src/ui/shell/layout/dockview/DockviewLayoutEngine.tsx",
+];
+
+/** The in-page predicate the pixel specs wait on. */
+const DOCK_FLASH_PREDICATE =
+  "../packages/ui-contract/src/visual/dockResizeFlash.ts";
+
+/** A `class=`/`className=` attribute carrying a given class on one line. */
+function classAttributeCarrying(className: string): RegExp {
+  return new RegExp(`class(?:Name)?=[^\\n]*\\b${className}\\b`);
+}
+
+function readGatedFile(path: string): string | null {
+  const absolute = resolve(process.cwd(), path);
+  return existsSync(absolute) ? readFileSync(absolute, "utf8") : null;
+}
+
+/**
  * Settled-capture gate: every pixel spec must wait out dockview's tab-strip
  * resize flash BEFORE it settles motion and captures.
  *
@@ -244,17 +279,33 @@ const PIXEL_SPECS = [
  * generation run over one DOM — and cost solid ~4 post-merge runs in 5 on the
  * one skin where the two clients' luck differed.
  *
- * ORDER IS THE POINT, which is why this is a custom check and not a pattern:
- * removing the class starts dockview's `transition: background-color 1s`, so a
- * capture taken between the wait and `settleAnimationsForCapture` can still
- * catch the thumb mid-fade. A spec that keeps the wait but moves it after the
- * settle pass, or after the screenshot, is as broken as one that drops it.
+ * ORDER IS THE POINT, which is why this is a custom check and not a pattern.
+ * The wait is pinned between two walls, and BOTH walls are load-bearing:
+ *   - below it, `settleAnimationsForCapture` and the screenshot. Removing the
+ *     class starts dockview's `transition: background-color 1s`, so a capture
+ *     taken between the wait and the settle pass can still catch the thumb
+ *     mid-fade.
+ *   - above it, the scenario's readiness statements (the click, the step loop,
+ *     the text wait). THOSE are what resize the dock, so a wait hoisted to just
+ *     after `goto` passes this gate's lower half while defeating the fix
+ *     entirely: it settles a dock that has not been driven yet, and the flash
+ *     arrives afterwards.
+ * A spec that keeps the wait but moves it to either side is as broken as one
+ * that drops it.
  */
 function checkPixelSpecsWaitForSettledDock(): string[] {
   const failures: string[] = [];
 
   for (const spec of PIXEL_SPECS) {
-    const source = readFileSync(resolve(process.cwd(), spec), "utf8");
+    const source = readGatedFile(spec);
+
+    if (source === null) {
+      failures.push(
+        `${spec}: not found — this gate cannot see the pixel spec; update its path with the move`,
+      );
+      continue;
+    }
+
     const wait = source.indexOf("waitForFunction(dockTabStripsAreSettled)");
     const settle = source.indexOf("evaluate(settleAnimationsForCapture)");
     const capture = source.indexOf("toHaveScreenshot(");
@@ -278,6 +329,79 @@ function checkPixelSpecsWaitForSettledDock(): string[] {
         `${spec}: the dock settle wait must come BEFORE settleAnimationsForCapture and the screenshot (a thumb caught mid-fade is still a transient)`,
       );
     }
+
+    for (const statement of SCENARIO_READINESS_STATEMENTS) {
+      const readiness = source.indexOf(statement);
+
+      if (readiness === -1) {
+        failures.push(
+          `${spec}: readiness statement "${statement}" not found — this gate can no longer see what drives the dock; update it with the spec`,
+        );
+        continue;
+      }
+
+      if (wait < readiness) {
+        failures.push(
+          `${spec}: the dock settle wait must come AFTER "${statement}" — the scenario's own steps are what resize the dock, so a wait above them settles a dock that has not been driven yet`,
+        );
+      }
+    }
+  }
+
+  return failures;
+}
+
+/**
+ * Anti-collapse gate for the settled-capture predicate's "no dock here" branch.
+ *
+ * `dockTabStripsAreSettled` distinguishes "this page has no dockview at all"
+ * (settled — nothing to wait for) from "the dock is mounted but has not laid
+ * out yet" (NOT settled) by looking for the `dockview-theme-rtc` container each
+ * client's engine bridge renders. Nothing in the type system couples that string
+ * to the bridges' JSX, and `createDockEngine` puts the SAME class on dockview's
+ * own root — so a refactor deleting the wrapper's copy as "redundant" would
+ * leave the predicate reading every page as dock-free, the wait passing
+ * instantly, and the flake back with no test failing. That is the exact silent
+ * collapse this gate exists to make loud.
+ *
+ * It is a source gate rather than a bridge unit test because the invariant IS a
+ * three-file string agreement across a package boundary the clients may not
+ * import across (`@rtc/ui-contract` is a devDependency, never reachable from
+ * `src/`), so no shared constant can carry it. A unit test could only assert one
+ * client's rendered class at a time and would say nothing about the harness's
+ * half of the agreement.
+ */
+function checkDockThemeClassStillCouplesToBridges(): string[] {
+  const failures: string[] = [];
+  const carriesClass = classAttributeCarrying(DOCK_THEME_CLASS);
+
+  for (const bridge of DOCK_ENGINE_BRIDGES) {
+    const source = readGatedFile(bridge);
+
+    if (source === null) {
+      failures.push(
+        `${bridge}: not found — this gate cannot see the engine bridge; update its path with the move`,
+      );
+      continue;
+    }
+
+    if (!carriesClass.test(source)) {
+      failures.push(
+        `${bridge}: its container element no longer carries class "${DOCK_THEME_CLASS}" — the visual tier's dock settle wait keys on it and would silently read every page as dock-free (if the class moved to a multi-line class expression, teach this gate about it)`,
+      );
+    }
+  }
+
+  const predicate = readGatedFile(DOCK_FLASH_PREDICATE);
+
+  if (predicate === null) {
+    failures.push(
+      `${DOCK_FLASH_PREDICATE}: not found — this gate cannot see the settled-capture predicate; update its path with the move`,
+    );
+  } else if (!predicate.includes(`".${DOCK_THEME_CLASS}"`)) {
+    failures.push(
+      `${DOCK_FLASH_PREDICATE}: no longer queries ".${DOCK_THEME_CLASS}" — the predicate and the engine bridges must agree on one class, and this gate on the same one`,
+    );
   }
 
   return failures;
@@ -564,6 +688,12 @@ const GATES: Gate[] = [
     pattern: "",
     paths: [],
     customCheck: checkPixelSpecsWaitForSettledDock,
+  },
+  {
+    name: `45. Both engine bridges keep "${DOCK_THEME_CLASS}" on their container (the settle wait keys on it)`,
+    pattern: "",
+    paths: [],
+    customCheck: checkDockThemeClassStillCouplesToBridges,
   },
 ];
 
