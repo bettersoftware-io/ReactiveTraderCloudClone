@@ -226,6 +226,63 @@ function checkNoUiTimers(path: string): string[] {
     });
 }
 
+/** The two pixel specs, which must stay in lockstep (each is the other's copy). */
+const PIXEL_SPECS = [
+  "../packages/client-react/tests/ui/visual/playwright/visual.spec.ts",
+  "../packages/client-solid/tests/ui/visual/playwright/visual.spec.ts",
+];
+
+/**
+ * Settled-capture gate: every pixel spec must wait out dockview's tab-strip
+ * resize flash BEFORE it settles motion and captures.
+ *
+ * Dockview adds `dv-scrollable-resizing` on every ResizeObserver tick of a tab
+ * strip and clears it 500 ms after the last one; while it is there the strip
+ * paints a 4 px scrollbar thumb. Without the wait, whether a golden contains
+ * that bar is decided by wall clock: `app/equities-instances-dockview` shipped
+ * with the bar in 6 of its 10 x86 skins and 9 of its 10 arm64 ones — from ONE
+ * generation run over one DOM — and cost solid ~4 post-merge runs in 5 on the
+ * one skin where the two clients' luck differed.
+ *
+ * ORDER IS THE POINT, which is why this is a custom check and not a pattern:
+ * removing the class starts dockview's `transition: background-color 1s`, so a
+ * capture taken between the wait and `settleAnimationsForCapture` can still
+ * catch the thumb mid-fade. A spec that keeps the wait but moves it after the
+ * settle pass, or after the screenshot, is as broken as one that drops it.
+ */
+function checkPixelSpecsWaitForSettledDock(): string[] {
+  const failures: string[] = [];
+
+  for (const spec of PIXEL_SPECS) {
+    const source = readFileSync(resolve(process.cwd(), spec), "utf8");
+    const wait = source.indexOf("waitForFunction(dockTabStripsAreSettled)");
+    const settle = source.indexOf("evaluate(settleAnimationsForCapture)");
+    const capture = source.indexOf("toHaveScreenshot(");
+
+    if (wait === -1) {
+      failures.push(
+        `${spec}: missing "await page.waitForFunction(dockTabStripsAreSettled)" — the capture would race dockview's 500 ms tab-strip resize flash`,
+      );
+      continue;
+    }
+
+    if (settle === -1 || capture === -1) {
+      failures.push(
+        `${spec}: no settle pass or no screenshot assertion found — this gate can no longer see the capture order; update it with the spec`,
+      );
+      continue;
+    }
+
+    if (wait > settle || wait > capture) {
+      failures.push(
+        `${spec}: the dock settle wait must come BEFORE settleAnimationsForCapture and the screenshot (a thumb caught mid-fade is still a transient)`,
+      );
+    }
+  }
+
+  return failures;
+}
+
 const GATES: Gate[] = [
   {
     name: "1. No raw data-testid literals outside testids.ts",
@@ -501,6 +558,12 @@ const GATES: Gate[] = [
       "../packages/client-core-effect/src/",
     ],
     excludes: ["/bridge/", ".test."],
+  },
+  {
+    name: "44. Pixel specs wait out dockview's tab-strip resize flash before capturing",
+    pattern: "",
+    paths: [],
+    customCheck: checkPixelSpecsWaitForSettledDock,
   },
 ];
 
