@@ -103,8 +103,10 @@ export interface AppData {
   forceBootAnimation?: boolean;
   /** Power-saver master-override level (usePowerSaver); defaults to "off". */
   powerSaverLevel?: PowerSaverLevel;
-  /** Layout-engine preference (useLayoutEngine); defaults to
-   * DEFAULT_LAYOUT_ENGINE ("inhouse"). `"dockview"` mounts the real
+  /** Layout-engine preference (useLayoutEngine); defaults to the literal
+   * "inhouse" in the fakes — pinned independently of the domain's
+   * DEFAULT_LAYOUT_ENGINE (now "dockview") so the whole app-scenario golden
+   * matrix doesn't churn on that flip. `"dockview"` mounts the real
    * DockviewLayoutEngine bridge over the fixture's panels — see the
    * `app/*-dockview` scenarios. */
   layoutEngine?: LayoutEngine;

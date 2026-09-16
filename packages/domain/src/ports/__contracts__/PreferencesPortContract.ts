@@ -499,15 +499,16 @@ export function describePreferencesPortContract(
       });
     });
 
-    it("defaults layoutEngine to inhouse and round-trips a write", async () => {
+    it("defaults layoutEngine to dockview and round-trips a write", async () => {
       const port = makeEmpty();
       expect(await firstValueFrom(port.layoutEngine$())).toBe(
         DEFAULT_LAYOUT_ENGINE,
       );
-      port.setLayoutEngine("dockview");
-      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
+      // a default-valued write proves nothing — write the non-default value
+      port.setLayoutEngine("inhouse");
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("inhouse");
       // late subscriber sees the current value synchronously (replay-current)
-      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("inhouse");
     });
 
     it("setLayoutEngine persists and pushes to existing subscribers", () => {
@@ -516,14 +517,14 @@ export function describePreferencesPortContract(
       const sub = port.layoutEngine$().subscribe((engine) => {
         return seen.push(engine);
       });
-      port.setLayoutEngine("dockview");
+      port.setLayoutEngine("inhouse");
       sub.unsubscribe();
-      expect(seen).toEqual([DEFAULT_LAYOUT_ENGINE, "dockview"]);
+      expect(seen).toEqual([DEFAULT_LAYOUT_ENGINE, "inhouse"]);
     });
 
     it("reads back a seeded layoutEngine", async () => {
-      const port = makeSeeded({ layoutEngine: "dockview" });
-      expect(await firstValueFrom(port.layoutEngine$())).toBe("dockview");
+      const port = makeSeeded({ layoutEngine: "inhouse" });
+      expect(await firstValueFrom(port.layoutEngine$())).toBe("inhouse");
     });
 
     it("defaults jarvisSkin to singularity and round-trips a write", async () => {

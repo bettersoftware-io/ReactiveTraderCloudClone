@@ -1,5 +1,5 @@
 import type { JSX } from "solid-js";
-import { createMemo, lazy, Show, Suspense, untrack } from "solid-js";
+import { createMemo, Show, untrack } from "solid-js";
 
 import {
   type LayoutPanelInstance,
@@ -18,6 +18,7 @@ import { ConnectionOverlay } from "./shell/connection/ConnectionOverlay";
 import { JarvisOverlay } from "./shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "./shell/jarvis/panels/JarvisPanelLayer";
 import { useJarvisDrivenPulse } from "./shell/jarvis/useJarvisDrivenPulse";
+import { DockviewLayoutEngine } from "./shell/layout/dockview/DockviewLayoutEngine";
 import {
   appHeadRegistry,
   dockedHeadsFor,
@@ -87,15 +88,6 @@ export function App(): JSX.Element {
 interface WorkspaceEngineProps {
   tab: WorkspaceTab;
 }
-
-// Lazy: dockview + its CSS is ~75KB gzip, but the default in-house engine
-// serves ~100% of users — split it into its own chunk instead of shipping
-// it to everyone.
-const DockviewLayoutEngine = lazy(() => {
-  return import("./shell/layout/dockview/DockviewLayoutEngine").then((m) => {
-    return { default: m.DockviewLayoutEngine };
-  });
-});
 
 /** Owns the active tab's `useLayout(tab)` machine and nests BOTH domain
  * view-context seams (`FxViewProvider` → `CreditViewProvider`), mirroring the
@@ -288,6 +280,13 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
         <Show
           when={engine() === "dockview"}
           fallback={
+            // Both engines are static imports — no lazy()/Suspense split.
+            // The in-house engine's own chunk measured ~3.8KB gzip (~1.2%
+            // of the bundle), not worth a chunk boundary; a prior version
+            // of this file lazy-loaded it, which armed the #594
+            // blank-golden class on every in-house `app/*`/layout visual
+            // scenario and forced contract specs to explicitly flush a
+            // Suspense boundary before asserting.
             <InhouseLayoutEngine
               state={visibleState()}
               registry={registry()}
@@ -301,31 +300,29 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
             />
           }
         >
-          <Suspense fallback={null}>
-            {/* Same merged registries as the in-house branch: dockview looks
-                a docked panel's body/head/spec up by id exactly as the
-                in-house engine does. Its SEED tree is still the static
-                default (createDefaultLayoutPort), so a pinned panel only
-                surfaces here once its id is in the persisted blob. */}
-            <DockviewLayoutEngine
-              tab={props.tab}
-              registry={dockviewRegistry()}
-              specs={dockviewSpecs()}
-              headRegistry={headRegistry()}
-              store={dockLayoutStore}
-              maximized={state().maximized}
-              collapsed={state().collapsed}
-              closed={state().closed}
-              docked={dockedIds()}
-              instances={instances()}
-              layoutResets={layoutResets()}
-              onMaximize={maximize}
-              onRestore={restore}
-              onCollapse={collapse}
-              onExpand={expand}
-              onCloseInstance={closeInstance}
-            />
-          </Suspense>
+          {/* Same merged registries as the in-house branch: dockview looks
+              a docked panel's body/head/spec up by id exactly as the
+              in-house engine does. Its SEED tree is still the static
+              default (createDefaultLayoutPort), so a pinned panel only
+              surfaces here once its id is in the persisted blob. */}
+          <DockviewLayoutEngine
+            tab={props.tab}
+            registry={dockviewRegistry()}
+            specs={dockviewSpecs()}
+            headRegistry={headRegistry()}
+            store={dockLayoutStore}
+            maximized={state().maximized}
+            collapsed={state().collapsed}
+            closed={state().closed}
+            docked={dockedIds()}
+            instances={instances()}
+            layoutResets={layoutResets()}
+            onMaximize={maximize}
+            onRestore={restore}
+            onCollapse={collapse}
+            onExpand={expand}
+            onCloseInstance={closeInstance}
+          />
         </Show>
       </CreditViewProvider>
     </FxViewProvider>
