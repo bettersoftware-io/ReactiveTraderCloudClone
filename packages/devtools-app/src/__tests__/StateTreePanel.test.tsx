@@ -4,8 +4,6 @@ import type { StreamRow } from "@rtc/devtools-core";
 
 import { stateTreePanelPage } from "#tests/pages/StateTreePanelPage";
 
-const panel = stateTreePanelPage();
-
 afterEach(() => {
   panel.unmountAll();
 });
@@ -66,3 +64,5 @@ function streamRow(overrides: Partial<StreamRow>): StreamRow {
     ...overrides,
   };
 }
+
+const panel = stateTreePanelPage();

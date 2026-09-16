@@ -1,9 +1,10 @@
 // packages/client-react-native/tests/pages/BlotterHeaderPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
-import { StyleSheet, type TextStyle } from "react-native";
+import type { TextStyle } from "react-native";
 
 import { BlotterHeader } from "#/ui/blotter/BlotterHeader";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export interface BlotterHeaderPage {
   mount(): Promise<void>;
@@ -25,9 +26,7 @@ export function blotterHeaderPage(): BlotterHeaderPage {
       return screen.queryByText(text) != null;
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
   };
 }

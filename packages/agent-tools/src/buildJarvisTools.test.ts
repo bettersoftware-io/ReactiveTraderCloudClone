@@ -22,31 +22,6 @@ import {
 } from "./buildJarvisTools.js";
 import type { JarvisToolDeps } from "./jarvisToolDefinition.js";
 
-/** A fixed, distinct bid/ask so a confirm-gate payload assertion can pin
- * quotedPrice to a known value (ask for Buy, bid for Sell) — the real
- * PricingSimulator's random-walk history makes that assertion impossible. */
-const FIXED_TICK: PriceTick = {
-  symbol: "EURUSD",
-  bid: 1.0841,
-  ask: 1.0843,
-  mid: 1.0842,
-  valueDate: "2026-07-27",
-  creationTimestamp: 1,
-};
-
-/** bid and mid land exactly on a value whose EURUSD-precision (5) decimal
- * representation ends in a trailing zero (1.087 -> "1.08700") — JSON.stringify
- * of a bare number silently drops that zero, which is exactly the defect this
- * fixture proves the tools no longer have (prices are formatted strings). */
-const TRAILING_ZERO_TICK: PriceTick = {
-  symbol: "EURUSD",
-  bid: 1.087,
-  ask: 1.0874,
-  mid: 1.087,
-  valueDate: "2026-07-27",
-  creationTimestamp: 7,
-};
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -667,3 +642,28 @@ function findTool(
 
   return tool;
 }
+
+/** A fixed, distinct bid/ask so a confirm-gate payload assertion can pin
+ * quotedPrice to a known value (ask for Buy, bid for Sell) — the real
+ * PricingSimulator's random-walk history makes that assertion impossible. */
+const FIXED_TICK: PriceTick = {
+  symbol: "EURUSD",
+  bid: 1.0841,
+  ask: 1.0843,
+  mid: 1.0842,
+  valueDate: "2026-07-27",
+  creationTimestamp: 1,
+};
+
+/** bid and mid land exactly on a value whose EURUSD-precision (5) decimal
+ * representation ends in a trailing zero (1.087 -> "1.08700") — JSON.stringify
+ * of a bare number silently drops that zero, which is exactly the defect this
+ * fixture proves the tools no longer have (prices are formatted strings). */
+const TRAILING_ZERO_TICK: PriceTick = {
+  symbol: "EURUSD",
+  bid: 1.087,
+  ask: 1.0874,
+  mid: 1.087,
+  valueDate: "2026-07-27",
+  creationTimestamp: 7,
+};

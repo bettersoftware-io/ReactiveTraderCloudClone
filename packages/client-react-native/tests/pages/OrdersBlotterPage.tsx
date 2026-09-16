@@ -2,7 +2,6 @@
 import { cleanup, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { EquityOrder } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
@@ -11,6 +10,7 @@ import { OrdersBlotter } from "#/ui/equities/blotters/OrdersBlotter";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
 import { rnThemeTokens } from "#/ui/theme/tokens";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 function vmWith(orders: readonly EquityOrder[]): ViewModel {
@@ -77,9 +77,7 @@ export function ordersBlotterPage(): OrdersBlotterPage {
       return matchesTextExactly(screen.getByTestId(testId), text);
     },
     styleOf(testId: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
     selected(orderId: string): boolean {
       const state = screen.getByTestId(`order-row-${orderId}`).props

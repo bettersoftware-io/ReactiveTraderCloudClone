@@ -1,10 +1,10 @@
 // packages/client-react-native/tests/pages/SectionLabelPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import { SectionLabel } from "#/ui/equities/SectionLabel";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export interface SectionLabelPage {
   // Renders `plain` bare and `spaced` under the `spaced` prop, side by side —
@@ -33,9 +33,7 @@ export function sectionLabelPage(): SectionLabelPage {
       await cleanup();
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
   };
 }

@@ -1,13 +1,13 @@
 // packages/client-react-native/tests/pages/RfqFilterTabsPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { CreditRfqFilter } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { RfqFilterTabs } from "#/ui/credit/rfqTiles/RfqFilterTabs";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export interface RfqFilterTabsPage {
   mount(
@@ -62,9 +62,7 @@ export function rfqFilterTabsPage(): RfqFilterTabsPage {
       return state?.selected;
     },
     styleOf(testId: string): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
   };
 }
