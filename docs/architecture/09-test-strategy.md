@@ -184,6 +184,43 @@ specs call semantic methods on page modules under the package's
 [`docs/lint-warnings.md`](../lint-warnings.md). Design:
 [page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
 
+**A page object must also CONSTRUCT the component it is named for**, not accept
+one already built — `rtc/page-objects-own-their-component`. This is the same
+doctrine as above, but it needs its own rule because
+`no-framework-calls-in-specs` enforces the doctrine by banning framework
+*imports*: a page whose contract is `mount(element: ReactElement)` passes that
+rule cleanly while leaving the entire **arrange** half in the spec. The type
+erases the component, so nothing about the page can encapsulate it.
+
+That gap was load-bearing. `client-react` was marked migrated (and held to
+`error`) the whole time its `DockviewLayoutEngine.docked.test.tsx` wrote **all
+15 props at each of 16 render sites — 9 of them byte-identical every time**,
+144 lines of pure noise in a 747-line file. Two cases differing in one prop
+could only be told apart by eye-diffing two 15-line blocks. The solid twin,
+forced by Solid's once-running component bodies to take live accessors, had
+been built the right way from the start.
+
+The sanctioned shape is a props object with documented defaults, so a case
+states only what it varies:
+
+```ts
+page.mount({ registry, store, docked: ["panel-dyn-1"] });
+page.mount({ registry, store, docked: ["panel-dyn-1"], closed: ["panel-dyn-1"] });
+```
+
+A **bare `Element`** stays legal — that is the DOM interface, and a page
+measuring a node it was handed (`UseFlipGridPage`) is doing its job; only
+`ReactElement` and qualified `JSX.Element` are the "spec built the subject"
+shape. A parameter named `children` is exempt: a provider page wrapping
+arbitrary children is composition, not handing over the subject. Only the
+page's **published interface** is checked — its own plumbing may hold an
+element, since RTL's `rerender` takes one.
+
+The rule's `ignores` list in `eslint.config.mjs` is a **migration ledger**, not
+an exemption (the `newspaper-order { fixtures: true }` precedent): every new
+page object is gated from day one, and the remaining four are tracked in
+[`docs/STATUS.md`](../STATUS.md).
+
 ### Readable JSON fixtures
 
 A test's ARRANGEMENT must not drown its SUBJECT. Two lint rules enforce that
