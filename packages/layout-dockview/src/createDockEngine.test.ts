@@ -3691,6 +3691,165 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   });
 });
 
+/**
+ * A design pin is a RELATIVE width: the rail holds its pixels while some
+ * other panel absorbs whatever the container has spare. Close the last
+ * absorber and the pin — which is min=max — leaves the grid with no child
+ * able to take the remaining space, so dockview shrinks the WHOLE GRID to
+ * the pinned extent and the dock shows a void beside it.
+ *
+ * Measured on the `RAIL_LIKE` seed pinned at 360 in a 1200-wide dock:
+ *
+ *   seed                      dock 1200 :: rates 833 | blotter 833 | rail 367
+ *   close fx-rates            dock 1200 :: blotter 833 | rail 367
+ *   close fx-blotter          dock  367 :: rail 367            ← 833px gone
+ *
+ * The same seed with NO pin keeps the dock at 1200 and hands the rail all
+ * 1200, which is the control proving the pin is the cause.
+ *
+ * STATUS Phase-4 follow-up (b).
+ */
+describe("closing the last absorber releases a design pin (follow-up b)", () => {
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+  }
+
+  function dockWidth(): number {
+    return lastDockviewApi().width;
+  }
+
+  function widthOf(panelId: string): number {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.width;
+  }
+
+  it("holds the pin while an absorber survives", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+
+    // fx-blotter is still there to absorb: the rail keeps its design width
+    // and the grid still fills the dock.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("fills the dock once the last absorbing panel is closed", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    // Nothing is left to absorb, so the pin yields — exactly as a sash drag
+    // makes it yield — rather than starving the grid.
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
+  });
+
+  it("re-clamps the pin when a reopened panel can absorb again", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    expect(widthOf("fx-analytics")).toBe(1200);
+
+    // SUSPENDED, not forgotten: the moment something can absorb again, the
+    // rail goes back to its design width. This is why the fix cannot simply
+    // drop the pin — R18's "close both statics, then open a chart instance"
+    // path depends on the rail still being 360 when the instance lands.
+    engine.reopenPanel("fx-blotter");
+
+    expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  it("keeps a suspended pin in the blob, so a reload still knows the width", () => {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    // The clamp is lifted, but the design width is not lost — persisting it
+    // is the difference between "suspended" and "released".
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  it("does not count a panel in another window as an absorber", () => {
+    // jsdom cannot open a real pop-out window, so stand the state in the way
+    // the ENGINE reads it: dockview reports a group's real home through
+    // `api.location.type`, and `api.groups` is NOT pruned when a group leaves
+    // the grid — the same read `publishPoppedPanels` uses.
+    //
+    // The stub can only lie about LOCATION, not vacate the pixels, so the
+    // witness is the clamp itself rather than a width: a pin is min=max, and
+    // suspending it is exactly what lifts that. Asserted against the same
+    // sequence with the panel left in the grid, so the popout filter is the
+    // only difference between the two.
+    function railClampedAfterClosingRates(poppedOut: boolean): boolean {
+      const engine = createDockEngine(pinnedRailBase());
+      const blotter = lastDockviewApi().getPanel("fx-blotter");
+
+      if (blotter === undefined) {
+        throw new Error("fx-blotter is not in the dock");
+      }
+
+      if (poppedOut) {
+        Object.defineProperty(blotter.group.api, "location", {
+          configurable: true,
+          get: () => {
+            return { type: "popout" };
+          },
+        });
+      }
+
+      engine.closePanel("fx-rates");
+
+      const rail = lastDockviewApi().getPanel("fx-analytics");
+
+      if (rail === undefined) {
+        throw new Error("fx-analytics is not in the dock");
+      }
+
+      const clamped = rail.group.minimumWidth === rail.group.maximumWidth;
+      engine.dispose();
+
+      return clamped;
+    }
+
+    // In the grid, fx-blotter absorbs — the rail stays pinned.
+    expect(railClampedAfterClosingRates(false)).toBe(true);
+    // In another window it absorbs nothing here, so the pin must yield
+    // rather than starve a grid that has nothing left to fill it.
+    expect(railClampedAfterClosingRates(true)).toBe(false);
+  });
+
+  it("leaves an unpinned seed alone — the control", () => {
+    const engine = createDockEngine(railBase());
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(dockWidth()).toBe(1200);
+    expect(widthOf("fx-analytics")).toBe(1200);
+    engine.dispose();
+  });
+});
+
 describe("pop-out windows (session-scoped, the strips precedent)", () => {
   // jsdom can witness ONLY the popup-blocked branch: window.open returns
   // null here, so dockview's addPopoutGroup resolves false and touches
