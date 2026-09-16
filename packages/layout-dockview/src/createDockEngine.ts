@@ -3291,7 +3291,15 @@ function clampTo(axis: GroupAxis, size: number): void {
  * - `"seed"` — nothing of the blob survived; the seed tree was converted
  *   fresh. This is the case a settle resize must correct — see
  *   reapplyExactLayoutOnResize — because a seed conversion is not a round
- *   trip the way restoring an already-settled blob is. */
+ *   trip the way restoring an already-settled blob is.
+ *
+ * The ladder is CUMULATIVE — each rung retries on the OUTPUT of the rung
+ * above it, never the original blob — so a blob damaged in two ways at once
+ * (e.g. an unrestorable float AND an unrestorable dynamic leaf) reports the
+ * LAST and most severe scrub actually needed, `"blob-without-dynamic"`, not
+ * a fourth combined label: the tier's own name already implies every scrub
+ * ABOVE it in this list was applied too, because the ladder only reaches a
+ * rung by falling through every rung before it. */
 export type RestoreTier =
   | "blob"
   | "blob-without-floats"
@@ -3371,12 +3379,15 @@ function resetDerivedLocks(api: DockviewApi): void {
  * cheapest loss first: the whole blob; the blob with `floatingGroups`
  * dropped (a damaged float costs only the float); the blob with every
  * dynamic leaf scrubbed (a damaged Jarvis dock costs only its own panels);
- * the seed. Exported so the tier a given blob actually lands on is a real,
- * reachable assertion rather than a private read — see {@link RestoreTier}.
- * Returns the design pins to apply — the blob's own surviving
- * `rtcDesignPins` (a legacy blob without the field gets none — that layout
- * may be user-shaped already), or the freshly converted seed's — plus the
- * blob's strip-geometry seeds. */
+ * the seed. The ladder is CUMULATIVE: the dynamic-leaf scrub retries on the
+ * FLOATS-ALREADY-DROPPED blob, not the original — a blob damaged in both
+ * ways at once must still cost only those two things, not the whole desk
+ * (see {@link RestoreTier}'s doc comment for the labelling rule this
+ * implies). Exported so the tier a given blob actually lands on is a real,
+ * reachable assertion rather than a private read. Returns the design pins
+ * to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
+ * without the field gets none — that layout may be user-shaped already),
+ * or the freshly converted seed's — plus the blob's strip-geometry seeds. */
 export function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
@@ -3406,47 +3417,72 @@ export function loadBlobOrSeed(
       // thing to lose (design §3.3 persists them, but nothing else depends
       // on one surviving), so this retries BEFORE the dynamic-node scrub
       // below: dropping `floatingGroups` outright and re-parsing.
+      //
+      // `floatless` is computed ONCE here and handed down to the
+      // dynamic-node scrub too, rather than each rung re-deriving from
+      // `opts.blob` — that is the difference between a cumulative ladder
+      // and a non-cumulative one: without it, a blob damaged in BOTH ways
+      // would have its dynamic-leaf retry re-parse the STILL-broken
+      // `floatingGroups` entry, throw again, and fall all the way to the
+      // seed, reseeding the user's whole desk over a float that was never
+      // the dynamic scrub's problem to fix. `null` means `opts.blob` itself
+      // was not even parseable JSON, in which case nothing below can help
+      // either.
+      let floatless: string | null;
+
       try {
-        const parsed = migrateDockBlob(
+        floatless = JSON.stringify(
           withoutFloatingGroups(JSON.parse(opts.blob)),
-          GROUP_GAP_PX,
         );
-        api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
-        resetDerivedLocks(api);
-
-        return {
-          pins: designPinsIn(parsed),
-          ...stripGeometryIn(parsed),
-          restoreTier: "blob-without-floats",
-        };
       } catch {
-        // Dropping the float alone did not fix it either — either the
-        // float was fine and something in the GRID is unrestorable, or the
-        // blob was too malformed even to reach this point (e.g. bad JSON,
-        // already caught above and re-thrown here identically). One
-        // dynamic (Jarvis-docked) panel's node can go unrestorable on its
-        // own without the rest of the arrangement being at fault; retry
-        // once with every non-static leaf scrubbed out. A static-only blob
-        // (or one this can't safely operate on) hands back `null` and falls
-        // straight through to the seed below, same as before.
-        const scrubbed = withoutDynamicNodes(
-          opts.blob,
-          seedPanelIdsOf(opts.seed),
-        );
+        floatless = null;
+      }
 
-        if (scrubbed !== null) {
-          try {
-            const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
-            api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
-            resetDerivedLocks(api);
+      if (floatless !== null) {
+        try {
+          const parsed = migrateDockBlob(JSON.parse(floatless), GROUP_GAP_PX);
+          api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+          resetDerivedLocks(api);
 
-            return {
-              pins: designPinsIn(parsed),
-              ...stripGeometryIn(parsed),
-              restoreTier: "blob-without-dynamic",
-            };
-          } catch {
-            // fall through to the seed
+          return {
+            pins: designPinsIn(parsed),
+            ...stripGeometryIn(parsed),
+            restoreTier: "blob-without-floats",
+          };
+        } catch {
+          // Dropping the float alone did not fix it either — either the
+          // float was fine and something in the GRID is unrestorable, or
+          // there was no `floatingGroups` to drop at all and this is the
+          // identical failure caught above. One dynamic (Jarvis-docked)
+          // panel's node can go unrestorable on its own without the rest of
+          // the arrangement being at fault; retry once with every
+          // non-static leaf scrubbed out of `floatless` — NOT `opts.blob` —
+          // so a float already known to be unrestorable does not resurrect
+          // itself on this retry and fail it too. A static-only blob (or
+          // one this can't safely operate on) hands back `null` and falls
+          // straight through to the seed below, same as before.
+          const scrubbed = withoutDynamicNodes(
+            floatless,
+            seedPanelIdsOf(opts.seed),
+          );
+
+          if (scrubbed !== null) {
+            try {
+              const parsed = migrateDockBlob(
+                JSON.parse(scrubbed),
+                GROUP_GAP_PX,
+              );
+              api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+              resetDerivedLocks(api);
+
+              return {
+                pins: designPinsIn(parsed),
+                ...stripGeometryIn(parsed),
+                restoreTier: "blob-without-dynamic",
+              };
+            } catch {
+              // fall through to the seed
+            }
           }
         }
       }

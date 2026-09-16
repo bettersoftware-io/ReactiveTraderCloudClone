@@ -5022,6 +5022,89 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
     api.dispose();
   });
 
+  // THE CUMULATIVE-LADDER PIN (fix round 1): a blob damaged in BOTH ways at
+  // once — an unrestorable float AND an unrestorable dynamic leaf — must
+  // still cost only those two things, never the whole desk. A
+  // non-cumulative ladder (rung 3 re-scrubbing the ORIGINAL blob, which
+  // still carries the broken `floatingGroups`) throws again on rung 3 and
+  // falls all the way through to `"seed"`, reseeding the user's entire
+  // arrangement over a float that was never rung 3's problem to fix — the
+  // exact defect this test exists to catch. A cumulative ladder reaches
+  // `"blob-without-dynamic"` instead, because rung 3 retries on the
+  // FLOATS-ALREADY-DROPPED blob, not the original.
+  //
+  // Per Controller Ruling: a doubly-scrubbed restore reports the LAST and
+  // most severe tier reached, `"blob-without-dynamic"` — not a fourth
+  // combined label — because the ladder is ordered and reaching rung 3
+  // already implies rung 2 ran too (see {@link RestoreTier}'s doc comment).
+  //
+  // A single-damage test at either rung cannot distinguish a cumulative
+  // ladder from a non-cumulative one — they produce IDENTICAL blobs and
+  // IDENTICAL tiers when only one thing is broken. The difference is
+  // observable only here: the tier label AND the surviving group set of a
+  // restore damaged in both ways at once.
+  it("tier: blob-without-dynamic — a float AND a dynamic leaf damaged together still costs only those two (the cumulative-ladder pin)", async () => {
+    const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+    const container = sizedContainer(1440, 900);
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      container,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+
+    const api = lastDockviewApi();
+    const rates = api.getPanel("fx-rates");
+    const blotter = api.getPanel("fx-blotter");
+
+    if (!rates || !blotter) {
+      throw new Error("fixture panels missing");
+    }
+
+    // Same non-seed-reproducible witness as the engine-level float test
+    // above: a fresh seed conversion could never reproduce rates and
+    // blotter sharing one group.
+    blotter.api.moveTo({ group: rates.group, position: "center" });
+    expect(rates.group.panels.length).toBe(2);
+
+    first.floatPanel("fx-analytics");
+    touchContainer(container);
+    first.dispose();
+
+    const parsed = JSON.parse(seen.blob());
+    const dynLeaf = leafHolding(parsed.grid.root, "panel-dyn-1");
+
+    if (dynLeaf === null) {
+      throw new Error("panel-dyn-1's leaf missing from the captured blob");
+    }
+
+    // Damage BOTH independently — the same two corruptions the single-
+    // damage tests above use in isolation — in the SAME blob.
+    dynLeaf.data.id = 42;
+    const bothDamaged = JSON.stringify({
+      ...parsed,
+      floatingGroups: [{ data: { nope: true } }],
+    });
+
+    const freshApi = freshDockviewApi(1440, 900);
+    const restored = loadBlobOrSeed(
+      freshApi,
+      { ...base(), blob: bothDamaged, dynamicPanels: [DYN] },
+      1440,
+      900,
+    );
+
+    expect(restored.restoreTier).toBe("blob-without-dynamic");
+    expect(
+      freshApi.getPanel("fx-rates")?.group.panels.map((panel) => {
+        return panel.id;
+      }),
+    ).toEqual(["fx-rates", "fx-blotter"]);
+    freshApi.dispose();
+  });
+
   it("tier: seed — nothing of the blob is usable", () => {
     const api = freshDockviewApi(1440, 900);
     const restoreTier: RestoreTier = loadBlobOrSeed(
