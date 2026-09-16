@@ -3704,6 +3704,55 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
     ]);
   });
 
+  it("does not count a panel in another window as an absorber", () => {
+    // jsdom cannot open a real pop-out window, so stand the state in the way
+    // the ENGINE reads it: dockview reports a group's real home through
+    // `api.location.type`, and `api.groups` is NOT pruned when a group leaves
+    // the grid — the same read `publishPoppedPanels` uses.
+    //
+    // The stub can only lie about LOCATION, not vacate the pixels, so the
+    // witness is the clamp itself rather than a width: a pin is min=max, and
+    // suspending it is exactly what lifts that. Asserted against the same
+    // sequence with the panel left in the grid, so the popout filter is the
+    // only difference between the two.
+    function railClampedAfterClosingRates(poppedOut: boolean): boolean {
+      const engine = createDockEngine(pinnedRailBase());
+      const blotter = lastDockviewApi().getPanel("fx-blotter");
+
+      if (blotter === undefined) {
+        throw new Error("fx-blotter is not in the dock");
+      }
+
+      if (poppedOut) {
+        Object.defineProperty(blotter.group.api, "location", {
+          configurable: true,
+          get: () => {
+            return { type: "popout" };
+          },
+        });
+      }
+
+      engine.closePanel("fx-rates");
+
+      const rail = lastDockviewApi().getPanel("fx-analytics");
+
+      if (rail === undefined) {
+        throw new Error("fx-analytics is not in the dock");
+      }
+
+      const clamped = rail.group.minimumWidth === rail.group.maximumWidth;
+      engine.dispose();
+
+      return clamped;
+    }
+
+    // In the grid, fx-blotter absorbs — the rail stays pinned.
+    expect(railClampedAfterClosingRates(false)).toBe(true);
+    // In another window it absorbs nothing here, so the pin must yield
+    // rather than starve a grid that has nothing left to fill it.
+    expect(railClampedAfterClosingRates(true)).toBe(false);
+  });
+
   it("leaves an unpinned seed alone — the control", () => {
     const engine = createDockEngine(railBase());
 

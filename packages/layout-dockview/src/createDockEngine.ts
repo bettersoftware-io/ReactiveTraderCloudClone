@@ -1159,9 +1159,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   /** True while some panel can still absorb the container's spare space —
-   * any panel that is neither a member of `held` nor currently a STRIP. A
-   * collapsed panel sits at the strip extent, so it absorbs nothing either;
-   * that is the second shape of the starved-grid bug. */
+   * any panel that is IN THE GRID, not a member of `held`, and not currently
+   * a STRIP. A collapsed panel sits at the strip extent, so it absorbs
+   * nothing either.
+   *
+   * The grid filter is not defensive padding: `api.groups` is NOT pruned when
+   * a group leaves the grid, so a popped-out panel (and, once Phase 6a lands,
+   * a floating one) is still listed. Counting one as an absorber would hold
+   * the pin clamped while the GRID has nothing left to fill it — the exact
+   * starvation this function exists to detect, now invisible because a panel
+   * in another window looked like it was helping. `publishPoppedPanels` reads
+   * the same `location.type`; the `?? "grid"` keeps a group whose location
+   * dockview does not report treated as present, which is the safe default. */
   function someGroupAbsorbs(held: readonly DesignPinRecord[]): boolean {
     const pinned = new Set<string>();
 
@@ -1172,6 +1181,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     return api.groups.some((group) => {
+      if ((group.api.location?.type ?? "grid") !== "grid") {
+        return false;
+      }
+
       return group.panels.some((panel) => {
         return !pinned.has(panel.id) && !records.has(panel.id);
       });
