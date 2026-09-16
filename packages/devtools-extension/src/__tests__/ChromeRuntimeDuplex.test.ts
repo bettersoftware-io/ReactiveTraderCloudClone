@@ -5,7 +5,7 @@ import type { RuntimePort } from "#/ports";
 
 describe("ChromeRuntimeDuplex", () => {
   it("sends via the port and surfaces inbound messages on inbound$", () => {
-    const f = makeFakePort();
+    const f = createFakePort();
     const connect = vi.fn(() => {
       return f.port;
     });
@@ -25,8 +25,8 @@ describe("ChromeRuntimeDuplex", () => {
   });
 
   it("reconnects on disconnect and keeps delivering inbound", () => {
-    const first = makeFakePort("first");
-    const second = makeFakePort("second");
+    const first = createFakePort("first");
+    const second = createFakePort("second");
     const queue = [first.port, second.port];
     const connect = vi.fn((): RuntimePort => {
       const next = queue.shift();
@@ -53,8 +53,8 @@ describe("ChromeRuntimeDuplex", () => {
   });
 
   it("does not reconnect after dispose", () => {
-    const first = makeFakePort("first");
-    const second = makeFakePort("second");
+    const first = createFakePort("first");
+    const second = createFakePort("second");
     const queue = [first.port, second.port];
     const connect = vi.fn((): RuntimePort => {
       const next = queue.shift();
@@ -83,7 +83,7 @@ interface FakePort {
   disconnected: boolean;
 }
 
-function makeFakePort(name = "p"): FakePort {
+function createFakePort(name = "p"): FakePort {
   let onMsg: ((m: unknown) => void) | undefined;
   let onDis: (() => void) | undefined;
   const sent: unknown[] = [];

@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 describe("useSplit", () => {
   test("dragging the handle moves ratio toward the drag and persists on pointer up", () => {
-    const containerRef = stubContainerRef();
+    const containerRef = createStubContainerRef();
     const { result } = renderHook(() => {
       return useSplit({
         storageKey: "t",
@@ -22,7 +22,7 @@ describe("useSplit", () => {
 
     act(() => {
       result.current.handleProps.onPointerDown(
-        fakePointerEvent({ clientX: 500 }),
+        createFakePointerEvent({ clientX: 500 }),
       );
     });
     act(() => {
@@ -44,7 +44,7 @@ describe("useSplit", () => {
   });
 
   test("a large drag clamps to [min, 1-min] instead of running off the edge", () => {
-    const containerRef = stubContainerRef();
+    const containerRef = createStubContainerRef();
     const { result } = renderHook(() => {
       return useSplit({
         storageKey: "clamp",
@@ -56,7 +56,7 @@ describe("useSplit", () => {
 
     act(() => {
       result.current.handleProps.onPointerDown(
-        fakePointerEvent({ clientX: 0 }),
+        createFakePointerEvent({ clientX: 0 }),
       );
     });
     act(() => {
@@ -78,7 +78,7 @@ describe("useSplit", () => {
 
   test("reads a persisted ratio from localStorage on init instead of the initial value", () => {
     localStorage.setItem("persisted", "0.4");
-    const containerRef = stubContainerRef();
+    const containerRef = createStubContainerRef();
 
     const { result } = renderHook(() => {
       return useSplit({
@@ -94,7 +94,7 @@ describe("useSplit", () => {
 
   test("clamps an out-of-bounds persisted ratio to [min, 1-min] on init", () => {
     localStorage.setItem("persisted-oob", "0.99");
-    const containerRef = stubContainerRef();
+    const containerRef = createStubContainerRef();
 
     const { result } = renderHook(() => {
       return useSplit({
@@ -110,7 +110,7 @@ describe("useSplit", () => {
   });
 });
 
-function stubContainerRef(): RefObject<HTMLElement | null> {
+function createStubContainerRef(): RefObject<HTMLElement | null> {
   const el = {
     getBoundingClientRect: (): DOMRect => {
       return { width: 1000, height: 1000 } as DOMRect;
@@ -125,7 +125,9 @@ interface PointerEventOverrides {
   clientY?: number;
 }
 
-function fakePointerEvent(overrides: PointerEventOverrides): ReactPointerEvent {
+function createFakePointerEvent(
+  overrides: PointerEventOverrides,
+): ReactPointerEvent {
   const target = {
     setPointerCapture: vi.fn(),
     releasePointerCapture: vi.fn(),

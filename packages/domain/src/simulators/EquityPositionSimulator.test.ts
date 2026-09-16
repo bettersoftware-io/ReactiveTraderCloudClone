@@ -14,7 +14,7 @@ import { EquityPositionSimulator } from "./EquityPositionSimulator.js";
 
 describe("EquityPositionSimulator sell bookkeeping", () => {
   it("relieves cost at the running average, not the sale price", async () => {
-    const sim = new EquityPositionSimulator(stubMarketData());
+    const sim = new EquityPositionSimulator(createStubMarketData());
 
     // Two buys → avg 110 over 200 shares (cost 22_000).
     sim.bookFill({ symbol: "AAPL", side: "buy", qty: 100, price: 100 });
@@ -31,7 +31,7 @@ describe("EquityPositionSimulator sell bookkeeping", () => {
   });
 
   it("treats a sell with no prior lot as opening a short at the sale price", async () => {
-    const sim = new EquityPositionSimulator(stubMarketData());
+    const sim = new EquityPositionSimulator(createStubMarketData());
 
     // qty is 0, so there is no average to relieve against: the code falls back
     // to the fill price, which must leave the short's avgPrice at that price.
@@ -48,7 +48,7 @@ describe("EquityPositionSimulator marking", () => {
   it("subscribes to a symbol's quotes once however many fills arrive", () => {
     let subscribeCount = 0;
     const sim = new EquityPositionSimulator(
-      stubMarketData(() => {
+      createStubMarketData(() => {
         subscribeCount += 1;
       }),
     );
@@ -65,7 +65,7 @@ describe("EquityPositionSimulator marking", () => {
   it("subscribes separately per symbol", () => {
     let subscribeCount = 0;
     const sim = new EquityPositionSimulator(
-      stubMarketData(() => {
+      createStubMarketData(() => {
         subscribeCount += 1;
       }),
     );
@@ -78,7 +78,9 @@ describe("EquityPositionSimulator marking", () => {
 
   it("re-marks the position from a live quote", async () => {
     const quotes = new Subject<Tick>();
-    const sim = new EquityPositionSimulator(stubMarketData(undefined, quotes));
+    const sim = new EquityPositionSimulator(
+      createStubMarketData(undefined, quotes),
+    );
 
     sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
     quotes.next({ last: 130 });
@@ -92,7 +94,7 @@ describe("EquityPositionSimulator marking", () => {
 
 describe("EquityPositionSimulator flat positions", () => {
   it("drops a symbol once it is fully closed", async () => {
-    const sim = new EquityPositionSimulator(stubMarketData());
+    const sim = new EquityPositionSimulator(createStubMarketData());
 
     sim.bookFill({ symbol: "AAPL", side: "buy", qty: 10, price: 100 });
     sim.bookFill({ symbol: "MSFT", side: "buy", qty: 5, price: 400 });
@@ -116,7 +118,7 @@ interface Tick {
 
 /** A MarketDataPort whose quote stream is inert unless one is supplied, so a
  * test observes only the fills it drives. `onSubscribe` counts subscriptions. */
-function stubMarketData(
+function createStubMarketData(
   onSubscribe?: () => void,
   quotes?: Subject<Tick>,
 ): MarketDataPort {

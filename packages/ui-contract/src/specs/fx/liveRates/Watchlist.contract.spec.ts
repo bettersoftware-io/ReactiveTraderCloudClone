@@ -99,7 +99,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price({ movementType: PriceMovementType.UP }) },
-        histories: { EURUSD: twoTickHistory() },
+        histories: { EURUSD: createTwoTickHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -111,7 +111,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price({ movementType: PriceMovementType.DOWN }) },
-        histories: { EURUSD: descendingHistory() },
+        histories: { EURUSD: createDescendingHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -123,7 +123,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price() },
-        histories: { EURUSD: flatHistory() },
+        histories: { EURUSD: createFlatHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -138,7 +138,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price() },
-        histories: { EURUSD: flatHistory() },
+        histories: { EURUSD: createFlatHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -160,7 +160,7 @@ function price(over: Partial<Price> = {}): Price {
   };
 }
 
-function twoTickHistory(): readonly PriceTick[] {
+function createTwoTickHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",
@@ -181,7 +181,7 @@ function twoTickHistory(): readonly PriceTick[] {
   ];
 }
 
-function descendingHistory(): readonly PriceTick[] {
+function createDescendingHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",
@@ -202,7 +202,7 @@ function descendingHistory(): readonly PriceTick[] {
   ];
 }
 
-function flatHistory(): readonly PriceTick[] {
+function createFlatHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",

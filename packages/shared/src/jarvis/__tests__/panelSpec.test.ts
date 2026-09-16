@@ -13,8 +13,8 @@ import {
 
 describe("parsePanelSpec — valid input", () => {
   it("accepts a minimal valid spec (fxTicks + line)", () => {
-    const result = parsePanelSpec(minimalValidSpec(), knownSymbols);
-    expect(result).toEqual({ ok: true, spec: minimalValidSpec() });
+    const result = parsePanelSpec(createMinimalValidSpec(), knownSymbols);
+    expect(result).toEqual({ ok: true, spec: createMinimalValidSpec() });
   });
 
   it("accepts an analytics source with no symbols field", () => {
@@ -86,7 +86,7 @@ describe("parsePanelSpec — valid input", () => {
 
   it("tolerates unknown top-level keys — ignores rather than rejects", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       unexpectedExtra: "whatever",
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -129,7 +129,7 @@ describe("parsePanelSpec — root shape", () => {
 
 describe("parsePanelSpec — v", () => {
   it("rejects v !== 1", () => {
-    const spec = { ...minimalValidSpec(), v: 2 };
+    const spec = { ...createMinimalValidSpec(), v: 2 };
     const result = parsePanelSpec(spec, knownSymbols);
     expect(result).toEqual({
       ok: false,
@@ -138,7 +138,7 @@ describe("parsePanelSpec — v", () => {
   });
 
   it("rejects a missing v", () => {
-    const spec: Record<string, unknown> = { ...minimalValidSpec() };
+    const spec: Record<string, unknown> = { ...createMinimalValidSpec() };
     delete spec.v;
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
@@ -146,7 +146,7 @@ describe("parsePanelSpec — v", () => {
 
 describe("parsePanelSpec — title", () => {
   it("rejects an empty title", () => {
-    const spec = { ...minimalValidSpec(), title: "" };
+    const spec = { ...createMinimalValidSpec(), title: "" };
     const result = parsePanelSpec(spec, knownSymbols);
     expect(result).toEqual({
       ok: false,
@@ -155,29 +155,29 @@ describe("parsePanelSpec — title", () => {
   });
 
   it("rejects a title over 48 chars", () => {
-    const spec = { ...minimalValidSpec(), title: "x".repeat(49) };
+    const spec = { ...createMinimalValidSpec(), title: "x".repeat(49) };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
 
   it("accepts a title at exactly 48 chars", () => {
-    const spec = { ...minimalValidSpec(), title: "x".repeat(48) };
+    const spec = { ...createMinimalValidSpec(), title: "x".repeat(48) };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
   });
 
   it("accepts a title at exactly 1 char (the minimum)", () => {
-    const spec = { ...minimalValidSpec(), title: "x" };
+    const spec = { ...createMinimalValidSpec(), title: "x" };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
   });
 
   it("rejects a non-string title", () => {
-    const spec = { ...minimalValidSpec(), title: 42 };
+    const spec = { ...createMinimalValidSpec(), title: 42 };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
 });
 
 describe("parsePanelSpec — rationale", () => {
   it("rejects a rationale over 200 chars", () => {
-    const spec = { ...minimalValidSpec(), rationale: "x".repeat(201) };
+    const spec = { ...createMinimalValidSpec(), rationale: "x".repeat(201) };
     const result = parsePanelSpec(spec, knownSymbols);
     expect(result).toEqual({
       ok: false,
@@ -186,7 +186,7 @@ describe("parsePanelSpec — rationale", () => {
   });
 
   it("accepts a rationale at exactly 200 chars", () => {
-    const spec = { ...minimalValidSpec(), rationale: "x".repeat(200) };
+    const spec = { ...createMinimalValidSpec(), rationale: "x".repeat(200) };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
   });
 });
@@ -194,7 +194,7 @@ describe("parsePanelSpec — rationale", () => {
 describe("parsePanelSpec — source", () => {
   it("rejects an unknown source.kind", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       source: { kind: "somethingElse", symbols: ["EURUSD"] },
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -206,7 +206,7 @@ describe("parsePanelSpec — source", () => {
 
   it("rejects zero symbols on fxTicks", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       source: { kind: "fxTicks", symbols: [] },
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -218,7 +218,7 @@ describe("parsePanelSpec — source", () => {
 
   it("rejects more than 8 symbols", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       source: {
         kind: "fxTicks",
         symbols: [
@@ -250,7 +250,7 @@ describe("parsePanelSpec — source", () => {
     ];
 
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       source: { kind: "fxTicks", symbols: eightKnownSymbols },
     };
     expect(parsePanelSpec(spec, knownSymbols)).toEqual({
@@ -261,7 +261,7 @@ describe("parsePanelSpec — source", () => {
 
   it("rejects a symbol not in knownSymbols", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       source: { kind: "fxTicks", symbols: ["NOTAPAIR"] },
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -272,7 +272,7 @@ describe("parsePanelSpec — source", () => {
   });
 
   it("rejects a missing source", () => {
-    const spec: Record<string, unknown> = { ...minimalValidSpec() };
+    const spec: Record<string, unknown> = { ...createMinimalValidSpec() };
     delete spec.source;
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
@@ -281,7 +281,7 @@ describe("parsePanelSpec — source", () => {
 describe("parsePanelSpec — transforms", () => {
   it("rejects more than 4 transforms", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [
         { kind: "returns" },
         { kind: "returns" },
@@ -299,7 +299,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects an unknown transform kind", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "notAThing" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -311,7 +311,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects window.seconds below 10", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "window", seconds: 9 }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -323,7 +323,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects window.seconds above 3600", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "window", seconds: 3601 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
@@ -331,7 +331,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects a non-finite window.seconds", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "window", seconds: Number.POSITIVE_INFINITY }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
@@ -339,7 +339,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts window.seconds at exactly 10 (the minimum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "window", seconds: 10 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -347,7 +347,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts window.seconds at exactly 3600 (the maximum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "window", seconds: 3600 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -355,7 +355,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects rollingVol.samples below 2", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "rollingVol", samples: 1 }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -367,7 +367,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects rollingVol.samples above 500", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "rollingVol", samples: 501 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
@@ -375,7 +375,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts rollingVol.samples at exactly 2 (the minimum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "rollingVol", samples: 2 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -383,7 +383,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts rollingVol.samples at exactly 500 (the maximum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "rollingVol", samples: 500 }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -391,7 +391,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects topN.n below 1", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "topN", n: 0, by: "value" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -403,7 +403,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects topN.n above 8", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "topN", n: 9, by: "value" }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
@@ -411,7 +411,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts topN.n at exactly 1 (the minimum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "topN", n: 1, by: "value" }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -419,7 +419,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("accepts topN.n at exactly 8 (the maximum)", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "topN", n: 8, by: "value" }],
     };
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(true);
@@ -427,7 +427,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects an invalid topN.by", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "topN", n: 3, by: "nonsense" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -439,7 +439,7 @@ describe("parsePanelSpec — transforms", () => {
 
   it("rejects a spread transform missing b", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       transforms: [{ kind: "spread", a: "EURUSD" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -452,7 +452,7 @@ describe("parsePanelSpec — transforms", () => {
 
 describe("parsePanelSpec — viz", () => {
   it("rejects an unknown viz.kind", () => {
-    const spec = { ...minimalValidSpec(), viz: { kind: "pie" } };
+    const spec = { ...createMinimalValidSpec(), viz: { kind: "pie" } };
     const result = parsePanelSpec(spec, knownSymbols);
     expect(result).toEqual({
       ok: false,
@@ -461,7 +461,7 @@ describe("parsePanelSpec — viz", () => {
   });
 
   it("rejects a missing viz", () => {
-    const spec: Record<string, unknown> = { ...minimalValidSpec() };
+    const spec: Record<string, unknown> = { ...createMinimalValidSpec() };
     delete spec.viz;
     expect(parsePanelSpec(spec, knownSymbols).ok).toBe(false);
   });
@@ -470,7 +470,7 @@ describe("parsePanelSpec — viz", () => {
 describe("parsePanelSpec — annotations", () => {
   it("rejects more than 4 annotations", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       annotations: [
         { kind: "hline", value: 1, tone: "info" },
         { kind: "hline", value: 1, tone: "info" },
@@ -488,7 +488,7 @@ describe("parsePanelSpec — annotations", () => {
 
   it("rejects an unknown annotation kind", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       annotations: [{ kind: "arrow", value: 1, tone: "info" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -500,7 +500,7 @@ describe("parsePanelSpec — annotations", () => {
 
   it("rejects an unknown annotation tone", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       annotations: [{ kind: "hline", value: 1, tone: "critical" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -512,7 +512,7 @@ describe("parsePanelSpec — annotations", () => {
 
   it("rejects a non-finite hline.value", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       annotations: [{ kind: "hline", value: Number.NaN, tone: "info" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -524,7 +524,7 @@ describe("parsePanelSpec — annotations", () => {
 
   it("rejects a zone missing 'to'", () => {
     const spec = {
-      ...minimalValidSpec(),
+      ...createMinimalValidSpec(),
       annotations: [{ kind: "zone", from: 1, tone: "warn" }],
     };
     const result = parsePanelSpec(spec, knownSymbols);
@@ -583,7 +583,7 @@ describe("PANEL_SPEC_JSON_SCHEMA — derived from the same const arrays as the v
 });
 
 /** A minimal valid spec: fxTicks source + line viz, no transforms/annotations. */
-function minimalValidSpec(): Record<string, unknown> {
+function createMinimalValidSpec(): Record<string, unknown> {
   return {
     v: 1,
     title: "EURUSD line",

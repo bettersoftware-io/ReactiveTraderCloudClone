@@ -50,7 +50,7 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     vi.stubEnv("VITE_SERVER_URL", WS_URL);
     seedSession("tok-abc123");
 
-    const sockets = stubWebSocket();
+    const sockets = createStubWebSocket();
     const ports = buildBrowserPorts();
 
     // The composition root hands WsAdapter a token PROVIDER, not a token —
@@ -67,7 +67,7 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     vi.stubEnv("VITE_SERVER_URL", WS_URL);
     seedSession("first-token");
 
-    const sockets = stubWebSocket();
+    const sockets = createStubWebSocket();
     const ports = buildBrowserPorts();
 
     ports.transport?.connect();
@@ -213,7 +213,7 @@ function seedSession(token: string): void {
 
 /** Replaces WebSocket with an inert stub and returns the list of URLs it was
  * constructed with, so a test can read the token off the connect URL. */
-function stubWebSocket(): string[] {
+function createStubWebSocket(): string[] {
   const urls: string[] = [];
 
   vi.stubGlobal(

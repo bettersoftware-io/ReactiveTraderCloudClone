@@ -11,7 +11,7 @@ import { useMachine } from "#/useMachine";
 describe("useMachine", () => {
   it("returns the current state$ value and updates when it emits", () => {
     const subject = new BehaviorSubject(42);
-    const { machine } = makeTestMachine(subject);
+    const { machine } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -27,7 +27,7 @@ describe("useMachine", () => {
 
   it("passes intent methods through", () => {
     const subject = new BehaviorSubject(0);
-    const { machine, intent } = makeTestMachine(subject);
+    const { machine, intent } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -41,7 +41,7 @@ describe("useMachine", () => {
 
   it("calls the factory exactly once", () => {
     const factory = vi.fn(() => {
-      return makeTestMachine(new BehaviorSubject(0)).machine;
+      return createTestMachine(new BehaviorSubject(0)).machine;
     });
 
     renderHook(() => {
@@ -52,7 +52,7 @@ describe("useMachine", () => {
 
   it("does NOT dispose while still mounted", () => {
     const subject = new BehaviorSubject(0);
-    const { machine, dispose } = makeTestMachine(subject);
+    const { machine, dispose } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -65,7 +65,7 @@ describe("useMachine", () => {
 
   it("calls dispose() exactly once on unmount", () => {
     const subject = new BehaviorSubject(0);
-    const { machine, dispose } = makeTestMachine(subject);
+    const { machine, dispose } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -97,7 +97,7 @@ interface TestMachine<S> {
 /** Build a minimal test machine from a BehaviorSubject.
  * We subscribe immediately so the StateObservable stays warm
  * for the duration of the test. */
-function makeTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
+function createTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
   const state$ = state(subject, subject.getValue());
   // Keep the StateObservable warm (ref-count > 0) so toSignal can
   // read the synchronous default without entering Suspense.

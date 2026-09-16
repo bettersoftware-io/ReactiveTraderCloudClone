@@ -14,7 +14,7 @@ import { WatchlistPresenter } from "./WatchlistPresenter";
 describe("WatchlistPresenter", () => {
   it("emits the watchlist instruments", async () => {
     const instruments = [instrument("AAPL"), instrument("MSFT")];
-    const port = makePort(instruments, quote);
+    const port = createPort(instruments, quote);
     const presenter = new WatchlistPresenter(port);
     const result = await firstValueFrom(presenter.watchlist$.pipe(take(1)));
     expect(result).toHaveLength(2);
@@ -22,7 +22,7 @@ describe("WatchlistPresenter", () => {
   });
 
   it("returns the same Observable reference for quote$ on the same symbol (cached)", () => {
-    const port = makePort([instrument("AAPL")], quote);
+    const port = createPort([instrument("AAPL")], quote);
     const presenter = new WatchlistPresenter(port);
     const first = presenter.quote$("AAPL");
     const second = presenter.quote$("AAPL");
@@ -30,7 +30,7 @@ describe("WatchlistPresenter", () => {
   });
 
   it("returns different Observable references for different symbols", () => {
-    const port = makePort([instrument("AAPL"), instrument("MSFT")], quote);
+    const port = createPort([instrument("AAPL"), instrument("MSFT")], quote);
     const presenter = new WatchlistPresenter(port);
     const aapl = presenter.quote$("AAPL");
     const msft = presenter.quote$("MSFT");
@@ -38,7 +38,7 @@ describe("WatchlistPresenter", () => {
   });
 
   it("quote$ emits a quote for the given symbol", async () => {
-    const port = makePort([instrument("AAPL")], (s) => {
+    const port = createPort([instrument("AAPL")], (s) => {
       return quote(s);
     });
     const presenter = new WatchlistPresenter(port);
@@ -62,7 +62,7 @@ function quote(symbol: string): EquityQuote {
   };
 }
 
-function makePort(
+function createPort(
   instruments: EquityInstrument[],
   quoteFor: (symbol: string) => EquityQuote,
 ): MarketDataPort {

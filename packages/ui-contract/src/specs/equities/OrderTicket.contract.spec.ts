@@ -197,7 +197,7 @@ describe("OrderTicket — Est. Cost", () => {
   it("prices a market order off the live quote's last", async () => {
     const ticket = mount(OrderTicket, {
       props: { symbol: "AAPL" },
-      equities: { quotes: { AAPL: makeQuote(200) } },
+      equities: { quotes: { AAPL: createQuote(200) } },
     });
 
     await ticket.setQty(100);
@@ -207,7 +207,7 @@ describe("OrderTicket — Est. Cost", () => {
   it("prices a limit order off the entered limit price once one is set", async () => {
     const ticket = mount(OrderTicket, {
       props: { symbol: "AAPL" },
-      equities: { quotes: { AAPL: makeQuote(200) } },
+      equities: { quotes: { AAPL: createQuote(200) } },
     });
 
     await ticket.setType("limit");
@@ -226,7 +226,7 @@ describe("OrderTicket — Est. Cost", () => {
   it("reverts to pricing off the live last once a set limit price is cleared", async () => {
     const ticket = mount(OrderTicket, {
       props: { symbol: "AAPL" },
-      equities: { quotes: { AAPL: makeQuote(200) } },
+      equities: { quotes: { AAPL: createQuote(200) } },
     });
 
     await ticket.setType("limit");
@@ -256,7 +256,7 @@ describe("OrderTicket — fill animation", () => {
   });
 });
 
-function makeQuote(last: number): EquityQuote {
+function createQuote(last: number): EquityQuote {
   return {
     symbol: "AAPL",
     bid: last - 0.05,

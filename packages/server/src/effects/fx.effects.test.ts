@@ -119,9 +119,9 @@ describe("fx effects", () => {
 
     expect(ctx.pricing.getPriceUpdates).toHaveBeenCalledTimes(1);
 
-    ticks$.next(makeTick("EURUSD"));
+    ticks$.next(createTick("EURUSD"));
     expect(sent).toEqual([
-      { type: SERVER_MSG.PRICE_TICK, payload: makeTick("EURUSD") },
+      { type: SERVER_MSG.PRICE_TICK, payload: createTick("EURUSD") },
     ]);
   });
 
@@ -140,7 +140,7 @@ describe("fx effects", () => {
       type: CLIENT_MSG.SUBSCRIBE_PRICING,
       payload: { symbol: "EURUSD" },
     });
-    ticks$.next(makeTick("EURUSD"));
+    ticks$.next(createTick("EURUSD"));
     expect(sent).toHaveLength(1);
 
     messages$.next({
@@ -149,7 +149,7 @@ describe("fx effects", () => {
     });
     expect(ticks$.observed).toBe(false); // inner torn down at refcount 0
 
-    ticks$.next(makeTick("EURUSD")); // post-teardown tick is dropped
+    ticks$.next(createTick("EURUSD")); // post-teardown tick is dropped
     expect(sent).toHaveLength(1);
   });
 
@@ -295,7 +295,7 @@ describe("fx effects", () => {
   });
 });
 
-function makeTick(symbol: string): PriceTick {
+function createTick(symbol: string): PriceTick {
   return {
     symbol,
     bid: 1.1,

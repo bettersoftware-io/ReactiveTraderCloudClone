@@ -18,7 +18,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("equities watchlist-sort / blotter-view preference hooks", () => {
   it("useEqWatchlistSort reads default chg and sets sym", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWatchlistSort();
     });
@@ -30,7 +30,7 @@ describe("equities watchlist-sort / blotter-view preference hooks", () => {
   });
 
   it("useEqWatchlistSort().cycle() advances sym → chg → price → sym", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWatchlistSort();
     });
@@ -55,7 +55,7 @@ describe("equities watchlist-sort / blotter-view preference hooks", () => {
   });
 
   it("useEqBlotterView reads default orders and sets positions", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqBlotterView();
     });
@@ -67,7 +67,7 @@ describe("equities watchlist-sort / blotter-view preference hooks", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

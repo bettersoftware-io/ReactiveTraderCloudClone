@@ -189,7 +189,7 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
   let resolveFns: Array<() => void> = [];
   let originalAnimate: typeof Element.prototype.animate | undefined;
 
-  function fakeAnimate(): Animation {
+  function createFakeAnimate(): Animation {
     let resolveFinished: (() => void) | undefined;
     const finished = new Promise<Animation>((resolve) => {
       resolveFinished = (): void => {
@@ -206,7 +206,7 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
   beforeEach(() => {
     resolveFns = [];
     originalAnimate = Element.prototype.animate;
-    Element.prototype.animate = fakeAnimate;
+    Element.prototype.animate = createFakeAnimate;
   });
 
   afterEach(() => {

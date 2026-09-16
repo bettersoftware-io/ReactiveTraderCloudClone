@@ -35,7 +35,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(
       pointerEvent({ clientX: 100, clientY: 100 }),
@@ -52,7 +52,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));
     // Way past the clamped range on both axes.
@@ -70,7 +70,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -91,7 +91,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -115,7 +115,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const [open, setOpen] = createSignal(true);
     const result = page.mount({ open });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));
     result.headerProps.onPointerMove(
@@ -135,7 +135,7 @@ function alwaysOpen(): boolean {
   return true;
 }
 
-function stubDialogEl(rect: DOMRect): HTMLDivElement {
+function createStubDialogEl(rect: DOMRect): HTMLDivElement {
   const el = document.createElement("div");
 
   el.getBoundingClientRect = (): DOMRect => {

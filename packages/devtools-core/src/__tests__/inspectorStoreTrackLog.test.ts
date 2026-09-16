@@ -8,7 +8,7 @@ describe("InspectorStore trackLog option", () => {
     const logged = new InspectorStore({ coalesce: false });
     const unlogged = new InspectorStore({ coalesce: false, trackLog: false });
 
-    for (const msg of messages()) {
+    for (const msg of createMessages()) {
       logged.apply(msg);
       unlogged.apply(msg);
     }
@@ -26,7 +26,7 @@ describe("InspectorStore trackLog option", () => {
   it("clone() propagates trackLog: false", () => {
     const unlogged = new InspectorStore({ coalesce: false, trackLog: false });
 
-    for (const msg of messages()) {
+    for (const msg of createMessages()) {
       unlogged.apply(msg);
     }
 
@@ -54,7 +54,7 @@ function batch(seq: number, streamId: string, value: number): AppToInspector {
   };
 }
 
-function messages(): AppToInspector[] {
+function createMessages(): AppToInspector[] {
   return [
     { kind: "welcome", v: 2, appId: "test-app" },
     { kind: "snapshot", streams: [], machines: [] },

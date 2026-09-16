@@ -287,7 +287,7 @@ describe("InspectorClient", () => {
   });
 
   it("re-sends hello every 2s until connected, then pings, then stops after dispose", () => {
-    const { channel, sent, inbound$ } = fakeChannel();
+    const { channel, sent, inbound$ } = createFakeChannel();
     const store = new InspectorStore();
     const client = new InspectorClient(channel, store);
 
@@ -316,7 +316,7 @@ describe("InspectorClient", () => {
   });
 
   it("reverts to hello after a bye so it reconnects when the app returns", () => {
-    const { channel, sent, inbound$ } = fakeChannel();
+    const { channel, sent, inbound$ } = createFakeChannel();
     const store = new InspectorStore();
     const client = new InspectorClient(channel, store);
 
@@ -334,7 +334,7 @@ describe("InspectorClient", () => {
   });
 
   it("pipes inbound AppToInspector messages into the store", () => {
-    const { channel, inbound$ } = fakeChannel();
+    const { channel, inbound$ } = createFakeChannel();
     const store = new InspectorStore();
     const client = new InspectorClient(channel, store);
 
@@ -403,7 +403,7 @@ function drainOneFlush(
   return start + framesPerFlush;
 }
 
-function fakeChannel(): FakeChannel {
+function createFakeChannel(): FakeChannel {
   const sent: InspectorToApp[] = [];
   const inbound$ = new Subject<AppToInspector>();
   const channel: Duplex<InspectorToApp, AppToInspector> = {

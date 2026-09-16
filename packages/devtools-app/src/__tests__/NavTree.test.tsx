@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 test("renders roots expanded, groups collapsed; clicking a label selects; caret toggles", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Group headers expanded by default → presenter nodes visible; presenter
   // collapsed by default → its streams hidden.
@@ -41,7 +41,7 @@ test("renders roots expanded, groups collapsed; clicking a label selects; caret 
 });
 
 test("shows counts, the wire health detail, and dims disposed machines", () => {
-  tree.mount({ nodes: sampleTree() });
+  tree.mount({ nodes: createSampleTree() });
 
   expect(tree.node("all").textContent).toContain("7");
   expect(tree.hasLabel("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 0")).toBe(true);
@@ -51,7 +51,7 @@ test("shows counts, the wire health detail, and dims disposed machines", () => {
 });
 
 test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // No container tabIndex to focus (focus-WITHIN, not a focused div): focus
   // the first row's label button, same as a real keyboard user tabbing in,
@@ -84,7 +84,7 @@ test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands"
 });
 
 test("a node flashes when its lastSeq advances, not on unrelated re-renders", () => {
-  const handle = tree.mount({ nodes: sampleTree() });
+  const handle = tree.mount({ nodes: createSampleTree() });
   const before = animateSpy.mock.calls.length;
 
   handle.bump("presenter:blotter", 9);
@@ -97,7 +97,7 @@ test("a node flashes when its lastSeq advances, not on unrelated re-renders", ()
 });
 
 test("collapsing: a header label closes its own group, a caret closes an open node, and ArrowLeft does it from the keyboard", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // A header row carries no scope, so clicking its LABEL toggles the group
   // instead of selecting anything.
@@ -126,7 +126,7 @@ test("collapsing: a header label closes its own group, a caret closes an open no
 });
 
 test("a scope-null disposed leaf (evicted machines) renders no caret and is not selectable", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   expect(tree.scopeIds()).not.toContain("machines:evicted");
   expect(tree.labelIsExpandable("Evicted (2)")).toBe(false);
@@ -136,7 +136,7 @@ test("a scope-null disposed leaf (evicted machines) renders no caret and is not 
 });
 
 test("clicking a node label re-syncs the keyboard cursor, not just the selection", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Mouse-selecting blotter must move the keyboard cursor onto it too —
   // otherwise it stays seeded on the initial scope ("all") and the next
@@ -162,7 +162,7 @@ test("clicking a node label re-syncs the keyboard cursor, not just the selection
 });
 
 test("clicking the already-selected node re-syncs a cursor the arrow keys had parked elsewhere", () => {
-  const selected = tree.mount({ nodes: sampleTree() });
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Select blotter (X) — selectedId changes, so the render-time derivation
   // alone already snaps the cursor onto it (see the previous test).
@@ -196,7 +196,7 @@ test("clicking the already-selected node re-syncs a cursor the arrow keys had pa
 });
 
 test("a scope change from outside the tree moves the keyboard cursor to the new selection", () => {
-  const selected = tree.mountWithExternalScope({ nodes: sampleTree() });
+  const selected = tree.mountWithExternalScope({ nodes: createSampleTree() });
 
   // A button OUTSIDE the tree drives the scope change — the way a probe
   // push/pop, Esc, or "show in All" does — never through a click inside
@@ -218,7 +218,7 @@ test("a scope change from outside the tree moves the keyboard cursor to the new 
   });
 });
 
-function sampleTree(): NavNode[] {
+function createSampleTree(): NavNode[] {
   return [
     leaf(ALL_SCOPE, "All", 7, 7),
     {

@@ -19,7 +19,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("credit RFQ hooks", () => {
   it("useCreditRfqFilterPreference reads default live and writes closed", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useCreditRfqFilterPreference();
     });
@@ -31,7 +31,7 @@ describe("credit RFQ hooks", () => {
   });
 
   it("useCancelRfq resolves after the command completes", async () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const rfqId = await createOpenRfq(hooks);
 
     const { result } = renderHook(() => {
@@ -55,7 +55,7 @@ describe("credit RFQ hooks", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

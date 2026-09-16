@@ -124,7 +124,7 @@ describe("drawPlotScene: candles", () => {
   const candles: readonly SceneCandle[] = candleChartScene.candles;
 
   it("clears the canvas exactly once", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
     expect(
@@ -136,7 +136,7 @@ describe("drawPlotScene: candles", () => {
 
   it("strokes one grid line per scene.grid entry using palette.grid", () => {
     expect(candleChartScene.grid.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     const gridStrokeStyle = calls.find((c) => {
@@ -151,7 +151,7 @@ describe("drawPlotScene: candles", () => {
   });
 
   it("draws each candle's wick then body fillRect, colored by up/down", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     const fillRects = calls.filter((c) => {
@@ -193,7 +193,7 @@ describe("drawPlotScene: candles", () => {
     expect(lastCandle.glow).toBe(true);
     const lastColor = lastCandle.up ? PALETTE.up : PALETTE.down;
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -231,7 +231,7 @@ describe("drawPlotScene: line", () => {
   const plot = plotOf(lineScene);
 
   it("draws no candle rects and strokes one polyline over linePoints at lineWidth 1.5", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -284,7 +284,7 @@ describe("drawPlotScene: area", () => {
   const plot = plotOf(areaScene);
 
   it("fills the area under the line with a gradient at 0.35 alpha closed to the bottom edge, then strokes the line on top", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -355,7 +355,7 @@ describe("drawPlotScene: area", () => {
 describe("drawPlotScene: compare overlay", () => {
   it("strokes the compare line in palette.compare when compareLinePoints is non-empty", () => {
     expect(compareScene.compareLinePoints.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(compareScene), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -366,7 +366,7 @@ describe("drawPlotScene: compare overlay", () => {
 
   it("omits the compare pass when compareLinePoints is empty", () => {
     expect(lineScene.compareLinePoints).toEqual([]);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(lineScene), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -378,7 +378,7 @@ describe("drawPlotScene: compare overlay", () => {
 
 describe("drawPlotScene: overlays", () => {
   it("strokes one polyline per overlay, id-keyed to sma20/ema50, unknown id falling back to palette.line", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(candleChartScene, OVERLAYS), PALETTE, SIZE);
 
     const strokeStyleValues = calls
@@ -414,7 +414,7 @@ describe("drawPlotScene: drawings", () => {
     });
     expect(draft?.handles.length).toBeGreaterThan(0);
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], drawingsScene),
@@ -461,7 +461,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
   // The pinned values mirror the DOM stylesheets' stroke-widths
   // (SvgPathLayer/DrawingsLayer/IndicatorPane .module.css).
   it("overlays stroke at 1, the compare line at 1.5, regardless of scene kind", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(compareScene, OVERLAYS), PALETTE, SIZE);
 
     const stroked = strokedWidths(calls);
@@ -500,7 +500,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
       handles: [],
     };
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], [selected, unselected]),
@@ -526,7 +526,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
       start: 0,
       end: 60,
     });
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     const stroked = strokedWidths(calls);
@@ -553,7 +553,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
 describe("drawPlotScene: crosshair", () => {
   it("strokes one vertical and one horizontal 1px line in palette.crosshair when present", () => {
     expect(crosshair).not.toBeNull();
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], [], crosshair),
@@ -573,7 +573,7 @@ describe("drawPlotScene: crosshair", () => {
   });
 
   it("omits the crosshair lines when null", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(candleChartScene, [], [], null), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -588,7 +588,7 @@ describe("drawVolumeScene", () => {
 
   it("clears once, then draws one fillRect per bar rising from the bottom edge, colored by up/down", () => {
     expect(bars.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawVolumeScene(ctx, bars, PALETTE, SIZE);
 
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
@@ -630,7 +630,7 @@ describe("drawPaneScene: macd", () => {
   it("strokes guides with palette.paneGuide, fills the histogram from the zero line, and strokes macd/signal by key", () => {
     expect(scene.histogram.length).toBeGreaterThan(0);
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
@@ -679,7 +679,7 @@ describe("drawPaneScene: rsi", () => {
 
   it("strokes the rsi line with palette.paneRsi and has no histogram", () => {
     expect(scene.histogram).toEqual([]);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     expect(
@@ -698,7 +698,7 @@ describe("drawPaneScene: rsi", () => {
 describe("drawPlotScene: empty scene", () => {
   it("clears once and draws nothing else", () => {
     const emptyScene = chartScene([], 0, false);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(emptyScene), PALETTE, SIZE);
     expect(calls).toEqual([{ op: "clearRect", args: [0, 0, 100, 100] }]);
   });
@@ -841,7 +841,7 @@ function strokedWidths(calls: readonly RecordedCall[]): readonly StrokedCall[] {
 // pinned without a DOM/jsdom canvas backend (jsdom's canvas is
 // unimplemented anyway). `createLinearGradient` returns a recording
 // CanvasGradient2D so a fill pass's `addColorStop` calls are visible too.
-function recorderCtx(): RecorderCtx {
+function createRecorderCtx(): RecorderCtx {
   const calls: RecordedCall[] = [];
   let fillStyleVal: string | CanvasGradient2D = "";
   let strokeStyleVal = "";

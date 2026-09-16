@@ -21,7 +21,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("is dormant until hello: no subscription on registered sources", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
     const source$ = new Subject<number>();
     hub.registerStream("a.b$", source$);
     expect(source$.observed).toBe(false);
@@ -34,7 +34,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("coalesces per-stream within a flush window and counts emissions", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
     const source$ = new Subject<number>();
     hub.registerStream("prices.EURUSD", source$);
     inbound$.next({ kind: "hello", v: 1 });
@@ -54,7 +54,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("snapshot includes machines created while dormant, with warm state", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
     const state$ = new Subject<string>();
     const id = hub.machineCreated("tileExecution", ["EURUSD"], state$);
     inbound$.next({ kind: "hello", v: 1 });
@@ -69,7 +69,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("goes dormant on bye and on heartbeat timeout", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const source$ = new Subject<number>();
     hub.registerStream("s", source$);
     inbound$.next({ kind: "hello", v: 1 });
@@ -83,7 +83,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("intent and wire events are dropped while dormant, queued while live", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
     hub.wireOut("subscribe_prices", { symbol: "EURUSD" });
     expect(sent).toEqual([]);
     inbound$.next({ kind: "hello", v: 1 });
@@ -97,7 +97,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("never lets a hostile source$ throw out of registerStream while live", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     inbound$.next({ kind: "hello", v: 1 });
     expect(() => {
       hub.registerStream("hostile", throwingObservable());
@@ -105,7 +105,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("machineCreated still returns a machineId when state$ throws on subscribe while live", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     inbound$.next({ kind: "hello", v: 1 });
     let id = "";
     expect(() => {
@@ -119,7 +119,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("a ping received while live resets the heartbeat clock, keeping the hub live past the original timeout", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     inbound$.next({ kind: "hello", v: 1 });
 
     vi.advanceTimersByTime(9_000); // just under the 10s default timeout
@@ -133,7 +133,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("never lets goLive's bulk resubscribe throw out of attachTransport when a pre-registered stream is hostile", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
 
     // Registered while dormant: goLive()'s own resubscribe loop (not
     // registerStream's guarded path) is what calls subscribe() here, and that
@@ -214,7 +214,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("does not resubscribe an already-disposed machine when the hub goes live", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const deadState$ = new Subject<string>();
     const aliveState$ = new Subject<string>();
 
@@ -230,7 +230,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("releases a live machine's subscription when the hub goes dormant", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const state$ = new Subject<string>();
 
     inbound$.next({ kind: "hello", v: 1 });
@@ -243,7 +243,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("dispose() on a hub that never went live is a safe no-op", () => {
-    const { hub, sent } = harness();
+    const { hub, sent } = createHarness();
 
     expect(() => {
       hub.dispose();
@@ -254,7 +254,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("reports a stream error via transport instead of letting it propagate", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
     const source$ = new Subject<number>();
 
     hub.registerStream("prices.EURUSD", source$);
@@ -275,7 +275,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("reports a machine state error via transport instead of letting it propagate", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
     const state$ = new Subject<string>();
 
     inbound$.next({ kind: "hello", v: 1 });
@@ -296,7 +296,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("coalesces machine state emissions within a flush window and counts them", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
     const state$ = new Subject<string>();
 
     inbound$.next({ kind: "hello", v: 1 });
@@ -320,7 +320,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("re-hello after a flush still reports the machine's last known state from before the flush cleared it", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
     const state$ = new Subject<string>();
 
     inbound$.next({ kind: "hello", v: 1 });
@@ -340,7 +340,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("the very first snapshot reflects a machine's synchronous replay value, not just its lastState", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
     // A BehaviorSubject replays its current value synchronously on subscribe
     // — goLive()'s own initial subscribe pass sees it as a pending emission
     // BEFORE sendWelcomeAndSnapshot runs in that same call, unlike lastState
@@ -359,7 +359,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("reports the error through transport.inbound when timestamping a machine intent fails", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
 
@@ -382,7 +382,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("reports the error through transport.inbound when timestamping a wire event fails", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
 
@@ -405,7 +405,7 @@ describe("DevtoolsHub", () => {
   });
 
   it("reports the error through transport.inbound when a machine's own unsubscribe throws on dispose", () => {
-    const { hub, inbound$, sent } = harness();
+    const { hub, inbound$, sent } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
     const id = hub.machineCreated(
@@ -560,7 +560,7 @@ function subscriptionThatThrowsOnUnsubscribe(): Observable<unknown> {
   } as unknown as Observable<unknown>;
 }
 
-function harness(): Harness {
+function createHarness(): Harness {
   const sent: AppToInspector[] = [];
   const inbound$ = new Subject<InspectorToApp>();
   const hub = new DevtoolsHub({ appId: "test-app" });

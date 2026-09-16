@@ -44,7 +44,12 @@ describe("AuthPresenter", () => {
     store.write(session);
 
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-1", user: USER, exp: 9_000_000 }),
+      createFakeAuthPort({
+        ok: true,
+        token: "tok-1",
+        user: USER,
+        exp: 9_000_000,
+      }),
       store,
       now,
     );
@@ -74,7 +79,7 @@ describe("AuthPresenter", () => {
     store.write(session);
 
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "invalid" }),
+      createFakeAuthPort({ ok: false, reason: "invalid" }),
       store,
       now,
     );
@@ -93,7 +98,7 @@ describe("AuthPresenter", () => {
   it("starts unauthenticated with an empty store", () => {
     const store = new InMemorySessionStore();
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "invalid" }),
+      createFakeAuthPort({ ok: false, reason: "invalid" }),
       store,
     );
 
@@ -114,7 +119,12 @@ describe("AuthPresenter", () => {
 
     const store = new InMemorySessionStore();
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-2", user: USER, exp: 9_000_000 }),
+      createFakeAuthPort({
+        ok: true,
+        token: "tok-2",
+        user: USER,
+        exp: 9_000_000,
+      }),
       store,
       now,
     );
@@ -145,7 +155,7 @@ describe("AuthPresenter", () => {
   it("login failure (invalid) sets an error and stays unauthenticated", () => {
     const store = new InMemorySessionStore();
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "invalid" }),
+      createFakeAuthPort({ ok: false, reason: "invalid" }),
       store,
     );
 
@@ -165,7 +175,7 @@ describe("AuthPresenter", () => {
   it("login failure (unavailable) reports a service-unavailable error", () => {
     const store = new InMemorySessionStore();
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "unavailable" }),
+      createFakeAuthPort({ ok: false, reason: "unavailable" }),
       store,
     );
 
@@ -187,7 +197,12 @@ describe("AuthPresenter", () => {
       exp: now() + 1000,
     });
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-3", user: USER, exp: 9_000_000 }),
+      createFakeAuthPort({
+        ok: true,
+        token: "tok-3",
+        user: USER,
+        exp: 9_000_000,
+      }),
       store,
       now,
     );
@@ -218,7 +233,7 @@ describe("AuthPresenter", () => {
       username: "astark",
       exp: currentNow + 1000,
     });
-    const auth = fakeAuthPort({
+    const auth = createFakeAuthPort({
       ok: true,
       token: "tok-4",
       user: USER,
@@ -261,7 +276,7 @@ describe("AuthPresenter", () => {
       username: "astark",
       exp: now() + 1000,
     });
-    const auth = fakeAuthPort({ ok: false, reason: "invalid" });
+    const auth = createFakeAuthPort({ ok: false, reason: "invalid" });
     const presenter = new AuthPresenter(auth, store, now);
 
     presenter.lock();
@@ -292,7 +307,7 @@ describe("AuthPresenter", () => {
       exp: now() + 1000,
     });
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: false, reason: "unavailable" }),
+      createFakeAuthPort({ ok: false, reason: "unavailable" }),
       store,
       now,
     );
@@ -323,7 +338,12 @@ describe("AuthPresenter", () => {
       exp: now() + 1000,
     });
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-6", user: USER, exp: 9_000_000 }),
+      createFakeAuthPort({
+        ok: true,
+        token: "tok-6",
+        user: USER,
+        exp: 9_000_000,
+      }),
       store,
       now,
     );
@@ -342,7 +362,7 @@ describe("AuthPresenter", () => {
   });
 
   it("unlock sets unlocking while in flight and leaves status authenticated", () => {
-    const { presenter, resolve } = lockedPresenter();
+    const { presenter, resolve } = createLockedPresenter();
 
     presenter.unlock("mcdc2026");
 
@@ -362,7 +382,7 @@ describe("AuthPresenter", () => {
   });
 
   it("unlock clears unlocking on failure and stays locked", () => {
-    const { presenter, resolve } = lockedPresenter();
+    const { presenter, resolve } = createLockedPresenter();
 
     presenter.unlock("wrong");
 
@@ -385,7 +405,7 @@ describe("AuthPresenter", () => {
 
   it("login stamps the current variant and advances the pointer on start", () => {
     const { cycle, advanced } = recordingCycle("handshake");
-    const { port } = deferredAuthPort();
+    const { port } = createDeferredAuthPort();
     const presenter = new AuthPresenter(
       port,
       new InMemorySessionStore(),
@@ -403,7 +423,7 @@ describe("AuthPresenter", () => {
 
   it("the cycle pointer wraps reactor -> handshake", () => {
     const { cycle, advanced } = recordingCycle("reactor");
-    const { port } = deferredAuthPort();
+    const { port } = createDeferredAuthPort();
     const presenter = new AuthPresenter(
       port,
       new InMemorySessionStore(),
@@ -419,7 +439,7 @@ describe("AuthPresenter", () => {
 
   it("unlock also stamps and advances the variant", () => {
     const { cycle, advanced } = recordingCycle("reactor");
-    const { port, resolve } = deferredAuthPort();
+    const { port, resolve } = createDeferredAuthPort();
     const presenter = new AuthPresenter(
       port,
       new InMemorySessionStore(),
@@ -459,7 +479,12 @@ describe("AuthPresenter", () => {
 
     const { cycle, advanced } = recordingCycle("reactor");
     const presenter = new AuthPresenter(
-      fakeAuthPort({ ok: true, token: "tok-1", user: USER, exp: 9_000_000 }),
+      createFakeAuthPort({
+        ok: true,
+        token: "tok-1",
+        user: USER,
+        exp: 9_000_000,
+      }),
       store,
       now,
       cycle,
@@ -481,7 +506,7 @@ interface FakeAuthPort extends AuthPort {
 }
 
 /** A stub `AuthPort` that resolves every `login()` call with the same preprogrammed outcome, recording its args. */
-function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
+function createFakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
   const calls: Array<readonly [string, string]> = [];
 
   return {
@@ -494,7 +519,7 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
 }
 
 /** An `AuthPort` stub whose outcome the test resolves explicitly, so the
- * in-flight state is observable. `fakeAuthPort` uses `of(outcome)`, which
+ * in-flight state is observable. `createFakeAuthPort` uses `of(outcome)`, which
  * emits synchronously and skips straight past the wait state.
  *
  * Each `login()` call gets its own `Subject`, and `resolve()` always targets
@@ -502,7 +527,7 @@ function fakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
  * independent async operation. `AuthPresenter` never unsubscribes its
  * internal `.subscribe()` callback, so a single shared `Subject` across calls
  * would let a *stale* subscription (e.g. the initial `login()` from
- * `lockedPresenter`'s setup) also receive a later `resolve()` meant for
+ * `createLockedPresenter`'s setup) also receive a later `resolve()` meant for
  * `unlock()` — silently re-running `commitLoginOutcome` and clobbering
  * `status` out from under the in-flight `unlock()` assertions. */
 interface DeferredAuthPort {
@@ -510,7 +535,7 @@ interface DeferredAuthPort {
   readonly resolve: (outcome: AuthOutcome) => void;
 }
 
-function deferredAuthPort(): DeferredAuthPort {
+function createDeferredAuthPort(): DeferredAuthPort {
   let current: Subject<AuthOutcome> | null = null;
 
   return {
@@ -555,8 +580,8 @@ interface LockedPresenter {
   readonly resolve: (outcome: AuthOutcome) => void;
 }
 
-function lockedPresenter(): LockedPresenter {
-  const { port, resolve } = deferredAuthPort();
+function createLockedPresenter(): LockedPresenter {
+  const { port, resolve } = createDeferredAuthPort();
   const presenter = new AuthPresenter(port, new InMemorySessionStore());
 
   presenter.login("astark", "mcdc2026");

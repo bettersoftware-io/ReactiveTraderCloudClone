@@ -714,7 +714,7 @@ describe("createJarvisDriverMachine", () => {
   it("a throwing injected dep is caught per-command: the batch continues and the driver survives for the next batch", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const harness = buildHarness(ts);
+      const harness = createHarness(ts);
       const throwingWorkspaceNav: Harness["workspaceNav"] = {
         ...harness.workspaceNav,
         intents: {
@@ -856,7 +856,7 @@ describe("createJarvisDriverMachine", () => {
   it("outcomes$ emits once per command, in application order, at the SAME frames lastBatch grows at — both applied AND skipped outcomes flow through", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const harness = buildHarness(ts);
+      const harness = createHarness(ts);
       const handle = createJarvisDriverMachine(depsFrom(harness));
 
       const seen: OutcomeEmission[] = [];
@@ -899,7 +899,7 @@ describe("createJarvisDriverMachine", () => {
   it("outcomes$ keeps emitting across a SECOND queued batch — never completes", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const harness = buildHarness(ts);
+      const harness = createHarness(ts);
       const handle = createJarvisDriverMachine(depsFrom(harness));
 
       const outcomes: DriveOutcome[] = [];
@@ -934,7 +934,7 @@ describe("createJarvisDriverMachine", () => {
   it("a late subscriber replays the current lastBatch rather than starting empty (warm subscription)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const harness = buildHarness(ts);
+      const harness = createHarness(ts);
       const handle = createJarvisDriverMachine(depsFrom(harness));
 
       ts.schedule(() => {
@@ -1005,7 +1005,7 @@ interface HarnessOverrides {
   readonly dockedPanelIds$?: JarvisDriverDeps["dockedPanelIds$"];
 }
 
-function buildHarness(
+function createHarness(
   ts: TestScheduler,
   overrides: HarnessOverrides = {},
 ): Harness {
@@ -1085,7 +1085,7 @@ function run(
   const ts = scheduler();
   let harness!: Harness;
   ts.run(({ flush }) => {
-    harness = buildHarness(ts, overrides);
+    harness = createHarness(ts, overrides);
     const handle = createJarvisDriverMachine(depsFrom(harness, overrides));
     const sub = handle.state$.subscribe((s: JarvisDriverState) => {
       seen.push({ frame: ts.now(), lastBatch: s.lastBatch });

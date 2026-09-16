@@ -25,7 +25,7 @@ import {
 } from "../driveCommand.js";
 
 describe("parseDriveBatch — one valid batch per kind", () => {
-  it("accepts switchTab", () => {
+  it("accepts createSwitchTabCommand", () => {
     const batch = { v: 1, commands: [{ kind: "switchTab", tab: "credit" }] };
     expect(parseDriveBatch(batch)).toEqual({ ok: true, batch });
   });
@@ -110,17 +110,17 @@ describe("parseDriveBatch — one valid batch per kind", () => {
 });
 
 describe("parseDriveBatch — command count bounds", () => {
-  function switchTab(): Record<string, unknown> {
+  function createSwitchTabCommand(): Record<string, unknown> {
     return { kind: "switchTab", tab: "fx" };
   }
 
   it("accepts exactly 1 command (the minimum)", () => {
-    const batch = { v: 1, commands: [switchTab()] };
+    const batch = { v: 1, commands: [createSwitchTabCommand()] };
     expect(parseDriveBatch(batch).ok).toBe(true);
   });
 
   it("accepts exactly 8 commands (the maximum)", () => {
-    const batch = { v: 1, commands: Array(8).fill(switchTab()) };
+    const batch = { v: 1, commands: Array(8).fill(createSwitchTabCommand()) };
     expect(parseDriveBatch(batch).ok).toBe(true);
   });
 
@@ -133,7 +133,7 @@ describe("parseDriveBatch — command count bounds", () => {
   });
 
   it("rejects 9 commands with the exact error", () => {
-    const batch = { v: 1, commands: Array(9).fill(switchTab()) };
+    const batch = { v: 1, commands: Array(9).fill(createSwitchTabCommand()) };
     expect(parseDriveBatch(batch)).toEqual({
       ok: false,
       error: "commands: must contain 1..8 commands",

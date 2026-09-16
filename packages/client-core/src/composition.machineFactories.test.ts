@@ -22,7 +22,7 @@ import { createMachineFactories, type Presenters } from "./composition";
 
 describe("createMachineFactories — wiring", () => {
   it("staleFlag watches the PRICE stream for its pair", () => {
-    const { presenters, spies } = stubPresenters();
+    const { presenters, spies } = createStubPresenters();
 
     createMachineFactories(presenters).staleFlag(PAIR);
 
@@ -30,7 +30,7 @@ describe("createMachineFactories — wiring", () => {
   });
 
   it("analyticsStaleFlag watches ANALYTICS, not the price stream", () => {
-    const { presenters, spies } = stubPresenters();
+    const { presenters, spies } = createStubPresenters();
 
     createMachineFactories(presenters).analyticsStaleFlag();
 
@@ -40,7 +40,7 @@ describe("createMachineFactories — wiring", () => {
   });
 
   it("rfqSubmission and ticketSubmission reach for DIFFERENT rfqs members", () => {
-    const { presenters, spies } = stubPresenters();
+    const { presenters, spies } = createStubPresenters();
     const factories = createMachineFactories(presenters);
 
     factories.rfqSubmission();
@@ -55,7 +55,7 @@ describe("createMachineFactories — wiring", () => {
   });
 
   it("boot seeds from the persisted variant and advances it for the next boot", () => {
-    const { presenters, spies } = stubPresenters();
+    const { presenters, spies } = createStubPresenters();
 
     createMachineFactories(presenters).boot(() => {});
 
@@ -68,7 +68,7 @@ describe("createMachineFactories — wiring", () => {
   });
 
   it("builds every remaining factory without an eager side effect", () => {
-    const { presenters, spies } = stubPresenters();
+    const { presenters, spies } = createStubPresenters();
     const factories = createMachineFactories(presenters);
 
     expect(factories.tileExecution(PAIR)).toBeDefined();
@@ -108,7 +108,7 @@ const PAIR = { symbol: "EURUSD", pipsPosition: 4 } as unknown as CurrencyPair;
  * deliberate and narrow — widening it to a full `Presenters` double would add
  * ~20 unused members whose drift nobody would notice.
  */
-function stubPresenters(): PresenterStub {
+function createStubPresenters(): PresenterStub {
   const spies: FactorySpies = {
     price$: vi.fn(() => {
       return NEVER;

@@ -25,7 +25,9 @@ afterEach(() => {
 
 describe("settleAnimationsForCapture", () => {
   it("finishes an ordinary finite animation, as Playwright's pass does", () => {
-    const animation = fakeAnimation(fakeEffect(fakeTarget(null), 500));
+    const animation = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), 500),
+    );
 
     settleWith([animation]);
 
@@ -34,8 +36,8 @@ describe("settleAnimationsForCapture", () => {
   });
 
   it("cancels an infinite animation, as Playwright's pass does", () => {
-    const animation = fakeAnimation(
-      fakeEffect(fakeTarget(null), Number.POSITIVE_INFINITY),
+    const animation = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), Number.POSITIVE_INFINITY),
     );
 
     settleWith([animation]);
@@ -44,8 +46,8 @@ describe("settleAnimationsForCapture", () => {
   });
 
   it("holds a fast-forwarded animation paused at its mount frame", () => {
-    const animation = fakeAnimation(
-      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    const animation = createFakeAnimation(
+      createFakeEffect(createFakeTarget("fast-forwarded"), 10_000),
     );
 
     settleWith([animation]);
@@ -55,8 +57,8 @@ describe("settleAnimationsForCapture", () => {
   });
 
   it("finishes an animation whose target carries some other data-motion", () => {
-    const animation = fakeAnimation(
-      fakeEffect(fakeTarget("decorative"), 10_000),
+    const animation = createFakeAnimation(
+      createFakeEffect(createFakeTarget("decorative"), 10_000),
     );
 
     settleWith([animation]);
@@ -67,8 +69,11 @@ describe("settleAnimationsForCapture", () => {
   it("cancels an infinite animation even on a fast-forwarded target", () => {
     // The infinite check comes FIRST on purpose: there is no mount frame to
     // hold a never-ending animation at, and `finish()` would throw on one.
-    const animation = fakeAnimation(
-      fakeEffect(fakeTarget("fast-forwarded"), Number.POSITIVE_INFINITY),
+    const animation = createFakeAnimation(
+      createFakeEffect(
+        createFakeTarget("fast-forwarded"),
+        Number.POSITIVE_INFINITY,
+      ),
     );
 
     settleWith([animation]);
@@ -77,8 +82,11 @@ describe("settleAnimationsForCapture", () => {
   });
 
   it("leaves an effect-less animation and a zero-playback-rate one alone", () => {
-    const effectless = fakeAnimation(null);
-    const held = fakeAnimation(fakeEffect(fakeTarget(null), 500), 0);
+    const effectless = createFakeAnimation(null);
+    const held = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), 500),
+      0,
+    );
 
     settleWith([effectless, held]);
 
@@ -101,13 +109,16 @@ describe("settleAnimationsForCapture", () => {
     // registered handler rather than merely asserting it exists: the whole
     // point is WHAT it does when a newcomer appears.
     const harness = settleWith([]);
-    const lateHold = fakeAnimation(
-      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    const lateHold = createFakeAnimation(
+      createFakeEffect(createFakeTarget("fast-forwarded"), 10_000),
     );
 
-    const lateOrdinary = fakeAnimation(fakeEffect(fakeTarget(null), 500));
-    const lateInfinite = fakeAnimation(
-      fakeEffect(fakeTarget(null), Number.POSITIVE_INFINITY),
+    const lateOrdinary = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), 500),
+    );
+
+    const lateInfinite = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), Number.POSITIVE_INFINITY),
     );
 
     harness.mount(lateHold);
@@ -123,7 +134,9 @@ describe("settleAnimationsForCapture", () => {
 
   it("re-settles a transition that starts later", () => {
     const harness = settleWith([]);
-    const lateTransition = fakeAnimation(fakeEffect(fakeTarget(null), 200));
+    const lateTransition = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), 200),
+    );
 
     harness.mount(lateTransition);
     harness.dispatch("transitionrun");
@@ -135,8 +148,8 @@ describe("settleAnimationsForCapture", () => {
     // Idempotence is what makes standing listeners safe: a re-settle must not
     // re-seek a held bar away from its mount frame, nor re-finish a finished
     // entrance.
-    const held = fakeAnimation(
-      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    const held = createFakeAnimation(
+      createFakeEffect(createFakeTarget("fast-forwarded"), 10_000),
     );
     const harness = settleWith([held]);
 
@@ -147,15 +160,17 @@ describe("settleAnimationsForCapture", () => {
   });
 
   it("settles every animation on the page, not just the first", () => {
-    const infinite = fakeAnimation(
-      fakeEffect(fakeTarget(null), Number.POSITIVE_INFINITY),
+    const infinite = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), Number.POSITIVE_INFINITY),
     );
 
-    const fastForwarded = fakeAnimation(
-      fakeEffect(fakeTarget("fast-forwarded"), 10_000),
+    const fastForwarded = createFakeAnimation(
+      createFakeEffect(createFakeTarget("fast-forwarded"), 10_000),
     );
 
-    const ordinary = fakeAnimation(fakeEffect(fakeTarget(null), 500));
+    const ordinary = createFakeAnimation(
+      createFakeEffect(createFakeTarget(null), 500),
+    );
 
     settleWith([infinite, fastForwarded, ordinary]);
 
@@ -212,7 +227,7 @@ class FakeKeyframeEffect {
   }
 }
 
-function fakeTarget(motion: string | null): FakeTarget {
+function createFakeTarget(motion: string | null): FakeTarget {
   return {
     getAttribute: (name: string): string | null => {
       return name === "data-motion" ? motion : null;
@@ -220,11 +235,14 @@ function fakeTarget(motion: string | null): FakeTarget {
   };
 }
 
-function fakeEffect(target: FakeTarget, endTime: number): FakeKeyframeEffect {
+function createFakeEffect(
+  target: FakeTarget,
+  endTime: number,
+): FakeKeyframeEffect {
   return new FakeKeyframeEffect(target, endTime);
 }
 
-function fakeAnimation(
+function createFakeAnimation(
   effect: FakeKeyframeEffect | null,
   playbackRate = 1,
 ): FakeAnimation {

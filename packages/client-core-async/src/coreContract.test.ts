@@ -22,7 +22,7 @@ import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createApp, createMachineFactories } from "#/composition";
 
-function makeAsyncHarness(): CoreHarness {
+function createAsyncHarness(): CoreHarness {
   const base: AppPorts = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
@@ -52,4 +52,4 @@ function makeAsyncHarness(): CoreHarness {
   };
 }
 
-describeCoreContract("async", makeAsyncHarness);
+describeCoreContract("async", createAsyncHarness);

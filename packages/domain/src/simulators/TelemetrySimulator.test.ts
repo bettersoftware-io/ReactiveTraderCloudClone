@@ -18,7 +18,7 @@ afterEach(() => {
 
 describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   it("pre-seeds a full 60-sample history synchronously on subscribe, backdated 1s apart", () => {
-    const { telemetry } = makeTelemetry();
+    const { telemetry } = createTelemetry();
     const collected: MetricSample[] = [];
     const sub = telemetry.throughput$().subscribe((s) => {
       collected.push(s);
@@ -35,7 +35,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("ticks at a 1s cadence after the pre-seeded history", async () => {
-    const { telemetry } = makeTelemetry();
+    const { telemetry } = createTelemetry();
     const collected: number[] = [];
     const sub = telemetry.throughput$().subscribe((s) => {
       collected.push(s.value);
@@ -48,7 +48,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("walks: successive samples differ instead of a flat constant line", async () => {
-    const { telemetry } = makeTelemetry();
+    const { telemetry } = createTelemetry();
     const p = firstValueFrom(telemetry.throughput$().pipe(take(5), toArray()));
     await vi.advanceTimersByTimeAsync(8_000);
     const values = (await p).map((s) => {
@@ -64,7 +64,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("stays within the clamped +-25% band around the setpoint", async () => {
-    const { telemetry } = makeTelemetry();
+    const { telemetry } = createTelemetry();
     const p = firstValueFrom(telemetry.throughput$().pipe(take(30), toArray()));
     await vi.advanceTimersByTimeAsync(60_000);
     const values = (await p).map((s) => {
@@ -78,7 +78,7 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("recenters the walk when the admin slider changes the setpoint", async () => {
-    const { telemetry, admin } = makeTelemetry();
+    const { telemetry, admin } = createTelemetry();
     const p1 = firstValueFrom(telemetry.throughput$().pipe(take(3), toArray()));
     await vi.advanceTimersByTimeAsync(4_000);
     await p1;
@@ -104,8 +104,8 @@ describe("TelemetrySimulator throughput walk (final-review I-2)", () => {
   });
 
   it("is deterministic for a fixed seed", async () => {
-    const a = makeTelemetry(7).telemetry;
-    const b = makeTelemetry(7).telemetry;
+    const a = createTelemetry(7).telemetry;
+    const b = createTelemetry(7).telemetry;
 
     const pa = firstValueFrom(a.throughput$().pipe(take(6), toArray()));
     const pb = firstValueFrom(b.throughput$().pipe(take(6), toArray()));
@@ -156,7 +156,7 @@ interface TelemetryHarness {
   admin: ThroughputSimulator;
 }
 
-function makeTelemetry(seed?: number): TelemetryHarness {
+function createTelemetry(seed?: number): TelemetryHarness {
   const admin = new ThroughputSimulator();
   const telemetry =
     seed === undefined

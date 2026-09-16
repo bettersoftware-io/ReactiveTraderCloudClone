@@ -278,7 +278,7 @@ describe("detector integration (proves the calibration actually fires)", () => {
       }), // low-discrepancy-ish fill, deterministic
     ).random;
 
-    const ticks = buildTickSequence(
+    const ticks = createTickSequence(
       DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
       {
         kind: "spreadWidening",
@@ -318,7 +318,7 @@ describe("detector integration (proves the calibration actually fires)", () => {
       }),
     ).random;
 
-    const ticks = buildTickSequence(
+    const ticks = createTickSequence(
       DEFAULT_ANOMALY_CONFIG.minWindowFill + 5,
       {
         kind: "volBurst",
@@ -374,7 +374,7 @@ function scriptedRandom(values: readonly number[]): ScriptedRandom {
   };
 }
 
-function buildTickSequence(
+function createTickSequence(
   steadyTicks: number,
   forcedEpisode: EpisodeState,
   random: () => number,

@@ -64,7 +64,7 @@ const COMPARE_CANDLES: readonly Candle[] = Array.from(
 
 describe("Canvas substrate — preference-driven geometry swap (shared harness)", () => {
   it("substrate=canvas swaps plot geometry DOM for one canvas and back", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
     const chart = mountChart({
       indicators: ["sma20"],
       drawings: [trendline],
@@ -126,8 +126,8 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
   // ceiling pins the canvas side too.
   it("node-count pin: canvas mode collapses the plot's per-datum DOM", () => {
     const drawings = [
-      makeTrendline("t1", 250, 360, 280, 380),
-      makeHline("h1", 370),
+      createTrendline("t1", 250, 360, 280, 380),
+      createHline("h1", 370),
     ];
 
     const chart = mountChart({
@@ -264,11 +264,11 @@ function mountChart({
 }
 
 /** A trendline drawing anchored at two (candle index, price) points — the
- * same construction ChartDrawings.contract.spec.ts's own `makeTrendline`
+ * same construction ChartDrawings.contract.spec.ts's own `createTrendline`
  * uses (duplicated per this repo's established per-spec-file convention),
  * with both indices inside the fixture's default {240,300} viewport and
  * both prices inside the viewport's candle range. */
-function makeTrendline(
+function createTrendline(
   id: string,
   aIndex: number,
   aPrice: number,
@@ -283,6 +283,6 @@ function makeTrendline(
   };
 }
 
-function makeHline(id: string, price: number): EqDrawing {
+function createHline(id: string, price: number): EqDrawing {
   return { id, kind: "hline", price };
 }

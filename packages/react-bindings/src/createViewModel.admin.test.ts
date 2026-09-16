@@ -30,7 +30,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useSessionCountSeries is a function and starts with an empty array", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useSessionCountSeries).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useSessionCountSeries();
@@ -39,7 +39,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("accumulates a session-count sample once the sessions port emits", async () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useSessionCountSeries();
     });
@@ -51,7 +51,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useJarvisUsage reads the sim port's always-empty snapshot", async () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useJarvisUsage();
     });
@@ -68,7 +68,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useJarvisPanels starts with an empty panels list and a callable dismissPanel", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useJarvisPanels).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useJarvisPanels();
@@ -78,7 +78,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useJarvisPanels renders a panel spawned through a real showPanel turn (seeded machine state)", async () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return { jarvis: hooks.useJarvis(), panels: hooks.useJarvisPanels() };
     });
@@ -128,7 +128,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useDockedPanelIds defaults to an empty array before the presenter emits", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useDockedPanelIds("fx");
     });
@@ -157,7 +157,7 @@ describe("createViewModel — admin hooks", () => {
   });
 
   it("useWorkspaceLayoutResets defaults to 0", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useWorkspaceLayoutResets();
     });
@@ -166,7 +166,7 @@ describe("createViewModel — admin hooks", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

@@ -73,7 +73,7 @@ describe("composition — jarvis wiring", () => {
       // createJarvisPanelsMachine's/createJarvisDriverMachine's events$
       // input is TERMINAL on error (both machines' own doc), so this error
       // would kill panels$'s AND the driver's fold too.
-      jarvis: explodingJarvisPort(),
+      jarvis: createExplodingJarvisPort(),
     });
 
     let panelsErrored = false;
@@ -140,7 +140,7 @@ describe("composition — jarvis wiring", () => {
         sessionStore: new InMemorySessionStore(),
       }),
       connectionEvents: new ConnectionEventsSimulator(),
-      jarvis: layoutDrivingJarvisPort(),
+      jarvis: createLayoutDrivingJarvisPort(),
     });
 
     presenters.jarvis.intents.send("maximize the equities chart");
@@ -172,7 +172,7 @@ describe("composition — jarvis wiring", () => {
         sessionStore: new InMemorySessionStore(),
       }),
       connectionEvents: new ConnectionEventsSimulator(),
-      jarvis: mixedOutcomeDrivingJarvisPort(),
+      jarvis: createMixedOutcomeDrivingJarvisPort(),
     });
 
     presenters.jarvis.intents.send("switch to equities and select ZZZZZZ");
@@ -199,7 +199,7 @@ describe("composition — jarvis wiring", () => {
   });
 });
 
-function explodingJarvisPort(): JarvisPort {
+function createExplodingJarvisPort(): JarvisPort {
   return {
     ask: (): Observable<JarvisEvent> => {
       throw new Error("boom — simulated ask() failure");
@@ -213,7 +213,7 @@ function explodingJarvisPort(): JarvisPort {
 /** A JarvisPort whose ask() replies with a single "command" event driving a
  * `layout: maximize` DriveCommand at the equities tab's "eq-chart" panel —
  * used only by the deferral-artifact test above. */
-function layoutDrivingJarvisPort(): JarvisPort {
+function createLayoutDrivingJarvisPort(): JarvisPort {
   return {
     ask: (): Observable<JarvisEvent> => {
       return of<JarvisEvent>({
@@ -240,7 +240,7 @@ function layoutDrivingJarvisPort(): JarvisPort {
 /** A JarvisPort whose ask() replies with a single "command" event driving a
  * two-command batch: an applied `switchTab` and a skipped `eqSelect`
  * (unknown symbol) — used only by the recordDriveOutcome wiring test above. */
-function mixedOutcomeDrivingJarvisPort(): JarvisPort {
+function createMixedOutcomeDrivingJarvisPort(): JarvisPort {
   return {
     ask: (): Observable<JarvisEvent> => {
       return of<JarvisEvent>({

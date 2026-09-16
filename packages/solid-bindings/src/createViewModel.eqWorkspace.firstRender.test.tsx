@@ -35,7 +35,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
  */
 describe("createViewModel — useEqWorkspace first-render value (equities white-screen regression)", () => {
   it("the value read immediately after useEqWorkspace() already reports the seeded watchlist symbol, never the empty placeholder", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqWorkspace();
@@ -48,7 +48,7 @@ describe("createViewModel — useEqWorkspace first-render value (equities white-
   });
 });
 
-function makeViewModel(): ViewModel {
+function createViewModelFixture(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
 
   return createViewModel(

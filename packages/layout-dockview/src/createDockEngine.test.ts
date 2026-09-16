@@ -76,14 +76,14 @@ describe("createDockEngine", () => {
   });
 
   it("falls back to the seed on a corrupt blob", () => {
-    const engine = createDockEngine({ ...base(), blob: "{not json" });
+    const engine = createDockEngine({ ...createBase(), blob: "{not json" });
     expect(engine.groupCount()).toBe(3);
     engine.dispose();
   });
 
   it("falls back to the seed on a structurally-invalid blob", () => {
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       blob: JSON.stringify({ hello: 1 }),
     });
     expect(engine.groupCount()).toBe(3);
@@ -92,7 +92,7 @@ describe("createDockEngine", () => {
 
   it("restores a valid blob (round-trip through its own serialisation)", () => {
     let saved: string | null = null;
-    const firstOpts = base();
+    const firstOpts = createBase();
     const first = createDockEngine({
       ...firstOpts,
       onLayoutChange: (blob: string) => {
@@ -105,13 +105,13 @@ describe("createDockEngine", () => {
     first.dispose();
     expect(saved).not.toBeNull();
 
-    const second = createDockEngine({ ...base(), blob: saved });
+    const second = createDockEngine({ ...createBase(), blob: saved });
     expect(second.groupCount()).toBe(3);
     second.dispose();
   });
 
   it("applies the hook-supplied title to each panel's tab", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     // DockEngine exposes no title-reading accessor of its own, so assert
@@ -129,7 +129,7 @@ describe("createDockEngine", () => {
   });
 
   it("mounts the client's header slot into each panel's tab through mountTab", () => {
-    const opts = base();
+    const opts = createBase();
     const mounted: string[] = [];
     const disposed: string[] = [];
 
@@ -173,7 +173,7 @@ describe("createDockEngine", () => {
   });
 
   it("mounts the active panel's controls into the group actions slot and remounts on active-panel change", async () => {
-    const opts = base();
+    const opts = createBase();
     const log: string[] = [];
 
     opts.panels.mountActions = (
@@ -192,7 +192,7 @@ describe("createDockEngine", () => {
     // A persisted layout with rates and analytics TABBED into one group
     // (the outcome of a drag-dock) beside the blotter — two tabs, one
     // actions slot, so the slot has an active panel to follow.
-    opts.blob = JSON.stringify(twoTabGroupLayout());
+    opts.blob = JSON.stringify(createTwoTabGroupLayout());
     const engine = createDockEngine(opts);
 
     const slots = [...opts.container.querySelectorAll(".rtc-dock-actions")];
@@ -236,14 +236,14 @@ describe("createDockEngine", () => {
   });
 
   it("renders no actions slot at all when the client supplies no mountActions", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
     expect(opts.container.querySelector(".rtc-dock-actions")).toBeNull();
     engine.dispose();
   });
 
   it("carries NO dockview theme gap — the 7px gutter is the leaf views' CSS inset", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
     // dockview flags a split view that carries a margin; the gap-0 model
     // must never produce one (the shave it triggers is what made every
@@ -256,7 +256,7 @@ describe("createDockEngine", () => {
   });
 
   it("renders no tab close action (panel close/reopen is out of v1 scope)", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     // dockview's DEFAULT tab renderer always includes a `.dv-default-tab-action`
@@ -283,7 +283,7 @@ describe("createDockEngine", () => {
     // land on an element INSIDE the container that createDockEngine did not
     // itself create — i.e. on dockview's own shell, not merely on the
     // consumer-supplied container.
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     const themedDescendant = opts.container.querySelector(
@@ -367,7 +367,7 @@ describe("createDockEngine", () => {
 
   it("coalesces two rapid layout mutations into a single onLayoutChange call", async () => {
     const calls: string[] = [];
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine({
       ...opts,
       debounceMs: 30,
@@ -405,7 +405,7 @@ describe("createDockEngine", () => {
 describe("dispose flush — arrangement origin", () => {
   it("does not persist a layout no pointer touched (seed path)", () => {
     const calls: string[] = [];
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine({
       ...opts,
       // Long enough that no debounced save can land before dispose.
@@ -425,10 +425,10 @@ describe("dispose flush — arrangement origin", () => {
   });
 
   it("does not persist a layout no pointer touched (blob path)", () => {
-    const blob = userArrangedBlob(base());
+    const blob = userArrangedBlob(createBase());
     const calls: string[] = [];
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       blob,
       debounceMs: 60_000,
       onLayoutChange: (next: string) => {
@@ -444,7 +444,7 @@ describe("dispose flush — arrangement origin", () => {
 
   it("persists through onLayoutChange once a pointer went down inside the container", () => {
     const calls: string[] = [];
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine({
       ...opts,
       debounceMs: 60_000,
@@ -471,7 +471,7 @@ describe("dispose flush — arrangement origin", () => {
     let stored: string | null = null;
 
     createDockEngine({
-      ...base(),
+      ...createBase(),
       container: sizedContainer(1907, 981),
       debounceMs: 60_000,
       onLayoutChange: (blob: string) => {
@@ -480,12 +480,12 @@ describe("dispose flush — arrangement origin", () => {
     }).dispose();
 
     const second = userFlushedSize(
-      { ...base(), container: sizedContainer(1907, 980), blob: stored },
+      { ...createBase(), container: sizedContainer(1907, 980), blob: stored },
       "fx-blotter",
     );
 
     const fresh = userFlushedSize(
-      { ...base(), container: sizedContainer(1907, 980) },
+      { ...createBase(), container: sizedContainer(1907, 980) },
       "fx-blotter",
     );
 
@@ -535,7 +535,7 @@ describe("settle resize — a pristine grid tracks its source exactly", () => {
 
   function fxAt(width: number, height: number): DockEngineOptions {
     return {
-      ...base(),
+      ...createBase(),
       container: sizedContainer(width, height),
       seed: FX_REAL,
       debounceMs: 60_000,
@@ -723,7 +723,7 @@ describe("settle resize — a pristine grid tracks its source exactly", () => {
 describe("collapse / expand", () => {
   it("strips a collapsed panel's group to the 32px bar", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
 
     engine.collapsePanel("fx-analytics");
 
@@ -735,8 +735,8 @@ describe("collapse / expand", () => {
 
   it("restores the exact pre-collapse size on expand", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = baselineSize(base(), "fx-analytics");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -752,8 +752,8 @@ describe("collapse / expand", () => {
 
   it("is idempotent — a second collapse cannot overwrite the remembered size", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = baselineSize(base(), "fx-analytics");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -774,7 +774,7 @@ describe("collapse / expand", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       ...strips.options,
     });
@@ -789,8 +789,8 @@ describe("collapse / expand", () => {
 
   it("restores a height-stripped panel to its exact pre-collapse height", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = baselineSize(base(), "fx-blotter");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-blotter");
 
     engine.collapsePanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
@@ -803,7 +803,7 @@ describe("collapse / expand", () => {
 
   it("reports the vertical orientation for a side-by-side sibling through onStripsChange — once, not again on a repeat call or an unknown id", () => {
     const strips = recordStrips();
-    const engine = createDockEngine({ ...base(), ...strips.options });
+    const engine = createDockEngine({ ...createBase(), ...strips.options });
 
     engine.collapsePanel("fx-analytics");
     expect(strips.last).toEqual({ "fx-analytics": "vertical" });
@@ -821,7 +821,7 @@ describe("collapse / expand", () => {
 
   it("ignores expand for a panel this engine never collapsed", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
 
     engine.expandPanel("fx-analytics");
 
@@ -840,7 +840,7 @@ describe("collapse / expand", () => {
   });
 
   it("ignores an unknown panel id", () => {
-    const engine = createDockEngine(base());
+    const engine = createDockEngine(createBase());
 
     expect(() => {
       engine.collapsePanel("nope");
@@ -855,10 +855,10 @@ describe("collapse / expand", () => {
     // would swallow the dropped panel (audit S1). dockview toggles the
     // dv-locked-groupview class for locked === "no-drop-target", which is
     // the observable jsdom gets.
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
-    const before = baselineSize(base(), "fx-blotter");
+    const before = baselineSize(createBase(), "fx-blotter");
 
     engine.collapsePanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
@@ -883,8 +883,8 @@ describe("collapse / expand", () => {
     // whose membership drifted describes a defunct arrangement: it must be
     // voided, never re-asserted — rates keeps its post-drop allocation.
     const seen = trackLayout();
-    const blotterBefore = baselineSize(base(), "fx-blotter");
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const blotterBefore = baselineSize(createBase(), "fx-blotter");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     const dock = lastDockviewApi();
 
     engine.collapsePanel("fx-blotter");
@@ -912,10 +912,10 @@ describe("collapse / expand", () => {
   });
 
   it("locks every maximize-forced strip and unlocks them all on exit", async () => {
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
-    const before = baselineSize(base(), "fx-blotter");
+    const before = baselineSize(createBase(), "fx-blotter");
 
     engine.maximizePanel("fx-rates");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
@@ -944,13 +944,13 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       ...strips.options,
     });
-    const columnBefore = baselineBranchSize(base(), "fx-rates");
-    const ratesBefore = baselineSize(base(), "fx-rates");
-    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const columnBefore = baselineBranchSize(createBase(), "fx-rates");
+    const ratesBefore = baselineSize(createBase(), "fx-rates");
+    const blotterBefore = baselineSize(createBase(), "fx-blotter");
 
     engine.collapsePanel("fx-rates");
     expect(strips.last).toEqual({ "fx-rates": "horizontal" });
@@ -993,9 +993,9 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
 
   it("restores both panels when they expand in the order they collapsed", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
-    const ratesBefore = baselineSize(base(), "fx-rates");
-    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+    const ratesBefore = baselineSize(createBase(), "fx-rates");
+    const blotterBefore = baselineSize(createBase(), "fx-blotter");
 
     engine.collapsePanel("fx-rates");
     await waitForSize(seen, "fx-rates", STRIP_HEIGHT);
@@ -1042,10 +1042,10 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
         { kind: "panel", panelId: "st-side" },
       ],
     } as const;
-    const opts = { ...base(), seed: stack };
+    const opts = { ...createBase(), seed: stack };
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
-    const before = baselines({ ...base(), seed: stack }, [
+    const before = baselines({ ...createBase(), seed: stack }, [
       "st-top",
       "st-mid",
       "st-low",
@@ -1075,7 +1075,7 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
 
   it("reads every strip against the row when the whole dock is stripped", () => {
     const strips = recordStrips();
-    const engine = createDockEngine({ ...base(), ...strips.options });
+    const engine = createDockEngine({ ...createBase(), ...strips.options });
 
     engine.collapsePanel("fx-analytics");
     engine.collapsePanel("fx-rates");
@@ -1098,8 +1098,8 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
     const seen = trackLayout();
     // Baseline twin FIRST: it creates and disposes its own engine, and the
     // api capture always points at the most recent createDockview.
-    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
-    const engine = createDockEngine({ ...railBase(), ...seen.options });
+    const railBefore = baselineBranchSize(createRailBase(), "fx-analytics");
+    const engine = createDockEngine({ ...createRailBase(), ...seen.options });
     const dock = lastDockviewApi();
 
     engine.collapsePanel("fx-analytics");
@@ -1134,18 +1134,18 @@ describe("maximize (the in-house boundary policy)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...railBase(),
+      ...createRailBase(),
       ...seen.options,
       ...strips.options,
     });
 
-    const before = baselines(railBase(), [
+    const before = baselines(createRailBase(), [
       "fx-rates",
       "fx-blotter",
       "fx-analytics",
       "fx-positions",
     ]);
-    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+    const railBefore = baselineBranchSize(createRailBase(), "fx-analytics");
 
     engine.maximizePanel("fx-rates");
     // Blotter reclaims down its column (rates still fills it); the rail has
@@ -1176,13 +1176,13 @@ describe("maximize (the in-house boundary policy)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...railBase(),
+      ...createRailBase(),
       ...seen.options,
       ...strips.options,
     });
-    const before = baselines(railBase(), ["fx-rates", "fx-blotter"]);
-    const positionsBefore = baselineSize(railBase(), "fx-positions");
-    const railBefore = baselineBranchSize(railBase(), "fx-analytics");
+    const before = baselines(createRailBase(), ["fx-rates", "fx-blotter"]);
+    const positionsBefore = baselineSize(createRailBase(), "fx-positions");
+    const railBefore = baselineBranchSize(createRailBase(), "fx-analytics");
 
     engine.maximizePanel("fx-analytics");
     expect(strips.last).toEqual({ "fx-positions": "horizontal" });
@@ -1205,9 +1205,9 @@ describe("maximize (the in-house boundary policy)", () => {
     // returns the root for it, and so does the engine.
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...strips.options,
-      panels: { ...base().panels, maximizeScope: railScope },
+      panels: { ...createBase().panels, maximizeScope: railScope },
     });
 
     engine.maximizePanel("fx-analytics");
@@ -1222,7 +1222,7 @@ describe("maximize (the in-house boundary policy)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...railBase(),
+      ...createRailBase(),
       ...seen.options,
       ...strips.options,
     });
@@ -1241,7 +1241,7 @@ describe("maximize (the in-house boundary policy)", () => {
 
   it("hands a maximize-forced strip to the user when it is collapsed meanwhile", () => {
     const strips = recordStrips();
-    const engine = createDockEngine({ ...railBase(), ...strips.options });
+    const engine = createDockEngine({ ...createRailBase(), ...strips.options });
 
     engine.maximizePanel("fx-rates");
     const callsAfterMaximize = strips.calls;
@@ -1257,12 +1257,12 @@ describe("maximize (the in-house boundary policy)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...railBase(),
+      ...createRailBase(),
       ...seen.options,
       ...strips.options,
     });
 
-    const before = baselines(railBase(), [
+    const before = baselines(createRailBase(), [
       "fx-rates",
       "fx-blotter",
       "fx-analytics",
@@ -1291,7 +1291,7 @@ describe("maximize (the in-house boundary policy)", () => {
 
   it("is idempotent and ignores an unknown panel", () => {
     const strips = recordStrips();
-    const opts = { ...railBase(), ...strips.options };
+    const opts = { ...createRailBase(), ...strips.options };
     const engine = createDockEngine(opts);
 
     engine.maximizePanel("nope");
@@ -1315,7 +1315,7 @@ describe("glide marker", () => {
   });
 
   it("is absent after mount — a fresh dock lays out instantly", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     expect(opts.container.hasAttribute(DOCK_GLIDE_ATTRIBUTE)).toBe(false);
@@ -1324,7 +1324,7 @@ describe("glide marker", () => {
 
   it("wraps every intent and clears itself once the transition has run", () => {
     vi.useFakeTimers();
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
     const intents: ReadonlyArray<() => void> = [
       (): void => {
@@ -1358,7 +1358,7 @@ describe("glide marker", () => {
   });
 
   it("does not mark a no-op exitMaximize (nothing is maximized, nothing moves)", () => {
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     engine.exitMaximize();
@@ -1368,7 +1368,7 @@ describe("glide marker", () => {
 
   it("restarts the clock on a second intent mid-glide instead of cutting the first short", () => {
     vi.useFakeTimers();
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     engine.collapsePanel("fx-analytics");
@@ -1383,7 +1383,7 @@ describe("glide marker", () => {
 
   it("dispose mid-glide drops the marker and its timer", () => {
     vi.useFakeTimers();
-    const opts = base();
+    const opts = createBase();
     const engine = createDockEngine(opts);
 
     engine.collapsePanel("fx-analytics");
@@ -1408,7 +1408,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("opens the rail at its design width and persists the pin in the blob", () => {
     const seen = trackLayout();
-    persistArranged({ ...railPinnedBase(), ...seen.options });
+    persistArranged({ ...createRailPinnedBase(), ...seen.options });
 
     expect(seen.branchSizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([RAIL_PIN]);
@@ -1417,7 +1417,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   it("pins a lone panel child too, not just a rail split", () => {
     const seen = trackLayout();
     persistArranged({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       seed: { ...FX_LIKE, initialPx: [undefined, 360] },
     });
@@ -1430,7 +1430,10 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("restores the design width after the whole rail strips and expands", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
 
     engine.collapsePanel("fx-analytics");
     engine.collapsePanel("fx-positions");
@@ -1448,9 +1451,20 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     // handed it its space. The pin must neither mask nor break the fix: this
     // is the user-visible FX-rail sequence, pin held throughout.
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
-    const analyticsBefore = baselineSize(railPinnedBase(), "fx-analytics");
-    const positionsBefore = baselineSize(railPinnedBase(), "fx-positions");
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
+
+    const analyticsBefore = baselineSize(
+      createRailPinnedBase(),
+      "fx-analytics",
+    );
+
+    const positionsBefore = baselineSize(
+      createRailPinnedBase(),
+      "fx-positions",
+    );
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP_HEIGHT);
@@ -1469,7 +1483,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("releases the pin on a sash drag in the declaring split", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1479,7 +1493,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("keeps the pin on a grab that never moves", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1490,7 +1504,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("leaves the rail pin alone when the drag is in a nested split", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1500,13 +1514,13 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("re-applies a still-pinned blob's pin on the next load", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     persistArranged({ ...opts, ...seen.options });
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1516,7 +1530,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("keeps a released pin released across reloads", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     dragSash(opts.container, ".dv-horizontal");
@@ -1524,7 +1538,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1534,13 +1548,13 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("treats a legacy blob without the sidecar as unpinned", () => {
     const seen = trackLayout();
-    persistArranged({ ...railPinnedBase(), ...seen.options });
+    persistArranged({ ...createRailPinnedBase(), ...seen.options });
     const legacy: Record<string, unknown> = JSON.parse(seen.blob());
     delete legacy.rtcDesignPins;
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: JSON.stringify(legacy),
     });
@@ -1553,10 +1567,10 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     // clamp would hold the rates group too, so it must dissolve instead.
     const seen = trackLayout();
     persistArranged({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       blob: JSON.stringify({
-        ...(twoTabGroupLayout() as Record<string, unknown>),
+        ...(createTwoTabGroupLayout() as Record<string, unknown>),
         rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
       }),
     });
@@ -1566,7 +1580,10 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("dissolves a pin and releases its clamps when a member is dragged to its own rail", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
     const dock = lastDockviewApi();
     const analytics = dock.getPanel("fx-analytics");
     const rates = dock.getPanel("fx-rates");
@@ -1594,9 +1611,9 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
-  function railPinnedBase(): DockEngineOptions {
+  function createRailPinnedBase(): DockEngineOptions {
     return {
-      ...railBase(),
+      ...createRailBase(),
       seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
     };
   }
@@ -1614,7 +1631,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
 
   it("lifts a maximized dynamic panel's pin clamp so it fills, and exit restores the exact clamp", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     expect(widthClampOf("panel-dyn-1")).toEqual(PINNED);
@@ -1639,7 +1656,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
     // fx-analytics is nearest-column scoped here: the switch's boundary is
     // the rail column, so the dynamic panel is NOT re-stripped — its clamp
     // is readable right after the switch.
-    const engine = createDockEngine(railBase());
+    const engine = createDockEngine(createRailBase());
     engine.addDynamicPanel(DYN);
 
     engine.maximizePanel("panel-dyn-1");
@@ -1653,9 +1670,9 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   it("suspends a seeded rail pin across all its members for a root-scope maximize", async () => {
     const seen = trackLayout();
     const opts: DockEngineOptions = {
-      ...railBase(),
+      ...createRailBase(),
       seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
-      panels: { ...railBase().panels, maximizeScope: rootScope },
+      panels: { ...createRailBase().panels, maximizeScope: rootScope },
     };
     const engine = createDockEngine({ ...opts, ...seen.options });
     expect(widthClampOf("fx-analytics")).toEqual(PINNED);
@@ -1683,7 +1700,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
     // The rail's width pin is declared by the ROOT row; a nearest-column
     // maximize claims only its column's height, so the width stays held.
     const engine = createDockEngine({
-      ...railBase(),
+      ...createRailBase(),
       seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
     });
 
@@ -1694,8 +1711,8 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
 
   it("removing a pinned owner of the maximize leaves no suspended state behind", async () => {
     // Baseline FIRST: its throwaway twin replaces lastDockviewApi().
-    const rates = baselineSize(base(), "fx-rates");
-    const opts = base();
+    const rates = baselineSize(createBase(), "fx-rates");
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel(DYN);
@@ -1724,7 +1741,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   });
 
   it("a sash drag mid-maximize releases the pin for good — exit does not re-clamp it", () => {
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel(DYN);
@@ -1739,7 +1756,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   });
 
   it("a blob saved mid-maximize carries the pin; the reload clamps it and a replayed maximize suspends it again", () => {
-    const firstOpts = base();
+    const firstOpts = createBase();
     const seen = trackLayout();
     const first = createDockEngine({
       ...firstOpts,
@@ -1754,7 +1771,7 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
     ]);
 
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...trackLayout().options,
       blob: seen.blob(),
       dynamicPanels: [DYN],
@@ -1783,8 +1800,8 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   // width) across the reload, and recordStrip seeds from it.
   it("restores the pre-collapse width when expanding after a reload", async () => {
     const seen = trackLayout();
-    const first = createDockEngine({ ...base(), ...seen.options });
-    const before = baselineSize(base(), "fx-analytics");
+    const first = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
 
     first.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -1792,7 +1809,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1807,8 +1824,8 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("writes each strip's pre-collapse size into the sidecar", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
-    const before = baselineSize(base(), "fx-analytics");
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -1829,7 +1846,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
     // engine was not looking. The save scrubs it; the reload's collapse
     // replay re-derives it.
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
@@ -1840,10 +1857,10 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("restores a fully-stripped column across a reload — its width and both heights", async () => {
     const seen = trackLayout();
-    const first = createDockEngine({ ...base(), ...seen.options });
-    const columnBefore = baselineBranchSize(base(), "fx-rates");
-    const ratesBefore = baselineSize(base(), "fx-rates");
-    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const first = createDockEngine({ ...createBase(), ...seen.options });
+    const columnBefore = baselineBranchSize(createBase(), "fx-rates");
+    const ratesBefore = baselineSize(createBase(), "fx-rates");
+    const blotterBefore = baselineSize(createBase(), "fx-blotter");
 
     first.collapsePanel("fx-rates");
     first.collapsePanel("fx-blotter");
@@ -1852,7 +1869,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1874,9 +1891,9 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("restores a reloaded column expanded in collapse order — the seeded world composes with the put-back", async () => {
     const seen = trackLayout();
-    const first = createDockEngine({ ...base(), ...seen.options });
-    const ratesBefore = baselineSize(base(), "fx-rates");
-    const blotterBefore = baselineSize(base(), "fx-blotter");
+    const first = createDockEngine({ ...createBase(), ...seen.options });
+    const ratesBefore = baselineSize(createBase(), "fx-rates");
+    const blotterBefore = baselineSize(createBase(), "fx-blotter");
 
     first.collapsePanel("fx-rates");
     first.collapsePanel("fx-blotter");
@@ -1885,7 +1902,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1905,7 +1922,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("loads a legacy blob without the sidecar and still collapses/expands", async () => {
     const seen = trackLayout();
-    const first = createDockEngine({ ...base(), ...seen.options });
+    const first = createDockEngine({ ...createBase(), ...seen.options });
     first.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP);
     first.dispose();
@@ -1914,7 +1931,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: JSON.stringify(legacy),
     });
@@ -1929,7 +1946,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("drops a malformed sidecar instead of trusting it", async () => {
     const seen = trackLayout();
-    persistArranged({ ...base(), ...seen.options });
+    persistArranged({ ...createBase(), ...seen.options });
     const tampered: Record<string, unknown> = JSON.parse(seen.blob());
     tampered.rtcStripGeometry = {
       records: { "fx-analytics": { size: "wide" } },
@@ -1938,7 +1955,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
     const reloaded = trackLayout();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: JSON.stringify(tampered),
     });
@@ -1949,12 +1966,12 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 
   it("keeps a strip-free blob free of the sidecar and stable across a reload", () => {
     const seen = trackLayout();
-    persistArranged({ ...base(), ...seen.options });
+    persistArranged({ ...createBase(), ...seen.options });
     expect(JSON.parse(seen.blob()).rtcStripGeometry).toBeUndefined();
 
     const reloaded = trackLayout();
     persistArranged({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1965,7 +1982,7 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
 describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
   it("stamps every save with the current blob version", () => {
     const seen = trackLayout();
-    persistArranged({ ...base(), ...seen.options });
+    persistArranged({ ...createBase(), ...seen.options });
 
     expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
   });
@@ -1976,7 +1993,7 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
     // half-pixel card edges (and the client-asymmetric glyph phase they
     // caused) are structurally gone, not tolerated.
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railBase(), ...seen.options });
+    const engine = createDockEngine({ ...createRailBase(), ...seen.options });
 
     engine.collapsePanel("fx-blotter");
     await waitForSize(seen, "fx-blotter", STRIP_HEIGHT);
@@ -2040,7 +2057,7 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
 
     const seen = trackLayout();
     persistArranged({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       blob: JSON.stringify(legacy),
     });
@@ -2091,7 +2108,7 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
 
     const reloaded = trackLayout();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: JSON.stringify(legacy),
     });
@@ -2121,7 +2138,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
 
   it("adds a dynamic panel as a new right-edge group at its initialPx card width", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     const api = lastDockviewApi();
@@ -2133,7 +2150,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
 
   it("is idempotent — adding an existing id changes nothing", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     const before = lastDockviewApi().groups.length;
@@ -2148,7 +2165,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     // onDidLayoutChange, so — like the sibling design-pin release tests —
     // the release is asserted from the blob dispose() flushes unconditionally,
     // not via waitForPins.
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel(DYN);
@@ -2164,7 +2181,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
 
   it("removes a dynamic panel and its group", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     const before = engine.groupCount();
@@ -2177,7 +2194,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
 
   it("does not persist the design pin after the panel is removed", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForPins(seen, 1);
     engine.removeDynamicPanel("panel-dyn-1");
@@ -2189,7 +2206,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
 
   it("purges the strip ledger on removal — no phantom rtcStripGeometry", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...base(), ...seen.options });
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
     engine.collapsePanel("panel-dyn-1");
@@ -2211,7 +2228,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       ...strips.options,
     });
@@ -2226,12 +2243,12 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
   });
 
   it("removing a maximize-forced strip's owner restores the survivors", async () => {
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel(DYN);
     await waitForSize(seen, "panel-dyn-1", 360);
-    const rates = baselineSize(base(), "fx-rates");
+    const rates = baselineSize(createBase(), "fx-rates");
     engine.maximizePanel("panel-dyn-1"); // strips every static panel
     engine.removeDynamicPanel("panel-dyn-1");
     await waitForSizeWithin(seen, "fx-rates", rates, 8); // statics restored
@@ -2262,7 +2279,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     // R15b: chart instances share space — same right-edge group at the same
     // opening width, but no min=max clamp and nothing in rtcDesignPins. The
     // flag-less panel beside it is pinned exactly as before.
-    const opts = base();
+    const opts = createBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     engine.addDynamicPanel({
@@ -2290,7 +2307,7 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
   it("reconciles an `unpinned` construction-time dynamic panel without a design pin", () => {
     const seen = trackLayout();
     persistArranged({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       dynamicPanels: [{ id: "panel-dyn-2", initialPx: 360, unpinned: true }],
     });
@@ -2306,11 +2323,11 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     const seen = trackLayout();
     const strips = recordStrips();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       ...strips.options,
     });
-    const ratesBefore = baselineSize(base(), "fx-rates");
+    const ratesBefore = baselineSize(createBase(), "fx-rates");
 
     engine.maximizePanel("fx-rates");
     engine.addDynamicPanel(DYN);
@@ -2508,7 +2525,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
   it("R18 nearest-column maximize → open an instance → exit: the split is re-shared", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),
-      panels: { ...base().panels, maximizeScope: railColumnScope },
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
       dynamicPanels: INSTANCES.slice(0, 2),
     });
 
@@ -2723,7 +2740,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     // survives; so does a collapse → expand with no instance opened/closed.
     const engine = createDockEngine({
       ...equitiesAt(1907),
-      panels: { ...base().panels, maximizeScope: railColumnScope },
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
       dynamicPanels: INSTANCES.slice(0, 2),
     });
     const aapl = lastDockviewApi().getPanel("i-aapl");
@@ -2895,7 +2912,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
   it("R20 an instance dragged under eq-watchlist keeps the rail column's heights through its nearest-column maximize", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),
-      panels: { ...base().panels, maximizeScope: railColumnScope },
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
       dynamicPanels: INSTANCES.slice(0, 2),
     });
 
@@ -3029,7 +3046,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     const opts = equitiesAt(1907);
     const engine = createDockEngine({
       ...opts,
-      panels: { ...base().panels, maximizeScope: railColumnScope },
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
       dynamicPanels: INSTANCES,
     });
 
@@ -3148,7 +3165,7 @@ describe("unpinned dynamic panels share their split (R17)", () => {
 
   function equitiesAt(dockWidth: number): DockEngineOptions {
     return {
-      ...base(),
+      ...createBase(),
       container: sizedContainer(dockWidth, 980),
       seed: EQUITIES_LIKE,
     };
@@ -3211,7 +3228,7 @@ describe("dynamic-panel reconciliation at construction", () => {
   it("adds a listed dynamic panel missing from a fresh (null) blob", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       dynamicPanels: [DYN],
     });
@@ -3222,7 +3239,7 @@ describe("dynamic-panel reconciliation at construction", () => {
   it("keeps a listed dynamic panel's dragged arrangement from the blob", async () => {
     // engine 1: add, stack it into the rates group, capture the blob
     const seen = trackLayout();
-    const firstOpts = base();
+    const firstOpts = createBase();
     const first = createDockEngine({
       ...firstOpts,
       ...seen.options,
@@ -3247,7 +3264,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     // engine 2: same blob + still listed → stays stacked, NOT re-added right-edge
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob,
       dynamicPanels: [DYN],
@@ -3260,7 +3277,7 @@ describe("dynamic-panel reconciliation at construction", () => {
   it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
     const seen = trackLayout();
     const first = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...seen.options,
       dynamicPanels: [DYN],
     });
@@ -3268,7 +3285,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     const blob = seen.blob();
     first.dispose();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...trackLayout().options,
       blob,
     }); // no dynamicPanels
@@ -3284,7 +3301,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     // fromJSON genuinely throws on (unlike a merely-malformed panels entry,
     // which it tolerates by degrading that one panel to an undefined id).
     const seen = trackLayout();
-    const firstOpts = base();
+    const firstOpts = createBase();
     const first = createDockEngine({
       ...firstOpts,
       ...seen.options,
@@ -3320,7 +3337,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     delete parsed.panels["panel-dyn-1"]; // unrestorable node: no panels entry
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       ...reloaded.options,
       blob: JSON.stringify(parsed),
       dynamicPanels: [DYN],
@@ -3352,7 +3369,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     // fallback unambiguously distinguishable.
     const seen = trackLayout();
     const first = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: ADMIN_LIKE,
       ...seen.options,
       dynamicPanels: [DYN],
@@ -3374,7 +3391,7 @@ describe("dynamic-panel reconciliation at construction", () => {
     first.dispose();
     const reloaded = trackLayout();
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: ADMIN_LIKE,
       ...reloaded.options,
       blob: JSON.stringify(parsed),
@@ -3394,12 +3411,12 @@ describe("dynamic-panel reconciliation at construction", () => {
     // it compared null to null and restored from an empty-string "blob" that
     // silently fell back to the seed — green without ever testing a restore.
     const seen = trackLayout();
-    persistArranged({ ...base(), ...seen.options });
+    persistArranged({ ...createBase(), ...seen.options });
     const analyticsBefore = seen.sizeOf("fx-analytics");
     expect(analyticsBefore).not.toBeNull();
 
     const reloaded = trackLayout();
-    const opts = { ...base(), ...reloaded.options, blob: seen.blob() };
+    const opts = { ...createBase(), ...reloaded.options, blob: seen.blob() };
     const second = createDockEngine(opts);
     expect(lastDockviewApi().getPanel("panel-dyn-1")).toBeUndefined();
     touchContainer(opts.container);
@@ -3507,14 +3524,14 @@ describe("stacked visual fixture (Phase 2)", () => {
   };
   const STACKED_FX_BLOB = JSON.stringify(STACKED_FX_LAYOUT);
 
-  // Seeded with RAIL_LIKE, not base()'s FX_LIKE: the fixture blob carries
+  // Seeded with RAIL_LIKE, not createBase()'s FX_LIKE: the fixture blob carries
   // all four real FX panels, and a panel a blob names but the SEED does not
   // is a dynamic node — the construction-time reconciliation scrubs it as an
   // orphan when no `dynamicPanels` entry claims it. RAIL_LIKE is the real FX
   // tab's shape, which is what the visual wrapper actually seeds.
   it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: RAIL_LIKE,
       blob: STACKED_FX_BLOB,
     });
@@ -3545,7 +3562,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   it("closePanel removes the panel and reopenPanel restores it beside its seed sibling", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: RAIL_LIKE,
       ...seen.options,
     });
@@ -3566,7 +3583,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   it("closing a collapsed panel releases its strip; closing the maximized panel exits maximize", async () => {
     const strips: DockStripMap[] = [];
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: RAIL_LIKE,
       onStripsChange: (map: DockStripMap): void => {
         strips.push(map);
@@ -3593,7 +3610,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   });
 
   it("reopen lands at the right edge when the whole grid emptied out", () => {
-    const engine = createDockEngine(base());
+    const engine = createDockEngine(createBase());
     const dock = lastDockviewApi();
 
     engine.closePanel("fx-rates");
@@ -3610,7 +3627,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
   it("the blob round-trips a closed-panel layout and reopen after reload still anchors at the seed sibling", async () => {
     const seen = trackLayout();
     const first = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: RAIL_LIKE,
       ...seen.options,
     });
@@ -3620,7 +3637,7 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
     first.dispose();
 
     const second = createDockEngine({
-      ...base(),
+      ...createBase(),
       seed: RAIL_LIKE,
       blob: seen.blob(),
     });
@@ -3653,8 +3670,8 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
  * STATUS Phase-4 follow-up (b).
  */
 describe("closing the last absorber releases a design pin (follow-up b)", () => {
-  function pinnedRailBase(): DockEngineOptions {
-    const opts = railBase();
+  function createPinnedRailBase(): DockEngineOptions {
+    const opts = createRailBase();
 
     return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
   }
@@ -3674,7 +3691,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
   }
 
   it("holds the pin while an absorber survives", () => {
-    const engine = createDockEngine(pinnedRailBase());
+    const engine = createDockEngine(createPinnedRailBase());
 
     engine.closePanel("fx-rates");
 
@@ -3686,7 +3703,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
   });
 
   it("fills the dock once the last absorbing panel is closed", () => {
-    const engine = createDockEngine(pinnedRailBase());
+    const engine = createDockEngine(createPinnedRailBase());
 
     engine.closePanel("fx-rates");
     engine.closePanel("fx-blotter");
@@ -3699,7 +3716,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
   });
 
   it("re-clamps the pin when a reopened panel can absorb again", () => {
-    const engine = createDockEngine(pinnedRailBase());
+    const engine = createDockEngine(createPinnedRailBase());
 
     engine.closePanel("fx-rates");
     engine.closePanel("fx-blotter");
@@ -3716,7 +3733,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
   });
 
   it("keeps a suspended pin in the blob, so a reload still knows the width", () => {
-    const opts = pinnedRailBase();
+    const opts = createPinnedRailBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -3744,7 +3761,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
     // sequence with the panel left in the grid, so the popout filter is the
     // only difference between the two.
     function railClampedAfterClosingRates(poppedOut: boolean): boolean {
-      const engine = createDockEngine(pinnedRailBase());
+      const engine = createDockEngine(createPinnedRailBase());
       const blotter = lastDockviewApi().getPanel("fx-blotter");
 
       if (blotter === undefined) {
@@ -3782,7 +3799,7 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
   });
 
   it("leaves an unpinned seed alone — the control", () => {
-    const engine = createDockEngine(railBase());
+    const engine = createDockEngine(createRailBase());
 
     engine.closePanel("fx-rates");
     engine.closePanel("fx-blotter");
@@ -3804,7 +3821,7 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
     });
     const popped: (readonly string[])[] = [];
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       onPopoutsChange: (panelIds: readonly string[]): void => {
         popped.push(panelIds);
       },
@@ -3820,7 +3837,7 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
   });
 
   it("popoutPanel on an unknown panel resolves false without touching dockview", async () => {
-    const engine = createDockEngine(base());
+    const engine = createDockEngine(createBase());
     const before = engine.groupCount();
 
     await expect(engine.popoutPanel("nope")).resolves.toBe(false);
@@ -3830,7 +3847,7 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
   });
 
   it("threads popoutUrl into dockview's create options", () => {
-    createDockEngine({ ...base(), popoutUrl: "/popout.html" }).dispose();
+    createDockEngine({ ...createBase(), popoutUrl: "/popout.html" }).dispose();
 
     expect((capturedDockview.options as PopoutUrlCarrier).popoutUrl).toBe(
       "/popout.html",
@@ -3846,7 +3863,7 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
     });
     const strips: DockStripMap[] = [];
     const engine = createDockEngine({
-      ...base(),
+      ...createBase(),
       onStripsChange: (map: DockStripMap): void => {
         strips.push(map);
       },
@@ -4035,7 +4052,7 @@ function findLeafSize(node: any, panelId: string): number | null {
 /** dockview's serialised form of FX_LIKE after analytics has been drag-
  * docked as a second tab into the rates group: [rates+analytics] over
  * blotter, in one column. */
-function twoTabGroupLayout(): unknown {
+function createTwoTabGroupLayout(): unknown {
   function panel(id: string): Record<string, string> {
     return { id, contentComponent: "rtc-panel", title: id };
   }
@@ -4078,7 +4095,7 @@ function twoTabGroupLayout(): unknown {
 }
 
 /** The `.dv-tab` (dockview's own draggable wrapper) whose fallback title
- * label reads `title` — what `base()`'s title hook produced for the panel. */
+ * label reads `title` — what `createBase()`'s title hook produced for the panel. */
 /** Resolves once the pending animation frame has run — dockview 8 schedules
  * pointer-driven tab activation on one. */
 function nextAnimationFrame(): Promise<void> {
@@ -4112,10 +4129,10 @@ function tabOf(container: HTMLElement, title: string): HTMLElement {
   return tab;
 }
 
-/** {@link base} over RAIL_LIKE, with the FX rail panels' real
+/** {@link createBase} over RAIL_LIKE, with the FX rail panels' real
  * `maximizeScope: "nearest-column"` supplied through the hook. */
-function railBase(): DockEngineOptions {
-  const opts = base();
+function createRailBase(): DockEngineOptions {
+  const opts = createBase();
 
   return {
     ...opts,
@@ -4132,7 +4149,7 @@ function railScope(panelId: string): DockMaximizeScope {
 
 /** The `.dv-vertical` split container the panel's view lives in — the
  * "column" identity the reopen anchor rule is asserted with. Located via the
- * mounted content marker (`content:<id>`), which the base() hooks render. */
+ * mounted content marker (`content:<id>`), which the createBase() hooks render. */
 function columnOf(panelId: string): Element | null {
   const marker = [...document.querySelectorAll("*")].find((el) => {
     return el.textContent === `content:${panelId}` && el.children.length === 0;
@@ -4141,7 +4158,7 @@ function columnOf(panelId: string): Element | null {
   return marker?.closest(".dv-vertical") ?? null;
 }
 
-function base(): DockEngineOptions {
+function createBase(): DockEngineOptions {
   const container = document.createElement("div");
   document.body.appendChild(container);
   attachedContainers.push(container);

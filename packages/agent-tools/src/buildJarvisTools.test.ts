@@ -32,7 +32,7 @@ afterEach(() => {
 
 describe("buildJarvisTools", () => {
   it("returns exactly the seven desk tools, uniquely named", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tools = buildJarvisTools(deps);
 
     expect(tools).toHaveLength(7);
@@ -52,7 +52,7 @@ describe("buildJarvisTools", () => {
   });
 
   it("every schema declares additionalProperties: false and a required array", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tools = buildJarvisTools(deps);
 
     for (const tool of tools) {
@@ -63,7 +63,7 @@ describe("buildJarvisTools", () => {
 
   describe("list_currency_pairs", () => {
     it("resolves the reference-data snapshot (1s simulator delay) into a symbol/precision table", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "list_currency_pairs");
 
       const resultPromise = tool.run(undefined);
@@ -83,7 +83,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("rejects unexpected arguments with a descriptive string", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "list_currency_pairs");
 
       const result = await tool.run({ unexpected: true });
@@ -94,7 +94,7 @@ describe("buildJarvisTools", () => {
 
   describe("get_price", () => {
     it("reports bid/ask/mid as pair-precision strings, trailing zeros included", async () => {
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         pricing: {
           getPriceUpdates: () => {
             return of(TRAILING_ZERO_TICK);
@@ -135,7 +135,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("an unknown symbol resolves to a descriptive error string, never a rejection", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_price");
 
       const resultPromise = tool.run({ symbol: "XYZUSD" });
@@ -148,7 +148,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("malformed input resolves to an error string without touching any port", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_price");
 
       const result = await tool.run({ symbol: 42 });
@@ -159,7 +159,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("a snapshot that never resolves times out into an error string", async () => {
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         referenceData: {
           getCurrencyPairs: () => {
             return NEVER;
@@ -180,7 +180,7 @@ describe("buildJarvisTools", () => {
 
   describe("get_price_history", () => {
     it("returns a capped timestamp/mid series, mid as a pair-precision string with trailing zeros included", async () => {
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         pricing: {
           getPriceUpdates: () => {
             return of(TRAILING_ZERO_TICK);
@@ -213,7 +213,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("an unknown symbol resolves to a descriptive error string", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_price_history");
 
       const resultPromise = tool.run({ symbol: "XYZUSD" });
@@ -228,7 +228,7 @@ describe("buildJarvisTools", () => {
 
   describe("get_blotter", () => {
     it("defaults to newest-first, limit 20 — the five seeded trades", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_blotter");
 
       const result = await tool.run(undefined);
@@ -241,7 +241,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("honours a smaller limit", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_blotter");
 
       const result = await tool.run({ limit: 2 });
@@ -254,7 +254,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("clamps a limit above the max", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_blotter");
 
       const result = await tool.run({ limit: 9_999 });
@@ -264,7 +264,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("rejects a non-integer limit with a descriptive string", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_blotter");
 
       const result = await tool.run({ limit: "lots" });
@@ -275,7 +275,7 @@ describe("buildJarvisTools", () => {
 
   describe("get_analytics", () => {
     it("reports per-pair basePnl and the formatted headline total", async () => {
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         analytics: {
           getAnalytics: () => {
             return of<PositionUpdates>({
@@ -313,7 +313,7 @@ describe("buildJarvisTools", () => {
 
   describe("get_service_health", () => {
     it("reports every service's status on the first (pre-drift) snapshot", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "get_service_health");
 
       const result = await tool.run(undefined);
@@ -340,7 +340,7 @@ describe("buildJarvisTools", () => {
 
   describe("execute_trade", () => {
     it("rejects malformed input before touching any port", async () => {
-      const { deps, confirmTrade } = buildDeps();
+      const { deps, confirmTrade } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "execute_trade");
 
       const result = await tool.run({ symbol: "EURUSD" });
@@ -350,7 +350,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("an unknown symbol resolves to a descriptive error string", async () => {
-      const { deps, confirmTrade } = buildDeps();
+      const { deps, confirmTrade } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "execute_trade");
 
       const resultPromise = tool.run({
@@ -369,7 +369,7 @@ describe("buildJarvisTools", () => {
 
     it("a declined confirmation reports the decline and never calls the execution port", async () => {
       const executionSpy = vi.fn();
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         execution: { executeTrade: executionSpy },
         confirmTrade: async () => {
           return false;
@@ -392,7 +392,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("an approved confirmation executes through ExecutionPort (0-2s EURUSD fill) and lands the trade on the blotter", async () => {
-      const { deps } = buildDeps();
+      const { deps } = createDeps();
       const tool = findTool(buildJarvisTools(deps), "execute_trade");
 
       const resultPromise = tool.run({
@@ -423,7 +423,7 @@ describe("buildJarvisTools", () => {
         return true;
       });
 
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         pricing: {
           getPriceUpdates: () => {
             return of(FIXED_TICK);
@@ -466,7 +466,7 @@ describe("buildJarvisTools", () => {
         return true;
       });
 
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         pricing: {
           getPriceUpdates: () => {
             return of(FIXED_TICK);
@@ -505,7 +505,7 @@ describe("buildJarvisTools", () => {
     });
 
     it("a price snapshot that never resolves times out into an error string", async () => {
-      const { deps } = buildDeps({
+      const { deps } = createDeps({
         pricing: {
           getPriceUpdates: () => {
             return NEVER;
@@ -595,7 +595,7 @@ interface BuiltDeps {
  * fixed 1s delay, ExecutionSimulator's 0-2s EURUSD fill — are exercised for
  * real under fake timers). Individual ports can be swapped per test (e.g. to
  * force a timeout with NEVER, or to control confirmTrade). */
-function buildDeps(overrides: Partial<JarvisToolDeps> = {}): BuiltDeps {
+function createDeps(overrides: Partial<JarvisToolDeps> = {}): BuiltDeps {
   const referenceData: ReferenceDataPort = new ReferenceDataSimulator();
   const pricing: PricingPort = new PricingSimulator();
   const execution = new ExecutionSimulator();

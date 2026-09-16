@@ -19,7 +19,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let ctxStub: CanvasRenderingContext2D;
 
   beforeEach(() => {
-    ctxStub = makeCtxStub();
+    ctxStub = createCtxStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
       ctxStub,
     );
@@ -217,7 +217,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
  * Properties are writable so the draw functions can set fillStyle etc. without
  * throwing. createLinearGradient / createRadialGradient return a minimal stub.
  */
-function makeCtxStub(): CanvasRenderingContext2D {
+function createCtxStub(): CanvasRenderingContext2D {
   const gradient = { addColorStop: vi.fn() };
   return {
     // Properties (writable)

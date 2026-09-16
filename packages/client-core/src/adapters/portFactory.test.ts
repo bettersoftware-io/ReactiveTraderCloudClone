@@ -31,7 +31,7 @@ describe("createSimulatorPorts dependency injection", () => {
 describe("createSimulatorPorts", () => {
   const fakePreferences = {} as PreferencesPort;
 
-  function deps(): PortFactoryDeps {
+  function createDeps(): PortFactoryDeps {
     return {
       preferences: fakePreferences,
       auth: new AuthSimulator({}),
@@ -40,7 +40,7 @@ describe("createSimulatorPorts", () => {
   }
 
   it("wires all nine transport ports with their port methods", () => {
-    const ports = createSimulatorPorts(deps());
+    const ports = createSimulatorPorts(createDeps());
     expect(typeof ports.referenceData.getCurrencyPairs).toBe("function");
     expect(typeof ports.pricing.getPriceUpdates).toBe("function");
     expect(typeof ports.execution.executeTrade).toBe("function");
@@ -52,7 +52,7 @@ describe("createSimulatorPorts", () => {
     expect(typeof ports.admin.getThroughput).toBe("function");
   });
   it("threads the ExecutionSimulator into the blotter so the store emits", async () => {
-    const ports = createSimulatorPorts(deps());
+    const ports = createSimulatorPorts(createDeps());
     const first = await firstValueFrom(ports.blotter.getTradeStream());
     expect(Array.isArray(first)).toBe(true);
   });

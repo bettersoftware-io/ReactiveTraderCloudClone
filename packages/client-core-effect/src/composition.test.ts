@@ -13,7 +13,7 @@ import { composeWithBase } from "#/composition";
 
 describe("composition teardown", () => {
   it("dispose() interrupts stream fibers forked into the app's scope", async () => {
-    const { app, host } = composeWithBase(makePorts());
+    const { app, host } = composeWithBase(createPorts());
     let interrupted = false;
     const never = Stream.fromEffect(
       Effect.never.pipe(
@@ -35,13 +35,13 @@ describe("composition teardown", () => {
   });
 
   it("dispose() resolves when called twice", async () => {
-    const { app } = composeWithBase(makePorts());
+    const { app } = composeWithBase(createPorts());
     await expect(app.dispose()).resolves.toBeUndefined();
     await expect(app.dispose()).resolves.toBeUndefined();
   });
 });
 
-function makePorts(): Parameters<typeof composeWithBase>[0] {
+function createPorts(): Parameters<typeof composeWithBase>[0] {
   return {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator(),

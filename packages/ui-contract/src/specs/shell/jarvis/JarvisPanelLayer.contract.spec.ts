@@ -95,8 +95,8 @@ describe("JarvisPanelLayer", () => {
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 
-    layer.setHistory("GBPUSD", buildTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
-    layer.setHistory("GBPJPY", buildTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPUSD", createTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPJPY", createTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
 
     await overlay.pressHotkey();
     await overlay.send("show me gbp volatility");
@@ -124,8 +124,8 @@ describe("JarvisPanelLayer", () => {
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 
-    layer.setHistory("GBPUSD", buildTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
-    layer.setHistory("GBPJPY", buildTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPUSD", createTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPJPY", createTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
 
     await overlay.pressHotkey();
     await overlay.send("show me gbp volatility");
@@ -540,7 +540,7 @@ type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 /** A deterministic, mildly-wiggling PriceTick series — enough for
  * `rollingVol` to emit non-degenerate (nonzero-variance) points. */
-function buildTicks(symbol: string, count: number): PriceTick[] {
+function createTicks(symbol: string, count: number): PriceTick[] {
   const ticks: PriceTick[] = [];
 
   for (let i = 0; i < count; i += 1) {

@@ -14,7 +14,7 @@ import {
 describe("ThroughputPresenter", () => {
   it("seeds loading:true synchronously, then the loaded value", () => {
     const { states } = run((ts) => {
-      return fakeAdmin(ts, {
+      return createFakeAdmin(ts, {
         get: { marble: "10ms (a|)", values: { a: 250 } },
       });
     });
@@ -27,7 +27,9 @@ describe("ThroughputPresenter", () => {
   it("reflects setValue optimistically before the write resolves", () => {
     const { states } = run(
       (ts) => {
-        return fakeAdmin(ts, { get: { marble: "(a|)", values: { a: 100 } } });
+        return createFakeAdmin(ts, {
+          get: { marble: "(a|)", values: { a: 100 } },
+        });
       },
       ({ presenter, ts }) => {
         // Fire setValue just after load; observe the optimistic value lands
@@ -51,7 +53,9 @@ describe("ThroughputPresenter", () => {
   it("coalesces rapid setValue into a single debounced write", () => {
     const { states, sets } = run(
       (ts) => {
-        return fakeAdmin(ts, { get: { marble: "(a|)", values: { a: 100 } } });
+        return createFakeAdmin(ts, {
+          get: { marble: "(a|)", values: { a: 100 } },
+        });
       },
       ({ presenter, ts }) => {
         ts.schedule(() => {
@@ -80,7 +84,7 @@ describe("ThroughputPresenter", () => {
     const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = fakeAdmin(ts, {
+      const built = createFakeAdmin(ts, {
         get: { marble: "(a|)", values: { a: 100 } },
       });
       const presenter = new ThroughputPresenter(built.port);
@@ -121,7 +125,7 @@ describe("ThroughputPresenter", () => {
   it("shows an error banner when the write fails", () => {
     const { states } = run(
       (ts) => {
-        return fakeAdmin(ts, {
+        return createFakeAdmin(ts, {
           get: { marble: "(a|)", values: { a: 100 } },
           set: () => {
             return ts.createColdObservable<void>("#", {}, new Error("boom"));
@@ -146,7 +150,7 @@ describe("ThroughputPresenter", () => {
 
   it("falls back to the default value when the initial load fails", () => {
     const { states } = run((ts) => {
-      return fakeAdmin(ts, {
+      return createFakeAdmin(ts, {
         get: { marble: "10ms #", error: new Error("network down") },
       });
     });
@@ -168,7 +172,7 @@ describe("ThroughputPresenter", () => {
     const events: MessageEvent[] = [];
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const built = fakeAdmin(ts, {
+      const built = createFakeAdmin(ts, {
         get: { marble: "(a|)", values: { a: 100 } },
       });
       const presenter = new ThroughputPresenter(built.port);
@@ -277,7 +281,7 @@ interface MessageEvent {
 }
 
 /** Build a fake AdminPort whose get/set are marble-driven cold observables. */
-function fakeAdmin(
+function createFakeAdmin(
   ts: TestScheduler,
   /** Factory for setThroughput()'s observable, given the value written. */
   opts: FakeAdminOpts,

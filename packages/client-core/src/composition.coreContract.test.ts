@@ -20,7 +20,7 @@ import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories, reconnect$ } from "#/composition";
 
-function makeRxjsHarness(): CoreHarness {
+function createRxjsHarness(): CoreHarness {
   const base: AppPorts = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
@@ -49,4 +49,4 @@ function makeRxjsHarness(): CoreHarness {
   };
 }
 
-describeCoreContract("rxjs", makeRxjsHarness);
+describeCoreContract("rxjs", createRxjsHarness);

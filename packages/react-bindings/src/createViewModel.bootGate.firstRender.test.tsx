@@ -37,7 +37,7 @@ afterEach(cleanup);
  */
 describe("createViewModel — useBootGate first-render value (nosplash one-frame-splash regression)", () => {
   it("the FIRST render already reports the presenter's seeded visibility (false), never a true frame", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const renders: boolean[] = [];
 
     function Probe(): null {
@@ -54,7 +54,7 @@ describe("createViewModel — useBootGate first-render value (nosplash one-frame
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

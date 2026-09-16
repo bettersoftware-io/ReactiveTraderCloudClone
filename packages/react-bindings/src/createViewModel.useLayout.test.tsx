@@ -37,7 +37,7 @@ afterEach(cleanup);
  */
 describe("createViewModel — useLayout does not dispose the shared singleton on unmount", () => {
   it("state set by a first mount is still there — and the machine is still LIVE — after that mount unmounts and a new one mounts for the SAME tab", async () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
 
     function WriterProbe(): null {
       const { maximize } = hooks.useLayout("equities");
@@ -103,7 +103,7 @@ describe("createViewModel — useLayout does not dispose the shared singleton on
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

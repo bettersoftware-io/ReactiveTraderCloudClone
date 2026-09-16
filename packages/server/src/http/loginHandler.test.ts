@@ -13,7 +13,7 @@ import {
 
 describe("authenticateLoginRequest", () => {
   it("returns 429 when the caller is rate-limited", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const rateLimit = createRateLimiter(1, 60_000);
@@ -31,7 +31,7 @@ describe("authenticateLoginRequest", () => {
   });
 
   it("returns 400 on malformed JSON", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const rateLimit = createRateLimiter(10, 60_000);
@@ -48,7 +48,7 @@ describe("authenticateLoginRequest", () => {
   });
 
   it("returns 400 on a well-formed but invalid shape", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const rateLimit = createRateLimiter(10, 60_000);
@@ -69,7 +69,7 @@ describe("authenticateLoginRequest", () => {
   });
 
   it("returns 401 on bad credentials", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const rateLimit = createRateLimiter(10, 60_000);
@@ -87,7 +87,7 @@ describe("authenticateLoginRequest", () => {
   });
 
   it("returns 200 with a valid LoginResponseDto on success, with CORS headers", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const rateLimit = createRateLimiter(10, 60_000);
@@ -115,7 +115,7 @@ describe("authenticateLoginRequest", () => {
 
 describe("authorizeUpgrade", () => {
   it("accepts a freshly-signed token", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const login = auth.login("demo", "localpass");
@@ -128,14 +128,14 @@ describe("authorizeUpgrade", () => {
   });
 
   it("rejects a garbage token", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     expect(authorizeUpgrade("/?access=garbage", auth)).toBe(false);
   });
 
   it("rejects a missing token or url", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     expect(authorizeUpgrade("/", auth)).toBe(false);
@@ -145,7 +145,7 @@ describe("authorizeUpgrade", () => {
 
 describe("describeUpgrade", () => {
   it("names each rejection reason without leaking the token", () => {
-    const auth = makeAuth((): number => {
+    const auth = createAuth((): number => {
       return 1_000;
     });
     const login = auth.login("demo", "localpass");
@@ -174,7 +174,7 @@ describe("describeUpgrade", () => {
 
 const TTL_MS = 60_000;
 
-function makeAuth(now: () => number): AuthService {
+function createAuth(now: () => number): AuthService {
   return new AuthService({
     secret: "s3cret",
     ttlMs: TTL_MS,

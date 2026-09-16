@@ -175,7 +175,7 @@ describe("Drawing tools — pill drives the real plot (EqChartHead + ChartPanel,
 
 describe("Drawing tools — plot rendering (CandleChart mounted directly)", () => {
   it("committed trendline geometry matches an independent drawingScene projection", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
     const chart = mountChart({ drawings: [trendline] });
 
     const vm = chartVm(CANDLES, LAST.close, false, {
@@ -203,8 +203,8 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
   });
 
   it("selection drives data-selected and handle count: 2 for a trendline, 1 for an hline", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
-    const hline = makeHline("h1", 370);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
+    const hline = createHline("h1", 370);
     const chart = mountChart({
       drawings: [trendline, hline],
       selectedDrawingId: "t1",
@@ -222,7 +222,7 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
   });
 
   it("Delete removes the selected drawing (plot focused, cursor tool)", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
     const onDeleteSelected = vi.fn();
     const chart = mountChart({
       drawings: [trendline],
@@ -243,7 +243,7 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
   });
 
   it("empty-click deselects (onSelectDrawing observes null via a spy slot)", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
     const onSelectDrawing = vi.fn();
     const chart = mountChart({
       drawings: [trendline],
@@ -264,11 +264,14 @@ describe("Drawing tools — plot rendering (CandleChart mounted directly)", () =
     const chart = mountChart({ drawings: [] });
     const base = chart.wrapNodeCount();
 
-    chart.setProps({ drawings: [makeTrendline("t1", 250, 360, 280, 380)] });
+    chart.setProps({ drawings: [createTrendline("t1", 250, 360, 280, 380)] });
     expect(chart.wrapNodeCount()).toBeLessThanOrEqual(base + 4);
 
     chart.setProps({
-      drawings: [makeTrendline("t1", 250, 360, 280, 380), makeHline("h1", 370)],
+      drawings: [
+        createTrendline("t1", 250, 360, 280, 380),
+        createHline("h1", 370),
+      ],
     });
     expect(chart.wrapNodeCount()).toBeLessThanOrEqual(base + 8);
 
@@ -749,7 +752,7 @@ function mountChart({
  * both indices inside the fixture's default {240,300} viewport, both
  * prices inside the viewport's candle range (opens ~340-399), so its
  * projected geometry is finite and comfortably on-plot. */
-function makeTrendline(
+function createTrendline(
   id: string,
   aIndex: number,
   aPrice: number,
@@ -764,6 +767,6 @@ function makeTrendline(
   };
 }
 
-function makeHline(id: string, price: number): EqDrawing {
+function createHline(id: string, price: number): EqDrawing {
   return { id, kind: "hline", price };
 }

@@ -20,7 +20,7 @@ describe("SessionsKpiPresenter", () => {
   });
 
   it("emits an empty series before any sessions arrive", async () => {
-    const presenter = new SessionsKpiPresenter(fakePort());
+    const presenter = new SessionsKpiPresenter(createFakePort());
     const first = await firstValueFrom(presenter.countSeries$);
     expect(first).toEqual([]);
   });
@@ -28,7 +28,7 @@ describe("SessionsKpiPresenter", () => {
   it("maps each sessions emission to a MetricSample of the session count", () => {
     vi.setSystemTime(1_000);
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(fakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject));
 
     const emitted: (readonly MetricSample[])[] = [];
     const sub = presenter.countSeries$.subscribe((s) => {
@@ -50,7 +50,7 @@ describe("SessionsKpiPresenter", () => {
 
   it(`caps at WINDOW (${WINDOW}) and drops the oldest samples`, () => {
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(fakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject));
 
     let last: readonly MetricSample[] = [];
     const sub = presenter.countSeries$.subscribe((s) => {
@@ -76,7 +76,7 @@ describe("SessionsKpiPresenter", () => {
   it("survives unsubscribe/resubscribe (tab remount) without losing accumulated samples", () => {
     vi.setSystemTime(1);
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(fakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject));
 
     const sub1 = presenter.countSeries$.subscribe(() => {});
     subject.next([session("a")]);
@@ -140,7 +140,9 @@ function session(id: string): SessionInfo {
   return { id, user: "demo-user", region: "EU", lat: 51.5, lon: -0.1 };
 }
 
-function fakePort(sessions$?: Subject<readonly SessionInfo[]>): SessionsPort {
+function createFakePort(
+  sessions$?: Subject<readonly SessionInfo[]>,
+): SessionsPort {
   return {
     sessions$: () => {
       return sessions$ ?? new Subject<readonly SessionInfo[]>();

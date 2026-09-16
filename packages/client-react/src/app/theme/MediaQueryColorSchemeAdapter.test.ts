@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe("MediaQueryColorSchemeAdapter", () => {
   it("seeds from the current match", async () => {
-    stubMatchMedia(true);
+    createStubMatchMedia(true);
 
     const adapter = new MediaQueryColorSchemeAdapter();
 
@@ -24,7 +24,7 @@ describe("MediaQueryColorSchemeAdapter", () => {
   });
 
   it("pushes every OS change to subscribers", async () => {
-    const media = stubMatchMedia(false);
+    const media = createStubMatchMedia(false);
     const adapter = new MediaQueryColorSchemeAdapter();
 
     const collected = firstValueFrom(
@@ -38,7 +38,7 @@ describe("MediaQueryColorSchemeAdapter", () => {
   });
 
   it("de-duplicates repeats of the same value", async () => {
-    const media = stubMatchMedia(false);
+    const media = createStubMatchMedia(false);
     const adapter = new MediaQueryColorSchemeAdapter();
 
     const collected = firstValueFrom(
@@ -68,7 +68,7 @@ interface StubbedMedia {
 
 /** Installs a matchMedia whose MediaQueryList records its change listeners, so
  * a test can drive an OS theme flip. */
-function stubMatchMedia(initialMatches: boolean): StubbedMedia {
+function createStubMatchMedia(initialMatches: boolean): StubbedMedia {
   const listeners: ((e: MediaQueryListEvent) => void)[] = [];
 
   vi.stubGlobal("window", {
