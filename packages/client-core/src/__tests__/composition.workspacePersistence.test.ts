@@ -27,17 +27,6 @@ import {
   serializeWorkspaceLayout,
 } from "#/layout/workspaceLayoutPersistence";
 
-const SPEC: PanelSpecV1 = {
-  v: 1,
-  title: "P&L overview",
-  source: { kind: "analytics" },
-  transforms: [],
-  viz: { kind: "table" },
-};
-
-/** Longer than the writer's own debounce, so one advance always flushes. */
-const PAST_DEBOUNCE_MS = 600;
-
 describe("composition — workspace-layout rehydration", () => {
   it("seeds layoutFor from the persisted tree", async () => {
     const persisted = dockedTab("fx", ["jarvis-1"]);
@@ -684,3 +673,14 @@ async function storedPayload(
 ): Promise<WorkspaceLayoutV1 | null> {
   return parseWorkspaceLayout(await storedRaw(preferences));
 }
+
+const SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "P&L overview",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+/** Longer than the writer's own debounce, so one advance always flushes. */
+const PAST_DEBOUNCE_MS = 600;

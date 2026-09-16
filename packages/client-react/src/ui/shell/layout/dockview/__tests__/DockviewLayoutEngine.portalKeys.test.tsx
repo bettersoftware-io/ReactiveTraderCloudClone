@@ -21,23 +21,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
-
 describe("dockview portal keys", () => {
   it("keys slot portals per mount, so a real pop-out transaction never duplicates keys", async () => {
     const popout = page.stubPopoutWindow();
@@ -94,3 +77,20 @@ describe("dockview portal keys", () => {
 });
 
 function noop(): void {}
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};

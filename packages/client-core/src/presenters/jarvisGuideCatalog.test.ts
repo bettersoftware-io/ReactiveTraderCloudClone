@@ -7,8 +7,6 @@ import {
   sampleGuideChips,
 } from "./jarvisGuideCatalog.js";
 
-const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "EURGBP", "AUDUSD"];
-
 describe("JARVIS_GUIDE_CATALOG", () => {
   it("has the four sections in display order", () => {
     expect(
@@ -93,3 +91,5 @@ describe("sampleGuideChips", () => {
     expect(seen.size).toBe(pool.length);
   });
 });
+
+const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY", "EURGBP", "AUDUSD"];

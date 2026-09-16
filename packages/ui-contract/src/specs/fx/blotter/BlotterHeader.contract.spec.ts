@@ -5,8 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const noSort = { column: null, direction: null } as const;
-
 describe("BlotterHeader", () => {
   it("renders every column label", () => {
     const header = mount(BlotterHeader, {
@@ -226,3 +224,5 @@ function trade(over: Partial<Trade> = {}): Trade {
     ...over,
   };
 }
+
+const noSort = { column: null, direction: null } as const;

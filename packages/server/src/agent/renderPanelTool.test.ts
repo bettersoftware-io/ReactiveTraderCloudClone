@@ -8,8 +8,6 @@ import {
   type RenderPanelDeps,
 } from "./renderPanelTool.js";
 
-const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"];
-
 describe("buildRenderPanelTool", () => {
   it("names itself render_panel", () => {
     const { deps } = buildDeps();
@@ -184,3 +182,5 @@ function buildDeps(overrides: Partial<RenderPanelDeps> = {}): BuiltDeps {
 
   return { deps, emitPanel, mintPanelId };
 }
+
+const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"];

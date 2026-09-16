@@ -15,17 +15,6 @@ import { AnimationDirector, type AnimationIntent } from "../AnimationDirector";
 import type { EquityFillSignal } from "../OrdersBlotterPresenter";
 import type { ExecutionOutcome } from "../TradeExecutionPresenter";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  base: "EUR",
-  terms: "USD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
 describe("AnimationDirector", () => {
   it("maps a rising price tick to a tickUp intent on the pair's target", () => {
     const eurusd$ = new Subject<Price>();
@@ -393,3 +382,14 @@ describe("AnimationDirector", () => {
 function makePrice(mid: number): Price {
   return { symbol: "EURUSD", bid: mid, ask: mid, mid } as Price;
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  base: "EUR",
+  terms: "USD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};

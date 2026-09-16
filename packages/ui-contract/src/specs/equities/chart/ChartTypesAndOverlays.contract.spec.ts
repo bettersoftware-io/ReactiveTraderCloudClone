@@ -8,10 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
 describe("CandleChart — chart-type pills (candles/line/area)", () => {
   it("switches candles → line → area, swapping the path testids in/out", () => {
     const chart = mount(CandleChart, {
@@ -144,3 +140,9 @@ describe("CandleChart — time axis", () => {
     expect(labels).toEqual(["04:00", "04:15", "04:30", "04:45"]);
   });
 });
+
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);

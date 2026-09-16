@@ -18,13 +18,6 @@ const testUser: SessionUser = {
   clearance: "standard",
 };
 
-const testSession: StoredSession = {
-  token: "test-token",
-  user: testUser,
-  username: "demo",
-  exp: 1_700_000_000,
-};
-
 describe("LocalStorageSessionStore (jsdom localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -111,3 +104,10 @@ describe("LocalStorageSessionStore (jsdom localStorage)", () => {
     expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
   });
 });
+
+const testSession: StoredSession = {
+  token: "test-token",
+  user: testUser,
+  username: "demo",
+  exp: 1_700_000_000,
+};

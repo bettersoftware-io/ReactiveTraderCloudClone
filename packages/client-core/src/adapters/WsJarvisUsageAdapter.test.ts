@@ -5,23 +5,6 @@ import { CLIENT_MSG, type JarvisUsageSnapshot, SERVER_MSG } from "@rtc/shared";
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
-const SNAPSHOT: JarvisUsageSnapshot = {
-  windowStartMs: 1_000,
-  windowEndMs: 2_000,
-  currentWindow: [
-    {
-      brain: "claude-haiku-4-5",
-      turns: 3,
-      inputTokens: 100,
-      outputTokens: 50,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-      estimatedCostUsd: 0.01,
-    },
-  ],
-  sinceBoot: [],
-};
-
 describe("WsJarvisUsageAdapter", () => {
   it("does nothing until a gatewayConnected event, then registers the handler and sends admin.jarvisUsage.subscribe", () => {
     const ws = new FakeWsAdapter();
@@ -97,3 +80,20 @@ describe("WsJarvisUsageAdapter", () => {
     expect(received).toEqual([]);
   });
 });
+
+const SNAPSHOT: JarvisUsageSnapshot = {
+  windowStartMs: 1_000,
+  windowEndMs: 2_000,
+  currentWindow: [
+    {
+      brain: "claude-haiku-4-5",
+      turns: 3,
+      inputTokens: 100,
+      outputTokens: 50,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCostUsd: 0.01,
+    },
+  ],
+  sinceBoot: [],
+};

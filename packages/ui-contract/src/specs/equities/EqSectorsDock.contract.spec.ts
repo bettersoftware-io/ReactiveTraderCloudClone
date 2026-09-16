@@ -8,11 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-];
-
 describe("EqSectorsDock", () => {
   it("marks the workspace's selected symbol active", () => {
     const dock = mount(EqSectorsDock, {
@@ -34,3 +29,8 @@ describe("EqSectorsDock", () => {
     expect(dock.isActive("AAPL")).toBe(false);
   });
 });
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+];

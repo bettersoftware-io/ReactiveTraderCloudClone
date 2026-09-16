@@ -24,13 +24,6 @@ import { MAX_DOCKED_PANELS } from "../JarvisPanelsMachine";
 import { createLayoutMachine } from "../LayoutMachine";
 import { createWorkspaceNavMachine } from "../WorkspaceNavMachine";
 
-const KNOWN_PANEL_IDS: Record<WorkspaceTab, readonly string[]> = {
-  fx: collectPanelIds(createDefaultLayoutPort("fx").initial.root),
-  credit: collectPanelIds(createDefaultLayoutPort("credit").initial.root),
-  admin: collectPanelIds(createDefaultLayoutPort("admin").initial.root),
-  equities: collectPanelIds(createDefaultLayoutPort("equities").initial.root),
-};
-
 describe("createJarvisDriverMachine", () => {
   it("starts with an empty lastBatch", () => {
     const { seen } = run(() => {
@@ -1096,3 +1089,10 @@ function run(
   });
   return { seen, harness };
 }
+
+const KNOWN_PANEL_IDS: Record<WorkspaceTab, readonly string[]> = {
+  fx: collectPanelIds(createDefaultLayoutPort("fx").initial.root),
+  credit: collectPanelIds(createDefaultLayoutPort("credit").initial.root),
+  admin: collectPanelIds(createDefaultLayoutPort("admin").initial.root),
+  equities: collectPanelIds(createDefaultLayoutPort("equities").initial.root),
+};

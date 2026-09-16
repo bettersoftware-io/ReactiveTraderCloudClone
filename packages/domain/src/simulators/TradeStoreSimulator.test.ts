@@ -6,8 +6,6 @@ import { Direction, TradeStatus } from "../fx/trade.js";
 import { ExecutionSimulator } from "./ExecutionSimulator.js";
 import { TradeStoreSimulator } from "./TradeStoreSimulator.js";
 
-const NORMAL_MAX_DELAY_MS = 2_000;
-
 describe("TradeStoreSimulator", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -238,3 +236,5 @@ describe("TradeStoreSimulator", () => {
     sub.unsubscribe();
   });
 });
+
+const NORMAL_MAX_DELAY_MS = 2_000;

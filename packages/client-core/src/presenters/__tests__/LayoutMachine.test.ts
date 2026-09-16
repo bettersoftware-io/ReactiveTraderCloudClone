@@ -36,8 +36,6 @@ const initial: LayoutState = {
   closed: [],
   instances: [],
 };
-const port: LayoutPort = { initial };
-
 describe("createLayoutMachine", () => {
   it("seeds the initial tree from the port", () => {
     const m = createLayoutMachine(port);
@@ -557,3 +555,5 @@ function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
 
   return view;
 }
+
+const port: LayoutPort = { initial };

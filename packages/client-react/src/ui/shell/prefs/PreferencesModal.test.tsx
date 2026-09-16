@@ -12,8 +12,6 @@ import { JARVIS_BRAINS } from "@rtc/domain";
 
 import { preferencesModalPage } from "#tests/ui/pages/PreferencesModalPage";
 
-const page = preferencesModalPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -116,3 +114,5 @@ describe("PreferencesModal — JARVIS brain/effort rows", () => {
     );
   });
 });
+
+const page = preferencesModalPage();

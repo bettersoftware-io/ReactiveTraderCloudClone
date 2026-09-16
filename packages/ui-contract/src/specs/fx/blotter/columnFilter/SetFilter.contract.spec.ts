@@ -5,12 +5,6 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const trades = [
-  trade({ currencyPair: "EURUSD" }),
-  trade({ currencyPair: "USDJPY" }),
-  trade({ currencyPair: "GBPUSD" }),
-];
-
 describe("SetFilter", () => {
   it("lists every distinct value, sorted, all checked by default", () => {
     const filter = mount(SetFilter, {
@@ -120,3 +114,9 @@ function trade(over: Partial<Trade> = {}): Trade {
     ...over,
   };
 }
+
+const trades = [
+  trade({ currencyPair: "EURUSD" }),
+  trade({ currencyPair: "USDJPY" }),
+  trade({ currencyPair: "GBPUSD" }),
+];

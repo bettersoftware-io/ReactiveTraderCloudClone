@@ -5,8 +5,6 @@ import type { LoginResponseDto } from "@rtc/shared";
 
 import { HttpAuthAdapter, wsUrlToHttpBase } from "./HttpAuthAdapter";
 
-const BASE_URL = "http://localhost:4000";
-
 describe("HttpAuthAdapter", () => {
   it("resolves { ok:true, token, user, exp } on a 200 response", async () => {
     const dto: LoginResponseDto = {
@@ -149,3 +147,5 @@ function jsonResponse(body: unknown, status: number): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+const BASE_URL = "http://localhost:4000";

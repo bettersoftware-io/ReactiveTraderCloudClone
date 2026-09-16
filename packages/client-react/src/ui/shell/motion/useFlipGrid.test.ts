@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
 
-const page = flipGridPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -351,3 +349,5 @@ function makeTile(): FakeTile {
 
   return tile;
 }
+
+const page = flipGridPage();
