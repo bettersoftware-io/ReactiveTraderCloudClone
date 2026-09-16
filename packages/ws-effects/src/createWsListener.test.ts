@@ -8,14 +8,14 @@ import type { Inbound, Outbound, Socket } from "#/types.js";
 
 describe("createWsListener", () => {
   it("sends effect output to the socket", () => {
-    const { socket, messages$, sent } = fakeSocket();
+    const { socket, messages$, sent } = createFakeSocket();
     createWsListener(pingPong, undefined)(socket);
     messages$.next({ type: "ping" });
     expect(sent).toEqual([{ type: "pong" }]);
   });
 
   it("stops sending after the socket closes", () => {
-    const { socket, messages$, closed$, sent } = fakeSocket();
+    const { socket, messages$, closed$, sent } = createFakeSocket();
     createWsListener(pingPong, undefined)(socket);
     messages$.next({ type: "ping" });
     closed$.next();
@@ -43,7 +43,7 @@ describe("createWsListener", () => {
   });
 
   it("releases the upstream subscription when the socket closes", () => {
-    const { socket, messages$, closed$ } = fakeSocket();
+    const { socket, messages$, closed$ } = createFakeSocket();
     createWsListener(combineEffects(pingPong, pongPong), undefined)(socket);
     messages$.next({ type: "ping" });
     expect(messages$.observers.length).toBe(1);
@@ -77,7 +77,7 @@ interface FakeSocket {
   sent: Outbound[];
 }
 
-function fakeSocket(): FakeSocket {
+function createFakeSocket(): FakeSocket {
   const messages$ = new Subject<Inbound>();
   const closed$ = new Subject<void>();
   const sent: Outbound[] = [];

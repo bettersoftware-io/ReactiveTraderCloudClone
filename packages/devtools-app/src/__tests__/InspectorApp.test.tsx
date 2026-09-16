@@ -442,9 +442,13 @@ test("pinned selection resets when the datasource swaps (import lands, Back to l
   app.pressKeyGlobal("c");
   expect(app.exists("unclear-log")).toBe(true);
 
-  const file = new File([serializeRecording(sampleRecording())], "r.json", {
-    type: "application/json",
-  });
+  const file = new File(
+    [serializeRecording(createSampleRecording())],
+    "r.json",
+    {
+      type: "application/json",
+    },
+  );
 
   app.changeFile("import", file);
 
@@ -497,9 +501,13 @@ test("an imported recording names itself in the connection badge instead of 'dis
   const store = new InspectorStore({ coalesce: false });
   app.mount(store);
 
-  const file = new File([serializeRecording(sampleRecording())], "r.json", {
-    type: "application/json",
-  });
+  const file = new File(
+    [serializeRecording(createSampleRecording())],
+    "r.json",
+    {
+      type: "application/json",
+    },
+  );
 
   app.changeFile("import", file);
 
@@ -618,7 +626,7 @@ test("liveHistory seeds from an exact store clone, not the coalesced live snapsh
     ],
   });
 
-  const capture = stubDownloadCapture();
+  const capture = createStubDownloadCapture();
   app.mount(store);
 
   app.click("export-buffer");
@@ -650,7 +658,7 @@ interface DownloadCapture {
  * download button handed to `createObjectURL` — lets a test read back what
  * a toolbar export actually downloaded without the DOM's real URL/anchor
  * machinery. */
-function stubDownloadCapture(): DownloadCapture {
+function createStubDownloadCapture(): DownloadCapture {
   let captured: Blob | null = null;
 
   vi.stubGlobal("URL", {
@@ -673,7 +681,7 @@ function stubDownloadCapture(): DownloadCapture {
   };
 }
 
-function sampleRecording(): Recording {
+function createSampleRecording(): Recording {
   return {
     version: RECORDING_VERSION,
     appId: "imported-app",

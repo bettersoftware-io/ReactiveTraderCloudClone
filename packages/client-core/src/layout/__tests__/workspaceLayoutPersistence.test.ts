@@ -448,7 +448,7 @@ describe("parseWorkspaceLayout — instances (Phase 4 dynamic panel instances)",
 
 describe("parseWorkspaceLayout — corrupt corpus, every case → null", () => {
   it("truncated JSON", () => {
-    const raw = serializeWorkspaceLayout(noDockedPayload());
+    const raw = serializeWorkspaceLayout(createNoDockedPayload());
     expect(parseWorkspaceLayout(raw.slice(0, raw.length - 10))).toBeNull();
   });
 
@@ -628,7 +628,7 @@ describe("parseWorkspaceLayout — corrupt corpus, every case → null", () => {
     // wire hole) — `1e400` is syntactically a normal JSON number token
     // that overflows to `Infinity` once parsed, which is the actual
     // non-finite-entry case `isFiniteNumber` must reject.
-    const raw = serializeWorkspaceLayout(noDockedPayload()).replace(
+    const raw = serializeWorkspaceLayout(createNoDockedPayload()).replace(
       '"initialPx":[null,360]',
       '"initialPx":[1e400,360]',
     );
@@ -696,14 +696,14 @@ function tabLayoutFor(tab: WorkspaceTab): PersistedTabLayout {
   return syntheticDockedTab(tab, ["docked-1"]);
 }
 
-function noDockedPayload(): WorkspaceLayoutV1 {
+function createNoDockedPayload(): WorkspaceLayoutV1 {
   return {
     v: 1,
     tabs: { fx: { layout: createDefaultLayoutPort("fx").initial, docked: [] } },
   };
 }
 
-/** Serializes `noDockedPayload()`, JSON round-trips it back into a mutable
+/** Serializes `createNoDockedPayload()`, JSON round-trips it back into a mutable
  * `RawPayload`, lets `mutate` corrupt one field in place, then
  * re-serializes — every corrupt-corpus test above is "take a payload that
  * would otherwise round-trip cleanly, break exactly one thing about it,
@@ -714,7 +714,7 @@ function noDockedPayload(): WorkspaceLayoutV1 {
  * inserted dock column, keeping every mutation's target shape predictable. */
 function corruptedJson(mutate: (payload: RawPayload) => unknown): string {
   const parsed = JSON.parse(
-    serializeWorkspaceLayout(noDockedPayload()),
+    serializeWorkspaceLayout(createNoDockedPayload()),
   ) as RawPayload;
   return JSON.stringify(mutate(parsed));
 }

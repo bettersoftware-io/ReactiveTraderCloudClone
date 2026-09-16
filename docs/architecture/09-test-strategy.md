@@ -273,6 +273,40 @@ object literal" would be far too broad. And it pins only the `create` prefix;
 how the visual tier's tolerance ended up wrong in both directions at once —
 see [§9.7](#97-visual-golden-tiers).
 
+#### Fixture factories are named `create*`
+
+`rtc/name-fixture-factories` (specs only, no ignore list) pins the naming.
+`docs/handler-naming.md` requires a name to state its **effect**; a bare noun
+names a *thing*, so `poppedBlob()` reads as a constant until you notice the
+parens — which matters because each call returns a **fresh** value, and sharing
+one constant instead would couple cases through mutable state.
+
+`rtc/name-functions-by-effect` cannot catch this: it works from a **blocklist**
+of bad prefixes (`on*`, `handle*`, a vacuous-verb set) and passes everything
+else. Requiring a verb instead would need an unbounded **lexicon** that fails
+the build on the first word nobody thought of. So this rule takes the only two
+shapes that need none:
+
+| arm | shape | fix |
+|---|---|---|
+| factory synonyms | `make*`, `build*`, `fake*`, `stub*` at any arity | `create*`, `createFake*`, `createStub*` |
+| noun-named fixtures | zero-parameter, body is exactly `return { … }` / `return [ … ]` | `create<Noun>` |
+
+**The single-statement requirement is the safety property.** The looser test
+("returns an object/array anywhere in the body") caught seven *actions* that
+merely happen to return something — `mountPillWorkspace`, `wireAppToInspector`,
+`renderModal`, `useTicketSubmission` … — every one already correctly named. The
+single-return form caught none of them.
+
+**Known limit, stated rather than hidden:** a noun-named factory that builds up
+locals before returning is out of arm 2's reach, and there is no syntactic
+discriminator separating those from actions without the lexicon this rule avoids.
+Arm 1 still covers them whenever they carry a factory-synonym prefix.
+
+`createFake*` / `createStub*` deliberately keep the test-double vocabulary
+rather than flattening it — `create` states the effect, `Fake`/`Stub` states what
+is produced.
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):

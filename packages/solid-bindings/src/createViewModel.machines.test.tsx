@@ -34,7 +34,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("createViewModel — machine-backed members", () => {
   it("useTileExecution starts ready and exposes execute/dismiss intents", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
     const eurusd = requireFirstPair();
 
     const { result } = renderHook(() => {
@@ -47,7 +47,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useRfqTile starts in init and exposes the RFQ lifecycle intents", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
     const eurusd = requireFirstPair();
 
     const { result } = renderHook(() => {
@@ -63,7 +63,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useStaleFlag returns an intent-free Accessor<boolean> (starts false)", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
     const eurusd = requireFirstPair();
 
     const { result } = renderHook(() => {
@@ -74,7 +74,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useAnalyticsStaleFlag returns an intent-free Accessor<boolean> (starts false)", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useAnalyticsStaleFlag();
@@ -84,7 +84,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useRowHighlight(isNew) starts true for a new row and false for an existing one", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result: newRow } = renderHook(() => {
       return vm.useRowHighlight(true);
@@ -99,7 +99,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useNotional(defaultNotional) starts at the default and change() updates the view", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useNotional(1_000_000);
@@ -114,7 +114,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useRfqSubmission drives create→confirmed, mirroring react-bindings' creditRfqHooks flow", async () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useRfqSubmission();
@@ -138,7 +138,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useTicketSubmission starts unsubmitted and exposes submitPrice/pass intents", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useTicketSubmission();
@@ -150,7 +150,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useRfqCountdown(creationTimestamp, totalMs) starts near totalMs and ticks down", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
     const totalMs = 10_000;
 
     const { result } = renderHook(() => {
@@ -162,7 +162,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useLayout(tab) starts with nothing maximized and maximize()/restore() round-trip", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useLayout("fx");
@@ -178,7 +178,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useBootSequence(onDone) starts with a live progress ramp and skip() completes it", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
     let done = false;
 
     const { result } = renderHook(() => {
@@ -194,7 +194,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useOrderTicket(defaultSymbol) starts editing with the given symbol", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useOrderTicket("AAPL");
@@ -210,7 +210,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useEqWorkspace's select/closeTab/setTimeframe intents drive the shared workspace state", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqWorkspace();
@@ -223,7 +223,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useEqWorkspace's setChartType/toggleIndicator intents drive the shared workspace state", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqWorkspace();
@@ -243,7 +243,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useEqWorkspace's togglePane intent drives the shared workspace state, independently of indicators", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqWorkspace();
@@ -262,7 +262,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useEqWorkspace's toggleYScale intent flips linear <-> log, starting linear", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqWorkspace();
@@ -278,7 +278,7 @@ describe("createViewModel — machine-backed members", () => {
   });
 
   it("useEqDrawings's addDrawing intent appends the drawing, selects it, and reverts the tool to cursor", () => {
-    const vm = makeViewModel();
+    const vm = createViewModelFixture();
 
     const { result } = renderHook(() => {
       return vm.useEqDrawings();
@@ -314,7 +314,7 @@ function requireFirstPair(): (typeof KNOWN_CURRENCY_PAIRS)[number] {
   return pair;
 }
 
-function makeViewModel(): ViewModel {
+function createViewModelFixture(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
 
   return createViewModel(

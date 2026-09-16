@@ -22,7 +22,7 @@ import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createApp, createMachineFactories } from "#/composition";
 
-function makeEffectHarness(): CoreHarness {
+function createEffectHarness(): CoreHarness {
   const base: AppPorts = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
@@ -52,4 +52,4 @@ function makeEffectHarness(): CoreHarness {
   };
 }
 
-describeCoreContract("effect", makeEffectHarness);
+describeCoreContract("effect", createEffectHarness);

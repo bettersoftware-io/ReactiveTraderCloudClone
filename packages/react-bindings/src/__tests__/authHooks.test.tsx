@@ -21,7 +21,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("useAuth", () => {
   it("starts unauthenticated with no user", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useAuth();
     });
@@ -30,7 +30,7 @@ describe("useAuth", () => {
   });
 
   it("login transitions to authenticated and sets the user", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useAuth();
     });
@@ -44,7 +44,7 @@ describe("useAuth", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

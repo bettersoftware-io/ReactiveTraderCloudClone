@@ -56,7 +56,7 @@ describe("readMaybeAccessor", () => {
 
 describe("toKeyedSignal", () => {
   it("reads the seeded value for the initial key", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key] = createSignal("a");
@@ -75,7 +75,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("switches to the other key's value when the key signal changes", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key, setKey] = createSignal("a");
@@ -97,7 +97,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("keeps tracking the NEW key's later emissions after a key change", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key, setKey] = createSignal("a");
@@ -119,7 +119,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("releases the previous key's subscription on a key change", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key, setKey] = createSignal("a");
@@ -145,7 +145,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("ignores later emissions on the key it moved away from", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key, setKey] = createSignal("a");
@@ -167,7 +167,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("subscribes once and never resubscribes for a plain (untracked) key", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const value = toKeyedSignal("a", (k) => {
@@ -184,7 +184,7 @@ describe("toKeyedSignal", () => {
   });
 
   it("unsubscribes the current key when the owner is disposed", () => {
-    const world = makeKeyedWorld();
+    const world = createKeyedWorld();
 
     createRoot((dispose) => {
       const [key, setKey] = createSignal("a");
@@ -216,7 +216,7 @@ describe("toKeyedSignal", () => {
 // `defer` resets `older$`/`exhausted$` on each fresh subscription cycle).
 describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked read", () => {
   it("does not rebuild when a tracked upstream signal changes but the key does not", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
 
     createRoot((dispose) => {
       const [workspace, setWorkspace] = createSignal({
@@ -252,7 +252,7 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
   });
 
   it("ChartPanel shape: a coarse state object churning in unrelated fields keeps the series subscription", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
 
     createRoot((dispose) => {
       // `<ChartBody symbol={state().sel} timeframe={state().timeframe} />` —
@@ -311,7 +311,7 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
   });
 
   it("still rebuilds exactly once when the key value really changes", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
 
     createRoot((dispose) => {
       const [workspace, setWorkspace] = createSignal({
@@ -338,7 +338,7 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
   });
 
   it("two-key form: a symbol change and a timeframe change each rebuild exactly once", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
 
     createRoot((dispose) => {
       const [symbol, setSymbol] = createSignal("a");
@@ -371,7 +371,7 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
   });
 
   it("an object key compares by reference: the same instance re-read does not rebuild", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
     const eurusd = { symbol: "a" };
 
     createRoot((dispose) => {
@@ -395,7 +395,7 @@ describe("toKeyedSignal — resubscribes on the key VALUE, not on any tracked re
   });
 
   it("invokes the source factory exactly once for a plain value key", () => {
-    const world = makeCountingWorld();
+    const world = createCountingWorld();
 
     createRoot((dispose) => {
       const value = toKeyedSignal("a", (k) => {
@@ -427,7 +427,7 @@ interface KeyedWorld {
 /** Two warm per-key sources behind one `@rx-state/core` keyed `state()` —
  * the same shape `createViewModel`'s priceState/candlesState/depthState use,
  * so refcount assertions here mean what they mean in production. */
-function makeKeyedWorld(): KeyedWorld {
+function createKeyedWorld(): KeyedWorld {
   const a$ = new BehaviorSubject("a1");
   const b$ = new BehaviorSubject("b1");
   const keyed = state((key: string) => {
@@ -444,7 +444,7 @@ interface CountingWorld extends KeyedWorld {
   readonly factoryCalls: number;
 }
 
-function makeCountingWorld(): CountingWorld {
+function createCountingWorld(): CountingWorld {
   const a$ = new BehaviorSubject("a1");
   const b$ = new BehaviorSubject("b1");
   let factoryCalls = 0;

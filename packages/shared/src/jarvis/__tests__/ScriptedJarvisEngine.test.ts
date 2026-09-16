@@ -36,7 +36,7 @@ afterEach(() => {
 
 describe("ScriptedJarvisEngine", () => {
   it("a quote turn emits toolEvent running -> chunked deltas reassembling the full reply -> done", async () => {
-    const { deps } = buildDeps({ instantReveal$: of(false) });
+    const { deps } = createDeps({ instantReveal$: of(false) });
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "where is EURUSD?");
@@ -61,7 +61,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("instantReveal -> exactly one delta", async () => {
-    const { deps } = buildDeps({ instantReveal$: of(true) });
+    const { deps } = createDeps({ instantReveal$: of(true) });
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "hi");
@@ -94,7 +94,7 @@ describe("ScriptedJarvisEngine", () => {
       valueDate: "2026-07-29",
     };
 
-    const { deps, executeTradeSpy } = buildDeps({
+    const { deps, executeTradeSpy } = createDeps({
       executeTrade: () => {
         return of(trade);
       },
@@ -151,7 +151,7 @@ describe("ScriptedJarvisEngine", () => {
       valueDate: "2026-07-29",
     };
 
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       // Longer than SNAPSHOT_TIMEOUT_MS (2s) but well within an execution
       // budget — mirrors ExecutionSimulator's EURJPY-specific 4s delay.
       executeTrade: () => {
@@ -188,7 +188,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("declining a confirmation reports the decline and never calls ExecutionPort", async () => {
-    const { deps, executeTradeSpy } = buildDeps();
+    const { deps, executeTradeSpy } = createDeps();
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "sell 2M eurusd");
@@ -214,7 +214,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a snapshot that never resolves times out into a single error event", async () => {
-    const { deps } = buildDeps({ referenceData$: NEVER });
+    const { deps } = createDeps({ referenceData$: NEVER });
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "hi");
@@ -226,7 +226,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a pnl turn reads analytics + blotter behind a 'desk' toolEvent and formats the headline total", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       positions: {
         currentPositions: [
           {
@@ -244,7 +244,7 @@ describe("ScriptedJarvisEngine", () => {
         ],
         history: [],
       },
-      trades: [makeTrade(1), makeTrade(2)],
+      trades: [createTrade(1), createTrade(2)],
     });
     const adapter = new ScriptedJarvisEngine(deps);
 
@@ -267,7 +267,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a movers turn ranks by absolute pips delta, keeps the top 3, and signs losers with the typographic minus", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: [
         EURUSD,
         findPair("GBPUSD"),
@@ -275,10 +275,10 @@ describe("ScriptedJarvisEngine", () => {
         findPair("AUDUSD"),
       ],
       history: {
-        EURUSD: [makeTick("EURUSD", 1.083), makeTick("EURUSD", 1.0842)],
-        GBPUSD: [makeTick("GBPUSD", 1.25), makeTick("GBPUSD", 1.247)],
-        USDJPY: [makeTick("USDJPY", 154.5), makeTick("USDJPY", 154.55)],
-        AUDUSD: [makeTick("AUDUSD", 0.66), makeTick("AUDUSD", 0.6602)],
+        EURUSD: [createTick("EURUSD", 1.083), createTick("EURUSD", 1.0842)],
+        GBPUSD: [createTick("GBPUSD", 1.25), createTick("GBPUSD", 1.247)],
+        USDJPY: [createTick("USDJPY", 154.5), createTick("USDJPY", 154.55)],
+        AUDUSD: [createTick("AUDUSD", 0.66), createTick("AUDUSD", 0.6602)],
       },
     });
     const adapter = new ScriptedJarvisEngine(deps);
@@ -299,7 +299,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a spread turn surfaces the same 'quote' toolEvent as a quote turn around its pricing read", async () => {
-    const { deps } = buildDeps({});
+    const { deps } = createDeps({});
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "what's the spread on EURUSD?");
@@ -319,7 +319,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a showPanel turn emits the canned GBP-volatility panel (round-tripping parsePanelSpec against the engine's own roster) followed by speech + done", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
@@ -367,7 +367,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a restylePanel turn re-emits the same panelId with the new viz", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
@@ -399,7 +399,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a restylePanel turn with no prior panel this session gets a fallback-style reply and emits no panel event", async () => {
-    const { deps } = buildDeps({ instantReveal$: of(true) });
+    const { deps } = createDeps({ instantReveal$: of(true) });
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "make it a heatmap");
@@ -415,7 +415,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a setupWorkspace turn emits exactly one command event (batch deep-equal to SCRIPTED_VOL_WORKSPACE_BATCH), a panel event that follows it, deltas, and done", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
@@ -460,7 +460,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a volSpike ('moved') narration turn emits only deltas + done — no command/panel events (offers-never-executes) — and replies with move-flavored copy", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
@@ -486,7 +486,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a spreadWidening narration turn replies with spread-flavored copy, not the volSpike copy — spread is spread, never folded into the vol channel (T7 review ruling)", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       pairs: KNOWN_CURRENCY_PAIRS,
       instantReveal$: of(true),
     });
@@ -512,7 +512,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("a help turn replies with the capability roster verbatim", async () => {
-    const { deps } = buildDeps({});
+    const { deps } = createDeps({});
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "what can you do?");
@@ -526,7 +526,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("an unmatched turn replies with the fallback mandate verbatim", async () => {
-    const { deps } = buildDeps({});
+    const { deps } = createDeps({});
     const adapter = new ScriptedJarvisEngine(deps);
 
     const { events, done } = runTurn(adapter, "make me a sandwich");
@@ -540,7 +540,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("tearing a turn down mid-confirmation cancels the pending Subject: a late confirm() is a no-op and never executes", async () => {
-    const { deps, executeTradeSpy } = buildDeps({});
+    const { deps, executeTradeSpy } = createDeps({});
     const adapter = new ScriptedJarvisEngine(deps);
 
     const events: JarvisEvent[] = [];
@@ -568,9 +568,9 @@ describe("ScriptedJarvisEngine", () => {
   });
 
   it("two trade turns produce distinct, non-sequential confirmationIds — not a guessable 'confirm-1'/'confirm-2' counter", async () => {
-    const { deps } = buildDeps({
+    const { deps } = createDeps({
       executeTrade: () => {
-        return of(makeTrade(1));
+        return of(createTrade(1));
       },
     });
     const adapter = new ScriptedJarvisEngine(deps);
@@ -609,7 +609,7 @@ describe("ScriptedJarvisEngine", () => {
   });
 });
 
-function makeTrade(tradeId: number): Trade {
+function createTrade(tradeId: number): Trade {
   return {
     tradeId,
     tradeName: `t${tradeId}`,
@@ -624,7 +624,7 @@ function makeTrade(tradeId: number): Trade {
   };
 }
 
-function makeTick(symbol: string, mid: number): PriceTick {
+function createTick(symbol: string, mid: number): PriceTick {
   return {
     symbol,
     bid: mid - 0.0001,
@@ -663,7 +663,7 @@ interface BuiltDeps {
   readonly executeTradeSpy: ReturnType<typeof vi.fn>;
 }
 
-function buildDeps(options: TestPortsOptions = {}): BuiltDeps {
+function createDeps(options: TestPortsOptions = {}): BuiltDeps {
   const pairs = options.pairs ?? [EURUSD];
   const history = options.history ?? {
     EURUSD: [SESSION_START_TICK, CURRENT_TICK],

@@ -19,7 +19,7 @@ describe("useFlip", () => {
     // vi.spyOn has a real method to wrap (the hook's try/catch around
     // node.animate(...) means it works fine either way).
     if (typeof Element.prototype.animate !== "function") {
-      Element.prototype.animate = stubAnimate;
+      Element.prototype.animate = createStubAnimate;
     }
 
     const animateSpy = vi.spyOn(Element.prototype, "animate");
@@ -53,7 +53,7 @@ describe("useFlip", () => {
     document.body.append(container);
 
     if (typeof Element.prototype.animate !== "function") {
-      Element.prototype.animate = stubAnimate;
+      Element.prototype.animate = createStubAnimate;
     }
 
     const animateSpy = vi.spyOn(Element.prototype, "animate");
@@ -92,6 +92,6 @@ interface HarnessProps {
   filterKey: string;
 }
 
-function stubAnimate(): Animation {
+function createStubAnimate(): Animation {
   return {} as unknown as Animation;
 }

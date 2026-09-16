@@ -81,7 +81,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // right — so "still first" is only explained by construction injecting it.
   // The unmount's dispose flush is the witness of the live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
     const [layoutResets, setLayoutResets] = createSignal(0);
@@ -112,7 +112,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   });
 
   it("re-reconciles the instance into the engine a cleared-blob workspace reset rebuilds", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
     mountEngine({ store, instances: [AAPL], layoutResets });
@@ -233,7 +233,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // what an unlisted id would get (deleted as an orphan by the engine's
   // reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
@@ -275,10 +275,10 @@ describe("DockviewLayoutEngine instances prop", () => {
     >([AAPL]);
     let instanceSlice: PanelRegistry = {};
 
-    function composeRegistry(): PanelRegistry {
+    function createComposedRegistry(): PanelRegistry {
       instanceSlice = reuseRegistryEntries(
         instanceSlice,
-        stubInstanceRegistryFor(instances()),
+        createStubInstanceRegistryFor(instances()),
       );
 
       return { ...registry, ...instanceSlice };
@@ -287,7 +287,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     mountEngine({
       store: new InMemoryDockLayoutStore(),
       instances,
-      registry: composeRegistry,
+      registry: createComposedRegistry,
     });
 
     const aaplBefore = page.bodyElement("instance-AAPL-body");
@@ -314,7 +314,7 @@ describe("DockviewLayoutEngine instances prop", () => {
 // written at all.
 describe("DockviewLayoutEngine instance pins", () => {
   it("opens a construction-time instance unpinned, the Jarvis dock beside it pinned", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
     mountEngine({
       store,
@@ -334,7 +334,7 @@ describe("DockviewLayoutEngine instance pins", () => {
   // REBUILT engine's, whose instance came from `buildEngine`'s own
   // `dynamicPanels` (the diff effect's add no-ops on it).
   it("opens the instance unpinned in the engine a layoutResets rebuild constructs", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
     mountEngine({
@@ -360,7 +360,7 @@ describe("DockviewLayoutEngine instance pins", () => {
   });
 
   it("opens an instance the diff effect adds unpinned", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const [instances, setInstances] = createSignal<
       readonly LayoutPanelInstance[]
     >([]);
@@ -463,7 +463,7 @@ function noop(): void {}
 /** A stand-in for `instanceRegistryFor` with its exact identity behaviour —
  * a FRESH closure per instance on every call — minus the real ChartPanel
  * (which needs the whole ViewModel). */
-function stubInstanceRegistryFor(
+function createStubInstanceRegistryFor(
   instances: readonly LayoutPanelInstance[],
 ): PanelRegistry {
   const entries = instances.map((instance) => {
@@ -487,7 +487,7 @@ interface RecordingStore {
   inner: InMemoryDockLayoutStore;
 }
 
-function recordingStore(): RecordingStore {
+function createRecordingStore(): RecordingStore {
   const inner = new InMemoryDockLayoutStore();
   const store: DockLayoutStore = {
     load: (tab: string): string | null => {

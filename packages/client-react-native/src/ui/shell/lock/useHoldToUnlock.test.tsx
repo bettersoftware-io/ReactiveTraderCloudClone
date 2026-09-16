@@ -24,7 +24,7 @@ test("holding rises progress toward 1 via a timed fill", async () => {
 
   expect(page.state.progress.value).toBe(0);
 
-  page.state.gesture.handlers.onBegin?.(fakeEvent());
+  page.state.gesture.handlers.onBegin?.(createFakeEvent());
 
   expect(page.state.progress.value).toBe(1);
   expect(withTimingSpy).toHaveBeenCalledWith(
@@ -39,7 +39,7 @@ test("a LockHoldProgressContext pin is the progress the ring reads and the gestu
 
   expect(page.state.progress).toBe(pinned);
 
-  page.state.gesture.handlers.onBegin?.(fakeEvent());
+  page.state.gesture.handlers.onBegin?.(createFakeEvent());
 
   expect(pinned.value).toBe(1);
 });
@@ -49,10 +49,10 @@ test("releasing early decays progress back to 0 via a timed animation, not a sna
   const onComplete = jest.fn();
   await page.mount({ onComplete });
 
-  page.state.gesture.handlers.onBegin?.(fakeEvent());
+  page.state.gesture.handlers.onBegin?.(createFakeEvent());
   withTimingSpy.mockClear();
 
-  page.state.gesture.handlers.onFinalize?.(fakeEvent(), false);
+  page.state.gesture.handlers.onFinalize?.(createFakeEvent(), false);
 
   expect(withTimingSpy).toHaveBeenCalledWith(
     0,
@@ -66,13 +66,13 @@ test("onComplete fires exactly once on activation, not per frame", async () => {
   const onComplete = jest.fn();
   await page.mount({ onComplete });
 
-  page.state.gesture.handlers.onBegin?.(fakeEvent());
-  page.state.gesture.handlers.onStart?.(fakeEvent());
+  page.state.gesture.handlers.onBegin?.(createFakeEvent());
+  page.state.gesture.handlers.onStart?.(createFakeEvent());
   expect(onComplete).toHaveBeenCalledTimes(1);
 
   // A completed hold still finalizes (finger lifts after activation) — must
   // not re-fire onComplete.
-  page.state.gesture.handlers.onFinalize?.(fakeEvent(), true);
+  page.state.gesture.handlers.onFinalize?.(createFakeEvent(), true);
   expect(onComplete).toHaveBeenCalledTimes(1);
 });
 
@@ -82,7 +82,7 @@ test("completion invokes the latest onComplete closure across re-renders (re-arm
   await page.mount({ onComplete: first });
 
   await page.rerender({ onComplete: second });
-  page.state.gesture.handlers.onStart?.(fakeEvent());
+  page.state.gesture.handlers.onStart?.(createFakeEvent());
 
   expect(first).not.toHaveBeenCalled();
   expect(second).toHaveBeenCalledTimes(1);
@@ -94,18 +94,18 @@ test("with motion disabled, the discrete fill jump lands on hold-activation (onS
   const onComplete = jest.fn();
   await page.mount({ onComplete });
 
-  page.state.gesture.handlers.onBegin?.(fakeEvent());
+  page.state.gesture.handlers.onBegin?.(createFakeEvent());
   // Touch-down alone must NOT jump the ring full — a real unlock isn't
   // imminent until the hold actually activates (native minDuration).
   expect(page.state.progress.value).toBe(0);
   expect(withTimingSpy).not.toHaveBeenCalled();
 
-  page.state.gesture.handlers.onStart?.(fakeEvent());
+  page.state.gesture.handlers.onStart?.(createFakeEvent());
   expect(page.state.progress.value).toBe(1);
   expect(onComplete).toHaveBeenCalledTimes(1);
   expect(withTimingSpy).not.toHaveBeenCalled();
 
-  page.state.gesture.handlers.onFinalize?.(fakeEvent(), true);
+  page.state.gesture.handlers.onFinalize?.(createFakeEvent(), true);
   expect(page.state.progress.value).toBe(0);
   expect(withTimingSpy).not.toHaveBeenCalled();
 });
@@ -139,7 +139,7 @@ test("motionEnabled is threaded into a live SharedValue that reflects a later pr
 // Handlers only need a value to pass through; none of the assertions above
 // read event fields, so an empty stand-in satisfies the (event, success?)
 // signatures without pulling in gesture-handler's payload types.
-function fakeEvent(): never {
+function createFakeEvent(): never {
   return {} as never;
 }
 

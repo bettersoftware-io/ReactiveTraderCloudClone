@@ -50,7 +50,7 @@ describe("jarvisRunnerConfig", () => {
     // Deliberately imports the REAL buildJarvisTools rather than pinning the
     // seven names as literals — a Task 2 rename of a tool breaks this test
     // instead of silently drifting the map out of sync with the UI.
-    const deps = buildToolDeps();
+    const deps = createToolDeps();
     const realToolNames = buildJarvisTools(deps).map((tool) => {
       return tool.name;
     });
@@ -82,7 +82,7 @@ describe("jarvisRunnerConfig", () => {
  * of its tools are actually called here, so simulators + a no-op confirm
  * gate are enough; this exists solely to derive the real seven tool names
  * from the real package (see the friendly-name coverage test above). */
-function buildToolDeps(): JarvisToolDeps {
+function createToolDeps(): JarvisToolDeps {
   const execution = new ExecutionSimulator();
   const analytics: AnalyticsPort = {
     getAnalytics: () => {

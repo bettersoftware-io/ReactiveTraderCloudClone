@@ -27,7 +27,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -48,7 +48,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -72,7 +72,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -97,7 +97,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -119,7 +119,7 @@ describe("useDraggableDialog", () => {
 
 // --- test helpers -----------------------------------------------------
 
-function stubDialogRect(
+function createStubDialogRect(
   ref: RefObject<HTMLDivElement | null>,
   rect: DOMRect,
 ): void {

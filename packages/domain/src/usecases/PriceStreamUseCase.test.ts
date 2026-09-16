@@ -36,7 +36,7 @@ describe("PriceStreamUseCase", () => {
         creationTimestamp: 3,
       },
     ];
-    const useCase = new PriceStreamUseCase(stubPricing(ticks));
+    const useCase = new PriceStreamUseCase(createStubPricing(ticks));
 
     const results: Price[] = await firstValueFrom(
       useCase.execute(EURUSD).pipe(toArray()),
@@ -61,7 +61,7 @@ describe("PriceStreamUseCase", () => {
         creationTimestamp: 1,
       },
     ];
-    const useCase = new PriceStreamUseCase(stubPricing(ticks));
+    const useCase = new PriceStreamUseCase(createStubPricing(ticks));
 
     const first = await firstValueFrom(useCase.execute(EURUSD).pipe(toArray()));
     const second = await firstValueFrom(
@@ -73,7 +73,7 @@ describe("PriceStreamUseCase", () => {
   });
 });
 
-function stubPricing(ticks: PriceTick[]): PricingPort {
+function createStubPricing(ticks: PriceTick[]): PricingPort {
   return {
     getPriceUpdates: () => {
       return from(ticks);

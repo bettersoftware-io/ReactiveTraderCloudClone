@@ -24,10 +24,10 @@ describe("JarvisPanelsPresenter", () => {
   it("projects live machine panels into JarvisPanelVm rows (title/rationale/status/vizKind)", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const deps = makeDeps();
+    const deps = createDeps();
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
-    const spec = makeSpec({
+    const spec = createSpec({
       title: "GBP Vol",
       rationale: "Because sir",
       source: { kind: "blotter" },
@@ -49,13 +49,13 @@ describe("JarvisPanelsPresenter", () => {
   it("a structurally-identical-but-different-reference spec stays 'live' — only the machine's actual sentinel (by reference) is 'unsupported'", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const deps = makeDeps();
+    const deps = createDeps();
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
     events$.next({
       type: "panel",
       panelId: "looks-like-sentinel",
-      spec: unsupportedSentinelLike(),
+      spec: createUnsupportedSentinelLike(),
     });
 
     const row = latest(presenter.panels$).find((r) => {
@@ -67,7 +67,7 @@ describe("JarvisPanelsPresenter", () => {
   it("an unsupported panel's data$ is EMPTY", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const deps = makeDeps();
+    const deps = createDeps();
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
     events$.next({
@@ -86,13 +86,13 @@ describe("JarvisPanelsPresenter", () => {
   it("dismissing a panel unsubscribes its underlying port streams (the ws-effects #171 lesson)", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const track = instrumentedTicks();
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: track.ticks$ }),
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: track.ticks$ }),
     });
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
     });
@@ -109,9 +109,9 @@ describe("JarvisPanelsPresenter", () => {
   it("FIFO-evicting a panel at MAX_LIVE_PANELS also unsubscribes its port streams", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const track = instrumentedTicks();
-    const deps = makeDeps({
-      pricing: fakePricing({ EVICTME: track.ticks$ }),
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EVICTME: track.ticks$ }),
     });
     // Constructed for its side-effecting warm subscription; this test only
     // asserts on the fake port spy below, never on the presenter directly.
@@ -121,7 +121,7 @@ describe("JarvisPanelsPresenter", () => {
     events$.next({
       type: "panel",
       panelId: "evict-me",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["EVICTME"] },
         viz: { kind: "line" },
       }),
@@ -134,7 +134,10 @@ describe("JarvisPanelsPresenter", () => {
       events$.next({
         type: "panel",
         panelId: `filler-${i}`,
-        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
       });
     }
 
@@ -144,10 +147,10 @@ describe("JarvisPanelsPresenter", () => {
   it("editing a panel's spec (restyle) tears down the old interpretation and starts a fresh one", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const trackA = instrumentedTicks();
-    const trackB = instrumentedTicks();
-    const deps = makeDeps({
-      pricing: fakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
+    const trackA = createInstrumentedTicks();
+    const trackB = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
     });
     // Constructed for its side-effecting warm subscription; this test only
     // asserts on the fake port spies below, never on the presenter directly.
@@ -157,7 +160,7 @@ describe("JarvisPanelsPresenter", () => {
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["SYMA"] },
         viz: { kind: "line" },
       }),
@@ -171,7 +174,7 @@ describe("JarvisPanelsPresenter", () => {
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["SYMB"] },
         viz: { kind: "table" },
       }),
@@ -184,14 +187,16 @@ describe("JarvisPanelsPresenter", () => {
   it("multiple concurrent readers of the same live panel's data$ still cost the source ports exactly one subscription", async () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const track = instrumentedTicks();
-    const deps = makeDeps({ pricing: fakePricing({ EURUSD: track.ticks$ }) });
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: track.ticks$ }),
+    });
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "line" },
       }),
@@ -218,7 +223,7 @@ describe("JarvisPanelsPresenter", () => {
   it("panelData$ caches one stream per panelId — a repeat call returns the same Observable", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
     const first = presenter.panelData$("p1");
     const second = presenter.panelData$("p1");
@@ -228,7 +233,7 @@ describe("JarvisPanelsPresenter", () => {
   it("panelData$ returns distinct cached streams for distinct panelIds", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
     const a = presenter.panelData$("p1");
     const b = presenter.panelData$("p2");
@@ -238,7 +243,7 @@ describe("JarvisPanelsPresenter", () => {
   it("panelData$ emits null for an id with no live panel (never spawned, or unsupported)", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
     expect(latest(presenter.panelData$("never-spawned"))).toBeNull();
 
@@ -253,12 +258,12 @@ describe("JarvisPanelsPresenter", () => {
   it("panelData$ relays the live panel's resolved PanelData, keyed by panelId", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      spec: createSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
     });
 
     expect(latest(presenter.panelData$("p1"))).toMatchObject({
@@ -269,10 +274,10 @@ describe("JarvisPanelsPresenter", () => {
   it("panelData$ switches to the new panel's data after a dismiss + respawn under the same id — never replays the torn-down panel's last frame", () => {
     const events$ = new Subject<JarvisEvent>();
     const machine = createJarvisPanelsMachine(events$);
-    const trackA = instrumentedTicks();
-    const trackB = instrumentedTicks();
-    const deps = makeDeps({
-      pricing: fakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
+    const trackA = createInstrumentedTicks();
+    const trackB = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
     });
     const presenter = new JarvisPanelsPresenter(machine, deps);
 
@@ -285,7 +290,7 @@ describe("JarvisPanelsPresenter", () => {
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["SYMA"] },
         viz: { kind: "line" },
       }),
@@ -303,7 +308,7 @@ describe("JarvisPanelsPresenter", () => {
     events$.next({
       type: "panel",
       panelId: "p1",
-      spec: makeSpec({
+      spec: createSpec({
         source: { kind: "fxTicks", symbols: ["SYMB"] },
         viz: { kind: "line" },
       }),
@@ -317,12 +322,15 @@ describe("JarvisPanelsPresenter", () => {
     it("a JarvisPanelVm row's docked field mirrors the machine state (false for a fresh wire spawn)", () => {
       const events$ = new Subject<JarvisEvent>();
       const machine = createJarvisPanelsMachine(events$);
-      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
       events$.next({
         type: "panel",
         panelId: "p1",
-        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
       });
 
       const row = latest(presenter.panels$).find((r) => {
@@ -339,12 +347,15 @@ describe("JarvisPanelsPresenter", () => {
     it("the VM row's docked field mirrors the MACHINE's dock/undock intents", () => {
       const events$ = new Subject<JarvisEvent>();
       const machine = createJarvisPanelsMachine(events$);
-      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
       events$.next({
         type: "panel",
         panelId: "p1",
-        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
       });
 
       machine.dockPanel("p1");
@@ -363,11 +374,11 @@ describe("JarvisPanelsPresenter", () => {
     it("re-exports restoreDockedPanel from the machine, appending a docked live row", () => {
       const events$ = new Subject<JarvisEvent>();
       const machine = createJarvisPanelsMachine(events$);
-      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
       presenter.restoreDockedPanel(
         "r1",
-        makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        createSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
       );
 
       const row = latest(presenter.panels$).find((r) => {
@@ -383,17 +394,23 @@ describe("JarvisPanelsPresenter", () => {
     it("dockedPanels$ and floatingPanels$ split panels$ rows by the docked flag", () => {
       const events$ = new Subject<JarvisEvent>();
       const machine = createJarvisPanelsMachine(events$);
-      const presenter = new JarvisPanelsPresenter(machine, makeDeps());
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
 
       events$.next({
         type: "panel",
         panelId: "p1",
-        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
       });
       events$.next({
         type: "panel",
         panelId: "p2",
-        spec: makeSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
       });
       machine.dockPanel("p1");
 
@@ -420,7 +437,7 @@ interface LineKindTag {
 }
 type LinePanelData = Extract<PanelData, LineKindTag>;
 
-function makeSpec(
+function createSpec(
   overrides: Partial<PanelSpecV1> & Pick<PanelSpecV1, "source" | "viz">,
 ): PanelSpecV1 {
   return { v: 1, title: "Test panel", transforms: [], ...overrides };
@@ -429,7 +446,7 @@ function makeSpec(
 /** Structurally identical to the machine's real `UNSUPPORTED_SENTINEL_SPEC`
  * but a DIFFERENT object reference — used to prove the machine's
  * by-reference detection, per its doc, before driving the real sentinel. */
-function unsupportedSentinelLike(): PanelSpecV1 {
+function createUnsupportedSentinelLike(): PanelSpecV1 {
   return {
     v: 1,
     title: "Unsupported panel",
@@ -439,7 +456,7 @@ function unsupportedSentinelLike(): PanelSpecV1 {
   };
 }
 
-function fakeReferenceData(): ReferenceDataPort {
+function createFakeReferenceData(): ReferenceDataPort {
   return {
     getCurrencyPairs: () => {
       return of([]);
@@ -447,7 +464,7 @@ function fakeReferenceData(): ReferenceDataPort {
   };
 }
 
-function fakePricing(
+function createFakePricing(
   overrides: Partial<Record<string, Observable<PriceTick>>> = {},
 ): PricingPort {
   return {
@@ -463,7 +480,7 @@ function fakePricing(
   };
 }
 
-function fakeBlotter(): BlotterPort {
+function createFakeBlotter(): BlotterPort {
   return {
     getTradeStream: () => {
       return of([]);
@@ -471,7 +488,7 @@ function fakeBlotter(): BlotterPort {
   };
 }
 
-function fakeAnalytics(): AnalyticsPort {
+function createFakeAnalytics(): AnalyticsPort {
   return {
     getAnalytics: () => {
       return EMPTY;
@@ -479,17 +496,17 @@ function fakeAnalytics(): AnalyticsPort {
   };
 }
 
-function makeDeps(overrides: Partial<PanelStreamDeps> = {}): PanelStreamDeps {
+function createDeps(overrides: Partial<PanelStreamDeps> = {}): PanelStreamDeps {
   return {
-    referenceData: fakeReferenceData(),
-    pricing: fakePricing(),
-    blotter: fakeBlotter(),
-    analytics: fakeAnalytics(),
+    referenceData: createFakeReferenceData(),
+    pricing: createFakePricing(),
+    blotter: createFakeBlotter(),
+    analytics: createFakeAnalytics(),
     ...overrides,
   };
 }
 
-/** A `instrumentedTicks()` result: a never-completing price-tick source
+/** A `createInstrumentedTicks()` result: a never-completing price-tick source
  * (mirrors a real live feed) alongside live subscribe/unsubscribe counters —
  * the spy this class's teardown contract is checked against. */
 interface InstrumentedTicks {
@@ -498,7 +515,7 @@ interface InstrumentedTicks {
   readonly unsubscribeCount: number;
 }
 
-function instrumentedTicks(): InstrumentedTicks {
+function createInstrumentedTicks(): InstrumentedTicks {
   const tracker = { subscribeCount: 0, unsubscribeCount: 0 };
   const ticks$ = new Observable<PriceTick>((subscriber) => {
     tracker.subscribeCount += 1;

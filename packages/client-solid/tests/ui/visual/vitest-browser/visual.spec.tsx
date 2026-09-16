@@ -30,7 +30,7 @@ for (const [name] of Object.entries(scenarios)) {
     if (action.reducedMotion) {
       window.matchMedia = ((query: string): MediaQueryList => {
         return query.includes("prefers-reduced-motion")
-          ? stubReducedMotion()
+          ? createStubReducedMotion()
           : realMatchMedia.call(window, query);
       }) as typeof window.matchMedia;
     }
@@ -103,7 +103,7 @@ for (const [name] of Object.entries(scenarios)) {
 // Stub matchMedia so a query reports as matching (delegating every other query
 // to the real impl). Used for prefers-reduced-motion, which this runner cannot
 // emulate natively — the boot sequence reads it to skip its rAF canvas loop.
-function stubReducedMotion(): MediaQueryList {
+function createStubReducedMotion(): MediaQueryList {
   return {
     matches: true,
     media: "(prefers-reduced-motion: reduce)",

@@ -9,7 +9,7 @@ afterEach(cleanup);
 describe("WatchlistView", () => {
   test("renders a header row and one compact row per pair with a mini sparkline", () => {
     const { getByText, container } = render(
-      <WatchlistView rows={[makeRow({}), makeRow({ sym: "GBPUSD" })]} />,
+      <WatchlistView rows={[createRow({}), createRow({ sym: "GBPUSD" })]} />,
     );
 
     expect(getByText("EURUSD")).toBeTruthy();
@@ -24,13 +24,13 @@ describe("WatchlistView", () => {
 
   test("shows the absolute pip count even on a down move", () => {
     const { getByText } = render(
-      <WatchlistView rows={[makeRow({ movePips: -7, moveUp: false })]} />,
+      <WatchlistView rows={[createRow({ movePips: -7, moveUp: false })]} />,
     );
     expect(getByText("▼ 7")).toBeTruthy();
   });
 });
 
-function makeRow(overrides: Partial<WatchRow>): WatchRow {
+function createRow(overrides: Partial<WatchRow>): WatchRow {
   return {
     sym: "EURUSD",
     mid: "1.09213",

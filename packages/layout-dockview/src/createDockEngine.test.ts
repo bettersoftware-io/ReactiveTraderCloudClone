@@ -1402,7 +1402,7 @@ describe("glide marker", () => {
 describe("design-width pins (the in-house initialPx semantics)", () => {
   it("opens the rail at its design width and persists the pin in the blob", () => {
     const seen = trackLayout();
-    persistArranged({ ...railPinnedBase(), ...seen.options });
+    persistArranged({ ...createRailPinnedBase(), ...seen.options });
 
     expect(seen.branchSizeOf("fx-analytics")).toBe(360);
     expect(seen.pins()).toEqual([RAIL_PIN]);
@@ -1424,7 +1424,10 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("restores the design width after the whole rail strips and expands", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
 
     engine.collapsePanel("fx-analytics");
     engine.collapsePanel("fx-positions");
@@ -1442,9 +1445,20 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     // handed it its space. The pin must neither mask nor break the fix: this
     // is the user-visible FX-rail sequence, pin held throughout.
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
-    const analyticsBefore = baselineSize(railPinnedBase(), "fx-analytics");
-    const positionsBefore = baselineSize(railPinnedBase(), "fx-positions");
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
+
+    const analyticsBefore = baselineSize(
+      createRailPinnedBase(),
+      "fx-analytics",
+    );
+
+    const positionsBefore = baselineSize(
+      createRailPinnedBase(),
+      "fx-positions",
+    );
 
     engine.collapsePanel("fx-analytics");
     await waitForSize(seen, "fx-analytics", STRIP_HEIGHT);
@@ -1463,7 +1477,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("releases the pin on a sash drag in the declaring split", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1473,7 +1487,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("keeps the pin on a grab that never moves", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1484,7 +1498,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("leaves the rail pin alone when the drag is in a nested split", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
 
@@ -1494,13 +1508,13 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("re-applies a still-pinned blob's pin on the next load", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     persistArranged({ ...opts, ...seen.options });
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1510,7 +1524,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
   });
 
   it("keeps a released pin released across reloads", () => {
-    const opts = railPinnedBase();
+    const opts = createRailPinnedBase();
     const seen = trackLayout();
     const engine = createDockEngine({ ...opts, ...seen.options });
     dragSash(opts.container, ".dv-horizontal");
@@ -1518,7 +1532,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: seen.blob(),
     });
@@ -1528,13 +1542,13 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("treats a legacy blob without the sidecar as unpinned", () => {
     const seen = trackLayout();
-    persistArranged({ ...railPinnedBase(), ...seen.options });
+    persistArranged({ ...createRailPinnedBase(), ...seen.options });
     const legacy: Record<string, unknown> = JSON.parse(seen.blob());
     delete legacy.rtcDesignPins;
 
     const reloaded = trackLayout();
     persistArranged({
-      ...railPinnedBase(),
+      ...createRailPinnedBase(),
       ...reloaded.options,
       blob: JSON.stringify(legacy),
     });
@@ -1560,7 +1574,10 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
 
   it("dissolves a pin and releases its clamps when a member is dragged to its own rail", async () => {
     const seen = trackLayout();
-    const engine = createDockEngine({ ...railPinnedBase(), ...seen.options });
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      ...seen.options,
+    });
     const dock = lastDockviewApi();
     const analytics = dock.getPanel("fx-analytics");
     const rates = dock.getPanel("fx-rates");
@@ -1588,7 +1605,7 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
-  function railPinnedBase(): DockEngineOptions {
+  function createRailPinnedBase(): DockEngineOptions {
     return {
       ...railBase(),
       seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },

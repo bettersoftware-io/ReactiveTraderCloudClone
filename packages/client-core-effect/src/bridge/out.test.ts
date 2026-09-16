@@ -40,7 +40,7 @@ describe("bridge/out", () => {
   });
 
   it("streamToStream() interrupts the fiber on unsubscribe", async () => {
-    const { stream, wasInterrupted } = makeNeverStream();
+    const { stream, wasInterrupted } = createNeverStream();
     const sub = streamToStream(useHost(), stream).subscribe(() => {});
     // Let the fiber actually start: `runFork` returns before the stream is
     // running, and an interrupt delivered before `Effect.never` is reached
@@ -78,8 +78,8 @@ describe("bridge/out", () => {
   });
 
   it("streamToStream() fibers are interrupted when the host scope closes", async () => {
-    const host = makeHost();
-    const { stream, wasInterrupted } = makeNeverStream();
+    const host = createHost();
+    const { stream, wasInterrupted } = createNeverStream();
     streamToStream(host, stream).subscribe(() => {});
     await tick();
     expect(wasInterrupted()).toBe(false);
@@ -90,8 +90,8 @@ describe("bridge/out", () => {
   });
 
   it("streamToStream() unsubscribe still interrupts after the runtime is disposed", async () => {
-    const host = makeHost();
-    const { stream, wasInterrupted } = makeNeverStream();
+    const host = createHost();
+    const { stream, wasInterrupted } = createNeverStream();
     const rejections: unknown[] = [];
 
     function recordRejection(reason: unknown): void {
@@ -182,7 +182,7 @@ describe("bridge/out", () => {
   const hosts: EffectHost[] = [];
 
   function useHost(): EffectHost {
-    const host = makeHost();
+    const host = createHost();
     hosts.push(host);
     return host;
   }
@@ -190,7 +190,7 @@ describe("bridge/out", () => {
 
 /** A host of the same shape `composeWithBase` builds: a ManagedRuntime plus
  * the scope every stream fiber is forked into. */
-function makeHost(): EffectHost {
+function createHost(): EffectHost {
   return {
     runtime: ManagedRuntime.make(Layer.empty),
     scope: Effect.runSync(Scope.make()),
@@ -203,7 +203,7 @@ async function closeHost(host: EffectHost): Promise<void> {
 }
 
 /** A stream that never ends and reports its own interruption. */
-function makeNeverStream(): NeverStream {
+function createNeverStream(): NeverStream {
   let interrupted = false;
   const stream = Stream.fromEffect(
     Effect.never.pipe(

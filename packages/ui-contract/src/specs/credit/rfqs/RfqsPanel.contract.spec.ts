@@ -351,7 +351,7 @@ describe("RfqsPanel", () => {
   });
 
   it("dismisses a terminated RFQ immediately under prefers-reduced-motion", async () => {
-    stubReducedMotion(true);
+    createStubReducedMotion(true);
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,
@@ -633,8 +633,8 @@ function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
 
 /** Install a window.matchMedia stub for one test (jsdom omits it) — same
  * helper as BootGate.contract.spec.ts/BootSequence.contract.spec.ts. */
-function stubReducedMotion(matches: boolean): void {
-  function fakeMatchMedia(query: string): MediaQueryList {
+function createStubReducedMotion(matches: boolean): void {
+  function createFakeMatchMedia(query: string): MediaQueryList {
     return {
       matches,
       media: query,
@@ -649,7 +649,7 @@ function stubReducedMotion(matches: boolean): void {
     } as MediaQueryList;
   }
 
-  vi.stubGlobal("matchMedia", fakeMatchMedia);
+  vi.stubGlobal("matchMedia", createFakeMatchMedia);
 }
 
 const instruments: readonly Instrument[] = [

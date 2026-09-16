@@ -8,7 +8,7 @@ import { instrumentMachineFactories } from "../instrument/machines";
 describe("instrumentMachineFactories", () => {
   it("returns same-shape factories whose machines still work", () => {
     const hub = new DevtoolsHub();
-    const { factories, disposeSpy, submitSpy } = makeFactories();
+    const { factories, disposeSpy, submitSpy } = createFactories();
     const wrapped = instrumentMachineFactories(factories, hub);
     const machine = wrapped.orderTicket("AAPL");
     machine.intents.submit("arg");
@@ -22,7 +22,7 @@ describe("instrumentMachineFactories", () => {
     const created = vi.spyOn(hub, "machineCreated");
     const disposed = vi.spyOn(hub, "machineDisposed");
     const intent = vi.spyOn(hub, "machineIntent");
-    const { factories } = makeFactories();
+    const { factories } = createFactories();
     const machine = instrumentMachineFactories(factories, hub).orderTicket(
       "AAPL",
     );
@@ -43,7 +43,7 @@ describe("instrumentMachineFactories", () => {
     vi.spyOn(hub, "machineIntent").mockImplementation(() => {
       throw new Error("boom");
     });
-    const { factories, submitSpy } = makeFactories();
+    const { factories, submitSpy } = createFactories();
     const machine = instrumentMachineFactories(factories, hub).orderTicket("A");
     expect(() => {
       return machine.intents.submit();
@@ -94,7 +94,7 @@ interface Factories {
   submitSpy: ReturnType<typeof vi.fn>;
 }
 
-function makeFactories(): Factories {
+function createFactories(): Factories {
   const disposeSpy = vi.fn();
   const submitSpy = vi.fn();
   const factories = {

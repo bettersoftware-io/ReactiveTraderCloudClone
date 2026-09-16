@@ -22,7 +22,7 @@ describe("wsRealWorkflow :: error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const promise = firstValueFrom(ports.workflow.createRfq(makeReq()));
+    const promise = firstValueFrom(ports.workflow.createRfq(createReq()));
     await awaitPendingRpc(ws, "rpc.createRfq");
     ws.nextRpcResponse("rpc.createRfq", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to create RFQ/);
@@ -57,7 +57,7 @@ describe("wsRealWorkflow :: error paths", () => {
     ws.dispose();
   });
 
-  function makeReq(): CreateRfqRequest {
+  function createReq(): CreateRfqRequest {
     return {
       instrumentId: 1,
       dealerIds: [0],

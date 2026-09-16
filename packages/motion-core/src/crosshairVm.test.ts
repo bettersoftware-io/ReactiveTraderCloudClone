@@ -14,7 +14,7 @@ describe("crosshairVm", () => {
 
   it("snaps to a candle's dead centre", () => {
     // 10-candle window, idx 5's centre sits at xFrac = (5 + 0.5)/10 = 0.55.
-    const series = makeSeries(10);
+    const series = createSeries(10);
     const vp: ChartViewport = { start: 0, end: 10 };
     const cross = crosshairVm(0.55, 0.5, series, vp, { cmin: 0, cmax: 100 });
 
@@ -23,7 +23,7 @@ describe("crosshairVm", () => {
   });
 
   it("pins the exact --chx/--chy CSS-var strings (bit-for-bit, incl. float noise)", () => {
-    const series = makeSeries(10);
+    const series = createSeries(10);
     const vp: ChartViewport = { start: 0, end: 10 };
     const cross = crosshairVm(0.55, 0.5, series, vp, { cmin: 0, cmax: 100 });
 
@@ -34,7 +34,7 @@ describe("crosshairVm", () => {
   });
 
   it("pins the exact price string for a fractional-viewport candle", () => {
-    const series = makeSeries(3);
+    const series = createSeries(3);
     const vp: ChartViewport = { start: 0, end: 3 };
     const cross = crosshairVm(0, 0.5, series, vp, { cmin: 8, cmax: 13 });
 
@@ -46,7 +46,7 @@ describe("crosshairVm", () => {
   });
 
   it("clamps the snapped index to 0 on a viewport scrolled before the series start", () => {
-    const series = makeSeries(10);
+    const series = createSeries(10);
     // span = 10, scrolled 7 candles before index 0: xFrac=0 -> rawIdx = -7-0.5
     // = -7.5, round -> -7 — must still clamp to the first real candle.
     const vp: ChartViewport = { start: -7, end: 3 };
@@ -56,7 +56,7 @@ describe("crosshairVm", () => {
   });
 
   it("clamps the snapped index to len-1 on a viewport scrolled past the series end", () => {
-    const series = makeSeries(10);
+    const series = createSeries(10);
     // span = 10, scrolled 5 candles past the last real index (9): xFrac=1 ->
     // rawIdx = 15 + 10 - 0.5 = 24.5, round -> 25 — must clamp to 9.
     const vp: ChartViewport = { start: 15, end: 25 };
@@ -66,7 +66,7 @@ describe("crosshairVm", () => {
   });
 
   it("never indexes outside the series across the full xFrac range on a part-scrolled viewport", () => {
-    const series = makeSeries(10);
+    const series = createSeries(10);
     const vp: ChartViewport = { start: -3, end: 13 };
 
     for (let i = 0; i <= 10; i++) {
@@ -78,7 +78,7 @@ describe("crosshairVm", () => {
   });
 
   it("inverts the chartVm y-mapping to round-trip a known price", () => {
-    const series = makeSeries(3);
+    const series = createSeries(3);
     const vp: ChartViewport = { start: 0, end: 3 };
     const scale = { cmin: 50, cmax: 150 };
     const knownPrice = 120;
@@ -184,7 +184,7 @@ function pct(value: unknown): number {
   return Number.parseFloat(String(value));
 }
 
-function makeSeries(len: number): readonly ChartCandle[] {
+function createSeries(len: number): readonly ChartCandle[] {
   return Array.from({ length: len }, (_, i) => {
     return {
       time: i * 60_000,

@@ -6,6 +6,7 @@ import tseslint from "typescript-eslint";
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { jsonFixturesInFactories } from "./eslint-rules/json-fixtures-in-factories.mjs";
+import { nameFixtureFactories } from "./eslint-rules/name-fixture-factories.mjs";
 import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
@@ -114,6 +115,7 @@ const rtcPlugin = {
     "no-render-functions": noRenderFunctions,
     "name-functions-by-effect": nameFunctionsByEffect,
     "name-jsx-handlers": nameJsxHandlers,
+    "name-fixture-factories": nameFixtureFactories,
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
     "no-minified-json-literal": noMinifiedJsonLiteral,
     "json-fixtures-in-factories": jsonFixturesInFactories,
@@ -558,6 +560,21 @@ export default tseslint.config(
     files: ["**/tests/**/pages/**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/page-objects-own-their-component": "error" },
+  },
+  {
+    // A test's fixture factory is named `create…` — never a bare noun, nor
+    // `make*`/`build*`/`fake*`/`stub*`. `name-functions-by-effect` works from a
+    // BLOCKLIST of bad prefixes and so passes noun-named functions; requiring a
+    // verb instead would need an unbounded lexicon. This rule takes the two
+    // shapes that need none. UNCONDITIONAL — every factory in the repo was
+    // renamed rather than parked.
+    //
+    // SPECS ONLY, not `tests/**`: page objects under `tests/**/pages/` follow
+    // their own `xxxPage()` convention and hold internals like
+    // `stubPopoutWindow` that are the page's mechanics, not fixtures.
+    files: ["**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-fixture-factories": "error" },
   },
   {
     // Large JSON fixtures live in a named create* factory, not inline in a

@@ -195,7 +195,7 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   through `useBootMotionEnabled`, which encodes "Freeze always wins", so
  *   seeding `freeze` here pins it to its resting frame like any other
  *   scenario.
- * - `lock/hold` — the REAL `LockScreen`, rendered because `pinnedLockedAuth`
+ * - `lock/hold` — the REAL `LockScreen`, rendered because `createPinnedLockedAuth`
  *   (below) hands `useAuth` a locked + unlocking session, with its ring held
  *   at a fixed mid-fill through `LockHoldProgressContext` (`fixtures.tsx`'s
  *   `LOCK_HOLD_PROGRESS`).
@@ -481,7 +481,7 @@ export const SCENARIOS: readonly Scenario[] = [
         <VisualScenarioHost
           skin="holo3d"
           mode="dark"
-          viewModelOverrides={pinnedLockedAuth()}
+          viewModelOverrides={createPinnedLockedAuth()}
         >
           <LockHoldFixture />
         </VisualScenarioHost>
@@ -776,7 +776,7 @@ type PinnedBootSequence = ReturnType<ViewModel["useBootSequence"]>;
  * held ring is in — the prototype's lock shot is captured mid-hold. The
  * operator is the roster's first demo account, so the identity block prints
  * real values, not placeholders. */
-function pinnedLockedAuth(): Partial<ViewModel> {
+function createPinnedLockedAuth(): Partial<ViewModel> {
   const auth: PinnedAuth = {
     state: {
       status: "authenticated",

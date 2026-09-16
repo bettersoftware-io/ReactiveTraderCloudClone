@@ -22,7 +22,7 @@ describe("TileExecOverlay", () => {
   test("success stage shows the fill summary and a DISMISS action", () => {
     const { getByText } = render(
       <TileExecOverlay
-        tile={makeTile({
+        tile={createTile({
           stage: "success",
           trade: {
             id: 1050,
@@ -42,7 +42,7 @@ describe("TileExecOverlay", () => {
   test("failure stage shows the rejection message", () => {
     const { getByText } = render(
       <TileExecOverlay
-        tile={makeTile({ stage: "failure" })}
+        tile={createTile({ stage: "failure" })}
         meta={META.EURUSD}
         now={Date.now()}
       />,
@@ -52,7 +52,7 @@ describe("TileExecOverlay", () => {
   });
 });
 
-function makeTile(overrides: Partial<TileState>): TileState {
+function createTile(overrides: Partial<TileState>): TileState {
   return {
     stage: "idle",
     ...overrides,

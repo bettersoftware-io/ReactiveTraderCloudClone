@@ -11,7 +11,7 @@ import {
 
 describe("buildDriveAppTool", () => {
   it("names itself drive_app", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     expect(tool.name).toBe(DRIVE_APP_TOOL_NAME);
@@ -19,7 +19,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("single-command batch: emits the normalized batch and reports applied: 1", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -35,7 +35,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("multi-command batch (the persona's own few-shot): emits the normalized batch and reports applied: 2", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -67,7 +67,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("strips unknown top-level fields (e.g. a model-supplied v) before validating — the handler owns v, not the model", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -83,7 +83,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("too many commands (9): rejects the WHOLE batch, returns the commands-bound error, and never emits", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const nineCommands = Array.from({ length: 9 }, () => {
@@ -97,7 +97,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("unknown command kind: rejects the WHOLE batch, returns the '<field>: <problem>' error, and never emits", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -109,7 +109,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("mixed validity is impossible by design: one bad command among good ones rejects the ENTIRE batch — nothing partially applies", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -127,7 +127,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("rejects a non-object input without emitting — the R1 finding that betaTool.parse is identity means this handler is the ONLY gate", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run("not an object");
@@ -139,7 +139,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("rejects a missing commands field without emitting", async () => {
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({});
@@ -149,7 +149,7 @@ describe("buildDriveAppTool", () => {
   });
 
   it("declares an input schema requiring only commands (v is a handler-owned constant, kept off the model-facing envelope), embedding the commands item schema verbatim from DRIVE_COMMAND_JSON_SCHEMA", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tool = buildDriveAppTool(deps);
     const schema = tool.inputSchema as unknown as DriveAppInputSchema;
     const sharedSchema =
@@ -164,7 +164,7 @@ describe("buildDriveAppTool", () => {
   it("is NOT confirm-gated: resolves with no ConfirmGate involved at all", async () => {
     // DriveAppDeps carries no confirmTrade/ConfirmGate field — the type
     // itself proves this at compile time. This test proves it at runtime.
-    const { deps, emitDrive } = buildDeps();
+    const { deps, emitDrive } = createDeps();
     const tool = buildDriveAppTool(deps);
 
     const result = await tool.run({
@@ -195,14 +195,14 @@ interface SharedDriveCommandSchemaShape {
   readonly properties: { readonly commands: unknown };
 }
 
-/** `buildDeps`' own return shape — named rather than inline per
+/** `createDeps`' own return shape — named rather than inline per
  * `no-restricted-syntax`. */
 interface BuiltDeps {
   readonly deps: DriveAppDeps;
   readonly emitDrive: ReturnType<typeof vi.fn>;
 }
 
-function buildDeps(overrides: Partial<DriveAppDeps> = {}): BuiltDeps {
+function createDeps(overrides: Partial<DriveAppDeps> = {}): BuiltDeps {
   const emitDrive = vi.fn();
 
   const deps: DriveAppDeps = {

@@ -34,7 +34,7 @@ describe("createJarvisMachine", () => {
         port: basePort(ts),
         skin$: of<JarvisSkin>("reactor"),
         setSkin: () => {},
-        ...baseBrainDeps(),
+        ...createBaseBrainDeps(),
       });
       let current: JarvisState | undefined;
       const sub = machine.state$.subscribe((s) => {
@@ -63,7 +63,7 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a-b-c-(d|)", {
+          port: createFakePort(ts, "a-b-c-(d|)", {
             a: { type: "delta", text: "EUR" },
             b: { type: "delta", text: "USD" },
             c: { type: "delta", text: " is up" },
@@ -71,7 +71,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -101,14 +101,14 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a-b-(c|)", {
+          port: createFakePort(ts, "a-b-(c|)", {
             a: { type: "toolEvent", tool: "quote", status: "running" },
             b: { type: "toolEvent", tool: "quote", status: "done" },
             c: { type: "done" },
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -141,7 +141,7 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a-b-(c|)", {
+          port: createFakePort(ts, "a-b-(c|)", {
             a: { type: "delta", text: "EURUSD is up" },
             b: {
               type: "panel",
@@ -152,7 +152,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -176,13 +176,13 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a-(b|)", {
+          port: createFakePort(ts, "a-(b|)", {
             a: { type: "delta", text: "partial" },
             b: { type: "error", message: "quote service unavailable" },
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -211,13 +211,13 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a-(b|)", {
+          port: createFakePort(ts, "a-(b|)", {
             a: { type: "toolEvent", tool: "pnl", status: "running" },
             b: { type: "error", message: "snapshot timed out" },
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -241,10 +241,10 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "5ms (a|)", { a: { type: "done" } }),
+          port: createFakePort(ts, "5ms (a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -275,7 +275,7 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "a", {
+          port: createFakePort(ts, "a", {
             a: {
               type: "confirmRequest",
               confirmationId: "c1",
@@ -288,7 +288,7 @@ describe("createJarvisMachine", () => {
           }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -328,13 +328,13 @@ describe("createJarvisMachine", () => {
     let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
-        port = fakePort(ts, "a", { a: confirmEvent });
+        port = createFakePort(ts, "a", { a: confirmEvent });
         const deps: JarvisDeps = {
           port,
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
         return deps;
       },
@@ -363,13 +363,13 @@ describe("createJarvisMachine", () => {
     let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
-        port = fakePort(ts, "a", { a: confirmEvent });
+        port = createFakePort(ts, "a", { a: confirmEvent });
         const deps: JarvisDeps = {
           port,
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
         return deps;
       },
@@ -403,13 +403,13 @@ describe("createJarvisMachine", () => {
     let port: FakeJarvisPort | undefined;
     const states = run(
       (ts) => {
-        port = fakePort(ts, "a", { a: confirmEvent });
+        port = createFakePort(ts, "a", { a: confirmEvent });
         const deps: JarvisDeps = {
           port,
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
           confirmTimeoutMs: 3000,
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
         return deps;
       },
@@ -435,7 +435,7 @@ describe("createJarvisMachine", () => {
         port,
         skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
         setSkin: () => {},
-        ...baseBrainDeps(),
+        ...createBaseBrainDeps(),
       });
       const seen: JarvisState[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -459,10 +459,10 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+          port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -490,10 +490,10 @@ describe("createJarvisMachine", () => {
     const states = run(
       (ts) => {
         return {
-          port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+          port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         };
       },
       ({ machine, ts }) => {
@@ -523,7 +523,7 @@ describe("createJarvisMachine", () => {
           port: basePort(ts),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         });
         const seen: JarvisState[] = [];
         const sub = machine.state$.subscribe((s) => {
@@ -560,7 +560,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -594,7 +594,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -630,10 +630,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -657,7 +657,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a", { a: { type: "done" } });
+          port = createFakePort(ts, "a", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -670,7 +670,7 @@ describe("createJarvisMachine", () => {
                 gate: null,
               },
             }),
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -692,12 +692,12 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "5ms (a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -726,12 +726,12 @@ describe("createJarvisMachine", () => {
       // ahead of it in the queue used). This pins the actual per-turn
       // brain under queueing, on availability/preference deps where
       // effectiveBrain is genuinely "claude-haiku-4-5" (not "scripted",
-      // which baseBrainDeps() resolves to — a leak in either direction
+      // which createBaseBrainDeps() resolves to — a leak in either direction
       // would be invisible there).
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "5ms (a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -774,7 +774,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a-b-c-(d|)", {
+          port = createFakePort(ts, "a-b-c-(d|)", {
             a: { type: "delta", text: "EUR" },
             b: { type: "delta", text: "USD" },
             c: { type: "delta", text: " is up" },
@@ -854,7 +854,7 @@ describe("createJarvisMachine", () => {
         setSkin: (s: JarvisSkin) => {
           setSkinCalls.push(s);
         },
-        ...baseBrainDeps(),
+        ...createBaseBrainDeps(),
       });
       const seen: JarvisSkin[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -877,7 +877,7 @@ describe("createJarvisMachine", () => {
         port,
         skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
         setSkin: () => {},
-        ...baseBrainDeps(),
+        ...createBaseBrainDeps(),
       });
       const seen: JarvisState[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -907,7 +907,7 @@ describe("createJarvisMachine", () => {
           port: basePort(ts),
           skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         });
         const seen: JarvisState[] = [];
         const sub = machine.state$.subscribe((s) => {
@@ -947,7 +947,7 @@ describe("createJarvisMachine", () => {
               gate: null,
             },
           }),
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         });
         const seen: boolean[] = [];
         const sub = machine.state$.subscribe((s) => {
@@ -968,7 +968,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a", { a: { type: "done" } });
+          port = createFakePort(ts, "a", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -981,7 +981,7 @@ describe("createJarvisMachine", () => {
                 gate: null,
               },
             }),
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1011,7 +1011,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a-b-c-(d|)", {
+          port = createFakePort(ts, "a-b-c-(d|)", {
             a: { type: "delta", text: "EUR" },
             b: { type: "delta", text: "USD" },
             c: { type: "delta", text: " is up" },
@@ -1039,7 +1039,7 @@ describe("createJarvisMachine", () => {
                 },
               },
             ),
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1192,7 +1192,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -1267,7 +1267,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -1301,7 +1301,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -1352,7 +1352,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a-b-c-(d|)", {
+          port = createFakePort(ts, "a-b-c-(d|)", {
             a: { type: "delta", text: "EUR" },
             b: { type: "delta", text: "USD" },
             c: { type: "delta", text: " is up" },
@@ -1424,12 +1424,12 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1454,10 +1454,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1477,7 +1477,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       run(
         (ts) => {
-          port = fakePort(ts, "(a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "(a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -1511,7 +1511,7 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "a", { a: { type: "done" } });
+          port = createFakePort(ts, "a", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
@@ -1524,7 +1524,7 @@ describe("createJarvisMachine", () => {
                 gate: null,
               },
             }),
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1546,12 +1546,12 @@ describe("createJarvisMachine", () => {
       let port: FakeJarvisPort | undefined;
       const states = run(
         (ts) => {
-          port = fakePort(ts, "5ms (a|)", { a: { type: "done" } });
+          port = createFakePort(ts, "5ms (a|)", { a: { type: "done" } });
           return {
             port,
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1596,10 +1596,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1617,10 +1617,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1641,10 +1641,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1680,10 +1680,10 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "5ms (a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "5ms (a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1711,7 +1711,7 @@ describe("createJarvisMachine", () => {
           port: basePort(ts),
           skin$: of<JarvisSkin>("reactor"),
           setSkin: () => {},
-          ...baseBrainDeps(),
+          ...createBaseBrainDeps(),
         });
         let current: JarvisState | undefined;
         const sub = machine.state$.subscribe((s) => {
@@ -1736,7 +1736,7 @@ describe("createJarvisMachine", () => {
             port: basePort(ts),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1763,7 +1763,7 @@ describe("createJarvisMachine", () => {
             port: basePort(ts),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -1802,7 +1802,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             // Frame 0 offers every brain (opus included) — matches the
@@ -1875,7 +1875,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             // haiku is offered both before and after the gate — the
@@ -1992,7 +1992,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>(
@@ -2055,7 +2055,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             // a (frame 0): every brain offered, no gate.
@@ -2127,7 +2127,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>(
@@ -2192,7 +2192,7 @@ describe("createJarvisMachine", () => {
             // Relative to this port's own subscribe at frame 1 (send()'s
             // schedule below): delta "EUR" at frame 1, delta "USD" at frame
             // 7, done at frame 10.
-            port: fakePort(ts, "a-----b--(c|)", {
+            port: createFakePort(ts, "a-----b--(c|)", {
               a: { type: "delta", text: "EUR" },
               b: { type: "delta", text: "USD" },
               c: { type: "done" },
@@ -2278,14 +2278,14 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "a-----b--(c|)", {
+            port: createFakePort(ts, "a-----b--(c|)", {
               a: { type: "delta", text: "EUR" },
               b: { type: "delta", text: "USD" },
               c: { type: "done" },
             }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
-            ...baseBrainDeps(),
+            ...createBaseBrainDeps(),
           };
         },
         ({ machine, ts }) => {
@@ -2339,7 +2339,7 @@ describe("createJarvisMachine", () => {
       const states = run(
         (ts) => {
           return {
-            port: fakePort(ts, "(a|)", { a: { type: "done" } }),
+            port: createFakePort(ts, "(a|)", { a: { type: "done" } }),
             skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
             setSkin: () => {},
             availability$: ts.createColdObservable<JarvisAvailability>(
@@ -2450,7 +2450,10 @@ function scheduler(): TestScheduler {
  * "scripted" is always among the sim-default's offered brains, so
  * effectiveBrain resolves predictably without every unrelated test needing
  * to reason about brain-picker semantics. */
-function baseBrainDeps(): Pick<JarvisDeps, "preferredBrain$" | "effort$"> {
+function createBaseBrainDeps(): Pick<
+  JarvisDeps,
+  "preferredBrain$" | "effort$"
+> {
   return {
     preferredBrain$: of<JarvisBrain>("scripted"),
     effort$: of<JarvisEffort>("medium"),
@@ -2462,7 +2465,7 @@ interface AskCall {
   readonly options: JarvisAskOptions | undefined;
 }
 
-function fakePort(
+function createFakePort(
   ts: TestScheduler,
   marbles: string,
   values: Record<string, JarvisEvent>,
@@ -2511,7 +2514,7 @@ function run(
 }
 
 function basePort(ts: TestScheduler): FakeJarvisPort {
-  return fakePort(ts, "-", {});
+  return createFakePort(ts, "-", {});
 }
 
 /** A JarvisPort test double that also records every confirm() and ask() call

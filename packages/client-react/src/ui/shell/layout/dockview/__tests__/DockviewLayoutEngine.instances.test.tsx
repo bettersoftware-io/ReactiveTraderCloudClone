@@ -92,7 +92,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // rebuild site injecting it. The unmount's dispose flush is the witness of
   // the rebuilt engine's live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
@@ -118,7 +118,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   });
 
   it("re-reconciles the instance into the engine a cleared-blob workspace reset rebuilds", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
     page.mount({ registry, store, instances: [AAPL], layoutResets: 0 });
 
@@ -212,7 +212,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // right, which is what an unlisted id would get (deleted as an orphan by
   // the engine's reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
@@ -250,7 +250,7 @@ describe("DockviewLayoutEngine instances prop", () => {
 // it proves the sidecar was written at all.
 describe("DockviewLayoutEngine instance pins", () => {
   it("opens a construction-time instance unpinned, the Jarvis dock beside it pinned", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
     page.mount({ registry, store, instances: [AAPL], docked: ["panel-dyn-1"] });
     page.touchDock();
@@ -264,7 +264,7 @@ describe("DockviewLayoutEngine instance pins", () => {
   // only blob afterwards is the REBUILT engine's, whose instance came from
   // the rebuild's own `dynamicPanels` (the diff effect's add no-ops on it).
   it("opens the instance unpinned in the engine a layoutResets rebuild constructs", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
     page.mount({
       registry,
@@ -290,7 +290,7 @@ describe("DockviewLayoutEngine instance pins", () => {
   });
 
   it("opens an instance the diff effect adds unpinned", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
     page.mount({ registry, store, instances: [], docked: ["panel-dyn-1"] });
     page.rerender({
@@ -317,7 +317,7 @@ interface RecordingStore {
   inner: InMemoryDockLayoutStore;
 }
 
-function recordingStore(): RecordingStore {
+function createRecordingStore(): RecordingStore {
   const inner = new InMemoryDockLayoutStore();
   const store: DockLayoutStore = {
     load: (tab: string): string | null => {

@@ -7,7 +7,7 @@ import { createIncidentMachine } from "../IncidentMachine";
 
 describe("IncidentMachine", () => {
   it("inject(latencySpike) perturbs controls and pushes gatewayDisconnected", async () => {
-    const control = fakeControl();
+    const control = createFakeControl();
     const pushed: ConnectionEvent[] = [];
     const m = createIncidentMachine({
       controls: [control],
@@ -26,7 +26,7 @@ describe("IncidentMachine", () => {
   });
 
   it("clear() reverses perturbations and pushes gatewayConnected", async () => {
-    const control = fakeControl();
+    const control = createFakeControl();
     const pushed: ConnectionEvent[] = [];
     const m = createIncidentMachine({
       controls: [control],
@@ -46,7 +46,7 @@ describe("IncidentMachine", () => {
   });
 
   it("inject(errorBurst) perturbs controls but does NOT push gatewayDisconnected", async () => {
-    const control = fakeControl();
+    const control = createFakeControl();
     const pushed: ConnectionEvent[] = [];
     const m = createIncidentMachine({
       controls: [control],
@@ -65,7 +65,7 @@ describe("IncidentMachine", () => {
   });
 
   it("inject(serviceDown) pushes gatewayDisconnected", async () => {
-    const control = fakeControl();
+    const control = createFakeControl();
     const pushed: ConnectionEvent[] = [];
     const m = createIncidentMachine({
       controls: [control],
@@ -87,7 +87,7 @@ type FakeControl = MetricControl & {
   cleared: number;
 };
 
-function fakeControl(): FakeControl {
+function createFakeControl(): FakeControl {
   const calls: Perturbation[] = [];
   let cleared = 0;
   return {

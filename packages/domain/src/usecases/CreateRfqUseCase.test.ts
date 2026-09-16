@@ -11,7 +11,7 @@ import {
 
 describe("CreateRfqUseCase", () => {
   it("multiplies the input quantity by CREDIT_QUANTITY_MULTIPLIER and applies default expiry", async () => {
-    const { port, lastRequest } = stubWorkflow();
+    const { port, lastRequest } = createStubWorkflow();
     const useCase = new CreateRfqUseCase(port);
 
     const id = await firstValueFrom(
@@ -34,7 +34,7 @@ describe("CreateRfqUseCase", () => {
   });
 
   it("accepts an explicit expirySecs override", async () => {
-    const { port, lastRequest } = stubWorkflow();
+    const { port, lastRequest } = createStubWorkflow();
     const useCase = new CreateRfqUseCase(port);
 
     await firstValueFrom(
@@ -60,7 +60,7 @@ interface StubWorkflow {
   lastRequest: LastRequestRef;
 }
 
-function stubWorkflow(): StubWorkflow {
+function createStubWorkflow(): StubWorkflow {
   const lastRequest = { current: null as CreateRfqRequest | null };
   const port: WorkflowPort = {
     events: () => {

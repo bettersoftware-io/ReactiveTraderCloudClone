@@ -5,7 +5,7 @@ import type { InspectorState, LogRow } from "@rtc/devtools-core";
 import { buildNavTree, wireHealthLine } from "#/nav/buildNavTree";
 
 test("four roots in order; All counts every visible row", () => {
-  const tree = buildNavTree(stateWith(), logWith());
+  const tree = buildNavTree(stateWith(), createEmissionLog());
 
   expect(
     tree.map((n) => {
@@ -23,7 +23,7 @@ test("four roots in order; All counts every visible row", () => {
 });
 
 test("presenters group streams with leaf labels, counts and lastSeq rolled up", () => {
-  const presenters = buildNavTree(stateWith(), logWith())[1];
+  const presenters = buildNavTree(stateWith(), createEmissionLog())[1];
   const blotter = presenters?.children.find((n) => {
     return n.id === "presenter:blotter";
   });
@@ -55,7 +55,7 @@ test("presenters group streams with leaf labels, counts and lastSeq rolled up", 
 });
 
 test("machines group by kind → instance with disposed flag and arg summary", () => {
-  const machines = buildNavTree(stateWith(), logWith())[2];
+  const machines = buildNavTree(stateWith(), createEmissionLog())[2];
   const tile = machines?.children.find((n) => {
     return n.id === "machineKind:tileExecution";
   });
@@ -77,7 +77,7 @@ test("machines group by kind → instance with disposed flag and arg summary", (
 });
 
 test("wire root lists msgTypes with counts and carries the health line", () => {
-  const wire = buildNavTree(stateWith(), logWith())[3];
+  const wire = buildNavTree(stateWith(), createEmissionLog())[3];
 
   expect(wire).toMatchObject({ count: 1, lastSeq: 5 });
   expect(
@@ -344,7 +344,7 @@ function machineRow(
   };
 }
 
-function logWith(): LogRow[] {
+function createEmissionLog(): LogRow[] {
   return [
     emission(1, "blotter.trades$", 1, 1001),
     emission(2, 'priceHistory.history$[["EURCAD"]]', 1, 1002),

@@ -8,7 +8,7 @@ import { AnalyticsUseCase } from "./AnalyticsUseCase.js";
 
 describe("AnalyticsUseCase", () => {
   it("calls the port with the default base currency 'USD'", async () => {
-    const { port, lastCurrency } = stubAnalytics([buildUpdate()]);
+    const { port, lastCurrency } = createStubAnalytics([createUpdate()]);
     const useCase = new AnalyticsUseCase(port);
 
     await firstValueFrom(useCase.execute());
@@ -17,7 +17,7 @@ describe("AnalyticsUseCase", () => {
   });
 
   it("uses an explicit base currency when provided", async () => {
-    const { port, lastCurrency } = stubAnalytics([buildUpdate()]);
+    const { port, lastCurrency } = createStubAnalytics([createUpdate()]);
     const useCase = new AnalyticsUseCase(port, "EUR");
 
     await firstValueFrom(useCase.execute());
@@ -26,8 +26,8 @@ describe("AnalyticsUseCase", () => {
   });
 
   it("emits every update from the port unchanged", async () => {
-    const updates = [buildUpdate(), buildUpdate(), buildUpdate()];
-    const { port } = stubAnalytics(updates);
+    const updates = [createUpdate(), createUpdate(), createUpdate()];
+    const { port } = createStubAnalytics(updates);
     const useCase = new AnalyticsUseCase(port);
 
     const results = await lastValueFrom(useCase.execute().pipe(toArray()));
@@ -36,7 +36,7 @@ describe("AnalyticsUseCase", () => {
   });
 
   it("supports a single emission via of()", async () => {
-    const update = buildUpdate();
+    const update = createUpdate();
     const port: AnalyticsPort = {
       getAnalytics: () => {
         return of(update);
@@ -59,7 +59,7 @@ interface StubAnalytics {
   lastCurrency: LastCurrencyRef;
 }
 
-function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
+function createStubAnalytics(updates: PositionUpdates[]): StubAnalytics {
   const lastCurrency = { current: null as string | null };
   const port: AnalyticsPort = {
     getAnalytics(currency: string): Observable<PositionUpdates> {
@@ -70,7 +70,7 @@ function stubAnalytics(updates: PositionUpdates[]): StubAnalytics {
   return { port, lastCurrency };
 }
 
-function buildUpdate(): PositionUpdates {
+function createUpdate(): PositionUpdates {
   return {
     currentPositions: [],
     history: [],

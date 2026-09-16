@@ -40,8 +40,8 @@ describe("AnimationDirector", () => {
       return seen.push(i);
     });
 
-    eurusd$.next(makePrice(1.1));
-    eurusd$.next(makePrice(1.2));
+    eurusd$.next(createPrice(1.1));
+    eurusd$.next(createPrice(1.2));
     sub.unsubscribe();
 
     expect(seen).toEqual([{ target: "tile:EURUSD", kind: "tickUp" }]);
@@ -71,8 +71,8 @@ describe("AnimationDirector", () => {
       return seen.push(i);
     });
 
-    eurusd$.next(makePrice(1.2));
-    eurusd$.next(makePrice(1.1));
+    eurusd$.next(createPrice(1.2));
+    eurusd$.next(createPrice(1.1));
     sub.unsubscribe();
 
     expect(seen).toEqual([{ target: "tile:EURUSD", kind: "tickDown" }]);
@@ -102,8 +102,8 @@ describe("AnimationDirector", () => {
       return seen.push(i);
     });
 
-    eurusd$.next(makePrice(1.1));
-    eurusd$.next(makePrice(1.2));
+    eurusd$.next(createPrice(1.1));
+    eurusd$.next(createPrice(1.2));
     sub.unsubscribe();
 
     expect(seen).toEqual([]);
@@ -379,7 +379,7 @@ describe("AnimationDirector", () => {
   });
 });
 
-function makePrice(mid: number): Price {
+function createPrice(mid: number): Price {
   return { symbol: "EURUSD", bid: mid, ask: mid, mid } as Price;
 }
 

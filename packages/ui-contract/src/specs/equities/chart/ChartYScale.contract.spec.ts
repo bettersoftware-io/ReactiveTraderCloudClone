@@ -133,7 +133,7 @@ function mountPillWorkspace(): PillWorkspace {
     {
       watchlist: INSTRUMENTS,
       candles: { AAPL: CANDLES },
-      quotes: { AAPL: quote() },
+      quotes: { AAPL: createQuote() },
     },
   );
   const head = mountWith(world, EqChartHead, {});
@@ -142,7 +142,7 @@ function mountPillWorkspace(): PillWorkspace {
   return { head, panel };
 }
 
-function quote(): EquityQuote {
+function createQuote(): EquityQuote {
   return {
     symbol: "AAPL",
     bid: 103.9,

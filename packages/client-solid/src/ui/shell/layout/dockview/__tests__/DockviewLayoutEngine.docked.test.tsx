@@ -219,7 +219,7 @@ describe("DockviewLayoutEngine docked prop", () => {
   //
   // This version discriminates STRUCTURALLY instead: a hand-authored blob
   // (the same schema `@rtc/layout-dockview`'s own tests hand-author, e.g.
-  // `twoTabGroupLayout` in createDockEngine.test.ts) TABS fx-rates and
+  // `createTwoTabGroupLayout` in createDockEngine.test.ts) TABS fx-rates and
   // fx-blotter into one shared group — a shape the "fx" seed's OWN
   // conversion can never produce (it always separates them into different
   // leaves; see RAIL_LIKE in that same file). Then it asserts the exact
@@ -369,7 +369,7 @@ function panelMeta(id: string): DockviewPanelMeta {
 }
 
 /** A REAL, valid dockview blob (the same hand-authored schema
- * `@rtc/layout-dockview`'s own tests use, e.g. `twoTabGroupLayout` in
+ * `@rtc/layout-dockview`'s own tests use, e.g. `createTwoTabGroupLayout` in
  * createDockEngine.test.ts) with fx-rates and fx-blotter TABBED into one
  * shared group — a shape the "fx" seed's own conversion can never produce.
  * See the reset test's comment for why this replaces a collapsed-strip-size

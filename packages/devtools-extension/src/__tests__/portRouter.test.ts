@@ -6,8 +6,8 @@ import type { RuntimePort } from "#/ports";
 describe("createPortRouter", () => {
   it("relays panel→content and content→panel for the same tab", () => {
     const router = createPortRouter();
-    const panel = fakePort("rtc-panel:7");
-    const content = fakePort("rtc-content");
+    const panel = createFakePort("rtc-panel:7");
+    const content = createFakePort("rtc-content");
 
     router.connectPanel(7, panel.port);
     router.connectContent(7, content.port);
@@ -21,9 +21,9 @@ describe("createPortRouter", () => {
 
   it("keeps tabs isolated", () => {
     const router = createPortRouter();
-    const panelA = fakePort("rtc-panel:1");
-    const contentA = fakePort("rtc-content");
-    const contentB = fakePort("rtc-content");
+    const panelA = createFakePort("rtc-panel:1");
+    const contentA = createFakePort("rtc-content");
+    const contentB = createFakePort("rtc-content");
 
     router.connectPanel(1, panelA.port);
     router.connectContent(1, contentA.port);
@@ -37,8 +37,8 @@ describe("createPortRouter", () => {
 
   it("on panel disconnect, disconnects the content sibling", () => {
     const router = createPortRouter();
-    const panel = fakePort("rtc-panel:5");
-    const content = fakePort("rtc-content");
+    const panel = createFakePort("rtc-panel:5");
+    const content = createFakePort("rtc-content");
 
     router.connectPanel(5, panel.port);
     router.connectContent(5, content.port);
@@ -57,7 +57,7 @@ interface FakePort {
   disconnected: boolean;
 }
 
-function fakePort(name: string): FakePort {
+function createFakePort(name: string): FakePort {
   let onMsg: ((m: unknown) => void) | undefined;
   let onDis: (() => void) | undefined;
   const sent: unknown[] = [];
