@@ -36,24 +36,7 @@ describe("App (shell chrome)", () => {
   // the login form. It fails against an in-memory store and passes against the
   // localStorage-backed one.
   it("boots straight past the login screen when an authenticated session is seeded in localStorage", async () => {
-    localStorage.setItem(
-      SESSION_STORAGE_KEY,
-      JSON.stringify({
-        token: "seeded-token",
-        username: "demo",
-        user: {
-          name: "Demo Operator",
-          initials: "DO",
-          role: "Read-Only Guest",
-          id: "TRD-0000",
-          email: "demo@reactivetrader.io",
-          desk: "Demo · Cloud",
-          clearance: "LEVEL 1 · VIEW",
-        },
-        // Year 2100 — never treated as expired during the test run.
-        exp: 4_102_444_800_000,
-      }),
-    );
+    localStorage.setItem(SESSION_STORAGE_KEY, createSeededSession());
 
     page.mount();
 
@@ -160,3 +143,25 @@ describe("App (shell chrome)", () => {
     expect(page.exists("blotter-table")).toBe(true);
   });
 });
+
+/** An authenticated session already sitting in localStorage — the arrangement
+ * the "boots straight past the login screen" case needs BEFORE the app root
+ * mounts. Extracted so the case body states what it seeds, not the twelve
+ * fields of the session envelope. */
+function createSeededSession(): string {
+  return JSON.stringify({
+    token: "seeded-token",
+    username: "demo",
+    user: {
+      name: "Demo Operator",
+      initials: "DO",
+      role: "Read-Only Guest",
+      id: "TRD-0000",
+      email: "demo@reactivetrader.io",
+      desk: "Demo · Cloud",
+      clearance: "LEVEL 1 · VIEW",
+    },
+    // Year 2100 — never treated as expired during the test run.
+    exp: 4_102_444_800_000,
+  });
+}

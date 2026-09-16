@@ -186,43 +186,11 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
   const STATIC_IDS = ["rates", "blotter"] as const;
 
   it("removes one dynamic leaf, dropping its panels entry and its views entry", () => {
-    const blob = JSON.stringify({
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "leaf",
-              size: 526,
-              data: { id: "g-rates", views: ["rates"], activeView: "rates" },
-            },
-            {
-              type: "leaf",
-              size: 273,
-              data: {
-                id: "g-blotter",
-                views: ["blotter"],
-                activeView: "blotter",
-              },
-            },
-            {
-              type: "leaf",
-              size: 367,
-              data: {
-                id: "g-dyn",
-                views: ["panel-dyn-1"],
-                activeView: "panel-dyn-1",
-              },
-            },
-          ],
-        },
-      },
-      panels: {
-        rates: { id: "rates" },
-        blotter: { id: "blotter" },
-        "panel-dyn-1": { id: "panel-dyn-1" },
-      },
-    });
+    const blob = createSingleLeafBlob([
+      ["rates", 526],
+      ["blotter", 273],
+      ["panel-dyn-1", 367],
+    ]);
 
     const scrubbed = JSON.parse(
       withoutDynamicNodes(blob, STATIC_IDS) ?? "null",
@@ -249,30 +217,10 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
   });
 
   it("returns null for a static-only blob — nothing was dynamic", () => {
-    const blob = JSON.stringify({
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "leaf",
-              size: 526,
-              data: { id: "g-rates", views: ["rates"], activeView: "rates" },
-            },
-            {
-              type: "leaf",
-              size: 273,
-              data: {
-                id: "g-blotter",
-                views: ["blotter"],
-                activeView: "blotter",
-              },
-            },
-          ],
-        },
-      },
-      panels: { rates: { id: "rates" }, blotter: { id: "blotter" } },
-    });
+    const blob = createSingleLeafBlob([
+      ["rates", 526],
+      ["blotter", 273],
+    ]);
 
     expect(withoutDynamicNodes(blob, STATIC_IDS)).toBeNull();
   });
@@ -283,33 +231,10 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
     // dynamic leaf must NOT collapse root down to a bare leaf — dockview's
     // own fromJSON rejects that shape outright ("root must be of type
     // branch"), which would otherwise force the whole tab to seed.
-    const blob = JSON.stringify({
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "leaf",
-              size: 833,
-              data: { id: "g-admin", views: ["admin"], activeView: "admin" },
-            },
-            {
-              type: "leaf",
-              size: 367,
-              data: {
-                id: "g-dyn",
-                views: ["panel-dyn-1"],
-                activeView: "panel-dyn-1",
-              },
-            },
-          ],
-        },
-      },
-      panels: {
-        admin: { id: "admin" },
-        "panel-dyn-1": { id: "panel-dyn-1" },
-      },
-    });
+    const blob = createSingleLeafBlob([
+      ["admin", 833],
+      ["panel-dyn-1", 367],
+    ]);
 
     const scrubbed = JSON.parse(withoutDynamicNodes(blob, ["admin"]) ?? "null");
 
@@ -535,4 +460,34 @@ function legacyRailBlob(): Record<string, unknown> {
       rail: { id: "rail", contentComponent: "rtc-panel", title: "rail" },
     },
   };
+}
+
+/** A one-branch blob whose root holds one single-view leaf per entry, in
+ * order — `[panelId, size]`. Both `panels` and each leaf's `g-<panelId>`
+ * group id are DERIVED, so a case writes only what it actually varies: which
+ * panels, at which sizes. `withoutDynamicNodes` reads `panels` and each
+ * leaf's `views`, never the group id, so deriving that id uniformly is
+ * behaviour-neutral (the cases' own assertions are the witness). */
+function createSingleLeafBlob(
+  leaves: readonly (readonly [string, number])[],
+): string {
+  return JSON.stringify({
+    grid: {
+      root: {
+        type: "branch",
+        data: leaves.map(([id, size]) => {
+          return {
+            type: "leaf",
+            size,
+            data: { id: `g-${id}`, views: [id], activeView: id },
+          };
+        }),
+      },
+    },
+    panels: Object.fromEntries(
+      leaves.map(([id]) => {
+        return [id, { id }];
+      }),
+    ),
+  });
 }

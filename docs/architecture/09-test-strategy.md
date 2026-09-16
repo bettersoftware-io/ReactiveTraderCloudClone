@@ -184,6 +184,41 @@ specs call semantic methods on page modules under the package's
 [`docs/lint-warnings.md`](../lint-warnings.md). Design:
 [page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
 
+### Readable JSON fixtures
+
+A test's ARRANGEMENT must not drown its SUBJECT. Two lint rules enforce that
+for JSON fixtures, and both of their thresholds were **measured against the
+tree, not assumed** — each sits inside an empirically empty band, so neither
+can fire on legitimate code:
+
+| rule | scope | bans | threshold (and why it is safe) |
+|---|---|---|---|
+| `rtc/no-minified-json-literal` | repo-wide | a JSON payload pasted as a single-line string | **120 chars** — every legitimate JSON string literal in the repo is ≤ 41 chars; the blob it exists to prevent was 880. Nothing lives between. |
+| `rtc/json-fixtures-in-factories` | tests only | a large inline `JSON.stringify({ … })`, and a fixture factory not named `create*` | **10 lines** — inline spans here are bimodal (4 at ≥ 15 lines, 18 at ≤ 6, **none in 7–14**), so the bar sits in the gap. |
+
+The sanctioned shapes are an object literal bound to a name
+(`JSON.stringify(layout)` — allowed at any size, because the object already
+has a name) or a `create*` factory declared **below** the cases
+(`rtc/newspaper-order`). Writing the object literal instead of the string is
+always behaviour-neutral: `JSON.stringify` re-emits the captured payload byte
+for byte, since key order is insertion order.
+
+Why the naming half is **tests only**: "fixture factory" is a concept that
+exists only in a test. Production code that builds JSON is a *serializer*, and
+naming it for its effect means `serializeLayout`, not `createLayout` — a
+repo-wide draft of the rule flagged exactly that function, and the rule was
+wrong, not the code.
+
+Two known limits. The rule sees only `JSON.stringify` factories, so a
+bare-noun factory returning a plain object (`poppedBlob()`,
+`legacyRailBlob()`) is not caught — widening it to "any function returning an
+object literal" would be far too broad. And it pins only the `create` prefix;
+`rtc/name-functions-by-effect` governs the rest of the name.
+
+**Re-measure before moving either threshold.** A bar set from an assumption is
+how the visual tier's tolerance ended up wrong in both directions at once —
+see [§9.7](#97-visual-golden-tiers).
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):

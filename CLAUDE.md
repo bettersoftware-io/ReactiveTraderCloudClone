@@ -263,6 +263,19 @@ RxJS machines are for autonomous async folds decoupled from the view; per-frame
 DOM-edge-driven computation is a pure function + injected signal, shared via
 `@rtc/motion-core`.
 
+## Test Fixtures
+
+A JSON payload is spelled as an **object literal + `JSON.stringify`**, never
+pasted as a minified string (`rtc/no-minified-json-literal`, repo-wide), and a
+large fixture lives in a **`create*` factory declared below the cases**, never
+inline in a case body (`rtc/json-fixtures-in-factories`, tests only). The swap
+is always behaviour-neutral — `JSON.stringify` re-emits the payload byte for
+byte, since key order is insertion order — so it never needs a golden re-pin.
+Both thresholds were **measured**, not assumed, and sit in empirically empty
+bands; re-measure rather than re-guess before moving either. Rationale, the
+sanctioned shapes, and the two known limits:
+`docs/architecture/09-test-strategy.md` §"Readable JSON fixtures".
+
 ## Handler Naming
 
 Before naming a function or a prop callback, read **`docs/handler-naming.md`**
