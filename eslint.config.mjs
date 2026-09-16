@@ -5,10 +5,12 @@ import tseslint from "typescript-eslint";
 
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
+import { jsonFixturesInFactories } from "./eslint-rules/json-fixtures-in-factories.mjs";
 import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mjs";
+import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -112,6 +114,8 @@ const rtcPlugin = {
     "name-functions-by-effect": nameFunctionsByEffect,
     "name-jsx-handlers": nameJsxHandlers,
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
+    "no-minified-json-literal": noMinifiedJsonLiteral,
+    "json-fixtures-in-factories": jsonFixturesInFactories,
   },
 };
 
@@ -501,6 +505,33 @@ export default tseslint.config(
     files: ["**/*.tsx"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-render-functions": "error" },
+  },
+  {
+    // A JSON payload is spelled as an object literal + JSON.stringify, never
+    // pasted as a minified string. Repo-wide: an opaque blob is as bad in
+    // production as in a test, and the rule fires nowhere today, so the
+    // widest scope is free. The 120-char threshold was MEASURED against the
+    // tree (every legitimate JSON literal is <= 41 chars; the blob this
+    // prevents was 880) — read the rule header before moving it.
+    files: ["**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // Large JSON fixtures live in a named create* factory, not inline in a
+    // case body. TESTS ONLY, deliberately: "fixture factory" is a concept
+    // that exists only in a test — production code that builds JSON is a
+    // serializer, and naming it for its effect means `serializeLayout`, not
+    // `createLayout`. A repo-wide draft flagged exactly that function; the
+    // rule was wrong, not the code. The 10-line threshold sits in a measured
+    // EMPTY band (spans here are 4 at >= 15 lines, 18 at <= 6, none in 7-14).
+    files: [
+      "**/*.{test,spec}.{ts,tsx}",
+      "**/tests/**/*.{ts,tsx}",
+      "**/__tests__/**/*.{ts,tsx}",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/json-fixtures-in-factories": "error" },
   },
   {
     // One class per file: a top-level class must live in a file named after it

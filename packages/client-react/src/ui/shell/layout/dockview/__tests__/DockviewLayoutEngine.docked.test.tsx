@@ -303,7 +303,7 @@ describe("DockviewLayoutEngine docked prop", () => {
   // disposed old engine's flush, landing right after the clear).
   it("rebuilds from the cleared blob on a workspace reset, discarding the old arrangement", async () => {
     const inner = new InMemoryDockLayoutStore();
-    inner.save("fx", stackedRatesAndBlotterBlob());
+    inner.save("fx", createStackedRatesAndBlotterBlob());
     const saved: string[] = [];
     const store: DockLayoutStore = {
       load: (tab: string): string | null => {
@@ -641,7 +641,7 @@ function panelMeta(id: string): DockviewPanelMeta {
  * shared group — a shape the "fx" seed's own conversion can never produce.
  * See the reset test's comment for why this replaces a collapsed-strip-size
  * discriminator. */
-function stackedRatesAndBlotterBlob(): string {
+function createStackedRatesAndBlotterBlob(): string {
   return JSON.stringify({
     grid: {
       root: {

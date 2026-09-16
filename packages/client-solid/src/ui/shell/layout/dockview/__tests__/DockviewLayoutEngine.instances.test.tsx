@@ -124,7 +124,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // The unmount's dispose flush is the witness of the live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
     const { store, inner } = recordingStore();
-    const seed = instanceOnTheLeftBlob(AAPL.id);
+    const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
     const [layoutResets, setLayoutResets] = createSignal(0);
 
@@ -276,7 +276,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
     const { store, inner } = recordingStore();
-    const seed = instanceOnTheLeftBlob(AAPL.id);
+    const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
     mountEngine({ store, instances: [AAPL] });
@@ -567,7 +567,7 @@ function soloLeaf(groupId: string, panelId: string, size: number): object {
 /** A REAL, valid dockview blob with the instance's solo group as the root's
  * FIRST child — the left edge, which `addDynamicPanel` (always the right
  * edge) can never produce. Mirrors the react twin's identical helper. */
-function instanceOnTheLeftBlob(instanceId: string): string {
+function createInstanceOnTheLeftBlob(instanceId: string): string {
   return JSON.stringify({
     grid: {
       root: {
