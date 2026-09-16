@@ -19,11 +19,11 @@
 // The fix is a props object: the page owns the component, the invariant props
 // and the callback slots, and a case states only what it varies.
 //
-// SCOPED BY CONFIG to page-object directories, with an explicit ignore ledger
-// for the files still to be migrated — the `no-framework-calls-in-specs` and
-// `newspaper-order { fixtures: true }` precedent. New page objects are gated
-// immediately; the backlog is named in eslint.config.mjs and docs/STATUS.md
-// rather than left implicit.
+// SCOPED BY CONFIG to page-object directories, and UNCONDITIONAL there — no
+// ignore list. An earlier cut shipped one as a "migration ledger"; that is a
+// suppression whatever it is called, and the files on it were precisely the
+// ones the rule existed for. All five offenders were converted instead, so a
+// regression fails the build rather than being parked.
 //
 // ONLY THE PUBLISHED INTERFACE IS CHECKED. A page's own plumbing legitimately
 // holds an element — RTL's `rerender` takes one, so a page that wraps it keeps

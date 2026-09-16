@@ -528,20 +528,12 @@ export default tseslint.config(
     // client-react sat "migrated" while its docked spec wrote 15 props at each
     // of 16 render sites, 9 of them identical every time.
     //
-    // The `ignores` list is the MIGRATION LEDGER, not an exemption — the
-    // `no-framework-calls-in-specs` / `newspaper-order { fixtures: true }`
-    // precedent. Every NEW page object is gated from today; these four are the
-    // burn-down, tracked in docs/STATUS.md. StrictModePage is deliberately
-    // last: it is shared by FOUR specs that mount structurally different trees
-    // (with/without StrictMode, with instances, with a popout stub), so it
-    // needs a props API designed across all four, not a mechanical swap.
+    // NO IGNORE LIST, deliberately. An earlier cut carried one as a
+    // "migration ledger"; that is a suppression whatever it is called, and the
+    // files on it were exactly the ones the rule existed for. Every page
+    // object in the repo now satisfies this, so the rule is unconditional and
+    // a regression cannot be parked.
     files: ["**/tests/**/pages/**/*.{ts,tsx}"],
-    ignores: [
-      "packages/client-react/tests/ui/pages/DockviewLayoutEngineStrictModePage.ts",
-      "packages/client-react-native/tests/pages/BootCanvasPage.tsx",
-      "packages/client-react-native/tests/pages/ExposureBubblePage.tsx",
-      "packages/devtools-app/tests/pages/NavTreePage.ts",
-    ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/page-objects-own-their-component": "error" },
   },

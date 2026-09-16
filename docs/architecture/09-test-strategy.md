@@ -216,10 +216,27 @@ arbitrary children is composition, not handing over the subject. Only the
 page's **published interface** is checked — its own plumbing may hold an
 element, since RTL's `rerender` takes one.
 
-The rule's `ignores` list in `eslint.config.mjs` is a **migration ledger**, not
-an exemption (the `newspaper-order { fixtures: true }` precedent): every new
-page object is gated from day one, and the remaining four are tracked in
-[`docs/STATUS.md`](../STATUS.md).
+The rule is **unconditional** — it carries no ignore list. All five page
+objects that took an element were converted: `client-react`'s
+`DockviewLayoutEngineDockedPage` (16 sites) and `DockviewLayoutEngineStrictModePage`
+(8 sites across four specs), `client-react-native`'s `BootCanvasPage` and
+`ExposureBubblePage`, and `devtools-app`'s `NavTreePage`.
+
+Two of those needed more than a prop swap, and both shapes are worth knowing:
+
+- **A wrapper that is itself the subject.** The StrictMode spec mounts inside
+  `<StrictMode>`, and moving that page-side would have hidden what the test
+  mounts. `mountInStrictMode(props)` keeps it visible at the call site without
+  handing the page an element.
+- **A stateful harness.** `NavTreePage` and `BootCanvasPage` mount components
+  that call hooks (`useState`, `useSharedValue`) to drive the subject. The page
+  declares those harnesses itself and exposes their handles — a spec that built
+  them would be composing the subject again.
+
+`BootCanvasPage` additionally loads its component through `require` inside
+`mount`, not a static import: the spec mocks `BootCanvas`'s dependencies with
+factories that close over spec-level `const`s, so a static import would pull
+`bootScene` in before those initialise and hit the temporal dead zone.
 
 ### Readable JSON fixtures
 
