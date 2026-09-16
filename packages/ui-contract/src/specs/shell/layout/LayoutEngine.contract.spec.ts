@@ -567,6 +567,53 @@ describe("DockviewLayoutEngine chart instances (world-driven, App shell)", () =>
   });
 });
 
+/**
+ * The maximize witness (`data-maximized`) under Dockview.
+ *
+ * `JarvisDriverPage.maximizedPanelId` / `isPanelMaximized` read the SAME two
+ * attributes for either engine, so every maximize assertion in the contract
+ * tier silently retargets when `DEFAULT_LAYOUT_ENGINE` flips. The in-house
+ * engine renders both; the Dockview bridges did not, and the readers answered
+ * a missing attribute with `""` / `false` — which is also the answer for
+ * "nothing is maximized". Assertions expecting an id failed loudly, but the
+ * two expecting `""` (PreferencesModal + JarvisDriver, "restore clears the
+ * maximize") passed while checking nothing at all.
+ *
+ * This block is the engine-parity gate for that witness: it pins the READING
+ * (an id under Dockview, cleared on restore), while the readers themselves now
+ * throw on a missing attribute rather than reporting absence as a clean `""`.
+ */
+describe("DockviewLayoutEngine maximize witness (engine parity)", () => {
+  it("reports the maximized panel id, and clears it on restore", async () => {
+    const world = createWorldWithEquities({
+      watchlist: [
+        { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+      ],
+      quotes: { MSFT: equityQuote("MSFT", 467.12, 2.1) },
+    });
+    world.layoutEngine.next("dockview");
+    const app = mountWith(world, AppShell);
+    await app.header.clickTab("equities");
+
+    const msft = instanceIdFor("eq-chart", "MSFT");
+    await app.watchlist.clickOpenChart("MSFT");
+
+    // Nothing maximized yet — and this reading is only trustworthy because
+    // the reader throws when the attribute is absent entirely.
+    expect(app.maximizedPanelId()).toBe("");
+
+    app.dockviewLayout.clickMaximize(msft);
+
+    expect(app.maximizedPanelId()).toBe(msft);
+    expect(app.isPanelMaximized(msft)).toBe(true);
+
+    app.dockviewLayout.clickMaximize(msft);
+
+    expect(app.maximizedPanelId()).toBe("");
+    expect(app.isPanelMaximized(msft)).toBe(false);
+  });
+});
+
 /** The panel this block docks — an `analytics`-sourced table. */
 const DOCKED_PANEL_ID = "panel-desk-positions";
 
