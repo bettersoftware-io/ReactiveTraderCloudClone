@@ -988,6 +988,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // live pins — persisted in the blob, re-clamped as soon as an absorbing
   // panel returns — just not holding a min=max that would starve the grid.
   let unabsorbedPins: DesignPinRecord[] = [];
+  // Pins whose clamp is LIFTED because a member of theirs has floated out of
+  // the grid, keyed by the panel id whose float lifted them (R5).
+  //
+  // Deliberately NOT `unabsorbedPins`: that list is re-clamped the moment
+  // some panel can absorb the container's spare space again, and an absorber
+  // appearing elsewhere in the dock has nothing to do with a float. Sharing
+  // the list would snap a floated box back to its design width because an
+  // unrelated panel reopened. `settlePinAbsorption` reads neither this map
+  // nor anything holding it, so the exclusion is structural, not a filter.
+  const floatSuspendedPins = new Map<string, readonly DesignPinRecord[]>();
   // The unpinned dynamic panels (chart instances) and their design widths —
   // the members the R17 sharing rule sizes. Seeded from the construction
   // list too, so an unpinned panel a blob restored in place (reconcile never
@@ -1196,6 +1206,79 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return suspended;
   }
 
+  /** Lifts and SETS ASIDE every design pin holding `panelId`, because its
+   * group is leaving the grid for a float (R5). A pin is min=max: carried
+   * into a float it would hold the box at the rail's design width and refuse
+   * every resize.
+   *
+   * Unlike {@link suspendPinsHolding} (maximize's version, which leaves its
+   * records in `designPins` so a mid-maximize save still persists them), the
+   * records move OUT of `designPins` — a float can outlive any number of
+   * layout changes, and `intactDesignPins` would dissolve a rail pin whose
+   * member no longer shares the rail. They are persisted from this map
+   * instead, and re-clamped by {@link clampPinsFloatSuspendedFor}. */
+  function suspendPinsFor(panelId: string): void {
+    const held = designPins.filter((record) => {
+      return record.members.some((member) => {
+        return member.panelId === panelId;
+      });
+    });
+
+    if (held.length === 0) {
+      return;
+    }
+
+    let patchedStrips = false;
+
+    for (const record of held) {
+      patchedStrips = releasePinMembers(record) || patchedStrips;
+    }
+
+    designPins = designPins.filter((record) => {
+      return !held.includes(record);
+    });
+    floatSuspendedPins.set(panelId, held);
+
+    if (patchedStrips) {
+      settleStrips();
+    }
+  }
+
+  /** Re-applies the pins `panelId`'s float suspended, now that it is docked
+   * back in the grid — but only those that still describe reality, the same
+   * `pinStillShaped` gate `releaseMaximize` applies on its own exit. A pin
+   * whose members no longer share one rail (the panel docked somewhere the
+   * pin never named) is dropped, already released. */
+  function clampPinsFloatSuspendedFor(panelId: string): void {
+    const held = floatSuspendedPins.get(panelId);
+
+    if (held === undefined) {
+      return;
+    }
+
+    floatSuspendedPins.delete(panelId);
+
+    for (const record of held) {
+      if (pinStillShaped(record, groupOf)) {
+        clampPinMembers(record);
+        designPins = [...designPins, record];
+      }
+    }
+  }
+
+  /** Every pin a float is currently holding lifted, dropping the entries
+   * whose panel has since left the dock entirely (closed while floating) —
+   * those describe nothing any more. */
+  function floatSuspendedRecords(): readonly DesignPinRecord[] {
+    for (const panelId of [...floatSuspendedPins.keys()]) {
+      if (api.getPanel(panelId) === undefined) {
+        floatSuspendedPins.delete(panelId);
+      }
+    }
+
+    return [...floatSuspendedPins.values()].flat();
+  }
+
   /** True while `group` is still laid out in THIS window's grid.
    *
    * `api.groups` is not pruned when a group leaves the grid, so every "what
@@ -1334,10 +1417,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     // Suspended pins are still pins — their clamp is lifted so the grid can
     // fill, but the design width must survive a reload, or closing the last
-    // absorbing panel would silently forget the rail's width for good.
-    return [...designPins, ...unabsorbedPins].map((record) => {
-      return record.pin;
-    });
+    // absorbing panel would silently forget the rail's width for good. A
+    // float's suspension (R5) persists for the same reason: a float IS
+    // persisted (design §3.3), so a reload restores the float and must still
+    // know the width to re-clamp when it docks home.
+    return [...designPins, ...unabsorbedPins, ...floatSuspendedRecords()].map(
+      (record) => {
+        return record.pin;
+      },
+    );
   }
 
   function armSashUnpin(event: Event): void {
@@ -1601,7 +1689,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * column is a static member of its parent, and a column's heights are
    * never the rule's. Null then, or when the instance is gone. */
   function instanceSplitOf(instanceId: string): Element | null {
-    let split = groupOf(instanceId)?.element.closest(SPLIT_SELECTOR) ?? null;
+    const group = groupOf(instanceId);
+
+    // R6 (Phase 6 design §3.2): a floating instance leaves the share rule.
+    // The exclusion has to be EXPLICIT, and location is the only test that
+    // works: dockview mounts every float through its own private nested
+    // gridview whose wrapper carries the very same
+    // `.dv-split-view-container` class the grid's splits do (measured, Task 1
+    // Q2), and that private split has no split parent and is not
+    // `dv-vertical` — so the walk below would return it and the rule would go
+    // on to "share" a row of one floating group, resizing a box the user
+    // placed by hand. A DOM-class test cannot see the difference (Ruling 5).
+    if (group === undefined || !isInGrid(group)) {
+      return null;
+    }
+
+    let split = group.element.closest(SPLIT_SELECTOR);
 
     while (split !== null) {
       const parent = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
@@ -1867,6 +1970,44 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
+  /** Cancels dockview's shift-drag-to-float gesture while a maximize is live
+   * (R4) — the gesture half of `floatPanel`'s own refusal.
+   *
+   * MEASURED, and NOT the mechanism the design named. dockview 8.3.1 starts
+   * that gesture from a POINTERDOWN — one listener on a tab, one on the tab
+   * bar's void container — and each calls `addFloatingGroup` itself after
+   * `event.preventDefault()`, having first bailed when the event was ALREADY
+   * `defaultPrevented`. The public `onWillDragGroup` hook fires from
+   * `onGroupDragStart`, i.e. an HTML5 `dragstart`, which the gesture's own
+   * preventDefault stops from ever happening — subscribing to it would veto
+   * ordinary group drags and never see a float. So the only reachable veto is
+   * that pointerdown, taken in the CAPTURE phase on our own container, ahead
+   * of dockview's target-phase listeners.
+   *
+   * Scoped to the two elements that own the gesture rather than every
+   * shift-click in the dock, so a future dockview shift affordance is not
+   * silently disabled here too. */
+  function cancelShiftFloatDuringMaximize(event: Event): void {
+    if (
+      maximized === null ||
+      !(event instanceof MouseEvent) ||
+      !event.shiftKey ||
+      !(event.target instanceof Element)
+    ) {
+      return;
+    }
+
+    if (event.target.closest(FLOAT_GESTURE_SELECTOR) !== null) {
+      event.preventDefault();
+    }
+  }
+
+  opts.container.addEventListener(
+    "pointerdown",
+    cancelShiftFloatDuringMaximize,
+    true,
+  );
+
   // Whether a user has been inside the dock since construction — the ORIGIN
   // test for what dispose may persist. Layer 3 persists ARRANGEMENT (sash
   // drags, DnD, restacks, and the maximize/collapse/pop-out buttons, all of
@@ -2072,7 +2213,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined || maximized?.panelId === panelId) {
+      if (
+        panel === undefined ||
+        maximized?.panelId === panelId ||
+        // R2 (Phase 6 design §3.2): a floating group is outside the grid, so
+        // a maximize has no space to claim for it and no home to restore it
+        // to. Refused here as well as hidden in the head, so the refusal
+        // holds for a replay or a stale bridge too.
+        !isInGrid(panel.group)
+      ) {
         return;
       }
 
@@ -2112,7 +2261,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // lists mid-walk. The maximized panel's own group is skipped whole —
         // its tab siblings stay tabs behind it, as they were.
         for (const group of [...api.groups]) {
-          if (group === panel.group || !boundary.contains(group.element)) {
+          // R7 (Phase 6 design §3.2): DOM containment is NOT grid membership.
+          // A float stays inside this engine's own container — dockview
+          // mounts it in a `.dv-floating-overlay-host` sibling of the grid
+          // (measured, Task 1 Q2) — so `boundary.contains` is TRUE for it and
+          // a maximize would otherwise strip a float to a 32px bar. Floats
+          // are boxes OVER the grid: they stay visible and untouched.
+          if (
+            group === panel.group ||
+            !isInGrid(group) ||
+            !boundary.contains(group.element)
+          ) {
             continue;
           }
 
@@ -2178,6 +2337,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       });
     },
     collapsePanel: (panelId: string): void => {
+      const panel = api.getPanel(panelId);
+
+      // R1 (Phase 6 design §3.2): a floating group is outside the grid, so a
+      // strip has no slot to build around it and no home to restore it to.
+      // An id this engine does not know falls through to the paths below,
+      // which have always handled it — only the FLOATING case is new here.
+      if (panel !== undefined && !isInGrid(panel.group)) {
+        return;
+      }
+
       // Collapsing a panel the maximize already stripped changes nothing on
       // screen, but hands the strip to the user: it now outlives the
       // maximize, as a panel in the in-house `collapsed` set does.
@@ -2327,14 +2496,29 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     floatPanel: (panelId: string): boolean => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined || panel.group.api.location.type !== "grid") {
+      // R3 (Phase 6 design §3.2): a float while a strip owns the grid has no
+      // coherent home to return to, so a live maximize refuses one outright —
+      // the same refusal the shift-drag gesture gets from
+      // cancelShiftFloatDuringMaximize, which is the gesture's only reachable
+      // veto point (see that function).
+      if (panel === undefined || maximized !== null || !isInGrid(panel.group)) {
         return false;
       }
 
+      // R5: BEFORE the detach, so the release reads the group's live
+      // constraints rather than a float's. A pin is min=max — carrying one
+      // into a float would hold the box at its rail width and refuse a
+      // resize.
+      suspendPinsFor(panelId);
       api.addFloatingGroup(
         panel.group,
         floatingBoundsFor(panel.group, opts.container),
       );
+      // Ruling 10: a float REMOVES an absorber exactly as a close does, so
+      // floating the last absorbing panel starves the grid the same way.
+      // Idempotent, and it may legitimately suspend pins on panels this call
+      // never named.
+      settlePinAbsorption();
 
       return true;
     },
@@ -2359,30 +2543,48 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return (
           candidateId !== panelId &&
           candidate !== undefined &&
-          candidate.group.api.location.type === "grid"
+          isInGrid(candidate.group)
         );
       });
+
       const anchorGroup =
         anchor === null ? undefined : api.getPanel(anchor.anchorPanelId)?.group;
-      const targetGroup =
-        anchorGroup ??
-        api.groups.find((candidateGroup) => {
-          return candidateGroup.api.location.type === "grid";
-        });
 
-      // Nothing grid-resident to dock onto (every other panel is itself
-      // closed, floating, or popped) — leave the panel floating rather than
-      // throw.
-      if (targetGroup === undefined) {
-        return;
+      if (anchor !== null && anchorGroup !== undefined) {
+        panel.api.moveTo({
+          group: anchorGroup,
+          position: directionToPosition(anchor.direction),
+        });
+      } else if (api.groups.some(isInGrid)) {
+        // No seed home to return to. Two ways to get here: a DYNAMIC panel (a
+        // chart instance) has no seed slot BY CONSTRUCTION — the seed tree
+        // never names one — and a static panel whose every seed sibling is
+        // itself closed, floating or popped finds no live anchor either.
+        // Both dock at the ROOT'S RIGHT EDGE, exactly where
+        // insertDynamicPanel opens an instance.
+        //
+        // It has to be the GROUP api's moveTo: given a bare `position` it
+        // adds a new root-level group and moves this group into it
+        // (dockview-core@8.3.1). The PANEL api's moveTo cannot express that —
+        // with no `group` it centres on the panel's OWN group, a no-op — so
+        // reaching for a grid group to satisfy it instead tabbed the panel
+        // onto whichever group happened to be first, which for an instance is
+        // a stack with a static panel, where the R6 share rule never reaches
+        // it again.
+        panel.group.api.moveTo({ position: "right" });
       }
 
-      panel.api.moveTo({
-        group: targetGroup,
-        ...(anchor === null
-          ? {}
-          : { position: directionToPosition(anchor.direction) }),
-      });
+      // Nothing grid-resident to dock onto at all (every other panel is
+      // itself closed, floating, or popped) — neither branch ran, and the
+      // panel stays floating rather than throwing.
+      // R5, the other half: the panel is back in the grid, so a pin this
+      // float suspended is re-applied — but only if it still describes
+      // reality (the panel may have docked somewhere the pin never named).
+      clampPinsFloatSuspendedFor(panelId);
+      // Ruling 10: a returning panel can absorb again, exactly as a reopen
+      // can — and this call is also what re-suspends the re-clamped pin if
+      // the grid still has nothing to trade against it.
+      settlePinAbsorption();
     },
     groupCount: () => {
       return api.groups.length;
@@ -2390,6 +2592,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     dispose: () => {
       changeSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
+      opts.container.removeEventListener(
+        "pointerdown",
+        cancelShiftFloatDuringMaximize,
+        true,
+      );
       opts.container.removeEventListener("pointerdown", markUserArranged, true);
       resizeObserver.disconnect();
       disarmSashUnpin();
@@ -2695,6 +2902,10 @@ function stripOrientationOf(group: SizableGroup): DockStripOrientation {
 const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
 const VIEW_SELECTOR = ".dv-view";
+/** The two elements dockview 8.3.1 starts its shift-drag-to-float gesture
+ * from — a tab, and the tab bar's void container — each through its own
+ * `pointerdown` listener. See `cancelShiftFloatDuringMaximize`. */
+const FLOAT_GESTURE_SELECTOR = ".dv-tab, .dv-void-container";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
  * siblings side by side (a horizontal split) → a 32px vertical column;

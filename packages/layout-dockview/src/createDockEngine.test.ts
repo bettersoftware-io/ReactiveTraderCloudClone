@@ -1,4 +1,5 @@
 import {
+  createDockview,
   type DockviewApi,
   Orientation,
   type SerializedDockview,
@@ -13,7 +14,11 @@ import {
   vi,
 } from "vitest";
 
-import type { DockDynamicPanel, DockEngineOptions } from "#/createDockEngine";
+import type {
+  DockDynamicPanel,
+  DockEngine,
+  DockEngineOptions,
+} from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
@@ -22,6 +27,7 @@ import {
   GLIDE_ATTRIBUTE_MS,
   GROUP_GAP_PX,
 } from "#/createDockEngine";
+import { HookContentRenderer } from "#/HookContentRenderer";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with a no-op stub. This one
@@ -3925,6 +3931,13 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
 // window.open; a floating group is an absolutely-positioned div in the SAME
 // document), so these are real characterizations, not blocked-branch stubs.
 describe("dockview floating groups (characterization of the 8.3.1 primitive)", () => {
+  /** The half of `api.toJSON()`'s shape this suite asks about — dockview's
+   * own `SerializedDockview` type does not declare `floatingGroups`, which is
+   * itself part of what Q3 establishes. */
+  interface FloatCarryingLayout {
+    floatingGroups?: readonly unknown[];
+  }
+
   // Q1 + Q2 + Q5 (membership half): float a grid-resident group and inspect
   // what changed underneath.
   it("detaches a grid group in place, unchanged group count, still reporting floating", () => {
@@ -4007,6 +4020,7 @@ describe("dockview floating groups (characterization of the 8.3.1 primitive)", (
     for (const split of gridSplitsBefore) {
       expect(split.contains(floated.group.element)).toBe(false);
     }
+
     // ...it is still inside the engine's own mount point overall...
     expect(container.contains(floated.group.element)).toBe(true);
     // ...specifically inside dockview's dedicated floating-overlay layer,
@@ -4032,9 +4046,7 @@ describe("dockview floating groups (characterization of the 8.3.1 primitive)", (
 
     api.addFloatingGroup(panel.group, { x: 40, y: 40 });
 
-    const serialized = api.toJSON() as {
-      floatingGroups?: readonly unknown[];
-    };
+    const serialized = api.toJSON() as FloatCarryingLayout;
 
     expect(serialized.floatingGroups).toHaveLength(1);
 
@@ -4181,6 +4193,476 @@ describe("DockEngine floatPanel / dockPanel / onFloatsChange", () => {
     engine.dispose();
   });
 });
+
+// Phase 6a Task 3: the §3.2 interplay matrix — how a float behaves against
+// the pin, strip, maximize and instance-share machinery this engine already
+// runs. Every witness here is CONSTRAINT STATE or BOOKKEEPING, never a
+// geometry reading: jsdom lays nothing out, and a float cannot vacate its
+// pixels for a sibling to grow into, so a width assertion would pass or fail
+// for reasons that have nothing to do with these rules.
+describe("floating groups against pins, strips, maximize and the share rule", () => {
+  /** RAIL_LIKE with the analytics/positions rail pinned at 360 — the same
+   * fixture the absorber suite uses, whose pin reads as `min === max`. */
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return {
+      ...opts,
+      container: sizedContainer(1440, 900),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    };
+  }
+
+  function locationOf(panelId: string): string {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.location.type;
+  }
+
+  function isWidthClamped(panelId: string): boolean {
+    const [minimum, maximum] = widthClampOf(panelId);
+
+    return minimum === maximum;
+  }
+
+  /** The group element of `panelId`'s own tab-bar void container — the
+   * element dockview's shift-drag-to-float gesture listens on. */
+  function voidContainerOf(panelId: string): Element {
+    const panel = lastDockviewApi().getPanel(panelId);
+    const voidContainer =
+      panel?.group.element.querySelector(".dv-void-container");
+
+    if (voidContainer === null || voidContainer === undefined) {
+      throw new Error(`no void container for ${panelId}`);
+    }
+
+    return voidContainer;
+  }
+
+  /** dockview starts the float gesture from a shift-pointerdown; jsdom has
+   * no PointerEvent constructor here, and a MouseEvent carries exactly the
+   * fields the gesture reads (`shiftKey`, `defaultPrevented`) — a real
+   * browser's PointerEvent IS a MouseEvent.
+   *
+   * `cancelable` is the load-bearing option, not boilerplate: a real
+   * pointerdown is cancelable, and on a synthetic event that defaults to
+   * FALSE, where `preventDefault()` is silently a no-op and
+   * `defaultPrevented` never flips — the veto would look broken for a reason
+   * that exists only in the test. */
+  function shiftPointerDown(target: Element): void {
+    target.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        shiftKey: true,
+      }),
+    );
+  }
+
+  // R1 — a strip has no slot to build around a float and no home to restore
+  // it to. The witness is the published strip map, not a size: `recordStrip`
+  // + `settleStrips` is what would list the panel there.
+  it("refuses to collapse a floating panel (R1)", () => {
+    const strips: DockStripMap[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+      onStripsChange: (next: DockStripMap): void => {
+        strips.push(next);
+      },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.collapsePanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(strips).toEqual([]);
+    engine.dispose();
+  });
+
+  // R2 — same refusal for a maximize. A maximize strips every OTHER group in
+  // its boundary, so the witness is again the strip map: the refusal means
+  // nothing anywhere was stripped.
+  it("refuses to maximize a floating panel (R2)", () => {
+    const strips: DockStripMap[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+      onStripsChange: (next: DockStripMap): void => {
+        strips.push(next);
+      },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.maximizePanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(strips).toEqual([]);
+    engine.dispose();
+  });
+
+  // R3 — a float while a strip owns the grid has no coherent home to return
+  // to, so the button path refuses outright.
+  it("refuses to float while a maximize is live (R3)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.maximizePanel("fx-rates");
+
+    expect(engine.floatPanel("fx-analytics")).toBe(false);
+    expect(locationOf("fx-analytics")).toBe("grid");
+    engine.dispose();
+  });
+
+  // R4, the control FIRST: dockview's own shift-drag gesture really does
+  // float a group from a bare pointerdown in jsdom. Without this the guarded
+  // test below would pass for the wrong reason — a gesture that never fires
+  // is trivially "cancelled".
+  it("shift-drag floats a group when no maximize is live (R4 control)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    engine.dispose();
+  });
+
+  // R4 — the gesture half of R3's refusal. Cancelled at the POINTERDOWN, in
+  // the capture phase: dockview floats from that event directly (bailing
+  // only when it is already defaultPrevented), so `onWillDragGroup` — which
+  // fires from an HTML5 dragstart the gesture's own preventDefault stops —
+  // never sees this at all.
+  it("cancels the shift-drag float gesture while a maximize is live (R4)", () => {
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.maximizePanel("fx-rates");
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    engine.dispose();
+  });
+
+  // R5 — a pin is min=max; carrying one into a float would hold the box at
+  // the rail's design width and refuse every resize. The clamp IS the pin,
+  // so lifting it is the whole observable effect.
+  it("lifts a design pin's clamp when a member floats (R5)", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    expect(isWidthClamped("fx-analytics")).toBe(true);
+
+    engine.floatPanel("fx-analytics");
+
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
+  it("re-clamps the suspended design pin when the float docks home (R5)", () => {
+    const engine = createDockEngine(pinnedRailBase());
+    const clampBefore = widthClampOf("fx-analytics");
+
+    engine.floatPanel("fx-analytics");
+    engine.dockPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(widthClampOf("fx-analytics")).toEqual(clampBefore);
+    engine.dispose();
+  });
+
+  // R5 + Ruling 6 — floating's suspension is NOT the absorber suspension.
+  // An absorber returning elsewhere in the dock re-clamps `unabsorbedPins`;
+  // it must not reach a float, or a panel reopening across the dock would
+  // snap the floating box back to its rail width.
+  it("keeps a floated panel's pin lifted when an absorber returns elsewhere (R5)", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.floatPanel("fx-analytics");
+    // Close and reopen an absorbing panel: settlePinAbsorption runs on both,
+    // and its re-clamp pass is exactly what must not see this record.
+    engine.closePanel("fx-rates");
+    engine.reopenPanel("fx-rates");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
+  // Ruling 10 — a float REMOVES an absorber exactly as a close does, so it
+  // can starve the grid the same way, and suspending pins on panels this
+  // call never named is the CORRECT outcome.
+  it("suspends an untouched panel's pin when a float takes the last absorber (Ruling 10)", () => {
+    const engine = createDockEngine(pinnedRailBase());
+
+    engine.closePanel("fx-rates");
+
+    expect(isWidthClamped("fx-analytics")).toBe(true);
+
+    // fx-blotter is the last panel left able to absorb the container's spare
+    // space; floating it starves the grid, so the rail's pin — which this
+    // call never named — must yield rather than clamp the whole grid to 367.
+    engine.floatPanel("fx-blotter");
+
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
+  it("persists a float-suspended pin, so a reload still knows the width (R5)", () => {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.floatPanel("fx-analytics");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    // Suspended, never forgotten — the same contract the absorber suspension
+    // keeps. A float IS persisted (design §3.3), so the reload that restores
+    // it must still know what to re-clamp when it docks home.
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  /** An engine holding two chart instances, with the container handle a
+   * settled resize needs. */
+  interface InstancesFixture {
+    readonly engine: DockEngine;
+    readonly container: HTMLElement;
+  }
+
+  /** Instances + the container they live in, for the two R6 tests: the pair
+   * differs ONLY in whether the float docks home before the resize. */
+  function engineWithInstances(): InstancesFixture {
+    const container = sizedContainer(1440, 900);
+
+    return {
+      container,
+      engine: createDockEngine({
+        ...base(),
+        container,
+        dynamicPanels: [
+          { id: "i-aapl", initialPx: 360, unpinned: true },
+          { id: "i-msft", initialPx: 360, unpinned: true },
+        ],
+      }),
+    };
+  }
+
+  // R6 — a floating chart instance leaves the equal-share rule. A SETTLED
+  // RESIZE is the trigger, not another instance opening: the resize handler
+  // is the one place the engine asks `instanceSplitOf` about an instance BY
+  // ID (`for (const instanceId of unpinnedDynamicPanels.keys())`) instead of
+  // reaching it through a grid split's children, so it is the only path where
+  // the DOM walk can land on the float's own private gridview. An
+  // addDynamicPanel trigger passes either way — the float is excluded
+  // structurally there (`childViewsOf` of a GRID split never reaches it), so
+  // that version of this test was vacuous and was replaced.
+  //
+  // The witness is a CALL CENSUS on the floated group's own sizing api: the
+  // rule's only effect on a member is `setConstraints` + `setSize` (axisOf),
+  // and it releases the constraints again, so nothing it does to a float
+  // survives as readable state to assert on.
+  it("never resizes a floating chart instance (R6)", () => {
+    const { engine, container } = engineWithInstances();
+
+    engine.floatPanel("i-aapl");
+
+    const touched = spyOnGroupSizing("i-aapl");
+
+    resizeContainerTo(container, 1200, 900);
+
+    expect(touched.calls()).toEqual([]);
+    engine.dispose();
+  });
+
+  it("re-enters the share rule when the instance docks home (R6)", () => {
+    const { engine, container } = engineWithInstances();
+
+    engine.floatPanel("i-aapl");
+    engine.dockPanel("i-aapl");
+
+    const touched = spyOnGroupSizing("i-aapl");
+
+    resizeContainerTo(container, 1200, 900);
+
+    // The exclusion is a property of WHERE the group is, not a one-way door:
+    // back in the grid, the same resize sizes it like any other instance
+    // member. This is also what pins dockPanel's no-seed-home branch — an
+    // instance has no seed slot, and docking it into another group's tab
+    // stack would leave it permanently outside the rule.
+    expect(touched.calls()).not.toEqual([]);
+    engine.dispose();
+  });
+
+  // R7 — floats are boxes OVER the grid, not grid members. The trap is that
+  // a float stays inside this engine's own container, so the maximize
+  // boundary's `contains` test says yes: without a location check the
+  // maximize would clamp the float to a 32px bar.
+  it("leaves a float untouched when a docked panel maximizes (R7)", () => {
+    const strips: DockStripMap[] = [];
+    const engine = createDockEngine({
+      ...base(),
+      container: sizedContainer(1440, 900),
+      onStripsChange: (next: DockStripMap): void => {
+        strips.push(next);
+      },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.maximizePanel("fx-rates");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    // fx-blotter IS a grid sibling inside the boundary, so the maximize must
+    // still have stripped it — proving the maximize ran and the float alone
+    // was spared, rather than the whole pass having quietly no-opped.
+    expect(strips.at(-1)).toEqual({ "fx-blotter": "horizontal" });
+    engine.dispose();
+  });
+
+  // The stacked-chrome question, MEASURED both ways rather than argued.
+  // dockview's default `floatingGroupDragHandle: "titlebar"` renders a
+  // separate 22px drag rail ABOVE the group's own 38px head, so a float wears
+  // 60px of chrome where a grid card wears 38.
+  it("renders a separate drag rail above the panel head (the stacked chrome)", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...base(), container });
+
+    engine.floatPanel("fx-analytics");
+
+    expect(container.querySelector(".dv-floating-titlebar")).not.toBeNull();
+    engine.dispose();
+  });
+
+  // ...and the other half of the measurement: "tabbar" DOES drop the rail,
+  // but it also makes the tab bar's void container the float's ONLY move
+  // handle (`isFloatingMoveHandle: () => !closest(".dv-resize-container-
+  // with-titlebar")`), and dockview's own stylesheet gives that container
+  // `flex-grow: 0` under `singleTabMode: "fullwidth"`, which this engine sets
+  // so a lone head slot spans the whole 38px bar. A single-panel float — what
+  // `floatPanel` always produces — would therefore have no draggable surface
+  // at all. Hence the rail is KEPT and styled (dockview-hud.css) rather than
+  // traded for an unmovable box; a raw dock is stood up here because the
+  // engine deliberately does not expose the option.
+  it("floatingGroupDragHandle 'tabbar' drops the rail, leaving a full-width single tab no handle", () => {
+    const container = sizedContainer(1440, 900);
+    const api = createDockview(container, {
+      createComponent: () => {
+        return new HookContentRenderer({
+          title: (id: string) => {
+            return id;
+          },
+          mount: () => {
+            return () => {};
+          },
+        });
+      },
+      singleTabMode: "fullwidth",
+      floatingGroupDragHandle: "tabbar",
+    });
+
+    api.layout(1440, 900);
+    api.addPanel({ id: "solo", component: "rtc" });
+
+    const panel = api.getPanel("solo");
+
+    if (panel === undefined) {
+      throw new Error("solo missing");
+    }
+
+    api.addFloatingGroup(panel.group, { x: 20, y: 20 });
+
+    expect(container.querySelector(".dv-floating-titlebar")).toBeNull();
+
+    const bar = panel.group.element.querySelector(
+      ".dv-tabs-and-actions-container",
+    );
+
+    expect(bar?.classList.contains("dv-single-tab")).toBe(true);
+    expect(bar?.classList.contains("dv-full-width-single-tab")).toBe(true);
+    api.dispose();
+  });
+});
+
+/** Re-reports `container` at a new size and delivers it to the engine's own
+ * ResizeObserver — the settle path. A narrower twin of the "settle resize"
+ * suite's own `settleTo`, without its dockview-first ordering knob, which the
+ * instance re-share does not depend on. */
+function resizeContainerTo(
+  container: HTMLElement,
+  width: number,
+  height: number,
+): void {
+  Object.defineProperty(container, "clientWidth", {
+    configurable: true,
+    get: () => {
+      return width;
+    },
+  });
+  Object.defineProperty(container, "clientHeight", {
+    configurable: true,
+    get: () => {
+      return height;
+    },
+  });
+
+  for (const observer of [...recordedObservers]) {
+    if (observer.targets.includes(container)) {
+      const entry = {
+        target: container,
+        contentRect: { width, height },
+      } as unknown as ResizeObserverEntry;
+      observer.callback([entry], observer as unknown as ResizeObserver);
+    }
+  }
+}
+
+/** The names of the sizing calls a group's api has received, in order. */
+interface SizingCensus {
+  calls: () => readonly string[];
+}
+
+/** Records every call the engine makes to `panelId`'s group sizing api — the
+ * two methods `axisOf` drives (`setConstraints`, `setSize`). A census, not a
+ * geometry reading: the sharing rule constrains and then releases, so its
+ * effect on a member leaves no readable state behind, only these calls. */
+function spyOnGroupSizing(panelId: string): SizingCensus {
+  const panel = lastDockviewApi().getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  const seen: string[] = [];
+  const groupApi = panel.group.api;
+
+  function recordCall(name: string): () => void {
+    return () => {
+      seen.push(name);
+    };
+  }
+
+  vi.spyOn(groupApi, "setConstraints").mockImplementation(
+    recordCall("setConstraints"),
+  );
+  vi.spyOn(groupApi, "setSize").mockImplementation(recordCall("setSize"));
+
+  return {
+    calls: (): readonly string[] => {
+      return seen;
+    },
+  };
+}
 
 function lastDockviewApi(): DockviewApi {
   if (capturedDockview.api === null) {
