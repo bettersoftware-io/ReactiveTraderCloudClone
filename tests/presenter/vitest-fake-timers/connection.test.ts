@@ -10,7 +10,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: Connection status", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -50,6 +49,8 @@ describe("@presenter Feature: Connection status", () => {
     await conn.gatewayConnectionRestored(w);
     await conn.expectStatusEqualsWithin(w, CS_CONNECTED, 3);
   });
+
+  let w: VitestPlainPresenterWorld;
 });
 
 // String-literal stand-ins for the ConnectionStatus const enum. Same trick as

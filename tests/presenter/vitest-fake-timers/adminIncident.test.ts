@@ -8,12 +8,6 @@ import {
 import * as incident from "../scenarios/_shared/adminIncident";
 
 describe("@presenter Feature: Admin incident injection breaks the live connection", () => {
-  let w: IncidentPresenterWorld;
-  // Held for the whole test to keep status$'s shareReplay warm.
-  let statusSub: ReturnType<
-    IncidentPresenterCtx["app"]["presenters"]["connection"]["status$"]["subscribe"]
-  >;
-
   beforeEach(() => {
     // Install fake timers BEFORE buildIncidentPresenterApp so simulators
     // capture patched setTimeout/setInterval. Same ordering as
@@ -51,6 +45,13 @@ describe("@presenter Feature: Admin incident injection breaks the live connectio
     await incident.operatorClearsIncident(w);
     await incident.expectStatusEqualsWithin(w, incident.CS_CONNECTED, 5);
   });
+
+  let w: IncidentPresenterWorld;
+
+  // Held for the whole test to keep status$'s shareReplay warm.
+  let statusSub: ReturnType<
+    IncidentPresenterCtx["app"]["presenters"]["connection"]["status$"]["subscribe"]
+  >;
 });
 
 interface IncidentPresenterWorld {

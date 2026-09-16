@@ -224,8 +224,6 @@ describe("DockviewLayoutEngine (shared harness)", () => {
  * mounted (not just a count), and the default title tab as its head — the
  * same witnesses every other case in this file already uses. */
 describe("DockviewLayoutEngine docked desk panels", () => {
-  const DOCKED_PANEL_ID = "panel-desk-heat";
-
   it("mounts a docked desk panel's body and head as a dockview group", () => {
     const page = mount(DockviewEngine, {
       props: { docked: [DOCKED_PANEL_ID] },
@@ -278,4 +276,6 @@ describe("DockviewLayoutEngine docked desk panels", () => {
     // A strip replaces the body slot's content entirely.
     expect(page.bodyVisible("jarvis-panel-heatmap")).toBe(false);
   });
+
+  const DOCKED_PANEL_ID = "panel-desk-heat";
 });

@@ -122,9 +122,9 @@ describe("x", () => {
 const SEED = { a: 1 };
 
 describe("x", () => {
-  const seeded = build();
+  build();
   it("works", () => {
-    expect(seeded.a).toBe(1);
+    expect(build().a).toBe(1);
   });
 });
 
@@ -165,6 +165,59 @@ const captured = vi.hoisted(() => {
 describe("x", () => {
   it("works", () => {
     expect(captured.seen).toEqual([]);
+  });
+});
+`,
+    },
+    {
+      name: "fixture GROUP: a fixture feeding a BLOCKED fixture is blocked too",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const inner = { a: 1 };
+
+const outer = { inner };
+
+describe("x", () => {
+  if (!outer) {
+    throw new Error("missing");
+  }
+
+  it("works", () => {
+    expect(outer.inner.a).toBe(1);
+  });
+});
+`,
+    },
+    {
+      name: "describe scope: helpers already at the bottom of their block",
+      code: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(helper()).toBe(1);
+  });
+
+  function helper() {
+    return 1;
+  }
+});
+`,
+    },
+    {
+      name: "describe scope: a block-scoped const a NESTED describe reads is not movable",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+describe("outer", () => {
+  const cases = [1, 2];
+
+  describe("inner", () => {
+    for (const c of cases) {
+      it(\`works \${c}\`, () => {
+        expect(c).toBe(c);
+      });
+    }
   });
 });
 `,
@@ -476,6 +529,117 @@ function build() {
 }
 
 const SEED = { a: 1 };
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "fixture GROUP: a fixture reached only through another MOVING fixture moves with it",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const user = { name: "Demo" };
+
+const session = { user, token: "t" };
+
+describe("x", () => {
+  it("works", () => {
+    expect(session.user.name).toBe("Demo");
+  });
+});
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(session.user.name).toBe("Demo");
+  });
+});
+
+const user = { name: "Demo" };
+
+const session = { user, token: "t" };
+`,
+      errors: [{ messageId: "moveDown", data: { count: "2" } }],
+    },
+    {
+      name: "describe scope: a helper above the tests moves to the END OF ITS BLOCK, not the file",
+      code: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  function helper() {
+    return 1;
+  }
+
+  it("works", () => {
+    expect(helper()).toBe(1);
+  });
+});
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(helper()).toBe(1);
+  });
+
+  function helper() {
+    return 1;
+  }
+});
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "describe scope: a block-scoped fixture read only inside it() moves down",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  const seed = { a: 1 };
+
+  it("works", () => {
+    expect(seed.a).toBe(1);
+  });
+});
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(seed.a).toBe(1);
+  });
+
+  const seed = { a: 1 };
+});
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "fixture GROUP: a fixture read by an ALREADY-BELOW fixture lands just above it",
+      options: [{ fixtures: true }],
+      code: `import { describe, it, expect } from "vitest";
+
+const user = { name: "Demo" };
+
+describe("x", () => {
+  it("works", () => {
+    expect(session.user.name).toBe("Demo");
+  });
+});
+
+const session = { user, token: "t" };
+`,
+      output: `import { describe, it, expect } from "vitest";
+
+describe("x", () => {
+  it("works", () => {
+    expect(session.user.name).toBe("Demo");
+  });
+});
+
+const user = { name: "Demo" };
+
+const session = { user, token: "t" };
 `,
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },

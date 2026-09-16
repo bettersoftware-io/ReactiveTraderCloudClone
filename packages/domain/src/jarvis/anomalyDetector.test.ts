@@ -10,7 +10,7 @@ import {
   detectAnomalies,
 } from "./anomalyDetector.js";
 
-const FLAT_ASK = 1.1001; // spread = 0.0002, bit-identical every tick
+// spread = 0.0002, bit-identical every tick
 
 // spread = 0.05 — 250x the ~0.0002 baseline mean
 
@@ -118,15 +118,6 @@ describe("detectAnomalies — vol-channel ULP-noise guard (FIX 1 witness)", () =
 });
 
 describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () => {
-  // See the file-level comment above `mkTick` for the k/m_prior bound this
-  // fixture is built against. 36 baseline ticks keeps the SECOND crossing
-  // (evaluated with 2 prior outliers already in the window) at
-  // sqrt(37/2)≈4.3 — comfortably above spreadSigma=3.
-  const cfg: Partial<AnomalyDetectorConfig> = {
-    windowSize: 100,
-    minWindowFill: 36,
-  };
-
   it("crosses once with an unbounded σ, stays silent while above, and re-arms after dropping below", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
@@ -166,6 +157,15 @@ describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () =>
     // exceeded sqrt(windowSize-1)≈9.9 regardless of the spike's real size.)
     expect(spreadEvents[0]?.sigma).toBeGreaterThan(500);
   });
+
+  // See the file-level comment above `mkTick` for the k/m_prior bound this
+  // fixture is built against. 36 baseline ticks keeps the SECOND crossing
+  // (evaluated with 2 prior outliers already in the window) at
+  // sqrt(37/2)≈4.3 — comfortably above spreadSigma=3.
+  const cfg: Partial<AnomalyDetectorConfig> = {
+    windowSize: 100,
+    minWindowFill: 36,
+  };
 });
 
 describe("detectAnomalies — per-symbol isolation", () => {
@@ -220,11 +220,6 @@ describe("detectAnomalies — per-symbol isolation", () => {
 });
 
 describe("detectAnomalies — vol spike", () => {
-  const cfg: Partial<AnomalyDetectorConfig> = {
-    windowSize: 50,
-    minWindowFill: 20,
-  };
-
   it("fires on a single-tick return that dwarfs the window's own trailing σ", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
@@ -248,6 +243,11 @@ describe("detectAnomalies — vol spike", () => {
     expect(events[0]?.symbol).toBe("EURUSD");
     expect(events[0]?.sigma).toBeGreaterThanOrEqual(3);
   });
+
+  const cfg: Partial<AnomalyDetectorConfig> = {
+    windowSize: 50,
+    minWindowFill: 20,
+  };
 });
 
 describe("detectAnomalies — self-silencing / adaptivity", () => {
@@ -427,6 +427,8 @@ const JITTER_LOW_ASK = 1.10009;
 const JITTER_HIGH_BID = 1.09989;
 
 const JITTER_HIGH_ASK = 1.10011;
+
+const FLAT_ASK = 1.1001;
 
 // Spread channel: 29 bit-identical spreads + one tick nudged by exactly one
 // ULP on `ask`. Population σ of that 30-value window ≈ 3.99e-17 (measured) —

@@ -29,16 +29,6 @@ describe("createSimulatorPorts dependency injection", () => {
 });
 
 describe("createSimulatorPorts", () => {
-  const fakePreferences = {} as PreferencesPort;
-
-  function deps(): PortFactoryDeps {
-    return {
-      preferences: fakePreferences,
-      auth: new AuthSimulator({}),
-      sessionStore: new InMemorySessionStore(),
-    };
-  }
-
   it("wires all nine transport ports with their port methods", () => {
     const ports = createSimulatorPorts(deps());
     expect(typeof ports.referenceData.getCurrencyPairs).toBe("function");
@@ -56,6 +46,16 @@ describe("createSimulatorPorts", () => {
     const first = await firstValueFrom(ports.blotter.getTradeStream());
     expect(Array.isArray(first)).toBe(true);
   });
+
+  const fakePreferences = {} as PreferencesPort;
+
+  function deps(): PortFactoryDeps {
+    return {
+      preferences: fakePreferences,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    };
+  }
 });
 
 describe("jarvis port mode pinning", () => {
@@ -146,8 +146,6 @@ describe("wsReal equities :: per-symbol subscription lifecycle", () => {
 });
 
 describe("wsReal workflow :: quote/pass error paths", () => {
-  const fakePreferences = {} as PreferencesPort;
-
   it("rejects quote on nack", async () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws, {
@@ -177,11 +175,11 @@ describe("wsReal workflow :: quote/pass error paths", () => {
     await expect(promise).rejects.toThrow(/Failed to pass on quote/);
     ws.dispose();
   });
+
+  const fakePreferences = {} as PreferencesPort;
 });
 
 describe("wsReal createRfq :: null-payload guard (line 472)", () => {
-  const fakePreferences = {} as PreferencesPort;
-
   it("throws when ack response has a null rfqId payload", async () => {
     // Exercises the `if (rfqId === undefined || rfqId === null)` branch in
     // createRfq (portFactory.ts:471-472). A server bug returning ack without a
@@ -211,11 +209,11 @@ describe("wsReal createRfq :: null-payload guard (line 472)", () => {
     await expect(promise).rejects.toThrow(/ack response missing payload/);
     ws.dispose();
   });
+
+  const fakePreferences = {} as PreferencesPort;
 });
 
 describe("wsReal admin.getThroughput :: null-payload guard (line 625)", () => {
-  const fakePreferences = {} as PreferencesPort;
-
   it("throws when ack response has a null throughput payload", async () => {
     // Exercises the `if (value === undefined || value === null)` branch in
     // getThroughput (portFactory.ts:624-625). A server returning ack without a
@@ -235,4 +233,6 @@ describe("wsReal admin.getThroughput :: null-payload guard (line 625)", () => {
     await expect(promise).rejects.toThrow(/ack response missing payload/);
     ws.dispose();
   });
+
+  const fakePreferences = {} as PreferencesPort;
 });

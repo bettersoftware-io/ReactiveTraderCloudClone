@@ -9,7 +9,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: Analytics panel", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -25,4 +24,6 @@ describe("@presenter Feature: Analytics panel", () => {
   it("analytics presenter emits a non-empty snapshot", async () => {
     await analytics.expectAnalyticsEmits(w, 5);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

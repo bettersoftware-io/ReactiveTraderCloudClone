@@ -107,19 +107,6 @@ describe("toSerializedDockview", () => {
 });
 
 describe("toSerializedDockview × pixel pins", () => {
-  // The FX default tree: a 360px design-width rail (initialPx) beside a
-  // fraction-sized main column, exactly as createDefaultLayoutPort seeds it.
-  const RAIL = {
-    kind: "split",
-    dir: "row",
-    sizes: [0.73, 0.27],
-    initialPx: [undefined, 360],
-    children: [
-      { kind: "panel", panelId: "main" },
-      { kind: "panel", panelId: "rail" },
-    ],
-  } as const;
-
   it("gives an initialPx child exactly its pixels and the rest to the fraction-sized siblings", () => {
     const [main, rail] = (
       toSerializedDockview(RAIL, 1000, 800).grid.root as SerializedNode
@@ -212,6 +199,19 @@ describe("toSerializedDockview × pixel pins", () => {
     expect(main.size).toBe(633); // card (986 − 360) + one gap
     expect((rail.size ?? 0) + (main.size ?? 0)).toBe(1000);
   });
+
+  // The FX default tree: a 360px design-width rail (initialPx) beside a
+  // fraction-sized main column, exactly as createDefaultLayoutPort seeds it.
+  const RAIL = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.73, 0.27],
+    initialPx: [undefined, 360],
+    children: [
+      { kind: "panel", panelId: "main" },
+      { kind: "panel", panelId: "rail" },
+    ],
+  } as const;
 });
 
 describe("convertSeed × design pins", () => {

@@ -75,17 +75,6 @@ describe("marketData.candles", () => {
 });
 
 describe("orders.place", () => {
-  const req = { symbol: "AAPL", side: "buy", quantity: 10 } as never;
-
-  async function ackPlace(orderId: string): Promise<void> {
-    await awaitPendingRpc(ws, CLIENT_MSG.PLACE_ORDER);
-    ws.nextRpcResponse(CLIENT_MSG.PLACE_ORDER, {
-      type: "ack",
-      payload: { orderId },
-    });
-    await Promise.resolve();
-  }
-
   it("streams only the lifecycle events carrying its own order id", async () => {
     const next = vi.fn();
 
@@ -147,6 +136,17 @@ describe("orders.place", () => {
 
     expect(next).not.toHaveBeenCalled();
   });
+
+  const req = { symbol: "AAPL", side: "buy", quantity: 10 } as never;
+
+  async function ackPlace(orderId: string): Promise<void> {
+    await awaitPendingRpc(ws, CLIENT_MSG.PLACE_ORDER);
+    ws.nextRpcResponse(CLIENT_MSG.PLACE_ORDER, {
+      type: "ack",
+      payload: { orderId },
+    });
+    await Promise.resolve();
+  }
 });
 
 describe("orders.cancel", () => {
