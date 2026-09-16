@@ -1,15 +1,11 @@
 // packages/client-react-native/tests/pages/TradeRowPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
-import {
-  type StyleProp,
-  StyleSheet,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 
 import type { Trade } from "@rtc/domain";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export interface TradeRowPage {
   mount(trade: Trade, isNew: boolean, time: string | undefined): Promise<void>;
@@ -65,9 +61,7 @@ export function tradeRowPage(): TradeRowPage {
       return screen.queryByText(text) != null;
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
     textColorOf(text: string): TextStyle["color"] {
       const style = screen.getByText(text).props.style as TextStyle;

@@ -1,7 +1,6 @@
 // packages/client-react-native/tests/pages/BootSequencePage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
@@ -9,6 +8,7 @@ import { ViewModelProvider } from "@rtc/react-bindings";
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 interface BootState {
   variant: "core" | "laser" | "docking";
@@ -81,9 +81,7 @@ export function bootSequencePage(): BootSequencePage {
       await fireEvent.press(screen.getByTestId(testId));
     },
     styleOf(testId: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
   };
 }

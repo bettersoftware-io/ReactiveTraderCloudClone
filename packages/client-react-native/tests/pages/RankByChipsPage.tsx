@@ -1,13 +1,13 @@
 // packages/client-react-native/tests/pages/RankByChipsPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { RankByChips } from "#/ui/equities/markets/RankByChips";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 function vm(sort: string, setSort: (sort: string) => void): ViewModel {
   return {
@@ -59,14 +59,10 @@ export function rankByChipsPage(): RankByChipsPage {
       return state?.selected;
     },
     rowStyle(): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId("eq-rank-row").props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId("eq-rank-row"));
     },
     chipStyle(testId: string): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
   };
 }
