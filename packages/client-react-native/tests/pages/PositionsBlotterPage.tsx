@@ -1,13 +1,13 @@
 // packages/client-react-native/tests/pages/PositionsBlotterPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { EquityPosition } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { PositionsBlotter } from "#/ui/equities/blotters/PositionsBlotter";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 function vmWith(positions: readonly EquityPosition[]): ViewModel {
@@ -51,14 +51,10 @@ export function positionsBlotterPage(): PositionsBlotterPage {
       return matchesTextExactly(screen.getByTestId(testId), text);
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
     styleOf(testId: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId(testId).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByTestId(testId));
     },
   };
 }

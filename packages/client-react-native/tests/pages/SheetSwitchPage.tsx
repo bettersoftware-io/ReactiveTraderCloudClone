@@ -1,10 +1,10 @@
 // packages/client-react-native/tests/pages/SheetSwitchPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import { SheetSwitch } from "#/ui/shell/appearance/SheetSwitch";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 export interface SheetSwitchPage {
   mount(checked: boolean, onToggle: (next: boolean) => void): Promise<void>;
@@ -57,14 +57,10 @@ export function sheetSwitchPage(): SheetSwitchPage {
       )?.checked;
     },
     trackStyle(): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId("switch").props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId("switch"));
     },
     knobStyle(): ViewStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId("switch-knob").props.style as ViewStyle,
-      );
+      return flattenStyleOf(screen.getByTestId("switch-knob"));
     },
   };
 }

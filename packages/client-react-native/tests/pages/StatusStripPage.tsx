@@ -2,9 +2,9 @@
 import { cleanup, render, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import type { ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import { StatusStrip } from "#/ui/shell/hud/StatusStrip";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
 
 export interface StatusStripPage {
@@ -41,10 +41,10 @@ export function statusStripPage(): StatusStripPage {
     // telemetry row must keep its centre clear or the cell under the hex is
     // invisible on every screen.
     clearanceWidth(): number {
-      const flat = StyleSheet.flatten(
-        screen.getByTestId("hud-dock-clearance").props.style as ViewStyle,
+      const flat = flattenStyleOf<ViewStyle>(
+        screen.getByTestId("hud-dock-clearance"),
       );
-      return typeof flat?.width === "number" ? flat.width : 0;
+      return typeof flat.width === "number" ? flat.width : 0;
     },
   };
 }

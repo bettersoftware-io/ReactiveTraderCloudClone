@@ -5,13 +5,9 @@ import type { StreamRow } from "@rtc/devtools-core";
 
 import { stateTreePanelPage } from "#tests/pages/StateTreePanelPage";
 
-const panel = stateTreePanelPage();
-
 afterEach(() => {
   panel.unmountAll();
 });
-
-let animateSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   animateSpy = vi.fn(() => {
@@ -63,3 +59,7 @@ function row(streamId: string, lastSeq: number): StreamRow {
     ratePerSec: 0,
   };
 }
+
+const panel = stateTreePanelPage();
+
+let animateSpy: ReturnType<typeof vi.fn>;

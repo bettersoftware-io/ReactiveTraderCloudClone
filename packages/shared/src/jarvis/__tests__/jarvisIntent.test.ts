@@ -4,10 +4,6 @@ import { Direction, KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 
 import { matchJarvisIntent, parseNotional } from "../jarvisIntent.js";
 
-const knownSymbols = KNOWN_CURRENCY_PAIRS.map((p) => {
-  return p.symbol;
-});
-
 describe("parseNotional", () => {
   it("parses a bare M suffix", () => {
     expect(parseNotional("buy 5M EURUSD")).toBe(5_000_000);
@@ -228,4 +224,8 @@ describe("matchJarvisIntent", () => {
       matchJarvisIntent("let's set up a volatility workspace", knownSymbols),
     ).toEqual({ kind: "setupWorkspace" });
   });
+});
+
+const knownSymbols = KNOWN_CURRENCY_PAIRS.map((p) => {
+  return p.symbol;
 });

@@ -6,9 +6,9 @@ import {
   screen,
 } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import { ShellHeader } from "#/ui/shell/hud/ShellHeader";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 import { normalizeText, textContentOf } from "#tests/pages/support/textContent";
 
 export interface ShellHeaderPage {
@@ -52,14 +52,10 @@ export function shellHeaderPage(): ShellHeaderPage {
       await fireEvent.press(screen.getByTestId("hud-env-badge"));
     },
     wordmarkStyle(): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByTestId("hud-wordmark").props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByTestId("hud-wordmark"));
     },
     styleOfText(text: string): TextStyle {
-      return StyleSheet.flatten(
-        screen.getByText(text).props.style as TextStyle,
-      );
+      return flattenStyleOf(screen.getByText(text));
     },
   };
 }

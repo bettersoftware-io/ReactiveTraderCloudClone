@@ -4,8 +4,6 @@ import type { DiffEntry } from "@rtc/devtools-core";
 
 import { diffViewPage } from "#tests/pages/DiffViewPage";
 
-const view = diffViewPage();
-
 afterEach(() => {
   view.unmountAll();
 });
@@ -55,3 +53,5 @@ test("handles path keys with injective collision avoidance", () => {
 
   expect(view.textCount("a.b")).toBe(2);
 });
+
+const view = diffViewPage();

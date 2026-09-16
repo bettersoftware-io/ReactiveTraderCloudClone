@@ -7,8 +7,6 @@ import { ALL_SCOPE } from "#/nav/scope";
 import styles from "#/timeline/ContextPane.module.css";
 import { contextPanePage } from "#tests/pages/ContextPanePage";
 
-const pane = contextPanePage();
-
 afterEach(() => {
   pane.unmountAll();
 });
@@ -197,3 +195,5 @@ function rowAt(log: readonly LogRow[], seq: number): LogRow {
 
   return row;
 }
+
+const pane = contextPanePage();

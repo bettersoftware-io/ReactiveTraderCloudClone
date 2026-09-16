@@ -26,8 +26,6 @@ import {
   ScriptedJarvisEngine,
 } from "../ScriptedJarvisEngine.js";
 
-const EURUSD = findPair("EURUSD");
-
 const CURRENT_TICK: PriceTick = {
   symbol: "EURUSD",
   bid: 1.0841,
@@ -35,13 +33,6 @@ const CURRENT_TICK: PriceTick = {
   mid: 1.0842,
   valueDate: "2026-07-27",
   creationTimestamp: 1,
-};
-
-const SESSION_START_TICK: PriceTick = {
-  ...CURRENT_TICK,
-  bid: 1.0829,
-  ask: 1.0831,
-  mid: 1.083,
 };
 
 beforeEach(() => {
@@ -781,3 +772,12 @@ function fullText(events: readonly JarvisEvent[]): string {
 
   return text;
 }
+
+const EURUSD = findPair("EURUSD");
+
+const SESSION_START_TICK: PriceTick = {
+  ...CURRENT_TICK,
+  bid: 1.0829,
+  ask: 1.0831,
+  mid: 1.083,
+};

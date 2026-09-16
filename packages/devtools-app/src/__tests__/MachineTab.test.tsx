@@ -4,8 +4,6 @@ import type { MachineRow } from "@rtc/devtools-core";
 
 import { machineTabPage } from "#tests/pages/MachineTabPage";
 
-const tab = machineTabPage();
-
 afterEach(() => {
   tab.unmountAll();
 });
@@ -124,3 +122,5 @@ function machineRow(overrides: Partial<MachineRow>): MachineRow {
     ...overrides,
   };
 }
+
+const tab = machineTabPage();

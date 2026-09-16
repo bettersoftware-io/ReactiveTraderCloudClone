@@ -3,12 +3,12 @@
 import type { RenderResult } from "@testing-library/react-native";
 import { cleanup } from "@testing-library/react-native";
 import type { ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
 
 import type { OrderTicketState } from "@rtc/client-core";
 
 import { OrderCeremony } from "#/ui/equities/trade/OrderCeremony";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { flattenStyleOf } from "#tests/pages/support/flattenStyle";
 
 // The "fixed-height slot" test mounts five separate instances SIMULTANEOUSLY
 // (no cleanup in between, to compare their slot heights side by side), so
@@ -37,8 +37,8 @@ function handle(result: RenderResult): OrderCeremonyHandle {
       return result.toJSON() === null;
     },
     slotHeight(): number | undefined {
-      const flattened = StyleSheet.flatten(
-        result.getByTestId("eq-order-ceremony-slot").props.style as ViewStyle,
+      const flattened = flattenStyleOf<ViewStyle>(
+        result.getByTestId("eq-order-ceremony-slot"),
       );
       return typeof flattened.height === "number"
         ? flattened.height

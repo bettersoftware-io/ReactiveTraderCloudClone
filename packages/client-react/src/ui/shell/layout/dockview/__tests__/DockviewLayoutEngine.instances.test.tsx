@@ -133,7 +133,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // the rebuilt engine's live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
     const { store, inner } = recordingStore();
-    const seed = instanceOnTheLeftBlob(AAPL.id);
+    const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
     page.mount(engine({ store, instances: [AAPL], layoutResets: 0 }));
@@ -247,7 +247,7 @@ describe("DockviewLayoutEngine instances prop", () => {
   // the engine's reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
     const { store, inner } = recordingStore();
-    const seed = instanceOnTheLeftBlob(AAPL.id);
+    const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
     page.mount(engine({ store, instances: [AAPL] }));
@@ -415,11 +415,11 @@ function soloLeaf(groupId: string, panelId: string, size: number): object {
 }
 
 /** A REAL, valid dockview blob (the hand-authored schema the docked tests'
- * `stackedRatesAndBlotterBlob` uses) with the instance's solo group as the
+ * `createStackedRatesAndBlotterBlob` uses) with the instance's solo group as the
  * root's FIRST child — the left edge, which `addDynamicPanel` (always the
  * right edge) can never produce, so "still first" witnesses a kept-in-place
  * restore rather than a delete-then-re-add. */
-function instanceOnTheLeftBlob(instanceId: string): string {
+function createInstanceOnTheLeftBlob(instanceId: string): string {
   return JSON.stringify({
     grid: {
       root: {
