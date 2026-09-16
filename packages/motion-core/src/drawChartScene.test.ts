@@ -38,27 +38,10 @@ const CANDLES: readonly ChartCandle[] = Array.from(
 const LIVE_RATE: number = CANDLES[CANDLES.length - 1].close;
 const VIEWPORT: ChartViewport = { start: 0, end: CANDLES.length };
 
-const COMPARE_CANDLES: readonly ChartCandle[] = CANDLES.map((_, i) => {
-  return compareCandleAt(i);
-});
-
 const candleChartScene = chartScene(CANDLES, LIVE_RATE, true);
 const lineScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "line" });
 const areaScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "area" });
-const DRAWINGS_INPUT: readonly Drawing[] = [
-  {
-    id: "draft",
-    kind: "trendline",
-    a: { index: 0, price: candleAt(0).low },
-    b: { index: CANDLES.length - 1, price: candleAt(CANDLES.length - 1).high },
-  },
-  { id: "h1", kind: "hline", price: 100 },
-];
-
 describe("drawPlotScene: candles", () => {
-  const plot = plotOf(candleChartScene);
-  const candles: readonly SceneCandle[] = candleChartScene.candles;
-
   it("clears the canvas exactly once", () => {
     const { ctx, calls } = recorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
@@ -161,11 +144,13 @@ describe("drawPlotScene: candles", () => {
     expect(bodyFillRectIdx).toBeGreaterThan(blurOnIdx);
     expect(blurOffIdx).toBeGreaterThan(bodyFillRectIdx);
   });
+
+  const plot = plotOf(candleChartScene);
+
+  const candles: readonly SceneCandle[] = candleChartScene.candles;
 });
 
 describe("drawPlotScene: line", () => {
-  const plot = plotOf(lineScene);
-
   it("draws no candle rects and strokes one polyline over linePoints at lineWidth 1.5", () => {
     const { ctx, calls } = recorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
@@ -214,11 +199,11 @@ describe("drawPlotScene: line", () => {
     const lastPoint = lineScene.linePoints[lineScene.linePoints.length - 1];
     expectNumericCall(lastLineTo, "lineTo", [lastPoint.x, lastPoint.y]);
   });
+
+  const plot = plotOf(lineScene);
 });
 
 describe("drawPlotScene: area", () => {
-  const plot = plotOf(areaScene);
-
   it("fills the area under the line with a gradient at 0.35 alpha closed to the bottom edge, then strokes the line on top", () => {
     const { ctx, calls } = recorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
@@ -286,6 +271,8 @@ describe("drawPlotScene: area", () => {
     }).length;
     expect(strokeCount).toBe(areaScene.grid.length + 1);
   });
+
+  const plot = plotOf(areaScene);
 });
 
 describe("drawPlotScene: compare overlay", () => {
@@ -520,8 +507,6 @@ describe("drawPlotScene: crosshair", () => {
 });
 
 describe("drawVolumeScene", () => {
-  const bars = volumeScene(CANDLES, VIEWPORT);
-
   it("clears once, then draws one fillRect per bar rising from the bottom edge, colored by up/down", () => {
     expect(bars.length).toBeGreaterThan(0);
     const { ctx, calls } = recorderCtx();
@@ -555,14 +540,11 @@ describe("drawVolumeScene", () => {
       }),
     );
   });
+
+  const bars = volumeScene(CANDLES, VIEWPORT);
 });
 
 describe("drawPaneScene: macd", () => {
-  const scene = paneScene("macd", pseudoRandomCloses(60), {
-    start: 0,
-    end: 60,
-  });
-
   it("strokes guides with palette.paneGuide, fills the histogram from the zero line, and strokes macd/signal by key", () => {
     expect(scene.histogram.length).toBeGreaterThan(0);
 
@@ -608,11 +590,14 @@ describe("drawPaneScene: macd", () => {
     expect(strokeStyleValues).toContain(PALETTE.paneMacd);
     expect(strokeStyleValues).toContain(PALETTE.paneSignal);
   });
+
+  const scene = paneScene("macd", pseudoRandomCloses(60), {
+    start: 0,
+    end: 60,
+  });
 });
 
 describe("drawPaneScene: rsi", () => {
-  const scene = paneScene("rsi", rampUp(30), { start: 0, end: 30 });
-
   it("strokes the rsi line with palette.paneRsi and has no histogram", () => {
     expect(scene.histogram).toEqual([]);
     const { ctx, calls } = recorderCtx();
@@ -629,6 +614,8 @@ describe("drawPaneScene: rsi", () => {
       }),
     ).toBe(false);
   });
+
+  const scene = paneScene("rsi", rampUp(30), { start: 0, end: 30 });
 });
 
 describe("drawPlotScene: empty scene", () => {
@@ -920,6 +907,20 @@ const PALETTE: ChartPalette = {
   paneGuide: "pane-guide-color",
   histogram: "histogram-color",
 };
+
+const COMPARE_CANDLES: readonly ChartCandle[] = CANDLES.map((_, i) => {
+  return compareCandleAt(i);
+});
+
+const DRAWINGS_INPUT: readonly Drawing[] = [
+  {
+    id: "draft",
+    kind: "trendline",
+    a: { index: 0, price: candleAt(0).low },
+    b: { index: CANDLES.length - 1, price: candleAt(CANDLES.length - 1).high },
+  },
+  { id: "h1", kind: "hline", price: 100 },
+];
 
 const compareScene = chartScene(CANDLES, LIVE_RATE, false, {
   kind: "line",

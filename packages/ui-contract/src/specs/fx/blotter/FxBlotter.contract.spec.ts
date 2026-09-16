@@ -74,10 +74,6 @@ describe("FxBlotter", () => {
   });
 
   describe("sorting", () => {
-    const a = trade(4001, { currencyPair: "EURUSD", notional: 3_000_000 });
-    const b = trade(4002, { currencyPair: "USDJPY", notional: 1_000_000 });
-    const c = trade(4003, { currencyPair: "GBPUSD", notional: 2_000_000 });
-
     it("sorts a numeric column ascending on first header click", async () => {
       const blotter = mount(FxBlotter, { hooks: { useTrades: [a, b, c] } });
       await blotter.clickColumnHeader("Notional");
@@ -125,6 +121,12 @@ describe("FxBlotter", () => {
         "USDJPY",
       ]);
     });
+
+    const a = trade(4001, { currencyPair: "EURUSD", notional: 3_000_000 });
+
+    const b = trade(4002, { currencyPair: "USDJPY", notional: 1_000_000 });
+
+    const c = trade(4003, { currencyPair: "GBPUSD", notional: 2_000_000 });
   });
 
   // Quick filter is exercised via FxBlotterHead.contract.spec.ts (the input

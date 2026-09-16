@@ -8,16 +8,6 @@ import {
   SESSION_STORAGE_KEY,
 } from "./LocalStorageSessionStore";
 
-const testUser: SessionUser = {
-  name: "Demo User",
-  initials: "DU",
-  role: "trader",
-  id: "user-1",
-  email: "demo@example.com",
-  desk: "FX",
-  clearance: "standard",
-};
-
 describe("LocalStorageSessionStore (jsdom localStorage)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -104,6 +94,16 @@ describe("LocalStorageSessionStore (jsdom localStorage)", () => {
     expect(localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
   });
 });
+
+const testUser: SessionUser = {
+  name: "Demo User",
+  initials: "DU",
+  role: "trader",
+  id: "user-1",
+  email: "demo@example.com",
+  desk: "FX",
+  clearance: "standard",
+};
 
 const testSession: StoredSession = {
   token: "test-token",

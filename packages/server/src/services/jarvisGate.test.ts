@@ -102,13 +102,6 @@ describe("spentWindowUsd", () => {
 });
 
 describe("applyGateToOffer", () => {
-  const ALL = [
-    "scripted",
-    "claude-haiku-4-5",
-    "claude-sonnet-5",
-    "claude-opus-5",
-  ] as const;
-
   it("none: passes the offer through untouched, nothing gated", () => {
     expect(applyGateToOffer(ALL, "claude-haiku-4-5", "none")).toEqual({
       brains: ALL,
@@ -146,6 +139,13 @@ describe("applyGateToOffer", () => {
       gated: [],
     });
   });
+
+  const ALL = [
+    "scripted",
+    "claude-haiku-4-5",
+    "claude-sonnet-5",
+    "claude-opus-5",
+  ] as const;
 });
 
 describe("parseJarvisGateConfig", () => {

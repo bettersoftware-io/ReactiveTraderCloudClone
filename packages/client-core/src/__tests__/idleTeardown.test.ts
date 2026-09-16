@@ -14,10 +14,6 @@ import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import { routeIdleLifecycle } from "#/composition";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {
-  function makeWs(): Pick<IWsAdapter, "closeForIdle" | "reopen"> {
-    return { closeForIdle: vi.fn(), reopen: vi.fn() };
-  }
-
   it("idleTimeout event invokes closeForIdle() on the WsAdapter", () => {
     const ws = makeWs();
     routeIdleLifecycle({ type: "idleTimeout" }, ws);
@@ -55,4 +51,8 @@ describe("composition.ts idle-teardown wiring (T2.2)", () => {
     expect(ws.closeForIdle).toHaveBeenCalledTimes(1);
     expect(ws.reopen).toHaveBeenCalledTimes(1);
   });
+
+  function makeWs(): Pick<IWsAdapter, "closeForIdle" | "reopen"> {
+    return { closeForIdle: vi.fn(), reopen: vi.fn() };
+  }
 });

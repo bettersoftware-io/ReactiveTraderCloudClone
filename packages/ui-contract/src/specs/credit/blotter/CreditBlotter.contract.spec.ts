@@ -137,10 +137,6 @@ describe("CreditBlotter", () => {
   });
 
   describe("sorting", () => {
-    const r1 = rfq(1, { instrumentId: 1 });
-    const r2 = rfq(2, { instrumentId: 2 });
-    const r3 = rfq(3, { instrumentId: 1 });
-
     it("sorts Trade ID descending on first header click (desc-first column)", async () => {
       const blotter = mount(CreditBlotter, {
         hooks: {
@@ -198,6 +194,12 @@ describe("CreditBlotter", () => {
       // Back to deriveCreditTrades insertion order (sorted desc by tradeId internally).
       expect(blotter.columnValues("Trade ID")).toEqual(["3", "2", "1"]);
     });
+
+    const r1 = rfq(1, { instrumentId: 1 });
+
+    const r2 = rfq(2, { instrumentId: 2 });
+
+    const r3 = rfq(3, { instrumentId: 1 });
   });
 
   // The quick-filter input lives in CreditBlotterHead now — head + body are

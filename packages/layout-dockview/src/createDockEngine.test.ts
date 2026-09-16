@@ -496,110 +496,9 @@ describe("dispose flush — arrangement origin", () => {
 });
 
 describe("settle resize — a pristine grid tracks its source exactly", () => {
-  // The real FX tab's ratios (client-core defaultLayoutPort's FX_ROOT). Made-up
-  // fractions do NOT reproduce the bug: 0.75/0.25 + 0.65/0.35 rescaled
-  // 981→980 losslessly (measured), so a fixture that "looks equivalent" would
-  // let a broken fix pass.
-  const FX_REAL = {
-    kind: "split",
-    dir: "row",
-    sizes: [0.73, 0.27],
-    initialPx: [undefined, 360],
-    children: [
-      {
-        kind: "split",
-        dir: "column",
-        sizes: [0.66, 0.34],
-        children: [
-          { kind: "panel", panelId: "fx-rates" },
-          { kind: "panel", panelId: "fx-blotter" },
-        ],
-      },
-      {
-        kind: "split",
-        dir: "column",
-        sizes: [0.5, 0.5],
-        children: [
-          { kind: "panel", panelId: "fx-analytics" },
-          { kind: "panel", panelId: "fx-positions" },
-        ],
-      },
-    ],
-  } as const;
-
-  const FX_IDS = ["fx-rates", "fx-blotter", "fx-analytics", "fx-positions"];
-
   beforeEach(() => {
     recordedObservers.splice(0);
   });
-
-  function fxAt(width: number, height: number): DockEngineOptions {
-    return {
-      ...base(),
-      container: sizedContainer(width, height),
-      seed: FX_REAL,
-      debounceMs: 60_000,
-    };
-  }
-
-  /** The container settles to width×height. With `dockviewFirst`, dockview's
-   * own shell observer has already laid the grid out proportionally — what a
-   * browser does, and the lossy step — before ours runs; without it, ours runs
-   * first. RO callback order across observers isn't something to rely on. */
-  function settleTo(
-    container: HTMLElement,
-    width: number,
-    height: number,
-    dockviewFirst: boolean,
-  ): void {
-    Object.defineProperty(container, "clientWidth", {
-      configurable: true,
-      get: () => {
-        return width;
-      },
-    });
-    Object.defineProperty(container, "clientHeight", {
-      configurable: true,
-      get: () => {
-        return height;
-      },
-    });
-
-    if (dockviewFirst) {
-      lastDockviewApi().layout(width, height);
-    }
-
-    for (const observer of [...recordedObservers]) {
-      if (observer.targets.includes(container)) {
-        const entry = {
-          target: container,
-          contentRect: { width, height },
-        } as unknown as ResizeObserverEntry;
-        observer.callback([entry], observer as unknown as ResizeObserver);
-      }
-    }
-  }
-
-  /** Every FX group's live height×width, as dockview holds it right now. */
-  function liveSizes(): Record<string, string> {
-    const api = lastDockviewApi();
-
-    return Object.fromEntries(
-      FX_IDS.map((id) => {
-        const group = api.getPanel(id)?.group;
-
-        return [id, `${group?.api.height}x${group?.api.width}`];
-      }),
-    );
-  }
-
-  function freshSizesAt(width: number, height: number): Record<string, string> {
-    const engine = createDockEngine(fxAt(width, height));
-    const sizes = liveSizes();
-    engine.dispose();
-
-    return sizes;
-  }
 
   it("lands a settle resize on exactly what a fresh engine at that size renders (seed path)", () => {
     const expected = freshSizesAt(1907, 980);
@@ -717,6 +616,107 @@ describe("settle resize — a pristine grid tracks its source exactly", () => {
 
   function modelHeight(size: string | undefined): number {
     return Number.parseInt((size ?? "").split("x")[0] ?? "", 10);
+  }
+
+  // The real FX tab's ratios (client-core defaultLayoutPort's FX_ROOT). Made-up
+  // fractions do NOT reproduce the bug: 0.75/0.25 + 0.65/0.35 rescaled
+  // 981→980 losslessly (measured), so a fixture that "looks equivalent" would
+  // let a broken fix pass.
+  const FX_REAL = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.73, 0.27],
+    initialPx: [undefined, 360],
+    children: [
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.66, 0.34],
+        children: [
+          { kind: "panel", panelId: "fx-rates" },
+          { kind: "panel", panelId: "fx-blotter" },
+        ],
+      },
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "fx-analytics" },
+          { kind: "panel", panelId: "fx-positions" },
+        ],
+      },
+    ],
+  } as const;
+
+  const FX_IDS = ["fx-rates", "fx-blotter", "fx-analytics", "fx-positions"];
+
+  function fxAt(width: number, height: number): DockEngineOptions {
+    return {
+      ...base(),
+      container: sizedContainer(width, height),
+      seed: FX_REAL,
+      debounceMs: 60_000,
+    };
+  }
+
+  /** The container settles to width×height. With `dockviewFirst`, dockview's
+   * own shell observer has already laid the grid out proportionally — what a
+   * browser does, and the lossy step — before ours runs; without it, ours runs
+   * first. RO callback order across observers isn't something to rely on. */
+  function settleTo(
+    container: HTMLElement,
+    width: number,
+    height: number,
+    dockviewFirst: boolean,
+  ): void {
+    Object.defineProperty(container, "clientWidth", {
+      configurable: true,
+      get: () => {
+        return width;
+      },
+    });
+    Object.defineProperty(container, "clientHeight", {
+      configurable: true,
+      get: () => {
+        return height;
+      },
+    });
+
+    if (dockviewFirst) {
+      lastDockviewApi().layout(width, height);
+    }
+
+    for (const observer of [...recordedObservers]) {
+      if (observer.targets.includes(container)) {
+        const entry = {
+          target: container,
+          contentRect: { width, height },
+        } as unknown as ResizeObserverEntry;
+        observer.callback([entry], observer as unknown as ResizeObserver);
+      }
+    }
+  }
+
+  /** Every FX group's live height×width, as dockview holds it right now. */
+  function liveSizes(): Record<string, string> {
+    const api = lastDockviewApi();
+
+    return Object.fromEntries(
+      FX_IDS.map((id) => {
+        const group = api.getPanel(id)?.group;
+
+        return [id, `${group?.api.height}x${group?.api.width}`];
+      }),
+    );
+  }
+
+  function freshSizesAt(width: number, height: number): Record<string, string> {
+    const engine = createDockEngine(fxAt(width, height));
+    const sizes = liveSizes();
+    engine.dispose();
+
+    return sizes;
   }
 });
 
@@ -1122,14 +1122,6 @@ describe("a fully-stripped column (the in-house stripDir rule)", () => {
 });
 
 describe("maximize (the in-house boundary policy)", () => {
-  // In-house, maximize strips every leaf under the maximize BOUNDARY except
-  // the maximized panel — the whole dock, or a "nearest-column" panel's own
-  // column. Dockview's native maximize hides siblings and has no scope, so
-  // the engine emulates the policy over its strip machinery instead; these
-  // pin that the result IS the in-house one: same strips, same orientations,
-  // the maximized panel filling what they free, and an exact restore.
-  const FILL = 800 - 2 * GROUP_GAP_PX - STRIP_HEIGHT;
-
   it("root scope: strips every other panel, the rail flipping vertical, and restores each exactly", async () => {
     const seen = trackLayout();
     const strips = recordStrips();
@@ -1303,6 +1295,14 @@ describe("maximize (the in-house boundary policy)", () => {
     expect(strips.calls).toBe(1);
     engine.dispose();
   });
+
+  // In-house, maximize strips every leaf under the maximize BOUNDARY except
+  // the maximized panel — the whole dock, or a "nearest-column" panel's own
+  // column. Dockview's native maximize hides siblings and has no scope, so
+  // the engine emulates the policy over its strip machinery instead; these
+  // pin that the result IS the in-house one: same strips, same orientations,
+  // the maximized panel filling what they free, and an exact restore.
+  const FILL = 800 - 2 * GROUP_GAP_PX - STRIP_HEIGHT;
 });
 
 describe("glide marker", () => {
@@ -1400,12 +1400,6 @@ describe("glide marker", () => {
 });
 
 describe("design-width pins (the in-house initialPx semantics)", () => {
-  const RAIL_PIN = {
-    panelIds: ["fx-analytics", "fx-positions"],
-    px: 360,
-    axis: "width",
-  };
-
   it("opens the rail at its design width and persists the pin in the blob", () => {
     const seen = trackLayout();
     persistArranged({ ...railPinnedBase(), ...seen.options });
@@ -1600,18 +1594,15 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
       seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
     };
   }
+
+  const RAIL_PIN = {
+    panelIds: ["fx-analytics", "fx-positions"],
+    px: 360,
+    axis: "width",
+  };
 });
 
 describe("maximize over a design pin (R15a — the maximized panel fills)", () => {
-  // A pin is min=max on its axis, and a maximize only STRIPS the others: a
-  // pinned maximized group would hold its design width beside a dock of bars
-  // (measured live: [32,32,32,32,360,32,32]). In-house fills the dock, so the
-  // maximize suspends the pin's clamp — the RECORD stays (a save mid-maximize
-  // still carries it) — and every exit path re-clamps it.
-  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
-  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
-  const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
-
   it("lifts a maximized dynamic panel's pin clamp so it fills, and exit restores the exact clamp", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
@@ -1770,6 +1761,17 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   function rootScope(): DockMaximizeScope {
     return "root";
   }
+
+  // A pin is min=max on its axis, and a maximize only STRIPS the others: a
+  // pinned maximized group would hold its design width beside a dock of bars
+  // (measured live: [32,32,32,32,360,32,32]). In-house fills the dock, so the
+  // maximize suspends the pin's clamp — the RECORD stays (a save mid-maximize
+  // still carries it) — and every exit path re-clamps it.
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+
+  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
+
+  const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
 });
 
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
@@ -2117,8 +2119,6 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
 });
 
 describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
-  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
-
   it("adds a dynamic panel as a new right-edge group at its initialPx card width", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({ ...base(), ...seen.options });
@@ -2322,45 +2322,11 @@ describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
     await waitForSizeWithin(seen, "fx-rates", ratesBefore, 8);
     engine.dispose();
   });
+
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
 });
 
 describe("unpinned dynamic panels share their split (R17)", () => {
-  // Instances get their design width; when there isn't room, instances and
-  // the main area share equally. Pinned children (the 290px rail, a Jarvis
-  // dock) and strips are never resized. Measured on the REAL equities seed
-  // at the visual host's dock widths (1920 viewport → 1907, 1440 → 1427),
-  // where jsdom reproduces the visual host's geometry exactly.
-  const EQUITIES_LIKE = {
-    kind: "split",
-    dir: "row",
-    sizes: [0.78, 0.22],
-    initialPx: [undefined, 290],
-    children: [
-      {
-        kind: "split",
-        dir: "column",
-        sizes: [0.66, 0.34],
-        children: [
-          { kind: "panel", panelId: "eq-chart" },
-          { kind: "panel", panelId: "eq-blotter" },
-        ],
-      },
-      {
-        kind: "split",
-        dir: "column",
-        sizes: [0.5, 0.5],
-        children: [
-          { kind: "panel", panelId: "eq-ticket" },
-          { kind: "panel", panelId: "eq-watchlist" },
-        ],
-      },
-    ],
-  } as const;
-  const RAIL_PX = 290;
-  const INSTANCES = ["i-aapl", "i-msft", "i-nvda", "i-tsla"].map((id) => {
-    return { id, initialPx: 360, unpinned: true };
-  });
-
   it("1920, two instances opened together: the pinned picture (main 869, 360/360)", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),
@@ -2498,12 +2464,6 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     expectDockFilled(1907, ["eq-ticket", "eq-news", ...ids]);
     engine.dispose();
   });
-
-  // ——— R18: the rule re-runs once geometry is restored after a maximize or
-  // strip it was skipped under, stacked instance columns count once, the
-  // share never drops below a group's minimum, and the no-static branch. ———
-
-  const ROOM_FOR_THREE = [502, RAIL_PX, 360, 360, 360];
 
   it("R18 nearest-column maximize → open an instance → exit: the split is re-shared", () => {
     const engine = createDockEngine({
@@ -3203,11 +3163,53 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     expect(main - share).toBeGreaterThanOrEqual(0);
     expect(main - share).toBeLessThan(instanceCount + 1);
   }
+
+  // Instances get their design width; when there isn't room, instances and
+  // the main area share equally. Pinned children (the 290px rail, a Jarvis
+  // dock) and strips are never resized. Measured on the REAL equities seed
+  // at the visual host's dock widths (1920 viewport → 1907, 1440 → 1427),
+  // where jsdom reproduces the visual host's geometry exactly.
+  const EQUITIES_LIKE = {
+    kind: "split",
+    dir: "row",
+    sizes: [0.78, 0.22],
+    initialPx: [undefined, 290],
+    children: [
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.66, 0.34],
+        children: [
+          { kind: "panel", panelId: "eq-chart" },
+          { kind: "panel", panelId: "eq-blotter" },
+        ],
+      },
+      {
+        kind: "split",
+        dir: "column",
+        sizes: [0.5, 0.5],
+        children: [
+          { kind: "panel", panelId: "eq-ticket" },
+          { kind: "panel", panelId: "eq-watchlist" },
+        ],
+      },
+    ],
+  } as const;
+
+  const RAIL_PX = 290;
+
+  const INSTANCES = ["i-aapl", "i-msft", "i-nvda", "i-tsla"].map((id) => {
+    return { id, initialPx: 360, unpinned: true };
+  });
+
+  // ——— R18: the rule re-runs once geometry is restored after a maximize or
+  // strip it was skipped under, stacked instance columns count once, the
+  // share never drops below a group's minimum, and the no-static branch. ———
+
+  const ROOM_FOR_THREE = [502, RAIL_PX, 360, 360, 360];
 });
 
 describe("dynamic-panel reconciliation at construction", () => {
-  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
-
   it("adds a listed dynamic panel missing from a fresh (null) blob", async () => {
     const seen = trackLayout();
     const engine = createDockEngine({
@@ -3408,6 +3410,8 @@ describe("dynamic-panel reconciliation at construction", () => {
     // dynamic panel", but the SAME layout, byte for byte on this panel.
     expect(reloaded.sizeOf("fx-analytics")).toBe(analyticsBefore);
   });
+
+  const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
 });
 
 const capturedDockview = vi.hoisted(() => {
@@ -3418,6 +3422,37 @@ const capturedDockview = vi.hoisted(() => {
 // but tests get a handle for `moveTo` — the operation a DROP performs
 // (audit-verified). jsdom has no DragEvent/DataTransfer, so a real drag
 describe("stacked visual fixture (Phase 2)", () => {
+  // Seeded with RAIL_LIKE, not base()'s FX_LIKE: the fixture blob carries
+  // all four real FX panels, and a panel a blob names but the SEED does not
+  // is a dynamic node — the construction-time reconciliation scrubs it as an
+  // orphan when no `dynamicPanels` entry claims it. RAIL_LIKE is the real FX
+  // tab's shape, which is what the visual wrapper actually seeds.
+  it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
+    const engine = createDockEngine({
+      ...base(),
+      seed: RAIL_LIKE,
+      blob: STACKED_FX_BLOB,
+    });
+    const dock = lastDockviewApi();
+
+    expect(engine.groupCount()).toBe(3);
+    const rates = dock.getPanel("fx-rates");
+    const analytics = dock.getPanel("fx-analytics");
+
+    if (rates === undefined || analytics === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    expect(analytics.group).toBe(rates.group);
+    expect(rates.group.panels).toHaveLength(2);
+    expect(rates.group.activePanel?.id).toBe("fx-rates");
+
+    // No save assertion here: loading a blob is a restore, not a change
+    // (no onDidLayoutChange fires) — blob-format stability across a real
+    // save/reload cycle is the #670 reload suite's job.
+    engine.dispose();
+  });
+
   // The shell/layout-dockview-stacked scenario seeds BOTH clients' wrappers
   // with this exact blob (tests/ui/visual/*/stackedFxBlob.ts, duplicated by
   // the wrappers' self-contained convention). This test is the fixture's
@@ -3434,6 +3469,7 @@ describe("stacked visual fixture (Phase 2)", () => {
     rtcBlobVersion: number;
     rtcDesignPins: readonly unknown[];
   };
+
   const STACKED_FX_LAYOUT: RtcDockBlob = {
     grid: {
       root: {
@@ -3505,38 +3541,8 @@ describe("stacked visual fixture (Phase 2)", () => {
     rtcBlobVersion: 2,
     rtcDesignPins: [],
   };
+
   const STACKED_FX_BLOB = JSON.stringify(STACKED_FX_LAYOUT);
-
-  // Seeded with RAIL_LIKE, not base()'s FX_LIKE: the fixture blob carries
-  // all four real FX panels, and a panel a blob names but the SEED does not
-  // is a dynamic node — the construction-time reconciliation scrubs it as an
-  // orphan when no `dynamicPanels` entry claims it. RAIL_LIKE is the real FX
-  // tab's shape, which is what the visual wrapper actually seeds.
-  it("loads the stacked visual fixture blob: 3 groups, rates+analytics stacked, rates active", () => {
-    const engine = createDockEngine({
-      ...base(),
-      seed: RAIL_LIKE,
-      blob: STACKED_FX_BLOB,
-    });
-    const dock = lastDockviewApi();
-
-    expect(engine.groupCount()).toBe(3);
-    const rates = dock.getPanel("fx-rates");
-    const analytics = dock.getPanel("fx-analytics");
-
-    if (rates === undefined || analytics === undefined) {
-      throw new Error("fixture panels missing");
-    }
-
-    expect(analytics.group).toBe(rates.group);
-    expect(rates.group.panels).toHaveLength(2);
-    expect(rates.group.activePanel?.id).toBe("fx-rates");
-
-    // No save assertion here: loading a blob is a restore, not a change
-    // (no onDidLayoutChange fires) — blob-format stability across a real
-    // save/reload cycle is the #670 reload suite's job.
-    engine.dispose();
-  });
 });
 
 /** The dockview api of the most recently created engine — captured by the
@@ -3653,26 +3659,6 @@ describe("close/reopen (the layer-2 closed set, Phase 3)", () => {
  * STATUS Phase-4 follow-up (b).
  */
 describe("closing the last absorber releases a design pin (follow-up b)", () => {
-  function pinnedRailBase(): DockEngineOptions {
-    const opts = railBase();
-
-    return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
-  }
-
-  function dockWidth(): number {
-    return lastDockviewApi().width;
-  }
-
-  function widthOf(panelId: string): number {
-    const panel = lastDockviewApi().getPanel(panelId);
-
-    if (panel === undefined) {
-      throw new Error(`${panelId} is not in the dock`);
-    }
-
-    return panel.group.api.width;
-  }
-
   it("holds the pin while an absorber survives", () => {
     const engine = createDockEngine(pinnedRailBase());
 
@@ -3791,6 +3777,26 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
     expect(widthOf("fx-analytics")).toBe(1200);
     engine.dispose();
   });
+
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+  }
+
+  function dockWidth(): number {
+    return lastDockviewApi().width;
+  }
+
+  function widthOf(panelId: string): number {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.width;
+  }
 });
 
 describe("pop-out windows (session-scoped, the strips precedent)", () => {

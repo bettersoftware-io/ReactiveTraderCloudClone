@@ -10,8 +10,6 @@ import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
 import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
 
 describe("useLiveMetrics (solid)", () => {
-  let rafCb: FrameRequestCallback | null;
-
   beforeEach(() => {
     rafCb = null;
     vi.spyOn(performance, "now").mockReturnValue(0);
@@ -26,12 +24,6 @@ describe("useLiveMetrics (solid)", () => {
     vi.restoreAllMocks();
     Reflect.deleteProperty(performance, "memory");
   });
-
-  function frame(ts: number): void {
-    const cb = rafCb;
-    rafCb = null;
-    cb?.(ts);
-  }
 
   it("returns the frozen value and starts no loop under a provider", () => {
     const result = page.mount((props: WrapperProps): JSX.Element => {
@@ -80,6 +72,14 @@ describe("useLiveMetrics (solid)", () => {
         ?.rtcDiagnosticRafLoop,
     ).toBe(true);
   });
+
+  let rafCb: FrameRequestCallback | null;
+
+  function frame(ts: number): void {
+    const cb = rafCb;
+    rafCb = null;
+    cb?.(ts);
+  }
 });
 
 interface WrapperProps {

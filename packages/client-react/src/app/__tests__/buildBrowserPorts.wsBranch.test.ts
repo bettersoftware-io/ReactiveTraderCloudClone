@@ -20,8 +20,6 @@ afterEach(() => {
 });
 
 describe("buildBrowserPorts (ws-real branch)", () => {
-  const WS_URL = "ws://localhost:4000";
-
   it("selects the ws-real branch and exposes the transport", () => {
     vi.stubEnv("VITE_SERVER_URL", WS_URL);
 
@@ -135,6 +133,8 @@ describe("buildBrowserPorts (ws-real branch)", () => {
 
     expect(buildBrowserPorts().transport).toBeUndefined();
   });
+
+  const WS_URL = "ws://localhost:4000";
 });
 
 describe("buildBrowserPorts dev-auth parsing (simulator branch)", () => {

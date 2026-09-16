@@ -505,12 +505,6 @@ describe("WsAdapter misc guards", () => {
 });
 
 describe("WsAdapter.rpc() + message routing", () => {
-  function open(_adapter: WsAdapter): MockWebSocket {
-    lastMock.readyState = MockWebSocket.OPEN;
-    lastMock.onopen?.(new Event("open"));
-    return lastMock;
-  }
-
   it("ignores a malformed (non-JSON) inbound frame without throwing", () => {
     const adapter = new WsAdapter("ws://test", () => {
       return undefined;
@@ -639,6 +633,12 @@ describe("WsAdapter.rpc() + message routing", () => {
 
     adapter.dispose();
   });
+
+  function open(_adapter: WsAdapter): MockWebSocket {
+    lastMock.readyState = MockWebSocket.OPEN;
+    lastMock.onopen?.(new Event("open"));
+    return lastMock;
+  }
 });
 
 describe("WsAdapter auth gating", () => {

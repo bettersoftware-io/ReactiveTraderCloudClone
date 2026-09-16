@@ -164,8 +164,6 @@ describe("withoutLockMarks (derived lock state never persists)", () => {
 });
 
 describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", () => {
-  const STATIC_IDS = ["rates", "blotter"] as const;
-
   it("removes one dynamic leaf, dropping its panels entry and its views entry", () => {
     const blob = createSingleLeafBlob([
       ["rates", 526],
@@ -240,6 +238,8 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
       withoutDynamicNodes(JSON.stringify({ panels: {} }), STATIC_IDS),
     ).toBeNull();
   });
+
+  const STATIC_IDS = ["rates", "blotter"] as const;
 });
 
 describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
