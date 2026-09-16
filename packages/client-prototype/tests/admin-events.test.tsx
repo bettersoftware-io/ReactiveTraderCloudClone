@@ -6,6 +6,16 @@ import type { AdminEvent } from "#/admin/types";
 
 afterEach(cleanup);
 
+describe("LiveEvents", () => {
+  test("renders the count and a row per event with severity data attribute", () => {
+    const { getByText, container } = render(<LiveEvents events={EVENTS} />);
+    expect(getByText("2 events")).toBeTruthy();
+    expect(getByText("Upstream timeout")).toBeTruthy();
+    expect(container.querySelector('[data-sev="ERROR"]')).toBeTruthy();
+    expect(container.querySelectorAll("[data-sev]")).toHaveLength(2);
+  });
+});
+
 const EVENTS: AdminEvent[] = [
   {
     id: 1,
@@ -22,13 +32,3 @@ const EVENTS: AdminEvent[] = [
     msg: "Upstream timeout",
   },
 ];
-
-describe("LiveEvents", () => {
-  test("renders the count and a row per event with severity data attribute", () => {
-    const { getByText, container } = render(<LiveEvents events={EVENTS} />);
-    expect(getByText("2 events")).toBeTruthy();
-    expect(getByText("Upstream timeout")).toBeTruthy();
-    expect(container.querySelector('[data-sev="ERROR"]')).toBeTruthy();
-    expect(container.querySelectorAll("[data-sev]")).toHaveLength(2);
-  });
-});

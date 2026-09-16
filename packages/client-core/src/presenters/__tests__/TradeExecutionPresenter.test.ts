@@ -42,11 +42,6 @@ const doneTrade: Trade = {
   valueDate: "2026-05-07",
 };
 
-const rejectedTrade: Trade = {
-  ...doneTrade,
-  status: TradeStatus.Rejected,
-};
-
 const price: Price = {
   symbol: "EURUSD",
   mid: 1.1,
@@ -56,13 +51,6 @@ const price: Price = {
   creationTimestamp: 1,
   movementType: PriceMovementType.NONE,
   spread: "1.0",
-};
-
-const executeInput: ExecuteTradeInput = {
-  pair: EURUSD,
-  direction: Direction.Buy,
-  price,
-  notional: 1_000_000,
 };
 
 describe("TradeExecutionPresenter", () => {
@@ -141,3 +129,15 @@ describe("TradeExecutionPresenter", () => {
     expect(seen).toHaveLength(0);
   });
 });
+
+const rejectedTrade: Trade = {
+  ...doneTrade,
+  status: TradeStatus.Rejected,
+};
+
+const executeInput: ExecuteTradeInput = {
+  pair: EURUSD,
+  direction: Direction.Buy,
+  price,
+  notional: 1_000_000,
+};

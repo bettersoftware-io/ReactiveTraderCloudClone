@@ -10,17 +10,6 @@ import {
 
 import { PriceStreamPresenter } from "../PriceStreamPresenter";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  base: "EUR",
-  terms: "USD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
 describe("PriceStreamPresenter", () => {
   it("emits a Price (enriched tick) for the given pair", async () => {
     const port: PricingPort = {
@@ -109,3 +98,14 @@ function tick(mid: number): PriceTick {
     creationTimestamp: 1,
   };
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  base: "EUR",
+  terms: "USD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};

@@ -8,18 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-  { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
-];
-
-const QUOTES = {
-  AAPL: quote("AAPL", 8),
-  MSFT: quote("MSFT", -2),
-  JPM: quote("JPM", 1),
-};
-
 describe("SectorHeatmap", () => {
   it("renders a cell per instrument grouped by sector", () => {
     const heatmap = mount(SectorHeatmap, {
@@ -104,3 +92,15 @@ describe("SectorHeatmap", () => {
 function quote(symbol: string, changePct: number): EquityQuote {
   return { symbol, bid: 99, ask: 101, last: 100, changePct, timestamp: 0 };
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+  { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
+];
+
+const QUOTES = {
+  AAPL: quote("AAPL", 8),
+  MSFT: quote("MSFT", -2),
+  JPM: quote("JPM", 1),
+};

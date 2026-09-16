@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { clampDragOffset } from "./clampDragOffset.js";
 
-const dialog = { width: 800, height: 600 };
-const viewport = { width: 1440, height: 900 };
 // centered dialog: free travel = (viewport - dialog) / 2 minus margin.
 // x range ±(1440-800)/2 = ±320 → minus margin 16 → ±304. y: ±(900-600)/2-16 = ±134.
 
@@ -38,3 +36,7 @@ describe("clampDragOffset", () => {
     });
   });
 });
+
+const dialog = { width: 800, height: 600 };
+
+const viewport = { width: 1440, height: 900 };

@@ -389,11 +389,16 @@ export default tseslint.config(
     // isMovableFixture — so a fixture a `describe` body reads at collection
     // time is left alone and the file keeps working.
     //
-    // Add a package here once its test tree is clean; the burn-down order is
-    // cheapest-first. Remaining, by declaration count: ui-contract 102,
-    // client-react 82, client-solid 62, client-core 55, domain 33,
-    // client-react-native 30, motion-core 28, server 18, tests 12,
-    // client-prototype 12.
+    // ONE package is left: `client-react-native`, held back deliberately. It is
+    // the only package running Jest (`vitest run --passWithNoTests && jest`),
+    // and 43 of its test files use `jest.mock` or a "worklet" directive. This
+    // arm's analysis encodes VITEST's collection-time `describe` semantics and
+    // has only ever been verified against Vitest; Babel also hoists
+    // `jest.mock` factories above the imports, so a factory closing over a
+    // moved fixture would read it in the temporal dead zone. The predicate
+    // should refuse that (a factory body is not a deferred callback) — but on
+    // 119 files it is worth PROVING against a real `jest` run rather than
+    // assuming. It is also ~a third of the whole burn-down on its own.
     files: [
       "packages/layout-dockview/**/*.{spec,test}.{ts,tsx}",
       "packages/agent-tools/**/*.{spec,test}.{ts,tsx}",
@@ -403,6 +408,23 @@ export default tseslint.config(
       "packages/devtools-relay/**/*.{spec,test}.{ts,tsx}",
       "packages/devtools-extension/**/*.{spec,test}.{ts,tsx}",
       "packages/shared/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-prototype/**/*.{spec,test}.{ts,tsx}",
+      "packages/motion-core/**/*.{spec,test}.{ts,tsx}",
+      "packages/server/**/*.{spec,test}.{ts,tsx}",
+      "packages/domain/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-solid/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-react/**/*.{spec,test}.{ts,tsx}",
+      "packages/ui-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/boot-splash/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-api/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-async/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-effect/**/*.{spec,test}.{ts,tsx}",
+      "packages/react-bindings/**/*.{spec,test}.{ts,tsx}",
+      "packages/solid-bindings/**/*.{spec,test}.{ts,tsx}",
+      // The `tests` workspace is not under packages/ — it needs its own glob.
+      "tests/**/*.{spec,test}.{ts,tsx}",
     ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": ["error", { fixtures: true }] },

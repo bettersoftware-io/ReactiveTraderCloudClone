@@ -8,8 +8,6 @@ import {
 } from "../equities/timeframe.js";
 import { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
 
-const FIXED_NOW = 1_782_864_000_000;
-
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(FIXED_NOW);
@@ -58,3 +56,5 @@ describe("deep candle history", () => {
     });
   });
 });
+
+const FIXED_NOW = 1_782_864_000_000;

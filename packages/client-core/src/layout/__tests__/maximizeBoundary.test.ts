@@ -4,11 +4,6 @@ import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
 import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
 import { maximizeBoundaryPath, nodeAtPath } from "../maximizeBoundary";
 
-const fxRoot: LayoutNode = createDefaultLayoutPort("fx").initial.root;
-const equitiesRoot: LayoutNode =
-  createDefaultLayoutPort("equities").initial.root;
-const creditRoot: LayoutNode = createDefaultLayoutPort("credit").initial.root;
-
 describe("maximizeBoundaryPath", () => {
   it("returns null (no maximize) for nothing maximized", () => {
     expect(maximizeBoundaryPath(fxRoot, null, PANEL_SPECS)).toBeNull();
@@ -119,3 +114,10 @@ describe("nodeAtPath", () => {
     expect(nodeAtPath(fxRoot, [9])).toBeNull();
   });
 });
+
+const fxRoot: LayoutNode = createDefaultLayoutPort("fx").initial.root;
+
+const equitiesRoot: LayoutNode =
+  createDefaultLayoutPort("equities").initial.root;
+
+const creditRoot: LayoutNode = createDefaultLayoutPort("credit").initial.root;

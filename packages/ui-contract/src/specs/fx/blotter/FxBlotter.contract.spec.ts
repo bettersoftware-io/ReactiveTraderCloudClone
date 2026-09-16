@@ -4,13 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
-const t1 = trade(4001, { currencyPair: "EURUSD" });
-const t2 = trade(4002, {
-  currencyPair: "USDJPY",
-  notional: 5_000_000,
-  status: TradeStatus.Rejected,
-});
-
 describe("FxBlotter", () => {
   it("renders one row per trade", () => {
     expect(
@@ -193,3 +186,11 @@ function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
     ...over,
   };
 }
+
+const t1 = trade(4001, { currencyPair: "EURUSD" });
+
+const t2 = trade(4002, {
+  currencyPair: "USDJPY",
+  notional: 5_000_000,
+  status: TradeStatus.Rejected,
+});

@@ -10,8 +10,6 @@ import {
   removeDockedLeaf,
 } from "../dockColumn";
 
-const ADMIN_LEAF: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
-
 describe("dockedLeafIds", () => {
   it("returns every leaf id not present in staticIds, in tree order", () => {
     const root: LayoutNode = {
@@ -405,3 +403,5 @@ function expectSameTreeShape(actual: LayoutNode, expected: LayoutNode): void {
     );
   }
 }
+
+const ADMIN_LEAF: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };

@@ -22,23 +22,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineBridgePage();
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
-
 // The engine, dockview and the browser's own `window.open` all run for real
 // here: the only stand-in is the WINDOW the pop-out opens into (an
 // iframe-backed document, since jsdom opens none). Nothing mocks
@@ -201,3 +184,20 @@ describe("dockview bridge pop-out wiring", () => {
 });
 
 function noop(): void {}
+
+const page = dockviewLayoutEngineBridgePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};

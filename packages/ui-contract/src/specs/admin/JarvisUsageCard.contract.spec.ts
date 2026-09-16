@@ -16,51 +16,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const SNAPSHOT: AdminJarvisUsagePayload = {
-  windowStartMs: 1_700_000_000_000,
-  windowEndMs: 1_700_000_600_000,
-  currentWindow: [
-    {
-      brain: "claude-haiku-4-5",
-      turns: 12,
-      inputTokens: 3400,
-      outputTokens: 980,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-      estimatedCostUsd: 1,
-    },
-    {
-      brain: "claude-opus-5",
-      turns: 3,
-      inputTokens: 5200,
-      outputTokens: 2100,
-      cacheReadTokens: 1024,
-      cacheCreationTokens: 512,
-      estimatedCostUsd: 4.5,
-    },
-  ],
-  sinceBoot: [
-    {
-      brain: "claude-haiku-4-5",
-      turns: 120,
-      inputTokens: 34_000,
-      outputTokens: 9800,
-      cacheReadTokens: 0,
-      cacheCreationTokens: 0,
-      estimatedCostUsd: 10,
-    },
-    {
-      brain: "claude-opus-5",
-      turns: 30,
-      inputTokens: 52_000,
-      outputTokens: 21_000,
-      cacheReadTokens: 10_240,
-      cacheCreationTokens: 5120,
-      estimatedCostUsd: 45,
-    },
-  ],
-};
-
 describe("JarvisUsageCard", () => {
   it("shows NO USAGE DATA when nothing has been seeded", () => {
     const page = mount(JarvisUsageCard, {});
@@ -181,3 +136,48 @@ describe("JarvisUsageCard", () => {
     expect(page.gateBadgeText()).toBeNull();
   });
 });
+
+const SNAPSHOT: AdminJarvisUsagePayload = {
+  windowStartMs: 1_700_000_000_000,
+  windowEndMs: 1_700_000_600_000,
+  currentWindow: [
+    {
+      brain: "claude-haiku-4-5",
+      turns: 12,
+      inputTokens: 3400,
+      outputTokens: 980,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCostUsd: 1,
+    },
+    {
+      brain: "claude-opus-5",
+      turns: 3,
+      inputTokens: 5200,
+      outputTokens: 2100,
+      cacheReadTokens: 1024,
+      cacheCreationTokens: 512,
+      estimatedCostUsd: 4.5,
+    },
+  ],
+  sinceBoot: [
+    {
+      brain: "claude-haiku-4-5",
+      turns: 120,
+      inputTokens: 34_000,
+      outputTokens: 9800,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      estimatedCostUsd: 10,
+    },
+    {
+      brain: "claude-opus-5",
+      turns: 30,
+      inputTokens: 52_000,
+      outputTokens: 21_000,
+      cacheReadTokens: 10_240,
+      cacheCreationTokens: 5120,
+      estimatedCostUsd: 45,
+    },
+  ],
+};

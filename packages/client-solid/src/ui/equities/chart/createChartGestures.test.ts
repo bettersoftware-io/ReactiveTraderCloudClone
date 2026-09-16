@@ -8,11 +8,6 @@ import { chartGesturesPage } from "#tests/ui/pages/CreateChartGesturesPage";
 
 import type { DrawGestureSlots } from "./createChartGestures";
 
-const SERIES_LEN = 200;
-const DEFAULT_VISIBLE = 50;
-
-const page = chartGesturesPage();
-
 describe("createChartGestures", () => {
   it("starts with the newest defaultVisible candles in view", () => {
     const result = page.mount(fixedSeriesLen, fixedDefaultVisible);
@@ -1186,3 +1181,9 @@ function captureAnimationFrames(): CapturedFrames {
     },
   };
 }
+
+const SERIES_LEN = 200;
+
+const DEFAULT_VISIBLE = 50;
+
+const page = chartGesturesPage();

@@ -27,29 +27,9 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineDockedPage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-  "panel-dyn-1": () => {
-    return <div data-testid="panel-dyn-1-body">DYN</div>;
-  },
-};
 
 describe("DockviewLayoutEngine docked prop", () => {
   it("holds a docked panel as its own group, rendering the registry's content through the body portal", () => {
@@ -500,3 +480,23 @@ type ResizeObserverCtor = typeof ResizeObserver;
 interface GlobalWithResizeObserver {
   ResizeObserver: ResizeObserverCtor;
 }
+
+const page = dockviewLayoutEngineDockedPage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
+};

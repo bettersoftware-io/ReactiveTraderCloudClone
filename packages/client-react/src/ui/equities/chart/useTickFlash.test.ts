@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { tickFlashPage } from "#tests/ui/pages/UseTickFlashPage";
 
-const page = tickFlashPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -59,3 +57,5 @@ describe("useTickFlash", () => {
     expect(handle.state).toBe(flashed);
   });
 });
+
+const page = tickFlashPage();

@@ -8,12 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-  { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
-];
-
 describe("InstrumentTabs", () => {
   it("opens on the first watchlist symbol as the sole tab, selected", () => {
     const tabs = mount(InstrumentTabs, {
@@ -64,3 +58,9 @@ describe("InstrumentTabs", () => {
     expect(tabs.activeSymbol()).toBeNull();
   });
 });
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+  { symbol: "JPM", name: "JPMorgan", exchange: "NYSE" },
+];

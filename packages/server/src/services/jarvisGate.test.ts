@@ -13,8 +13,6 @@ import {
   spentWindowUsd,
 } from "./jarvisGate.js";
 
-const CONFIG = { budgetUsd: 1, softRatio: 0.8, forceLevel: null } as const;
-
 describe("computeGateLevel", () => {
   it("reports none below the soft threshold", () => {
     expect(computeGateLevel(snapshotWith(0.79, 10_000), CONFIG, 5_000)).toBe(
@@ -312,3 +310,5 @@ function snapshotWith(
     sinceBoot: [],
   };
 }
+
+const CONFIG = { budgetUsd: 1, softRatio: 0.8, forceLevel: null } as const;

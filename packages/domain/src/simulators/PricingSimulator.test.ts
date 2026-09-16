@@ -12,8 +12,6 @@ import {
 import type { RfqQuoteResult } from "../ports/pricingPort.js";
 import { PricingSimulator } from "./PricingSimulator.js";
 
-const MAX_TICK_INTERVAL_MS = 1_000;
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -372,3 +370,5 @@ describe("PricingSimulator", () => {
     }
   });
 });
+
+const MAX_TICK_INTERVAL_MS = 1_000;

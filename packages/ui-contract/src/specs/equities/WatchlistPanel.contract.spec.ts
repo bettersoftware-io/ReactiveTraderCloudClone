@@ -15,18 +15,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
-];
-
-const QUOTES = {
-  AAPL: quote("AAPL", 229.35, 0.5),
-  MSFT: quote("MSFT", 467.12, 2.1),
-  TSLA: quote("TSLA", 251.44, -1.2),
-};
-
 describe("WatchlistPanel — rows", () => {
   it("renders a row per watchlist instrument, sorted by the default (chg) preference", () => {
     const panel = mount(WatchlistPanel, {
@@ -570,3 +558,15 @@ interface MaybeAnimateProp {
 interface GlideFlusher {
   flushAsync(fn: () => Promise<void>): Promise<void>;
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+];
+
+const QUOTES = {
+  AAPL: quote("AAPL", 229.35, 0.5),
+  MSFT: quote("MSFT", 467.12, 2.1),
+  TSLA: quote("TSLA", 251.44, -1.2),
+};

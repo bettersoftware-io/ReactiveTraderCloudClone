@@ -13,11 +13,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
-];
-
 describe("EqChartHead", () => {
   it("opens on the first watchlist symbol and defaults the timeframe to 1D", () => {
     const head = mount(EqChartHead, { equities: { watchlist: INSTRUMENTS } });
@@ -98,3 +93,8 @@ describe("EqChartHead", () => {
     expect(head.activeTab()).toBe("MSFT");
   });
 });
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
+];

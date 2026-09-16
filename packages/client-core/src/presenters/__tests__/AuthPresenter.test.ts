@@ -18,16 +18,6 @@ import {
   type LoginWaitCycle,
 } from "../AuthPresenter";
 
-const USER: SessionUser = {
-  name: "Anthony Stark",
-  initials: "AS",
-  role: "Senior FX Trader",
-  id: "TRD-0042",
-  email: "a.stark@reactivetrader.io",
-  desk: "G10 Spot · London",
-  clearance: "LEVEL 4 · FULL",
-};
-
 describe("AuthPresenter", () => {
   it("resumes a non-expired session as authenticated", () => {
     function now(): number {
@@ -579,3 +569,13 @@ function latest(presenter: AuthPresenter): AuthViewState {
 
   return state;
 }
+
+const USER: SessionUser = {
+  name: "Anthony Stark",
+  initials: "AS",
+  role: "Senior FX Trader",
+  id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
+};

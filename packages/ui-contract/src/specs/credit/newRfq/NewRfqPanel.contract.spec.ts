@@ -15,35 +15,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const instruments: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "US Treasury 10Y",
-    cusip: "912828ZQ6",
-    ticker: "T 1.5 02/34",
-    maturity: "2034-02-15",
-    interestRate: 1.5,
-    benchmark: "10Y",
-    refPrice: 98.4,
-  },
-  {
-    id: 2,
-    name: "Apple Inc 2030",
-    cusip: "037833EK8",
-    ticker: "AAPL 2.4 30",
-    maturity: "2030-05-11",
-    interestRate: 2.4,
-    benchmark: "7Y",
-    refPrice: 99.8,
-  },
-];
-
-const dealers: readonly Dealer[] = [
-  { id: 1, name: ADAPTIVE_BANK_NAME },
-  { id: 2, name: "Citi" },
-  { id: 3, name: "JPMorgan" },
-];
-
 describe("NewRfqPanel", () => {
   it("renders the static duration derived from CREDIT_RFQ_EXPIRY_SECONDS", () => {
     const panel = ready();
@@ -236,3 +207,32 @@ function ready(): NewRfqPanelPage {
     commands: { createRfq: 555 },
   });
 }
+
+const instruments: readonly Instrument[] = [
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+    refPrice: 98.4,
+  },
+  {
+    id: 2,
+    name: "Apple Inc 2030",
+    cusip: "037833EK8",
+    ticker: "AAPL 2.4 30",
+    maturity: "2030-05-11",
+    interestRate: 2.4,
+    benchmark: "7Y",
+    refPrice: 99.8,
+  },
+];
+
+const dealers: readonly Dealer[] = [
+  { id: 1, name: ADAPTIVE_BANK_NAME },
+  { id: 2, name: "Citi" },
+  { id: 3, name: "JPMorgan" },
+];

@@ -16,8 +16,6 @@ import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
 
 import { BootSequence } from "./BootSequence";
 
-const page = bootSequencePage();
-
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   let rafSpy: ReturnType<typeof vi.spyOn>;
   let cafSpy: ReturnType<typeof vi.spyOn>;
@@ -475,3 +473,5 @@ interface TestBootState {
   progress: number;
   done: boolean;
 }
+
+const page = bootSequencePage();

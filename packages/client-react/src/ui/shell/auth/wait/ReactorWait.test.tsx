@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "vitest";
 
 import { reactorWaitPage } from "#tests/ui/pages/ReactorWaitPage";
 
-const page = reactorWaitPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -33,3 +31,5 @@ test("no longer owns the reactor rings — those wrap the emblem via ReactorRing
 
   expect(page.svgCount("auth-wait-reactor")).toBe(0);
 });
+
+const page = reactorWaitPage();
