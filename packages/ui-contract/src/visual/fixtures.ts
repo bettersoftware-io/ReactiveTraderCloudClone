@@ -951,6 +951,7 @@ export const fixtures: Record<string, AppData> = {
     // Admin tab throughput: a loaded value of 250 (was the old fetch-stub value),
     // so the AdminPanel slider/input render deterministically through the seam.
     throughput: { value: 250, loading: false, message: null },
+    layoutEngine: "inhouse",
   }),
   // Power-saver variant of the FX page: same data as app-fx, but with the
   // power-saver master override at "calm". The seam-fed usePowerSaver fake
@@ -966,6 +967,7 @@ export const fixtures: Record<string, AppData> = {
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
     powerSaverLevel: "calm",
+    layoutEngine: "inhouse",
   }),
   // Aurora ambient-style variant of the FX page: same data as app-fx, but with
   // ambientStyle "aurora" instead of the fixtures' default "rays". Snapshots
@@ -978,6 +980,7 @@ export const fixtures: Record<string, AppData> = {
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
     ambientStyle: "aurora",
+    layoutEngine: "inhouse",
   }),
   // Light-theme variant of the FX page. The theme now lives behind
   // PreferencesPort, so the light arm is reached by seeding theme mode "light"
@@ -990,6 +993,7 @@ export const fixtures: Record<string, AppData> = {
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
     themeMode: "light",
+    layoutEngine: "inhouse",
   }),
   // System mode preference: the header toggle shows the third (🖥️) icon and its
   // aria-label reads "Switch to dark theme" (next in the cycle). With no OS media
@@ -1001,6 +1005,7 @@ export const fixtures: Record<string, AppData> = {
     connectionStatus: ConnectionStatus.CONNECTED,
     throughput: { value: 250, loading: false, message: null },
     themeMode: "system",
+    layoutEngine: "inhouse",
   }),
   "fx-trades": makeAppData({
     currencyPairs: [eurusd, gbpusd, usdjpy],
@@ -1016,6 +1021,7 @@ export const fixtures: Record<string, AppData> = {
     rfqs: creditRfqs,
     quotesForRfq: { 101: creditQuotes101, 102: creditQuotes102 },
     allQuotes: creditAllQuotes,
+    layoutEngine: "inhouse",
   }),
   // RfqsPanel "closed" filter arm: same populated world as credit-populated,
   // switched to CLOSED so only rfq 102 (Closed, accepted quote) renders — the
@@ -1971,7 +1977,10 @@ const orderTicketFilled: OrderTicketState = {
 // are defined (module-level const ordering: the constants above are forward refs
 // relative to the `export const fixtures = {…}` object literal, so they are
 // added via index assignment after the object is closed).
-fixtures["equities-loaded"] = makeAppData(equitiesBase);
+fixtures["equities-loaded"] = makeAppData({
+  ...equitiesBase,
+  layoutEngine: "inhouse",
+});
 // No instrument selected — the dock wrappers' "SELECT AN INSTRUMENT"
 // placeholder arm (EqDepthDock; the seam's own sel:"" fallback).
 fixtures["equities-no-selection"] = makeAppData({
@@ -2654,6 +2663,7 @@ fixtures["app-fx-docked-panel"] = makeAppData({
       ],
     },
   },
+  layoutEngine: "inhouse",
 });
 
 // Dockview twin of app-fx-docked-panel: identical dock-column content, only
@@ -2683,6 +2693,7 @@ fixtures["app-fx-dockview"] = makeAppData({
 fixtures["app-fx-maximized"] = makeAppData({
   ...fixtures["app-fx"],
   layoutMaximized: "fx-rates",
+  layoutEngine: "inhouse",
 });
 fixtures["app-fx-maximized-dockview"] = makeAppData({
   ...fixtures["app-fx-maximized"],
@@ -2692,6 +2703,7 @@ fixtures["app-fx-maximized-dockview"] = makeAppData({
 fixtures["app-fx-rail-maximized"] = makeAppData({
   ...fixtures["app-fx"],
   layoutMaximized: "fx-analytics",
+  layoutEngine: "inhouse",
 });
 fixtures["app-fx-rail-maximized-dockview"] = makeAppData({
   ...fixtures["app-fx-rail-maximized"],
@@ -2703,6 +2715,7 @@ fixtures["app-fx-rail-maximized-dockview"] = makeAppData({
 fixtures["app-fx-closed"] = makeAppData({
   ...fixtures["app-fx"],
   layoutClosed: ["fx-analytics"],
+  layoutEngine: "inhouse",
 });
 fixtures["app-fx-closed-dockview"] = makeAppData({
   ...fixtures["app-fx-closed"],
@@ -2711,6 +2724,7 @@ fixtures["app-fx-closed-dockview"] = makeAppData({
 fixtures["app-fx-collapsed"] = makeAppData({
   ...fixtures["app-fx"],
   layoutCollapsed: ["fx-analytics"],
+  layoutEngine: "inhouse",
 });
 fixtures["app-fx-collapsed-dockview"] = makeAppData({
   ...fixtures["app-fx-collapsed"],
@@ -2721,6 +2735,7 @@ fixtures["app-fx-collapsed-dockview"] = makeAppData({
 fixtures["app-fx-rail-collapsed"] = makeAppData({
   ...fixtures["app-fx"],
   layoutCollapsed: ["fx-analytics", "fx-positions"],
+  layoutEngine: "inhouse",
 });
 fixtures["app-fx-rail-collapsed-dockview"] = makeAppData({
   ...fixtures["app-fx-rail-collapsed"],
