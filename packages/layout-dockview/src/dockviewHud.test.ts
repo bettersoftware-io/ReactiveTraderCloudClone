@@ -84,6 +84,30 @@ describe("dockview-hud.css — skin-proof surface painting", () => {
   });
 });
 
+describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
+  it("paints a floating group's box with the panel surface and a lifted shadow", () => {
+    const body = declarationsOf(".dockview-theme-rtc .dv-resize-container");
+
+    expect(body).toMatch(/^\s*background:\s*var\(--panel[,)]/m);
+    expect(body).not.toMatch(/background-color/);
+    expect(body).toMatch(/^\s*box-shadow:/m);
+    expect(body).toMatch(/^\s*border-radius:\s*6px;/m);
+  });
+
+  it("paints the floating drag rail in the head surface", () => {
+    const body = declarationsOf(".dockview-theme-rtc .dv-floating-titlebar");
+
+    expect(body).toMatch(/^\s*background:\s*var\(--panel-head[,)]/m);
+    expect(body).not.toMatch(/background-color/);
+  });
+
+  it("gives the float's resize edges a hover affordance", () => {
+    expect(css).toMatch(
+      /\.dv-resize-handle-top:hover,[\s\S]{0,200}\.dv-resize-handle-right:hover\s*\{[^}]*background:\s*var\(--border-strong/,
+    );
+  });
+});
+
 describe("stacked tabs (Phase 2)", () => {
   it("collapses an inactive stacked tab to its muted title chip", () => {
     expect(css).toMatch(
