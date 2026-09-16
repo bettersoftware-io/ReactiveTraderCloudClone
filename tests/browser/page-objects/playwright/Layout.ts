@@ -36,10 +36,39 @@ const DOCK_LAYOUT_STORAGE_PREFIX = "rtc-dock-layout-";
  */
 const DOCK_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
 
+/** A serialized dockview leaf's own panel-id list — the one field this
+ * driver reads off `LeafData` (`createDockEngine.ts`'s internal type; this
+ * driver has no import access to it, so it re-states the one shape it
+ * reads). */
+interface DockLayoutLeafData {
+  readonly views?: readonly string[];
+}
+
+/** One node of a `floatingGroups` entry's own nested grid (the rare
+ * multi-panel float — see `DockLayoutFloatingGroupEntry`'s doc): a leaf's
+ * `data.views` lists its panel ids directly; a branch's `data` is its
+ * children, walked recursively. Mirrors `createDockEngine.ts`'s own
+ * `GridNode`. */
+interface DockLayoutGridNode {
+  readonly type: "leaf" | "branch";
+  readonly data?: DockLayoutLeafData | readonly DockLayoutGridNode[];
+}
+
+/** One entry of `createDockEngine`'s serialized `floatingGroups` array
+ * (dockview-core's `FloatingGroupService.serialize()`): a solo-panel float
+ * (today's only case) serializes as `{ data: { views: [...] }, position }`;
+ * a float whose group itself holds a split serializes as
+ * `{ grid: { root }, position }` instead — `panelIdsOfFloatingGroup` below
+ * reads whichever shape is present. */
+interface DockLayoutFloatingGroupEntry {
+  readonly data?: DockLayoutLeafData;
+  readonly grid?: { readonly root: DockLayoutGridNode };
+}
+
 /** The one field of `createDockEngine`'s serialized blob this driver reads —
  * dockview-core's own `floatingGroups` key (see the doc above). */
 interface DockLayoutBlobShape {
-  floatingGroups?: unknown[];
+  readonly floatingGroups?: readonly DockLayoutFloatingGroupEntry[];
 }
 
 export class PlaywrightLayout implements LayoutPO {
@@ -301,9 +330,39 @@ export class PlaywrightLayout implements LayoutPO {
     await this.floatControl(panelId).click();
     // See DOCK_LAYOUT_PERSIST_TIMEOUT_MS's doc: fold the debounced
     // dock-layout write into the action itself, so a caller that reloads
-    // right after never races it.
+    // right after never races it. The predicate below asserts `id` is
+    // POSITIVELY a member of some `floatingGroups` entry's own panel ids —
+    // not merely that `id` appears somewhere in the blob (dockview's
+    // `panels` dictionary always lists every managed panel, floating or
+    // not, so a whole-blob substring match would pass on ANY panel's float
+    // persisting, not necessarily this one).
     await this.page.waitForFunction(
       ({ prefix, id }) => {
+        // Runs inside the browser context — Playwright serializes only this
+        // function's own SOURCE TEXT, so its logic must be fully
+        // self-contained (no closures over values declared outside `arg`).
+        // Its parameter/return type annotations below are erased at
+        // compile time and cost nothing at runtime, so they safely
+        // reference the module-level `DockLayout*` interfaces for
+        // documentation and type-checking.
+        function panelIdsOfNode(node: DockLayoutGridNode): readonly string[] {
+          if (node.type === "leaf") {
+            return (node.data as DockLayoutLeafData)?.views ?? [];
+          }
+
+          return (node.data as readonly DockLayoutGridNode[]).flatMap(
+            panelIdsOfNode,
+          );
+        }
+
+        function panelIdsOfFloatingGroup(
+          entry: DockLayoutFloatingGroupEntry,
+        ): readonly string[] {
+          return entry.grid !== undefined
+            ? panelIdsOfNode(entry.grid.root)
+            : (entry.data?.views ?? []);
+        }
+
         for (let i = 0; i < localStorage.length; i += 1) {
           const key = localStorage.key(i);
 
@@ -321,9 +380,9 @@ export class PlaywrightLayout implements LayoutPO {
             const parsed = JSON.parse(raw) as DockLayoutBlobShape;
 
             if (
-              Array.isArray(parsed.floatingGroups) &&
-              parsed.floatingGroups.length > 0 &&
-              raw.includes(id)
+              parsed.floatingGroups?.some((entry) => {
+                return panelIdsOfFloatingGroup(entry).includes(id);
+              }) === true
             ) {
               return true;
             }
