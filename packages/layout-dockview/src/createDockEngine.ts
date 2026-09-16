@@ -830,7 +830,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // meanwhile (unpinSplit dropped its record) or one whose shape dissolved
     // stays released.
     for (const record of suspendedPins) {
-      if (designPins.includes(record) && pinStillShaped(record, groupOf)) {
+      if (
+        designPins.includes(record) &&
+        intactPinOwnerSplit(record, groupOf) !== null
+      ) {
         clampPinMembers(record);
       }
     }
@@ -1095,9 +1098,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // Keyed by the FIRST non-grid member, which is what the live path does
       // too: `suspendPinsFor` moves the record out of `designPins` on the
       // first float, so a second member floating later finds nothing to file.
-      // `ownerSplit` above is the float's own private gridview wrapper here
-      // and is never read for a suspended record — `clampPinsFloatSuspendedFor`
-      // re-derives the real one through `pinStillShaped`.
+      //
+      // `ownerSplit` above is the FLOAT's own private gridview wrapper here,
+      // not the grid split this pin shapes — `declaringSplitOf` walked up from
+      // a floating group. That is tolerated only because a suspended record's
+      // `ownerSplit` is never read, and only because
+      // `clampPinsFloatSuspendedFor` re-derives it on promotion. Do not start
+      // reading it here.
       floatSuspendedPins.set(absentMemberId, [
         ...(floatSuspendedPins.get(absentMemberId) ?? []),
         record,
@@ -1274,9 +1281,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   /** Re-applies the pins `panelId`'s float suspended, now that it is docked
    * back in the grid — but only those that still describe reality, the same
-   * `pinStillShaped` gate `releaseMaximize` applies on its own exit. A pin
-   * whose members no longer share one rail (the panel docked somewhere the
-   * pin never named) is dropped, already released. */
+   * `intactPinOwnerSplit` gate `releaseMaximize` applies on its own exit. A
+   * pin whose members no longer share one rail (the panel docked somewhere the
+   * pin never named) is dropped, already released.
+   *
+   * The promoted record carries the RE-DERIVED `ownerSplit`, never the one it
+   * was suspended with. That field is a live DOM Element compared by identity
+   * (`unpinSplit`, `suspendPinsHolding`), and a record suspended while its
+   * member was outside the grid holds the wrong one: at construction it is the
+   * FLOAT's private gridview wrapper, and even on the live path dockview is
+   * free to rebuild a split across the round trip. Promoting it unchanged left
+   * a reload-restored float's rail clamped min=max for the session with no
+   * sash drag able to release it, because `unpinSplit` never matched. One
+   * derivation, used for both the gate and the value it stores back. */
   function clampPinsFloatSuspendedFor(panelId: string): void {
     const held = floatSuspendedPins.get(panelId);
 
@@ -1287,9 +1304,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     floatSuspendedPins.delete(panelId);
 
     for (const record of held) {
-      if (pinStillShaped(record, groupOf)) {
+      const ownerSplit = intactPinOwnerSplit(record, groupOf);
+
+      if (ownerSplit !== null) {
         clampPinMembers(record);
-        designPins = [...designPins, record];
+        designPins = [...designPins, { ...record, ownerSplit }];
       }
     }
   }
@@ -1422,7 +1441,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const kept: DesignPinRecord[] = [];
 
     for (const record of designPins) {
-      if (pinStillShaped(record, groupOf)) {
+      if (intactPinOwnerSplit(record, groupOf) !== null) {
         kept.push(record);
         continue;
       }
@@ -2867,42 +2886,52 @@ function railViewOf(element: Element, owner: Element): Element | null {
   return view;
 }
 
-/** True while a pin still describes reality: its panels exactly fill their
- * groups AND those groups still share ONE rail (one direct child view of
- * the pin's declaring split). Exact-fill alone passes VACUOUSLY after a
- * drag ejects a member into its own group — both fragments then hold only
- * pinned panels (audit S2) — so the rail identity is the real invariant. */
-function pinStillShaped(
+/** `record`'s declaring split AS THE LIVE DOM HAS IT, or null once the pin no
+ * longer describes reality: its panels must exactly fill their groups AND
+ * those groups must still share ONE rail (one direct child view of that
+ * split). Exact-fill alone passes VACUOUSLY after a drag ejects a member into
+ * its own group — both fragments then hold only pinned panels (audit S2) — so
+ * the rail identity is the real invariant.
+ *
+ * Returns the split rather than a boolean because the two questions are one
+ * derivation: every caller that asks "is this pin still real?" is looking at a
+ * record whose own `ownerSplit` may be stale, and the re-derivation that
+ * answers the question is exactly the value such a caller needs to store back
+ * (see clampPinsFloatSuspendedFor). A second spelling of this walk is how a
+ * stale split survived a reload once already. */
+function intactPinOwnerSplit(
   record: DesignPinRecord,
   groupOf: (panelId: string) => SizableGroup | undefined,
-): boolean {
+): Element | null {
   if (!panelsExactlyFill(record.pin.panelIds, groupOf)) {
-    return false;
+    return null;
   }
 
   const first = groupOf(record.pin.panelIds[0] ?? "");
 
   if (first === undefined) {
-    return false;
+    return null;
   }
 
   const owner = declaringSplitOf(first.element, record.pin.axis);
 
   if (owner === null) {
-    return false;
+    return null;
   }
 
   const rail = railViewOf(first.element, owner);
 
   if (rail === null) {
-    return false;
+    return null;
   }
 
-  return record.pin.panelIds.every((panelId) => {
+  const shared = record.pin.panelIds.every((panelId) => {
     const group = groupOf(panelId);
 
     return group !== undefined && railViewOf(group.element, owner) === rail;
   });
+
+  return shared ? owner : null;
 }
 
 /** The split that DECLARED a pin on `axis`, walking up from the pinned

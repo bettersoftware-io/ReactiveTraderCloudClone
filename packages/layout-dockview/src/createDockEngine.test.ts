@@ -4490,6 +4490,90 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  /** A blob holding a pinned rail with `fx-analytics` floated — the state a
+   * reload restores, and the only way to reach a pin record that was
+   * suspended before any grid split existed to name. */
+  function blobWithFloatedRail(): string {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.floatPanel("fx-analytics");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    return seen.blob();
+  }
+
+  // A suspended record's `ownerSplit` is a live DOM Element compared by
+  // IDENTITY (`unpinSplit`, `suspendPinsHolding`), and the one filed at
+  // construction is the FLOAT's private gridview wrapper, not the grid split
+  // the pin shapes. Promotion must re-derive it.
+  //
+  // Where the difference becomes observable is the whole point of these two
+  // tests, and it is exactly one place: the first sash drag in the declaring
+  // split AFTER a reload-restored float has docked home. Not at construction
+  // (the field is never read while suspended); not at dock-home (the clamp is
+  // [367, 367] in the correct and the broken world alike — that IS the
+  // intended state); not from the blob. Only `unpinSplit`'s identity compare
+  // can tell a real split from the float's wrapper, so the assertion is the
+  // clamp AFTER the drag.
+  it("releases a reload-restored float's re-clamped pin on a sash drag (R5)", () => {
+    const opts = pinnedRailBase();
+    const engine = createDockEngine({ ...opts, blob: blobWithFloatedRail() });
+
+    engine.dockPanel("fx-analytics");
+
+    // The re-clamp landed — the precondition, not the claim.
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+
+    dragSash(opts.container, ".dv-horizontal");
+
+    // ...and a drag in the pin's own declaring split releases it, exactly as
+    // it does for a pin that never floated. A stale ownerSplit leaves the rail
+    // clamped min=max for the rest of the session with no way out.
+    expect(widthClampOf("fx-analytics")).toEqual([
+      100,
+      Number.MAX_SAFE_INTEGER,
+    ]);
+    engine.dispose();
+  });
+
+  /** Drags the sash inside ONE named split, rather than the first match of a
+   * selector: `dragSash(container, ".dv-vertical")` picks whichever column
+   * comes first in the DOM, which is not the one a test about a specific
+   * column means. Same three events as `dragSash`. */
+  function dragSashIn(split: Element | null): void {
+    const sash = split?.querySelector(":scope > .dv-sash-container > .dv-sash");
+
+    if (sash === null || sash === undefined) {
+      throw new Error("no sash under the named split");
+    }
+
+    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    window.dispatchEvent(new Event("pointermove"));
+    window.dispatchEvent(new Event("pointerup"));
+  }
+
+  // The other orientation, and it has to name the RAIL'S OWN column to bind
+  // to anything: a width pin is declared by the `.dv-horizontal` row, so the
+  // rail's nested column is the nearest WRONG answer a re-derivation could
+  // produce, and dragging that sash must leave the pin alone. Asserted with
+  // `dragSashIn(columnOf(...))`, not `dragSash(".dv-vertical")` — the latter
+  // grabs the rates/blotter column, which no defect in this diff could ever
+  // name, so that version passed by construction. The live-path twin is
+  // "leaves the rail pin alone when the drag is in a nested split".
+  it("keeps a reload-restored float's pin through a drag in its own column (R5)", () => {
+    const opts = pinnedRailBase();
+    const engine = createDockEngine({ ...opts, blob: blobWithFloatedRail() });
+
+    engine.dockPanel("fx-analytics");
+    dragSashIn(columnOf("fx-analytics"));
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
   // R5 + Ruling 6 — floating's suspension is NOT the absorber suspension.
   // An absorber returning elsewhere in the dock re-clamps `unabsorbedPins`;
   // it must not reach a float, or a panel reopening across the dock would
