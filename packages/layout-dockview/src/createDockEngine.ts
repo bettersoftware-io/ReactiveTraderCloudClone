@@ -11,6 +11,7 @@ import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
   withoutDynamicNodes,
+  withoutFloatingGroups,
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
@@ -364,6 +365,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // session-scoped the same way: a mid-popout save re-parents the
         // popped panels onto their hidden reference leaf so a reload
         // restores fully docked — see withoutPopoutGroups.
+        //
+        // Floating state is the opposite: a float persists DELIBERATELY
+        // (design §3.3) via dockview's own `floatingGroups` key, which
+        // `api.toJSON()` already emits and `api.fromJSON()` already
+        // restores — nothing here scrubs it. `withoutFloatingGroups` exists
+        // only as a LOAD-time retry (see loadBlobOrSeed) and must never be
+        // called from this save path; the asymmetry with
+        // `withoutPopoutGroups` above is that decision, not an omission.
         ...(withoutPopoutGroups(withoutLockMarks(api.toJSON())) as ReturnType<
           DockviewApi["toJSON"]
         >),
@@ -2164,7 +2173,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // exact on its own — measured: 0 lossy of 2,103 cases (3 widths ×
     // heights 600–1300), where the same sweep found the seed path lossy in
     // 717 — because that is a round trip, while a seed built at 981 is not.
-    if (!userArranged && restored.seeded) {
+    if (!userArranged && restored.restoreTier === "seed") {
       const exact = convertSeed(opts.seed, nextWidth, nextHeight, {
         gap: GROUP_GAP_PX,
       }).serialized.grid;
@@ -3270,6 +3279,25 @@ function clampTo(axis: GroupAxis, size: number): void {
   axis.set(size);
 }
 
+/** Which rung of `loadBlobOrSeed`'s retry ladder actually produced the
+ * restored layout, cheapest loss first:
+ * - `"blob"` — the whole saved blob restored as-is, floats included.
+ * - `"blob-without-floats"` — an unrestorable `floatingGroups` entry was
+ *   dropped and the rest of the blob (the whole grid) restored; the float's
+ *   own panels fall to whatever re-seeds them below.
+ * - `"blob-without-dynamic"` — every non-static (Jarvis-docked) leaf was
+ *   scrubbed from the grid and the STATIC arrangement restored; see
+ *   {@link withoutDynamicNodes}.
+ * - `"seed"` — nothing of the blob survived; the seed tree was converted
+ *   fresh. This is the case a settle resize must correct — see
+ *   reapplyExactLayoutOnResize — because a seed conversion is not a round
+ *   trip the way restoring an already-settled blob is. */
+export type RestoreTier =
+  | "blob"
+  | "blob-without-floats"
+  | "blob-without-dynamic"
+  | "seed";
+
 /** What a load hands the engine beyond the grid dockview restored: the
  * design pins to apply, and the strip-geometry seeds a re-applied collapse
  * consumes (empty on a seed load or a legacy blob). */
@@ -3279,9 +3307,8 @@ interface RestoredLayout {
   readonly stripSizes: ReadonlyMap<string, number>;
   /** Each persisted flipped split's pre-flip size, by {@link flipKeyFor}. */
   readonly flipSizes: ReadonlyMap<string, number>;
-  /** Whether this load converted the seed (rather than restoring a blob) —
-   * the case a settle resize must correct; see reapplyExactLayoutOnResize. */
-  readonly seeded: boolean;
+  /** Which retry tier actually restored this layout — see {@link RestoreTier}. */
+  readonly restoreTier: RestoreTier;
 }
 
 type SerializedGrid = SerializedDockview["grid"];
@@ -3329,12 +3356,28 @@ function crossAxisOf(along: DockStripOrientation): DockStripOrientation {
   return along === "vertical" ? "horizontal" : "vertical";
 }
 
+/** Lock state is derived (strip membership), never trusted from a blob: a
+ * legacy or hand-edited blob may still carry `locked`, and dockview's
+ * fromJSON restores it verbatim. Normalise after every successful restore
+ * tier; the bridge's collapse replay re-locks the bars. */
+function resetDerivedLocks(api: DockviewApi): void {
+  for (const group of api.groups) {
+    group.api.locked = false;
+  }
+}
+
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
- * a stale or corrupt blob must never brick the workspace. Returns the design
- * pins to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
- * without the field gets none — that layout may be user-shaped already), or
- * the freshly converted seed's — plus the blob's strip-geometry seeds. */
-function loadBlobOrSeed(
+ * a stale or corrupt blob must never brick the workspace. Tries, in order,
+ * cheapest loss first: the whole blob; the blob with `floatingGroups`
+ * dropped (a damaged float costs only the float); the blob with every
+ * dynamic leaf scrubbed (a damaged Jarvis dock costs only its own panels);
+ * the seed. Exported so the tier a given blob actually lands on is a real,
+ * reachable assertion rather than a private read — see {@link RestoreTier}.
+ * Returns the design pins to apply — the blob's own surviving
+ * `rtcDesignPins` (a legacy blob without the field gets none — that layout
+ * may be user-shaped already), or the freshly converted seed's — plus the
+ * blob's strip-geometry seeds. */
+export function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
   width: number,
@@ -3345,52 +3388,66 @@ function loadBlobOrSeed(
       // A gap-7-era blob (no rtcBlobVersion) is lifted into the gap-0 model
       // first — grid sizes and strip-sidecar sizes change units; see
       // migrateDockBlob. dockview's fromJSON reads only the fields it
-      // knows, so the pin and strip-geometry sidecars ride through
-      // untouched.
+      // knows, so the pin, strip-geometry and floating-group sidecars ride
+      // through untouched.
       const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
-
-      // Lock state is derived (strip membership), never trusted from a
-      // blob: a legacy or hand-edited blob may still carry `locked`, and
-      // dockview's fromJSON restores it. Normalise; the bridge's collapse
-      // replay re-locks the bars.
-      for (const group of api.groups) {
-        group.api.locked = false;
-      }
+      resetDerivedLocks(api);
 
       return {
         pins: designPinsIn(parsed),
         ...stripGeometryIn(parsed),
-        seeded: false,
+        restoreTier: "blob",
       };
     } catch {
-      // One dynamic (Jarvis-docked) panel's node can go unrestorable on its
-      // own — a stale/mismatched shape the app never wrote itself — without
-      // the rest of the arrangement being at fault. Before giving up on the
-      // WHOLE blob, retry once with every non-static leaf scrubbed out; a
-      // static-only blob (or one this can't safely operate on) hands back
-      // `null` and falls straight through to the seed below, same as before.
-      const scrubbed = withoutDynamicNodes(
-        opts.blob,
-        seedPanelIdsOf(opts.seed),
-      );
+      // A `floatingGroups` entry can go unrestorable on its own — a stale
+      // or hand-edited shape the app never wrote itself — without the rest
+      // of the DOCKED arrangement being at fault. Floats are the cheaper
+      // thing to lose (design §3.3 persists them, but nothing else depends
+      // on one surviving), so this retries BEFORE the dynamic-node scrub
+      // below: dropping `floatingGroups` outright and re-parsing.
+      try {
+        const parsed = migrateDockBlob(
+          withoutFloatingGroups(JSON.parse(opts.blob)),
+          GROUP_GAP_PX,
+        );
+        api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+        resetDerivedLocks(api);
 
-      if (scrubbed !== null) {
-        try {
-          const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
-          api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+        return {
+          pins: designPinsIn(parsed),
+          ...stripGeometryIn(parsed),
+          restoreTier: "blob-without-floats",
+        };
+      } catch {
+        // Dropping the float alone did not fix it either — either the
+        // float was fine and something in the GRID is unrestorable, or the
+        // blob was too malformed even to reach this point (e.g. bad JSON,
+        // already caught above and re-thrown here identically). One
+        // dynamic (Jarvis-docked) panel's node can go unrestorable on its
+        // own without the rest of the arrangement being at fault; retry
+        // once with every non-static leaf scrubbed out. A static-only blob
+        // (or one this can't safely operate on) hands back `null` and falls
+        // straight through to the seed below, same as before.
+        const scrubbed = withoutDynamicNodes(
+          opts.blob,
+          seedPanelIdsOf(opts.seed),
+        );
 
-          for (const group of api.groups) {
-            group.api.locked = false;
+        if (scrubbed !== null) {
+          try {
+            const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
+            api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+            resetDerivedLocks(api);
+
+            return {
+              pins: designPinsIn(parsed),
+              ...stripGeometryIn(parsed),
+              restoreTier: "blob-without-dynamic",
+            };
+          } catch {
+            // fall through to the seed
           }
-
-          return {
-            pins: designPinsIn(parsed),
-            ...stripGeometryIn(parsed),
-            seeded: false,
-          };
-        } catch {
-          // fall through to the seed
         }
       }
     }
@@ -3405,7 +3462,7 @@ function loadBlobOrSeed(
     pins,
     stripSizes: new Map(),
     flipSizes: new Map(),
-    seeded: true,
+    restoreTier: "seed",
   };
 }
 

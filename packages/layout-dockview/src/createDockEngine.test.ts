@@ -26,6 +26,8 @@ import {
   type DockStripMap,
   GLIDE_ATTRIBUTE_MS,
   GROUP_GAP_PX,
+  loadBlobOrSeed,
+  type RestoreTier,
 } from "#/createDockEngine";
 import { HookContentRenderer } from "#/HookContentRenderer";
 
@@ -4812,6 +4814,248 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     api.dispose();
   });
 });
+
+describe("floats persist across a reload, and a damaged float costs only the floats", () => {
+  it("restores a saved float on reload (tier: blob)", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...base(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    first.floatPanel("fx-analytics");
+    touchContainer(container); // #737: dispose flushes only an arranged dock
+    first.dispose();
+    expect(saved).not.toBe("");
+
+    const second = createDockEngine({ ...base(), container, blob: saved });
+
+    expect(
+      lastDockviewApi().getPanel("fx-analytics")?.group.api.location.type,
+    ).toBe("floating");
+    second.dispose();
+  });
+
+  // MEASURED (2026-09-16), not assumed: dropping `floatingGroups` outright —
+  // what `withoutFloatingGroups` does — is NOT a re-parent, unlike
+  // `withoutPopoutGroups`. dockview's own `fromJSON` never instantiates a
+  // `panels` entry that no grid/floating/popout structure references, so
+  // the floated panel itself does not come back at this tier — that IS the
+  // cost this design accepts ("a damaged float costs the user only their
+  // floats", not their whole layout). What THIS test proves is the other
+  // half of that promise: the DOCKED remainder is untouched by the
+  // corruption, not reset to a fresh seed shape. A plain "the other panels
+  // are still present somewhere" check can't tell a genuine partial
+  // restore from an accidental full seed-fallback bug — FX_LIKE's fresh
+  // conversion always puts rates and blotter in SEPARATE groups — so, the
+  // same technique the dynamic-node-scrub tests use above, blotter is
+  // stacked into rates' own group BEFORE the float: a shape only a real
+  // restore can reproduce.
+  it("a damaged float costs only the float — the docked remainder survives untouched (tier: blob-without-floats)", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...base(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    const api = lastDockviewApi();
+    const rates = api.getPanel("fx-rates");
+    const blotter = api.getPanel("fx-blotter");
+
+    if (!rates || !blotter) {
+      throw new Error("fixture panels missing");
+    }
+
+    blotter.api.moveTo({ group: rates.group, position: "center" });
+    expect(rates.group.panels.length).toBe(2);
+
+    first.floatPanel("fx-analytics");
+    touchContainer(container);
+    first.dispose();
+
+    // A malformed floating-group entry — the exact shape dockview's own
+    // fromJSON throws on (measured: "group id must be of type string").
+    const broken = JSON.stringify({
+      ...JSON.parse(saved),
+      floatingGroups: [{ data: { nope: true } }],
+    });
+
+    const engine = createDockEngine({ ...base(), container, blob: broken });
+    const reloaded = lastDockviewApi();
+
+    // The float itself is gone — the cost this tier accepts.
+    expect(reloaded.getPanel("fx-analytics")).toBeUndefined();
+    // ...but the docked stack survived EXACTLY as arranged, not reseeded:
+    // a seed fallback could never reproduce rates+blotter sharing one group.
+    expect(
+      reloaded.getPanel("fx-rates")?.group.panels.map((panel) => {
+        return panel.id;
+      }),
+    ).toEqual(["fx-rates", "fx-blotter"]);
+    expect(engine.groupCount()).toBe(1);
+    engine.dispose();
+  });
+});
+
+// Controller ruling: the tier LABEL itself must be a provable assertion, not
+// only the layout it produces — a mislabelled tier (e.g. the "blob" and
+// "blob-without-floats" branches swapped, or a branch returning the wrong
+// literal) could still leave the resulting layout looking right by
+// coincidence, since the fixtures above never read `restoreTier` at all.
+// `loadBlobOrSeed` is exported (and `RestoreTier` with it) for exactly this:
+// each test below reads `restoreTier` straight off the real production
+// function's return value — a real consumer, not a private read — so
+// mislabelling ANY rung of the ladder fails the corresponding `toBe` here,
+// independent of whatever layout that rung happens to produce.
+describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
+  function freshDockviewApi(width: number, height: number): DockviewApi {
+    const api = createDockview(sizedContainer(width, height), {
+      createComponent: () => {
+        return { element: document.createElement("div"), init: () => {} };
+      },
+      theme: { name: "t", className: "t" },
+    });
+    api.layout(width, height);
+
+    return api;
+  }
+
+  it("tier: blob — a healthy blob restores as-is, floats included", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...base(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    first.floatPanel("fx-analytics");
+    touchContainer(container);
+    first.dispose();
+
+    const api = freshDockviewApi(1440, 900);
+    const restoreTier: RestoreTier = loadBlobOrSeed(
+      api,
+      { ...base(), blob: saved },
+      1440,
+      900,
+    ).restoreTier;
+
+    expect(restoreTier).toBe("blob");
+    api.dispose();
+  });
+
+  it("tier: blob-without-floats — a malformed floatingGroups entry alone is scrubbed", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...base(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    first.floatPanel("fx-analytics");
+    touchContainer(container);
+    first.dispose();
+
+    const broken = JSON.stringify({
+      ...JSON.parse(saved),
+      floatingGroups: [{ data: { nope: true } }],
+    });
+
+    const api = freshDockviewApi(1440, 900);
+    const restoreTier: RestoreTier = loadBlobOrSeed(
+      api,
+      { ...base(), blob: broken },
+      1440,
+      900,
+    ).restoreTier;
+
+    expect(restoreTier).toBe("blob-without-floats");
+    api.dispose();
+  });
+
+  it("tier: blob-without-dynamic — a malformed dynamic leaf alone is scrubbed", async () => {
+    const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+    const seen = trackLayout();
+    const first = createDockEngine({
+      ...base(),
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    first.dispose();
+
+    const parsed = JSON.parse(seen.blob());
+    const dynLeaf = leafHolding(parsed.grid.root, "panel-dyn-1");
+
+    if (dynLeaf === null) {
+      throw new Error("panel-dyn-1's leaf missing from the captured blob");
+    }
+
+    // Corrupt the GROUP id itself, not merely its `panels` entry: measured,
+    // dockview tolerates a view with no `panels` entry at all by degrading
+    // it to an undefined panel rather than throwing (reconciliation then
+    // silently re-adds it via the normal insertDynamicPanel path either
+    // way — no genuine retry required). A non-string group id is the shape
+    // that reliably throws ("group id must be of type string"), so the
+    // full attempt fails for real and the retry ladder actually runs.
+    dynLeaf.data.id = 42;
+
+    const api = freshDockviewApi(1440, 900);
+    const restoreTier: RestoreTier = loadBlobOrSeed(
+      api,
+      { ...base(), blob: JSON.stringify(parsed), dynamicPanels: [DYN] },
+      1440,
+      900,
+    ).restoreTier;
+
+    expect(restoreTier).toBe("blob-without-dynamic");
+    api.dispose();
+  });
+
+  it("tier: seed — nothing of the blob is usable", () => {
+    const api = freshDockviewApi(1440, 900);
+    const restoreTier: RestoreTier = loadBlobOrSeed(
+      api,
+      { ...base(), blob: "{not json" },
+      1440,
+      900,
+    ).restoreTier;
+
+    expect(restoreTier).toBe("seed");
+    api.dispose();
+  });
+});
+
+/** Walks a parsed blob's grid for the leaf whose `views` names `panelId`,
+ * loosely — a test-only mirror of {@link removeDynamicViews}'s own walk,
+ * used to hand-corrupt exactly one leaf's group id without disturbing the
+ * rest of a real captured blob. */
+// biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+function leafHolding(node: any, panelId: string): any {
+  if (node.type === "leaf") {
+    return node.data.views.includes(panelId) ? node : null;
+  }
+
+  for (const child of node.data) {
+    const found = leafHolding(child, panelId);
+
+    if (found !== null) {
+      return found;
+    }
+  }
+
+  return null;
+}
 
 /** Re-reports `container` at a new size and delivers it to the engine's own
  * ResizeObserver — the settle path. A narrower twin of the "settle resize"

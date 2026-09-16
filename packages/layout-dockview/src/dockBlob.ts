@@ -244,12 +244,18 @@ interface RemovalTally {
  * scrubbed exactly like one whose `panels` entry survived but was malformed.
  *
  * Limit: this only walks `grid.root` and `panels` — a dynamic panel torn
- * off into its own floating or popout window (`floatingGroups`/
- * `popoutGroups`, both outside `grid`) is not reachable here and is not
- * scrubbed. Fail-safe, not a silent gap: an unrestorable node living only in
- * one of those stays unrestorable, the retry's own `fromJSON` still throws,
- * and `loadBlobOrSeed` falls through to the seed exactly as it did before
- * this partial net existed.
+ * off into its own popout window (`popoutGroups`, outside `grid`) is not
+ * reachable here and is not scrubbed. Fail-safe, not a silent gap: an
+ * unrestorable node living only there stays unrestorable, the retry's own
+ * `fromJSON` still throws, and `loadBlobOrSeed` falls through to the seed
+ * exactly as it did before this partial net existed (in practice rare —
+ * `serializeLayout`'s own `withoutPopoutGroups` has already re-parented a
+ * mid-popout save before it is written, so a loaded blob only still carries
+ * `popoutGroups` for the entries that scrub itself could not recover). A
+ * dynamic panel torn into a FLOAT (`floatingGroups`, also outside `grid`)
+ * is NOT this function's limit any more — it has its own separate load-time
+ * retry tier, tried first (a float is the cheaper thing to lose): see
+ * {@link withoutFloatingGroups} and `loadBlobOrSeed`'s tier ladder.
  *
  * Returns `null` — the caller's cue to fall straight to the seed — when
  * nothing was actually dynamic (a static-only blob, so nothing was removed),
@@ -524,6 +530,40 @@ export function withoutPopoutGroups(serialized: unknown): unknown {
   }
 
   return scrubbed;
+}
+
+/** A blob that MAY carry floating-group state, loosely. */
+interface FloatingCarrier {
+  readonly floatingGroups?: unknown;
+}
+
+/**
+ * Drops the `floatingGroups` key outright. This is a LOAD-time retry only —
+ * unlike {@link withoutPopoutGroups}, it does not re-parent the dropped
+ * panels onto a hidden reference leaf: a float, unlike a mid-popout save, is
+ * a Phase-3-persisted layer of its own (design §3.3), so there is nothing to
+ * re-parent it FROM — the panels it names simply are not in `grid` at all.
+ * It exists purely as one rung of `loadBlobOrSeed`'s retry ladder: when a
+ * `floatingGroups` entry is what makes the WHOLE blob unrestorable, dropping
+ * it lets the rest of the grid restore intact and hands the float's own
+ * panels to the tier below (`withoutDynamicNodes`, or the seed itself) to
+ * re-seed instead. Anything malformed, or a blob with no `floatingGroups` at
+ * all, passes through unchanged — `loadBlobOrSeed`'s fall-back-to-seed net
+ * stays the outer safety.
+ */
+export function withoutFloatingGroups(serialized: unknown): unknown {
+  if (typeof serialized !== "object" || serialized === null) {
+    return serialized;
+  }
+
+  if (!("floatingGroups" in serialized)) {
+    return serialized;
+  }
+
+  const { floatingGroups: _dropped, ...rest } = serialized as FloatingCarrier &
+    Record<string, unknown>;
+
+  return rest;
 }
 
 /** A popped entry's panels ready for re-parenting: every view in order,
