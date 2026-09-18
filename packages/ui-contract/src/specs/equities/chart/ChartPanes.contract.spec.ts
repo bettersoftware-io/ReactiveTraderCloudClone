@@ -36,17 +36,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-];
-
-// 300 candles, matching every other CandleChart contract spec: long enough
-// that the 1D default visible window (60) is a small slice, so the default
-// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
 describe("Indicator panes — pill toggles the real chart-column pane (EqChartHead + ChartPanel, shared eqWorkspace)", () => {
   it("clicking the RSI pill mounts the RSI pane; clicking again removes it", async () => {
     const { head, panel } = mountPillWorkspace();
@@ -219,7 +208,7 @@ function mountPillWorkspace(): PillWorkspace {
     {
       watchlist: INSTRUMENTS,
       candles: { AAPL: CANDLES },
-      quotes: { AAPL: quote() },
+      quotes: { AAPL: createQuote() },
     },
   );
   const head = mountWith(world, EqChartHead, {});
@@ -228,7 +217,7 @@ function mountPillWorkspace(): PillWorkspace {
   return { head, panel };
 }
 
-function quote(): EquityQuote {
+function createQuote(): EquityQuote {
   return {
     symbol: "AAPL",
     bid: 103.9,
@@ -267,3 +256,16 @@ function mountChart({
     },
   });
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+];
+
+// 300 candles, matching every other CandleChart contract spec: long enough
+// that the 1D default visible window (60) is a small slice, so the default
+// viewport lands deep in the series ({240, 300} — see candleFixture.ts).
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);

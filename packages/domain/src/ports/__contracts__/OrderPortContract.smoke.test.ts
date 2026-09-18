@@ -8,7 +8,7 @@ import { describeOrderPortContract } from "./OrderPortContract.js";
 
 describe("describeOrderPortContract :: smoke", () => {
   describeOrderPortContract("inline fake", () => {
-    function makeOrder(
+    function createOrder(
       status: "new" | "working" | "filled",
       filledQty: number,
       qty: number,
@@ -28,16 +28,16 @@ describe("describeOrderPortContract :: smoke", () => {
     const port: OrderPort = {
       place: ({ qty }: PlaceOrderRequest) => {
         return concat(
-          of(makeOrder("new", 0, qty)),
-          of(makeOrder("working", 0, qty)),
-          of(makeOrder("filled", qty, qty)),
+          of(createOrder("new", 0, qty)),
+          of(createOrder("working", 0, qty)),
+          of(createOrder("filled", qty, qty)),
         );
       },
       cancel: (_orderId: string) => {
         return EMPTY;
       },
       orders: () => {
-        return of([makeOrder("filled", 100, 100)] as const);
+        return of([createOrder("filled", 100, 100)] as const);
       },
     };
 

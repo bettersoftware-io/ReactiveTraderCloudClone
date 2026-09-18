@@ -12,14 +12,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
 
-const page = draggableDialogPage();
-
-const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
-const VIEWPORT = { width: 1000, height: 800 };
-// clampDragOffset's travel range: (viewport - dialog) / 2 - margin(24).
-const RANGE_X: number = (VIEWPORT.width - DIALOG_RECT.width) / 2 - 24;
-const RANGE_Y: number = (VIEWPORT.height - DIALOG_RECT.height) / 2 - 24;
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -35,7 +27,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(
       pointerEvent({ clientX: 100, clientY: 100 }),
@@ -52,7 +44,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));
     // Way past the clamped range on both axes.
@@ -70,7 +62,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -91,7 +83,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", VIEWPORT.width);
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const result = page.mount({ open: alwaysOpen });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -115,7 +107,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerHeight", VIEWPORT.height);
     const [open, setOpen] = createSignal(true);
     const result = page.mount({ open });
-    result.dialogRef(stubDialogEl(DIALOG_RECT));
+    result.dialogRef(createStubDialogEl(DIALOG_RECT));
 
     result.headerProps.onPointerDown(pointerEvent({ clientX: 0, clientY: 0 }));
     result.headerProps.onPointerMove(
@@ -135,7 +127,7 @@ function alwaysOpen(): boolean {
   return true;
 }
 
-function stubDialogEl(rect: DOMRect): HTMLDivElement {
+function createStubDialogEl(rect: DOMRect): HTMLDivElement {
   const el = document.createElement("div");
 
   el.getBoundingClientRect = (): DOMRect => {
@@ -163,3 +155,14 @@ function pointerEvent(init: PointerEventInit): PointerEvent {
     currentTarget: { setPointerCapture } as unknown as HTMLElement,
   } as unknown as PointerEvent;
 }
+
+const page = draggableDialogPage();
+
+const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
+
+const VIEWPORT = { width: 1000, height: 800 };
+
+// clampDragOffset's travel range: (viewport - dialog) / 2 - margin(24).
+const RANGE_X: number = (VIEWPORT.width - DIALOG_RECT.width) / 2 - 24;
+
+const RANGE_Y: number = (VIEWPORT.height - DIALOG_RECT.height) / 2 - 24;

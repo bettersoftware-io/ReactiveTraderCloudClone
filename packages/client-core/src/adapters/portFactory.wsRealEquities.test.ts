@@ -8,17 +8,6 @@ import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
-// The RPC-backed equity ports were the largest uncovered block in client-core.
-// Their failure modes are all silent from the UI's side: a nack that never
-// reaches the subscriber is indistinguishable from a request still in flight,
-// and an order stream that drops its id filter shows another order's fills.
-// client-core appears in no tier of the published coverage report, so none of
-// this was visible there. (portFactory.equities.test.ts covers the SIMULATOR
-// ports; this file covers createWsRealPorts.)
-
-let ws: FakeWsAdapter;
-let ports: ReturnType<typeof createWsRealPorts>;
-
 beforeEach(() => {
   ws = new FakeWsAdapter();
   ports = createWsRealPorts(ws, {
@@ -86,17 +75,6 @@ describe("marketData.candles", () => {
 });
 
 describe("orders.place", () => {
-  const req = { symbol: "AAPL", side: "buy", quantity: 10 } as never;
-
-  async function ackPlace(orderId: string): Promise<void> {
-    await awaitPendingRpc(ws, CLIENT_MSG.PLACE_ORDER);
-    ws.nextRpcResponse(CLIENT_MSG.PLACE_ORDER, {
-      type: "ack",
-      payload: { orderId },
-    });
-    await Promise.resolve();
-  }
-
   it("streams only the lifecycle events carrying its own order id", async () => {
     const next = vi.fn();
 
@@ -158,6 +136,17 @@ describe("orders.place", () => {
 
     expect(next).not.toHaveBeenCalled();
   });
+
+  const req = { symbol: "AAPL", side: "buy", quantity: 10 } as never;
+
+  async function ackPlace(orderId: string): Promise<void> {
+    await awaitPendingRpc(ws, CLIENT_MSG.PLACE_ORDER);
+    ws.nextRpcResponse(CLIENT_MSG.PLACE_ORDER, {
+      type: "ack",
+      payload: { orderId },
+    });
+    await Promise.resolve();
+  }
 });
 
 describe("orders.cancel", () => {
@@ -185,3 +174,15 @@ describe("orders.cancel", () => {
     expect(error).toHaveBeenCalledTimes(1);
   });
 });
+
+// The RPC-backed equity ports were the largest uncovered block in client-core.
+// Their failure modes are all silent from the UI's side: a nack that never
+// reaches the subscriber is indistinguishable from a request still in flight,
+// and an order stream that drops its id filter shows another order's fills.
+// client-core appears in no tier of the published coverage report, so none of
+// this was visible there. (portFactory.equities.test.ts covers the SIMULATOR
+// ports; this file covers createWsRealPorts.)
+
+let ws: FakeWsAdapter;
+
+let ports: ReturnType<typeof createWsRealPorts>;

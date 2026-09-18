@@ -1,9 +1,6 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { NavNode } from "#/nav/buildNavTree";
-import { NavTree } from "#/nav/NavTree";
 import type { Scope } from "#/nav/scope";
 import { ALL_SCOPE, scopeKey } from "#/nav/scope";
 import { navTreePage } from "#tests/pages/NavTreePage";
@@ -21,7 +18,7 @@ beforeEach(() => {
 });
 
 test("renders roots expanded, groups collapsed; clicking a label selects; caret toggles", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Group headers expanded by default → presenter nodes visible; presenter
   // collapsed by default → its streams hidden.
@@ -44,7 +41,7 @@ test("renders roots expanded, groups collapsed; clicking a label selects; caret 
 });
 
 test("shows counts, the wire health detail, and dims disposed machines", () => {
-  mount();
+  tree.mount({ nodes: createSampleTree() });
 
   expect(tree.node("all").textContent).toContain("7");
   expect(tree.hasLabel("▼ 0.1 in/s · ▲ 0.0 out/s · reconnects: 0")).toBe(true);
@@ -54,7 +51,7 @@ test("shows counts, the wire health detail, and dims disposed machines", () => {
 });
 
 test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // No container tabIndex to focus (focus-WITHIN, not a focused div): focus
   // the first row's label button, same as a real keyboard user tabbing in,
@@ -87,7 +84,7 @@ test("keyboard: ArrowDown/Up move the cursor, Enter selects, ArrowRight expands"
 });
 
 test("a node flashes when its lastSeq advances, not on unrelated re-renders", () => {
-  const handle = mount();
+  const handle = tree.mount({ nodes: createSampleTree() });
   const before = animateSpy.mock.calls.length;
 
   handle.bump("presenter:blotter", 9);
@@ -100,7 +97,7 @@ test("a node flashes when its lastSeq advances, not on unrelated re-renders", ()
 });
 
 test("collapsing: a header label closes its own group, a caret closes an open node, and ArrowLeft does it from the keyboard", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // A header row carries no scope, so clicking its LABEL toggles the group
   // instead of selecting anything.
@@ -129,7 +126,7 @@ test("collapsing: a header label closes its own group, a caret closes an open no
 });
 
 test("a scope-null disposed leaf (evicted machines) renders no caret and is not selectable", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   expect(tree.scopeIds()).not.toContain("machines:evicted");
   expect(tree.labelIsExpandable("Evicted (2)")).toBe(false);
@@ -139,7 +136,7 @@ test("a scope-null disposed leaf (evicted machines) renders no caret and is not 
 });
 
 test("clicking a node label re-syncs the keyboard cursor, not just the selection", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Mouse-selecting blotter must move the keyboard cursor onto it too —
   // otherwise it stays seeded on the initial scope ("all") and the next
@@ -165,7 +162,7 @@ test("clicking a node label re-syncs the keyboard cursor, not just the selection
 });
 
 test("clicking the already-selected node re-syncs a cursor the arrow keys had parked elsewhere", () => {
-  const selected = mount();
+  const selected = tree.mount({ nodes: createSampleTree() });
 
   // Select blotter (X) — selectedId changes, so the render-time derivation
   // alone already snaps the cursor onto it (see the previous test).
@@ -199,7 +196,7 @@ test("clicking the already-selected node re-syncs a cursor the arrow keys had pa
 });
 
 test("a scope change from outside the tree moves the keyboard cursor to the new selection", () => {
-  const selected = mountWithExternalScope();
+  const selected = tree.mountWithExternalScope({ nodes: createSampleTree() });
 
   // A button OUTSIDE the tree drives the scope change — the way a probe
   // push/pop, Esc, or "show in All" does — never through a click inside
@@ -221,95 +218,7 @@ test("a scope change from outside the tree moves the keyboard cursor to the new 
   });
 });
 
-interface MountHandle extends Array<Scope> {
-  bump: (id: string, lastSeq: number) => void;
-}
-
-function mount(): MountHandle {
-  const selected = [] as unknown as MountHandle;
-
-  selected.bump = (): void => {};
-
-  function Harness(): ReactElement {
-    const [nodes, setNodes] = useState(sampleTree);
-    const [scope, setScope] = useState<Scope>(ALL_SCOPE);
-
-    selected.bump = (id: string, lastSeq: number): void => {
-      // The caller invokes this from outside React's render cycle (a test
-      // harness, not an event handler), so the update needs an explicit
-      // flush via the page's `commit` to happen synchronously —
-      // react-dom's createRoot otherwise defers both the re-render and the
-      // flash `useEffect` past the assertion that immediately follows.
-      tree.commit(() => {
-        setNodes((prev) => {
-          return prev.map((root) => {
-            return withLastSeq(root, id, lastSeq);
-          });
-        });
-      });
-    };
-
-    function selectScope(next: Scope): void {
-      selected.push(next);
-      setScope(next);
-    }
-
-    return <NavTree nodes={nodes} scope={scope} onSelect={selectScope} />;
-  }
-
-  tree.mount(<Harness />);
-
-  return selected;
-}
-
-/** A harness whose `scope` is driven by its own `useState` and changed via
- * a button rendered OUTSIDE the tree — a stand-in for a programmatic scope
- * change (probe push/pop, Esc, "show in All", datasource swap) rather than
- * a click inside NavTree itself. Returns every scope NavTree's `onSelect`
- * was called with, in order. */
-function mountWithExternalScope(): Scope[] {
-  const selected: Scope[] = [];
-
-  function Harness(): ReactElement {
-    const [scope, setScope] = useState<Scope>(ALL_SCOPE);
-
-    function selectScope(next: Scope): void {
-      selected.push(next);
-      setScope(next);
-    }
-
-    function selectBlotterExternally(): void {
-      selectScope({ kind: "presenter", presenter: "blotter" });
-    }
-
-    return (
-      <>
-        <NavTree nodes={sampleTree()} scope={scope} onSelect={selectScope} />
-        <button
-          type="button"
-          data-testid="external-select-blotter"
-          onClick={selectBlotterExternally}
-        />
-      </>
-    );
-  }
-
-  tree.mount(<Harness />);
-
-  return selected;
-}
-
-function withLastSeq(node: NavNode, id: string, lastSeq: number): NavNode {
-  return {
-    ...node,
-    lastSeq: node.id === id ? lastSeq : node.lastSeq,
-    children: node.children.map((child) => {
-      return withLastSeq(child, id, lastSeq);
-    }),
-  };
-}
-
-function sampleTree(): NavNode[] {
+function createSampleTree(): NavNode[] {
   return [
     leaf(ALL_SCOPE, "All", 7, 7),
     {

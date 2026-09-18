@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { reactorRingsPage } from "#tests/ui/pages/ReactorRingsPage";
 
-const page = reactorRingsPage();
-
 describe("ReactorRings", () => {
   it("renders its child", () => {
     page.mount();
@@ -40,3 +38,5 @@ describe("ReactorRings", () => {
     expect(page.hasReactorWaitTestId()).toBe(false);
   });
 });
+
+const page = reactorRingsPage();

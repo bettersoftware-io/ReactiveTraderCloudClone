@@ -64,7 +64,7 @@ test("scopeKey is stable and unique per variant; scopesEqual compares by key", (
 });
 
 test("compileScope: every variant compiles to families + pills", () => {
-  const state = stateWith();
+  const state = createInspectorState();
 
   expect(compileScope(ALL_SCOPE, state)).toEqual({
     families: { stream: true, machine: true, wire: true, devtools: true },
@@ -109,7 +109,7 @@ test("compileScope: every variant compiles to families + pills", () => {
 });
 
 test("compileScope: a presenter/kind with no members yields an EMPTY pill set, not an unconstrained one", () => {
-  const state = stateWith();
+  const state = createInspectorState();
 
   expect(
     compileScope({ kind: "presenter", presenter: "gone" }, state).pills,
@@ -163,7 +163,7 @@ test("stream labels fall back per arg shape: nested array, string-less object, n
   expect(streamLeafLabel('fx.price[["EURUSD",7]]')).toContain("EURUSD, 7");
 });
 
-function stateWith(): InspectorState {
+function createInspectorState(): InspectorState {
   return {
     connected: true,
     dev: false,

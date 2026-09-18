@@ -4,8 +4,6 @@ import { panelErrorBoundaryPage } from "#tests/ui/pages/PanelErrorBoundaryPage";
 
 import { ThrowingPanel } from "./panelErrorFixtures";
 
-const page = panelErrorBoundaryPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -38,3 +36,5 @@ describe("PanelErrorBoundary", () => {
     expect(page.text("panel-error")).toContain("Chart");
   });
 });
+
+const page = panelErrorBoundaryPage();

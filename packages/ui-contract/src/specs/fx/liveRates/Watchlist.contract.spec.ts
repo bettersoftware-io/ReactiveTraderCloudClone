@@ -19,7 +19,6 @@ if (!_eurusd) {
   throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const eurusd: CurrencyPair = _eurusd;
 const _usdjpy = pairs.find((p) => {
   return p.symbol === "USDJPY";
 });
@@ -28,7 +27,6 @@ if (!_usdjpy) {
   throw new Error("USDJPY not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const usdjpy: CurrencyPair = _usdjpy;
 const _gbpjpy = pairs.find((p) => {
   return p.symbol === "GBPJPY";
 });
@@ -36,8 +34,6 @@ const _gbpjpy = pairs.find((p) => {
 if (!_gbpjpy) {
   throw new Error("GBPJPY not found in KNOWN_CURRENCY_PAIRS");
 }
-
-const gbpjpy: CurrencyPair = _gbpjpy;
 
 afterEach(() => {
   cleanupMounted();
@@ -99,7 +95,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price({ movementType: PriceMovementType.UP }) },
-        histories: { EURUSD: twoTickHistory() },
+        histories: { EURUSD: createTwoTickHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -111,7 +107,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price({ movementType: PriceMovementType.DOWN }) },
-        histories: { EURUSD: descendingHistory() },
+        histories: { EURUSD: createDescendingHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -123,7 +119,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price() },
-        histories: { EURUSD: flatHistory() },
+        histories: { EURUSD: createFlatHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -138,7 +134,7 @@ describe("Watchlist view", () => {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
         prices: { EURUSD: price() },
-        histories: { EURUSD: flatHistory() },
+        histories: { EURUSD: createFlatHistory() },
       },
     });
     await page.selectWatchlistTab();
@@ -160,7 +156,7 @@ function price(over: Partial<Price> = {}): Price {
   };
 }
 
-function twoTickHistory(): readonly PriceTick[] {
+function createTwoTickHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",
@@ -181,7 +177,7 @@ function twoTickHistory(): readonly PriceTick[] {
   ];
 }
 
-function descendingHistory(): readonly PriceTick[] {
+function createDescendingHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",
@@ -202,7 +198,7 @@ function descendingHistory(): readonly PriceTick[] {
   ];
 }
 
-function flatHistory(): readonly PriceTick[] {
+function createFlatHistory(): readonly PriceTick[] {
   return [
     {
       symbol: "EURUSD",
@@ -222,3 +218,9 @@ function flatHistory(): readonly PriceTick[] {
     },
   ];
 }
+
+const eurusd: CurrencyPair = _eurusd;
+
+const usdjpy: CurrencyPair = _usdjpy;
+
+const gbpjpy: CurrencyPair = _gbpjpy;

@@ -40,7 +40,7 @@ describe("useRankGlide", () => {
     // jsdom doesn't implement Element.animate — stub it so vi.spyOn has a
     // real method to wrap (the hook's try/catch means it works either way).
     if (typeof Element.prototype.animate !== "function") {
-      Element.prototype.animate = stubAnimate;
+      Element.prototype.animate = createStubAnimate;
     }
 
     const animateSpy = vi.spyOn(Element.prototype, "animate");
@@ -74,6 +74,6 @@ interface HarnessProps {
   reduce: boolean;
 }
 
-function stubAnimate(): Animation {
+function createStubAnimate(): Animation {
   return {} as unknown as Animation;
 }

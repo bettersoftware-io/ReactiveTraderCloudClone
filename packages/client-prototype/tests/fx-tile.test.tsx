@@ -9,7 +9,7 @@ afterEach(cleanup);
 describe("RateTile", () => {
   test("renders the pair, a big price segment, and the notional", () => {
     const { getByText, getAllByText, container } = render(
-      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
+      <RateTile vm={createVm({})} stage="idle" overlay={null} />,
     );
     expect(getByText("EUR / USD")).toBeTruthy();
     // EURUSD @ 1.09213 with a 1.4-pip spread never crosses a hundredths
@@ -24,7 +24,7 @@ describe("RateTile", () => {
   test("shows the RFQ badge when isRfq and MAX when invalid", () => {
     const { getAllByText, getByText } = render(
       <RateTile
-        vm={makeVm({ isRfq: true, notionalInvalid: true })}
+        vm={createVm({ isRfq: true, notionalInvalid: true })}
         stage="idle"
         overlay={null}
       />,
@@ -36,7 +36,7 @@ describe("RateTile", () => {
   test("shows the absolute pip count even on a down move", () => {
     const { getByText } = render(
       <RateTile
-        vm={makeVm({ movePips: -7, moveUp: false })}
+        vm={createVm({ movePips: -7, moveUp: false })}
         stage="idle"
         overlay={null}
       />,
@@ -46,7 +46,7 @@ describe("RateTile", () => {
 
   test("carries data-booked only while the tile's stage is success", () => {
     const { container, rerender } = render(
-      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
+      <RateTile vm={createVm({})} stage="idle" overlay={null} />,
     );
     expect(
       container
@@ -54,7 +54,7 @@ describe("RateTile", () => {
         ?.getAttribute("data-booked"),
     ).toBe("false");
 
-    rerender(<RateTile vm={makeVm({})} stage="success" overlay={null} />);
+    rerender(<RateTile vm={createVm({})} stage="success" overlay={null} />);
     expect(
       container
         .querySelector('[data-tile-sym="EURUSD"]')
@@ -64,7 +64,7 @@ describe("RateTile", () => {
 
   test("strengthens the border while any exec/RFQ/done overlay is active", () => {
     const { container, rerender } = render(
-      <RateTile vm={makeVm({})} stage="idle" overlay={null} />,
+      <RateTile vm={createVm({})} stage="idle" overlay={null} />,
     );
     expect(
       container
@@ -72,7 +72,7 @@ describe("RateTile", () => {
         ?.getAttribute("data-overlay-active"),
     ).toBe("false");
 
-    rerender(<RateTile vm={makeVm({})} stage="executing" overlay={null} />);
+    rerender(<RateTile vm={createVm({})} stage="executing" overlay={null} />);
     expect(
       container
         .querySelector('[data-tile-sym="EURUSD"]')
@@ -83,7 +83,7 @@ describe("RateTile", () => {
   test("colors the flash background by the tick's own direction, independent of the daily move", () => {
     const { container } = render(
       <RateTile
-        vm={makeVm({ moveUp: true, flashOn: true, flashUp: false })}
+        vm={createVm({ moveUp: true, flashOn: true, flashUp: false })}
         stage="idle"
         overlay={null}
       />,
@@ -101,7 +101,7 @@ describe("RateTile", () => {
   });
 });
 
-function makeVm(overrides: Partial<TileVm>): TileVm {
+function createVm(overrides: Partial<TileVm>): TileVm {
   return {
     sym: "EURUSD",
     meta: META.EURUSD,

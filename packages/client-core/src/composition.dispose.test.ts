@@ -17,14 +17,14 @@ import { createApp } from "#/composition";
 
 describe("createApp().dispose", () => {
   it("resolves and is idempotent", async () => {
-    const app = createApp(simulatorPorts());
+    const app = createApp(createSimulatorPortsFixture());
 
     await expect(app.dispose()).resolves.toBeUndefined();
     await expect(app.dispose()).resolves.toBeUndefined();
   });
 });
 
-function simulatorPorts(): AppPorts {
+function createSimulatorPortsFixture(): AppPorts {
   return {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),

@@ -28,57 +28,17 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
 afterEach(() => {
   page.unmountAll();
 });
 
-const AAPL: LayoutPanelInstance = {
-  id: instanceIdFor("eq-chart", "AAPL"),
-  kind: "eq-chart",
-  symbol: "AAPL",
-};
-
-const MSFT: LayoutPanelInstance = {
-  id: instanceIdFor("eq-chart", "MSFT"),
-  kind: "eq-chart",
-  symbol: "MSFT",
-};
-
-// The instance entries stand in for `instanceRegistryFor`'s pinned
-// ChartPanel (covered by appPanelRegistry.test.tsx) — what THIS bridge owns
-// is portalling whatever the registry holds for an instance id into the
-// panel dockview opened for it.
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-  "panel-dyn-1": () => {
-    return <div data-testid="panel-dyn-1-body">DYN</div>;
-  },
-  [AAPL.id]: () => {
-    return <div data-testid="chart-AAPL-body">AAPL CHART</div>;
-  },
-  [MSFT.id]: () => {
-    return <div data-testid="chart-MSFT-body">MSFT CHART</div>;
-  },
-};
-
 describe("DockviewLayoutEngine instances prop", () => {
   it("holds a mounted instance as a live panel, rendering its registry content", () => {
-    page.mount(
-      engine({ store: new InMemoryDockLayoutStore(), instances: [AAPL] }),
-    );
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      instances: [AAPL],
+    });
 
     expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
     // fx's 4 seed leaves plus the instance's own group.
@@ -89,12 +49,12 @@ describe("DockviewLayoutEngine instances prop", () => {
   it("adds a panel when an instance appears and removes it when it goes", async () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(engine({ store, instances: [] }));
+    page.mount({ registry, store, instances: [] });
 
     expect(page.groupsAttr()).toBe("4");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(false);
 
-    page.rerender(engine({ store, instances: [AAPL] }));
+    page.rerender({ registry, store, instances: [AAPL] });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("5");
@@ -102,7 +62,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
     expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
 
-    page.rerender(engine({ store, instances: [] }));
+    page.rerender({ registry, store, instances: [] });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("4");
@@ -112,11 +72,11 @@ describe("DockviewLayoutEngine instances prop", () => {
   });
 
   it("re-holds the instance in the engine the StrictMode double-mount rebuilds", () => {
-    page.mount(
-      <StrictMode>
-        {engine({ store: new InMemoryDockLayoutStore(), instances: [AAPL] })}
-      </StrictMode>,
-    );
+    page.mountInStrictMode({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      instances: [AAPL],
+    });
 
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
@@ -132,15 +92,15 @@ describe("DockviewLayoutEngine instances prop", () => {
   // rebuild site injecting it. The unmount's dispose flush is the witness of
   // the rebuilt engine's live arrangement.
   it("keeps the instance where the blob placed it across a layoutResets rebuild", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
-    page.mount(engine({ store, instances: [AAPL], layoutResets: 0 }));
+    page.mount({ registry, store, instances: [AAPL], layoutResets: 0 });
 
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
 
-    page.rerender(engine({ store, instances: [AAPL], layoutResets: 1 }));
+    page.rerender({ registry, store, instances: [AAPL], layoutResets: 1 });
 
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
@@ -158,12 +118,12 @@ describe("DockviewLayoutEngine instances prop", () => {
   });
 
   it("re-reconciles the instance into the engine a cleared-blob workspace reset rebuilds", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
-    page.mount(engine({ store, instances: [AAPL], layoutResets: 0 }));
+    page.mount({ registry, store, instances: [AAPL], layoutResets: 0 });
 
     inner.clear("fx");
-    page.rerender(engine({ store, instances: [AAPL], layoutResets: 1 }));
+    page.rerender({ registry, store, instances: [AAPL], layoutResets: 1 });
 
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
@@ -173,11 +133,11 @@ describe("DockviewLayoutEngine instances prop", () => {
   it("removes only the instance — never a Jarvis-docked panel mounted beside it", async () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(engine({ store, instances: [AAPL], docked: ["panel-dyn-1"] }));
+    page.mount({ registry, store, instances: [AAPL], docked: ["panel-dyn-1"] });
 
     expect(page.groupsAttr()).toBe("6");
 
-    page.rerender(engine({ store, instances: [], docked: ["panel-dyn-1"] }));
+    page.rerender({ registry, store, instances: [], docked: ["panel-dyn-1"] });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("5");
@@ -187,15 +147,18 @@ describe("DockviewLayoutEngine instances prop", () => {
 
     // And the other direction: undocking the Jarvis panel leaves a live
     // instance alone.
-    page.rerender(
-      engine({ store, instances: [MSFT], docked: ["panel-dyn-1"] }),
-    );
+    page.rerender({
+      registry,
+      store,
+      instances: [MSFT],
+      docked: ["panel-dyn-1"],
+    });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("6");
     });
 
-    page.rerender(engine({ store, instances: [MSFT], docked: [] }));
+    page.rerender({ registry, store, instances: [MSFT], docked: [] });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("5");
@@ -217,12 +180,15 @@ describe("DockviewLayoutEngine instances prop", () => {
       instances = instances.filter((instance) => {
         return instance.id !== id;
       });
-      page.rerender(
-        engine({ store, instances, onCloseInstance: removeInstance }),
-      );
+      page.rerender({
+        registry,
+        store,
+        instances,
+        onCloseInstance: removeInstance,
+      });
     }
 
-    page.mount(engine({ store, instances, onCloseInstance: removeInstance }));
+    page.mount({ registry, store, instances, onCloseInstance: removeInstance });
 
     expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
     expect(page.bodyVisible(`panel-${AAPL.id}-close`)).toBe(true);
@@ -246,11 +212,11 @@ describe("DockviewLayoutEngine instances prop", () => {
   // right, which is what an unlisted id would get (deleted as an orphan by
   // the engine's reconciliation, then re-added by the diff effect).
   it("restores a persisted instance in place when remounting from its blob", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
-    page.mount(engine({ store, instances: [AAPL] }));
+    page.mount({ registry, store, instances: [AAPL] });
     // Arrange the dock before dispose: #737 only flushes a layout a pointer
     // touched, and each mount below builds its own fresh engine (its own
     // `userArranged`).
@@ -263,7 +229,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     const persisted = lastGridRoot(inner);
     expect(rootLeafIndexOf(persisted, AAPL.id)).toBe(0);
 
-    page.mount(engine({ store, instances: [AAPL] }));
+    page.mount({ registry, store, instances: [AAPL] });
 
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
@@ -284,9 +250,9 @@ describe("DockviewLayoutEngine instances prop", () => {
 // it proves the sidecar was written at all.
 describe("DockviewLayoutEngine instance pins", () => {
   it("opens a construction-time instance unpinned, the Jarvis dock beside it pinned", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
-    page.mount(engine({ store, instances: [AAPL], docked: ["panel-dyn-1"] }));
+    page.mount({ registry, store, instances: [AAPL], docked: ["panel-dyn-1"] });
     page.touchDock();
     page.unmountAll();
 
@@ -298,25 +264,23 @@ describe("DockviewLayoutEngine instance pins", () => {
   // only blob afterwards is the REBUILT engine's, whose instance came from
   // the rebuild's own `dynamicPanels` (the diff effect's add no-ops on it).
   it("opens the instance unpinned in the engine a layoutResets rebuild constructs", () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
-    page.mount(
-      engine({
-        store,
-        instances: [AAPL],
-        docked: ["panel-dyn-1"],
-        layoutResets: 0,
-      }),
-    );
+    page.mount({
+      registry,
+      store,
+      instances: [AAPL],
+      docked: ["panel-dyn-1"],
+      layoutResets: 0,
+    });
     inner.clear("fx");
-    page.rerender(
-      engine({
-        store,
-        instances: [AAPL],
-        docked: ["panel-dyn-1"],
-        layoutResets: 1,
-      }),
-    );
+    page.rerender({
+      registry,
+      store,
+      instances: [AAPL],
+      docked: ["panel-dyn-1"],
+      layoutResets: 1,
+    });
     expect(page.groupsAttr()).toBe("6");
 
     page.touchDock();
@@ -326,12 +290,15 @@ describe("DockviewLayoutEngine instance pins", () => {
   });
 
   it("opens an instance the diff effect adds unpinned", async () => {
-    const { store, inner } = recordingStore();
+    const { store, inner } = createRecordingStore();
 
-    page.mount(engine({ store, instances: [], docked: ["panel-dyn-1"] }));
-    page.rerender(
-      engine({ store, instances: [AAPL], docked: ["panel-dyn-1"] }),
-    );
+    page.mount({ registry, store, instances: [], docked: ["panel-dyn-1"] });
+    page.rerender({
+      registry,
+      store,
+      instances: [AAPL],
+      docked: ["panel-dyn-1"],
+    });
 
     await page.waitFor(() => {
       expect(page.groupsAttr()).toBe("6");
@@ -343,35 +310,6 @@ describe("DockviewLayoutEngine instance pins", () => {
   });
 });
 
-interface EngineProps {
-  store: DockLayoutStore;
-  instances: readonly LayoutPanelInstance[];
-  docked?: readonly PanelId[];
-  layoutResets?: number;
-  onCloseInstance?: (id: PanelId) => void;
-}
-
-function engine(props: EngineProps): ReactElement {
-  return (
-    <DockviewLayoutEngine
-      tab="fx"
-      registry={registry}
-      store={props.store}
-      maximized={null}
-      collapsed={[]}
-      closed={[]}
-      docked={props.docked ?? []}
-      instances={props.instances}
-      layoutResets={props.layoutResets ?? 0}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onCloseInstance={props.onCloseInstance ?? noop}
-    />
-  );
-}
-
 function noop(): void {}
 
 interface RecordingStore {
@@ -379,7 +317,7 @@ interface RecordingStore {
   inner: InMemoryDockLayoutStore;
 }
 
-function recordingStore(): RecordingStore {
+function createRecordingStore(): RecordingStore {
   const inner = new InMemoryDockLayoutStore();
   const store: DockLayoutStore = {
     load: (tab: string): string | null => {
@@ -508,3 +446,45 @@ type ResizeObserverCtor = typeof ResizeObserver;
 interface GlobalWithResizeObserver {
   ResizeObserver: ResizeObserverCtor;
 }
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const AAPL: LayoutPanelInstance = {
+  id: instanceIdFor("eq-chart", "AAPL"),
+  kind: "eq-chart",
+  symbol: "AAPL",
+};
+
+const MSFT: LayoutPanelInstance = {
+  id: instanceIdFor("eq-chart", "MSFT"),
+  kind: "eq-chart",
+  symbol: "MSFT",
+};
+
+// The instance entries stand in for `instanceRegistryFor`'s pinned
+// ChartPanel (covered by appPanelRegistry.test.tsx) — what THIS bridge owns
+// is portalling whatever the registry holds for an instance id into the
+// panel dockview opened for it.
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
+  [AAPL.id]: () => {
+    return <div data-testid="chart-AAPL-body">AAPL CHART</div>;
+  },
+  [MSFT.id]: () => {
+    return <div data-testid="chart-MSFT-body">MSFT CHART</div>;
+  },
+};

@@ -24,29 +24,9 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineDockedPage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-  "panel-dyn-1": () => {
-    return <div data-testid="panel-dyn-1-body">DYN</div>;
-  },
-};
 
 describe("DockviewLayoutEngine docked prop", () => {
   it("holds a docked panel as its own group, rendering the registry's content through the body portal", () => {
@@ -289,7 +269,7 @@ describe("DockviewLayoutEngine docked prop", () => {
   //
   // This version discriminates STRUCTURALLY instead: a hand-authored blob
   // (the same schema `@rtc/layout-dockview`'s own tests hand-author, e.g.
-  // `twoTabGroupLayout` in createDockEngine.test.ts) TABS fx-rates and
+  // `createTwoTabGroupLayout` in createDockEngine.test.ts) TABS fx-rates and
   // fx-blotter into one shared group — a shape the "fx" seed's OWN
   // conversion can never produce (it always separates them into different
   // leaves; see RAIL_LIKE in that same file). Then it asserts the exact
@@ -439,7 +419,7 @@ function panelMeta(id: string): DockviewPanelMeta {
 }
 
 /** A REAL, valid dockview blob (the same hand-authored schema
- * `@rtc/layout-dockview`'s own tests use, e.g. `twoTabGroupLayout` in
+ * `@rtc/layout-dockview`'s own tests use, e.g. `createTwoTabGroupLayout` in
  * createDockEngine.test.ts) with fx-rates and fx-blotter TABBED into one
  * shared group — a shape the "fx" seed's own conversion can never produce.
  * See the reset test's comment for why this replaces a collapsed-strip-size
@@ -530,3 +510,23 @@ type ResizeObserverCtor = typeof ResizeObserver;
 interface GlobalWithResizeObserver {
   ResizeObserver: ResizeObserverCtor;
 }
+
+const page = dockviewLayoutEngineDockedPage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+  "panel-dyn-1": () => {
+    return <div data-testid="panel-dyn-1-body">DYN</div>;
+  },
+};

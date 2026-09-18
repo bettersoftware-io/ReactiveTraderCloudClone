@@ -22,23 +22,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
-
 // The engine, dockview and the browser's own `window.open` all run for real
 // here: the only stand-in is the WINDOW the pop-out opens into (an
 // iframe-backed document, since jsdom opens none). Nothing mocks
@@ -51,24 +34,7 @@ describe("dockview bridge pop-out wiring", () => {
   it("asks the browser for the pop-out page, then greys the popped panel's controls", async () => {
     const popout = page.stubPopoutWindow();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     // Every tab's controls carry the pop-out slot under this bridge (the
     // engine-gating: in-house heads never receive it).
@@ -104,24 +70,7 @@ describe("dockview bridge pop-out wiring", () => {
   it("leaves the pop-out control live for a panel that is still docked", async () => {
     const popout = page.stubPopoutWindow();
 
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
@@ -145,7 +94,7 @@ describe("dockview bridge pop-out wiring", () => {
     const popout = page.stubPopoutWindow();
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(resetView(store, 0));
+    page.mount({ registry, store });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);
@@ -163,7 +112,7 @@ describe("dockview bridge pop-out wiring", () => {
     // set (it only publishes on a CHANGE, and it starts empty), so the
     // bridge must clear the state itself — otherwise the docked panel keeps
     // greyed controls for a window that no longer exists.
-    page.rerender(resetView(store, 1));
+    page.rerender({ registry, store, layoutResets: 1 });
 
     await page.waitFor(() => {
       expect(page.engineAttribute("data-popped")).toBe("");
@@ -180,26 +129,20 @@ function noop(): void {}
 
 /** The pop-out reset case mounts the same tree twice with a bumped
  * `layoutResets`, so the props live here rather than being duplicated. */
-function resetView(
-  store: InMemoryDockLayoutStore,
-  layoutResets: number,
-): ReactElement {
-  return (
-    <DockviewLayoutEngine
-      tab="fx"
-      registry={registry}
-      store={store}
-      maximized={null}
-      collapsed={[]}
-      closed={[]}
-      docked={[]}
-      instances={[]}
-      layoutResets={layoutResets}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onCloseInstance={noop}
-    />
-  );
-}
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};

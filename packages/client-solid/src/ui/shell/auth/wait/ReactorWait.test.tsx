@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { reactorWaitPage } from "#tests/ui/pages/ReactorWaitPage";
 
-const page = reactorWaitPage();
-
 describe("ReactorWait", () => {
   it("renders the status line legibly at base state", () => {
     page.mount();
@@ -31,3 +29,5 @@ describe("ReactorWait", () => {
     expect(page.svgCount("auth-wait-reactor")).toBe(0);
   });
 });
+
+const page = reactorWaitPage();

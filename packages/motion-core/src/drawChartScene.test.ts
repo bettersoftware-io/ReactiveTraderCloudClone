@@ -26,27 +26,7 @@ import type { Drawing, DrawingSceneItem } from "./drawingScene.js";
 import { drawingScene } from "./drawingScene.js";
 import { paneScene } from "./paneScene.js";
 
-const SIZE = { w: 100, h: 100 };
 const BUCKET_MS = 60_000;
-
-const PALETTE: ChartPalette = {
-  up: "up-color",
-  down: "down-color",
-  grid: "grid-color",
-  line: "line-color",
-  sma20: "sma20-color",
-  ema50: "ema50-color",
-  compare: "compare-color",
-  drawing: "drawing-color",
-  drawingLevel: "drawing-level-color",
-  grip: "grip-color",
-  crosshair: "crosshair-color",
-  paneRsi: "pane-rsi-color",
-  paneMacd: "pane-macd-color",
-  paneSignal: "pane-signal-color",
-  paneGuide: "pane-guide-color",
-  histogram: "histogram-color",
-};
 
 const CANDLE_COUNT = 6;
 const CANDLES: readonly ChartCandle[] = Array.from(
@@ -58,73 +38,12 @@ const CANDLES: readonly ChartCandle[] = Array.from(
 const LIVE_RATE: number = CANDLES[CANDLES.length - 1].close;
 const VIEWPORT: ChartViewport = { start: 0, end: CANDLES.length };
 
-const COMPARE_CANDLES: readonly ChartCandle[] = CANDLES.map((_, i) => {
-  return compareCandleAt(i);
-});
-
 const candleChartScene = chartScene(CANDLES, LIVE_RATE, true);
 const lineScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "line" });
 const areaScene = chartScene(CANDLES, LIVE_RATE, false, { kind: "area" });
-const compareScene = chartScene(CANDLES, LIVE_RATE, false, {
-  kind: "line",
-  compare: { series: COMPARE_CANDLES },
-});
-
-const OVERLAYS: readonly OverlayLine[] = [
-  {
-    id: "sma20",
-    points: [
-      { x: 0, y: 10 },
-      { x: 100, y: 20 },
-    ],
-  },
-  {
-    id: "ema50",
-    points: [
-      { x: 0, y: 30 },
-      { x: 100, y: 40 },
-    ],
-  },
-  {
-    id: "mystery-overlay",
-    points: [
-      { x: 0, y: 50 },
-      { x: 100, y: 60 },
-    ],
-  },
-];
-
-const DRAWINGS_INPUT: readonly Drawing[] = [
-  {
-    id: "draft",
-    kind: "trendline",
-    a: { index: 0, price: candleAt(0).low },
-    b: { index: CANDLES.length - 1, price: candleAt(CANDLES.length - 1).high },
-  },
-  { id: "h1", kind: "hline", price: 100 },
-];
-
-const drawingsScene: readonly DrawingSceneItem[] = drawingScene(
-  DRAWINGS_INPUT,
-  VIEWPORT,
-  candleChartScene.scale,
-  "draft",
-);
-
-const crosshair: CrosshairScene | null = crosshairScene(
-  0.5,
-  0.5,
-  CANDLES,
-  VIEWPORT,
-  candleChartScene.scale,
-);
-
 describe("drawPlotScene: candles", () => {
-  const plot = plotOf(candleChartScene);
-  const candles: readonly SceneCandle[] = candleChartScene.candles;
-
   it("clears the canvas exactly once", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
     expect(
@@ -136,7 +55,7 @@ describe("drawPlotScene: candles", () => {
 
   it("strokes one grid line per scene.grid entry using palette.grid", () => {
     expect(candleChartScene.grid.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     const gridStrokeStyle = calls.find((c) => {
@@ -151,7 +70,7 @@ describe("drawPlotScene: candles", () => {
   });
 
   it("draws each candle's wick then body fillRect, colored by up/down", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     const fillRects = calls.filter((c) => {
@@ -193,7 +112,7 @@ describe("drawPlotScene: candles", () => {
     expect(lastCandle.glow).toBe(true);
     const lastColor = lastCandle.up ? PALETTE.up : PALETTE.down;
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -225,13 +144,15 @@ describe("drawPlotScene: candles", () => {
     expect(bodyFillRectIdx).toBeGreaterThan(blurOnIdx);
     expect(blurOffIdx).toBeGreaterThan(bodyFillRectIdx);
   });
+
+  const plot = plotOf(candleChartScene);
+
+  const candles: readonly SceneCandle[] = candleChartScene.candles;
 });
 
 describe("drawPlotScene: line", () => {
-  const plot = plotOf(lineScene);
-
   it("draws no candle rects and strokes one polyline over linePoints at lineWidth 1.5", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -278,13 +199,13 @@ describe("drawPlotScene: line", () => {
     const lastPoint = lineScene.linePoints[lineScene.linePoints.length - 1];
     expectNumericCall(lastLineTo, "lineTo", [lastPoint.x, lastPoint.y]);
   });
+
+  const plot = plotOf(lineScene);
 });
 
 describe("drawPlotScene: area", () => {
-  const plot = plotOf(areaScene);
-
   it("fills the area under the line with a gradient at 0.35 alpha closed to the bottom edge, then strokes the line on top", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plot, PALETTE, SIZE);
 
     expect(
@@ -350,12 +271,14 @@ describe("drawPlotScene: area", () => {
     }).length;
     expect(strokeCount).toBe(areaScene.grid.length + 1);
   });
+
+  const plot = plotOf(areaScene);
 });
 
 describe("drawPlotScene: compare overlay", () => {
   it("strokes the compare line in palette.compare when compareLinePoints is non-empty", () => {
     expect(compareScene.compareLinePoints.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(compareScene), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -366,7 +289,7 @@ describe("drawPlotScene: compare overlay", () => {
 
   it("omits the compare pass when compareLinePoints is empty", () => {
     expect(lineScene.compareLinePoints).toEqual([]);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(lineScene), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -378,7 +301,7 @@ describe("drawPlotScene: compare overlay", () => {
 
 describe("drawPlotScene: overlays", () => {
   it("strokes one polyline per overlay, id-keyed to sma20/ema50, unknown id falling back to palette.line", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(candleChartScene, OVERLAYS), PALETTE, SIZE);
 
     const strokeStyleValues = calls
@@ -414,7 +337,7 @@ describe("drawPlotScene: drawings", () => {
     });
     expect(draft?.handles.length).toBeGreaterThan(0);
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], drawingsScene),
@@ -461,7 +384,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
   // The pinned values mirror the DOM stylesheets' stroke-widths
   // (SvgPathLayer/DrawingsLayer/IndicatorPane .module.css).
   it("overlays stroke at 1, the compare line at 1.5, regardless of scene kind", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(compareScene, OVERLAYS), PALETTE, SIZE);
 
     const stroked = strokedWidths(calls);
@@ -500,7 +423,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
       handles: [],
     };
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], [selected, unselected]),
@@ -526,7 +449,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
       start: 0,
       end: 60,
     });
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     const stroked = strokedWidths(calls);
@@ -553,7 +476,7 @@ describe("drawPlotScene: per-layer stroke widths (DOM stylesheet parity)", () =>
 describe("drawPlotScene: crosshair", () => {
   it("strokes one vertical and one horizontal 1px line in palette.crosshair when present", () => {
     expect(crosshair).not.toBeNull();
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(
       ctx,
       plotOf(candleChartScene, [], [], crosshair),
@@ -573,7 +496,7 @@ describe("drawPlotScene: crosshair", () => {
   });
 
   it("omits the crosshair lines when null", () => {
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(candleChartScene, [], [], null), PALETTE, SIZE);
     expect(
       calls.some((c) => {
@@ -584,11 +507,9 @@ describe("drawPlotScene: crosshair", () => {
 });
 
 describe("drawVolumeScene", () => {
-  const bars = volumeScene(CANDLES, VIEWPORT);
-
   it("clears once, then draws one fillRect per bar rising from the bottom edge, colored by up/down", () => {
     expect(bars.length).toBeGreaterThan(0);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawVolumeScene(ctx, bars, PALETTE, SIZE);
 
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
@@ -619,18 +540,15 @@ describe("drawVolumeScene", () => {
       }),
     );
   });
+
+  const bars = volumeScene(CANDLES, VIEWPORT);
 });
 
 describe("drawPaneScene: macd", () => {
-  const scene = paneScene("macd", pseudoRandomCloses(60), {
-    start: 0,
-    end: 60,
-  });
-
   it("strokes guides with palette.paneGuide, fills the histogram from the zero line, and strokes macd/signal by key", () => {
     expect(scene.histogram.length).toBeGreaterThan(0);
 
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     expect(calls[0]).toEqual({ op: "clearRect", args: [0, 0, 100, 100] });
@@ -672,14 +590,17 @@ describe("drawPaneScene: macd", () => {
     expect(strokeStyleValues).toContain(PALETTE.paneMacd);
     expect(strokeStyleValues).toContain(PALETTE.paneSignal);
   });
+
+  const scene = paneScene("macd", pseudoRandomCloses(60), {
+    start: 0,
+    end: 60,
+  });
 });
 
 describe("drawPaneScene: rsi", () => {
-  const scene = paneScene("rsi", rampUp(30), { start: 0, end: 30 });
-
   it("strokes the rsi line with palette.paneRsi and has no histogram", () => {
     expect(scene.histogram).toEqual([]);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPaneScene(ctx, scene, PALETTE, SIZE);
 
     expect(
@@ -693,12 +614,14 @@ describe("drawPaneScene: rsi", () => {
       }),
     ).toBe(false);
   });
+
+  const scene = paneScene("rsi", rampUp(30), { start: 0, end: 30 });
 });
 
 describe("drawPlotScene: empty scene", () => {
   it("clears once and draws nothing else", () => {
     const emptyScene = chartScene([], 0, false);
-    const { ctx, calls } = recorderCtx();
+    const { ctx, calls } = createRecorderCtx();
     drawPlotScene(ctx, plotOf(emptyScene), PALETTE, SIZE);
     expect(calls).toEqual([{ op: "clearRect", args: [0, 0, 100, 100] }]);
   });
@@ -841,7 +764,7 @@ function strokedWidths(calls: readonly RecordedCall[]): readonly StrokedCall[] {
 // pinned without a DOM/jsdom canvas backend (jsdom's canvas is
 // unimplemented anyway). `createLinearGradient` returns a recording
 // CanvasGradient2D so a fill pass's `addColorStop` calls are visible too.
-function recorderCtx(): RecorderCtx {
+function createRecorderCtx(): RecorderCtx {
   const calls: RecordedCall[] = [];
   let fillStyleVal: string | CanvasGradient2D = "";
   let strokeStyleVal = "";
@@ -963,3 +886,82 @@ function rampUp(n: number): number[] {
     return 100 + i;
   });
 }
+
+const SIZE = { w: 100, h: 100 };
+
+const PALETTE: ChartPalette = {
+  up: "up-color",
+  down: "down-color",
+  grid: "grid-color",
+  line: "line-color",
+  sma20: "sma20-color",
+  ema50: "ema50-color",
+  compare: "compare-color",
+  drawing: "drawing-color",
+  drawingLevel: "drawing-level-color",
+  grip: "grip-color",
+  crosshair: "crosshair-color",
+  paneRsi: "pane-rsi-color",
+  paneMacd: "pane-macd-color",
+  paneSignal: "pane-signal-color",
+  paneGuide: "pane-guide-color",
+  histogram: "histogram-color",
+};
+
+const COMPARE_CANDLES: readonly ChartCandle[] = CANDLES.map((_, i) => {
+  return compareCandleAt(i);
+});
+
+const DRAWINGS_INPUT: readonly Drawing[] = [
+  {
+    id: "draft",
+    kind: "trendline",
+    a: { index: 0, price: candleAt(0).low },
+    b: { index: CANDLES.length - 1, price: candleAt(CANDLES.length - 1).high },
+  },
+  { id: "h1", kind: "hline", price: 100 },
+];
+
+const compareScene = chartScene(CANDLES, LIVE_RATE, false, {
+  kind: "line",
+  compare: { series: COMPARE_CANDLES },
+});
+
+const OVERLAYS: readonly OverlayLine[] = [
+  {
+    id: "sma20",
+    points: [
+      { x: 0, y: 10 },
+      { x: 100, y: 20 },
+    ],
+  },
+  {
+    id: "ema50",
+    points: [
+      { x: 0, y: 30 },
+      { x: 100, y: 40 },
+    ],
+  },
+  {
+    id: "mystery-overlay",
+    points: [
+      { x: 0, y: 50 },
+      { x: 100, y: 60 },
+    ],
+  },
+];
+
+const drawingsScene: readonly DrawingSceneItem[] = drawingScene(
+  DRAWINGS_INPUT,
+  VIEWPORT,
+  candleChartScene.scale,
+  "draft",
+);
+
+const crosshair: CrosshairScene | null = crosshairScene(
+  0.5,
+  0.5,
+  CANDLES,
+  VIEWPORT,
+  candleChartScene.scale,
+);

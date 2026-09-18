@@ -25,8 +25,6 @@ import { jarvisDrivenPulsePage } from "#tests/ui/pages/UseJarvisDrivenPulsePage"
 
 import { useJarvisDrivenPulse } from "./useJarvisDrivenPulse";
 
-const page = jarvisDrivenPulsePage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -40,7 +38,7 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
     // forbid a top-level, non-exported JSX-returning function in a test
     // file). TWO named components, not one inlined into `render`'s own
     // callback: eslint-plugin-solid's reactivity check mis-reads an
-    // anonymous `render(() => (<Provider value={fakeViewModel(...)}>...))`
+    // anonymous `render(() => (<Provider value={createFakeViewModel(...)}>...))`
     // arrow as an untracked "unnamed derived signal" once its JSX closes
     // over a locally-declared component — wrapping the whole tree in a
     // second named (PascalCase) component silences the false positive by
@@ -63,7 +61,7 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
 
     function TestApp(): JSX.Element {
       return (
-        <ViewModelContext.Provider value={fakeViewModel(batch, false)}>
+        <ViewModelContext.Provider value={createFakeViewModel(batch, false)}>
           <Harness />
         </ViewModelContext.Provider>
       );
@@ -113,7 +111,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
 
     function TestApp(): JSX.Element {
       return (
-        <ViewModelContext.Provider value={fakeViewModel(batch, false)}>
+        <ViewModelContext.Provider value={createFakeViewModel(batch, false)}>
           <Harness />
         </ViewModelContext.Provider>
       );
@@ -146,7 +144,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
   });
 });
 
-function fakeViewModel(
+function createFakeViewModel(
   batch: () => readonly DriveOutcome[],
   isFreeze: boolean,
 ): ViewModel {
@@ -165,3 +163,5 @@ function fakeViewModel(
     },
   } as unknown as ViewModel;
 }
+
+const page = jarvisDrivenPulsePage();

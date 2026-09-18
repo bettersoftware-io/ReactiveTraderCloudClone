@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { handshakeConsolePage } from "#tests/ui/pages/HandshakeConsolePage";
 
-const page = handshakeConsolePage();
-
 describe("HandshakeConsole", () => {
   it("renders all three handshake lines legibly at base state", () => {
     page.mount();
@@ -21,3 +19,5 @@ describe("HandshakeConsole", () => {
     expect(page.statusText()).toContain("AWAITING AUTH GRANT");
   });
 });
+
+const page = handshakeConsolePage();

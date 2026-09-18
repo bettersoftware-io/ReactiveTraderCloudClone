@@ -17,7 +17,7 @@ import {
 
 describe("ScriptedJarvisAdapter (JarvisPort pass-through over ScriptedJarvisEngine)", () => {
   it("PASS-THROUGH: a scripted panel event reaches the adapter's ask() output unchanged", async () => {
-    const adapter = new ScriptedJarvisAdapter(buildDeps());
+    const adapter = new ScriptedJarvisAdapter(createDeps());
     const received: JarvisEvent[] = [];
 
     await new Promise<void>((resolve) => {
@@ -69,7 +69,7 @@ function unexpectedCall(port: string): () => never {
  * other port is `unexpectedCall`'s throwing stub. `instantReveal$: of(true)`
  * collapses the trailing reply into a single delta, so the test needs no
  * fake-timer pacing. */
-function buildDeps(): ScriptedJarvisDeps {
+function createDeps(): ScriptedJarvisDeps {
   const referenceData: ReferenceDataPort = {
     getCurrencyPairs: () => {
       return of([]);

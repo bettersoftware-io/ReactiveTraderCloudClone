@@ -11,12 +11,6 @@ import { join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-const SCRIPT = resolve(
-  __dirname,
-  "../../../scripts/pages/build-presentations-index.mjs",
-);
-
-let tmp = "";
 afterEach(() => {
   if (tmp !== "") {
     rmSync(tmp, { recursive: true, force: true });
@@ -84,3 +78,10 @@ function fixture(): string {
   writeFileSync(join(tmp, "2026-06-01", "Intro_Talk.html"), "x");
   return tmp;
 }
+
+const SCRIPT = resolve(
+  __dirname,
+  "../../../scripts/pages/build-presentations-index.mjs",
+);
+
+let tmp = "";

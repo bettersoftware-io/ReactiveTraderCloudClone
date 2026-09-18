@@ -118,7 +118,7 @@ describe("RecordingToolbar", () => {
     const store = new InspectorStore();
     toolbar.mountRecordingToolbar({ store });
 
-    const rec = sampleRecording();
+    const rec = createSampleRecording();
     const file = new File([serializeRecording(rec)], "r.json", {
       type: "application/json",
     });
@@ -171,7 +171,7 @@ function emitOne(store: InspectorStore): void {
   });
 }
 
-function sampleRecording(): Recording {
+function createSampleRecording(): Recording {
   return {
     version: RECORDING_VERSION,
     appId: "imported-app",

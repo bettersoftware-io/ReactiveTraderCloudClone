@@ -22,8 +22,6 @@ import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { type App, createApp } from "#/composition";
 
-const PASSWORD = "pw";
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -273,3 +271,5 @@ function recordVariantWrites(prefs: PreferencesSimulator): LoginWaitVariant[] {
 
   return writes;
 }
+
+const PASSWORD = "pw";

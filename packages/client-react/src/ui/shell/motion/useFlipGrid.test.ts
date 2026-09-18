@@ -2,15 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { flipGridPage } from "#tests/ui/pages/UseFlipGridPage";
 
-const page = flipGridPage();
-
 afterEach(() => {
   page.unmountAll();
 });
 
 describe("useFlipGrid", () => {
   it("re-measures origins on window resize so the next FLIP starts fresh", () => {
-    const tile = makeTile();
+    const tile = createTile();
     const handle = page.mount("All");
     handle.state.register("EURUSD")(tile.el);
 
@@ -41,7 +39,7 @@ describe("useFlipGrid", () => {
   // FLIP's origin (reads as a snap). The refresh must be skipped while any
   // registered element still has a running animation.
   it("skips the resize re-measure while a glide is in flight", () => {
-    const tile = makeTile();
+    const tile = createTile();
     const handle = page.mount("All");
     handle.state.register("EURUSD")(tile.el);
     handle.rerender("EUR");
@@ -68,8 +66,8 @@ describe("useFlipGrid", () => {
   // the stage's right border (dx = stage.right - item.right), fading and
   // scaling up, with the glide's duration/easing.
   it("plays the enter animation for newly-appearing items when enabled", () => {
-    const stage = makeStage({ right: 900, bottom: 600 });
-    const first = makeTile();
+    const stage = createStage({ right: 900, bottom: 600 });
+    const first = createTile();
     stage.el.appendChild(first.el);
     const handle = page.mount("All", { enter: true });
     handle.state.register("EURUSD")(first.el);
@@ -78,7 +76,7 @@ describe("useFlipGrid", () => {
     // A second tile appears at left=300 (right edge also 300 — zero-size
     // fake rects) with no stored origin: it must slide in from the stage's
     // right border (900 - 300 = 600px) with the scale/fade keyframes.
-    const entering = makeTile();
+    const entering = createTile();
     entering.rect.left = 300;
     stage.el.appendChild(entering.el);
     handle.state.register("GBPUSD")(entering.el);
@@ -97,8 +95,8 @@ describe("useFlipGrid", () => {
   // items drift a fixed 32px; exiting ghosts fall the same fixed distance
   // when no surviving element can locate a stage either.
   it("falls back to the fixed drift when no stage exists", async () => {
-    const first = makeTile();
-    const leaving = makeTile();
+    const first = createTile();
+    const leaving = createTile();
 
     leaving.animate.mockReturnValue({ finished: Promise.resolve() });
 
@@ -110,7 +108,7 @@ describe("useFlipGrid", () => {
     // GBPUSD leaves; a fresh EURJPY enters. Neither element is inside a
     // [data-flip-stage] container (detached nodes), so both use DRIFT_PX.
     handle.state.register("GBPUSD")(null);
-    const entering = makeTile();
+    const entering = createTile();
     handle.state.register("EURJPY")(entering.el);
     handle.rerender("USD");
 
@@ -144,7 +142,7 @@ describe("useFlipGrid", () => {
     // @ts-expect-error deliberately removing the global for the fallback arm
     delete globalThis.ResizeObserver;
 
-    const tile = makeTile();
+    const tile = createTile();
     const handle = page.mount("All");
     handle.state.register("EURUSD")(tile.el);
     handle.rerender("EUR");
@@ -199,12 +197,12 @@ describe("useFlipGrid", () => {
   });
 
   it("does not play enter animations when the option is off", () => {
-    const first = makeTile();
+    const first = createTile();
     const handle = page.mount("All");
     handle.state.register("EURUSD")(first.el);
     handle.rerender("EUR");
 
-    const entering = makeTile();
+    const entering = createTile();
     handle.state.register("GBPUSD")(entering.el);
     handle.rerender("USD");
 
@@ -216,9 +214,9 @@ describe("useFlipGrid", () => {
   // ghost at its old rect and falls to the stage's bottom border while
   // fading (PROTO cardOut geometry).
   it("fades a body-appended ghost out at the old position when exit is enabled", async () => {
-    const stage = makeStage({ right: 900, bottom: 600 });
-    const survivor = makeTile();
-    const leaving = makeTile();
+    const stage = createStage({ right: 900, bottom: 600 });
+    const survivor = createTile();
+    const leaving = createTile();
     leaving.rect.left = 300;
     leaving.rect.top = 100;
     leaving.el.setAttribute("data-testid", "tile-GBPUSD");
@@ -293,7 +291,7 @@ interface FakeStage {
 /** A [data-flip-stage] container with a stubbed rect — the panel body whose
  *  borders the enter/exit travel is measured against. Appended to the body so
  *  closest() finds it from registered tiles. */
-function makeStage(rect: StageRect): FakeStage {
+function createStage(rect: StageRect): FakeStage {
   const el = document.createElement("div");
   el.setAttribute("data-flip-stage", "");
 
@@ -320,7 +318,7 @@ function makeStage(rect: StageRect): FakeStage {
 
 /** A registered grid item whose viewport position the test can move; jsdom
  *  has neither real layout nor WAAPI, so both are stubbed on the element. */
-function makeTile(): FakeTile {
+function createTile(): FakeTile {
   const el = document.createElement("div");
   const rect = { left: 0, top: 0 };
   const animate = vi.fn();
@@ -351,3 +349,5 @@ function makeTile(): FakeTile {
 
   return tile;
 }
+
+const page = flipGridPage();

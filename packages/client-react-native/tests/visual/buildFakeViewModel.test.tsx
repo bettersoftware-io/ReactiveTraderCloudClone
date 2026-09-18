@@ -141,7 +141,7 @@ describe("the slice partition", () => {
 
 describe("determinism guard", () => {
   test("no fake module reads a clock or an RNG", () => {
-    const offenders = guardedSources().filter(({ source }) => {
+    const offenders = createGuardedSources().filter(({ source }) => {
       return LIVE_SOURCE_PATTERN.test(source);
     });
 
@@ -157,7 +157,7 @@ describe("determinism guard", () => {
     // renamed suffix — would leave the test above asserting `[] === []` and
     // reporting green over an unscanned tree. A guard that cannot fail is
     // worse than no guard, because it is believed.
-    const names = guardedSources().map(({ name }) => {
+    const names = createGuardedSources().map(({ name }) => {
       return name;
     });
 
@@ -184,7 +184,7 @@ function allSliceKeys(): readonly (keyof ReturnType<
   }) as (keyof ReturnType<typeof buildFakeViewModel>)[];
 }
 
-function guardedSources(): readonly GuardedSource[] {
+function createGuardedSources(): readonly GuardedSource[] {
   const sliceSources = readdirSync(FAKE_DIR)
     .filter((name) => {
       return name.endsWith(".ts") && !name.includes(".test.");

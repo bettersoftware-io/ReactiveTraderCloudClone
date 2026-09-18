@@ -8,9 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const t1 = trade(4001, { currencyPair: "EURUSD" });
-const t2 = trade(4002, { currencyPair: "USDJPY" });
-
 describe("FxBlotterHead + FxBlotter", () => {
   it("defaults to the FX Blotter tab with the trade table showing", () => {
     const page = mount(FxBlotterWorkspace, {
@@ -124,3 +121,7 @@ function trade(tradeId: number, over: Partial<Trade> = {}): Trade {
     ...over,
   };
 }
+
+const t1 = trade(4001, { currencyPair: "EURUSD" });
+
+const t2 = trade(4002, { currencyPair: "USDJPY" });

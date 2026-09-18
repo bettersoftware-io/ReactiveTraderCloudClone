@@ -6,11 +6,6 @@ import type { LatBar } from "#/admin/types";
 
 afterEach(cleanup);
 
-const BARS: LatBar[] = [
-  { label: "<10", heightPct: 14, accent: false },
-  { label: "25-50", heightPct: 76, accent: true },
-];
-
 describe("LatencyHistogram", () => {
   test("renders the heading, a bar per bucket, and marks the accent bucket", () => {
     const { getByText, container } = render(<LatencyHistogram bars={BARS} />);
@@ -20,3 +15,8 @@ describe("LatencyHistogram", () => {
     expect(container.querySelector('[data-accent="true"]')).toBeTruthy();
   });
 });
+
+const BARS: LatBar[] = [
+  { label: "<10", heightPct: 14, accent: false },
+  { label: "25-50", heightPct: 76, accent: true },
+];

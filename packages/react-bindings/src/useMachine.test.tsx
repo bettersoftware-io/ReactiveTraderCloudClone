@@ -13,7 +13,7 @@ import { useMachine } from "#/useMachine";
 describe("useMachine", () => {
   it("calls the factory exactly once across re-renders", () => {
     const factory = vi.fn(() => {
-      return makeTestMachine(new BehaviorSubject(0)).machine;
+      return createTestMachine(new BehaviorSubject(0)).machine;
     });
 
     const { rerender } = renderHook(() => {
@@ -26,7 +26,7 @@ describe("useMachine", () => {
 
   it("returns the current state$ value and re-renders when it emits", () => {
     const subject = new BehaviorSubject(42);
-    const { machine } = makeTestMachine(subject);
+    const { machine } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -44,7 +44,7 @@ describe("useMachine", () => {
 
   it("passes intent methods through and keeps stable references across re-renders", () => {
     const subject = new BehaviorSubject(0);
-    const { machine } = makeTestMachine(subject);
+    const { machine } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -60,7 +60,7 @@ describe("useMachine", () => {
 
   it("calls dispose() exactly once on unmount and NOT on re-render", async () => {
     const subject = new BehaviorSubject(0);
-    const { machine, dispose } = makeTestMachine(subject);
+    const { machine, dispose } = createTestMachine(subject);
     const factory = vi.fn(() => {
       return machine;
     });
@@ -80,7 +80,7 @@ describe("useMachine", () => {
 
   it("calls the factory exactly once even inside React.StrictMode (StrictMode-safe lazy ref)", () => {
     const factory = vi.fn(() => {
-      return makeTestMachine(new BehaviorSubject(0)).machine;
+      return createTestMachine(new BehaviorSubject(0)).machine;
     });
 
     interface WrapperProps {
@@ -100,13 +100,71 @@ describe("useMachine", () => {
     expect(factory).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the machine LIVE across a StrictMode mount cycle: an intent fired after the cycle updates state (regression)", async () => {
+    const { machine, dispose } = createLifecycleMachine();
+
+    const { getByTestId, unmount } = render(
+      <React.StrictMode>
+        <Probe machine={machine} />
+      </React.StrictMode>,
+    );
+    const button = getByTestId("probe");
+
+    // StrictMode's setup -> cleanup -> setup mount cycle has run. The cleanup's
+    // deferred disposal must have been cancelled by the immediate re-setup: the
+    // machine must still be live.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(dispose).not.toHaveBeenCalled();
+    expect(button.textContent).toBe("0");
+
+    // The keystone assertion: after the StrictMode cycle, an intent must still
+    // drive state$. With the buggy eager-dispose the source Subject is completed
+    // and this stays frozen at "0".
+    await act(async () => {
+      button.click();
+    });
+    expect(button.textContent).toBe("1");
+
+    // A real unmount disposes exactly once (no leak).
+    unmount();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("disposes exactly once on a real unmount even after a StrictMode cycle (no leak)", async () => {
+    const { machine, dispose } = createLifecycleMachine();
+
+    const { unmount } = render(
+      <React.StrictMode>
+        <Probe machine={machine} />
+      </React.StrictMode>,
+    );
+
+    // StrictMode's mid-mount cleanup must not have disposed (re-setup cancels it).
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(dispose).not.toHaveBeenCalled();
+
+    unmount();
+    // Deferred disposal runs on a microtask; flush it.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
   /** Build a machine that faithfully mirrors TileExecutionMachine's lifecycle:
    * a Subject feeds a derived state$, an intent PUSHES into that Subject, a WARM
    * subscription keeps state$ alive, and dispose() COMPLETES the Subject and
    * unsubscribes the warm sub. After dispose, the intent is a no-op (it pushes
    * into a completed Subject) and state$ can never emit again — exactly the
    * conditions that froze tiles in the real app under StrictMode. */
-  function makeLifecycleMachine(): LifecycleMachine {
+  function createLifecycleMachine(): LifecycleMachine {
     const source$ = new Subject<number>();
     const state$ = state(source$, 0);
     const warm = state$.subscribe();
@@ -156,64 +214,6 @@ describe("useMachine", () => {
       </button>
     );
   }
-
-  it("keeps the machine LIVE across a StrictMode mount cycle: an intent fired after the cycle updates state (regression)", async () => {
-    const { machine, dispose } = makeLifecycleMachine();
-
-    const { getByTestId, unmount } = render(
-      <React.StrictMode>
-        <Probe machine={machine} />
-      </React.StrictMode>,
-    );
-    const button = getByTestId("probe");
-
-    // StrictMode's setup -> cleanup -> setup mount cycle has run. The cleanup's
-    // deferred disposal must have been cancelled by the immediate re-setup: the
-    // machine must still be live.
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(dispose).not.toHaveBeenCalled();
-    expect(button.textContent).toBe("0");
-
-    // The keystone assertion: after the StrictMode cycle, an intent must still
-    // drive state$. With the buggy eager-dispose the source Subject is completed
-    // and this stays frozen at "0".
-    await act(async () => {
-      button.click();
-    });
-    expect(button.textContent).toBe("1");
-
-    // A real unmount disposes exactly once (no leak).
-    unmount();
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(dispose).toHaveBeenCalledTimes(1);
-  });
-
-  it("disposes exactly once on a real unmount even after a StrictMode cycle (no leak)", async () => {
-    const { machine, dispose } = makeLifecycleMachine();
-
-    const { unmount } = render(
-      <React.StrictMode>
-        <Probe machine={machine} />
-      </React.StrictMode>,
-    );
-
-    // StrictMode's mid-mount cleanup must not have disposed (re-setup cancels it).
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(dispose).not.toHaveBeenCalled();
-
-    unmount();
-    // Deferred disposal runs on a microtask; flush it.
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(dispose).toHaveBeenCalledTimes(1);
-  });
 });
 
 interface TestMachineIntents {
@@ -239,7 +239,7 @@ interface LifecycleMachine {
 /** Build a minimal test machine from a BehaviorSubject.
  * We subscribe immediately so the StateObservable stays warm
  * for the duration of the test. */
-function makeTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
+function createTestMachine<S>(subject: BehaviorSubject<S>): TestMachine<S> {
   const state$ = state(subject, subject.getValue());
   // Keep the StateObservable warm (ref-count > 0) so useStateObservable can
   // read the synchronous default without entering Suspense.

@@ -38,8 +38,6 @@ beforeAll(() => {
 // walking-skeleton auto-login), so every test signs in with the committed
 // demo credentials before asserting on shell chrome.
 describe("App (shell chrome)", () => {
-  const page = appPage();
-
   // The session store is now localStorage-backed (parity with client-react), so
   // it persists across renders within a file. Clear it between tests so each one
   // starts from the LoginScreen rather than resuming a prior test's session.
@@ -177,6 +175,8 @@ describe("App (shell chrome)", () => {
     expect(page.exists("new-rfq-send")).toBe(true);
     expect(page.exists("blotter-table")).toBe(true);
   });
+
+  const page = appPage();
 });
 
 /** An authenticated session already sitting in localStorage — the arrangement

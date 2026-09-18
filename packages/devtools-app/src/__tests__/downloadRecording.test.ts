@@ -26,7 +26,7 @@ describe("downloadRecording", () => {
       revokeObjectURL: revokeUrl,
     });
 
-    downloadRecording(sample());
+    downloadRecording(createSample());
 
     expect(anchor.download).toBe("recording-rtc-web-1234.json");
     expect(anchor.href).toContain("blob:fake");
@@ -36,7 +36,7 @@ describe("downloadRecording", () => {
   });
 });
 
-function sample(): Recording {
+function createSample(): Recording {
   return {
     version: RECORDING_VERSION,
     appId: "rtc-web",

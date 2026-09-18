@@ -12,12 +12,6 @@ import { dirname, join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-const SCRIPT = resolve(
-  __dirname,
-  "../../../scripts/pages/build-visual-report.mjs",
-);
-
-let tmp = "";
 afterEach(() => {
   if (tmp !== "") {
     rmSync(tmp, { recursive: true, force: true });
@@ -243,3 +237,10 @@ function put(path: string, content = "x"): string {
   writeFileSync(path, content);
   return path;
 }
+
+const SCRIPT = resolve(
+  __dirname,
+  "../../../scripts/pages/build-visual-report.mjs",
+);
+
+let tmp = "";

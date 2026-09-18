@@ -9,17 +9,7 @@ import {
   type VitestPlainPresenterWorld,
 } from "./_world";
 
-// String-literal stand-ins for the ConnectionStatus const enum. Same trick as
-// presenter/vitest-quickpickle-fake-timers/steps/connection.steps.ts — verbatimModuleSyntax +
-// isolatedModules forbid accessing ambient const enum values from a different
-// package. The members are string-valued so the cast is safe at runtime.
-const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
-const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
-const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
-const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;
-
 describe("@presenter Feature: Connection status", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -59,4 +49,18 @@ describe("@presenter Feature: Connection status", () => {
     await conn.gatewayConnectionRestored(w);
     await conn.expectStatusEqualsWithin(w, CS_CONNECTED, 3);
   });
+
+  let w: VitestPlainPresenterWorld;
 });
+
+// String-literal stand-ins for the ConnectionStatus const enum. Same trick as
+// presenter/vitest-quickpickle-fake-timers/steps/connection.steps.ts — verbatimModuleSyntax +
+// isolatedModules forbid accessing ambient const enum values from a different
+// package. The members are string-valued so the cast is safe at runtime.
+const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;
+
+const CS_OFFLINE = "OFFLINE_DISCONNECTED" as unknown as ConnectionStatus;
+
+const CS_DISCONNECTED = "DISCONNECTED" as unknown as ConnectionStatus;
+
+const CS_CONNECTING = "CONNECTING" as unknown as ConnectionStatus;

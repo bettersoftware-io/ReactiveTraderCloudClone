@@ -9,10 +9,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
 describe("CandleChart — navigator brush", () => {
   it("renders the navigator with the window; hides it entirely on an empty series", () => {
     const chart = mountChart();
@@ -144,3 +140,9 @@ function mountChart(candles = CANDLES): CandleChartPage {
     },
   });
 }
+
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);

@@ -8,36 +8,9 @@ import { inhouseLayoutEnginePage } from "#tests/ui/pages/InhouseLayoutEnginePage
 import type { PanelRegistry } from "../panelRegistry";
 import { ThrowingPanel } from "./panelErrorFixtures";
 
-const page = inhouseLayoutEnginePage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const state: LayoutState = {
-  root: {
-    kind: "split",
-    dir: "row",
-    sizes: [0.6, 0.4],
-    children: [
-      { kind: "panel", panelId: "fx-rates" },
-      { kind: "panel", panelId: "fx-analytics" },
-    ],
-  },
-  maximized: null,
-  collapsed: [],
-  closed: [],
-  instances: [],
-};
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div data-testid="rates-body">RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div data-testid="analytics-body">ANALYTICS</div>;
-  },
-};
 
 describe("InhouseLayoutEngine", () => {
   it("renders each panel's registry body inside a split", () => {
@@ -137,32 +110,6 @@ describe("InhouseLayoutEngine", () => {
   });
 
   describe("initialPx (design-value default rail width, still draggable)", () => {
-    const initialPxState: LayoutState = {
-      root: {
-        kind: "split",
-        dir: "row",
-        sizes: [0.73, 0.27],
-        initialPx: [undefined, 360],
-        children: [
-          { kind: "panel", panelId: "a" },
-          { kind: "panel", panelId: "b" },
-        ],
-      },
-      maximized: null,
-      collapsed: [],
-      closed: [],
-      instances: [],
-    };
-
-    const abRegistry: PanelRegistry = {
-      a: () => {
-        return <div data-testid="a-body">A</div>;
-      },
-      b: () => {
-        return <div data-testid="b-body">B</div>;
-      },
-    };
-
     it("renders a px-fixed cell that KEEPS its resize handle (unlike fixedPx)", () => {
       page.mount(initialPxState, abRegistry);
       const cell = page.initialCellOf("panel-b");
@@ -269,6 +216,32 @@ describe("InhouseLayoutEngine", () => {
       page.mount({ ...initialPxState, maximized: "b" }, abRegistry);
       expect(page.initialCellOf("panel-b").isInitial).toBe(false);
     });
+
+    const initialPxState: LayoutState = {
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.73, 0.27],
+        initialPx: [undefined, 360],
+        children: [
+          { kind: "panel", panelId: "a" },
+          { kind: "panel", panelId: "b" },
+        ],
+      },
+      maximized: null,
+      collapsed: [],
+      closed: [],
+      instances: [],
+    };
+
+    const abRegistry: PanelRegistry = {
+      a: () => {
+        return <div data-testid="a-body">A</div>;
+      },
+      b: () => {
+        return <div data-testid="b-body">B</div>;
+      },
+    };
   });
 
   it("confines a panel that throws during render to a scoped panel-error fallback, leaving sibling panels intact (no app-wide white screen)", () => {
@@ -306,6 +279,38 @@ describe("InhouseLayoutEngine", () => {
   });
 
   describe("strip orientation follows the reclaim axis (credit-shaped tree: rail | column[b, c])", () => {
+    it("keeps a direct row-split child vertical and a column sibling of the maximized panel horizontal", () => {
+      page.mount(
+        { ...creditShapedState, maximized: "b" },
+        creditShapedRegistry,
+      );
+      // rail is a direct child of the root row → narrow full-height strip.
+      expect(page.stripFlag("panel-rail")).toBe(true);
+      expect(page.stripOrientation("panel-rail")).toBe("vertical");
+      // c shares its column with the maximized b → short full-width strip.
+      expect(page.stripFlag("panel-c")).toBe(true);
+      expect(page.stripOrientation("panel-c")).toBe("horizontal");
+      expect(page.stripFill("cell-1-1")).toBe(false);
+    });
+
+    it("inherits the row axis through a fully-stripped column: maximizing the rail turns both column panels into vertical, rail-filling strips", () => {
+      page.mount(
+        { ...creditShapedState, maximized: "rail" },
+        creditShapedRegistry,
+      );
+
+      for (const id of ["b", "c"]) {
+        expect(page.stripFlag(`panel-${id}`)).toBe(true);
+        expect(page.stripOrientation(`panel-${id}`)).toBe("vertical");
+      }
+
+      // Their cells share the freed rail's height instead of hugging.
+      expect(page.stripFill("cell-1-0")).toBe(true);
+      expect(page.stripFill("cell-1-1")).toBe(true);
+      // The fully-stripped column's own cell hugs along the row (no fill).
+      expect(page.stripFill("cell--1")).toBe(false);
+    });
+
     const creditShapedState: LayoutState = {
       root: {
         kind: "split",
@@ -341,41 +346,22 @@ describe("InhouseLayoutEngine", () => {
         return <div data-testid="c-body">C</div>;
       },
     };
-
-    it("keeps a direct row-split child vertical and a column sibling of the maximized panel horizontal", () => {
-      page.mount(
-        { ...creditShapedState, maximized: "b" },
-        creditShapedRegistry,
-      );
-      // rail is a direct child of the root row → narrow full-height strip.
-      expect(page.stripFlag("panel-rail")).toBe(true);
-      expect(page.stripOrientation("panel-rail")).toBe("vertical");
-      // c shares its column with the maximized b → short full-width strip.
-      expect(page.stripFlag("panel-c")).toBe(true);
-      expect(page.stripOrientation("panel-c")).toBe("horizontal");
-      expect(page.stripFill("cell-1-1")).toBe(false);
-    });
-
-    it("inherits the row axis through a fully-stripped column: maximizing the rail turns both column panels into vertical, rail-filling strips", () => {
-      page.mount(
-        { ...creditShapedState, maximized: "rail" },
-        creditShapedRegistry,
-      );
-
-      for (const id of ["b", "c"]) {
-        expect(page.stripFlag(`panel-${id}`)).toBe(true);
-        expect(page.stripOrientation(`panel-${id}`)).toBe("vertical");
-      }
-
-      // Their cells share the freed rail's height instead of hugging.
-      expect(page.stripFill("cell-1-0")).toBe(true);
-      expect(page.stripFill("cell-1-1")).toBe(true);
-      // The fully-stripped column's own cell hugs along the row (no fill).
-      expect(page.stripFill("cell--1")).toBe(false);
-    });
   });
 
   describe("maximizable: false (spec-gated maximize control — default PANEL_SPECS marks credit-new-rfq)", () => {
+    it("renders no maximize control for the opted-out panel, keeping its collapse control and its sibling's maximize", () => {
+      page.mount(creditState, creditRegistry);
+      expect(page.exists("panel-credit-new-rfq-maximize")).toBe(false);
+      expect(page.exists("panel-credit-new-rfq-collapse")).toBe(true);
+      expect(page.exists("panel-credit-rfqs-maximize")).toBe(true);
+    });
+
+    it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
+      page.mount({ ...creditState, maximized: "credit-rfqs" }, creditRegistry);
+      expect(page.stripFlag("panel-credit-new-rfq")).toBe(true);
+      expect(page.exists("new-rfq-body")).toBe(false);
+    });
+
     const creditState: LayoutState = {
       root: {
         kind: "split",
@@ -400,38 +386,9 @@ describe("InhouseLayoutEngine", () => {
         return <div data-testid="rfqs-body">RFQS</div>;
       },
     };
-
-    it("renders no maximize control for the opted-out panel, keeping its collapse control and its sibling's maximize", () => {
-      page.mount(creditState, creditRegistry);
-      expect(page.exists("panel-credit-new-rfq-maximize")).toBe(false);
-      expect(page.exists("panel-credit-new-rfq-collapse")).toBe(true);
-      expect(page.exists("panel-credit-rfqs-maximize")).toBe(true);
-    });
-
-    it("still strips the opted-out panel when a sibling maximizes (not-maximizable is not never-stripped)", () => {
-      page.mount({ ...creditState, maximized: "credit-rfqs" }, creditRegistry);
-      expect(page.stripFlag("panel-credit-new-rfq")).toBe(true);
-      expect(page.exists("new-rfq-body")).toBe(false);
-    });
   });
 
   describe("nearest-column maximize scope (default PANEL_SPECS rail panels, equities tree)", () => {
-    const eqState = createDefaultLayoutPort("equities").initial;
-    const eqRegistry: PanelRegistry = {
-      "eq-chart": () => {
-        return <div data-testid="chart-body">CHART</div>;
-      },
-      "eq-blotter": () => {
-        return <div data-testid="eq-blotter-body">EQ BLOTTER</div>;
-      },
-      "eq-ticket": () => {
-        return <div data-testid="ticket-body">TICKET</div>;
-      },
-      "eq-watchlist": () => {
-        return <div data-testid="watchlist-body">WATCHLIST</div>;
-      },
-    };
-
     it("maximizing eq-ticket strips only its column sibling — a horizontal bar inside the rail — leaving the main column untouched", () => {
       page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
       expect(page.stripFlag("panel-eq-watchlist")).toBe(true);
@@ -469,6 +426,23 @@ describe("InhouseLayoutEngine", () => {
       expect(page.initialCellFlag("cell--1")).toBe(false);
       expect(page.stripCellFlag("cell--1")).toBe(true);
     });
+
+    const eqState = createDefaultLayoutPort("equities").initial;
+
+    const eqRegistry: PanelRegistry = {
+      "eq-chart": () => {
+        return <div data-testid="chart-body">CHART</div>;
+      },
+      "eq-blotter": () => {
+        return <div data-testid="eq-blotter-body">EQ BLOTTER</div>;
+      },
+      "eq-ticket": () => {
+        return <div data-testid="ticket-body">TICKET</div>;
+      },
+      "eq-watchlist": () => {
+        return <div data-testid="watchlist-body">WATCHLIST</div>;
+      },
+    };
   });
 
   it("drives a column-split resize drag (vertical) and calls onResize", () => {
@@ -575,3 +549,30 @@ describe("InhouseLayoutEngine", () => {
     });
   });
 });
+
+const page = inhouseLayoutEnginePage();
+
+const state: LayoutState = {
+  root: {
+    kind: "split",
+    dir: "row",
+    sizes: [0.6, 0.4],
+    children: [
+      { kind: "panel", panelId: "fx-rates" },
+      { kind: "panel", panelId: "fx-analytics" },
+    ],
+  },
+  maximized: null,
+  collapsed: [],
+  closed: [],
+  instances: [],
+};
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div data-testid="rates-body">RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div data-testid="analytics-body">ANALYTICS</div>;
+  },
+};

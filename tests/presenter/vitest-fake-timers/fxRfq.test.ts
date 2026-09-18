@@ -9,7 +9,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: FX RFQ flow", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -23,4 +22,6 @@ describe("@presenter Feature: FX RFQ flow", () => {
     await rfq.requestRfqQuoteOnFirstTile(w);
     await rfq.expectRfqQuoteArrivesWithin(w, 5);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

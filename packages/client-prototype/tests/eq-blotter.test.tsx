@@ -10,19 +10,6 @@ import type { EqOrder } from "#/equities/types";
 
 afterEach(cleanup);
 
-const ORDERS: EqOrder[] = [
-  {
-    id: 5001,
-    time: "09:30:01",
-    sym: "AAPL",
-    side: "Buy",
-    type: "Market",
-    qty: 100,
-    price: 230,
-    status: "Filled",
-  },
-];
-
 describe("EqBlotterPanel", () => {
   test("shows the orders empty state, then a row, and the 7 order headers", () => {
     const { container, getByText, rerender } = render(
@@ -103,3 +90,16 @@ describe("EqBlotterPanelControls", () => {
     expect(getByText("2 positions")).toBeTruthy();
   });
 });
+
+const ORDERS: EqOrder[] = [
+  {
+    id: 5001,
+    time: "09:30:01",
+    sym: "AAPL",
+    side: "Buy",
+    type: "Market",
+    qty: 100,
+    price: 230,
+    status: "Filled",
+  },
+];

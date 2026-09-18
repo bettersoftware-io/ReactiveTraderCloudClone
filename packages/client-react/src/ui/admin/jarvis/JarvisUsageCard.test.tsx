@@ -12,8 +12,6 @@ import type { JarvisUsageSnapshot } from "@rtc/client-core";
 
 import { jarvisUsageCardPage } from "#tests/ui/pages/JarvisUsageCardPage";
 
-const page = jarvisUsageCardPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -146,3 +144,5 @@ describe("JarvisUsageCard", () => {
     expect(page.attribute("admin-jarvis-gate-badge", "data-gate")).toBe("hard");
   });
 });
+
+const page = jarvisUsageCardPage();

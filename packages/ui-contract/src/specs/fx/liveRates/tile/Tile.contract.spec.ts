@@ -25,7 +25,6 @@ if (!_eurusd) {
   throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const eurusd: CurrencyPair = _eurusd;
 // NZDUSD's defaultNotional is 10,000,000 (>= RFQ threshold) → starts in RFQ mode.
 const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "NZDUSD";
@@ -34,27 +33,6 @@ const _nzdusd = KNOWN_CURRENCY_PAIRS.find((p) => {
 if (!_nzdusd) {
   throw new Error("NZDUSD not found in KNOWN_CURRENCY_PAIRS");
 }
-
-const nzdusd: CurrencyPair = _nzdusd;
-
-const history: readonly PriceTick[] = [
-  {
-    symbol: "EURUSD",
-    bid: 1.09,
-    ask: 1.091,
-    mid: 1.0905,
-    valueDate: "2026-06-15",
-    creationTimestamp: 1,
-  },
-  {
-    symbol: "EURUSD",
-    bid: 1.092,
-    ask: 1.093,
-    mid: 1.0925,
-    valueDate: "2026-06-15",
-    creationTimestamp: 2,
-  },
-];
 
 afterEach(() => {
   vi.useRealTimers();
@@ -381,3 +359,26 @@ function tradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
     },
   };
 }
+
+const eurusd: CurrencyPair = _eurusd;
+
+const nzdusd: CurrencyPair = _nzdusd;
+
+const history: readonly PriceTick[] = [
+  {
+    symbol: "EURUSD",
+    bid: 1.09,
+    ask: 1.091,
+    mid: 1.0905,
+    valueDate: "2026-06-15",
+    creationTimestamp: 1,
+  },
+  {
+    symbol: "EURUSD",
+    bid: 1.092,
+    ask: 1.093,
+    mid: 1.0925,
+    valueDate: "2026-06-15",
+    creationTimestamp: 2,
+  },
+];

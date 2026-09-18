@@ -3,17 +3,6 @@ import { describe, expect, test } from "vitest";
 import { positionsVm } from "#/equities/positionsVm";
 import type { EqOrder, EqSym } from "#/equities/types";
 
-const RATES = {
-  AAPL: 230,
-  MSFT: 467,
-  NVDA: 131,
-  TSLA: 251,
-  AMZN: 218,
-  GOOGL: 178,
-  META: 591,
-  SPY: 588,
-} as Record<EqSym, number>;
-
 describe("positionsVm", () => {
   test("nets filled buys and sells per symbol with avg/mv/pl", () => {
     const rows = positionsVm(
@@ -55,3 +44,14 @@ function order(part: Partial<EqOrder>): EqOrder {
     ...part,
   };
 }
+
+const RATES = {
+  AAPL: 230,
+  MSFT: 467,
+  NVDA: 131,
+  TSLA: 251,
+  AMZN: 218,
+  GOOGL: 178,
+  META: 591,
+  SPY: 588,
+} as Record<EqSym, number>;

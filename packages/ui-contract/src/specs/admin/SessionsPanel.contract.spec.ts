@@ -13,12 +13,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const SESSIONS = [
-  { id: "s1", user: "trader-1", region: "EU", lat: 51.5, lon: -0.1 },
-  { id: "s2", user: "trader-2", region: "US", lat: 40.7, lon: -74.0 },
-  { id: "s3", user: "trader-3", region: "APAC", lat: 35.7, lon: 139.7 },
-];
-
 describe("SessionsPanel", () => {
   it("renders the sessions panel element", () => {
     const panel = mount(SessionsPanel, {});
@@ -64,3 +58,9 @@ describe("SessionsPanel", () => {
     expect(panel.countBadge()).toBe(2);
   });
 });
+
+const SESSIONS = [
+  { id: "s1", user: "trader-1", region: "EU", lat: 51.5, lon: -0.1 },
+  { id: "s2", user: "trader-2", region: "US", lat: 40.7, lon: -74.0 },
+  { id: "s3", user: "trader-3", region: "APAC", lat: 35.7, lon: 139.7 },
+];

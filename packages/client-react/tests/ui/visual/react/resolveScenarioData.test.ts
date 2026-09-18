@@ -4,10 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { resolveScenarioData } from "./resolveScenarioData";
 
-const fixtures: Record<string, AppData> = {
-  base: { themeSkin: "classic", themeMode: "dark" } as unknown as AppData,
-};
-
 describe("resolveScenarioData", () => {
   it("returns the fixture unchanged when the scenario has no theme override", () => {
     const scenario: Scenario = { componentKey: "App", fixtureKey: "base" };
@@ -34,3 +30,7 @@ describe("resolveScenarioData", () => {
     }).toThrow(/Unknown fixture/);
   });
 });
+
+const fixtures: Record<string, AppData> = {
+  base: { themeSkin: "classic", themeMode: "dark" } as unknown as AppData,
+};

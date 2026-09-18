@@ -20,7 +20,7 @@ test("renders a ticket per open rfq, not just the first", async () => {
   await page.mount({
     rfqs: [openRfq(5), openRfq(6), openRfq(7)],
     quoteFor: () => {
-      return unpriced();
+      return createUnpriced();
     },
   });
 
@@ -33,7 +33,7 @@ test("the live ticket's SUBMIT CTA carries the accent ramp gradient", async () =
   await page.mount({
     rfqs: [openRfq(5)],
     quoteFor: () => {
-      return unpriced();
+      return createUnpriced();
     },
   });
   expect(page.exists("cta-gradient")).toBe(true);
@@ -64,7 +64,7 @@ test("puts live tickets above a YOUR QUOTES heading, settled rows below", async 
             dealerId: ADAPTIVE_BANK_ID,
             state: { type: "accepted", price: 99.5 },
           }
-        : unpriced();
+        : createUnpriced();
     },
   });
 
@@ -77,7 +77,7 @@ test("shows no YOUR QUOTES heading when nothing has settled", async () => {
   await page.mount({
     rfqs: [openRfq(6)],
     quoteFor: (): Quote => {
-      return unpriced();
+      return createUnpriced();
     },
   });
 
@@ -105,7 +105,7 @@ test("stepping the price and submitting sends the desk's own quote", async () =>
   await page.mount({
     rfqs: [openRfq(5)],
     quoteFor: () => {
-      return unpriced();
+      return createUnpriced();
     },
     submitPrice,
   });
@@ -121,7 +121,7 @@ test("a client Buy asks the desk for an OFFER, a client Sell for a BID", async (
   await page.mount({
     rfqs: [openRfq(5, Direction.Buy)],
     quoteFor: () => {
-      return unpriced();
+      return createUnpriced();
     },
   });
   expect(page.hasText("SUBMIT OFFER")).toBe(true);
@@ -130,7 +130,7 @@ test("a client Buy asks the desk for an OFFER, a client Sell for a BID", async (
   await page.mount({
     rfqs: [openRfq(5, Direction.Sell)],
     quoteFor: () => {
-      return unpriced();
+      return createUnpriced();
     },
   });
   expect(page.hasText("SUBMIT BID")).toBe(true);
@@ -176,7 +176,7 @@ test("a priced-but-undecided quote leaves the ticket and reads PENDING", async (
   expect(page.hasTextContent("sell-side-status-5", "PENDING")).toBe(true);
 });
 
-function unpriced(): Quote {
+function createUnpriced(): Quote {
   return {
     id: 88,
     rfqId: 6,

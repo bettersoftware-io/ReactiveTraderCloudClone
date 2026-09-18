@@ -18,14 +18,6 @@ import {
   resetUnwritablePayloadWarning,
 } from "../workspacePersistenceWriter";
 
-const SPEC: PanelSpecV1 = {
-  v: 1,
-  title: "P&L overview",
-  source: { kind: "analytics" },
-  transforms: [],
-  viz: { kind: "table" },
-};
-
 describe("createWorkspacePersistenceWriter", () => {
   it("coalesces a burst of kicks into a single write", () => {
     const h = harness(null);
@@ -307,3 +299,11 @@ function harness(seed: string | null): Harness {
     },
   };
 }
+
+const SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "P&L overview",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};

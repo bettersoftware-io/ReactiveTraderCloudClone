@@ -8,11 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const CANDLES: readonly Candle[] = [
-  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
-  { time: 60, open: 102, high: 108, low: 101, close: 96, volume: 1_350_000 },
-];
-
 describe("CandleChart", () => {
   it("renders one wrapper per candle, plus one grid line + on-line label per nice tick", () => {
     const chart = mount(CandleChart, {
@@ -86,3 +81,8 @@ describe("CandleChart", () => {
     expect(chart.priceLabels()).toHaveLength(0);
   });
 });
+
+const CANDLES: readonly Candle[] = [
+  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
+  { time: 60, open: 102, high: 108, low: 101, close: 96, volume: 1_350_000 },
+];

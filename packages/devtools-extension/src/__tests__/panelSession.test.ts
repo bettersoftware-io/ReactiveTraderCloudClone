@@ -9,7 +9,7 @@ import type { RuntimePort } from "#/ports";
 
 describe("createPanelSession", () => {
   it("sends hello on start and reflects a welcome in the store", async () => {
-    const f = fakePort();
+    const f = createFakePort();
     const session = createPanelSession(() => {
       return f.port;
     });
@@ -28,7 +28,7 @@ describe("createPanelSession", () => {
   });
 
   it("sends intent:invoke over the transport when invokeIntent is called", () => {
-    const f = fakePort();
+    const f = createFakePort();
     const session = createPanelSession(() => {
       return f.port;
     });
@@ -52,7 +52,7 @@ interface FakePort {
   sent: unknown[];
 }
 
-function fakePort(): FakePort {
+function createFakePort(): FakePort {
   let onMsg: ((m: unknown) => void) | undefined;
   const sent: unknown[] = [];
 

@@ -10,13 +10,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const BUY: RfqFormValue = {
-  dir: "Buy",
-  instrumentId: 2,
-  qty: "500",
-  dealerIds: [1, 2, 3],
-};
-
 describe("useCreditRfqs", () => {
   test("seeds two RFQs and starts on the 'all' tab", () => {
     const { result } = renderHook(() => {
@@ -176,3 +169,10 @@ describe("useCreditRfqs", () => {
     expect(result.current.tabRecent).toBe(false);
   });
 });
+
+const BUY: RfqFormValue = {
+  dir: "Buy",
+  instrumentId: 2,
+  qty: "500",
+  dealerIds: [1, 2, 3],
+};

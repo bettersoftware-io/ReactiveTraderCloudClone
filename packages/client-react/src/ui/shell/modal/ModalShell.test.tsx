@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { modalShellPage } from "#tests/ui/pages/ModalShellPage";
 
-const page = modalShellPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -36,3 +34,5 @@ describe("ModalShell", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+const page = modalShellPage();

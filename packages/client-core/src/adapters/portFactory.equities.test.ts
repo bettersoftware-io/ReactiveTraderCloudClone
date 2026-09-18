@@ -11,8 +11,6 @@ afterEach(() => {
 });
 
 describe("createSimulatorPorts — equities ports", () => {
-  const fakePreferences = {} as PreferencesPort;
-
   it("exposes marketData/orders/positions wired together", async () => {
     vi.useFakeTimers();
     const ports = createSimulatorPorts({
@@ -45,4 +43,6 @@ describe("createSimulatorPorts — equities ports", () => {
     // not the old flat placeholder of 100.
     expect(aapl?.avgPrice).toBeGreaterThan(150);
   });
+
+  const fakePreferences = {} as PreferencesPort;
 });

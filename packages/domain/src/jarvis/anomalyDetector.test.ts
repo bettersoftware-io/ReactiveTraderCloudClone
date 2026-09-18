@@ -10,55 +10,14 @@ import {
   detectAnomalies,
 } from "./anomalyDetector.js";
 
-const FIXED_MID = 1.1;
+// spread = 0.0002, bit-identical every tick
 
-// --- Exactly-constant fixtures — for tests where the window itself must
-// have literal σ=0 (cold start; the plain σ=0 guard). ---
-const FLAT_BID = 1.0999;
-const FLAT_ASK = 1.1001; // spread = 0.0002, bit-identical every tick
+// spread = 0.05 — 250x the ~0.0002 baseline mean
 
-const SPIKE_BID = 1.075;
-const SPIKE_ASK = 1.125; // spread = 0.05 — 250x the ~0.0002 baseline mean
+// spread = 0.00018
+// spread = 0.00022
 
-// --- Jittered fixtures — a window needs SOME real (non-float-noise,
-// non-zero) variance for a spike's z-score against it to be well-defined
-// once the spike is excluded from its own baseline (FIX 2). Alternating
-// between two close values gives an exact, hand-computable population σ:
-// mean = (LOW+HIGH)/2 = 0.0002, σ = (HIGH-LOW)/2 = 0.00002, for any 50/50
-// split. ---
-const JITTER_LOW_BID = 1.09991;
-const JITTER_LOW_ASK = 1.10009; // spread = 0.00018
-const JITTER_HIGH_BID = 1.09989;
-const JITTER_HIGH_ASK = 1.10011; // spread = 0.00022
-
-// Spread channel: 29 bit-identical spreads + one tick nudged by exactly one
-// ULP on `ask`. Population σ of that 30-value window ≈ 3.99e-17 (measured) —
-// nonzero, so a bare `std === 0` guard does NOT catch it, unlike the
-// literally-repeated FLAT_SPREAD windows above (whose σ reduces to exactly
-// 0.0 in this file's meanAndStd, verified separately). A FRESH tick that
-// recurs the identical one-ULP-off value (the 31st, not a self-comparison)
-// evaluated against that window scores z ≈ 5.385 under "no guard at all" —
-// comfortably over the default spreadSigma=3 — hand-computed and
-// cross-checked against a standalone port of `meanAndStd`/the exclude-
-// current evaluation order (see the fix report for the script + output).
-const ONE_ULP_OFF_ASK: number = ulpJitter(FLAT_ASK, 1);
-
-// Vol channel: an otherwise perfectly flat mid (returns exactly 0 every
-// tick, so the trailing window's mean is genuinely ~0 by construction — the
-// exact condition that made the round-1 mean-relative guard inert) with a
-// single momentary few-ULP nudge, then straight back to flat. Spread is
-// held fixed throughout so this fixture only exercises the vol channel.
-const WOBBLE_MID = 1.1;
-const WOBBLE_HALF_SPREAD = 0.0001;
-
-// --- Vol fixtures — alternating mid gives a well-defined nonzero baseline
-// σ of returns (mirrors the spread jitter above), with a fixed spread so
-// this channel's own noise never leaks into spreadWidening. ---
-const VOL_HALF_SPREAD = 0.0001;
-const VOL_MID_LOW = 1.0999;
-const VOL_MID_HIGH = 1.1001;
-
-const VOL_SPIKE_MID = 1.65; // ~50% jump off the ~1.1 baseline
+// ~50% jump off the ~1.1 baseline
 
 describe("DEFAULT_ANOMALY_CONFIG", () => {
   it("pins the documented defaults", () => {
@@ -159,15 +118,6 @@ describe("detectAnomalies — vol-channel ULP-noise guard (FIX 1 witness)", () =
 });
 
 describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () => {
-  // See the file-level comment above `mkTick` for the k/m_prior bound this
-  // fixture is built against. 36 baseline ticks keeps the SECOND crossing
-  // (evaluated with 2 prior outliers already in the window) at
-  // sqrt(37/2)≈4.3 — comfortably above spreadSigma=3.
-  const cfg: Partial<AnomalyDetectorConfig> = {
-    windowSize: 100,
-    minWindowFill: 36,
-  };
-
   it("crosses once with an unbounded σ, stays silent while above, and re-arms after dropping below", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
@@ -207,6 +157,15 @@ describe("detectAnomalies — spread edge-trigger (honest, unbounded σ)", () =>
     // exceeded sqrt(windowSize-1)≈9.9 regardless of the spike's real size.)
     expect(spreadEvents[0]?.sigma).toBeGreaterThan(500);
   });
+
+  // See the file-level comment above `mkTick` for the k/m_prior bound this
+  // fixture is built against. 36 baseline ticks keeps the SECOND crossing
+  // (evaluated with 2 prior outliers already in the window) at
+  // sqrt(37/2)≈4.3 — comfortably above spreadSigma=3.
+  const cfg: Partial<AnomalyDetectorConfig> = {
+    windowSize: 100,
+    minWindowFill: 36,
+  };
 });
 
 describe("detectAnomalies — per-symbol isolation", () => {
@@ -261,11 +220,6 @@ describe("detectAnomalies — per-symbol isolation", () => {
 });
 
 describe("detectAnomalies — vol spike", () => {
-  const cfg: Partial<AnomalyDetectorConfig> = {
-    windowSize: 50,
-    minWindowFill: 20,
-  };
-
   it("fires on a single-tick return that dwarfs the window's own trailing σ", async () => {
     const ticks: PriceTick[] = [];
     let i = 0;
@@ -289,6 +243,11 @@ describe("detectAnomalies — vol spike", () => {
     expect(events[0]?.symbol).toBe("EURUSD");
     expect(events[0]?.sigma).toBeGreaterThanOrEqual(3);
   });
+
+  const cfg: Partial<AnomalyDetectorConfig> = {
+    windowSize: 50,
+    minWindowFill: 20,
+  };
 });
 
 describe("detectAnomalies — self-silencing / adaptivity", () => {
@@ -444,3 +403,61 @@ function volSpikeTick(symbol: string, i: number): PriceTick {
     VOL_SPIKE_MID,
   );
 }
+
+const FIXED_MID = 1.1;
+
+// --- Exactly-constant fixtures — for tests where the window itself must
+// have literal σ=0 (cold start; the plain σ=0 guard). ---
+const FLAT_BID = 1.0999;
+
+const SPIKE_BID = 1.075;
+
+const SPIKE_ASK = 1.125;
+
+// --- Jittered fixtures — a window needs SOME real (non-float-noise,
+// non-zero) variance for a spike's z-score against it to be well-defined
+// once the spike is excluded from its own baseline (FIX 2). Alternating
+// between two close values gives an exact, hand-computable population σ:
+// mean = (LOW+HIGH)/2 = 0.0002, σ = (HIGH-LOW)/2 = 0.00002, for any 50/50
+// split. ---
+const JITTER_LOW_BID = 1.09991;
+
+const JITTER_LOW_ASK = 1.10009;
+
+const JITTER_HIGH_BID = 1.09989;
+
+const JITTER_HIGH_ASK = 1.10011;
+
+const FLAT_ASK = 1.1001;
+
+// Spread channel: 29 bit-identical spreads + one tick nudged by exactly one
+// ULP on `ask`. Population σ of that 30-value window ≈ 3.99e-17 (measured) —
+// nonzero, so a bare `std === 0` guard does NOT catch it, unlike the
+// literally-repeated FLAT_SPREAD windows above (whose σ reduces to exactly
+// 0.0 in this file's meanAndStd, verified separately). A FRESH tick that
+// recurs the identical one-ULP-off value (the 31st, not a self-comparison)
+// evaluated against that window scores z ≈ 5.385 under "no guard at all" —
+// comfortably over the default spreadSigma=3 — hand-computed and
+// cross-checked against a standalone port of `meanAndStd`/the exclude-
+// current evaluation order (see the fix report for the script + output).
+const ONE_ULP_OFF_ASK: number = ulpJitter(FLAT_ASK, 1);
+
+// Vol channel: an otherwise perfectly flat mid (returns exactly 0 every
+// tick, so the trailing window's mean is genuinely ~0 by construction — the
+// exact condition that made the round-1 mean-relative guard inert) with a
+// single momentary few-ULP nudge, then straight back to flat. Spread is
+// held fixed throughout so this fixture only exercises the vol channel.
+const WOBBLE_MID = 1.1;
+
+const WOBBLE_HALF_SPREAD = 0.0001;
+
+// --- Vol fixtures — alternating mid gives a well-defined nonzero baseline
+// σ of returns (mirrors the spread jitter above), with a fixed spread so
+// this channel's own noise never leaks into spreadWidening. ---
+const VOL_HALF_SPREAD = 0.0001;
+
+const VOL_MID_LOW = 1.0999;
+
+const VOL_MID_HIGH = 1.1001;
+
+const VOL_SPIKE_MID = 1.65;

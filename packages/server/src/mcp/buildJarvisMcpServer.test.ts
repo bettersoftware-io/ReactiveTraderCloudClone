@@ -12,8 +12,6 @@ import {
 } from "./buildJarvisMcpServer.js";
 
 describe("buildJarvisMcpServer", () => {
-  let connections: ConnectedClient[] = [];
-
   beforeEach(() => {
     connections = [];
     // ExecutionSimulator fills after Math.random() * 2000 ms; pin to zero so
@@ -151,6 +149,8 @@ describe("buildJarvisMcpServer", () => {
       }),
     ).toBe(true);
   }, 15_000);
+
+  let connections: ConnectedClient[] = [];
 });
 
 /** MCP-side HITL is the external client's job (parent spec §3.4) — this gate

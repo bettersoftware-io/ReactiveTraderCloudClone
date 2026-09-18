@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest";
 import { hideDevMenuFab, restoreDevMenuFab } from "./devMenuFab";
 
 test("hiding writes the dev-menu's own preference key as false", async () => {
-  const calls = stubExecFile(false);
+  const calls = createStubExecFile(false);
   await hideDevMenuFab("UDID-1");
   expect(calls).toEqual([
     [
@@ -26,7 +26,7 @@ test("hiding writes the dev-menu's own preference key as false", async () => {
 // button back to whatever default the installed dev-client ships, where writing
 // `true` would pin it to a value this harness chose.
 test("restoring deletes the key rather than writing a value back", async () => {
-  const calls = stubExecFile(false);
+  const calls = createStubExecFile(false);
   await restoreDevMenuFab("UDID-1");
   expect(calls[0]).toContain("delete");
   expect(calls[0]).not.toContain("-bool");
@@ -37,7 +37,7 @@ test("restoring deletes the key rather than writing a value back", async () => {
 // this, an unbooted device would abort a whole capture sweep over dev-tooling
 // chrome that is not even ours.
 test("neither call throws when simctl refuses", async () => {
-  stubExecFile(true);
+  createStubExecFile(true);
   await expect(hideDevMenuFab("UDID-1")).resolves.toBeUndefined();
   await expect(restoreDevMenuFab("UDID-1")).resolves.toBeUndefined();
 });
@@ -51,7 +51,7 @@ vi.mock("node:child_process", () => {
  * `promisify(execFile)` appends a node-style callback, so the mock MUST invoke
  * it — a mock that just records would leave every promise pending and the
  * tests would time out rather than fail. */
-function stubExecFile(fail: boolean): string[][] {
+function createStubExecFile(fail: boolean): string[][] {
   const calls: string[][] = [];
 
   vi.mocked(execFile).mockImplementation(((

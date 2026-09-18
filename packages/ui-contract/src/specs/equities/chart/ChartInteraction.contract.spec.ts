@@ -8,15 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-// 300 candles: long enough that the 1D default visible window (60) is a
-// small slice of the series, so pan/zoom/Home/End viewport moves are
-// observable against candles well outside the initial view.
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-// The overall series' real last candle (index 299) — pinned so the live-rate
-// overlay is a no-op and up/down assertions read straight off the fixture.
-const LAST = candleAt(299);
-
 describe("CandleChart — keyboard interaction", () => {
   it("defaults to the newest 60 candles for 1D, not the full 300-candle series", () => {
     const chart = mount(CandleChart, {
@@ -213,3 +204,14 @@ describe("CandleChart — keyboard interaction", () => {
     expect(chart.visibleTestids("chart-crosshair-h")).toBe(0);
   });
 });
+
+// 300 candles: long enough that the 1D default visible window (60) is a
+// small slice of the series, so pan/zoom/Home/End viewport moves are
+// observable against candles well outside the initial view.
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+// The overall series' real last candle (index 299) — pinned so the live-rate
+// overlay is a no-op and up/down assertions read straight off the fixture.
+const LAST = candleAt(299);

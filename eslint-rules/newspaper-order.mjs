@@ -25,6 +25,25 @@
 // migrated list lives in eslint.config.mjs; add a package once its tree is
 // clean.
 //
+// ONE HAZARD THE AUTOFIX CANNOT SEE: TypeScript control-flow narrowing. A
+// `const` annotated with a UNION is narrowed by its initialiser, and because a
+// const cannot be reassigned that narrowing is preserved into closures — but
+// only for references that appear AFTER the declaration. Move the declaration
+// below the tests and every `it` that read the narrowed member now sees the
+// declared union instead:
+//
+//   const TREND: Drawing = { kind: "trendline", a, b };   // narrowed to trendline
+//   it("...", () => { TREND.b });                         // fine BEFORE the move
+//                                                         // TS2339 AFTER it
+//
+// This is a TYPE break, never a runtime one, and `pnpm typecheck` catches it
+// immediately — it surfaced in exactly one file (motion-core's drawingScene
+// fixtures) across the whole repo. The fix is `satisfies` rather than an
+// annotation: `const TREND = { … } satisfies Drawing` keeps the conformance
+// check while letting inference hold the narrow literal type, so the
+// declaration's POSITION stops mattering. The rule is syntactic and has no
+// types, so it cannot pre-empt this; run typecheck after a bulk --fix.
+//
 // class/enum/`vi.doMock`/`jest.doMock`/`vi.hoisted` always stay put — the first
 // two because a class is not hoisted the way a function is and moving it can
 // break `extends`, the rest because they run in place by design.
@@ -204,21 +223,99 @@ function isMovableFixture(stmt, sourceCode) {
     return false;
   }
 
-  const declared = sourceCode.getDeclaredVariables(stmt);
-  if (declared.length === 0) {
-    return false;
+  return sourceCode.getDeclaredVariables(stmt).length > 0;
+}
+
+/** The statement in `candidates` whose source range encloses this node, or null.
+ * Used to tell "read by another fixture's initialiser" from "read by live code". */
+function enclosingCandidate(node, candidates) {
+  let current = node;
+  while (current) {
+    if (candidates.has(current)) {
+      return current;
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
+/** Which of `candidates` can move below the tests, as a GROUP.
+ *
+ * A fixture read by another fixture's initialiser is read during evaluation, so
+ * on its own it can never move. But if that other fixture is moving too, the
+ * pair stays in the same relative order — the fixer preserves it — and the
+ * initialisation sequence is unchanged. So movability is not a per-declaration
+ * property; it is the greatest fixpoint over the whole set.
+ *
+ * Start by assuming every candidate moves, then repeatedly drop any whose
+ * reference is neither deferred nor inside a still-moving candidate. Dropping
+ * one can strand another (its reader now stays put), hence the loop. Converges:
+ * the set only ever shrinks.
+ *
+ * `const user = {...}; const session = { user };` is the motivating case — the
+ * per-declaration check moved `session` and stranded `user` at the top, which
+ * splits a pair that belongs together and reads worse than not moving at all. */
+function movableFixtureGroup(candidates, sourceCode, below) {
+  const movable = new Set(candidates);
+  let settled = false;
+
+  while (!settled) {
+    settled = true;
+    for (const stmt of [...movable]) {
+      const blocked = sourceCode.getDeclaredVariables(stmt).some((variable) => {
+        return variable.references.some((ref) => {
+          // The declaration's OWN initialiser is not a read of the binding —
+          // it is what creates it, and travels with the statement.
+          if (ref.init) {
+            return false;
+          }
+          if (isDeferredReference(ref.identifier, sourceCode, new Set())) {
+            return false;
+          }
+          // Read by a fixture that is ALSO moving: order is preserved, fine.
+          if (enclosingCandidate(ref.identifier, movable) !== null) {
+            return false;
+          }
+          // Read by a statement that ALREADY sits below the tests: still fine,
+          // provided we land ABOVE that reader rather than at the very end.
+          // This is the common leftover shape once an outer fixture has been
+          // moved in an earlier pass and its inner one was stranded at the top.
+          return enclosingCandidate(ref.identifier, below) === null;
+        });
+      });
+
+      if (blocked) {
+        movable.delete(stmt);
+        settled = false;
+      }
+    }
   }
 
-  return declared.every((variable) => {
-    return variable.references.every((ref) => {
-      // The declaration's OWN initialiser is not a read of the binding — it is
-      // what creates it, and it travels with the statement when it moves.
-      if (ref.init) {
-        return true;
+  return movable;
+}
+
+/** The earliest already-below statement that EAGERLY reads one of `moved`, or
+ * null. Moved fixtures must be initialised before it runs, so it is the fixer's
+ * insertion point; without one, they go to the end of the block. */
+function earliestEagerReader(moved, below, sourceCode) {
+  let earliest = null;
+  for (const stmt of moved) {
+    for (const variable of sourceCode.getDeclaredVariables(stmt)) {
+      for (const ref of variable.references) {
+        if (ref.init) {
+          continue;
+        }
+        const owner = enclosingCandidate(ref.identifier, below);
+        if (owner === null) {
+          continue;
+        }
+        if (earliest === null || owner.range[0] < earliest.range[0]) {
+          earliest = owner;
+        }
       }
-      return isDeferredReference(ref.identifier, sourceCode, new Set());
-    });
-  });
+    }
+  }
+  return earliest;
 }
 
 function declKind(stmt) {
@@ -229,11 +326,8 @@ function declKind(stmt) {
   return node.type;
 }
 
-function isSecondary(stmt, sourceCode, fixtures) {
+function isSecondary(stmt) {
   if (isMovableMock(stmt)) {
-    return true;
-  }
-  if (fixtures && isMovableFixture(stmt, sourceCode)) {
     return true;
   }
   const kind = declKind(stmt);
@@ -260,60 +354,171 @@ function startWithLeadingComments(node, sourceCode) {
   return start;
 }
 
+/** Statements above the last test in `body` that belong below it. */
+function violationsIn(body, sourceCode, fixtures) {
+  let lastPrimary = -1;
+  for (let i = 0; i < body.length; i++) {
+    if (isPrimary(body[i])) {
+      lastPrimary = i;
+    }
+  }
+  if (lastPrimary === -1) {
+    return { violations: [], before: null };
+  }
+
+  const above = body.slice(0, lastPrimary);
+  // Only statements whose POSITION decides when they run can serve as an
+  // insertion anchor. A `function` declaration below the tests is hoisted, so
+  // landing above it proves nothing — it may still be called during collection,
+  // which is exactly the case isDeferredReference already rejected. Restrict to
+  // const/let declarations, whose initialiser runs where it is written.
+  const below = new Set(
+    body.slice(lastPrimary + 1).filter((stmt) => {
+      return (
+        stmt.type === "VariableDeclaration" &&
+        (stmt.kind === "const" || stmt.kind === "let")
+      );
+    }),
+  );
+  const candidates = new Set(
+    fixtures ? above.filter((stmt) => isMovableFixture(stmt, sourceCode)) : [],
+  );
+  const movableFixtures = movableFixtureGroup(candidates, sourceCode, below);
+
+  const violations = above.filter((stmt) => {
+    return isSecondary(stmt) || movableFixtures.has(stmt);
+  });
+
+  return {
+    violations,
+    before: earliestEagerReader(movableFixtures, below, sourceCode),
+  };
+}
+
 function create(context) {
   const sourceCode = context.sourceCode;
   const fixtures = context.options[0]?.fixtures === true;
+
+  function reportBlock(violations, insertAt, indent, insertBefore = false) {
+    if (violations.length === 0) {
+      return;
+    }
+
+    context.report({
+      node: violations[0],
+      messageId: "moveDown",
+      data: { count: String(violations.length) },
+      fix(fixer) {
+        const fixes = [];
+        const chunks = [];
+        for (const node of violations) {
+          const start = startWithLeadingComments(node, sourceCode);
+          const nextToken = sourceCode.getTokenAfter(node, {
+            includeComments: true,
+          });
+          const end = nextToken ? nextToken.range[0] : node.range[1];
+          fixes.push(fixer.removeRange([start, end]));
+          chunks.push(sourceCode.text.slice(start, node.range[1]));
+        }
+        // Three shapes. Inserting BEFORE a statement (because it eagerly reads
+        // what we are moving) leads each chunk and trails a blank line. Program
+        // scope appends past the final newline, so it opens with one "\n" and
+        // closes with another. Block scope inserts after the last statement,
+        // where the closing "\n}" already follows.
+        const pad = indent ?? "";
+        const text = insertBefore
+          ? chunks
+              .map((chunk) => {
+                return `${pad}${chunk}\n\n`;
+              })
+              .join("")
+          : indent === null
+            ? `\n${chunks.join("\n\n")}\n`
+            : chunks
+                .map((chunk) => {
+                  return `\n\n${indent}${chunk}`;
+                })
+                .join("");
+        fixes.push(fixer.insertTextAfterRange([insertAt, insertAt], text));
+        return fixes;
+      },
+    });
+  }
+
   return {
     // `:exit` rather than enter: isDeferredReference walks `parent` pointers,
     // which ESLint only populates as it traverses.
     "Program:exit"(program) {
-      const body = program.body;
-      let lastPrimary = -1;
-      for (let i = 0; i < body.length; i++) {
-        if (isPrimary(body[i])) {
-          lastPrimary = i;
-        }
-      }
-      if (lastPrimary === -1) {
-        return;
-      }
-
-      const violations = [];
-      for (let i = 0; i < lastPrimary; i++) {
-        if (isSecondary(body[i], sourceCode, fixtures)) {
-          violations.push(body[i]);
-        }
-      }
-      if (violations.length === 0) {
-        return;
+      const top = violationsIn(program.body, sourceCode, fixtures);
+      if (top.before) {
+        reportBlock(
+          top.violations,
+          startWithLeadingComments(top.before, sourceCode),
+          "",
+          true,
+        );
+      } else {
+        reportBlock(top.violations, sourceCode.ast.range[1], null);
       }
 
-      context.report({
-        node: violations[0],
-        messageId: "moveDown",
-        data: { count: String(violations.length) },
-        fix(fixer) {
-          const fixes = [];
-          const chunks = [];
-          for (const node of violations) {
-            const start = startWithLeadingComments(node, sourceCode);
-            const nextToken = sourceCode.getTokenAfter(node, {
-              includeComments: true,
-            });
-            const end = nextToken ? nextToken.range[0] : node.range[1];
-            fixes.push(fixer.removeRange([start, end]));
-            chunks.push(sourceCode.text.slice(start, node.range[1]));
+      // The same treatment INSIDE each describe. A helper used by one describe
+      // belongs at the end of THAT block, not at the bottom of a 4,500-line
+      // file, so the insertion point is the block rather than the program.
+      const visit = (node) => {
+        if (!node || typeof node.type !== "string") {
+          return;
+        }
+
+        if (
+          node.type === "CallExpression" &&
+          baseCalleeName(node.callee) === "describe"
+        ) {
+          for (const arg of node.arguments) {
+            if (
+              (arg.type === "ArrowFunctionExpression" ||
+                arg.type === "FunctionExpression") &&
+              arg.body?.type === "BlockStatement"
+            ) {
+              const body = arg.body.body;
+              const found = violationsIn(body, sourceCode, fixtures);
+              if (found.violations.length > 0) {
+                const indent = " ".repeat(body[0].loc.start.column);
+                if (found.before) {
+                  reportBlock(
+                    found.violations,
+                    startWithLeadingComments(found.before, sourceCode),
+                    indent,
+                    true,
+                  );
+                } else {
+                  reportBlock(
+                    found.violations,
+                    body[body.length - 1].range[1],
+                    indent,
+                  );
+                }
+              }
+            }
           }
-          const programEnd = sourceCode.ast.range[1];
-          fixes.push(
-            fixer.insertTextAfterRange(
-              [programEnd, programEnd],
-              `\n${chunks.join("\n\n")}\n`,
-            ),
-          );
-          return fixes;
-        },
-      });
+        }
+
+        for (const key of Object.keys(node)) {
+          if (key === "parent") {
+            continue;
+          }
+          const value = node[key];
+          if (Array.isArray(value)) {
+            for (const child of value) {
+              if (child && typeof child.type === "string") {
+                visit(child);
+              }
+            }
+          } else if (value && typeof value.type === "string") {
+            visit(value);
+          }
+        }
+      };
+      visit(program);
     },
   };
 }

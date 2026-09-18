@@ -15,16 +15,6 @@ import { InMemorySessionStore } from "./InMemorySessionStore";
 import { createWsRealPorts } from "./portFactory";
 
 describe("wsRealWorkflow :: error paths", () => {
-  function makeReq(): CreateRfqRequest {
-    return {
-      instrumentId: 1,
-      dealerIds: [0],
-      quantity: 1000,
-      direction: Direction.Buy,
-      expirySecs: 60,
-    };
-  }
-
   it("rejects createRfq on nack", async () => {
     const ws = new FakeWsAdapter();
     const ports = createWsRealPorts(ws, {
@@ -32,7 +22,7 @@ describe("wsRealWorkflow :: error paths", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const promise = firstValueFrom(ports.workflow.createRfq(makeReq()));
+    const promise = firstValueFrom(ports.workflow.createRfq(createReq()));
     await awaitPendingRpc(ws, "rpc.createRfq");
     ws.nextRpcResponse("rpc.createRfq", rpcNack());
     await expect(promise).rejects.toThrow(/Failed to create RFQ/);
@@ -66,4 +56,14 @@ describe("wsRealWorkflow :: error paths", () => {
     await expect(promise).rejects.toThrow(/Failed to accept quote/);
     ws.dispose();
   });
+
+  function createReq(): CreateRfqRequest {
+    return {
+      instrumentId: 1,
+      dealerIds: [0],
+      quantity: 1000,
+      direction: Direction.Buy,
+      expirySecs: 60,
+    };
+  }
 });

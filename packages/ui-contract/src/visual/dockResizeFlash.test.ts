@@ -28,19 +28,19 @@ describe("dockTabStripsAreSettled", () => {
   it("is settled on a page with no dockview container at all", () => {
     // The in-house engine: no dockview chrome exists, so there is no flash to
     // wait out. Distinguished by the CONTAINER, not by the absence of a class.
-    stubPage({ docks: 0, strips: [] });
+    createStubPage({ docks: 0, strips: [] });
 
     expect(dockTabStripsAreSettled()).toBe(true);
   });
 
   it("is settled when every mounted tab strip is past its resize flash", () => {
-    stubPage({ docks: 1, strips: [[], []] });
+    createStubPage({ docks: 1, strips: [[], []] });
 
     expect(dockTabStripsAreSettled()).toBe(true);
   });
 
   it("is NOT settled while a tab strip carries dockview's resizing class", () => {
-    stubPage({ docks: 1, strips: [[], ["dv-scrollable-resizing"]] });
+    createStubPage({ docks: 1, strips: [[], ["dv-scrollable-resizing"]] });
 
     expect(dockTabStripsAreSettled()).toBe(false);
   });
@@ -48,13 +48,13 @@ describe("dockTabStripsAreSettled", () => {
   it("is NOT settled when the dock container is mounted but empty", () => {
     // The vacuity guard: zero strips means dockview has not laid out yet, which
     // reads identically to "settled" if you only look for the resizing class.
-    stubPage({ docks: 1, strips: [] });
+    createStubPage({ docks: 1, strips: [] });
 
     expect(dockTabStripsAreSettled()).toBe(false);
   });
 
   it("looks at every strip, not just the first", () => {
-    stubPage({ docks: 1, strips: [[], [], ["dv-scrollable-resizing"]] });
+    createStubPage({ docks: 1, strips: [[], [], ["dv-scrollable-resizing"]] });
 
     expect(dockTabStripsAreSettled()).toBe(false);
   });
@@ -62,7 +62,7 @@ describe("dockTabStripsAreSettled", () => {
   it("ignores dockview's other scrollable states, which no capture can reach", () => {
     // `:hover` and `dv-scrollable-scrolling` also paint the thumb, but neither
     // is reachable in a static capture — waiting on them would never settle.
-    stubPage({ docks: 1, strips: [["dv-scrollable-scrolling"]] });
+    createStubPage({ docks: 1, strips: [["dv-scrollable-scrolling"]] });
 
     expect(dockTabStripsAreSettled()).toBe(true);
   });
@@ -80,7 +80,7 @@ interface FakeStrip {
   readonly classList: DOMTokenList;
 }
 
-function stubPage(page: FakePage): void {
+function createStubPage(page: FakePage): void {
   const strips = page.strips.map((classes): FakeStrip => {
     return {
       classList: {

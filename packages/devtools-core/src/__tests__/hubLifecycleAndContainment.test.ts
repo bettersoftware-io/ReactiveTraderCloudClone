@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe("DevtoolsHub — dormancy is reversible", () => {
   it("stops subscribing after bye, and resumes on a later hello", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const source$ = new Subject<number>();
 
     hub.registerStream("prices$", source$);
@@ -43,7 +43,7 @@ describe("DevtoolsHub — dormancy is reversible", () => {
   });
 
   it("resends welcome and snapshot when an already-live panel re-hellos", () => {
-    const { sent, inbound$ } = harness();
+    const { sent, inbound$ } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
     const afterFirst = sent.length;
@@ -58,7 +58,7 @@ describe("DevtoolsHub — dormancy is reversible", () => {
   });
 
   it("ignores a duplicate registerStream for the same id", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const first$ = new Subject<number>();
     const second$ = new Subject<number>();
 
@@ -75,7 +75,7 @@ describe("DevtoolsHub — dormancy is reversible", () => {
 
 describe("DevtoolsHub — failures stay inside the hub", () => {
   it("survives a transport that throws on inbound", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
 
     // A malformed frame must not propagate out of the subscription.
     expect(() => {
@@ -86,7 +86,7 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
   });
 
   it("survives machineIntent and machineDisposed for an unknown machine", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
 
@@ -100,7 +100,7 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
   });
 
   it("ignores a repeated dispose for the same machine", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const state$ = new Subject<unknown>();
 
     inbound$.next({ kind: "hello", v: 1 });
@@ -114,7 +114,7 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
   });
 
   it("survives wireIn/wireOut carrying an unserialisable payload", () => {
-    const { hub, inbound$ } = harness();
+    const { hub, inbound$ } = createHarness();
     const circular: Record<string, unknown> = {};
 
     circular.self = circular;
@@ -128,10 +128,8 @@ describe("DevtoolsHub — failures stay inside the hub", () => {
 });
 
 describe("DevtoolsHub — disposed-machine retention", () => {
-  const MAX_DISPOSED_RETAINED = 500;
-
   it("evicts the oldest disposed machines past the retention cap", () => {
-    const { hub, sent, inbound$ } = harness();
+    const { hub, sent, inbound$ } = createHarness();
 
     inbound$.next({ kind: "hello", v: 1 });
 
@@ -175,6 +173,8 @@ describe("DevtoolsHub — disposed-machine retention", () => {
     expect(retainedIds).toContain(secondOldestId);
     expect(retainedIds).toHaveLength(MAX_DISPOSED_RETAINED);
   });
+
+  const MAX_DISPOSED_RETAINED = 500;
 });
 
 interface Harness {
@@ -183,7 +183,7 @@ interface Harness {
   inbound$: Subject<InspectorToApp>;
 }
 
-function harness(): Harness {
+function createHarness(): Harness {
   const sent: AppToInspector[] = [];
   const inbound$ = new Subject<InspectorToApp>();
   const hub = new DevtoolsHub({ appId: "test-app" });

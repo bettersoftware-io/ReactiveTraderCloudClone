@@ -8,11 +8,9 @@ import {
   type RenderPanelDeps,
 } from "./renderPanelTool.js";
 
-const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"];
-
 describe("buildRenderPanelTool", () => {
   it("names itself render_panel", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
     expect(tool.name).toBe(RENDER_PANEL_TOOL_NAME);
@@ -20,9 +18,9 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("valid spec, no targetPanelId: mints a fresh id, emits it, and reports it", async () => {
-    const { deps, emitPanel, mintPanelId } = buildDeps();
+    const { deps, emitPanel, mintPanelId } = createDeps();
     const tool = buildRenderPanelTool(deps);
-    const spec = validSpec();
+    const spec = createValidSpec();
 
     const result = await tool.run({ spec });
 
@@ -32,9 +30,9 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("valid spec + targetPanelId: emits under the target id, never mints, and reports it", async () => {
-    const { deps, emitPanel, mintPanelId } = buildDeps();
+    const { deps, emitPanel, mintPanelId } = createDeps();
     const tool = buildRenderPanelTool(deps);
-    const spec = validSpec();
+    const spec = createValidSpec();
 
     const result = await tool.run({ spec, targetPanelId: "p1" });
 
@@ -44,7 +42,7 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("invalid spec: resolves to the validator's error string and never emits", async () => {
-    const { deps, emitPanel, mintPanelId } = buildDeps();
+    const { deps, emitPanel, mintPanelId } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
     const result = await tool.run({
@@ -63,7 +61,7 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("unknown symbol: resolves to the validator's error string and never emits", async () => {
-    const { deps, emitPanel, mintPanelId } = buildDeps();
+    const { deps, emitPanel, mintPanelId } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
     const result = await tool.run({
@@ -82,7 +80,7 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("rejects a non-object input without emitting", async () => {
-    const { deps, emitPanel } = buildDeps();
+    const { deps, emitPanel } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
     const result = await tool.run("not an object");
@@ -94,16 +92,16 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("rejects a non-string / empty targetPanelId without emitting", async () => {
-    const { deps, emitPanel } = buildDeps();
+    const { deps, emitPanel } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
     const numericResult = await tool.run({
-      spec: validSpec(),
+      spec: createValidSpec(),
       targetPanelId: 42,
     });
 
     const emptyResult = await tool.run({
-      spec: validSpec(),
+      spec: createValidSpec(),
       targetPanelId: "",
     });
 
@@ -117,7 +115,7 @@ describe("buildRenderPanelTool", () => {
   });
 
   it("declares its input schema requiring only spec, embedding PANEL_SPEC_JSON_SCHEMA", () => {
-    const { deps } = buildDeps();
+    const { deps } = createDeps();
     const tool = buildRenderPanelTool(deps);
     const schema = tool.inputSchema as unknown as RenderPanelInputSchema;
 
@@ -130,10 +128,10 @@ describe("buildRenderPanelTool", () => {
     // itself proves this at compile time. This test proves it at runtime:
     // the handler resolves to a normal string with nothing awaiting
     // approval, unlike execute_trade's run() which blocks on confirmTrade().
-    const { deps, emitPanel } = buildDeps();
+    const { deps, emitPanel } = createDeps();
     const tool = buildRenderPanelTool(deps);
 
-    const result = await tool.run({ spec: validSpec() });
+    const result = await tool.run({ spec: createValidSpec() });
 
     expect(typeof result).toBe("string");
     expect(result).not.toContain("declined");
@@ -142,7 +140,7 @@ describe("buildRenderPanelTool", () => {
   });
 });
 
-function validSpec(): PanelSpecV1 {
+function createValidSpec(): PanelSpecV1 {
   return {
     v: 1,
     title: "GBP Volatility",
@@ -161,7 +159,7 @@ interface RenderPanelInputSchema {
   };
 }
 
-/** `buildDeps`' own return shape — named rather than inline per
+/** `createDeps`' own return shape — named rather than inline per
  * `no-restricted-syntax`. */
 interface BuiltDeps {
   readonly deps: RenderPanelDeps;
@@ -169,7 +167,7 @@ interface BuiltDeps {
   readonly mintPanelId: ReturnType<typeof vi.fn>;
 }
 
-function buildDeps(overrides: Partial<RenderPanelDeps> = {}): BuiltDeps {
+function createDeps(overrides: Partial<RenderPanelDeps> = {}): BuiltDeps {
   const emitPanel = vi.fn();
   const mintPanelId = vi.fn(() => {
     return "panel-minted-1";
@@ -184,3 +182,5 @@ function buildDeps(overrides: Partial<RenderPanelDeps> = {}): BuiltDeps {
 
   return { deps, emitPanel, mintPanelId };
 }
+
+const KNOWN_SYMBOLS = ["EURUSD", "GBPUSD", "USDJPY"];

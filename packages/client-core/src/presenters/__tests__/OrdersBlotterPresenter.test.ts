@@ -16,7 +16,7 @@ describe("OrdersBlotterPresenter — fills$", () => {
   it("nexts fills$ with { symbol } when place() reaches 'filled' status", async () => {
     vi.useFakeTimers();
 
-    const fillOrder = makeFakeOrder({
+    const fillOrder = createFakeOrder({
       status: "filled",
       filledQty: 100,
       avgPrice: 190,
@@ -28,10 +28,10 @@ describe("OrdersBlotterPresenter — fills$", () => {
       },
       place: (_req: PlaceOrderRequest) => {
         return concat(
-          of(makeFakeOrder({ status: "new" })),
+          of(createFakeOrder({ status: "new" })),
           timer(300).pipe(
             map(() => {
-              return makeFakeOrder({ status: "working" });
+              return createFakeOrder({ status: "working" });
             }),
           ),
           timer(500).pipe(
@@ -78,10 +78,10 @@ describe("OrdersBlotterPresenter — fills$", () => {
       },
       place: (_req: PlaceOrderRequest) => {
         return concat(
-          of(makeFakeOrder({ status: "new" })),
+          of(createFakeOrder({ status: "new" })),
           timer(300).pipe(
             map(() => {
-              return makeFakeOrder({ status: "working" });
+              return createFakeOrder({ status: "working" });
             }),
           ),
         );
@@ -131,15 +131,15 @@ describe("OrdersBlotterPresenter — orders$ live updates", () => {
       },
       place: (_req: PlaceOrderRequest) => {
         return concat(
-          of(makeFakeOrder({ status: "new" })),
+          of(createFakeOrder({ status: "new" })),
           timer(300).pipe(
             map(() => {
-              return makeFakeOrder({ status: "working" });
+              return createFakeOrder({ status: "working" });
             }),
           ),
           timer(500).pipe(
             map(() => {
-              return makeFakeOrder({
+              return createFakeOrder({
                 status: "filled",
                 filledQty: 100,
                 avgPrice: 190,
@@ -178,7 +178,7 @@ describe("OrdersBlotterPresenter — orders$ live updates", () => {
   });
 });
 
-function makeFakeOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
+function createFakeOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
   return {
     id: "eq-1",
     symbol: "AAPL",

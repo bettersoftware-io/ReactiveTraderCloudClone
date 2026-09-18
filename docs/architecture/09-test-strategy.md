@@ -184,6 +184,60 @@ specs call semantic methods on page modules under the package's
 [`docs/lint-warnings.md`](../lint-warnings.md). Design:
 [page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
 
+**A page object must also CONSTRUCT the component it is named for**, not accept
+one already built — `rtc/page-objects-own-their-component`. This is the same
+doctrine as above, but it needs its own rule because
+`no-framework-calls-in-specs` enforces the doctrine by banning framework
+*imports*: a page whose contract is `mount(element: ReactElement)` passes that
+rule cleanly while leaving the entire **arrange** half in the spec. The type
+erases the component, so nothing about the page can encapsulate it.
+
+That gap was load-bearing. `client-react` was marked migrated (and held to
+`error`) the whole time its `DockviewLayoutEngine.docked.test.tsx` wrote **all
+15 props at each of 16 render sites — 9 of them byte-identical every time**,
+144 lines of pure noise in a 747-line file. Two cases differing in one prop
+could only be told apart by eye-diffing two 15-line blocks. The solid twin,
+forced by Solid's once-running component bodies to take live accessors, had
+been built the right way from the start.
+
+The sanctioned shape is a props object with documented defaults, so a case
+states only what it varies:
+
+```ts
+page.mount({ registry, store, docked: ["panel-dyn-1"] });
+page.mount({ registry, store, docked: ["panel-dyn-1"], closed: ["panel-dyn-1"] });
+```
+
+A **bare `Element`** stays legal — that is the DOM interface, and a page
+measuring a node it was handed (`UseFlipGridPage`) is doing its job; only
+`ReactElement` and qualified `JSX.Element` are the "spec built the subject"
+shape. A parameter named `children` is exempt: a provider page wrapping
+arbitrary children is composition, not handing over the subject. Only the
+page's **published interface** is checked — its own plumbing may hold an
+element, since RTL's `rerender` takes one.
+
+The rule is **unconditional** — it carries no ignore list. All five page
+objects that took an element were converted: `client-react`'s
+`DockviewLayoutEngineDockedPage` (16 sites) and `DockviewLayoutEngineStrictModePage`
+(8 sites across four specs), `client-react-native`'s `BootCanvasPage` and
+`ExposureBubblePage`, and `devtools-app`'s `NavTreePage`.
+
+Two of those needed more than a prop swap, and both shapes are worth knowing:
+
+- **A wrapper that is itself the subject.** The StrictMode spec mounts inside
+  `<StrictMode>`, and moving that page-side would have hidden what the test
+  mounts. `mountInStrictMode(props)` keeps it visible at the call site without
+  handing the page an element.
+- **A stateful harness.** `NavTreePage` and `BootCanvasPage` mount components
+  that call hooks (`useState`, `useSharedValue`) to drive the subject. The page
+  declares those harnesses itself and exposes their handles — a spec that built
+  them would be composing the subject again.
+
+`BootCanvasPage` additionally loads its component through `require` inside
+`mount`, not a static import: the spec mocks `BootCanvas`'s dependencies with
+factories that close over spec-level `const`s, so a static import would pull
+`bootScene` in before those initialise and hit the temporal dead zone.
+
 ### Readable JSON fixtures
 
 A test's ARRANGEMENT must not drown its SUBJECT. Two lint rules enforce that
@@ -218,6 +272,40 @@ object literal" would be far too broad. And it pins only the `create` prefix;
 **Re-measure before moving either threshold.** A bar set from an assumption is
 how the visual tier's tolerance ended up wrong in both directions at once —
 see [§9.7](#97-visual-golden-tiers).
+
+#### Fixture factories are named `create*`
+
+`rtc/name-fixture-factories` (specs only, no ignore list) pins the naming.
+`docs/handler-naming.md` requires a name to state its **effect**; a bare noun
+names a *thing*, so `poppedBlob()` reads as a constant until you notice the
+parens — which matters because each call returns a **fresh** value, and sharing
+one constant instead would couple cases through mutable state.
+
+`rtc/name-functions-by-effect` cannot catch this: it works from a **blocklist**
+of bad prefixes (`on*`, `handle*`, a vacuous-verb set) and passes everything
+else. Requiring a verb instead would need an unbounded **lexicon** that fails
+the build on the first word nobody thought of. So this rule takes the only two
+shapes that need none:
+
+| arm | shape | fix |
+|---|---|---|
+| factory synonyms | `make*`, `build*`, `fake*`, `stub*` at any arity | `create*`, `createFake*`, `createStub*` |
+| noun-named fixtures | zero-parameter, body is exactly `return { … }` / `return [ … ]` | `create<Noun>` |
+
+**The single-statement requirement is the safety property.** The looser test
+("returns an object/array anywhere in the body") caught seven *actions* that
+merely happen to return something — `mountPillWorkspace`, `wireAppToInspector`,
+`renderModal`, `useTicketSubmission` … — every one already correctly named. The
+single-return form caught none of them.
+
+**Known limit, stated rather than hidden:** a noun-named factory that builds up
+locals before returning is out of arm 2's reach, and there is no syntactic
+discriminator separating those from actions without the lexicon this rule avoids.
+Arm 1 still covers them whenever they carry a factory-synonym prefix.
+
+`createFake*` / `createStub*` deliberately keep the test-double vocabulary
+rather than flattening it — `create` states the effect, `Fake`/`Stub` states what
+is produced.
 
 ### 9.9 React Native testing
 

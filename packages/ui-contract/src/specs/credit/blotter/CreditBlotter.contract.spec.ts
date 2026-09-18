@@ -12,34 +12,6 @@ import {
   RfqState,
 } from "@rtc/domain";
 
-const instruments: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "US Treasury 10Y",
-    cusip: "912828ZQ6",
-    ticker: "T 1.5 02/34",
-    maturity: "2034-02-15",
-    interestRate: 1.5,
-    benchmark: "10Y",
-    refPrice: 98.4,
-  },
-  {
-    id: 2,
-    name: "Apple Inc 2030",
-    cusip: "037833EK8",
-    ticker: "AAPL 2.4 30",
-    maturity: "2030-05-11",
-    interestRate: 2.4,
-    benchmark: "7Y",
-    refPrice: 99.8,
-  },
-];
-
-const dealers: readonly Dealer[] = [
-  { id: 1, name: "Adaptive Bank" },
-  { id: 2, name: "Citi" },
-];
-
 // 2024-03-05 in UTC (avoid TZ flakiness by asserting the day/month/year parts).
 const TS = Date.UTC(2024, 2, 5, 12, 0, 0);
 
@@ -165,10 +137,6 @@ describe("CreditBlotter", () => {
   });
 
   describe("sorting", () => {
-    const r1 = rfq(1, { instrumentId: 1 });
-    const r2 = rfq(2, { instrumentId: 2 });
-    const r3 = rfq(3, { instrumentId: 1 });
-
     it("sorts Trade ID descending on first header click (desc-first column)", async () => {
       const blotter = mount(CreditBlotter, {
         hooks: {
@@ -226,6 +194,12 @@ describe("CreditBlotter", () => {
       // Back to deriveCreditTrades insertion order (sorted desc by tradeId internally).
       expect(blotter.columnValues("Trade ID")).toEqual(["3", "2", "1"]);
     });
+
+    const r1 = rfq(1, { instrumentId: 1 });
+
+    const r2 = rfq(2, { instrumentId: 2 });
+
+    const r3 = rfq(3, { instrumentId: 1 });
   });
 
   // The quick-filter input lives in CreditBlotterHead now — head + body are
@@ -531,3 +505,31 @@ function quoteMap(...quotes: Quote[]): ReadonlyMap<number, Quote> {
     }),
   );
 }
+
+const instruments: readonly Instrument[] = [
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+    refPrice: 98.4,
+  },
+  {
+    id: 2,
+    name: "Apple Inc 2030",
+    cusip: "037833EK8",
+    ticker: "AAPL 2.4 30",
+    maturity: "2030-05-11",
+    interestRate: 2.4,
+    benchmark: "7Y",
+    refPrice: 99.8,
+  },
+];
+
+const dealers: readonly Dealer[] = [
+  { id: 1, name: "Adaptive Bank" },
+  { id: 2, name: "Citi" },
+];

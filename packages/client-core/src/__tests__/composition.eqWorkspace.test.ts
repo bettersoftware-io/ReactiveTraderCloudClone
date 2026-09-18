@@ -9,16 +9,12 @@ import {
   WatchlistPresenter,
 } from "#/presenters/index";
 
-const AAPL: EquityInstrument = {
-  symbol: "AAPL",
-  name: "Apple Inc",
-  exchange: "NASDAQ",
-};
-
 describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", () => {
   it("resolves the first symbol once the watchlist arrives, and never before", async () => {
     const source$ = new Subject<readonly EquityInstrument[]>();
-    const watchlist = new WatchlistPresenter(makeAsyncMarketDataPort(source$));
+    const watchlist = new WatchlistPresenter(
+      createAsyncMarketDataPort(source$),
+    );
 
     const resolved = firstValueFrom(
       firstWatchlistSymbol$(watchlist.watchlist$),
@@ -38,7 +34,9 @@ describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", 
 
   it("ignores an empty list and only resolves once a non-empty one arrives", async () => {
     const source$ = new Subject<readonly EquityInstrument[]>();
-    const watchlist = new WatchlistPresenter(makeAsyncMarketDataPort(source$));
+    const watchlist = new WatchlistPresenter(
+      createAsyncMarketDataPort(source$),
+    );
 
     const resolved = firstValueFrom(
       firstWatchlistSymbol$(watchlist.watchlist$),
@@ -53,7 +51,9 @@ describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", 
 describe("composition — EqWorkspaceMachine wired to an async watchlist port (C2 end-to-end)", () => {
   it("the eq-workspace starts empty (no phantom tab) then self-seeds once the watchlist lands", async () => {
     const source$ = new Subject<readonly EquityInstrument[]>();
-    const watchlist = new WatchlistPresenter(makeAsyncMarketDataPort(source$));
+    const watchlist = new WatchlistPresenter(
+      createAsyncMarketDataPort(source$),
+    );
 
     // Mirrors composition.ts's createApp wiring exactly: initialSymbol from the
     // synchronous peek (finds nothing — the port is async) + seed$ from
@@ -97,7 +97,7 @@ describe("composition — EqWorkspaceMachine wired to an async watchlist port (C
  * async watchlist port, standing in for the real WS-real backend where the
  * catalogue arrives over the wire (not synchronously like the simulator's
  * `of(WATCHLIST)`). Only watchlist() is exercised by these tests. */
-function makeAsyncMarketDataPort(
+function createAsyncMarketDataPort(
   watchlist$: Subject<readonly EquityInstrument[]>,
 ): MarketDataPort {
   return {
@@ -115,3 +115,9 @@ function makeAsyncMarketDataPort(
     },
   } as unknown as MarketDataPort;
 }
+
+const AAPL: EquityInstrument = {
+  symbol: "AAPL",
+  name: "Apple Inc",
+  exchange: "NASDAQ",
+};

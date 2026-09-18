@@ -25,7 +25,7 @@ import {
 } from "../driveCommand.js";
 
 describe("parseDriveBatch — one valid batch per kind", () => {
-  it("accepts switchTab", () => {
+  it("accepts createSwitchTabCommand", () => {
     const batch = { v: 1, commands: [{ kind: "switchTab", tab: "credit" }] };
     expect(parseDriveBatch(batch)).toEqual({ ok: true, batch });
   });
@@ -110,17 +110,13 @@ describe("parseDriveBatch — one valid batch per kind", () => {
 });
 
 describe("parseDriveBatch — command count bounds", () => {
-  function switchTab(): Record<string, unknown> {
-    return { kind: "switchTab", tab: "fx" };
-  }
-
   it("accepts exactly 1 command (the minimum)", () => {
-    const batch = { v: 1, commands: [switchTab()] };
+    const batch = { v: 1, commands: [createSwitchTabCommand()] };
     expect(parseDriveBatch(batch).ok).toBe(true);
   });
 
   it("accepts exactly 8 commands (the maximum)", () => {
-    const batch = { v: 1, commands: Array(8).fill(switchTab()) };
+    const batch = { v: 1, commands: Array(8).fill(createSwitchTabCommand()) };
     expect(parseDriveBatch(batch).ok).toBe(true);
   });
 
@@ -133,7 +129,7 @@ describe("parseDriveBatch — command count bounds", () => {
   });
 
   it("rejects 9 commands with the exact error", () => {
-    const batch = { v: 1, commands: Array(9).fill(switchTab()) };
+    const batch = { v: 1, commands: Array(9).fill(createSwitchTabCommand()) };
     expect(parseDriveBatch(batch)).toEqual({
       ok: false,
       error: "commands: must contain 1..8 commands",
@@ -143,6 +139,10 @@ describe("parseDriveBatch — command count bounds", () => {
   it("MAX_DRIVE_COMMANDS is 8", () => {
     expect(MAX_DRIVE_COMMANDS).toBe(8);
   });
+
+  function createSwitchTabCommand(): Record<string, unknown> {
+    return { kind: "switchTab", tab: "fx" };
+  }
 });
 
 describe("parseDriveBatch — root shape", () => {
@@ -627,30 +627,6 @@ describe("DRIVE_POWER_LEVELS — pinned against @rtc/domain PowerSaverLevel", ()
 });
 
 describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as the validator", () => {
-  function itemBranches(): readonly Record<string, unknown>[] {
-    const schema =
-      DRIVE_COMMAND_JSON_SCHEMA as unknown as DriveCommandSchemaRoot;
-    return schema.properties.commands.items.anyOf;
-  }
-
-  function branchFor(kind: string): Record<string, unknown> {
-    const branch = itemBranches().find((candidate) => {
-      const props = candidate.properties as KindConstProperty;
-      return props.kind.const === kind;
-    });
-
-    if (branch === undefined) {
-      throw new Error(`no schema branch for kind ${kind}`);
-    }
-
-    return branch;
-  }
-
-  function enumOf(branch: Record<string, unknown>, field: string): unknown {
-    const props = branch.properties as Record<string, EnumProperty>;
-    return props[field]?.enum;
-  }
-
   it("has one anyOf branch per DRIVE_COMMAND_KINDS entry", () => {
     const kinds = itemBranches().map((branch) => {
       return (branch.properties as KindConstProperty).kind.const;
@@ -698,6 +674,30 @@ describe("DRIVE_COMMAND_JSON_SCHEMA — derived from the same const arrays as th
       ...DRIVE_POWER_LEVELS,
     ]);
   });
+
+  function itemBranches(): readonly Record<string, unknown>[] {
+    const schema =
+      DRIVE_COMMAND_JSON_SCHEMA as unknown as DriveCommandSchemaRoot;
+    return schema.properties.commands.items.anyOf;
+  }
+
+  function branchFor(kind: string): Record<string, unknown> {
+    const branch = itemBranches().find((candidate) => {
+      const props = candidate.properties as KindConstProperty;
+      return props.kind.const === kind;
+    });
+
+    if (branch === undefined) {
+      throw new Error(`no schema branch for kind ${kind}`);
+    }
+
+    return branch;
+  }
+
+  function enumOf(branch: Record<string, unknown>, field: string): unknown {
+    const props = branch.properties as Record<string, EnumProperty>;
+    return props[field]?.enum;
+  }
 });
 
 /** `DRIVE_COMMAND_JSON_SCHEMA`'s own shape, as cast to reach its per-kind

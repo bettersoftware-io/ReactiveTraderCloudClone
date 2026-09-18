@@ -18,7 +18,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("theme/skin/animated-bg hooks", () => {
   it("useThemeSkinPreference reads default holo and sets terminal", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useThemeSkinPreference();
     });
@@ -30,7 +30,7 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 
   it("useAnimatedBackground defaults on and toggles off", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useAnimatedBackground();
     });
@@ -42,7 +42,7 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 
   it("useAmbientStyle reads default aurora and sets rays", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useAmbientStyle();
     });
@@ -54,7 +54,7 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 
   it("usePowerSaver defaults off and cycle() advances off -> calm -> freeze -> off", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.usePowerSaver();
     });
@@ -83,7 +83,7 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 
   it("usePowerSaver setLevel jumps directly to freeze", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.usePowerSaver();
     });
@@ -95,7 +95,7 @@ describe("theme/skin/animated-bg hooks", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

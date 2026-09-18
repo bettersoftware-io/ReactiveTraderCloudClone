@@ -29,15 +29,6 @@ const root: LayoutNode = {
   ],
 };
 
-const initial: LayoutState = {
-  root,
-  maximized: null,
-  collapsed: [],
-  closed: [],
-  instances: [],
-};
-const port: LayoutPort = { initial };
-
 describe("createLayoutMachine", () => {
   it("seeds the initial tree from the port", () => {
     const m = createLayoutMachine(port);
@@ -406,22 +397,6 @@ describe("createLayoutMachine", () => {
   // insert appends a SECOND dock column beside the restored one), and
   // `reset()` would hand back the saved layout it is supposed to discard.
   describe("seedState (workspace-layout rehydration)", () => {
-    const seededRoot: LayoutNode = {
-      kind: "split",
-      dir: "row",
-      sizes: [0.75, 0.25],
-      children: [root, { kind: "panel", panelId: "jarvis-1" }],
-      initialPx: [undefined, 360],
-    };
-
-    const seeded: LayoutState = {
-      root: seededRoot,
-      maximized: null,
-      collapsed: [],
-      closed: [],
-      instances: [],
-    };
-
     it("starts the fold from seedState rather than port.initial", () => {
       const m = createLayoutMachine(port, { seedState: seeded });
       expect(current(m)).toEqual(seeded);
@@ -460,6 +435,22 @@ describe("createLayoutMachine", () => {
       });
       m.dispose();
     });
+
+    const seededRoot: LayoutNode = {
+      kind: "split",
+      dir: "row",
+      sizes: [0.75, 0.25],
+      children: [root, { kind: "panel", panelId: "jarvis-1" }],
+      initialPx: [undefined, 360],
+    };
+
+    const seeded: LayoutState = {
+      root: seededRoot,
+      maximized: null,
+      collapsed: [],
+      closed: [],
+      instances: [],
+    };
   });
 
   describe("openInstance / closeInstance (Phase 4 panel instances)", () => {
@@ -557,3 +548,13 @@ function current(m: ReturnType<typeof createLayoutMachine>): LayoutState {
 
   return view;
 }
+
+const initial: LayoutState = {
+  root,
+  maximized: null,
+  collapsed: [],
+  closed: [],
+  instances: [],
+};
+
+const port: LayoutPort = { initial };

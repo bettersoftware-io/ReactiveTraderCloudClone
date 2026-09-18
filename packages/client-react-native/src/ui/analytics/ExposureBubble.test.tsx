@@ -1,8 +1,6 @@
 import { afterEach, expect, test } from "@jest/globals";
 import type { SkFont } from "@shopify/react-native-skia";
 
-import type { BubbleDrawEntry } from "#/ui/analytics/bubbleDrawModel";
-import { ExposureBubble } from "#/ui/analytics/ExposureBubble";
 import { exposureBubblePage } from "#tests/pages/ExposureBubblePage";
 
 const page = exposureBubblePage();
@@ -10,18 +8,6 @@ const page = exposureBubblePage();
 afterEach(() => {
   return page.unmountAll();
 });
-
-const ENTRY: BubbleDrawEntry = {
-  currency: "EUR",
-  x: 60,
-  y: 60,
-  radius: 60,
-  sign: "pos",
-  currencyFontSize: 15,
-  currencyBaseline: -1,
-  amount: "+100.0M",
-  amountBaseline: 10,
-};
 
 const FONT = {
   getTextWidth: () => {
@@ -37,7 +23,7 @@ const FONT = {
  * `buildBubbleDrawModel`'s and is asserted there.
  */
 test("stacks a fill and a ring under both labels — and NO glow", async () => {
-  await page.mount(bubble({ currencyFont: FONT, amountFont: FONT }));
+  await page.mount({ currencyFont: FONT, amountFont: FONT });
 
   // T37: the MOBILE design is TWO layers, an 11% fill and a full-opacity
   // hairline ring (dc.html:194). The third circle and the radial gradient
@@ -53,7 +39,7 @@ test("stacks a fill and a ring under both labels — and NO glow", async () => {
 // draw through that window — a bubble that threw while its font loaded would
 // take the whole Analytics screen down on a cold start.
 test("draws the disc but no text while the typefaces are still loading", async () => {
-  await page.mount(bubble({ currencyFont: null, amountFont: null }));
+  await page.mount({ currencyFont: null, amountFont: null });
 
   expect(page.countHosts("SkiaCircle")).toBe(2);
   expect(page.countHosts("SkiaText")).toBe(0);
@@ -62,9 +48,7 @@ test("draws the disc but no text while the typefaces are still loading", async (
 // A bubble too small for a second line carries `amount: null`. The amount font
 // is loaded regardless, so the null is what has to suppress the label.
 test("omits the amount label when the bubble is too small for one", async () => {
-  await page.mount(
-    bubble({ currencyFont: FONT, amountFont: FONT, amount: null }),
-  );
+  await page.mount({ currencyFont: FONT, amountFont: FONT, amount: null });
 
   expect(page.countHosts("SkiaText")).toBe(1);
 });
@@ -73,33 +57,11 @@ test("omits the amount label when the bubble is too small for one", async () => 
 // not a mid-tween frame, and not a collapsed dot waiting on a tween that never
 // runs.
 test("draws at rest immediately when motion is disabled", async () => {
-  await page.mount(
-    bubble({ currencyFont: FONT, amountFont: FONT, motionEnabled: false }),
-  );
+  await page.mount({
+    currencyFont: FONT,
+    amountFont: FONT,
+    motionEnabled: false,
+  });
 
   expect(page.countHosts("SkiaCircle")).toBe(2);
 });
-
-interface BubbleOverrides {
-  currencyFont: SkFont | null;
-  amountFont: SkFont | null;
-  amount?: string | null;
-  motionEnabled?: boolean;
-}
-
-function bubble(overrides: BubbleOverrides): React.JSX.Element {
-  return (
-    <ExposureBubble
-      entry={
-        overrides.amount === undefined
-          ? ENTRY
-          : { ...ENTRY, amount: overrides.amount }
-      }
-      color="#22c55e"
-      amountColor="#94a3b8"
-      currencyFont={overrides.currencyFont}
-      amountFont={overrides.amountFont}
-      motionEnabled={overrides.motionEnabled ?? true}
-    />
-  );
-}

@@ -9,10 +9,6 @@ import {
 } from "../services/serviceContainer.js";
 import { createJarvisLoops } from "./agentLoop.js";
 
-const HELP_REPLY =
-  "At your service, sir. I can quote the majors, report the movers, brief you on the desk, " +
-  "or execute FX orders. Sentinels, widgets and drills arrive in a later build, sir.";
-
 beforeEach(() => {
   vi.useFakeTimers();
   // ExecutionSimulator's fill delay derives from Math.random() — left
@@ -276,3 +272,7 @@ function fullText(events: readonly JarvisEvent[]): string {
 
   return text;
 }
+
+const HELP_REPLY =
+  "At your service, sir. I can quote the majors, report the movers, brief you on the desk, " +
+  "or execute FX orders. Sentinels, widgets and drills arrive in a later build, sir.";

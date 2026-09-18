@@ -13,16 +13,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const POSITIONS: readonly EquityPosition[] = [
-  {
-    symbol: "AAPL",
-    qty: 1000,
-    avgPrice: 180,
-    markPrice: 185,
-    unrealisedPnl: 5000,
-  },
-];
-
 describe("EqBlotterPanel — view selection", () => {
   it("renders OrdersTable by default (DEFAULT_EQ_BLOTTER_VIEW is orders)", () => {
     const panel = mount(EqBlotterPanel, {
@@ -119,3 +109,13 @@ function order(overrides: Partial<EquityOrder> = {}): EquityOrder {
     ...overrides,
   };
 }
+
+const POSITIONS: readonly EquityPosition[] = [
+  {
+    symbol: "AAPL",
+    qty: 1000,
+    avgPrice: 180,
+    markPrice: 185,
+    unrealisedPnl: 5000,
+  },
+];

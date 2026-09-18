@@ -13,10 +13,6 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 // REAL browser composition — buildBrowserPorts()'s merged idle-timer +
 // reconnect$ wiring — which needs jsdom and import.meta.env.
 describe("idle disconnection → Reconnect button (simulator branch)", () => {
-  let app: App;
-  let statuses: ConnectionStatus[];
-  let unsubscribe: () => void;
-
   beforeEach(() => {
     // Fake timers BEFORE building ports so the idle countdown uses the
     // patched clock (same ordering as tests/presenter/vitest-fake-timers).
@@ -58,4 +54,10 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
       ConnectionStatus.CONNECTED,
     ]);
   }, 15_000);
+
+  let app: App;
+
+  let statuses: ConnectionStatus[];
+
+  let unsubscribe: () => void;
 });

@@ -11,12 +11,6 @@ import { join, resolve } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-const SCRIPT = resolve(
-  __dirname,
-  "../../../scripts/pages/publish-to-pages.mjs",
-);
-
-let root = "";
 afterEach(() => {
   if (root !== "") {
     rmSync(root, { recursive: true, force: true });
@@ -157,3 +151,10 @@ function publish(cwd: string, source: string, message: string): void {
     encoding: "utf8",
   });
 }
+
+const SCRIPT = resolve(
+  __dirname,
+  "../../../scripts/pages/publish-to-pages.mjs",
+);
+
+let root = "";

@@ -32,15 +32,6 @@ import { JARVIS_USAGE_WINDOW_MS, UsageMeter } from "../services/UsageMeter.js";
 import type { Ctx } from "./context.js";
 import { jarvisEffects } from "./jarvis.effects.js";
 
-const QUOTE_REPLY =
-  "EURUSD is trading at 1.0921, up 0 pips since the start of the session. " +
-  "Spread 1 pips; short-term momentum is positive. Anything else, sir?";
-
-const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.";
-
-const FILL_REPLY =
-  "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";
-
 const STUB_TURN_ID = "turn-stub";
 
 const STUB_PANEL_SPEC: PanelSpecV1 = {
@@ -155,7 +146,7 @@ describe("jarvis availability", () => {
   });
 
   it("responds { available: true, brains: ['scripted'], defaultBrain: 'scripted' } when only the scripted loop is present (RTC_JARVIS_FAKE=1)", () => {
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     messages$.next({ type: CLIENT_MSG.JARVIS_SUBSCRIBE, payload: {} });
 
@@ -210,7 +201,7 @@ describe("jarvis availability", () => {
 
 describe("jarvis effects", () => {
   it("streams a quote turn's tool badge + paced deltas + done, every frame carrying the request's turnId, deltas reassembling the reply", async () => {
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
     const turnId = "turn-quote";
 
     messages$.next({
@@ -249,7 +240,7 @@ describe("jarvis effects", () => {
   });
 
   it("a trade turn's confirmRequest carries the confirm-card fields plus turnId, no type field; approving executes, streams the fill reply, and grows the blotter", async () => {
-    const { services, messages$, sent } = harness();
+    const { services, messages$, sent } = createHarness();
     const turnId = "turn-trade";
 
     const tradeCounts: number[] = [];
@@ -301,7 +292,7 @@ describe("jarvis effects", () => {
   });
 
   it("declining a confirmRequest streams the declined copy and executes nothing", async () => {
-    const { services, messages$, sent } = harness();
+    const { services, messages$, sent } = createHarness();
     const turnId = "turn-decline";
 
     const tradeCounts: number[] = [];
@@ -338,7 +329,7 @@ describe("jarvis effects", () => {
   });
 
   it("jarvis.cancel mid-confirmation cancels the turn: a late jarvis.confirm is a no-op and nothing executes", async () => {
-    const { services, messages$, sent } = harness();
+    const { services, messages$, sent } = createHarness();
     const turnId = "turn-cancel";
 
     const tradeCounts: number[] = [];
@@ -374,7 +365,7 @@ describe("jarvis effects", () => {
   });
 
   it("a stale jarvis.cancel for an already-completed turn does not kill a later in-flight turn", async () => {
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     // Turn A completes normally.
     messages$.next({
@@ -422,7 +413,7 @@ describe("jarvis effects", () => {
   });
 
   it("tearing down the outbound stream mid-confirmation makes a late jarvis.confirm a no-op", async () => {
-    const { services, messages$, closed$, sent } = harness();
+    const { services, messages$, closed$, sent } = createHarness();
     const turnId = "turn-teardown";
 
     const tradeCounts: number[] = [];
@@ -460,7 +451,7 @@ describe("jarvis effects", () => {
   });
 
   it("two socket connections get distinct sessions: a confirmation issued on socket A cannot be resolved from socket B", async () => {
-    const { services, a, b } = twoSocketHarness();
+    const { services, a, b } = createTwoSocketHarness();
     const turnId = "turn-a";
 
     const tradeCounts: number[] = [];
@@ -507,7 +498,7 @@ describe("jarvis effects", () => {
 
 describe("jarvis effects — malformed payloads don't kill the connection's effect", () => {
   it("jarvis.chat with a turnId but no text emits JARVIS_ERROR correlated to that turnId; the connection keeps serving later valid turns", async () => {
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -539,7 +530,7 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
   it("jarvis.chat with no turnId at all is dropped with a console.warn; the connection keeps serving later valid turns", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -577,7 +568,7 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
   it("jarvis.chat with a non-object payload is dropped without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     expect(() => {
       messages$.next({
@@ -592,7 +583,7 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
   it("jarvis.confirm with a malformed payload is dropped without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     expect(() => {
       messages$.next({
@@ -613,7 +604,7 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 
   it("jarvis.cancel with a malformed payload is dropped without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { messages$, sent } = harness();
+    const { messages$, sent } = createHarness();
 
     expect(() => {
       messages$.next({ type: CLIENT_MSG.JARVIS_CANCEL, payload: {} });
@@ -632,7 +623,7 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
 describe("jarvis effects — jarvis.chat history payload handling (stub loop)", () => {
   it("passes a valid history array through to session.runTurn verbatim", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$ } = stubHarness(loop);
+    const { messages$ } = createStubHarness(loop);
     const history: JarvisHistoryEntry[] = [{ role: "user", text: "hi" }];
 
     messages$.next({
@@ -649,7 +640,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 
   it("omitted history reaches session.runTurn as an empty array", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$ } = stubHarness(loop);
+    const { messages$ } = createStubHarness(loop);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -664,7 +655,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 
   it("a history entry with an invalid role is a malformed payload: JARVIS_ERROR carries the turnId, session.runTurn is never called", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -686,7 +677,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 
   it("a non-array history is a malformed payload: JARVIS_ERROR carries the turnId, session.runTurn is never called", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -704,7 +695,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 
   it("truncates a history longer than the entry cap to the LAST entries (most recent)", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$ } = stubHarness(loop);
+    const { messages$ } = createStubHarness(loop);
     const longHistory: JarvisHistoryEntry[] = Array.from(
       { length: 25 },
       (_, i) => {
@@ -726,7 +717,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 
   it("rejects a history entry whose text exceeds the per-entry text cap as a malformed payload", () => {
     const { loop, runTurn } = createCapturingStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
     const oversized: JarvisHistoryEntry = {
       role: "user",
       text: "x".repeat(2_001),
@@ -754,7 +745,7 @@ describe("jarvis effects — jarvis.chat history payload handling (stub loop)", 
 describe("jarvis effects — defer() keeps a synchronous session.runTurn throw from killing the connection's effect", () => {
   it("a session.runTurn that throws synchronously on its first call does not kill the effect: a later turn on the same socket still reaches JARVIS_DONE", () => {
     const loop = createOnceThrowingStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
 
     expect(() => {
       messages$.next({
@@ -794,7 +785,7 @@ describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () =
           };
         },
       };
-      const { messages$, sent } = stubHarness(loop);
+      const { messages$, sent } = createStubHarness(loop);
 
       messages$.next({
         type: CLIENT_MSG.JARVIS_CHAT,
@@ -812,7 +803,7 @@ describe("jarvis effects — wire-type mapping (stub loop, no simulators)", () =
 describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)", () => {
   it("a second rapid jarvis.chat does not even start (runTurn is not invoked) until the first turn's stream completes", () => {
     const { loop, turnSubjects } = createControllableStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -856,7 +847,7 @@ describe("jarvis effects — chat turns are serialized (concatMap, not mergeMap)
 
   it("a confirmRequest emitted mid-turn-A is tagged with turn A's turnId even while turn B sits queued behind it", () => {
     const { loop, turnSubjects } = createControllableStubLoop();
-    const { messages$, sent } = stubHarness(loop);
+    const { messages$, sent } = createStubHarness(loop);
 
     messages$.next({
       type: CLIENT_MSG.JARVIS_CHAT,
@@ -1569,7 +1560,7 @@ function createSocket(sent: Outbound[]): TestSocket {
 }
 
 /** A `JarvisGateService` that never gates (`budgetUsd: "off"`) — the default
- * stand-in for every harness below that doesn't itself exercise the budget
+ * stand-in for every createHarness below that doesn't itself exercise the budget
  * gate, so `ctx.jarvisGate.current().level` reads `"none"` throughout and
  * `resolveBrain`'s gated offer is always the full, ungated one. */
 function createUngatedGate(): JarvisGateService {
@@ -1593,7 +1584,7 @@ interface AvailabilityGateHarness {
  * (session-spy-free `vi.fn()` stubs — these tests only exercise the
  * availability effect, never a chat turn). Does NOT send the initial
  * `JARVIS_SUBSCRIBE` itself — callers drive `messages$` explicitly, same as
- * every other harness in this file, so a test that needs more than one
+ * every other createHarness in this file, so a test that needs more than one
  * subscribe frame (e.g. proving a socket holds at most one live observer)
  * can send exactly as many as it needs. */
 function availabilityGateHarness(
@@ -1614,9 +1605,9 @@ function availabilityGateHarness(
   return { meter, gate, messages$: socket.messages$, sent };
 }
 
-function harness(): Harness {
+function createHarness(): Harness {
   // `{}` explicit — see the note on the anthropic-loop availability test
-  // above; every scenario built from this harness assumes an ungated
+  // above; every scenario built from this createHarness assumes an ungated
   // ("none") gate regardless of the ambient process env.
   const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
@@ -1651,7 +1642,7 @@ interface SocketHandle {
  * sockets, mirroring how `server/src/index.ts` calls the same listener once
  * per accepted connection — each call runs the session effect's body again,
  * so each socket gets its own `AgentSession` via `loops.scripted.createSession()`. */
-function twoSocketHarness(): TwoSocketHarness {
+function createTwoSocketHarness(): TwoSocketHarness {
   const services = createServices({});
   const loops = createJarvisLoops({ RTC_JARVIS_FAKE: "1" }, services);
 
@@ -1700,7 +1691,7 @@ interface StubHarness {
  * `runTurn` returning `of(…)` emits synchronously. A minimal stub `ctx`
  * supplies just `usageMeter.recordTurn` (a no-op spy) and an ungated
  * `jarvisGate` — the two `Ctx` members `jarvisEffects` reads. */
-function stubHarness(loop: AgentLoop): StubHarness {
+function createStubHarness(loop: AgentLoop): StubHarness {
   const loops: JarvisLoops = {
     scripted: loop,
     anthropic: null,
@@ -1935,3 +1926,12 @@ function findConfirmRequest(sent: readonly Outbound[]): Outbound {
 
   return confirmRequest;
 }
+
+const QUOTE_REPLY =
+  "EURUSD is trading at 1.0921, up 0 pips since the start of the session. " +
+  "Spread 1 pips; short-term momentum is positive. Anything else, sir?";
+
+const DECLINED_REPLY = "Understood, sir — standing down. Nothing was executed.";
+
+const FILL_REPLY =
+  "Very good, sir. Bought 5,000,000 EUR at 1.0922 — the trade is on your blotter.";

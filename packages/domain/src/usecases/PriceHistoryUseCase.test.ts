@@ -10,7 +10,7 @@ import { PriceHistoryUseCase } from "./PriceHistoryUseCase.js";
 describe("PriceHistoryUseCase", () => {
   it("yields a growing window for the first N ticks", async () => {
     const ticks = [tick(1, 1.1), tick(2, 1.11), tick(3, 1.12)];
-    const useCase = new PriceHistoryUseCase(stubPricing(ticks));
+    const useCase = new PriceHistoryUseCase(createStubPricing(ticks));
 
     const windows = await firstValueFrom(
       useCase.execute("EURUSD").pipe(toArray()),
@@ -26,7 +26,7 @@ describe("PriceHistoryUseCase", () => {
     const allTicks = Array.from({ length: PRICE_HISTORY_SIZE + 3 }, (_, i) => {
       return tick(i, i);
     });
-    const useCase = new PriceHistoryUseCase(stubPricing(allTicks));
+    const useCase = new PriceHistoryUseCase(createStubPricing(allTicks));
 
     const windows = await firstValueFrom(
       useCase.execute("EURUSD").pipe(toArray()),
@@ -42,7 +42,7 @@ describe("PriceHistoryUseCase", () => {
   });
 });
 
-function stubPricing(ticks: PriceTick[]): PricingPort {
+function createStubPricing(ticks: PriceTick[]): PricingPort {
   return {
     getPriceUpdates: () => {
       return from(ticks);

@@ -11,16 +11,6 @@ import {
 
 import { type RfqSubmissionState, RfqsPresenter } from "../RfqsPresenter";
 
-// REDIRECT_DELAY_MS is presenter-local (1500). The marble test pins the timing.
-const REDIRECT_DELAY_MS = 1500;
-
-const input: CreateRfqInput = {
-  instrumentId: 2,
-  dealerIds: [1, 2],
-  quantity: 5,
-  direction: Direction.Sell,
-};
-
 describe("RfqsPresenter.createSubmission", () => {
   it("goes editing → submitting → confirmed → editing (after the redirect delay) and fires onRedirect at exactly REDIRECT_DELAY_MS", () => {
     const ts = scheduler();
@@ -197,3 +187,13 @@ function scheduler(): TestScheduler {
     expect(actual).toEqual(expected);
   });
 }
+
+// REDIRECT_DELAY_MS is presenter-local (1500). The marble test pins the timing.
+const REDIRECT_DELAY_MS = 1500;
+
+const input: CreateRfqInput = {
+  instrumentId: 2,
+  dealerIds: [1, 2],
+  quantity: 5,
+  direction: Direction.Sell,
+};

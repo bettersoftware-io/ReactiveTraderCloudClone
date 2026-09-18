@@ -13,8 +13,6 @@ import {
   spentWindowUsd,
 } from "./jarvisGate.js";
 
-const CONFIG = { budgetUsd: 1, softRatio: 0.8, forceLevel: null } as const;
-
 describe("computeGateLevel", () => {
   it("reports none below the soft threshold", () => {
     expect(computeGateLevel(snapshotWith(0.79, 10_000), CONFIG, 5_000)).toBe(
@@ -104,13 +102,6 @@ describe("spentWindowUsd", () => {
 });
 
 describe("applyGateToOffer", () => {
-  const ALL = [
-    "scripted",
-    "claude-haiku-4-5",
-    "claude-sonnet-5",
-    "claude-opus-5",
-  ] as const;
-
   it("none: passes the offer through untouched, nothing gated", () => {
     expect(applyGateToOffer(ALL, "claude-haiku-4-5", "none")).toEqual({
       brains: ALL,
@@ -148,6 +139,13 @@ describe("applyGateToOffer", () => {
       gated: [],
     });
   });
+
+  const ALL = [
+    "scripted",
+    "claude-haiku-4-5",
+    "claude-sonnet-5",
+    "claude-opus-5",
+  ] as const;
 });
 
 describe("parseJarvisGateConfig", () => {
@@ -312,3 +310,5 @@ function snapshotWith(
     sinceBoot: [],
   };
 }
+
+const CONFIG = { budgetUsd: 1, softRatio: 0.8, forceLevel: null } as const;

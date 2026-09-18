@@ -11,7 +11,6 @@ import { exportFxToCsv, exportToCsv } from "./csvExport";
  * them and capture the Blob's text to assert the serialized CSV content.
  */
 let captured: string | null;
-let downloadName: string | null;
 const RealBlob: typeof Blob = globalThis.Blob;
 
 /** A real Blob subclass that records the joined text parts it was built from. */
@@ -129,3 +128,5 @@ function capturedContent(): string {
 
   return captured;
 }
+
+let downloadName: string | null;

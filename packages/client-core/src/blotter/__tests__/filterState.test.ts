@@ -38,18 +38,6 @@ describe("applyFilters — set filter", () => {
 });
 
 describe("applyFilters — number filter comparators", () => {
-  const trades = [
-    trade({ tradeId: 1, notional: 100 }),
-    trade({ tradeId: 2, notional: 200 }),
-    trade({ tradeId: 3, notional: 300 }),
-  ];
-
-  function run(filter: ColumnFilter): number[] {
-    return applyFilters(trades, filters(filter), "").map((t) => {
-      return t.tradeId;
-    });
-  }
-
   it("eq", () => {
     return expect(
       run({ type: "number", column: "notional", comparator: "eq", value: 200 }),
@@ -132,13 +120,11 @@ describe("applyFilters — number filter comparators", () => {
       }),
     ).toEqual([1, 2]);
   });
-});
 
-describe("applyFilters — date filter comparators", () => {
   const trades = [
-    trade({ tradeId: 1, tradeDate: "2026-01-01" }),
-    trade({ tradeId: 2, tradeDate: "2026-02-01" }),
-    trade({ tradeId: 3, tradeDate: "2026-03-01" }),
+    trade({ tradeId: 1, notional: 100 }),
+    trade({ tradeId: 2, notional: 200 }),
+    trade({ tradeId: 3, notional: 300 }),
   ];
 
   function run(filter: ColumnFilter): number[] {
@@ -146,7 +132,9 @@ describe("applyFilters — date filter comparators", () => {
       return t.tradeId;
     });
   }
+});
 
+describe("applyFilters — date filter comparators", () => {
   it("eq", () => {
     return expect(
       run({
@@ -228,6 +216,18 @@ describe("applyFilters — date filter comparators", () => {
       }),
     ).toEqual([2]);
   });
+
+  const trades = [
+    trade({ tradeId: 1, tradeDate: "2026-01-01" }),
+    trade({ tradeId: 2, tradeDate: "2026-02-01" }),
+    trade({ tradeId: 3, tradeDate: "2026-03-01" }),
+  ];
+
+  function run(filter: ColumnFilter): number[] {
+    return applyFilters(trades, filters(filter), "").map((t) => {
+      return t.tradeId;
+    });
+  }
 });
 
 describe("applyFilters — multiple column filters (AND)", () => {

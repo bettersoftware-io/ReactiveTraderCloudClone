@@ -3,26 +3,6 @@ import { describe, expect, it } from "vitest";
 import { createNotionalMachine, type NotionalView } from "../NotionalMachine";
 
 describe("createNotionalMachine", () => {
-  function make(
-    defaultNotional = 1_000_000,
-  ): ReturnType<typeof createNotionalMachine> {
-    return createNotionalMachine(defaultNotional);
-  }
-
-  function current(machine: ReturnType<typeof make>): NotionalView {
-    let view: NotionalView | undefined;
-    const sub = machine.state$.subscribe((s) => {
-      view = s;
-    });
-    sub.unsubscribe();
-
-    if (!view) {
-      throw new Error("NotionalMachine state$ did not emit synchronously");
-    }
-
-    return view;
-  }
-
   it("initialises from the default notional, formatted with commas", () => {
     const m = make(1_000_000);
     const v = current(m);
@@ -120,4 +100,24 @@ describe("createNotionalMachine", () => {
       return m.dispose();
     }).not.toThrow();
   });
+
+  function make(
+    defaultNotional = 1_000_000,
+  ): ReturnType<typeof createNotionalMachine> {
+    return createNotionalMachine(defaultNotional);
+  }
+
+  function current(machine: ReturnType<typeof make>): NotionalView {
+    let view: NotionalView | undefined;
+    const sub = machine.state$.subscribe((s) => {
+      view = s;
+    });
+    sub.unsubscribe();
+
+    if (!view) {
+      throw new Error("NotionalMachine state$ did not emit synchronously");
+    }
+
+    return view;
+  }
 });

@@ -17,27 +17,6 @@ import { createWsRealPorts } from "./portFactory";
  * arm and assert the rejection propagates to the subscriber unchanged.
  */
 describe("wsReal RPC ports :: transport reject propagates to subscriber", () => {
-  const boom = new Error("socket dropped");
-
-  async function expectPropagates(
-    subscribe: (
-      ports: ReturnType<typeof createWsRealPorts>,
-    ) => Promise<unknown>,
-    rpcType: string,
-  ): Promise<void> {
-    const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, {
-      preferences: {} as PreferencesPort,
-      auth: new AuthSimulator({}),
-      sessionStore: new InMemorySessionStore(),
-    });
-    const promise = subscribe(ports);
-    await awaitPendingRpc(ws, rpcType);
-    ws.rejectPendingRpc(rpcType, boom);
-    await expect(promise).rejects.toBe(boom);
-    ws.dispose();
-  }
-
   it("pricing.getPriceHistory propagates a transport reject", () => {
     return expectPropagates((p) => {
       return firstValueFrom(p.pricing.getPriceHistory("EURUSD"));
@@ -113,4 +92,25 @@ describe("wsReal RPC ports :: transport reject propagates to subscriber", () => 
       return firstValueFrom(p.admin.setThroughput(500));
     }, "admin.setThroughput");
   });
+
+  const boom = new Error("socket dropped");
+
+  async function expectPropagates(
+    subscribe: (
+      ports: ReturnType<typeof createWsRealPorts>,
+    ) => Promise<unknown>,
+    rpcType: string,
+  ): Promise<void> {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+    const promise = subscribe(ports);
+    await awaitPendingRpc(ws, rpcType);
+    ws.rejectPendingRpc(rpcType, boom);
+    await expect(promise).rejects.toBe(boom);
+    ws.dispose();
+  }
 });
