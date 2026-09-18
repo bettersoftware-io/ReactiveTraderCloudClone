@@ -1,12 +1,9 @@
-import type { ReactElement } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
-
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
 // (see DockviewLayoutEngine.strictMode.test.tsx / .popout.test.tsx).
@@ -33,24 +30,7 @@ afterEach(() => {
 // config than under the unit config).
 describe("dockview bridge floating wiring", () => {
   it("floats a panel from its head control and records it in the witness", async () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-float")).toBe(false);
@@ -64,24 +44,7 @@ describe("dockview bridge floating wiring", () => {
   });
 
   it("docks a floating panel back from its head control", async () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     page.clickControl("panel-fx-analytics-float");
 
@@ -97,24 +60,7 @@ describe("dockview bridge floating wiring", () => {
   });
 
   it("hides collapse and maximize while a panel is floating, without disturbing a docked sibling", async () => {
-    page.mount(
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={registry}
-        store={new InMemoryDockLayoutStore()}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={[]}
-        instances={[]}
-        layoutResets={0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={noop}
-      />,
-    );
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
     expect(page.controlDisabled("panel-fx-analytics-maximize")).toBe(false);
@@ -138,7 +84,7 @@ describe("dockview bridge floating wiring", () => {
   it("clears floating state when a workspace reset rebuilds the engine", async () => {
     const store = new InMemoryDockLayoutStore();
 
-    page.mount(resetView(store, 0));
+    page.mount({ registry, store });
 
     page.clickControl("panel-fx-analytics-float");
 
@@ -146,7 +92,7 @@ describe("dockview bridge floating wiring", () => {
       expect(page.engineAttribute("data-floating")).toBe("fx-analytics");
     });
 
-    page.rerender(resetView(store, 1));
+    page.rerender({ registry, store, layoutResets: 1 });
 
     await page.waitFor(() => {
       expect(page.engineAttribute("data-floating")).toBe("");
@@ -154,34 +100,6 @@ describe("dockview bridge floating wiring", () => {
     expect(page.bodyVisible("panel-fx-analytics-collapse")).toBe(true);
   });
 });
-
-function noop(): void {}
-
-/** The reset case mounts the same tree twice with a bumped `layoutResets` —
- * mirrors the pop-out spec's own `resetView` helper. */
-function resetView(
-  store: InMemoryDockLayoutStore,
-  layoutResets: number,
-): ReactElement {
-  return (
-    <DockviewLayoutEngine
-      tab="fx"
-      registry={registry}
-      store={store}
-      maximized={null}
-      collapsed={[]}
-      closed={[]}
-      docked={[]}
-      instances={[]}
-      layoutResets={layoutResets}
-      onMaximize={noop}
-      onRestore={noop}
-      onCollapse={noop}
-      onExpand={noop}
-      onCloseInstance={noop}
-    />
-  );
-}
 
 const page = dockviewLayoutEngineStrictModePage();
 
