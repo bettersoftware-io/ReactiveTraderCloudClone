@@ -23,26 +23,9 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
 afterEach(() => {
   page.unmountAll();
 });
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
 
 // The real engine runs throughout — nothing about `@rtc/layout-dockview` is
 // mocked (see the pop-out spec's own doc comment for why: a package mock
@@ -199,3 +182,20 @@ function resetView(
     />
   );
 }
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};

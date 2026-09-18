@@ -3899,13 +3899,6 @@ describe("pop-out windows (session-scoped, the strips precedent)", () => {
 // window.open; a floating group is an absolutely-positioned div in the SAME
 // document), so these are real characterizations, not blocked-branch stubs.
 describe("dockview floating groups (characterization of the 8.3.1 primitive)", () => {
-  /** The half of `api.toJSON()`'s shape this suite asks about — dockview's
-   * own `SerializedDockview` type does not declare `floatingGroups`, which is
-   * itself part of what Q3 establishes. */
-  interface FloatCarryingLayout {
-    floatingGroups?: readonly unknown[];
-  }
-
   // Q1 + Q2 + Q5 (membership half): float a grid-resident group and inspect
   // what changed underneath.
   it("detaches a grid group in place, unchanged group count, still reporting floating", () => {
@@ -4094,6 +4087,13 @@ describe("dockview floating groups (characterization of the 8.3.1 primitive)", (
     expect(docked.group.api.location.type).toBe("grid");
     engine.dispose();
   });
+
+  /** The half of `api.toJSON()`'s shape this suite asks about — dockview's
+   * own `SerializedDockview` type does not declare `floatingGroups`, which is
+   * itself part of what Q3 establishes. */
+  interface FloatCarryingLayout {
+    floatingGroups?: readonly unknown[];
+  }
 });
 
 // Phase 6a Task 2: the engine's own float/dock surface built on the Task 1
@@ -4169,69 +4169,6 @@ describe("DockEngine floatPanel / dockPanel / onFloatsChange", () => {
 // pixels for a sibling to grow into, so a width assertion would pass or fail
 // for reasons that have nothing to do with these rules.
 describe("floating groups against pins, strips, maximize and the share rule", () => {
-  /** RAIL_LIKE with the analytics/positions rail pinned at 360 — the same
-   * fixture the absorber suite uses, whose pin reads as `min === max`. */
-  function pinnedRailBase(): DockEngineOptions {
-    const opts = railBase();
-
-    return {
-      ...opts,
-      container: sizedContainer(1440, 900),
-      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
-    };
-  }
-
-  function locationOf(panelId: string): string {
-    const panel = lastDockviewApi().getPanel(panelId);
-
-    if (panel === undefined) {
-      throw new Error(`${panelId} is not in the dock`);
-    }
-
-    return panel.group.api.location.type;
-  }
-
-  function isWidthClamped(panelId: string): boolean {
-    const [minimum, maximum] = widthClampOf(panelId);
-
-    return minimum === maximum;
-  }
-
-  /** The group element of `panelId`'s own tab-bar void container — the
-   * element dockview's shift-drag-to-float gesture listens on. */
-  function voidContainerOf(panelId: string): Element {
-    const panel = lastDockviewApi().getPanel(panelId);
-    const voidContainer =
-      panel?.group.element.querySelector(".dv-void-container");
-
-    if (voidContainer === null || voidContainer === undefined) {
-      throw new Error(`no void container for ${panelId}`);
-    }
-
-    return voidContainer;
-  }
-
-  /** dockview starts the float gesture from a shift-pointerdown; jsdom has
-   * no PointerEvent constructor here, and a MouseEvent carries exactly the
-   * fields the gesture reads (`shiftKey`, `defaultPrevented`) — a real
-   * browser's PointerEvent IS a MouseEvent.
-   *
-   * `cancelable` is the load-bearing option, not boilerplate: a real
-   * pointerdown is cancelable, and on a synthetic event that defaults to
-   * FALSE, where `preventDefault()` is silently a no-op and
-   * `defaultPrevented` never flips — the veto would look broken for a reason
-   * that exists only in the test. */
-  function shiftPointerDown(target: Element): MouseEvent {
-    const event = new MouseEvent("pointerdown", {
-      bubbles: true,
-      cancelable: true,
-      shiftKey: true,
-    });
-    target.dispatchEvent(event);
-
-    return event;
-  }
-
   // R1 — a strip has no slot to build around a float and no home to restore
   // it to. The witness is the published strip map, not a size: `recordStrip`
   // + `settleStrips` is what would list the panel there.
@@ -4458,21 +4395,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
-  /** A blob holding a pinned rail with `fx-analytics` floated — the state a
-   * reload restores, and the only way to reach a pin record that was
-   * suspended before any grid split existed to name. */
-  function blobWithFloatedRail(): string {
-    const opts = pinnedRailBase();
-    const seen = trackLayout();
-    const engine = createDockEngine({ ...opts, ...seen.options });
-
-    engine.floatPanel("fx-analytics");
-    touchContainer(opts.container);
-    engine.dispose();
-
-    return seen.blob();
-  }
-
   // A suspended record's `ownerSplit` is a live DOM Element compared by
   // IDENTITY (`unpinSplit`, `suspendPinsHolding`), and the one filed at
   // construction is the FLOAT's private gridview wrapper, not the grid split
@@ -4506,22 +4428,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     ]);
     engine.dispose();
   });
-
-  /** Drags the sash inside ONE named split, rather than the first match of a
-   * selector: `dragSash(container, ".dv-vertical")` picks whichever column
-   * comes first in the DOM, which is not the one a test about a specific
-   * column means. Same three events as `dragSash`. */
-  function dragSashIn(split: Element | null): void {
-    const sash = split?.querySelector(":scope > .dv-sash-container > .dv-sash");
-
-    if (sash === null || sash === undefined) {
-      throw new Error("no sash under the named split");
-    }
-
-    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
-    window.dispatchEvent(new Event("pointermove"));
-    window.dispatchEvent(new Event("pointerup"));
-  }
 
   // The other orientation, and it has to name the RAIL'S OWN column to bind
   // to anything: a width pin is declared by the `.dv-horizontal` row, so the
@@ -4620,31 +4526,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
     reloaded.dispose();
   });
-
-  /** An engine holding two chart instances, with the container handle a
-   * settled resize needs. */
-  interface InstancesFixture {
-    readonly engine: DockEngine;
-    readonly container: HTMLElement;
-  }
-
-  /** Instances + the container they live in, for the two R6 tests: the pair
-   * differs ONLY in whether the float docks home before the resize. */
-  function engineWithInstances(): InstancesFixture {
-    const container = sizedContainer(1440, 900);
-
-    return {
-      container,
-      engine: createDockEngine({
-        ...base(),
-        container,
-        dynamicPanels: [
-          { id: "i-aapl", initialPx: 360, unpinned: true },
-          { id: "i-msft", initialPx: 360, unpinned: true },
-        ],
-      }),
-    };
-  }
 
   // R6 — a floating chart instance leaves the equal-share rule. A SETTLED
   // RESIZE is the trigger, not another instance opening: the resize handler
@@ -4779,6 +4660,125 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     expect(bar?.classList.contains("dv-full-width-single-tab")).toBe(true);
     api.dispose();
   });
+
+  /** RAIL_LIKE with the analytics/positions rail pinned at 360 — the same
+   * fixture the absorber suite uses, whose pin reads as `min === max`. */
+  function pinnedRailBase(): DockEngineOptions {
+    const opts = railBase();
+
+    return {
+      ...opts,
+      container: sizedContainer(1440, 900),
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    };
+  }
+
+  function locationOf(panelId: string): string {
+    const panel = lastDockviewApi().getPanel(panelId);
+
+    if (panel === undefined) {
+      throw new Error(`${panelId} is not in the dock`);
+    }
+
+    return panel.group.api.location.type;
+  }
+
+  function isWidthClamped(panelId: string): boolean {
+    const [minimum, maximum] = widthClampOf(panelId);
+
+    return minimum === maximum;
+  }
+
+  /** The group element of `panelId`'s own tab-bar void container — the
+   * element dockview's shift-drag-to-float gesture listens on. */
+  function voidContainerOf(panelId: string): Element {
+    const panel = lastDockviewApi().getPanel(panelId);
+    const voidContainer =
+      panel?.group.element.querySelector(".dv-void-container");
+
+    if (voidContainer === null || voidContainer === undefined) {
+      throw new Error(`no void container for ${panelId}`);
+    }
+
+    return voidContainer;
+  }
+
+  /** dockview starts the float gesture from a shift-pointerdown; jsdom has
+   * no PointerEvent constructor here, and a MouseEvent carries exactly the
+   * fields the gesture reads (`shiftKey`, `defaultPrevented`) — a real
+   * browser's PointerEvent IS a MouseEvent.
+   *
+   * `cancelable` is the load-bearing option, not boilerplate: a real
+   * pointerdown is cancelable, and on a synthetic event that defaults to
+   * FALSE, where `preventDefault()` is silently a no-op and
+   * `defaultPrevented` never flips — the veto would look broken for a reason
+   * that exists only in the test. */
+  function shiftPointerDown(target: Element): MouseEvent {
+    const event = new MouseEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      shiftKey: true,
+    });
+    target.dispatchEvent(event);
+
+    return event;
+  }
+
+  /** A blob holding a pinned rail with `fx-analytics` floated — the state a
+   * reload restores, and the only way to reach a pin record that was
+   * suspended before any grid split existed to name. */
+  function blobWithFloatedRail(): string {
+    const opts = pinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.floatPanel("fx-analytics");
+    touchContainer(opts.container);
+    engine.dispose();
+
+    return seen.blob();
+  }
+
+  /** Drags the sash inside ONE named split, rather than the first match of a
+   * selector: `dragSash(container, ".dv-vertical")` picks whichever column
+   * comes first in the DOM, which is not the one a test about a specific
+   * column means. Same three events as `dragSash`. */
+  function dragSashIn(split: Element | null): void {
+    const sash = split?.querySelector(":scope > .dv-sash-container > .dv-sash");
+
+    if (sash === null || sash === undefined) {
+      throw new Error("no sash under the named split");
+    }
+
+    sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    window.dispatchEvent(new Event("pointermove"));
+    window.dispatchEvent(new Event("pointerup"));
+  }
+
+  /** An engine holding two chart instances, with the container handle a
+   * settled resize needs. */
+  interface InstancesFixture {
+    readonly engine: DockEngine;
+    readonly container: HTMLElement;
+  }
+
+  /** Instances + the container they live in, for the two R6 tests: the pair
+   * differs ONLY in whether the float docks home before the resize. */
+  function engineWithInstances(): InstancesFixture {
+    const container = sizedContainer(1440, 900);
+
+    return {
+      container,
+      engine: createDockEngine({
+        ...base(),
+        container,
+        dynamicPanels: [
+          { id: "i-aapl", initialPx: 360, unpinned: true },
+          { id: "i-msft", initialPx: 360, unpinned: true },
+        ],
+      }),
+    };
+  }
 });
 
 describe("floats persist across a reload, and a damaged float costs only the floats", () => {
@@ -4880,18 +4880,6 @@ describe("floats persist across a reload, and a damaged float costs only the flo
 // mislabelling ANY rung of the ladder fails the corresponding `toBe` here,
 // independent of whatever layout that rung happens to produce.
 describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
-  function freshDockviewApi(width: number, height: number): DockviewApi {
-    const api = createDockview(sizedContainer(width, height), {
-      createComponent: () => {
-        return { element: document.createElement("div"), init: () => {} };
-      },
-      theme: { name: "t", className: "t" },
-    });
-    api.layout(width, height);
-
-    return api;
-  }
-
   it("tier: blob — a healthy blob restores as-is, floats included", () => {
     const container = sizedContainer(1440, 900);
     let saved = "";
@@ -5083,6 +5071,18 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
     expect(restoreTier).toBe("seed");
     api.dispose();
   });
+
+  function freshDockviewApi(width: number, height: number): DockviewApi {
+    const api = createDockview(sizedContainer(width, height), {
+      createComponent: () => {
+        return { element: document.createElement("div"), init: () => {} };
+      },
+      theme: { name: "t", className: "t" },
+    });
+    api.layout(width, height);
+
+    return api;
+  }
 });
 
 /** Walks a parsed blob's grid for the leaf whose `views` names `panelId`,

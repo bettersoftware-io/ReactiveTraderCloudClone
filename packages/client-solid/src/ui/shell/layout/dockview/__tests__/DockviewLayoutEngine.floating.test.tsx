@@ -22,23 +22,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineBridgePage();
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
-
 // The real engine runs throughout — nothing about `@rtc/layout-dockview` is
 // mocked (see the pop-out spec's own doc comment for why: a package mock
 // resolves to a DIFFERENT module instance under the contract-coverage config
@@ -209,3 +192,20 @@ describe("dockview bridge floating wiring", () => {
 });
 
 function noop(): void {}
+
+const page = dockviewLayoutEngineBridgePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};
