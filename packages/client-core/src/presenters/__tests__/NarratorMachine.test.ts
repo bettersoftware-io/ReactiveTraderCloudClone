@@ -34,7 +34,7 @@ describe("createNarratorMachine — prompt format (pinned)", () => {
   it("narrates the first surviving spreadWidening anomaly with the exact pinned format", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const rig = buildRig(ts);
+      const rig = createRig(ts);
       const handle = createNarratorMachine(rig.deps);
 
       ts.schedule(() => {
@@ -55,7 +55,7 @@ describe("createNarratorMachine — prompt format (pinned)", () => {
   it("narrates a volSpike anomaly with 'moved' — never 'volatility jumped' (T7 review ruling)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const rig = buildRig(ts);
+      const rig = createRig(ts);
       const handle = createNarratorMachine(rig.deps);
 
       ts.schedule(() => {
@@ -81,7 +81,7 @@ describe("createNarratorMachine — cooldown gate (virtual time)", () => {
   it("drops a second anomaly inside NARRATION_COOLDOWN_MS, then admits the next one once it has elapsed", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const rig = buildRig(ts);
+      const rig = createRig(ts);
       const handle = createNarratorMachine(rig.deps);
       let i = 0;
 
@@ -123,7 +123,7 @@ describe("createNarratorMachine — cooldown gate (virtual time)", () => {
     ts.run(({ flush }) => {
       const symbolA = "EURUSD";
       const symbolB = "GBPUSD";
-      const rig = buildRig(
+      const rig = createRig(
         ts,
         of("on"),
         of([mkPair(symbolA), mkPair(symbolB)]),
@@ -152,7 +152,7 @@ describe("createNarratorMachine — session cap", () => {
   it("drops every narration once MAX_NARRATIONS_PER_SESSION has been dispatched, even well past the cooldown", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const rig = buildRig(ts);
+      const rig = createRig(ts);
       const handle = createNarratorMachine(rig.deps);
       let i = 0;
       const cycleGapMs = NARRATION_COOLDOWN_MS + 1;
@@ -193,7 +193,7 @@ describe("createNarratorMachine — session cap", () => {
       const pairs$ = new BehaviorSubject<readonly CurrencyPair[]>([
         mkPair(SYMBOL),
       ]);
-      const rig = buildRig(ts, of("on"), pairs$);
+      const rig = createRig(ts, of("on"), pairs$);
       const handle = createNarratorMachine(rig.deps);
       let i = 0;
       const cycleGapMs = NARRATION_COOLDOWN_MS + 1;
@@ -216,7 +216,7 @@ describe("createNarratorMachine — session cap", () => {
       // simulates a reconnect re-fetching reference data. The underlying
       // shared tick registry keeps routing pushes to the same symbol
       // correctly across switchMap's resubscription (see
-      // makeSharedTickRegistry's doc). Re-fills the baseline right after
+      // createSharedTickRegistry's doc). Re-fills the baseline right after
       // (harmless padding onto an already-full window under CORRECT code —
       // detectAnomalies' own per-symbol window sits outside the switchMap
       // exactly like the gate does — but load-bearing for this test to
@@ -253,7 +253,7 @@ describe("createNarratorMachine — preference gate", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const preference$ = new BehaviorSubject<JarvisNarratorPreference>("off");
-      const rig = buildRig(ts, preference$);
+      const rig = createRig(ts, preference$);
       const handle = createNarratorMachine(rig.deps);
       let i = 0;
 
@@ -321,7 +321,7 @@ describe("createNarratorMachine — pair roster arrives asynchronously", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const pairs$ = new Subject<readonly CurrencyPair[]>();
-      const rig = buildRig(ts, of("on"), pairs$);
+      const rig = createRig(ts, of("on"), pairs$);
       const handle = createNarratorMachine(rig.deps);
 
       // t=0: a tick pushed before pairs$ has ever emitted goes nowhere —
@@ -365,7 +365,7 @@ describe("createNarratorMachine — shared tick source (no double subscription)"
   it("the narrator and a simulated second consumer share ONE underlying subscription per symbol", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const registry = makeSharedTickRegistry();
+      const registry = createSharedTickRegistry();
       const pair = mkPair(SYMBOL);
       const narrate = vi.fn<(prompt: string) => void>();
       const deps: NarratorDeps = {
@@ -554,7 +554,7 @@ interface SharedTickRegistry {
   readonly subscribeCount: (symbol: string) => number;
 }
 
-function makeSharedTickRegistry(): SharedTickRegistry {
+function createSharedTickRegistry(): SharedTickRegistry {
   const subjects = new Map<string, Subject<PriceTick>>();
   const shared = new Map<string, Observable<PriceTick>>();
   const counts = new Map<string, number>();
@@ -605,12 +605,12 @@ interface Rig {
   readonly deps: NarratorDeps;
 }
 
-function buildRig(
+function createRig(
   ts: TestScheduler,
   preference$: Observable<JarvisNarratorPreference> = of("on"),
   pairs$: Observable<readonly CurrencyPair[]> = of([mkPair(SYMBOL)]),
 ): Rig {
-  const registry = makeSharedTickRegistry();
+  const registry = createSharedTickRegistry();
   const narrate = vi.fn<(prompt: string) => void>();
   const deps: NarratorDeps = {
     pairs$,

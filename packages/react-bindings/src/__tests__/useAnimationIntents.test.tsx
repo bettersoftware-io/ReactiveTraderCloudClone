@@ -18,7 +18,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("useAnimationIntents", () => {
   it("starts null before any animation intent fires for the target", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useAnimationIntents("tile:EURUSD");
     });
@@ -26,7 +26,7 @@ describe("useAnimationIntents", () => {
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

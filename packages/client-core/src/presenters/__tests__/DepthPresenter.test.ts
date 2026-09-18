@@ -7,7 +7,7 @@ import { DepthPresenter } from "../DepthPresenter";
 
 describe("DepthPresenter", () => {
   it("relays the port's depth book for a symbol", async () => {
-    const presenter = new DepthPresenter(fakeMarketData([]));
+    const presenter = new DepthPresenter(createFakeMarketData([]));
     expect(await firstValueFrom(presenter.depth$("AAPL"))).toEqual(
       book("AAPL"),
     );
@@ -15,7 +15,7 @@ describe("DepthPresenter", () => {
 
   it("caches one stream per symbol — a repeat call returns the same Observable and hits the port once", () => {
     const calls: string[] = [];
-    const presenter = new DepthPresenter(fakeMarketData(calls));
+    const presenter = new DepthPresenter(createFakeMarketData(calls));
     const first = presenter.depth$("AAPL");
     const second = presenter.depth$("AAPL");
     expect(second).toBe(first);
@@ -24,7 +24,7 @@ describe("DepthPresenter", () => {
 
   it("returns distinct cached streams for distinct symbols", () => {
     const calls: string[] = [];
-    const presenter = new DepthPresenter(fakeMarketData(calls));
+    const presenter = new DepthPresenter(createFakeMarketData(calls));
     const aapl = presenter.depth$("AAPL");
     const msft = presenter.depth$("MSFT");
     expect(msft).not.toBe(aapl);
@@ -43,7 +43,7 @@ function book(symbol: string): DepthBook {
 /** Minimal MarketDataPort fake: only `depth` is exercised here (it records the
  * symbols it was asked for so the cache contract can be asserted); the other
  * methods return EMPTY since this presenter never calls them. */
-function fakeMarketData(depthCalls: string[]): MarketDataPort {
+function createFakeMarketData(depthCalls: string[]): MarketDataPort {
   return {
     watchlist: () => {
       return EMPTY;

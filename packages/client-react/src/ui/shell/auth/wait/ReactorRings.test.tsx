@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "vitest";
 
 import { reactorRingsPage } from "#tests/ui/pages/ReactorRingsPage";
 
-const page = reactorRingsPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -42,3 +40,5 @@ test("does not carry the auth-wait-reactor testid — that stays on ReactorWait"
 
   expect(page.exists("auth-wait-reactor")).toBe(false);
 });
+
+const page = reactorRingsPage();

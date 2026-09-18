@@ -16,8 +16,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { jarvisOverlayDriveRowPage } from "#tests/ui/pages/JarvisOverlayDriveRowPage";
 
-const page = jarvisOverlayDriveRowPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -55,3 +53,5 @@ describe("JarvisOverlay — drive rows", () => {
     ]);
   });
 });
+
+const page = jarvisOverlayDriveRowPage();

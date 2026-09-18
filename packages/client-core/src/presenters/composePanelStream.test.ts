@@ -22,14 +22,14 @@ import {
 
 describe("composePanelStream", () => {
   it("fxTicks + line accumulates points per symbol as ticks arrive", () => {
-    const t1 = makeTick("EURUSD", 1.1, 1_000);
-    const t2 = makeTick("EURUSD", 1.2, 2_000);
-    const t3 = makeTick("EURUSD", 1.3, 3_000);
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
+    const t1 = createTick("EURUSD", 1.1, 1_000);
+    const t2 = createTick("EURUSD", 1.2, 2_000);
+    const t3 = createTick("EURUSD", 1.3, 3_000);
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
     });
@@ -54,14 +54,14 @@ describe("composePanelStream", () => {
   });
 
   it("window transform trims points older than N seconds relative to the newest point in the series", () => {
-    const t1 = makeTick("EURUSD", 1.1, 0);
-    const t2 = makeTick("EURUSD", 1.2, 5_000);
-    const t3 = makeTick("EURUSD", 1.3, 11_000);
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
+    const t1 = createTick("EURUSD", 1.1, 0);
+    const t2 = createTick("EURUSD", 1.2, 5_000);
+    const t3 = createTick("EURUSD", 1.3, 11_000);
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "window", seconds: 10 }],
       viz: { kind: "line" },
@@ -86,14 +86,14 @@ describe("composePanelStream", () => {
   });
 
   it("returns transform computes tick-over-tick fractional change (hand-computed, 3 ticks)", () => {
-    const t1 = makeTick("EURUSD", 100, 0);
-    const t2 = makeTick("EURUSD", 110, 1_000); // (110-100)/100 = 0.1
-    const t3 = makeTick("EURUSD", 99, 2_000); // (99-110)/110 = -0.1
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from([t1, t2, t3]) }),
+    const t1 = createTick("EURUSD", 100, 0);
+    const t2 = createTick("EURUSD", 110, 1_000); // (110-100)/100 = 0.1
+    const t3 = createTick("EURUSD", 99, 2_000); // (99-110)/110 = -0.1
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: from([t1, t2, t3]) }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "returns" }],
       viz: { kind: "line" },
@@ -114,14 +114,14 @@ describe("composePanelStream", () => {
   it("rollingVol transform computes the population stddev over a trailing sample window (hand-computed, 5 ticks)", () => {
     const values = [10, 12, 14, 16, 18];
     const ticks = values.map((v, i) => {
-      return makeTick("EURUSD", v, i * 1_000);
+      return createTick("EURUSD", v, i * 1_000);
     });
 
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from(ticks) }),
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: from(ticks) }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "rollingVol", samples: 3 }],
       viz: { kind: "line" },
@@ -147,18 +147,18 @@ describe("composePanelStream", () => {
   });
 
   it("spread transform subtracts one series from another, aligned by index", () => {
-    const eur1 = makeTick("EURUSD", 110, 0);
-    const eur2 = makeTick("EURUSD", 112, 1_000);
-    const gbp1 = makeTick("GBPUSD", 130, 0);
-    const gbp2 = makeTick("GBPUSD", 128, 1_000);
-    const deps = makeDeps({
-      pricing: fakePricing({
+    const eur1 = createTick("EURUSD", 110, 0);
+    const eur2 = createTick("EURUSD", 112, 1_000);
+    const gbp1 = createTick("GBPUSD", 130, 0);
+    const gbp2 = createTick("GBPUSD", 128, 1_000);
+    const deps = createDeps({
+      pricing: createFakePricing({
         EURUSD: from([eur1, eur2]),
         GBPUSD: from([gbp1, gbp2]),
       }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD", "GBPUSD"] },
       transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
       viz: { kind: "line" },
@@ -182,7 +182,7 @@ describe("composePanelStream", () => {
   });
 
   it("topN transform sorts a table descending by 'value' and limits to n rows", () => {
-    const updates = makePositionUpdates([
+    const updates = createPositionUpdates([
       {
         symbol: "EURUSD",
         basePnl: 500,
@@ -208,8 +208,8 @@ describe("composePanelStream", () => {
         counterTradedAmount: 1,
       },
     ]);
-    const deps = makeDeps({ analytics: fakeAnalytics(of(updates)) });
-    const spec = makeSpec({
+    const deps = createDeps({ analytics: createFakeAnalytics(of(updates)) });
+    const spec = createSpec({
       source: { kind: "analytics" },
       transforms: [{ kind: "topN", n: 2, by: "value" }],
       viz: { kind: "table" },
@@ -224,7 +224,7 @@ describe("composePanelStream", () => {
   });
 
   it("analytics source maps positions straight to a table (tone by P&L sign)", () => {
-    const updates = makePositionUpdates([
+    const updates = createPositionUpdates([
       {
         symbol: "EURUSD",
         basePnl: 250,
@@ -238,8 +238,8 @@ describe("composePanelStream", () => {
         counterTradedAmount: 600,
       },
     ]);
-    const deps = makeDeps({ analytics: fakeAnalytics(of(updates)) });
-    const spec = makeSpec({
+    const deps = createDeps({ analytics: createFakeAnalytics(of(updates)) });
+    const spec = createSpec({
       source: { kind: "analytics" },
       viz: { kind: "table" },
     });
@@ -260,29 +260,29 @@ describe("composePanelStream", () => {
   });
 
   it("blotter source maps recent trades to a table (tone by trade status)", () => {
-    const done = makeTrade({
+    const done = createTrade({
       tradeId: 1,
       tradeName: "T-1",
       status: TradeStatus.Done,
     });
 
-    const rejected = makeTrade({
+    const rejected = createTrade({
       tradeId: 2,
       tradeName: "T-2",
       status: TradeStatus.Rejected,
     });
 
-    const pending = makeTrade({
+    const pending = createTrade({
       tradeId: 3,
       tradeName: "T-3",
       status: TradeStatus.Pending,
     });
 
-    const deps = makeDeps({
-      blotter: fakeBlotter(of([done, rejected, pending])),
+    const deps = createDeps({
+      blotter: createFakeBlotter(of([done, rejected, pending])),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "blotter" },
       viz: { kind: "table" },
     });
@@ -314,17 +314,17 @@ describe("composePanelStream", () => {
   });
 
   it("a transform chain nonsensical for its source yields a valid, empty PanelData instead of throwing (rollingVol on blotter)", () => {
-    const deps = makeDeps({
-      blotter: fakeBlotter(of([makeTrade({})])),
+    const deps = createDeps({
+      blotter: createFakeBlotter(of([createTrade({})])),
     });
 
-    const lineSpec = makeSpec({
+    const lineSpec = createSpec({
       source: { kind: "blotter" },
       transforms: [{ kind: "rollingVol", samples: 3 }],
       viz: { kind: "line" },
     });
 
-    const tableSpec = makeSpec({
+    const tableSpec = createSpec({
       source: { kind: "blotter" },
       transforms: [{ kind: "rollingVol", samples: 3 }],
       viz: { kind: "table" },
@@ -346,11 +346,13 @@ describe("composePanelStream", () => {
   });
 
   it("a topN transform applied to a series source (fxTicks) also degrades to an empty table, not a throw", () => {
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+    const deps = createDeps({
+      pricing: createFakePricing({
+        EURUSD: from([createTick("EURUSD", 1, 0)]),
+      }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       transforms: [{ kind: "topN", n: 3, by: "value" }],
       viz: { kind: "table" },
@@ -365,14 +367,14 @@ describe("composePanelStream", () => {
 
   it("caps an accumulating series at 600 in-memory points, dropping the oldest", () => {
     const ticks = Array.from({ length: 601 }, (_unused, i) => {
-      return makeTick("EURUSD", i, i * 1_000);
+      return createTick("EURUSD", i, i * 1_000);
     });
 
-    const deps = makeDeps({
-      pricing: fakePricing({ EURUSD: from(ticks) }),
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: from(ticks) }),
     });
 
-    const spec = makeSpec({
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
     });
@@ -392,14 +394,14 @@ describe("composePanelStream", () => {
     let unsubscribeCount = 0;
     const ticks$ = new Observable<PriceTick>((subscriber) => {
       subscribeCount += 1;
-      subscriber.next(makeTick("EURUSD", 1, 0));
+      subscriber.next(createTick("EURUSD", 1, 0));
 
       return (): void => {
         unsubscribeCount += 1;
       };
     });
-    const deps = makeDeps({ pricing: fakePricing({ EURUSD: ticks$ }) });
-    const spec = makeSpec({
+    const deps = createDeps({ pricing: createFakePricing({ EURUSD: ticks$ }) });
+    const spec = createSpec({
       source: { kind: "fxTicks", symbols: ["EURUSD"] },
       viz: { kind: "line" },
     });
@@ -419,11 +421,13 @@ describe("composePanelStream", () => {
 
   describe("every PanelViz kind is reachable from at least one source", () => {
     it("line ← fxTicks", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+      const deps = createDeps({
+        pricing: createFakePricing({
+          EURUSD: from([createTick("EURUSD", 1, 0)]),
+        }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "line" },
       });
@@ -431,10 +435,10 @@ describe("composePanelStream", () => {
     });
 
     it("table ← analytics", () => {
-      const deps = makeDeps({
-        analytics: fakeAnalytics(
+      const deps = createDeps({
+        analytics: createFakeAnalytics(
           of(
-            makePositionUpdates([
+            createPositionUpdates([
               {
                 symbol: "EURUSD",
                 basePnl: 1,
@@ -446,7 +450,7 @@ describe("composePanelStream", () => {
         ),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "analytics" },
         viz: { kind: "table" },
       });
@@ -456,13 +460,13 @@ describe("composePanelStream", () => {
     });
 
     it("gauge ← fxTicks", () => {
-      const t1 = makeTick("EURUSD", 1.1, 0);
-      const t2 = makeTick("EURUSD", 1.3, 1_000);
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from([t1, t2]) }),
+      const t1 = createTick("EURUSD", 1.1, 0);
+      const t2 = createTick("EURUSD", 1.3, 1_000);
+      const deps = createDeps({
+        pricing: createFakePricing({ EURUSD: from([t1, t2]) }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "gauge", label: "EURUSD" },
       });
@@ -475,23 +479,23 @@ describe("composePanelStream", () => {
     });
 
     it("sparkGrid ← priceHistory", () => {
-      const deps = makeDeps({
-        pricing: fakePricing(
+      const deps = createDeps({
+        pricing: createFakePricing(
           {},
           {
             EURUSD: of([
-              makeTick("EURUSD", 1, 0),
-              makeTick("EURUSD", 1.05, 1_000),
+              createTick("EURUSD", 1, 0),
+              createTick("EURUSD", 1.05, 1_000),
             ]),
             GBPUSD: of([
-              makeTick("GBPUSD", 1.3, 0),
-              makeTick("GBPUSD", 1.28, 1_000),
+              createTick("GBPUSD", 1.3, 0),
+              createTick("GBPUSD", 1.28, 1_000),
             ]),
           },
         ),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "priceHistory", symbols: ["EURUSD", "GBPUSD"] },
         viz: { kind: "sparkGrid" },
       });
@@ -503,10 +507,10 @@ describe("composePanelStream", () => {
     });
 
     it("heatmap ← analytics", () => {
-      const deps = makeDeps({
-        analytics: fakeAnalytics(
+      const deps = createDeps({
+        analytics: createFakeAnalytics(
           of(
-            makePositionUpdates([
+            createPositionUpdates([
               {
                 symbol: "EURUSD",
                 basePnl: 5_000,
@@ -518,7 +522,7 @@ describe("composePanelStream", () => {
         ),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "analytics" },
         viz: { kind: "heatmap" },
       });
@@ -535,14 +539,14 @@ describe("composePanelStream", () => {
     it("normalizes each cell against the window's own min/max — min maps to -1, max to +1 (hand-computed)", () => {
       const values = [10, 20, 30, 15];
       const ticks = values.map((v, i) => {
-        return makeTick("EURUSD", v, i * 1_000);
+        return createTick("EURUSD", v, i * 1_000);
       });
 
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from(ticks) }),
+      const deps = createDeps({
+        pricing: createFakePricing({ EURUSD: from(ticks) }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "heatmap" },
       });
@@ -565,14 +569,14 @@ describe("composePanelStream", () => {
 
     it("a constant series (max === min) reports 0 intensity for every cell, not a division by zero", () => {
       const ticks = [0, 1_000, 2_000].map((t) => {
-        return makeTick("EURUSD", 5, t);
+        return createTick("EURUSD", 5, t);
       });
 
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from(ticks) }),
+      const deps = createDeps({
+        pricing: createFakePricing({ EURUSD: from(ticks) }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "heatmap" },
       });
@@ -594,14 +598,14 @@ describe("composePanelStream", () => {
       });
 
       const ticks = values.map((v, i) => {
-        return makeTick("EURUSD", v, i * 1_000);
+        return createTick("EURUSD", v, i * 1_000);
       });
 
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from(ticks) }),
+      const deps = createDeps({
+        pricing: createFakePricing({ EURUSD: from(ticks) }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         viz: { kind: "heatmap" },
       });
@@ -624,15 +628,15 @@ describe("composePanelStream", () => {
 
     it("the flagship scripted restyle scenario (priceHistory + rollingVol -> heatmap) renders real, non-empty rows", () => {
       const gbpUsdTicks = Array.from({ length: 25 }, (_unused, i) => {
-        return makeTick("GBPUSD", 1.25 + i * 0.001, i * 60_000);
+        return createTick("GBPUSD", 1.25 + i * 0.001, i * 60_000);
       });
 
       const gbpJpyTicks = Array.from({ length: 25 }, (_unused, i) => {
-        return makeTick("GBPJPY", 190 + i * 0.05, i * 60_000);
+        return createTick("GBPJPY", 190 + i * 0.05, i * 60_000);
       });
 
-      const deps = makeDeps({
-        pricing: fakePricing(
+      const deps = createDeps({
+        pricing: createFakePricing(
           {},
           {
             GBPUSD: of(gbpUsdTicks),
@@ -641,7 +645,7 @@ describe("composePanelStream", () => {
         ),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "priceHistory", symbols: ["GBPUSD", "GBPJPY"] },
         transforms: [{ kind: "rollingVol", samples: 20 }],
         viz: { kind: "heatmap" },
@@ -668,33 +672,22 @@ describe("composePanelStream", () => {
   });
 
   describe("transform order (the fold is neither associative nor commutative)", () => {
-    // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
-    // t=3000(120).
-    function orderedTicks(): readonly PriceTick[] {
-      return [
-        makeTick("EURUSD", 100, 0),
-        makeTick("EURUSD", 110, 1_000),
-        makeTick("EURUSD", 99, 2_000),
-        makeTick("EURUSD", 120, 3_000),
-      ];
-    }
-
     it("[window, returns] differs from [returns, window] over the same ticks (hand-computed)", () => {
-      const depsWindowThenReturns = makeDeps({
-        pricing: fakePricing({ EURUSD: from(orderedTicks()) }),
+      const depsWindowThenReturns = createDeps({
+        pricing: createFakePricing({ EURUSD: from(createOrderedTicks()) }),
       });
 
-      const depsReturnsThenWindow = makeDeps({
-        pricing: fakePricing({ EURUSD: from(orderedTicks()) }),
+      const depsReturnsThenWindow = createDeps({
+        pricing: createFakePricing({ EURUSD: from(createOrderedTicks()) }),
       });
 
-      const windowThenReturns = makeSpec({
+      const windowThenReturns = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "window", seconds: 2 }, { kind: "returns" }],
         viz: { kind: "line" },
       });
 
-      const returnsThenWindow = makeSpec({
+      const returnsThenWindow = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "returns" }, { kind: "window", seconds: 2 }],
         viz: { kind: "line" },
@@ -739,15 +732,15 @@ describe("composePanelStream", () => {
     });
 
     it("sticky-empty: once a transform empties the frame, every later transform in the chain is a no-op (no throw)", () => {
-      const deps = makeDeps({
-        blotter: fakeBlotter(of([makeTrade({})])),
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
       });
 
       // rollingVol requires a "series" frame; blotter yields "table", so it
       // empties immediately. topN normally WOULD apply cleanly to a table —
       // proving it's skipped here (not silently re-interpreting the
       // already-empty frame as a fresh table) is the point of this test.
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "blotter" },
         transforms: [
           { kind: "rollingVol", samples: 3 },
@@ -765,26 +758,37 @@ describe("composePanelStream", () => {
         rows: [],
       } satisfies PanelData);
     });
+
+    // Shared fixture for both orderings: t=0(100), t=1000(110), t=2000(99),
+    // t=3000(120).
+    function createOrderedTicks(): readonly PriceTick[] {
+      return [
+        createTick("EURUSD", 100, 0),
+        createTick("EURUSD", 110, 1_000),
+        createTick("EURUSD", 99, 2_000),
+        createTick("EURUSD", 120, 3_000),
+      ];
+    }
   });
 
   describe("spread transform: unequal tick rates", () => {
     it("pairs the NEWEST points of each series when lengths differ, not the oldest (hand-computed)", () => {
       const eurTicks = [100, 101, 102, 103, 104].map((v, i) => {
-        return makeTick("EURUSD", v, i * 1_000);
+        return createTick("EURUSD", v, i * 1_000);
       });
 
       const gbpTicks = [50, 51, 52].map((v, i) => {
-        return makeTick("GBPUSD", v, 500 + i * 1_000);
+        return createTick("GBPUSD", v, 500 + i * 1_000);
       });
 
-      const deps = makeDeps({
-        pricing: fakePricing({
+      const deps = createDeps({
+        pricing: createFakePricing({
           EURUSD: from(eurTicks),
           GBPUSD: from(gbpTicks),
         }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD", "GBPUSD"] },
         transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
         viz: { kind: "line" },
@@ -809,8 +813,8 @@ describe("composePanelStream", () => {
 
   describe("totality: every empty-fallback branch is reachable without a throw", () => {
     it("an unrecognized source.kind (e.g. a future wire addition this build predates) degrades to an empty panel, not a throw", () => {
-      const deps = makeDeps();
-      const spec = makeSpec({
+      const deps = createDeps();
+      const spec = createSpec({
         // Deliberately a `PanelSource` this client doesn't know about —
         // forward-compatibility with a server that outpaces this build.
         source: {
@@ -830,13 +834,15 @@ describe("composePanelStream", () => {
     });
 
     it("spread naming a symbol the source never fetched yields an empty (not a throw)", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+      const deps = createDeps({
+        pricing: createFakePricing({
+          EURUSD: from([createTick("EURUSD", 1, 0)]),
+        }),
       });
 
       // Only EURUSD is in source.symbols — "GBPUSD" was never fetched, so
       // frame.series has no matching label for `b`.
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
         viz: { kind: "line" },
@@ -850,8 +856,11 @@ describe("composePanelStream", () => {
     });
 
     it("window applied directly to a non-series source (table) yields an empty, not a throw", () => {
-      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
-      const spec = makeSpec({
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
+      });
+
+      const spec = createSpec({
         source: { kind: "blotter" },
         transforms: [{ kind: "window", seconds: 10 }],
         viz: { kind: "table" },
@@ -865,8 +874,11 @@ describe("composePanelStream", () => {
     });
 
     it("returns applied directly to a non-series source (table) yields an empty, not a throw", () => {
-      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
-      const spec = makeSpec({
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
+      });
+
+      const spec = createSpec({
         source: { kind: "blotter" },
         transforms: [{ kind: "returns" }],
         viz: { kind: "table" },
@@ -880,8 +892,11 @@ describe("composePanelStream", () => {
     });
 
     it("spread applied directly to a non-series source (table) yields an empty, not a throw", () => {
-      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
-      const spec = makeSpec({
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
+      });
+
+      const spec = createSpec({
         source: { kind: "blotter" },
         transforms: [{ kind: "spread", a: "EURUSD", b: "GBPUSD" }],
         viz: { kind: "line" },
@@ -895,16 +910,16 @@ describe("composePanelStream", () => {
     });
 
     it("rollingVol with a degenerate (non-positive) sample window never divides by an empty slice, not a throw", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({
+      const deps = createDeps({
+        pricing: createFakePricing({
           EURUSD: from([
-            makeTick("EURUSD", 1, 0),
-            makeTick("EURUSD", 2, 1_000),
+            createTick("EURUSD", 1, 0),
+            createTick("EURUSD", 2, 1_000),
           ]),
         }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "rollingVol", samples: 0 }],
         viz: { kind: "line" },
@@ -925,16 +940,16 @@ describe("composePanelStream", () => {
     });
 
     it("returns skips a pair whose earlier tick is exactly 0 (division-by-zero guard), not a throw", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({
+      const deps = createDeps({
+        pricing: createFakePricing({
           EURUSD: from([
-            makeTick("EURUSD", 0, 0),
-            makeTick("EURUSD", 10, 1_000),
+            createTick("EURUSD", 0, 0),
+            createTick("EURUSD", 10, 1_000),
           ]),
         }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "returns" }],
         viz: { kind: "line" },
@@ -948,16 +963,16 @@ describe("composePanelStream", () => {
     });
 
     it("window applied to an already-empty-points series (from a prior returns with too few ticks) is a no-op, not a throw", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({
-          EURUSD: from([makeTick("EURUSD", 100, 0)]),
+      const deps = createDeps({
+        pricing: createFakePricing({
+          EURUSD: from([createTick("EURUSD", 100, 0)]),
         }),
       });
 
       // A single tick gives `returns` nothing to pair — its output series is
       // present but empty. `window` must then handle a series whose last
       // point is undefined without throwing.
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "returns" }, { kind: "window", seconds: 5 }],
         viz: { kind: "line" },
@@ -971,8 +986,11 @@ describe("composePanelStream", () => {
     });
 
     it("gauge over a non-series source (table) falls back to the empty gauge placeholder", () => {
-      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
-      const spec = makeSpec({
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
+      });
+
+      const spec = createSpec({
         source: { kind: "blotter" },
         viz: { kind: "gauge" },
       });
@@ -987,13 +1005,13 @@ describe("composePanelStream", () => {
     });
 
     it("gauge over a series whose points are empty (too few ticks for `returns`) falls back to the empty gauge placeholder", () => {
-      const deps = makeDeps({
-        pricing: fakePricing({
-          EURUSD: from([makeTick("EURUSD", 100, 0)]),
+      const deps = createDeps({
+        pricing: createFakePricing({
+          EURUSD: from([createTick("EURUSD", 100, 0)]),
         }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "returns" }],
         viz: { kind: "gauge" },
@@ -1009,8 +1027,11 @@ describe("composePanelStream", () => {
     });
 
     it("sparkGrid over a non-series source (table) falls back to empty cells", () => {
-      const deps = makeDeps({ blotter: fakeBlotter(of([makeTrade({})])) });
-      const spec = makeSpec({
+      const deps = createDeps({
+        blotter: createFakeBlotter(of([createTrade({})])),
+      });
+
+      const spec = createSpec({
         source: { kind: "blotter" },
         viz: { kind: "sparkGrid" },
       });
@@ -1027,11 +1048,13 @@ describe("composePanelStream", () => {
       // remaining empty case: every series present has zero points, which
       // must still collapse to the same empty heatmap as no series at all,
       // not a row with zero cells.
-      const deps = makeDeps({
-        pricing: fakePricing({ EURUSD: from([makeTick("EURUSD", 1, 0)]) }),
+      const deps = createDeps({
+        pricing: createFakePricing({
+          EURUSD: from([createTick("EURUSD", 1, 0)]),
+        }),
       });
 
-      const spec = makeSpec({
+      const spec = createSpec({
         source: { kind: "fxTicks", symbols: ["EURUSD"] },
         transforms: [{ kind: "returns" }],
         viz: { kind: "heatmap" },
@@ -1067,7 +1090,7 @@ type TablePanelData = Extract<PanelData, TableTag>;
 type SparkGridPanelData = Extract<PanelData, SparkGridTag>;
 type HeatmapPanelData = Extract<PanelData, HeatmapTag>;
 
-function makeTick(symbol: string, mid: number, t: number): PriceTick {
+function createTick(symbol: string, mid: number, t: number): PriceTick {
   return {
     symbol,
     bid: mid - 1,
@@ -1078,7 +1101,7 @@ function makeTick(symbol: string, mid: number, t: number): PriceTick {
   };
 }
 
-function fakeReferenceData(): ReferenceDataPort {
+function createFakeReferenceData(): ReferenceDataPort {
   return {
     getCurrencyPairs: () => {
       return of([]);
@@ -1086,7 +1109,7 @@ function fakeReferenceData(): ReferenceDataPort {
   };
 }
 
-function fakePricing(
+function createFakePricing(
   overrides: Partial<Record<string, Observable<PriceTick>>> = {},
   history: Partial<Record<string, Observable<readonly PriceTick[]>>> = {},
 ): PricingPort {
@@ -1103,7 +1126,7 @@ function fakePricing(
   };
 }
 
-function fakeBlotter(
+function createFakeBlotter(
   trades$: Observable<readonly Trade[]> = of([]),
 ): BlotterPort {
   return {
@@ -1113,7 +1136,7 @@ function fakeBlotter(
   };
 }
 
-function fakeAnalytics(
+function createFakeAnalytics(
   updates$: Observable<PositionUpdates> = EMPTY,
 ): AnalyticsPort {
   return {
@@ -1123,17 +1146,17 @@ function fakeAnalytics(
   };
 }
 
-function makeDeps(overrides: Partial<PanelStreamDeps> = {}): PanelStreamDeps {
+function createDeps(overrides: Partial<PanelStreamDeps> = {}): PanelStreamDeps {
   return {
-    referenceData: fakeReferenceData(),
-    pricing: fakePricing(),
-    blotter: fakeBlotter(),
-    analytics: fakeAnalytics(),
+    referenceData: createFakeReferenceData(),
+    pricing: createFakePricing(),
+    blotter: createFakeBlotter(),
+    analytics: createFakeAnalytics(),
     ...overrides,
   };
 }
 
-function makeSpec(
+function createSpec(
   overrides: Partial<PanelSpecV1> & Pick<PanelSpecV1, "source" | "viz">,
 ): PanelSpecV1 {
   return { v: 1, title: "Test panel", transforms: [], ...overrides };
@@ -1160,7 +1183,7 @@ function lastEmission<T>(source: Observable<T>): T {
   return last;
 }
 
-function makeTrade(overrides: Partial<Trade>): Trade {
+function createTrade(overrides: Partial<Trade>): Trade {
   return {
     tradeId: 1,
     tradeName: "T-1",
@@ -1176,7 +1199,7 @@ function makeTrade(overrides: Partial<Trade>): Trade {
   };
 }
 
-function makePositionUpdates(
+function createPositionUpdates(
   positions: PositionUpdates["currentPositions"],
 ): PositionUpdates {
   return { currentPositions: positions, history: [] };

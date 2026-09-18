@@ -12,23 +12,6 @@ import {
 
 import { rfqCardVm } from "./rfqCardVm";
 
-const instrument: Instrument = {
-  id: 1,
-  name: "US Treasury 10Y",
-  cusip: "912828ZQ6",
-  ticker: "T 1.5 02/34",
-  maturity: "2034-02-15",
-  interestRate: 1.5,
-  benchmark: "10Y",
-  refPrice: 98.4,
-};
-
-const dealers: readonly Dealer[] = [
-  { id: 1, name: ADAPTIVE_BANK_NAME },
-  { id: 2, name: "Citi" },
-  { id: 3, name: "JPMorgan" },
-];
-
 describe("rfqCardVm", () => {
   it("resolves ticker/cusip/qty from the matching instrument", () => {
     const vm = rfqCardVm(rfq(), [], [instrument], dealers);
@@ -330,3 +313,20 @@ function rfq(over: Partial<Rfq> = {}): Rfq {
     ...over,
   };
 }
+
+const instrument: Instrument = {
+  id: 1,
+  name: "US Treasury 10Y",
+  cusip: "912828ZQ6",
+  ticker: "T 1.5 02/34",
+  maturity: "2034-02-15",
+  interestRate: 1.5,
+  benchmark: "10Y",
+  refPrice: 98.4,
+};
+
+const dealers: readonly Dealer[] = [
+  { id: 1, name: ADAPTIVE_BANK_NAME },
+  { id: 2, name: "Citi" },
+  { id: 3, name: "JPMorgan" },
+];

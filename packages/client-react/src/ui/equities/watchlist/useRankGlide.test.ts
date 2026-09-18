@@ -3,16 +3,6 @@ import { describe, expect, it } from "vitest";
 import { rowHeight } from "./useRankGlide";
 
 describe("rowHeight", () => {
-  function stubbedRow(top: number): HTMLElement {
-    const el = document.createElement("div");
-
-    el.getBoundingClientRect = (): DOMRect => {
-      return { top } as DOMRect;
-    };
-
-    return el;
-  }
-
   it("falls back to FALLBACK_ROW_HEIGHT with fewer than two rows — there's no gap to measure", () => {
     expect(rowHeight([])).toBe(52);
     expect(rowHeight([stubbedRow(0)])).toBe(52);
@@ -27,4 +17,14 @@ describe("rowHeight", () => {
     // container) — a zero/falsy delta must not glide by 0px forever.
     expect(rowHeight([stubbedRow(0), stubbedRow(0)])).toBe(52);
   });
+
+  function stubbedRow(top: number): HTMLElement {
+    const el = document.createElement("div");
+
+    el.getBoundingClientRect = (): DOMRect => {
+      return { top } as DOMRect;
+    };
+
+    return el;
+  }
 });

@@ -21,15 +21,6 @@ const PANEL_IDS: readonly PanelId[] = [
   "eq-sectors",
 ];
 
-let appPanelRegistry: typeof import("../appPanelRegistry")["appPanelRegistry"];
-let instanceRegistryFor: typeof import("../appPanelRegistry")["instanceRegistryFor"];
-let instanceSpecsFor: typeof import("../appPanelRegistry")["instanceSpecsFor"];
-// `Component<never>` rather than bare `Component` (= `Component<{}>`): NewRfqPanel
-// takes a required prop, and parameter contravariance means only a `never` props
-// type accepts every module root in one map.
-let expectedByPanelId: ReadonlyMap<PanelId, Component<never>>;
-let chartPanelComponent: Component<never>;
-
 beforeAll(async () => {
   // Generous timeout (default 10s): CI's cold transform of the whole App
   // module graph (pulled in by vi.resetModules() + this re-import wave) has
@@ -139,11 +130,6 @@ describe("appPanelRegistry", () => {
     expect(first).not.toBe(second);
   });
 });
-
-const INSTANCES: readonly LayoutPanelInstance[] = [
-  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
-  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
-];
 
 describe("instanceRegistryFor", () => {
   it("maps each instance id to a ChartPanel pinned to its own symbol", () => {
@@ -266,3 +252,21 @@ vi.mock("solid-js/web", async (importOriginal) => {
     },
   };
 });
+
+let appPanelRegistry: typeof import("../appPanelRegistry")["appPanelRegistry"];
+
+let instanceRegistryFor: typeof import("../appPanelRegistry")["instanceRegistryFor"];
+
+let instanceSpecsFor: typeof import("../appPanelRegistry")["instanceSpecsFor"];
+
+// `Component<never>` rather than bare `Component` (= `Component<{}>`): NewRfqPanel
+// takes a required prop, and parameter contravariance means only a `never` props
+// type accepts every module root in one map.
+let expectedByPanelId: ReadonlyMap<PanelId, Component<never>>;
+
+let chartPanelComponent: Component<never>;
+
+const INSTANCES: readonly LayoutPanelInstance[] = [
+  { id: "eq-chart:AAPL", kind: "eq-chart", symbol: "AAPL" },
+  { id: "eq-chart:MSFT", kind: "eq-chart", symbol: "MSFT" },
+];

@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "vitest";
 
 import { handshakeConsolePage } from "#tests/ui/pages/HandshakeConsolePage";
 
-const page = handshakeConsolePage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -23,3 +21,5 @@ test("exposes the wait as a live region for assistive tech", () => {
 
   expect(page.statusText()).toContain("AWAITING AUTH GRANT");
 });
+
+const page = handshakeConsolePage();

@@ -36,19 +36,23 @@ describe("EventLogPresenter", () => {
       emitted.push(events);
     });
 
-    subject.next(makeEvent(1));
-    subject.next(makeEvent(2));
-    subject.next(makeEvent(3));
+    subject.next(createEvent(1));
+    subject.next(createEvent(2));
+    subject.next(createEvent(3));
     sub.unsubscribe();
 
     // emitted[0] = startWith([]) initial value
     expect(emitted[0]).toEqual([]);
     // After first event: [event1]
-    expect(emitted[1]).toEqual([makeEvent(1)]);
+    expect(emitted[1]).toEqual([createEvent(1)]);
     // After second event: newest first → [event2, event1]
-    expect(emitted[2]).toEqual([makeEvent(2), makeEvent(1)]);
+    expect(emitted[2]).toEqual([createEvent(2), createEvent(1)]);
     // After third event: newest first → [event3, event2, event1]
-    expect(emitted[3]).toEqual([makeEvent(3), makeEvent(2), makeEvent(1)]);
+    expect(emitted[3]).toEqual([
+      createEvent(3),
+      createEvent(2),
+      createEvent(1),
+    ]);
   });
 
   it(`caps at MAX_LOG_ROWS (${MAX_LOG_ROWS}) and keeps the newest events`, () => {
@@ -66,7 +70,7 @@ describe("EventLogPresenter", () => {
     });
 
     for (let i = 0; i < MAX_LOG_ROWS + 10; i++) {
-      subject.next(makeEvent(i));
+      subject.next(createEvent(i));
     }
 
     sub.unsubscribe();
@@ -99,7 +103,7 @@ describe("EventLogPresenter", () => {
       b.push(e);
     });
 
-    subject.next(makeEvent(42));
+    subject.next(createEvent(42));
     subA.unsubscribe();
     subB.unsubscribe();
 
@@ -124,8 +128,8 @@ describe("EventLogPresenter", () => {
     const presenter = new EventLogPresenter(port);
 
     const sub1 = presenter.events$.subscribe(() => {});
-    subject.next(makeEvent(1));
-    subject.next(makeEvent(2));
+    subject.next(createEvent(1));
+    subject.next(createEvent(2));
     sub1.unsubscribe();
 
     const secondRun: (readonly LogEvent[])[] = [];
@@ -134,19 +138,19 @@ describe("EventLogPresenter", () => {
     });
 
     // shareReplay(1) immediately replays the last buffered value.
-    expect(secondRun[0]).toEqual([makeEvent(2), makeEvent(1)]);
+    expect(secondRun[0]).toEqual([createEvent(2), createEvent(1)]);
 
-    subject.next(makeEvent(3));
+    subject.next(createEvent(3));
     expect(secondRun.at(-1)).toEqual([
-      makeEvent(3),
-      makeEvent(2),
-      makeEvent(1),
+      createEvent(3),
+      createEvent(2),
+      createEvent(1),
     ]);
 
     sub2.unsubscribe();
   });
 });
 
-function makeEvent(t: number): LogEvent {
+function createEvent(t: number): LogEvent {
   return { t, severity: "info", service: "pricing", message: `msg-${t}` };
 }

@@ -4,9 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { signToken, verifyToken } from "#/auth/token";
 
-const SECRET = "test-secret";
-const NOW = 1_000_000;
-
 describe("token", () => {
   it("round-trips a valid, unexpired token", () => {
     const t = signToken("demo", SECRET, 60_000, NOW);
@@ -56,3 +53,7 @@ function forge(payload: string): string {
 
   return `${encoded}.${sig}`;
 }
+
+const SECRET = "test-secret";
+
+const NOW = 1_000_000;

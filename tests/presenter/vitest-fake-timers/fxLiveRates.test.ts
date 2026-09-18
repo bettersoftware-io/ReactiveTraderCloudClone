@@ -8,7 +8,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: FX live rates", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -36,4 +35,6 @@ describe("@presenter Feature: FX live rates", () => {
     await fx.expectPriceTileVisibleWithin(w, 5);
     await fx.expectFirstTileTextMatches(w, /\d+\.\d+/);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

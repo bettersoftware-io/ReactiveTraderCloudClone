@@ -21,23 +21,6 @@ beforeAll(() => {
   }
 });
 
-const page = dockviewLayoutEngineStrictModePage();
-
-const registry: PanelRegistry = {
-  "fx-rates": () => {
-    return <div>RATES</div>;
-  },
-  "fx-analytics": () => {
-    return <div>ANALYTICS</div>;
-  },
-  "fx-positions": () => {
-    return <div>POSITIONS</div>;
-  },
-  "fx-blotter": () => {
-    return <div>BLOTTER</div>;
-  },
-};
-
 describe("dockview portal keys", () => {
   it("keys slot portals per mount, so a real pop-out transaction never duplicates keys", async () => {
     const popout = page.stubPopoutWindow();
@@ -48,24 +31,7 @@ describe("dockview portal keys", () => {
     // moment. Driven here by the REAL popout rather than a hand-called
     // hook — the same crossing the browser performs.
     const errors = await page.captureConsoleErrors(async () => {
-      page.mount(
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />,
-      );
+      page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
       await page.waitFor(() => {
         expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
@@ -94,3 +60,20 @@ describe("dockview portal keys", () => {
 });
 
 function noop(): void {}
+
+const page = dockviewLayoutEngineStrictModePage();
+
+const registry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div>RATES</div>;
+  },
+  "fx-analytics": () => {
+    return <div>ANALYTICS</div>;
+  },
+  "fx-positions": () => {
+    return <div>POSITIONS</div>;
+  },
+  "fx-blotter": () => {
+    return <div>BLOTTER</div>;
+  },
+};

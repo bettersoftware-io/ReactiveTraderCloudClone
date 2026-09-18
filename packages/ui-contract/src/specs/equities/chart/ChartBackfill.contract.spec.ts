@@ -11,14 +11,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-// 300 candles: long enough that the 1D default visible window (60) is a
-// small slice of the series, exactly matching ChartInteraction's fixture —
-// default viewport lands at {240, 300}, so Home ({0, 60}) undershoots the
-// span (60) and fires the near-edge trigger.
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
 describe("CandleChart — backfill (near-edge trigger, prepend-hold, exhaustion)", () => {
   it("idle at the live edge: never fetches, no chips", () => {
     const onLoadOlder = vi.fn();
@@ -164,3 +156,13 @@ function mountChart(
     },
   });
 }
+
+// 300 candles: long enough that the 1D default visible window (60) is a
+// small slice of the series, exactly matching ChartInteraction's fixture —
+// default viewport lands at {240, 300}, so Home ({0, 60}) undershoots the
+// span (60) and fires the near-edge trigger.
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);

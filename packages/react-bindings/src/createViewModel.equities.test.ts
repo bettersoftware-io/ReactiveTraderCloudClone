@@ -21,7 +21,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
 
 describe("createViewModel — equities hooks", () => {
   it("useWatchlist is a function and returns an array by default", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useWatchlist).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useWatchlist();
@@ -30,17 +30,17 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEquityQuote is a function", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useEquityQuote).toBe("function");
   });
 
   it("useCandles is a function", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useCandles).toBe("function");
   });
 
   it("useCandles defaults to '1D' (CANDLE_HISTORY_TOTAL deepened candles) when timeframe is omitted", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useCandles("AAPL");
     });
@@ -48,7 +48,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useCandles threads an explicit timeframe through — every timeframe generates CANDLE_HISTORY_TOTAL candles, at a bucket spacing distinct per timeframe", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result: oneWeek } = renderHook(() => {
       return hooks.useCandles("AAPL", "1W");
     });
@@ -80,12 +80,12 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useDepth is a function", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useDepth).toBe("function");
   });
 
   it("useEquityOrders is a function and returns an array by default", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useEquityOrders).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useEquityOrders();
@@ -94,7 +94,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEquityPositions is a function and returns an array by default", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useEquityPositions).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useEquityPositions();
@@ -103,7 +103,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useOrderTicket is a function and returns an object exposing submit", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     expect(typeof hooks.useOrderTicket).toBe("function");
     const { result } = renderHook(() => {
       return hooks.useOrderTicket("AAPL");
@@ -113,7 +113,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace starts selected on the first watchlist symbol with it as the sole open tab, timeframe 1D", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -126,7 +126,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().select opens a new tab and selects it, shared across every hook call", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const first = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -148,7 +148,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().closeTab falls back selection to the nearest remaining tab", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -165,7 +165,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().closeTab never empties the last remaining tab", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -179,7 +179,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().setTimeframe updates the shared timeframe", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -192,7 +192,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace starts with chartType 'candles' and no indicators", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -202,7 +202,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().setChartType updates the shared chart type", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -215,7 +215,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().toggleIndicator adds then removes an indicator from the shared set", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -232,7 +232,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace starts with no panes", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -241,7 +241,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().togglePane adds then removes a pane from the shared set, independently of indicators", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -261,7 +261,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqWorkspace().toggleYScale flips linear <-> log, starting linear", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqWorkspace();
     });
@@ -280,7 +280,7 @@ describe("createViewModel — equities hooks", () => {
   });
 
   it("useEqDrawings().addDrawing appends the drawing, selects it, and reverts the tool to cursor", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const { result } = renderHook(() => {
       return hooks.useEqDrawings();
     });
@@ -309,7 +309,7 @@ describe("createViewModel — equities hooks", () => {
 
 describe("createViewModel — candle backfill", () => {
   it("loadOlderCandles forwards to presenters.candleSeries.loadOlder with the exact args", () => {
-    const { hooks, loadOlder } = makeHooksWithFakeCandleSeries();
+    const { hooks, loadOlder } = createHooksWithFakeCandleSeries();
 
     hooks.loadOlderCandles("AAPL", "1W");
 
@@ -317,7 +317,7 @@ describe("createViewModel — candle backfill", () => {
   });
 
   it("useCandleBackfill defaults to loadingOlder/historyExhausted both false", () => {
-    const { hooks } = makeHooksWithFakeCandleSeries();
+    const { hooks } = createHooksWithFakeCandleSeries();
     const { result } = renderHook(() => {
       return hooks.useCandleBackfill("AAPL", "1D");
     });
@@ -329,7 +329,7 @@ describe("createViewModel — candle backfill", () => {
   });
 
   it("useCandleBackfill reflects the presenter's loadingOlder$/historyExhausted$ values", () => {
-    const { hooks, loading$, exhausted$ } = makeHooksWithFakeCandleSeries();
+    const { hooks, loading$, exhausted$ } = createHooksWithFakeCandleSeries();
     const { result } = renderHook(() => {
       return hooks.useCandleBackfill("AAPL", "1D");
     });
@@ -360,12 +360,12 @@ interface FakeCandleSeriesHarness {
   exhausted$: BehaviorSubject<boolean>;
 }
 
-/** Builds a real composition root (same simulator world as makeHooks) but
+/** Builds a real composition root (same simulator world as createHooks) but
  * swaps in a fake candleSeries presenter — a spy for loadOlder plus
  * caller-driven BehaviorSubjects for loadingOlder$/historyExhausted$ — so the
  * backfill flag tests aren't at the mercy of the simulator's synchronous
  * candleHistory() resolving before the assertion runs. */
-function makeHooksWithFakeCandleSeries(): FakeCandleSeriesHarness {
+function createHooksWithFakeCandleSeries(): FakeCandleSeriesHarness {
   const { presenters, commands } = createApp(createSimPorts());
   const loadOlder = vi.fn();
   const loading$ = new BehaviorSubject(false);
@@ -394,7 +394,7 @@ function makeHooksWithFakeCandleSeries(): FakeCandleSeriesHarness {
   return { hooks, loadOlder, loading$, exhausted$ };
 }
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

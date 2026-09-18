@@ -5,12 +5,6 @@ import { type ChartViewport, panBy, shiftForPrepend } from "@rtc/motion-core";
 
 import { navigatorBrushPage } from "#tests/ui/pages/CreateNavigatorBrushPage";
 
-const SERIES_LEN = 300;
-const VIEWPORT: ChartViewport = { start: 240, end: 300 };
-const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
-
-const page = navigatorBrushPage();
-
 describe("createNavigatorBrush", () => {
   it("dragging the window body pans the viewport WITH the pointer", () => {
     const applyViewport = vi.fn();
@@ -251,3 +245,11 @@ function brushEvent(hit: HitTarget, clientX: number): PointerEvent {
 function moveEvent(clientX: number): PointerEvent {
   return brushEvent("track", clientX);
 }
+
+const SERIES_LEN = 300;
+
+const VIEWPORT: ChartViewport = { start: 240, end: 300 };
+
+const STRIP_RECT = { left: 0, top: 0, width: 500, height: 32 } as DOMRect;
+
+const page = navigatorBrushPage();

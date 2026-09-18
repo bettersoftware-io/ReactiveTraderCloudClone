@@ -23,17 +23,9 @@ import {
 } from "./jarvisRunnerConfig.js";
 import { RENDER_PANEL_TOOL_NAME } from "./renderPanelTool.js";
 
-const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
-const DESK_LINK_FALTERED_MESSAGE =
-  "The desk link faltered, sir — do try again.";
-
-const SESSION_CAP_MESSAGE =
-  "We've had quite the session, sir — do reconnect for a fresh one.";
-const CANCELLED_MESSAGE = "Cancelled, sir.";
-
 describe("AnthropicAgentLoop", () => {
   it("(a) text-only turn reassembles deltas, completes, and grows session history by one user + one assistant message", async () => {
-    const first = fakeStream(
+    const first = createFakeStream(
       [textDeltaEvent(0, "Good "), textDeltaEvent(0, "morning, sir.")],
       {
         stop_reason: "end_turn",
@@ -41,7 +33,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const second = fakeStream([textDeltaEvent(0, "Indeed.")], {
+    const second = createFakeStream([textDeltaEvent(0, "Indeed.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Indeed." }],
     });
@@ -67,7 +59,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -100,7 +92,7 @@ describe("AnthropicAgentLoop", () => {
       });
     });
 
-    const toolCallStream = fakeStream(
+    const toolCallStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" }),
         toolStopEvent(0),
@@ -118,7 +110,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream(
+    const finalStream = createFakeStream(
       [textDeltaEvent(0, "EURUSD is 1.10000, sir.")],
       {
         stop_reason: "end_turn",
@@ -152,14 +144,14 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    function buildFixtureTools(): readonly JarvisToolDefinition[] {
-      return [fakeGetPriceTool(toolRun)];
+    function createFixtureTools(): readonly JarvisToolDefinition[] {
+      return [createFakeGetPriceTool(toolRun)];
     }
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(buildFixtureTools),
+      buildTools: createToolsFixture(createFixtureTools),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -178,7 +170,7 @@ describe("AnthropicAgentLoop", () => {
 
   it("(c) execute_trade: approval resolves the gate true and reports a fill", async () => {
     const onExecute = vi.fn();
-    const tradeStream = fakeStream(
+    const tradeStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", "execute_trade", {
           symbol: "EURUSD",
@@ -204,7 +196,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "Done, sir.")], {
+    const finalStream = createFakeStream([textDeltaEvent(0, "Done, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Done, sir." }],
     });
@@ -231,10 +223,10 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    function buildFixtureTools(
+    function createFixtureTools(
       confirmTrade: ConfirmGate,
     ): readonly JarvisToolDefinition[] {
-      return [fakeExecuteTradeTool(confirmTrade, onExecute)];
+      return [createFakeExecuteTradeTool(confirmTrade, onExecute)];
     }
 
     function approveOnConfirmRequest(event: JarvisEvent): void {
@@ -246,7 +238,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(buildFixtureTools),
+      buildTools: createToolsFixture(createFixtureTools),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -273,7 +265,7 @@ describe("AnthropicAgentLoop", () => {
 
   it("(c) execute_trade: decline reaches the model as a plain result and never executes", async () => {
     const onExecute = vi.fn();
-    const tradeStream = fakeStream(
+    const tradeStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", "execute_trade", {
           symbol: "EURUSD",
@@ -299,10 +291,13 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "Standing down, sir.")], {
-      stop_reason: "end_turn",
-      content: [{ type: "text", text: "Standing down, sir." }],
-    });
+    const finalStream = createFakeStream(
+      [textDeltaEvent(0, "Standing down, sir.")],
+      {
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Standing down, sir." }],
+      },
+    );
     let toolResult = "";
 
     function factory(params: FactoryParams): AnthropicRunner {
@@ -326,10 +321,10 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    function buildFixtureTools(
+    function createFixtureTools(
       confirmTrade: ConfirmGate,
     ): readonly JarvisToolDefinition[] {
-      return [fakeExecuteTradeTool(confirmTrade, onExecute)];
+      return [createFakeExecuteTradeTool(confirmTrade, onExecute)];
     }
 
     function declineOnConfirmRequest(event: JarvisEvent): void {
@@ -341,7 +336,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(buildFixtureTools),
+      buildTools: createToolsFixture(createFixtureTools),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -360,13 +355,16 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(d) a refusal stop_reason surfaces the butler-refusal error and ends the turn", async () => {
-    const stream = fakeStream([], { stop_reason: "refusal", content: [] });
+    const stream = createFakeStream([], {
+      stop_reason: "refusal",
+      content: [],
+    });
     const { factory, calls } = scriptedRunner([stream]);
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -381,7 +379,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: throwingRunner(),
     });
     const session = loop.createSession();
@@ -394,7 +392,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(f) breaching the per-session turn cap short-circuits with no runnerFactory invocation", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "hi")], {
+    const stream = createFakeStream([textDeltaEvent(0, "hi")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "hi" }],
     });
@@ -414,7 +412,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -438,7 +436,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: hangingRunner(),
     });
     const session = loop.createSession();
@@ -459,7 +457,7 @@ describe("AnthropicAgentLoop", () => {
 
   it("cancelTurn resolves a pending trade confirmation immediately — aborting the network signal alone can't unblock a signal-unaware confirmation Promise, so runOneTurn would otherwise deadlock awaiting a tool call nothing will ever resolve", async () => {
     const onExecute = vi.fn();
-    const tradeStream = fakeStream(
+    const tradeStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", "execute_trade", {
           symbol: "EURUSD",
@@ -508,10 +506,10 @@ describe("AnthropicAgentLoop", () => {
       };
     }
 
-    function buildFixtureTools(
+    function createFixtureTools(
       confirmTrade: ConfirmGate,
     ): readonly JarvisToolDefinition[] {
-      return [fakeExecuteTradeTool(confirmTrade, onExecute)];
+      return [createFakeExecuteTradeTool(confirmTrade, onExecute)];
     }
 
     function cancelOnConfirmRequest(event: JarvisEvent): void {
@@ -523,7 +521,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(buildFixtureTools),
+      buildTools: createToolsFixture(createFixtureTools),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -542,7 +540,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(h) an over-long seeded history is trimmed to the cap, keeping the newest entries", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "noted")], {
+    const stream = createFakeStream([textDeltaEvent(0, "noted")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "noted" }],
     });
@@ -551,7 +549,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -596,7 +594,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(critical 1a) an assistant-first seeded history is trimmed to user-first before reaching the runner", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "noted")], {
+    const stream = createFakeStream([textDeltaEvent(0, "noted")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "noted" }],
     });
@@ -605,7 +603,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -629,7 +627,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(critical 1b) every leading assistant entry is dropped, not just the first, leaving an odd-length user-first array", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "noted")], {
+    const stream = createFakeStream([textDeltaEvent(0, "noted")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "noted" }],
     });
@@ -638,7 +636,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -667,12 +665,15 @@ describe("AnthropicAgentLoop", () => {
 
   it("(mandated i) a pause_turn stop_reason pushes the paused assistant content back and continues to the next runner iteration", async () => {
     const pausedContent = [{ type: "text", text: "still thinking..." }];
-    const firstStream = fakeStream([textDeltaEvent(0, "still thinking...")], {
-      stop_reason: "pause_turn",
-      content: pausedContent,
-    });
+    const firstStream = createFakeStream(
+      [textDeltaEvent(0, "still thinking...")],
+      {
+        stop_reason: "pause_turn",
+        content: pausedContent,
+      },
+    );
 
-    const secondStream = fakeStream([textDeltaEvent(0, " done now.")], {
+    const secondStream = createFakeStream([textDeltaEvent(0, " done now.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "done now." }],
     });
@@ -696,7 +697,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -720,7 +721,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(important 4) falling out of the runner loop after a tool_use stop_reason reports the truncation honestly instead of a clean done", async () => {
-    const stream = fakeStream(
+    const stream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", "get_price", { symbol: "EURUSD" }),
         toolStopEvent(0),
@@ -746,7 +747,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -768,7 +769,7 @@ describe("AnthropicAgentLoop", () => {
   it("(mandated ii) requestConfirmation resolves false immediately when no turn is open — defense in depth for the important-2 concurrent-turn race", async () => {
     let capturedConfirmTrade: ConfirmGate | undefined;
 
-    function buildFixtureTools(
+    function createFixtureTools(
       confirmTrade: ConfirmGate,
     ): readonly JarvisToolDefinition[] {
       capturedConfirmTrade = confirmTrade;
@@ -778,7 +779,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(buildFixtureTools),
+      buildTools: createToolsFixture(createFixtureTools),
       runnerFactory: throwingRunner(),
     });
     // Constructing the session captures `confirmTrade` (buildTools runs in
@@ -800,7 +801,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 model) options.brain reaches the runner as `model`, and options absent defaults to the domain default (Haiku)", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
     });
@@ -809,7 +810,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -825,7 +826,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 effort) output_config.effort is present for sonnet/opus but ABSENT for haiku, even when options.effort is explicitly set", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
     });
@@ -834,7 +835,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -859,7 +860,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 default model) options absent → default model (Haiku) with no output_config at all", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
     });
@@ -868,7 +869,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -881,7 +882,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 usage) per-iteration usage is recorded into the meter, keyed by the resolved model — a two-iteration turn (pause_turn resume) records twice with distinct usage", async () => {
-    const first = fakeStream([textDeltaEvent(0, "part 1")], {
+    const first = createFakeStream([textDeltaEvent(0, "part 1")], {
       stop_reason: "pause_turn",
       content: [{ type: "text", text: "part 1" }],
       usage: {
@@ -892,7 +893,7 @@ describe("AnthropicAgentLoop", () => {
       },
     });
 
-    const second = fakeStream([textDeltaEvent(0, " part 2")], {
+    const second = createFakeStream([textDeltaEvent(0, " part 2")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "part 2" }],
       usage: {
@@ -903,7 +904,7 @@ describe("AnthropicAgentLoop", () => {
       },
     });
 
-    function factory(): AnthropicRunner {
+    function createRunner(): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield first;
@@ -918,8 +919,8 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
-      runnerFactory: factory,
+      buildTools: createToolsFixture(),
+      runnerFactory: createRunner,
       usageMeter: { recordTokens },
     });
     const session = loop.createSession();
@@ -944,7 +945,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 usage) a final message with no `usage` at all records zeros via the `?? 0` defaults, keyed by the default model", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
       // usage omitted entirely — mirrors a fixture that doesn't care to set it.
@@ -955,7 +956,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       usageMeter: { recordTokens },
     });
@@ -972,7 +973,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 usage) no meter injected → the turn still completes normally, with no error and no crash", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "ok")], {
+    const stream = createFakeStream([textDeltaEvent(0, "ok")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "ok" }],
       usage: {
@@ -987,7 +988,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       // usageMeter deliberately omitted.
     });
@@ -999,7 +1000,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 5 usage) a meter whose recordTokens throws does not corrupt the turn: it still completes with the full reply, logs server-side, and history still grows for the NEXT turn", async () => {
-    const first = fakeStream([textDeltaEvent(0, "Good morning, sir.")], {
+    const first = createFakeStream([textDeltaEvent(0, "Good morning, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Good morning, sir." }],
       usage: {
@@ -1010,7 +1011,7 @@ describe("AnthropicAgentLoop", () => {
       },
     });
 
-    const second = fakeStream([textDeltaEvent(0, "Indeed.")], {
+    const second = createFakeStream([textDeltaEvent(0, "Indeed.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Indeed." }],
     });
@@ -1044,7 +1045,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       usageMeter: { recordTokens },
     });
@@ -1084,7 +1085,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 3) render_panel is composed into the live tool list even when buildTools contributes none", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "hi")], {
+    const stream = createFakeStream([textDeltaEvent(0, "hi")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "hi" }],
     });
@@ -1093,7 +1094,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(), // contributes zero registry tools
+      buildTools: createToolsFixture(), // contributes zero registry tools
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -1108,10 +1109,10 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 3) render_panel pushes a panel event onto the SAME turn stream, interleaved with toolEvent/delta/done in call order", async () => {
-    const panelStream = fakeStream(
+    const panelStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", RENDER_PANEL_TOOL_NAME, {
-          spec: panelSpecFixture(),
+          spec: createPanelSpecFixture(),
         }),
         toolStopEvent(0),
       ],
@@ -1122,16 +1123,19 @@ describe("AnthropicAgentLoop", () => {
             type: "tool_use",
             id: "t1",
             name: RENDER_PANEL_TOOL_NAME,
-            input: { spec: panelSpecFixture() },
+            input: { spec: createPanelSpecFixture() },
           },
         ],
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "Pulled it up, sir.")], {
-      stop_reason: "end_turn",
-      content: [{ type: "text", text: "Pulled it up, sir." }],
-    });
+    const finalStream = createFakeStream(
+      [textDeltaEvent(0, "Pulled it up, sir.")],
+      {
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Pulled it up, sir." }],
+      },
+    );
 
     let toolResult = "";
 
@@ -1143,7 +1147,8 @@ describe("AnthropicAgentLoop", () => {
           const tool = asFakeTools(params.tools).find((candidate) => {
             return candidate.name === RENDER_PANEL_TOOL_NAME;
           });
-          toolResult = (await tool?.run({ spec: panelSpecFixture() })) ?? "";
+          toolResult =
+            (await tool?.run({ spec: createPanelSpecFixture() })) ?? "";
 
           yield finalStream;
         },
@@ -1153,7 +1158,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       knownSymbols: ["GBPUSD"],
     });
@@ -1167,7 +1172,7 @@ describe("AnthropicAgentLoop", () => {
       {
         type: "panel",
         panelId: expect.stringMatching(/^panel-/),
-        spec: panelSpecFixture(),
+        spec: createPanelSpecFixture(),
       },
       { type: "delta", text: "Pulled it up, sir." },
       { type: "done" },
@@ -1184,7 +1189,7 @@ describe("AnthropicAgentLoop", () => {
       viz: { kind: "line" },
     };
 
-    const panelStream = fakeStream(
+    const panelStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", RENDER_PANEL_TOOL_NAME, { spec: badSpec }),
         toolStopEvent(0),
@@ -1202,7 +1207,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "No good, sir.")], {
+    const finalStream = createFakeStream([textDeltaEvent(0, "No good, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "No good, sir." }],
     });
@@ -1226,7 +1231,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       knownSymbols: ["GBPUSD", "EURUSD"], // ZZZXXX is not in this roster
     });
@@ -1243,7 +1248,7 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 3) drive_app is composed into the live tool list even when buildTools contributes none", async () => {
-    const stream = fakeStream([textDeltaEvent(0, "hi")], {
+    const stream = createFakeStream([textDeltaEvent(0, "hi")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "hi" }],
     });
@@ -1252,7 +1257,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       knownSymbols: [],
-      buildTools: buildToolsFixture(), // contributes zero registry tools
+      buildTools: createToolsFixture(), // contributes zero registry tools
       runnerFactory: factory,
     });
     const session = loop.createSession();
@@ -1267,9 +1272,9 @@ describe("AnthropicAgentLoop", () => {
   });
 
   it("(Task 3) drive_app pushes a command event onto the SAME turn stream, interleaved with toolEvent/delta/done in call order", async () => {
-    const driveInput = driveBatchInputFixture();
+    const driveInput = createDriveBatchInputFixture();
 
-    const driveStream = fakeStream(
+    const driveStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", DRIVE_APP_TOOL_NAME, driveInput),
         toolStopEvent(0),
@@ -1287,7 +1292,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "Done, sir.")], {
+    const finalStream = createFakeStream([textDeltaEvent(0, "Done, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "Done, sir." }],
     });
@@ -1312,7 +1317,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       knownSymbols: [],
     });
@@ -1336,7 +1341,7 @@ describe("AnthropicAgentLoop", () => {
   it("(Task 3) an invalid drive batch is rejected via the tool's own parseDriveBatch, and no command event is pushed", async () => {
     const badInput = { commands: [{ kind: "teleport" }] };
 
-    const driveStream = fakeStream(
+    const driveStream = createFakeStream(
       [
         toolUseStartEvent(0, "t1", DRIVE_APP_TOOL_NAME, badInput),
         toolStopEvent(0),
@@ -1354,7 +1359,7 @@ describe("AnthropicAgentLoop", () => {
       },
     );
 
-    const finalStream = fakeStream([textDeltaEvent(0, "No good, sir.")], {
+    const finalStream = createFakeStream([textDeltaEvent(0, "No good, sir.")], {
       stop_reason: "end_turn",
       content: [{ type: "text", text: "No good, sir." }],
     });
@@ -1378,7 +1383,7 @@ describe("AnthropicAgentLoop", () => {
 
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
-      buildTools: buildToolsFixture(),
+      buildTools: createToolsFixture(),
       runnerFactory: factory,
       knownSymbols: [],
     });
@@ -1400,7 +1405,7 @@ describe("AnthropicAgentLoop", () => {
 // None of these ever call the real Anthropic SDK/API — every test in this
 // file injects `runnerFactory`, the seam `AnthropicAgentLoop` exists for.
 
-function fakeStream(
+function createFakeStream(
   events: readonly BetaRawMessageStreamEvent[],
   final: AnthropicFinalMessage,
 ): AnthropicMessageStream {
@@ -1557,7 +1562,7 @@ function runTurnCollecting(
   });
 }
 
-function fakeGetPriceTool(
+function createFakeGetPriceTool(
   run: (input: unknown) => Promise<string>,
 ): JarvisToolDefinition {
   return {
@@ -1588,7 +1593,7 @@ interface ExecuteTradeInput {
  * real one, without pulling in domain simulators — this file tests
  * `AnthropicAgentLoop`'s WIRING of the gate, not `execute_trade`'s own
  * business logic (that's `@rtc/agent-tools`'s own test suite). */
-function fakeExecuteTradeTool(
+function createFakeExecuteTradeTool(
   confirmTrade: ConfirmGate,
   onExecute: () => void,
 ): JarvisToolDefinition {
@@ -1625,7 +1630,7 @@ function fakeExecuteTradeTool(
   };
 }
 
-function panelSpecFixture(): PanelSpecV1 {
+function createPanelSpecFixture(): PanelSpecV1 {
   return {
     v: 1,
     title: "GBP Volatility",
@@ -1645,11 +1650,11 @@ interface DriveAppInputFixture {
  * Not a `DriveBatchV1` itself. Single-command so the loop-composition test's
  * `applied: 1` assertion is unambiguous.
  */
-function driveBatchInputFixture(): DriveAppInputFixture {
+function createDriveBatchInputFixture(): DriveAppInputFixture {
   return { commands: [{ kind: "switchTab", tab: "equities" }] };
 }
 
-function buildToolsFixture(
+function createToolsFixture(
   buildExtra: (
     confirmTrade: ConfirmGate,
   ) => readonly JarvisToolDefinition[] = () => {
@@ -1658,3 +1663,13 @@ function buildToolsFixture(
 ): (confirmTrade: ConfirmGate) => readonly JarvisToolDefinition[] {
   return buildExtra;
 }
+
+const REFUSAL_MESSAGE = "I'm afraid I can't assist with that, sir.";
+
+const DESK_LINK_FALTERED_MESSAGE =
+  "The desk link faltered, sir — do try again.";
+
+const SESSION_CAP_MESSAGE =
+  "We've had quite the session, sir — do reconnect for a fresh one.";
+
+const CANCELLED_MESSAGE = "Cancelled, sir.";

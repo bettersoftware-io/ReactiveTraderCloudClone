@@ -4,7 +4,7 @@ import { animateOnce } from "./index";
 
 beforeEach(() => {
   Element.prototype.animate = (): Animation => {
-    return makeFakeAnimation();
+    return createFakeAnimation();
   };
 });
 
@@ -36,7 +36,7 @@ describe("motion wrapper", () => {
  * The point of the test is that animateOnce awaits `.finished` and resolves to
  * undefined — not that the real WAAPI pipeline fires.
  */
-function makeFakeAnimation(): Animation {
+function createFakeAnimation(): Animation {
   let _onfinish: (() => void) | null = null;
 
   const fakeAnimation = {

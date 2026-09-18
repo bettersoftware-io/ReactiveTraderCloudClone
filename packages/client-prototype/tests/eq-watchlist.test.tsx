@@ -10,27 +10,6 @@ import { PreferencesProvider } from "#/shell/Preferences/PreferencesProvider";
 
 afterEach(cleanup);
 
-const ROWS: WatchRowVm[] = [
-  {
-    sym: "AAPL",
-    name: "Apple Inc",
-    last: "229.35",
-    chg: "+0.50%",
-    up: true,
-    selected: true,
-    flashOn: false,
-  },
-  {
-    sym: "MSFT",
-    name: "Microsoft Corp",
-    last: "467.12",
-    chg: "-0.20%",
-    up: false,
-    selected: false,
-    flashOn: false,
-  },
-];
-
 describe("WatchlistPanel", () => {
   test("renders a row per symbol and marks the selected one", () => {
     const { container } = render(
@@ -66,3 +45,24 @@ describe("WatchlistPanelControls", () => {
 });
 
 function noop(): void {}
+
+const ROWS: WatchRowVm[] = [
+  {
+    sym: "AAPL",
+    name: "Apple Inc",
+    last: "229.35",
+    chg: "+0.50%",
+    up: true,
+    selected: true,
+    flashOn: false,
+  },
+  {
+    sym: "MSFT",
+    name: "Microsoft Corp",
+    last: "467.12",
+    chg: "-0.20%",
+    up: false,
+    selected: false,
+    flashOn: false,
+  },
+];

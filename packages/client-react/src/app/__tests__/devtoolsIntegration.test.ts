@@ -15,13 +15,6 @@ import {
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
-/** The InspectorStore coalesces its snapshot rebuild + notify into a
- * requestAnimationFrame flush, throttled to FRAMES_PER_FLUSH (4) frames. Under
- * vitest fake timers (which fake rAF at jsdom's ~16 ms/frame) that is ~64 ms,
- * so each `advanceTimersByTime` must clear a comfortable margin past it for the
- * applied messages to reach the public snapshot. */
-const FLUSH_ADVANCE_MS = 200;
-
 /** End-to-end proof that the composition-root wiring (createApp →
  * instrumentPresenters → instrumentMachineFactories, exactly as AppRoot does)
  * feeds a real DevtoolsHub, and that an InspectorStore driven by an
@@ -37,32 +30,6 @@ describe("devtools integration — composition root ↔ inspector", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
-
-  function wireAppToInspector(): WiredHarness {
-    const hub = new DevtoolsHub({ appId: "rtc-web-test" });
-    const [appSide, inspectorSide] = createInMemoryDuplexPair<
-      AppToInspector,
-      InspectorToApp
-    >();
-    hub.attachTransport(appSide);
-
-    const { presenters } = createApp(buildBrowserPorts());
-    const instrumented = instrumentPresenters(
-      presenters,
-      PRESENTER_MANIFEST,
-      hub,
-    );
-
-    const factories = instrumentMachineFactories(
-      createMachineFactories(instrumented),
-      hub,
-    );
-
-    const store = new InspectorStore();
-    const client = new InspectorClient(inspectorSide, store);
-
-    return { hub, store, client, factories };
-  }
 
   it("streams the app's manifest-registered props to the inspector after handshake", () => {
     const { hub, store, client } = wireAppToInspector();
@@ -125,6 +92,32 @@ describe("devtools integration — composition root ↔ inspector", () => {
     client.dispose();
     hub.dispose();
   });
+
+  function wireAppToInspector(): WiredHarness {
+    const hub = new DevtoolsHub({ appId: "rtc-web-test" });
+    const [appSide, inspectorSide] = createInMemoryDuplexPair<
+      AppToInspector,
+      InspectorToApp
+    >();
+    hub.attachTransport(appSide);
+
+    const { presenters } = createApp(buildBrowserPorts());
+    const instrumented = instrumentPresenters(
+      presenters,
+      PRESENTER_MANIFEST,
+      hub,
+    );
+
+    const factories = instrumentMachineFactories(
+      createMachineFactories(instrumented),
+      hub,
+    );
+
+    const store = new InspectorStore();
+    const client = new InspectorClient(inspectorSide, store);
+
+    return { hub, store, client, factories };
+  }
 });
 
 interface WiredHarness {
@@ -133,3 +126,10 @@ interface WiredHarness {
   client: InspectorClient;
   factories: ReturnType<typeof createMachineFactories>;
 }
+
+/** The InspectorStore coalesces its snapshot rebuild + notify into a
+ * requestAnimationFrame flush, throttled to FRAMES_PER_FLUSH (4) frames. Under
+ * vitest fake timers (which fake rAF at jsdom's ~16 ms/frame) that is ~64 ms,
+ * so each `advanceTimersByTime` must clear a comfortable margin past it for the
+ * applied messages to reach the public snapshot. */
+const FLUSH_ADVANCE_MS = 200;

@@ -23,8 +23,6 @@ afterEach(() => {
 });
 
 describe("buildBrowserPorts (ws-real branch)", () => {
-  const WS_URL = "ws://localhost:4000";
-
   it("selects the ws-real branch and exposes the transport", () => {
     vi.stubEnv("VITE_SERVER_URL", WS_URL);
 
@@ -83,11 +81,9 @@ describe("buildBrowserPorts (ws-real branch)", () => {
 
     expect(buildBrowserPorts().transport).toBeUndefined();
   });
-});
 
-// `demo` is a committed demo-roster account (packages/domain/src/auth/roster.ts).
-const DEMO_USER = "demo";
-const DEMO_PASS = "mcdc2026";
+  const WS_URL = "ws://localhost:4000";
+});
 
 describe("buildBrowserPorts dev-auth parsing (simulator branch)", () => {
   it("accepts a roster login when VITE_DEV_AUTH holds the credential", () => {
@@ -139,3 +135,8 @@ function loginOutcome(devAuth: string): LoginProbe {
 
   return outcome;
 }
+
+// `demo` is a committed demo-roster account (packages/domain/src/auth/roster.ts).
+const DEMO_USER = "demo";
+
+const DEMO_PASS = "mcdc2026";

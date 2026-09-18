@@ -16,25 +16,6 @@ import { createWsRealPorts } from "./portFactory";
  * three outcomes of each command are observed.
  */
 describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
-  async function expectAckCompletes(
-    subscribe: (
-      ports: ReturnType<typeof createWsRealPorts>,
-    ) => Promise<unknown>,
-    rpcType: string,
-  ): Promise<void> {
-    const ws = new FakeWsAdapter();
-    const ports = createWsRealPorts(ws, {
-      preferences: {} as PreferencesPort,
-      auth: new AuthSimulator({}),
-      sessionStore: new InMemorySessionStore(),
-    });
-    const promise = subscribe(ports);
-    await awaitPendingRpc(ws, rpcType);
-    ws.nextRpcResponse(rpcType, rpcAck(undefined));
-    await expect(promise).resolves.toBeUndefined();
-    ws.dispose();
-  }
-
   it("workflow.cancelRfq completes on ack", () => {
     return expectAckCompletes((p) => {
       return firstValueFrom(p.workflow.cancelRfq(1));
@@ -64,4 +45,23 @@ describe("wsReal void RPC ports :: ack emits undefined and completes", () => {
       return firstValueFrom(p.admin.setThroughput(500));
     }, "admin.setThroughput");
   });
+
+  async function expectAckCompletes(
+    subscribe: (
+      ports: ReturnType<typeof createWsRealPorts>,
+    ) => Promise<unknown>,
+    rpcType: string,
+  ): Promise<void> {
+    const ws = new FakeWsAdapter();
+    const ports = createWsRealPorts(ws, {
+      preferences: {} as PreferencesPort,
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+    const promise = subscribe(ports);
+    await awaitPendingRpc(ws, rpcType);
+    ws.nextRpcResponse(rpcType, rpcAck(undefined));
+    await expect(promise).resolves.toBeUndefined();
+    ws.dispose();
+  }
 });

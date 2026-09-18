@@ -18,53 +18,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const HEALTHY_TOPOLOGY: ServiceTopology = {
-  nodes: [
-    {
-      name: "kernel",
-      status: "ok",
-      health: 100,
-      throughput: 200,
-      latencyMs: 2,
-    },
-    {
-      name: "pricing",
-      status: "ok",
-      health: 97,
-      throughput: 100,
-      latencyMs: 5,
-    },
-  ],
-  edges: [],
-};
-
-const MIXED_TOPOLOGY: ServiceTopology = {
-  nodes: [
-    {
-      name: "kernel",
-      status: "ok",
-      health: 100,
-      throughput: 200,
-      latencyMs: 2,
-    },
-    {
-      name: "blotter",
-      status: "degraded",
-      health: 86,
-      throughput: 20,
-      latencyMs: 150,
-    },
-    {
-      name: "execution",
-      status: "down",
-      health: 0,
-      throughput: 0,
-      latencyMs: 0,
-    },
-  ],
-  edges: [],
-};
-
 describe("ServiceHealth", () => {
   it("shows the empty placeholder when no topology data is seeded", () => {
     const health = mount(ServiceHealth, {});
@@ -148,3 +101,50 @@ describe("ServiceHealth", () => {
     expect(health.hasService("kernel")).toBe(true);
   });
 });
+
+const HEALTHY_TOPOLOGY: ServiceTopology = {
+  nodes: [
+    {
+      name: "kernel",
+      status: "ok",
+      health: 100,
+      throughput: 200,
+      latencyMs: 2,
+    },
+    {
+      name: "pricing",
+      status: "ok",
+      health: 97,
+      throughput: 100,
+      latencyMs: 5,
+    },
+  ],
+  edges: [],
+};
+
+const MIXED_TOPOLOGY: ServiceTopology = {
+  nodes: [
+    {
+      name: "kernel",
+      status: "ok",
+      health: 100,
+      throughput: 200,
+      latencyMs: 2,
+    },
+    {
+      name: "blotter",
+      status: "degraded",
+      health: 86,
+      throughput: 20,
+      latencyMs: 150,
+    },
+    {
+      name: "execution",
+      status: "down",
+      health: 0,
+      throughput: 0,
+      latencyMs: 0,
+    },
+  ],
+  edges: [],
+};

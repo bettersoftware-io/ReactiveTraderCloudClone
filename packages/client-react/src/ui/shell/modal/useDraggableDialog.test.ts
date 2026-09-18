@@ -11,10 +11,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { draggableDialogPage } from "#tests/ui/pages/UseDraggableDialogPage";
 
-const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
-
-const page = draggableDialogPage();
-
 afterEach(() => {
   vi.unstubAllGlobals();
   page.unmountAll();
@@ -31,7 +27,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -52,7 +48,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -76,7 +72,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     const nodragEl = document.createElement("button");
     nodragEl.setAttribute("data-nodrag", "");
@@ -101,7 +97,7 @@ describe("useDraggableDialog", () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 800);
     const handle = page.mount({ open: true });
-    stubDialogRect(handle.state.dialogRef, DIALOG_RECT);
+    createStubDialogRect(handle.state.dialogRef, DIALOG_RECT);
 
     handle.commit(() => {
       handle.state.headerProps.onPointerDown(
@@ -123,7 +119,7 @@ describe("useDraggableDialog", () => {
 
 // --- test helpers -----------------------------------------------------
 
-function stubDialogRect(
+function createStubDialogRect(
   ref: RefObject<HTMLDivElement | null>,
   rect: DOMRect,
 ): void {
@@ -155,3 +151,7 @@ function pointerEvent(init: PointerEventInit): ReactPointerEvent<HTMLElement> {
     currentTarget: { setPointerCapture } as unknown as HTMLElement,
   } as unknown as ReactPointerEvent<HTMLElement>;
 }
+
+const DIALOG_RECT = { width: 400, height: 300 } as DOMRect;
+
+const page = draggableDialogPage();

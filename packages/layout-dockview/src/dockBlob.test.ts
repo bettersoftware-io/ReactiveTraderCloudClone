@@ -26,12 +26,18 @@ beforeAll(() => {
 
 describe("migrateDockBlob", () => {
   it("returns a current-version blob untouched", () => {
-    const blob = { ...legacyRailBlob(), rtcBlobVersion: DOCK_BLOB_VERSION };
+    const blob = {
+      ...createLegacyRailBlob(),
+      rtcBlobVersion: DOCK_BLOB_VERSION,
+    };
     expect(migrateDockBlob(blob, 7)).toBe(blob);
   });
 
   it("lifts each branch child from card + share(n) to card + gap, per that branch's own child count", () => {
-    const migrated = migrateDockBlob(legacyRailBlob(), 7) as MigratedGridBlob;
+    const migrated = migrateDockBlob(
+      createLegacyRailBlob(),
+      7,
+    ) as MigratedGridBlob;
 
     // Every legacy size was card + 3.5 (all branches here have 2 children);
     // the gap-0 model is card + 7, so each size moves by +gap/n = +3.5:
@@ -43,7 +49,7 @@ describe("migrateDockBlob", () => {
 
   it("lifts the strip sidecar's record and flip sizes from card to model units, leaving the pins alone", () => {
     const legacy = {
-      ...legacyRailBlob(),
+      ...createLegacyRailBlob(),
       rtcStripGeometry: {
         records: { rail: { size: 300 } },
         flips: [{ panelIds: ["rates", "blotter"], size: 250 }],
@@ -77,7 +83,7 @@ describe("migrateDockBlob", () => {
     // is 7px bigger on both axes.
     const api = mountDockview();
     api.layout(1007, 807);
-    const migrated = migrateDockBlob(legacyRailBlob(), 7);
+    const migrated = migrateDockBlob(createLegacyRailBlob(), 7);
     api.fromJSON(migrated as Parameters<typeof api.fromJSON>[0]);
 
     // Model = card + 7: the 360px design rail is the 367 view, and with no
@@ -165,8 +171,6 @@ describe("withoutLockMarks (derived lock state never persists)", () => {
 });
 
 describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", () => {
-  const STATIC_IDS = ["rates", "blotter"] as const;
-
   it("removes one dynamic leaf, dropping its panels entry and its views entry", () => {
     const blob = createSingleLeafBlob([
       ["rates", 526],
@@ -241,6 +245,8 @@ describe("withoutDynamicNodes (partial net for an unrestorable dynamic leaf)", (
       withoutDynamicNodes(JSON.stringify({ panels: {} }), STATIC_IDS),
     ).toBeNull();
   });
+
+  const STATIC_IDS = ["rates", "blotter"] as const;
 });
 
 describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
@@ -252,7 +258,7 @@ describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
   // then through a REAL fromJSON round-trip (a converter test that never
   // feeds dockview proves nothing).
   it("re-parents a single-group popout onto its hidden reference leaf and drops the key", () => {
-    const scrubbed = withoutPopoutGroups(poppedBlob()) as PoppedBlobShape;
+    const scrubbed = withoutPopoutGroups(createPoppedBlob()) as PoppedBlobShape;
 
     expect("popoutGroups" in scrubbed).toBe(false);
     const reference = scrubbed.grid.root.data[1] as PoppedLeaf;
@@ -266,7 +272,9 @@ describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
     dock.layout(1000, 800);
 
     dock.fromJSON(
-      withoutPopoutGroups(poppedBlob()) as Parameters<typeof dock.fromJSON>[0],
+      withoutPopoutGroups(createPoppedBlob()) as Parameters<
+        typeof dock.fromJSON
+      >[0],
     );
 
     expect(dock.groups.length).toBe(2);
@@ -316,7 +324,7 @@ describe("withoutFloatingGroups (a load-time retry only, never a save-time scrub
 
 /** The measured mid-popout save: fx-analytics popped, its reference leaf
  * hidden in the main grid with empty views. */
-function poppedBlob(): PoppedBlobShape {
+function createPoppedBlob(): PoppedBlobShape {
   return {
     grid: {
       root: {
@@ -432,7 +440,7 @@ function mountDockview(): ReturnType<typeof createDockview> {
  * at card + 3.5 (the old allocator shared 993 rendered px: main 633, rail
  * 360), the nested column's at card + 3.5 of 793 (rates 523, blotter 270).
  * No `rtcBlobVersion` — the stamp is what marks a blob as already gap-0. */
-function legacyRailBlob(): Record<string, unknown> {
+function createLegacyRailBlob(): Record<string, unknown> {
   function leaf(id: string, size: number): Record<string, unknown> {
     return {
       type: "leaf",

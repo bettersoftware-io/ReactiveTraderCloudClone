@@ -37,7 +37,7 @@ describe("createJarvisPanelsMachine", () => {
       },
       ({ events$, ts }) => {
         ts.schedule(() => {
-          events$.next(panelEvent("p1", makeSpec("EURUSD vol")));
+          events$.next(panelEvent("p1", createSpec("EURUSD vol")));
         }, 1);
       },
     );
@@ -46,7 +46,7 @@ describe("createJarvisPanelsMachine", () => {
     expect(last?.panels).toEqual([
       {
         panelId: "p1",
-        spec: makeSpec("EURUSD vol"),
+        spec: createSpec("EURUSD vol"),
         status: "live",
         docked: false,
       },
@@ -60,15 +60,15 @@ describe("createJarvisPanelsMachine", () => {
       },
       ({ events$, ts }) => {
         ts.schedule(() => {
-          events$.next(panelEvent("p1", makeSpec("first")));
+          events$.next(panelEvent("p1", createSpec("first")));
         }, 1);
         ts.schedule(() => {
-          events$.next(panelEvent("p2", makeSpec("second")));
+          events$.next(panelEvent("p2", createSpec("second")));
         }, 2);
         ts.schedule(() => {
           // Edits p1 with a new spec. If this were append-based, p1 would
           // move to the end; a morph keeps it at index 0.
-          events$.next(panelEvent("p1", makeSpec("first-edited")));
+          events$.next(panelEvent("p1", createSpec("first-edited")));
         }, 3);
       },
     );
@@ -81,13 +81,13 @@ describe("createJarvisPanelsMachine", () => {
     ).toEqual(["p1", "p2"]);
     expect(last?.panels[0]).toEqual({
       panelId: "p1",
-      spec: makeSpec("first-edited"),
+      spec: createSpec("first-edited"),
       status: "live",
       docked: false,
     });
     expect(last?.panels[1]).toEqual({
       panelId: "p2",
-      spec: makeSpec("second"),
+      spec: createSpec("second"),
       status: "live",
       docked: false,
     });
@@ -101,7 +101,7 @@ describe("createJarvisPanelsMachine", () => {
       ({ events$, ts }) => {
         ["p1", "p2", "p3", "p4", "p5"].forEach((panelId, i) => {
           ts.schedule(() => {
-            events$.next(panelEvent(panelId, makeSpec(panelId)));
+            events$.next(panelEvent(panelId, createSpec(panelId)));
           }, i + 1);
         });
       },
@@ -124,13 +124,13 @@ describe("createJarvisPanelsMachine", () => {
       ({ events$, ts }) => {
         ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
           ts.schedule(() => {
-            events$.next(panelEvent(panelId, makeSpec(panelId)));
+            events$.next(panelEvent(panelId, createSpec(panelId)));
           }, i + 1);
         });
         ts.schedule(() => {
           // Edits p1, already the oldest — must NOT be treated as a spawn
           // (which would evict something) since it targets a live panelId.
-          events$.next(panelEvent("p1", makeSpec("p1-edited")));
+          events$.next(panelEvent("p1", createSpec("p1-edited")));
         }, 5);
       },
     );
@@ -154,10 +154,10 @@ describe("createJarvisPanelsMachine", () => {
         states.push(s);
       });
       ts.schedule(() => {
-        events$.next(panelEvent("p1", makeSpec("p1")));
+        events$.next(panelEvent("p1", createSpec("p1")));
       }, 1);
       ts.schedule(() => {
-        events$.next(panelEvent("p2", makeSpec("p2")));
+        events$.next(panelEvent("p2", createSpec("p2")));
       }, 2);
       ts.schedule(() => {
         machine.dismissPanel("p1");
@@ -181,7 +181,7 @@ describe("createJarvisPanelsMachine", () => {
       },
       ({ events$, machine, ts }) => {
         ts.schedule(() => {
-          events$.next(panelEvent("p1", makeSpec("p1")));
+          events$.next(panelEvent("p1", createSpec("p1")));
         }, 1);
         ts.schedule(() => {
           machine.dismissPanel("does-not-exist");
@@ -207,10 +207,10 @@ describe("createJarvisPanelsMachine", () => {
         states.push(s);
       });
       ts.schedule(() => {
-        events$.next(panelEvent("p1", makeSpec("p1")));
+        events$.next(panelEvent("p1", createSpec("p1")));
       }, 1);
       ts.schedule(() => {
-        events$.next(panelEvent("p2", makeSpec("p2")));
+        events$.next(panelEvent("p2", createSpec("p2")));
       }, 2);
       ts.schedule(() => {
         machine.dismissPanel("p1");
@@ -218,7 +218,7 @@ describe("createJarvisPanelsMachine", () => {
       ts.schedule(() => {
         // "Edits" p1 again, but p1 was dismissed — this must be treated as
         // a brand-new spawn (appended), never an error/no-op.
-        events$.next(panelEvent("p1", makeSpec("p1-reborn")));
+        events$.next(panelEvent("p1", createSpec("p1-reborn")));
       }, 4);
       flush();
       sub.unsubscribe();
@@ -232,7 +232,7 @@ describe("createJarvisPanelsMachine", () => {
     ).toEqual(["p2", "p1"]);
     expect(last?.panels[1]).toEqual({
       panelId: "p1",
-      spec: makeSpec("p1-reborn"),
+      spec: createSpec("p1-reborn"),
       status: "live",
       docked: false,
     });
@@ -316,7 +316,7 @@ describe("createJarvisPanelsMachine", () => {
       });
 
       ts.schedule(() => {
-        events$.next(panelEvent("p1", makeSpec("p1")));
+        events$.next(panelEvent("p1", createSpec("p1")));
       }, 1);
 
       let late: PanelInstance[] | undefined;
@@ -330,7 +330,12 @@ describe("createJarvisPanelsMachine", () => {
       flush();
       earlySub.unsubscribe();
       expect(late).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+        {
+          panelId: "p1",
+          spec: createSpec("p1"),
+          status: "live",
+          docked: false,
+        },
       ]);
     });
   });
@@ -357,7 +362,7 @@ describe("createJarvisPanelsMachine", () => {
         // event fires into a hot Subject with nobody listening and is lost
         // for good; state$ would replay an empty INITIAL to the subscriber
         // below instead.
-        events$.next(panelEvent("p1", makeSpec("p1")));
+        events$.next(panelEvent("p1", createSpec("p1")));
 
         let current: JarvisPanelsState | undefined;
         const sub = machine.state$.subscribe((s) => {
@@ -366,7 +371,7 @@ describe("createJarvisPanelsMachine", () => {
         expect(current?.panels).toEqual([
           {
             panelId: "p1",
-            spec: makeSpec("p1"),
+            spec: createSpec("p1"),
             status: "live",
             docked: false,
           },
@@ -391,13 +396,13 @@ describe("createJarvisPanelsMachine", () => {
         const machine = createJarvisPanelsMachine(events$);
 
         const firstSub = machine.state$.subscribe();
-        rawEvents$.next(panelEvent("p1", makeSpec("p1")));
+        rawEvents$.next(panelEvent("p1", createSpec("p1")));
         firstSub.unsubscribe();
 
         // If the warm internal subscription didn't exist, the line above
         // would have dropped state$'s refCount to zero, tearing the fold
         // (and its events$ subscription) down — this push would be lost.
-        rawEvents$.next(panelEvent("p2", makeSpec("p2")));
+        rawEvents$.next(panelEvent("p2", createSpec("p2")));
 
         let current: JarvisPanelsState | undefined;
         const secondSub = machine.state$.subscribe((s) => {
@@ -425,7 +430,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("does-not-exist");
@@ -435,7 +440,12 @@ describe("createJarvisPanelsMachine", () => {
 
       const last = states.at(-1);
       expect(last?.panels).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+        {
+          panelId: "p1",
+          spec: createSpec("p1"),
+          status: "live",
+          docked: false,
+        },
       ]);
     });
 
@@ -446,10 +456,10 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
-            events$.next(panelEvent("p2", makeSpec("p2")));
+            events$.next(panelEvent("p2", createSpec("p2")));
           }, 2);
           ts.schedule(() => {
             machine.dockPanel("p1");
@@ -465,7 +475,7 @@ describe("createJarvisPanelsMachine", () => {
       ).toEqual(["p1", "p2"]);
       expect(last?.panels[0]).toEqual({
         panelId: "p1",
-        spec: makeSpec("p1"),
+        spec: createSpec("p1"),
         status: "live",
         docked: true,
       });
@@ -479,7 +489,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
@@ -492,7 +502,7 @@ describe("createJarvisPanelsMachine", () => {
 
       const last = states.at(-1);
       expect(last?.panels).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: true },
+        { panelId: "p1", spec: createSpec("p1"), status: "live", docked: true },
       ]);
     });
 
@@ -509,7 +519,7 @@ describe("createJarvisPanelsMachine", () => {
           ["d1", "d2", "d3", "d4"].forEach((panelId, i) => {
             ts.schedule(
               () => {
-                events$.next(panelEvent(panelId, makeSpec(panelId)));
+                events$.next(panelEvent(panelId, createSpec(panelId)));
               },
               2 * i + 1,
             );
@@ -521,7 +531,7 @@ describe("createJarvisPanelsMachine", () => {
             );
           });
           ts.schedule(() => {
-            events$.next(panelEvent("d5", makeSpec("d5")));
+            events$.next(panelEvent("d5", createSpec("d5")));
           }, 9);
           ts.schedule(() => {
             // d1..d4 already fill MAX_DOCKED_PANELS — docking a 5th must
@@ -554,7 +564,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.undockPanel("does-not-exist");
@@ -573,7 +583,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.undockPanel("p1");
@@ -583,7 +593,12 @@ describe("createJarvisPanelsMachine", () => {
 
       const last = states.at(-1);
       expect(last?.panels).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+        {
+          panelId: "p1",
+          spec: createSpec("p1"),
+          status: "live",
+          docked: false,
+        },
       ]);
     });
 
@@ -594,7 +609,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
@@ -607,7 +622,12 @@ describe("createJarvisPanelsMachine", () => {
 
       const last = states.at(-1);
       expect(last?.panels).toEqual([
-        { panelId: "p1", spec: makeSpec("p1"), status: "live", docked: false },
+        {
+          panelId: "p1",
+          spec: createSpec("p1"),
+          status: "live",
+          docked: false,
+        },
       ]);
     });
 
@@ -618,7 +638,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
@@ -641,14 +661,14 @@ describe("createJarvisPanelsMachine", () => {
         ({ events$, machine, ts }) => {
           ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
             ts.schedule(() => {
-              events$.next(panelEvent(panelId, makeSpec(panelId)));
+              events$.next(panelEvent(panelId, createSpec(panelId)));
             }, i + 1);
           });
           ts.schedule(() => {
             machine.dockPanel("p2");
           }, 5);
           ts.schedule(() => {
-            events$.next(panelEvent("p5", makeSpec("p5")));
+            events$.next(panelEvent("p5", createSpec("p5")));
           }, 6);
         },
       );
@@ -673,14 +693,14 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
           }, 2);
           ["p2", "p3", "p4", "p5"].forEach((panelId, i) => {
             ts.schedule(() => {
-              events$.next(panelEvent(panelId, makeSpec(panelId)));
+              events$.next(panelEvent(panelId, createSpec(panelId)));
             }, 3 + i);
           });
           ts.schedule(() => {
@@ -688,7 +708,7 @@ describe("createJarvisPanelsMachine", () => {
             // distinct panelId is a genuine spawn and must evict the oldest
             // FLOATING entry (p2) — p1, docked, is invisible to the cap and
             // survives at index 0.
-            events$.next(panelEvent("p6", makeSpec("p6")));
+            events$.next(panelEvent("p6", createSpec("p6")));
           }, 7);
         },
       );
@@ -709,13 +729,13 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
           }, 2);
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1-restyled")));
+            events$.next(panelEvent("p1", createSpec("p1-restyled")));
           }, 3);
         },
       );
@@ -724,7 +744,7 @@ describe("createJarvisPanelsMachine", () => {
       expect(last?.panels).toEqual([
         {
           panelId: "p1",
-          spec: makeSpec("p1-restyled"),
+          spec: createSpec("p1-restyled"),
           status: "live",
           docked: true,
         },
@@ -738,14 +758,14 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ events$, machine, ts }) => {
           ts.schedule(() => {
-            events$.next(panelEvent("p1", makeSpec("p1")));
+            events$.next(panelEvent("p1", createSpec("p1")));
           }, 1);
           ts.schedule(() => {
             machine.dockPanel("p1");
           }, 2);
           ["p2", "p3", "p4", "p5"].forEach((panelId, i) => {
             ts.schedule(() => {
-              events$.next(panelEvent(panelId, makeSpec(panelId)));
+              events$.next(panelEvent(panelId, createSpec(panelId)));
             }, 3 + i);
           });
           ts.schedule(() => {
@@ -774,14 +794,14 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ machine, ts }) => {
           ts.schedule(() => {
-            machine.restoreDockedPanel("r1", makeSpec("r1"));
+            machine.restoreDockedPanel("r1", createSpec("r1"));
           }, 1);
         },
       );
 
       const last = states.at(-1);
       expect(last?.panels).toEqual([
-        { panelId: "r1", spec: makeSpec("r1"), status: "live", docked: true },
+        { panelId: "r1", spec: createSpec("r1"), status: "live", docked: true },
       ]);
     });
 
@@ -792,10 +812,10 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ machine, ts }) => {
           ts.schedule(() => {
-            machine.restoreDockedPanel("r1", makeSpec("first"));
+            machine.restoreDockedPanel("r1", createSpec("first"));
           }, 1);
           ts.schedule(() => {
-            machine.restoreDockedPanel("r1", makeSpec("second"));
+            machine.restoreDockedPanel("r1", createSpec("second"));
           }, 2);
         },
       );
@@ -804,7 +824,7 @@ describe("createJarvisPanelsMachine", () => {
       expect(last?.panels).toEqual([
         {
           panelId: "r1",
-          spec: makeSpec("first"),
+          spec: createSpec("first"),
           status: "live",
           docked: true,
         },
@@ -819,7 +839,7 @@ describe("createJarvisPanelsMachine", () => {
         ({ machine, ts }) => {
           ["r1", "r2", "r3", "r4", "r5"].forEach((panelId, i) => {
             ts.schedule(() => {
-              machine.restoreDockedPanel(panelId, makeSpec(panelId));
+              machine.restoreDockedPanel(panelId, createSpec(panelId));
             }, i + 1);
           });
         },
@@ -843,7 +863,7 @@ describe("createJarvisPanelsMachine", () => {
           // Fill the floating pool to its cap first.
           ["p1", "p2", "p3", "p4"].forEach((panelId, i) => {
             ts.schedule(() => {
-              events$.next(panelEvent(panelId, makeSpec(panelId)));
+              events$.next(panelEvent(panelId, createSpec(panelId)));
             }, i + 1);
           });
           // Then restore MAX_DOCKED_PANELS docked panels — the floating cap
@@ -851,7 +871,7 @@ describe("createJarvisPanelsMachine", () => {
           // boot-time rehydration, gated only by MAX_DOCKED_PANELS).
           ["r1", "r2", "r3", "r4"].forEach((panelId, i) => {
             ts.schedule(() => {
-              machine.restoreDockedPanel(panelId, makeSpec(panelId));
+              machine.restoreDockedPanel(panelId, createSpec(panelId));
             }, 10 + i);
           });
         },
@@ -883,7 +903,7 @@ describe("createJarvisPanelsMachine", () => {
         },
         ({ machine, ts }) => {
           ts.schedule(() => {
-            machine.restoreDockedPanel("r1", makeSpec("r1"));
+            machine.restoreDockedPanel("r1", createSpec("r1"));
           }, 1);
         },
       );
@@ -901,7 +921,7 @@ function scheduler(): TestScheduler {
   });
 }
 
-function makeSpec(title: string): PanelSpecV1 {
+function createSpec(title: string): PanelSpecV1 {
   return {
     v: 1,
     title,

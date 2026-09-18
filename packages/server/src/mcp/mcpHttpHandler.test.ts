@@ -12,10 +12,6 @@ import { createServices } from "../services/serviceContainer.js";
 import { createMcpRequestHandler } from "./mcpHttpHandler.js";
 
 describe("createMcpRequestHandler", () => {
-  let httpServer: HttpServer;
-  let baseUrl: string;
-  let auth: AuthService;
-
   beforeEach(async () => {
     auth = new AuthService({
       secret: "test-secret",
@@ -44,15 +40,6 @@ describe("createMcpRequestHandler", () => {
       });
     });
   });
-
-  function authedTransport(
-    token: string,
-    scheme = "Bearer",
-  ): StreamableHTTPClientTransport {
-    return new StreamableHTTPClientTransport(new URL(baseUrl), {
-      requestInit: { headers: { Authorization: `${scheme} ${token}` } },
-    });
-  }
 
   it("a valid session token lists and calls tools over the real wire", async () => {
     const login = auth.login("demo", "mcdc2026");
@@ -104,6 +91,21 @@ describe("createMcpRequestHandler", () => {
     expect(response.status).toBe(405);
     expect(response.headers.get("Allow")).toBe("POST");
   });
+
+  let httpServer: HttpServer;
+
+  let baseUrl: string;
+
+  let auth: AuthService;
+
+  function authedTransport(
+    token: string,
+    scheme = "Bearer",
+  ): StreamableHTTPClientTransport {
+    return new StreamableHTTPClientTransport(new URL(baseUrl), {
+      requestInit: { headers: { Authorization: `${scheme} ${token}` } },
+    });
+  }
 });
 
 function approveWithoutPrompt(): Promise<boolean> {

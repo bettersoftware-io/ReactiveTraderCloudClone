@@ -8,16 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
-];
-
-const BOOK: DepthBook = {
-  symbol: "AAPL",
-  bids: [{ price: 99.9, size: 500 }],
-  asks: [{ price: 100.1, size: 400 }],
-};
-
 describe("EqDepthDock", () => {
   it("shows a select-an-instrument placeholder when the workspace has no selection", () => {
     const dock = mount(EqDepthDock, {});
@@ -35,3 +25,13 @@ describe("EqDepthDock", () => {
     expect(dock.rowCount("ask")).toBe(1);
   });
 });
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ" },
+];
+
+const BOOK: DepthBook = {
+  symbol: "AAPL",
+  bids: [{ price: 99.9, size: 500 }],
+  asks: [{ price: 100.1, size: 400 }],
+};

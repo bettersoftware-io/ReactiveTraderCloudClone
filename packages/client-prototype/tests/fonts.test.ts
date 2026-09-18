@@ -4,9 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import { expect, test } from "vitest";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const HTML = readFileSync(join(__dirname, "../index.html"), "utf8");
-
 test("index.html preconnects to Google Fonts and loads the five display families", () => {
   expect(HTML).toContain(
     'rel="preconnect" href="https://fonts.googleapis.com"',
@@ -25,3 +22,7 @@ test("index.html preconnects to Google Fonts and loads the five display families
 
   expect(HTML).toContain("display=swap");
 });
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const HTML = readFileSync(join(__dirname, "../index.html"), "utf8");

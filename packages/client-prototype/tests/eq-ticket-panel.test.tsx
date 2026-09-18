@@ -5,17 +5,6 @@ import { OrderTicketPanel } from "#/equities/Ticket/OrderTicketPanel";
 import type { EqSym } from "#/equities/types";
 import { useEqTicket } from "#/equities/useEqTicket";
 
-const RATES = {
-  AAPL: 230,
-  MSFT: 467,
-  NVDA: 131,
-  TSLA: 251,
-  AMZN: 218,
-  GOOGL: 178,
-  META: 591,
-  SPY: 588,
-} as Record<EqSym, number>;
-
 afterEach(cleanup);
 
 describe("OrderTicketPanel", () => {
@@ -30,3 +19,14 @@ describe("OrderTicketPanel", () => {
     expect(getByText("BUY AAPL")).toBeTruthy();
   });
 });
+
+const RATES = {
+  AAPL: 230,
+  MSFT: 467,
+  NVDA: 131,
+  TSLA: 251,
+  AMZN: 218,
+  GOOGL: 178,
+  META: 591,
+  SPY: 588,
+} as Record<EqSym, number>;

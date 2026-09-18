@@ -18,9 +18,6 @@ const PANEL_IDS: readonly PanelId[] = [
   "credit-blotter",
 ];
 
-let appHeadRegistry: typeof import("../appHeadRegistry")["appHeadRegistry"];
-let expectedByPanelId: ReadonlyMap<PanelId, Component>;
-
 beforeAll(async () => {
   // Generous timeout (default 10s): CI's cold transform of the whole App
   // module graph (pulled in by vi.resetModules() + this re-import wave) has
@@ -180,3 +177,7 @@ vi.mock("solid-js/web", async (importOriginal) => {
     },
   };
 });
+
+let appHeadRegistry: typeof import("../appHeadRegistry")["appHeadRegistry"];
+
+let expectedByPanelId: ReadonlyMap<PanelId, Component>;

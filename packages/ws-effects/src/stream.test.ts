@@ -7,7 +7,6 @@ import { stream } from "#/stream.js";
 import type { Inbound, Outbound } from "#/types.js";
 
 describe("stream", () => {
-  let scheduler: TestScheduler;
   beforeEach(() => {
     scheduler = new TestScheduler((actual, expected) => {
       expect(actual).toEqual(expected);
@@ -99,4 +98,6 @@ describe("stream", () => {
       ).toBe("-|");
     });
   });
+
+  let scheduler: TestScheduler;
 });

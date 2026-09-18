@@ -15,8 +15,8 @@ import {
 describe("reduceRfqEvent", () => {
   it("startOfStateOfTheWorld clears both maps", () => {
     const start: RfqStreamState = {
-      rfqs: new Map([[1, buildRfq(1)]]),
-      quotes: new Map([[1, buildQuote(1, 1)]]),
+      rfqs: new Map([[1, createRfqFixture(1)]]),
+      quotes: new Map([[1, createQuote(1, 1)]]),
     };
     const next = reduceRfqEvent(start, { type: "startOfStateOfTheWorld" });
     expect(next.rfqs.size).toBe(0);
@@ -25,8 +25,8 @@ describe("reduceRfqEvent", () => {
 
   it("endOfStateOfTheWorld is a no-op (returns state unchanged)", () => {
     const start: RfqStreamState = {
-      rfqs: new Map([[1, buildRfq(1)]]),
-      quotes: new Map([[1, buildQuote(1, 1)]]),
+      rfqs: new Map([[1, createRfqFixture(1)]]),
+      quotes: new Map([[1, createQuote(1, 1)]]),
     };
     const next = reduceRfqEvent(start, { type: "endOfStateOfTheWorld" });
     expect(next.rfqs.size).toBe(1);
@@ -34,8 +34,8 @@ describe("reduceRfqEvent", () => {
   });
 
   it("rfqCreated upserts the rfq into rfqs", () => {
-    const rfq = buildRfq(7);
-    const next = reduceRfqEvent(emptyState(), {
+    const rfq = createRfqFixture(7);
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "rfqCreated",
       payload: rfq,
     });
@@ -44,8 +44,8 @@ describe("reduceRfqEvent", () => {
   });
 
   it("rfqClosed upserts the (closed) rfq, replacing the open version", () => {
-    const open = buildRfq(7, RfqState.Open);
-    const closed = buildRfq(7, RfqState.Closed);
+    const open = createRfqFixture(7, RfqState.Open);
+    const closed = createRfqFixture(7, RfqState.Closed);
     const start: RfqStreamState = {
       rfqs: new Map([[7, open]]),
       quotes: new Map(),
@@ -55,8 +55,8 @@ describe("reduceRfqEvent", () => {
   });
 
   it("quoteCreated upserts the quote into quotes", () => {
-    const quote = buildQuote(5, 7);
-    const next = reduceRfqEvent(emptyState(), {
+    const quote = createQuote(5, 7);
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "quoteCreated",
       payload: quote,
     });
@@ -65,7 +65,7 @@ describe("reduceRfqEvent", () => {
   });
 
   it("quoteQuoted upserts the priced quote, replacing the previous version", () => {
-    const pending = buildQuote(5, 7);
+    const pending = createQuote(5, 7);
     const priced: Quote = {
       ...pending,
       state: { type: "pendingWithPrice", price: 100 },
@@ -94,7 +94,7 @@ describe("reduceRfqEvent", () => {
       state: { type: "passed" },
     };
 
-    const next = reduceRfqEvent(emptyState(), {
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "quotePassed",
       payload: passed,
     });
@@ -109,7 +109,7 @@ describe("reduceRfqEvent", () => {
       state: { type: "accepted", price: 100 },
     };
 
-    const next = reduceRfqEvent(emptyState(), {
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "quoteAccepted",
       payload: accepted,
     });
@@ -124,7 +124,7 @@ describe("reduceRfqEvent", () => {
       state: { type: "rejectedWithPrice", price: 105 },
     };
 
-    const next = reduceRfqEvent(emptyState(), {
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "quoteRejected",
       payload: rejected,
     });
@@ -142,7 +142,7 @@ describe("reduceRfqEvent", () => {
       state: { type: "rejectedWithoutPrice" },
     };
 
-    const next = reduceRfqEvent(emptyState(), {
+    const next = reduceRfqEvent(createEmptyState(), {
       type: "quoteRejected",
       payload: rejected,
     });
@@ -210,11 +210,11 @@ describe("reduceRfqEvent quoteRejected", () => {
 
 describe("WorkflowEventStreamUseCase", () => {
   it("yields a snapshot after each event reflecting the cumulative reduction", () => {
-    const rfq1 = buildRfq(1);
-    const rfq2 = buildRfq(2);
-    const quote1 = buildQuote(10, 1);
+    const rfq1 = createRfqFixture(1);
+    const rfq2 = createRfqFixture(2);
+    const quote1 = createQuote(10, 1);
     const events$ = new Subject<RfqEvent>();
-    const useCase = new WorkflowEventStreamUseCase(stubWorkflow(events$));
+    const useCase = new WorkflowEventStreamUseCase(createStubWorkflow(events$));
 
     const snapshots: RfqStreamState[] = [];
     const sub = useCase.execute().subscribe((s) => {
@@ -239,7 +239,7 @@ describe("WorkflowEventStreamUseCase", () => {
   });
 });
 
-function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
+function createStubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
   return {
     events: () => {
       return events$.asObservable();
@@ -262,11 +262,11 @@ function stubWorkflow(events$: Subject<RfqEvent>): WorkflowPort {
   };
 }
 
-function emptyState(): RfqStreamState {
+function createEmptyState(): RfqStreamState {
   return { rfqs: new Map(), quotes: new Map() };
 }
 
-function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
+function createRfqFixture(id: number, state: RfqState = RfqState.Open): Rfq {
   return {
     id,
     instrumentId: 1,
@@ -278,6 +278,6 @@ function buildRfq(id: number, state: RfqState = RfqState.Open): Rfq {
   };
 }
 
-function buildQuote(id: number, rfqId: number, dealerId = 1): Quote {
+function createQuote(id: number, rfqId: number, dealerId = 1): Quote {
   return { id, rfqId, dealerId, state: { type: "pendingWithoutPrice" } };
 }

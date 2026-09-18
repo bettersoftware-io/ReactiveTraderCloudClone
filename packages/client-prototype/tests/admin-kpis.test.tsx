@@ -6,6 +6,25 @@ import type { AdminKpi } from "#/admin/types";
 
 afterEach(cleanup);
 
+describe("KpiRow", () => {
+  test("renders a card per kpi with label and value", () => {
+    const { getByText, container } = render(<KpiRow kpis={KPIS} />);
+    expect(getByText("Throughput")).toBeTruthy();
+    expect(getByText("1.20")).toBeTruthy();
+    expect(
+      container.querySelectorAll("[data-kpi]").length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  test("marks the latency value as warn and the delta as down", () => {
+    const { container } = render(<KpiRow kpis={KPIS} />);
+    const latValue = container.querySelector('[data-kpi="lat"]');
+    expect(latValue?.getAttribute("data-warn")).toBe("true");
+    const latDelta = container.querySelector('[data-delta-up="false"]');
+    expect(latDelta).toBeTruthy();
+  });
+});
+
 const KPIS: AdminKpi[] = [
   {
     key: "tput",
@@ -28,22 +47,3 @@ const KPIS: AdminKpi[] = [
     spark: "0,10 100,5",
   },
 ];
-
-describe("KpiRow", () => {
-  test("renders a card per kpi with label and value", () => {
-    const { getByText, container } = render(<KpiRow kpis={KPIS} />);
-    expect(getByText("Throughput")).toBeTruthy();
-    expect(getByText("1.20")).toBeTruthy();
-    expect(
-      container.querySelectorAll("[data-kpi]").length,
-    ).toBeGreaterThanOrEqual(2);
-  });
-
-  test("marks the latency value as warn and the delta as down", () => {
-    const { container } = render(<KpiRow kpis={KPIS} />);
-    const latValue = container.querySelector('[data-kpi="lat"]');
-    expect(latValue?.getAttribute("data-warn")).toBe("true");
-    const latDelta = container.querySelector('[data-delta-up="false"]');
-    expect(latDelta).toBeTruthy();
-  });
-});

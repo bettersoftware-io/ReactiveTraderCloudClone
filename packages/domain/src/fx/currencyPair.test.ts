@@ -29,30 +29,6 @@ describe("KNOWN_CURRENCY_PAIRS", () => {
   });
 });
 
-const EXPECTED_BASE_MIDS: Record<string, number> = {
-  EURUSD: 1.09213,
-  USDJPY: 151.203,
-  GBPUSD: 1.26414,
-  GBPJPY: 191.085,
-  EURJPY: 165.142,
-  AUDUSD: 0.66121,
-  NZDUSD: 0.61054,
-  EURCAD: 1.49385,
-  EURAUD: 1.65172,
-};
-
-const EXPECTED_SPREAD_PIPS: Record<string, number> = {
-  EURUSD: 1.4,
-  USDJPY: 1.6,
-  GBPUSD: 1.8,
-  GBPJPY: 2.6,
-  EURJPY: 2.1,
-  AUDUSD: 2.0,
-  NZDUSD: 2.4,
-  EURCAD: 2.2,
-  EURAUD: 2.0,
-};
-
 describe("KNOWN_CURRENCY_PAIRS realism metadata", () => {
   it("every pair carries the PROTO base mid", () => {
     for (const pair of KNOWN_CURRENCY_PAIRS) {
@@ -76,3 +52,27 @@ describe("KNOWN_CURRENCY_PAIRS realism metadata", () => {
     }
   });
 });
+
+const EXPECTED_BASE_MIDS: Record<string, number> = {
+  EURUSD: 1.09213,
+  USDJPY: 151.203,
+  GBPUSD: 1.26414,
+  GBPJPY: 191.085,
+  EURJPY: 165.142,
+  AUDUSD: 0.66121,
+  NZDUSD: 0.61054,
+  EURCAD: 1.49385,
+  EURAUD: 1.65172,
+};
+
+const EXPECTED_SPREAD_PIPS: Record<string, number> = {
+  EURUSD: 1.4,
+  USDJPY: 1.6,
+  GBPUSD: 1.8,
+  GBPJPY: 2.6,
+  EURJPY: 2.1,
+  AUDUSD: 2.0,
+  NZDUSD: 2.4,
+  EURCAD: 2.2,
+  EURAUD: 2.0,
+};

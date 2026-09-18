@@ -8,17 +8,6 @@ import { PriceMovementType } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import { PriceStreamUseCase } from "./PriceStreamUseCase.js";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
 describe("PriceStreamUseCase", () => {
   it("enriches each tick with spread and movement, tracking previous mid across ticks", async () => {
     const ticks: PriceTick[] = [
@@ -47,7 +36,7 @@ describe("PriceStreamUseCase", () => {
         creationTimestamp: 3,
       },
     ];
-    const useCase = new PriceStreamUseCase(stubPricing(ticks));
+    const useCase = new PriceStreamUseCase(createStubPricing(ticks));
 
     const results: Price[] = await firstValueFrom(
       useCase.execute(EURUSD).pipe(toArray()),
@@ -72,7 +61,7 @@ describe("PriceStreamUseCase", () => {
         creationTimestamp: 1,
       },
     ];
-    const useCase = new PriceStreamUseCase(stubPricing(ticks));
+    const useCase = new PriceStreamUseCase(createStubPricing(ticks));
 
     const first = await firstValueFrom(useCase.execute(EURUSD).pipe(toArray()));
     const second = await firstValueFrom(
@@ -84,7 +73,7 @@ describe("PriceStreamUseCase", () => {
   });
 });
 
-function stubPricing(ticks: PriceTick[]): PricingPort {
+function createStubPricing(ticks: PriceTick[]): PricingPort {
   return {
     getPriceUpdates: () => {
       return from(ticks);
@@ -97,3 +86,14 @@ function stubPricing(ticks: PriceTick[]): PricingPort {
     },
   };
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};

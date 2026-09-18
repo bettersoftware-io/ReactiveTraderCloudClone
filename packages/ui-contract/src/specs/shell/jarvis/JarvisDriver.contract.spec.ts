@@ -38,26 +38,6 @@ import {
   type UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/client-core";
 
-/** Mirrors `ScriptedJarvisEngine`'s own canned `setupWorkspace` demo batch
- * (`SCRIPTED_VOL_WORKSPACE_BATCH`, module-private there) — a real scripted
- * turn's exact shape, not an invented fixture (same "mirror, don't invent"
- * doctrine `JarvisPanelLayer.contract.spec.ts` follows for its own
- * `GBP_VOLATILITY_SPEC`). */
-const SETUP_WORKSPACE_BATCH: DriveBatchV1 = {
-  v: 1,
-  commands: [
-    { kind: "switchTab", tab: "equities" },
-    { kind: "layout", op: "maximize", tab: "equities", panelId: "eq-chart" },
-    { kind: "eqTimeframe", tf: "1D" },
-    { kind: "eqIndicator", id: "ema50", on: true },
-    { kind: "eqPane", id: "rsi", on: true },
-  ],
-};
-
-/** Generous settle time for a 5-command staggered batch (comfortably above
- * `4 * DRIVE_STAGGER_MS`, the worst case with the first command free). */
-const DRIVE_SETTLE_MS: number = DRIVE_STAGGER_MS * 5 + 500;
-
 afterEach(() => {
   vi.useRealTimers();
   cleanupMounted();
@@ -551,3 +531,23 @@ function eqState(world: World): EqWorkspaceState {
   sub.unsubscribe();
   return value;
 }
+
+/** Mirrors `ScriptedJarvisEngine`'s own canned `setupWorkspace` demo batch
+ * (`SCRIPTED_VOL_WORKSPACE_BATCH`, module-private there) — a real scripted
+ * turn's exact shape, not an invented fixture (same "mirror, don't invent"
+ * doctrine `JarvisPanelLayer.contract.spec.ts` follows for its own
+ * `GBP_VOLATILITY_SPEC`). */
+const SETUP_WORKSPACE_BATCH: DriveBatchV1 = {
+  v: 1,
+  commands: [
+    { kind: "switchTab", tab: "equities" },
+    { kind: "layout", op: "maximize", tab: "equities", panelId: "eq-chart" },
+    { kind: "eqTimeframe", tf: "1D" },
+    { kind: "eqIndicator", id: "ema50", on: true },
+    { kind: "eqPane", id: "rsi", on: true },
+  ],
+};
+
+/** Generous settle time for a 5-command staggered batch (comfortably above
+ * `4 * DRIVE_STAGGER_MS`, the worst case with the first command free). */
+const DRIVE_SETTLE_MS: number = DRIVE_STAGGER_MS * 5 + 500;

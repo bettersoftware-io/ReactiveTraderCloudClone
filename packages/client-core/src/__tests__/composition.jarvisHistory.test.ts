@@ -10,7 +10,7 @@
 //
 // The REAL mechanism (proven by the two "pins the real mechanism" tests
 // below): `WsJarvisAdapter.ask()` reads `historySource()` EAGERLY, at CALL
-// time — `JarvisMachine.send()`'s `concatMap` invokes `deps.port.ask(text)`
+// time — `JarvisMachine.send()`'s `concatMap` invokes `createDeps.port.ask(text)`
 // as an argument expression while BUILDING `concat(of(startPatch), …)`,
 // i.e. BEFORE that observable is ever subscribed and therefore BEFORE
 // `of(startPatch)` has emitted and appended the new turn's own
@@ -47,7 +47,7 @@ import { JARVIS_GREETING, type JarvisEntry } from "#/presenters/JarvisMachine";
 describe("composition — jarvis history-source wiring", () => {
   it("simulator mode composes without error (ScriptedJarvisAdapter has no setHistorySource)", () => {
     const { presenters } = createApp({
-      ...createSimulatorPorts(deps()),
+      ...createSimulatorPorts(createDeps()),
       connectionEvents: new ConnectionEventsSimulator(),
     });
 
@@ -61,7 +61,7 @@ describe("composition — jarvis history-source wiring", () => {
   it("PINS THE REAL MECHANISM: the first turn's history is the greeting only — not that turn's own just-sent text", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
-      ...createWsRealPorts(ws, deps()),
+      ...createWsRealPorts(ws, createDeps()),
       connectionEvents: {
         events: () => {
           return ws.connectionEvents();
@@ -81,7 +81,7 @@ describe("composition — jarvis history-source wiring", () => {
   it("PINS THE REAL MECHANISM: a completed prior turn is included in the NEXT turn's history; the new turn's own text is not", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
-      ...createWsRealPorts(ws, deps()),
+      ...createWsRealPorts(ws, createDeps()),
       connectionEvents: {
         events: () => {
           return ws.connectionEvents();
@@ -121,7 +121,7 @@ describe("composition — jarvis history-source wiring", () => {
   it("RULING: excludes an origin:'system' entry (the budget-downgrade line) from the model-facing history — the model never produced it and must not see it echoed back as its own past turn", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
-      ...createWsRealPorts(ws, deps()),
+      ...createWsRealPorts(ws, createDeps()),
       connectionEvents: {
         events: () => {
           return ws.connectionEvents();
@@ -184,7 +184,7 @@ describe("composition — jarvis history-source wiring", () => {
     // never adds this second subscriber, so it never showed up there).
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
-      ...createWsRealPorts(ws, deps()),
+      ...createWsRealPorts(ws, createDeps()),
       connectionEvents: {
         events: () => {
           return ws.connectionEvents();
@@ -201,19 +201,6 @@ describe("composition — jarvis history-source wiring", () => {
 });
 
 describe("historyEntriesExcludingInFlightTurn (direct unit test)", () => {
-  // Independent of the "PINS THE REAL MECHANISM" integration tests above —
-  // this exercises the guard function's OWN logic directly, so a change to
-  // it can't hide behind those tests happening to pass for an unrelated
-  // reason (today, `ask()`'s eager read means this function's `slice`
-  // branch never actually fires in production — see its doc comment in
-  // composition.ts).
-  const GREETING_ENTRY: JarvisEntry = {
-    id: 0,
-    role: "jarvis",
-    text: JARVIS_GREETING,
-    done: true,
-  };
-
   it("drops the trailing in-flight pair when the last entry isn't done", () => {
     const inFlightUser: JarvisEntry = {
       id: 1,
@@ -261,9 +248,22 @@ describe("historyEntriesExcludingInFlightTurn (direct unit test)", () => {
       ]),
     ).toEqual([GREETING_ENTRY, finishedUser, finishedJarvis]);
   });
+
+  // Independent of the "PINS THE REAL MECHANISM" integration tests above —
+  // this exercises the guard function's OWN logic directly, so a change to
+  // it can't hide behind those tests happening to pass for an unrelated
+  // reason (today, `ask()`'s eager read means this function's `slice`
+  // branch never actually fires in production — see its doc comment in
+  // composition.ts).
+  const GREETING_ENTRY: JarvisEntry = {
+    id: 0,
+    role: "jarvis",
+    text: JARVIS_GREETING,
+    done: true,
+  };
 });
 
-function deps(): PortFactoryDeps {
+function createDeps(): PortFactoryDeps {
   return {
     preferences: new PreferencesSimulator(),
     auth: new AuthSimulator({}),

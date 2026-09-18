@@ -9,8 +9,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { ambientBackgroundPage } from "#tests/ui/pages/AmbientBackgroundPage";
 
-const page = ambientBackgroundPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -39,3 +37,5 @@ describe("AmbientBackground — ambient style branch", () => {
     expect(page.hasLayer("rays")).toBe(false);
   });
 });
+
+const page = ambientBackgroundPage();

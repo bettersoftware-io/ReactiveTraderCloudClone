@@ -272,8 +272,14 @@ inline in a case body (`rtc/json-fixtures-in-factories`, tests only). The swap
 is always behaviour-neutral — `JSON.stringify` re-emits the payload byte for
 byte, since key order is insertion order — so it never needs a golden re-pin.
 Both thresholds were **measured**, not assumed, and sit in empirically empty
-bands; re-measure rather than re-guess before moving either. Rationale, the
-sanctioned shapes, and the two known limits:
+bands; re-measure rather than re-guess before moving either.
+
+A fixture factory is named **`create*`** — never a bare noun, nor `make*` /
+`build*` / `fake*` / `stub*` (`rtc/name-fixture-factories`, specs only;
+`createFake*` / `createStub*` keep the xUnit test-double vocabulary). A bare
+noun names a *thing*, so `poppedBlob()` reads as a constant until you notice the
+parens — which matters precisely because a factory returns a **fresh** value per
+call. Rationale, the sanctioned shapes, and the known limits:
 `docs/architecture/09-test-strategy.md` §"Readable JSON fixtures".
 
 ## Handler Naming

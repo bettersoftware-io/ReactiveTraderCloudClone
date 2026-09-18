@@ -35,7 +35,7 @@ describe("BootGate", () => {
   });
 
   it("unmounts the splash immediately under reduced motion (no fade)", async () => {
-    stubReducedMotion(true);
+    createStubReducedMotion(true);
     // Explicit non-default seed: forceBootAnimation now defaults to true
     // (DEFAULT_FORCE_BOOT_ANIMATION), which would override reduced-motion and
     // send dismissal down the fade path this case exists to rule out.
@@ -75,8 +75,8 @@ describe("BootGate", () => {
 });
 
 /** Install a window.matchMedia stub for one test (jsdom omits it). */
-function stubReducedMotion(matches: boolean): void {
-  function fakeMatchMedia(query: string): MediaQueryList {
+function createStubReducedMotion(matches: boolean): void {
+  function createFakeMatchMedia(query: string): MediaQueryList {
     return {
       matches,
       media: query,
@@ -91,5 +91,5 @@ function stubReducedMotion(matches: boolean): void {
     } as MediaQueryList;
   }
 
-  vi.stubGlobal("matchMedia", fakeMatchMedia);
+  vi.stubGlobal("matchMedia", createFakeMatchMedia);
 }

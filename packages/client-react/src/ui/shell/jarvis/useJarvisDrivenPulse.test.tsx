@@ -23,18 +23,16 @@ import type { ViewModel } from "@rtc/react-bindings";
 
 import { jarvisDrivenPulsePage } from "#tests/ui/pages/JarvisDrivenPulsePage";
 
-const page = jarvisDrivenPulsePage();
-
 afterEach(() => {
   page.unmountAll();
 });
 
 describe("useJarvisDrivenPulse — descendant animationend guard", () => {
   it("a descendant's bubbling animationend does NOT clear the pulse; the wrapper's OWN animationend does", () => {
-    const handle = page.mount(fakeViewModel(false));
+    const handle = page.mount(createFakeViewModel(false));
 
     // A new applied outcome arrives — pulsing turns true.
-    handle.rerenderWith(fakeViewModel(true));
+    handle.rerenderWith(createFakeViewModel(true));
 
     expect(page.wrapperDrivenAttr()).toBe("true");
 
@@ -60,9 +58,9 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      const handle = page.mount(fakeViewModel(false));
+      const handle = page.mount(createFakeViewModel(false));
 
-      handle.rerenderWith(fakeViewModel(true));
+      handle.rerenderWith(createFakeViewModel(true));
 
       expect(page.wrapperDrivenAttr()).toBe("false");
     } finally {
@@ -71,7 +69,10 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
   });
 });
 
-function fakeViewModel(appliedBatch: boolean, isFreeze = false): ViewModel {
+function createFakeViewModel(
+  appliedBatch: boolean,
+  isFreeze = false,
+): ViewModel {
   return {
     useJarvisDriver: () => {
       return {
@@ -90,3 +91,5 @@ function fakeViewModel(appliedBatch: boolean, isFreeze = false): ViewModel {
     },
   } as unknown as ViewModel;
 }
+
+const page = jarvisDrivenPulsePage();

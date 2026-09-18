@@ -19,11 +19,9 @@ import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
-const PASSWORD = "pw";
-
 describe("createApp transport auth gate", () => {
   it("does not open the transport for an unauthenticated boot", () => {
-    const transport = fakeTransport();
+    const transport = createFakeTransport();
 
     createApp(portsWith(transport));
 
@@ -31,7 +29,7 @@ describe("createApp transport auth gate", () => {
   });
 
   it("opens the transport once login succeeds", () => {
-    const transport = fakeTransport();
+    const transport = createFakeTransport();
     const app = createApp(portsWith(transport));
 
     app.presenters.auth.login("demo", PASSWORD);
@@ -40,7 +38,7 @@ describe("createApp transport auth gate", () => {
   });
 
   it("leaves the transport closed when login fails", () => {
-    const transport = fakeTransport();
+    const transport = createFakeTransport();
     const app = createApp(portsWith(transport));
 
     app.presenters.auth.login("demo", "wrong");
@@ -49,7 +47,7 @@ describe("createApp transport auth gate", () => {
   });
 
   it("closes the transport on sign-out", () => {
-    const transport = fakeTransport();
+    const transport = createFakeTransport();
     const app = createApp(portsWith(transport));
     app.presenters.auth.login("demo", PASSWORD);
 
@@ -75,7 +73,7 @@ describe("createApp transport auth gate", () => {
       exp: Date.now() + 60_000,
     });
 
-    const transport = fakeTransport();
+    const transport = createFakeTransport();
     createApp(portsWith(transport, store));
 
     expect(transport.connect).toHaveBeenCalled();
@@ -87,7 +85,7 @@ interface FakeTransport {
   disconnect: Mock;
 }
 
-function fakeTransport(): FakeTransport {
+function createFakeTransport(): FakeTransport {
   return { connect: vi.fn(), disconnect: vi.fn() };
 }
 
@@ -109,3 +107,5 @@ function portsWith(
     transport,
   };
 }
+
+const PASSWORD = "pw";

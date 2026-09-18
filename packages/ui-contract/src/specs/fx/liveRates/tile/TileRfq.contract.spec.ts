@@ -11,10 +11,6 @@ import {
   type Price,
 } from "@rtc/domain";
 
-const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
-
-const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };
-
 describe("TileRfq", () => {
   // The RFQ-initiation affordance is TileHeader's compact ⚡ RFQ chip now —
   // TileRfq renders nothing in the init state (no extra bottom row).
@@ -191,3 +187,7 @@ function rfqState(
     ...over,
   };
 }
+
+const eurusd: CurrencyPair = KNOWN_CURRENCY_PAIRS[0];
+
+const quote: RfqQuote = { bid: 1.0921, ask: 1.0925, timeoutMs: 10_000 };

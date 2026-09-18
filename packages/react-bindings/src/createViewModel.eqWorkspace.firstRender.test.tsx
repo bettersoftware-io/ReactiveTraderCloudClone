@@ -40,7 +40,7 @@ afterEach(cleanup);
  */
 describe("createViewModel — useEqWorkspace first-render value (equities white-screen regression)", () => {
   it("the FIRST render already reports the seeded watchlist symbol, never the empty placeholder", () => {
-    const hooks = makeHooks();
+    const hooks = createHooks();
     const renders: string[] = [];
 
     function Probe(): null {
@@ -57,7 +57,7 @@ describe("createViewModel — useEqWorkspace first-render value (equities white-
   });
 });
 
-function makeHooks(): ViewModel {
+function createHooks(): ViewModel {
   const { presenters, commands } = createApp(createSimPorts());
   return createViewModel(
     presenters,

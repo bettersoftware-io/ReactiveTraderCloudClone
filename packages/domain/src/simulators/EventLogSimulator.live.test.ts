@@ -4,15 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LogEvent, Severity } from "../telemetry/log.js";
 import { EventLogSimulator } from "./EventLogSimulator.js";
 
-// The sibling EventLogSimulator.test.ts pins the six back-dated seed events.
-// Everything after those seeds — the 500ms generator, its severity mix, and the
-// errorBurst perturbation that the Admin incident controls drive — had no test
-// at all. That generator is what the log panel shows for the entire rest of the
-// session, and errorBurst is the only observable effect of the incident button.
-
-const SEED_COUNT = 6;
-const TICK_MS = 500;
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -112,3 +103,13 @@ function trace(seed: number): string {
 
   return JSON.stringify(events);
 }
+
+// The sibling EventLogSimulator.test.ts pins the six back-dated seed events.
+// Everything after those seeds — the 500ms generator, its severity mix, and the
+// errorBurst perturbation that the Admin incident controls drive — had no test
+// at all. That generator is what the log panel shows for the entire rest of the
+// session, and errorBurst is the only observable effect of the incident button.
+
+const SEED_COUNT = 6;
+
+const TICK_MS = 500;

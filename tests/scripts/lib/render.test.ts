@@ -3,12 +3,6 @@ import { describe, expect, it } from "vitest";
 import { type FileCov, fileStat, type PackageStat } from "./coverage";
 import { render, SUMMARY_CAP } from "./render";
 
-const repoRoot = "/r";
-
-const src: Record<string, string[]> = {
-  "/r/src/a.ts": ["const x = 1", "if (rare) {", "  edge()", "}"],
-};
-
 describe("render", () => {
   it("emits a title, the test summary, and a coverage table", () => {
     const md = render({
@@ -209,3 +203,9 @@ function lineWith(md: string, needle: string): string {
     }) ?? ""
   );
 }
+
+const repoRoot = "/r";
+
+const src: Record<string, string[]> = {
+  "/r/src/a.ts": ["const x = 1", "if (rare) {", "  edge()", "}"],
+};

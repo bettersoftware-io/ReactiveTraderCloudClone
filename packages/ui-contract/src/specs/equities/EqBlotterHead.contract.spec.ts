@@ -13,23 +13,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const POSITIONS: readonly EquityPosition[] = [
-  {
-    symbol: "AAPL",
-    qty: 1000,
-    avgPrice: 180,
-    markPrice: 185,
-    unrealisedPnl: 5000,
-  },
-  {
-    symbol: "MSFT",
-    qty: -500,
-    avgPrice: 400,
-    markPrice: 410,
-    unrealisedPnl: -5000,
-  },
-];
-
 describe("EqBlotterHead — tabs + live count", () => {
   it("defaults to the orders tab with a live order count", () => {
     const head = mount(EqBlotterHead, {
@@ -105,3 +88,20 @@ function order(id: string): EquityOrder {
     createdAt: 0,
   };
 }
+
+const POSITIONS: readonly EquityPosition[] = [
+  {
+    symbol: "AAPL",
+    qty: 1000,
+    avgPrice: 180,
+    markPrice: 185,
+    unrealisedPnl: 5000,
+  },
+  {
+    symbol: "MSFT",
+    qty: -500,
+    avgPrice: 400,
+    markPrice: 410,
+    unrealisedPnl: -5000,
+  },
+];

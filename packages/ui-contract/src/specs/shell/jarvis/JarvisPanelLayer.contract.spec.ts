@@ -47,37 +47,6 @@ import {
 } from "@rtc/client-core";
 import type { PriceTick } from "@rtc/domain";
 
-/** Mirrors `ScriptedJarvisEngine`'s own canned demo panel (`GBP_VOLATILITY_
- * PANEL_SPEC` / `SCRIPTED_PANEL_ID`, module-private there) — a real showPanel
- * turn's exact shape, not an invented fixture. */
-const SCRIPTED_PANEL_ID = "panel-scripted-1";
-const GBP_VOLATILITY_SPEC: PanelSpecV1 = {
-  v: 1,
-  title: "GBP Volatility",
-  rationale: "Rolling volatility across the GBP majors, sir.",
-  source: { kind: "priceHistory", symbols: ["GBPUSD", "GBPJPY"] },
-  transforms: [{ kind: "rollingVol", samples: 20 }],
-  viz: { kind: "line" },
-};
-/** `rollingVol({samples: 20})` needs at least 20 points before it emits its
- * first output point — seeded history must clear that bar for the line
- * renderer's testid to actually appear (see the file doc's totality note). */
-const ROLLING_VOL_SAMPLES = 20;
-
-const BASE_TIMESTAMP_MS = 1_700_000_000_000;
-
-const ANALYTICS_SEED = {
-  currentPositions: [
-    {
-      symbol: "EURUSD",
-      basePnl: 12_000,
-      baseTradedAmount: 1_000_000,
-      counterTradedAmount: 1_080_000,
-    },
-  ],
-  history: [],
-};
-
 afterEach(() => {
   cleanupMounted();
 });
@@ -95,8 +64,8 @@ describe("JarvisPanelLayer", () => {
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 
-    layer.setHistory("GBPUSD", buildTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
-    layer.setHistory("GBPJPY", buildTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPUSD", createTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPJPY", createTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
 
     await overlay.pressHotkey();
     await overlay.send("show me gbp volatility");
@@ -124,8 +93,8 @@ describe("JarvisPanelLayer", () => {
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 
-    layer.setHistory("GBPUSD", buildTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
-    layer.setHistory("GBPJPY", buildTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPUSD", createTicks("GBPUSD", ROLLING_VOL_SAMPLES + 5));
+    layer.setHistory("GBPJPY", createTicks("GBPJPY", ROLLING_VOL_SAMPLES + 5));
 
     await overlay.pressHotkey();
     await overlay.send("show me gbp volatility");
@@ -540,7 +509,7 @@ type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 /** A deterministic, mildly-wiggling PriceTick series — enough for
  * `rollingVol` to emit non-degenerate (nonzero-variance) points. */
-function buildTicks(symbol: string, count: number): PriceTick[] {
+function createTicks(symbol: string, count: number): PriceTick[] {
   const ticks: PriceTick[] = [];
 
   for (let i = 0; i < count; i += 1) {
@@ -588,3 +557,36 @@ function priceHistorySpec(
     viz: { kind: viz },
   };
 }
+
+/** Mirrors `ScriptedJarvisEngine`'s own canned demo panel (`GBP_VOLATILITY_
+ * PANEL_SPEC` / `SCRIPTED_PANEL_ID`, module-private there) — a real showPanel
+ * turn's exact shape, not an invented fixture. */
+const SCRIPTED_PANEL_ID = "panel-scripted-1";
+
+const GBP_VOLATILITY_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "GBP Volatility",
+  rationale: "Rolling volatility across the GBP majors, sir.",
+  source: { kind: "priceHistory", symbols: ["GBPUSD", "GBPJPY"] },
+  transforms: [{ kind: "rollingVol", samples: 20 }],
+  viz: { kind: "line" },
+};
+
+/** `rollingVol({samples: 20})` needs at least 20 points before it emits its
+ * first output point — seeded history must clear that bar for the line
+ * renderer's testid to actually appear (see the file doc's totality note). */
+const ROLLING_VOL_SAMPLES = 20;
+
+const BASE_TIMESTAMP_MS = 1_700_000_000_000;
+
+const ANALYTICS_SEED = {
+  currentPositions: [
+    {
+      symbol: "EURUSD",
+      basePnl: 12_000,
+      baseTradedAmount: 1_000_000,
+      counterTradedAmount: 1_080_000,
+    },
+  ],
+  history: [],
+};

@@ -8,11 +8,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const CANDLES: readonly Candle[] = [
-  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
-  { time: 60, open: 102, high: 108, low: 101, close: 104, volume: 1_350_000 },
-];
-
 describe("InstrumentHeader", () => {
   it("shows dashes when there is no quote or candle data yet", () => {
     const header = mount(InstrumentHeader, {
@@ -149,3 +144,8 @@ function quote(overrides: Partial<EquityQuote> = {}): EquityQuote {
     ...overrides,
   };
 }
+
+const CANDLES: readonly Candle[] = [
+  { time: 0, open: 100, high: 105, low: 98, close: 102, volume: 1_200_000 },
+  { time: 60, open: 102, high: 108, low: 101, close: 104, volume: 1_350_000 },
+];

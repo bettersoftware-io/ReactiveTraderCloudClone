@@ -9,31 +9,11 @@ import { Direction, ExecutionStatus, TradeStatus } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 
-const EURUSD: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.09213,
-  typicalSpreadPips: 1.4,
-};
-
-const PRICE: Price = {
-  symbol: "EURUSD",
-  bid: 1.1,
-  ask: 1.1002,
-  mid: 1.1001,
-  valueDate: "2024-01-02",
-  creationTimestamp: 1,
-  movementType: PriceMovementType.UP,
-  spread: "2.0",
-};
-
 describe("ExecuteTradeUseCase", () => {
   it("for Direction.Buy uses ask as spot rate and base currency as dealt", async () => {
-    const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
+    const { port, lastRequest } = createStubExecution(
+      createTrade(TradeStatus.Done),
+    );
     const useCase = new ExecuteTradeUseCase(port);
 
     const result = await firstValueFrom(
@@ -57,7 +37,9 @@ describe("ExecuteTradeUseCase", () => {
   });
 
   it("for Direction.Sell uses bid as spot rate and base currency as dealt", async () => {
-    const { port, lastRequest } = stubExecution(buildTrade(TradeStatus.Done));
+    const { port, lastRequest } = createStubExecution(
+      createTrade(TradeStatus.Done),
+    );
     const useCase = new ExecuteTradeUseCase(port);
 
     await firstValueFrom(
@@ -77,7 +59,7 @@ describe("ExecuteTradeUseCase", () => {
   });
 
   it("maps TradeStatus.Rejected to ExecutionStatus.Rejected", async () => {
-    const { port } = stubExecution(buildTrade(TradeStatus.Rejected));
+    const { port } = createStubExecution(createTrade(TradeStatus.Rejected));
     const useCase = new ExecuteTradeUseCase(port);
 
     const result = await firstValueFrom(
@@ -125,7 +107,7 @@ interface StubExecution {
   lastRequest: LastRequestRef;
 }
 
-function stubExecution(trade: Trade): StubExecution {
+function createStubExecution(trade: Trade): StubExecution {
   const lastRequest = { current: null as ExecutionRequest | null };
   const port: ExecutionPort = {
     executeTrade(request: ExecutionRequest): Observable<Trade> {
@@ -136,7 +118,7 @@ function stubExecution(trade: Trade): StubExecution {
   return { port, lastRequest };
 }
 
-function buildTrade(status: TradeStatus): Trade {
+function createTrade(status: TradeStatus): Trade {
   return {
     tradeId: 42,
     currencyPair: "EURUSD",
@@ -150,3 +132,25 @@ function buildTrade(status: TradeStatus): Trade {
     tradeDate: "2024-01-02",
   };
 }
+
+const EURUSD: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.09213,
+  typicalSpreadPips: 1.4,
+};
+
+const PRICE: Price = {
+  symbol: "EURUSD",
+  bid: 1.1,
+  ask: 1.1002,
+  mid: 1.1001,
+  valueDate: "2024-01-02",
+  creationTimestamp: 1,
+  movementType: PriceMovementType.UP,
+  spread: "2.0",
+};

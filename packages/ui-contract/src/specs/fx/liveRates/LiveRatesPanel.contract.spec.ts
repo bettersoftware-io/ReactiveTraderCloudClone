@@ -13,7 +13,6 @@ if (!_eurusd) {
   throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const eurusd: CurrencyPair = _eurusd;
 const _usdjpy = pairs.find((p) => {
   return p.symbol === "USDJPY";
 });
@@ -22,7 +21,6 @@ if (!_usdjpy) {
   throw new Error("USDJPY not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const usdjpy: CurrencyPair = _usdjpy;
 const _gbpjpy = pairs.find((p) => {
   return p.symbol === "GBPJPY";
 });
@@ -30,8 +28,6 @@ const _gbpjpy = pairs.find((p) => {
 if (!_gbpjpy) {
   throw new Error("GBPJPY not found in KNOWN_CURRENCY_PAIRS");
 }
-
-const gbpjpy: CurrencyPair = _gbpjpy;
 
 describe("LiveRatesPanel", () => {
   it("shows a loading placeholder until currency pairs arrive", () => {
@@ -97,3 +93,9 @@ describe("LiveRatesPanel", () => {
     expect(panel.hasAnyChart()).toBe(false);
   });
 });
+
+const eurusd: CurrencyPair = _eurusd;
+
+const usdjpy: CurrencyPair = _usdjpy;
+
+const gbpjpy: CurrencyPair = _gbpjpy;

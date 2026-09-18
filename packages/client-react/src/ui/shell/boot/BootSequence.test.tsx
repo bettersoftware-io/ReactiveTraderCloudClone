@@ -11,15 +11,9 @@ import type { ViewModel } from "@rtc/react-bindings";
 
 import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
 
-const page = bootSequencePage();
-
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-  let cafSpy: ReturnType<typeof vi.spyOn>;
-  let ctxStub: CanvasRenderingContext2D;
-
   beforeEach(() => {
-    ctxStub = makeCtxStub();
+    ctxStub = createCtxStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
       ctxStub,
     );
@@ -158,6 +152,12 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
+
+  let rafSpy: ReturnType<typeof vi.spyOn>;
+
+  let cafSpy: ReturnType<typeof vi.spyOn>;
+
+  let ctxStub: CanvasRenderingContext2D;
 });
 
 describe("BootSequence — boot log lines (visibility by progress)", () => {
@@ -217,7 +217,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
  * Properties are writable so the draw functions can set fillStyle etc. without
  * throwing. createLinearGradient / createRadialGradient return a minimal stub.
  */
-function makeCtxStub(): CanvasRenderingContext2D {
+function createCtxStub(): CanvasRenderingContext2D {
   const gradient = { addColorStop: vi.fn() };
   return {
     // Properties (writable)
@@ -257,3 +257,5 @@ function makeCtxStub(): CanvasRenderingContext2D {
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
 }
+
+const page = bootSequencePage();

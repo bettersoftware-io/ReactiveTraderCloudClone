@@ -11,17 +11,6 @@ import {
   RfqState,
 } from "@rtc/domain";
 
-const instrument: Instrument = {
-  id: 1,
-  name: "US Treasury 10Y",
-  cusip: "912828ZQ6",
-  ticker: "T 1.5 02/34",
-  maturity: "2034-02-15",
-  interestRate: 1.5,
-  benchmark: "10Y",
-  refPrice: 98.4,
-};
-
 describe("TradeTicket", () => {
   it("shows the instrument details and an active price form when awaiting a response", () => {
     const ticket = mount(TradeTicket, {
@@ -212,3 +201,14 @@ function quote(state: QuoteState): Quote {
     state,
   };
 }
+
+const instrument: Instrument = {
+  id: 1,
+  name: "US Treasury 10Y",
+  cusip: "912828ZQ6",
+  ticker: "T 1.5 02/34",
+  maturity: "2034-02-15",
+  interestRate: 1.5,
+  benchmark: "10Y",
+  refPrice: 98.4,
+};

@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 test("steppers halve/double with a 250k floor", async () => {
-  const n = makeNotional(1_000_000);
+  const n = createNotional(1_000_000);
   await page.mount(n, "EUR");
 
   await page.press("notional-up");
@@ -21,14 +21,14 @@ test("steppers halve/double with a 250k floor", async () => {
 });
 
 test("does not go below the 250k floor", async () => {
-  const n = makeNotional(250_000);
+  const n = createNotional(250_000);
   await page.mount(n, "EUR");
   await page.press("notional-down");
   expect(n.change).toHaveBeenCalledWith("250000");
 });
 
 test("quick chip sets the notional", async () => {
-  const n = makeNotional(1_000_000);
+  const n = createNotional(1_000_000);
   await page.mount(n, "EUR");
   await page.pressText("5M");
   expect(n.change).toHaveBeenCalledWith("5000000");
@@ -41,7 +41,7 @@ test("quick chip sets the notional", async () => {
 // every unselected chip carrying a `chip` fill the design has as transparent.
 // Asserted against the holo/dark cells `renderWithTheme` supplies by default.
 test("the selected size chip is accent-outlined and the rest are unfilled", async () => {
-  await page.mount(makeNotional(5_000_000), "EUR");
+  await page.mount(createNotional(5_000_000), "EUR");
 
   expect(page.rawParentStyleOfText("5M")).toContainEqual({
     backgroundColor: "rgba(0,224,255,0.12)",
@@ -66,7 +66,7 @@ interface FakeNotional {
   reset: jest.Mock;
 }
 
-function makeNotional(numericValue: number): FakeNotional {
+function createNotional(numericValue: number): FakeNotional {
   return {
     state: {
       displayValue: numericValue.toLocaleString("en-US"),

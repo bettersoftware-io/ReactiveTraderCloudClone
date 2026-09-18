@@ -27,7 +27,7 @@ describe("createJarvisDemoMachine", () => {
   it("starts idle with the static stepCount", () => {
     const ts = scheduler();
     ts.run(() => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
       let seen: JarvisDemoState | undefined;
       demo.state$.subscribe((s) => {
@@ -59,12 +59,12 @@ describe("createJarvisDemoMachine", () => {
   it("plays all 7 steps in order, one sendScripted per settle, with 1200ms beats", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
       const callFrames: number[] = [];
       h.sendScripted.mockImplementation((text: string) => {
         callFrames.push(ts.now());
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -97,12 +97,12 @@ describe("createJarvisDemoMachine", () => {
   it("beat is 0 under freeze", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness({ powerSaverLevel: "freeze" });
+      const h = createHarness({ powerSaverLevel: "freeze" });
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
       const callFrames: number[] = [];
       h.sendScripted.mockImplementation((text: string) => {
         callFrames.push(ts.now());
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -123,7 +123,7 @@ describe("createJarvisDemoMachine", () => {
   it("powerSaverLevel$ is re-read fresh per step: a mid-run flip to freeze collapses the NEXT beat to 0, and flipping back restores 1200", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const callFrames: number[] = [];
       const secondCommand = EXPECTED_STEPS[1]?.command as string;
       const thirdCommand = EXPECTED_STEPS[2]?.command as string;
@@ -148,7 +148,7 @@ describe("createJarvisDemoMachine", () => {
           h.powerSaverLevel$.next("off");
         }
 
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -183,9 +183,9 @@ describe("createJarvisDemoMachine", () => {
   it("step 6 waits for the confirm card and declines it after exactly one beat (deps exposes no way to approve one)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       h.sendScripted.mockImplementation(
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -230,7 +230,7 @@ describe("createJarvisDemoMachine", () => {
   it("step 7 closes the overlay before sending and reopens after settling", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
 
       ts.schedule(() => {
@@ -265,9 +265,9 @@ describe("createJarvisDemoMachine", () => {
   it("stopDemo mid-run returns to idle and declines any pending card", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       h.sendScripted.mockImplementation(
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -321,7 +321,7 @@ describe("createJarvisDemoMachine", () => {
   it("stopDemo reopens the overlay if the stopped run had closed it (M1: symmetric with the error/complete exit paths)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
 
       const lastStepFrame =
@@ -362,7 +362,7 @@ describe("createJarvisDemoMachine", () => {
   it("stopDemo with no pending confirmation is a plain no-op decline (never calls declineConfirmation)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
 
       ts.schedule(() => {
@@ -382,7 +382,7 @@ describe("createJarvisDemoMachine", () => {
   it("startDemo while running is a no-op (single chain)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
 
       ts.schedule(() => {
@@ -408,13 +408,13 @@ describe("createJarvisDemoMachine", () => {
   it("an errored turn aborts the remaining steps to idle", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const erroringStepIndex = 2;
       const erroringCommand = EXPECTED_STEPS[erroringStepIndex]
         ?.command as string;
 
       h.sendScripted.mockImplementation(
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -464,7 +464,7 @@ describe("createJarvisDemoMachine", () => {
   it("a step whose settle never arrives (silent no-op send — e.g. WS-mode unavailable) times out after DEMO_STEP_TIMEOUT_MS and aborts to idle, reopening the overlay it had closed", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       // The LAST step: it both closes the overlay AND is the one whose
       // settle never arrives, so this single test also proves the "reopens
       // the overlay if the aborting step had closed it" sub-clause.
@@ -476,7 +476,7 @@ describe("createJarvisDemoMachine", () => {
       });
 
       h.sendScripted.mockImplementation(
-        buildAutoSettlingSendScripted(
+        createAutoSettlingSendScripted(
           h.jarvisState$,
           h.jarvisEvents$,
           h.nextId,
@@ -534,7 +534,7 @@ describe("createJarvisDemoMachine", () => {
   it("a narrator turn's decoy 'done' arriving BEFORE the step's own [user, jarvis] pair does not advance the demo", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const firstCommand = EXPECTED_STEPS[0]?.command as string;
 
       h.sendScripted.mockImplementationOnce((text: string) => {
@@ -584,7 +584,7 @@ describe("createJarvisDemoMachine", () => {
   it("progress state exposes 1-based stepIndex, static stepCount, and the step label", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const h = buildHarness();
+      const h = createHarness();
       const demo = createJarvisDemoMachine(depsFrom(h, ts));
       const seen: JarvisDemoState[] = [];
       demo.state$.subscribe((s) => {
@@ -705,7 +705,7 @@ function scheduler(): TestScheduler {
   });
 }
 
-/** Mutable counter shared between `buildAutoSettlingSendScripted` and
+/** Mutable counter shared between `createAutoSettlingSendScripted` and
  * `appendTurnPair` for allocating fresh entry ids — the same "just a mutable
  * ref" shape `JarvisMachine.ts`'s own `nextEntryId` uses, boxed in an object
  * so both helpers observe the SAME running counter. */
@@ -723,7 +723,7 @@ interface NextIdCounter {
  * commands a given test needs different behavior from (an error instead of
  * a done, a narrator decoy first, etc).
  */
-function buildAutoSettlingSendScripted(
+function createAutoSettlingSendScripted(
   jarvisState$: BehaviorSubject<JarvisState>,
   jarvisEvents$: Subject<JarvisEvent>,
   nextId: NextIdCounter,
@@ -787,13 +787,13 @@ interface HarnessOverrides {
 }
 
 /** Builds a harness whose `sendScripted` mock defaults to
- * `buildAutoSettlingSendScripted`'s zero-latency "append pair, then done"
+ * `createAutoSettlingSendScripted`'s zero-latency "append pair, then done"
  * behavior for every command. A test that needs different behavior for one
  * or more commands replaces it afterward via
- * `h.sendScripted.mockImplementation(buildAutoSettlingSendScripted(..., {
+ * `h.sendScripted.mockImplementation(createAutoSettlingSendScripted(..., {
  * [command]: ... }))` — see the "step 6"/"stopDemo"/"errored turn" tests
  * below for the pattern. */
-function buildHarness(overrides: HarnessOverrides = {}): Harness {
+function createHarness(overrides: HarnessOverrides = {}): Harness {
   const jarvisState$ = new BehaviorSubject<JarvisState>(baseJarvisState());
   const jarvisEvents$ = new Subject<JarvisEvent>();
   const nextId: NextIdCounter = { current: 1 };
@@ -810,7 +810,7 @@ function buildHarness(overrides: HarnessOverrides = {}): Harness {
   });
 
   const sendScripted = vi.fn(
-    buildAutoSettlingSendScripted(jarvisState$, jarvisEvents$, nextId),
+    createAutoSettlingSendScripted(jarvisState$, jarvisEvents$, nextId),
   );
 
   return {

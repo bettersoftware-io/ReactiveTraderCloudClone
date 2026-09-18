@@ -25,24 +25,6 @@ import {
 } from "./paneScene.js";
 import { priceTicks } from "./priceTicks.js";
 
-const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
-  const dir = i % 2 === 0 ? 1 : -1;
-  return {
-    time: 1_782_864_000_000 + i * 60_000,
-    open: 100 + dir * i,
-    high: 106 + i,
-    low: 94 - i,
-    close: 100 - dir * i * 0.5,
-    volume: 1_000 + i * 137,
-  };
-});
-
-// A close series long enough to clear both RSI's and MACD's warm-ups, for
-// the paneScene neutrality checks below.
-const PANE_CLOSES: readonly number[] = Array.from({ length: 60 }, (_, i) => {
-  return 100 + Math.sin(i / 3) * 5;
-});
-
 describe("chartScene / volumeScene: CSS-neutral numeric output", () => {
   it("chartScene carries no % / calc( strings and no --keyed fields", () => {
     const scene = chartScene(TWELVE_MIXED, 0, false, {
@@ -137,9 +119,6 @@ describe("navigatorWindowScene", () => {
 });
 
 describe("priceToY / yToPrice — the pluggable scale seam", () => {
-  const LINEAR: ChartScale = { cmin: 100, cmax: 200 };
-  const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
-
   it("linear branch reproduces the historical mapping verbatim", () => {
     // ((cmax − p) / crng) · Y_SPAN + Y_TOP with p=150, crng=100:
     expect(priceToY(LINEAR, 150)).toBeCloseTo(0.5 * 86 + 6, 10);
@@ -169,16 +148,13 @@ describe("priceToY / yToPrice — the pluggable scale seam", () => {
     expect(priceToY(bad, 50)).toBeCloseTo(0.5 * 86 + 6, 10);
     expect(yToPrice(bad, 49)).toBeCloseTo(50, 9);
   });
+
+  const LINEAR: ChartScale = { cmin: 100, cmax: 200 };
+
+  const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
 });
 
 describe("chartScene in log mode", () => {
-  // 3 candles spanning a wide ratio so log vs linear geometry is unambiguous.
-  const SERIES: ChartCandle[] = [
-    { time: 0, open: 100, high: 110, low: 100, close: 110, volume: 1 },
-    { time: 60_000, open: 110, high: 400, low: 110, close: 400, volume: 1 },
-    { time: 120_000, open: 400, high: 1000, low: 400, close: 1000, volume: 1 },
-  ];
-
   it("stamps yScale onto scene.scale and moves candle geometry", () => {
     const linear = chartScene(SERIES, 1000, false);
     const log = chartScene(SERIES, 1000, false, { yScale: "log" });
@@ -246,6 +222,13 @@ describe("chartScene in log mode", () => {
       }),
     );
   });
+
+  // 3 candles spanning a wide ratio so log vs linear geometry is unambiguous.
+  const SERIES: ChartCandle[] = [
+    { time: 0, open: 100, high: 110, low: 100, close: 110, volume: 1 },
+    { time: 60_000, open: 110, high: 400, low: 110, close: 400, volume: 1 },
+    { time: 120_000, open: 400, high: 1000, low: 400, close: 1000, volume: 1 },
+  ];
 });
 
 describe("crosshairScene in log mode", () => {
@@ -276,36 +259,7 @@ describe("crosshairScene in log mode", () => {
   });
 });
 
-// Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
-// two series align by time exactly; closes climb twice as fast so the pct
-// ranges genuinely differ (union must widen).
-const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
-  { length: 12 },
-  (_, i) => {
-    return {
-      time: 1_782_864_000_000 + i * 60_000,
-      open: 50 + i * 2,
-      high: 53 + i * 2,
-      low: 48 + i * 2,
-      close: 50 + i * 2,
-      volume: 1_000,
-    };
-  },
-);
-
-// A primary-only pct range engineered to straddle zero with round ±10/±20
-// ticks (base=close=100, low=75 -> -25%, high=125 -> +25%; priceTicks(-25,
-// 25) lands exactly on -20/-10/0/10/20), so formatPctLabel's sign and
-// zero-unsigned rules can be pinned with literal string values instead of
-// just the regex shape check above.
-const STRADDLE_SERIES: readonly ChartCandle[] = [
-  { time: 0, open: 100, high: 125, low: 75, close: 100, volume: 1 },
-  { time: 60_000, open: 100, high: 125, low: 75, close: 100, volume: 1 },
-];
-
 describe("percent scale (comparison series)", () => {
-  const VP: ChartViewport = { start: 0, end: 12 };
-
   it("priceToY's percent branch is numerically identical to linear for the primary", () => {
     const linear: ChartScale = { cmin: 90, cmax: 110 };
     const percent: ChartScale = {
@@ -508,6 +462,8 @@ describe("percent scale (comparison series)", () => {
     const cross = crosshairScene(0.5, y / 100, TWELVE_MIXED, VP, scale);
     expect(cross?.price).toBe("0.00%");
   });
+
+  const VP: ChartViewport = { start: 0, end: 12 };
 });
 
 // Type-level neutrality: no field of SceneCandle/ChartScene is `--`-keyed.
@@ -555,3 +511,48 @@ function assertSceneNeutral(node: unknown, path: string): void {
     }
   }
 }
+
+const TWELVE_MIXED: readonly Candle[] = Array.from({ length: 12 }, (_, i) => {
+  const dir = i % 2 === 0 ? 1 : -1;
+  return {
+    time: 1_782_864_000_000 + i * 60_000,
+    open: 100 + dir * i,
+    high: 106 + i,
+    low: 94 - i,
+    close: 100 - dir * i * 0.5,
+    volume: 1_000 + i * 137,
+  };
+});
+
+// A close series long enough to clear both RSI's and MACD's warm-ups, for
+// the paneScene neutrality checks below.
+const PANE_CLOSES: readonly number[] = Array.from({ length: 60 }, (_, i) => {
+  return 100 + Math.sin(i / 3) * 5;
+});
+
+// Comparison-series fixtures: same 60s buckets/epoch as TWELVE_MIXED so the
+// two series align by time exactly; closes climb twice as fast so the pct
+// ranges genuinely differ (union must widen).
+const COMPARE_TWELVE: readonly ChartCandle[] = Array.from(
+  { length: 12 },
+  (_, i) => {
+    return {
+      time: 1_782_864_000_000 + i * 60_000,
+      open: 50 + i * 2,
+      high: 53 + i * 2,
+      low: 48 + i * 2,
+      close: 50 + i * 2,
+      volume: 1_000,
+    };
+  },
+);
+
+// A primary-only pct range engineered to straddle zero with round ±10/±20
+// ticks (base=close=100, low=75 -> -25%, high=125 -> +25%; priceTicks(-25,
+// 25) lands exactly on -20/-10/0/10/20), so formatPctLabel's sign and
+// zero-unsigned rules can be pinned with literal string values instead of
+// just the regex shape check above.
+const STRADDLE_SERIES: readonly ChartCandle[] = [
+  { time: 0, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+  { time: 60_000, open: 100, high: 125, low: 75, close: 100, volume: 1 },
+];

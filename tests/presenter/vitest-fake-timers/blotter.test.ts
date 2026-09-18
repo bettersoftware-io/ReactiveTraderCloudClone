@@ -10,7 +10,6 @@ import {
 } from "./_world";
 
 describe("@presenter Feature: FX trade blotter", () => {
-  let w: VitestPlainPresenterWorld;
   beforeEach(() => {
     w = buildWorld();
   });
@@ -32,4 +31,6 @@ describe("@presenter Feature: FX trade blotter", () => {
     await w.waitSeconds(2);
     await blotter.expectBlotterHasAtLeastNRows(w, 2);
   });
+
+  let w: VitestPlainPresenterWorld;
 });

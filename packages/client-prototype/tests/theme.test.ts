@@ -4,31 +4,6 @@ import type { Skin, ThemeTokens } from "#/mock/types";
 import { tokensToCssVars } from "#/theme/themeVars";
 import { themesDark, themesLight } from "#/theme/tokens";
 
-const SKINS: Skin[] = ["holo", "holo3d", "terminal", "terminal3d", "neon"];
-const REQUIRED: (keyof ThemeTokens)[] = [
-  "bg",
-  "bg2",
-  "panel",
-  "panelHead",
-  "border",
-  "borderStrong",
-  "text",
-  "dim",
-  "faint",
-  "accent",
-  "accent2",
-  "buy",
-  "sell",
-  "glow",
-  "grid",
-  "chip",
-  "auroraOp",
-  "tile",
-  "tileShadow",
-  "fontD",
-  "fontM",
-];
-
 describe("theme tokens", () => {
   it("defines all 5 skins in both modes", () => {
     for (const skin of SKINS) {
@@ -53,3 +28,29 @@ describe("theme tokens", () => {
     expect(vars["--panel-head"]).toBe(themesDark.holo.panelHead);
   });
 });
+
+const SKINS: Skin[] = ["holo", "holo3d", "terminal", "terminal3d", "neon"];
+
+const REQUIRED: (keyof ThemeTokens)[] = [
+  "bg",
+  "bg2",
+  "panel",
+  "panelHead",
+  "border",
+  "borderStrong",
+  "text",
+  "dim",
+  "faint",
+  "accent",
+  "accent2",
+  "buy",
+  "sell",
+  "glow",
+  "grid",
+  "chip",
+  "auroraOp",
+  "tile",
+  "tileShadow",
+  "fontD",
+  "fontM",
+];

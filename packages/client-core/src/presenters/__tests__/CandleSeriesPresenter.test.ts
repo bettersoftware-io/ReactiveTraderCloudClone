@@ -21,7 +21,7 @@ import { CandleSeriesPresenter } from "../CandleSeriesPresenter";
 describe("CandleSeriesPresenter", () => {
   it("relays the port's candle series for a symbol, defaulting to '1D'", async () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     expect(await firstValueFrom(presenter.candles$("AAPL"))).toEqual(
       series("AAPL", "1D"),
     );
@@ -30,7 +30,7 @@ describe("CandleSeriesPresenter", () => {
 
   it("caches one stream per symbol — a repeat call returns the same Observable and hits the port once", () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     const first = presenter.candles$("AAPL");
     const second = presenter.candles$("AAPL");
     expect(second).toBe(first);
@@ -39,7 +39,7 @@ describe("CandleSeriesPresenter", () => {
 
   it("returns distinct cached streams for distinct symbols", () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     const aapl = presenter.candles$("AAPL");
     const msft = presenter.candles$("MSFT");
     expect(msft).not.toBe(aapl);
@@ -51,7 +51,7 @@ describe("CandleSeriesPresenter", () => {
 
   it("returns distinct cached streams for the same symbol at different timeframes", async () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     const oneDay = presenter.candles$("AAPL", "1D");
     const oneWeek = presenter.candles$("AAPL", "1W");
     expect(oneWeek).not.toBe(oneDay);
@@ -64,7 +64,7 @@ describe("CandleSeriesPresenter", () => {
 
   it("re-requesting the same symbol+timeframe pair hits the cache, not the port", () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     const first = presenter.candles$("AAPL", "3M");
     const second = presenter.candles$("AAPL", "3M");
     expect(second).toBe(first);
@@ -73,14 +73,14 @@ describe("CandleSeriesPresenter", () => {
 
   it("guards an empty symbol: emits [] synchronously without ever calling the port", async () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     expect(await firstValueFrom(presenter.candles$(""))).toEqual([]);
     expect(calls).toEqual([]);
   });
 
   it("caches the empty-symbol guard stream by key, same as any real symbol", () => {
     const calls: Array<[string, CandleTimeframe]> = [];
-    const presenter = new CandleSeriesPresenter(fakeMarketData(calls));
+    const presenter = new CandleSeriesPresenter(createFakeMarketData(calls));
     const first = presenter.candles$("", "1D");
     const second = presenter.candles$("", "1D");
     expect(second).toBe(first);
@@ -621,7 +621,7 @@ function series(symbol: string, timeframe: CandleTimeframe): readonly Candle[] {
 /** Minimal MarketDataPort fake: only `candles` is exercised here (recording the
  * symbol+timeframe pairs requested so the cache contract can be asserted); the
  * others return EMPTY since this presenter never calls them. */
-function fakeMarketData(
+function createFakeMarketData(
   candleCalls: Array<[string, CandleTimeframe]>,
 ): MarketDataPort {
   return {

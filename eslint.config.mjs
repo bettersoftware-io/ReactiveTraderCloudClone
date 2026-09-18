@@ -6,12 +6,14 @@ import tseslint from "typescript-eslint";
 import { classFilenameMatch } from "./eslint-rules/class-filename-match.mjs";
 import { componentNewspaper } from "./eslint-rules/component-newspaper.mjs";
 import { jsonFixturesInFactories } from "./eslint-rules/json-fixtures-in-factories.mjs";
+import { nameFixtureFactories } from "./eslint-rules/name-fixture-factories.mjs";
 import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mjs";
 import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mjs";
 import { newspaperOrder } from "./eslint-rules/newspaper-order.mjs";
 import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mjs";
 import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mjs";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mjs";
+import { pageObjectsOwnTheirComponent } from "./eslint-rules/page-objects-own-their-component.mjs";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
 // the client-`src` block (which appends the inline-style ban). Flat config
@@ -113,9 +115,11 @@ const rtcPlugin = {
     "no-render-functions": noRenderFunctions,
     "name-functions-by-effect": nameFunctionsByEffect,
     "name-jsx-handlers": nameJsxHandlers,
+    "name-fixture-factories": nameFixtureFactories,
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
     "no-minified-json-literal": noMinifiedJsonLiteral,
     "json-fixtures-in-factories": jsonFixturesInFactories,
+    "page-objects-own-their-component": pageObjectsOwnTheirComponent,
   },
 };
 
@@ -387,11 +391,16 @@ export default tseslint.config(
     // isMovableFixture — so a fixture a `describe` body reads at collection
     // time is left alone and the file keeps working.
     //
-    // Add a package here once its test tree is clean; the burn-down order is
-    // cheapest-first. Remaining, by declaration count: ui-contract 102,
-    // client-react 82, client-solid 62, client-core 55, domain 33,
-    // client-react-native 30, motion-core 28, server 18, tests 12,
-    // client-prototype 12.
+    // ONE package is left: `client-react-native`, held back deliberately. It is
+    // the only package running Jest (`vitest run --passWithNoTests && jest`),
+    // and 43 of its test files use `jest.mock` or a "worklet" directive. This
+    // arm's analysis encodes VITEST's collection-time `describe` semantics and
+    // has only ever been verified against Vitest; Babel also hoists
+    // `jest.mock` factories above the imports, so a factory closing over a
+    // moved fixture would read it in the temporal dead zone. The predicate
+    // should refuse that (a factory body is not a deferred callback) — but on
+    // 119 files it is worth PROVING against a real `jest` run rather than
+    // assuming. It is also ~a third of the whole burn-down on its own.
     files: [
       "packages/layout-dockview/**/*.{spec,test}.{ts,tsx}",
       "packages/agent-tools/**/*.{spec,test}.{ts,tsx}",
@@ -401,6 +410,23 @@ export default tseslint.config(
       "packages/devtools-relay/**/*.{spec,test}.{ts,tsx}",
       "packages/devtools-extension/**/*.{spec,test}.{ts,tsx}",
       "packages/shared/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-prototype/**/*.{spec,test}.{ts,tsx}",
+      "packages/motion-core/**/*.{spec,test}.{ts,tsx}",
+      "packages/server/**/*.{spec,test}.{ts,tsx}",
+      "packages/domain/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-solid/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-react/**/*.{spec,test}.{ts,tsx}",
+      "packages/ui-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/boot-splash/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-api/**/*.{spec,test}.{ts,tsx}",
+      "packages/core-contract/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-async/**/*.{spec,test}.{ts,tsx}",
+      "packages/client-core-effect/**/*.{spec,test}.{ts,tsx}",
+      "packages/react-bindings/**/*.{spec,test}.{ts,tsx}",
+      "packages/solid-bindings/**/*.{spec,test}.{ts,tsx}",
+      // The `tests` workspace is not under packages/ — it needs its own glob.
+      "tests/**/*.{spec,test}.{ts,tsx}",
     ],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": ["error", { fixtures: true }] },
@@ -516,6 +542,39 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // A page object CONSTRUCTS the component it is named for; its published
+    // contract takes props, never a rendered element. `no-framework-calls-in-
+    // specs` states the same doctrine but enforces it by banning framework
+    // IMPORTS, so a `mount(element: ReactElement)` contract passes it cleanly
+    // while leaving the whole ARRANGE half in the spec — that is how
+    // client-react sat "migrated" while its docked spec wrote 15 props at each
+    // of 16 render sites, 9 of them identical every time.
+    //
+    // NO IGNORE LIST, deliberately. An earlier cut carried one as a
+    // "migration ledger"; that is a suppression whatever it is called, and the
+    // files on it were exactly the ones the rule existed for. Every page
+    // object in the repo now satisfies this, so the rule is unconditional and
+    // a regression cannot be parked.
+    files: ["**/tests/**/pages/**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/page-objects-own-their-component": "error" },
+  },
+  {
+    // A test's fixture factory is named `create…` — never a bare noun, nor
+    // `make*`/`build*`/`fake*`/`stub*`. `name-functions-by-effect` works from a
+    // BLOCKLIST of bad prefixes and so passes noun-named functions; requiring a
+    // verb instead would need an unbounded lexicon. This rule takes the two
+    // shapes that need none. UNCONDITIONAL — every factory in the repo was
+    // renamed rather than parked.
+    //
+    // SPECS ONLY, not `tests/**`: page objects under `tests/**/pages/` follow
+    // their own `xxxPage()` convention and hold internals like
+    // `stubPopoutWindow` that are the page's mechanics, not fixtures.
+    files: ["**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-fixture-factories": "error" },
   },
   {
     // Large JSON fixtures live in a named create* factory, not inline in a

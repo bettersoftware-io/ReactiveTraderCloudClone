@@ -15,18 +15,6 @@ afterEach(() => {
   cleanupMounted();
 });
 
-const INSTRUMENTS: readonly EquityInstrument[] = [
-  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
-  { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
-];
-
-const QUOTES = {
-  AAPL: quote("AAPL", 229.35, 0.5),
-  MSFT: quote("MSFT", 467.12, 2.1),
-  TSLA: quote("TSLA", 251.44, -1.2),
-};
-
 describe("WatchlistPanel — rows", () => {
   it("renders a row per watchlist instrument, sorted by the default (chg) preference", () => {
     const panel = mount(WatchlistPanel, {
@@ -179,34 +167,10 @@ describe("WatchlistPanel — row select hits the shared eqWorkspace machine", ()
 });
 
 describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
-  // jsdom has no Element.animate, so useRankGlide's gliding-gate never
-  // engages there (the real bug/fix only bites in a real browser). This
-  // stubs a controllable fake Animation — a resolvable `.finished` promise —
-  // so the coalescing gate DOES engage, proving end-to-end (through the real
-  // WatchlistPanel + useRankGlide, not just the pure coalesceOrder function)
-  // that a second rapid reorder while the first is still "gliding" is
-  // buffered instead of committed, and applied only once the glide settles.
-  let resolveFns: Array<() => void> = [];
-  let originalAnimate: typeof Element.prototype.animate | undefined;
-
-  function fakeAnimate(): Animation {
-    let resolveFinished: (() => void) | undefined;
-    const finished = new Promise<Animation>((resolve) => {
-      resolveFinished = (): void => {
-        resolve(fake);
-      };
-    });
-    // The Promise executor above runs synchronously, so resolveFinished is
-    // already assigned by the time we get here.
-    resolveFns.push(resolveFinished as () => void);
-    const fake = { finished } as unknown as Animation;
-    return fake;
-  }
-
   beforeEach(() => {
     resolveFns = [];
     originalAnimate = Element.prototype.animate;
-    Element.prototype.animate = fakeAnimate;
+    Element.prototype.animate = createFakeAnimate;
   });
 
   afterEach(() => {
@@ -220,19 +184,6 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
       delete (Element.prototype as MaybeAnimateProp).animate;
     }
   });
-
-  async function settleGlide(panel: GlideFlusher): Promise<void> {
-    const toResolve = resolveFns;
-    resolveFns = [];
-    await panel.flushAsync(async () => {
-      toResolve.forEach((resolve) => {
-        resolve();
-      });
-      // Flush the .then() microtask chain that applies the buffered order.
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-  }
 
   it("a second rapid reorder while the first is still gliding is buffered, then applied once settled", async () => {
     const world = createWorld(
@@ -312,6 +263,44 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
     await settleGlide(panel);
     expect(panel.rows()).toEqual(["TSLA", "MSFT"]);
   });
+
+  // jsdom has no Element.animate, so useRankGlide's gliding-gate never
+  // engages there (the real bug/fix only bites in a real browser). This
+  // stubs a controllable fake Animation — a resolvable `.finished` promise —
+  // so the coalescing gate DOES engage, proving end-to-end (through the real
+  // WatchlistPanel + useRankGlide, not just the pure coalesceOrder function)
+  // that a second rapid reorder while the first is still "gliding" is
+  // buffered instead of committed, and applied only once the glide settles.
+  let resolveFns: Array<() => void> = [];
+
+  let originalAnimate: typeof Element.prototype.animate | undefined;
+
+  function createFakeAnimate(): Animation {
+    let resolveFinished: (() => void) | undefined;
+    const finished = new Promise<Animation>((resolve) => {
+      resolveFinished = (): void => {
+        resolve(fake);
+      };
+    });
+    // The Promise executor above runs synchronously, so resolveFinished is
+    // already assigned by the time we get here.
+    resolveFns.push(resolveFinished as () => void);
+    const fake = { finished } as unknown as Animation;
+    return fake;
+  }
+
+  async function settleGlide(panel: GlideFlusher): Promise<void> {
+    const toResolve = resolveFns;
+    resolveFns = [];
+    await panel.flushAsync(async () => {
+      toResolve.forEach((resolve) => {
+        resolve();
+      });
+      // Flush the .then() microtask chain that applies the buffered order.
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
 });
 
 describe("WatchlistPanel + EqWatchlistHead — sort cycle order + persistence", () => {
@@ -350,17 +339,6 @@ describe("WatchlistPanel + EqWatchlistHead — sort cycle order + persistence", 
 });
 
 describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, dockview-gated)", () => {
-  // Five distinct symbols so the MAX_PANEL_INSTANCES=4 cap test can open four
-  // instances and still have a fifth, never-opened row to prove disables at
-  // the cap rather than only on a duplicate.
-  const CAP_INSTRUMENTS: readonly EquityInstrument[] = [
-    { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
-    { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
-    { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
-    { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
-    { symbol: "GOOG", name: "Alphabet Inc", exchange: "NASDAQ" },
-  ];
-
   it("renders an accessible, enabled open-chart button on every row under the dockview engine", () => {
     const panel = mount(WatchlistPanel, {
       layoutEngine: "dockview",
@@ -513,6 +491,17 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
     await panel.clickOpenChart(capped.symbol);
     expect(panel.chartButtonDisabled(capped.symbol)).toBe(true);
   });
+
+  // Five distinct symbols so the MAX_PANEL_INSTANCES=4 cap test can open four
+  // instances and still have a fifth, never-opened row to prove disables at
+  // the cap rather than only on a duplicate.
+  const CAP_INSTRUMENTS: readonly EquityInstrument[] = [
+    { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+    { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+    { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+    { symbol: "AMZN", name: "Amazon.com", exchange: "NASDAQ" },
+    { symbol: "GOOG", name: "Alphabet Inc", exchange: "NASDAQ" },
+  ];
 });
 
 /** A World seeded with the dockview layout engine — the open-chart
@@ -570,3 +559,15 @@ interface MaybeAnimateProp {
 interface GlideFlusher {
   flushAsync(fn: () => Promise<void>): Promise<void>;
 }
+
+const INSTRUMENTS: readonly EquityInstrument[] = [
+  { symbol: "AAPL", name: "Apple Inc", exchange: "NASDAQ" },
+  { symbol: "MSFT", name: "Microsoft Corp", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla Inc", exchange: "NASDAQ" },
+];
+
+const QUOTES = {
+  AAPL: quote("AAPL", 229.35, 0.5),
+  MSFT: quote("MSFT", 467.12, 2.1),
+  TSLA: quote("TSLA", 251.44, -1.2),
+};

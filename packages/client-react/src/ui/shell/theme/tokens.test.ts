@@ -4,29 +4,6 @@ import { THEME_MODES, THEME_SKINS } from "@rtc/domain";
 
 import { type ThemeTokens, themeTokens } from "./tokens";
 
-const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
-  "--bg-primary",
-  "--accent-primary",
-  "--accent-2",
-  "--accent-compare",
-  "--border-strong",
-  "--panel",
-  "--panel-head",
-  "--panel-head-sideways",
-  "--glow",
-  "--grid",
-  "--chip",
-  "--aurora-a",
-  "--aurora-b",
-  "--aurora-opacity",
-  "--font-display",
-  "--font-mono",
-  "--tile",
-  "--tile-shadow",
-  "--panel-shadow",
-  "--font-logo",
-];
-
 describe("themeTokens skin×mode store", () => {
   it("defines every skin×mode combination", () => {
     for (const skin of THEME_SKINS) {
@@ -116,3 +93,26 @@ describe("themeTokens skin×mode store", () => {
     expect(themeTokens.neon.light["--accent-primary"]).toBe("#c800a0");
   });
 });
+
+const REQUIRED_KEYS: readonly (keyof ThemeTokens)[] = [
+  "--bg-primary",
+  "--accent-primary",
+  "--accent-2",
+  "--accent-compare",
+  "--border-strong",
+  "--panel",
+  "--panel-head",
+  "--panel-head-sideways",
+  "--glow",
+  "--grid",
+  "--chip",
+  "--aurora-a",
+  "--aurora-b",
+  "--aurora-opacity",
+  "--font-display",
+  "--font-mono",
+  "--tile",
+  "--tile-shadow",
+  "--panel-shadow",
+  "--font-logo",
+];

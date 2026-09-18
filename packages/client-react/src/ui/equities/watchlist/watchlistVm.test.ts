@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { sortWatchlistRows, type WatchlistRowInput } from "./watchlistVm";
 
-const ROWS: readonly WatchlistRowInput[] = [
-  { symbol: "TSLA", name: "Tesla Inc", last: 251.44, changePct: -1.2 },
-  { symbol: "AAPL", name: "Apple Inc", last: 229.35, changePct: 0.5 },
-  { symbol: "MSFT", name: "Microsoft Corp", last: 467.12, changePct: 2.1 },
-];
-
 describe("sortWatchlistRows", () => {
   it("sorts by symbol A–Z under 'sym'", () => {
     const sorted = sortWatchlistRows(ROWS, "sym");
@@ -71,3 +65,9 @@ describe("sortWatchlistRows", () => {
     ).toEqual(["AMZN", "NFLX"]);
   });
 });
+
+const ROWS: readonly WatchlistRowInput[] = [
+  { symbol: "TSLA", name: "Tesla Inc", last: 251.44, changePct: -1.2 },
+  { symbol: "AAPL", name: "Apple Inc", last: 229.35, changePct: 0.5 },
+  { symbol: "MSFT", name: "Microsoft Corp", last: 467.12, changePct: 2.1 },
+];

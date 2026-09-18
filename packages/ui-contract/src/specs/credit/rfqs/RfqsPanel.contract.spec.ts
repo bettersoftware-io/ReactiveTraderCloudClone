@@ -18,25 +18,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const instruments: readonly Instrument[] = [
-  {
-    id: 1,
-    name: "US Treasury 10Y",
-    cusip: "912828ZQ6",
-    ticker: "T 1.5 02/34",
-    maturity: "2034-02-15",
-    interestRate: 1.5,
-    benchmark: "10Y",
-    refPrice: 98.4,
-  },
-];
-
-const dealers: readonly Dealer[] = [
-  { id: 1, name: ADAPTIVE_BANK_NAME },
-  { id: 2, name: "Citi" },
-  { id: 3, name: "JPMorgan" },
-];
-
 describe("RfqsPanel", () => {
   it("shows the empty state when there are no RFQs", () => {
     const panel = mount(RfqsPanel, {
@@ -370,7 +351,7 @@ describe("RfqsPanel", () => {
   });
 
   it("dismisses a terminated RFQ immediately under prefers-reduced-motion", async () => {
-    stubReducedMotion(true);
+    createStubReducedMotion(true);
     const panel = mount(RfqsPanel, {
       hooks: {
         useInstruments: instruments,
@@ -652,8 +633,8 @@ function rfq(id: number, over: Partial<Rfq> = {}): Rfq {
 
 /** Install a window.matchMedia stub for one test (jsdom omits it) — same
  * helper as BootGate.contract.spec.ts/BootSequence.contract.spec.ts. */
-function stubReducedMotion(matches: boolean): void {
-  function fakeMatchMedia(query: string): MediaQueryList {
+function createStubReducedMotion(matches: boolean): void {
+  function createFakeMatchMedia(query: string): MediaQueryList {
     return {
       matches,
       media: query,
@@ -668,5 +649,24 @@ function stubReducedMotion(matches: boolean): void {
     } as MediaQueryList;
   }
 
-  vi.stubGlobal("matchMedia", fakeMatchMedia);
+  vi.stubGlobal("matchMedia", createFakeMatchMedia);
 }
+
+const instruments: readonly Instrument[] = [
+  {
+    id: 1,
+    name: "US Treasury 10Y",
+    cusip: "912828ZQ6",
+    ticker: "T 1.5 02/34",
+    maturity: "2034-02-15",
+    interestRate: 1.5,
+    benchmark: "10Y",
+    refPrice: 98.4,
+  },
+];
+
+const dealers: readonly Dealer[] = [
+  { id: 1, name: ADAPTIVE_BANK_NAME },
+  { id: 2, name: "Citi" },
+  { id: 3, name: "JPMorgan" },
+];

@@ -10,11 +10,6 @@ import { chartGesturesPage } from "#tests/ui/pages/UseChartGesturesPage";
 
 import type { DrawGestureSlots } from "./useChartGestures";
 
-const SERIES_LEN = 200;
-const DEFAULT_VISIBLE = 50;
-
-const page = chartGesturesPage();
-
 afterEach(() => {
   page.unmountAll();
 });
@@ -1149,3 +1144,9 @@ function pointerEvent(
     currentTarget,
   } as unknown as ReactPointerEvent<HTMLDivElement>;
 }
+
+const SERIES_LEN = 200;
+
+const DEFAULT_VISIBLE = 50;
+
+const page = chartGesturesPage();

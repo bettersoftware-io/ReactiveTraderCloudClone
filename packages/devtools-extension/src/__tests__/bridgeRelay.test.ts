@@ -6,8 +6,8 @@ import type { RuntimePort } from "#/ports";
 
 describe("createBridgeRelay", () => {
   it("forwards channel messages (from the app hub) to the port", () => {
-    const ch = fakeChannel();
-    const p = fakePort();
+    const ch = createFakeChannel();
+    const p = createFakePort();
     createBridgeRelay({ channel: ch.channel, port: p.port });
 
     ch.emit({ kind: "welcome" });
@@ -16,8 +16,8 @@ describe("createBridgeRelay", () => {
   });
 
   it("forwards port messages (from the panel) to the channel", () => {
-    const ch = fakeChannel();
-    const p = fakePort();
+    const ch = createFakeChannel();
+    const p = createFakePort();
     createBridgeRelay({ channel: ch.channel, port: p.port });
 
     p.emit({ kind: "hello" });
@@ -26,8 +26,8 @@ describe("createBridgeRelay", () => {
   });
 
   it("invokes onPortDisconnect and does not close the channel when the port disconnects", () => {
-    const ch = fakeChannel();
-    const p = fakePort();
+    const ch = createFakeChannel();
+    const p = createFakePort();
     let disconnectCount = 0;
     createBridgeRelay({
       channel: ch.channel,
@@ -44,8 +44,8 @@ describe("createBridgeRelay", () => {
   });
 
   it("closes the channel on dispose()", () => {
-    const ch = fakeChannel();
-    const p = fakePort();
+    const ch = createFakeChannel();
+    const p = createFakePort();
     const handle = createBridgeRelay({ channel: ch.channel, port: p.port });
 
     handle.dispose();
@@ -54,9 +54,9 @@ describe("createBridgeRelay", () => {
   });
 
   it("reconnects to a new port after a disconnect, keeping the same channel alive", () => {
-    const ch = fakeChannel();
-    const portA = fakePort();
-    const portB = fakePort();
+    const ch = createFakeChannel();
+    const portA = createFakePort();
+    const portB = createFakePort();
 
     createBridgeRelay({
       channel: ch.channel,
@@ -88,7 +88,7 @@ interface FakePort {
   sent: unknown[];
 }
 
-function fakeChannel(): FakeChannel {
+function createFakeChannel(): FakeChannel {
   let onMsg: ((m: unknown) => void) | undefined;
   const posted: unknown[] = [];
   const state = { closed: false };
@@ -115,7 +115,7 @@ function fakeChannel(): FakeChannel {
   };
 }
 
-function fakePort(): FakePort {
+function createFakePort(): FakePort {
   let onMsg: ((m: unknown) => void) | undefined;
   let onDis: (() => void) | undefined;
   const sent: unknown[] = [];

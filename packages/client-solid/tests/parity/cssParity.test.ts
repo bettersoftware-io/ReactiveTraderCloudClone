@@ -12,11 +12,6 @@ import { describe, expect, it } from "vitest";
 // Solid counterpart (or vice versa) fails the build.
 const PARITY_COMPLETE = true;
 
-// React-only surfaces the Solid client deliberately does not have yet. Every
-// entry here must be deleted when the Solid twin is ported — the
-// reverse-orphan check below skips exactly these paths and nothing else.
-const REACT_ONLY_MODULE_CSS = new Set<string>([]);
-
 // Both roots resolved from this file's own location (not cwd) so the test
 // works regardless of the invoking directory. This is a test file — reading
 // across the package boundary into a sibling package's source tree is fine
@@ -38,8 +33,6 @@ const reactUiRoot = fileURLToPath(
 const reactRelPaths = findModuleCssFiles(reactUiRoot);
 const solidRelPaths = findModuleCssFiles(solidUiRoot);
 const solidRelPathSet = new Set(solidRelPaths);
-const reactRelPathSet = new Set(reactRelPaths);
-
 // Sanity check: if either walk came back empty, the roots resolved wrong
 // (e.g. a moved test file) and every other assertion below would trivially
 // (and silently) pass — fail loudly instead.
@@ -114,3 +107,10 @@ function findModuleCssFiles(root: string): string[] {
   walk(root);
   return out;
 }
+
+// React-only surfaces the Solid client deliberately does not have yet. Every
+// entry here must be deleted when the Solid twin is ported — the
+// reverse-orphan check below skips exactly these paths and nothing else.
+const REACT_ONLY_MODULE_CSS = new Set<string>([]);
+
+const reactRelPathSet = new Set(reactRelPaths);

@@ -10,7 +10,7 @@ import {
 
 describe("Recording serialize/parse", () => {
   it("round-trips serialize -> parse to an identical recording", () => {
-    const rec = sampleRecording();
+    const rec = createSampleRecording();
     expect(parseRecording(serializeRecording(rec))).toEqual(rec);
   });
 
@@ -40,7 +40,7 @@ describe("Recording serialize/parse", () => {
   });
 });
 
-function sampleRecording(): Recording {
+function createSampleRecording(): Recording {
   const frames: AppToInspector[] = [
     {
       kind: "snapshot",

@@ -18,8 +18,6 @@ import { describe, expect, it } from "vitest";
 
 import { ambientBackgroundPage } from "#tests/ui/pages/AmbientBackgroundPage";
 
-const page = ambientBackgroundPage();
-
 describe("AmbientBackground — animated-background preference", () => {
   it("flips --amb-play (and data-animated) live when the preference toggles after mount", () => {
     const [enabled, setEnabled] = createSignal(false);
@@ -67,3 +65,5 @@ describe("AmbientBackground — ambient style branch", () => {
     expect(page.hasLayer("rays")).toBe(false);
   });
 });
+
+const page = ambientBackgroundPage();

@@ -30,39 +30,6 @@ if (!_pairOrUndef) {
   throw new Error("EURUSD not found in KNOWN_CURRENCY_PAIRS");
 }
 
-const pair: CurrencyPair = _pairOrUndef;
-
-const price: Price = {
-  symbol: "EURUSD",
-  bid: 1.0921,
-  ask: 1.0925,
-  mid: 1.0923,
-  valueDate: "2026-06-15",
-  creationTimestamp: 1,
-  movementType: PriceMovementType.NONE,
-  spread: "4.0",
-};
-
-const trade: Trade = {
-  tradeId: 1,
-  tradeName: "t",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.0925,
-  status: TradeStatus.Done,
-  tradeDate: "2026-06-13",
-  valueDate: "2026-06-15",
-};
-
-const doneResult: ExecuteTradeResult = { status: ExecutionStatus.Done, trade };
-
-const READY: TileExecutionState = { status: "ready" };
-const STARTED: TileExecutionState = { status: "started" };
-const TOO_LONG: TileExecutionState = { status: "tooLong" };
-const TIMEOUT: TileExecutionState = { status: "timeout" };
-
 describe("createTileExecutionMachine", () => {
   it("starts in the ready state (synchronous default)", () => {
     const ts = scheduler();
@@ -393,3 +360,39 @@ function run(
   });
   return states;
 }
+
+const pair: CurrencyPair = _pairOrUndef;
+
+const price: Price = {
+  symbol: "EURUSD",
+  bid: 1.0921,
+  ask: 1.0925,
+  mid: 1.0923,
+  valueDate: "2026-06-15",
+  creationTimestamp: 1,
+  movementType: PriceMovementType.NONE,
+  spread: "4.0",
+};
+
+const trade: Trade = {
+  tradeId: 1,
+  tradeName: "t",
+  currencyPair: "EURUSD",
+  notional: 1_000_000,
+  dealtCurrency: "EUR",
+  direction: Direction.Buy,
+  spotRate: 1.0925,
+  status: TradeStatus.Done,
+  tradeDate: "2026-06-13",
+  valueDate: "2026-06-15",
+};
+
+const doneResult: ExecuteTradeResult = { status: ExecutionStatus.Done, trade };
+
+const READY: TileExecutionState = { status: "ready" };
+
+const STARTED: TileExecutionState = { status: "started" };
+
+const TOO_LONG: TileExecutionState = { status: "tooLong" };
+
+const TIMEOUT: TileExecutionState = { status: "timeout" };

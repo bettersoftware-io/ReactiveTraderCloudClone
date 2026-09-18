@@ -33,38 +33,9 @@ afterEach(() => {
   cleanupMounted();
 });
 
-// 300 candles, matching every other CandleChart contract spec: long enough
-// that the 1D default visible window (60) is a small slice, so the default
-// viewport lands deep in the series ({240, 300} — see candleFixture.ts) —
-// the SAME fixture ChartInteraction.contract.spec.ts pins its crosshair
-// readout literal against, reused verbatim by case 3 below.
-const CANDLES = generateCandles(300);
-const DEFAULT_VISIBLE = 60;
-const LAST = candleAt(299);
-
-// A second deterministic series on the SAME time buckets as candleFixture
-// (time = i × 60_000), identical construction to ChartCompare.contract.spec.ts's
-// own COMPARE_CANDLES (duplicated per this repo's established per-spec-file
-// fixture convention) — a steeper close slope so the two series' pct paths
-// genuinely differ.
-const COMPARE_CANDLES: readonly Candle[] = Array.from(
-  { length: 300 },
-  (_, i) => {
-    const open = 50 + i * 2;
-    return {
-      time: i * 60_000,
-      open,
-      high: open + 2,
-      low: open - 2,
-      close: open + 1,
-      volume: 1_000,
-    };
-  },
-);
-
 describe("Canvas substrate — preference-driven geometry swap (shared harness)", () => {
   it("substrate=canvas swaps plot geometry DOM for one canvas and back", () => {
-    const trendline = makeTrendline("t1", 250, 360, 280, 380);
+    const trendline = createTrendline("t1", 250, 360, 280, 380);
     const chart = mountChart({
       indicators: ["sma20"],
       drawings: [trendline],
@@ -126,8 +97,8 @@ describe("Canvas substrate — preference-driven geometry swap (shared harness)"
   // ceiling pins the canvas side too.
   it("node-count pin: canvas mode collapses the plot's per-datum DOM", () => {
     const drawings = [
-      makeTrendline("t1", 250, 360, 280, 380),
-      makeHline("h1", 370),
+      createTrendline("t1", 250, 360, 280, 380),
+      createHline("h1", 370),
     ];
 
     const chart = mountChart({
@@ -264,11 +235,11 @@ function mountChart({
 }
 
 /** A trendline drawing anchored at two (candle index, price) points — the
- * same construction ChartDrawings.contract.spec.ts's own `makeTrendline`
+ * same construction ChartDrawings.contract.spec.ts's own `createTrendline`
  * uses (duplicated per this repo's established per-spec-file convention),
  * with both indices inside the fixture's default {240,300} viewport and
  * both prices inside the viewport's candle range. */
-function makeTrendline(
+function createTrendline(
   id: string,
   aIndex: number,
   aPrice: number,
@@ -283,6 +254,37 @@ function makeTrendline(
   };
 }
 
-function makeHline(id: string, price: number): EqDrawing {
+function createHline(id: string, price: number): EqDrawing {
   return { id, kind: "hline", price };
 }
+
+// 300 candles, matching every other CandleChart contract spec: long enough
+// that the 1D default visible window (60) is a small slice, so the default
+// viewport lands deep in the series ({240, 300} — see candleFixture.ts) —
+// the SAME fixture ChartInteraction.contract.spec.ts pins its crosshair
+// readout literal against, reused verbatim by case 3 below.
+const CANDLES = generateCandles(300);
+
+const DEFAULT_VISIBLE = 60;
+
+const LAST = candleAt(299);
+
+// A second deterministic series on the SAME time buckets as candleFixture
+// (time = i × 60_000), identical construction to ChartCompare.contract.spec.ts's
+// own COMPARE_CANDLES (duplicated per this repo's established per-spec-file
+// fixture convention) — a steeper close slope so the two series' pct paths
+// genuinely differ.
+const COMPARE_CANDLES: readonly Candle[] = Array.from(
+  { length: 300 },
+  (_, i) => {
+    const open = 50 + i * 2;
+    return {
+      time: i * 60_000,
+      open,
+      high: open + 2,
+      low: open - 2,
+      close: open + 1,
+      volume: 1_000,
+    };
+  },
+);

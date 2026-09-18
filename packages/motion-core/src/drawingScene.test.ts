@@ -14,8 +14,6 @@ import {
 
 const VP: ChartViewport = { start: 240, end: 300 };
 const LIN: ChartScale = { cmin: 100, cmax: 200 };
-const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };
-
 describe("pointerToAnchor", () => {
   it("snaps x to the crosshair's candle-index rule and inverts y through the scale", () => {
     // xFrac 0.5 → rawIdx = 240 + 0.5·60 − 0.5 = 269.5 → 270 (round).
@@ -33,14 +31,6 @@ describe("pointerToAnchor", () => {
 });
 
 describe("drawingScene", () => {
-  const TREND: Drawing = {
-    id: "t1",
-    kind: "trendline",
-    a: { index: 250, price: 120 },
-    b: { index: 290, price: 180 },
-  };
-  const LEVEL: Drawing = { id: "h1", kind: "hline", price: 150 };
-
   it("projects anchors via the candle-center rule and priceToY", () => {
     const [item] = drawingScene([TREND], VP, LIN, null);
 
@@ -94,12 +84,12 @@ describe("drawingScene", () => {
   });
 
   it("off-viewport anchors still emit finite geometry (SVG clips)", () => {
-    const far: Drawing = {
+    const far = {
       id: "t2",
       kind: "trendline",
       a: { index: 0, price: 120 },
       b: { index: 100, price: 180 },
-    };
+    } satisfies Drawing;
     const [item] = drawingScene([far], VP, LIN, null);
 
     if (item?.kind !== "trendline") {
@@ -112,31 +102,28 @@ describe("drawingScene", () => {
 
   it("anchor index + N renders at the same position after a prepend of N", () => {
     const before = drawingScene([TREND], VP, LIN, null);
-    const shifted: Drawing = {
+    const shifted = {
       ...TREND,
       a: { ...TREND.a, index: TREND.a.index + 30 },
       b: { ...TREND.b, index: TREND.b.index + 30 },
-    };
+    } satisfies Drawing;
     const vpAfter: ChartViewport = { start: VP.start + 30, end: VP.end + 30 };
     const after = drawingScene([shifted], vpAfter, LIN, null);
 
     expect(after).toEqual(before);
   });
+
+  const TREND = {
+    id: "t1",
+    kind: "trendline",
+    a: { index: 250, price: 120 },
+    b: { index: 290, price: 180 },
+  } satisfies Drawing;
+
+  const LEVEL = { id: "h1", kind: "hline", price: 150 } satisfies Drawing;
 });
 
 describe("hitTestDrawings", () => {
-  const scene = drawingScene(
-    [
-      { id: "h1", kind: "hline", price: 150 },
-      { id: "h2", kind: "hline", price: 152 },
-    ],
-    VP,
-    LIN,
-    null,
-  );
-  const y1 = priceToY(LIN, 150);
-  const y2 = priceToY(LIN, 152);
-
   it("hits within tolerance, rejects beyond it, nearest wins", () => {
     expect(hitTestDrawings(scene, 50, y1 + 0.5)).toBe("h1");
     expect(hitTestDrawings(scene, 50, y1 + 5)).toBe(null);
@@ -156,18 +143,23 @@ describe("hitTestDrawings", () => {
   it("empty scene → null", () => {
     expect(hitTestDrawings([], 50, 50)).toBe(null);
   });
+
+  const scene = drawingScene(
+    [
+      { id: "h1", kind: "hline", price: 150 },
+      { id: "h2", kind: "hline", price: 152 },
+    ],
+    VP,
+    LIN,
+    null,
+  );
+
+  const y1 = priceToY(LIN, 150);
+
+  const y2 = priceToY(LIN, 152);
 });
 
 describe("hitTestGrip", () => {
-  const vp: ChartViewport = { start: 0, end: 10 };
-  const tl: Drawing = {
-    id: "t1",
-    kind: "trendline",
-    a: { index: 2, price: 105 },
-    b: { index: 7, price: 115 },
-  };
-  const hl: Drawing = { id: "h1", kind: "hline", price: 110 };
-
   it("returns the endpoint handle when the pointer is within HANDLE_TOL_PCT of it — and the handle beats the body when both are in tolerance", () => {
     const scene = drawingScene([tl], vp, LIN, "t1");
     const sel = scene[0];
@@ -224,17 +216,20 @@ describe("hitTestGrip", () => {
     // far from the handle but on the line body
     expect(hitTestGrip(scene, 5, item.y)).toEqual({ id: "h1", part: "level" });
   });
-});
 
-describe("dragDrawing", () => {
   const vp: ChartViewport = { start: 0, end: 10 };
-  const tl: Drawing = {
+
+  const tl = {
     id: "t1",
     kind: "trendline",
     a: { index: 2, price: 105 },
     b: { index: 7, price: 115 },
-  };
+  } satisfies Drawing;
 
+  const hl = { id: "h1", kind: "hline", price: 110 } satisfies Drawing;
+});
+
+describe("dragDrawing", () => {
   it("endpoint drag routes through pointerToAnchor: candle-center x snap, free price", () => {
     const out = dragDrawing(
       tl,
@@ -320,7 +315,7 @@ describe("dragDrawing", () => {
   });
 
   it("hline drag ('level') follows y only — x is ignored entirely", () => {
-    const hl: Drawing = { id: "h1", kind: "hline", price: 110 };
+    const hl = { id: "h1", kind: "hline", price: 110 } satisfies Drawing;
     const out = dragDrawing(
       hl,
       { id: "h1", part: "level" },
@@ -352,4 +347,15 @@ describe("dragDrawing", () => {
 
     expect(out).toBe(tl);
   });
+
+  const vp: ChartViewport = { start: 0, end: 10 };
+
+  const tl = {
+    id: "t1",
+    kind: "trendline",
+    a: { index: 2, price: 105 },
+    b: { index: 7, price: 115 },
+  } satisfies Drawing;
 });
+
+const LOG: ChartScale = { cmin: 100, cmax: 200, yScale: "log" };

@@ -16,16 +16,9 @@ import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
 
 import { BootSequence } from "./BootSequence";
 
-const page = bootSequencePage();
-
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-  let cafSpy: ReturnType<typeof vi.spyOn>;
-  let getContextSpy: ReturnType<typeof vi.spyOn>;
-  let ctxStub: CanvasRenderingContext2D;
-
   beforeEach(() => {
-    ctxStub = makeCtxStub();
+    ctxStub = createCtxStub();
     getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue(ctxStub);
@@ -43,7 +36,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     const onDone = vi.fn();
     page.mount(() => {
       return (
-        <ViewModelContext.Provider value={makeHooks()}>
+        <ViewModelContext.Provider value={createHooks()}>
           <BootSequence onDone={onDone} />
         </ViewModelContext.Provider>
       );
@@ -55,7 +48,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     const onDone = vi.fn();
     const { unmount } = page.mount(() => {
       return (
-        <ViewModelContext.Provider value={makeHooks()}>
+        <ViewModelContext.Provider value={createHooks()}>
           <BootSequence onDone={onDone} />
         </ViewModelContext.Provider>
       );
@@ -69,7 +62,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     expect(() => {
       page.mount(() => {
         return (
-          <ViewModelContext.Provider value={makeHooks()}>
+          <ViewModelContext.Provider value={createHooks()}>
             <BootSequence onDone={onDone} />
           </ViewModelContext.Provider>
         );
@@ -83,7 +76,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
       const { unmount } = page.mount(() => {
         return (
           <ViewModelContext.Provider
-            value={makeHooks({
+            value={createHooks({
               useBootSequence: (_onDone: () => void) => {
                 return {
                   state: () => {
@@ -107,7 +100,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   it("tracks the cursor into the shared pointer while booting", () => {
     page.mount(() => {
       return (
-        <ViewModelContext.Provider value={makeHooks()}>
+        <ViewModelContext.Provider value={createHooks()}>
           <BootSequence onDone={vi.fn()} />
         </ViewModelContext.Provider>
       );
@@ -127,7 +120,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     }) as unknown as typeof window.matchMedia;
     page.mount(() => {
       return (
-        <ViewModelContext.Provider value={makeHooks()}>
+        <ViewModelContext.Provider value={createHooks()}>
           <BootSequence onDone={vi.fn()} />
         </ViewModelContext.Provider>
       );
@@ -175,7 +168,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     page.mount(() => {
       return (
         <ViewModelContext.Provider
-          value={makeHooks({
+          value={createHooks({
             usePowerSaver: () => {
               const [level] = createSignal("freeze" as const);
               return {
@@ -209,7 +202,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     expect(() => {
       page.mount(() => {
         return (
-          <ViewModelContext.Provider value={makeHooks()}>
+          <ViewModelContext.Provider value={createHooks()}>
             <BootSequence onDone={onDone} />
           </ViewModelContext.Provider>
         );
@@ -241,7 +234,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     page.mount(() => {
       return (
         <ViewModelContext.Provider
-          value={makeHooks({
+          value={createHooks({
             useBootSequence: (_onDone: () => void) => {
               return { state, skip: vi.fn() };
             },
@@ -264,6 +257,14 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     // And the rAF loop was started exactly once, not restarted per tick.
     expect(cafSpy).not.toHaveBeenCalled();
   });
+
+  let rafSpy: ReturnType<typeof vi.spyOn>;
+
+  let cafSpy: ReturnType<typeof vi.spyOn>;
+
+  let getContextSpy: ReturnType<typeof vi.spyOn>;
+
+  let ctxStub: CanvasRenderingContext2D;
 });
 
 describe("BootSequence — boot log lines (visibility by progress)", () => {
@@ -274,7 +275,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
     page.mount(() => {
       return (
         <ViewModelContext.Provider
-          value={makeHooks({
+          value={createHooks({
             useBootSequence: (_onDone: () => void) => {
               return {
                 state: () => {
@@ -325,7 +326,7 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
  * Properties are writable so the draw functions can set fillStyle etc. without
  * throwing. createLinearGradient / createRadialGradient return a minimal stub.
  */
-function makeCtxStub(): CanvasRenderingContext2D {
+function createCtxStub(): CanvasRenderingContext2D {
   const gradient = { addColorStop: vi.fn() };
   return {
     // Properties (writable)
@@ -380,7 +381,7 @@ function makeCtxStub(): CanvasRenderingContext2D {
  * function is invisible to Solid's dependency tracking, so effects that
  * over-subscribe to the whole state object would never re-run in tests and
  * the over-tracking bug class stays masked. */
-function makeHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
+function createHooks(partialHooks: Partial<ViewModel> = {}): ViewModel {
   const [state] = createSignal<TestBootState>({
     variant: "core",
     progress: 0,
@@ -450,7 +451,7 @@ function mountBootSequence({
   page.mount(() => {
     return (
       <ViewModelContext.Provider
-        value={makeHooks({
+        value={createHooks({
           useForceBootAnimation: () => {
             return {
               enabled: () => {
@@ -475,3 +476,5 @@ interface TestBootState {
   progress: number;
   done: boolean;
 }
+
+const page = bootSequencePage();
