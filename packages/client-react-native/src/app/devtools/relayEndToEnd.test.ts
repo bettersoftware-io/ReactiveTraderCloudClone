@@ -17,11 +17,6 @@ import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
 import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 describe("RN inspection end-to-end over the relay", () => {
-  let relay: RelayServer | null = null;
-  let hub: DevtoolsHub | null = null;
-  let client: InspectorClient | null = null;
-  let channel: WsRelayDuplex<InspectorToApp, AppToInspector> | null = null;
-
   afterEach(async () => {
     client?.dispose();
     channel?.dispose();
@@ -72,6 +67,14 @@ describe("RN inspection end-to-end over the relay", () => {
       { timeout: 5000, interval: 25 },
     );
   });
+
+  let relay: RelayServer | null = null;
+
+  let hub: DevtoolsHub | null = null;
+
+  let client: InspectorClient | null = null;
+
+  let channel: WsRelayDuplex<InspectorToApp, AppToInspector> | null = null;
 });
 
 // expo-constants has no runtime `expoConfig` under vitest-node; stub it so

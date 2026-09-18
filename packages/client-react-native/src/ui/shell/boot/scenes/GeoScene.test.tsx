@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { geoScenePage } from "#tests/pages/GeoScenePage";
 
-const page = geoScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -74,3 +72,5 @@ test("survives the radar sweep crossing the map edge to edge", async () => {
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = geoScenePage();

@@ -3,8 +3,6 @@ import { expect, jest, test } from "@jest/globals";
 import type { RateFilter } from "#/ui/rates/ratesFilter";
 import { rateFilterBarPage } from "#tests/pages/RateFilterBarPage";
 
-const page = rateFilterBarPage();
-
 test("renders every prototype filter and reports selection", async () => {
   const onSelect = jest.fn<(f: RateFilter) => void>();
   await page.mount("ALL", onSelect);
@@ -16,3 +14,5 @@ test("renders every prototype filter and reports selection", async () => {
   expect(onSelect).toHaveBeenCalledWith("EUR");
   await page.unmountAll();
 });
+
+const page = rateFilterBarPage();

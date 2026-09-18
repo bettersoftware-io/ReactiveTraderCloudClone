@@ -12,35 +12,6 @@ import { inertSlice } from "./fake/inert";
 import { ratesSlice } from "./fake/rates";
 import { buildShellSlice } from "./fake/shell";
 
-/** The directory holding every slice module — scanned whole, so a slice added
- * later is guarded without anyone remembering to list it. */
-const FAKE_DIR = join(__dirname, "fake");
-
-/** The one guarded module outside `fake/`. Deliberately named rather than
- * scanning this directory: `tests/visual/` also holds the capture driver and
- * the simctl runner, which use `setTimeout` legitimately and must not be
- * swept into a guard about the fake's fixtures. */
-const GUARDED_SIBLING = "buildFakeViewModel.ts";
-
-/** A clock or an RNG anywhere in the fake defeats its entire purpose. */
-const LIVE_SOURCE_PATTERN =
-  /Date\.now|Math\.random|setInterval|setTimeout|\binterval\(/;
-
-/**
- * The total member count on `ViewModel`, partitioned across the seven slices.
- *
- * Was 68 when this landed; the Dockview/GenUI work then added
- * `useDockLayoutStore`, `useLayoutEngine` and `useWorkspaceReset` (→ 71), then
- * `useDockedPanelIds` and `useWorkspaceLayoutResets` (→ 73) for the Dockview
- * bridge's per-tab docked membership + reset-rebuild signal (both added to
- * `InertSlice` — RN has no dockview bridge). The compiler found every one of
- * these on the next catch-up merge, because `buildFakeViewModel` is typed
- * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
- * the one member without a `use` prefix, which a hand-written census had
- * missed while reporting a confident 67 of 67.
- */
-const VIEW_MODEL_MEMBER_COUNT = 73;
-
 describe("buildFakeViewModel", () => {
   test("returns identical values across instances — the whole point of the fake", () => {
     const a = buildFakeViewModel();
@@ -226,3 +197,32 @@ interface GuardedSource {
   readonly name: string;
   readonly source: string;
 }
+
+/** The directory holding every slice module — scanned whole, so a slice added
+ * later is guarded without anyone remembering to list it. */
+const FAKE_DIR = join(__dirname, "fake");
+
+/** The one guarded module outside `fake/`. Deliberately named rather than
+ * scanning this directory: `tests/visual/` also holds the capture driver and
+ * the simctl runner, which use `setTimeout` legitimately and must not be
+ * swept into a guard about the fake's fixtures. */
+const GUARDED_SIBLING = "buildFakeViewModel.ts";
+
+/** A clock or an RNG anywhere in the fake defeats its entire purpose. */
+const LIVE_SOURCE_PATTERN =
+  /Date\.now|Math\.random|setInterval|setTimeout|\binterval\(/;
+
+/**
+ * The total member count on `ViewModel`, partitioned across the seven slices.
+ *
+ * Was 68 when this landed; the Dockview/GenUI work then added
+ * `useDockLayoutStore`, `useLayoutEngine` and `useWorkspaceReset` (→ 71), then
+ * `useDockedPanelIds` and `useWorkspaceLayoutResets` (→ 73) for the Dockview
+ * bridge's per-tab docked membership + reset-rebuild signal (both added to
+ * `InertSlice` — RN has no dockview bridge). The compiler found every one of
+ * these on the next catch-up merge, because `buildFakeViewModel` is typed
+ * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
+ * the one member without a `use` prefix, which a hand-written census had
+ * missed while reporting a confident 67 of 67.
+ */
+const VIEW_MODEL_MEMBER_COUNT = 73;

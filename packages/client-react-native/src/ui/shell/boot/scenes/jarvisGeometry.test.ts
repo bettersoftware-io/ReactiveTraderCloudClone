@@ -34,9 +34,6 @@ import {
   spokeZPlane,
 } from "./jarvisGeometry";
 
-const FRAGMENTS = jarvisFragments();
-const PARTICLES = jarvisParticles();
-
 // ── build-once tables ───────────────────────────────────────────────────────
 
 test("there are fourteen blueprint fragments, deterministic across calls", () => {
@@ -374,3 +371,7 @@ test("the banner blinks only while projecting, then holds solid", () => {
   expect(Math.min(...blinking)).toBeLessThan(0.99);
   expect(Math.min(...blinking)).toBeGreaterThanOrEqual(0.55);
 });
+
+const FRAGMENTS = jarvisFragments();
+
+const PARTICLES = jarvisParticles();

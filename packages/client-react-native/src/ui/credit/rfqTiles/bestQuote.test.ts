@@ -4,9 +4,6 @@ import { Direction, type Quote, type Rfq, RfqState } from "@rtc/domain";
 
 import { findBestQuoteId } from "#/ui/credit/rfqTiles/bestQuote";
 
-const BUY_RFQ: Rfq = rfq(Direction.Buy);
-const SELL_RFQ: Rfq = rfq(Direction.Sell);
-
 describe("findBestQuoteId", () => {
   it("picks the LOWEST price for a Buy", () => {
     expect(findBestQuoteId(BUY_RFQ, [priced(10, 99), priced(11, 97)])).toBe(11);
@@ -66,3 +63,7 @@ function priced(id: number, price: number): Quote {
 function unpriced(id: number): Quote {
   return { id, rfqId: 1, dealerId: id, state: { type: "pendingWithoutPrice" } };
 }
+
+const BUY_RFQ: Rfq = rfq(Direction.Buy);
+
+const SELL_RFQ: Rfq = rfq(Direction.Sell);

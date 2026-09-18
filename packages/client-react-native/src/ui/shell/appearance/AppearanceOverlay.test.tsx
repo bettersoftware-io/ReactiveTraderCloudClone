@@ -2,16 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { appearanceOverlayPage } from "#tests/pages/AppearanceOverlayPage";
 
-// `@gorhom/bottom-sheet` is replaced package-wide by the manual mock at
-// `__mocks__/@gorhom/bottom-sheet.tsx` (picked up automatically by jest, no
-// `jest.mock` call needed here). That double gates its `children` behind the
-// imperative `.present()`/`.dismiss()` handle rather than always rendering
-// them, matching the real component's own `mount` contract — so
-// `page.exists("appearance-sheet")` below is proof `.present()` was actually
-// invoked, not just that the tree contains a `BottomSheetView`.
-
-const page = appearanceOverlayPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -45,3 +35,13 @@ test("presents the sheet on a later open, not just at first mount", async () => 
   await page.rerenderOpen(true);
   expect(page.exists("appearance-sheet")).toBe(true);
 });
+
+// `@gorhom/bottom-sheet` is replaced package-wide by the manual mock at
+// `__mocks__/@gorhom/bottom-sheet.tsx` (picked up automatically by jest, no
+// `jest.mock` call needed here). That double gates its `children` behind the
+// imperative `.present()`/`.dismiss()` handle rather than always rendering
+// them, matching the real component's own `mount` contract — so
+// `page.exists("appearance-sheet")` below is proof `.present()` was actually
+// invoked, not just that the tree contains a `BottomSheetView`.
+
+const page = appearanceOverlayPage();

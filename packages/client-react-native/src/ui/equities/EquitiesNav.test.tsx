@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { equitiesNavPage } from "#tests/pages/EquitiesNavPage";
 
-const page = equitiesNavPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -22,3 +20,5 @@ test("reports a change", async () => {
   await page.pressTab("trade");
   expect(onChange).toHaveBeenCalledWith("trade");
 });
+
+const page = equitiesNavPage();

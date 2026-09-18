@@ -10,31 +10,9 @@ const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-const page = tradeRowPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const DONE_TRADE: Trade = {
-  tradeId: 42,
-  tradeName: "Trade 42",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.53818,
-  status: TradeStatus.Done,
-  tradeDate: "2026-07-01",
-  valueDate: "2026-07-03",
-};
-
-const REJECTED_TRADE: Trade = {
-  ...DONE_TRADE,
-  tradeId: 43,
-  direction: Direction.Sell,
-  status: TradeStatus.Rejected,
-};
 
 test("renders formatted pair, direction subline, notional, rate and status", async () => {
   await page.mount(DONE_TRADE, false, "09:15:22");
@@ -115,3 +93,25 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = tradeRowPage();
+
+const DONE_TRADE: Trade = {
+  tradeId: 42,
+  tradeName: "Trade 42",
+  currencyPair: "EURUSD",
+  notional: 1_000_000,
+  dealtCurrency: "EUR",
+  direction: Direction.Buy,
+  spotRate: 1.53818,
+  status: TradeStatus.Done,
+  tradeDate: "2026-07-01",
+  valueDate: "2026-07-03",
+};
+
+const REJECTED_TRADE: Trade = {
+  ...DONE_TRADE,
+  tradeId: 43,
+  direction: Direction.Sell,
+  status: TradeStatus.Rejected,
+};

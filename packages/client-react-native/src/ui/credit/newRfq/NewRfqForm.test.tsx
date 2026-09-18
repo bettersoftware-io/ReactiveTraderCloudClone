@@ -8,13 +8,6 @@ import {
   newRfqFormPage,
 } from "#tests/pages/NewRfqFormPage";
 
-const DEALERS: readonly Dealer[] = [
-  { id: 1, name: "Bank A" },
-  { id: 2, name: "Bank B" },
-];
-
-const page = newRfqFormPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -219,3 +212,10 @@ test("renders the confirmed card in the confirmed state", async () => {
   await page.mountConfirmed(submit, DEALERS, 77);
   expect(page.containsTextContent("rfq-confirmed", "RFQ ID: 77")).toBe(true);
 });
+
+const DEALERS: readonly Dealer[] = [
+  { id: 1, name: "Bank A" },
+  { id: 2, name: "Bank B" },
+];
+
+const page = newRfqFormPage();

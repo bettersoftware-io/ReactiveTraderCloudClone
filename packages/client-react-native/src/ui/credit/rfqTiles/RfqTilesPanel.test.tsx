@@ -4,8 +4,6 @@ import { Direction, type Rfq, RfqState } from "@rtc/domain";
 
 import { rfqTilesPanelPage } from "#tests/pages/RfqTilesPanelPage";
 
-const page = rfqTilesPanelPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -65,3 +63,5 @@ function rfq(id: number, state: RfqState): Rfq {
     creationTimestamp: id,
   };
 }
+
+const page = rfqTilesPanelPage();

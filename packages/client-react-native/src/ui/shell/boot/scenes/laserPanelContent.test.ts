@@ -9,8 +9,6 @@ import {
   panelContentShapes,
 } from "./laserPanelContent.js";
 
-const RECT = { x: 0, y: 0, width: 200, height: 100 };
-
 test("header panels lay out four chips, the first in the alt colour", () => {
   const shapes = panelContentShapes("header", RECT);
   expect(shapes).toHaveLength(4);
@@ -118,3 +116,5 @@ test("every panel's content fits inside its own rect", () => {
 function isFillRect(shape: ContentShape): shape is FillRectContentShape {
   return shape.kind === "fillRect";
 }
+
+const RECT = { x: 0, y: 0, width: 200, height: 100 };

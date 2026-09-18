@@ -6,8 +6,6 @@ import { ratesModulePage } from "#tests/pages/RatesModulePage";
 
 const mockPairs = jest.fn();
 
-const page = ratesModulePage();
-
 test("renders tiles and filters them", async () => {
   mockPairs.mockReturnValue([pair("EURUSD"), pair("USDJPY"), pair("EURJPY")]);
   await page.mount();
@@ -55,3 +53,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   }; // static in tests — no reanimated layout
 });
+
+const page = ratesModulePage();

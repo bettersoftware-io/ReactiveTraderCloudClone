@@ -31,22 +31,9 @@ const mockPrice: Price = {
   creationTimestamp: 0,
 };
 
-const page = tradeTicketSheetPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const pair: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.08,
-  typicalSpreadPips: 1,
-};
 
 test("executes a buy at the current notional", async () => {
   mockExecutionStatus = "ready";
@@ -168,3 +155,16 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = tradeTicketSheetPage();
+
+const pair: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.08,
+  typicalSpreadPips: 1,
+};

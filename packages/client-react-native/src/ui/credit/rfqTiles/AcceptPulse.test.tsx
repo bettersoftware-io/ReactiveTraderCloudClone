@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { acceptPulsePage } from "#tests/pages/AcceptPulsePage";
 
-const page = acceptPulsePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -18,3 +16,5 @@ test("renders nothing when motion is disabled", async () => {
   expect(page.exists("accept-pulse")).toBe(false);
   expect(page.isEmpty()).toBe(true);
 });
+
+const page = acceptPulsePage();

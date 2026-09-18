@@ -8,8 +8,6 @@ import { rnThemeTokens } from "#/ui/theme/tokens";
 import { bootSequencePage } from "#tests/pages/BootSequencePage";
 
 const mockUseBootMotionEnabled = jest.fn<() => boolean>();
-const page = bootSequencePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -170,3 +168,5 @@ jest.mock("#/ui/shell/boot/bootScene", () => {
     },
   };
 });
+
+const page = bootSequencePage();

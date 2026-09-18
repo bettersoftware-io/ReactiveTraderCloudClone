@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { authGatePage } from "#tests/pages/AuthGatePage";
 
-const page = authGatePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -28,3 +26,5 @@ test("authenticated: renders the children, not LoginScreen", async () => {
   expect(page.exists("child-marker")).toBe(true);
   expect(page.exists("login-screen")).toBe(false);
 });
+
+const page = authGatePage();

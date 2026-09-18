@@ -13,8 +13,6 @@ const mockUseGyroDrift = jest.fn((_enabled: boolean) => {
  * canvas actually handed to the scene (the pinned clock, or the live one). */
 const mockSceneProps: SceneProbe = { current: null };
 
-const page = bootCanvasPage();
-
 afterEach(async () => {
   await page.unmountAll();
   jest.restoreAllMocks();
@@ -126,3 +124,5 @@ jest.mock("#/ui/shell/boot/bootScene", () => {
     },
   };
 });
+
+const page = bootCanvasPage();

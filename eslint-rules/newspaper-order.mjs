@@ -10,20 +10,22 @@
 //    hoist, types are erased, and both runners hoist their mock factories above
 //    the imports, so physical position cannot change behaviour.
 //
-// 2. FIXTURES (`{ fixtures: true }`) — opt-in per package. Module-level
-//    `const`/`let` fixtures join the move. This one cannot be unconditional,
-//    because a `const` does NOT hoist: Vitest runs every `describe` callback
-//    synchronously at COLLECTION time, so a fixture that a describe body reads
-//    would land in the temporal dead zone and kill the file at import. The rule
-//    therefore moves a fixture only when every reference to it is DEFERRED —
-//    read after module evaluation finishes — following helper calls
-//    transitively to decide (see isMovableFixture / isDeferredReference).
-//    Anything it cannot prove deferred is left exactly where it is.
+// 2. FIXTURES — module-level (and describe-level) `const`/`let` fixtures join
+//    the move, but NOT unconditionally, because a `const` does NOT hoist:
+//    Vitest and Jest both run every `describe` callback synchronously at
+//    COLLECTION time, so a fixture a describe body reads would land in the
+//    temporal dead zone and kill the file at import. The rule therefore moves a
+//    fixture only when every reference to it is DEFERRED — read after module
+//    evaluation finishes — following helper calls transitively to decide (see
+//    isMovableFixture / isDeferredReference). A `jest.mock`/`vi.mock` factory
+//    is NOT a deferred caller: both are hoisted above the imports, so a fixture
+//    a factory closes over stays put. Anything it cannot prove deferred is left
+//    exactly where it is.
 //
-// The arm is opt-in rather than repo-wide because it is a burn-down, not a
-// flip: 430 declarations across 199 test files at the time it was added. The
-// migrated list lives in eslint.config.mjs; add a package once its tree is
-// clean.
+// The fixtures arm was introduced as a per-package opt-in (`{ fixtures: true }`)
+// because it began as a burn-down — 493 declarations across ~300 test files.
+// Once every package was covered the option was removed and the behaviour made
+// the default: an option only ever set to `true` is dead configuration.
 //
 // ONE HAZARD THE AUTOFIX CANNOT SEE: TypeScript control-flow narrowing. A
 // `const` annotated with a UNION is narrowed by its initialiser, and because a
@@ -355,7 +357,7 @@ function startWithLeadingComments(node, sourceCode) {
 }
 
 /** Statements above the last test in `body` that belong below it. */
-function violationsIn(body, sourceCode, fixtures) {
+function violationsIn(body, sourceCode) {
   let lastPrimary = -1;
   for (let i = 0; i < body.length; i++) {
     if (isPrimary(body[i])) {
@@ -381,7 +383,7 @@ function violationsIn(body, sourceCode, fixtures) {
     }),
   );
   const candidates = new Set(
-    fixtures ? above.filter((stmt) => isMovableFixture(stmt, sourceCode)) : [],
+    above.filter((stmt) => isMovableFixture(stmt, sourceCode)),
   );
   const movableFixtures = movableFixtureGroup(candidates, sourceCode, below);
 
@@ -397,7 +399,6 @@ function violationsIn(body, sourceCode, fixtures) {
 
 function create(context) {
   const sourceCode = context.sourceCode;
-  const fixtures = context.options[0]?.fixtures === true;
 
   function reportBlock(violations, insertAt, indent, insertBefore = false) {
     if (violations.length === 0) {
@@ -449,7 +450,7 @@ function create(context) {
     // `:exit` rather than enter: isDeferredReference walks `parent` pointers,
     // which ESLint only populates as it traverses.
     "Program:exit"(program) {
-      const top = violationsIn(program.body, sourceCode, fixtures);
+      const top = violationsIn(program.body, sourceCode);
       if (top.before) {
         reportBlock(
           top.violations,
@@ -480,7 +481,7 @@ function create(context) {
               arg.body?.type === "BlockStatement"
             ) {
               const body = arg.body.body;
-              const found = violationsIn(body, sourceCode, fixtures);
+              const found = violationsIn(body, sourceCode);
               if (found.violations.length > 0) {
                 const indent = " ".repeat(body[0].loc.start.column);
                 if (found.before) {
@@ -531,18 +532,7 @@ export const newspaperOrder = {
         "Test files: keep type/helper declarations below the tests (newspaper order).",
     },
     fixable: "code",
-    schema: [
-      {
-        type: "object",
-        properties: {
-          // Opt-in per package while the burn-down runs: module-level
-          // const/let fixtures join the move, but only the provably-deferred
-          // ones (see isMovableFixture).
-          fixtures: { type: "boolean" },
-        },
-        additionalProperties: false,
-      },
-    ],
+    schema: [],
     messages: {
       moveDown:
         "Newspaper order: move type/helper declarations below the tests ({{count}} found).",

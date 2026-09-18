@@ -4,8 +4,6 @@ import type { Candle } from "@rtc/domain";
 
 import { rowSparklinePage } from "#tests/pages/RowSparklinePage";
 
-const page = rowSparklinePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -32,3 +30,5 @@ function candles(closes: number[]): readonly Candle[] {
     };
   });
 }
+
+const page = rowSparklinePage();

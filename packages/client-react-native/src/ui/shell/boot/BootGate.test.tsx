@@ -3,8 +3,6 @@ import { AccessibilityInfo, Animated } from "react-native";
 
 import { bootGatePage } from "#tests/pages/BootGatePage";
 
-const page = bootGatePage();
-
 afterEach(async () => {
   await page.unmountAll();
   jest.restoreAllMocks();
@@ -167,3 +165,5 @@ jest.mock("#/ui/shell/boot/useBootMotionEnabled", () => {
     },
   };
 });
+
+const page = bootGatePage();

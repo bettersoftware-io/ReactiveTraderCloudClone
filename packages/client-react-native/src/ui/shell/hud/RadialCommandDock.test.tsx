@@ -5,8 +5,6 @@ import type { JSX } from "react";
 import { radialCommandDockPage } from "#tests/pages/RadialCommandDockPage";
 
 const mockNavigate = jest.fn();
-const page = radialCommandDockPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -101,3 +99,5 @@ jest.mock("#/ui/theme/useTheme", () => {
     },
   };
 });
+
+const page = radialCommandDockPage();

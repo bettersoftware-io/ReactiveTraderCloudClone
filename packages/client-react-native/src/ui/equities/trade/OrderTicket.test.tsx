@@ -5,14 +5,6 @@ import type { OrderTicketState } from "@rtc/client-core";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { orderTicketPage } from "#tests/pages/OrderTicketPage";
 
-const editing: OrderTicketState = {
-  phase: "editing",
-  form: { symbol: "AAPL", side: "buy", type: "market", qty: 100 },
-  error: null,
-};
-
-const page = orderTicketPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -154,3 +146,11 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const editing: OrderTicketState = {
+  phase: "editing",
+  form: { symbol: "AAPL", side: "buy", type: "market", qty: 100 },
+  error: null,
+};
+
+const page = orderTicketPage();

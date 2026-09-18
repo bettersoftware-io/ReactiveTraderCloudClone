@@ -3,17 +3,9 @@ import type { SkFont } from "@shopify/react-native-skia";
 
 import { exposureBubblePage } from "#tests/pages/ExposureBubblePage";
 
-const page = exposureBubblePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const FONT = {
-  getTextWidth: () => {
-    return 24;
-  },
-} as unknown as SkFont;
 
 /**
  * A bubble is pure Skia, so no part of it carries a `testID` to query. What a
@@ -65,3 +57,11 @@ test("draws at rest immediately when motion is disabled", async () => {
 
   expect(page.countHosts("SkiaCircle")).toBe(2);
 });
+
+const page = exposureBubblePage();
+
+const FONT = {
+  getTextWidth: () => {
+    return 24;
+  },
+} as unknown as SkFont;

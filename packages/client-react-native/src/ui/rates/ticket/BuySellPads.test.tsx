@@ -5,6 +5,20 @@ import { Direction, PriceMovementType } from "@rtc/domain";
 
 import { buySellPadsPage } from "#tests/pages/BuySellPadsPage";
 
+test("SELL uses bid → Sell, BUY uses ask → Buy", async () => {
+  const onExecute = jest.fn();
+  await page.mount(pair, price, onExecute);
+
+  await page.press("sell-pad");
+  expect(onExecute).toHaveBeenCalledWith(Direction.Sell);
+
+  await page.press("buy-pad");
+  expect(onExecute).toHaveBeenCalledWith(Direction.Buy);
+
+  expect(page.hasText("1.4")).toBeTruthy(); // spread pill
+  await page.unmountAll();
+});
+
 const page = buySellPadsPage();
 
 const pair: CurrencyPair = {
@@ -28,17 +42,3 @@ const price: Price = {
   valueDate: "",
   creationTimestamp: 0,
 };
-
-test("SELL uses bid → Sell, BUY uses ask → Buy", async () => {
-  const onExecute = jest.fn();
-  await page.mount(pair, price, onExecute);
-
-  await page.press("sell-pad");
-  expect(onExecute).toHaveBeenCalledWith(Direction.Sell);
-
-  await page.press("buy-pad");
-  expect(onExecute).toHaveBeenCalledWith(Direction.Buy);
-
-  expect(page.hasText("1.4")).toBeTruthy(); // spread pill
-  await page.unmountAll();
-});

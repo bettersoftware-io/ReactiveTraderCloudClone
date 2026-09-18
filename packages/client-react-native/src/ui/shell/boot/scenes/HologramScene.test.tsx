@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { hologramScenePage } from "#tests/pages/HologramScenePage";
 
-const page = hologramScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -64,3 +62,5 @@ test("survives a mid-assembly frame, when both particles and columns draw", asyn
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = hologramScenePage();

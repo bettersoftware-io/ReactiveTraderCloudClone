@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { creditScreenPage } from "#tests/pages/CreditScreenPage";
 
-const page = creditScreenPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -24,3 +22,5 @@ test("switching to Sell Side shows the sell-side panel", async () => {
   await page.pressTab("sell-side");
   expect(page.exists("sell-side-panel")).toBe(true);
 });
+
+const page = creditScreenPage();

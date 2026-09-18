@@ -10,34 +10,6 @@ import {
   scaleBubbleRadius,
 } from "#/ui/analytics/bubbleDrawModel";
 
-/**
- * A deliberately spread book. `scaleBubbleRadius` sizes each bubble on its
- * share of the LARGEST absolute exposure, so the three nets below (+10M EUR,
- * -20M GBP, +100M AUD) are 10%, 20% and 100% of the book and land on rounded
- * diameters of 34, 39 and 74 — the last both the ramp's cap and the only one
- * over the large-label threshold. CAD nets to zero and is dropped.
- *
- * The ratios are the point: the same three magnitudes under the domain's own
- * `[min, max] -> [15, 60]` scale gave 30, 40 and 120px, a spread of 4x on a
- * phone card. The design's ramp compresses that to ~2.2x.
- */
-const SPREAD_BOOK: readonly CurrencyPairPosition[] = [
-  {
-    symbol: "EURGBP",
-    basePnl: 0,
-    baseTradedAmount: 10_000_000,
-    counterTradedAmount: -20_000_000,
-  },
-  {
-    symbol: "AUDCAD",
-    basePnl: 0,
-    baseTradedAmount: 100_000_000,
-    counterTradedAmount: 0,
-  },
-];
-
-const WIDTH = 320;
-
 describe("buildBubbleDrawModel", () => {
   it("draws one bubble per currency with a non-zero net, largest first", () => {
     const { entries } = buildBubbleDrawModel(SPREAD_BOOK, WIDTH);
@@ -220,3 +192,31 @@ function indexEntries(
     }),
   );
 }
+
+/**
+ * A deliberately spread book. `scaleBubbleRadius` sizes each bubble on its
+ * share of the LARGEST absolute exposure, so the three nets below (+10M EUR,
+ * -20M GBP, +100M AUD) are 10%, 20% and 100% of the book and land on rounded
+ * diameters of 34, 39 and 74 — the last both the ramp's cap and the only one
+ * over the large-label threshold. CAD nets to zero and is dropped.
+ *
+ * The ratios are the point: the same three magnitudes under the domain's own
+ * `[min, max] -> [15, 60]` scale gave 30, 40 and 120px, a spread of 4x on a
+ * phone card. The design's ramp compresses that to ~2.2x.
+ */
+const SPREAD_BOOK: readonly CurrencyPairPosition[] = [
+  {
+    symbol: "EURGBP",
+    basePnl: 0,
+    baseTradedAmount: 10_000_000,
+    counterTradedAmount: -20_000_000,
+  },
+  {
+    symbol: "AUDCAD",
+    basePnl: 0,
+    baseTradedAmount: 100_000_000,
+    counterTradedAmount: 0,
+  },
+];
+
+const WIDTH = 320;

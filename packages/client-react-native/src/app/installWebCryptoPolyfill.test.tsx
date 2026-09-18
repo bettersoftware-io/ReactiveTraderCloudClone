@@ -25,8 +25,6 @@ import { installWebCryptoPolyfill } from "#/app/installWebCryptoPolyfill";
  * nothing here asserts a UUID *shape*, which would only be testing the mock. */
 
 describe("installWebCryptoPolyfill", () => {
-  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto");
-
   afterEach(() => {
     if (original) {
       Object.defineProperty(globalThis, "crypto", original);
@@ -95,6 +93,8 @@ describe("installWebCryptoPolyfill", () => {
 
     expect(globalThis.crypto).toBe(first);
   });
+
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto");
 });
 
 jest.mock("expo-crypto", () => {

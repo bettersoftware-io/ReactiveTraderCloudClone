@@ -15,23 +15,6 @@ beforeEach(() => {
   store.clear();
 });
 
-const USER: SessionUser = {
-  name: "Anthony Stark",
-  initials: "AS",
-  role: "Senior FX Trader",
-  id: "TRD-0042",
-  email: "a.stark@reactivetrader.io",
-  desk: "G10 Spot · London",
-  clearance: "LEVEL 4 · FULL",
-};
-
-const SESSION: StoredSession = {
-  token: "tok-1",
-  user: USER,
-  username: "astark",
-  exp: 9_000_000,
-};
-
 describe("AsyncStorageSessionStore", () => {
   it("hydrate() resumes a persisted session into a synchronous read()", async () => {
     await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(SESSION));
@@ -105,3 +88,20 @@ vi.mock("@react-native-async-storage/async-storage", () => {
     },
   };
 });
+
+const USER: SessionUser = {
+  name: "Anthony Stark",
+  initials: "AS",
+  role: "Senior FX Trader",
+  id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
+};
+
+const SESSION: StoredSession = {
+  token: "tok-1",
+  user: USER,
+  username: "astark",
+  exp: 9_000_000,
+};

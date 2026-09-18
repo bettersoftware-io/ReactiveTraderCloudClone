@@ -35,9 +35,6 @@ import {
   tradeArcPoint,
 } from "./geoGeometry";
 
-const POLYS = geoPlanePolys();
-const CITIES = geoCityNodes();
-
 // ── plane mapping ───────────────────────────────────────────────────────────
 
 test("lon/lat maps to plane space exactly as the web does", () => {
@@ -338,3 +335,7 @@ test("the banner blinks until the grid is stable, then holds solid", () => {
   expect(Math.min(...blinking)).toBeLessThan(0.99);
   expect(Math.min(...blinking)).toBeGreaterThanOrEqual(0.55);
 });
+
+const POLYS = geoPlanePolys();
+
+const CITIES = geoCityNodes();

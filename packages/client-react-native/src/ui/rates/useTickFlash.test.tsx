@@ -2,8 +2,6 @@ import { expect, test } from "@jest/globals";
 
 import { tickFlashPage } from "#tests/pages/UseTickFlashPage";
 
-const page = tickFlashPage();
-
 // RNTL 14 (React 19) made `render`/`rerender` async — they await a concurrent
 // `act` (see harnessProbe.test.tsx).
 test("mounts and survives value changes and gating", async () => {
@@ -14,3 +12,5 @@ test("mounts and survives value changes and gating", async () => {
   expect(page.hasText("flash")).toBeTruthy();
   await page.unmountAll();
 });
+
+const page = tickFlashPage();
