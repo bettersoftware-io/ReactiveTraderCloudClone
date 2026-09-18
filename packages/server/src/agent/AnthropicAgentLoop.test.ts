@@ -40,7 +40,7 @@ describe("AnthropicAgentLoop", () => {
     let callIndex = 0;
     const calls: RunnerCall[] = [];
 
-    function factory(
+    function createRunner(
       params: FactoryParams,
       options: FactoryOptions,
     ): AnthropicRunner {
@@ -60,7 +60,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -120,7 +120,7 @@ describe("AnthropicAgentLoop", () => {
 
     const calls: RunnerCall[] = [];
 
-    function factory(
+    function createRunner(
       params: FactoryParams,
       options: FactoryOptions,
     ): AnthropicRunner {
@@ -152,7 +152,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(createFixtureTools),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -202,7 +202,7 @@ describe("AnthropicAgentLoop", () => {
     });
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield tradeStream;
@@ -239,7 +239,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(createFixtureTools),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -300,7 +300,7 @@ describe("AnthropicAgentLoop", () => {
     );
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield tradeStream;
@@ -337,7 +337,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(createFixtureTools),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -398,7 +398,7 @@ describe("AnthropicAgentLoop", () => {
     });
     let callCount = 0;
 
-    function factory(): AnthropicRunner {
+    function createRunner(): AnthropicRunner {
       callCount += 1;
 
       return {
@@ -413,7 +413,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -484,7 +484,7 @@ describe("AnthropicAgentLoop", () => {
     );
     let toolResult: string | undefined;
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield tradeStream;
@@ -522,7 +522,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(createFixtureTools),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -680,7 +680,7 @@ describe("AnthropicAgentLoop", () => {
     const pushed: BetaMessageParam[] = [];
     let callCount = 0;
 
-    function factory(): AnthropicRunner {
+    function createRunner(): AnthropicRunner {
       callCount += 1;
 
       return {
@@ -698,7 +698,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
     });
     const session = loop.createSession();
 
@@ -1018,7 +1018,7 @@ describe("AnthropicAgentLoop", () => {
     let callIndex = 0;
     const calls: RunnerCall[] = [];
 
-    function factory(
+    function createRunner(
       params: FactoryParams,
       options: FactoryOptions,
     ): AnthropicRunner {
@@ -1046,7 +1046,7 @@ describe("AnthropicAgentLoop", () => {
       apiKey: "test-key",
       knownSymbols: [],
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
       usageMeter: { recordTokens },
     });
     const session = loop.createSession();
@@ -1139,7 +1139,7 @@ describe("AnthropicAgentLoop", () => {
 
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield panelStream;
@@ -1159,7 +1159,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
       knownSymbols: ["GBPUSD"],
     });
     const session = loop.createSession();
@@ -1213,7 +1213,7 @@ describe("AnthropicAgentLoop", () => {
     });
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield panelStream;
@@ -1232,7 +1232,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
       knownSymbols: ["GBPUSD", "EURUSD"], // ZZZXXX is not in this roster
     });
     const session = loop.createSession();
@@ -1299,7 +1299,7 @@ describe("AnthropicAgentLoop", () => {
 
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield driveStream;
@@ -1318,7 +1318,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
       knownSymbols: [],
     });
     const session = loop.createSession();
@@ -1365,7 +1365,7 @@ describe("AnthropicAgentLoop", () => {
     });
     let toolResult = "";
 
-    function factory(params: FactoryParams): AnthropicRunner {
+    function createRunner(params: FactoryParams): AnthropicRunner {
       return {
         async *[Symbol.asyncIterator](): AsyncGenerator<AnthropicMessageStream> {
           yield driveStream;
@@ -1384,7 +1384,7 @@ describe("AnthropicAgentLoop", () => {
     const loop = new AnthropicAgentLoop({
       apiKey: "test-key",
       buildTools: createToolsFixture(),
-      runnerFactory: factory,
+      runnerFactory: createRunner,
       knownSymbols: [],
     });
     const session = loop.createSession();
