@@ -409,6 +409,52 @@ describe("createDockEngine", () => {
   });
 });
 
+// A reload tears the page down without unmounting anything, so dispose's
+// flush never runs — a change still inside the save debounce was simply lost
+// (a float followed by a quick reload came back docked: 6a follow-up). The
+// page's own `pagehide`, which a reload and a navigation both fire, lands
+// the pending save first.
+describe("pagehide flush", () => {
+  it("lands a save still inside the debounce when the page is hidden", async () => {
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...createBase(),
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    engine.floatPanel("fx-analytics");
+    // dockview's onDidLayoutChange is microtask-buffered.
+    await Promise.resolve();
+
+    expect(calls).toHaveLength(0);
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0] as string).floatingGroups).toHaveLength(1);
+    engine.dispose();
+  });
+
+  it("writes nothing on pagehide when no save is pending", () => {
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...createBase(),
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    expect(calls).toHaveLength(0);
+    engine.dispose();
+  });
+});
+
 describe("dispose flush — arrangement origin", () => {
   it("does not persist a layout no pointer touched (seed path)", () => {
     const calls: string[] = [];
@@ -2506,6 +2552,32 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
+  // A nearest-column maximize strips only its OWN column. A chart opened
+  // meanwhile lands at the root's right edge — outside that column — and
+  // must arrive as a full panel, not a strip (the inherited #724 gap:
+  // insertDynamicPanel routed every newcomer through the maximize's strip
+  // path whatever its boundary; reachable by maximizing the watchlist, which
+  // hosts the open-chart button, then opening a chart).
+  it("a chart opened outside a nearest-column maximize's column arrives as a full panel", () => {
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      ...strips.options,
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-watchlist");
+
+    const strippedByMaximize = Object.keys(strips.last).sort();
+
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+
+    expect(strips.last).not.toHaveProperty(INSTANCES[2]?.id as string);
+    expect(Object.keys(strips.last).sort()).toEqual(strippedByMaximize);
+    engine.dispose();
+  });
+
   it("R18 root maximize → open an instance → exit: the split is re-shared", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),
@@ -2913,6 +2985,45 @@ describe("unpinned dynamic panels share their split (R17)", () => {
         return sum + height;
       }, 0),
     ).toBe(980);
+    engine.dispose();
+  });
+
+  // Phase-4 follow-up (a): collapsing a chart instance handed its WHOLE
+  // freed width to the row's last unpinned member (dockview settles a size
+  // change from the split's last view) — the neighbouring instance ballooned
+  // until the collapsed one was expanded. The freed width belongs to the
+  // static member, the main area; every other instance keeps the width it
+  // had — including one the user dragged (R20), so this is not a re-share.
+  it("collapsing an instance gives its width to the main area, leaving the other instances as they were", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    dragWidth("i-aapl", 420);
+
+    const [chartBefore, aaplBefore, msftBefore] = cardWidths([
+      "eq-chart",
+      "i-aapl",
+      "i-msft",
+    ]);
+
+    engine.collapsePanel("i-msft");
+
+    const [chartAfter, aaplAfter] = cardWidths(["eq-chart", "i-aapl"]);
+
+    expect(aaplAfter).toBe(aaplBefore);
+    expect((chartAfter as number) - (chartBefore as number)).toBeGreaterThan(
+      (msftBefore as number) - 60,
+    );
+
+    engine.expandPanel("i-msft");
+
+    expect(cardWidths(["eq-chart", "i-aapl", "i-msft"])).toEqual([
+      chartBefore,
+      aaplBefore,
+      msftBefore,
+    ]);
     engine.dispose();
   });
 
@@ -4422,7 +4533,36 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
   // backing it — the clamp reads [100, MAX] whether or not the re-clamp ran,
   // so a clamp assertion here passes for a reason unrelated to the guard. The
   // census sees the call itself.
-  it("does not re-clamp a pin when there is nowhere to dock back to (R5)", () => {
+  // Ruling 37(b): closing a floated pinned panel left its float-suspended
+  // pin record behind (pruned only lazily), so reopening it in the SAME tick
+  // re-clamped the pin min=max — a panel closed and reopened without any
+  // float comes back unclamped (measured: [100, MAX] vs [367, 367]). The
+  // settle that follows the close now drops the record of a panel that has
+  // left the dock.
+  it("a floated pinned panel closed and reopened in the same tick comes back unclamped (Ruling 37b)", () => {
+    const engine = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+      seed: { ...FX_LIKE, initialPx: [undefined, 360] },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.closePanel("fx-analytics");
+    engine.reopenPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
+  // Docking into an EMPTY grid lands the panel as the grid's root — Dock is
+  // never a silent no-op (it used to be here, which stranded a tab whose
+  // every panel had floated). The pin its float suspended stays suspended:
+  // a lone pinned panel has nothing beside it to absorb the dock's spare
+  // width, so clamping it would shrink the whole grid to the rail's 367px
+  // (follow-up (b)'s bug) — R5's "re-clamp if it still applies" does not
+  // apply.
+  it("docks into an empty grid without re-clamping the pin nothing could absorb around (R5)", () => {
     const engine = createDockEngine({
       ...createBase(),
       container: sizedContainer(1440, 900),
@@ -4432,13 +4572,10 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.floatPanel("fx-analytics");
     engine.closePanel("fx-rates");
     engine.closePanel("fx-blotter");
-
-    const touched = spyOnGroupSizing("fx-analytics");
-
     engine.dockPanel("fx-analytics");
 
-    expect(locationOf("fx-analytics")).toBe("floating");
-    expect(touched.calls()).toEqual([]);
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
     engine.dispose();
   });
 
@@ -4791,6 +4928,30 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
 
     expect(container.querySelector(".dv-resize-container")).not.toBeNull();
     expect(container.querySelector(".dv-floating-titlebar")).toBeNull();
+    engine.dispose();
+  });
+
+  // Floating EVERY panel leaves the grid empty; Dock must still bring a
+  // panel home (user report, 2026-09-19: "I can't unfloat them anymore").
+  // The first to dock has no grid-resident seed sibling, so it becomes the
+  // grid's new root; the rest then find it and return to their seed
+  // positions around it.
+  it("docks a panel home even when every panel in the tab is floating", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createBase(), container });
+    const ids = ["fx-rates", "fx-blotter", "fx-analytics"];
+
+    for (const id of ids) {
+      engine.floatPanel(id);
+    }
+
+    expect(ids.map(locationOf)).toEqual(["floating", "floating", "floating"]);
+
+    for (const id of ids) {
+      engine.dockPanel(id);
+    }
+
+    expect(ids.map(locationOf)).toEqual(["grid", "grid", "grid"]);
     engine.dispose();
   });
 
@@ -5183,6 +5344,47 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
       engine.exitMaximize();
 
       expect(sizes()).toContainEqual({ height: before });
+      engine.dispose();
+    });
+
+    // A deferred restore describes the spot the panel docked INTO. Moved
+    // again before the maximize ends (reachable: a nearest-column maximize
+    // strips one column, and the rest of the grid still takes drops), the
+    // panel's remembered extent no longer describes where it is — applying
+    // it on exit sized the new spot to the old one (#770's recorded
+    // residual). The entry is dropped instead.
+    it("drops a deferred restore when the panel moves again before the maximize ends", () => {
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      engine.maximizePanel("fx-rates");
+
+      const sizes = recordSetSize("fx-blotter");
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+      const analytics = api.getPanel("fx-analytics");
+
+      if (rates === undefined || analytics === undefined) {
+        throw new Error("fixture panels missing");
+      }
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "bottom",
+      });
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: analytics.group,
+        position: "bottom",
+      });
+
+      engine.exitMaximize();
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).not.toContainEqual({ height: before });
       engine.dispose();
     });
 
