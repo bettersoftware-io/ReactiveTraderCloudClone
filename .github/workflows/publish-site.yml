@@ -19,12 +19,19 @@ concurrency:
   group: pages-write
   cancel-in-progress: false
 
+# Read-only by default; the one job that pushes to gh-pages is granted write
+# below. Same effect today (there is only one job), but a second job added
+# later no longer inherits a write token by accident — and all four publishing
+# workflows now scope it the same way. (Scorecard TokenPermissions; ADR-007.)
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      # publish-to-pages.mjs pushes the staged site to the gh-pages branch.
+      contents: write
     steps:
       # lfs: true materialises the real deck bytes, not the 3-line LFS pointer.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
