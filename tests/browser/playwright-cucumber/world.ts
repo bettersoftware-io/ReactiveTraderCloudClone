@@ -42,9 +42,15 @@ export class PlaywrightWorld extends World {
       value: JARVIS_NARRATOR_OFF_VALUE,
     });
     this.page = await this.context.newPage();
+    const pageErrors: string[] = [];
+    this.page.on("pageerror", (error) => {
+      pageErrors.push(error.message);
+    });
+
     this.ctx = {
       po: buildPlaywrightPageObjects(this.page),
       scratch: new Scratchpad(),
+      pageErrors,
     };
   }
 

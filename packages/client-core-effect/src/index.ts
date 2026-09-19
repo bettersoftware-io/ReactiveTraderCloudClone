@@ -1,13 +1,15 @@
-export { fromObservable, peek, rpc } from "#/bridge/in";
 export {
   type EffectHost,
+  type FoldRun,
   type FoldUpdate,
+  type FromPort,
   pushReconnectIntent,
   refToStateStream,
   type SharedFold,
   sharedFold,
   streamToStream,
 } from "#/bridge/out";
+export { peek, peekCurrent } from "#/bridge/peek";
 export { createCommands } from "#/commands";
 export {
   composeMachinesWithBase,

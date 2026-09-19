@@ -13,10 +13,15 @@ FROM node:26-slim@sha256:3a771f83944bb763050c23c0225c260638c4b7899e7a72485ef75e5
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
 
-# node:26-slim no longer bundles Corepack, so install it first (pinned to the
-# same version CI uses), then enable it to provide the pnpm version pinned in
-# package.json's packageManager field.
-RUN npm install -g corepack@0.35.0 && corepack enable
+# node:26-slim no longer bundles Corepack, so provision it first — from the SAME
+# lockfile-pinned manifest CI uses (scripts/ci-tooling/corepack, sha512
+# integrity via `npm ci`), not an ad-hoc `npm install -g`. It then provides the
+# pnpm version pinned in package.json's packageManager field. Copied ahead of
+# the full `COPY . .` so this layer caches across source-only changes.
+COPY scripts/enable-corepack.sh scripts/enable-corepack.sh
+COPY scripts/ci-tooling/corepack scripts/ci-tooling/corepack
+RUN scripts/enable-corepack.sh /opt/corepack
+ENV PATH="/opt/corepack/bin:${PATH}"
 
 # Copy the whole repo (the .dockerignore keeps it lean), install, build server.
 COPY . .

@@ -123,9 +123,13 @@ Three primitives in `src/kernel/` (~200 lines, zero dependencies):
 - `Topic<T>` — hot multicast with optional replay-1 and refCount; producer is
   `async (signal) => void`, started on first subscriber, aborted on last.
   `shareReplay({bufferSize:1, refCount:true})` written once, explicitly.
+  **Amended in the residual sweep:** failure RESETS the topic (the operator's
+  `resetOnError: true`); a throwing subscriber is isolated and its error
+  rethrown on a macrotask, as rxjs does.
 - `spawn(fn, signal)` — fire-and-forget loop; swallows `AbortError`, routes
   any other error to the owning Topic/Store so it surfaces as a stream error
-  exactly as an RxJS source error would.
+  exactly as an RxJS source error would. Cancellation is cooperative (an
+  `AbortSignal`) by design.
 
 Cold streams are `AsyncIterable<T>`; per-consumer state is a generator-local
 `let` (what Phase 2 did). Cancellation is `AbortController` throughout:
@@ -173,7 +177,11 @@ Pinned to `effect` 3.22.x.
   **Amended in slice 1a:** `Stream.share` replays on a fiber, so it cannot be
   the outward envelope; presenter streams are `sharedFold`s (a synchronously
   seeded `SubscriptionRef` + a per-warm-period `Scope`) — ADR-006, "Learned
-  in slice 1a".
+  in slice 1a". **Residual sweep:** a warm period may start seedless
+  (`seed()` returns `None`; subscribers hear nothing until the first write);
+  the producer's first write awaits a watcher latch; every port subscription
+  a producer opens goes through the period-scoped `fromPort`, which the
+  period releases.
 - **Machines.** State is a `SubscriptionRef<S>` (`changes` is documented as
   "the current value as well as all changes" — replay-current). Intents are
   Effects forked into the machine's own `Scope`; `dispose` closes the scope.
@@ -189,9 +197,12 @@ Pinned to `effect` 3.22.x.
   `priceStream` (which consumes `powerSaver.isCalm$`) is the first such
   dependency. Slice 1a keeps slice 0's plain-object overlay with `host`
   injected.
-- **Bridge.** `bridge/in.ts` — `fromObservable(obs): Stream<T>` via
-  `Stream.asyncPush` (subscribe in register, unsubscribe in the scope
-  finaliser), `rpc(obs): Effect<T, E>` via `Effect.async`. `bridge/out.ts` —
+- **Bridge.** `bridge/in.ts` — `fromObservable(obs, scope?): Stream<T>` —
+  subscribes EAGERLY at call time into a Queue (slice 1a), reachable only
+  through `sharedFold`'s `fromPort`; `peek`/`peekCurrent` (`bridge/peek.ts`)
+  read a replay-current port synchronously and throw its synchronous error;
+  `rpc(obs): Effect<T, E>` via `Effect.async` (residual sweep: no longer
+  exported from the package index — bridge-internal). `bridge/out.ts` —
   `streamToStream(runtime, stream)` runs `Stream.runForEach` as a forked
   fiber per `Observable` subscribe and interrupts on unsubscribe;
   `refToStateStream(runtime, ref)` seeds `state()` with
@@ -231,7 +242,15 @@ Dev-only, consumed by each core as a devDependency, never from `src`.
   `keyof MachineFactories` / `keyof AppCommands`, so an unlisted member is a
   COMPILE error rather than a test failure; a `null` entry must also appear in
   the hand-maintained `PENDING_SUITES` array, and `registry.test.ts` fails on
-  any drift between the two lists.
+  any drift between the two lists. **Residual sweep:** one cross-member
+  suite, `portDiscipline`, runs in every runner and witnesses that each port
+  method is called once, at construction (the harness counts calls through a
+  Proxy) — read as CONSTANCY, not an absolute count: a strangler core's
+  `composeWithBase` constructs the RxJS base app's presenter (one port call)
+  and then the native overlay (one more), so an absolute "once" holds only
+  for the RxJS core until slice 8 removes delegation; the suite instead
+  asserts the count after construction never changes across warm periods or
+  synchronous reads.
 - **Harness.** `makeHarness()` → `{ app, machines, driver, teardown }`.
   **Shipped shape:** `scriptPorts(base)` WRAPS an `AppPorts` the runner
   supplies — each core's runner builds the base itself from
@@ -334,6 +353,7 @@ alternative cores have them native; e2e matrix green; `parity.json` updated.
 
 Slice 1a shipped 2026-09-19 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
 Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b.md`](../plans/2026-09-19-pluggable-core-slice-1b.md)) — no new primitive was needed; every preference presenter is now native in both alternative cores.
+Residual sweep shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-residual-sweep.md`](../plans/2026-09-19-pluggable-core-residual-sweep.md)).
 
 ### Slice 8 — closing
 

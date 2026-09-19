@@ -1,5 +1,5 @@
 // packages/client-core-effect/src/presenters/connection.ts
-import { Stream } from "effect";
+import { Option, Stream } from "effect";
 
 import type { ConnectionStatusPresenter } from "@rtc/core-api";
 import {
@@ -8,8 +8,12 @@ import {
   nextConnectionStatus,
 } from "@rtc/domain";
 
-import { fromObservable } from "#/bridge/in";
-import { type EffectHost, type FoldUpdate, sharedFold } from "#/bridge/out";
+import {
+  type EffectHost,
+  type FoldUpdate,
+  type FromPort,
+  sharedFold,
+} from "#/bridge/out";
 
 /** `status$` is the fold of the connection-events port over
  * `nextConnectionStatus` as a `sharedFold`: seeded with `initial` on every
@@ -21,16 +25,24 @@ export function createConnectionPresenter(
   events: ConnectionEventsPort,
   initial: ConnectionStatus = ConnectionStatus.CONNECTING,
 ): ConnectionStatusPresenter {
+  // Called ONCE, here — every warm period re-subscribes this Observable.
+  const source = events.events();
+
   return {
     status$: sharedFold(host, {
       seed: () => {
-        return initial;
+        return Option.some(initial);
       },
-      run: (update: FoldUpdate<ConnectionStatus>) => {
-        return fromObservable(events.events()).pipe(
+      run: (update: FoldUpdate<ConnectionStatus>, fromPort: FromPort) => {
+        return fromPort(source).pipe(
           Stream.runForEach((event) => {
             return update((current) => {
-              return nextConnectionStatus(current, event);
+              return nextConnectionStatus(
+                Option.getOrElse(current, () => {
+                  return initial;
+                }),
+                event,
+              );
             });
           }),
         );

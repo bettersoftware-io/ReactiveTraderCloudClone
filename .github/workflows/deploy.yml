@@ -92,9 +92,9 @@ jobs:
           persist-credentials: false
 
       - name: Install flyctl
-        run: |
-          curl -L https://fly.io/install.sh | sh
-          echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
+        # Pinned + sha256-verified, not `curl … | sh`: see scripts/install-flyctl.sh
+        # (its header states the one trade-off — a pinned CLI can eventually rot).
+        run: scripts/install-flyctl.sh
 
       # AUTH_SECRET (HMAC signing secret) and AUTH_USERS (the "user:pass,..."
       # credential roster) are Fly secrets set BY HAND (`flyctl secrets set`) —
@@ -131,19 +131,16 @@ jobs:
           node-version: 26
 
       - name: Enable Corepack
-        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
-        # dependencies` → none), so nothing here floats — and it cannot come from the
-        # lockfile, since it provisions the package manager that READS the lockfile.
-        # See docs/adr/ADR-007.
-        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
+        # Lockfile-pinned (sha512), not an ad-hoc `npm install -g`: see the header of
+        # scripts/enable-corepack.sh. Must run AFTER checkout — the script is in-repo.
+        run: scripts/enable-corepack.sh
 
       # Pinned major: vercel@58 (2026-07-27) breaks `vercel pull` under env-var
       # project linking (VERCEL_ORG_ID/VERCEL_PROJECT_ID) — bump deliberately.
       - name: Install Vercel CLI
-        # zizmor ignore is TEMPORARY: a real (mild) finding — the CLI's transitive tree
-        # re-resolves on every deploy, outside the lockfile and the 24h cooldown.
-        # Tracked in docs/STATUS.md; see docs/adr/ADR-007.
-        run: npm install -g vercel@57 # zizmor: ignore[adhoc-packages]
+        # Lockfile-pinned (sha512) with audited overrides, not an ad-hoc
+        # `npm install -g`: see the header of scripts/install-vercel.sh.
+        run: scripts/install-vercel.sh
 
       - name: Pull Vercel project settings + env
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
@@ -249,19 +246,16 @@ jobs:
           node-version: 26
 
       - name: Enable Corepack
-        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
-        # dependencies` → none), so nothing here floats — and it cannot come from the
-        # lockfile, since it provisions the package manager that READS the lockfile.
-        # See docs/adr/ADR-007.
-        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
+        # Lockfile-pinned (sha512), not an ad-hoc `npm install -g`: see the header of
+        # scripts/enable-corepack.sh. Must run AFTER checkout — the script is in-repo.
+        run: scripts/enable-corepack.sh
 
       # Pinned major: vercel@58 (2026-07-27) breaks `vercel pull` under env-var
       # project linking (VERCEL_ORG_ID/VERCEL_PROJECT_ID) — bump deliberately.
       - name: Install Vercel CLI
-        # zizmor ignore is TEMPORARY: a real (mild) finding — the CLI's transitive tree
-        # re-resolves on every deploy, outside the lockfile and the 24h cooldown.
-        # Tracked in docs/STATUS.md; see docs/adr/ADR-007.
-        run: npm install -g vercel@57 # zizmor: ignore[adhoc-packages]
+        # Lockfile-pinned (sha512) with audited overrides, not an ad-hoc
+        # `npm install -g`: see the header of scripts/install-vercel.sh.
+        run: scripts/install-vercel.sh
 
       - name: Pull Vercel project settings + env
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"

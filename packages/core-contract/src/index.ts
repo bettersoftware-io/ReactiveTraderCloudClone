@@ -1,9 +1,11 @@
 import type { MakeHarness } from "#/harness/harness";
 import { CONTRACT_SUITES, type ContractMember } from "#/registry";
+import { describePortDisciplineContract } from "#/suites/portDiscipline";
 
 export { type Collected, collect } from "#/harness/collect";
 export type { CoreHarness, MakeHarness, Suite } from "#/harness/harness";
 export {
+  type PortMethodName,
   type ScriptedDriver,
   type ScriptedPorts,
   scriptPorts,
@@ -14,6 +16,7 @@ export {
   type ContractMember,
   PENDING_SUITES,
 } from "#/registry";
+export { describePortDisciplineContract } from "#/suites/portDiscipline";
 
 /** Run every registered suite against one core. Each core has exactly one
  * runner file calling this — the core-level twin of ui-contract's
@@ -32,4 +35,6 @@ export function describeCoreContract(
       suite(`${label} :: ${member}`, makeHarness);
     }
   }
+
+  describePortDisciplineContract(label, makeHarness);
 }

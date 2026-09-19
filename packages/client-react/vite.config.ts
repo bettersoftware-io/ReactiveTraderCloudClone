@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import {
+  defineConfig,
+  type Plugin,
+  type ResolvedConfig,
+  type ViteDevServer,
+} from "vite";
 
 /** Serve the built `@rtc/devtools-app` inspector at /devtools/ in dev (Vite
  * middleware) and copy it into dist/devtools at build time. Same-origin is
@@ -48,8 +53,18 @@ function devtoolsPanel(): Plugin {
     return "application/octet-stream";
   }
 
+  // The build's resolved output directory (Vite's own `--outDir`/config
+  // default, not the hardcoded "dist" literal) — read once configResolved
+  // fires, so closeBundle copies devtools alongside wherever this build
+  // actually wrote its output (e.g. check-core-bundle.mjs's per-core temp
+  // dirs), never a stale "dist" sibling.
+  let outDir = "dist";
+
   return {
     name: "rtc-devtools-panel",
+    configResolved(config: ResolvedConfig): void {
+      outDir = config.build.outDir;
+    },
     configureServer(server: ViteDevServer): void {
       server.middlewares.use("/devtools", (req, res, next): void => {
         // Connect strips the "/devtools" mount prefix from req.url, so "/" here
@@ -77,7 +92,7 @@ function devtoolsPanel(): Plugin {
     },
     closeBundle(): void {
       if (existsSync(appDist)) {
-        cpSync(appDist, join("dist", "devtools"), { recursive: true });
+        cpSync(appDist, join(outDir, "devtools"), { recursive: true });
       }
     },
   };

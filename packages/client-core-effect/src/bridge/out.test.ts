@@ -3,6 +3,7 @@ import {
   Exit,
   Layer,
   ManagedRuntime,
+  Option,
   Scope,
   Stream,
   SubscriptionRef,
@@ -12,10 +13,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
 
-import { fromObservable } from "#/bridge/in";
 import {
   type EffectHost,
   type FoldUpdate,
+  type FromPort,
   pushReconnectIntent,
   refToStateStream,
   sharedFold,
@@ -189,7 +190,7 @@ describe("bridge/out", () => {
   it("sharedFold() hands the seed to the first subscriber synchronously", () => {
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 1;
+        return Option.some(1);
       },
       run: () => {
         return Effect.never;
@@ -207,13 +208,17 @@ describe("bridge/out", () => {
     const subject = new Subject<number>();
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
-      run: (update: FoldUpdate<number>) => {
-        return fromObservable(subject).pipe(
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
           Stream.runForEach((e: number) => {
             return update((s) => {
-              return s + e;
+              return (
+                Option.getOrElse(s, () => {
+                  return 0;
+                }) + e
+              );
             });
           }),
         );
@@ -240,13 +245,17 @@ describe("bridge/out", () => {
     const subject = new Subject<number>();
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
-      run: (update: FoldUpdate<number>) => {
-        return fromObservable(subject).pipe(
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
           Stream.runForEach((e: number) => {
             return update((s) => {
-              return s + e;
+              return (
+                Option.getOrElse(s, () => {
+                  return 0;
+                }) + e
+              );
             });
           }),
         );
@@ -272,7 +281,7 @@ describe("bridge/out", () => {
     let starts = 0;
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         starts += 1;
@@ -302,7 +311,7 @@ describe("bridge/out", () => {
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
-        return 1;
+        return Option.some(1);
       },
       run: (update: FoldUpdate<number>) => {
         writes.push(update);
@@ -322,7 +331,11 @@ describe("bridge/out", () => {
     );
     await host.runtime.runPromise(
       (writes[0] as FoldUpdate<number>)((current) => {
-        return current + 1;
+        return (
+          Option.getOrElse(current, () => {
+            return 0;
+          }) + 1
+        );
       }),
     );
     await tick();
@@ -330,14 +343,14 @@ describe("bridge/out", () => {
     sub.unsubscribe();
   });
 
-  it("sharedFold() re-seeds on every cold → warm cycle and ignores a stale producer's writes", async () => {
+  it("sharedFold() re-seeds on every cold → warm cycle", async () => {
     const writes: FoldUpdate<number>[] = [];
     let seeds = 0;
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
-        return seeds * 10;
+        return Option.some(seeds * 10);
       },
       run: (update: FoldUpdate<number>) => {
         writes.push(update);
@@ -359,12 +372,11 @@ describe("bridge/out", () => {
     expect(first).toEqual([10]);
     expect(second).toEqual([20]);
     expect(writes).toHaveLength(2);
-    // The FIRST warm period's producer writing after its period ended.
-    await host.runtime.runPromise(
-      (writes[0] as FoldUpdate<number>)(() => {
-        return 99;
-      }),
-    );
+    // The stale half of this case is gone with the generation counter: each
+    // period owns its OWN ref, so a dead period's producer writing late
+    // lands in a ref nothing is subscribed to — unobservable by
+    // construction, with nothing left to assert. What remains observable is
+    // that the LIVE period's writes still land.
     await host.runtime.runPromise(
       (writes[1] as FoldUpdate<number>)(() => {
         return 21;
@@ -375,11 +387,144 @@ describe("bridge/out", () => {
     secondSub.unsubscribe();
   });
 
+  it("sharedFold() with a None seed delivers nothing until the first write, then replays it", async () => {
+    const writes: FoldUpdate<number>[] = [];
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        return Option.none();
+      },
+      run: (update: FoldUpdate<number>) => {
+        writes.push(update);
+        return Effect.never;
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([]);
+    await tick();
+    await host.runtime.runPromise(
+      (writes[0] as FoldUpdate<number>)(() => {
+        return 7;
+      }),
+    );
+    await tick();
+    expect(seen).toEqual([7]);
+    const late: number[] = [];
+    const lateSub = stream.subscribe((v: number) => {
+      late.push(v);
+    });
+    expect(late).toEqual([7]);
+    lateSub.unsubscribe();
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() fails only the triggering subscriber when seed() throws, and starts no period", () => {
+    let runs = 0;
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        throw new Error("storage");
+      },
+      run: () => {
+        runs += 1;
+        return Effect.never;
+      },
+    });
+    let failure: unknown;
+    stream.subscribe({
+      error: (e: unknown) => {
+        failure = e;
+      },
+    });
+    expect((failure as Error).message).toBe("storage");
+    // A second subscribe tries again (no period was left half-open).
+    let second: unknown;
+    stream.subscribe({
+      error: (e: unknown) => {
+        second = e;
+      },
+    });
+    expect((second as Error).message).toBe("storage");
+    // "starts no period" said out loud: neither subscribe reached the
+    // producer at all, so there is nothing warm to leak.
+    expect(runs).toBe(0);
+  });
+
+  it("sharedFold() a stale period's producer failing after a re-warm does not error the new period's subscribers", async () => {
+    let failFirst: (() => void) | undefined;
+    let resumedWithFailure = false;
+    let runs = 0;
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: () => {
+        runs += 1;
+
+        if (runs === 1) {
+          return Effect.async<void, Error>((resume) => {
+            failFirst = () => {
+              resumedWithFailure = true;
+              resume(Effect.fail(new Error("stale")));
+            };
+          });
+        }
+
+        return Effect.never;
+      },
+    });
+    const first = stream.subscribe(() => {});
+    await tick();
+    first.unsubscribe();
+    // Before the close reaches the first producer, a new period starts …
+    const errors: unknown[] = [];
+    const second = stream.subscribe({
+      next: () => {},
+      error: (e: unknown) => {
+        errors.push(e);
+      },
+    });
+    // … and the first producer fails late.
+    failFirst?.();
+    await tick();
+    await tick();
+    expect(runs).toBe(2);
+    // An empty `errors` alone would also hold if the scope close had
+    // interrupted the first producer BEFORE `failFirst()` ran — a vacuous
+    // pass. This witnesses that the stale producer really did resume with a
+    // non-interrupt failure, so the empty `errors` is the guard working.
+    expect(resumedWithFailure).toBe(true);
+    expect(errors).toEqual([]);
+    second.unsubscribe();
+  });
+
+  it("sharedFold() releases a port subscription its producer opened through fromPort but never ran", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: (_update: FoldUpdate<number>, fromPort: FromPort) => {
+        fromPort(subject);
+        return Effect.never;
+      },
+    });
+    const sub = stream.subscribe(() => {});
+    expect(subject.observed).toBe(true);
+    sub.unsubscribe();
+    await tick();
+    await tick();
+    expect(subject.observed).toBe(false);
+  });
+
   it("sharedFold() surfaces a producer failure as an Observable error", async () => {
     const boom = new Error("boom");
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.fail(boom);
@@ -405,7 +550,7 @@ describe("bridge/out", () => {
     // branch the rest of the suite doesn't reach.
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.interrupt;
@@ -427,28 +572,85 @@ describe("bridge/out", () => {
     expect(completed).toBe(false);
   });
 
-  it("sharedFold() stays on ONE warm period when a synchronous resubscribe races the first — a producer that fails at once, resubscribed from its own error()", async () => {
-    // `.pipe(retry(1))` does NOT trigger this race — rxjs's own `retry`
-    // guards a synchronous first-subscribe failure with a `syncUnsub` flag
-    // and defers its resubscribe until AFTER the outer `subscribe()` call
-    // has returned (measured against rxjs 7.8.2's `retry.js`), by which
-    // point the (buggy) outer `warm = startWarmPeriod()` assignment has
-    // already run. A raw resubscribe from inside a plain `error()` handler
-    // has no such guard and runs the nested `subscribe()` truly synchronously
-    // — still inside `startWarmPeriod()` for the failed period — which is
-    // the actual race Important-1 fixes.
+  it("sharedFold() a subscriber that resubscribes synchronously from its error() handler after a producer failure starts a FRESH period", async () => {
     const boom = new Error("boom");
+    const firstPort = new Subject<number>();
+    let portWasSubscribed = false;
     let seeds = 0;
-    let attempts = 0;
-    let thirdInterrupted = false;
+    let runs = 0;
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
-        return seeds;
+        return Option.some(seeds);
+      },
+      run: (_update: FoldUpdate<number>, fromPort: FromPort) => {
+        runs += 1;
+
+        if (runs === 1) {
+          // Opened through `fromPort`, so ONLY the period's scope closing
+          // releases it: the probe for "the failed period really ended",
+          // rather than a period left open with a subscription pinned.
+          fromPort(firstPort);
+          portWasSubscribed = firstPort.observed;
+          return Effect.fail(boom);
+        }
+
+        return Effect.never;
+      },
+    });
+
+    let resubscription: Subscription | undefined;
+    const resubscribed: number[] = [];
+    stream.subscribe({
+      next: () => {},
+      error: () => {
+        // RxJS invokes this BEFORE the failing subscriber's own unsubscribe
+        // and while `startWarmPeriod` is still on the stack, so the failed
+        // period has to have been ended by the fan-out itself for this to
+        // start a new one instead of joining the dead one.
+        resubscription = stream.subscribe((v: number) => {
+          resubscribed.push(v);
+        });
+      },
+    });
+
+    expect(runs).toBe(2);
+    // A second `seed()` call, and its value — not period 1's stale `1`,
+    // which is what joining the dead period would have delivered (followed
+    // by nothing, forever).
+    expect(resubscribed).toEqual([2]);
+    await tick();
+    await tick();
+    // Non-vacuous: the port WAS subscribed when the producer opened it, so
+    // `observed === false` now is a release, not an absence.
+    expect(portWasSubscribed).toBe(true);
+    expect(firstPort.observed).toBe(false);
+    resubscription?.unsubscribe();
+  });
+
+  it("sharedFold() a synchronous resubscribe from error() owns the live period — the failed period's teardown never displaces it", async () => {
+    // `.pipe(retry(1))` does NOT reach this path — rxjs's own `retry`
+    // guards a synchronous first-subscribe failure with a `syncUnsub` flag
+    // and defers its resubscribe until AFTER the outer `subscribe()` call
+    // has returned (measured against rxjs 7.8.2's `retry.js`), by which
+    // point the failing subscribe's own bookkeeping has finished. A raw
+    // resubscribe from inside a plain `error()` handler has no such guard
+    // and runs the nested `subscribe()` truly synchronously — still inside
+    // `startWarmPeriod()` for the period that just failed.
+    const boom = new Error("boom");
+    let seeds = 0;
+    let attempts = 0;
+    let nestedInterrupted = false;
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        seeds += 1;
+        return Option.some(seeds);
       },
       // Fails at once on the FIRST attempt (the failure whose synchronous
-      // fan-out drives the race below); a live producer on any later one.
+      // fan-out drives the resubscribe below); a live producer on any later
+      // one.
       run: () => {
         attempts += 1;
 
@@ -459,7 +661,7 @@ describe("bridge/out", () => {
         return Effect.never.pipe(
           Effect.onInterrupt(() => {
             return Effect.sync(() => {
-              thirdInterrupted = true;
+              nestedInterrupted = true;
             });
           }),
         );
@@ -479,33 +681,32 @@ describe("bridge/out", () => {
         });
       },
     });
-    // Fixed behaviour: the nested resubscribe joins the SAME (already-
-    // failed) period rather than racing a second one into existence — it
-    // sees period 1's own seed, and the producer never runs a second time.
-    // The bug this pins: without assigning `warm` before `runFork`, this
-    // nested subscribe would still see `warm === null` and start ITS OWN
-    // second period (`attempts` reaching 2, `nestedSeen` seeing seed `2`)
-    // — which the OUTER subscribe's later `warm = startWarmPeriod()` then
-    // silently orphans (see the trailing comment below).
-    expect(nestedSeen).toEqual([1]);
-    expect(attempts).toBe(1);
-    nested?.unsubscribe();
+    expect(nestedSeen).toEqual([2]);
+    expect(attempts).toBe(2);
 
-    // With the race gone, the (single, now-empty) period's normal teardown
-    // ran: `warm` is back to `null`. The deterministic, externally-
-    // observable proof — rather than reading `warm` directly — is that a
-    // completely fresh subscribe starts a genuinely NEW period (a fresh
-    // `seed()` call) and that period's producer can be interrupted normally
-    // on unsubscribe. Under the bug, the already-errored outer subscriber's
-    // own teardown nulls `warm` out WHILE the live (nested) period was still
-    // attached — orphaning it (never closed, its producer never
-    // interrupted) — so this same sequence would instead start a THIRD,
-    // redundant period on top of the leaked one.
-    const third = stream.subscribe(() => {});
+    // The live period is the NESTED one, and the failed subscribe's
+    // remaining bookkeeping — which resumes right after `error()` returns,
+    // with its own, dead period object in hand — must not displace it. A
+    // further subscriber arriving while the nested period is still open is
+    // what discriminates: it has to JOIN that period (no third `seed()`,
+    // the nested period's own value on the wire). Were the dead period
+    // reinstated as the live one on `startWarmPeriod`'s return, the failed
+    // subscriber's own immediate teardown would then null `warm` out from
+    // under the live nested period, and this subscribe would strand it
+    // behind a third.
+    const joiner: number[] = [];
+    const joinerSub = stream.subscribe((v: number) => {
+      joiner.push(v);
+    });
     expect(seeds).toBe(2);
-    third.unsubscribe();
+    expect(joiner).toEqual([2]);
+    joinerSub.unsubscribe();
+
+    // And with nothing stranded, the nested period's producer interrupts
+    // normally on its last unsubscribe.
+    nested?.unsubscribe();
     await tick();
-    expect(thirdInterrupted).toBe(true);
+    expect(nestedInterrupted).toBe(true);
   });
 
   it("sharedFold() producers are interrupted when the host scope closes", async () => {
@@ -514,7 +715,7 @@ describe("bridge/out", () => {
     let errored = false;
     const stream = sharedFold(host, {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.never.pipe(

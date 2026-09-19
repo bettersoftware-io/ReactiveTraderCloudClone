@@ -89,9 +89,11 @@ describe("PreferencesModal — JARVIS brain/effort rows", () => {
   it("disables a gated brain with a reset-time title, and shows the hint line", () => {
     page.mount({
       jarvisBrains: JARVIS_BRAINS,
+      // A real reset time: the 0 sentinel drops the reset clause (see the
+      // contract spec's "no budget window has started" case).
       jarvisGate: {
         level: "soft",
-        resetsAtMs: 0,
+        resetsAtMs: 1_754_000_000_000,
         gated: ["claude-opus-5"],
       },
     });

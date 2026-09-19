@@ -4,7 +4,6 @@ import {
   map,
   type Observable,
   shareReplay,
-  take,
 } from "rxjs";
 
 import type { ThemePreferencePresenter as ThemePreferencePresenterApi } from "@rtc/core-api";
@@ -18,14 +17,11 @@ import {
 } from "@rtc/domain";
 
 import type { ColorSchemeSource } from "../theme/colorSchemeSource";
+import { readNow } from "./readNow";
 
-/**
- * App-layer presenter for the theme-mode preference. Exposes two streams:
- * `modePreference$` (the stored CHOICE dark | light | system — drives the
- * header toggle's icon) and `mode$` (the RESOLVED mode that paints, with
- * "system" collapsed against the OS via the ColorSchemeSource). Keeps
- * persistence and the media-query out of the UI.
- */
+/** Implements `ThemePreferencePresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. `mode$` resolves "system" against the OS
+ * scheme via the injected `ColorSchemeSource`. */
 export class ThemePreferencePresenter implements ThemePreferencePresenterApi {
   /** The stored mode choice; "system" is left un-resolved here. */
   readonly modePreference$: Observable<ThemeModePreference>;
@@ -33,13 +29,20 @@ export class ThemePreferencePresenter implements ThemePreferencePresenterApi {
   /** The concrete mode to paint — "system" resolved against the OS scheme. */
   readonly mode$: Observable<ThemeMode>;
 
+  /** The port's stream, captured once at construction — `cycle()` reads
+   * through a fresh subscription of THIS Observable rather than a fresh call
+   * of `preferences.themeMode$()`, so the port method is called once
+   * regardless of how many times cycle() runs. */
+  private readonly themeMode$: Observable<ThemeModePreference>;
+
   constructor(
     private readonly preferences: PreferencesPort,
     colorScheme: ColorSchemeSource,
   ) {
-    this.modePreference$ = preferences
-      .themeMode$()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.themeMode$ = preferences.themeMode$();
+    this.modePreference$ = this.themeMode$.pipe(
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
 
     this.mode$ = combineLatest([
       this.modePreference$,
@@ -63,13 +66,10 @@ export class ThemePreferencePresenter implements ThemePreferencePresenterApi {
    * captured value, so rapid successive clicks each advance from the true state
    * instead of a stale render closure. */
   cycle(): void {
-    let current: ThemeModePreference = DEFAULT_THEME_MODE_PREFERENCE;
-    this.preferences
-      .themeMode$()
-      .pipe(take(1))
-      .subscribe((p) => {
-        current = p;
-      });
-    this.setMode(nextThemeModePreference(current));
+    this.setMode(
+      nextThemeModePreference(
+        readNow(this.themeMode$, DEFAULT_THEME_MODE_PREFERENCE),
+      ),
+    );
   }
 }
