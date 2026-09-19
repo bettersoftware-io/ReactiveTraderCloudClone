@@ -45,9 +45,11 @@ on:
         required: false
         default: ""
 
-# Needed for the auto-commit step to push regenerated goldens to the branch.
+# Read-only by default; the `update` job is granted write below (it pushes the
+# regenerated goldens). Scoped to the job so a second job added later cannot
+# inherit a write token by accident. (Scorecard TokenPermissions; ADR-007.)
 permissions:
-  contents: write
+  contents: read
 
 env:
   COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
@@ -56,6 +58,9 @@ jobs:
   update:
     name: regenerate goldens (Playwright container)
     runs-on: ubuntu-latest
+    permissions:
+      # The auto-commit step pushes regenerated goldens to the dispatched branch.
+      contents: write
     container: mcr.microsoft.com/playwright:v1.63.0-noble
     env:
       SCENARIO_PATTERN: ${{ inputs.scenario_pattern }}

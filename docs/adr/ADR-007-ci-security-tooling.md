@@ -101,9 +101,11 @@ not loosening the list.
 ### zizmor — a hard gate, fixed to zero rather than baselined
 
 Wired as `pnpm lint:actions:security`, next to actionlint, via a pinned binary
-(`scripts/install-zizmor.sh`). Unlike actionlint's installer it **verifies a
-sha256 per platform** — a security gate that pipes an unverified download into
-CI would be its own finding.
+(`scripts/install-zizmor.sh`) that **verifies a sha256 per platform** — a
+security gate that pipes an unverified download into CI would be its own
+finding. (actionlint's installer did exactly that until Scorecard flagged it;
+it now has the same verified shape — see
+[First Scorecard run](#first-scorecard-run-2026-09-19).)
 
 The first run over the ten existing workflows reported **35 findings under three
 rules**. They were resolved as *classes*, not baselined:
@@ -158,6 +160,27 @@ authoritative run.**
 - **`publish_results: false`.** Findings go to this repo's code-scanning tab
   only. Publishing to the public scorecard.dev API (what a README badge reads)
   is an outward-facing choice, left open — see below.
+
+### First Scorecard run (2026-09-19)
+
+The first run on `main` raised **32 alerts**, every one pre-dating the PR that
+added it — nothing had ever scored the repo. Triage, by class:
+
+| Alerts | Verdict | Action |
+|---|---|---|
+| `PinnedDependencies` — `packages/server/Dockerfile` `FROM node:26-slim` | **real** — a tag is mutable | **Fixed**: pinned by multi-arch index digest; Renovate's docker manager keeps it current behind the cooldown |
+| `PinnedDependencies` — `scripts/install-actionlint.sh` (`curl … \| bash`) | **real** — unverified download | **Fixed**: direct tarball + per-platform sha256, same shape as `install-zizmor.sh`. Bumped 1.7.7 → 1.7.12 in passing, which knows `macos-26` natively — so `.github/actionlint.yaml`, a suppression whose own comment asked to be deleted on the next bump, is gone |
+| `PinnedDependencies` — `deploy.yml` flyctl (`curl … \| sh`) | **real** | **Deferred** to the deploy-workflow item in `docs/STATUS.md`: replacing a deploy-path installer can only be proven by a real deploy |
+| `PinnedDependencies` — `ios-visual-spike.yml` Maestro (`curl … \| bash`, ×2) | **real** | **Deferred**, tracked in `docs/STATUS.md`: a dispatch-only macOS spike — only a paid macOS run proves a changed installer |
+| `PinnedDependencies` — 18× `npmCommand`: the 13 + 4 workflow `npm install -g corepack` / `vercel` lines, plus the Dockerfile's corepack line | same lines zizmor's `adhoc-packages` flagged | **No change** — already decided above. Scorecard does not read zizmor's ignore comments and has no notion of "exact pin, zero deps"; dismiss in the UI citing this ADR |
+| `TokenPermissions` ×4 (high) — the four publishing jobs | **by design** — they push, so they need `contents: write` | **Tightened**, not cleared: `publish-site.yml` and `update-visual-goldens.yml` granted write at the *workflow* level; all four now grant it on the one job that pushes. Scorecard still warns on job-level write, correctly — that is what these jobs do |
+| `SecurityPolicy` | **real**, cheap | **Fixed**: root `SECURITY.md` (private vulnerability reporting was already enabled) |
+| `CodeReview`, `Fuzzing`, `CIIBestPractices` | structural — single maintainer, a demo, no fuzz targets | **No change**, as predicted above |
+| `BranchProtection` (high) | **unverified** — Scorecard's default token often cannot read rulesets, so this may be a false reading rather than a gap | **Open** — see Open items |
+
+This is the argument for *report-only* in concrete form: of 32 alerts, roughly
+25 describe decisions this ADR already made. As a gate, Scorecard would have
+demanded those be "fixed".
 
 ## Considered and declined
 
@@ -234,5 +257,19 @@ Tracked in [`docs/STATUS.md`](../STATUS.md):
 2. **Decide whether `dependency review` becomes a required check** on the `main`
    ruleset. It is a repo-settings change, so it was deliberately not made by the
    PR that introduced the workflow.
-3. **Decide `publish_results`** — flip to `true` (plus `id-token: write`) only if
+3. **Replace `deploy.yml`'s `curl -L https://fly.io/install.sh | sh`** with a
+   pinned, verified flyctl install. Rides with item 1: same workflow, same
+   "only a real deploy proves it" constraint. Note the trade-off before picking
+   a shape — the SHA-pinned `superfly/flyctl-actions/setup-flyctl` action
+   satisfies Scorecard but, without a `version:`, still installs *latest* at
+   run time (relocating the finding, as with `pnpm/action-setup` above); a
+   pinned `version:` is honest but needs a Renovate regex manager, because Fly's
+   API retires old CLI versions.
+4. **Replace the two Maestro `curl … | bash` installs** in
+   `ios-visual-spike.yml` with a pinned release download + checksum. Do it the
+   next time that spike is dispatched for its own reasons, so the macOS run
+   that proves it is not spent on this alone.
+5. **Read the `BranchProtection` alert properly** — confirm whether it reflects
+   the real `main` ruleset or only what Scorecard's token could see.
+6. **Decide `publish_results`** — flip to `true` (plus `id-token: write`) only if
    a public Scorecard badge is wanted.
