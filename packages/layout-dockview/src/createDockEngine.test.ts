@@ -1658,6 +1658,35 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
+  // Phase-4 follow-up (c)'s measured face: closing the last full panel of a
+  // row and THEN collapsing the survivor left the row as a 39px strip beside
+  // the 367px pinned rail — ~1034px of a 1440px dock belonging to nobody. A
+  // strip absorbs nothing, so the collapse took the row's last absorber; the
+  // rail's pin must lift then, exactly as it does when the absorber closes
+  // (settlePinAbsorption) — and clamp again on expand, which already
+  // re-settles.
+  it("collapsing the row's last absorber lifts the rail pin so the dock stays filled", () => {
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.closePanel("fx-rates");
+    engine.collapsePanel("fx-blotter");
+
+    const widths = ["fx-blotter", "fx-analytics"].map((id) => {
+      return lastDockviewApi().getPanel(id)?.group.api.width ?? 0;
+    });
+
+    expect(widths[0]).toBeLessThan(60);
+    expect((widths[0] ?? 0) + (widths[1] ?? 0)).toBe(1440);
+
+    engine.expandPanel("fx-blotter");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
   function createRailPinnedBase(): DockEngineOptions {
     return {
       ...createRailBase(),

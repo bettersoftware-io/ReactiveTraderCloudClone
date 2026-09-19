@@ -3267,6 +3267,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
           settleStrips();
           release();
+          // A strip absorbs nothing: collapsing the row's LAST absorber must
+          // lift a pin nothing else can fill around, as closing it does —
+          // else the row is a strip beside the pinned rail and the rest of
+          // the dock belongs to nobody (Phase-4 follow-up (c), measured
+          // ~1034px of 1440). expandPanel's re-settle clamps it again.
+          settlePinAbsorption();
         });
       }
     },
