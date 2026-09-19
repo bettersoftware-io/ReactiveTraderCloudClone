@@ -3,13 +3,10 @@ import { type Observable, shareReplay } from "rxjs";
 import type { CreditRfqFilterPreferencePresenter as CreditRfqFilterPreferencePresenterApi } from "@rtc/core-api";
 import type { CreditRfqFilter, PreferencesPort } from "@rtc/domain";
 
-/**
- * App-layer presenter for the Credit RFQs panel's LIVE/CLOSED/ALL filter.
- * Exposes the replay-current filter stream and the write operation, keeping
- * persistence out of the UI. Mirrors ViewModePreferencePresenter exactly —
- * the RFQs panel reads filter$, and its head's filter pills (Task 4) write
- * through setFilter.
- */
+/** Implements `CreditRfqFilterPreferencePresenter` (`@rtc/core-api`) — see
+ * the interface for the contract. Mirrors `ViewModePreferencePresenter`
+ * exactly — the RFQs panel reads `filter$`, and its head's filter pills
+ * write through `setFilter`. */
 export class CreditRfqFilterPreferencePresenter
   implements CreditRfqFilterPreferencePresenterApi
 {

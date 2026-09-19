@@ -233,12 +233,31 @@ module.exports = {
       },
     },
     {
+      name: "client-core-src-uses-core-contract-only-in-tests",
+      severity: "error",
+      comment:
+        "@rtc/client-core may import @rtc/core-contract ONLY from its runner test — the contract is a dev-only tier, never a source dependency of a core.",
+      from: { path: "^packages/client-core/src", pathNot: "\\.test\\.ts$" },
+      to: { path: "^packages/core-contract/" },
+    },
+    {
       name: "client-core-framework-free",
       severity: "error",
       comment:
         "@rtc/client-core is framework-free by contract (its README's headline claim) — no React/DOM/RN modules.",
       from: { path: "^packages/client-core/src" },
       to: { path: "node_modules/(react|react-dom|react-native)/" },
+    },
+    {
+      name: "alt-cores-use-core-contract-only-in-tests",
+      severity: "error",
+      comment:
+        "The alternative cores import @rtc/core-contract only from their runner tests.",
+      from: {
+        path: "^packages/client-core-(async|effect)/src",
+        pathNot: "\\.test\\.ts$",
+      },
+      to: { path: "^packages/core-contract/" },
     },
     {
       name: "alt-cores-stay-inner",
@@ -273,6 +292,17 @@ module.exports = {
         path: "node_modules/(rxjs|@rx-state)/",
         dependencyTypesNot: ["type-only"],
       },
+    },
+    {
+      name: "effect-port-subscription-owned-by-the-bridge",
+      severity: "error",
+      comment:
+        "`fromObservable` subscribes a port eagerly at call time and must only be reached through a sharedFold's period-scoped `fromPort` (packages/client-core-effect/src/bridge/out.ts). Presenters never import bridge/in.ts directly; `peek`/`peekCurrent` live in bridge/peek.ts for that reason.",
+      from: {
+        path: "^packages/client-core-effect/src",
+        pathNot: "^packages/client-core-effect/src/bridge/|\\.test\\.ts$",
+      },
+      to: { path: "^packages/client-core-effect/src/bridge/in\\.ts$" },
     },
     {
       name: "effect-only-in-client-core-effect",

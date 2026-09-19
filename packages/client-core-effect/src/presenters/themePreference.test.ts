@@ -1,9 +1,14 @@
 // packages/client-core-effect/src/presenters/themePreference.test.ts
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { PreferencesSimulator, type ThemeMode } from "@rtc/domain";
+import {
+  type PreferencesPort,
+  PreferencesSimulator,
+  type ThemeMode,
+  type ThemeModePreference,
+} from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
@@ -79,6 +84,26 @@ describe("createThemePreferencePresenter (effect)", () => {
     sub.unsubscribe();
   });
 
+  it("mode$ delivers nothing until the port's first preference, rather than resolving an invented default", async () => {
+    const { port, themeMode } = createSilentThemeModePort();
+    const presenter = createThemePreferencePresenter(useHost(), port);
+    const seen: ThemeMode[] = [];
+    const sub = presenter.mode$.subscribe((m) => {
+      seen.push(m);
+    });
+    // A seed read from a port that has not emitted is `None`: seeding
+    // `resolveThemeMode(DEFAULT_THEME_MODE_PREFERENCE, …)` here would put a
+    // "light" on the wire that no other core emits.
+    expect(seen).toEqual([]);
+    await tick();
+    expect(seen).toEqual([]);
+    themeMode.next("dark");
+    await tick();
+    await tick();
+    expect(seen).toEqual(["dark"]);
+    sub.unsubscribe();
+  });
+
   it("re-subscribes to the colour-scheme source on a fresh warm period", async () => {
     const prefersDark = new BehaviorSubject(false);
     const presenter = createThemePreferencePresenter(
@@ -121,4 +146,22 @@ function tick(): Promise<unknown> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
+}
+
+/** A preferences port whose `themeMode$` is a plain `Subject` — it emits
+ * NOTHING on subscribe, unlike every shipping adapter's replay-current
+ * stream. The rest of the port stays the simulator's. */
+function createSilentThemeModePort(): SilentThemeModePort {
+  const themeMode = new Subject<ThemeModePreference>();
+  const port: PreferencesPort = Object.assign(new PreferencesSimulator(), {
+    themeMode$: () => {
+      return themeMode;
+    },
+  });
+  return { port, themeMode };
+}
+
+interface SilentThemeModePort {
+  port: PreferencesPort;
+  themeMode: Subject<ThemeModePreference>;
 }

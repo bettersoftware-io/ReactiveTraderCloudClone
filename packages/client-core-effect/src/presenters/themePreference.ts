@@ -1,5 +1,5 @@
 // packages/client-core-effect/src/presenters/themePreference.ts
-import { Stream } from "effect";
+import { Option, Stream } from "effect";
 
 import type {
   ColorSchemeSource,
@@ -14,8 +14,13 @@ import {
   type ThemeModePreference,
 } from "@rtc/domain";
 
-import { fromObservable, peek } from "#/bridge/in";
-import { type EffectHost, type FoldUpdate, sharedFold } from "#/bridge/out";
+import {
+  type EffectHost,
+  type FoldUpdate,
+  type FromPort,
+  sharedFold,
+} from "#/bridge/out";
+import { peek, peekCurrent } from "#/bridge/peek";
 import { mirrorPortAsIs } from "#/presenters/mirrorPort";
 
 /** `modePreference$` mirrors the stored choice. `mode$` is the RxJS core's
@@ -37,35 +42,35 @@ export function createThemePreferencePresenter(
     return prefersDark === undefined ? false : peek(prefersDark, false);
   }
 
-  // Built INSIDE `run`, once per warm period: `fromObservable` subscribes
-  // synchronously at CALL time (not lazily, on first pull), so a value built
-  // once at construction and reused across cold → warm cycles would only
-  // ever see the FIRST period's subscription — later periods would replay a
-  // stream whose source was already unsubscribed by the first period's
-  // `Stream.ensuring` finalizer, missing every later `prefersDark` flip.
-  function buildPrefersDarkStream(): Stream.Stream<boolean, unknown> {
+  // Subscribed through `fromPort`, so the period owns the subscription:
+  // closing the period's scope releases it, and the next period opens its
+  // own — a value built once at construction would only ever carry the
+  // FIRST period's subscription.
+  function buildPrefersDarkStream(
+    fromPort: FromPort,
+  ): Stream.Stream<boolean, unknown> {
     return prefersDark === undefined
       ? Stream.make(false)
-      : fromObservable(prefersDark);
+      : fromPort(prefersDark);
   }
 
   return {
-    modePreference$: mirrorPortAsIs(
-      host,
-      modePreference,
-      DEFAULT_THEME_MODE_PREFERENCE,
-    ),
+    modePreference$: mirrorPortAsIs(host, modePreference),
     mode$: sharedFold(host, {
+      /** `None` when the port has not emitted on subscribe: a READ must
+       * not invent a default, or a port that is merely slow would push a
+       * resolved `"light"` no other core emits (the divergence
+       * `mirrorPort`'s seedless read removed). `cycle()` below keeps
+       * `peek` WITH the default — a write has to advance from something. */
       seed: () => {
-        return resolveThemeMode(
-          peek(modePreference, DEFAULT_THEME_MODE_PREFERENCE),
-          prefersDarkNow(),
-        );
+        return Option.map(peekCurrent(modePreference), (preference) => {
+          return resolveThemeMode(preference, prefersDarkNow());
+        });
       },
-      run: (update: FoldUpdate<ThemeMode>) => {
+      run: (update: FoldUpdate<ThemeMode>, fromPort: FromPort) => {
         return Stream.zipLatest(
-          fromObservable(modePreference),
-          buildPrefersDarkStream(),
+          fromPort(modePreference),
+          buildPrefersDarkStream(fromPort),
         ).pipe(
           Stream.runForEach(([preference, dark]) => {
             return update(() => {

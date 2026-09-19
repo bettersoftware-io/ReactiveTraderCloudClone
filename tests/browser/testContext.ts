@@ -38,6 +38,10 @@ export class Scratchpad {
 export interface TestContext {
   po: PageObjects;
   scratch: Scratchpad;
+  /** Uncaught page errors since the page opened — read by
+   * expectSelectedCoreImpl so a boot failure surfaces as ITS message, not as
+   * a locator timeout. */
+  pageErrors: string[];
 }
 
 /**

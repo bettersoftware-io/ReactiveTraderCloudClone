@@ -50,4 +50,21 @@ describe("createConnectionPresenter (async)", () => {
       }, 0);
     });
   });
+
+  it("calls events.events() once, across two warm periods", () => {
+    let calls = 0;
+    const events = new Subject<ConnectionEvent>();
+    const presenter = createConnectionPresenter({
+      events: () => {
+        calls += 1;
+        return events;
+      },
+    });
+    const sub = presenter.status$.subscribe(() => {});
+    sub.unsubscribe();
+    const subAgain = presenter.status$.subscribe(() => {});
+    expect(calls).toBe(1);
+    expect(events.observed).toBe(true);
+    subAgain.unsubscribe();
+  });
 });

@@ -67,10 +67,8 @@ function buildPanelVm(
   };
 }
 
-/**
- * Joins `JarvisPanelsMachine`'s state (panel lifecycle: spawn / edit / evict
- * / dismiss) with `composePanelStream` (per-panel data interpretation) into
- * the `JarvisPanelVm[]` row list the desk-panel overlay renders.
+/** Implements `JarvisPanelsPresenter` (`@rtc/core-api`) — see the interface
+ * for the contract.
  *
  * Session-lifetime singleton, constructed once at composition (mirrors
  * `JarvisPanelsMachine`'s own doc) — NOT per overlay mount.
@@ -93,15 +91,11 @@ function buildPanelVm(
  * restyled panel never keeps its old interpretation running underneath the
  * new one.
  *
- * Deliberately does NOT re-export the machine's `dockPanel`/`undockPanel`
- * intents. Docking is only half a panels-machine operation: the other half is
- * inserting/removing the matching leaf in the active tab's layout tree and
- * recording which tab the panel belongs to, both of which live in
- * `composition.ts` (`dockPanelIntoWorkspace`/`undockPanelFromWorkspace`,
- * exposed as `Presenters.dockPanel`/`undockPanel`). Re-exporting them here
- * would put a same-named, half-working pair on the very object the UI seam
- * reads from — dock with no leaf and no tab attribution. Composition holds
- * the `JarvisPanelsMachineHandle` directly for the half it needs.
+ * The dock/undock half this presenter deliberately omits (see the
+ * interface's doc) lives in `composition.ts`
+ * (`dockPanelIntoWorkspace`/`undockPanelFromWorkspace`, exposed as
+ * `Presenters.dockPanel`/`undockPanel`); composition holds the
+ * `JarvisPanelsMachineHandle` directly for that half.
  */
 export class JarvisPanelsPresenter implements JarvisPanelsPresenterApi {
   private readonly cache = new Map<string, PanelCacheEntry>();

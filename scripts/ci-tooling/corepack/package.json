@@ -1,0 +1,8 @@
+{
+  "name": "rtc-ci-tooling-corepack",
+  "private": true,
+  "description": "NOT a workspace package. Pins Corepack under an npm lockfile (sha512 integrity) so CI and the server image bootstrap pnpm without an ad-hoc `npm install -g`. Installed by scripts/enable-corepack.sh. See docs/adr/ADR-007-ci-security-tooling.md.",
+  "dependencies": {
+    "corepack": "0.35.0"
+  }
+}

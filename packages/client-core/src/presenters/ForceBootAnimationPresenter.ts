@@ -3,11 +3,9 @@ import { type Observable, shareReplay } from "rxjs";
 import type { ForceBootAnimationPresenter as ForceBootAnimationPresenterApi } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 
-/**
- * App-layer presenter for the force-boot-animation preference. Exposes the
- * replay-current enabled flag and the write/toggle operations. When on, the
- * boot splash plays even under prefers-reduced-motion.
- */
+/** Implements `ForceBootAnimationPresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. `enabled$` is the port stream under
+ * `shareReplay({ bufferSize: 1, refCount: true })`. */
 export class ForceBootAnimationPresenter
   implements ForceBootAnimationPresenterApi
 {

@@ -5,11 +5,10 @@ import type { SessionInfo, SessionsPort } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
 
-/**
- * Thin warmReplay wrapper around SessionsPort.sessions$().
- * One active subscription shared across all UI consumers, kept warm across the
- * Admin tab's key={activeTab} remount.
- */
+/** Implements `SessionsPresenter` (`@rtc/core-api`) — see the interface for
+ * the contract. A thin `warmReplay` wrapper around
+ * `SessionsPort.sessions$()`, kept warm across the Admin tab's
+ * `key={activeTab}` remount. */
 export class SessionsPresenter implements SessionsPresenterApi {
   readonly sessions$: Observable<readonly SessionInfo[]>;
 

@@ -1,7 +1,46 @@
 import { BehaviorSubject, merge, type Observable, Subject } from "rxjs";
 
 import type { AppPorts, ColorSchemeSource, Stream } from "@rtc/core-api";
-import type { ConnectionEvent, ConnectionEventsPort } from "@rtc/domain";
+import type {
+  ConnectionEvent,
+  ConnectionEventsPort,
+  PreferencesPort,
+} from "@rtc/domain";
+
+/** A port method name the discipline suite can count — the `$`-suffixed
+ * stream methods of `PreferencesPort`, plus the two the harness supplies
+ * itself, `connectionEvents.events` and `colorScheme.prefersDark$`. */
+export type PortMethodName =
+  | Extract<keyof PreferencesPort, `${string}$`>
+  | "connectionEvents.events"
+  | "colorScheme.prefersDark$";
+
+/** Wrap a port so every method call is counted by name. A Proxy rather than
+ * a spread: a class port's methods live on its prototype, which a spread
+ * drops. The `get` trap only INSTALLS the counting wrapper; the count
+ * happens inside that wrapper, on invocation — so a property read that is
+ * never called does not count, and the witness is calls, not reads. */
+function countCalls<P extends object>(
+  port: P,
+  counts: Map<string, number>,
+  prefix = "",
+): P {
+  return new Proxy(port, {
+    get: (target: P, property: string | symbol, receiver: unknown) => {
+      const value = Reflect.get(target, property, receiver);
+
+      if (typeof value === "function" && typeof property === "string") {
+        return (...args: unknown[]) => {
+          const key = `${prefix}${property}`;
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+          return Reflect.apply(value, target, args);
+        };
+      }
+
+      return value;
+    },
+  });
+}
 
 export interface ScriptedDriver {
   /** Push one connection event into the stream the core observes. */
@@ -16,6 +55,9 @@ export interface ScriptedDriver {
   connectionEvents$(): Stream<ConnectionEvent>;
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
+  /** How many times the core has invoked this port method since the harness
+   * was built — the "called once, at construction" discipline's witness. */
+  portCalls(method: PortMethodName): number;
 }
 
 export interface ScriptedPorts {
@@ -31,6 +73,8 @@ export interface ScriptedPorts {
 export function scriptPorts(base: AppPorts): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
+  const calls = new Map<string, number>();
+  const preferences = countCalls(base.preferences, calls);
 
   // Built ONCE, and handed to both the core (through `connectionEvents`) and
   // the suites (through `driver.connectionEvents$()`), so the two can never
@@ -43,20 +87,29 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
   // intended semantics: one shared stream.
   const events$ = merge(base.connectionEvents.events(), connection$);
 
+  // The two ports the harness supplies itself are outside `countCalls`'
+  // Proxy, so they count their own calls — on invocation, exactly as the
+  // wrapper does.
+  function recordCall(method: PortMethodName): void {
+    calls.set(method, (calls.get(method) ?? 0) + 1);
+  }
+
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
+      recordCall("connectionEvents.events");
       return events$;
     },
   };
 
   const colorScheme: ColorSchemeSource = {
     prefersDark$: (): Observable<boolean> => {
+      recordCall("colorScheme.prefersDark$");
       return prefersDark$;
     },
   };
 
   return {
-    ports: { ...base, connectionEvents, colorScheme },
+    ports: { ...base, preferences, connectionEvents, colorScheme },
     driver: {
       emitConnection: (event: ConnectionEvent) => {
         connection$.next(event);
@@ -69,6 +122,9 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);
+      },
+      portCalls: (method: PortMethodName) => {
+        return calls.get(method) ?? 0;
       },
     },
     teardown: () => {

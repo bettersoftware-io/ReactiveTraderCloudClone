@@ -6,12 +6,11 @@ import type { MetricSample, SessionsPort } from "@rtc/domain";
 
 import { WINDOW } from "./windowedSamples";
 
-/**
- * Session-count KPI series for the Admin observability board's "Active
- * Sessions" card. Maps each `SessionsPort.sessions$()` emission to a
- * `MetricSample` (session count, timestamped like `BlotterPresenter`'s
- * fill-clock read) and accumulates a rolling `WINDOW`-sized series — the
- * same shape `windowedSamples` gives the other three KPI streams.
+/** Implements `SessionsKpiPresenter` (`@rtc/core-api`) — see the interface
+ * for the contract. Maps each `SessionsPort.sessions$()` emission to a
+ * `MetricSample` (timestamped like `BlotterPresenter`'s fill-clock read)
+ * and accumulates via the same shape `windowedSamples` gives the other
+ * three KPI streams.
  *
  * Diverges from `windowedSamples` in one respect: `refCount: false`, not
  * `true`. This mirrors `EventLogPresenter`'s remount-survival fix (see its

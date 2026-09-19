@@ -20,7 +20,7 @@ Four primitives, and nothing else:
 | primitive | RxJS equivalent |
 |---|---|
 | `Store<S>` | `BehaviorSubject` / `state(…, seed)` — a synchronous replay-current cell |
-| `Topic<T>` | `shareReplay({ bufferSize: 1, refCount: true })` written out explicitly |
+| `Topic<T>` | `shareReplay({ bufferSize: 1, refCount: true })` written out explicitly — including its reset on error and rxjs's isolation of a throwing subscriber |
 | `spawn` | source subscription: abort ends it silently, any other error is routed |
 | `sleep` | `timer(…)` / `delay(…)` under an `AbortSignal` |
 
