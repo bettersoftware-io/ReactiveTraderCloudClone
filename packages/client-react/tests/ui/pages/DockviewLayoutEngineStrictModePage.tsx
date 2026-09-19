@@ -6,6 +6,7 @@ import type {
   DockLayoutStore,
   LayoutPanelInstance,
   PanelId,
+  WorkspaceTab,
 } from "@rtc/client-core";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
@@ -45,6 +46,12 @@ interface DockviewLayoutEngineMountProps {
   layoutResets?: number;
   /** Default a no-op. The instances spec asserts this intent fires. */
   onCloseInstance?: (id: PanelId) => void;
+  /** Default absent — the bridge reports detached panels to nobody. The
+   * floating spec passes a recorder to assert the whole-set reports. */
+  onDetachedPanelsChange?: (
+    tab: WorkspaceTab,
+    panelIds: readonly PanelId[],
+  ) => void;
 }
 
 /** A jsdom stand-in for the OS window a pop-out opens into. dockview calls
@@ -147,6 +154,7 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
         onCollapse={noop}
         onExpand={noop}
         onCloseInstance={props.onCloseInstance ?? noop}
+        onDetachedPanelsChange={props.onDetachedPanelsChange}
       />
     );
   }

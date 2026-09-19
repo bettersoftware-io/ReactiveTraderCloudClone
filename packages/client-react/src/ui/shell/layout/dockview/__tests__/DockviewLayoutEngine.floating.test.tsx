@@ -1,6 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { InMemoryDockLayoutStore } from "@rtc/client-core";
+import {
+  InMemoryDockLayoutStore,
+  type PanelId,
+  type WorkspaceTab,
+} from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
@@ -41,6 +45,53 @@ describe("dockview bridge floating wiring", () => {
     await page.waitFor(() => {
       expect(page.engineAttribute("data-floating")).toBe("fx-analytics");
     });
+  });
+
+  it("reports the whole detached set on every float/dock, and [] on unmount", async () => {
+    const reports: DetachedPanelsReport[] = [];
+
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      onDetachedPanelsChange: (
+        tab: WorkspaceTab,
+        panelIds: readonly PanelId[],
+      ): void => {
+        reports.push({ tab, panelIds });
+      },
+    });
+
+    await page.waitFor(() => {
+      expect(reports.at(-1)).toEqual({ tab: "fx", panelIds: [] });
+    });
+
+    page.clickControl("panel-fx-analytics-float");
+
+    await page.waitFor(() => {
+      expect(reports.at(-1)).toEqual({
+        tab: "fx",
+        panelIds: ["fx-analytics"],
+      });
+    });
+
+    page.clickControl("panel-fx-analytics-float");
+
+    await page.waitFor(() => {
+      expect(reports.at(-1)).toEqual({ tab: "fx", panelIds: [] });
+    });
+
+    page.clickControl("panel-fx-analytics-float");
+
+    await page.waitFor(() => {
+      expect(reports.at(-1)).toEqual({
+        tab: "fx",
+        panelIds: ["fx-analytics"],
+      });
+    });
+
+    page.unmountAll();
+
+    expect(reports.at(-1)).toEqual({ tab: "fx", panelIds: [] });
   });
 
   it("docks a floating panel back from its head control", async () => {
@@ -131,6 +182,11 @@ describe("dockview bridge floating wiring", () => {
     expect(page.bodyVisible("panel-fx-analytics-collapse")).toBe(true);
   });
 });
+
+interface DetachedPanelsReport {
+  readonly tab: WorkspaceTab;
+  readonly panelIds: readonly PanelId[];
+}
 
 const page = dockviewLayoutEngineStrictModePage();
 

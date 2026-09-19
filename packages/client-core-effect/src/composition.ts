@@ -119,7 +119,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
       ...base.presenters,
       ...nativePresenters(ports, host),
     },
-    commands: createCommands(),
+    commands: createCommands(base.commands),
     // Order matters: the RxJS app goes first (its teardown may still drive
     // streams this core bridged), THEN the scope interrupts whatever fibers
     // remain, and only then is the runtime disposed — disposing it earlier

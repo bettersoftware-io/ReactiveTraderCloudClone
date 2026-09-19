@@ -79,6 +79,14 @@ export interface JarvisDriverDeps {
   /** The static panel ids in `tab`'s default layout tree (e.g. "fx-rates",
    * "eq-chart") — the `layout` command's membership check. */
   readonly knownLayoutPanelIds: (tab: WorkspaceTab) => readonly string[];
+  /** The panels in `tab` currently living OUTSIDE the grid (floating or
+   * popped out), as last reported by the Dockview bridge through
+   * `AppCommands.reportDetachedPanels` — read synchronously per `layout`
+   * command. The engine refuses collapse/maximize on such a panel, so the
+   * driver REFUSES `maximize`/`collapse`/`expand` on it (a `"refused"`
+   * outcome, never calling the layout intent) instead of recording an intent
+   * the engine never applied. Session-only; never part of `LayoutState`. */
+  readonly detachedPanelIds: (tab: WorkspaceTab) => readonly string[];
   /** Every currently-live desk panel id (floating + docked) — the
    * `dockPanel` command's "does this panel exist at all" gate, read fresh
    * per command like `knownSymbols$`. Source: `JarvisPanelsState.panels`. */
@@ -186,6 +194,17 @@ function applyLayoutCommand(
       command: cmd,
       status: "skipped",
       reason: `unknown panelId "${cmd.panelId}" for tab "${cmd.tab}"`,
+    };
+  }
+
+  if (
+    cmd.op !== "restore" &&
+    deps.detachedPanelIds(cmd.tab).includes(cmd.panelId)
+  ) {
+    return {
+      command: cmd,
+      status: "refused",
+      reason: `${cmd.panelId} is floating or popped out — dock it first`,
     };
   }
 

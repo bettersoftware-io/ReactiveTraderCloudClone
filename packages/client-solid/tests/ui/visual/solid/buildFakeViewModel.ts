@@ -211,6 +211,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useReconnect: () => {
       return noop;
     },
+    // Detached-panels report: static screenshots drive no Jarvis layout
+    // command, so nothing ever reads it — no-op is correct.
+    useReportDetachedPanels: () => {
+      return noop;
+    },
     // Machine: per-symbol static snapshot for screenshots; intents are no-ops.
     // A missing key renders the same neutral state the real machine emits
     // initially ("ready" / "init"), so existing goldens are unchanged.

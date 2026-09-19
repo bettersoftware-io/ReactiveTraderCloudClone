@@ -152,6 +152,7 @@ export type InertSlice = Pick<
   | "useLayout"
   | "useLayoutEngine"
   | "useMetrics"
+  | "useReportDetachedPanels"
   | "useSessionCountSeries"
   | "useSessions"
   | "useThroughput"
