@@ -2,11 +2,15 @@ import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
 import { distinctUntilChanged, map, startWith } from "rxjs/operators";
 
+import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
+
 import type { ReadOnlyMachine } from "./machine";
 
 /** How long a newly-arrived blotter row stays highlighted, relocated verbatim
- * from the old BlotterRow `setTimeout(…, 3000)`. Presenter-local. */
-export const HIGHLIGHT_MS = 3000;
+ * from the old BlotterRow `setTimeout(…, 3000)`. Now the domain's
+ * `BLOTTER_ROW_HIGHLIGHT_MS`; kept under this name for `BlotterRow.tsx` in
+ * both web clients and the React contract harness. */
+export const HIGHLIGHT_MS: number = BLOTTER_ROW_HIGHLIGHT_MS;
 
 /** Transient new-row highlight, relocated out of the old BlotterRow useEffect/
  * setTimeout. It has NO intents — it's a pure read-only derivation over a single

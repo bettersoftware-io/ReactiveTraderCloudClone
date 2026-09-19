@@ -49,3 +49,14 @@ export function detectMovement(
 }
 
 export const PRICE_HISTORY_SIZE = 50;
+
+/** Power-saver conflation interval for live prices: while the app is calm,
+ * `priceStream.price$` delivers at most one price per this many ms
+ * (leading + trailing). An application-layer timing, kept in the domain
+ * beside `PRICE_HISTORY_SIZE` so every core and the contract tier read one
+ * number. */
+export const PRICE_CONFLATION_MS = 250;
+
+/** Power-saver conflation interval for the sparkline windows
+ * (`priceHistory.history$`). */
+export const PRICE_HISTORY_CONFLATION_MS = 1_000;

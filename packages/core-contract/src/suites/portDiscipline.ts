@@ -122,5 +122,70 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("currencyPairs: subscribe, unsubscribe, subscribe again does not call referenceData.getCurrencyPairs() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("referenceData.getCurrencyPairs");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.currencyPairs;
+        const first = collect(p.pairs$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.pairs$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("referenceData.getCurrencyPairs")).toBe(
+          before,
+        );
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("blotter: subscribe, unsubscribe, subscribe again does not call blotter.getTradeStream() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("blotter.getTradeStream");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.blotter;
+        const first = collect(p.trades$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.trades$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("blotter.getTradeStream")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("analytics: subscribe, unsubscribe, subscribe again does not call analytics.getAnalytics() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("analytics.getAnalytics");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.analytics;
+        const first = collect(p.position$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.position$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("analytics.getAnalytics")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }
