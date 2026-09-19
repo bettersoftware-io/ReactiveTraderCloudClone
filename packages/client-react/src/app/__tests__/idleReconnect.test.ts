@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type App, createApp } from "@rtc/client-core";
-import { ConnectionStatus, IDLE_TIMEOUT_MS } from "@rtc/domain";
+import {
+  ConnectionStatus,
+  IDLE_TIMEOUT_MS,
+  PricingSimulator,
+} from "@rtc/domain";
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
@@ -17,7 +21,22 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
     // Fake timers BEFORE building ports so the idle countdown uses the
     // patched clock (same ordering as tests/presenter/vitest-fake-timers).
     vi.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
-    app = createApp(buildBrowserPorts());
+    // PRICING IS PINNED, and it has to be. The narrator warm-subscribes
+    // every pair's price stream for the whole session (composition.ts — an
+    // accepted, documented consequence), so the live simulator re-arms a
+    // timer per pair every ~600ms whether or not this test reads a price.
+    // Advancing the 15-minute idle window therefore fired ~15,800 price
+    // timers, each with a microtask flush, to reach the ONE timer under test:
+    // ~400ms alone, but past the old 15s budget under the parallel root run,
+    // where it flaked as a timeout. The pinned simulator (the visual tier's
+    // own determinism seam) returns a resting tick and arms no timer, which
+    // takes that to zero. Only `pricing` is swapped: the subject —
+    // buildBrowserPorts()'s idle timer + reconnect$ wiring, its
+    // `connectionEvents` — is untouched.
+    app = createApp({
+      ...buildBrowserPorts(),
+      pricing: new PricingSimulator(Date.now()),
+    });
     statuses = [];
     const sub = app.presenters.connection.status$.subscribe((s) => {
       statuses.push(s);
@@ -33,14 +52,12 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
     vi.useRealTimers();
   });
 
-  // Fake-timer tests are starved under the parallel root run.
   it("goes IDLE_DISCONNECTED after the 15-minute idle timeout", async () => {
     expect(statuses.at(-1)).toBe(ConnectionStatus.CONNECTED);
     await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS);
     expect(statuses.at(-1)).toBe(ConnectionStatus.IDLE_DISCONNECTED);
-  }, 15_000);
+  });
 
-  // Fake-timer tests are starved under the parallel root run.
   it("commands.reconnect() transitions CONNECTING then CONNECTED", async () => {
     await vi.advanceTimersByTimeAsync(IDLE_TIMEOUT_MS);
     expect(statuses.at(-1)).toBe(ConnectionStatus.IDLE_DISCONNECTED);
@@ -53,7 +70,7 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
       ConnectionStatus.CONNECTING,
       ConnectionStatus.CONNECTED,
     ]);
-  }, 15_000);
+  });
 
   let app: App;
 
