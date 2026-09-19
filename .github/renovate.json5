@@ -53,6 +53,20 @@
 
   packageRules: [
     {
+      // The deploy workflows' Vercel CLI (scripts/ci-tooling/vercel) is held on
+      // 57.x: 58.0.0 broke `vercel pull` under env-var project linking
+      // (docs/STATUS.md, "Vercel CLI: unpin…"). That manifest became
+      // Renovate-visible on 2026-09-19 when the CLI moved under a lockfile, and
+      // NOTHING in CI would catch the regression — CI never runs a deploy, so a
+      // 57 → 59 PR would go green and break the next production deploy instead.
+      // Making the PR unrepresentable is the only gate available. Delete this
+      // rule as part of the deliberate unpin, which is proven by a Deploy
+      // dispatch, not by CI.
+      matchFileNames: ["scripts/ci-tooling/vercel/**"],
+      matchPackageNames: ["vercel"],
+      allowedVersions: "<58",
+    },
+    {
       // React Native core moves as ONE unit. `react-native` and the official
       // `@react-native/*` satellites share a single version line, and the
       // ecosystem peers on that exact minor — jest-expo@57 requires

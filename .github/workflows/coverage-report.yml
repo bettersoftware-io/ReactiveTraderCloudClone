@@ -78,11 +78,9 @@ jobs:
           node-version: 26
 
       - name: Enable Corepack (pins pnpm from packageManager)
-        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
-        # dependencies` → none), so nothing here floats — and it cannot come from the
-        # lockfile, since it provisions the package manager that READS the lockfile.
-        # See docs/adr/ADR-007.
-        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
+        # Lockfile-pinned (sha512), not an ad-hoc `npm install -g`: see the header of
+        # scripts/enable-corepack.sh. Must run AFTER checkout — the script is in-repo.
+        run: scripts/enable-corepack.sh
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
