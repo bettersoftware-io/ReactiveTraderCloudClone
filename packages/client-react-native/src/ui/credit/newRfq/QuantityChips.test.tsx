@@ -3,8 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { RFQ_QUANTITY_CHIPS } from "#/ui/credit/newRfq/rfqQuantities";
 import { quantityChipsPage } from "#tests/pages/QuantityChipsPage";
 
-const page = quantityChipsPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -38,3 +36,5 @@ test("marks the selected chip and no other", async () => {
 });
 
 function noop(): void {}
+
+const page = quantityChipsPage();

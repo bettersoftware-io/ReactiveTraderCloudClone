@@ -5,28 +5,9 @@ import type { EquityPosition } from "@rtc/domain";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { positionsBlotterPage } from "#tests/pages/PositionsBlotterPage";
 
-const page = positionsBlotterPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const POSITIONS: readonly EquityPosition[] = [
-  {
-    symbol: "AAPL",
-    qty: 1200,
-    avgPrice: 118.4,
-    markPrice: 131.2,
-    unrealisedPnl: 15_440,
-  },
-  {
-    symbol: "JPM",
-    qty: -300,
-    avgPrice: 252,
-    markPrice: 255.08,
-    unrealisedPnl: -924,
-  },
-];
 
 test("renders a card per position with signed qty, @avg and compact P&L", async () => {
   await page.mount(POSITIONS);
@@ -59,3 +40,22 @@ test("shows an empty state with no positions", async () => {
   expect(page.exists("positions-empty")).toBe(true);
   expect(page.exists("positions-panel")).toBe(false);
 });
+
+const page = positionsBlotterPage();
+
+const POSITIONS: readonly EquityPosition[] = [
+  {
+    symbol: "AAPL",
+    qty: 1200,
+    avgPrice: 118.4,
+    markPrice: 131.2,
+    unrealisedPnl: 15_440,
+  },
+  {
+    symbol: "JPM",
+    qty: -300,
+    avgPrice: 252,
+    markPrice: 255.08,
+    unrealisedPnl: -924,
+  },
+];

@@ -15,8 +15,6 @@ import { buildViewModelInputs } from "#/app/devtools/buildViewModelInputs";
 import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 describe("buildViewModelInputs", () => {
-  const cleanups: Array<() => void> = [];
-
   afterEach(() => {
     for (const cleanup of cleanups) {
       cleanup();
@@ -76,6 +74,8 @@ describe("buildViewModelInputs", () => {
       }),
     ).toContain("connection.status$");
   });
+
+  const cleanups: Array<() => void> = [];
 });
 
 // expo-constants has no runtime `expoConfig` under vitest-node; stub it so

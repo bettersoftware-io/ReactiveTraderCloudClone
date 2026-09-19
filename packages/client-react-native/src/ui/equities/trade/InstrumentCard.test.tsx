@@ -3,8 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { instrumentCardPage } from "#tests/pages/InstrumentCardPage";
 
-const page = instrumentCardPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -61,3 +59,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = instrumentCardPage();

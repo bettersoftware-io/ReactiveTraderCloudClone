@@ -3,8 +3,6 @@ import { afterEach, expect, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { surfaceCardPage } from "#tests/pages/SurfaceCardPage";
 
-const page = surfaceCardPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -26,3 +24,5 @@ test("renders no sheen on a flat skin even for variant=tile", async () => {
   await page.mount("tile", "c", rnThemeTokens.holo.dark);
   expect(page.exists("surface-sheen")).toBe(false);
 });
+
+const page = surfaceCardPage();

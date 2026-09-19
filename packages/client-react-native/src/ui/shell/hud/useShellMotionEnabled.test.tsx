@@ -4,8 +4,6 @@ import { shellMotionEnabledPage } from "#tests/pages/UseShellMotionEnabledPage";
 
 const mockReducedMotion = jest.fn<() => boolean>();
 const mockPowerSaver = jest.fn<() => MockPowerSaverResult>();
-const page = shellMotionEnabledPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -55,3 +53,5 @@ jest.mock("@rtc/react-bindings", () => {
     },
   };
 });
+
+const page = shellMotionEnabledPage();

@@ -2,8 +2,6 @@ import { expect, test } from "@jest/globals";
 
 import { rowInsertFlashPage } from "#tests/pages/UseRowInsertFlashPage";
 
-const page = rowInsertFlashPage();
-
 // RNTL 14 (React 19) made `render`/`rerender` async — they await a concurrent
 // `act` (see harnessProbe.test.tsx). Reanimated is globally jest-mocked, so
 // this can only assert mount/transition survival and that a style is
@@ -16,3 +14,5 @@ test("mounts and survives isNew and gating transitions", async () => {
   expect(page.hasText("row")).toBeTruthy();
   await page.unmountAll();
 });
+
+const page = rowInsertFlashPage();

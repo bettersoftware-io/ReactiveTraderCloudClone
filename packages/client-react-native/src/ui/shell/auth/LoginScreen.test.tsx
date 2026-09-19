@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { loginScreenPage } from "#tests/pages/LoginScreenPage";
 
-const page = loginScreenPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -51,3 +49,5 @@ test("toggling the sim switch calls onToggleSimulator with the new value", async
   expect(onToggleSimulator).toHaveBeenCalledTimes(1);
   expect(onToggleSimulator).toHaveBeenCalledWith(true);
 });
+
+const page = loginScreenPage();

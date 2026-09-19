@@ -4,22 +4,6 @@ import type { EquityOrder } from "@rtc/domain";
 
 import { orderCeremonyPage } from "#tests/pages/OrderCeremonyPage";
 
-const Haptics = require("expo-haptics") as MockedHaptics;
-
-const ORDER: EquityOrder = {
-  id: "o1",
-  symbol: "NVDA",
-  side: "buy",
-  type: "market",
-  qty: 500,
-  status: "filled",
-  filledQty: 500,
-  avgPrice: 131.14,
-  createdAt: 0,
-};
-
-const page = orderCeremonyPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -165,3 +149,19 @@ interface MockedHaptics {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string; Error: string };
 }
+
+const Haptics = require("expo-haptics") as MockedHaptics;
+
+const ORDER: EquityOrder = {
+  id: "o1",
+  symbol: "NVDA",
+  side: "buy",
+  type: "market",
+  qty: 500,
+  status: "filled",
+  filledQty: 500,
+  avgPrice: 131.14,
+  createdAt: 0,
+};
+
+const page = orderCeremonyPage();

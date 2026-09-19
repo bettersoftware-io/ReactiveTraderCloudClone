@@ -6,11 +6,6 @@ import {
   formatUnsignedCompact,
 } from "#/ui/analytics/formatAnalytics";
 
-/** U+2212, the design's minus. Spelled out here so a test asserting it cannot
- * be "fixed" into an ASCII hyphen by a stray find-and-replace without the
- * failure naming what changed. */
-const MINUS_SIGN = "−";
-
 describe("formatSignedDollars", () => {
   it("groups the headline in thousands with an explicit plus", () => {
     expect(formatSignedDollars(29_672)).toBe("+$29,672");
@@ -84,3 +79,8 @@ describe("formatUnsignedCompact", () => {
     expect(formatUnsignedCompact(-999)).toBe("-999");
   });
 });
+
+/** U+2212, the design's minus. Spelled out here so a test asserting it cannot
+ * be "fixed" into an ASCII hyphen by a stray find-and-replace without the
+ * failure naming what changed. */
+const MINUS_SIGN = "−";

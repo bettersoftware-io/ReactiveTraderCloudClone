@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { coreScenePage } from "#tests/pages/CoreScenePage";
 
-const page = coreScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -111,3 +109,5 @@ test("survives a dense elapsedSec sweep, including a holo-flicker glitch frame, 
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = coreScenePage();

@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { marketsViewPage } from "#tests/pages/MarketsViewPage";
 
-const page = marketsViewPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -29,3 +27,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = marketsViewPage();

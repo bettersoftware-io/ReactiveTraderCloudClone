@@ -28,8 +28,6 @@ import {
   topoYaw,
 } from "./topoGeometry";
 
-const HEIGHTS = topoHeightfield();
-
 // ── the heightfield (the performance-critical table) ────────────────────────
 
 // 52x36 = 1872 samples, each summing six gaussians. This does not prove the
@@ -368,3 +366,5 @@ test("the banner blinks only while scanning, then holds solid", () => {
   expect(Math.min(...blinking)).toBeLessThan(0.99);
   expect(Math.min(...blinking)).toBeGreaterThanOrEqual(0.55);
 });
+
+const HEIGHTS = topoHeightfield();

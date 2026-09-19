@@ -4,21 +4,6 @@ import { type CurrencyPair, Direction } from "@rtc/domain";
 
 import { creditSlice } from "./credit";
 
-/** A fully-specified `CurrencyPair` for the sole purpose of calling
- * `useRfqTile` (an FX-tile-only hook `client-react-native` never actually
- * calls — see `credit.ts`'s header comment) with a type-correct argument;
- * its field values are otherwise unused by this slice's fixed return. */
-const DUMMY_PAIR: CurrencyPair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.1,
-  typicalSpreadPips: 1.5,
-};
-
 describe("creditSlice.useRfqCountdown", () => {
   it("returns the identical value on two successive calls", () => {
     const first = creditSlice.useRfqCountdown(0, 120_000);
@@ -188,3 +173,18 @@ describe("creditSlice — remaining hooks are correct, inert values", () => {
     }).not.toThrow();
   });
 });
+
+/** A fully-specified `CurrencyPair` for the sole purpose of calling
+ * `useRfqTile` (an FX-tile-only hook `client-react-native` never actually
+ * calls — see `credit.ts`'s header comment) with a type-correct argument;
+ * its field values are otherwise unused by this slice's fixed return. */
+const DUMMY_PAIR: CurrencyPair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.1,
+  typicalSpreadPips: 1.5,
+};

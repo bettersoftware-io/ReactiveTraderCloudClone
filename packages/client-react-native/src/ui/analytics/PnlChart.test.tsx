@@ -4,8 +4,6 @@ import type { HistoricPosition } from "@rtc/domain";
 
 import { pnlChartPage } from "#tests/pages/PnlChartPage";
 
-const page = pnlChartPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -55,3 +53,5 @@ test("survives a 90-point history, the size the simulator actually emits", async
 function h(usdPnl: number): HistoricPosition {
   return { timestamp: `t${usdPnl}`, usdPnl };
 }
+
+const page = pnlChartPage();

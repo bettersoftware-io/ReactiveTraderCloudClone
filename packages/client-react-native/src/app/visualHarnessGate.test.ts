@@ -2,9 +2,6 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 
 import { visualHarnessEnabled } from "#/app/visualHarnessGate";
 
-const originalFlag: string | undefined = process.env.EXPO_PUBLIC_VISUAL_HARNESS;
-const originalDev: boolean | undefined = (globalThis as DevGlobal).__DEV__;
-
 beforeEach(() => {
   // React Native defines `__DEV__ === true` in dev/test builds (jest sets it
   // too); vitest's node env does not, so establish the same default here.
@@ -47,3 +44,7 @@ test("stays inert in a release build even when the flag is set", () => {
  * repo's newspaper-order convention (type aliases hoist, so the casts above
  * resolve). */
 type DevGlobal = { __DEV__?: boolean };
+
+const originalFlag: string | undefined = process.env.EXPO_PUBLIC_VISUAL_HARNESS;
+
+const originalDev: boolean | undefined = (globalThis as DevGlobal).__DEV__;

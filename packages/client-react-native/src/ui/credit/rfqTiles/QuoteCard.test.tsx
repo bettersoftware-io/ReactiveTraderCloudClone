@@ -3,8 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { quoteCardPage } from "#tests/pages/QuoteCardPage";
 
-const page = quoteCardPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -104,3 +102,5 @@ test("renders no gradient tile surface even on a 3d skin (dense row, not a hero 
   );
   expect(page.exists("surface-sheen")).toBe(false);
 });
+
+const page = quoteCardPage();

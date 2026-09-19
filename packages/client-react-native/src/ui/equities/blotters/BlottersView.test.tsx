@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { blottersViewPage } from "#tests/pages/BlottersViewPage";
 
-const page = blottersViewPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -28,3 +26,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = blottersViewPage();

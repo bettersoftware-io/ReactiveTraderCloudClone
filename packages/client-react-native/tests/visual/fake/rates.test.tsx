@@ -14,24 +14,10 @@ import type { RatesSlice } from "./sliceTypes";
 // factories in packages/client-solid/src/ui/equities/chart/ChartPanel.tsx.
 const getCurrencyPairs: RatesSlice["useCurrencyPairs"] =
   ratesSlice.useCurrencyPairs;
-const getPrice: RatesSlice["usePrice"] = ratesSlice.usePrice;
-const getPriceHistory: RatesSlice["usePriceHistory"] =
-  ratesSlice.usePriceHistory;
-
-const getTileExecution: RatesSlice["useTileExecution"] =
-  ratesSlice.useTileExecution;
-const getNotional: RatesSlice["useNotional"] = ratesSlice.useNotional;
-const getStaleFlag: RatesSlice["useStaleFlag"] = ratesSlice.useStaleFlag;
-const getRowHighlight: RatesSlice["useRowHighlight"] =
-  ratesSlice.useRowHighlight;
-
 // Fixture constants only (no helper functions — those come after the tests
 // below per rtc/newspaper-order). `findPair` is a hoisted function
 // declaration, so calling it here ahead of its own definition is fine.
 const pairs = getCurrencyPairs();
-const eurusd = findPair("EURUSD");
-const usdjpy = findPair("USDJPY");
-
 describe("ratesSlice.useCurrencyPairs", () => {
   it("serves a non-trivial, fully specified pair roster", () => {
     expect(pairs.length).toBeGreaterThanOrEqual(5);
@@ -150,3 +136,22 @@ function findPair(symbol: string): CurrencyPair {
 
   return pair;
 }
+
+const getPrice: RatesSlice["usePrice"] = ratesSlice.usePrice;
+
+const getPriceHistory: RatesSlice["usePriceHistory"] =
+  ratesSlice.usePriceHistory;
+
+const getTileExecution: RatesSlice["useTileExecution"] =
+  ratesSlice.useTileExecution;
+
+const getNotional: RatesSlice["useNotional"] = ratesSlice.useNotional;
+
+const getStaleFlag: RatesSlice["useStaleFlag"] = ratesSlice.useStaleFlag;
+
+const getRowHighlight: RatesSlice["useRowHighlight"] =
+  ratesSlice.useRowHighlight;
+
+const eurusd = findPair("EURUSD");
+
+const usdjpy = findPair("USDJPY");

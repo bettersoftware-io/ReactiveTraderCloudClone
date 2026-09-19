@@ -3,8 +3,6 @@ import { afterEach, expect, test } from "@jest/globals";
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
 import { sectionLabelPage } from "#tests/pages/SectionLabelPage";
 
-const page = sectionLabelPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -27,3 +25,5 @@ test("keeps the 8.5pt / 2-tracked mono label recipe", async () => {
   expect(style.letterSpacing).toBe(2);
   expect(style.fontWeight).toBeUndefined();
 });
+
+const page = sectionLabelPage();

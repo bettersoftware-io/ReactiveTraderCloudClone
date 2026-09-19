@@ -4,8 +4,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { FONT_JETBRAINS_MONO_600 } from "#/ui/theme/fontFamilies";
 import { shellHeaderPage } from "#tests/pages/ShellHeaderPage";
 
-const page = shellHeaderPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -21,11 +19,6 @@ test("tapping the env badge toggles the simulator flag", async () => {
   await page.pressEnvBadge();
   expect(onToggle).toHaveBeenCalledWith(true);
 });
-
-// Orbitron's advance for "REACTIVE TRADER" at 11pt with 2.2 tracking, from
-// the font's own hmtx table: 155.56pt, or 157.76 if iOS kerns past the last
-// glyph too. The wordmark box must reserve at least that.
-const ORBITRON_WORDMARK_ADVANCE = 155.56;
 
 test("the wordmark box reserves Orbitron's real advance, so the trailing ER cannot be clipped off", async () => {
   await page.mount(true);
@@ -131,3 +124,10 @@ jest.mock("#/ui/shell/lock/LockButton", () => {
 // No `LogoutButton` mock: P7 moved sign-out out of the header and into the
 // Appearance sheet, so the header no longer imports it. A mock for a component
 // this file never renders would be dead weight that still reads as intent.
+
+const page = shellHeaderPage();
+
+// Orbitron's advance for "REACTIVE TRADER" at 11pt with 2.2 tracking, from
+// the font's own hmtx table: 155.56pt, or 157.76 if iOS kerns past the last
+// glyph too. The wordmark box must reserve at least that.
+const ORBITRON_WORDMARK_ADVANCE = 155.56;

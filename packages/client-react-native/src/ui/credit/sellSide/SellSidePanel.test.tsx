@@ -7,8 +7,6 @@ import {
   sellSidePanelPage,
 } from "#tests/pages/SellSidePanelPage";
 
-const page = sellSidePanelPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -200,3 +198,5 @@ function openRfq(id: number, direction: Direction = Direction.Buy): Rfq {
 function settledRfq(id: number): Rfq {
   return { ...openRfq(id), state: RfqState.Closed };
 }
+
+const page = sellSidePanelPage();

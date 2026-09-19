@@ -2,8 +2,6 @@ import { expect, jest, test } from "@jest/globals";
 
 import { appGroupLayoutPage } from "#tests/pages/AppGroupLayoutPage";
 
-const page = appGroupLayoutPage();
-
 test("app-group layout mounts inside the gesture-handler root", async () => {
   await page.mount();
   // Fonts are not loaded in jsdom, so the gated fallback renders — proving the
@@ -44,3 +42,5 @@ jest.mock("#/ui/theme/fonts", () => {
     },
   };
 });
+
+const page = appGroupLayoutPage();

@@ -4,16 +4,9 @@ import type { PillSegment } from "#/ui/SegmentedPill";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { segmentedPillPage } from "#tests/pages/SegmentedPillPage";
 
-const page = segmentedPillPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const SEGMENTS: readonly PillSegment<Key>[] = [
-  { key: "a", label: "ALPHA", testID: "pill-alpha" },
-  { key: "b", label: "BRAVO", testID: "pill-bravo" },
-];
 
 // Ids are given per cell, never derived here: the three call sites name their
 // cells on three different schemes, all of them load-bearing for the jest and
@@ -87,3 +80,10 @@ test("the mode pill's cells stay intrinsically sized", async () => {
 });
 
 type Key = "a" | "b";
+
+const page = segmentedPillPage();
+
+const SEGMENTS: readonly PillSegment<Key>[] = [
+  { key: "a", label: "ALPHA", testID: "pill-alpha" },
+  { key: "b", label: "BRAVO", testID: "pill-bravo" },
+];

@@ -6,8 +6,6 @@ const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-const page = pairPnlBarPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -45,3 +43,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = pairPnlBarPage();

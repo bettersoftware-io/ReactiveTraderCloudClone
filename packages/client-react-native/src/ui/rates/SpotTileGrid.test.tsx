@@ -4,16 +4,6 @@ import type { CurrencyPair } from "@rtc/domain";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 
-// `require`, not `import * as` — a namespace import goes through Babel's
-// `interopRequireWildcard`, which (since react-native's CJS export isn't
-// flagged `__esModule`) shallow-copies the module into a *new* object; a spy
-// on that copy would never be seen by SpotTileGrid.tsx's own named import,
-// which binds directly to the real `require("react-native")` singleton.
-const ReactNative = require("react-native") as typeof import("react-native");
-
-const { SpotTileGrid } =
-  require("./SpotTileGrid") as typeof import("./SpotTileGrid");
-
 test("phone-width viewport still renders a 2-column grid", async () => {
   jest.spyOn(ReactNative, "useWindowDimensions").mockReturnValue({
     width: 393,
@@ -117,3 +107,13 @@ jest.mock("@rtc/react-bindings", () => {
     },
   };
 });
+
+// `require`, not `import * as` — a namespace import goes through Babel's
+// `interopRequireWildcard`, which (since react-native's CJS export isn't
+// flagged `__esModule`) shallow-copies the module into a *new* object; a spy
+// on that copy would never be seen by SpotTileGrid.tsx's own named import,
+// which binds directly to the real `require("react-native")` singleton.
+const ReactNative = require("react-native") as typeof import("react-native");
+
+const { SpotTileGrid } =
+  require("./SpotTileGrid") as typeof import("./SpotTileGrid");

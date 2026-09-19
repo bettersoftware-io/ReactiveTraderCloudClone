@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { notionalControlPage } from "#tests/pages/NotionalControlPage";
 
-const page = notionalControlPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -77,3 +75,5 @@ function createNotional(numericValue: number): FakeNotional {
     reset: jest.fn(),
   };
 }
+
+const page = notionalControlPage();

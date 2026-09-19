@@ -2,12 +2,6 @@ import { expect, test } from "@jest/globals";
 
 import { useBootSceneFontsPage } from "#tests/pages/UseBootSceneFontsPage";
 
-const SPECS = {
-  small: { size: 9 },
-  body: { size: 11 },
-  heading: { size: 18, bold: true },
-} as const;
-
 test("builds one font per declared site", async () => {
   const page = useBootSceneFontsPage();
   const fonts = await page.fontsFor(SPECS);
@@ -80,3 +74,9 @@ test("hands out nothing until a face has loaded", async () => {
  * would only be asserting the mock. The device capture covers it — at 18px
  * the RANGE figures make the weight obvious.
  */
+
+const SPECS = {
+  small: { size: 9 },
+  body: { size: 11 },
+  heading: { size: 18, bold: true },
+} as const;

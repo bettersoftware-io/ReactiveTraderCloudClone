@@ -3,10 +3,6 @@ import { Gyroscope } from "expo-sensors";
 
 import { gyroDriftPage } from "#tests/pages/UseGyroDriftPage";
 
-const mockedAddListener = jest.mocked(Gyroscope.addListener);
-const mockedIsAvailableAsync = jest.mocked(Gyroscope.isAvailableAsync);
-const page = gyroDriftPage();
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockedIsAvailableAsync.mockResolvedValue(false);
@@ -102,3 +98,9 @@ test("an unavailable gyroscope leaves the value centred and never throws", async
   expect(mockedAddListener).not.toHaveBeenCalled();
   expect(page.value.value).toEqual({ mx: 0, my: 0 });
 });
+
+const mockedAddListener = jest.mocked(Gyroscope.addListener);
+
+const mockedIsAvailableAsync = jest.mocked(Gyroscope.isAvailableAsync);
+
+const page = gyroDriftPage();
