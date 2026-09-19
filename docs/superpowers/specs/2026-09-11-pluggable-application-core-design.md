@@ -210,8 +210,14 @@ Dev-only, consumed by each core as a devDependency, never from `src`.
   in the port-contract idiom: `describeXContract(label, makeHarness)`. Each
   `it` subscribes to the member's `Stream` / `StateStream`, drives the
   scripted ports, advances the clock, asserts on collected values.
-  Assertions are envelope-level only: values, ordering, completion, teardown
-  on last unsubscribe, synchronous first value, same-key identity.
+  Assertions are envelope-level only: values, ordering, teardown on last
+  unsubscribe, synchronous first value, same-key identity. **Amended in
+  slice 1b:** completion is NOT in the envelope — a presenter stream ends
+  with the app (`dispose()`) or with an error, never by forwarding a port's
+  completion; every port shipping today is `BehaviorSubject`-backed or
+  app-lifetime and none completes outside teardown, so neither alternative
+  core carries a completion channel (ruling 2026-09-19; a later member whose
+  source legitimately ends would add one against a suite that asserts it).
   Only that first value is asserted synchronously; every later value is
   asserted after the harness's `settle()` (two macrotask turns), because
   an Effect fiber delivers past the seed on the scheduler, never in the
@@ -327,6 +333,7 @@ alternative cores have them native; e2e matrix green; `parity.json` updated.
 | 7 jarvis | `jarvis`, `jarvisPanels`, `jarvisDriver`, `jarvisDemo`, `jarvisUsage`, `NarratorMachine` | largest choreography; depends on everything above |
 
 Slice 1a shipped 2026-09-18 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
+Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b.md`](../plans/2026-09-19-pluggable-core-slice-1b.md)) — no new primitive was needed; every preference presenter is now native in both alternative cores.
 
 ### Slice 8 — closing
 

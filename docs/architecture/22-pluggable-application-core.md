@@ -183,9 +183,9 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 1a both
-alternative cores list six members `"native"` (`connection`, the four
-theme/view/power-saver preferences, `commands.reconnect`) and everything else
+`commands` — and the drift test walks all three. As of slice 1b both
+alternative cores list seventeen members `"native"` (`connection`, all
+fifteen preference presenters, `commands.reconnect`) and everything else
 `"delegated"`; the manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.
