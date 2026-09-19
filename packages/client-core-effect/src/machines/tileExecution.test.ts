@@ -69,7 +69,8 @@ describe("createTileExecutionMachine", () => {
     // `Effect.race` interrupts the losing `rpc` fiber the instant the
     // timeout wins, so the harness's fake execute port has NOTHING pending
     // — released at once by `Effect.race` (contrast the async core's
-    // twin, which holds it until dismiss/new execute/dispose).
+    // twin, which holds it until dismiss/new execute/dispose) — recorded in
+    // ADR-006, "Decided in slice 2" (cross-core asymmetries).
     expect(commands.pendingCount()).toBe(0);
     commands.resolve(createTrade(TradeStatus.Done));
     await settle();

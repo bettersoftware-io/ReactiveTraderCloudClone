@@ -65,7 +65,8 @@ describe("createTileExecutionMachine (async)", () => {
     // `Promise.race` cancels nothing, so the `once(...)` subscription stays
     // live until dismiss/new execute/dispose (RxJS parity) — held until
     // then, unlike the Effect core, which releases it at once via
-    // `Effect.race`'s interrupt.
+    // `Effect.race`'s interrupt — recorded in ADR-006, "Decided in slice 2"
+    // (cross-core asymmetries).
     expect(
       calls.filter((call) => {
         return call.observed;
