@@ -198,8 +198,8 @@ Verification, and its limit: an **A/B smoke test** ran a real `vercel build` on
 a small static project with the stock tree and with the overridden tree — both
 exit 0 with identical `.vercel/output`. That exercises the build path. It does
 **not** exercise `vercel pull` / `vercel deploy`, which talk to the network
-through `undici` — only a real Deploy dispatch proves those (Open items). If it
-fails, it fails loudly at deploy time and the revert is one file.
+through `undici` — only a real Deploy dispatch proves those, and **one did**
+(Open items, 1).
 
 This is the first real catch by the **Dependency Review** gate's logic, too:
 with fail-on-severity `low` on both scopes, a lockfile carrying those 30
@@ -324,11 +324,14 @@ lighter-weight first try).
 
 Tracked in [`docs/STATUS.md`](../STATUS.md):
 
-1. **Prove the new deploy path with one real Deploy dispatch.** The lockfile
-   Vercel CLI (with its `undici` 5 → 6 override) and the pinned flyctl are
-   verified as far as a machine without deploy credentials can take them:
-   install, `--version`, and an A/B `vercel build`. `vercel pull` / `deploy` and
-   `flyctl deploy` are only exercised by `deploy.yml`.
+1. ~~Prove the new deploy path with one real Deploy dispatch.~~ **Done
+   2026-09-19** (Deploy run 35449185435, dispatched from the PR branch *before*
+   merge, all three targets): lockfile Corepack, `Vercel CLI 57.0.0` through
+   `pull` → `build` → `deploy` → smoke for both web clients — so the `undici`
+   5 → 6 override works over the network, the one thing the local A/B test
+   could not show — `flyctl v0.4.104` from the pinned installer, Fly's remote
+   build of the digest-pinned, lockfile-Corepack `Dockerfile`, and
+   `/health` → `{"ok":true}` on the live server.
 2. **Decide whether `dependency review` becomes a required check** on the `main`
    ruleset. It is a repo-settings change, so it was deliberately not made by the
    PR that introduced the workflow.
