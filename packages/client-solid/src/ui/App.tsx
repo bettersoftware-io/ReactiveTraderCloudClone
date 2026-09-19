@@ -111,6 +111,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     useDockLayoutStore,
     useDockedPanelIds,
     useWorkspaceLayoutResets,
+    useReportDetachedPanels,
   } = useViewModel();
 
   // Snapshot: useLayout resolves the per-tab singleton once at call time.
@@ -194,6 +195,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
     }),
   );
   const layoutResets = useWorkspaceLayoutResets();
+  const reportDetachedPanels = useReportDetachedPanels();
   // Chart instances (layer-2 membership the layout machine owns), gated on
   // the instance ID SET for the same IDENTITY CHURN reason as `dockedIds`:
   // `state()` emits on EVERY layout change (maximize, collapse, resize), so
@@ -322,6 +324,7 @@ function WorkspaceEngine(props: WorkspaceEngineProps): JSX.Element {
             onCollapse={collapse}
             onExpand={expand}
             onCloseInstance={closeInstance}
+            onDetachedPanelsChange={reportDetachedPanels}
           />
         </Show>
       </CreditViewProvider>

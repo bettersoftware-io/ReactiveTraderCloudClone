@@ -175,6 +175,22 @@ function untilClause(resetsAtMs: number): string {
   return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
 }
 
+/** The transcript text a folded `DriveOutcome` reads as — `"applied"` →
+ * `drive: <kind>`; `"refused"` → `can't <op>: <reason>` (`op` is the layout
+ * command's own `op` for kind `"layout"`, else the command's `kind`). Only
+ * called for the two statuses `recordDriveOutcome`'s fold keeps. */
+function formatDriveOutcomeText(outcome: DriveOutcome): string {
+  if (outcome.status !== "refused") {
+    return `drive: ${outcome.command.kind}`;
+  }
+
+  const op =
+    outcome.command.kind === "layout"
+      ? outcome.command.op
+      : outcome.command.kind;
+  return `can't ${op}: ${outcome.reason ?? "refused"}`;
+}
+
 /** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
  * entry `turnItems$`'s concatMap allocated for the CURRENT in-flight turn
  * (tracked by `entryPatches$`, cleared on that turn's own done/error — see
@@ -683,19 +699,19 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   );
 
   // recordDriveOutcome's fold — see JarvisIntents.recordDriveOutcome's doc
-  // for why the applied-only filter lives HERE rather than at the
-  // outcomes$ source. nextEntryId is the SAME counter turnItems$'s concatMap
+  // for why the filter (applied + refused fold, skipped doesn't) lives HERE
+  // rather than at the outcomes$ source. nextEntryId is the SAME counter turnItems$'s concatMap
   // above allocates from — ids just need to be unique, not contiguous
   // within one source.
   const driveOutcomePatches$: Observable<Patch> = driveOutcome$.pipe(
     filter((outcome) => {
-      return outcome.status === "applied";
+      return outcome.status !== "skipped";
     }),
     map((outcome): Patch => {
       const entry: JarvisEntry = {
         id: nextEntryId++,
         role: "jarvis",
-        text: `drive: ${outcome.command.kind}`,
+        text: formatDriveOutcomeText(outcome),
         done: true,
       };
 

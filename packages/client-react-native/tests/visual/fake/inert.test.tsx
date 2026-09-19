@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { inertSlice } from "./inert";
 
 describe("inertSlice", () => {
-  it("has exactly the 21 hooks InertSlice names — no more, no fewer", () => {
+  it("has exactly the 22 hooks InertSlice names — no more, no fewer", () => {
     const expectedKeys = [
       "useAnimationIntents",
       "useDockedPanelIds",
@@ -19,6 +19,7 @@ describe("inertSlice", () => {
       "useLayout",
       "useLayoutEngine",
       "useMetrics",
+      "useReportDetachedPanels",
       "useSessionCountSeries",
       "useSessions",
       "useThroughput",

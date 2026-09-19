@@ -117,10 +117,13 @@ export interface JarvisIntents {
   /** Folds one `DriveOutcome` (`JarvisDriverMachine`'s per-command result,
    * not a user action) into the transcript: an `"applied"` outcome appends
    * a new jarvis-role entry with text `` `drive: ${outcome.command.kind}` ``
-   * (e.g. "drive: switchTab"); a `"skipped"` outcome folds NOTHING — the
-   * filter lives in THIS machine's fold (not at the `outcomes$` source) so
-   * a future consumer that wants skipped outcomes too (e.g. a debug view)
-   * isn't already filtered upstream. No turn correlation: the entry appends
+   * (e.g. "drive: switchTab"); a `"refused"` outcome appends a jarvis-role
+   * entry with text `` `can't ${op}: ${reason}` `` (`op` is the layout
+   * command's `op` for kind `"layout"`, else the command's `kind`) so the
+   * user hears WHY the desk didn't move; a `"skipped"` outcome folds
+   * NOTHING — the filter lives in THIS machine's fold (not at the
+   * `outcomes$` source) so a future consumer that wants skipped outcomes too
+   * (e.g. a debug view) isn't already filtered upstream. No turn correlation: the entry appends
    * at arrival, independent of `phase`/any in-flight `send`/`narrate` turn,
    * mirroring how `toolEvent`/`done` entries append at arrival too.
    * `composition.ts` wires this from `jarvisDriver.outcomes$` AFTER both

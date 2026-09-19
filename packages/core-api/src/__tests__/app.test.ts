@@ -6,6 +6,7 @@ describe("App contract", () => {
   it("App carries presenters, ports, commands and an async dispose", () => {
     expectTypeOf<App["dispose"]>().toEqualTypeOf<() => Promise<void>>();
     expectTypeOf<AppCommands>().toHaveProperty("reconnect");
+    expectTypeOf<AppCommands>().toHaveProperty("reportDetachedPanels");
   });
 
   it("CoreFactory is the createApp/createMachineFactories pair", () => {

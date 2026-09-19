@@ -958,6 +958,13 @@ export function createApp(ports: AppPorts): App {
   // Built as an intermediate const rather than an inline call argument
   // purely for length: the deps list grew four members with the pinned-panel
   // round (`dockPanel`, `undockPanel`, `livePanelIds$`, `dockedPanelIds$`).
+  // Session-only registry of the panels per tab that currently live OUTSIDE
+  // the grid (floating / popped out) — written WHOLE-SET by the Dockview
+  // bridge through `commands.reportDetachedPanels`, read synchronously by the
+  // driver's `detachedPanelIds` per `layout` command. Never persisted and
+  // never part of `LayoutState`: floats/pop-outs are engine-owned "layer 3".
+  const detachedPanelIdsByTab = new Map<WorkspaceTab, readonly string[]>();
+
   const jarvisDriverDeps: JarvisDriverDeps = {
     events$: jarvis.events$.pipe(
       catchError(() => {
@@ -976,6 +983,9 @@ export function createApp(ports: AppPorts): App {
     dismissPanel: dismissPanelFromWorkspace,
     knownLayoutPanelIds: (tab: WorkspaceTab): readonly string[] => {
       return LAYOUT_PANEL_IDS[tab];
+    },
+    detachedPanelIds: (tab: WorkspaceTab): readonly string[] => {
+      return detachedPanelIdsByTab.get(tab) ?? [];
     },
     knownSymbols$: watchlist.watchlist$.pipe(
       map((list) => {
@@ -1240,6 +1250,12 @@ export function createApp(ports: AppPorts): App {
   const commands: AppCommands = {
     reconnect: () => {
       reconnect$.next({ type: "reconnect" });
+    },
+    reportDetachedPanels: (
+      tab: WorkspaceTab,
+      panelIds: readonly string[],
+    ): void => {
+      detachedPanelIdsByTab.set(tab, [...panelIds]);
     },
   };
   return {

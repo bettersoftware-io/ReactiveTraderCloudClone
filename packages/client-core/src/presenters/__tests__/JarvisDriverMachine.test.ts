@@ -308,6 +308,89 @@ describe("createJarvisDriverMachine", () => {
     expect(harness.layoutSpy).toHaveBeenCalledWith("equities");
   });
 
+  it.each(["maximize", "collapse", "expand"] as const)(
+    "layout %s on a DETACHED (floating/popped-out) panel is refused with a reason, and the layout intent is never called",
+    (op) => {
+      const command: DriveCommandV1 = {
+        kind: "layout",
+        op,
+        tab: "equities",
+        panelId: "eq-chart",
+      };
+
+      const { seen, harness } = run(
+        (h) => {
+          h.ts.schedule(() => {
+            h.events$.next(commandEvent([command]));
+          }, 1);
+        },
+        {
+          detachedPanelIds: (tab: WorkspaceTab) => {
+            return tab === "equities" ? ["eq-chart"] : [];
+          },
+        },
+      );
+
+      expect(seen.at(-1)?.lastBatch).toEqual([
+        {
+          command,
+          status: "refused",
+          reason: "eq-chart is floating or popped out — dock it first",
+        },
+      ]);
+      // Refused BEFORE the per-tab machine is even resolved, so no intent on
+      // it can have been called.
+      expect(harness.layoutSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it("layout ops on a panel that is NOT detached still apply while another panel in the tab is detached; restore is never refused", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              {
+                kind: "layout",
+                op: "maximize",
+                tab: "equities",
+                panelId: "eq-chart",
+              },
+              {
+                kind: "layout",
+                op: "restore",
+                tab: "equities",
+                panelId: "eq-watchlist",
+              },
+            ]),
+          );
+        }, 1);
+      },
+      {
+        detachedPanelIds: () => {
+          return ["eq-watchlist"];
+        },
+      },
+    );
+
+    expect(
+      seen.at(-1)?.lastBatch.map((outcome) => {
+        return outcome.status;
+      }),
+    ).toEqual(["applied", "applied"]);
+    expect(harness.layoutSpy).toHaveBeenCalledTimes(2);
+
+    const maximizeMachine = harness.layoutSpy.mock.results[0]
+      ?.value as ReturnType<typeof createLayoutMachine>;
+    let maximized: string | null | undefined;
+    maximizeMachine.state$
+      .subscribe((s) => {
+        maximized = s.maximized;
+      })
+      .unsubscribe();
+    expect(maximized).toBe("eq-chart");
+  });
+
   it("an unknown eqSelect symbol is skipped with a reason", () => {
     const { seen } = run((h) => {
       h.ts.schedule(() => {
@@ -996,6 +1079,7 @@ interface HarnessOverrides {
   readonly initialEqSymbol?: string;
   readonly livePanelIds$?: JarvisDriverDeps["livePanelIds$"];
   readonly dockedPanelIds$?: JarvisDriverDeps["dockedPanelIds$"];
+  readonly detachedPanelIds?: JarvisDriverDeps["detachedPanelIds"];
 }
 
 function createHarness(
@@ -1039,6 +1123,11 @@ function depsFrom(
     knownLayoutPanelIds: (tab: WorkspaceTab) => {
       return KNOWN_PANEL_IDS[tab];
     },
+    detachedPanelIds:
+      overrides.detachedPanelIds ??
+      (() => {
+        return [];
+      }),
     knownSymbols$: overrides.knownSymbols$ ?? of(["EURUSD", "GBPUSD"]),
     powerSaverLevel$: overrides.powerSaverLevel$ ?? of<PowerSaverLevel>("off"),
     livePanelIds$: overrides.livePanelIds$ ?? of(["panel-scripted-1"]),

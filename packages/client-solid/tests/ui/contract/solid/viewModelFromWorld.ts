@@ -235,6 +235,36 @@ function knownLayoutPanelIds(tab: WorkspaceTab): readonly string[] {
   return collectPanelIds(createDefaultLayoutPort(tab).initial.root);
 }
 
+/** The per-World mirror of `composition.ts`'s session-only detached-panels
+ * registry: `report` is what `useReportDetachedPanels()` hands the Dockview
+ * bridge (ONE stable function per World, so the bridge's effect never
+ * re-fires on identity alone), `byTab` is what the fixture's driver reads as
+ * its `detachedPanelIds` dep. Never persisted, like the real one. */
+interface DetachedPanelsRegistry {
+  readonly byTab: Map<WorkspaceTab, readonly string[]>;
+  readonly report: (tab: WorkspaceTab, panelIds: readonly string[]) => void;
+}
+
+const detachedPanelsRegistries = new WeakMap<World, DetachedPanelsRegistry>();
+
+function getDetachedPanelsRegistry(world: World): DetachedPanelsRegistry {
+  const cached = detachedPanelsRegistries.get(world);
+
+  if (cached) {
+    return cached;
+  }
+
+  const byTab = new Map<WorkspaceTab, readonly string[]>();
+  const registry: DetachedPanelsRegistry = {
+    byTab,
+    report: (tab: WorkspaceTab, panelIds: readonly string[]) => {
+      byTab.set(tab, [...panelIds]);
+    },
+  };
+  detachedPanelsRegistries.set(world, registry);
+  return registry;
+}
+
 /** The REAL `createWorkspaceNavMachine`, one shared instance PER WORLD
  * (Task 12/P5) — mirrors `jarvisMachines`/`getJarvisPanelsPresenter`'s
  * per-World cache, and the react driver's own `workspaceNavs`. `App.tsx`'s
@@ -672,6 +702,9 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
         undockPanelFromWorkspace(world, panelId);
       },
       knownLayoutPanelIds,
+      detachedPanelIds: (tab: WorkspaceTab) => {
+        return getDetachedPanelsRegistry(world).byTab.get(tab) ?? [];
+      },
       knownSymbols$: world.watchlist.pipe(
         map((list) => {
           return list.map((instrument) => {
@@ -1064,6 +1097,9 @@ export function solidViewModel(world: World): ViewModel {
       return () => {
         world.commands.reconnect += 1;
       };
+    },
+    useReportDetachedPanels: () => {
+      return getDetachedPanelsRegistry(world).report;
     },
     // Machines: the REAL createTileExecutionMachine, driven by a World-backed
     // execute() dep that records inputs and emits the canned result (or errors

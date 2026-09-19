@@ -104,6 +104,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.boot": null,
   "machines.orderTicket": null,
   "commands.reconnect": describeReconnectContract,
+  "commands.reportDetachedPanels": null,
 };
 
 /** Members whose suite is still to be written. Hand-maintained on purpose:
@@ -164,4 +165,5 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "machines.layout",
   "machines.boot",
   "machines.orderTicket",
+  "commands.reportDetachedPanels",
 ];

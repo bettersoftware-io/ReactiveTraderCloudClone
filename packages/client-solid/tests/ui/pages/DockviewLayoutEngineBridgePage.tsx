@@ -4,6 +4,7 @@ import type {
   DockLayoutStore,
   LayoutPanelInstance,
   PanelId,
+  WorkspaceTab,
 } from "@rtc/client-core";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
@@ -35,6 +36,12 @@ interface DockviewLayoutEngineBridgeMountProps {
   layoutResets?: Live<number>;
   /** Default a no-op. */
   onCloseInstance?: (id: PanelId) => void;
+  /** Default absent — the bridge reports detached panels to nobody. The
+   * floating spec passes a recorder to assert the whole-set reports. */
+  onDetachedPanelsChange?: (
+    tab: WorkspaceTab,
+    panelIds: readonly PanelId[],
+  ) => void;
 }
 
 function noop(): void {}
@@ -125,6 +132,7 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
             onCollapse={noop}
             onExpand={noop}
             onCloseInstance={props.onCloseInstance ?? noop}
+            onDetachedPanelsChange={props.onDetachedPanelsChange}
           />
         );
       });
