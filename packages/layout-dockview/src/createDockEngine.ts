@@ -2685,10 +2685,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** Applies the float rules (R5, Ruling 10, R6) to whatever changed since
    * the last structural mutation — ONE mechanism for every way a panel
    * enters or leaves a float (final review I1). `floatPanel` and `dockPanel`
-   * are two of them; dockview's own shift-drag float, a drag of a float onto
-   * the grid, and a pop-out window closing back into the grid are the
-   * others, and they call `addFloatingGroup` / `moveGroupOrPanel` themselves
-   * without ever reaching the verbs. When the rules lived on the verbs, the
+   * are two of them; dockview's own shift-drag float and a drag of a float
+   * onto the grid are the others, and they call `addFloatingGroup` /
+   * `moveGroupOrPanel` themselves without ever reaching the verbs. A pop-out
+   * window closing back into the grid is covered too, but NOT at once: its
+   * grid-landing paths (dockview's `disposePopoutWindow` non-sole-member
+   * branch, `handleBlockedPopout`) carry no mutation bracket, so it settles
+   * at the NEXT mutation (Ruling 37c — rare and self-healing). When the rules lived on the verbs, the
    * gesture path left a float clamped min=max until the next layout pass —
    * where `intactDesignPins` then dissolved the pin for good — and a
    * shift-drag of the last absorber brought back the #745 void.
@@ -2734,6 +2737,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     for (const panelId of floating) {
       changed = suspendPinsFor(panelId) || changed;
     }
+
+    // A record whose panel has left the dock (closed while floating) is
+    // dropped HERE, by the settle that follows the close — not lazily. Kept,
+    // a reopen in the same tick found it and re-clamped the pin min=max,
+    // where a panel closed and reopened without a float comes back
+    // unclamped (Ruling 37b).
+    floatSuspendedRecords();
 
     for (const panelId of [...floatSuspendedPins.keys()]) {
       const panel = api.getPanel(panelId);

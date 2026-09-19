@@ -280,7 +280,7 @@ gridview wrapper reuses the grid's `.dv-split-view-container` class, Task
 | R2 | Maximize refused on a floating panel — no space to claim, no home to restore | `maximizePanel` |
 | R3 | Float refused (head control) while a maximize is live — no coherent home to return to; both client bridges also withhold the control itself on every head while a maximize is live (spec §3.2's "button hidden") | `floatPanel`; the bridges' `onFloat` |
 | R4 | Float refused (shift-drag) while a maximize is live — mirrors R3 for the gesture | `cancelRefusedShiftFloat` |
-| R5 | Floating suspends a design pin (min=max) on its own record list — including a pin already lifted because nothing absorbs; returning to the grid re-clamps it if it still applies. Holds for EVERY entry and exit: the head control, dockview's shift-drag float, a drag of a float onto the grid, and a pop-out closing back into the grid | `settleFloatTransitions` → `suspendPinsFor` / `clampPinsFloatSuspendedFor` |
+| R5 | Floating suspends a design pin (min=max) on its own record list — including a pin already lifted because nothing absorbs; returning to the grid re-clamps it if it still applies. Holds for EVERY entry and exit: the head control, dockview's shift-drag float, a drag of a float onto the grid, and a pop-out closing back into the grid — that last at the NEXT layout mutation, since dockview's pop-out grid-landing paths carry no mutation bracket (Ruling 37c) | `settleFloatTransitions` → `suspendPinsFor` / `clampPinsFloatSuspendedFor` |
 | R6 | A floating chart instance leaves the equal-share rule, and re-enters it the moment it is back in the grid (not at the next resize) | `instanceSplitOf`; `settleFloatTransitions` |
 | R7 | DOM containment is not grid membership — a float sits inside this engine's own container, so `boundary.contains` is true for it. Every `api.groups` walk either filters explicitly with `isInGrid`, or is scoped STRUCTURALLY by sitting inside a grid split's DOM (`directMembersOf`, `childViewsOf`, `holdsStripChild`, `instanceSplitOf`'s inner walk, `shareSplitAmongInstances`, `firstGroupIn` — a grid split never contains a float's private gridview) | `isInGrid` call sites; the split-scoped walks |
 | R8 | Float refused (both entry points) for a collapsed panel — a strip and a float are mutually exclusive states | `floatPanel` / `cancelRefusedShiftFloat` |
@@ -316,7 +316,8 @@ and re-applies it through the axis `set` (the strips' size path) as the panel
 lands back in the grid, then forgets it. Siblings give the space back. Both
 halves live in that one function, so every entry and exit point is covered —
 the head control, shift-drag, a drag of the float onto the grid, and a
-pop-out closing back into the grid. The re-applied size is clamped to the
+pop-out closing back into the grid (that one at the next layout mutation —
+Ruling 37c). The re-applied size is clamped to the
 group's own min/max and to what its split can give without pushing a sibling
 below its minimum, so a container resized or a sibling closed while the
 panel floated lands what fits. Nothing is re-applied to a panel that docks

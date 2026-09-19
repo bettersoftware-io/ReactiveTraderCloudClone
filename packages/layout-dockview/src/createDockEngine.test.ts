@@ -4533,6 +4533,28 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
   // backing it — the clamp reads [100, MAX] whether or not the re-clamp ran,
   // so a clamp assertion here passes for a reason unrelated to the guard. The
   // census sees the call itself.
+  // Ruling 37(b): closing a floated pinned panel left its float-suspended
+  // pin record behind (pruned only lazily), so reopening it in the SAME tick
+  // re-clamped the pin min=max — a panel closed and reopened without any
+  // float comes back unclamped (measured: [100, MAX] vs [367, 367]). The
+  // settle that follows the close now drops the record of a panel that has
+  // left the dock.
+  it("a floated pinned panel closed and reopened in the same tick comes back unclamped (Ruling 37b)", () => {
+    const engine = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+      seed: { ...FX_LIKE, initialPx: [undefined, 360] },
+    });
+
+    engine.floatPanel("fx-analytics");
+    engine.closePanel("fx-analytics");
+    engine.reopenPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
   // Docking into an EMPTY grid lands the panel as the grid's root — Dock is
   // never a silent no-op (it used to be here, which stranded a tab whose
   // every panel had floated). The pin its float suspended stays suspended:
