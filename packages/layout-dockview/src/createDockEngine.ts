@@ -1230,10 +1230,20 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       released.add(group.element);
-      axisOf(group, orientation).constrain(
-        member.previousMinimum,
-        member.previousMaximum,
-      );
+      const axis = axisOf(group, orientation);
+      axis.constrain(member.previousMinimum, member.previousMaximum);
+      // Loosening the GROUP is not enough on its own. dockview's branch node
+      // caches its children's limits, and a pin applied at construction lands
+      // before the first layout builds that cache — so the rail's branch goes
+      // on reporting the pinned 367/367 to the root row after both of its
+      // groups read 100/∞. The root row then keeps the sash disabled and the
+      // rail cannot be dragged at all. Measured on a fresh boot: the pin was
+      // found, matched and released, and the rail still never moved.
+      //
+      // Re-asserting the group's current size pushes the change through the
+      // size path, which DOES make the branch recompute from its children —
+      // the same constrain-then-set order a strip's expand already uses.
+      axis.set(axis.size());
     }
 
     return patchedStrips;
