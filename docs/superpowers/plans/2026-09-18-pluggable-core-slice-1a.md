@@ -22,7 +22,7 @@
 - **Biome:** mandatory braces on every control statement; arrow functions use block bodies with an explicit `return`; zero findings; no `biome-ignore`. Function names state their effect (`rtc/name-functions-by-effect`); slot props/params stay `onX`/`next`.
 - `#/` subpath imports only; never `@/`; ≥2-up relative imports are banned.
 - **No new env vars, scripts, packages or CI jobs** in this slice — the selection, matrix and gates from slice 0 are reused as-is.
-- **Measured facts this plan relies on (Effect 3.22.2, verified 2026-09-18 in this repo):** `SubscriptionRef.set` with an `Object.is`-equal value RE-PUBLISHES to `changes`; `Stream.zipLatest(live, Stream.make(x))` keeps emitting after the finite side ends; `ManagedRuntime.runFork` runs a fiber synchronously up to its first suspension, but a port's first value reaches a `Stream.asyncPush` consumer one microtask after `runFork` and later values a macrotask later. Do not "fix" code that depends on these without re-measuring.
+- **Measured facts this plan relies on (Effect 3.22.2, verified 2026-09-18 in this repo):** `SubscriptionRef.set` with an `Object.is`-equal value RE-PUBLISHES to `changes`; `Stream.zipLatest(live, Stream.make(x))` keeps emitting after the finite side ends; `ManagedRuntime.runFork` runs a fiber synchronously up to its first suspension, but a port's first value reaches a `Stream.asyncPush` consumer one microtask after `runFork` — and so does the SUBSCRIPTION itself (found in execution; `fromObservable` therefore subscribes eagerly at call time) — and later values a macrotask later. Do not "fix" code that depends on these without re-measuring.
 - Commit after every task with the repo's trailer:
   ```
   Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
@@ -1812,14 +1812,14 @@ Expected: PASS.
   });
 
   it("sharedFold() delivers updates and de-duplicates Object.is-equal ones", async () => {
-    let write: FoldUpdate<number> | null = null;
+    const writes: FoldUpdate<number>[] = [];
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
         return 1;
       },
       run: (update) => {
-        write = update;
+        writes.push(update);
         return Effect.never;
       },
     });
@@ -1828,15 +1828,14 @@ Expected: PASS.
       seen.push(v);
     });
     await tick();
-    const update = write as FoldUpdate<number> | null;
-    expect(update).not.toBeNull();
+    expect(writes).toHaveLength(1);
     await host.runtime.runPromise(
-      (update as FoldUpdate<number>)(() => {
+      (writes[0] as FoldUpdate<number>)(() => {
         return 1;
       }),
     );
     await host.runtime.runPromise(
-      (update as FoldUpdate<number>)((current) => {
+      (writes[0] as FoldUpdate<number>)((current) => {
         return current + 1;
       }),
     );
@@ -2044,13 +2043,18 @@ export function sharedFold<S>(
   }
 
   return new Observable<S>((subscriber) => {
+    // Registered BEFORE the warm period starts: `runFork` runs the producer
+    // synchronously up to its first suspension, so a producer that fails at
+    // once (`Effect.fail`) fans out during `startWarmPeriod` — to an empty
+    // set, if this subscriber were added afterwards.
+    subscribers.add(subscriber);
+
     if (warm === null) {
       warm = startWarmPeriod();
     }
 
     const period = warm;
     period.subscribers += 1;
-    subscribers.add(subscriber);
     const inner = changes.subscribe(subscriber);
 
     return () => {

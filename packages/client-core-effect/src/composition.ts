@@ -13,6 +13,14 @@ import type {
 } from "@rtc/core-api";
 
 import type { EffectHost } from "#/bridge/out";
+import { createCommands } from "#/commands";
+import { createConnectionPresenter } from "#/presenters/connection";
+import {
+  createPowerSaverPresenter,
+  createThemeSkinPreferencePresenter,
+  createViewModePreferencePresenter,
+} from "#/presenters/preferences";
+import { createThemePreferencePresenter } from "#/presenters/themePreference";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
@@ -32,16 +40,34 @@ export interface ComposedMachines {
   machines: MachineFactories;
 }
 
-/** Members this core implements natively. Empty in slice 0: every member
- * delegates to the RxJS core. `parity.json` is the committed record of the
- * same fact and `parity.test.ts` proves the two agree by reference. The
- * runtime is threaded in because a native presenter will need one to run its
- * Effects under — it is unused while the overlay is empty. */
+/** Members this core implements natively — slice 1a: the connection fold,
+ * the four theme/view/power-saver preferences, and `commands` (see
+ * `createCommands`). Everything else still delegates to the RxJS core.
+ * `parity.json` is the committed record of the same fact and
+ * `parity.test.ts` proves the two agree by reference. Every native stream
+ * is a `sharedFold` over `host`, so `app.dispose()` (which closes
+ * `host.scope`) ends whatever is still warm. */
 function nativePresenters(
-  _base: Presenters,
-  _host: EffectHost,
+  ports: AppPorts,
+  host: EffectHost,
 ): Partial<Presenters> {
-  return {};
+  return {
+    connection: createConnectionPresenter(host, ports.connectionEvents),
+    themePreference: createThemePreferencePresenter(
+      host,
+      ports.preferences,
+      ports.colorScheme,
+    ),
+    themeSkinPreference: createThemeSkinPreferencePresenter(
+      host,
+      ports.preferences,
+    ),
+    viewModePreference: createViewModePreferencePresenter(
+      host,
+      ports.preferences,
+    ),
+    powerSaver: createPowerSaverPresenter(host, ports.preferences),
+  };
 }
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
@@ -57,8 +83,9 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     ...base,
     presenters: {
       ...base.presenters,
-      ...nativePresenters(base.presenters, host),
+      ...nativePresenters(ports, host),
     },
+    commands: createCommands(),
     // Order matters: the RxJS app goes first (its teardown may still drive
     // streams this core bridged), THEN the scope interrupts whatever fibers
     // remain, and only then is the runtime disposed — disposing it earlier

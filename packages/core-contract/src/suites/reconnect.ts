@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
+import { settle } from "#/harness/settle";
 
 export function describeReconnectContract(
   label: string,
@@ -14,6 +15,7 @@ export function describeReconnectContract(
       try {
         const c = collect(h.driver.connectionEvents$());
         h.app.commands.reconnect();
+        await settle();
         expect(c.values).toEqual([{ type: "reconnect" }]);
         c.unsubscribe();
       } finally {

@@ -8,7 +8,7 @@ const manifests = CORES.map((dir) =>
   JSON.parse(readFileSync(`packages/${dir}/src/parity.json`, "utf8")),
 );
 const rows = [];
-for (const section of ["presenters", "machines"]) {
+for (const section of ["presenters", "machines", "commands"]) {
   for (const member of Object.keys(manifests[0][section])) {
     rows.push({
       member: `${section}.${member}`,
@@ -18,7 +18,7 @@ for (const section of ["presenters", "machines"]) {
   }
 }
 const native = (m) =>
-  Object.values({ ...m.presenters, ...m.machines }).filter(
+  Object.values({ ...m.presenters, ...m.machines, ...m.commands }).filter(
     (v) => v === "native",
   ).length;
 console.table(rows);

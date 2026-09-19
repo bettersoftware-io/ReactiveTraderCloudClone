@@ -1,8 +1,8 @@
 import { Chunk, Effect, Fiber, Stream } from "effect";
-import { concat, EMPTY, of, Subject, throwError } from "rxjs";
+import { BehaviorSubject, concat, EMPTY, of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { fromObservable, rpc } from "#/bridge/in";
+import { fromObservable, peek, rpc } from "#/bridge/in";
 
 describe("bridge/in", () => {
   it("rpc() succeeds with the first emission", async () => {
@@ -16,14 +16,40 @@ describe("bridge/in", () => {
     expect(Chunk.toArray(values)).toEqual([1, 2, 3]);
   });
 
+  it("fromObservable() subscribes the source synchronously under runFork", async () => {
+    const subject = new Subject<number>();
+    const seen: number[] = [];
+    Effect.runFork(
+      Stream.runForEach(fromObservable(subject), (v) => {
+        return Effect.sync(() => {
+          seen.push(v);
+        });
+      }),
+    );
+    // No await: the rxjs subscription itself must already exist by the time
+    // `runFork` returns control — `fromObservable` subscribes as a plain,
+    // synchronous side effect of being CALLED (see its docstring for why:
+    // `Stream.runForEach`'s own channel-loop machinery defers even the
+    // simplest internal step by ≥1 microtask under `runFork`, regardless of
+    // what the stream is built from, so the subscribe cannot live inside it).
+    expect(subject.observed).toBe(true);
+    subject.next(1);
+    await new Promise((resume) => {
+      setTimeout(resume, 0);
+    });
+    expect(seen).toEqual([1]);
+  });
+
   it("fromObservable() unsubscribes from the source when the consumer stops", async () => {
     const source = new Subject<number>();
     const program = Stream.runCollect(Stream.take(fromObservable(source), 1));
     const fiber = Effect.runFork(program);
-    // `runFork` returns BEFORE the fiber reaches asyncPush's register effect,
-    // so `source.observed` is still false here. A hot Subject drops anything
-    // emitted now and `take(1)` would never complete — yield a macrotask
-    // first so the emission has a subscriber to land on.
+    // The subscription itself is already live here (synchronous with
+    // `runFork`, see the test above) — this wait is for VALUE delivery only:
+    // `Stream.runForEach`'s channel-loop pull is still a scheduled step, so
+    // `take(1)`'s consumer isn't listening on the queue yet. A value emitted
+    // now is buffered (not dropped) either way; the wait just keeps this
+    // test's shape aligned with the "on the scheduler is fine" contract.
     await new Promise((resume) => {
       setTimeout(resume, 0);
     });
@@ -87,5 +113,17 @@ describe("bridge/in", () => {
       }),
     );
     await expect(Effect.runPromise(rpc(source))).resolves.toBe(1);
+  });
+
+  describe("peek", () => {
+    it("reads a replay-current source synchronously and leaves nothing warm", () => {
+      const source = new BehaviorSubject("a");
+      expect(peek(source, "z")).toBe("a");
+      expect(source.observed).toBe(false);
+    });
+
+    it("returns the fallback for a source that does not emit on subscribe", () => {
+      expect(peek(new Subject<string>(), "z")).toBe("z");
+    });
   });
 });

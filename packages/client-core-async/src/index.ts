@@ -1,5 +1,10 @@
-export { iterate, once } from "#/bridge/in";
-export { storeToStateStream, topicToStream } from "#/bridge/out";
+export { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
+export {
+  pushReconnectIntent,
+  storeToStateStream,
+  topicToStream,
+} from "#/bridge/out";
+export { createCommands } from "#/commands";
 export {
   ASYNC_CORE_BRAND,
   asyncCore,
@@ -12,4 +17,17 @@ export { AbortError } from "#/kernel/AbortError";
 export { sleep } from "#/kernel/sleep";
 export { spawn } from "#/kernel/spawn";
 export { createStore, type Store } from "#/kernel/store";
-export { createTopic, type Topic, type TopicOptions } from "#/kernel/topic";
+export {
+  createTopic,
+  mapTopic,
+  type Topic,
+  type TopicOptions,
+} from "#/kernel/topic";
+export { untilAborted } from "#/kernel/untilAborted";
+export { createConnectionPresenter } from "#/presenters/connection";
+export {
+  createPowerSaverPresenter,
+  createThemeSkinPreferencePresenter,
+  createViewModePreferencePresenter,
+} from "#/presenters/preferences";
+export { createThemePreferencePresenter } from "#/presenters/themePreference";

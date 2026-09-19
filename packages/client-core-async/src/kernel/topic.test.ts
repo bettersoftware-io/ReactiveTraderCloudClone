@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createTopic } from "#/kernel/topic";
+import { createTopic, mapTopic } from "#/kernel/topic";
 
 describe("Topic", () => {
   it("starts the producer on the first subscriber and aborts it on the last unsubscribe", () => {
@@ -122,6 +122,75 @@ describe("Topic", () => {
       },
     );
     topic.fail(new Error("boom"));
+    expect(errors).toHaveLength(1);
+  });
+});
+
+describe("mapTopic", () => {
+  it("projects every publish and hands the current projection to a late subscriber", () => {
+    const source = createTopic<number>(async () => {}, { replay: true });
+    const doubled = mapTopic(source, (n) => {
+      return n * 2;
+    });
+    const seen: number[] = [];
+    const stop = doubled.subscribe((v) => {
+      seen.push(v);
+    });
+    source.publish(1);
+    source.publish(2);
+    const late: number[] = [];
+    const stopLate = doubled.subscribe((v) => {
+      late.push(v);
+    });
+    expect(seen).toEqual([2, 4]);
+    expect(late).toEqual([4]);
+    stop();
+    stopLate();
+  });
+
+  it("starts the source's producer on its first subscriber and aborts it on its last", () => {
+    let starts = 0;
+    let aborted = false;
+    const source = createTopic<number>(
+      async (signal) => {
+        starts += 1;
+        signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+      },
+      { replay: true },
+    );
+
+    const derived = mapTopic(source, (n) => {
+      return n;
+    });
+    const stop = derived.subscribe(() => {});
+    expect(starts).toBe(1);
+    expect(aborted).toBe(false);
+    stop();
+    expect(aborted).toBe(true);
+  });
+
+  it("fails when the source fails", async () => {
+    const source = createTopic<number>(async () => {}, { replay: true });
+    const derived = mapTopic(source, (n) => {
+      return n;
+    });
+    const errors: unknown[] = [];
+    derived.subscribe(
+      () => {},
+      (e) => {
+        errors.push(e);
+      },
+    );
+    source.fail(new Error("boom"));
+    // The producer's rejection round-trips through Promise.race and spawn's
+    // .catch before reaching the derived topic's subscribers — a macrotask
+    // tick clears all of that in one wait, rather than pinning an exact
+    // microtask count to an implementation detail.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
     expect(errors).toHaveLength(1);
   });
 });

@@ -10,19 +10,19 @@
     "currencyPairs": "delegated",
     "instruments": "delegated",
     "dealers": "delegated",
-    "connection": "delegated",
+    "connection": "native",
     "rfqQuote": "delegated",
     "throughput": "delegated",
-    "themePreference": "delegated",
-    "themeSkinPreference": "delegated",
+    "themePreference": "native",
+    "themeSkinPreference": "native",
     "animatedBackground": "delegated",
     "ambientStyle": "delegated",
     "chartSubstrate": "delegated",
     "layoutEngine": "delegated",
     "dockLayoutStore": "delegated",
     "forceBootAnimation": "delegated",
-    "powerSaver": "delegated",
-    "viewModePreference": "delegated",
+    "powerSaver": "native",
+    "viewModePreference": "native",
     "creditRfqFilterPreference": "delegated",
     "eqWatchlistSortPreference": "delegated",
     "eqBlotterViewPreference": "delegated",
@@ -73,5 +73,8 @@
     "layout": "delegated",
     "boot": "delegated",
     "orderTicket": "delegated"
+  },
+  "commands": {
+    "reconnect": "native"
   }
 }

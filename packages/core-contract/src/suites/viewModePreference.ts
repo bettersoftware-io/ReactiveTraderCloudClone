@@ -4,6 +4,7 @@ import { DEFAULT_VIEW_MODE } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
+import { settle } from "#/harness/settle";
 
 export function describeViewModePreferenceContract(
   label: string,
@@ -18,6 +19,7 @@ export function describeViewModePreferenceContract(
         const c = collect(p.viewMode$);
         expect(c.values).toEqual([DEFAULT_VIEW_MODE]);
         p.setViewMode("price");
+        await settle();
         expect(c.values.at(-1)).toBe("price");
         c.unsubscribe();
       } finally {

@@ -1,4 +1,5 @@
 import { spawn } from "#/kernel/spawn";
+import { untilAborted } from "#/kernel/untilAborted";
 
 export interface TopicOptions {
   /** Hand the most recent value to late subscribers (shareReplay bufferSize 1). */
@@ -121,4 +122,50 @@ export function createTopic<T>(
       };
     },
   };
+}
+
+/** A topic derived from another by a pure projection — `map` over a hot
+ * source, keeping the replay-1 + refCount shape: the first subscriber here
+ * subscribes the source (starting ITS producer if this is the source's first
+ * subscriber too), the last unsubscribe releases it. A source failure is the
+ * producer's rejection, so it fails this topic the way `spawn` fails any
+ * other. */
+export function mapTopic<T, U>(
+  source: Topic<T>,
+  project: (value: T) => U,
+): Topic<U> {
+  return createTopic<U>(
+    async (signal, publish) => {
+      // No initializer, so this is an assignment target rather than a
+      // function-expression binding (rtc's `func-style` forbids `let x = ()
+      // => {}`) — assigned synchronously below, before anything can read it.
+      let stop: (() => void) | undefined;
+      const sourceFailed = new Promise<never>((_, reject) => {
+        stop = source.subscribe((value) => {
+          publish(project(value));
+        }, reject);
+      });
+
+      // Released SYNCHRONOUSLY on abort, matching the refCount contract's own
+      // synchronous release (createTopic's unsubscribe aborts its controller
+      // immediately, no microtask gap). Waiting on the `finally` below alone
+      // would still release it — just a few microtask ticks late, since it
+      // has to round-trip through `Promise.race` — which is late enough to
+      // fail a caller that checks release state right after unsubscribing.
+      signal.addEventListener(
+        "abort",
+        () => {
+          stop?.();
+        },
+        { once: true },
+      );
+
+      try {
+        await Promise.race([sourceFailed, untilAborted(signal)]);
+      } finally {
+        stop?.();
+      }
+    },
+    { replay: true },
+  );
 }
