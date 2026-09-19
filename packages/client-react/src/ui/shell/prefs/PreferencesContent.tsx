@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { formatGateResetTime } from "@rtc/client-core";
+import { formatGateFallback, formatGateHint } from "@rtc/client-core";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -108,14 +108,17 @@ export function PreferencesContent(): ReactElement {
   } = useJarvisPreferences();
 
   // The active usage-budget gate (null when none is active). A gated brain
-  // gets both `disabled: true` and a `title` explaining why — the reset
-  // time, formatted by the same helper the hint line below uses — so the
-  // native tooltip and the hint line never drift apart.
+  // gets both `disabled: true` and a `title` explaining why — the same
+  // `formatGateHint` copy the hint line below leads with — so the native
+  // tooltip and the hint line never drift apart. The hint line also says
+  // what is running when the gate has moved this user off their saved brain,
+  // which the picker keeps highlighting (it resumes when the window resets).
   const gate = jarvisState.gate;
-  const gateHint =
+  const gateHint = gate === null ? undefined : formatGateHint(gate.resetsAtMs);
+  const gateHintLine =
     gate === null
       ? undefined
-      : `Budget window — resets ${formatGateResetTime(gate.resetsAtMs)}`;
+      : `${formatGateHint(gate.resetsAtMs)}${formatGateFallback(jarvisBrain, jarvisState.effectiveBrain)}`;
 
   // Real (non-"scripted") brain options are disabled when the server isn't
   // currently offering them (jarvisState.brains — an empty array is a normal
@@ -329,7 +332,7 @@ export function PreferencesContent(): ReactElement {
             className={styles.gateHint}
             data-testid="pref-segment-jarvisBrain-hint"
           >
-            {gateHint}
+            {gateHintLine}
           </div>
         ) : null}
         <PrefSegment
@@ -339,7 +342,10 @@ export function PreferencesContent(): ReactElement {
           value={jarvisEffort}
           onChange={changeJarvisEffort}
           testid="pref-segment-jarvisEffort"
-          disabled={jarvisBrain === "scripted"}
+          disabled={
+            jarvisBrain === "scripted" ||
+            jarvisState.effectiveBrain === "scripted"
+          }
         />
         <PrefSegment
           label="Narrator"
