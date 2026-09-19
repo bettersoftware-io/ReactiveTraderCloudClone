@@ -11,42 +11,33 @@ import type {
   ThemeSkinPreferencePresenter,
   ViewModePreferencePresenter,
 } from "@rtc/core-api";
-import {
-  type AmbientStyle,
-  type ChartSubstrate,
-  type CreditRfqFilter,
-  DEFAULT_AMBIENT_STYLE,
-  DEFAULT_ANIMATED_BACKGROUND,
-  DEFAULT_CHART_SUBSTRATE,
-  DEFAULT_CREDIT_RFQ_FILTER,
-  DEFAULT_EQ_BLOTTER_VIEW,
-  DEFAULT_FORCE_BOOT_ANIMATION,
-  DEFAULT_LAYOUT_ENGINE,
-  DEFAULT_POWER_SAVER_LEVEL,
-  DEFAULT_THEME_SKIN,
-  DEFAULT_VIEW_MODE,
-  type EqBlotterView,
-  type LayoutEngine,
-  type PowerSaverLevel,
-  type PreferencesPort,
-  type ThemeSkin,
-  type ViewMode,
+import type {
+  AmbientStyle,
+  ChartSubstrate,
+  CreditRfqFilter,
+  EqBlotterView,
+  LayoutEngine,
+  PowerSaverLevel,
+  PreferencesPort,
+  ThemeSkin,
+  ViewMode,
 } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
 import { mirrorPort, mirrorPortAsIs } from "#/presenters/mirrorPort";
 
 /** Each replay-current preference stream is a `mirrorPort` of the port's
- * own stream (called once, at construction, as the RxJS presenters do). The
- * `fallback` is only ever read if the port fails to emit on subscribe — a
- * `PreferencesPort` promises it does. */
+ * own stream (called once, at construction, as the RxJS presenters do). A
+ * `PreferencesPort` emits on subscribe, so every warm period seeds `Some`;
+ * a port that did not would seed `None` and stay silent until its first
+ * value, rather than inventing a default here. */
 
 export function createThemeSkinPreferencePresenter(
   host: EffectHost,
   preferences: PreferencesPort,
 ): ThemeSkinPreferencePresenter {
   return {
-    skin$: mirrorPortAsIs(host, preferences.themeSkin$(), DEFAULT_THEME_SKIN),
+    skin$: mirrorPortAsIs(host, preferences.themeSkin$()),
     setSkin: (skin: ThemeSkin) => {
       preferences.setThemeSkin(skin);
     },
@@ -58,7 +49,7 @@ export function createViewModePreferencePresenter(
   preferences: PreferencesPort,
 ): ViewModePreferencePresenter {
   return {
-    viewMode$: mirrorPortAsIs(host, preferences.viewMode$(), DEFAULT_VIEW_MODE),
+    viewMode$: mirrorPortAsIs(host, preferences.viewMode$()),
     setViewMode: (viewMode: ViewMode) => {
       preferences.setViewMode(viewMode);
     },
@@ -76,11 +67,11 @@ export function createPowerSaverPresenter(
   const level = preferences.powerSaverLevel$();
 
   return {
-    level$: mirrorPortAsIs(host, level, DEFAULT_POWER_SAVER_LEVEL),
-    isCalm$: mirrorPort(host, level, DEFAULT_POWER_SAVER_LEVEL, (l) => {
+    level$: mirrorPortAsIs(host, level),
+    isCalm$: mirrorPort(host, level, (l) => {
       return l !== "off";
     }),
-    isFreeze$: mirrorPort(host, level, DEFAULT_POWER_SAVER_LEVEL, (l) => {
+    isFreeze$: mirrorPort(host, level, (l) => {
       return l === "freeze";
     }),
     setLevel: (next: PowerSaverLevel) => {
@@ -94,11 +85,7 @@ export function createCreditRfqFilterPreferencePresenter(
   preferences: PreferencesPort,
 ): CreditRfqFilterPreferencePresenter {
   return {
-    filter$: mirrorPortAsIs(
-      host,
-      preferences.creditRfqFilter$(),
-      DEFAULT_CREDIT_RFQ_FILTER,
-    ),
+    filter$: mirrorPortAsIs(host, preferences.creditRfqFilter$()),
     setFilter: (filter: CreditRfqFilter) => {
       preferences.setCreditRfqFilter(filter);
     },
@@ -110,11 +97,7 @@ export function createEqBlotterViewPreferencePresenter(
   preferences: PreferencesPort,
 ): EqBlotterViewPreferencePresenter {
   return {
-    view$: mirrorPortAsIs(
-      host,
-      preferences.eqBlotterView$(),
-      DEFAULT_EQ_BLOTTER_VIEW,
-    ),
+    view$: mirrorPortAsIs(host, preferences.eqBlotterView$()),
     setView: (view: EqBlotterView) => {
       preferences.setEqBlotterView(view);
     },
@@ -126,11 +109,7 @@ export function createAmbientStylePresenter(
   preferences: PreferencesPort,
 ): AmbientStylePresenter {
   return {
-    style$: mirrorPortAsIs(
-      host,
-      preferences.ambientStyle$(),
-      DEFAULT_AMBIENT_STYLE,
-    ),
+    style$: mirrorPortAsIs(host, preferences.ambientStyle$()),
     setStyle: (style: AmbientStyle) => {
       preferences.setAmbientStyle(style);
     },
@@ -142,11 +121,7 @@ export function createChartSubstratePresenter(
   preferences: PreferencesPort,
 ): ChartSubstratePresenter {
   return {
-    substrate$: mirrorPortAsIs(
-      host,
-      preferences.chartSubstrate$(),
-      DEFAULT_CHART_SUBSTRATE,
-    ),
+    substrate$: mirrorPortAsIs(host, preferences.chartSubstrate$()),
     setSubstrate: (substrate: ChartSubstrate) => {
       preferences.setChartSubstrate(substrate);
     },
@@ -158,11 +133,7 @@ export function createLayoutEnginePresenter(
   preferences: PreferencesPort,
 ): LayoutEnginePresenter {
   return {
-    engine$: mirrorPortAsIs(
-      host,
-      preferences.layoutEngine$(),
-      DEFAULT_LAYOUT_ENGINE,
-    ),
+    engine$: mirrorPortAsIs(host, preferences.layoutEngine$()),
     setEngine: (engine: LayoutEngine) => {
       preferences.setLayoutEngine(engine);
     },
@@ -179,11 +150,7 @@ export function createAnimatedBackgroundPresenter(
   preferences: PreferencesPort,
 ): AnimatedBackgroundPresenter {
   return {
-    enabled$: mirrorPortAsIs(
-      host,
-      preferences.animatedBackground$(),
-      DEFAULT_ANIMATED_BACKGROUND,
-    ),
+    enabled$: mirrorPortAsIs(host, preferences.animatedBackground$()),
     set: (on: boolean) => {
       preferences.setAnimatedBackground(on);
     },
@@ -198,11 +165,7 @@ export function createForceBootAnimationPresenter(
   preferences: PreferencesPort,
 ): ForceBootAnimationPresenter {
   return {
-    enabled$: mirrorPortAsIs(
-      host,
-      preferences.forceBootAnimation$(),
-      DEFAULT_FORCE_BOOT_ANIMATION,
-    ),
+    enabled$: mirrorPortAsIs(host, preferences.forceBootAnimation$()),
     set: (on: boolean) => {
       preferences.setForceBootAnimation(on);
     },

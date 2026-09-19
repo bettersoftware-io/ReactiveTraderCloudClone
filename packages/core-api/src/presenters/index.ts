@@ -26,7 +26,6 @@ export type * from "#/presenters/latency";
 export type * from "#/presenters/layoutEngine";
 export type * from "#/presenters/loginWaitPreferences";
 export type * from "#/presenters/ordersBlotter";
-export type * from "#/presenters/panelStream";
 export type * from "#/presenters/positions";
 export type * from "#/presenters/powerSaver";
 export type * from "#/presenters/priceHistory";

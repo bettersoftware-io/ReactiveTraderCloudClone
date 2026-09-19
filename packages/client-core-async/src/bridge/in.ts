@@ -132,23 +132,51 @@ export function relay<T>(
   });
 }
 
-/** The current value of a replay-current Observable, read synchronously —
- * what `cycle()` needs (advance from the TRUE stored value, never a stale
- * closure). A source that does not emit during `subscribe` yields
- * `fallback`; the subscription is released before this returns, so nothing
- * is left warm. A source that errors — synchronously or later — never
- * surfaces that error here: `peek` yields `fallback` (or the last value
- * seen before the error) and rxjs reports the error asynchronously as an
- * unhandled error, since this subscription passes no `error` handler. */
-export function peek<T>(source: Observable<T>, fallback: T): T {
-  let value = fallback;
+/** The value box `peekCurrent` returns, so `null` means "did not emit" and
+ * cannot collide with an emitted `null`. */
+export interface Peeked<T> {
+  readonly value: T;
+}
+
+/** The error box `peekCurrent` throws from, so a `null`/`undefined` failure
+ * cannot collide with "no failure" while it is held across the callback. */
+interface PeekFailure {
+  readonly error: unknown;
+}
+
+/** The current value of a replay-current Observable, read synchronously:
+ * `{ value }` if the source emitted during `subscribe`, `null` if it did
+ * not. The subscription is released before this returns, so nothing is
+ * left warm. A source that ERRORS during `subscribe` throws that error
+ * here — a located failure at the read site, not a stray global error
+ * reported out of band. */
+export function peekCurrent<T>(source: Observable<T>): Peeked<T> | null {
+  let peeked: Peeked<T> | null = null;
+  let failure: PeekFailure | null = null;
   source
     .pipe(take(1))
-    .subscribe((current) => {
-      value = current;
+    .subscribe({
+      next: (current: T) => {
+        peeked = { value: current };
+      },
+      error: (error: unknown) => {
+        failure = { error };
+      },
     })
     .unsubscribe();
-  return value;
+
+  if (failure !== null) {
+    throw (failure as PeekFailure).error;
+  }
+
+  return peeked;
+}
+
+/** `peekCurrent` with a fallback for a source that does not emit on
+ * subscribe — what `cycle()` advances from. Throws what `peekCurrent` throws. */
+export function peek<T>(source: Observable<T>, fallback: T): T {
+  const peeked = peekCurrent(source);
+  return peeked === null ? fallback : peeked.value;
 }
 
 /** A hot port Observable as a replay-1, refCounted Topic: the port is

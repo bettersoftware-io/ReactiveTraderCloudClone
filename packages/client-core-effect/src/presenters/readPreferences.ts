@@ -11,8 +11,8 @@ import {
   type PreferencesPort,
 } from "@rtc/domain";
 
-import { peek } from "#/bridge/in";
 import type { EffectHost } from "#/bridge/out";
+import { peek } from "#/bridge/peek";
 import { mirrorPortAsIs } from "#/presenters/mirrorPort";
 
 /** Presenters whose API includes a synchronous read of the STORED value.
@@ -27,9 +27,13 @@ import { mirrorPortAsIs } from "#/presenters/mirrorPort";
 export function createBootPreferencePresenter(
   preferences: PreferencesPort,
 ): BootPreferencePresenter {
+  // Called ONCE, here — every `current()` is a fresh SUBSCRIPTION of this
+  // Observable, never a fresh call of the port method.
+  const bootVariant = preferences.bootVariant$();
+
   return {
     current: () => {
-      return peek(preferences.bootVariant$(), DEFAULT_BOOT_VARIANT);
+      return peek(bootVariant, DEFAULT_BOOT_VARIANT);
     },
     setVariant: (variant: BootVariant) => {
       preferences.setBootVariant(variant);
@@ -44,7 +48,7 @@ export function createEqWatchlistSortPreferencePresenter(
   const sort = preferences.eqWatchlistSort$();
 
   return {
-    sort$: mirrorPortAsIs(host, sort, DEFAULT_EQ_WATCHLIST_SORT),
+    sort$: mirrorPortAsIs(host, sort),
     setSort: (next: EqWatchlistSort) => {
       preferences.setEqWatchlistSort(next);
     },

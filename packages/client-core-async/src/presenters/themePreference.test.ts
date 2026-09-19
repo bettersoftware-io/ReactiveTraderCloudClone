@@ -45,6 +45,36 @@ describe("createThemePreferencePresenter (async)", () => {
     expect(prefersDark.observed).toBe(false);
   });
 
+  it("calls colorScheme.prefersDark$() once across two warm periods", () => {
+    const prefersDark = new BehaviorSubject(false);
+    let calls = 0;
+    const presenter = createThemePreferencePresenter(
+      new PreferencesSimulator({ themeMode: "system" }),
+      {
+        prefersDark$: () => {
+          calls += 1;
+          return prefersDark;
+        },
+      },
+    );
+    // A port method is called at CONSTRUCTION — before any subscriber, let
+    // alone any warm period.
+    expect(calls).toBe(1);
+    const first = presenter.mode$.subscribe(() => {});
+    first.unsubscribe();
+
+    const seen: ThemeMode[] = [];
+    const second = presenter.mode$.subscribe((m) => {
+      seen.push(m);
+    });
+    prefersDark.next(true);
+    expect(calls).toBe(1);
+    // Non-vacuous: the second period really ran (its own resolve, then the
+    // live flip), so the unchanged count is discipline, not absence.
+    expect(seen).toEqual(["light", "dark"]);
+    second.unsubscribe();
+  });
+
   it("fails mode$ when the preference stream fails", async () => {
     const presenter = createThemePreferencePresenter(
       createPortWithFailingThemeMode(),

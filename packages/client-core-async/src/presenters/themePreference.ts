@@ -26,7 +26,16 @@ export function createThemePreferencePresenter(
   preferences: PreferencesPort,
   colorScheme?: ColorSchemeSource,
 ): ThemePreferencePresenter {
-  const modePreference = topicFromObservable(preferences.themeMode$());
+  // Called ONCE, here — `modePreference$` and `cycle()` both read through
+  // this same Observable rather than a fresh call of `themeMode$()`.
+  const themeMode = preferences.themeMode$();
+  const modePreference = topicFromObservable(themeMode);
+  // Likewise ONCE, at construction rather than inside the producer: the
+  // producer runs per WARM PERIOD, so a `prefersDark$()` call in there is a
+  // port method invoked again on every cold → warm cycle. What the period
+  // owns is the SUBSCRIPTION (`relay`, released on abort), never the call.
+  const prefersDarkSource =
+    colorScheme === undefined ? undefined : colorScheme.prefersDark$();
 
   const mode = createTopic<ThemeMode>(
     async (signal, publish) => {
@@ -70,14 +79,14 @@ export function createThemePreferencePresenter(
       );
 
       try {
-        if (colorScheme === undefined) {
+        if (prefersDarkSource === undefined) {
           prefersDark = false;
           resolve();
           await Promise.race([preferenceFailed, untilAborted(signal)]);
         } else {
           await Promise.race([
             preferenceFailed,
-            relay(colorScheme.prefersDark$(), signal, (value) => {
+            relay(prefersDarkSource, signal, (value) => {
               prefersDark = value;
               resolve();
             }),
@@ -104,9 +113,7 @@ export function createThemePreferencePresenter(
      * clicks each advance from the real state. */
     cycle: () => {
       preferences.setThemeMode(
-        nextThemeModePreference(
-          peek(preferences.themeMode$(), DEFAULT_THEME_MODE_PREFERENCE),
-        ),
+        nextThemeModePreference(peek(themeMode, DEFAULT_THEME_MODE_PREFERENCE)),
       );
     },
   };
