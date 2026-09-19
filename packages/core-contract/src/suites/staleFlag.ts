@@ -73,7 +73,7 @@ export function describeStaleFlagContract(
       }
     });
 
-    it("dispose() drops the machine's own keep-alive; releasing the last external subscriber alongside it is safe, and later driver events do not throw", async () => {
+    it("dispose() after the last unsubscribe ends the machine's keep-alive; a fresh subscription afterwards yields the current value synchronously", async () => {
       const h = makeHarness();
       const m = h.machines.staleFlag(EURUSD);
 
@@ -92,10 +92,12 @@ export function describeStaleFlagContract(
         // machine's internal keep-alive, not every subscriber of state$.
         c.unsubscribe();
         m.dispose();
-        expect(() => {
-          h.driver.emitConnection({ type: "gatewayDisconnected" });
-          h.driver.emitConnection({ type: "gatewayConnected" });
-        }).not.toThrow();
+        h.driver.emitConnection({ type: "gatewayDisconnected" });
+        h.driver.emitConnection({ type: "gatewayConnected" });
+        await settle();
+        const fresh = collect(m.state$);
+        expect(fresh.values).toEqual([false]);
+        fresh.unsubscribe();
       } finally {
         await h.teardown();
       }

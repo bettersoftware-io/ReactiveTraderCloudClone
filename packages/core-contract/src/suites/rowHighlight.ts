@@ -54,7 +54,7 @@ export function describeRowHighlightContract(
       });
     });
 
-    it("dispose() drops the machine's own keep-alive; releasing the last external subscriber alongside it before the timer fires tears the pipeline down, and a fresh subscription afterwards restarts independently", async () => {
+    it("dispose() after the last unsubscribe ends the machine's keep-alive; a fresh subscription afterwards yields true synchronously", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
         const m = h.machines.rowHighlight(true);
