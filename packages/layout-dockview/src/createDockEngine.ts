@@ -503,6 +503,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     popoutRoots.add(root);
     mirrorOpenerRootInto(root);
   });
+
   const popoutRemoveSub = api.onDidRemovePopoutGroup((popout) => {
     popoutRoots.delete(popout.window.document.documentElement);
   });
