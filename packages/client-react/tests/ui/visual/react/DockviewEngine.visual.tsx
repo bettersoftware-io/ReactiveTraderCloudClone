@@ -8,6 +8,7 @@ import {
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
+import { FLOATING_FX_BLOB } from "./floatingFxBlob";
 import { STACKED_FX_BLOB } from "./stackedFxBlob";
 
 import styles from "./DockviewEngine.visual.module.css";
@@ -106,6 +107,46 @@ export function DockviewEngineStackedVisual(): ReactElement {
   if (storeRef.current === null) {
     const store = new InMemoryDockLayoutStore();
     store.save("fx", STACKED_FX_BLOB);
+    storeRef.current = store;
+  }
+
+  return (
+    <div className={styles.stage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={visualDockPanelRegistry}
+        store={storeRef.current}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={[]}
+        instances={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={noop}
+      />
+    </div>
+  );
+}
+
+/** The floating twin-less sibling (`shell/layout-dockview-floating`,
+ * PR #763): the same chrome stage, but the store is pre-seeded with the
+ * committed floating blob — fx-analytics floated over the reflowed
+ * fx-positions — so the bar renders the float's drag rail, card and opaque
+ * base over the panel underneath. Deterministic the same way the stacked
+ * wrapper is: the blob is a committed constant captured from a real engine
+ * save (see floatingFxBlob.ts's own comment), and `loadBlobOrSeed` falls
+ * back to the seed on any malformed blob — which would un-float the panel
+ * and fail this golden loudly. */
+export function DockviewEngineFloatingVisual(): ReactElement {
+  const storeRef = useRef<DockLayoutStore | null>(null);
+
+  if (storeRef.current === null) {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", FLOATING_FX_BLOB);
     storeRef.current = store;
   }
 
