@@ -62,6 +62,15 @@ describe("createTileExecutionMachine (async)", () => {
       EXECUTION_TIMEOUT_MS - TOO_LONG_THRESHOLD_MS,
     );
     expect(seen.at(-1)?.status).toBe("timeout");
+    // `Promise.race` cancels nothing, so the `once(...)` subscription stays
+    // live until dismiss/new execute/dispose (RxJS parity) — held until
+    // then, unlike the Effect core, which releases it at once via
+    // `Effect.race`'s interrupt.
+    expect(
+      calls.filter((call) => {
+        return call.observed;
+      }).length,
+    ).toBe(1);
     calls[0]?.next(createResult());
     await vi.advanceTimersByTimeAsync(0);
     expect(seen.at(-1)?.status).toBe("timeout");

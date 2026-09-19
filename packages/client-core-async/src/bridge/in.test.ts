@@ -274,6 +274,22 @@ describe("topicFromObservable", () => {
     await expect(pending).rejects.toThrow("port");
   });
 
+  it("once(source, signal): the complete that take(1) fires right after a value does not reject, and an abort after resolution is a no-op", async () => {
+    const source = new Subject<number>();
+    const controller = new AbortController();
+    const pending = once(source, controller.signal);
+    // `take(1)` completes the downstream observer synchronously right after
+    // this `next` — the settled guard means that complete is swallowed
+    // rather than racing a reject against the already-resolved promise.
+    source.next(7);
+    await expect(pending).resolves.toBe(7);
+    // The subscription is already gone (take(1) unsubscribed on
+    // completion), so this exercises the abort listener's settled guard,
+    // not a live subscription teardown — the promise stays resolved.
+    controller.abort();
+    await expect(pending).resolves.toBe(7);
+  });
+
   it("topicFromObservable(source, retainUntil): the port stays subscribed across zero subscribers and is released by the signal", () => {
     const source = new BehaviorSubject<number>(1);
     const lifetime = new AbortController();

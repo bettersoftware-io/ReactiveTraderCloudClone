@@ -17,7 +17,7 @@ describe("createMachineFactories — native wiring", () => {
   it("staleFlag watches the PRICE stream for its pair", () => {
     const { presenters, spies } = createStubPresenters();
 
-    createMachineFactories(presenters).staleFlag(PAIR);
+    createMachineFactories(presenters).staleFlag(PAIR).dispose();
 
     expect(spies.price$).toHaveBeenCalledWith(PAIR);
   });
@@ -25,7 +25,7 @@ describe("createMachineFactories — native wiring", () => {
   it("analyticsStaleFlag watches ANALYTICS, not the price stream", () => {
     const { presenters, spies } = createStubPresenters();
 
-    createMachineFactories(presenters).analyticsStaleFlag();
+    createMachineFactories(presenters).analyticsStaleFlag().dispose();
 
     expect(spies.price$).not.toHaveBeenCalled();
   });
@@ -34,12 +34,24 @@ describe("createMachineFactories — native wiring", () => {
     const { presenters, spies } = createStubPresenters();
     const factories = createMachineFactories(presenters);
 
-    expect(factories.tileExecution(PAIR)).toBeDefined();
-    expect(factories.rowHighlight(true)).toBeDefined();
-    expect(factories.notional(1_000_000)).toBeDefined();
+    const tileExecution = factories.tileExecution(PAIR);
+    const rowHighlight = factories.rowHighlight(true);
+    const notional = factories.notional(1_000_000);
+
+    expect(tileExecution).toBeDefined();
+    expect(rowHighlight).toBeDefined();
+    expect(notional).toBeDefined();
 
     // Constructing a tile machine must not trade.
     expect(spies.execute).not.toHaveBeenCalled();
+
+    // Every machine built here forks real Effect fibers (rowHighlight a 3 s
+    // timer, staleFlag-shaped machines a live subscription) into a scope
+    // nobody else closes — dispose each so the suite leaves nothing
+    // detached, as the async twin does.
+    tileExecution.dispose();
+    rowHighlight.dispose();
+    notional.dispose();
   });
 
   it("a ported factory is a NEW closure and an unported one is the base's own", () => {

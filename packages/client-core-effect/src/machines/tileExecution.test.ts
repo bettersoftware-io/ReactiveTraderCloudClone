@@ -66,6 +66,11 @@ describe("createTileExecutionMachine", () => {
     );
     await settle();
     expect(seen.at(-1)?.status).toBe("timeout");
+    // `Effect.race` interrupts the losing `rpc` fiber the instant the
+    // timeout wins, so the harness's fake execute port has NOTHING pending
+    // — released at once by `Effect.race` (contrast the async core's
+    // twin, which holds it until dismiss/new execute/dispose).
+    expect(commands.pendingCount()).toBe(0);
     commands.resolve(createTrade(TradeStatus.Done));
     await settle();
     expect(seen.at(-1)?.status).toBe("timeout");

@@ -65,6 +65,15 @@ export function createTileExecutionMachine(
     signal: AbortSignal,
   ): Promise<void> {
     store.set(STARTED_TILE_EXECUTION);
+    // This sleep is never cancelled on outcome (only on abort), and its
+    // guard reads the LIVE store — unlike the RxJS core, whose guard reads
+    // the scan accumulator, which is already terminal by the time this
+    // fires. Correctness here rests on a precondition, not cancellation:
+    // TOO_LONG_THRESHOLD_MS < CONFIRMATION_DISMISS_MS. The marker fires at
+    // 2 000 ms while the auto-dismiss returns the store to `ready` no
+    // earlier than outcome + 5 000 ms, so this guard can never observe a
+    // `ready` store. If the constants ever cross, a dismissed tile would
+    // re-enter `tooLong`.
     void sleep(TOO_LONG_THRESHOLD_MS, signal).then(
       () => {
         store.set((current) => {

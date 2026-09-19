@@ -81,7 +81,11 @@ describe("conflatedFold", () => {
     await settle();
     source.next(3);
     await settle();
-    expect(seen.at(-1)).toBe(3);
+    // Whole-array, not just the last value: pins that the window's pending
+    // `2` was discarded by the flip rather than emitted late, matching the
+    // async twin's `[1, 3]` assertion
+    // (client-core-async/src/presenters/conflatedTopic.test.ts).
+    expect(seen).toEqual([1, 3]);
   });
 
   it("off → calm starts a fresh window: the first value after the flip is a leading emission", async () => {
@@ -141,10 +145,13 @@ describe("conflatedFold", () => {
 
   it("a burst driven in the SAME turn as the subscribe is not lost to the flag: the flag is subscribed first", async () => {
     // What the contract's FX suites actually drive — no settle between the
-    // subscribe and the first tick. `fromPort(calm$)` is called before
-    // `fromPort(source)` in plain synchronous code, so the flag's replayed
-    // value is queued ahead of every tick and nothing is dropped as
-    // "before the flag spoke".
+    // subscribe and the first tick. Call ORDER of `fromPort(calm$)` before
+    // `fromPort(source)` is NOT what saves this: `Stream.merge` gives no
+    // ordering guarantee across its two sources and, measured, drains the
+    // tick queue first. What actually saves it is `peekCurrent(calm$)`,
+    // read synchronously into the fold's seed state before the merged
+    // stream is even run — so the flag's current value is already known
+    // when the first tick is folded, regardless of merge ordering.
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(

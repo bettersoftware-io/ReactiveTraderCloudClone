@@ -34,18 +34,44 @@ export function once<T>(
   }
 
   return new Promise<T>((resolve, reject) => {
+    // `take(1)` completes the downstream observer synchronously right after
+    // `next` fires, so without this flag `complete` would call `reject` on
+    // an already-resolved promise on every successful call — harmless (a
+    // settled promise ignores a later settle), but not a shape worth
+    // relying on. The same flag makes the abort listener a no-op once a
+    // result has already landed (it is also `{ once: true }`, so it can
+    // fire at most once regardless).
+    let settled = false;
     const subscription = source.pipe(take(1)).subscribe({
       next: (value: T) => {
+        settled = true;
         resolve(value);
       },
-      error: reject,
+      error: (error: unknown) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(error);
+      },
       complete: () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
         reject(new Error("once: source completed without a value"));
       },
     });
     signal.addEventListener(
       "abort",
       () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
         subscription.unsubscribe();
         reject(new AbortError());
       },

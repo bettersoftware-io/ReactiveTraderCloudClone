@@ -55,13 +55,20 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     ...base,
     presenters: { ...base.presenters, ...presenters },
     commands: createCommands(base.commands),
-    // Order matters: the RxJS app goes first (its teardown may still drive
-    // streams this core bridged), THEN the host scope interrupts whatever
-    // fibers remain — every fold period and retained singleton is forked
-    // from it — and only then is the runtime disposed, which closes the
-    // Layer scope the host's is a child of (a no-op by then). Every step is
-    // in a `finally` so one rejection cannot skip the rest; each is
-    // idempotent, so calling `dispose()` twice is safe.
+    // General rule (see docs/architecture/22-pluggable-application-core.md
+    // §22 "Teardown order"): an alternative core releases its own resources
+    // first, then the base app, then (for Effect) the runtime. THIS core's
+    // order differs from that rule — `base.dispose()` runs first, then the
+    // host scope interrupts whatever fibers remain (every fold period and
+    // retained singleton is forked from it), and only then is the runtime
+    // disposed, closing the Layer scope the host's is a child of (a no-op
+    // by then). That reversed order is equally safe today because the RxJS
+    // core's `dispose()` is a knowing no-op for the members this core has
+    // ported natively, so it never races the host's own teardown; slice 8
+    // removes the base delegation entirely, at which point this ordering
+    // question disappears. Every step is in a `finally` so one rejection
+    // cannot skip the rest; each is idempotent, so calling `dispose()`
+    // twice is safe.
     dispose: async () => {
       try {
         await base.dispose();

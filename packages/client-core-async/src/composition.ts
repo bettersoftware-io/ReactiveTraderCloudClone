@@ -123,10 +123,12 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
       ...nativePresenters(ports, lifetime.signal),
     },
     commands: createCommands(base.commands),
-    // The retained singletons hold port subscriptions for the app's life:
-    // abort them FIRST — their relays may still be draining streams the
-    // base app owns — then dispose the base. Idempotent: a second abort is
-    // a no-op, and the base's dispose is its own concern.
+    // General rule (see docs/architecture/22-pluggable-application-core.md
+    // §22 "Teardown order"): an alternative core releases its own resources
+    // first, then the base app it delegates to. Here that means aborting
+    // the retained singletons' `lifetime` before `base.dispose()` — their
+    // relays may still be draining streams the base app owns. Idempotent: a
+    // second abort is a no-op, and the base's dispose is its own concern.
     dispose: async () => {
       lifetime.abort();
       await base.dispose();

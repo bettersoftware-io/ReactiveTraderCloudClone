@@ -41,11 +41,19 @@ export interface TileExecutionDeps {
 
 /** The spec's Effect sketch: `Effect.race` of the RPC against
  * `Effect.sleep`, the too-long marker a forked sleep (a child of the run,
- * interrupted with it — so finishing cancels the escalation), switch-map
- * semantics `Fiber.interrupt` of the previous run; `dismiss()` interrupts
- * and resets; `dispose()` closes the machine's scope. A failing command is
- * `finished{Timeout}`, not the `timeout` state; the confirmation dismisses
- * itself after `CONFIRMATION_DISMISS_MS`. */
+ * interrupted with it), switch-map semantics via `Fiber.interrupt` of the
+ * previous run; `dismiss()` interrupts and resets; `dispose()` closes the
+ * machine's scope. The too-long child does NOT get cancelled by the outcome
+ * landing — the run does not finish until `CONFIRMATION_DISMISS_MS` after
+ * the outcome, so at TOO_LONG_THRESHOLD_MS the child fiber is still alive;
+ * it is the `write`'s terminal guard (`isTerminalTileExecution`) that
+ * suppresses it, not interruption. That guard's correctness rests on
+ * TOO_LONG_THRESHOLD_MS < CONFIRMATION_DISMISS_MS: the marker fires at
+ * 2 000 ms while the auto-dismiss returns to `ready` no earlier than
+ * outcome + 5 000 ms, so the guard can never see a `ready` state. If the
+ * constants ever cross, a dismissed tile would re-enter `tooLong`. A
+ * failing command is `finished{Timeout}`, not the `timeout` state; the
+ * confirmation dismisses itself after `CONFIRMATION_DISMISS_MS`. */
 export function createTileExecutionMachine(
   pair: CurrencyPair,
   deps: TileExecutionDeps,
