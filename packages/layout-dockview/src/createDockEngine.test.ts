@@ -409,6 +409,52 @@ describe("createDockEngine", () => {
   });
 });
 
+// A reload tears the page down without unmounting anything, so dispose's
+// flush never runs — a change still inside the save debounce was simply lost
+// (a float followed by a quick reload came back docked: 6a follow-up). The
+// page's own `pagehide`, which a reload and a navigation both fire, lands
+// the pending save first.
+describe("pagehide flush", () => {
+  it("lands a save still inside the debounce when the page is hidden", async () => {
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...createBase(),
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    engine.floatPanel("fx-analytics");
+    // dockview's onDidLayoutChange is microtask-buffered.
+    await Promise.resolve();
+
+    expect(calls).toHaveLength(0);
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0] as string).floatingGroups).toHaveLength(1);
+    engine.dispose();
+  });
+
+  it("writes nothing on pagehide when no save is pending", () => {
+    const calls: string[] = [];
+    const engine = createDockEngine({
+      ...createBase(),
+      debounceMs: 60_000,
+      onLayoutChange: (blob: string) => {
+        calls.push(blob);
+      },
+    });
+
+    window.dispatchEvent(new Event("pagehide"));
+
+    expect(calls).toHaveLength(0);
+    engine.dispose();
+  });
+});
+
 describe("dispose flush — arrangement origin", () => {
   it("does not persist a layout no pointer touched (seed path)", () => {
     const calls: string[] = [];

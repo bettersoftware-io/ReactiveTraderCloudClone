@@ -575,6 +575,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }, debounceMs);
   });
 
+  /** Lands a save still waiting out the debounce, now. A reload tears the
+   * page down without unmounting anything — dispose's flush never runs — so
+   * a change made inside the last `debounceMs` (a float, then a quick
+   * reload) was simply lost. `pagehide` fires for a reload and a navigation
+   * alike, early enough for the store's synchronous write to land. Only a
+   * PENDING save is flushed: it is exactly the write the debounce would
+   * have made, so this changes when a save lands, never whether. */
+  function flushPendingSave(): void {
+    if (timer === null) {
+      return;
+    }
+
+    clearTimeout(timer);
+    timer = null;
+    serializeLayout();
+  }
+
+  const ownerWindow = opts.container.ownerDocument.defaultView;
+
+  ownerWindow?.addEventListener("pagehide", flushPendingSave);
+
   // A float the blob restored must be published NOW: `loadBlobOrSeed` ran
   // `fromJSON` above, BEFORE `changeSub` subscribed, and dockview's
   // `onDidLayoutChange` is an AsapEvent that deliberately drops a fire
@@ -3212,6 +3233,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return api.groups.length;
     },
     dispose: () => {
+      ownerWindow?.removeEventListener("pagehide", flushPendingSave);
       changeSub.dispose();
       popoutAddSub.dispose();
       popoutRemoveSub.dispose();
