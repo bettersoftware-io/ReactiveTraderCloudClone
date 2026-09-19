@@ -449,6 +449,7 @@ describe("bridge/out", () => {
 
   it("sharedFold() a stale period's producer failing after a re-warm does not error the new period's subscribers", async () => {
     let failFirst: (() => void) | undefined;
+    let resumedWithFailure = false;
     let runs = 0;
     const host = useHost();
     const stream = sharedFold(host, {
@@ -461,6 +462,7 @@ describe("bridge/out", () => {
         if (runs === 1) {
           return Effect.async<void, Error>((resume) => {
             failFirst = () => {
+              resumedWithFailure = true;
               resume(Effect.fail(new Error("stale")));
             };
           });
@@ -485,6 +487,11 @@ describe("bridge/out", () => {
     await tick();
     await tick();
     expect(runs).toBe(2);
+    // An empty `errors` alone would also hold if the scope close had
+    // interrupted the first producer BEFORE `failFirst()` ran — a vacuous
+    // pass. This witnesses that the stale producer really did resume with a
+    // non-interrupt failure, so the empty `errors` is the guard working.
+    expect(resumedWithFailure).toBe(true);
     expect(errors).toEqual([]);
     second.unsubscribe();
   });

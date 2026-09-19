@@ -66,7 +66,10 @@ export function fromObservable<T>(
 
   // A stream that is never run never reaches its `ensuring` — so the period
   // that opened this subscription also owns it: closing the scope releases
-  // it whether or not the stream ran. `unsubscribe` is idempotent.
+  // it whether or not the stream ran. `unsubscribe` is idempotent. The
+  // finalizer lives as long as the scope, so a caller calls this once per
+  // source per scope — one per event would accumulate a subscription and a
+  // finalizer per value until the scope closes.
   if (scope !== undefined) {
     Effect.runSync(
       Scope.addFinalizer(

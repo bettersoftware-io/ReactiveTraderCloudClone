@@ -143,8 +143,12 @@ export type FoldUpdate<S> = (
 
 /** How a `sharedFold` producer subscribes a port: the subscription belongs
  * to the period, released when the period ends whether or not the stream
- * ran (`fromObservable`'s scope argument). Named rather than inlined into
- * `FoldRun` because every producer has to annotate the parameter. */
+ * ran (`fromObservable`'s scope argument). Each call subscribes the source
+ * and adds a finalizer that lives as long as the period, so a producer
+ * calls this ONCE PER PORT PER PERIOD — never per event, which would pile
+ * up one subscription and one finalizer per value for the period's whole
+ * life. Named rather than inlined into `FoldRun` because every producer has
+ * to annotate the parameter. */
 export type FromPort = <T>(source: CoreStream<T>) => Stream.Stream<T, unknown>;
 
 /** The producer of one warm period, handed the period's `update` and its
@@ -184,11 +188,22 @@ function sameState<S>(a: Option.Option<S>, b: Option.Option<S>): boolean {
 }
 
 /** A period's ref as a replay-current Observable of its `Some` values: the
- * current value (if any) synchronously, then every later `Some`. The head
+ * current value (if any) synchronously, then later values. The head
  * `ref.changes` replays is dropped only when it equals what was just
  * delivered — a `set` between the read and the watcher's subscribe carries a
  * NEW value and must arrive. The first emission the watcher sees succeeds
- * `watching`, which is what `update` awaits. */
+ * `watching`, which is what `update` awaits.
+ *
+ * What each subscriber is promised differs, and the difference is worth
+ * stating: the period's FIRST subscriber receives every intermediate state
+ * of a same-tick burst, because the producer's first write blocks on
+ * `watching` until that subscriber's watcher has subscribed the PubSub. A
+ * LATER joiner has no such latch — the Deferred is already done — so its
+ * watcher subscribes a fiber-step after its synchronous head read, and any
+ * burst landing in that window is conflated into the head it just
+ * delivered. That is the same window `refToStateStream` documents: a late
+ * joiner can miss INTERMEDIATE values, never see a stale one. Conflation,
+ * not staleness. */
 function periodStream<S>(
   host: EffectHost,
   ref: SubscriptionRef.SubscriptionRef<Option.Option<S>>,
@@ -237,11 +252,17 @@ export function sharedFold<S>(
 ): CoreStream<S> {
   let warm: WarmPeriod<S> | null = null;
 
-  function startWarmPeriod(first: Subscriber<S>): WarmPeriod<S> {
-    // `seed()` may throw (a port that errors on subscribe, via
-    // `peekCurrent`): nothing is warm yet, so the thrower is the only
-    // subscriber to tell.
-    const seed = fold.seed();
+  // The seed arrives already evaluated: `fold.seed()` is the ONE thing
+  // allowed to throw, and it is called by the subscribe function below,
+  // outside this. Nothing in here may throw — by the time `warm = period`
+  // has run, a scope is forked and the producer's ports are subscribed, so
+  // a throw escaping here would leave `warm` pointing at a period with no
+  // producer: later subscribers would join the zombie, hear the seed and
+  // nothing else, and the scope would never be closed.
+  function startWarmPeriod(
+    first: Subscriber<S>,
+    seed: Option.Option<S>,
+  ): WarmPeriod<S> {
     const scope = host.runtime.runSync(
       Scope.fork(host.scope, ExecutionStrategy.sequential),
     );
@@ -310,12 +331,20 @@ export function sharedFold<S>(
 
   return new Observable<S>((subscriber) => {
     if (warm === null) {
+      // `seed()` may throw (a port that errors on subscribe, via
+      // `peekCurrent`). Read it HERE, before anything is warm, so the
+      // thrower is the only subscriber to tell and no half-built period is
+      // left behind — `startWarmPeriod` takes the value, never the thunk.
+      let seed: Option.Option<S>;
+
       try {
-        warm = startWarmPeriod(subscriber);
+        seed = fold.seed();
       } catch (error) {
         subscriber.error(error);
         return () => {};
       }
+
+      warm = startWarmPeriod(subscriber, seed);
     } else {
       warm.subscribers.add(subscriber);
     }
