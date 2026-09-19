@@ -5,6 +5,7 @@ import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
   withoutDynamicNodes,
+  withoutFloatingGroups,
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
@@ -292,6 +293,32 @@ describe("withoutPopoutGroups (pop-outs are session-scoped)", () => {
       grid: null,
     });
     expect(withoutPopoutGroups(null)).toBe(null);
+  });
+});
+
+describe("withoutFloatingGroups (a load-time retry only, never a save-time scrub)", () => {
+  it("drops the floatingGroups key and leaves the grid untouched", () => {
+    const blob = {
+      grid: { root: { type: "leaf", data: { views: ["a"] } } },
+      panels: {},
+      floatingGroups: [{ data: {} }],
+    };
+
+    const scrubbed = withoutFloatingGroups(blob) as Record<string, unknown>;
+
+    expect(scrubbed.floatingGroups).toBeUndefined();
+    expect(scrubbed.grid).toEqual(blob.grid);
+  });
+
+  it("passes a blob with no floatingGroups key through untouched", () => {
+    const blob = { grid: { root: { type: "leaf", data: { views: ["a"] } } } };
+
+    expect(withoutFloatingGroups(blob)).toEqual(blob);
+  });
+
+  it("passes malformed input through untouched", () => {
+    expect(withoutFloatingGroups(null)).toBe(null);
+    expect(withoutFloatingGroups(42)).toBe(42);
   });
 });
 

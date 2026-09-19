@@ -248,11 +248,23 @@ export const TESTIDS = {
     collapseControl: (panelId: string) => {
       return `panel-${panelId}-collapse`;
     },
+    /** The panel's maximize/restore control (PanelHeadControls.tsx). */
+    maximizeControl: (panelId: string) => {
+      return `panel-${panelId}-maximize`;
+    },
     /** The panel's ↗ pop-out control (PanelHeadControls.tsx) — rendered
      * only under the dockview engine (the bridge attaches the optional
      * onPopout slot; in-house heads never receive it). */
     popoutControl: (panelId: string) => {
       return `panel-${panelId}-popout`;
+    },
+    /** The panel's float control (PanelHeadControls.tsx) — a single toggle
+     * button reading `Float ${title}` while docked and `Dock ${title}`
+     * once floating (see the engine root's `data-floating` witness).
+     * Rendered only under the dockview engine (the bridge attaches the
+     * optional onFloat slot; in-house heads never receive it). */
+    floatControl: (panelId: string) => {
+      return `panel-${panelId}-float`;
     },
   },
   /**

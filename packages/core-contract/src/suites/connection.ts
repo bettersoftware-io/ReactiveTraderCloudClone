@@ -62,6 +62,23 @@ export function describeConnectionContract(
       }
     });
 
+    it("a failing event source errors status$ (and does not hang)", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collect(h.app.presenters.connection.status$);
+        h.driver.failConnection(new Error("gateway"));
+        await settle();
+        expect(c.errors).toHaveLength(1);
+        expect(c.values).toEqual([ConnectionStatus.CONNECTING]);
+        c.unsubscribe();
+      } finally {
+        // `teardown()` calls `connection$.complete()` on an already-errored
+        // Subject afterward — a no-op in rxjs, so this is still safe.
+        await h.teardown();
+      }
+    });
+
     it("tears down on the last unsubscribe: a fresh subscriber restarts from CONNECTING", async () => {
       const h = makeHarness();
 

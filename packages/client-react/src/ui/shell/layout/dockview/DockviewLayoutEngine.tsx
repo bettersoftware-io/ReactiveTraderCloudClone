@@ -129,6 +129,13 @@ export function DockviewLayoutEngine({
   // honours, and a reload restores docked (the blob scrub is the second
   // lock).
   const [popped, setPopped] = useState<readonly PanelId[]>([]);
+  // Panels currently living in a FLOATING group — the same engine-owned,
+  // whole-set-on-change idiom as `popped` (onFloatsChange mirrors
+  // onPopoutsChange's shape), but UNLIKE popped state, floating IS
+  // persisted: a float is layer-3 arrangement, like a drag or a stack, so a
+  // reload restores it — nothing here clears it on its own the way the reset
+  // effect clears `popped`.
+  const [floating, setFloating] = useState<readonly PanelId[]>([]);
   // Read through a ref by the engine's title hook: `specs` (like `registry`)
   // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
   // the engine effect below would tear dockview down and rebuild it from
@@ -343,6 +350,9 @@ export function DockviewLayoutEngine({
       onPopoutsChange: (next: readonly string[]): void => {
         setPopped(next as readonly PanelId[]);
       },
+      onFloatsChange: (next: readonly string[]): void => {
+        setFloating(next as readonly PanelId[]);
+      },
       // Jarvis-docked panels and chart instances, both reconciled at
       // construction — an unlisted dynamic id the blob restored is deleted
       // as an orphan, so an instance missing here loses its blob position.
@@ -505,6 +515,14 @@ export function DockviewLayoutEngine({
       // stale `poppedHere` to grey a docked panel's controls forever. Same
       // reason `setStrips({})` sits directly above.
       setPopped([]);
+      // A reset rebuilds from the tab's now-CLEARED blob (a fresh default
+      // seed), so any panel that was floating cannot still be — clear it
+      // proactively for the identical reason `setPopped([])` does: the fresh
+      // engine's own `publishFloatingPanels` starts at `lastFloating = []`
+      // and fires only on a CHANGE, so a fresh dock with no floats is
+      // silent, and without this the stale `floatingHere` would hide
+      // collapse/maximize on a panel that is no longer floating anywhere.
+      setFloating([]);
       oldEngine?.dispose();
 
       const engine = createDockEngine({
@@ -542,6 +560,9 @@ export function DockviewLayoutEngine({
         popoutUrl: "/popout.html",
         onPopoutsChange: (next: readonly string[]): void => {
           setPopped(next as readonly PanelId[]);
+        },
+        onFloatsChange: (next: readonly string[]): void => {
+          setFloating(next as readonly PanelId[]);
         },
         // Jarvis-docked panels and chart instances, both reconciled at
         // construction — an unlisted dynamic id the blob restored is deleted
@@ -743,6 +764,22 @@ export function DockviewLayoutEngine({
     };
   }
 
+  // Attached only while no maximize is live (spec §3.2, Ruling 32): a float
+  // while a strip owns the grid has no coherent home, the engine refuses it
+  // (R3), and a control that does nothing is worse than none. Withheld on
+  // EVERY head — a floating panel's "Dock" included, since docking into a
+  // maximize-owned grid lands it in the same incoherent spot.
+  function floatOrDockPanel(panelId: PanelId) {
+    return () => {
+      if (floating.includes(panelId)) {
+        engineRef.current?.dockPanel(panelId);
+        return;
+      }
+
+      engineRef.current?.floatPanel(panelId);
+    };
+  }
+
   function closeInstancePanel(panelId: PanelId) {
     return () => {
       onCloseInstance(panelId);
@@ -783,6 +820,7 @@ export function DockviewLayoutEngine({
       data-collapsed={collapsed.join(" ")}
       data-closed={closed.join(" ")}
       data-popped={popped.join(" ")}
+      data-floating={floating.join(" ")}
       data-instances={instanceIds.join(" ")}
       className={styles.engine}
     >
@@ -820,10 +858,14 @@ export function DockviewLayoutEngine({
                 maximizable={specs[panelId]?.maximizable !== false}
                 maximizedHere={maximized === panelId}
                 poppedHere={popped.includes(panelId)}
+                floatingHere={floating.includes(panelId)}
                 onCollapse={collapsePanel(panelId)}
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
                 onPopout={popoutPanel(panelId)}
+                onFloat={
+                  maximized === null ? floatOrDockPanel(panelId) : undefined
+                }
                 onClose={
                   instanceIds.includes(panelId)
                     ? closeInstancePanel(panelId)

@@ -155,6 +155,71 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-maximize`));
   }
 
+  /** The floating set the bridge reports (`data-floating`), in engine
+   * order — the same space-joined-attribute idiom as `collapsedIds()` /
+   * `instanceIds()`. A snapshot only: like `data-groups`, this refreshes off
+   * dockview's own microtask-deferred layout-change notification rather than
+   * synchronously with the click that triggered it, so a caller that just
+   * floated/docked a panel wants `waitForFloating`, not this, to observe the
+   * settled result. */
+  floatingPanelIds(): readonly string[] {
+    const raw = this.engineEl().getAttribute("data-floating") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
+  }
+
+  /** Waits for `data-floating` to settle at exactly `panelIds` (order-
+   * sensitive, mirroring the engine's own `onFloatsChange` payload) —
+   * `waitForGroups`'s twin for the float/dock channel, needed for the same
+   * reason: dockview's own layout-change notification is microtask-deferred,
+   * not synchronous with the click. */
+  async waitForFloating(panelIds: readonly string[]): Promise<void> {
+    await waitFor(() => {
+      const actual = this.floatingPanelIds();
+      const expected = panelIds.join(" ");
+
+      if (actual.join(" ") !== expected) {
+        throw new Error(
+          `expected data-floating to be "${expected}", was "${actual.join(" ")}"`,
+        );
+      }
+    });
+  }
+
+  /** The accessible name of `panelId`'s float/dock toggle — `Float <title>`
+   * while docked, `Dock <title>` while floating — or null when the head
+   * renders no such control. Read from the SAME button the user clicks, so it
+   * witnesses what the head offers, not what `data-floating` claims. */
+  floatControlLabel(panelId: string): string | null {
+    return (
+      within(this.root)
+        .queryByTestId(`panel-${panelId}-float`)
+        ?.getAttribute("aria-label") ?? null
+    );
+  }
+
+  /** Clicks `panelId`'s float control — the head's single toggle button,
+   * `Float ${title}` while docked. Floats its group as a box over the grid. */
+  floatPanel(panelId: string): void {
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-float`));
+  }
+
+  /** Clicks `panelId`'s float control to dock it back — the SAME button as
+   * `floatPanel`, now reading `Dock ${title}`. Asserts the panel is actually
+   * floating first: the button always exists and always responds to a
+   * click, so a click alone cannot distinguish "docked it" from "floated a
+   * panel that was already docked" — a mis-click here would otherwise read
+   * as a clean dock. */
+  dockPanel(panelId: string): void {
+    if (!this.floatingPanelIds().includes(panelId)) {
+      throw new Error(
+        `dockPanel(${panelId}): panel is not floating, so this click would float it instead of docking it`,
+      );
+    }
+
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-float`));
+  }
+
   /** The stripped panel's restore bar, keyed by the same collapse testid
    * the in-house engine uses for it, or null when the panel is not a strip
    * (its header control carries the testid then, without `data-orientation`). */
@@ -211,6 +276,33 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
       // races waitFor's 1s default too closely on a loaded CI runner.
       { timeout: 3000 },
     );
+  }
+
+  /** Resolves with the host's last-saved blob once it persists at least one
+   * floating group — the blob a reload restores a float from. Waits on the
+   * float itself, not on any save: an earlier (pre-float) save would
+   * otherwise hand back a blob with nothing floating in it, and a reload
+   * test built on that would pass with no float to restore. */
+  async waitForSavedFloat(): Promise<string> {
+    let saved = "";
+
+    await waitFor(
+      () => {
+        const blob = this.hostEl().getAttribute("data-saved-blob") ?? "";
+        const floats = blob === "" ? [] : JSON.parse(blob).floatingGroups;
+
+        if (!Array.isArray(floats) || floats.length === 0) {
+          throw new Error("no saved blob holds a floating group yet");
+        }
+
+        saved = blob;
+      },
+      // Same generous budget as waitForSave: the bridge's real save debounce
+      // (250ms) races waitFor's 1s default on a loaded CI runner.
+      { timeout: 3000 },
+    );
+
+    return saved;
   }
 
   /** True when the host's last-saved blob JSON.parses and mentions the

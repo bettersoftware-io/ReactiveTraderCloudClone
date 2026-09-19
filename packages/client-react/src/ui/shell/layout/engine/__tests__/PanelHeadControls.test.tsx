@@ -39,6 +39,47 @@ describe("PanelHeadControls pop-out slot", () => {
   });
 });
 
+describe("PanelHeadControls float slot", () => {
+  it("renders the float control only when the slot is attached, and clicking it fires the slot", () => {
+    const onFloat = vi.fn();
+    page.mount({ ...createBase(), onFloat });
+
+    expect(page.exists("panel-fx-rates-float")).toBe(true);
+    page.click("panel-fx-rates-float");
+    expect(onFloat).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders no float control without the slot — the in-house head shape", () => {
+    page.mount(createBase());
+
+    expect(page.exists("panel-fx-rates-float")).toBe(false);
+  });
+
+  it("labels the control 'Float …' while docked", () => {
+    page.mount({ ...createBase(), onFloat: vi.fn() });
+    expect(page.label("panel-fx-rates-float")).toBe("Float Live Rates");
+  });
+
+  it("relabels the control 'Dock …' once floating", () => {
+    page.mount({ ...createBase(), onFloat: vi.fn(), floatingHere: true });
+    expect(page.label("panel-fx-rates-float")).toBe("Dock Live Rates");
+  });
+
+  it("hides collapse and maximize outright while floating, but keeps the float control itself live", () => {
+    page.mount({ ...createBase(), onFloat: vi.fn(), floatingHere: true });
+
+    expect(page.exists("panel-fx-rates-collapse")).toBe(false);
+    expect(page.exists("panel-fx-rates-maximize")).toBe(false);
+    expect(page.disabled("panel-fx-rates-float")).toBe(false);
+  });
+
+  it("greys the float control while popped, like its siblings", () => {
+    page.mount({ ...createBase(), onFloat: vi.fn(), poppedHere: true });
+
+    expect(page.disabled("panel-fx-rates-float")).toBe(true);
+  });
+});
+
 describe("PanelHeadControls close slot", () => {
   it("renders the close control only when the slot is attached, and clicking it fires the slot", () => {
     const onClose = vi.fn();

@@ -25,6 +25,13 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
     return props.poppedHere === true;
   }
 
+  // While the panel is floating, collapse and maximize have no meaning for
+  // its group (a box over the grid, not a grid member) — both controls are
+  // HIDDEN outright rather than greyed, unlike the pop-out precedent above.
+  function floating(): boolean {
+    return props.floatingHere === true;
+  }
+
   function collapsePanel(): void {
     props.onCollapse();
   }
@@ -35,6 +42,10 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
 
   function popoutPanel(): void {
     props.onPopout?.();
+  }
+
+  function floatOrDockPanel(): void {
+    props.onFloat?.();
   }
 
   function closePanel(): void {
@@ -57,19 +68,37 @@ export function PanelHeadControls(props: PanelHeadControlsProps): JSX.Element {
           ↗
         </button>
       </Show>
-      <button
-        type="button"
-        data-testid={`panel-${props.panelId}-collapse`}
-        class={styles.panelControl}
-        aria-label={`Collapse ${props.title}`}
-        title={`Collapse ${props.title}`}
-        disabled={popped()}
-        aria-disabled={popped()}
-        onClick={collapsePanel}
-      >
-        —
-      </button>
-      <Show when={props.maximizable}>
+      <Show when={props.onFloat !== undefined}>
+        <button
+          type="button"
+          data-testid={`panel-${props.panelId}-float`}
+          class={styles.panelControl}
+          aria-label={
+            floating() ? `Dock ${props.title}` : `Float ${props.title}`
+          }
+          title={floating() ? `Dock ${props.title}` : `Float ${props.title}`}
+          disabled={popped()}
+          aria-disabled={popped()}
+          onClick={floatOrDockPanel}
+        >
+          {floating() ? "⚓" : "◱"}
+        </button>
+      </Show>
+      <Show when={!floating()}>
+        <button
+          type="button"
+          data-testid={`panel-${props.panelId}-collapse`}
+          class={styles.panelControl}
+          aria-label={`Collapse ${props.title}`}
+          title={`Collapse ${props.title}`}
+          disabled={popped()}
+          aria-disabled={popped()}
+          onClick={collapsePanel}
+        >
+          —
+        </button>
+      </Show>
+      <Show when={props.maximizable && !floating()}>
         <button
           type="button"
           data-testid={`panel-${props.panelId}-maximize`}
@@ -110,6 +139,11 @@ export interface PanelHeadControlsProps {
    * the pop-out control itself grey out — the geometry intents have no
    * meaning for a group parked in another document. */
   poppedHere?: boolean;
+  /** True while this panel's group is floating over the grid: collapse and
+   * maximize are HIDDEN outright (not merely greyed, unlike `poppedHere`) —
+   * a floating box is not a grid member, so those geometry intents have no
+   * target. */
+  floatingHere?: boolean;
   // Slots (property syntax): the header never knows what an engine attaches
   // — see docs/handler-naming.md's slot-vs-handler doctrine.
   onCollapse: () => void;
@@ -119,6 +153,10 @@ export interface PanelHeadControlsProps {
    * the dockview bridge attaches it (the `mountActions` engine-gating
    * idiom): in-house and RN heads render no pop-out control, zero fan-out. */
   onPopout?: () => void;
+  /** Floats the panel's group as a box over the grid, or returns it home once
+   * already floating — same optional-slot idiom as `onPopout`, attached only
+   * by the dockview bridge. */
+  onFloat?: () => void;
   /** Closes the panel outright. Optional slot — only the dockview bridge
    * attaches it, and only for a dynamically opened chart instance (a static
    * panel closes through the View menu instead); absent, the head renders no
