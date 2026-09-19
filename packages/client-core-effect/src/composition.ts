@@ -16,10 +16,25 @@ import type { EffectHost } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { createConnectionPresenter } from "#/presenters/connection";
 import {
+  createJarvisPreferencesPresenter,
+  createLoginWaitPreferencesPresenter,
+} from "#/presenters/groupedPreferences";
+import {
+  createAmbientStylePresenter,
+  createAnimatedBackgroundPresenter,
+  createChartSubstratePresenter,
+  createCreditRfqFilterPreferencePresenter,
+  createEqBlotterViewPreferencePresenter,
+  createForceBootAnimationPresenter,
+  createLayoutEnginePresenter,
   createPowerSaverPresenter,
   createThemeSkinPreferencePresenter,
   createViewModePreferencePresenter,
 } from "#/presenters/preferences";
+import {
+  createBootPreferencePresenter,
+  createEqWatchlistSortPreferencePresenter,
+} from "#/presenters/readPreferences";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
@@ -42,31 +57,50 @@ export interface ComposedMachines {
 
 /** Members this core implements natively — slice 1a: the connection fold,
  * the four theme/view/power-saver preferences, and `commands` (see
- * `createCommands`). Everything else still delegates to the RxJS core.
- * `parity.json` is the committed record of the same fact and
- * `parity.test.ts` proves the two agree by reference. Every native stream
- * is a `sharedFold` over `host`, so `app.dispose()` (which closes
- * `host.scope`) ends whatever is still warm. */
+ * `createCommands`); slice 1b: the eleven remaining preference presenters.
+ * Everything else still delegates to the RxJS core. `parity.json` is the
+ * committed record of the same fact and `parity.test.ts` proves the two
+ * agree by reference. Every native stream is a `sharedFold` over `host`, so
+ * `app.dispose()` (which closes `host.scope`) ends whatever is still warm;
+ * `bootPreference` owns no stream and takes no host. */
 function nativePresenters(
   ports: AppPorts,
   host: EffectHost,
 ): Partial<Presenters> {
+  const { preferences } = ports;
   return {
     connection: createConnectionPresenter(host, ports.connectionEvents),
     themePreference: createThemePreferencePresenter(
       host,
-      ports.preferences,
+      preferences,
       ports.colorScheme,
     ),
-    themeSkinPreference: createThemeSkinPreferencePresenter(
+    themeSkinPreference: createThemeSkinPreferencePresenter(host, preferences),
+    viewModePreference: createViewModePreferencePresenter(host, preferences),
+    powerSaver: createPowerSaverPresenter(host, preferences),
+    creditRfqFilterPreference: createCreditRfqFilterPreferencePresenter(
       host,
-      ports.preferences,
+      preferences,
     ),
-    viewModePreference: createViewModePreferencePresenter(
+    eqWatchlistSortPreference: createEqWatchlistSortPreferencePresenter(
       host,
-      ports.preferences,
+      preferences,
     ),
-    powerSaver: createPowerSaverPresenter(host, ports.preferences),
+    eqBlotterViewPreference: createEqBlotterViewPreferencePresenter(
+      host,
+      preferences,
+    ),
+    bootPreference: createBootPreferencePresenter(preferences),
+    loginWaitPreferences: createLoginWaitPreferencesPresenter(
+      host,
+      preferences,
+    ),
+    jarvisPreferences: createJarvisPreferencesPresenter(host, preferences),
+    animatedBackground: createAnimatedBackgroundPresenter(host, preferences),
+    ambientStyle: createAmbientStylePresenter(host, preferences),
+    chartSubstrate: createChartSubstratePresenter(host, preferences),
+    layoutEngine: createLayoutEnginePresenter(host, preferences),
+    forceBootAnimation: createForceBootAnimationPresenter(host, preferences),
   };
 }
 
