@@ -119,6 +119,21 @@
   color: var(--text-primary, #f1f5f9);
 }
 
+/* dockview's tab wrapper — its drag surface — carries no chrome of its own:
+ * the app's head slot (portalled into `.rtc-dock-tab` below) IS the tab. */
+.dockview-theme-rtc .dv-tab {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.dockview-theme-rtc .dv-tab.dv-active-tab,
+.dockview-theme-rtc .dv-tab.dv-inactive-tab {
+  background: transparent;
+}
+
 /* 1px seam between stacked tabs — the card-border colour, so the bar reads
  * as one head with sections rather than two butted headers. `+` cannot
  * match in a single-tab bar. */
@@ -265,21 +280,6 @@
   align-items: stretch;
   height: 100%;
   overflow: hidden;
-}
-
-/* dockview's tab wrapper — its drag surface — carries no chrome of its own:
- * the app's head slot (portalled into `.rtc-dock-tab` below) IS the tab. */
-.dockview-theme-rtc .dv-tab {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.dockview-theme-rtc .dv-tab.dv-active-tab,
-.dockview-theme-rtc .dv-tab.dv-inactive-tab {
-  background: transparent;
 }
 
 /* The mount point HookTabRenderer hands the client: stretches to the 38px
