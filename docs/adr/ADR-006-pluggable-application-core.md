@@ -215,6 +215,23 @@ predictable from the design alone):
   pushes into it — through its `bridge/out.ts`, the one place a Subject
   method is called. Slice 8 moves the seam.
 
+**Decided in slice 1b** (2026-09-19):
+
+- **Completion is not part of the presenter-stream envelope.** Neither
+  alternative core has a completion channel (`Topic` has no `complete`;
+  `sharedFold` never completes its subscribers), no port completes outside
+  teardown, and no suite asserts completion — so rather than build a
+  channel nobody observes, the spec's assertion list drops the word. A
+  presenter stream ends with `dispose()` or with an error. A later member
+  whose source legitimately ends adds the channel in its own slice, against
+  a suite that asserts it.
+- **The preference family needed no new primitive.** Eleven members went
+  native on slice 1a's `topicFromObservable` / `mirrorPort` (+ a two-line
+  identity sibling, `mirrorPortAsIs`) and `peek` — evidence that the
+  1a/1b split landed the idiom in the right place. Per core the presenters
+  now group by API shape (`preferences.ts`, `groupedPreferences.ts`,
+  `readPreferences.ts`) rather than one file per member.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

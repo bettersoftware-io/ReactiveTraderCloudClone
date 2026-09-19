@@ -13,10 +13,25 @@ import type {
 import { createCommands } from "#/commands";
 import { createConnectionPresenter } from "#/presenters/connection";
 import {
+  createJarvisPreferencesPresenter,
+  createLoginWaitPreferencesPresenter,
+} from "#/presenters/groupedPreferences";
+import {
+  createAmbientStylePresenter,
+  createAnimatedBackgroundPresenter,
+  createChartSubstratePresenter,
+  createCreditRfqFilterPreferencePresenter,
+  createEqBlotterViewPreferencePresenter,
+  createForceBootAnimationPresenter,
+  createLayoutEnginePresenter,
   createPowerSaverPresenter,
   createThemeSkinPreferencePresenter,
   createViewModePreferencePresenter,
 } from "#/presenters/preferences";
+import {
+  createBootPreferencePresenter,
+  createEqWatchlistSortPreferencePresenter,
+} from "#/presenters/readPreferences";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
@@ -35,19 +50,35 @@ export interface ComposedMachines {
 
 /** Members this core implements natively — slice 1a: the connection fold,
  * the four theme/view/power-saver preferences, and `commands` (see
- * `createCommands`). Everything else still delegates to the RxJS core.
- * `parity.json` is the committed record of the same fact and
- * `parity.test.ts` proves the two agree by reference. */
+ * `createCommands`); slice 1b: the eleven remaining preference presenters.
+ * Everything else still delegates to the RxJS core. `parity.json` is the
+ * committed record of the same fact and `parity.test.ts` proves the two
+ * agree by reference. */
 function nativePresenters(ports: AppPorts): Partial<Presenters> {
+  const { preferences } = ports;
   return {
     connection: createConnectionPresenter(ports.connectionEvents),
     themePreference: createThemePreferencePresenter(
-      ports.preferences,
+      preferences,
       ports.colorScheme,
     ),
-    themeSkinPreference: createThemeSkinPreferencePresenter(ports.preferences),
-    viewModePreference: createViewModePreferencePresenter(ports.preferences),
-    powerSaver: createPowerSaverPresenter(ports.preferences),
+    themeSkinPreference: createThemeSkinPreferencePresenter(preferences),
+    viewModePreference: createViewModePreferencePresenter(preferences),
+    powerSaver: createPowerSaverPresenter(preferences),
+    creditRfqFilterPreference:
+      createCreditRfqFilterPreferencePresenter(preferences),
+    eqWatchlistSortPreference:
+      createEqWatchlistSortPreferencePresenter(preferences),
+    eqBlotterViewPreference:
+      createEqBlotterViewPreferencePresenter(preferences),
+    bootPreference: createBootPreferencePresenter(preferences),
+    loginWaitPreferences: createLoginWaitPreferencesPresenter(preferences),
+    jarvisPreferences: createJarvisPreferencesPresenter(preferences),
+    animatedBackground: createAnimatedBackgroundPresenter(preferences),
+    ambientStyle: createAmbientStylePresenter(preferences),
+    chartSubstrate: createChartSubstratePresenter(preferences),
+    layoutEngine: createLayoutEnginePresenter(preferences),
+    forceBootAnimation: createForceBootAnimationPresenter(preferences),
   };
 }
 

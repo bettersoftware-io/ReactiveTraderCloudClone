@@ -26,8 +26,23 @@ export {
 export { untilAborted } from "#/kernel/untilAborted";
 export { createConnectionPresenter } from "#/presenters/connection";
 export {
+  createJarvisPreferencesPresenter,
+  createLoginWaitPreferencesPresenter,
+} from "#/presenters/groupedPreferences";
+export {
+  createAmbientStylePresenter,
+  createAnimatedBackgroundPresenter,
+  createChartSubstratePresenter,
+  createCreditRfqFilterPreferencePresenter,
+  createEqBlotterViewPreferencePresenter,
+  createForceBootAnimationPresenter,
+  createLayoutEnginePresenter,
   createPowerSaverPresenter,
   createThemeSkinPreferencePresenter,
   createViewModePreferencePresenter,
 } from "#/presenters/preferences";
+export {
+  createBootPreferencePresenter,
+  createEqWatchlistSortPreferencePresenter,
+} from "#/presenters/readPreferences";
 export { createThemePreferencePresenter } from "#/presenters/themePreference";

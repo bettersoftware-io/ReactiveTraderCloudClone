@@ -41,17 +41,26 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 1a, six members are **native** — `connection`, `themePreference`,
-`themeSkinPreference`, `viewModePreference`, `powerSaver` and
+As of slice 1b, seventeen members are **native** — `connection`, every
+preference presenter (`themePreference`, `themeSkinPreference`,
+`viewModePreference`, `powerSaver`, `creditRfqFilterPreference`,
+`eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`,
+`loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`,
+`ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
 `commands.reconnect` — and everything else still **delegates** to
 `@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
 app and overlays what this core implements. The native idiom for a
 replay-current stream is `topicFromObservable` (a port as a replay-1,
 refCounted `Topic` whose producer is one synchronous `relay`), `mapTopic`
-for a projection of it, and a hand-written `createTopic` producer where two
-inputs combine (`mode$`). `src/parity.json` is the committed record of the
-split and `src/parity.test.ts` proves manifest and reality agree by
-reference identity — for presenters, machines and commands alike.
+for a projection of it, a hand-written `createTopic` producer where two
+inputs combine (`mode$`), and `peek` for a synchronous read of the stored
+value (`cycle()`, `current()` — `src/presenters/readPreferences.ts`). The
+presenter files group by API shape: `preferences.ts` (one stream plus
+setters, including the two boolean toggles), `groupedPreferences.ts`
+(several independent streams under one member), `readPreferences.ts`.
+`src/parity.json` is the committed record of the split and
+`src/parity.test.ts` proves manifest and reality agree by reference
+identity — for presenters, machines and commands alike.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set
 against this core under the label `async`.

@@ -16,7 +16,7 @@ import {
 
 import { fromObservable, peek } from "#/bridge/in";
 import { type EffectHost, type FoldUpdate, sharedFold } from "#/bridge/out";
-import { mirrorPort } from "#/presenters/mirrorPort";
+import { mirrorPortAsIs } from "#/presenters/mirrorPort";
 
 /** `modePreference$` mirrors the stored choice. `mode$` is the RxJS core's
  * `combineLatest → map(resolveThemeMode) → distinctUntilChanged` as
@@ -50,13 +50,10 @@ export function createThemePreferencePresenter(
   }
 
   return {
-    modePreference$: mirrorPort(
+    modePreference$: mirrorPortAsIs(
       host,
       modePreference,
       DEFAULT_THEME_MODE_PREFERENCE,
-      (p) => {
-        return p;
-      },
     ),
     mode$: sharedFold(host, {
       seed: () => {
