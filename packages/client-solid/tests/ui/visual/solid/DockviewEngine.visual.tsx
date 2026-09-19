@@ -120,7 +120,7 @@ export function DockviewEngineStackedVisual(): JSX.Element {
  * #763), Solid twin of client-react's DockviewEngineFloatingVisual: the same
  * chrome stage with the store pre-seeded by the committed floating blob —
  * fx-analytics floated over the reflowed fx-positions — rendering the
- * float's drag rail, card and opaque base over the panel underneath. A
+ * float's head, card and opaque base over the panel underneath. A
  * malformed blob falls back to the seed and un-floats the panel — these
  * goldens fail loudly then. */
 export function DockviewEngineFloatingVisual(): JSX.Element {

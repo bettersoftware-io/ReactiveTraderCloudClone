@@ -394,6 +394,70 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   await expectBlotterDockedHome(ctx, blotterHeightDocked, ratesHeightDocked);
 }
 
+/** How far a float is dragged by its head, per axis — well clear of the
+ * few px dockview's overlay loses to taking its grip offset from the first
+ * pointermove, and small enough that the move stays inside the dock (the
+ * float is clamped to it) from where a popped-out blotter opens. */
+const FLOAT_DRAG_DX = -200;
+const FLOAT_DRAG_DY = -150;
+/** How close the float must land to the drag: one 15-step drag's first
+ * step (~13px) plus rounding. */
+const FLOAT_DRAG_SLACK_PX = 20;
+
+/**
+ * Floats the blotter and proves it behaves like a window: it POPS OUT (opens
+ * narrower than the full-width slot it left, so it visibly lifts off the
+ * grid), and a drag on its HEAD — where a user grips a dialog — carries it
+ * with the pointer, the panel still floating afterwards. The first cut of
+ * floats did neither: the float detached in place at full size and only a
+ * blank 22px rail above the head moved it (user report, 2026-09-19).
+ * Dockview-engine only.
+ */
+export async function floatBlotterPopsOutAndMovesByItsHead(
+  ctx: TestContext,
+): Promise<void> {
+  const dockedWidth = await ctx.po.layout.dockPanelWidth(BLOTTER_PANEL_ID);
+
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const opened = await ctx.po.layout.floatBox(BLOTTER_PANEL_ID);
+
+  assertLte(
+    opened.width,
+    dockedWidth - 1,
+    `expected the float to pop out narrower than its docked slot (docked width=${dockedWidth}, float width=${opened.width})`,
+  );
+
+  await ctx.po.layout.dragFloatByHead(
+    BLOTTER_PANEL_ID,
+    FLOAT_DRAG_DX,
+    FLOAT_DRAG_DY,
+  );
+
+  const moved = await ctx.po.layout.floatBox(BLOTTER_PANEL_ID);
+  const dx = moved.x - opened.x;
+  const dy = moved.y - opened.y;
+
+  assertLte(
+    Math.abs(dx - FLOAT_DRAG_DX),
+    FLOAT_DRAG_SLACK_PX,
+    `expected a head drag of ${FLOAT_DRAG_DX}px to move the float horizontally with it, moved ${dx}px`,
+  );
+  assertLte(
+    Math.abs(dy - FLOAT_DRAG_DY),
+    FLOAT_DRAG_SLACK_PX,
+    `expected a head drag of ${FLOAT_DRAG_DY}px to move the float vertically with it, moved ${dy}px`,
+  );
+  await expectBlotterInFloat(ctx, true);
+
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+}
+
 /** Asserts `panelSitsInFloat` for fx-blotter reads `expected` — the DOM
  * witness of where the group actually lives. Asserted `true` while floating
  * too, so a `false` after dock-home cannot come from a selector that never

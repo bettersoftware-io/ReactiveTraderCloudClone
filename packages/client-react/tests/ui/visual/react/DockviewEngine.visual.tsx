@@ -135,7 +135,7 @@ export function DockviewEngineStackedVisual(): ReactElement {
 /** The floating twin-less sibling (`shell/layout-dockview-floating`,
  * PR #763): the same chrome stage, but the store is pre-seeded with the
  * committed floating blob — fx-analytics floated over the reflowed
- * fx-positions — so the bar renders the float's drag rail, card and opaque
+ * fx-positions — so the bar renders the float's head, card and opaque
  * base over the panel underneath. Deterministic the same way the stacked
  * wrapper is: the blob is a committed constant captured from a real engine
  * save (see floatingFxBlob.ts's own comment), and `loadBlobOrSeed` falls

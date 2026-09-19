@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 import type {
   FirstDockRender,
+  FloatBox,
   LayoutPO,
   PopoutWindowPO,
 } from "../contracts/Layout";
@@ -608,5 +609,64 @@ export class PlaywrightLayout implements LayoutPO {
     return this.group(panelId).evaluate((element) => {
       return element.closest(".dv-resize-container") !== null;
     });
+  }
+
+  async floatBox(panelId: string): Promise<FloatBox> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatBox: the panel is not in a float");
+      }
+
+      const r = float.getBoundingClientRect();
+
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  }
+
+  async dragFloatByHead(
+    panelId: string,
+    dx: number,
+    dy: number,
+  ): Promise<void> {
+    // The grip is found, not assumed: the head is packed with controls
+    // (sub-tabs, a filter input, chips), and a press on one of those keeps
+    // its own meaning. Walk the head bar's mid-line for the first point
+    // whose topmost element is not a control — the same test the engine
+    // applies when deciding whether a press moves the float.
+    const grip = await this.group(panelId).evaluate((element) => {
+      const head = element.querySelector(".dv-tabs-and-actions-container");
+
+      if (head === null) {
+        throw new Error("dragFloatByHead: the group has no head bar");
+      }
+
+      const r = head.getBoundingClientRect();
+      const y = r.y + r.height / 2;
+      const controls =
+        "button, a, input, select, textarea, [contenteditable], [role='button'], [role='menuitem']";
+
+      for (let x = r.x + 4; x < r.right - 4; x += 4) {
+        const hit = document.elementFromPoint(x, y);
+
+        if (
+          hit !== null &&
+          head.contains(hit) &&
+          hit.closest(controls) === null
+        ) {
+          return { x, y };
+        }
+      }
+
+      throw new Error("dragFloatByHead: no free point on the head to grip");
+    });
+
+    // Stepped, like the sash and tab drags above: dockview's overlay moves
+    // the float on each pointermove, taking its grip offset from the first.
+    await this.page.mouse.move(grip.x, grip.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 15 });
+    await this.page.mouse.up();
   }
 }
