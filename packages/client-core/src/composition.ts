@@ -1268,9 +1268,10 @@ export function createApp(ports: AppPorts): App {
  * same tokenless upgrade every few seconds for as long as the user sat on the
  * login screen.
  *
- * `AuthPresenter.state$` is a replaying BehaviorSubject, so a resumed session
- * connects synchronously here — a returning user is authenticated at
- * composition time and must not be stranded behind a closed transport.
+ * `AuthPresenter.state$` is a replay-current `StateObservable` over the
+ * presenter's `BehaviorSubject`, so a resumed session's state is delivered
+ * synchronously here — a returning user is authenticated at composition time
+ * and must not be stranded behind a closed transport.
  *
  * A no-op when no transport is supplied (simulator mode has no socket).
  */

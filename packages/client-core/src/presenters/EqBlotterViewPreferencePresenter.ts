@@ -3,12 +3,9 @@ import { type Observable, shareReplay } from "rxjs";
 import type { EqBlotterViewPreferencePresenter as EqBlotterViewPreferencePresenterApi } from "@rtc/core-api";
 import type { EqBlotterView, PreferencesPort } from "@rtc/domain";
 
-/**
- * App-layer presenter for the equities blotter tab preference (Orders /
- * Positions). Exposes the replay-current view stream and the write
- * operation, keeping persistence out of the UI. Consumed by the Blotter
- * panel (Task 5); this task only plumbs the seam through.
- */
+/** Implements `EqBlotterViewPreferencePresenter` (`@rtc/core-api`) — see
+ * the interface for the contract. `view$` is the port stream under
+ * `shareReplay({ bufferSize: 1, refCount: true })`. */
 export class EqBlotterViewPreferencePresenter
   implements EqBlotterViewPreferencePresenterApi
 {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { type EqWatchlistSort, PreferencesSimulator } from "@rtc/domain";
 
+import { createCountingPort } from "../createCountingPort.testHelpers";
 import { EqWatchlistSortPreferencePresenter } from "../EqWatchlistSortPreferencePresenter";
 
 describe("EqWatchlistSortPreferencePresenter", () => {
@@ -41,5 +42,18 @@ describe("EqWatchlistSortPreferencePresenter", () => {
 
     sub.unsubscribe();
     expect(seen).toEqual(["sym", "chg", "price", "sym"]);
+  });
+
+  it("cycle() twice calls eqWatchlistSort$() once (the stream is captured at construction)", () => {
+    const { port, calls } = createCountingPort(
+      new PreferencesSimulator(),
+      "eqWatchlistSort$",
+    );
+    const presenter = new EqWatchlistSortPreferencePresenter(port);
+
+    presenter.cycle();
+    presenter.cycle();
+
+    expect(calls()).toBe(1);
   });
 });

@@ -1,6 +1,6 @@
 import type { LoginWaitVariant, SessionUser } from "@rtc/domain";
 
-import type { Stream } from "#/stream";
+import type { StateStream } from "#/stream";
 
 export type AuthStatus = "unauthenticated" | "authenticating" | "authenticated";
 
@@ -37,7 +37,10 @@ export interface AuthViewState {
  * auth port, and never logs the password.
  */
 export interface AuthPresenter {
-  readonly state$: Stream<AuthViewState>;
+  /** Replay-current — composition connects the transport synchronously from
+   * a resumed session's state, so a subscriber must see the current state
+   * in its own tick. */
+  readonly state$: StateStream<AuthViewState>;
   /** Begins a login attempt against the injected auth port. */
   login(username: string, password: string): void;
   /** Locks the current session; a no-op unless a session is authenticated. */

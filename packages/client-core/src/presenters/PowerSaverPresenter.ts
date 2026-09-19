@@ -3,13 +3,9 @@ import { map, type Observable, shareReplay } from "rxjs";
 import type { PowerSaverPresenter as PowerSaverPresenterApi } from "@rtc/core-api";
 import type { PowerSaverLevel, PreferencesPort } from "@rtc/domain";
 
-/**
- * App-layer presenter for the power-saver master override. Exposes the
- * replay-current level plus derived predicates: `isCalm$` (level !== "off",
- * drives ambient removal / --fx-play / price conflation) and `isFreeze$`
- * (level === "freeze", drives the view layer's motion catch-all + JS gates).
- * Never mutates other preferences (master-override semantics).
- */
+/** Implements `PowerSaverPresenter` (`@rtc/core-api`) — see the interface
+ * for the contract. `isCalm$`/`isFreeze$` are `level$` mapped, each
+ * independently under `shareReplay({ bufferSize: 1, refCount: true })`. */
 export class PowerSaverPresenter implements PowerSaverPresenterApi {
   readonly level$: Observable<PowerSaverLevel>;
 

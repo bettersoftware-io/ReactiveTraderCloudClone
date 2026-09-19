@@ -1,5 +1,5 @@
-import { BehaviorSubject, type Observable } from "rxjs";
-import { shareReplay } from "rxjs/operators";
+import { type StateObservable, state } from "@rx-state/core";
+import { BehaviorSubject } from "rxjs";
 
 import type {
   AuthPresenter as AuthPresenterApi,
@@ -32,14 +32,10 @@ const UNAUTHENTICATED_STATE: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
-/**
- * App-layer presenter for the login/lock/logout lifecycle. Models the flow as
- * a `BehaviorSubject<AuthViewState>` machine: resumes a non-expired session
- * from the injected `SessionStore` on construction, drives `login`/`unlock`
- * through the injected `AuthPort`, and never logs the password.
- */
+/** Implements `AuthPresenter` (`@rtc/core-api`) — see the interface for the
+ * contract. Models the flow as a `BehaviorSubject<AuthViewState>` machine. */
 export class AuthPresenter implements AuthPresenterApi {
-  readonly state$: Observable<AuthViewState>;
+  readonly state$: StateObservable<AuthViewState>;
 
   private readonly subject: BehaviorSubject<AuthViewState>;
 
@@ -60,10 +56,9 @@ export class AuthPresenter implements AuthPresenterApi {
       },
     },
   ) {
-    this.subject = new BehaviorSubject<AuthViewState>(this.resume());
-    this.state$ = this.subject.pipe(
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
+    const initial = this.resume();
+    this.subject = new BehaviorSubject<AuthViewState>(initial);
+    this.state$ = state(this.subject, initial);
   }
 
   /** Reads the current variant and advances the persisted pointer immediately.

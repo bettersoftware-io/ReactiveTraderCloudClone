@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createTopic, mapTopic } from "#/kernel/topic";
 
@@ -48,46 +48,114 @@ describe("Topic", () => {
     expect(seen).toEqual([]);
   });
 
-  it("fail() is terminal: a later subscriber gets the error, not a fresh producer", () => {
-    let starts = 0;
-    const topic = createTopic<number>(async () => {
-      starts += 1;
-    });
-    topic.subscribe(() => {});
-    expect(starts).toBe(1);
-    topic.fail(new Error("boom"));
+  it("publish() on a cold or reset topic is dropped and leaves no replay", () => {
+    const topic = createTopic<number>(async () => {}, { replay: true });
 
-    const values: number[] = [];
+    // Cold: no subscriber has ever started a producer.
+    topic.publish(2);
+    const beforeAny: number[] = [];
+    const stopBeforeAny = topic.subscribe((v) => {
+      beforeAny.push(v);
+    });
+    expect(beforeAny).toEqual([]);
+    stopBeforeAny();
+
+    // Reset: fail() dropped every subscriber and ended the run.
     const errors: unknown[] = [];
     const stop = topic.subscribe(
-      (v) => {
-        values.push(v);
-      },
+      () => {},
       (e) => {
         errors.push(e);
       },
     );
-
-    // Synchronously, on subscribe — the way `shareReplay` hands a late
-    // subscriber the terminal error rather than restarting the source.
+    topic.fail(new Error("boom"));
     expect(errors).toHaveLength(1);
-    expect(values).toEqual([]);
-    expect(starts).toBe(1);
+    topic.publish(1);
+
+    const seen: number[] = [];
+    const lateErrors: unknown[] = [];
+    const stopLate = topic.subscribe(
+      (v) => {
+        seen.push(v);
+      },
+      (e) => {
+        lateErrors.push(e);
+      },
+    );
+    expect(seen).toEqual([]);
+    expect(lateErrors).toEqual([]);
+    stopLate();
     expect(() => {
       stop();
     }).not.toThrow();
   });
 
-  it("fail() is terminal: publish() and fail() afterwards reach nobody", () => {
-    const topic = createTopic<number>(async () => {}, { replay: true });
-    topic.subscribe(() => {});
+  it("fail() resets: the failed subscribers are dropped and the NEXT subscriber starts a fresh producer with no replay", () => {
+    let starts = 0;
+    const topic = createTopic<number>(
+      async (_signal, publish) => {
+        starts += 1;
+        publish(starts);
+      },
+      { replay: true },
+    );
+    const errors: unknown[] = [];
+    const stop = topic.subscribe(
+      () => {},
+      (e) => {
+        errors.push(e);
+      },
+    );
+    expect(starts).toBe(1);
     topic.fail(new Error("boom"));
-
-    topic.publish(1);
+    expect(errors).toHaveLength(1);
 
     const values: number[] = [];
+    const lateErrors: unknown[] = [];
+    const stopLate = topic.subscribe(
+      (v) => {
+        values.push(v);
+      },
+      (e) => {
+        lateErrors.push(e);
+      },
+    );
+    // No latched error, no replay of the pre-failure value: a fresh run.
+    expect(lateErrors).toEqual([]);
+    expect(starts).toBe(2);
+    expect(values).toEqual([2]);
+    stopLate();
+    expect(() => {
+      stop();
+    }).not.toThrow();
+  });
+
+  it("a superseded run's late publish and late failure reach nobody", async () => {
+    let release: ((value: number) => void) | undefined;
+    let failLate: ((error: unknown) => void) | undefined;
+    let runs = 0;
+    const topic = createTopic<number>(
+      (signal, publish) => {
+        runs += 1;
+        const mine = runs;
+        return new Promise<void>((resolve, reject) => {
+          if (mine === 1) {
+            release = publish;
+            failLate = reject;
+          }
+
+          signal.addEventListener("abort", () => {
+            resolve();
+          });
+        });
+      },
+      { replay: true },
+    );
+    const stopFirst = topic.subscribe(() => {});
+    stopFirst();
+    const values: number[] = [];
     const errors: unknown[] = [];
-    topic.subscribe(
+    const stopSecond = topic.subscribe(
       (v) => {
         values.push(v);
       },
@@ -95,13 +163,149 @@ describe("Topic", () => {
         errors.push(e);
       },
     );
-    topic.fail(new Error("second"));
-
-    // The post-failure publish was ignored (no replay of 1), and the second
-    // fail() did not re-deliver: exactly one error, the original one.
+    expect(runs).toBe(2);
+    release?.(99);
+    failLate?.(new Error("stale"));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
     expect(values).toEqual([]);
-    expect(errors).toHaveLength(1);
-    expect((errors[0] as Error).message).toBe("boom");
+    expect(errors).toEqual([]);
+    stopSecond();
+  });
+
+  it("a throwing subscriber does not stop delivery to the others; its error is rethrown on a macrotask", () => {
+    vi.useFakeTimers();
+
+    try {
+      const topic = createTopic<number>(async () => {});
+      const seen: number[] = [];
+      topic.subscribe(() => {
+        throw new Error("subscriber");
+      });
+      topic.subscribe((v) => {
+        seen.push(v);
+      });
+      expect(() => {
+        topic.publish(1);
+      }).not.toThrow();
+      expect(seen).toEqual([1]);
+      expect(() => {
+        vi.runAllTimers();
+      }).toThrow("subscriber");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a subscriber that throws on the replayed value is isolated: subscribe() returns its unsubscribe, the other subscribers are unaffected, and the last unsubscribe still ends the run", () => {
+    vi.useFakeTimers();
+
+    try {
+      let aborted = false;
+      const topic = createTopic<number>(
+        async (signal) => {
+          signal.addEventListener("abort", () => {
+            aborted = true;
+          });
+        },
+        { replay: true },
+      );
+      const stopFirst = topic.subscribe(() => {});
+      topic.publish(1);
+
+      // The throw happens INSIDE `subscribe`, on the replayed value — an
+      // escape here would take the caller down before it ever holds the
+      // unsubscribe closure.
+      let stopThrower: (() => void) | undefined;
+      expect(() => {
+        stopThrower = topic.subscribe(() => {
+          throw new Error("replayed");
+        });
+      }).not.toThrow();
+
+      const seen: number[] = [];
+      const stopOther = topic.subscribe((v) => {
+        seen.push(v);
+      });
+      topic.publish(2);
+      expect(seen).toEqual([1, 2]);
+      expect(() => {
+        vi.runAllTimers();
+      }).toThrow("replayed");
+
+      // The thrower is a normal subscriber: it holds the refCount until ITS
+      // unsubscribe — the closure `subscribe()` handed back — runs.
+      stopFirst();
+      stopOther();
+      expect(aborted).toBe(false);
+      stopThrower?.();
+      expect(aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a superseded run's own late rejection (independent of abort) reaches nobody", async () => {
+    let rejectFirst: ((error: unknown) => void) | undefined;
+    let runs = 0;
+    const topic = createTopic<number>((_signal, _publish) => {
+      runs += 1;
+
+      if (runs === 1) {
+        return new Promise<void>((_resolve, reject) => {
+          rejectFirst = reject;
+        });
+      }
+
+      return new Promise<void>(() => {});
+    });
+    const stopFirst = topic.subscribe(() => {});
+    stopFirst();
+    const errors: unknown[] = [];
+    const stopSecond = topic.subscribe(
+      () => {},
+      (e) => {
+        errors.push(e);
+      },
+    );
+    expect(runs).toBe(2);
+    rejectFirst?.(new Error("late"));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(errors).toEqual([]);
+    stopSecond();
+  });
+
+  it("an error handler that throws during fail() does not stop delivery to the others; its error is rethrown on a macrotask", () => {
+    vi.useFakeTimers();
+
+    try {
+      const topic = createTopic<number>(async () => {});
+      const seen: unknown[] = [];
+      topic.subscribe(
+        () => {},
+        () => {
+          throw new Error("handler");
+        },
+      );
+      topic.subscribe(
+        () => {},
+        (e) => {
+          seen.push(e);
+        },
+      );
+      expect(() => {
+        topic.fail(new Error("boom"));
+      }).not.toThrow();
+      expect(seen).toHaveLength(1);
+      expect(() => {
+        vi.runAllTimers();
+      }).toThrow("handler");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("fail() is silent for a subscriber that supplied no error handler", () => {
@@ -168,6 +372,51 @@ describe("mapTopic", () => {
     expect(starts).toBe(1);
     expect(aborted).toBe(false);
     stop();
+    expect(aborted).toBe(true);
+  });
+
+  it("fails the derived topic when the projection throws, and the source is released", async () => {
+    let aborted = false;
+    const source = createTopic<number>(
+      async (signal) => {
+        signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+      },
+      { replay: true },
+    );
+
+    const derived = mapTopic(source, (n) => {
+      if (n === 2) {
+        throw new Error("projection");
+      }
+
+      return n;
+    });
+    const seen: number[] = [];
+    const errors: unknown[] = [];
+    derived.subscribe(
+      (v) => {
+        seen.push(v);
+      },
+      (e) => {
+        errors.push(e);
+      },
+    );
+    source.publish(1);
+    source.publish(2);
+    // Same round-trip as "fails when the source fails": the producer's
+    // rejection goes through Promise.race and spawn's .catch.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    // The projection is the OPERATOR's code, so its throw FAILS the derived
+    // topic (rxjs `map` semantics) rather than being isolated and dropped.
+    expect(seen).toEqual([1]);
+    expect(errors).toHaveLength(1);
+    expect((errors[0] as Error).message).toBe("projection");
+    // The failure reset released the source: the derived topic was its only
+    // subscriber, so its producer run ended too.
     expect(aborted).toBe(true);
   });
 
