@@ -41,7 +41,7 @@ Run in this order and stop reporting nothing until all have run (run them all
 even if one fails — a single command's failure is not a reason to skip the rest):
 
 ```bash
-pnpm exec biome ci .                    # format + import-sort + lint
+pnpm exec biome ci --error-on-warnings . # format + import-sort + lint (warnings fail too)
 pnpm lint:eslint                        # AST rules
 pnpm test:rules                         # custom rule RuleTester suite
 pnpm lint:css                           # stylelint
