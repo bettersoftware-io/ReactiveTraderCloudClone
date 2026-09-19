@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-11
 **Status:** Approved (design dialogue 2026-09-08 → 2026-09-11; user review 2026-09-12 split slice 1 into 1a/1b)
-**Plan:** slice 0 — [`../plans/2026-09-12-pluggable-core-slice-0.md`](../plans/2026-09-12-pluggable-core-slice-0.md); later slices get their own plan each
+**Plan:** slice 0 — [`../plans/2026-09-12-pluggable-core-slice-0.md`](../plans/2026-09-12-pluggable-core-slice-0.md); slice 1a — [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md); later slices get their own plan each
 
 ## Purpose
 
