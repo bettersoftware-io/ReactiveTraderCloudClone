@@ -196,6 +196,20 @@ export function sharedFold<S>(
     // below and start a second one that `warm` then never points back to.
     warm = period;
 
+    // MEASURED (effect 3.22.2): a producer draining several already-queued
+    // events in one uninterrupted burst (e.g. `fromObservable`'s Queue, once
+    // its subscribe is synchronous — see `in.ts`) calls `update` several
+    // times with NO suspension between them, and the fiber runtime's own
+    // cooperative scheduling does not hand control to the SEPARATE fiber
+    // watching `ref.changes` (forked inside `refToStateStream`) until this
+    // one yields or completes — so that watcher only ever observes the
+    // ref's value AS OF whenever it next runs, not every intermediate
+    // `.set()`. Three same-tick `update` calls delivered `[0, 6]` (only the
+    // seed and the final sum) without the trailing `Effect.yieldNow()`
+    // below; with it, `[0, 1, 3, 6]` — every intermediate state. This is
+    // NOT the `Object.is` de-dup guard above (that drops an EQUAL value on
+    // purpose); this was silently dropping DISTINCT ones a slow watcher
+    // fiber hadn't caught up to yet.
     function update(next: (current: S) => S): Effect.Effect<void> {
       return Effect.suspend(() => {
         if (mine !== generation) {
@@ -209,6 +223,7 @@ export function sharedFold<S>(
               ? Effect.void
               : SubscriptionRef.set(ref, value);
           }),
+          Effect.andThen(Effect.yieldNow()),
         );
       });
     }

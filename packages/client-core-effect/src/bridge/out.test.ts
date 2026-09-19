@@ -7,11 +7,12 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect";
-import type { Subscription } from "rxjs";
+import { Subject, type Subscription } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
 
+import { fromObservable } from "#/bridge/in";
 import {
   type EffectHost,
   type FoldUpdate,
@@ -199,6 +200,37 @@ describe("bridge/out", () => {
       seen.push(v);
     });
     expect(seen).toEqual([1]);
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() folds an event emitted synchronously after the first subscribe", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 0;
+      },
+      run: (update: FoldUpdate<number>) => {
+        return fromObservable(subject).pipe(
+          Stream.runForEach((e: number) => {
+            return update((s) => {
+              return s + e;
+            });
+          }),
+        );
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    // No await between subscribe and this emission — the whole point: the
+    // rxjs subscription (buried inside `fromObservable`, forked by
+    // `startWarmPeriod` as part of THIS `subscribe()` call) must already be
+    // live, or this event is lost (a `Subject` doesn't replay) exactly as it
+    // was for the RxJS core's `commands.reconnect`/`setThemeMode` callers.
+    subject.next(5);
+    await tick();
+    expect(seen).toEqual([0, 5]);
     sub.unsubscribe();
   });
 
