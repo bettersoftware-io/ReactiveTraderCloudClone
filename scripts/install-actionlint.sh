@@ -14,7 +14,10 @@
 # (Renovate does not manage this pin.) See docs/adr/ADR-007-ci-security-tooling.md.
 set -euo pipefail
 VERSION="1.7.12"
-DEST="$(cd "$(dirname "$0")/.." && pwd)/.tooling"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/lib/fetch-verified.sh
+source "$ROOT/scripts/lib/fetch-verified.sh"
+DEST="$ROOT/.tooling"
 mkdir -p "$DEST"
 if [ -x "$DEST/actionlint" ] && "$DEST/actionlint" --version | grep -q "$VERSION"; then
   exit 0
@@ -45,22 +48,9 @@ esac
 
 ARCHIVE="$(mktemp)"
 trap 'rm -f "$ARCHIVE"' EXIT
-curl -fsSL -o "$ARCHIVE" \
-  "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_${TARGET}.tar.gz"
-
-# shasum ships on macOS and on GitHub's ubuntu runners; sha256sum is the
-# fallback for slim Linux containers (the claude-sandbox image).
-if command -v shasum >/dev/null 2>&1; then
-  ACTUAL="$(shasum -a 256 "$ARCHIVE" | cut -d' ' -f1)"
-else
-  ACTUAL="$(sha256sum "$ARCHIVE" | cut -d' ' -f1)"
-fi
-if [ "$ACTUAL" != "$SHA256" ]; then
-  echo "install-actionlint: checksum mismatch for actionlint_${VERSION}_${TARGET}" >&2
-  echo "  expected $SHA256" >&2
-  echo "  actual   $ACTUAL" >&2
-  exit 1
-fi
+fetch_verified \
+  "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_${TARGET}.tar.gz" \
+  "$SHA256" "$ARCHIVE"
 
 tar -xzf "$ARCHIVE" -C "$DEST" actionlint
 chmod +x "$DEST/actionlint"
