@@ -1,0 +1,60 @@
+import { Effect } from "effect";
+import type { Observable, Subscription } from "rxjs";
+
+/** One-shot RPC shape: the first value of an Observable port method.
+ *
+ * The RPC primitive for the one-shot ports (`execution.executeTrade`):
+ * lazy — nothing is subscribed until the Effect runs — which is why it
+ * lives here and not in `in.ts`, whose `fromObservable` subscribes eagerly
+ * and is confined to `sharedFold`'s `fromPort` (dependency-cruiser
+ * `effect-port-subscription-owned-by-the-bridge`).
+ *
+ * A synchronous source (`of(…)`) calls back DURING `subscribe`, before the
+ * `subscription` binding exists and with more emissions still to come — so
+ * the handlers route through `endSubscription`, which tolerates the
+ * not-yet-assigned holder, and `settled` keeps the later `next`/`complete`
+ * from resuming an already-resumed fiber. */
+export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
+  return Effect.async<T, unknown>((resume) => {
+    let subscription: Subscription | undefined;
+    let settled = false;
+
+    function endSubscription(): void {
+      settled = true;
+      subscription?.unsubscribe();
+    }
+
+    subscription = source.subscribe({
+      next: (value: T) => {
+        if (!settled) {
+          endSubscription();
+          resume(Effect.succeed(value));
+        }
+      },
+      error: (error: unknown) => {
+        if (!settled) {
+          endSubscription();
+          resume(Effect.fail(error));
+        }
+      },
+      complete: () => {
+        if (!settled) {
+          endSubscription();
+          resume(
+            Effect.fail(new Error("rpc: source completed without a value")),
+          );
+        }
+      },
+    });
+
+    // A synchronous source settled inside `subscribe` above, when the holder
+    // was still undefined — so its unsubscribe has to happen here instead.
+    if (settled) {
+      subscription.unsubscribe();
+    }
+
+    return Effect.sync(() => {
+      endSubscription();
+    });
+  });
+}

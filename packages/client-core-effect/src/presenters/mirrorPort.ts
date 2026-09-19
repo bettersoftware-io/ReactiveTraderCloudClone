@@ -11,6 +11,11 @@ import {
 } from "#/bridge/out";
 import { peekCurrent } from "#/bridge/peek";
 
+export interface MirrorOptions {
+  /** Keep the period across zero subscribers (`SharedFold.retain`). */
+  readonly retain?: boolean;
+}
+
 /** A replay-current port stream, projected, as a `sharedFold`: each warm
  * period seeds from the port's current value (read synchronously) and then
  * follows the port on a fiber, through the period's own `fromPort`. The
@@ -23,8 +28,10 @@ export function mirrorPort<T, U>(
   host: EffectHost,
   source: CoreStream<T>,
   project: (value: T) => U,
+  options: MirrorOptions = {},
 ): CoreStream<U> {
   return sharedFold(host, {
+    retain: options.retain,
     seed: () => {
       return Option.map(peekCurrent(source), project);
     },
@@ -46,8 +53,14 @@ export function mirrorPort<T, U>(
 export function mirrorPortAsIs<T>(
   host: EffectHost,
   source: CoreStream<T>,
+  options: MirrorOptions = {},
 ): CoreStream<T> {
-  return mirrorPort(host, source, (value) => {
-    return value;
-  });
+  return mirrorPort(
+    host,
+    source,
+    (value) => {
+      return value;
+    },
+    options,
+  );
 }

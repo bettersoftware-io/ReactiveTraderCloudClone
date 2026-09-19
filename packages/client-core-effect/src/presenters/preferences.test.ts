@@ -34,10 +34,10 @@ describe("createPowerSaverPresenter (effect)", () => {
     sub.unsubscribe();
   });
 
-  const hosts: EffectHost[] = [];
+  const hosts: TestHost[] = [];
 
-  function useHost(): EffectHost {
-    const host: EffectHost = {
+  function useHost(): TestHost {
+    const host: TestHost = {
       runtime: ManagedRuntime.make(Layer.empty),
       scope: Effect.runSync(Scope.make()),
     };
@@ -50,4 +50,12 @@ function tick(): Promise<unknown> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
+}
+
+/** The host these tests build: a `ManagedRuntime` (which satisfies
+ * `EffectRunner` structurally) plus the scope every stream fiber is forked
+ * into — and, unlike the narrow `EffectHost`, the runtime's own `dispose`,
+ * which the teardown drives directly. */
+interface TestHost extends EffectHost {
+  runtime: ManagedRuntime.ManagedRuntime<never, never>;
 }
