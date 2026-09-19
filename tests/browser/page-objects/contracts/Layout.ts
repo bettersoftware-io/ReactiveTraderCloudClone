@@ -48,6 +48,14 @@ export interface LayoutPO {
     targetTestId: string,
     edge: "left" | "right" | "top" | "bottom",
   ): Promise<void>;
+  /** The rendered width, in CSS px, of the dockview group holding panel
+   * `panelId`. Dockview-engine only. */
+  dockPanelWidth(panelId: string): Promise<number>;
+  /** Pointer-drags the dockview sash on panel `panelId`'s LEFT edge by `dx`
+   * CSS px — for a rail panel, the root-row sash between the main column and
+   * the rail. Grabs it a quarter of the way down the group, clear of the
+   * corner where the rail's own horizontal sash starts. Dockview-engine only. */
+  dragDockSashLeftOf(panelId: string, dx: number): Promise<void>;
   /** Clicks the panel's header "—" control, collapsing it into a strip
    * (`TESTIDS.layout.collapseControl` — the header-button state of the
    * shared id). */
@@ -112,6 +120,13 @@ export interface LayoutPO {
    * panel actually grows once another panel floats out of their shared
    * column — a real-DOM geometry claim no jsdom witness can make. */
   panelHeight(panelId: string): Promise<number>;
+  /** Whether `panelId`'s dockview group currently sits inside dockview's
+   * FLOAT container (a `.dv-resize-container`, the box dockview mounts every
+   * floating group in) — read off the DOM, independent of the engine's own
+   * `data-floating` bookkeeping. Exists because a float opens at its group's
+   * pre-float size, so a height alone cannot tell "docked home at that size"
+   * from "never docked". Dockview-engine only. */
+  panelSitsInFloat(panelId: string): Promise<boolean>;
 }
 
 /** What the dock showed for one panel on the first render after a load —

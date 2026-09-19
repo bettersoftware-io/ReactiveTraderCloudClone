@@ -1,13 +1,11 @@
-import type { JSX } from "solid-js";
-import { createComponent, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
 
 import { liveMetricsPage } from "#tests/ui/pages/UseLiveMetricsPage";
 
-import { FROZEN_LIVE_METRICS, LiveMetricsContext } from "./LiveMetricsContext";
+import { FROZEN_LIVE_METRICS } from "./LiveMetricsContext";
 
 describe("useLiveMetrics (solid)", () => {
   beforeEach(() => {
@@ -26,18 +24,9 @@ describe("useLiveMetrics (solid)", () => {
   });
 
   it("returns the frozen value and starts no loop under a provider", () => {
-    const result = page.mount((props: WrapperProps): JSX.Element => {
-      return createComponent(ViewModelContext.Provider, {
-        value: viewModelWith(false),
-        get children(): JSX.Element {
-          return createComponent(LiveMetricsContext.Provider, {
-            value: FROZEN_LIVE_METRICS,
-            get children(): JSX.Element {
-              return props.children;
-            },
-          });
-        },
-      });
+    const result = page.mount({
+      viewModel: viewModelWith(false),
+      liveMetrics: FROZEN_LIVE_METRICS,
     });
 
     expect(result()).toEqual(FROZEN_LIVE_METRICS);
@@ -45,7 +34,7 @@ describe("useLiveMetrics (solid)", () => {
   });
 
   it("publishes fps + tone over the ~1s window", () => {
-    const result = page.mount(withPowerSaver(false));
+    const result = page.mount({ viewModel: viewModelWith(false) });
 
     expect(result().fps).toBeNull();
 
@@ -64,7 +53,7 @@ describe("useLiveMetrics (solid)", () => {
   // The motion probe recognises the loop by its `rtcDiagnosticRafLoop` marker
   // (tests/browser/motionProbe.ts), so that marker is pinned here too.
   it("keeps sampling under power-saver freeze and marks its loop diagnostic", () => {
-    page.mount(withPowerSaver(true));
+    page.mount({ viewModel: viewModelWith(true) });
 
     expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
     expect(
@@ -81,10 +70,6 @@ describe("useLiveMetrics (solid)", () => {
     cb?.(ts);
   }
 });
-
-interface WrapperProps {
-  children: JSX.Element;
-}
 
 /** Minimal ViewModel stub. The hook no longer reads the ViewModel at all —
  *  the provider is kept so the freeze test above renders under a
@@ -106,19 +91,6 @@ function viewModelWith(isFreeze: boolean): ViewModel {
       };
     },
   } as unknown as ViewModel;
-}
-
-function withPowerSaver(
-  isFreeze: boolean,
-): (props: WrapperProps) => JSX.Element {
-  return function Wrapper(props: WrapperProps): JSX.Element {
-    return createComponent(ViewModelContext.Provider, {
-      value: viewModelWith(isFreeze),
-      get children(): JSX.Element {
-        return props.children;
-      },
-    });
-  };
 }
 
 const page = liveMetricsPage();

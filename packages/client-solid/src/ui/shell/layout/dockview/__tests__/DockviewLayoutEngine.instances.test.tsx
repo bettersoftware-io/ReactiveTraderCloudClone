@@ -15,8 +15,6 @@ import {
 } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";
 
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
-
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
 // (mirrors the react twin's DockviewLayoutEngine.instances.test.tsx).
 beforeAll(() => {
@@ -37,7 +35,11 @@ afterEach(() => {
 
 describe("DockviewLayoutEngine instances prop", () => {
   it("holds a mounted instance as a live panel, rendering its registry content", () => {
-    mountEngine({ store: new InMemoryDockLayoutStore(), instances: [AAPL] });
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      instances: [AAPL],
+    });
 
     expect(page.engineAttribute("data-instances")).toBe("eq-chart:AAPL");
     // fx's 4 seed leaves plus the instance's own group.
@@ -50,7 +52,7 @@ describe("DockviewLayoutEngine instances prop", () => {
       readonly LayoutPanelInstance[]
     >([]);
 
-    mountEngine({ store: new InMemoryDockLayoutStore(), instances });
+    page.mount({ registry, store: new InMemoryDockLayoutStore(), instances });
 
     expect(page.groupsAttr()).toBe("4");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(false);
@@ -86,7 +88,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     inner.save("fx", seed);
     const [layoutResets, setLayoutResets] = createSignal(0);
 
-    mountEngine({ store, instances: [AAPL], layoutResets });
+    page.mount({ registry, store, instances: [AAPL], layoutResets });
 
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
 
@@ -115,7 +117,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     const { store, inner } = createRecordingStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
-    mountEngine({ store, instances: [AAPL], layoutResets });
+    page.mount({ registry, store, instances: [AAPL], layoutResets });
 
     inner.clear("fx");
     setLayoutResets((n) => {
@@ -138,7 +140,12 @@ describe("DockviewLayoutEngine instances prop", () => {
       "panel-dyn-1",
     ]);
 
-    mountEngine({ store: new InMemoryDockLayoutStore(), instances, docked });
+    page.mount({
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      instances,
+      docked,
+    });
 
     expect(page.groupsAttr()).toBe("6");
 
@@ -184,7 +191,8 @@ describe("DockviewLayoutEngine instances prop", () => {
       });
     }
 
-    mountEngine({
+    page.mount({
+      registry,
       store: new InMemoryDockLayoutStore(),
       instances,
       onCloseInstance: removeInstance,
@@ -214,7 +222,7 @@ describe("DockviewLayoutEngine instances prop", () => {
       readonly LayoutPanelInstance[]
     >([]);
 
-    mountEngine({ store: new InMemoryDockLayoutStore(), instances });
+    page.mount({ registry, store: new InMemoryDockLayoutStore(), instances });
 
     const collapseBefore = page.bodyElement("panel-fx-rates-collapse");
     expect(collapseBefore).not.toBeNull();
@@ -237,7 +245,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     const seed = createInstanceOnTheLeftBlob(AAPL.id);
     inner.save("fx", seed);
 
-    mountEngine({ store, instances: [AAPL] });
+    page.mount({ registry, store, instances: [AAPL] });
     // Arrange the dock before dispose: #737 only flushes a layout a pointer
     // touched, and each mount below builds its own fresh engine (its own
     // `userArranged`).
@@ -248,7 +256,7 @@ describe("DockviewLayoutEngine instances prop", () => {
     expect(inner.load("fx")).not.toBe(seed);
     expect(rootLeafIndexOf(lastGridRoot(inner), AAPL.id)).toBe(0);
 
-    mountEngine({ store, instances: [AAPL] });
+    page.mount({ registry, store, instances: [AAPL] });
 
     expect(page.groupsAttr()).toBe("5");
     expect(page.bodyVisible("chart-AAPL-body")).toBe(true);
@@ -284,10 +292,10 @@ describe("DockviewLayoutEngine instances prop", () => {
       return { ...registry, ...instanceSlice };
     }
 
-    mountEngine({
+    page.mount({
+      registry: createComposedRegistry,
       store: new InMemoryDockLayoutStore(),
       instances,
-      registry: createComposedRegistry,
     });
 
     const aaplBefore = page.bodyElement("instance-AAPL-body");
@@ -316,13 +324,7 @@ describe("DockviewLayoutEngine instance pins", () => {
   it("opens a construction-time instance unpinned, the Jarvis dock beside it pinned", () => {
     const { store, inner } = createRecordingStore();
 
-    mountEngine({
-      store,
-      instances: [AAPL],
-      docked: () => {
-        return ["panel-dyn-1"];
-      },
-    });
+    page.mount({ registry, store, instances: [AAPL], docked: ["panel-dyn-1"] });
     page.touchDock();
     page.unmountAll();
 
@@ -337,12 +339,11 @@ describe("DockviewLayoutEngine instance pins", () => {
     const { store, inner } = createRecordingStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
-    mountEngine({
+    page.mount({
+      registry,
       store,
       instances: [AAPL],
-      docked: () => {
-        return ["panel-dyn-1"];
-      },
+      docked: ["panel-dyn-1"],
       layoutResets,
     });
     inner.clear("fx");
@@ -365,13 +366,7 @@ describe("DockviewLayoutEngine instance pins", () => {
       readonly LayoutPanelInstance[]
     >([]);
 
-    mountEngine({
-      store,
-      instances,
-      docked: () => {
-        return ["panel-dyn-1"];
-      },
-    });
+    page.mount({ registry, store, instances, docked: ["panel-dyn-1"] });
     setInstances([AAPL]);
 
     await page.waitFor(() => {
@@ -412,49 +407,6 @@ function pinnedIdsOf(store: InMemoryDockLayoutStore): readonly string[] {
 
   return pins.flatMap((pin) => {
     return pin.panelIds;
-  });
-}
-
-interface EngineProps {
-  store: DockLayoutStore;
-  instances:
-    | readonly LayoutPanelInstance[]
-    | (() => readonly LayoutPanelInstance[]);
-  docked?: () => readonly PanelId[];
-  layoutResets?: () => number;
-  /** Live registry — defaults to the static `registry` above. */
-  registry?: () => PanelRegistry;
-  onCloseInstance?: (id: PanelId) => void;
-}
-
-/** Mounts once, dereferencing every live prop INSIDE the JSX so Solid's
- * compiler wraps each in a reactive getter (see the docked page's doc). */
-function mountEngine(props: EngineProps): void {
-  function instances(): readonly LayoutPanelInstance[] {
-    return typeof props.instances === "function"
-      ? props.instances()
-      : props.instances;
-  }
-
-  page.mount(() => {
-    return (
-      <DockviewLayoutEngine
-        tab="fx"
-        registry={props.registry?.() ?? registry}
-        store={props.store}
-        maximized={null}
-        collapsed={[]}
-        closed={[]}
-        docked={props.docked?.() ?? []}
-        instances={instances()}
-        layoutResets={props.layoutResets?.() ?? 0}
-        onMaximize={noop}
-        onRestore={noop}
-        onCollapse={noop}
-        onExpand={noop}
-        onCloseInstance={props.onCloseInstance ?? noop}
-      />
-    );
   });
 }
 

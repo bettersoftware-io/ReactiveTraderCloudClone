@@ -1,5 +1,49 @@
 import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
-import type { JSX } from "solid-js";
+
+import type {
+  DockLayoutStore,
+  LayoutPanelInstance,
+  PanelId,
+} from "@rtc/client-core";
+
+import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
+import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
+
+/** A prop a case either fixes (`[AAPL]`) or drives live (`instances` from its
+ * own `createSignal`). Solid component bodies run ONCE, so a prop that changes
+ * after mount must arrive as an accessor; one that never changes reads better
+ * as a plain value. The page accepts both, so each case writes whichever is
+ * true of it. */
+type Live<T> = T | (() => T);
+
+/** What the three specs sharing this page vary. Everything optional carries
+ * the default a case that does not name it wants. `registry` stays REQUIRED:
+ * its panel bodies carry the testids each spec asserts on, so the spec owns
+ * them. The four layout intents never varied in any case, so they stay the
+ * page's business; `onCloseInstance` is exposed because the instances spec
+ * asserts it fires. */
+interface DockviewLayoutEngineBridgeMountProps {
+  registry: Live<PanelRegistry>;
+  store: DockLayoutStore;
+  /** Default `null` — nothing maximized. */
+  maximized?: Live<PanelId | null>;
+  /** Default `[]` — no Jarvis-docked dynamic panel. */
+  docked?: Live<readonly PanelId[]>;
+  /** Default `[]` — no pinned chart instance. */
+  instances?: Live<readonly LayoutPanelInstance[]>;
+  /** Default `0`. A bump rebuilds the engine in place. */
+  layoutResets?: Live<number>;
+  /** Default a no-op. */
+  onCloseInstance?: (id: PanelId) => void;
+}
+
+function noop(): void {}
+
+/** Reads a `Live` prop. Called INSIDE the JSX below, so Solid's compiler wraps
+ * each prop in a reactive getter — the constraint the docked page documents. */
+function read<T>(value: Live<T>): T {
+  return typeof value === "function" ? (value as () => T)() : value;
+}
 
 /** A jsdom stand-in for the OS window a pop-out opens into. dockview calls
  * the real `window.open`, so the URL it asks for is observable here, and the
@@ -23,7 +67,9 @@ interface PopoutWindowHarness {
 }
 
 export interface DockviewLayoutEngineBridgePage {
-  mount(element: () => JSX.Element): void;
+  /** Mounts the bridge ONCE; later prop changes are driven by the spec's own
+   * signal setters through `Live` accessors, never by re-mounting. */
+  mount(props: DockviewLayoutEngineBridgeMountProps): void;
   unmountAll(): void;
   /** Runs `assertion` until it stops throwing (or the timeout elapses) —
    * the spec supplies the assertion, this page owns the polling mechanic. */
@@ -50,14 +96,38 @@ export interface DockviewLayoutEngineBridgePage {
   stubPopoutWindow(): PopoutWindowHarness;
 }
 
-/** The framework surface for `DockviewLayoutEngine.popout.test.tsx` and
- * `DockviewLayoutEngine.instances.test.tsx` — the solid bridge's jsdom
- * wiring tests (the react twin reuses its StrictMode page; solid has no
- * StrictMode, so this page carries only render/waitFor and the queries). */
+/** The framework surface for the solid bridge's jsdom wiring tests —
+ * `DockviewLayoutEngine.{popout,instances,floating}.test.tsx` (the react twin
+ * reuses its StrictMode page; solid has no StrictMode).
+ *
+ * This page CONSTRUCTS the engine. It used to take `() => JSX.Element`, so all
+ * three specs wrote the full fifteen-prop engine block themselves — the defect
+ * rtc/page-objects-own-their-component exists for, in Solid's shape. The rule
+ * missed that shape until it learned to climb through a parameter's own
+ * function type. */
 export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage {
   return {
-    mount(element: () => JSX.Element): void {
-      render(element);
+    mount(props: DockviewLayoutEngineBridgeMountProps): void {
+      render(() => {
+        return (
+          <DockviewLayoutEngine
+            tab="fx"
+            registry={read(props.registry)}
+            store={props.store}
+            maximized={read(props.maximized ?? null)}
+            collapsed={[]}
+            closed={[]}
+            docked={read(props.docked ?? [])}
+            instances={read(props.instances ?? [])}
+            layoutResets={read(props.layoutResets ?? 0)}
+            onMaximize={noop}
+            onRestore={noop}
+            onCollapse={noop}
+            onExpand={noop}
+            onCloseInstance={props.onCloseInstance ?? noop}
+          />
+        );
+      });
     },
     unmountAll(): void {
       cleanup();

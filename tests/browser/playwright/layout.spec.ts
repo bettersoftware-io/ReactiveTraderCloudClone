@@ -36,6 +36,29 @@ test.describe("Layout engine", () => {
     await layout.expectEngine(ctx, "inhouse");
   });
 
+  test("dockview: dragging the rail's sash resizes the rail on a fresh boot", async ({
+    ctx,
+  }) => {
+    // Selected explicitly so the engine is CONSTRUCTED here from the seed —
+    // the fresh-boot path where the rail's design pin is applied — whether or
+    // not dockview is the default.
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.expectRailSashDragResizes(ctx);
+  });
+
+  test("dockview: after a pinned rail panel floats out, its partner's sash still resizes", async ({
+    ctx,
+  }) => {
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.expectRailSashDragResizesAfterFloatingRailMember(ctx);
+  });
+
   test("dockview edge-split drag rearranges and persists, and a collapsed panel rejects drops", async ({
     ctx,
   }) => {
@@ -85,7 +108,21 @@ test.describe("Layout engine", () => {
     await layout.popoutBlotterShowsLiveContentAndDocksHomeOnClose(ctx);
   });
 
-  test("floating a panel grows its column sibling, survives a reload, and docks home", async ({
+  test("docking a floated panel home restores its pre-float height", async ({
+    ctx,
+  }) => {
+    // Floating groups are a dockview-only feature, so this test opens by
+    // switching engines — same reasoning as the pop-out test above.
+    await layout.expectEngine(ctx, "inhouse");
+
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatBlotterAndDockHomeRestoresItsHeight(ctx);
+  });
+
+  test("floating a panel grows its column sibling, survives a reload, and docks home at its pre-float height", async ({
     ctx,
   }) => {
     // Floating groups are a dockview-only feature, so this test opens by

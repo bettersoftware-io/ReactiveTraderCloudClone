@@ -63,6 +63,75 @@ export async function expectSplitterDragResizes(
   );
 }
 
+// The FX rail's top panel (PANEL_SPECS' fx-analytics). The rail is seeded
+// with a 360px design pin, held as min=max group constraints.
+const RAIL_PANEL_ID = "fx-analytics";
+// Dragging the rail's sash LEFT by this much must grow the rail by nearly as
+// much. The bar sits well above px noise but far below a full drag, so it
+// only distinguishes "moved" from "did not move at all".
+const RAIL_DRAG_PX = -140;
+const MIN_RAIL_GROWTH_PX = 100;
+
+/**
+ * Proves a user can resize the dockview rail by dragging its sash on a FRESH
+ * boot — the engine constructed from the seed, with the rail's design pin
+ * applied. The pin is min=max, which dockview reads as "this side cannot
+ * move" and disables the sash; the engine releases it on the first move of a
+ * sash drag. That release once loosened the rail's groups but left dockview's
+ * cached branch limits at the pinned width, so the rail never moved, while
+ * the same drag under the in-house engine moved it on the first try.
+ *
+ * jsdom cannot see this — dockview's sash wiring (Resizable) does not run
+ * there — so only a real browser drag is a witness.
+ */
+export async function expectRailSashDragResizes(
+  ctx: TestContext,
+): Promise<void> {
+  const before = await ctx.po.layout.dockPanelWidth(RAIL_PANEL_ID);
+  await ctx.po.layout.dragDockSashLeftOf(RAIL_PANEL_ID, RAIL_DRAG_PX);
+  const after = await ctx.po.layout.dockPanelWidth(RAIL_PANEL_ID);
+
+  assertTrue(
+    after - before > MIN_RAIL_GROWTH_PX,
+    `expected dragging the rail's sash ${RAIL_DRAG_PX}px to grow the rail by more than ${MIN_RAIL_GROWTH_PX}px (before=${before}, after=${after})`,
+  );
+}
+
+// The FX rail's bottom panel (PANEL_SPECS' fx-positions), which stays in
+// the grid when its rail partner floats out.
+const RAIL_REMAINING_PANEL_ID = "fx-positions";
+
+/**
+ * Floats the rail's top panel — a member of the rail's design pin — and then
+ * drags the sash its remaining partner now shares with the main column. A
+ * float suspends the pin; this proves the suspension actually frees the
+ * partner, and fails (before=360, after=360) if it does not release.
+ *
+ * Measured NOT to depend on the stale-branch fix that
+ * {@link expectRailSashDragResizes} guards: with that fix removed this still
+ * passes, because floating a member restructures the rail's grid node and so
+ * rebuilds its cached limits anyway. It guards the float path's own release,
+ * not the fresh-boot one. Dockview-engine only.
+ */
+export async function expectRailSashDragResizesAfterFloatingRailMember(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.layout.floatPanel(RAIL_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [RAIL_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const before = await ctx.po.layout.dockPanelWidth(RAIL_REMAINING_PANEL_ID);
+  await ctx.po.layout.dragDockSashLeftOf(RAIL_REMAINING_PANEL_ID, RAIL_DRAG_PX);
+  const after = await ctx.po.layout.dockPanelWidth(RAIL_REMAINING_PANEL_ID);
+
+  assertTrue(
+    after - before > MIN_RAIL_GROWTH_PX,
+    `expected dragging the rail's sash ${RAIL_DRAG_PX}px after floating ${RAIL_PANEL_ID} to grow ${RAIL_REMAINING_PANEL_ID} by more than ${MIN_RAIL_GROWTH_PX}px (before=${before}, after=${after})`,
+  );
+}
+
 /** Waits for the layout-engine root's `data-engine` witness to equal
  * `engine` — see {@link PrefsLayoutEngine}. */
 export async function expectEngine(
@@ -207,22 +276,55 @@ export async function popoutBlotterShowsLiveContentAndDocksHomeOnClose(
 // reflow at all.
 const MIN_SIBLING_GROWTH_FACTOR = 1.2;
 
+// A dock-home re-applies the extent the panel had before it floated (the
+// engine remembers it as the float opens). Measured, not assumed, as the
+// panel's own group height before and after; 2px absorbs the browser's
+// sub-pixel rounding of a split's integer model sizes, far below the ~100px
+// a bare dockview move would leave it off (it halves the anchor group).
+const HOME_HEIGHT_TOLERANCE_PX = 2;
+
 /**
- * Floats the blotter panel and proves two things no jsdom witness can see,
+ * Floats the blotter and docks it straight home, proving the one thing no
+ * jsdom witness can see, because jsdom lays nothing out: the panel comes back
+ * at its OWN pre-float height, not merely into its old slot. Dockview-engine
+ * only — callers must already be on `engine: "dockview"`.
+ */
+export async function floatBlotterAndDockHomeRestoresItsHeight(
+  ctx: TestContext,
+): Promise<void> {
+  const ratesHeightDocked = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+  const blotterHeightDocked = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
+
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  await expectBlotterInFloat(ctx, true);
+
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+  await expectDockGroups(ctx, 4, 5);
+
+  await expectBlotterDockedHome(ctx, blotterHeightDocked, ratesHeightDocked);
+}
+
+/**
+ * Floats the blotter panel and proves three things no jsdom witness can see,
  * because jsdom lays nothing out: first, that fx-rates — its column sibling
  * in FX_ROOT's left-hand split — actually grows to fill the vacated space
  * (the real-DOM proof the row was actually left, not merely that the
  * `data-floating` bookkeeping flipped); second, that the float survives a
- * reload and then docks back INTO fx-rates' column — fx-rates shrinks back by
- * the same factor it grew, which a panel still floating cannot produce. It
- * does not return to the seed height: dockview's move splits the anchor
- * group in half (see the measurement below). Dockview-engine only — callers
- * must already be on `engine: "dockview"`.
+ * reload; third, that docking it home AFTER that reload still restores the
+ * blotter's own pre-float height — the remembered size rode the reload in
+ * the blob, since the reloaded grid alone no longer holds it. Dockview-engine
+ * only — callers must already be on `engine: "dockview"`.
  */
 export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   ctx: TestContext,
 ): Promise<void> {
   const ratesHeightDocked = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+  const blotterHeightDocked = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
 
   await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
   await ctx.po.layout.waitDockFloating(
@@ -232,6 +334,7 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
 
   const ratesHeightFloating = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
 
+  await expectBlotterInFloat(ctx, true);
   assertGte(
     ratesHeightFloating,
     ratesHeightDocked * MIN_SIBLING_GROWTH_FACTOR,
@@ -288,19 +391,56 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
   await expectDockGroups(ctx, 4, 5);
 
-  // The group count reads 4 whether fx-blotter is floating or docked (a
-  // float is still a group), so it cannot witness the dock. fx-rates' height
-  // can: it only shrinks back if fx-blotter re-entered ITS column. Measured
-  // (2026-09-19, React client, this suite's viewport): docked 400 → floating
-  // 613 → home 303. Home is NOT the seed's 400 — dockview's move splits the
-  // anchor group in half rather than restoring the seed's 0.66/0.34 share —
-  // so the assertion is "gave the space back", not "restored the seed
-  // height".
+  await expectBlotterDockedHome(ctx, blotterHeightDocked, ratesHeightDocked);
+}
+
+/** Asserts `panelSitsInFloat` for fx-blotter reads `expected` — the DOM
+ * witness of where the group actually lives. Asserted `true` while floating
+ * too, so a `false` after dock-home cannot come from a selector that never
+ * matches a float at all. */
+async function expectBlotterInFloat(
+  ctx: TestContext,
+  expected: boolean,
+): Promise<void> {
+  const inFloat = await ctx.po.layout.panelSitsInFloat(BLOTTER_PANEL_ID);
+
+  assertEquals(
+    inFloat,
+    expected,
+    `expected fx-blotter ${expected ? "inside" : "outside"} dockview's float container`,
+  );
+}
+
+/**
+ * Asserts fx-blotter really docked home at its pre-float size. Its own
+ * height ALONE cannot say so: a float opens at its group's pre-float size
+ * (`floatingBoundsFor`), so a blotter that never docked measures the same.
+ * And `waitDockFloating([])` reads the engine's `data-floating` bookkeeping,
+ * which has read empty once before over a float the engine never published.
+ * Two witnesses that differ between floating and docked carry it: the
+ * group is no longer inside dockview's float container, and fx-rates — its
+ * column sibling, which grew while it floated — is back at its own
+ * pre-float height, i.e. gave the space back. Both within
+ * {@link HOME_HEIGHT_TOLERANCE_PX}.
+ */
+async function expectBlotterDockedHome(
+  ctx: TestContext,
+  blotterHeightDocked: number,
+  ratesHeightDocked: number,
+): Promise<void> {
+  await expectBlotterInFloat(ctx, false);
+
+  const blotterHeightHome = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
   const ratesHeightHome = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
 
   assertLte(
-    ratesHeightHome,
-    ratesHeightFloating / MIN_SIBLING_GROWTH_FACTOR,
-    `expected fx-rates to shrink back once fx-blotter docked home into their shared column (floating height=${ratesHeightFloating}, home height=${ratesHeightHome})`,
+    Math.abs(blotterHeightHome - blotterHeightDocked),
+    HOME_HEIGHT_TOLERANCE_PX,
+    `expected fx-blotter to dock home at its pre-float height (docked height=${blotterHeightDocked}, home height=${blotterHeightHome})`,
+  );
+  assertLte(
+    Math.abs(ratesHeightHome - ratesHeightDocked),
+    HOME_HEIGHT_TOLERANCE_PX,
+    `expected fx-rates to give the space back once fx-blotter docked home (docked height=${ratesHeightDocked}, home height=${ratesHeightHome})`,
   );
 }

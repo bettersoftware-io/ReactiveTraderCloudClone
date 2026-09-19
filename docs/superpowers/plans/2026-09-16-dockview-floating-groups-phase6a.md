@@ -10,6 +10,8 @@
 
 **Spec:** [../specs/2026-09-15-dockview-floats-and-presets-design.md](../specs/2026-09-15-dockview-floats-and-presets-design.md) — §3 is this phase; §4 (presets) is Phase 6b and is out of scope here.
 
+**Execution rulings:** [2026-09-16-dockview-floating-groups-phase6a-rulings.md](2026-09-16-dockview-floating-groups-phase6a-rulings.md) — the 39 decisions taken while executing this plan (where it proved wrong, silent, or contradicted by measurement), each with its rationale and what it costs if wrong. Read it before re-using this plan as a template.
+
 ## Global Constraints
 
 - **Both web clients move together.** Every UI addition ships in `client-react` and `client-solid`, with contract specs run against both via the swap-trio.

@@ -1,12 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
 
+import type { ViewModel } from "@rtc/solid-bindings";
+import { ViewModelContext } from "@rtc/solid-bindings";
+
+import { useJarvisDrivenPulse } from "#/ui/shell/jarvis/useJarvisDrivenPulse";
+
+/** The one thing a case varies: the ViewModel double whose `useJarvisDriver`
+ * batch the case drives through its own signal. */
+interface UseJarvisDrivenPulseMountProps {
+  viewModel: ViewModel;
+}
+
 export interface UseJarvisDrivenPulsePage {
-  /** Mounts the given element builder — each spec declares its own
-   * Harness/TestApp component pair (kept spec-side: the double-component
-   * shape dodges an eslint-plugin-solid reactivity false positive — see the
-   * spec's own comment), so this page owns only the render mechanic. */
-  mount(element: () => JSX.Element): void;
+  /** Mounts `useJarvisDrivenPulse()` in a wrapper element (testid `wrapper`)
+   * holding one child (testid `descendant`), under the given ViewModel. */
+  mount(props: UseJarvisDrivenPulseMountProps): void;
   unmountAll(): void;
   /** The wrapper's raw `data-jarvis-driven` attribute — kept as the exact
    * `"true" | "false" | null` fact (not collapsed to a boolean) so a missing
@@ -23,8 +32,39 @@ export interface UseJarvisDrivenPulsePage {
  * mirrors client-react's `jarvisDrivenPulsePage` precedent. */
 export function jarvisDrivenPulsePage(): UseJarvisDrivenPulsePage {
   return {
-    mount(element: () => JSX.Element): void {
-      render(element);
+    mount(props: UseJarvisDrivenPulseMountProps): void {
+      // TWO named components, not one inlined into `render`'s callback:
+      // eslint-plugin-solid's reactivity check mis-reads an anonymous
+      // `render(() => (<Provider value={…}>…))` arrow as an untracked
+      // "unnamed derived signal" once its JSX closes over a local component —
+      // a second named (PascalCase) component gives the plugin a real
+      // component boundary. Both used to be declared, identically, in each
+      // of the spec's two cases.
+      function Harness(): JSX.Element {
+        const pulse = useJarvisDrivenPulse();
+
+        return (
+          <div
+            data-testid="wrapper"
+            ref={pulse.ref}
+            data-jarvis-driven={pulse.pulsing() ? "true" : "false"}
+          >
+            <div data-testid="descendant" />
+          </div>
+        );
+      }
+
+      function TestApp(): JSX.Element {
+        return (
+          <ViewModelContext.Provider value={props.viewModel}>
+            <Harness />
+          </ViewModelContext.Provider>
+        );
+      }
+
+      render(() => {
+        return <TestApp />;
+      });
     },
     unmountAll(): void {
       cleanup();

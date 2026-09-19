@@ -82,6 +82,14 @@ interface DockLayoutBlobShape {
   readonly floatingGroups?: readonly DockLayoutFloatingGroupEntry[];
 }
 
+/** A dockview group's on-screen rectangle, in CSS px. */
+interface DockGroupBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export class PlaywrightLayout implements LayoutPO {
   constructor(private readonly page: Page) {}
 
@@ -168,6 +176,92 @@ export class PlaywrightLayout implements LayoutPO {
       String(count),
       { timeout: timeoutMs },
     );
+  }
+
+  /** The dockview group element holding panel `panelId`, found through the
+   * panel's own head-slot mount inside it. */
+  private dockGroupBox(panelId: string): Promise<DockGroupBox> {
+    return this.page
+      .getByTestId(TESTIDS.layout.dockTab(panelId))
+      .evaluate((mount) => {
+        const group = mount.closest(".dv-groupview");
+
+        if (group === null) {
+          throw new Error("dock tab mount is not inside a .dv-groupview");
+        }
+
+        const r = group.getBoundingClientRect();
+
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      });
+  }
+
+  async dockPanelWidth(panelId: string): Promise<number> {
+    return (await this.dockGroupBox(panelId)).width;
+  }
+
+  async dragDockSashLeftOf(panelId: string, dx: number): Promise<void> {
+    const group = await this.dockGroupBox(panelId);
+    // The sash on the group's left edge: a VERTICAL `.dv-sash` whose right
+    // edge meets the group's left edge. Located by geometry rather than by
+    // index, so it survives dockview reordering its sash containers.
+    const sash = await this.page.evaluate((left) => {
+      const hit = [...document.querySelectorAll(".dv-sash")]
+        .map((element) => {
+          return element.getBoundingClientRect();
+        })
+        .find((r) => {
+          return r.height > r.width && Math.abs(r.x + r.width - left) <= 8;
+        });
+
+      return hit === undefined ? null : { x: hit.x, width: hit.width };
+    }, group.x);
+
+    if (sash === null) {
+      throw new Error(`no vertical dock sash on the left edge of ${panelId}`);
+    }
+
+    const cx = sash.x + sash.width / 2;
+    // Grab the sash at a point where it is the TOPMOST element. A floating
+    // group sits above the grid and can cover part of the sash — a fixed
+    // grab point then lands on the float, and the drag moves nothing.
+    // Probed down the group from a quarter to three quarters, clear of the
+    // corners where the rail's own horizontal sash starts.
+    const probe = await this.page.evaluate(
+      ({ x, top, height }) => {
+        const covering: string[] = [];
+
+        for (const f of [0.25, 0.4, 0.55, 0.7, 0.85]) {
+          const y = top + height * f;
+          const hit = document.elementFromPoint(x, y);
+
+          if (hit?.closest(".dv-sash") !== null && hit !== null) {
+            return { y, covering };
+          }
+
+          covering.push(
+            `${f}:${hit?.className.toString().slice(0, 40) ?? "none"}`,
+          );
+        }
+
+        return { y: null, covering };
+      },
+      { x: cx, top: group.y, height: group.height },
+    );
+
+    if (probe.y === null) {
+      throw new Error(
+        `the sash left of ${panelId} is covered along its whole length (${probe.covering.join(", ")})`,
+      );
+    }
+
+    const cy = probe.y;
+    await this.page.mouse.move(cx, cy);
+    await this.page.mouse.down();
+    // Stepped, so pointermove fires mid-drag the way a real drag does — the
+    // engine releases a design pin on the FIRST move, not on pointerdown.
+    await this.page.mouse.move(cx + dx, cy, { steps: 10 });
+    await this.page.mouse.up();
   }
 
   async dragDockTabOnto(panelId: string, targetTestId: string): Promise<void> {
@@ -509,5 +603,11 @@ export class PlaywrightLayout implements LayoutPO {
     );
 
     return box.height;
+  }
+
+  async panelSitsInFloat(panelId: string): Promise<boolean> {
+    return this.group(panelId).evaluate((element) => {
+      return element.closest(".dv-resize-container") !== null;
+    });
   }
 }

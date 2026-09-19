@@ -11,7 +11,12 @@ export interface TopicOptions {
  * `shareReplay({ bufferSize: 1, refCount: true })` written once, explicitly,
  * instead of implied by an operator.
  *
- * Failure is TERMINAL, as it is for the operator this stands in for. After
+ * Failure is TERMINAL — BY THIS KERNEL'S CHOICE (slice 0), which is STRICTER
+ * than the operator it stands in for: `shareReplay({ bufferSize: 1, refCount:
+ * true })` compiles to `share({ resetOnError: true, resetOnRefCountZero:
+ * true, … })`, so `resetOnError` discards the replay subject on error and a
+ * later subscriber gets a FRESH subscription, not the latched error. Whether
+ * to match that is an open residual (docs/STATUS.md). As built today: after
  * `fail`, the topic is dead: a later `subscribe` is handed the latched error
  * synchronously and starts no producer, a later `publish` reaches nobody, and
  * a later `fail` is ignored. A consumer that resubscribes after an error must
