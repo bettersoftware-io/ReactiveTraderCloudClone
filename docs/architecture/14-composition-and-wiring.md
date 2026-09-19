@@ -138,7 +138,7 @@ sequenceDiagram
 3. `AppRoot` (`AppRoot.tsx:31-38`) builds `buildBrowserPorts()` once (lazy ref) — this is where the `WsAdapter` constructor opens the raw `WebSocket` eagerly (`WsAdapter.ts:56-61`), if `VITE_SERVER_URL` is set, so the socket handshake begins before `createApp` even runs.
 4. `createApp(ports)` builds all presenters/commands (§14.1); `createMachineFactories(presenters)` and `createViewModel(...)` follow immediately (`AppRoot.tsx:32-37`).
 5. `AppRoot` renders `ViewModelProvider > ThemeProvider > BootGate` (`:43-49`). `BootGate` (`ui/shell/boot/BootGate.tsx:24-58`) mounts `children` (the real `<App/>` tree) **unconditionally and immediately** — so its streams start receiving data — and overlays the `BootSequence` splash on top only while `useBootGate().visible` is `true`.
-6. `App.tsx` (`:19-32`) renders `AmbientBackground`, `HeaderChrome`, the first `WorkspaceEngine` (FX tile grid via `InhouseLayoutEngine`), `StatusBar`, `ConnectionOverlay`, `LockScreen` — this is the "first rendered tick", already live underneath the splash.
+6. `App.tsx` (`:19-32`) renders `AmbientBackground`, `HeaderChrome`, the first `WorkspaceEngine` (FX tile grid via `DockviewLayoutEngine`, the default `LayoutEngine` as of the Task 10 flip — `InhouseLayoutEngine` renders instead for a user who picked "inhouse"), `StatusBar`, `ConnectionOverlay`, `LockScreen` — this is the "first rendered tick", already live underneath the splash.
 7. The `BootSequence` machine (built by `machineFactories.boot`, `composition.ts:1257-1265`) runs to completion or is skipped; `BootGate`'s `onTransitionEnd`/reduced-motion path calls `dismiss()` (`BootGate.tsx:28-46`), setting `visible=false` and revealing the already-warm app.
 
 #### Mobile (RN / Expo)

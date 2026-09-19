@@ -383,5 +383,8 @@ capture listeners on construction, not on first use. Those listeners stay
 dormant while the `keyboardNavigation` option is left unset (this package's
 default), so today there is no measured cost — but it is a real divergence
 from bare `dockview-core`, worth knowing on a perf-sensitive HUD where every
-document-level listener is one more thing evaluated on every keydown/click,
-whether or not Dockview is the active layout engine.
+document-level listener is one more thing evaluated on every keydown/click.
+Dockview is the default layout engine (as of the Task 10 flip), so this cost
+is now the common case, not a conditional aside — every session that never
+switches to the in-house engine carries these four modules' listeners
+whether or not `keyboardNavigation` ever gets turned on.

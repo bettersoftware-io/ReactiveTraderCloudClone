@@ -175,9 +175,9 @@ export const DEFAULT_AMBIENT_STYLE: AmbientStyle = "aurora";
 /** Chart rendering substrate default. Users who pick "canvas" keep that choice
  * (persisted under `rtc-chart-substrate`). */
 export const DEFAULT_CHART_SUBSTRATE: ChartSubstrate = "dom";
-/** Workspace layout-engine default. Users who pick "dockview" keep that
+/** Workspace layout-engine default. Users who pick "inhouse" keep that
  * choice (persisted under `rtc-layout-engine`). */
-export const DEFAULT_LAYOUT_ENGINE: LayoutEngine = "inhouse";
+export const DEFAULT_LAYOUT_ENGINE: LayoutEngine = "dockview";
 /** J.A.R.V.I.S visual core default. Users who pick "reactor" keep that choice
  * (persisted under `rtc-jarvis-skin`). */
 export const DEFAULT_JARVIS_SKIN: JarvisSkin = "singularity";

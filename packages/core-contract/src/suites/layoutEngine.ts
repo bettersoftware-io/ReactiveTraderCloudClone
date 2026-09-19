@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_LAYOUT_ENGINE } from "@rtc/domain";
+import { DEFAULT_LAYOUT_ENGINE, type LayoutEngine } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
@@ -18,9 +18,9 @@ export function describeLayoutEngineContract(
         const p = h.app.presenters.layoutEngine;
         const c = collect(p.engine$);
         expect(c.values).toEqual([DEFAULT_LAYOUT_ENGINE]);
-        p.setEngine("dockview");
+        p.setEngine(NON_DEFAULT_ENGINE);
         await settle();
-        expect(c.values).toEqual([DEFAULT_LAYOUT_ENGINE, "dockview"]);
+        expect(c.values).toEqual([DEFAULT_LAYOUT_ENGINE, NON_DEFAULT_ENGINE]);
         c.unsubscribe();
       } finally {
         await h.teardown();
@@ -32,10 +32,10 @@ export function describeLayoutEngineContract(
 
       try {
         const p = h.app.presenters.layoutEngine;
-        p.setEngine("dockview");
+        p.setEngine(NON_DEFAULT_ENGINE);
         await settle();
         const c = collect(p.engine$);
-        expect(c.values).toEqual(["dockview"]);
+        expect(c.values).toEqual([NON_DEFAULT_ENGINE]);
         c.unsubscribe();
       } finally {
         await h.teardown();
@@ -43,3 +43,11 @@ export function describeLayoutEngineContract(
     });
   });
 }
+
+/** The engine that is NOT the default, derived rather than written as a
+ * literal: setting the value the presenter already holds proves nothing about
+ * "follows setEngine" (and the cores disagree on whether an unchanged set
+ * re-emits). This suite broke on exactly that when the default moved to
+ * "dockview". */
+const NON_DEFAULT_ENGINE: LayoutEngine =
+  DEFAULT_LAYOUT_ENGINE === "inhouse" ? "dockview" : "inhouse";

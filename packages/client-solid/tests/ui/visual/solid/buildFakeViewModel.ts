@@ -7,7 +7,6 @@ import {
   DEFAULT_FORCE_BOOT_ANIMATION,
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
-  DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
   DEFAULT_THEME_MODE_PREFERENCE,
@@ -508,12 +507,19 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     useChartSubstrate: () => {
       return { substrate: at(DEFAULT_CHART_SUBSTRATE), setSubstrate: noop };
     },
-    // Seeded through the fixture (`app/*-dockview`); the "inhouse" default
-    // keeps every other golden's layout unchanged. Mirrors the react
-    // driver's buildFakeViewModel.ts useLayoutEngine exactly.
+    // Seeded through the fixture (`app/*-dockview`); the fallback is pinned
+    // to the literal "inhouse", NOT DEFAULT_LAYOUT_ENGINE (which flipped to
+    // "dockview") — every scenario that doesn't seed layoutEngine must keep
+    // rendering the in-house engine, or the whole app-scenario golden matrix
+    // would churn on the domain default flip. Since #752 every App
+    // scenario's fixture names its engine explicitly (15 inhouse, 11
+    // dockview), so this fallback is now a BACKSTOP for a scenario that
+    // forgets rather than the thing holding the matrix in place.
+    // Mirrors the react driver's
+    // buildFakeViewModel.ts useLayoutEngine exactly.
     useLayoutEngine: () => {
       return {
-        engine: at(data.layoutEngine ?? DEFAULT_LAYOUT_ENGINE),
+        engine: at(data.layoutEngine ?? "inhouse"),
         setEngine: noop,
       };
     },

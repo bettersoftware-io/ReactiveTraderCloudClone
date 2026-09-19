@@ -27,6 +27,8 @@ interface DockviewLayoutEngineDockedPageProps {
   /** Default: a fresh `InMemoryDockLayoutStore`. Pass one explicitly to share
    * it across a mount/rerender pair, or to read back what was saved. */
   store: DockLayoutStore;
+  /** Default `null` — nothing maximized. */
+  maximized?: PanelId | null;
   /** Default `[]` — no panel collapsed to a strip. */
   collapsed?: readonly PanelId[];
   /** Default `[]` — no panel closed from the View menu. */
@@ -52,6 +54,12 @@ export interface DockviewLayoutEngineDockedPage {
    * construction) needs `waitFor` around this, same as the strictMode
    * page's saved-blob witness. */
   groupsAttr(): string | null;
+  /** The engine's `data-maximized` witness — the maximized panel id, or ""
+   * when none, the SAME render as InhouseLayoutEngine's own root attribute.
+   * Current the instant the prop changes, so unlike `groupsAttr` it needs no
+   * `waitFor`. Returns null only if the attribute is missing entirely, which
+   * is the regression the two witness cases exist to catch. */
+  maximizedAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
   /** Whether `panelId`'s tab slot carries dockview-hud.css's strip marker
@@ -86,7 +94,7 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
         tab="fx"
         registry={props.registry}
         store={props.store}
-        maximized={null}
+        maximized={props.maximized ?? null}
         collapsed={props.collapsed ?? []}
         closed={props.closed ?? []}
         docked={props.docked ?? []}
@@ -120,6 +128,9 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
     },
     groupsAttr(): string | null {
       return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    maximizedAttr(): string | null {
+      return screen.getByTestId("layout-engine").getAttribute("data-maximized");
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;

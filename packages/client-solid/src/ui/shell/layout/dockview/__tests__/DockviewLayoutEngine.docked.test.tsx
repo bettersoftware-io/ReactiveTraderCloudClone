@@ -54,6 +54,56 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 
+  // Task 10 (default flip): `data-maximized` mirrors InhouseLayoutEngine's
+  // own root attribute exactly (the maximized panel id, or "" when none) —
+  // the engine-agnostic witness `waitPanelMaximized` (tests/browser) now
+  // reads, since dockview is the default engine.
+  it("mirrors the maximized prop onto the engine root's data-maximized attribute", () => {
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: "fx-rates",
+      collapsed: () => {
+        return [];
+      },
+      closed: () => {
+        return [];
+      },
+      docked: () => {
+        return [];
+      },
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    expect(page.maximizedAttr()).toBe("fx-rates");
+  });
+
+  it("reports an empty data-maximized when no panel is maximized", () => {
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed: () => {
+        return [];
+      },
+      docked: () => {
+        return [];
+      },
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    expect(page.maximizedAttr()).toBe("");
+  });
+
   // Post-merge verification (docking x closed interplay, 2026-09-13): mirrors
   // the react twin's identically-named case. A dynamic (docked) id has no
   // LEGAL path into the layer-2 `closed` set — LayoutMachine's `close`

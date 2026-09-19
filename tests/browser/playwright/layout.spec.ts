@@ -7,15 +7,21 @@ test.describe("Layout engine", () => {
   withFxWorkspaceOpen();
 
   test("dragging a splitter handle resizes the panels", async ({ ctx }) => {
+    // Task 10 (default flip): splitters are an in-house-only feature, and
+    // dockview is now the default — this switch used to be implicit (the
+    // in-house engine WAS the default the app booted into).
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "inhouse");
+    await layout.expectEngine(ctx, "inhouse");
     await layout.expectSplitterDragResizes(ctx);
   });
 
-  test("switching the layout engine to dockview enables tab docking that persists across reload, and back", async ({
+  test("dockview tab docking persists across reload, and switching back to in-house works", async ({
     ctx,
   }) => {
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Task 10 (default flip): dockview is now the default the app boots
+    // into — the opening switch this test used to need (from the then-
+    // default in-house engine) is gone; only the closing switch back to
+    // in-house remains, proving the reverse direction still works.
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
@@ -62,8 +68,8 @@ test.describe("Layout engine", () => {
   test("dockview edge-split drag rearranges and persists, and a collapsed panel rejects drops", async ({
     ctx,
   }) => {
-    await layout.expectEngine(ctx, "inhouse");
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Task 10 (default flip): no opening switch needed — dockview is the
+    // default the app boots into.
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
@@ -95,13 +101,12 @@ test.describe("Layout engine", () => {
   test("popping a panel out opens a live child window and closing it docks the panel home", async ({
     ctx,
   }) => {
-    // Pop-outs are a dockview-only feature, so this test opens by switching
-    // engines. PR #725 briefly made dockview the default and dropped that
-    // switch; the flip was reverted (it reddened main's post-merge
-    // visual.yml — see docs/STATUS.md), so the switch is needed again.
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Pop-outs are a dockview-only feature. This test used to open by
+    // switching engines, because the app booted in-house; with the default
+    // flipped it boots into dockview, so the switch is gone. (The comment
+    // this replaces recorded #725's revert — that flip is now re-landed,
+    // with the sash carriers fixed in #737/#739 and the golden matrix
+    // pinned per-scenario in #752.)
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
@@ -111,11 +116,9 @@ test.describe("Layout engine", () => {
   test("docking a floated panel home restores its pre-float height", async ({
     ctx,
   }) => {
-    // Floating groups are a dockview-only feature, so this test opens by
-    // switching engines — same reasoning as the pop-out test above.
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Floating groups are a dockview-only feature; dockview is what the app
+    // boots into, so no opening engine switch is needed (same as the tests
+    // either side).
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
@@ -125,11 +128,10 @@ test.describe("Layout engine", () => {
   test("floating a panel grows its column sibling, survives a reload, and docks home at its pre-float height", async ({
     ctx,
   }) => {
-    // Floating groups are a dockview-only feature, so this test opens by
-    // switching engines — same reasoning as the pop-out test above.
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Floating groups are a dockview-only feature. Like the pop-out test
+    // above, no opening engine switch is needed: dockview is what the app
+    // boots into. (This test was written while in-house was the default and
+    // asserted an in-house boot, which the default flip made false.)
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 

@@ -48,6 +48,10 @@ export interface DockviewLayoutEngineDockedPage {
    * construction, or one read once a rebuild's own construction-time
    * reconciliation has landed) needs `waitFor` around this. */
   groupsAttr(): string | null;
+  /** The engine's `data-maximized` witness (the maximized panel id, or ""
+   * when none) — mirrored from the `maximized` prop, identically to
+   * InhouseLayoutEngine's own root attribute (Task 10). */
+  maximizedAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
   /** Whether `panelId`'s tab slot carries dockview-hud.css's strip marker
@@ -95,6 +99,9 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
     },
     groupsAttr(): string | null {
       return screen.getByTestId("layout-engine").getAttribute("data-groups");
+    },
+    maximizedAttr(): string | null {
+      return screen.getByTestId("layout-engine").getAttribute("data-maximized");
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;

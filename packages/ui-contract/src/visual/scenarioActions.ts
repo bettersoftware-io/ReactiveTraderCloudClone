@@ -58,10 +58,14 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // Full-bleed App scenarios like app/fx (App renders no scenario-root).
   "app/fx-closed": { fullPage: true },
   // The dockview twin needs the dock-mounted gate every *-dockview scenario
-  // carries (lazy engine chunk — an unmounted dock is a stable blank
-  // workspace the stabiliser will happily capture): Positions' "Net
-  // Exposure" only renders once the grid is up, and with analytics closed
-  // Positions is the rail's sole panel.
+  // carries: dockview mounts each panel's body through an async portal
+  // (createDockview builds the grid, then portals content in per group), so
+  // an unmounted dock is a stable blank workspace the stabiliser will
+  // happily capture regardless of whether the engine module itself loaded
+  // eagerly or lazily (Task 10 made it eager — the gate is about dockview's
+  // own async mount, not an import). Positions' "Net Exposure" only renders
+  // once the grid is up, and with analytics closed Positions is the rail's
+  // sole panel.
   "app/fx-closed-dockview": { fullPage: true, waitForText: "Net Exposure" },
   // The dropdown is view state, not AppData — the capture clicks the real
   // toggle and waits for the head's visible-count meta ("4/4 visible").

@@ -1,7 +1,32 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
 import { appPage } from "#tests/ui/pages/AppPage";
+
+// jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
+// (mirrors DockviewLayoutEngine.docked.test.tsx). Needed here because the
+// real composition root now mounts the REAL DockviewLayoutEngine by default
+// (DEFAULT_LAYOUT_ENGINE flipped to "dockview") — this file doesn't seed a
+// preferences override, so every mount below goes through it.
+beforeAll(() => {
+  if (typeof ResizeObserver === "undefined") {
+    (globalThis as unknown as GlobalWithResizeObserver).ResizeObserver = class {
+      observe(): void {}
+
+      unobserve(): void {}
+
+      disconnect(): void {}
+    } as unknown as ResizeObserverCtor;
+  }
+});
 
 // Smoke test: mounts the REAL composition root (AppRoot →
 // createApp(buildBrowserPorts()) → simulator ports, no fakes on the seam)
@@ -79,15 +104,21 @@ describe("App (shell chrome)", () => {
 
     expect(page.exists("header")).toBe(true);
     expect(page.isActiveTab("tab-fx")).toBe(true);
-    // The FX tab is fully live (Task 13): the layout-engine grid renders with
-    // all four FX panels present, and their bodies are the REAL FX subtree
-    // (liveRates/analytics/positions/blotter) — no more `pending-panel`
-    // placeholders anywhere in the FX tab.
     expect(page.exists("layout-engine")).toBe(true);
-    expect(page.exists("panel-fx-rates")).toBe(true);
-    expect(page.exists("panel-fx-analytics")).toBe(true);
-    expect(page.exists("panel-fx-positions")).toBe(true);
-    expect(page.exists("panel-fx-blotter")).toBe(true);
+    // The FX tab is fully live (Task 13): the (now default) real Dockview
+    // engine grid renders with all four FX panels present, and their bodies
+    // are the REAL FX subtree (liveRates/analytics/positions/blotter) — no
+    // more `pending-panel` placeholders anywhere in the FX tab. `panel-*` is
+    // an InhouseLayoutEngine-only testid (a PanelLeaf wrapper); Dockview has
+    // no equivalent for a STATIC panel (only a Jarvis-DOCKED one gets its
+    // group tagged that way — see DockviewLayoutEngine's mountInto), so
+    // `dock-tab-*` (present for every panel's tab, docked or not — the same
+    // testid DockviewEnginePage's stripMarked() keys on) is the
+    // engine-neutral witness here instead.
+    expect(page.exists("dock-tab-fx-rates")).toBe(true);
+    expect(page.exists("dock-tab-fx-analytics")).toBe(true);
+    expect(page.exists("dock-tab-fx-positions")).toBe(true);
+    expect(page.exists("dock-tab-fx-blotter")).toBe(true);
     expect(page.pendingPanelCount()).toBe(0);
     // Spot-check one stable element per panel body — these render
     // unconditionally regardless of how much simulator data has arrived yet.
@@ -105,12 +136,14 @@ describe("App (shell chrome)", () => {
     page.click("tab-admin");
 
     expect(page.isActiveTab("tab-admin")).toBe(true);
-    // The admin tab is fully live (Task 16): the layout engine renders with
-    // the single admin-dashboard panel, whose body is the REAL admin subtree —
-    // no more `pending-panel` placeholders anywhere in the app (all four
-    // domains are ported as of Phase 3).
     expect(page.exists("layout-engine")).toBe(true);
-    expect(page.exists("panel-admin-dashboard")).toBe(true);
+    // The admin tab is fully live (Task 16): the (now default) real Dockview
+    // engine renders with the single admin-dashboard panel, whose body is
+    // the REAL admin subtree — no more `pending-panel` placeholders
+    // anywhere in the app (all four domains are ported as of Phase 3). See
+    // the FX tab test above for why `dock-tab-*`, not `panel-*`, is the
+    // engine-neutral witness here.
+    expect(page.exists("dock-tab-admin-dashboard")).toBe(true);
     expect(page.pendingPanelCount()).toBe(0);
   });
 
@@ -124,16 +157,18 @@ describe("App (shell chrome)", () => {
     page.click("tab-credit");
 
     expect(page.isActiveTab("tab-credit")).toBe(true);
-    // The credit tab is fully live (Task 14): the layout-engine grid renders
-    // with the three default credit panels present (credit-sell-side is
-    // registered but not part of the default three-panel tree — mirrors
-    // eq-depth/eq-sectors, see defaultLayoutPort.ts), and their bodies are
-    // the REAL credit subtree (newRfq/rfqs/blotter) — no more
-    // `pending-panel` placeholders anywhere in the credit tab.
     expect(page.exists("layout-engine")).toBe(true);
-    expect(page.exists("panel-credit-new-rfq")).toBe(true);
-    expect(page.exists("panel-credit-rfqs")).toBe(true);
-    expect(page.exists("panel-credit-blotter")).toBe(true);
+    // The credit tab is fully live (Task 14): the (now default) real
+    // Dockview engine grid renders with the three default credit panels
+    // present (credit-sell-side is registered but not part of the default
+    // three-panel tree — mirrors eq-depth/eq-sectors, see
+    // defaultLayoutPort.ts), and their bodies are the REAL credit subtree
+    // (newRfq/rfqs/blotter) — no more `pending-panel` placeholders anywhere
+    // in the credit tab. See the FX tab test above for why `dock-tab-*`,
+    // not `panel-*`, is the engine-neutral witness here.
+    expect(page.exists("dock-tab-credit-new-rfq")).toBe(true);
+    expect(page.exists("dock-tab-credit-rfqs")).toBe(true);
+    expect(page.exists("dock-tab-credit-blotter")).toBe(true);
     expect(page.pendingPanelCount()).toBe(0);
     // Spot-check one stable element per panel body — these render
     // unconditionally regardless of how much simulator data has arrived yet.
@@ -164,4 +199,11 @@ function createSeededSession(): string {
     // Year 2100 — never treated as expired during the test run.
     exp: 4_102_444_800_000,
   });
+}
+
+/** The cast target for the ResizeObserver stub in `beforeAll` above. */
+type ResizeObserverCtor = typeof ResizeObserver;
+
+interface GlobalWithResizeObserver {
+  ResizeObserver: ResizeObserverCtor;
 }

@@ -355,7 +355,9 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
   });
 
   it("renders NO open-chart button at all under the in-house engine", () => {
-    // No `layoutEngine` option — defaults to DEFAULT_LAYOUT_ENGINE ("inhouse").
+    // No `layoutEngine` option — the contract harness pins its unseeded
+    // fallback to the literal "inhouse", independently of
+    // DEFAULT_LAYOUT_ENGINE (now "dockview"). See harness/world.ts.
     const panel = mount(WatchlistPanel, {
       equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
     });
