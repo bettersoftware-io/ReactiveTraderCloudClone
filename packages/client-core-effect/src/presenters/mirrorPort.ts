@@ -33,3 +33,16 @@ export function mirrorPort<T, U>(
     },
   });
 }
+
+/** `mirrorPort` with the identity projection: the port's own values,
+ * unchanged — what most preference streams are. Same seed, same producer,
+ * same conflation note as `mirrorPort`. */
+export function mirrorPortAsIs<T>(
+  host: EffectHost,
+  source: CoreStream<T>,
+  fallback: T,
+): CoreStream<T> {
+  return mirrorPort(host, source, fallback, (value) => {
+    return value;
+  });
+}

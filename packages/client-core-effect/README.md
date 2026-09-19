@@ -62,8 +62,12 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 1a, six members are **native** — `connection`, `themePreference`,
-`themeSkinPreference`, `viewModePreference`, `powerSaver` and
+As of slice 1b, seventeen members are **native** — `connection`, every
+preference presenter (`themePreference`, `themeSkinPreference`,
+`viewModePreference`, `powerSaver`, `creditRfqFilterPreference`,
+`eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`,
+`loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`,
+`ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
 `commands.reconnect` — and everything else still **delegates** to
 `@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
 app, mints a `ManagedRuntime` and a `Scope`, and overlays what this core
@@ -71,12 +75,18 @@ implements. The native idiom for a replay-current stream is `sharedFold` (a
 `SubscriptionRef` seeded synchronously on every first subscribe, driven by a
 producer fiber in a per-warm-period child scope) — `Stream.share` cannot be
 the envelope, since it replays to a new subscriber on a fiber rather than in
-the caller's tick; `mirrorPort` is the port-stream special case and
-`Stream.zipLatest` combines two inputs (`mode$`). One documented difference
-from the RxJS core: a `SubscriptionRef` fold conflates `Object.is`-equal
-consecutive states. `src/parity.json` records the split and
-`src/parity.test.ts` proves manifest and reality agree by reference — for
-presenters, machines and commands alike.
+the caller's tick; `mirrorPort` / `mirrorPortAsIs` are the port-stream
+special case (projected / unchanged), `Stream.zipLatest` combines two
+inputs (`mode$`), and `peek` reads the stored value synchronously
+(`cycle()`, `current()` — `src/presenters/readPreferences.ts`; a presenter
+with no stream of its own, `bootPreference`, takes no host). The presenter
+files group by API shape: `preferences.ts` (one stream plus setters,
+including the two boolean toggles), `groupedPreferences.ts` (several
+independent streams under one member), `readPreferences.ts`. One documented
+difference from the RxJS core: a `SubscriptionRef` fold conflates
+`Object.is`-equal consecutive states. `src/parity.json` records the split
+and `src/parity.test.ts` proves manifest and reality agree by reference —
+for presenters, machines and commands alike.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set
 against this core under the label `effect`.
