@@ -110,6 +110,7 @@ export function DockviewLayoutEngine({
   onCollapse,
   onExpand,
   onCloseInstance,
+  onDetachedPanelsChange,
 }: DockviewLayoutEngineProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
@@ -721,6 +722,22 @@ export function DockviewLayoutEngine({
     appliedCollapse.current = { tab, ids: collapsed };
   }, [collapsed, tab, liveEngine]);
 
+  // The WHOLE set of this tab's panels living outside the grid (floating or
+  // popped out), reported on every change so a Jarvis layout command on one
+  // is refused with a reason rather than recorded as a machine intent the
+  // engine will never apply (the engine refuses collapse/maximize on a
+  // detached panel). The cleanup reports `[]`: on unmount the engine — and
+  // every window/float it owned — is gone, so nothing is detached any more.
+  // A dependency change runs that cleanup too, immediately followed by the
+  // fresh report in the same commit, so the `[]` is never observable.
+  useEffect(() => {
+    onDetachedPanelsChange?.(tab, [...floating, ...popped]);
+
+    return () => {
+      onDetachedPanelsChange?.(tab, []);
+    };
+  }, [floating, popped, tab, onDetachedPanelsChange]);
+
   // The closed set reconciles rather than diffs: closePanel no-ops on an
   // absent panel and reopenPanel on a present one, so re-asserting the whole
   // seed set is already idempotent — and it is what makes every rebuild path
@@ -940,6 +957,15 @@ export interface DockviewLayoutEngineProps {
   /** Closes a chart instance — attached as the head's close control on
    * instance panels only (never a static or Jarvis-docked panel). */
   onCloseInstance: LayoutIntents["closeInstance"];
+  /** Receives the WHOLE set of `tab`'s panels currently floating or popped
+   * out, on every change, and `[]` on unmount — engine-owned, session-only
+   * state the layout machine never holds. App wires it to
+   * `useReportDetachedPanels()` so the Jarvis driver can refuse layout ops
+   * on a detached panel; optional because nothing else needs it. */
+  onDetachedPanelsChange?: (
+    tab: WorkspaceTab,
+    panelIds: readonly PanelId[],
+  ) => void;
 }
 
 interface MountedSlot {

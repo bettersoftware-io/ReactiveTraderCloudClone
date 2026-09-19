@@ -543,6 +543,22 @@ export function DockviewLayoutEngine(
     applied = collapsed;
   });
 
+  // The WHOLE set of this tab's panels living outside the grid (floating or
+  // popped out), reported on every change so a Jarvis layout command on one
+  // is refused with a reason rather than recorded as a machine intent the
+  // engine will never apply (the engine refuses collapse/maximize on a
+  // detached panel). The react twin's effect, split in two the Solid way:
+  // the effect re-reports on every `floating`/`popped` write, and the
+  // component-level cleanup reports `[]` — on unmount the engine, and every
+  // window/float it owned, is gone, so nothing is detached any more.
+  createEffect(() => {
+    props.onDetachedPanelsChange?.(props.tab, [...floating(), ...popped()]);
+  });
+
+  onCleanup(() => {
+    props.onDetachedPanelsChange?.(props.tab, []);
+  });
+
   // The closed set reconciles rather than diffs: closePanel no-ops on an
   // absent panel and reopenPanel on a present one, so re-asserting the whole
   // seed set is already idempotent — every rebuild path (remount, blob saved
@@ -762,6 +778,15 @@ export interface DockviewLayoutEngineProps {
   /** Closes a chart instance — attached as the head's close control on
    * instance panels only (never a static or Jarvis-docked panel). */
   onCloseInstance: LayoutIntents["closeInstance"];
+  /** Receives the WHOLE set of `tab`'s panels currently floating or popped
+   * out, on every change, and `[]` on unmount — engine-owned, session-only
+   * state the layout machine never holds. App wires it to
+   * `useReportDetachedPanels()` so the Jarvis driver can refuse layout ops
+   * on a detached panel; optional because nothing else needs it. */
+  onDetachedPanelsChange?: (
+    tab: WorkspaceTab,
+    panelIds: readonly PanelId[],
+  ) => void;
 }
 
 interface MountedSlot {

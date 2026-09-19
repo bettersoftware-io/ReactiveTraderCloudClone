@@ -219,10 +219,12 @@ const LIVE_SOURCE_PATTERN =
  * `useDockLayoutStore`, `useLayoutEngine` and `useWorkspaceReset` (→ 71), then
  * `useDockedPanelIds` and `useWorkspaceLayoutResets` (→ 73) for the Dockview
  * bridge's per-tab docked membership + reset-rebuild signal (both added to
- * `InertSlice` — RN has no dockview bridge). The compiler found every one of
+ * `InertSlice` — RN has no dockview bridge), then `useReportDetachedPanels`
+ * (→ 74), the Dockview bridge's floats/pop-outs report to the Jarvis driver
+ * (also `InertSlice`, same reason). The compiler found every one of
  * these on the next catch-up merge, because `buildFakeViewModel` is typed
  * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
  * the one member without a `use` prefix, which a hand-written census had
  * missed while reporting a confident 67 of 67.
  */
-const VIEW_MODEL_MEMBER_COUNT = 73;
+const VIEW_MODEL_MEMBER_COUNT = 74;

@@ -329,6 +329,15 @@ export interface Presenters {
 export interface AppCommands {
   /** Push a user-initiated reconnect intent (wired to reconnect$ in composition). */
   reconnect(): void;
+  /** The Dockview bridge's WHOLE-SET report of the panels in `tab` that
+   * currently live OUTSIDE the grid (floating or popped out into a window) —
+   * each call replaces `tab`'s previous set; `[]` means nothing is detached.
+   * Session-only and never persisted: this is engine-owned "layer 3" state,
+   * deliberately NOT part of the layout machine's state. The Jarvis driver
+   * reads it to REFUSE maximize/collapse/expand on a detached panel (the
+   * engine would refuse them anyway, and the layout machine would otherwise
+   * record an intent the engine never applied). */
+  reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
 }
 
 export interface App {

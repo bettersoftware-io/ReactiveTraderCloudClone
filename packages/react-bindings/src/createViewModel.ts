@@ -339,6 +339,16 @@ export interface ViewModel {
    * app layer after an idle close. The sole recovery path from IDLE_DISCONNECTED.
    * Provenance: original components/DisconnectionOverlay.tsx:36 (onClick={initConnection}). */
   useReconnect: () => () => void;
+  /** The Dockview bridge's session-only "detached panels" report —
+   * `AppCommands.reportDetachedPanels` passed straight through. The bridge
+   * calls it with the WHOLE set of `tab`'s panels currently floating or
+   * popped out (and `[]` when its engine unmounts) so a Jarvis layout
+   * command on such a panel is refused with a reason instead of recording
+   * an intent the engine never applies. Never persisted; not layout state. */
+  useReportDetachedPanels: () => (
+    tab: WorkspaceTab,
+    panelIds: readonly string[],
+  ) => void;
   // Machines (app-layer RxJS behind the useMachine bridge)
   useTileExecution: (pair: CurrencyPair) => UseTileExecutionResult;
   useRfqTile: (pair: CurrencyPair) => UseRfqTileResult;
@@ -1141,6 +1151,9 @@ export function createViewModel(
     },
     useReconnect: () => {
       return commands.reconnect;
+    },
+    useReportDetachedPanels: () => {
+      return commands.reportDetachedPanels;
     },
     useTileExecution: (pair: CurrencyPair) => {
       return useMachine(() => {

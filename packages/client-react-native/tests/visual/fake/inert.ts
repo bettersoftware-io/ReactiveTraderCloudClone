@@ -119,6 +119,11 @@ export const inertSlice: InertSlice = {
   useWorkspaceLayoutResets: () => {
     return 0;
   },
+  // Detached-panels report (Dockview floats/pop-outs): RN has no Dockview
+  // bridge, so nothing ever reports — inert noop.
+  useReportDetachedPanels: () => {
+    return noop;
+  },
   useMetrics: () => {
     return METRICS_VIEW;
   },

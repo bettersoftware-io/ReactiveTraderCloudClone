@@ -75,6 +75,7 @@
     "orderTicket": "delegated"
   },
   "commands": {
-    "reconnect": "native"
+    "reconnect": "native",
+    "reportDetachedPanels": "delegated"
   }
 }
