@@ -13,17 +13,13 @@
  * documented jsdom quirk uses for the react side), not the unprefixed
  * `animationend`, to match what the hook actually subscribes to.
  */
-import type { JSX } from "solid-js";
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { DriveOutcome, JarvisDriverState } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
 
 import { jarvisDrivenPulsePage } from "#tests/ui/pages/UseJarvisDrivenPulsePage";
-
-import { useJarvisDrivenPulse } from "./useJarvisDrivenPulse";
 
 afterEach(() => {
   page.unmountAll();
@@ -31,45 +27,9 @@ afterEach(() => {
 
 describe("useJarvisDrivenPulse — descendant animationend guard", () => {
   it("a descendant's bubbling animationend does NOT clear the pulse; the wrapper's OWN animationend does", () => {
-    // Both declared inside the test (mirrors useLiveMetrics.test.tsx's
-    // Wrapper-inside-it() idiom, and client-react's own
-    // useJarvisDrivenPulse.test.tsx precedent for the underlying rule pair
-    // this dodges — biome's useComponentExportOnlyModules/noExportsInTest
-    // forbid a top-level, non-exported JSX-returning function in a test
-    // file). TWO named components, not one inlined into `render`'s own
-    // callback: eslint-plugin-solid's reactivity check mis-reads an
-    // anonymous `render(() => (<Provider value={createFakeViewModel(...)}>...))`
-    // arrow as an untracked "unnamed derived signal" once its JSX closes
-    // over a locally-declared component — wrapping the whole tree in a
-    // second named (PascalCase) component silences the false positive by
-    // giving the plugin a real component boundary to recognize.
-    function Harness(): JSX.Element {
-      const pulse = useJarvisDrivenPulse();
-
-      return (
-        <div
-          data-testid="wrapper"
-          ref={pulse.ref}
-          data-jarvis-driven={pulse.pulsing() ? "true" : "false"}
-        >
-          <div data-testid="descendant" />
-        </div>
-      );
-    }
-
     const [batch, setBatch] = createSignal<readonly DriveOutcome[]>([]);
 
-    function TestApp(): JSX.Element {
-      return (
-        <ViewModelContext.Provider value={createFakeViewModel(batch, false)}>
-          <Harness />
-        </ViewModelContext.Provider>
-      );
-    }
-
-    page.mount(() => {
-      return <TestApp />;
-    });
+    page.mount({ viewModel: createFakeViewModel(batch, false) });
 
     // A new applied outcome arrives — pulsing turns true.
     setBatch([
@@ -91,31 +51,7 @@ describe("useJarvisDrivenPulse — descendant animationend guard", () => {
 
 describe("useJarvisDrivenPulse — reduced-motion gate", () => {
   it("does NOT set pulsing while prefers-reduced-motion: reduce — the CSS never plays the animation, so animationend would never fire to clear a latched true", () => {
-    // Declared inside the test — see the sibling describe block's Harness/
-    // TestApp pair for why there are two, not one.
-    function Harness(): JSX.Element {
-      const pulse = useJarvisDrivenPulse();
-
-      return (
-        <div
-          data-testid="wrapper"
-          ref={pulse.ref}
-          data-jarvis-driven={pulse.pulsing() ? "true" : "false"}
-        >
-          <div data-testid="descendant" />
-        </div>
-      );
-    }
-
     const [batch, setBatch] = createSignal<readonly DriveOutcome[]>([]);
-
-    function TestApp(): JSX.Element {
-      return (
-        <ViewModelContext.Provider value={createFakeViewModel(batch, false)}>
-          <Harness />
-        </ViewModelContext.Provider>
-      );
-    }
 
     // jsdom has no matchMedia at all (the hook optional-chains it), so stub
     // one on the window rather than spying — same idiom as
@@ -126,9 +62,7 @@ describe("useJarvisDrivenPulse — reduced-motion gate", () => {
     }) as unknown as typeof window.matchMedia;
 
     try {
-      page.mount(() => {
-        return <TestApp />;
-      });
+      page.mount({ viewModel: createFakeViewModel(batch, false) });
 
       setBatch([
         {

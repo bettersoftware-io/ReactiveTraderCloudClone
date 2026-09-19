@@ -4843,6 +4843,418 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     api.dispose();
   });
 
+  // Dock-home puts back the panel's pre-float EXTENT, not only its slot.
+  //
+  // Every witness here is BOOKKEEPING or a CALL, never a size read back: the
+  // real geometry claim belongs to the layout e2e, where a browser lays the
+  // grid out. Two observation points carry the whole contract: the saved
+  // blob's `rtcFloatSizes` sidecar (what was remembered, and forgotten), and
+  // the `setSize` calls the floated panel's group receives as it docks home
+  // (what was put back). FX_LIKE's column holds fx-rates over fx-blotter at
+  // 0.6/0.4, so the blotter's pre-float height is ~360 and a dock-home move
+  // alone would halve fx-rates' group for it — a different number.
+  describe("dock-home restores the pre-float size", () => {
+    // Observable at the first save after the float: the sidecar holds the
+    // blotter's extent as it stood BEFORE the float, on the height axis (its
+    // parent split is a column). The control read proves the capture point:
+    // after the float the same group reports a different height, so a
+    // capture taken from the settled (post-detach) state would fail here.
+    it("remembers the pre-float extent when the head control floats a panel", () => {
+      const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+      const before = heightOf("fx-blotter");
+
+      expect(engine.floatPanel("fx-blotter")).toBe(true);
+      expect(heightOf("fx-blotter")).not.toBe(before);
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(floatSizesIn(seen.blob())).toEqual({
+        "fx-blotter": { axis: "height", size: before },
+      });
+    });
+
+    // The same observation point, through dockview's own gesture — it floats
+    // the group inside `addFloatingGroup` and never reaches `floatPanel`, the
+    // divergence #763's final review found. Location asserted first, so an
+    // absent entry cannot mean "the gesture never floated anything".
+    it("remembers the pre-float extent when shift-drag floats a panel", () => {
+      const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+      const before = heightOf("fx-blotter");
+
+      shiftPointerDown(voidContainerOf("fx-blotter"));
+
+      expect(locationOf("fx-blotter")).toBe("floating");
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(floatSizesIn(seen.blob())).toEqual({
+        "fx-blotter": { axis: "height", size: before },
+      });
+    });
+
+    // Observable the moment `dockPanel` returns (the settle runs on
+    // dockview's synchronous `onDidMutateLayout`): the docked group was sized
+    // to the remembered height. Then again at the next save: the entry is
+    // forgotten, so the blob carries no sidecar at all.
+    it("re-applies the remembered extent when the head control docks home, then forgets it", () => {
+      const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      const sizes = recordSetSize("fx-blotter");
+      engine.dockPanel("fx-blotter");
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).toContainEqual({ height: before });
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(JSON.parse(seen.blob()).rtcFloatSizes).toBeUndefined();
+    });
+
+    // Dockview's own move — what a drag of the float onto the grid calls
+    // (`moveGroupOrPanel`, reached here through `panel.api.moveTo` without
+    // the DnD plumbing jsdom cannot drive) — never reaches `dockPanel`.
+    // Observable immediately on the move, as above.
+    it("re-applies the remembered extent when dockview itself moves the float home", () => {
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      const sizes = recordSetSize("fx-blotter");
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "bottom",
+      });
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).toContainEqual({ height: before });
+      engine.dispose();
+    });
+
+    // A drop on a group's CENTRE docks the float as a TAB of that group —
+    // not a return home. In a column of three the column survives the
+    // blotter leaving (rates and positions still stack), so the landing
+    // group sits in a split dividing the same axis the entry was taken on,
+    // and only the tab-join rule keeps it from being resized to the
+    // blotter's old height. Observable on the landing group's own sizing
+    // calls the moment the move returns, and at the next save: the entry is
+    // forgotten, not held for a later home-coming.
+    it("does not resize the group a float joins as a tab", () => {
+      const opts = {
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+        seed: COLUMN_OF_THREE,
+      };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+
+      engine.floatPanel("fx-blotter");
+
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      const sizes = recordSetSize("fx-rates");
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "center",
+      });
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(rates.group.panels.length).toBe(2);
+      expect(sizes()).toEqual([]);
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(JSON.parse(seen.blob()).rtcFloatSizes).toBeUndefined();
+    });
+
+    // Drag-home still works under a live maximize (only the head control is
+    // hidden), and re-applying there would shrink the MAXIMIZED panel. The
+    // restore is deferred, not dropped. Observable at two points: when the
+    // move returns under the maximize, the docked group has been sized to
+    // nothing; when `exitMaximize` returns, it has been sized to the
+    // remembered height.
+    it("defers the restore under a live maximize and applies it on exit", () => {
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      engine.maximizePanel("fx-rates");
+
+      const sizes = recordSetSize("fx-blotter");
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "bottom",
+      });
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).not.toContainEqual({ height: before });
+
+      engine.exitMaximize();
+
+      expect(sizes()).toContainEqual({ height: before });
+      engine.dispose();
+    });
+
+    // Both sides of the reload in one test: the write (the sidecar the first
+    // engine saved) and the read (a SECOND engine, built from that blob,
+    // re-applying it at dock-home). Observable only at the second engine's
+    // dock-home — the reload itself resizes nothing, the float is still out.
+    it("survives a reload: the sidecar round-trips through construction", () => {
+      const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+      const seen = trackLayout();
+      const first = createDockEngine({ ...opts, ...seen.options });
+      const before = heightOf("fx-blotter");
+
+      first.floatPanel("fx-blotter");
+      touchContainer(opts.container);
+      first.dispose();
+
+      const reloaded = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+        blob: seen.blob(),
+      });
+
+      expect(locationOf("fx-blotter")).toBe("floating");
+
+      const sizes = recordSetSize("fx-blotter");
+      reloaded.dockPanel("fx-blotter");
+
+      expect(sizes()).toContainEqual({ height: before });
+      reloaded.dispose();
+    });
+
+    // The load-time filter, observed at the reloaded engine's first save: a
+    // well-formed entry for the panel that really came back floating is kept
+    // (the control — so a missing entry cannot mean "the sidecar was never
+    // read"), while a well-formed entry for a panel that came back DOCKED is
+    // stale and dropped, as is one for a panel that is not in the dock.
+    it("keeps the entry of a restored float and drops stale ones on load", () => {
+      const blob = createBlobWithFloatSizes({
+        "fx-blotter": { axis: "height", size: 360 },
+        "fx-rates": { axis: "height", size: 500 },
+        ghost: { axis: "width", size: 300 },
+      });
+      const container = sizedContainer(1440, 900);
+      const seen = trackLayout();
+      const engine = createDockEngine({
+        ...createBase(),
+        container,
+        ...seen.options,
+        blob,
+      });
+
+      touchContainer(container);
+      engine.dispose();
+
+      expect(floatSizesIn(seen.blob())).toEqual({
+        "fx-blotter": { axis: "height", size: 360 },
+      });
+    });
+
+    // Malformed entries for the one panel that DID come back floating, so
+    // nothing but the entry's own shape can be what drops it. Observed at the
+    // reloaded engine's first save: no sidecar at all. The float itself is
+    // asserted first, so "no sidecar" cannot mean "no float to key it by".
+    it.each([
+      ["a non-numeric size", { axis: "height", size: "tall" }],
+      ["a non-positive size", { axis: "height", size: -5 }],
+      ["an unknown axis", { axis: "depth", size: 360 }],
+      ["a null entry", null],
+    ])("drops an entry with %s on load", (_label, entry) => {
+      const blob = createBlobWithFloatSizes({ "fx-blotter": entry });
+      const container = sizedContainer(1440, 900);
+      const seen = trackLayout();
+      const engine = createDockEngine({
+        ...createBase(),
+        container,
+        ...seen.options,
+        blob,
+      });
+
+      expect(locationOf("fx-blotter")).toBe("floating");
+
+      touchContainer(container);
+      engine.dispose();
+
+      expect(JSON.parse(seen.blob()).rtcFloatSizes).toBeUndefined();
+    });
+
+    // A grid that changed while the panel floated. Observable at dock-home:
+    // the size asked for is what the column can give — its whole height less
+    // fx-rates' minimum — not the remembered 5000 (a container that shrank
+    // since, reduced to its limit).
+    it("clamps a remembered extent that no longer fits to what the split can give", () => {
+      const blob = createBlobWithFloatSizes({
+        "fx-blotter": { axis: "height", size: 5000 },
+      });
+
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+        blob,
+      });
+      const sizes = recordSetSize("fx-blotter");
+
+      engine.dockPanel("fx-blotter");
+
+      const rates = lastDockviewApi().getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      const column = heightOf("fx-rates") + heightOf("fx-blotter");
+
+      expect(sizes()).toEqual([{ height: column - rates.group.minimumHeight }]);
+      engine.dispose();
+    });
+
+    // Exclusion 1, observed at the save after floating: a design-pin member
+    // gets no entry (its pin re-clamp restores its designed size on
+    // dock-home). The blotter, floated alongside, is the control.
+    it("remembers nothing for a pinned panel (its pin restores it)", () => {
+      const opts = createPinnedRailBase();
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+
+      engine.floatPanel("fx-analytics");
+      engine.floatPanel("fx-blotter");
+
+      expect(locationOf("fx-analytics")).toBe("floating");
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(Object.keys(floatSizesIn(seen.blob()))).toEqual(["fx-blotter"]);
+    });
+
+    // Exclusion 2, same observation point: a chart instance gets no entry
+    // (on dock-home the equal-share rule decides its width). The blotter is
+    // again the control.
+    it("remembers nothing for a chart instance (the share rule sizes it)", () => {
+      const container = sizedContainer(1440, 900);
+      const seen = trackLayout();
+      const engine = createDockEngine({
+        ...createBase(),
+        container,
+        ...seen.options,
+        dynamicPanels: [
+          { id: "i-aapl", initialPx: 360, unpinned: true },
+          { id: "i-msft", initialPx: 360, unpinned: true },
+        ],
+      });
+
+      engine.floatPanel("i-aapl");
+      engine.floatPanel("fx-blotter");
+
+      expect(locationOf("i-aapl")).toBe("floating");
+
+      touchContainer(container);
+      engine.dispose();
+
+      expect(Object.keys(floatSizesIn(seen.blob()))).toEqual(["fx-blotter"]);
+    });
+
+    function heightOf(panelId: string): number {
+      const panel = lastDockviewApi().getPanel(panelId);
+
+      if (panel === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return panel.group.api.height;
+    }
+
+    /** The saved blob's `rtcFloatSizes` sidecar — throws when absent, so an
+     * assertion on its content can never pass on a blob that has none. */
+    function floatSizesIn(blob: string): Record<string, unknown> {
+      const sidecar = JSON.parse(blob).rtcFloatSizes;
+
+      if (sidecar === undefined) {
+        throw new Error("the saved blob carries no rtcFloatSizes sidecar");
+      }
+
+      return sidecar;
+    }
+
+    /** Every `setSize` argument `panelId`'s CURRENT group receives from here
+     * on — a pass-through spy, so dockview still resizes. dockview reuses the
+     * floated group instance on the way home (measured in the dockPanel
+     * suite above), so the spy set on the float sees the dock-home call. */
+    function recordSetSize(panelId: string): () => readonly unknown[] {
+      const panel = lastDockviewApi().getPanel(panelId);
+
+      if (panel === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      const spy = vi.spyOn(panel.group.api, "setSize");
+
+      return (): readonly unknown[] => {
+        return spy.mock.calls.map(([event]) => {
+          return event;
+        });
+      };
+    }
+
+    /** A blob with fx-blotter floated, its sidecar replaced by `sidecar` —
+     * the hand-edited or stale shapes a load must survive. */
+    function createBlobWithFloatSizes(
+      sidecar: Record<string, unknown>,
+    ): string {
+      const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+
+      engine.floatPanel("fx-blotter");
+      touchContainer(opts.container);
+      engine.dispose();
+
+      return JSON.stringify({
+        ...JSON.parse(seen.blob()),
+        rtcFloatSizes: sidecar,
+      });
+    }
+  });
+
   function locationOf(panelId: string): string {
     const panel = lastDockviewApi().getPanel(panelId);
 
@@ -6057,6 +6469,27 @@ const RAIL_LIKE = {
  * dynamic leaf's removal must not turn this root into a bare, dockview-
  * rejected leaf). */
 const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+
+/** FX_LIKE with a THIRD panel in the main column — so the column survives
+ * one of its panels floating out, which a two-panel column does not. */
+const COLUMN_OF_THREE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.4, 0.3, 0.3],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
 
 const attachedContainers: HTMLElement[] = [];
 

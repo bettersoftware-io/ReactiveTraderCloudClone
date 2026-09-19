@@ -603,4 +603,10 @@ export class PlaywrightLayout implements LayoutPO {
 
     return box.height;
   }
+
+  async panelSitsInFloat(panelId: string): Promise<boolean> {
+    return this.group(panelId).evaluate((element) => {
+      return element.closest(".dv-resize-container") !== null;
+    });
+  }
 }

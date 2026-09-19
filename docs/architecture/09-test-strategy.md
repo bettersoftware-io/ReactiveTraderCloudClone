@@ -216,11 +216,37 @@ arbitrary children is composition, not handing over the subject. Only the
 page's **published interface** is checked — its own plumbing may hold an
 element, since RTL's `rerender` takes one.
 
-The rule is **unconditional** — it carries no ignore list. All five page
-objects that took an element were converted: `client-react`'s
-`DockviewLayoutEngineDockedPage` (16 sites) and `DockviewLayoutEngineStrictModePage`
-(8 sites across four specs), `client-react-native`'s `BootCanvasPage` and
-`ExposureBubblePage`, and `devtools-app`'s `NavTreePage`.
+The rule is **unconditional** — it carries no ignore list. Ten page objects
+were converted, in two rounds:
+
+- **The element shape** — `mount(element: ReactElement)`: `client-react`'s
+  `DockviewLayoutEngineDockedPage` (16 sites) and `DockviewLayoutEngineStrictModePage`
+  (8 sites across four specs), `client-react-native`'s `BootCanvasPage` and
+  `ExposureBubblePage`, and `devtools-app`'s `NavTreePage`.
+- **The render-function shape** — `mount(element: () => JSX.Element)`, which
+  the first version of the rule could not see: `client-solid`'s
+  `DockviewLayoutEngineBridgePage` (the `instances`, `popout` and `floating`
+  specs), `BootSequencePage`, `UseJarvisDrivenPulsePage` and
+  `UseLiveMetricsPage`, and `client-react-native`'s `StatusStripPage`.
+
+**Why the second round existed.** The rule lets an element appear as a
+*return type* (`engineOf(): ReactElement` is the page building its component —
+exactly right), and the first version stopped its walk at the nearest
+function-shaped node. In `element: () => JSX.Element`, that node is the
+parameter's own *function type*, so `JSX.Element` read as a harmless return
+type. That is the natural **Solid** shape — Solid's `render()` takes a function —
+so the rule was effectively React-only, and a Solid spec added after it shipped
+(`DockviewLayoutEngine.floating.test.tsx`) wrote the full fifteen-prop block
+unflagged. The walk now climbs through a function type and stops only at a real
+signature.
+
+**Solid pages take `Live<T>` props.** A Solid component body runs once, so a
+prop a case changes after mounting must reach the page as an accessor
+(`maximized` from the case's own `createSignal`), while one that never changes
+reads better as a plain value. `DockviewLayoutEngineBridgePage` accepts either
+and dereferences each inside its JSX so Solid wraps it in a reactive getter —
+passing `maximized()` instead of `maximized` freezes the value and breaks the
+case that toggles it (checked).
 
 Two of those needed more than a prop swap, and both shapes are worth knowing:
 

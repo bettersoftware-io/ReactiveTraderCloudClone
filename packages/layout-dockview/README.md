@@ -261,6 +261,45 @@ identical shift-pointerdown is dockview's own **redock** gesture
 (`VoidContainer.isFloatingMoveHandle`), and vetoing it there would break
 dragging a float home.
 
+**Dock-home restores the size, not just the slot.** A bare dockview move
+halves the anchor group, so a panel docked home would otherwise come back at
+half its neighbour's extent (measured: fx-blotter 206px before floating, 303px
+after a bare dock-home). Instead, `settleFloatTransitions` remembers each
+panel's extent along its parent split's dividing axis as it enters a float,
+and re-applies it through the axis `set` (the strips' size path) as the panel
+lands back in the grid, then forgets it. Siblings give the space back. Both
+halves live in that one function, so every entry and exit point is covered —
+the head control, shift-drag, a drag of the float onto the grid, and a
+pop-out closing back into the grid. The re-applied size is clamped to the
+group's own min/max and to what its split can give without pushing a sibling
+below its minimum, so a container resized or a sibling closed while the
+panel floated lands what fits. Nothing is re-applied to a panel that docks
+into a split dividing the other axis, or that lands as a TAB in a group
+holding others (a drop on a group's centre is not a return home, and sizing
+that group would resize the sibling it joined). Under a live maximize the
+restore is **deferred**, not dropped: drag-home still works then (only the
+head control is hidden), and re-applying would shrink the maximized panel,
+so the entry waits and `exitMaximize` applies it.
+
+The extent is captured on dockview's `onWillMutateLayout`, not in the settle
+itself: `settleFloatTransitions` runs on `onDidMutateLayout`, AFTER the float
+has detached the group — its grid extent is already gone by then — while
+`onWillMutateLayout` opens the same top-level mutation with the group still
+laid out. Remembered sizes persist across a reload in an optional
+`rtcFloatSizes` sidecar (`{ [panelId]: { axis: "width" | "height", size } }`,
+model units), written by `serializeLayout` only while an entry exists and
+validated on load like `rtcStripGeometry`; an entry whose panel did not come
+back floating is dropped. `DOCK_BLOB_VERSION` stays 2 — the field is additive.
+
+Two kinds of panel are **deliberately excluded**, because another rule
+already owns their docked extent and two mechanisms fighting over one extent
+would be worse than either:
+
+- **A design-pin member** — its pin re-clamps on dock-home (R5) and restores
+  the designed size itself.
+- **A chart instance** (an unpinned dynamic panel) — on dock-home it
+  re-enters the equal-share rule (R6), which decides every instance's width.
+
 **Persistence.** Unlike a pop-out (session-scoped, engine-owned state that
 never reaches the blob), a float persists: `toJSON()` emits `floatingGroups`
 and a fresh engine's `fromJSON()` restores `location.type === "floating"`
