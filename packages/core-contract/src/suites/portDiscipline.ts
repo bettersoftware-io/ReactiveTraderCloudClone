@@ -26,6 +26,9 @@ export function describePortDisciplineContract(
     it("themePreference: cycle() twice and two warm periods of mode$ do not call themeMode$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("themeMode$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
 
       try {
         const p = h.app.presenters.themePreference;
@@ -43,9 +46,33 @@ export function describePortDisciplineContract(
       }
     });
 
+    it("themePreference: two warm periods of mode$ do not call colorScheme.prefersDark$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("colorScheme.prefersDark$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.themePreference;
+        const first = collect(p.mode$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.mode$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("colorScheme.prefersDark$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("eqWatchlistSortPreference: cycle() twice does not call eqWatchlistSort$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("eqWatchlistSort$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
 
       try {
         const p = h.app.presenters.eqWatchlistSortPreference;
@@ -61,6 +88,9 @@ export function describePortDisciplineContract(
     it("bootPreference: current() twice does not call bootVariant$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("bootVariant$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
 
       try {
         const p = h.app.presenters.bootPreference;
@@ -75,6 +105,9 @@ export function describePortDisciplineContract(
     it("connection: two warm periods of status$ do not call connectionEvents.events() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("connectionEvents.events");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
 
       try {
         const p = h.app.presenters.connection;

@@ -8,16 +8,18 @@ import type {
 } from "@rtc/domain";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
- * stream methods of `PreferencesPort`, plus `connectionEvents.events`. */
+ * stream methods of `PreferencesPort`, plus the two the harness supplies
+ * itself, `connectionEvents.events` and `colorScheme.prefersDark$`. */
 export type PortMethodName =
   | Extract<keyof PreferencesPort, `${string}$`>
-  | "connectionEvents.events";
+  | "connectionEvents.events"
+  | "colorScheme.prefersDark$";
 
 /** Wrap a port so every method call is counted by name. A Proxy rather than
  * a spread: a class port's methods live on its prototype, which a spread
- * drops. Counting happens on `get` of a function-valued property, which is
- * where a call begins; property reads that are not calls (none, on a port)
- * would over-count — acceptable for a discipline witness. */
+ * drops. The `get` trap only INSTALLS the counting wrapper; the count
+ * happens inside that wrapper, on invocation — so a property read that is
+ * never called does not count, and the witness is calls, not reads. */
 function countCalls<P extends object>(
   port: P,
   counts: Map<string, number>,
@@ -85,18 +87,23 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
   // intended semantics: one shared stream.
   const events$ = merge(base.connectionEvents.events(), connection$);
 
+  // The two ports the harness supplies itself are outside `countCalls`'
+  // Proxy, so they count their own calls — on invocation, exactly as the
+  // wrapper does.
+  function recordCall(method: PortMethodName): void {
+    calls.set(method, (calls.get(method) ?? 0) + 1);
+  }
+
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
-      calls.set(
-        "connectionEvents.events",
-        (calls.get("connectionEvents.events") ?? 0) + 1,
-      );
+      recordCall("connectionEvents.events");
       return events$;
     },
   };
 
   const colorScheme: ColorSchemeSource = {
     prefersDark$: (): Observable<boolean> => {
+      recordCall("colorScheme.prefersDark$");
       return prefersDark$;
     },
   };

@@ -6,16 +6,27 @@ import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
 describe("scriptPorts port-call counting", () => {
-  it("counts each preferences stream method by name, and connectionEvents.events", () => {
+  it("counts each preferences stream method by name, and the two the harness supplies itself", () => {
     const { ports, driver, teardown } = scriptPorts(createBasePorts());
     expect(driver.portCalls("themeMode$")).toBe(0);
     ports.preferences.themeMode$();
     ports.preferences.themeMode$();
     ports.preferences.viewMode$();
     ports.connectionEvents.events();
+    ports.colorScheme?.prefersDark$();
     expect(driver.portCalls("themeMode$")).toBe(2);
     expect(driver.portCalls("viewMode$")).toBe(1);
     expect(driver.portCalls("connectionEvents.events")).toBe(1);
+    expect(driver.portCalls("colorScheme.prefersDark$")).toBe(1);
+    teardown();
+  });
+
+  it("counts on INVOCATION, not on the property read that installs the wrapper", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const themeMode$ = ports.preferences.themeMode$;
+    expect(driver.portCalls("themeMode$")).toBe(0);
+    themeMode$();
+    expect(driver.portCalls("themeMode$")).toBe(1);
     teardown();
   });
 
