@@ -28,7 +28,37 @@ describe("relayTopic", () => {
   });
 
   it("rejects when next throws — including on a replayed value — and releases the source", async () => {
-    const source = createTopic<number>(
+    const { topic, counted } = createReplayingSource();
+    // A keep-alive taken on the RAW topic (so it is not counted) holds the
+    // producer warm, which is what makes the value REPLAY into the relay's
+    // own `subscribe` — the path where `fail` runs before `stop` has been
+    // assigned, and the only reason `relayTopic`'s `failed` flag exists.
+    const keepAlive = topic.subscribe(() => {});
+    const done = relayTopic(counted, new AbortController().signal, () => {
+      throw new Error("consumer");
+    });
+    // The witness for the post-subscribe `if (failed) { stop(); }`: the
+    // release is SYNCHRONOUS — already done by the time `relayTopic`
+    // returns, let alone by the time `done` has rejected. Without that
+    // branch the relay would stay subscribed forever, since the `stop?.()`
+    // inside `fail` is a no-op on the replayed-value path.
+    expect(counted.active()).toBe(0);
+    await expect(done).rejects.toThrow("consumer");
+    expect(counted.active()).toBe(0);
+    keepAlive();
+  });
+
+  it("resolves at once when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await relayTopic(createHotTopic(), controller.signal, () => {});
+  });
+
+  /** A replay-1 source plus a subscription-counting facade over it. The
+   * facade is what the code under test is handed, so `active()` reads the
+   * relay's own hold on the source and nothing else. */
+  function createReplayingSource(): ReplayingSource {
+    const topic = createTopic<number>(
       (signal, publish) => {
         publish(1);
         return new Promise<void>((resolve) => {
@@ -39,18 +69,35 @@ describe("relayTopic", () => {
       },
       { replay: true },
     );
-    source.subscribe(() => {});
-    const done = relayTopic(source, new AbortController().signal, () => {
-      throw new Error("consumer");
-    });
-    await expect(done).rejects.toThrow("consumer");
-  });
+    let active = 0;
 
-  it("resolves at once when the signal is already aborted", async () => {
-    const controller = new AbortController();
-    controller.abort();
-    await relayTopic(createHotTopic(), controller.signal, () => {});
-  });
+    return {
+      topic,
+      counted: {
+        publish: (value: number) => {
+          topic.publish(value);
+        },
+        fail: (error: unknown) => {
+          topic.fail(error);
+        },
+        active: () => {
+          return active;
+        },
+        subscribe: (
+          next: (value: number) => void,
+          error?: (error: unknown) => void,
+        ) => {
+          active += 1;
+          const stop = topic.subscribe(next, error);
+
+          return () => {
+            active -= 1;
+            stop();
+          };
+        },
+      },
+    };
+  }
 
   function createHotTopic(): Topic<number> {
     return createTopic<number>((signal) => {
@@ -62,3 +109,13 @@ describe("relayTopic", () => {
     });
   }
 });
+
+/** A Topic that also reports how many live subscriptions it has handed out. */
+interface CountedTopic extends Topic<number> {
+  active(): number;
+}
+
+interface ReplayingSource {
+  topic: Topic<number>;
+  counted: CountedTopic;
+}
