@@ -4,6 +4,10 @@
  * rely on (`toSignal` throws without it). */
 export interface Store<S> {
   get(): S;
+  /** Replace the value, or compute it from the previous one. A write that is
+   * `Object.is`-equal to the current value is DROPPED — no listener runs —
+   * so a machine can `set` unconditionally on every tick without fanning
+   * out no-op renders. */
   set(next: S | ((previous: S) => S)): void;
   subscribe(listener: (value: S) => void): () => void;
 }

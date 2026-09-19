@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { storeToStateStream, topicToStream } from "#/bridge/out";
+import { reconnect$ } from "@rtc/client-core";
+
+import {
+  pushReconnectIntent,
+  storeToStateStream,
+  topicToStream,
+} from "#/bridge/out";
 import { createStore } from "#/kernel/store";
 import { createTopic } from "#/kernel/topic";
 
@@ -43,6 +49,47 @@ describe("bridge/out", () => {
     });
     store.set(6);
     expect(seen).toEqual([5, 6]);
+    sub.unsubscribe();
+  });
+
+  it("storeToStateStream() observes a set made while it is still cold", () => {
+    const store = createStore(5);
+    const stream = storeToStateStream(store);
+    store.set(6);
+    const seen: number[] = [];
+    const sub = stream.subscribe((v) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([6]);
+    sub.unsubscribe();
+  });
+
+  it("storeToStateStream() re-reads the store on every cold → warm cycle", () => {
+    const store = createStore(5);
+    const stream = storeToStateStream(store);
+    const first: number[] = [];
+    stream
+      .subscribe((v) => {
+        first.push(v);
+      })
+      .unsubscribe();
+    store.set(7);
+    const second: number[] = [];
+    const sub = stream.subscribe((v) => {
+      second.push(v);
+    });
+    expect(first).toEqual([5]);
+    expect(second).toEqual([7]);
+    sub.unsubscribe();
+  });
+
+  it("pushReconnectIntent() lands a 'reconnect' event on the RxJS core's reconnect$ seam", () => {
+    const seen: unknown[] = [];
+    const sub = reconnect$.subscribe((e) => {
+      seen.push(e);
+    });
+    pushReconnectIntent();
+    expect(seen).toEqual([{ type: "reconnect" }]);
     sub.unsubscribe();
   });
 });
