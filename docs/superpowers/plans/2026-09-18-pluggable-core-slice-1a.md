@@ -1812,14 +1812,14 @@ Expected: PASS.
   });
 
   it("sharedFold() delivers updates and de-duplicates Object.is-equal ones", async () => {
-    let write: FoldUpdate<number> | null = null;
+    const writes: FoldUpdate<number>[] = [];
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
         return 1;
       },
       run: (update) => {
-        write = update;
+        writes.push(update);
         return Effect.never;
       },
     });
@@ -1828,15 +1828,14 @@ Expected: PASS.
       seen.push(v);
     });
     await tick();
-    const update = write as FoldUpdate<number> | null;
-    expect(update).not.toBeNull();
+    expect(writes).toHaveLength(1);
     await host.runtime.runPromise(
-      (update as FoldUpdate<number>)(() => {
+      (writes[0] as FoldUpdate<number>)(() => {
         return 1;
       }),
     );
     await host.runtime.runPromise(
-      (update as FoldUpdate<number>)((current) => {
+      (writes[0] as FoldUpdate<number>)((current) => {
         return current + 1;
       }),
     );
@@ -2044,13 +2043,18 @@ export function sharedFold<S>(
   }
 
   return new Observable<S>((subscriber) => {
+    // Registered BEFORE the warm period starts: `runFork` runs the producer
+    // synchronously up to its first suspension, so a producer that fails at
+    // once (`Effect.fail`) fans out during `startWarmPeriod` — to an empty
+    // set, if this subscriber were added afterwards.
+    subscribers.add(subscriber);
+
     if (warm === null) {
       warm = startWarmPeriod();
     }
 
     const period = warm;
     period.subscribers += 1;
-    subscribers.add(subscriber);
     const inner = changes.subscribe(subscriber);
 
     return () => {
