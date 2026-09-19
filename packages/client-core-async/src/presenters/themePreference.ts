@@ -26,7 +26,10 @@ export function createThemePreferencePresenter(
   preferences: PreferencesPort,
   colorScheme?: ColorSchemeSource,
 ): ThemePreferencePresenter {
-  const modePreference = topicFromObservable(preferences.themeMode$());
+  // Called ONCE, here — `modePreference$` and `cycle()` both read through
+  // this same Observable rather than a fresh call of `themeMode$()`.
+  const themeMode = preferences.themeMode$();
+  const modePreference = topicFromObservable(themeMode);
 
   const mode = createTopic<ThemeMode>(
     async (signal, publish) => {
@@ -104,9 +107,7 @@ export function createThemePreferencePresenter(
      * clicks each advance from the real state. */
     cycle: () => {
       preferences.setThemeMode(
-        nextThemeModePreference(
-          peek(preferences.themeMode$(), DEFAULT_THEME_MODE_PREFERENCE),
-        ),
+        nextThemeModePreference(peek(themeMode, DEFAULT_THEME_MODE_PREFERENCE)),
       );
     },
   };

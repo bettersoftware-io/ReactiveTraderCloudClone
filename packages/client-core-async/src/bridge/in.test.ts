@@ -1,7 +1,14 @@
-import { BehaviorSubject, of, Subject, throwError } from "rxjs";
+import { BehaviorSubject, defer, of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
+import {
+  iterate,
+  once,
+  peek,
+  peekCurrent,
+  relay,
+  topicFromObservable,
+} from "#/bridge/in";
 
 describe("bridge/in", () => {
   it("once() resolves with the first emission", async () => {
@@ -151,6 +158,24 @@ describe("peek", () => {
   it("returns the fallback for a source that does not emit on subscribe", () => {
     expect(peek(new Subject<string>(), "z")).toBe("z");
   });
+
+  it("throws a source's synchronous error at the read site", () => {
+    expect(() => {
+      peek(
+        throwError(() => {
+          return new Error("storage");
+        }),
+        "x",
+      );
+    }).toThrow("storage");
+  });
+});
+
+describe("peekCurrent", () => {
+  it("returns null for a source that does not emit on subscribe and {value} for one that does", () => {
+    expect(peekCurrent(new Subject<string>())).toBeNull();
+    expect(peekCurrent(new BehaviorSubject("a"))).toEqual({ value: "a" });
+  });
 });
 
 describe("topicFromObservable", () => {
@@ -175,9 +200,14 @@ describe("topicFromObservable", () => {
     expect(port.observed).toBe(false);
   });
 
-  it("fails the topic when the source errors, and latches the error for a later subscriber", async () => {
-    const source = new Subject<string>();
-    const topic = topicFromObservable(source);
+  it("fails the topic when the source errors, and a later subscriber re-subscribes the source", async () => {
+    const sources = [new Subject<string>(), new Subject<string>()];
+    let i = 0;
+    const topic = topicFromObservable(
+      defer(() => {
+        return sources[i++] as Subject<string>;
+      }),
+    );
     const errors: unknown[] = [];
     const stop = topic.subscribe(
       () => {},
@@ -185,15 +215,15 @@ describe("topicFromObservable", () => {
         errors.push(error);
       },
     );
-    source.error(new Error("boom"));
+    sources[0]?.error(new Error("boom"));
     // `relay`'s rejection reaches `Topic.fail` through `spawn` — a macrotask
     // boundary, not a plain microtask (mirrors settle() in @rtc/core-contract).
     await new Promise((resolve) => {
       setTimeout(resolve, 0);
     });
     expect(errors).toHaveLength(1);
-    // Topic.fail is terminal: a later subscribe gets the latched error
-    // synchronously, no fresh producer.
+    // Topic RESETS on failure: a later subscribe re-subscribes the source
+    // afresh, with no latched error.
     const late: unknown[] = [];
     topic.subscribe(
       () => {},
@@ -201,7 +231,8 @@ describe("topicFromObservable", () => {
         late.push(error);
       },
     );
-    expect(late).toHaveLength(1);
+    expect(sources[1]?.observed).toBe(true);
+    expect(late).toEqual([]);
     stop();
   });
 });

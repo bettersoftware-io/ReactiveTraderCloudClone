@@ -1,3 +1,4 @@
+import { reportAsync } from "#/kernel/reportAsync";
 import { spawn } from "#/kernel/spawn";
 import { untilAborted } from "#/kernel/untilAborted";
 
@@ -11,16 +12,13 @@ export interface TopicOptions {
  * `shareReplay({ bufferSize: 1, refCount: true })` written once, explicitly,
  * instead of implied by an operator.
  *
- * Failure is TERMINAL — BY THIS KERNEL'S CHOICE (slice 0), which is STRICTER
- * than the operator it stands in for: `shareReplay({ bufferSize: 1, refCount:
- * true })` compiles to `share({ resetOnError: true, resetOnRefCountZero:
- * true, … })`, so `resetOnError` discards the replay subject on error and a
- * later subscriber gets a FRESH subscription, not the latched error. Whether
- * to match that is an open residual (docs/STATUS.md). As built today: after
- * `fail`, the topic is dead: a later `subscribe` is handed the latched error
- * synchronously and starts no producer, a later `publish` reaches nobody, and
- * a later `fail` is ignored. A consumer that resubscribes after an error must
- * get the error, never a fresh stream. */
+ * Failure RESETS the topic, as that operator does (`share({ resetOnError:
+ * true })`): every subscriber is handed the error and dropped, the producer
+ * is aborted, the replayed value is forgotten, and the NEXT subscriber starts
+ * a fresh producer — never the old error. A late publish or failure from a
+ * producer run that has already ended reaches nobody. A subscriber that
+ * throws does not stop delivery to the others: its error is rethrown on a
+ * macrotask (`reportAsync`), as rxjs's `SafeSubscriber` does. */
 export interface Topic<T> {
   subscribe(
     next: (value: T) => void,
@@ -36,15 +34,16 @@ interface Replayed<T> {
   value: T;
 }
 
-/** The terminal error, boxed for the same reason — `null` means "still
- * alive", which an error value of `null` would otherwise be confused with. */
-interface Failed {
-  error: unknown;
-}
-
 interface Subscriber<T> {
   next: (value: T) => void;
   error: (error: unknown) => void;
+}
+
+/** One producer run: the controller that ends it. A run's `publish`/`fail`
+ * are bound to it, so a run that has been superseded cannot reach the
+ * subscribers of a later one. */
+interface ProducerRun {
+  readonly controller: AbortController;
 }
 
 export function createTopic<T>(
@@ -52,53 +51,78 @@ export function createTopic<T>(
   options: TopicOptions = {},
 ): Topic<T> {
   const subscribers = new Set<Subscriber<T>>();
-  let controller: AbortController | null = null;
+  let run: ProducerRun | null = null;
   let last: Replayed<T> | null = null;
-  let failed: Failed | null = null;
 
-  function publish(value: T): void {
-    if (failed !== null) {
-      return;
-    }
-
+  function deliver(value: T): void {
     if (options.replay === true) {
       last = { value };
     }
 
     for (const s of [...subscribers]) {
-      s.next(value);
+      try {
+        s.next(value);
+      } catch (error) {
+        reportAsync(error);
+      }
     }
   }
 
-  function fail(error: unknown): void {
-    if (failed !== null) {
-      return;
+  function endRun(current: ProducerRun): void {
+    if (run === current) {
+      run = null;
     }
 
-    failed = { error };
-
-    for (const s of [...subscribers]) {
-      s.error(error);
-    }
-
-    subscribers.clear();
-    controller?.abort();
-    controller = null;
+    current.controller.abort();
     last = null;
   }
 
+  function failFrom(current: ProducerRun, error: unknown): void {
+    if (run !== current) {
+      return;
+    }
+
+    endRun(current);
+    const failing = [...subscribers];
+    subscribers.clear();
+
+    for (const s of failing) {
+      try {
+        s.error(error);
+      } catch (thrown) {
+        reportAsync(thrown);
+      }
+    }
+  }
+
+  function startRun(): void {
+    const current: ProducerRun = { controller: new AbortController() };
+    run = current;
+    void spawn(
+      () => {
+        return producer(current.controller.signal, (value) => {
+          if (run === current) {
+            deliver(value);
+          }
+        });
+      },
+      (error) => {
+        failFrom(current, error);
+      },
+    );
+  }
+
   return {
-    publish,
-    fail,
+    publish: deliver,
+    fail: (error: unknown) => {
+      if (run !== null) {
+        failFrom(run, error);
+      }
+    },
     subscribe: (
       next: (value: T) => void,
       error: (error: unknown) => void = () => {},
     ) => {
-      if (failed !== null) {
-        error(failed.error);
-        return () => {};
-      }
-
       const subscriber: Subscriber<T> = { next, error };
       subscribers.add(subscriber);
 
@@ -106,23 +130,15 @@ export function createTopic<T>(
         next(last.value);
       }
 
-      if (controller === null) {
-        // Held in a local so the producer's signal is read without a non-null
-        // assertion on the mutable `controller` (Biome's noNonNullAssertion).
-        const started = new AbortController();
-        controller = started;
-        void spawn(() => {
-          return producer(started.signal, publish);
-        }, fail);
+      if (run === null) {
+        startRun();
       }
 
       return () => {
         subscribers.delete(subscriber);
 
-        if (subscribers.size === 0) {
-          controller?.abort();
-          controller = null;
-          last = null;
+        if (subscribers.size === 0 && run !== null) {
+          endRun(run);
         }
       };
     },
