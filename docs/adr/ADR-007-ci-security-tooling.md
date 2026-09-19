@@ -217,6 +217,9 @@ The `curl … | sh` installers went the same way — see
 
 ### Scorecard — report-only, results kept in-repo
 
+> **Operating manual:** [`docs/security-scorecard.md`](../security-scorecard.md)
+> — what each check measures, where the repo stands, and what would change it.
+
 - **Report-only by design.** Several checks cannot score well here for reasons
   that are decisions, not defects: a single maintainer (`Code-Review`), no
   published releases (`Signed-Releases`, `Packaging`), no fuzzing. A gate on the
