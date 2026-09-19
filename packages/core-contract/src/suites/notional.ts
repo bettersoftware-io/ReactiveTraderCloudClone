@@ -94,7 +94,7 @@ export function describeNotionalContract(
       }
     });
 
-    it("reset() returns to the initial view; dispose() makes intents inert", async () => {
+    it("reset() returns to the initial view; dispose() after the last unsubscribe ends the machine's keep-alive; a fresh subscription afterwards yields the current value synchronously", async () => {
       const h = makeHarness();
       const m = h.machines.notional(1_000_000);
 
@@ -105,11 +105,17 @@ export function describeNotionalContract(
         m.intents.reset();
         await settle();
         expect(c.values.at(-1)).toEqual(INITIAL);
+        // Mirrors real usage (useMachine disposes only after the component's
+        // own subscription has unmounted) — dispose() alone does not stop a
+        // STILL-SUBSCRIBED external consumer, since it only unsubscribes the
+        // machine's internal keep-alive, not every subscriber of state$.
+        c.unsubscribe();
         m.dispose();
         m.intents.change("3m");
         await settle();
-        expect(c.values.at(-1)).toEqual(INITIAL);
-        c.unsubscribe();
+        const fresh = collect(m.state$);
+        expect(fresh.values).toEqual([INITIAL]);
+        fresh.unsubscribe();
       } finally {
         await h.teardown();
       }

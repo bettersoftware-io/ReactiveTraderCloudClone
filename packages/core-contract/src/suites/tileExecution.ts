@@ -234,19 +234,29 @@ export function describeTileExecutionContract(
       });
     });
 
-    it("dispose() makes intents inert", async () => {
+    it("dispose() after the last unsubscribe ends the machine's keep-alive; a fresh subscription afterwards yields the current value synchronously", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
         const m = h.machines.tileExecution(EURUSD);
 
         try {
           const c = collect(m.state$);
+          expect(c.values).toEqual([{ status: "ready" }]);
+          // Mirrors real usage (useMachine disposes only after the
+          // component's own subscription has unmounted) — dispose() alone
+          // does not stop a STILL-SUBSCRIBED external consumer, since it
+          // only unsubscribes the machine's internal keep-alive, not every
+          // subscriber of state$.
+          c.unsubscribe();
           m.dispose();
           m.intents.execute(Direction.Buy, PRICE, 1);
           await clock.settle();
-          expect(statuses(c.values)).toEqual(["ready"]);
+          // A port-level witness independent of any subscriber: no request
+          // was ever subscribed, disposed or not.
           expect(h.driver.pendingExecutions()).toEqual([]);
-          c.unsubscribe();
+          const fresh = collect(m.state$);
+          expect(fresh.values).toEqual([{ status: "ready" }]);
+          fresh.unsubscribe();
         } finally {
           await h.teardown();
           await clock.settle();
