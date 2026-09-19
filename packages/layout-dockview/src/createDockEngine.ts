@@ -246,7 +246,8 @@ export interface DockEngine {
    * mid-popout save captured. */
   popoutPanel(panelId: string): Promise<boolean>;
   /** Floats panelId's group as a box over the grid; false when refused —
-   * unknown panel, already floating, or a live maximize (see §3.2). */
+   * unknown panel, already floating, a live maximize (R3), or a collapsed
+   * panel (R8) (see §3.2). */
   floatPanel(panelId: string): boolean;
   /** Returns a floating panel to its seed-home slot; no-op when not floating. */
   dockPanel(panelId: string): void;
@@ -444,8 +445,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
-  function publishFloatingPanels(): void {
-    const floating = api.groups
+  /** Every panel currently in a floating group, sorted. */
+  function floatingPanelIds(): readonly string[] {
+    return api.groups
       .filter((group) => {
         return group.api.location.type === "floating";
       })
@@ -455,6 +457,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         });
       })
       .sort();
+  }
+
+  function publishFloatingPanels(): void {
+    const floating = floatingPanelIds();
 
     if (floating.join(" ") !== lastFloating.join(" ")) {
       lastFloating = floating;
@@ -1260,16 +1266,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * records move OUT of `designPins` — a float can outlive any number of
    * layout changes, and `intactDesignPins` would dissolve a rail pin whose
    * member no longer shares the rail. They are persisted from this map
-   * instead, and re-clamped by {@link clampPinsFloatSuspendedFor}. */
-  function suspendPinsFor(panelId: string): void {
-    const held = designPins.filter((record) => {
+   * instead, and re-clamped by {@link clampPinsFloatSuspendedFor}. Called
+   * only from `settleFloatTransitions`; true when it moved a record. */
+  function suspendPinsFor(panelId: string): boolean {
+    function holdsPanel(record: DesignPinRecord): boolean {
       return record.members.some((member) => {
         return member.panelId === panelId;
       });
-    });
+    }
 
-    if (held.length === 0) {
-      return;
+    const held = designPins.filter(holdsPanel);
+    // A pin ALREADY lifted because nothing absorbs (Ruling 10) moves too
+    // (final review I2). Left in `unabsorbedPins`, the next absorber to
+    // return would re-clamp it ONTO the floating box, and the layout pass
+    // after that would dissolve it for good. Its clamp is already lifted, so
+    // there is nothing to release; `clampPinsFloatSuspendedFor` hands it back
+    // to `designPins`, where `settlePinAbsorption` re-suspends it if the grid
+    // still has nothing to trade against it.
+    const unabsorbed = unabsorbedPins.filter(holdsPanel);
+
+    if (held.length === 0 && unabsorbed.length === 0) {
+      return false;
     }
 
     let patchedStrips = false;
@@ -1281,11 +1298,20 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     designPins = designPins.filter((record) => {
       return !held.includes(record);
     });
-    floatSuspendedPins.set(panelId, held);
+    unabsorbedPins = unabsorbedPins.filter((record) => {
+      return !unabsorbed.includes(record);
+    });
+    floatSuspendedPins.set(panelId, [
+      ...(floatSuspendedPins.get(panelId) ?? []),
+      ...held,
+      ...unabsorbed,
+    ]);
 
     if (patchedStrips) {
       settleStrips();
     }
+
+    return true;
   }
 
   /** Re-applies the pins `panelId`'s float suspended, now that it is docked
@@ -1302,12 +1328,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * free to rebuild a split across the round trip. Promoting it unchanged left
    * a reload-restored float's rail clamped min=max for the session with no
    * sash drag able to release it, because `unpinSplit` never matched. One
-   * derivation, used for both the gate and the value it stores back. */
-  function clampPinsFloatSuspendedFor(panelId: string): void {
+   * derivation, used for both the gate and the value it stores back.
+   * Called only from `settleFloatTransitions`; true when `panelId` held any
+   * suspended record. */
+  function clampPinsFloatSuspendedFor(panelId: string): boolean {
     const held = floatSuspendedPins.get(panelId);
 
     if (held === undefined) {
-      return;
+      return false;
     }
 
     floatSuspendedPins.delete(panelId);
@@ -1320,6 +1348,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         designPins = [...designPins, { ...record, ownerSplit }];
       }
     }
+
+    return true;
   }
 
   /** Every pin a float is currently holding lifted, dropping the entries
@@ -2098,6 +2128,84 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", cancelRefusedShiftFloat, true);
 
+  // The floating set the pin, absorption and share rules were last settled
+  // against. Seeded from the restored layout: a float the blob brought back
+  // already had its pins routed by `applyDesignPins`, so it is not a new one.
+  let settledFloating: ReadonlySet<string> = new Set(floatingPanelIds());
+
+  /** Applies the float rules (R5, Ruling 10, R6) to whatever changed since
+   * the last structural mutation — ONE mechanism for every way a panel
+   * enters or leaves a float (final review I1). `floatPanel` and `dockPanel`
+   * are two of them; dockview's own shift-drag float, a drag of a float onto
+   * the grid, and a pop-out window closing back into the grid are the
+   * others, and they call `addFloatingGroup` / `moveGroupOrPanel` themselves
+   * without ever reaching the verbs. When the rules lived on the verbs, the
+   * gesture path left a float clamped min=max until the next layout pass —
+   * where `intactDesignPins` then dissolved the pin for good — and a
+   * shift-drag of the last absorber brought back the #745 void.
+   *
+   * Run from `onDidMutateLayout`, which dockview fires SYNCHRONOUSLY when a
+   * top-level mutation closes (float, move, add, remove, load …) — not from
+   * `onDidLayoutChange`, which is buffered to a microtask: a verb's caller
+   * reads the settled state the moment the verb returns, and the gesture's
+   * transient clamp never exists at all. Every step is idempotent, so a
+   * mutation that touched no float costs one scan of `api.groups`.
+   *
+   * - R5: every floating member's pins are suspended (a record already moved
+   *   finds nothing), and every float-suspended record whose panel is back
+   *   IN THE GRID re-clamps — however it got there.
+   * - Ruling 10: a float removes an absorber exactly as a close does, and a
+   *   returning panel can absorb again, so absorption is re-settled.
+   * - R6: a chart instance that left a float for the grid re-enters the
+   *   equal-share rule at once, as `insertDynamicPanel` does for a newcomer —
+   *   not at the next container resize (final review I4). */
+  function settleFloatTransitions(): void {
+    const floating = new Set(floatingPanelIds());
+    const left = [...settledFloating].filter((panelId) => {
+      return !floating.has(panelId);
+    });
+
+    let changed =
+      left.length > 0 ||
+      [...floating].some((panelId) => {
+        return !settledFloating.has(panelId);
+      });
+
+    settledFloating = floating;
+
+    for (const panelId of floating) {
+      changed = suspendPinsFor(panelId) || changed;
+    }
+
+    for (const panelId of [...floatSuspendedPins.keys()]) {
+      const panel = api.getPanel(panelId);
+
+      if (panel !== undefined && isInGrid(panel.group)) {
+        changed = clampPinsFloatSuspendedFor(panelId) || changed;
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    settlePinAbsorption();
+
+    for (const panelId of left) {
+      const panel = api.getPanel(panelId);
+
+      if (
+        panel !== undefined &&
+        isInGrid(panel.group) &&
+        unpinnedDynamicPanels.has(panelId)
+      ) {
+        shareInstanceSplitOf(panelId);
+      }
+    }
+  }
+
+  const mutateSub = api.onDidMutateLayout(settleFloatTransitions);
+
   // Whether a user has been inside the dock since construction — the ORIGIN
   // test for what dispose may persist. Layer 3 persists ARRANGEMENT (sash
   // drags, DnD, restacks, and the maximize/collapse/pop-out buttons, all of
@@ -2608,20 +2716,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return false;
       }
 
-      // R5: BEFORE the detach, so the release reads the group's live
-      // constraints rather than a float's. A pin is min=max — carrying one
-      // into a float would hold the box at its rail width and refuse a
-      // resize.
-      suspendPinsFor(panelId);
+      // R5 (pin suspension) and Ruling 10 (absorption) run inside this call,
+      // from settleFloatTransitions when dockview closes the float mutation —
+      // the same path the shift-drag gesture takes, so the two cannot drift.
       api.addFloatingGroup(
         panel.group,
         floatingBoundsFor(panel.group, opts.container),
       );
-      // Ruling 10: a float REMOVES an absorber exactly as a close does, so
-      // floating the last absorbing panel starves the grid the same way.
-      // Idempotent, and it may legitimately suspend pins on panels this call
-      // never named.
-      settlePinAbsorption();
 
       return true;
     },
@@ -2680,26 +2781,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // Nothing grid-resident to dock onto at all (every other panel is
       // itself closed, floating, or popped) — neither branch ran, and the
       // panel stays floating rather than throwing.
-      // R5, the other half: the panel is back in the grid, so a pin this
-      // float suspended is re-applied — but only if it still describes
-      // reality (the panel may have docked somewhere the pin never named).
-      // Gated on the panel having actually landed: with no grid group to dock
-      // onto, neither branch above ran and the panel is still floating, where
-      // re-clamping is precisely what R5 forbids.
-      if (isInGrid(panel.group)) {
-        clampPinsFloatSuspendedFor(panelId);
-      }
-
-      // Ruling 10: a returning panel can absorb again, exactly as a reopen
-      // can — and this call is also what re-suspends the re-clamped pin if
-      // the grid still has nothing to trade against it.
-      settlePinAbsorption();
+      //
+      // The re-clamp of a pin this float suspended (R5), absorption
+      // (Ruling 10) and an instance's re-share (R6) all ran inside the move
+      // above, from settleFloatTransitions — the path a drag home takes too.
+      // With no move, the panel is still floating and none of them run, which
+      // is exactly what R5 requires of a float.
     },
     groupCount: () => {
       return api.groups.length;
     },
     dispose: () => {
       changeSub.dispose();
+      mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
       opts.container.removeEventListener(
         "pointerdown",
@@ -2902,12 +2996,15 @@ function railViewOf(element: Element, owner: Element): Element | null {
  * its own group — both fragments then hold only pinned panels (audit S2) — so
  * the rail identity is the real invariant.
  *
- * Returns the split rather than a boolean because the two questions are one
- * derivation: every caller that asks "is this pin still real?" is looking at a
- * record whose own `ownerSplit` may be stale, and the re-derivation that
- * answers the question is exactly the value such a caller needs to store back
- * (see clampPinsFloatSuspendedFor). A second spelling of this walk is how a
- * stale split survived a reload once already. */
+ * Returns the split rather than a boolean because, for a record whose own
+ * `ownerSplit` may be stale, the re-derivation that answers "is this pin
+ * still real?" is exactly the value to store back — which is why this walk
+ * has one spelling (a second one is how a stale split survived a reload once
+ * already). Today only `clampPinsFloatSuspendedFor` stores it: its records
+ * were suspended outside the grid, so their split is known-wrong.
+ * `intactDesignPins` and `releaseMaximize` use it as a predicate only and
+ * keep the record's existing split — a deliberate, pre-6a behaviour on paths
+ * whose members never left the grid (tracked in docs/STATUS.md). */
 function intactPinOwnerSplit(
   record: DesignPinRecord,
   groupOf: (panelId: string) => SizableGroup | undefined,

@@ -202,11 +202,14 @@
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —
  * only a cursor, no default visual — along each straight edge of the float.
  * A hover fill in the same colour the in-house sash grip uses on hover
- * (`.dv-sash:hover::after` below) tells the user the edge is draggable. */
-.dockview-theme-rtc .dv-resize-handle-top:hover,
-.dockview-theme-rtc .dv-resize-handle-bottom:hover,
-.dockview-theme-rtc .dv-resize-handle-left:hover,
-.dockview-theme-rtc .dv-resize-handle-right:hover {
+ * (`.dv-sash:hover::after` below) tells the user the edge is draggable.
+ * Nested under `.dv-resize-container`, the float's own box, so the rule is
+ * scoped by structure rather than by dockview happening to use these class
+ * names nowhere else today. */
+.dockview-theme-rtc .dv-resize-container .dv-resize-handle-top:hover,
+.dockview-theme-rtc .dv-resize-container .dv-resize-handle-bottom:hover,
+.dockview-theme-rtc .dv-resize-container .dv-resize-handle-left:hover,
+.dockview-theme-rtc .dv-resize-container .dv-resize-handle-right:hover {
   background: var(--border-strong, #475569);
 }
 

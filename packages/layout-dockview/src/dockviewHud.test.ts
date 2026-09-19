@@ -73,9 +73,13 @@ describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
     expect(body).not.toMatch(/background-color/);
   });
 
-  it("gives the float's resize edges a hover affordance", () => {
+  it("gives the float's resize edges a hover affordance, scoped to the float's box", () => {
     expect(css).toMatch(
-      /\.dv-resize-handle-top:hover,[\s\S]{0,200}\.dv-resize-handle-right:hover\s*\{[^}]*background:\s*var\(--border-strong/,
+      /\.dv-resize-container \.dv-resize-handle-top:hover,[\s\S]{0,300}\.dv-resize-container \.dv-resize-handle-right:hover\s*\{[^}]*background:\s*var\(--border-strong/,
+    );
+    // Every handle selector carries the prefix, not just the first and last.
+    expect(css).not.toMatch(
+      /\.dockview-theme-rtc \.dv-resize-handle-(top|bottom|left|right):hover/,
     );
   });
 });

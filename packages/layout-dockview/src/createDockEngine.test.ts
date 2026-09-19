@@ -4485,6 +4485,128 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // R5 through the GESTURE (final review I1). dockview's shift-drag floats
+  // the group itself, inside its own `addFloatingGroup`, and never calls
+  // `floatPanel` — so the rule has to live on the float transition, not on
+  // the verb.
+  //
+  // The difference is observable at two points, asserted at both. (1) The
+  // instant the gesture returns: a pin nobody suspended still holds the
+  // floating box at [367, 367]. (2) After dockview's buffered layout-change
+  // (a microtask), where `intactDesignPins` DISSOLVES a record whose member
+  // no longer shares the rail — that is the permanent loss, and it only
+  // surfaces later, as a dock-home that cannot re-clamp and a saved blob
+  // with no pin. So the test lets the layout pass run before docking home.
+  it("suspends a pin when its member floats by shift-drag, and keeps it for dock-home (R5, gesture)", async () => {
+    const opts = createPinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    expect(isWidthClamped("fx-analytics")).toBe(true);
+
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+
+    await nextMacrotask(); // dockview's buffered onDidLayoutChange has run
+
+    engine.dockPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+
+    touchContainer(opts.container);
+    engine.dispose();
+
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
+  // Ruling 10 through the gesture (final review I1): shift-dragging the LAST
+  // absorber out starves the grid exactly as the button does. Observable the
+  // moment the gesture returns — a rail still clamped min=max beside no
+  // absorber is the #745 void — and it never self-heals, so there is no
+  // later point that would read differently.
+  it("suspends an untouched pin when a shift-drag floats the last absorber (Ruling 10, gesture)", () => {
+    const engine = createDockEngine(createPinnedRailBase());
+
+    engine.closePanel("fx-rates");
+
+    expect(isWidthClamped("fx-analytics")).toBe(true);
+
+    shiftPointerDown(voidContainerOf("fx-blotter"));
+
+    expect(locationOf("fx-blotter")).toBe("floating");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+    engine.dispose();
+  });
+
+  // The reverse direction (final review I1 + M4's residue): a float that goes
+  // home through DOCKVIEW'S OWN move — the path a drag onto the grid, or a
+  // pop-out window closing, takes — never reaches `dockPanel`. Its record
+  // must still leave the float-suspended map and re-clamp. `panel.api.moveTo`
+  // is exactly what the drop calls (`moveGroupOrPanel`), without the DnD
+  // event plumbing jsdom cannot drive. Observable immediately on the move.
+  it("re-clamps a float-suspended pin when dockview itself moves the float home (R5, gesture)", () => {
+    const engine = createDockEngine(createPinnedRailBase());
+
+    engine.floatPanel("fx-analytics");
+
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+
+    const api = lastDockviewApi();
+    const positions = api.getPanel("fx-positions");
+
+    if (positions === undefined) {
+      throw new Error("fx-positions is not in the dock");
+    }
+
+    api.getPanel("fx-analytics")?.api.moveTo({
+      group: positions.group,
+      position: "top",
+    });
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  // Final review I2: a pin ALREADY absorber-suspended (Ruling 10 put it in
+  // `unabsorbedPins`) when its member floats must move to the float's
+  // suspension too. Otherwise the next absorber to return re-clamps it ONTO
+  // the floating box, and the layout pass after that dissolves it for good.
+  // Button-only reproduction, the reviewer's exact sequence. Observable at
+  // the dock of fx-rates (the absorber returning) as a clamped float, and
+  // again — permanently — at the dock-home of fx-analytics and in the blob.
+  it("keeps an absorber-suspended pin with its member when that member floats (I2)", async () => {
+    const opts = createPinnedRailBase();
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...opts, ...seen.options });
+
+    engine.floatPanel("fx-rates");
+    engine.floatPanel("fx-blotter"); // last absorber: the pin is suspended
+    engine.floatPanel("fx-analytics");
+    engine.dockPanel("fx-rates"); // an absorber returns
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
+
+    await nextMacrotask(); // dockview's buffered onDidLayoutChange has run
+
+    engine.dockPanel("fx-analytics");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+
+    touchContainer(opts.container);
+    engine.dispose();
+
+    expect(seen.pins()).toEqual([
+      { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
+    ]);
+  });
+
   // Both SIDES of the round trip, deliberately in one test. Asserting only
   // the sidecar certifies half its own claim: the write is what this code
   // changed, and the read is `applyDesignPins` running over those pins at
@@ -4554,22 +4676,28 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
-  it("re-enters the share rule when the instance docks home (R6)", () => {
-    const { engine, container } = createEngineWithInstances();
+  // The exclusion is a property of WHERE the group is, not a one-way door:
+  // back in the grid, the instance is shared like any other member AT ONCE.
+  //
+  // Observable the moment dockPanel returns, and deliberately NOT through a
+  // resize: an earlier version of this test resized the container and
+  // counted sizing calls, and passed because the RESIZE re-shares every
+  // instance split — dockPanel itself did not (final review I4: docked home,
+  // the row read 360/360/360/360 until the next resize). The witness is the
+  // row's widths against the freshly-shared ones read before the float; jsdom
+  // gives dockview a sized container here, so its split model has real
+  // widths even though nothing paints. Also pins dockPanel's no-seed-home
+  // branch — an instance has no seed slot, and docking it into another
+  // group's tab stack would leave it outside the rule for good.
+  it("re-enters the share rule the moment the instance docks home (R6)", () => {
+    const { engine } = createEngineWithInstances();
+    const shared = groupWidthsOf(ROW_WITH_INSTANCES);
 
     engine.floatPanel("i-aapl");
     engine.dockPanel("i-aapl");
 
-    const touched = spyOnGroupSizing("i-aapl");
-
-    resizeContainerTo(container, 1200, 900);
-
-    // The exclusion is a property of WHERE the group is, not a one-way door:
-    // back in the grid, the same resize sizes it like any other instance
-    // member. This is also what pins dockPanel's no-seed-home branch — an
-    // instance has no seed slot, and docking it into another group's tab
-    // stack would leave it permanently outside the rule.
-    expect(touched.calls()).not.toEqual([]);
+    expect(locationOf("i-aapl")).toBe("grid");
+    expect(groupWidthsOf(ROW_WITH_INSTANCES)).toEqual(shared);
     engine.dispose();
   });
 
@@ -4741,6 +4869,20 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     window.dispatchEvent(new Event("pointermove"));
     window.dispatchEvent(new Event("pointerup"));
+  }
+
+  /** Each panel's group width on the last engine, in `panelIds` order —
+   * dockview's split-model widths, which a sized jsdom container does give. */
+  function groupWidthsOf(panelIds: readonly string[]): readonly number[] {
+    return panelIds.map((panelId) => {
+      const panel = lastDockviewApi().getPanel(panelId);
+
+      if (panel === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return panel.group.api.width;
+    });
   }
 
   /** An engine holding two chart instances, with the container handle a
@@ -5825,6 +5967,10 @@ const FX_LIKE = {
 /** The real FX tab's shape: the main column (rates over blotter) beside a
  * RAIL column (analytics over positions) — the tree the maximize scopes are
  * about, where FX_LIKE's lone analytics leaf has no column to scope to. */
+/** FX_LIKE's root row once `createEngineWithInstances` opens its two chart
+ * instances at the right edge — the members the R6 share rule divides. */
+const ROW_WITH_INSTANCES = ["fx-rates", "fx-analytics", "i-aapl", "i-msft"];
+
 const RAIL_LIKE = {
   kind: "split",
   dir: "row",
