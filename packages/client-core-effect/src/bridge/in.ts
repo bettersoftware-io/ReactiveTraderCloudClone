@@ -93,6 +93,10 @@ export function fromObservable<T>(
 
 /** One-shot RPC shape: the first value of an Observable port method.
  *
+ * Kept as a bridge primitive for the RPC-shaped ports of slice ≥2
+ * (`execution`, `throughput`); it is not exported from the package index,
+ * and its own tests are its only caller today.
+ *
  * A synchronous source (`of(…)`) calls back DURING `subscribe`, before the
  * `subscription` binding exists and with more emissions still to come — so
  * the handlers route through `endSubscription`, which tolerates the

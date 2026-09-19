@@ -252,6 +252,23 @@ export function sharedFold<S>(
 ): CoreStream<S> {
   let warm: WarmPeriod<S> | null = null;
 
+  /** End a period: drop it as the live one (when it still is) and close its
+   * scope, interrupting the producer and releasing every port subscription
+   * `fromPort` opened. Both ways a period ends go through here — the last
+   * unsubscribe and the failure fan-out — and they may overlap (a failed
+   * period's subscribers still tear down after their `error()`), which is
+   * safe: `Scope.close` on an already-closed scope is a no-op (measured on
+   * 3.22.2, `ScopeImpl.close` returns `void` for a `Closed` state). */
+  function endPeriod(period: WarmPeriod<S>): void {
+    if (warm === period) {
+      warm = null;
+    }
+
+    // The global runtime, as in `streamToStream`: this must still work
+    // after `host.runtime` has been disposed.
+    Effect.runFork(Scope.close(period.scope, Exit.void));
+  }
+
   // The seed arrives already evaluated: `fold.seed()` is the ONE thing
   // allowed to throw, and it is called by the subscribe function below,
   // outside this. Nothing in here may throw — by the time `warm = period`
@@ -273,9 +290,13 @@ export function sharedFold<S>(
       subscribers: new Set([first]),
       changes: periodStream(host, ref, watching),
     };
-    // Assigned BEFORE `runFork`: a producer that fails at once can drive a
-    // subscriber's `error()` to resubscribe synchronously, and that nested
-    // subscribe must join THIS period, never start a second one.
+    // Assigned BEFORE `runFork`: a producer that fails at once fans that
+    // failure out while this call is still on the stack, and the fan-out
+    // has to find `warm` pointing at THIS period to be able to end it. That
+    // is the whole of the re-entrancy guarantee — the period is published
+    // before anything can run — NOT that a nested subscribe joins this
+    // period: the fan-out ends the period first, so a resubscribe from a
+    // subscriber's `error()` deliberately starts a fresh one.
     warm = period;
 
     // MEASURED (effect 3.22.2): a `SubscriptionRef` publishes into a
@@ -317,7 +338,19 @@ export function sharedFold<S>(
               return;
             }
 
-            for (const subscriber of [...period.subscribers]) {
+            // END the period BEFORE erroring anyone. RxJS invokes a
+            // consumer's `error` callback ahead of its own unsubscribe, so
+            // a subscriber that resubscribes synchronously from inside
+            // `error()` would otherwise find `warm` still pointing at this
+            // dead period and join it: measured, it receives the stale seed
+            // and then nothing, forever, and the scope never closes.
+            // Ended first, that resubscribe sees `warm === null` and starts
+            // a FRESH period — the shape an async failure already had.
+            const failing = [...period.subscribers];
+            period.subscribers.clear();
+            endPeriod(period);
+
+            for (const subscriber of failing) {
               subscriber.error(Cause.squash(cause));
             }
           });
@@ -330,6 +363,8 @@ export function sharedFold<S>(
   }
 
   return new Observable<S>((subscriber) => {
+    let period: WarmPeriod<S>;
+
     if (warm === null) {
       // `seed()` may throw (a port that errors on subscribe, via
       // `peekCurrent`). Read it HERE, before anything is warm, so the
@@ -344,23 +379,26 @@ export function sharedFold<S>(
         return () => {};
       }
 
-      warm = startWarmPeriod(subscriber, seed);
+      // The RETURNED period, never `warm` re-read: `startWarmPeriod`
+      // publishes the period itself, and a producer that fails
+      // synchronously has already ended it — possibly with a resubscribe
+      // from its `error()` having published a successor — by the time this
+      // returns. Re-reading `warm` here would resurrect the dead period on
+      // top of that successor.
+      period = startWarmPeriod(subscriber, seed);
     } else {
-      warm.subscribers.add(subscriber);
+      period = warm;
+      period.subscribers.add(subscriber);
     }
 
-    const period = warm;
     const inner = period.changes.subscribe(subscriber);
 
     return () => {
       inner.unsubscribe();
       period.subscribers.delete(subscriber);
 
-      if (period.subscribers.size === 0 && warm === period) {
-        warm = null;
-        // The global runtime, as in `streamToStream`: this must still work
-        // after `host.runtime` has been disposed.
-        Effect.runFork(Scope.close(period.scope, Exit.void));
+      if (period.subscribers.size === 0) {
+        endPeriod(period);
       }
     };
   });
