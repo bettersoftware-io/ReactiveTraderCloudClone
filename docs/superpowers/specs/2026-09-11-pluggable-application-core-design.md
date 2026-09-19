@@ -170,6 +170,10 @@ Pinned to `effect` 3.22.x.
   is `Effect.cachedFunction` inside the presenter's Layer scope, so same-key
   identity holds by construction. Conflation / rolling windows are `Stream`
   combinators, not a hand-rolled kernel — that is the point of the comparison.
+  **Amended in slice 1a:** `Stream.share` replays on a fiber, so it cannot be
+  the outward envelope; presenter streams are `sharedFold`s (a synchronously
+  seeded `SubscriptionRef` + a per-warm-period `Scope`) — ADR-006, "Learned
+  in slice 1a".
 - **Machines.** State is a `SubscriptionRef<S>` (`changes` is documented as
   "the current value as well as all changes" — replay-current). Intents are
   Effects forked into the machine's own `Scope`; `dispose` closes the scope.
@@ -180,7 +184,11 @@ Pinned to `effect` 3.22.x.
   `Layer`; `AppPorts` enters as `Layer.succeed(AppPortsTag, ports)`;
   `createApp(ports)` is `ManagedRuntime.make(AppLive)` + one `runSync` that
   resolves the tags into the `Presenters` record; `App.dispose` calls
-  `runtime.dispose()`.
+  `runtime.dispose()`. **Deferred to slice 2:** the Tag/Layer shape buys
+  nothing while no native member depends on another native member;
+  `priceStream` (which consumes `powerSaver.isCalm$`) is the first such
+  dependency. Slice 1a keeps slice 0's plain-object overlay with `host`
+  injected.
 - **Bridge.** `bridge/in.ts` — `fromObservable(obs): Stream<T>` via
   `Stream.asyncPush` (subscribe in register, unsubscribe in the scope
   finaliser), `rpc(obs): Effect<T, E>` via `Effect.async`. `bridge/out.ts` —
@@ -317,6 +325,8 @@ alternative cores have them native; e2e matrix green; `parity.json` updated.
 | 5 admin | `throughput`, `throughputMetric`, `latencyMetric`, `errorRateMetric`, `topology`, `eventLog`, `sessions`, `sessionsKpi`; machine `incident` | rolling windows |
 | 6 shell | `layoutFor` + `dockPanel` / `undockPanel` / `dismissPanel` / `resetWorkspaceLayout`, `workspaceNav`, `boot`, `bootGate`, `auth`, `animationDirector` | the per-tab singleton with the structural no-op dispose |
 | 7 jarvis | `jarvis`, `jarvisPanels`, `jarvisDriver`, `jarvisDemo`, `jarvisUsage`, `NarratorMachine` | largest choreography; depends on everything above |
+
+Slice 1a shipped 2026-09-18 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
 
 ### Slice 8 — closing
 

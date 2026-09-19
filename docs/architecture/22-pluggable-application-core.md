@@ -121,12 +121,29 @@ to reproduce them explicitly:
    `shareReplay({ bufferSize: 1, refCount: true })`'s contract, written out
    explicitly rather than implied by an operator: the async core's `Topic<T>`
    starts its producer on the first subscriber and aborts it on the last;
-   the Effect core would get the same shape natively from
-   `Stream.share({ capacity: "unbounded", replay: 1 })` — no such call ships
-   yet, since every member still delegates to the RxJS core.
+   the Effect core's `sharedFold` restates it over a `SubscriptionRef` and a
+   per-warm-period `Scope` — `Stream.share({ replay: 1 })` could not be the
+   envelope, because it replays to a new subscriber on a fiber, never in the
+   caller's tick (slice 1a, measured on 3.22.2).
 3. **Memoised per-key identity.** `price$(EURUSD) === price$(EURUSD)` — a
    contract test asserts it directly, since a core that rebuilt a new stream
    per call would still type-check.
+4. **Only the first value is synchronous.** The contract asserts a
+   subscription's first value in the caller's tick and every later value
+   after `settle()` (two macrotask turns): an Effect fiber delivers past the
+   seed on the scheduler, so a suite asserting later values synchronously
+   would be pinning RxJS's delivery tick rather than the behaviour. One
+   related, uncontracted difference: a `SubscriptionRef` fold conflates
+   `Object.is`-equal consecutive states (the guard that keeps the seed from
+   being delivered twice), where the RxJS core's `scan`/`map` re-emit them
+   and the async core's `Topic` reproduces that re-emission. Measured on
+   3.22.2: under `Stream.runForEach` + `runFork`, a port's first value
+   reaches a `Stream.asyncPush` consumer one microtask after `runFork` — and
+   so does the SUBSCRIPTION itself, unless the port is subscribed eagerly at
+   call time, which is what `fromObservable`
+   (`packages/client-core-effect/src/bridge/in.ts`) now does; a stream built
+   over it must therefore be called inside a `sharedFold`'s `run`, never at
+   presenter construction.
 
 ## The contract tier
 
@@ -165,10 +182,13 @@ Each alternative core ships a committed `parity.json` —
 `parity.test.ts` that asserts the manifest matches reality by **reference
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
-must not be. At slice 0 both alternative cores list every member
-`"delegated"` — nothing has been ported yet, and the manifest says so
-explicitly rather than leaving it implied. `pnpm core:parity` prints both
-manifests as one table, for a PR description or `docs/STATUS.md`.
+must not be. The manifest has three sections — `presenters`, `machines`,
+`commands` — and the drift test walks all three. As of slice 1a both
+alternative cores list six members `"native"` (`connection`, the four
+theme/view/power-saver preferences, `commands.reconnect`) and everything else
+`"delegated"`; the manifest says so explicitly rather than leaving it
+implied. `pnpm core:parity` prints both manifests as one table, for a PR
+description or `docs/STATUS.md`.
 
 The contract tier proves *behaviour*: a delegated member's suite passes
 trivially, because the object it drives is the RxJS instance. The parity

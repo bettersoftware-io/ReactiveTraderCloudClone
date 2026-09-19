@@ -22,7 +22,7 @@
 - **Biome:** mandatory braces on every control statement; arrow functions use block bodies with an explicit `return`; zero findings; no `biome-ignore`. Function names state their effect (`rtc/name-functions-by-effect`); slot props/params stay `onX`/`next`.
 - `#/` subpath imports only; never `@/`; ≥2-up relative imports are banned.
 - **No new env vars, scripts, packages or CI jobs** in this slice — the selection, matrix and gates from slice 0 are reused as-is.
-- **Measured facts this plan relies on (Effect 3.22.2, verified 2026-09-18 in this repo):** `SubscriptionRef.set` with an `Object.is`-equal value RE-PUBLISHES to `changes`; `Stream.zipLatest(live, Stream.make(x))` keeps emitting after the finite side ends; `ManagedRuntime.runFork` runs a fiber synchronously up to its first suspension, but a port's first value reaches a `Stream.asyncPush` consumer one microtask after `runFork` and later values a macrotask later. Do not "fix" code that depends on these without re-measuring.
+- **Measured facts this plan relies on (Effect 3.22.2, verified 2026-09-18 in this repo):** `SubscriptionRef.set` with an `Object.is`-equal value RE-PUBLISHES to `changes`; `Stream.zipLatest(live, Stream.make(x))` keeps emitting after the finite side ends; `ManagedRuntime.runFork` runs a fiber synchronously up to its first suspension, but a port's first value reaches a `Stream.asyncPush` consumer one microtask after `runFork` — and so does the SUBSCRIPTION itself (found in execution; `fromObservable` therefore subscribes eagerly at call time) — and later values a macrotask later. Do not "fix" code that depends on these without re-measuring.
 - Commit after every task with the repo's trailer:
   ```
   Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
