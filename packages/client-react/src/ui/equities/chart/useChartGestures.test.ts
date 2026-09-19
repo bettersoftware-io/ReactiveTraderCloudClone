@@ -518,7 +518,7 @@ describe("useChartGestures — draw gesture fork", () => {
   it("hline: pointer-down commits the level immediately, with no capture and no draft", () => {
     const onCommitLevel = vi.fn();
     const setPointerCapture = vi.fn();
-    const draw = drawSlots({ tool: "hline", onCommitLevel });
+    const draw = createDrawSlots({ tool: "hline", onCommitLevel });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -534,7 +534,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("trendline: pointer-down opens a draft with both anchors at the down point, and captures the pointer", () => {
     const setPointerCapture = vi.fn();
-    const draw = drawSlots({ tool: "trendline" });
+    const draw = createDrawSlots({ tool: "trendline" });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -549,7 +549,7 @@ describe("useChartGestures — draw gesture fork", () => {
   });
 
   it("trendline: every move updates the draft's b anchor while the crosshair keeps tracking", () => {
-    const draw = drawSlots({ tool: "trendline" });
+    const draw = createDrawSlots({ tool: "trendline" });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -583,7 +583,7 @@ describe("useChartGestures — draw gesture fork", () => {
   it("trendline: pointer-up beyond CLICK_MAX_PX commits the line via onCommitLine and clears the draft", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
-    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const draw = createDrawSlots({ tool: "trendline", onCommitLine });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -614,7 +614,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("trendline: pointer-up within CLICK_MAX_PX discards the draft without committing", () => {
     const onCommitLine = vi.fn();
-    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const draw = createDrawSlots({ tool: "trendline", onCommitLine });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -637,7 +637,7 @@ describe("useChartGestures — draw gesture fork", () => {
   it("pointercancel discards an open trendline draft without committing (same as a phantom-drag pan cancel)", () => {
     const onCommitLine = vi.fn();
     const releasePointerCapture = vi.fn();
-    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const draw = createDrawSlots({ tool: "trendline", onCommitLine });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -663,7 +663,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("Escape cancels an open trendline draft", () => {
     const onCommitLine = vi.fn();
-    const draw = drawSlots({ tool: "trendline", onCommitLine });
+    const draw = createDrawSlots({ tool: "trendline", onCommitLine });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -692,7 +692,7 @@ describe("useChartGestures — draw gesture fork", () => {
   });
 
   it("Escape with no open draft is a no-op and does not preventDefault", () => {
-    const draw = drawSlots({ tool: "cursor" });
+    const draw = createDrawSlots({ tool: "cursor" });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const escapeKey = keyEvent("Escape");
 
@@ -705,7 +705,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("cursor: pointer-up within CLICK_MAX_PX of its pointer-down calls onPlotClick with the up point's fraction", () => {
     const onPlotClick = vi.fn();
-    const draw = drawSlots({ tool: "cursor", onPlotClick });
+    const draw = createDrawSlots({ tool: "cursor", onPlotClick });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -724,7 +724,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("cursor: a real drag beyond CLICK_MAX_PX pans as usual and does not call onPlotClick", () => {
     const onPlotClick = vi.fn();
-    const draw = drawSlots({ tool: "cursor", onPlotClick });
+    const draw = createDrawSlots({ tool: "cursor", onPlotClick });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const before = handle.state.viewport;
 
@@ -750,7 +750,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("Delete calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
-    const draw = drawSlots({ tool: "cursor", onDeleteKey });
+    const draw = createDrawSlots({ tool: "cursor", onDeleteKey });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const del = keyEvent("Delete");
 
@@ -764,7 +764,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("Backspace also calls onDeleteKey while the cursor tool is active", () => {
     const onDeleteKey = vi.fn();
-    const draw = drawSlots({ tool: "cursor", onDeleteKey });
+    const draw = createDrawSlots({ tool: "cursor", onDeleteKey });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -776,7 +776,7 @@ describe("useChartGestures — draw gesture fork", () => {
 
   it("Delete is a no-op while a non-cursor tool is active", () => {
     const onDeleteKey = vi.fn();
-    const draw = drawSlots({ tool: "trendline", onDeleteKey });
+    const draw = createDrawSlots({ tool: "trendline", onDeleteKey });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const del = keyEvent("Delete");
 
@@ -817,7 +817,7 @@ describe("editDrag (drag-edit fork)", () => {
     const grip: DrawingGrip = { id: "d1", part: "b" };
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
-    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const draw = createDrawSlots({ tool: "cursor", hitGrip, onCommitEdit });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const before = handle.state.viewport;
 
@@ -863,7 +863,7 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
     const onPlotClick = vi.fn();
-    const draw = drawSlots({
+    const draw = createDrawSlots({
       tool: "cursor",
       hitGrip,
       onCommitEdit,
@@ -894,7 +894,7 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
     const onPlotClick = vi.fn();
-    const draw = drawSlots({
+    const draw = createDrawSlots({
       tool: "cursor",
       hitGrip,
       onCommitEdit,
@@ -937,7 +937,7 @@ describe("editDrag (drag-edit fork)", () => {
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onCommitEdit = vi.fn();
     const releasePointerCapture = vi.fn();
-    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const draw = createDrawSlots({ tool: "cursor", hitGrip, onCommitEdit });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -972,7 +972,7 @@ describe("editDrag (drag-edit fork)", () => {
   it("hitGrip returning null falls through to the normal pan path (viewport changes on drag)", () => {
     const hitGrip = vi.fn().mockReturnValue(null);
     const onCommitEdit = vi.fn();
-    const draw = drawSlots({ tool: "cursor", hitGrip, onCommitEdit });
+    const draw = createDrawSlots({ tool: "cursor", hitGrip, onCommitEdit });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const before = handle.state.viewport;
 
@@ -1005,7 +1005,7 @@ describe("editDrag (drag-edit fork)", () => {
     const grip: DrawingGrip = { id: "d1", part: "b" };
     const hitGrip = vi.fn().mockReturnValue(grip);
     const onDeleteKey = vi.fn();
-    const draw = drawSlots({ tool: "cursor", hitGrip, onDeleteKey });
+    const draw = createDrawSlots({ tool: "cursor", hitGrip, onDeleteKey });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -1026,7 +1026,7 @@ describe("editDrag (drag-edit fork)", () => {
 
   it("hitGrip is only consulted when tool === 'cursor' (trendline tool pointer-down never calls it)", () => {
     const hitGrip = vi.fn();
-    const draw = drawSlots({ tool: "trendline", hitGrip });
+    const draw = createDrawSlots({ tool: "trendline", hitGrip });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
 
     handle.commit(() => {
@@ -1052,7 +1052,7 @@ describe("editDrag (drag-edit fork)", () => {
     // would open an editDrag and capture-swallow the pill's click.
     const grip: DrawingGrip = { id: "d1", part: "b" };
     const hitGrip = vi.fn().mockReturnValue(grip);
-    const draw = drawSlots({ tool: "cursor", hitGrip });
+    const draw = createDrawSlots({ tool: "cursor", hitGrip });
     const handle = page.mount(SERIES_LEN, DEFAULT_VISIBLE, undefined, draw);
     const setPointerCapture = vi.fn();
     const event = {
@@ -1085,7 +1085,9 @@ describe("editDrag (drag-edit fork)", () => {
 /** Builds a full `DrawGestureSlots`, every handler stubbed with a no-op
  * `vi.fn()` (`hitGrip` stubbed to always return `null`) — tests override just
  * the tool and whichever handler they assert against. */
-function drawSlots(overrides: Partial<DrawGestureSlots>): DrawGestureSlots {
+function createDrawSlots(
+  overrides: Partial<DrawGestureSlots>,
+): DrawGestureSlots {
   return {
     tool: "cursor",
     onCommitLine: vi.fn(),

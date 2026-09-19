@@ -68,51 +68,69 @@ describe("COLUMNS metadata", () => {
 describe("formatFxCell", () => {
   it("formats ISO dates as DD-Mon-YYYY", () => {
     expect(
-      formatFxCell(trade({ tradeDate: "2026-03-30" }), colFor("tradeDate")),
+      formatFxCell(
+        createTrade({ tradeDate: "2026-03-30" }),
+        colFor("tradeDate"),
+      ),
     ).toBe("30-Mar-2026");
     expect(
-      formatFxCell(trade({ valueDate: "2026-01-05" }), colFor("valueDate")),
+      formatFxCell(
+        createTrade({ valueDate: "2026-01-05" }),
+        colFor("valueDate"),
+      ),
     ).toBe("05-Jan-2026");
   });
 
   it("returns the raw string for an unparseable date", () => {
     expect(
-      formatFxCell(trade({ tradeDate: "not-a-date" }), colFor("tradeDate")),
+      formatFxCell(
+        createTrade({ tradeDate: "not-a-date" }),
+        colFor("tradeDate"),
+      ),
     ).toBe("not-a-date");
   });
 
   it("formats notional with thousands separators and no decimals", () => {
     expect(
-      formatFxCell(trade({ notional: 2_500_000 }), colFor("notional")),
+      formatFxCell(createTrade({ notional: 2_500_000 }), colFor("notional")),
     ).toBe("2,500,000");
   });
 
   it("formats the spot rate to 6 significant digits", () => {
-    expect(formatFxCell(trade({ spotRate: 1.09221 }), colFor("spotRate"))).toBe(
-      "1.09221",
-    );
+    expect(
+      formatFxCell(createTrade({ spotRate: 1.09221 }), colFor("spotRate")),
+    ).toBe("1.09221");
   });
 
   it("stringifies other columns directly", () => {
-    expect(formatFxCell(trade({ tradeId: 4001 }), colFor("tradeId"))).toBe(
-      "4001",
-    );
     expect(
-      formatFxCell(trade({ status: TradeStatus.Rejected }), colFor("status")),
+      formatFxCell(createTrade({ tradeId: 4001 }), colFor("tradeId")),
+    ).toBe("4001");
+    expect(
+      formatFxCell(
+        createTrade({ status: TradeStatus.Rejected }),
+        colFor("status"),
+      ),
     ).toBe("Rejected");
     expect(
-      formatFxCell(trade({ direction: Direction.Sell }), colFor("direction")),
+      formatFxCell(
+        createTrade({ direction: Direction.Sell }),
+        colFor("direction"),
+      ),
     ).toBe("Sell");
     expect(
-      formatFxCell(trade({ currencyPair: "USDJPY" }), colFor("currencyPair")),
+      formatFxCell(
+        createTrade({ currencyPair: "USDJPY" }),
+        colFor("currencyPair"),
+      ),
     ).toBe("USDJPY");
-    expect(formatFxCell(trade({ tradeName: "Bob" }), colFor("tradeName"))).toBe(
-      "Bob",
-    );
+    expect(
+      formatFxCell(createTrade({ tradeName: "Bob" }), colFor("tradeName")),
+    ).toBe("Bob");
   });
 });
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 4001,
     tradeName: "Alice",

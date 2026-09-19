@@ -303,6 +303,15 @@ locals before returning is out of arm 2's reach, and there is no syntactic
 discriminator separating those from actions without the lexicon this rule avoids.
 Arm 1 still covers them whenever they carry a factory-synonym prefix.
 
+**Parameterised noun-named functions are a deliberate boundary, not a miss.**
+A function taking arguments and returning an object literal may be a factory
+(`trade(id)`) or a transform (`withLastSeq(node, id, seq)`), and nothing
+syntactic separates the two. Measured on 2026-09-18: 202 such functions in specs.
+The **37 whose first parameter is an overrides/options bag** (`overrides`,
+`over`, `opts`, `props`, …) are unambiguously fixture factories and were renamed
+to `create*`; the rest were left as named, by decision. The rule does not gate
+this shape, so a new parameterised factory is a review call, not a lint error.
+
 `createFake*` / `createStub*` deliberately keep the test-double vocabulary
 rather than flattening it — `create` states the effect, `Fake`/`Stub` states what
 is produced.

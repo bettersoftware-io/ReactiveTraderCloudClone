@@ -91,14 +91,14 @@ describe("nextSortDirection", () => {
 
 describe("applySortToTrades", () => {
   it("returns the input untouched when no column is selected", () => {
-    const trades = [trade({ tradeId: 2 }), trade({ tradeId: 1 })];
+    const trades = [createTrade({ tradeId: 2 }), createTrade({ tradeId: 1 })];
     expect(applySortToTrades(trades, { column: null, direction: null })).toBe(
       trades,
     );
   });
 
   it("returns the input untouched when direction is null", () => {
-    const trades = [trade({ tradeId: 2 }), trade({ tradeId: 1 })];
+    const trades = [createTrade({ tradeId: 2 }), createTrade({ tradeId: 1 })];
     expect(
       applySortToTrades(trades, { column: "tradeId", direction: null }),
     ).toBe(trades);
@@ -106,9 +106,9 @@ describe("applySortToTrades", () => {
 
   it("sorts numbers ascending and descending", () => {
     const trades = [
-      trade({ tradeId: 3, notional: 300 }),
-      trade({ tradeId: 1, notional: 100 }),
-      trade({ tradeId: 2, notional: 200 }),
+      createTrade({ tradeId: 3, notional: 300 }),
+      createTrade({ tradeId: 1, notional: 100 }),
+      createTrade({ tradeId: 2, notional: 200 }),
     ];
 
     const asc = applySortToTrades(trades, {
@@ -133,9 +133,9 @@ describe("applySortToTrades", () => {
 
   it("sorts strings case-insensitively ascending and descending", () => {
     const trades = [
-      trade({ tradeName: "charlie" }),
-      trade({ tradeName: "Alice" }),
-      trade({ tradeName: "bob" }),
+      createTrade({ tradeName: "charlie" }),
+      createTrade({ tradeName: "Alice" }),
+      createTrade({ tradeName: "bob" }),
     ];
 
     const asc = applySortToTrades(trades, {
@@ -160,9 +160,9 @@ describe("applySortToTrades", () => {
 
   it("sorts ISO date strings lexicographically", () => {
     const trades = [
-      trade({ tradeId: 1, tradeDate: "2026-03-01" }),
-      trade({ tradeId: 2, tradeDate: "2026-01-01" }),
-      trade({ tradeId: 3, tradeDate: "2026-02-01" }),
+      createTrade({ tradeId: 1, tradeDate: "2026-03-01" }),
+      createTrade({ tradeId: 2, tradeDate: "2026-01-01" }),
+      createTrade({ tradeId: 3, tradeDate: "2026-02-01" }),
     ];
 
     const asc = applySortToTrades(trades, {
@@ -177,14 +177,17 @@ describe("applySortToTrades", () => {
   });
 
   it("does not mutate the original array", () => {
-    const trades = [trade({ notional: 200 }), trade({ notional: 100 })];
+    const trades = [
+      createTrade({ notional: 200 }),
+      createTrade({ notional: 100 }),
+    ];
     const before = [...trades];
     applySortToTrades(trades, { column: "notional", direction: "asc" });
     expect(trades).toEqual(before);
   });
 });
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 1,
     tradeName: "Alice",

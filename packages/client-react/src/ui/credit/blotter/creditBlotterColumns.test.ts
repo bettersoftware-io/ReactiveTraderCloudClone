@@ -39,58 +39,70 @@ describe("CREDIT_COLUMNS metadata", () => {
 });
 
 describe("formatCreditCell", () => {
-  it("formats an ISO trade date as DD-Mon-YYYY", () => {
+  it("formats an ISO createTrade date as DD-Mon-YYYY", () => {
     expect(
-      formatCreditCell(trade({ tradeDate: "2024-03-05" }), colFor("tradeDate")),
+      formatCreditCell(
+        createTrade({ tradeDate: "2024-03-05" }),
+        colFor("tradeDate"),
+      ),
     ).toBe("05-Mar-2024");
   });
 
-  it("returns the raw string for an unparseable trade date", () => {
+  it("returns the raw string for an unparseable createTrade date", () => {
     // Mirrors formatFxCell's same guard (blotterColumns.test.ts). Rows built by
     // creditTradesVm always carry a valid ISO slice, so this is the fallback
     // for a row that reached the formatter from anywhere else — it must render
     // what it was given rather than "NaN-undefined-NaN".
     expect(
-      formatCreditCell(trade({ tradeDate: "not-a-date" }), colFor("tradeDate")),
+      formatCreditCell(
+        createTrade({ tradeDate: "not-a-date" }),
+        colFor("tradeDate"),
+      ),
     ).toBe("not-a-date");
   });
 
   it("renders the status column as the constant Accepted", () => {
     // Every derived credit row is an accepted quote, so the column is a label
     // rather than a field read.
-    expect(formatCreditCell(trade(), colFor("status"))).toBe("Accepted");
+    expect(formatCreditCell(createTrade(), colFor("status"))).toBe("Accepted");
   });
 
   it("formats quantity with thousands separators and no decimals", () => {
     expect(
-      formatCreditCell(trade({ quantity: 2_500_000 }), colFor("quantity")),
+      formatCreditCell(
+        createTrade({ quantity: 2_500_000 }),
+        colFor("quantity"),
+      ),
     ).toBe("2,500,000");
   });
 
   it("prefixes the unit price with a dollar sign", () => {
     expect(
-      formatCreditCell(trade({ unitPrice: 99.5 }), colFor("unitPrice")),
+      formatCreditCell(createTrade({ unitPrice: 99.5 }), colFor("unitPrice")),
     ).toBe("$99.5");
   });
 
   it("stringifies other columns directly", () => {
-    expect(formatCreditCell(trade({ tradeId: 7001 }), colFor("tradeId"))).toBe(
-      "7001",
-    );
+    expect(
+      formatCreditCell(createTrade({ tradeId: 7001 }), colFor("tradeId")),
+    ).toBe("7001");
     expect(
       formatCreditCell(
-        trade({ direction: Direction.Sell }),
+        createTrade({ direction: Direction.Sell }),
         colFor("direction"),
       ),
     ).toBe("Sell");
     expect(
-      formatCreditCell(trade({ counterParty: "Citi" }), colFor("counterParty")),
+      formatCreditCell(
+        createTrade({ counterParty: "Citi" }),
+        colFor("counterParty"),
+      ),
     ).toBe("Citi");
-    expect(formatCreditCell(trade(), colFor("orderType"))).toBe("AON");
+    expect(formatCreditCell(createTrade(), colFor("orderType"))).toBe("AON");
   });
 });
 
-function trade(over: Partial<CreditTrade> = {}): CreditTrade {
+function createTrade(over: Partial<CreditTrade> = {}): CreditTrade {
   return {
     tradeId: 7001,
     status: "accepted",

@@ -16,7 +16,9 @@ afterEach(() => {
 describe("EqBlotterPanel — view selection", () => {
   it("renders OrdersTable by default (DEFAULT_EQ_BLOTTER_VIEW is orders)", () => {
     const panel = mount(EqBlotterPanel, {
-      equities: { orders: [order({ id: "eq-1" }), order({ id: "eq-2" })] },
+      equities: {
+        orders: [createOrder({ id: "eq-1" }), createOrder({ id: "eq-2" })],
+      },
     });
 
     expect(panel.ordersRowCount()).toBe(2);
@@ -36,14 +38,16 @@ describe("EqBlotterPanel — view selection", () => {
 describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
   it("does not flash any row on the initial mount", () => {
     const panel = mount(EqBlotterPanel, {
-      equities: { orders: [order({ id: "eq-1" }), order({ id: "eq-2" })] },
+      equities: {
+        orders: [createOrder({ id: "eq-1" }), createOrder({ id: "eq-2" })],
+      },
     });
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
     expect(panel.isNewOrder("eq-2")).toBe(false);
   });
 
-  it("flags the newly appeared order after a push, and moves the flag when another appears", () => {
+  it("flags the newly appeared createOrder after a push, and moves the flag when another appears", () => {
     const world = createWorld(
       undefined,
       undefined,
@@ -54,28 +58,31 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
       undefined,
       undefined,
       undefined,
-      { orders: [order({ id: "eq-1" })] },
+      { orders: [createOrder({ id: "eq-1" })] },
     );
     const panel = mountWith(world, EqBlotterPanel, {});
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
 
-    panel.setEquityOrders([order({ id: "eq-1" }), order({ id: "eq-2" })]);
+    panel.setEquityOrders([
+      createOrder({ id: "eq-1" }),
+      createOrder({ id: "eq-2" }),
+    ]);
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
     expect(panel.isNewOrder("eq-2")).toBe(true);
 
     panel.setEquityOrders([
-      order({ id: "eq-1" }),
-      order({ id: "eq-2" }),
-      order({ id: "eq-3" }),
+      createOrder({ id: "eq-1" }),
+      createOrder({ id: "eq-2" }),
+      createOrder({ id: "eq-3" }),
     ]);
 
     expect(panel.isNewOrder("eq-2")).toBe(false);
     expect(panel.isNewOrder("eq-3")).toBe(true);
   });
 
-  it("a status-only update on the same ids is not treated as a new order", () => {
+  it("a status-only update on the same ids is not treated as a new createOrder", () => {
     const world = createWorld(
       undefined,
       undefined,
@@ -86,17 +93,17 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
       undefined,
       undefined,
       undefined,
-      { orders: [order({ id: "eq-1", status: "new" })] },
+      { orders: [createOrder({ id: "eq-1", status: "new" })] },
     );
     const panel = mountWith(world, EqBlotterPanel, {});
 
-    panel.setEquityOrders([order({ id: "eq-1", status: "filled" })]);
+    panel.setEquityOrders([createOrder({ id: "eq-1", status: "filled" })]);
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
   });
 });
 
-function order(overrides: Partial<EquityOrder> = {}): EquityOrder {
+function createOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
   return {
     id: "eq-1",
     symbol: "AAPL",

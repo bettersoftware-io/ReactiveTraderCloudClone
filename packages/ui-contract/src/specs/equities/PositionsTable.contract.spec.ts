@@ -21,7 +21,7 @@ describe("PositionsTable — empty state", () => {
 describe("PositionsTable — rows", () => {
   it("derives Mkt Value as qty × markPrice", () => {
     const table = mount(PositionsTable, {
-      props: { positions: [position({ qty: 1000, markPrice: 185 })] },
+      props: { positions: [createPosition({ qty: 1000, markPrice: 185 })] },
     });
 
     expect(table.mktValueTextOf("AAPL")).toBe("$185,000");
@@ -29,7 +29,7 @@ describe("PositionsTable — rows", () => {
 
   it("colors P/L positive for profit", () => {
     const table = mount(PositionsTable, {
-      props: { positions: [position({ unrealisedPnl: 5000 })] },
+      props: { positions: [createPosition({ unrealisedPnl: 5000 })] },
     });
 
     expect(table.pnlSignOf("AAPL")).toBe("pos");
@@ -40,7 +40,7 @@ describe("PositionsTable — rows", () => {
     const table = mount(PositionsTable, {
       props: {
         positions: [
-          position({ symbol: "MSFT", qty: -500, unrealisedPnl: -1200 }),
+          createPosition({ symbol: "MSFT", qty: -500, unrealisedPnl: -1200 }),
         ],
       },
     });
@@ -49,12 +49,12 @@ describe("PositionsTable — rows", () => {
     expect(table.plTextOf("MSFT")).toContain("-$1,200");
   });
 
-  it("renders a row per position and keeps the desk gauge visible", () => {
+  it("renders a row per createPosition and keeps the desk gauge visible", () => {
     const table = mount(PositionsTable, {
       props: {
         positions: [
-          position({ symbol: "AAPL", unrealisedPnl: 5000 }),
-          position({ symbol: "MSFT", qty: -500, unrealisedPnl: -5000 }),
+          createPosition({ symbol: "AAPL", unrealisedPnl: 5000 }),
+          createPosition({ symbol: "MSFT", qty: -500, unrealisedPnl: -5000 }),
         ],
       },
     });
@@ -64,7 +64,9 @@ describe("PositionsTable — rows", () => {
   });
 });
 
-function position(overrides: Partial<EquityPosition> = {}): EquityPosition {
+function createPosition(
+  overrides: Partial<EquityPosition> = {},
+): EquityPosition {
   return {
     symbol: "AAPL",
     qty: 1000,

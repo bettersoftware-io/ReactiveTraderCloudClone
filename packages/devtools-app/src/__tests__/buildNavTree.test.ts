@@ -5,7 +5,7 @@ import type { InspectorState, LogRow } from "@rtc/devtools-core";
 import { buildNavTree, wireHealthLine } from "#/nav/buildNavTree";
 
 test("four roots in order; All counts every visible row", () => {
-  const tree = buildNavTree(stateWith(), createEmissionLog());
+  const tree = buildNavTree(createInspectorState(), createEmissionLog());
 
   expect(
     tree.map((n) => {
@@ -23,7 +23,11 @@ test("four roots in order; All counts every visible row", () => {
 });
 
 test("presenters group streams with leaf labels, counts and lastSeq rolled up", () => {
-  const presenters = buildNavTree(stateWith(), createEmissionLog())[1];
+  const presenters = buildNavTree(
+    createInspectorState(),
+    createEmissionLog(),
+  )[1];
+
   const blotter = presenters?.children.find((n) => {
     return n.id === "presenter:blotter";
   });
@@ -55,7 +59,7 @@ test("presenters group streams with leaf labels, counts and lastSeq rolled up", 
 });
 
 test("machines group by kind → instance with disposed flag and arg summary", () => {
-  const machines = buildNavTree(stateWith(), createEmissionLog())[2];
+  const machines = buildNavTree(createInspectorState(), createEmissionLog())[2];
   const tile = machines?.children.find((n) => {
     return n.id === "machineKind:tileExecution";
   });
@@ -77,7 +81,7 @@ test("machines group by kind → instance with disposed flag and arg summary", (
 });
 
 test("wire root lists msgTypes with counts and carries the health line", () => {
-  const wire = buildNavTree(stateWith(), createEmissionLog())[3];
+  const wire = buildNavTree(createInspectorState(), createEmissionLog())[3];
 
   expect(wire).toMatchObject({ count: 1, lastSeq: 5 });
   expect(
@@ -89,7 +93,7 @@ test("wire root lists msgTypes with counts and carries the health line", () => {
 });
 
 test("an empty visible log (just cleared) zeroes every count but keeps the structure", () => {
-  const tree = buildNavTree(stateWith(), []);
+  const tree = buildNavTree(createInspectorState(), []);
 
   expect(tree[0]?.count).toBe(0);
   expect(tree[1]?.children.length).toBe(2);
@@ -117,7 +121,7 @@ test("wireHealthLine counts wire:out too, and the wire root sorts multiple msgTy
 
   expect(wireHealthLine(log)).toBe("▼ 0.1 in/s · ▲ 0.1 out/s · reconnects: 0");
 
-  const wire = buildNavTree(stateWithMachines([]), log)[3];
+  const wire = buildNavTree(createInspectorStateWithMachines([]), log)[3];
 
   expect(
     wire?.children.map((n) => {
@@ -127,7 +131,7 @@ test("wireHealthLine counts wire:out too, and the wire root sorts multiple msgTy
 });
 
 test("a machine with null args gets no arg summary in its label", () => {
-  const state = stateWithMachines([
+  const state = createInspectorStateWithMachines([
     { ...machineRow("m1", "tileExecution"), args: null },
   ]);
   const machines = buildNavTree(state, [])[2];
@@ -139,18 +143,18 @@ test("a machine with null args gets no arg summary in its label", () => {
 });
 
 test("machines the log still references but the store evicted surface as one Evicted leaf", () => {
-  const state = stateWithMachines([]); // no live rows
+  const state = createInspectorStateWithMachines([]); // no live rows
   // Two evicted machines, but an UNEQUAL number of logged rows each (3 + 2
   // = 5 rows total) — a fixture where machine-count and row-count coincide
   // (e.g. one row per machine) would still pass if the label and the count
   // were accidentally computed off the same accumulator. `label` must
   // report the MACHINE count (2); `count` must report the ROW count (5).
   const log = [
-    machineEventRow({ machineId: "ghost-1", seq: 1 }),
-    machineEventRow({ machineId: "ghost-1", seq: 2 }),
-    machineEventRow({ machineId: "ghost-1", seq: 3 }),
-    machineEventRow({ machineId: "ghost-2", seq: 4 }),
-    machineEventRow({ machineId: "ghost-2", seq: 5 }),
+    createMachineEventRow({ machineId: "ghost-1", seq: 1 }),
+    createMachineEventRow({ machineId: "ghost-1", seq: 2 }),
+    createMachineEventRow({ machineId: "ghost-1", seq: 3 }),
+    createMachineEventRow({ machineId: "ghost-2", seq: 4 }),
+    createMachineEventRow({ machineId: "ghost-2", seq: 5 }),
   ];
   const machines = buildNavTree(state, log)[2];
 
@@ -164,8 +168,10 @@ test("machines the log still references but the store evicted surface as one Evi
 });
 
 test("no Evicted leaf when every logged machine is still in state", () => {
-  const state = stateWithMachines([machineRow("m1", "tileExecution")]);
-  const log = [machineEventRow({ machineId: "m1", seq: 1 })];
+  const state = createInspectorStateWithMachines([
+    machineRow("m1", "tileExecution"),
+  ]);
+  const log = [createMachineEventRow({ machineId: "m1", seq: 1 })];
   const machines = buildNavTree(state, log)[2];
 
   expect(
@@ -176,7 +182,7 @@ test("no Evicted leaf when every logged machine is still in state", () => {
 });
 
 test("presenter and machine-kind roots order by localeCompare, not code-unit sort", () => {
-  const state = stateWith({
+  const state = createInspectorState({
     presenters: ["b", "a", "B"],
     machineKinds: ["b", "a", "B"],
   });
@@ -198,7 +204,7 @@ interface MachineEventRowOverrides {
   seq: number;
 }
 
-function machineEventRow(overrides: MachineEventRowOverrides): LogRow {
+function createMachineEventRow(overrides: MachineEventRowOverrides): LogRow {
   const { machineId, seq } = overrides;
   const ts = 1000 + seq;
 
@@ -218,7 +224,7 @@ function machineEventRow(overrides: MachineEventRowOverrides): LogRow {
   };
 }
 
-function stateWithMachines(
+function createInspectorStateWithMachines(
   machines: readonly InspectorState["machines"][number][],
 ): InspectorState {
   return {
@@ -237,7 +243,7 @@ interface StateOverrides {
   machineKinds?: readonly string[];
 }
 
-function stateWith(overrides?: StateOverrides): InspectorState {
+function createInspectorState(overrides?: StateOverrides): InspectorState {
   if (overrides === undefined) {
     return {
       connected: true,
