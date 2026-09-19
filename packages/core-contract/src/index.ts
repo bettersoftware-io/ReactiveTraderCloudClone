@@ -2,7 +2,16 @@ import type { MakeHarness } from "#/harness/harness";
 import { CONTRACT_SUITES, type ContractMember } from "#/registry";
 import { describePortDisciplineContract } from "#/suites/portDiscipline";
 
+export { type FakeClock, withFakeClock } from "#/harness/clock";
 export { type Collected, collect } from "#/harness/collect";
+export {
+  createPositionUpdates,
+  createPrice,
+  createTick,
+  createTrade,
+  EURUSD,
+  GBPUSD,
+} from "#/harness/fixtures";
 export type { CoreHarness, MakeHarness, Suite } from "#/harness/harness";
 export {
   type PortMethodName,
