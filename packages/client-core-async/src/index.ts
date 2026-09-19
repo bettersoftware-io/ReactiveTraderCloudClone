@@ -4,6 +4,7 @@ export {
   storeToStateStream,
   topicToStream,
 } from "#/bridge/out";
+export { createCommands } from "#/commands";
 export {
   ASYNC_CORE_BRAND,
   asyncCore,
@@ -23,3 +24,10 @@ export {
   type TopicOptions,
 } from "#/kernel/topic";
 export { untilAborted } from "#/kernel/untilAborted";
+export { createConnectionPresenter } from "#/presenters/connection";
+export {
+  createPowerSaverPresenter,
+  createThemeSkinPreferencePresenter,
+  createViewModePreferencePresenter,
+} from "#/presenters/preferences";
+export { createThemePreferencePresenter } from "#/presenters/themePreference";
