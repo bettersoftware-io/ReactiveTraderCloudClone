@@ -99,11 +99,15 @@ export type { Price, PriceTick } from "./fx/price.js";
 export {
   calculateSpread,
   detectMovement,
+  PRICE_CONFLATION_MS,
+  PRICE_HISTORY_CONFLATION_MS,
   PRICE_HISTORY_SIZE,
   PriceMovementType,
 } from "./fx/price.js";
 export type { ExecutionRequest, Trade } from "./fx/trade.js";
 export {
+  ACTIVITY_FEED_CAP,
+  BLOTTER_ROW_HIGHLIGHT_MS,
   CONFIRMATION_DISMISS_MS,
   Direction,
   deriveDealtCurrency,

@@ -17,12 +17,20 @@ import {
   EXECUTION_TIMEOUT_MS,
   type ExecuteTradeInput,
   type ExecuteTradeResult,
-  ExecutionStatus,
   type Price,
   TOO_LONG_THRESHOLD_MS,
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
+import {
+  finishedTileExecution,
+  isTerminalTileExecution,
+  READY_TILE_EXECUTION,
+  STARTED_TILE_EXECUTION,
+  TIMED_OUT_TILE_EXECUTION,
+  TIMEOUT_TILE_EXECUTION,
+  TOO_LONG_TILE_EXECUTION,
+} from "./tileExecutionState.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -39,13 +47,6 @@ interface ExecuteCommand {
   direction: Direction;
   price: Price;
   notional: number;
-}
-
-const READY: TileExecutionState = { status: "ready" };
-
-/** True for the two states from which no further escalation is allowed. */
-function isTerminal(s: TileExecutionState): boolean {
-  return s.status === "finished" || s.status === "timeout";
 }
 
 export function createTileExecutionMachine(
@@ -65,17 +66,10 @@ export function createTileExecutionMachine(
 
       const result$: Observable<TileExecutionState> = deps.execute(input).pipe(
         map((r): TileExecutionState => {
-          return {
-            status: "finished",
-            executionStatus: r.status,
-            trade: r.trade,
-          };
+          return finishedTileExecution(r);
         }),
         catchError(() => {
-          return of<TileExecutionState>({
-            status: "finished",
-            executionStatus: ExecutionStatus.Timeout,
-          });
+          return of<TileExecutionState>(TIMED_OUT_TILE_EXECUTION);
         }),
       );
 
@@ -83,7 +77,7 @@ export function createTileExecutionMachine(
         TOO_LONG_THRESHOLD_MS,
       ).pipe(
         map((): TileExecutionState => {
-          return { status: "tooLong" };
+          return TOO_LONG_TILE_EXECUTION;
         }),
       );
 
@@ -91,26 +85,23 @@ export function createTileExecutionMachine(
         EXECUTION_TIMEOUT_MS,
       ).pipe(
         map((): TileExecutionState => {
-          return { status: "timeout" };
+          return TIMEOUT_TILE_EXECUTION;
         }),
       );
 
       // started first, then the three racing escalations, collapsed.
       const lifecycle$ = concat(
-        of<TileExecutionState>({ status: "started" }),
+        of<TileExecutionState>(STARTED_TILE_EXECUTION),
         merge(result$, tooLong$, timeout$).pipe(
-          scan(
-            (acc: TileExecutionState, next: TileExecutionState) => {
-              // Once terminal, ignore everything that follows (late result, or a
-              // tooLong that fires after the run already settled).
-              if (isTerminal(acc)) {
-                return acc;
-              }
+          scan((acc: TileExecutionState, next: TileExecutionState) => {
+            // Once terminal, ignore everything that follows (late result, or a
+            // tooLong that fires after the run already settled).
+            if (isTerminalTileExecution(acc)) {
+              return acc;
+            }
 
-              return next;
-            },
-            { status: "started" } as TileExecutionState,
-          ),
+            return next;
+          }, STARTED_TILE_EXECUTION as TileExecutionState),
           distinctUntilChanged(),
         ),
       );
@@ -120,12 +111,12 @@ export function createTileExecutionMachine(
       // the user dismisses — mirroring the old hook's clearTimers() on dismiss().
       return lifecycle$.pipe(
         switchMap((s) => {
-          return isTerminal(s)
+          return isTerminalTileExecution(s)
             ? concat(
                 of(s),
                 timer(CONFIRMATION_DISMISS_MS).pipe(
                   map(() => {
-                    return READY;
+                    return READY_TILE_EXECUTION;
                   }),
                 ),
               )
@@ -140,12 +131,15 @@ export function createTileExecutionMachine(
     runs$,
     dismiss$.pipe(
       map(() => {
-        return READY;
+        return READY_TILE_EXECUTION;
       }),
     ),
   );
 
-  const state$: StateObservable<TileExecutionState> = state(stream$, READY);
+  const state$: StateObservable<TileExecutionState> = state(
+    stream$,
+    READY_TILE_EXECUTION,
+  );
 
   // Keep state$ warm so it carries its default before useMachine first renders.
   const warm = state$.subscribe();

@@ -2,21 +2,32 @@ import type { AppCommands, MachineFactories, Presenters } from "@rtc/core-api";
 
 import type { Suite } from "#/harness/harness";
 import { describeAmbientStyleContract } from "#/suites/ambientStyle";
+import { describeAnalyticsContract } from "#/suites/analytics";
+import { describeAnalyticsStaleFlagContract } from "#/suites/analyticsStaleFlag";
 import { describeAnimatedBackgroundContract } from "#/suites/animatedBackground";
+import { describeBlotterContract } from "#/suites/blotter";
 import { describeBootPreferenceContract } from "#/suites/bootPreference";
 import { describeChartSubstrateContract } from "#/suites/chartSubstrate";
 import { describeConnectionContract } from "#/suites/connection";
 import { describeCreditRfqFilterPreferenceContract } from "#/suites/creditRfqFilterPreference";
+import { describeCurrencyPairsContract } from "#/suites/currencyPairs";
 import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
+import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
 import { describeLayoutEngineContract } from "#/suites/layoutEngine";
 import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
+import { describeNotionalContract } from "#/suites/notional";
 import { describePowerSaverContract } from "#/suites/powerSaver";
+import { describePriceHistoryContract } from "#/suites/priceHistory";
+import { describePriceStreamContract } from "#/suites/priceStream";
 import { describeReconnectContract } from "#/suites/reconnect";
+import { describeRowHighlightContract } from "#/suites/rowHighlight";
+import { describeStaleFlagContract } from "#/suites/staleFlag";
 import { describeThemePreferenceContract } from "#/suites/themePreference";
 import { describeThemeSkinPreferenceContract } from "#/suites/themeSkinPreference";
+import { describeTileExecutionContract } from "#/suites/tileExecution";
 import { describeViewModePreferenceContract } from "#/suites/viewModePreference";
 
 type PresenterMember = `presenters.${keyof Presenters & string}`;
@@ -31,13 +42,13 @@ export type ContractMember = PresenterMember | MachineMember | CommandMember;
  * suite, or `null` while it is pending (then it must also appear in
  * `PENDING_SUITES`, which `registry.test.ts` enforces). */
 export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
-  "presenters.priceStream": null,
-  "presenters.priceHistory": null,
-  "presenters.execution": null,
-  "presenters.blotter": null,
-  "presenters.analytics": null,
+  "presenters.priceStream": describePriceStreamContract,
+  "presenters.priceHistory": describePriceHistoryContract,
+  "presenters.execution": describeExecutionContract,
+  "presenters.blotter": describeBlotterContract,
+  "presenters.analytics": describeAnalyticsContract,
   "presenters.rfqs": null,
-  "presenters.currencyPairs": null,
+  "presenters.currencyPairs": describeCurrencyPairsContract,
   "presenters.instruments": null,
   "presenters.dealers": null,
   "presenters.connection": describeConnectionContract,
@@ -92,12 +103,12 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.workspaceLayoutResets$": null,
   "presenters.jarvisDriver": null,
   "presenters.jarvisDemo": null,
-  "machines.tileExecution": null,
+  "machines.tileExecution": describeTileExecutionContract,
   "machines.rfqTile": null,
-  "machines.staleFlag": null,
-  "machines.analyticsStaleFlag": null,
-  "machines.rowHighlight": null,
-  "machines.notional": null,
+  "machines.staleFlag": describeStaleFlagContract,
+  "machines.analyticsStaleFlag": describeAnalyticsStaleFlagContract,
+  "machines.rowHighlight": describeRowHighlightContract,
+  "machines.notional": describeNotionalContract,
   "machines.rfqSubmission": null,
   "machines.ticketSubmission": null,
   "machines.layout": null,
@@ -111,13 +122,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
  * the drift test fails if this list and the `null`s above disagree, so a
  * member cannot silently lose its suite. Shrinks slice by slice. */
 export const PENDING_SUITES: readonly ContractMember[] = [
-  "presenters.priceStream",
-  "presenters.priceHistory",
-  "presenters.execution",
-  "presenters.blotter",
-  "presenters.analytics",
   "presenters.rfqs",
-  "presenters.currencyPairs",
   "presenters.instruments",
   "presenters.dealers",
   "presenters.rfqQuote",
@@ -154,12 +159,7 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.workspaceLayoutResets$",
   "presenters.jarvisDriver",
   "presenters.jarvisDemo",
-  "machines.tileExecution",
   "machines.rfqTile",
-  "machines.staleFlag",
-  "machines.analyticsStaleFlag",
-  "machines.rowHighlight",
-  "machines.notional",
   "machines.rfqSubmission",
   "machines.ticketSubmission",
   "machines.layout",
