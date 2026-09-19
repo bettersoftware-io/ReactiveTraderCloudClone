@@ -57,7 +57,7 @@ ruleTester.run("no-minified-json-literal", noMinifiedJsonLiteral, {
     },
     {
       name: "a template literal WITH interpolation is composed, not pasted",
-      code: 'const blob = `{"id":${id},"name":"${name}"}`;\n',
+      code: `const blob = \`{"id":\${id},"name":"\${name}"}\`;\n`,
     },
     {
       name: "the sanctioned shape — an object literal plus JSON.stringify",

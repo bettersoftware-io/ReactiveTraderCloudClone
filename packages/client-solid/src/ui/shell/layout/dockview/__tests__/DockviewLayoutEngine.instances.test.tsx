@@ -410,8 +410,6 @@ function pinnedIdsOf(store: InMemoryDockLayoutStore): readonly string[] {
   });
 }
 
-function noop(): void {}
-
 /** A stand-in for `instanceRegistryFor` with its exact identity behaviour —
  * a FRESH closure per instance on every call — minus the real ChartPanel
  * (which needs the whole ViewModel). */

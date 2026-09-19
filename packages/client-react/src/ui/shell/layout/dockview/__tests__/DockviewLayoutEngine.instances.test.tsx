@@ -1,4 +1,3 @@
-import { type ReactElement, StrictMode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -11,8 +10,6 @@ import {
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
-
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
 // (see DockviewLayoutEngine.docked.test.tsx for the typed-stub rationale).
@@ -309,8 +306,6 @@ describe("DockviewLayoutEngine instance pins", () => {
     expectInstanceUnpinnedBesidePinnedDock(inner);
   });
 });
-
-function noop(): void {}
 
 interface RecordingStore {
   store: DockLayoutStore;
