@@ -232,7 +232,11 @@
   pointer-events: none;
   border: 2px solid var(--accent-primary, #22d3ee);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent-primary, #22d3ee) 18%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--accent-primary, #22d3ee) 18%,
+    transparent
+  );
 }
 
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —

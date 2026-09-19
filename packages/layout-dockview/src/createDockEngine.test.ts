@@ -5083,44 +5083,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     });
 
     describe("drag-to-dock: Shift during a head move docks the float", () => {
-      /** Floats fx-analytics, presses its head, and points every hit-test at
-       * fx-rates' group, laid out as a 400×300 box at the origin (jsdom has
-       * no `elementsFromPoint` and lays nothing out). */
-      function moveAnalyticsOverRates(
-        container: HTMLElement,
-        engine: ReturnType<typeof createDockEngine>,
-      ): () => void {
-        const { head } = floatedHead(container, engine, "fx-analytics");
-        const rates = lastDockviewApi().getPanel("fx-rates")?.group.element;
-
-        if (rates === undefined) {
-          throw new Error("fx-rates is not in the dock");
-        }
-
-        const restoreHits = stubElementsFromPoint([rates]);
-        const rect = vi
-          .spyOn(rates, "getBoundingClientRect")
-          .mockReturnValue(new DOMRect(0, 0, 400, 300));
-
-        pressOn(head.querySelector(".probe-title") as Element);
-
-        return () => {
-          restoreHits();
-          rect.mockRestore();
-        };
-      }
-
-      function pointerAt(
-        type: string,
-        x: number,
-        y: number,
-        shiftKey: boolean,
-      ): void {
-        window.dispatchEvent(
-          new PointerEvent(type, { clientX: x, clientY: y, shiftKey }),
-        );
-      }
-
       it("docks beside the group under the pointer, on the nearest side", () => {
         const container = sizedContainer(1440, 900);
         const engine = createDockEngine(probeHeads(container));
@@ -5170,6 +5132,44 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
         restore();
         engine.dispose();
       });
+
+      /** Floats fx-analytics, presses its head, and points every hit-test at
+       * fx-rates' group, laid out as a 400×300 box at the origin (jsdom has
+       * no `elementsFromPoint` and lays nothing out). */
+      function moveAnalyticsOverRates(
+        container: HTMLElement,
+        engine: ReturnType<typeof createDockEngine>,
+      ): () => void {
+        const { head } = floatedHead(container, engine, "fx-analytics");
+        const rates = lastDockviewApi().getPanel("fx-rates")?.group.element;
+
+        if (rates === undefined) {
+          throw new Error("fx-rates is not in the dock");
+        }
+
+        const restoreHits = createStubElementsFromPoint([rates]);
+        const rect = vi
+          .spyOn(rates, "getBoundingClientRect")
+          .mockReturnValue(new DOMRect(0, 0, 400, 300));
+
+        pressOn(head.querySelector(".probe-title") as Element);
+
+        return () => {
+          restoreHits();
+          rect.mockRestore();
+        };
+      }
+
+      function pointerAt(
+        type: string,
+        x: number,
+        y: number,
+        shiftKey: boolean,
+      ): void {
+        window.dispatchEvent(
+          new PointerEvent(type, { clientX: x, clientY: y, shiftKey }),
+        );
+      }
     });
 
     it("never touches a head that is in the grid", () => {
@@ -6259,10 +6259,10 @@ function spyOnGroupSizing(panelId: string): SizingCensus {
 
 /** Points `document.elementsFromPoint` — absent in jsdom — at `hits`, and
  * returns the undo. */
-function stubElementsFromPoint(hits: readonly Element[]): () => void {
+function createStubElementsFromPoint(hits: readonly Element[]): () => void {
   const original = document.elementsFromPoint;
 
-  document.elementsFromPoint = () => {
+  document.elementsFromPoint = (): Element[] => {
     return [...hits];
   };
 
