@@ -6,6 +6,11 @@ import type { ConnectionEvent, ConnectionEventsPort } from "@rtc/domain";
 export interface ScriptedDriver {
   /** Push one connection event into the stream the core observes. */
   emitConnection(event: ConnectionEvent): void;
+  /** Error the connection-event stream the core observes — a real source
+   * failure, not a domain event, so it reaches `Collected.errors` rather
+   * than folding into a status value. Terminal, like the Subject it drives:
+   * a later `emitConnection`/`failConnection` is a no-op after this. */
+  failConnection(error: unknown): void;
   /** The merged connection-event stream the core sees — includes whatever
    * the runner's base port carries (e.g. the RxJS core's `reconnect$`). */
   connectionEvents$(): Stream<ConnectionEvent>;
@@ -55,6 +60,9 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     driver: {
       emitConnection: (event: ConnectionEvent) => {
         connection$.next(event);
+      },
+      failConnection: (error: unknown) => {
+        connection$.error(error);
       },
       connectionEvents$: () => {
         return events$;

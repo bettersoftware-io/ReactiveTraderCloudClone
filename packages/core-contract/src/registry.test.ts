@@ -27,4 +27,22 @@ describe("core-contract registry", () => {
       expect(CONTRACT_SUITES[member]).not.toBeNull();
     }
   });
+
+  it("slice 1b members have suites", () => {
+    for (const member of [
+      "presenters.creditRfqFilterPreference",
+      "presenters.eqWatchlistSortPreference",
+      "presenters.eqBlotterViewPreference",
+      "presenters.bootPreference",
+      "presenters.loginWaitPreferences",
+      "presenters.jarvisPreferences",
+      "presenters.animatedBackground",
+      "presenters.ambientStyle",
+      "presenters.chartSubstrate",
+      "presenters.layoutEngine",
+      "presenters.forceBootAnimation",
+    ] as const) {
+      expect(CONTRACT_SUITES[member]).not.toBeNull();
+    }
+  });
 });
