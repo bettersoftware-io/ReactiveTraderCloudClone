@@ -313,6 +313,57 @@ export async function popoutBlotterFollowsTheAppTheme(
   await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
 }
 
+/** The FX rail's 360px design width, which pins fx-analytics. */
+const ANALYTICS_DESIGN_WIDTH_PX = 360;
+/** Card-edge rounding the rail's docked width may show. */
+const RAIL_WIDTH_SLACK_PX = 2;
+
+/**
+ * Floats the pinned FX rail panel, pops it OUT of its float, closes the
+ * window, and proves the round trip ends where it began: the panel returns to
+ * its float (dockview's pop-out docks home to the group it came from), and
+ * docking it from there re-clamps the rail at its design width. Needs a real
+ * browser — jsdom only reaches a blocked pop-out. Its first run caught a
+ * regression before merge: the pop-out theme mirror read the closing
+ * window's document inside dockview's remove event, the throw aborted the
+ * dock-home, and the panel vanished from the app.
+ */
+export async function floatedRailPanelPopsOutAndComesBack(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.layout.floatPanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const popup = await ctx.po.layout.popoutPanel(ANALYTICS_PANEL_ID);
+
+  await ctx.po.layout.waitDockPopped([ANALYTICS_PANEL_ID], POPUP_TIMEOUT_MS);
+
+  await popup.closeFromInside();
+  await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(ANALYTICS_PANEL_ID),
+    "expected the panel back in its float after the pop-out closed",
+  );
+
+  await ctx.po.layout.dockPanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+
+  const docked = await ctx.po.layout.dockPanelWidth(ANALYTICS_PANEL_ID);
+
+  assertLte(
+    Math.abs(docked - ANALYTICS_DESIGN_WIDTH_PX),
+    RAIL_WIDTH_SLACK_PX,
+    `expected the rail back at its ${ANALYTICS_DESIGN_WIDTH_PX}px design width once docked, got ${docked}px`,
+  );
+}
+
 /** How far each float resize drags its handle, and how close the float's
  * box must follow: one 10-step drag's first step plus rounding. */
 const FLOAT_RESIZE_PX = 120;

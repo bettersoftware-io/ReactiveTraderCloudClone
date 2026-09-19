@@ -145,6 +145,15 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterResizesFromAnEdgeAndACorner(ctx);
   });
 
+  test("a floated rail panel pops out, comes back to its float, and docks at its design width", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatedRailPanelPopsOutAndComesBack(ctx);
+  });
+
   test("a popped-out panel's window wears the app theme and follows a light/dark switch", async ({
     ctx,
   }) => {

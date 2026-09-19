@@ -466,7 +466,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // root attributes into each one as it opens, and re-mirrors on every
   // change, so switching skin or mode repaints an open pop-out live.
   const openerRoot = opts.container.ownerDocument.documentElement;
-  const popoutRoots = new Set<HTMLElement>();
+  // Keyed by the pop-out's id, never re-read through its window: by the
+  // time dockview reports a pop-out REMOVED its window can already be gone
+  // (`window` is null when a pop-out of a floated panel closes), and a throw
+  // inside dockview's own emitter aborted the dock-home — the panel vanished.
+  const popoutRoots = new Map<string, HTMLElement>();
 
   /** Makes `target`'s attributes exactly `openerRoot`'s — the inline token
    * properties (`style`) and `data-skin` / `data-mode` among them. */
@@ -488,7 +492,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   /** Re-mirrors the opener's root into every open pop-out window. */
   function mirrorOpenerRootIntoPopouts(): void {
-    for (const root of popoutRoots) {
+    for (const root of popoutRoots.values()) {
       mirrorOpenerRootInto(root);
     }
   }
@@ -498,14 +502,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   openerRootObserver.observe(openerRoot, { attributes: true });
 
   const popoutAddSub = api.onDidAddPopoutGroup((popout) => {
-    const root = popout.window.document.documentElement;
+    // Typed non-null, but read defensively all the same: this runs inside
+    // dockview's emitter, where a throw aborts dockview's own transaction.
+    const root = (popout.window as Window | null)?.document.documentElement;
 
-    popoutRoots.add(root);
-    mirrorOpenerRootInto(root);
+    if (root !== undefined) {
+      popoutRoots.set(popout.id, root);
+      mirrorOpenerRootInto(root);
+    }
   });
 
   const popoutRemoveSub = api.onDidRemovePopoutGroup((popout) => {
-    popoutRoots.delete(popout.window.document.documentElement);
+    popoutRoots.delete(popout.id);
   });
 
   // The popped set, published like strips: recomputed on every layout
