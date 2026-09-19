@@ -173,14 +173,20 @@ added it — nothing had ever scored the repo. Triage, by class:
 | `PinnedDependencies` — `deploy.yml` flyctl (`curl … \| sh`) | **real** | **Deferred** to the deploy-workflow item in `docs/STATUS.md`: replacing a deploy-path installer can only be proven by a real deploy |
 | `PinnedDependencies` — `ios-visual-spike.yml` Maestro (`curl … \| bash`, ×2) | **real** | **Deferred**, tracked in `docs/STATUS.md`: a dispatch-only macOS spike — only a paid macOS run proves a changed installer |
 | `PinnedDependencies` — 18× `npmCommand`: the 13 + 4 workflow `npm install -g corepack` / `vercel` lines, plus the Dockerfile's corepack line | same lines zizmor's `adhoc-packages` flagged | **No change** — already decided above. Scorecard does not read zizmor's ignore comments and has no notion of "exact pin, zero deps"; dismiss in the UI citing this ADR |
-| `TokenPermissions` ×4 (high) — the four publishing jobs | **by design** — they push, so they need `contents: write` | **Tightened**, not cleared: `publish-site.yml` and `update-visual-goldens.yml` granted write at the *workflow* level; all four now grant it on the one job that pushes. Scorecard still warns on job-level write, correctly — that is what these jobs do |
+| `TokenPermissions` ×4 (high) — the four publishing jobs | **half real**: two of the four (`publish-site.yml`, `update-visual-goldens.yml`) granted `contents: write` at the *workflow* level, not on the job that pushes | **Fixed — and all four closed**, which was **not** what this ADR first predicted. The original text here read "tightened, not cleared: Scorecard still warns on job-level write". The re-score after the fix closed all four, *including the two job-level alerts on `visual.yml` and `coverage-report.yml`, which were never edited*. Likely mechanism (inferred from the outcome, not read from Scorecard's source): alerts are emitted per **check**, only workflow-level write deducts from the Token-Permissions score, and once the check reaches full marks every alert under it closes. Practical rule: grant write on the job, never the workflow |
 | `SecurityPolicy` | **real**, cheap | **Fixed**: root `SECURITY.md` (private vulnerability reporting was already enabled) |
 | `CodeReview`, `Fuzzing`, `CIIBestPractices` | structural — single maintainer, a demo, no fuzz targets | **No change**, as predicted above |
 | `BranchProtection` (high) | **unverified** — Scorecard's default token often cannot read rulesets, so this may be a false reading rather than a gap | **Open** — see Open items |
 
-This is the argument for *report-only* in concrete form: of 32 alerts, roughly
-25 describe decisions this ADR already made. As a gate, Scorecard would have
-demanded those be "fixed".
+**Outcome, measured on the re-score of `main` after the fixes landed (#777):
+32 → 25 open, 7 closed** — the Dockerfile pin, the actionlint installer,
+`SecurityPolicy`, and all four `TokenPermissions`.
+
+This is the argument for *report-only* in concrete form: the 25 that remain are
+the 18 `npmCommand` lines this ADR already ruled on, the 3 deferred installers,
+and 4 repo-level checks (`CodeReview`, `Fuzzing`, `CIIBestPractices`,
+`BranchProtection`). As a gate, Scorecard would have demanded the first group be
+"fixed".
 
 ## Considered and declined
 
