@@ -3,6 +3,7 @@ import {
   Exit,
   Layer,
   ManagedRuntime,
+  Option,
   Scope,
   Stream,
   SubscriptionRef,
@@ -12,10 +13,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
 
-import { fromObservable } from "#/bridge/in";
 import {
   type EffectHost,
   type FoldUpdate,
+  type FromPort,
   pushReconnectIntent,
   refToStateStream,
   sharedFold,
@@ -189,7 +190,7 @@ describe("bridge/out", () => {
   it("sharedFold() hands the seed to the first subscriber synchronously", () => {
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 1;
+        return Option.some(1);
       },
       run: () => {
         return Effect.never;
@@ -207,13 +208,17 @@ describe("bridge/out", () => {
     const subject = new Subject<number>();
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
-      run: (update: FoldUpdate<number>) => {
-        return fromObservable(subject).pipe(
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
           Stream.runForEach((e: number) => {
             return update((s) => {
-              return s + e;
+              return (
+                Option.getOrElse(s, () => {
+                  return 0;
+                }) + e
+              );
             });
           }),
         );
@@ -240,13 +245,17 @@ describe("bridge/out", () => {
     const subject = new Subject<number>();
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
-      run: (update: FoldUpdate<number>) => {
-        return fromObservable(subject).pipe(
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
           Stream.runForEach((e: number) => {
             return update((s) => {
-              return s + e;
+              return (
+                Option.getOrElse(s, () => {
+                  return 0;
+                }) + e
+              );
             });
           }),
         );
@@ -272,7 +281,7 @@ describe("bridge/out", () => {
     let starts = 0;
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         starts += 1;
@@ -302,7 +311,7 @@ describe("bridge/out", () => {
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
-        return 1;
+        return Option.some(1);
       },
       run: (update: FoldUpdate<number>) => {
         writes.push(update);
@@ -322,7 +331,11 @@ describe("bridge/out", () => {
     );
     await host.runtime.runPromise(
       (writes[0] as FoldUpdate<number>)((current) => {
-        return current + 1;
+        return (
+          Option.getOrElse(current, () => {
+            return 0;
+          }) + 1
+        );
       }),
     );
     await tick();
@@ -330,14 +343,14 @@ describe("bridge/out", () => {
     sub.unsubscribe();
   });
 
-  it("sharedFold() re-seeds on every cold → warm cycle and ignores a stale producer's writes", async () => {
+  it("sharedFold() re-seeds on every cold → warm cycle", async () => {
     const writes: FoldUpdate<number>[] = [];
     let seeds = 0;
     const host = useHost();
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
-        return seeds * 10;
+        return Option.some(seeds * 10);
       },
       run: (update: FoldUpdate<number>) => {
         writes.push(update);
@@ -359,12 +372,11 @@ describe("bridge/out", () => {
     expect(first).toEqual([10]);
     expect(second).toEqual([20]);
     expect(writes).toHaveLength(2);
-    // The FIRST warm period's producer writing after its period ended.
-    await host.runtime.runPromise(
-      (writes[0] as FoldUpdate<number>)(() => {
-        return 99;
-      }),
-    );
+    // The stale half of this case is gone with the generation counter: each
+    // period owns its OWN ref, so a dead period's producer writing late
+    // lands in a ref nothing is subscribed to — unobservable by
+    // construction, with nothing left to assert. What remains observable is
+    // that the LIVE period's writes still land.
     await host.runtime.runPromise(
       (writes[1] as FoldUpdate<number>)(() => {
         return 21;
@@ -375,11 +387,132 @@ describe("bridge/out", () => {
     secondSub.unsubscribe();
   });
 
+  it("sharedFold() with a None seed delivers nothing until the first write, then replays it", async () => {
+    const writes: FoldUpdate<number>[] = [];
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        return Option.none();
+      },
+      run: (update: FoldUpdate<number>) => {
+        writes.push(update);
+        return Effect.never;
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([]);
+    await tick();
+    await host.runtime.runPromise(
+      (writes[0] as FoldUpdate<number>)(() => {
+        return 7;
+      }),
+    );
+    await tick();
+    expect(seen).toEqual([7]);
+    const late: number[] = [];
+    const lateSub = stream.subscribe((v: number) => {
+      late.push(v);
+    });
+    expect(late).toEqual([7]);
+    lateSub.unsubscribe();
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() fails only the triggering subscriber when seed() throws, and starts no period", () => {
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        throw new Error("storage");
+      },
+      run: () => {
+        return Effect.never;
+      },
+    });
+    let failure: unknown;
+    stream.subscribe({
+      error: (e: unknown) => {
+        failure = e;
+      },
+    });
+    expect((failure as Error).message).toBe("storage");
+    // A second subscribe tries again (no period was left half-open).
+    let second: unknown;
+    stream.subscribe({
+      error: (e: unknown) => {
+        second = e;
+      },
+    });
+    expect((second as Error).message).toBe("storage");
+  });
+
+  it("sharedFold() a stale period's producer failing after a re-warm does not error the new period's subscribers", async () => {
+    let failFirst: (() => void) | undefined;
+    let runs = 0;
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: () => {
+        runs += 1;
+
+        if (runs === 1) {
+          return Effect.async<void, Error>((resume) => {
+            failFirst = () => {
+              resume(Effect.fail(new Error("stale")));
+            };
+          });
+        }
+
+        return Effect.never;
+      },
+    });
+    const first = stream.subscribe(() => {});
+    await tick();
+    first.unsubscribe();
+    // Before the close reaches the first producer, a new period starts …
+    const errors: unknown[] = [];
+    const second = stream.subscribe({
+      next: () => {},
+      error: (e: unknown) => {
+        errors.push(e);
+      },
+    });
+    // … and the first producer fails late.
+    failFirst?.();
+    await tick();
+    await tick();
+    expect(runs).toBe(2);
+    expect(errors).toEqual([]);
+    second.unsubscribe();
+  });
+
+  it("sharedFold() releases a port subscription its producer opened through fromPort but never ran", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: (_update: FoldUpdate<number>, fromPort: FromPort) => {
+        fromPort(subject);
+        return Effect.never;
+      },
+    });
+    const sub = stream.subscribe(() => {});
+    expect(subject.observed).toBe(true);
+    sub.unsubscribe();
+    await tick();
+    await tick();
+    expect(subject.observed).toBe(false);
+  });
+
   it("sharedFold() surfaces a producer failure as an Observable error", async () => {
     const boom = new Error("boom");
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.fail(boom);
@@ -405,7 +538,7 @@ describe("bridge/out", () => {
     // branch the rest of the suite doesn't reach.
     const stream = sharedFold(useHost(), {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.interrupt;
@@ -445,7 +578,7 @@ describe("bridge/out", () => {
     const stream = sharedFold(host, {
       seed: () => {
         seeds += 1;
-        return seeds;
+        return Option.some(seeds);
       },
       // Fails at once on the FIRST attempt (the failure whose synchronous
       // fan-out drives the race below); a live producer on any later one.
@@ -514,7 +647,7 @@ describe("bridge/out", () => {
     let errored = false;
     const stream = sharedFold(host, {
       seed: () => {
-        return 0;
+        return Option.some(0);
       },
       run: () => {
         return Effect.never.pipe(

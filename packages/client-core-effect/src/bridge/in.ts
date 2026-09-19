@@ -1,5 +1,5 @@
-import { Effect, Queue, Stream, Take } from "effect";
-import { type Observable, type Subscription, take } from "rxjs";
+import { Effect, Queue, Scope, Stream, Take } from "effect";
+import type { Observable, Subscription } from "rxjs";
 
 /** Push an Observable into an Effect Stream, subscribing SYNCHRONOUSLY, as a
  * side effect of calling `fromObservable` itself — not lazily, on first
@@ -42,9 +42,14 @@ import { type Observable, type Subscription, take } from "rxjs";
  * hoisted, never reused across periods: the subscription exists from the
  * moment this returns, a stream that is never run leaks it and its
  * unbounded queue, and two concurrent runs of one returned stream split the
- * events between them. */
+ * events between them. The calling rule is now structural: presenters reach
+ * this only through a `sharedFold`'s period-scoped `fromPort`
+ * (`bridge/out.ts`), which passes the period's scope; the
+ * dependency-cruiser rule `effect-port-subscription-owned-by-the-bridge`
+ * keeps it that way. */
 export function fromObservable<T>(
   source: Observable<T>,
+  scope?: Scope.Scope,
 ): Stream.Stream<T, unknown> {
   const queue = Effect.runSync(Queue.unbounded<Take.Take<T, unknown>>());
   const subscription = source.subscribe({
@@ -58,6 +63,20 @@ export function fromObservable<T>(
       Queue.unsafeOffer(queue, Take.end);
     },
   });
+
+  // A stream that is never run never reaches its `ensuring` — so the period
+  // that opened this subscription also owns it: closing the scope releases
+  // it whether or not the stream ran. `unsubscribe` is idempotent.
+  if (scope !== undefined) {
+    Effect.runSync(
+      Scope.addFinalizer(
+        scope,
+        Effect.sync(() => {
+          subscription.unsubscribe();
+        }),
+      ),
+    );
+  }
 
   return Stream.fromQueue(queue).pipe(
     Stream.flattenTake,
@@ -119,23 +138,4 @@ export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
       endSubscription();
     });
   });
-}
-
-/** The current value of a replay-current Observable, read synchronously —
- * the seed a `sharedFold` starts a warm period from, and what `cycle()`
- * advances from. A source that does not emit during `subscribe` yields
- * `fallback`; the subscription is released before this returns. A source
- * that errors — synchronously or later — never surfaces that error here:
- * `peek` yields `fallback` (or the last value seen before the error) and
- * rxjs reports the error asynchronously as an unhandled error, since this
- * subscription passes no `error` handler. */
-export function peek<T>(source: Observable<T>, fallback: T): T {
-  let value = fallback;
-  source
-    .pipe(take(1))
-    .subscribe((current) => {
-      value = current;
-    })
-    .unsubscribe();
-  return value;
 }
