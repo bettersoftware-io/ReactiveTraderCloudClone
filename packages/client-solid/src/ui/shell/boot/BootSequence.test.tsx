@@ -10,11 +10,8 @@ import { createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
 
 import { bootSequencePage } from "#tests/ui/pages/BootSequencePage";
-
-import { BootSequence } from "./BootSequence";
 
 describe("BootSequence — canvas rAF loop (mocked context)", () => {
   beforeEach(() => {
@@ -34,24 +31,15 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
   it("starts the rAF loop when the canvas context is available", () => {
     const onDone = vi.fn();
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider value={createHooks()}>
-          <BootSequence onDone={onDone} />
-        </ViewModelContext.Provider>
-      );
-    });
+    page.mount({ viewModel: createHooks(), onDone: onDone });
     expect(rafSpy).toHaveBeenCalled();
   });
 
   it("cancels the rAF loop on unmount (cleanup path)", () => {
     const onDone = vi.fn();
-    const { unmount } = page.mount(() => {
-      return (
-        <ViewModelContext.Provider value={createHooks()}>
-          <BootSequence onDone={onDone} />
-        </ViewModelContext.Provider>
-      );
+    const { unmount } = page.mount({
+      viewModel: createHooks(),
+      onDone: onDone,
     });
     unmount();
     expect(cafSpy).toHaveBeenCalledWith(42);
@@ -60,36 +48,25 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   it("draws from the token store without any painted custom properties", () => {
     const onDone = vi.fn();
     expect(() => {
-      page.mount(() => {
-        return (
-          <ViewModelContext.Provider value={createHooks()}>
-            <BootSequence onDone={onDone} />
-          </ViewModelContext.Provider>
-        );
-      });
+      page.mount({ viewModel: createHooks(), onDone: onDone });
     }).not.toThrow();
     expect(ctxStub.clearRect).toHaveBeenCalled();
   });
 
   it("runs the laser and docking draws through the same factory loop", () => {
     for (const variant of ["laser", "docking"] as const) {
-      const { unmount } = page.mount(() => {
-        return (
-          <ViewModelContext.Provider
-            value={createHooks({
-              useBootSequence: (_onDone: () => void) => {
-                return {
-                  state: () => {
-                    return { variant, progress: 10, done: false };
-                  },
-                  skip: vi.fn(),
-                };
+      const { unmount } = page.mount({
+        viewModel: createHooks({
+          useBootSequence: (_onDone: () => void) => {
+            return {
+              state: () => {
+                return { variant, progress: 10, done: false };
               },
-            } as unknown as Partial<ViewModel>)}
-          >
-            <BootSequence onDone={vi.fn()} />
-          </ViewModelContext.Provider>
-        );
+              skip: vi.fn(),
+            };
+          },
+        } as unknown as Partial<ViewModel>),
+        onDone: vi.fn(),
       });
       unmount();
     }
@@ -98,13 +75,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   });
 
   it("tracks the cursor into the shared pointer while booting", () => {
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider value={createHooks()}>
-          <BootSequence onDone={vi.fn()} />
-        </ViewModelContext.Provider>
-      );
-    });
+    page.mount({ viewModel: createHooks(), onDone: vi.fn() });
     // The listener normalizes clientX/Y to -1..1; it must not throw and the
     // canvas keeps drawing afterwards (the pointer feeds the v3 variants).
     window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5 }));
@@ -118,13 +89,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
     window.matchMedia = (() => {
       return { matches: true };
     }) as unknown as typeof window.matchMedia;
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider value={createHooks()}>
-          <BootSequence onDone={vi.fn()} />
-        </ViewModelContext.Provider>
-      );
-    });
+    page.mount({ viewModel: createHooks(), onDone: vi.fn() });
     expect(rafSpy).not.toHaveBeenCalled();
     window.matchMedia = original;
   });
@@ -165,29 +130,24 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
   // should never run the boot animation, even on first paint. Freeze wins
   // even over forceBootAnimation (which overrides only prefers-reduced-motion).
   it("skips the canvas loop entirely under power-saver freeze", () => {
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider
-          value={createHooks({
-            usePowerSaver: () => {
-              const [level] = createSignal("freeze" as const);
-              return {
-                level,
-                isCalm: () => {
-                  return true;
-                },
-                isFreeze: () => {
-                  return true;
-                },
-                setLevel: vi.fn(),
-                cycle: vi.fn(),
-              };
+    page.mount({
+      viewModel: createHooks({
+        usePowerSaver: () => {
+          const [level] = createSignal("freeze" as const);
+          return {
+            level,
+            isCalm: () => {
+              return true;
             },
-          } as unknown as Partial<ViewModel>)}
-        >
-          <BootSequence onDone={vi.fn()} />
-        </ViewModelContext.Provider>
-      );
+            isFreeze: () => {
+              return true;
+            },
+            setLevel: vi.fn(),
+            cycle: vi.fn(),
+          };
+        },
+      } as unknown as Partial<ViewModel>),
+      onDone: vi.fn(),
     });
     expect(rafSpy).not.toHaveBeenCalled();
   });
@@ -200,13 +160,7 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
 
     const onDone = vi.fn();
     expect(() => {
-      page.mount(() => {
-        return (
-          <ViewModelContext.Provider value={createHooks()}>
-            <BootSequence onDone={onDone} />
-          </ViewModelContext.Provider>
-        );
-      });
+      page.mount({ viewModel: createHooks(), onDone: onDone });
     }).not.toThrow();
 
     document.documentElement.style.removeProperty("--accent-primary");
@@ -231,18 +185,13 @@ describe("BootSequence — canvas rAF loop (mocked context)", () => {
       done: false,
     });
 
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider
-          value={createHooks({
-            useBootSequence: (_onDone: () => void) => {
-              return { state, skip: vi.fn() };
-            },
-          } as unknown as Partial<ViewModel>)}
-        >
-          <BootSequence onDone={vi.fn()} />
-        </ViewModelContext.Provider>
-      );
+    page.mount({
+      viewModel: createHooks({
+        useBootSequence: (_onDone: () => void) => {
+          return { state, skip: vi.fn() };
+        },
+      } as unknown as Partial<ViewModel>),
+      onDone: vi.fn(),
     });
 
     expect(getContextSpy).toHaveBeenCalledTimes(1);
@@ -272,27 +221,22 @@ describe("BootSequence — boot log lines (visibility by progress)", () => {
     const onDone = vi.fn();
     const [progress, setProgress] = createSignal(0);
 
-    page.mount(() => {
-      return (
-        <ViewModelContext.Provider
-          value={createHooks({
-            useBootSequence: (_onDone: () => void) => {
+    page.mount({
+      viewModel: createHooks({
+        useBootSequence: (_onDone: () => void) => {
+          return {
+            state: () => {
               return {
-                state: () => {
-                  return {
-                    variant: "core" as const,
-                    progress: progress(),
-                    done: false,
-                  };
-                },
-                skip: vi.fn(),
+                variant: "core" as const,
+                progress: progress(),
+                done: false,
               };
             },
-          })}
-        >
-          <BootSequence onDone={onDone} />
-        </ViewModelContext.Provider>
-      );
+            skip: vi.fn(),
+          };
+        },
+      }),
+      onDone: onDone,
     });
 
     // progress 0 -> 0 lines visible
@@ -369,12 +313,13 @@ function createCtxStub(): CanvasRenderingContext2D {
 
 /** Builds the mocked ViewModel for `ViewModelContext.Provider`. Plain
  * data-returning helper (not a component — returns `ViewModel`, never JSX),
- * so it stays outside the JSX tree. `<BootSequence/>` is always nested
- * directly under `<ViewModelContext.Provider>` at each call site (never
- * pre-built and threaded through a helper), so the Solid compiler defers its
- * construction until the Provider's own render — a plain function taking an
- * already-evaluated JSX.Element argument would run BootSequence's body (and
- * its useViewModel() call) before the Provider exists.
+ * so it stays outside the JSX tree. `bootSequencePage().mount` nests
+ * `<BootSequence/>` directly under `<ViewModelContext.Provider>` inside its
+ * own render function (never pre-built and threaded through), so the Solid
+ * compiler defers its construction until the Provider's own render — a plain
+ * function taking an already-evaluated JSX.Element argument would run
+ * BootSequence's body (and its useViewModel() call) before the Provider
+ * exists.
  *
  * The default `state` is a REAL Solid signal (matching the production shape:
  * `toSignal` returns a tracked accessor), NOT a plain closure — a plain
@@ -448,24 +393,19 @@ interface MountBootSequenceOpts {
 function mountBootSequence({
   forceBootAnimation,
 }: MountBootSequenceOpts): void {
-  page.mount(() => {
-    return (
-      <ViewModelContext.Provider
-        value={createHooks({
-          useForceBootAnimation: () => {
-            return {
-              enabled: () => {
-                return forceBootAnimation;
-              },
-              setEnabled: vi.fn(),
-              toggle: vi.fn(),
-            };
+  page.mount({
+    viewModel: createHooks({
+      useForceBootAnimation: () => {
+        return {
+          enabled: () => {
+            return forceBootAnimation;
           },
-        } as unknown as Partial<ViewModel>)}
-      >
-        <BootSequence onDone={vi.fn()} />
-      </ViewModelContext.Provider>
-    );
+          setEnabled: vi.fn(),
+          toggle: vi.fn(),
+        };
+      },
+    } as unknown as Partial<ViewModel>),
+    onDone: vi.fn(),
   });
 }
 

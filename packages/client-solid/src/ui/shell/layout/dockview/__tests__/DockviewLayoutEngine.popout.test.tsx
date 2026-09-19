@@ -6,8 +6,6 @@ import { InMemoryDockLayoutStore } from "@rtc/client-core";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";
 
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
-
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way.
 beforeAll(() => {
   if (typeof ResizeObserver === "undefined") {
@@ -34,26 +32,7 @@ describe("dockview bridge pop-out wiring", () => {
   it("asks the browser for the pop-out page, then greys the popped panel's controls", async () => {
     const popout = page.stubPopoutWindow();
 
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     // Every tab's controls carry the pop-out slot under this bridge (the
     // engine-gating: in-house heads never receive it).
@@ -89,26 +68,7 @@ describe("dockview bridge pop-out wiring", () => {
   it("leaves the pop-out control live for a panel that is still docked", async () => {
     const popout = page.stubPopoutWindow();
 
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-rates-popout")).toBe(false);
@@ -133,26 +93,7 @@ describe("dockview bridge pop-out wiring", () => {
     const store = new InMemoryDockLayoutStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={store}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={layoutResets()}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store, layoutResets });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-popout")).toBe(false);

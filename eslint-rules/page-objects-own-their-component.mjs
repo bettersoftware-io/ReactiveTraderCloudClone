@@ -57,6 +57,8 @@ const BANNED_BARE = new Set(["ReactElement"]);
  * `React.ReactElement`, `React.JSX.Element`. */
 const BANNED_QUALIFIED = new Set(["ReactElement", "Element"]);
 const EXEMPT_PARAM = new Set(["children"]);
+/** Types that describe a function rather than declare one. */
+const FUNCTION_TYPE = new Set(["TSFunctionType", "TSConstructorType"]);
 
 /** The banned name this reference resolves to, or null when it is not one. */
 function bannedNameOf(typeName) {
@@ -91,8 +93,19 @@ function parameterOf(ancestors, node) {
       return child;
     }
 
-    // A return type or any other sibling annotation: stop before climbing
-    // past the function, so `(): ReactElement` is never treated as a param.
+    // A FUNCTION TYPE (`() => X`, `new () => X`) is part of some parameter's
+    // TYPE, not a signature of its own, so climb through it. Without this,
+    // `mount(element: () => JSX.Element)` read as a harmless return type and
+    // slipped through — and that is Solid's natural shape, since Solid's
+    // `render()` takes a function. The rule was effectively React-only until
+    // this: five page objects (four Solid, one RN) held the defect unseen.
+    if (FUNCTION_TYPE.has(parent.type)) {
+      child = parent;
+      continue;
+    }
+
+    // A real signature's own return type (`engineOf(): ReactElement`) stops
+    // the walk: the page BUILDING an element is the behaviour we want.
     if (params !== undefined && !params.includes(child)) {
       return null;
     }

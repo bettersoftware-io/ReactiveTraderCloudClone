@@ -6,8 +6,6 @@ import { InMemoryDockLayoutStore, type PanelId } from "@rtc/client-core";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";
 
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
-
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way.
 beforeAll(() => {
   if (typeof ResizeObserver === "undefined") {
@@ -29,26 +27,7 @@ beforeAll(() => {
 // floating spec.
 describe("dockview bridge floating wiring", () => {
   it("floats a panel from its head control and records it in the witness", async () => {
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-float")).toBe(false);
@@ -64,26 +43,7 @@ describe("dockview bridge floating wiring", () => {
   });
 
   it("docks a floating panel back from its head control", async () => {
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     page.clickControl("panel-fx-analytics-float");
 
@@ -101,26 +61,7 @@ describe("dockview bridge floating wiring", () => {
   });
 
   it("hides collapse and maximize while a panel is floating, without disturbing a docked sibling", async () => {
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore() });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-collapse")).toBe(false);
@@ -155,26 +96,7 @@ describe("dockview bridge floating wiring", () => {
   it("hides the float control while a maximize is live, and shows it again after", async () => {
     const [maximized, setMaximized] = createSignal<PanelId | null>(null);
 
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={new InMemoryDockLayoutStore()}
-          maximized={maximized()}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={0}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store: new InMemoryDockLayoutStore(), maximized });
 
     await page.waitFor(() => {
       expect(page.bodyVisible("panel-fx-rates-float")).toBe(true);
@@ -201,26 +123,7 @@ describe("dockview bridge floating wiring", () => {
     const store = new InMemoryDockLayoutStore();
     const [layoutResets, setLayoutResets] = createSignal(0);
 
-    page.mount(() => {
-      return (
-        <DockviewLayoutEngine
-          tab="fx"
-          registry={registry}
-          store={store}
-          maximized={null}
-          collapsed={[]}
-          closed={[]}
-          docked={[]}
-          instances={[]}
-          layoutResets={layoutResets()}
-          onMaximize={noop}
-          onRestore={noop}
-          onCollapse={noop}
-          onExpand={noop}
-          onCloseInstance={noop}
-        />
-      );
-    });
+    page.mount({ registry, store, layoutResets });
 
     await page.waitFor(() => {
       expect(page.controlDisabled("panel-fx-analytics-float")).toBe(false);
