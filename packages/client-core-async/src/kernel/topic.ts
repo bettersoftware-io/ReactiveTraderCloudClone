@@ -18,7 +18,9 @@ export interface TopicOptions {
  * a fresh producer — never the old error. A late publish or failure from a
  * producer run that has already ended reaches nobody. A subscriber that
  * throws does not stop delivery to the others: its error is rethrown on a
- * macrotask (`reportAsync`), as rxjs's `SafeSubscriber` does. */
+ * macrotask (`reportAsync`), as rxjs's `SafeSubscriber` does. `publish()`
+ * from outside reaches subscribers only while a producer run is live; on a
+ * cold or reset topic it is dropped, never latched. */
 export interface Topic<T> {
   subscribe(
     next: (value: T) => void,
@@ -113,7 +115,11 @@ export function createTopic<T>(
   }
 
   return {
-    publish: deliver,
+    publish: (value: T) => {
+      if (run !== null) {
+        deliver(value);
+      }
+    },
     fail: (error: unknown) => {
       if (run !== null) {
         failFrom(run, error);

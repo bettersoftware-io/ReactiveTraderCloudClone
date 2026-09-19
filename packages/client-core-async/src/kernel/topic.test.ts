@@ -48,6 +48,48 @@ describe("Topic", () => {
     expect(seen).toEqual([]);
   });
 
+  it("publish() on a cold or reset topic is dropped and leaves no replay", () => {
+    const topic = createTopic<number>(async () => {}, { replay: true });
+
+    // Cold: no subscriber has ever started a producer.
+    topic.publish(2);
+    const beforeAny: number[] = [];
+    const stopBeforeAny = topic.subscribe((v) => {
+      beforeAny.push(v);
+    });
+    expect(beforeAny).toEqual([]);
+    stopBeforeAny();
+
+    // Reset: fail() dropped every subscriber and ended the run.
+    const errors: unknown[] = [];
+    const stop = topic.subscribe(
+      () => {},
+      (e) => {
+        errors.push(e);
+      },
+    );
+    topic.fail(new Error("boom"));
+    expect(errors).toHaveLength(1);
+    topic.publish(1);
+
+    const seen: number[] = [];
+    const lateErrors: unknown[] = [];
+    const stopLate = topic.subscribe(
+      (v) => {
+        seen.push(v);
+      },
+      (e) => {
+        lateErrors.push(e);
+      },
+    );
+    expect(seen).toEqual([]);
+    expect(lateErrors).toEqual([]);
+    stopLate();
+    expect(() => {
+      stop();
+    }).not.toThrow();
+  });
+
   it("fail() resets: the failed subscribers are dropped and the NEXT subscriber starts a fresh producer with no replay", () => {
     let starts = 0;
     const topic = createTopic<number>(
