@@ -232,12 +232,23 @@ gridview wrapper reuses the grid's `.dv-split-view-container` class, Task
 |---|---|---|
 | R1 | Collapse refused on a floating panel — a strip has no slot or home for it | `collapsePanel` |
 | R2 | Maximize refused on a floating panel — no space to claim, no home to restore | `maximizePanel` |
-| R3 | Float refused (head control) while a maximize is live — no coherent home to return to | `floatPanel` |
+| R3 | Float refused (head control) while a maximize is live — no coherent home to return to; both client bridges also withhold the control itself on every head while a maximize is live (spec §3.2's "button hidden") | `floatPanel`; the bridges' `onFloat` |
 | R4 | Float refused (shift-drag) while a maximize is live — mirrors R3 for the gesture | `cancelRefusedShiftFloat` |
-| R5 | Floating suspends a design pin (min=max) on its own record list; docking home re-clamps it if it still applies | `suspendPinsFor` / `clampPinsFloatSuspendedFor` |
-| R6 | A floating chart instance leaves the equal-share rule | `instanceSplitOf` |
-| R7 | DOM containment is not grid membership — a float sits inside this engine's own container, so `boundary.contains` is true for it; every `api.groups` walk filters explicitly | `isInGrid` call sites |
+| R5 | Floating suspends a design pin (min=max) on its own record list — including a pin already lifted because nothing absorbs; returning to the grid re-clamps it if it still applies. Holds for EVERY entry and exit: the head control, dockview's shift-drag float, a drag of a float onto the grid, and a pop-out closing back into the grid | `settleFloatTransitions` → `suspendPinsFor` / `clampPinsFloatSuspendedFor` |
+| R6 | A floating chart instance leaves the equal-share rule, and re-enters it the moment it is back in the grid (not at the next resize) | `instanceSplitOf`; `settleFloatTransitions` |
+| R7 | DOM containment is not grid membership — a float sits inside this engine's own container, so `boundary.contains` is true for it. Every `api.groups` walk either filters explicitly with `isInGrid`, or is scoped STRUCTURALLY by sitting inside a grid split's DOM (`directMembersOf`, `childViewsOf`, `holdsStripChild`, `instanceSplitOf`'s inner walk, `shareSplitAmongInstances`, `firstGroupIn` — a grid split never contains a float's private gridview) | `isInGrid` call sites; the split-scoped walks |
 | R8 | Float refused (both entry points) for a collapsed panel — a strip and a float are mutually exclusive states | `floatPanel` / `cancelRefusedShiftFloat` |
+
+The float rules do not live on the two verbs. dockview's shift-drag float,
+a drag of a float onto the grid, and a pop-out window closing back into the
+grid call `addFloatingGroup` / `moveGroupOrPanel` themselves and never reach
+`floatPanel` / `dockPanel` — so R5, R6 and the absorption re-settle (Ruling
+10: a float removes an absorber exactly as a close does) run from ONE
+function, `settleFloatTransitions`, subscribed to dockview's synchronous
+`onDidMutateLayout`. It fires as each top-level mutation closes, so a verb's
+caller reads settled state the moment the verb returns, and a gesture never
+leaves a float clamped even transiently. (`onDidLayoutChange` would not do:
+dockview buffers it to a microtask.)
 
 R4/R8's shift-drag veto is **not** dockview's `onWillDragGroup`: measured
 against the 8.3.1 bundle, that hook fires from an HTML5 `dragstart`, and the
@@ -276,11 +287,16 @@ pre-emptively dropped.
   Every layout write is debounced 250ms before it reaches storage; this is
   not float-specific — every layout mutation (drag, stack, close, resize)
   rides the same debounce.
-- **A damaged saved float does not re-dock — it disappears.** When the
-  loader falls back to `"blob-without-floats"`, the floated panel is ABSENT
-  from the restored layout rather than re-docked: dockview never
-  instantiates an unreferenced `panels` entry. The user reopens it from the
-  View menu.
+- **A damaged saved float costs the float and its pin, not the panel.**
+  When the loader falls back to `"blob-without-floats"`, the engine restores
+  WITHOUT the floated panel (dockview never instantiates an unreferenced
+  `panels` entry). The application does not leave it missing: both client
+  bridges' closed-set effect calls `reopenPanel` for every seed panel not in
+  the machine's `closed` set, so a STATIC panel re-docks at its seed home on
+  mount, and `reconcileDynamicPanels` re-adds a listed chart instance. What
+  is actually lost is the float itself and any design pin it held — the
+  pin's record no longer fills its panels at restore, so the re-docked
+  panel comes back unpinned.
 
 ## Instances consume the dynamic-panel API (Phase 4)
 

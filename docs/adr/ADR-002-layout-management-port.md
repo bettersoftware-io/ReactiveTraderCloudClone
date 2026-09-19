@@ -945,13 +945,14 @@ move from *reachable* (shift-drag has always worked, unscrubbed) to
 `isInGrid` predicate and eight interplay rules (collapse/maximize refused on
 a float; float refused during a live maximize or for a collapsed panel, on
 both entry points; a design pin suspends on float and re-clamps on
-dock-home; a floating chart instance leaves the equal-share rule; DOM
-containment is not grid membership, so every `api.groups` walk needs an
-explicit filter) — see the
+dock-home, by whichever path; a floating chart instance leaves the
+equal-share rule and re-enters it on return; DOM containment is not grid
+membership, so every `api.groups` walk needs an explicit `isInGrid` filter
+or a grid split's DOM around it) — see the
 [layout-dockview README's floating-groups section](../../packages/layout-dockview/README.md#floating-groups-phase-6a)
 for the full table and the known limitations (a 60px stacked header, a
-250ms float-then-reload race, a damaged float that disappears rather than
-re-docking). Floats persist (`floatingGroups` in the blob), unlike a
+250ms float-then-reload race, a damaged float that costs the float and its
+pin while the bridges re-dock the panel itself). Floats persist (`floatingGroups` in the blob), unlike a
 pop-out's session-scoped state. **This does not change the engine-parity
 gate's scope**: floats are Dockview-only arrangement, outside the
 shared/seed-derivable subset the gate freezes on, exactly like pop-outs and
