@@ -1,6 +1,10 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { LayoutPO, PopoutWindowPO } from "../contracts/Layout";
+import type {
+  FirstDockRender,
+  LayoutPO,
+  PopoutWindowPO,
+} from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
 import { readBoxWhenLaidOut } from "./geometry";
@@ -42,6 +46,13 @@ const DOCK_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
  * reads). */
 interface DockLayoutLeafData {
   readonly views?: readonly string[];
+}
+
+/** The page global `recordFirstDockRender`'s init script writes its
+ * snapshot to (read back by `firstDockRender`). Type-only: the init script
+ * ships as source text, and this annotation is erased from it. */
+interface FirstDockRenderWindow {
+  __rtcFirstDockRender?: unknown;
 }
 
 /** One node of a `floatingGroups` entry's own nested grid (the rare
@@ -423,6 +434,72 @@ export class PlaywrightLayout implements LayoutPO {
       panelIds.join(" "),
       { timeout: timeoutMs },
     );
+  }
+
+  async recordFirstDockRender(panelId: string): Promise<void> {
+    // `addInitScript` runs in every document this page loads from here on,
+    // before any app script — so the observer is watching when the dock's
+    // first render lands. It snapshots ONCE per document, in the microtask
+    // right after the render that first mounts `panelId`'s head controls:
+    // everything that render committed is in the DOM, and nothing a LATER
+    // layout change publishes (a container settle, a resize, a drag) can
+    // have reached it yet. A polled wait cannot make that distinction — it
+    // reads true the moment any later change repairs the state, which is
+    // exactly how a restored float's missing publish once hid behind a
+    // passing `waitDockFloating`.
+    await this.page.addInitScript(
+      ({ engineRoot, float, collapse, maximize }) => {
+        // Self-contained: Playwright ships only this function's source.
+        const win = window as unknown as FirstDockRenderWindow;
+        const observer = new MutationObserver(() => {
+          const control = document.querySelector(
+            `[data-testid="${engineRoot}"][data-engine="dockview"] [data-testid="${float}"]`,
+          );
+
+          if (control === null || win.__rtcFirstDockRender !== undefined) {
+            return;
+          }
+
+          const root = control.closest(`[data-testid="${engineRoot}"]`);
+          const raw = root?.getAttribute("data-floating") ?? "";
+
+          win.__rtcFirstDockRender = {
+            floating: raw === "" ? [] : raw.split(" "),
+            floatControlLabel: control.getAttribute("aria-label"),
+            hasCollapseControl:
+              document.querySelector(`[data-testid="${collapse}"]`) !== null,
+            hasMaximizeControl:
+              document.querySelector(`[data-testid="${maximize}"]`) !== null,
+          };
+          observer.disconnect();
+        });
+
+        observer.observe(document, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+        });
+      },
+      {
+        engineRoot: TESTIDS.layout.engineRoot,
+        float: TESTIDS.layout.floatControl(panelId),
+        collapse: TESTIDS.layout.collapseControl(panelId),
+        maximize: TESTIDS.layout.maximizeControl(panelId),
+      },
+    );
+  }
+
+  async firstDockRender(timeoutMs: number): Promise<FirstDockRender> {
+    const handle = await this.page.waitForFunction(
+      () => {
+        return (window as unknown as FirstDockRenderWindow)
+          .__rtcFirstDockRender;
+      },
+      undefined,
+      { timeout: timeoutMs },
+    );
+
+    return (await handle.jsonValue()) as FirstDockRender;
   }
 
   async panelHeight(panelId: string): Promise<number> {

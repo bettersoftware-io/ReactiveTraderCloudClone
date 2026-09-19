@@ -2,6 +2,8 @@ import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
 import {
+  assertEquals,
+  assertFalse,
   assertGreaterThanZero,
   assertGte,
   assertLte,
@@ -239,9 +241,44 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   // A plain reload always lands back on the default tab (see the "switching
   // the layout engine" test above), so the FX tab must be re-selected
   // before re-asserting the floating witness.
+  //
+  // The restored float is judged on the dock's FIRST render, not by a
+  // polled wait: `waitDockFloating` alone once passed here while the
+  // restore published nothing. The engine's construction never announced
+  // the float; what repaired `data-floating` a microtask later was
+  // unrelated — construction re-clamping the FX rail's design pin, a
+  // layout change the float publisher happens to ride. Measured
+  // (2026-09-19): that clamp fires only because the BLOTTER floated here; a
+  // floated rail member suspends the pin, nothing repairs the witness, and
+  // the float's head offered Float/Collapse/Maximize instead of Dock.
+  await ctx.po.layout.recordFirstDockRender(BLOTTER_PANEL_ID);
   await common.reloadPage(ctx);
   await common.clickTab(ctx, "fx");
   await expectEngine(ctx, "dockview");
+
+  const restored = await ctx.po.layout.firstDockRender(
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  assertEquals(
+    restored.floating.join(" "),
+    BLOTTER_PANEL_ID,
+    `expected the restored float in data-floating on the dock's first render, got "${restored.floating.join(" ")}"`,
+  );
+  assertEquals(
+    restored.floatControlLabel,
+    "Dock Blotter",
+    `expected the restored float's head to offer Dock on its first render, got "${restored.floatControlLabel}"`,
+  );
+  assertFalse(
+    restored.hasCollapseControl,
+    "a restored float's head must not offer Collapse (R1)",
+  );
+  assertFalse(
+    restored.hasMaximizeControl,
+    "a restored float's head must not offer Maximize (R2)",
+  );
+
   await ctx.po.layout.waitDockFloating(
     [BLOTTER_PANEL_ID],
     ENGINE_SWITCH_TIMEOUT_MS,

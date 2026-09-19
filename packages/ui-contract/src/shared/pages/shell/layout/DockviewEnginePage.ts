@@ -186,6 +186,18 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     });
   }
 
+  /** The accessible name of `panelId`'s float/dock toggle — `Float <title>`
+   * while docked, `Dock <title>` while floating — or null when the head
+   * renders no such control. Read from the SAME button the user clicks, so it
+   * witnesses what the head offers, not what `data-floating` claims. */
+  floatControlLabel(panelId: string): string | null {
+    return (
+      within(this.root)
+        .queryByTestId(`panel-${panelId}-float`)
+        ?.getAttribute("aria-label") ?? null
+    );
+  }
+
   /** Clicks `panelId`'s float control — the head's single toggle button,
    * `Float ${title}` while docked. Floats its group as a box over the grid. */
   floatPanel(panelId: string): void {
@@ -264,6 +276,33 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
       // races waitFor's 1s default too closely on a loaded CI runner.
       { timeout: 3000 },
     );
+  }
+
+  /** Resolves with the host's last-saved blob once it persists at least one
+   * floating group — the blob a reload restores a float from. Waits on the
+   * float itself, not on any save: an earlier (pre-float) save would
+   * otherwise hand back a blob with nothing floating in it, and a reload
+   * test built on that would pass with no float to restore. */
+  async waitForSavedFloat(): Promise<string> {
+    let saved = "";
+
+    await waitFor(
+      () => {
+        const blob = this.hostEl().getAttribute("data-saved-blob") ?? "";
+        const floats = blob === "" ? [] : JSON.parse(blob).floatingGroups;
+
+        if (!Array.isArray(floats) || floats.length === 0) {
+          throw new Error("no saved blob holds a floating group yet");
+        }
+
+        saved = blob;
+      },
+      // Same generous budget as waitForSave: the bridge's real save debounce
+      // (250ms) races waitFor's 1s default on a loaded CI runner.
+      { timeout: 3000 },
+    );
+
+    return saved;
   }
 
   /** True when the host's last-saved blob JSON.parses and mentions the

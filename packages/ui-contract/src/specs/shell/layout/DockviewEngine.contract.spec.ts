@@ -255,6 +255,33 @@ describe("DockviewLayoutEngine floating groups", () => {
     expect(page.floatingPanelIds()).toEqual([]);
   });
 
+  // A float persists (design §3.3), so a reload brings it back through the
+  // engine's `fromJSON` at CONSTRUCTION. Every assertion runs synchronously
+  // right after the remount — nothing awaited, nothing clicked — because that
+  // first render is what the user sees: a restored float must already offer
+  // "Dock" and hide collapse/maximize (R1/R2), not wait for some later float
+  // transition to publish the floating set. (It once did: dockview's
+  // layout-change event drops the restore's own fire, queued before the
+  // engine subscribed, so the head showed the docked control set.)
+  it("restores a persisted float with the floating control set, before any interaction", async () => {
+    const first = mount(DockviewEngine, { props: {} });
+    first.floatPanel("fx-rates");
+    const blob = await first.waitForSavedFloat();
+    cleanupMounted();
+
+    const page = mount(DockviewEngine, { props: { seedBlob: blob } });
+
+    expect(page.floatingPanelIds()).toEqual(["fx-rates"]);
+    expect(page.floatControlLabel("fx-rates")).toBe("Dock Live Rates");
+    expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(false);
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(false);
+    // A docked sibling in the same restore keeps the full docked set — so
+    // the absences above are the float's, not a head that never rendered.
+    expect(page.floatControlLabel("fx-blotter")).toBe("Float Blotter");
+    expect(page.bodyVisible("panel-fx-blotter-collapse")).toBe(true);
+    expect(page.bodyVisible("panel-fx-blotter-maximize")).toBe(true);
+  });
+
   it("hides collapse and maximize while a panel floats, both back once docked", async () => {
     const page = mount(DockviewEngine, { props: {} });
     // Prove presence FIRST, in the same docked state the hidden assertion

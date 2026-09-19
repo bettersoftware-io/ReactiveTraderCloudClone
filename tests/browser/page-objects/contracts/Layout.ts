@@ -96,6 +96,15 @@ export interface LayoutPO {
     panelIds: readonly string[],
     timeoutMs: number,
   ): Promise<void>;
+  /** Arms a one-shot recorder for the NEXT document load (call it before a
+   * reload): the first render in which `panelId`'s head controls exist under
+   * the dockview engine is snapshotted by a MutationObserver, in the same
+   * microtask as that render — before any later layout change can publish a
+   * floating set the construction itself failed to. Read it back with
+   * `firstDockRender`. */
+  recordFirstDockRender(panelId: string): Promise<void>;
+  /** The snapshot `recordFirstDockRender` armed, waiting for it to exist. */
+  firstDockRender(timeoutMs: number): Promise<FirstDockRender>;
   /** The on-screen height (px) of `panelId`'s dockview group — read off the
    * `.dv-groupview` ancestor of its `.dv-tab` mount (the same element
    * `dragDockTabOnto`/`dragDockTabToEdge` key off), re-sampled until laid
@@ -103,6 +112,17 @@ export interface LayoutPO {
    * panel actually grows once another panel floats out of their shared
    * column — a real-DOM geometry claim no jsdom witness can make. */
   panelHeight(panelId: string): Promise<number>;
+}
+
+/** What the dock showed for one panel on the first render after a load —
+ * `recordFirstDockRender`'s snapshot. */
+export interface FirstDockRender {
+  /** The engine root's `data-floating`, split. */
+  readonly floating: readonly string[];
+  /** The float/dock toggle's accessible name (`Float …` / `Dock …`). */
+  readonly floatControlLabel: string | null;
+  readonly hasCollapseControl: boolean;
+  readonly hasMaximizeControl: boolean;
 }
 
 /** A live pop-out child window, as far as a scenario needs to drive it. */
