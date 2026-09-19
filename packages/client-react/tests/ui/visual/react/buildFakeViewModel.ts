@@ -601,10 +601,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     // No jarvis-preference AppData field yet (Task 10) — static defaults
     // matching JarvisMachine's own INITIAL/DEFAULT_JARVIS_EFFORT; no-op
-    // setters (static screenshots never fire them).
+    // setters (static screenshots never fire them). The saved brain is the
+    // default one, the same brain DEFAULT_JARVIS_STATE_FOR_FIXTURES reports
+    // as running: a saved "scripted" beside a running Haiku was a state the
+    // app can never reach (scripted is always offered, so it always runs).
     useJarvisPreferences: () => {
       return {
-        brain: "scripted",
+        brain: DEFAULT_JARVIS_BRAIN,
         setBrain: noop,
         effort: "medium",
         setEffort: noop,

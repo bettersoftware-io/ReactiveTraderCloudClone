@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import { formatGateFallback, formatGateHint } from "@rtc/client-core";
+import { formatBrainHint, formatGateHint } from "@rtc/client-core";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -111,14 +111,16 @@ export function PreferencesContent(): ReactElement {
   // gets both `disabled: true` and a `title` explaining why — the same
   // `formatGateHint` copy the hint line below leads with — so the native
   // tooltip and the hint line never drift apart. The hint line also says
-  // what is running when the gate has moved this user off their saved brain,
-  // which the picker keeps highlighting (it resumes when the window resets).
+  // what is running whenever that is not the saved brain (a gate moved them
+  // off it, or the server does not offer it), since the picker keeps
+  // highlighting the saved choice.
   const gate = jarvisState.gate;
   const gateHint = gate === null ? undefined : formatGateHint(gate.resetsAtMs);
-  const gateHintLine =
-    gate === null
-      ? undefined
-      : `${formatGateHint(gate.resetsAtMs)}${formatGateFallback(jarvisBrain, jarvisState.effectiveBrain)}`;
+  const brainHint = formatBrainHint(
+    gate,
+    jarvisBrain,
+    jarvisState.effectiveBrain,
+  );
 
   // Real (non-"scripted") brain options are disabled when the server isn't
   // currently offering them (jarvisState.brains — an empty array is a normal
@@ -327,12 +329,12 @@ export function PreferencesContent(): ReactElement {
           onChange={changeJarvisBrain}
           testid="pref-segment-jarvisBrain"
         />
-        {gate !== null ? (
+        {brainHint !== undefined ? (
           <div
             className={styles.gateHint}
             data-testid="pref-segment-jarvisBrain-hint"
           >
-            {gateHintLine}
+            {brainHint}
           </div>
         ) : null}
         <PrefSegment
