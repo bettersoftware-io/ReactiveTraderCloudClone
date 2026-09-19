@@ -25,12 +25,12 @@ export function describeLoginWaitPreferencesContract(
         expect(delay.values).toEqual([DEFAULT_LOGIN_WAIT_DELAY]);
         p.setStyle("reactor");
         await settle();
-        expect(style.values.at(-1)).toBe("reactor");
+        expect(style.values).toEqual([DEFAULT_LOGIN_WAIT_STYLE, "reactor"]);
         // Setting one does not emit on the other.
         expect(delay.values).toHaveLength(1);
         p.setDelay("3s");
         await settle();
-        expect(delay.values.at(-1)).toBe("3s");
+        expect(delay.values).toEqual([DEFAULT_LOGIN_WAIT_DELAY, "3s"]);
         style.unsubscribe();
         delay.unsubscribe();
       } finally {

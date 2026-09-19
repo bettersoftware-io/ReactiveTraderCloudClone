@@ -20,7 +20,7 @@ export function describeEqWatchlistSortPreferenceContract(
         expect(c.values).toEqual([DEFAULT_EQ_WATCHLIST_SORT]);
         p.setSort("price");
         await settle();
-        expect(c.values.at(-1)).toBe("price");
+        expect(c.values).toEqual([DEFAULT_EQ_WATCHLIST_SORT, "price"]);
         c.unsubscribe();
       } finally {
         await h.teardown();

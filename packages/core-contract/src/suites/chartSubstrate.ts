@@ -20,7 +20,7 @@ export function describeChartSubstrateContract(
         expect(c.values).toEqual([DEFAULT_CHART_SUBSTRATE]);
         p.setSubstrate("canvas");
         await settle();
-        expect(c.values.at(-1)).toBe("canvas");
+        expect(c.values).toEqual([DEFAULT_CHART_SUBSTRATE, "canvas"]);
         c.unsubscribe();
       } finally {
         await h.teardown();

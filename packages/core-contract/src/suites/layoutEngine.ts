@@ -20,7 +20,7 @@ export function describeLayoutEngineContract(
         expect(c.values).toEqual([DEFAULT_LAYOUT_ENGINE]);
         p.setEngine("dockview");
         await settle();
-        expect(c.values.at(-1)).toBe("dockview");
+        expect(c.values).toEqual([DEFAULT_LAYOUT_ENGINE, "dockview"]);
         c.unsubscribe();
       } finally {
         await h.teardown();

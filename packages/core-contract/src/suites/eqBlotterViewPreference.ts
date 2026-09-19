@@ -20,7 +20,7 @@ export function describeEqBlotterViewPreferenceContract(
         expect(c.values).toEqual([DEFAULT_EQ_BLOTTER_VIEW]);
         p.setView("positions");
         await settle();
-        expect(c.values.at(-1)).toBe("positions");
+        expect(c.values).toEqual([DEFAULT_EQ_BLOTTER_VIEW, "positions"]);
         c.unsubscribe();
       } finally {
         await h.teardown();

@@ -20,7 +20,7 @@ export function describeAmbientStyleContract(
         expect(c.values).toEqual([DEFAULT_AMBIENT_STYLE]);
         p.setStyle("rays");
         await settle();
-        expect(c.values.at(-1)).toBe("rays");
+        expect(c.values).toEqual([DEFAULT_AMBIENT_STYLE, "rays"]);
         c.unsubscribe();
       } finally {
         await h.teardown();

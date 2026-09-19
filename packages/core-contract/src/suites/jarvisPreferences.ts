@@ -28,17 +28,17 @@ export function describeJarvisPreferencesContract(
         expect(narrator.values).toEqual([DEFAULT_JARVIS_NARRATOR]);
         p.setBrain("scripted");
         await settle();
-        expect(brain.values.at(-1)).toBe("scripted");
+        expect(brain.values).toEqual([DEFAULT_JARVIS_BRAIN, "scripted"]);
         // Setting one does not emit on the others.
         expect(effort.values).toHaveLength(1);
         expect(narrator.values).toHaveLength(1);
         p.setEffort("high");
         await settle();
-        expect(effort.values.at(-1)).toBe("high");
+        expect(effort.values).toEqual([DEFAULT_JARVIS_EFFORT, "high"]);
         expect(narrator.values).toHaveLength(1);
         p.setNarrator("off");
         await settle();
-        expect(narrator.values.at(-1)).toBe("off");
+        expect(narrator.values).toEqual([DEFAULT_JARVIS_NARRATOR, "off"]);
         brain.unsubscribe();
         effort.unsubscribe();
         narrator.unsubscribe();

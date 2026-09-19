@@ -20,7 +20,7 @@ export function describeCreditRfqFilterPreferenceContract(
         expect(c.values).toEqual([DEFAULT_CREDIT_RFQ_FILTER]);
         p.setFilter("closed");
         await settle();
-        expect(c.values.at(-1)).toBe("closed");
+        expect(c.values).toEqual([DEFAULT_CREDIT_RFQ_FILTER, "closed"]);
         c.unsubscribe();
       } finally {
         await h.teardown();
