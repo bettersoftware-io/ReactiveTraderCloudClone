@@ -516,6 +516,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     popoutRoots.delete(popout.id);
   });
 
+  /** Every group dockview knows — in the grid, FLOATING and POPPED OUT
+   * alike: `api.groups` is not pruned when a group leaves the grid (Phase 6a
+   * hit this "reachable is not present" class three times). For a walk
+   * scoped some other way — by element identity, or structurally inside a
+   * grid split's DOM, which never contains a float's private gridview. For
+   * "what is in the dock", `gridGroups()`. Grep gate 46 keeps every walk on
+   * one of the two, so each states its scope by name. */
+  function everyGroup(): readonly DockGroup[] {
+    return api.groups; // the engine's one raw read (grep gate 46)
+  }
+
+  /** The groups laid out in THIS window's grid — "what is in the dock". */
+  function gridGroups(): readonly DockGroup[] {
+    return everyGroup().filter(isInGrid);
+  }
+
   // The popped set, published like strips: recomputed on every layout
   // change (dockview fires one for the pop-out transaction and again on
   // dock-home), compared, and handed to the client whole.
@@ -523,7 +539,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let lastFloating: readonly string[] = [];
 
   function publishPoppedPanels(): void {
-    const popped = api.groups
+    const popped = everyGroup()
       .filter((group) => {
         return group.api.location.type === "popout";
       })
@@ -542,7 +558,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   /** Every panel currently in a floating group, sorted. */
   function floatingPanelIds(): readonly string[] {
-    return api.groups
+    return everyGroup()
       .filter((group) => {
         return group.api.location.type === "floating";
       })
@@ -833,7 +849,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         continue;
       }
 
-      const member = api.groups.find((candidate) => {
+      const member = everyGroup().find((candidate) => {
         return candidate.element === element;
       });
 
@@ -1096,7 +1112,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const split = splitForFlipKey(key);
 
       if (split !== null) {
-        const witness = firstGroupIn(split, api.groups);
+        const witness = firstGroupIn(split, everyGroup());
 
         if (witness !== undefined) {
           axisOf(witness, opposite(orientationAgainst(split))).set(size);
@@ -1539,11 +1555,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    return api.groups.some((group) => {
-      if (!isInGrid(group)) {
-        return false;
-      }
-
+    return gridGroups().some((group) => {
       return group.panels.some((panel) => {
         return !pinned.has(panel.id) && !records.has(panel.id);
       });
@@ -1946,7 +1958,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     while (split !== null) {
       const parent = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
-      const inside = api.groups.filter((group) => {
+      const inside = everyGroup().filter((group) => {
         return split?.contains(group.element) === true;
       });
 
@@ -1977,7 +1989,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * expand restores, which the rule cannot have shared. */
   function holdsStripChild(split: Element): boolean {
     return childViewsOf(split).some((child) => {
-      const groups = api.groups.filter((group) => {
+      const groups = everyGroup().filter((group) => {
         return child.contains(group.element);
       });
 
@@ -2029,7 +2041,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     let staticMembers = 0;
 
     for (const child of childViewsOf(split)) {
-      const groups = api.groups.filter((group) => {
+      const groups = everyGroup().filter((group) => {
         return child.contains(group.element);
       });
 
@@ -2124,7 +2136,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     let staticMembers = 0;
 
     for (const child of childViewsOf(split)) {
-      const groups = api.groups.filter((group) => {
+      const groups = everyGroup().filter((group) => {
         return child.contains(group.element);
       });
 
@@ -2176,7 +2188,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function childViewsOf(split: Element): readonly Element[] {
     const views: Element[] = [];
 
-    for (const group of api.groups) {
+    for (const group of everyGroup()) {
       const view = railViewOf(group.element, split);
 
       if (view !== null && !views.includes(view)) {
@@ -2302,7 +2314,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     return element === null
       ? undefined
-      : api.groups.find((candidate) => {
+      : everyGroup().find((candidate) => {
           return candidate.element === element;
         });
   }
@@ -2453,7 +2465,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const group =
         element === null
           ? undefined
-          : api.groups.find((candidate) => {
+          : everyGroup().find((candidate) => {
               return candidate.element === element;
             });
 
@@ -2525,11 +2537,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     // The engine's narrowed `SizableGroup` exposes no `moveTo`; the move
     // goes through dockview's own group objects, found by element.
-    const float = api.groups.find((group) => {
+    const float = everyGroup().find((group) => {
       return group.element === moving.element;
     });
 
-    const home = api.groups.find((group) => {
+    const home = everyGroup().find((group) => {
       return group.element === target?.group.element;
     });
 
@@ -2570,10 +2582,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function snapshotGridExtents(): void {
     const extents = new Map<string, FloatHomeSize>();
 
-    for (const group of api.groups) {
-      const split = isInGrid(group)
-        ? group.element.closest(SPLIT_SELECTOR)
-        : null;
+    for (const group of gridGroups()) {
+      const split = group.element.closest(SPLIT_SELECTOR);
 
       if (split === null) {
         continue;
@@ -2769,7 +2779,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     let room = 0;
 
     for (const child of childViewsOf(split)) {
-      const groups = api.groups.filter((candidate) => {
+      const groups = everyGroup().filter((candidate) => {
         return child.contains(candidate.element);
       });
       const first = groups[0];
@@ -3148,7 +3158,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // Snapshots: ejecting a tab sibling into its own group mutates both
         // lists mid-walk. The maximized panel's own group is skipped whole —
         // its tab siblings stay tabs behind it, as they were.
-        for (const group of [...api.groups]) {
+        for (const group of [...everyGroup()]) {
           // R7 (Phase 6 design §3.2): DOM containment is NOT grid membership.
           // A float stays inside this engine's own container — dockview
           // mounts it in a `.dv-floating-overlay-host` sibling of the grid
@@ -3431,7 +3441,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         floatingBoundsFor(
           panel.group,
           opts.container,
-          api.groups.filter((group) => {
+          everyGroup().filter((group) => {
             return group.api.location.type === "floating";
           }).length,
         ),
@@ -3502,7 +3512,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // above, from settleFloatTransitions — the path a drag home takes too.
     },
     groupCount: () => {
-      return api.groups.length;
+      return everyGroup().length;
     },
     dispose: () => {
       ownerWindow?.removeEventListener("pagehide", flushPendingSave);
@@ -3668,6 +3678,9 @@ function sharesWidth(split: Element): boolean {
 /** An instance member the sharing rule sizes: the along-split axis of every
  * group in it (one for a lone instance, several for a stacked column), and
  * its design width as a MODEL size (card + gap). */
+/** One of dockview's groups, as the engine walks them. */
+type DockGroup = DockviewApi["groups"][number];
+
 /** Where a Shift-release would dock a moving float. */
 interface FloatDockTarget {
   readonly group: SizableGroup;
@@ -3856,7 +3869,11 @@ function railViewOf(element: Element, owner: Element): Element | null {
  * were suspended outside the grid, so their split is known-wrong.
  * `intactDesignPins` and `releaseMaximize` use it as a predicate only and
  * keep the record's existing split — a deliberate, pre-6a behaviour on paths
- * whose members never left the grid (tracked in docs/STATUS.md). */
+ * whose members never left the grid. Checked, not assumed (2026-09-19): a
+ * move that re-wraps the root (a group docked at the dock's top edge) keeps
+ * the rail split's element identity, and a sash drag there still releases
+ * the pin — no stale split surfaced on a grid-only path, so the two stay
+ * predicates. */
 function intactPinOwnerSplit(
   record: DesignPinRecord,
   groupOf: (panelId: string) => SizableGroup | undefined,
@@ -4331,7 +4348,11 @@ function crossAxisOf(along: DockStripOrientation): DockStripOrientation {
  * fromJSON restores it verbatim. Normalise after every successful restore
  * tier; the bridge's collapse replay re-locks the bars. */
 function resetDerivedLocks(api: DockviewApi): void {
-  for (const group of api.groups) {
+  // Every group, by definition — a restored lock can sit on any of them. The
+  // load path runs before the engine's accessors exist.
+  const groups = api.groups; // a sanctioned raw read (grep gate 46)
+
+  for (const group of groups) {
     group.api.locked = false;
   }
 }

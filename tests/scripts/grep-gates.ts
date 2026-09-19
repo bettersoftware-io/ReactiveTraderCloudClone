@@ -695,6 +695,20 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkDockThemeClassStillCouplesToBridges,
   },
+  {
+    // dockview's `api.groups` is NOT pruned when a group leaves the grid: it
+    // lists floating and popped-out groups too. Phase 6a hit that "reachable
+    // is not present" class three times — a walk that meant "what is in the
+    // dock" silently included floats. The engine walks groups only through
+    // `gridGroups()` (what is in the dock) or `everyGroup()` (scoped some
+    // other way — by element identity, or structurally inside a grid split),
+    // so every walk names its scope. The two sanctioned raw reads carry the
+    // marker below. A backtick-quoted `api.groups` in a comment is prose.
+    name: "46. layout-dockview walks groups through gridGroups()/everyGroup(), never raw api.groups",
+    pattern: "api\\.groups([^`]|$)",
+    paths: ["../packages/layout-dockview/src/"],
+    excludes: [".test.", "(grep gate 46)"],
+  },
 ];
 
 let failed = 0;
