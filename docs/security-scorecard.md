@@ -16,7 +16,8 @@ score of 3/10 on one of them is a fact about the team size, not a defect.
 ## Where the repo stands
 
 Starting point, first run 2026-09-19: **32 open alerts**, all pre-dating the
-workflow that found them.
+workflow that found them. Measured on the re-score after the installer fixes
+landed the same day: **5 open, 28 fixed.**
 
 | Check | First run | Now | How |
 |---|---|---|---|
@@ -28,6 +29,7 @@ workflow that found them.
 | `Security-Policy` | open | **closed** | root `SECURITY.md` |
 | `Fuzzing` | open | **closing** | property-based tests, see [below](#fuzzing--property-based-tests) |
 | `CII-Best-Practices` | open | open — owner task | see [the walkthrough](#cii-best-practices--the-badge-walkthrough) |
+| `Vulnerabilities` | — | open — **false positive** | appeared once the Vercel CLI moved under a lockfile; see [below](#vulnerabilities--a-false-positive-by-name-collision) |
 | `Code-Review` | open | open **by design** | see [below](#code-review-and-branch-protection--capped-by-team-size) |
 | `Branch-Protection` | open | open **by design** | see [below](#code-review-and-branch-protection--capped-by-team-size) |
 
@@ -37,6 +39,40 @@ reaches full marks, *every* alert under it closes — including ones on lines
 nobody edited. Moving two workflow-level `contents: write` grants down to their
 jobs closed all four `Token-Permissions` alerts, two of which were on untouched
 files.
+
+## Vulnerabilities — a false positive by name collision
+
+Scorecard reports **"2 existing vulnerabilities"**: `GHSA-fm4j-4xhm-xpwx` and
+`GHSA-gc25-3vc5-2jf9`, both *"Sandbox Breakout / Arbitrary Code Execution in
+sandbox"*, both from **2020**. They are not about anything this repo installs.
+
+| | The package the advisories describe | The package in the lockfile |
+|---|---|---|
+| npm name | `sandbox` | `sandbox` |
+| What it is | a 2011 JavaScript-sandboxing library | "Command line interface for Vercel Sandbox" (`github.com/vercel/sandbox`) |
+| Versions | 0.7.0 – 0.8.x | 3.x – 4.x, a direct dependency of the Vercel CLI |
+
+The npm **name changed hands**. GitHub's advisory scopes itself correctly —
+`vulnerable: >= 0.0.0, < 1.0.0` — which is why `npm audit` and the Dependency
+Review gate are both silent on `sandbox@4.1.0`. Scorecard's `Vulnerabilities`
+check reads **OSV**, whose copy of the same advisory carries `introduced: 0`
+with **no upper bound**, so it matches every version ever published under the
+name, including the unrelated modern one.
+
+It appeared on 2026-09-19 for an instructive reason: that is when the Vercel
+CLI moved under a lockfile (`scripts/ci-tooling/vercel/`) and became visible to
+scanners at all. The same visibility surfaced **30 real advisories** in that
+tree, which were fixed (ADR-007) — this is the one scanner disagreement left.
+
+**What to do about it.** Nothing in the repo can make it true or false. The
+options, in order of preference: report the over-broad range upstream to
+[OSV](https://github.com/google/osv.dev/issues) (the durable fix, for
+everyone); or add an `osv-scanner.toml` with an `[[IgnoredVulns]]` entry per
+id, a `reason`, and an `ignoreUntil` date — Scorecard honours that file. The
+second is a suppression, so it is left as a deliberate choice rather than done
+by default; with Scorecard report-only, the cost of leaving it is one known,
+explained line in the Security tab. **If this count ever changes from 2, read
+it** — that would be a new finding, not this one.
 
 ## Fuzzing — property-based tests
 
