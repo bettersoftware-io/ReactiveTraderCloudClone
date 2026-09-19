@@ -125,8 +125,10 @@ export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
  * the seed a `sharedFold` starts a warm period from, and what `cycle()`
  * advances from. A source that does not emit during `subscribe` yields
  * `fallback`; the subscription is released before this returns. A source
- * that ERRORS synchronously during `subscribe` rethrows out of `peek` (and
- * so out of `cycle()`); only a non-emitting source yields `fallback`. */
+ * that errors — synchronously or later — never surfaces that error here:
+ * `peek` yields `fallback` (or the last value seen before the error) and
+ * rxjs reports the error asynchronously as an unhandled error, since this
+ * subscription passes no `error` handler. */
 export function peek<T>(source: Observable<T>, fallback: T): T {
   let value = fallback;
   source
