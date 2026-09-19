@@ -198,6 +198,54 @@ describe("Topic", () => {
     }
   });
 
+  it("a subscriber that throws on the replayed value is isolated: subscribe() returns its unsubscribe, the other subscribers are unaffected, and the last unsubscribe still ends the run", () => {
+    vi.useFakeTimers();
+
+    try {
+      let aborted = false;
+      const topic = createTopic<number>(
+        async (signal) => {
+          signal.addEventListener("abort", () => {
+            aborted = true;
+          });
+        },
+        { replay: true },
+      );
+      const stopFirst = topic.subscribe(() => {});
+      topic.publish(1);
+
+      // The throw happens INSIDE `subscribe`, on the replayed value — an
+      // escape here would take the caller down before it ever holds the
+      // unsubscribe closure.
+      let stopThrower: (() => void) | undefined;
+      expect(() => {
+        stopThrower = topic.subscribe(() => {
+          throw new Error("replayed");
+        });
+      }).not.toThrow();
+
+      const seen: number[] = [];
+      const stopOther = topic.subscribe((v) => {
+        seen.push(v);
+      });
+      topic.publish(2);
+      expect(seen).toEqual([1, 2]);
+      expect(() => {
+        vi.runAllTimers();
+      }).toThrow("replayed");
+
+      // The thrower is a normal subscriber: it holds the refCount until ITS
+      // unsubscribe — the closure `subscribe()` handed back — runs.
+      stopFirst();
+      stopOther();
+      expect(aborted).toBe(false);
+      stopThrower?.();
+      expect(aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a superseded run's own late rejection (independent of abort) reaches nobody", async () => {
     let rejectFirst: ((error: unknown) => void) | undefined;
     let runs = 0;
@@ -324,6 +372,51 @@ describe("mapTopic", () => {
     expect(starts).toBe(1);
     expect(aborted).toBe(false);
     stop();
+    expect(aborted).toBe(true);
+  });
+
+  it("fails the derived topic when the projection throws, and the source is released", async () => {
+    let aborted = false;
+    const source = createTopic<number>(
+      async (signal) => {
+        signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+      },
+      { replay: true },
+    );
+
+    const derived = mapTopic(source, (n) => {
+      if (n === 2) {
+        throw new Error("projection");
+      }
+
+      return n;
+    });
+    const seen: number[] = [];
+    const errors: unknown[] = [];
+    derived.subscribe(
+      (v) => {
+        seen.push(v);
+      },
+      (e) => {
+        errors.push(e);
+      },
+    );
+    source.publish(1);
+    source.publish(2);
+    // Same round-trip as "fails when the source fails": the producer's
+    // rejection goes through Promise.race and spawn's .catch.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    // The projection is the OPERATOR's code, so its throw FAILS the derived
+    // topic (rxjs `map` semantics) rather than being isolated and dropped.
+    expect(seen).toEqual([1]);
+    expect(errors).toHaveLength(1);
+    expect((errors[0] as Error).message).toBe("projection");
+    // The failure reset released the source: the derived topic was its only
+    // subscriber, so its producer run ended too.
     expect(aborted).toBe(true);
   });
 

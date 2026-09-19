@@ -18,7 +18,11 @@ export interface TopicOptions {
  * a fresh producer — never the old error. A late publish or failure from a
  * producer run that has already ended reaches nobody. A subscriber that
  * throws does not stop delivery to the others: its error is rethrown on a
- * macrotask (`reportAsync`), as rxjs's `SafeSubscriber` does. `publish()`
+ * macrotask (`reportAsync`), as rxjs's `SafeSubscriber` does — on the
+ * replayed value handed to a late subscriber exactly as on a live one.
+ * That isolation covers a CONSUMER's `next` and nothing else: an OPERATOR
+ * built on a Topic (`mapTopic`) turns its own projection error into a
+ * stream failure instead, as rxjs's `map` does. `publish()`
  * from outside reaches subscribers only while a producer run is live; on a
  * cold or reset topic it is dropped, never latched. */
 export interface Topic<T> {
@@ -133,7 +137,15 @@ export function createTopic<T>(
       subscribers.add(subscriber);
 
       if (last !== null) {
-        next(last.value);
+        // Isolated exactly as `deliver` isolates a live value: a thrower
+        // here would otherwise escape `subscribe()` itself — the caller
+        // never receives its unsubscribe closure, while the subscriber is
+        // already in the set, pinning the producer for good.
+        try {
+          next(last.value);
+        } catch (error) {
+          reportAsync(error);
+        }
       }
 
       if (run === null) {
@@ -169,7 +181,16 @@ export function mapTopic<T, U>(
       let stop: (() => void) | undefined;
       const sourceFailed = new Promise<never>((_, reject) => {
         stop = source.subscribe((value) => {
-          publish(project(value));
+          // A projection is the OPERATOR's own code, not a consumer's, so
+          // its failure fails this derived topic (rejecting the producer →
+          // `failFrom` → reset) rather than being isolated and dropped the
+          // way `createTopic` isolates a subscriber. That is what rxjs's
+          // `map` does with a throwing projection.
+          try {
+            publish(project(value));
+          } catch (error) {
+            reject(error);
+          }
         }, reject);
       });
 
