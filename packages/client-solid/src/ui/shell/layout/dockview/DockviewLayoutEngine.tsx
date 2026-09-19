@@ -654,6 +654,26 @@ export function DockviewLayoutEngine(
           }
 
           if (p.slot === "actions") {
+            // The two conditional slots are memos made HERE, in the row's
+            // setup scope (inside <For>'s root). Written inline as
+            // `onFloat={cond ? fn : undefined}`, Solid compiles the ternary
+            // into a memo created inside the prop's GETTER — and the control
+            // reads that getter from its click handler, outside any root:
+            // one never-disposed computation per click, dev-warned
+            // "computations created outside a createRoot" (Ruling 39).
+            // Reading a memo outside a root creates nothing.
+            const floatHandler = createMemo(() => {
+              return props.maximized === null
+                ? floatOrDockPanel(p.panelId)
+                : undefined;
+            });
+
+            const closeHandler = createMemo(() => {
+              return isOpenInstance(p.panelId)
+                ? closeInstancePanel(p.panelId)
+                : undefined;
+            });
+
             return (
               <Portal mount={p.element}>
                 <Show when={strip() === undefined}>
@@ -668,16 +688,8 @@ export function DockviewLayoutEngine(
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
-                    onFloat={
-                      props.maximized === null
-                        ? floatOrDockPanel(p.panelId)
-                        : undefined
-                    }
-                    onClose={
-                      isOpenInstance(p.panelId)
-                        ? closeInstancePanel(p.panelId)
-                        : undefined
-                    }
+                    onFloat={floatHandler()}
+                    onClose={closeHandler()}
                   />
                 </Show>
               </Portal>
