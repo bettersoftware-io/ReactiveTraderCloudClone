@@ -52,36 +52,39 @@ const rows = [];
 for (const client of CLIENTS) {
   for (const core of CORES) {
     const outDir = mkdtempSync(join(tmpdir(), "rtc-core-bundle-"));
-    execSync(
-      `pnpm --filter ${client} exec vite build --outDir ${outDir} --emptyOutDir`,
-      {
-        stdio: "inherit",
-        env: { ...process.env, VITE_CORE_IMPL: core },
-      },
-    );
-    const files = listJs(outDir);
-    const code = files.map((f) => readFileSync(f, "utf8")).join("\n");
-    const gz = files.reduce(
-      (sum, f) => sum + gzipSync(readFileSync(f)).length,
-      0,
-    );
-    rows.push({ client, core, gzKB: (gz / 1024).toFixed(1) });
-    for (const [other, marker] of Object.entries(MARKERS)) {
-      const present = code.includes(marker);
-      if (other !== core && present) {
-        console.error(
-          `FAIL ${client} [${core}] contains the ${other} core (${marker})`,
-        );
-        failed = true;
+    try {
+      execSync(
+        `pnpm --filter ${client} exec vite build --outDir ${outDir} --emptyOutDir`,
+        {
+          stdio: "inherit",
+          env: { ...process.env, VITE_CORE_IMPL: core },
+        },
+      );
+      const files = listJs(outDir);
+      const code = files.map((f) => readFileSync(f, "utf8")).join("\n");
+      const gz = files.reduce(
+        (sum, f) => sum + gzipSync(readFileSync(f)).length,
+        0,
+      );
+      rows.push({ client, core, gzKB: (gz / 1024).toFixed(1) });
+      for (const [other, marker] of Object.entries(MARKERS)) {
+        const present = code.includes(marker);
+        if (other !== core && present) {
+          console.error(
+            `FAIL ${client} [${core}] contains the ${other} core (${marker})`,
+          );
+          failed = true;
+        }
+        if (other === core && !present) {
+          console.error(
+            `FAIL ${client} [${core}] does not contain its own marker (${marker}) — either selectCore is not wired for this core, or packages/${PACKAGE_DIRS[core]}/dist is stale (rebuild the core package first)`,
+          );
+          failed = true;
+        }
       }
-      if (other === core && !present) {
-        console.error(
-          `FAIL ${client} [${core}] does not contain its own marker (${marker}) — either selectCore is not wired for this core, or packages/${PACKAGE_DIRS[core]}/dist is stale (rebuild the core package first)`,
-        );
-        failed = true;
-      }
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
     }
-    rmSync(outDir, { recursive: true, force: true });
   }
 }
 console.table(rows);

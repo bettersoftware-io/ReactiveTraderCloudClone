@@ -2,16 +2,11 @@ import { BehaviorSubject, type Observable } from "rxjs";
 
 import type { BootGatePresenter as BootGatePresenterApi } from "@rtc/core-api";
 
-/**
- * App-layer presenter for the boot-splash overlay's visibility. Mirrors
- * SessionPresenter's shape: a `BehaviorSubject<boolean>` seeded from the
- * one-shot boot-splash decision made at composition time (the browser
- * composition passes `shouldPlayBootSplash()` through the optional
- * `bootSplash` port — the environment sniffing stays out of the UI and out of
- * this framework-free core). `reboot()` re-raises the splash (the account
- * menu's ⟳ Reboot HUD row — splash replay only, no app-state reset, matching
- * the prototype) and `dismiss()` lowers it once the splash has faded out.
- */
+/** Implements `BootGatePresenter` (`@rtc/core-api`) — see the interface for
+ * the contract. Mirrors `SessionPresenter`'s shape: a
+ * `BehaviorSubject<boolean>` seeded via the composition-injected
+ * `bootSplash` port's `shouldPlayBootSplash()` — the environment sniffing
+ * stays out of this framework-free core. */
 export class BootGatePresenter implements BootGatePresenterApi {
   readonly visible$: Observable<boolean>;
 

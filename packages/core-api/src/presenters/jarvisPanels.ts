@@ -1,7 +1,7 @@
 import type { PanelSpecV1, PanelViz } from "@rtc/shared";
 
 import type { PanelStatus } from "#/machines/jarvisPanels";
-import type { PanelData } from "#/presenters/panelStream";
+import type { PanelData } from "#/panelStream";
 import type { Stream } from "#/stream";
 
 /** The row `JarvisPanelsOverlay` renders per live desk panel. `data$` is the

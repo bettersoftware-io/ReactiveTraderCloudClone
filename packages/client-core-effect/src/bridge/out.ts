@@ -1,19 +1,23 @@
 import { state } from "@rx-state/core";
 import {
   Cause,
+  Deferred,
   Effect,
   ExecutionStrategy,
   Exit,
   Fiber,
   type ManagedRuntime,
+  Option,
   Scope,
   Stream,
   SubscriptionRef,
 } from "effect";
-import { filter, Observable, type Subscriber } from "rxjs";
+import { filter, map, Observable, type Subscriber } from "rxjs";
 
 import { reconnect$ } from "@rtc/client-core";
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
+
+import { fromObservable } from "#/bridge/in";
 
 /** What the bridge needs from the app to run Effects on its behalf: the
  * runtime to run them under, and the scope every forked stream fiber is
@@ -27,7 +31,14 @@ export interface EffectHost {
 
 /** Run an Effect Stream under each Observable subscribe as a forked fiber;
  * unsubscribe interrupts it. Typed errors are squashed to one `unknown`
- * at this boundary and nowhere else. */
+ * at this boundary and nowhere else.
+ *
+ * An interrupt-only cause (the app's scope closing on `dispose()`, or this
+ * subscriber's own unsubscribe) leaves the subscriber neither errored nor
+ * completed — deliberately: the RxJS core's `dispose()` is a knowing no-op
+ * today, so a still-attached RxJS subscriber hears nothing after dispose
+ * either; completion-on-dispose becomes the contract when the RxJS
+ * `Subscription` bag lands (§22). */
 export function streamToStream<T, E>(
   host: EffectHost,
   stream: Stream.Stream<T, E>,
@@ -117,140 +128,230 @@ export function refToStateStream<S>(
 }
 
 /** How a `sharedFold` producer writes its state: apply `next` to the
- * current value and publish the result only if it is not `Object.is`-equal
- * to the current one, and only while the warm period that forked this
- * producer is still the current one. Two facts make both guards necessary:
- * a `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2),
- * which would hand every subscriber the seed twice; and a scope closes on a
- * fiber, so a producer can outlive its period by a tick. A consequence a
- * caller must know: an Effect-core fold CONFLATES equal consecutive states
- * (the RxJS core's `scan`/`map` do not). */
-export type FoldUpdate<S> = (next: (current: S) => S) => Effect.Effect<void>;
+ * current value (`None` until the period's first write, for a seedless
+ * period) and publish the result only if it is not `Object.is`-equal to the
+ * current one — a `SubscriptionRef` re-publishes an equal `set` (measured on
+ * 3.22.2), which would hand every subscriber the seed twice. The first write
+ * of a period waits for the period's watcher to have subscribed the ref's
+ * PubSub (`WarmPeriod.watching`) — the structural close of the race a
+ * `yieldNow` used to win. A consequence a caller must know: an Effect-core
+ * fold CONFLATES equal consecutive states (the RxJS core's `scan`/`map` do
+ * not). */
+export type FoldUpdate<S> = (
+  next: (current: Option.Option<S>) => S,
+) => Effect.Effect<void>;
+
+/** How a `sharedFold` producer subscribes a port: the subscription belongs
+ * to the period, released when the period ends whether or not the stream
+ * ran (`fromObservable`'s scope argument). Each call subscribes the source
+ * and adds a finalizer that lives as long as the period, so a producer
+ * calls this ONCE PER PORT PER PERIOD — never per event, which would pile
+ * up one subscription and one finalizer per value for the period's whole
+ * life. Named rather than inlined into `FoldRun` because every producer has
+ * to annotate the parameter. */
+export type FromPort = <T>(source: CoreStream<T>) => Stream.Stream<T, unknown>;
+
+/** The producer of one warm period, handed the period's `update` and its
+ * own `fromPort`. */
+export type FoldRun<S> = (
+  update: FoldUpdate<S>,
+  fromPort: FromPort,
+) => Effect.Effect<void, unknown>;
 
 export interface SharedFold<S> {
-  /** The value a warm period starts from — read on EVERY first subscribe, so
-   * a port mirror seeds from the port's current value (`peek`) and a pure
-   * fold from its constant initial. */
-  readonly seed: () => S;
-  /** The producer: runs for the whole warm period, writing through
-   * `update`; interrupted when the last subscriber leaves. Its failure is
-   * fanned out to every subscriber as an Observable error. */
-  readonly run: (update: FoldUpdate<S>) => Effect.Effect<void, unknown>;
+  /** The value a warm period starts from — read on EVERY first subscribe:
+   * `Some` for a port mirror whose port emitted synchronously (`peekCurrent`)
+   * or a pure fold's constant, `None` for a port that has not emitted yet,
+   * in which case subscribers hear nothing until the first write. A throwing
+   * `seed` fails the subscriber that triggered it. */
+  readonly seed: () => Option.Option<S>;
+  readonly run: FoldRun<S>;
 }
 
 interface WarmPeriod<S> {
   scope: Scope.CloseableScope;
-  subscribers: number;
-  /** This period's OWN ref, wrapped for delivery — never shared with another
-   * period, so a stale producer's writes (see `startWarmPeriod`'s `update`)
-   * cannot reach a live subscriber even without the generation guard, and no
-   * dead period's last value lingers into the next cold → warm cycle. */
-  changes: StateStream<S>;
+  /** THIS period's subscribers — failure fans out to these and no others, so
+   * a stale period's producer failing in the unsubscribe → close window
+   * cannot error a later period's subscribers. */
+  subscribers: Set<Subscriber<S>>;
+  changes: CoreStream<S>;
+}
+
+/** Two `Option`s hold the same state: both `None`, or both `Some` of
+ * `Object.is`-equal values. */
+function sameState<S>(a: Option.Option<S>, b: Option.Option<S>): boolean {
+  if (Option.isNone(a) || Option.isNone(b)) {
+    return Option.isNone(a) && Option.isNone(b);
+  }
+
+  return Object.is(a.value, b.value);
+}
+
+/** A period's ref as a replay-current Observable of its `Some` values: the
+ * current value (if any) synchronously, then later values. The head
+ * `ref.changes` replays is dropped only when it equals what was just
+ * delivered — a `set` between the read and the watcher's subscribe carries a
+ * NEW value and must arrive. The first emission the watcher sees succeeds
+ * `watching`, which is what `update` awaits.
+ *
+ * What each subscriber is promised differs, and the difference is worth
+ * stating: the period's FIRST subscriber receives every intermediate state
+ * of a same-tick burst, because the producer's first write blocks on
+ * `watching` until that subscriber's watcher has subscribed the PubSub. A
+ * LATER joiner has no such latch — the Deferred is already done — so its
+ * watcher subscribes a fiber-step after its synchronous head read, and any
+ * burst landing in that window is conflated into the head it just
+ * delivered. That is the same window `refToStateStream` documents: a late
+ * joiner can miss INTERMEDIATE values, never see a stale one. Conflation,
+ * not staleness. */
+function periodStream<S>(
+  host: EffectHost,
+  ref: SubscriptionRef.SubscriptionRef<Option.Option<S>>,
+  watching: Deferred.Deferred<void>,
+): CoreStream<S> {
+  return new Observable<S>((subscriber) => {
+    const seed = host.runtime.runSync(SubscriptionRef.get(ref));
+
+    if (Option.isSome(seed)) {
+      subscriber.next(seed.value);
+    }
+
+    return streamToStream(
+      host,
+      ref.changes.pipe(
+        Stream.tap(() => {
+          return Deferred.succeed(watching, undefined);
+        }),
+      ),
+    )
+      .pipe(
+        filter((value, index) => {
+          return index > 0 || !sameState(value, seed);
+        }),
+        filter(Option.isSome),
+        map((value) => {
+          return value.value;
+        }),
+      )
+      .subscribe(subscriber);
+  });
 }
 
 /** `shareReplay({ bufferSize: 1, refCount: true })` restated over a
  * `SubscriptionRef` and a `Scope`. The FIRST subscriber seeds the ref and
  * forks `run` into a scope of its own — a child of the app's, so
  * `dispose()` still ends it; every subscriber reads the ref's current value
- * synchronously (`refToStateStream`: the warmth guarantee) and then follows
- * `ref.changes` on the scheduler; the LAST unsubscribe closes the scope,
- * interrupting the producer. `Stream.share` cannot be this envelope: it
- * replays to a new subscriber on a fiber, never in the caller's tick. */
+ * synchronously and then follows `ref.changes` on the scheduler; the LAST
+ * unsubscribe closes the scope, interrupting the producer and releasing every
+ * port subscription the producer opened through `fromPort`. `Stream.share`
+ * cannot be this envelope: it replays to a new subscriber on a fiber, never
+ * in the caller's tick. */
 export function sharedFold<S>(
   host: EffectHost,
   fold: SharedFold<S>,
 ): CoreStream<S> {
-  const subscribers = new Set<Subscriber<S>>();
   let warm: WarmPeriod<S> | null = null;
-  let generation = 0;
 
-  function failEverySubscriber(cause: Cause.Cause<unknown>): void {
-    if (Cause.isInterruptedOnly(cause)) {
-      return;
+  /** End a period: drop it as the live one (when it still is) and close its
+   * scope, interrupting the producer and releasing every port subscription
+   * `fromPort` opened. Both ways a period ends go through here — the last
+   * unsubscribe and the failure fan-out — and they may overlap (a failed
+   * period's subscribers still tear down after their `error()`), which is
+   * safe: `Scope.close` on an already-closed scope is a no-op (measured on
+   * 3.22.2, `ScopeImpl.close` returns `void` for a `Closed` state). */
+  function endPeriod(period: WarmPeriod<S>): void {
+    if (warm === period) {
+      warm = null;
     }
 
-    for (const subscriber of [...subscribers]) {
-      subscriber.error(Cause.squash(cause));
-    }
+    // The global runtime, as in `streamToStream`: this must still work
+    // after `host.runtime` has been disposed.
+    Effect.runFork(Scope.close(period.scope, Exit.void));
   }
 
-  function startWarmPeriod(): WarmPeriod<S> {
-    generation += 1;
-    const mine = generation;
+  // The seed arrives already evaluated: `fold.seed()` is the ONE thing
+  // allowed to throw, and it is called by the subscribe function below,
+  // outside this. Nothing in here may throw — by the time `warm = period`
+  // has run, a scope is forked and the producer's ports are subscribed, so
+  // a throw escaping here would leave `warm` pointing at a period with no
+  // producer: later subscribers would join the zombie, hear the seed and
+  // nothing else, and the scope would never be closed.
+  function startWarmPeriod(
+    first: Subscriber<S>,
+    seed: Option.Option<S>,
+  ): WarmPeriod<S> {
     const scope = host.runtime.runSync(
       Scope.fork(host.scope, ExecutionStrategy.sequential),
     );
-    // A fresh ref per period — `fold.seed()` runs exactly once, right here,
-    // at actual first-subscribe time.
-    const ref = host.runtime.runSync(SubscriptionRef.make(fold.seed()));
+    const ref = host.runtime.runSync(SubscriptionRef.make(seed));
+    const watching = host.runtime.runSync(Deferred.make<void>());
     const period: WarmPeriod<S> = {
       scope,
-      subscribers: 0,
-      changes: refToStateStream(host, ref),
+      subscribers: new Set([first]),
+      changes: periodStream(host, ref, watching),
     };
-    // Assigned BEFORE `runFork`, not after it returns: the producer runs
-    // synchronously up to its first suspension, and a producer that fails at
-    // once can drive a subscriber's `error()` handler to resubscribe
-    // synchronously (`retry()`, `catchError()`) — that nested subscribe must
-    // see THIS period already warm and join it, never race the assignment
-    // below and start a second one that `warm` then never points back to.
+    // Assigned BEFORE `runFork`: a producer that fails at once fans that
+    // failure out while this call is still on the stack, and the fan-out
+    // has to find `warm` pointing at THIS period to be able to end it. That
+    // is the whole of the re-entrancy guarantee — the period is published
+    // before anything can run — NOT that a nested subscribe joins this
+    // period: the fan-out ends the period first, so a resubscribe from a
+    // subscriber's `error()` deliberately starts a fresh one.
     warm = period;
 
     // MEASURED (effect 3.22.2): a `SubscriptionRef` publishes into a
     // `PubSub.unbounded()`, and `ref.changes` is `Ref.get →
     // PubSub.subscribe → concat(head, fromPubSub(...))` — so once the
-    // watcher fiber (forked inside `refToStateStream`) has subscribed to
-    // that PubSub, EVERY publish reaches it in order; there is no
-    // conflation of a fast burst against a slow watcher. With the watcher
-    // subscribed first, three same-tick `.set()` calls delivered
-    // `[0, 1, 3, 6]` — every intermediate state — whether or not `update`
-    // yields between them. The only values a watcher can miss are ones
-    // published BEFORE its PubSub subscription exists: a producer forked
-    // ahead of the watcher that drains several already-queued events (e.g.
-    // `fromObservable`'s Queue, once its own subscribe is synchronous — see
-    // `in.ts`) in one uninterrupted burst can publish all of them before the
-    // watcher fiber has even started, so the watcher's `Ref.get` head
-    // observes only the final value and the PubSub never had a subscriber
-    // to deliver the intermediate ones to — `[6]` instead of `[1, 3, 6]`.
-    // The `Effect.yieldNow()` below exists to lose that race on purpose: it
-    // hands control back to the scheduler after every `set`, giving the
-    // watcher fiber a chance to reach its subscribe before the NEXT publish
-    // fires — with it, the same burst delivered `[0, 1, 3, 6]`. This is a
-    // WON race, not a guarantee — it costs one fiber yield per state change,
-    // and nothing here proves the watcher has actually subscribed by the
-    // time control returns. The structural fix (a later slice) is a latch
-    // the producer awaits until `ref.changes`'s watcher has subscribed,
-    // rather than hoping one yield was enough. This is also NOT the
-    // `Object.is` de-dup guard above (that drops an EQUAL value on
-    // purpose); this is about DISTINCT values a not-yet-subscribed watcher
-    // never had a chance to see.
-    function update(next: (current: S) => S): Effect.Effect<void> {
-      return Effect.suspend(() => {
-        if (mine !== generation) {
-          return Effect.void;
-        }
+    // watcher fiber (forked inside `periodStream`) has subscribed to that
+    // PubSub, EVERY publish reaches it in order; there is no conflation of a
+    // fast burst against a slow watcher. The only values a watcher can miss
+    // are ones published BEFORE its PubSub subscription exists: a producer
+    // forked ahead of the watcher that drains several already-queued events
+    // (`fromObservable`'s Queue — see `in.ts`) in one uninterrupted burst
+    // publishes them all before the watcher fiber has started, so the
+    // watcher's `Ref.get` head observes only the final value and the PubSub
+    // never had a subscriber for the intermediate ones — `[6]` instead of
+    // `[1, 3, 6]`. The latch `update` awaits is the structural close.
+    function update(
+      next: (current: Option.Option<S>) => S,
+    ): Effect.Effect<void> {
+      return Deferred.await(watching).pipe(
+        Effect.andThen(SubscriptionRef.get(ref)),
+        Effect.flatMap((current) => {
+          const value = Option.some(next(current));
+          return sameState(value, current)
+            ? Effect.void
+            : SubscriptionRef.set(ref, value);
+        }),
+      );
+    }
 
-        return SubscriptionRef.get(ref).pipe(
-          Effect.flatMap((current) => {
-            const value = next(current);
-            return Object.is(value, current)
-              ? Effect.void
-              : SubscriptionRef.set(ref, value);
-          }),
-          Effect.andThen(Effect.yieldNow()),
-        );
-      });
+    function fromPort<T>(source: CoreStream<T>): Stream.Stream<T, unknown> {
+      return fromObservable(source, scope);
     }
 
     host.runtime.runFork(
-      fold.run(update).pipe(
+      fold.run(update, fromPort).pipe(
         Effect.catchAllCause((cause) => {
           return Effect.sync(() => {
-            // A stale period's producer failing asynchronously, in the
-            // unsubscribe → `Scope.close` window, must not error the NEW
-            // period's subscribers — same `mine !== generation` guard `update` uses.
-            if (mine === generation) {
-              failEverySubscriber(cause);
+            if (Cause.isInterruptedOnly(cause)) {
+              return;
+            }
+
+            // END the period BEFORE erroring anyone. RxJS invokes a
+            // consumer's `error` callback ahead of its own unsubscribe, so
+            // a subscriber that resubscribes synchronously from inside
+            // `error()` would otherwise find `warm` still pointing at this
+            // dead period and join it: measured, it receives the stale seed
+            // and then nothing, forever, and the scope never closes.
+            // Ended first, that resubscribe sees `warm === null` and starts
+            // a FRESH period — the shape an async failure already had.
+            const failing = [...period.subscribers];
+            period.subscribers.clear();
+            endPeriod(period);
+
+            for (const subscriber of failing) {
+              subscriber.error(Cause.squash(cause));
             }
           });
         }),
@@ -262,30 +363,42 @@ export function sharedFold<S>(
   }
 
   return new Observable<S>((subscriber) => {
-    // Registered BEFORE the warm period starts: `runFork` runs the producer
-    // synchronously up to its first suspension, so a producer that fails at
-    // once (`Effect.fail`) fans out during `startWarmPeriod` — to an empty
-    // set, if this subscriber were added afterwards.
-    subscribers.add(subscriber);
+    let period: WarmPeriod<S>;
 
     if (warm === null) {
-      warm = startWarmPeriod();
+      // `seed()` may throw (a port that errors on subscribe, via
+      // `peekCurrent`). Read it HERE, before anything is warm, so the
+      // thrower is the only subscriber to tell and no half-built period is
+      // left behind — `startWarmPeriod` takes the value, never the thunk.
+      let seed: Option.Option<S>;
+
+      try {
+        seed = fold.seed();
+      } catch (error) {
+        subscriber.error(error);
+        return () => {};
+      }
+
+      // The RETURNED period, never `warm` re-read: `startWarmPeriod`
+      // publishes the period itself, and a producer that fails
+      // synchronously has already ended it — possibly with a resubscribe
+      // from its `error()` having published a successor — by the time this
+      // returns. Re-reading `warm` here would resurrect the dead period on
+      // top of that successor.
+      period = startWarmPeriod(subscriber, seed);
+    } else {
+      period = warm;
+      period.subscribers.add(subscriber);
     }
 
-    const period = warm;
-    period.subscribers += 1;
     const inner = period.changes.subscribe(subscriber);
 
     return () => {
       inner.unsubscribe();
-      subscribers.delete(subscriber);
-      period.subscribers -= 1;
+      period.subscribers.delete(subscriber);
 
-      if (period.subscribers === 0 && warm === period) {
-        warm = null;
-        // The global runtime, as in `streamToStream`: this must still work
-        // after `host.runtime` has been disposed.
-        Effect.runFork(Scope.close(period.scope, Exit.void));
+      if (period.subscribers.size === 0) {
+        endPeriod(period);
       }
     };
   });

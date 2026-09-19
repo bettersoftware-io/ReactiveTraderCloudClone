@@ -5,10 +5,9 @@ import type { MetricSample, TelemetryPort } from "@rtc/domain";
 
 import { windowedSamples } from "./windowedSamples";
 
-/**
- * Throughput chart series — rolls the last WINDOW samples from
- * TelemetryPort.throughput$() in oldest-first order.
- */
+/** Implements `ThroughputMetricPresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. Rolls `TelemetryPort.throughput$()` via
+ * `windowedSamples`. */
 export class ThroughputMetricPresenter implements ThroughputMetricPresenterApi {
   readonly samples$: Observable<readonly MetricSample[]>;
 

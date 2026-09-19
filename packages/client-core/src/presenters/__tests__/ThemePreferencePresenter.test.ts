@@ -9,6 +9,7 @@ import {
 
 import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
+import { createCountingPort } from "../createCountingPort.testHelpers";
 import { ThemePreferencePresenter } from "../ThemePreferencePresenter";
 
 describe("ThemePreferencePresenter", () => {
@@ -75,6 +76,19 @@ describe("ThemePreferencePresenter", () => {
     presenter.cycle();
     sub.unsubscribe();
     expect(seen).toEqual(["dark", "light", "system", "dark"]);
+  });
+
+  it("cycle() twice calls themeMode$() once (the stream is captured at construction)", () => {
+    const { port, calls } = createCountingPort(
+      new PreferencesSimulator(),
+      "themeMode$",
+    );
+    const presenter = new ThemePreferencePresenter(port, colorScheme(true));
+
+    presenter.cycle();
+    presenter.cycle();
+
+    expect(calls()).toBe(1);
   });
 });
 

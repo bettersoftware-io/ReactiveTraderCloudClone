@@ -21,11 +21,14 @@ export function createConnectionPresenter(
   events: ConnectionEventsPort,
   initial: ConnectionStatus = ConnectionStatus.CONNECTING,
 ): ConnectionStatusPresenter {
+  // Called ONCE, here — every warm period re-subscribes this Observable
+  // (the RxJS core's shape, contracted by the portDiscipline suite).
+  const source = events.events();
   const status = createTopic<ConnectionStatus>(
     (signal, publish) => {
       let current = initial;
       publish(current);
-      return relay(events.events(), signal, (event) => {
+      return relay(source, signal, (event) => {
         current = nextConnectionStatus(current, event);
         publish(current);
       });

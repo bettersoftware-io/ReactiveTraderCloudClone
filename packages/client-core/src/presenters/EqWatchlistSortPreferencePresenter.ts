@@ -1,4 +1,4 @@
-import { type Observable, shareReplay, take } from "rxjs";
+import { type Observable, shareReplay } from "rxjs";
 
 import type { EqWatchlistSortPreferencePresenter as EqWatchlistSortPreferencePresenterApi } from "@rtc/core-api";
 import {
@@ -8,21 +8,27 @@ import {
   type PreferencesPort,
 } from "@rtc/domain";
 
-/**
- * App-layer presenter for the equities watchlist sort-mode preference.
- * Exposes the replay-current sort stream, the write operation, and a cycle()
- * (the Watchlist head's ⇅ button advances sym → chg → price → sym), keeping
- * persistence out of the UI. Mirrors ThemePreferencePresenter's cycle().
- */
+import { readNow } from "./readNow";
+
+/** Implements `EqWatchlistSortPreferencePresenter` (`@rtc/core-api`) — see
+ * the interface for the contract. Mirrors `ThemePreferencePresenter`'s
+ * `cycle()`. */
 export class EqWatchlistSortPreferencePresenter
   implements EqWatchlistSortPreferencePresenterApi
 {
   readonly sort$: Observable<EqWatchlistSort>;
 
+  /** The port's stream, captured once at construction — `cycle()` reads
+   * through a fresh subscription of THIS Observable rather than a fresh call
+   * of `preferences.eqWatchlistSort$()`, so the port method is called once
+   * regardless of how many times cycle() runs. */
+  private readonly eqWatchlistSort$: Observable<EqWatchlistSort>;
+
   constructor(private readonly preferences: PreferencesPort) {
-    this.sort$ = preferences
-      .eqWatchlistSort$()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.eqWatchlistSort$ = preferences.eqWatchlistSort$();
+    this.sort$ = this.eqWatchlistSort$.pipe(
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
   }
 
   setSort(sort: EqWatchlistSort): void {
@@ -34,13 +40,10 @@ export class EqWatchlistSortPreferencePresenter
    * replay-current) rather than from a caller's captured value, so rapid
    * successive clicks each advance from the true state. */
   cycle(): void {
-    let current: EqWatchlistSort = DEFAULT_EQ_WATCHLIST_SORT;
-    this.preferences
-      .eqWatchlistSort$()
-      .pipe(take(1))
-      .subscribe((s) => {
-        current = s;
-      });
-    this.setSort(nextEqWatchlistSort(current));
+    this.setSort(
+      nextEqWatchlistSort(
+        readNow(this.eqWatchlistSort$, DEFAULT_EQ_WATCHLIST_SORT),
+      ),
+    );
   }
 }

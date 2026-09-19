@@ -191,6 +191,30 @@ function formatDriveOutcomeText(outcome: DriveOutcome): string {
   return `can't ${op}: ${outcome.reason ?? "refused"}`;
 }
 
+/** The budget-gate copy the Preferences Brain row shows, shared by both web
+ * clients: the hint line under the row AND each gated option's tooltip, so
+ * the two never drift apart. `0` drops the reset clause, the same rule
+ * `untilClause` applies to the downgrade line, rather than printing
+ * "resets —". */
+export function formatGateHint(resetsAtMs: number): string {
+  return resetsAtMs === 0
+    ? "Budget window active"
+    : `Budget window — resets ${formatGateResetTime(resetsAtMs)}`;
+}
+
+/** The hint line's second clause, for when the gate has moved this user off
+ * the brain they chose: the picker keeps highlighting that saved choice (it
+ * resumes when the window resets), so the line says what is running
+ * instead. Empty when the two agree. */
+export function formatGateFallback(
+  preferred: JarvisBrain,
+  effective: JarvisBrain,
+): string {
+  return preferred === effective
+    ? ""
+    : ` · ${JARVIS_BRAIN_LABELS[preferred]} paused, using ${JARVIS_BRAIN_LABELS[effective]}`;
+}
+
 /** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
  * entry `turnItems$`'s concatMap allocated for the CURRENT in-flight turn
  * (tracked by `entryPatches$`, cleared on that turn's own done/error — see

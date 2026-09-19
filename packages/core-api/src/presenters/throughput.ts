@@ -1,7 +1,8 @@
 import type { StateStream } from "#/stream";
 
-/** The status banner the AdminPanel renders. */
-interface ThroughputMessage {
+/** The status banner the AdminPanel renders. The single definition —
+ * `@rtc/client-core`'s presenter imports it. */
+export interface ThroughputMessage {
   text: string;
   isError: boolean;
 }

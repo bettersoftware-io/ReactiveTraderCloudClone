@@ -3,11 +3,9 @@ import { type Observable, shareReplay } from "rxjs";
 import type { ViewModePreferencePresenter as ViewModePreferencePresenterApi } from "@rtc/core-api";
 import type { PreferencesPort, ViewMode } from "@rtc/domain";
 
-/**
- * App-layer presenter for the live-rates view-mode preference. Exposes the
- * replay-current view-mode stream and the write operation, keeping persistence
- * out of the UI.
- */
+/** Implements `ViewModePreferencePresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. `viewMode$` is the port stream under
+ * `shareReplay({ bufferSize: 1, refCount: true })`. */
 export class ViewModePreferencePresenter
   implements ViewModePreferencePresenterApi
 {

@@ -20,6 +20,8 @@ import type {
 
 import {
   createJarvisMachine,
+  formatGateFallback,
+  formatGateHint,
   formatGateResetTime,
   JARVIS_GREETING,
   type JarvisDeps,
@@ -2450,6 +2452,33 @@ describe("createJarvisMachine", () => {
           return e.origin === "system";
         }),
       ).toHaveLength(1);
+    });
+  });
+
+  describe("formatGateHint", () => {
+    it("drops the reset clause for the 0 sentinel instead of printing a dash", () => {
+      expect(formatGateHint(0)).toBe("Budget window active");
+    });
+
+    it("names the reset time otherwise", () => {
+      const resetsAtMs = 1_893_456_000_000;
+      expect(formatGateHint(resetsAtMs)).toBe(
+        `Budget window — resets ${formatGateResetTime(resetsAtMs)}`,
+      );
+    });
+  });
+
+  describe("formatGateFallback", () => {
+    it("is empty while the saved brain is the one running", () => {
+      expect(formatGateFallback("claude-haiku-4-5", "claude-haiku-4-5")).toBe(
+        "",
+      );
+    });
+
+    it("names both brains when the gate has moved the user off their choice", () => {
+      expect(formatGateFallback("claude-opus-5", "claude-haiku-4-5")).toBe(
+        " · Opus 5 paused, using Haiku 4.5",
+      );
     });
   });
 

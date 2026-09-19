@@ -20,3 +20,11 @@ describe("resolveCoreImpl", () => {
     }).toThrow(/VITE_CORE_IMPL/);
   });
 });
+
+describe("selectCore module init", () => {
+  it("publishes the VALIDATED selection on <html data-core-impl>", async () => {
+    await import("#/app/selectCore");
+
+    expect(document.documentElement.dataset.coreImpl).toBe("rxjs");
+  });
+});

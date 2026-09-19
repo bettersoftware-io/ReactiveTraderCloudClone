@@ -23,9 +23,13 @@ import { topicToStream } from "#/bridge/out";
 export function createBootPreferencePresenter(
   preferences: PreferencesPort,
 ): BootPreferencePresenter {
+  // Called ONCE, here — `current()` peeks a fresh subscription of this same
+  // Observable rather than a fresh call of `bootVariant$()`.
+  const bootVariant = preferences.bootVariant$();
+
   return {
     current: () => {
-      return peek(preferences.bootVariant$(), DEFAULT_BOOT_VARIANT);
+      return peek(bootVariant, DEFAULT_BOOT_VARIANT);
     },
     setVariant: (variant: BootVariant) => {
       preferences.setBootVariant(variant);
@@ -36,18 +40,20 @@ export function createBootPreferencePresenter(
 export function createEqWatchlistSortPreferencePresenter(
   preferences: PreferencesPort,
 ): EqWatchlistSortPreferencePresenter {
+  // Called ONCE, here — `sort$` and `cycle()` both read through this same
+  // Observable rather than a fresh call of `eqWatchlistSort$()`.
+  const sort = preferences.eqWatchlistSort$();
+
   return {
-    sort$: topicToStream(topicFromObservable(preferences.eqWatchlistSort$())),
-    setSort: (sort: EqWatchlistSort) => {
-      preferences.setEqWatchlistSort(sort);
+    sort$: topicToStream(topicFromObservable(sort)),
+    setSort: (nextSort: EqWatchlistSort) => {
+      preferences.setEqWatchlistSort(nextSort);
     },
     /** Advance from the TRUE stored value (sym → chg → price → sym), so rapid
      * successive clicks each advance from the real state. */
     cycle: () => {
       preferences.setEqWatchlistSort(
-        nextEqWatchlistSort(
-          peek(preferences.eqWatchlistSort$(), DEFAULT_EQ_WATCHLIST_SORT),
-        ),
+        nextEqWatchlistSort(peek(sort, DEFAULT_EQ_WATCHLIST_SORT)),
       );
     },
   };

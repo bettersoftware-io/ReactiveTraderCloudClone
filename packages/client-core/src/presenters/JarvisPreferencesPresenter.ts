@@ -8,20 +8,12 @@ import type {
   PreferencesPort,
 } from "@rtc/domain";
 
-/**
- * App-layer presenter for the Jarvis desk-assistant preferences: which
- * brain powers it (`brain` — `"scripted"` or a live `claude-*` model), the
- * thinking-effort budget forwarded to a live brain (`effort`, ignored by
- * `"scripted"`), and whether the proactive app-driving narrator may dispatch
- * unsolicited `narrate()` turns (`narrator` — `"on" | "off"`).
- *
- * Mirrors `LoginWaitPreferencesPresenter` exactly: one presenter for all
- * three because they are a single user-facing concern — "how Jarvis should
- * behave" — always shown together in the Preferences modal's JARVIS section.
- * Note this presenter only exposes the user's STORED preference; the brain a
- * turn actually runs with (`JarvisState.effectiveBrain`, folding in live
- * availability) lives on `useJarvis()` instead — see that hook's doc.
- */
+/** Implements `JarvisPreferencesPresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. Mirrors `LoginWaitPreferencesPresenter`
+ * exactly: one presenter for all three because they are a single
+ * user-facing concern, always shown together in the Preferences modal's
+ * JARVIS section. The brain a turn actually runs with lives on
+ * `useJarvis()` instead — see that hook's doc. */
 export class JarvisPreferencesPresenter
   implements JarvisPreferencesPresenterApi
 {

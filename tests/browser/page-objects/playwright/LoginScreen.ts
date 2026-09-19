@@ -15,6 +15,13 @@ import { TESTIDS } from "../contracts/testids";
 export class PlaywrightLoginScreen implements LoginScreenPO {
   private loginPage: Page | undefined;
 
+  /** Uncaught page errors on whichever page `open()` most recently created —
+   * fed by the `pageerror` listener registered there. `selectCore.ts`'s
+   * fail-closed `VITE_CORE_IMPL` throw fires at module init, before ANY
+   * route (including LoginScreen itself) renders, so a captured message here
+   * is what actually happened when a subsequent wait times out. */
+  private pageErrors: string[] = [];
+
   constructor(private readonly appPage: Page) {}
 
   private page(): Page {
@@ -23,6 +30,14 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     }
 
     return this.loginPage;
+  }
+
+  /** A captured page error that mentions VITE_CORE_IMPL — the fail-closed
+   *  message from `selectCore.ts` — or undefined if boot succeeded. */
+  private findBootError(): string | undefined {
+    return this.pageErrors.find((message) => {
+      return message.includes("VITE_CORE_IMPL");
+    });
   }
 
   async open(): Promise<void> {
@@ -34,8 +49,26 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
     const context = await browser.newContext();
     const page = await context.newPage();
+    this.pageErrors = [];
+    page.on("pageerror", (error) => {
+      this.pageErrors.push(error.message);
+    });
     await page.goto("/");
     this.loginPage = page;
+
+    // A module-init throw (e.g. an invalid VITE_CORE_IMPL) crashes the whole
+    // app before ANY route renders — including LoginScreen — and Playwright's
+    // page.goto() does not reject on an in-page script error, only on a
+    // navigation-level failure. By the time `load` fires the module has
+    // already run (and thrown), so the pageerror is already captured here.
+    // Surface it now, immediately, rather than letting whichever locator
+    // wait runs next (e.g. waitVisible) time out with an opaque "element(s)
+    // not found".
+    const boot = this.findBootError();
+
+    if (boot !== undefined) {
+      throw new Error(`the app failed to boot: ${boot}`);
+    }
   }
 
   async waitVisible(timeoutMs: number): Promise<void> {
@@ -84,10 +117,20 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
   }
 
   async waitCoreImpl(expected: string, timeoutMs: number): Promise<void> {
-    await expect(this.page().locator("html")).toHaveAttribute(
-      "data-core-impl",
-      expected,
-      { timeout: timeoutMs },
-    );
+    try {
+      await expect(this.page().locator("html")).toHaveAttribute(
+        "data-core-impl",
+        expected,
+        { timeout: timeoutMs },
+      );
+    } catch (error) {
+      const boot = this.findBootError();
+
+      if (boot !== undefined) {
+        throw new Error(`the app failed to boot: ${boot}`, { cause: error });
+      }
+
+      throw error;
+    }
   }
 }
