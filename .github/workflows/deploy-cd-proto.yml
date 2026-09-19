@@ -44,6 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
           # web v5's standalone HTML is Git LFS-tracked; without this the
           # checkout leaves a pointer file and the deploy would ship that.
           lfs: true
@@ -55,7 +58,10 @@ jobs:
       # Pinned major: vercel@58 (2026-07-27) breaks `vercel pull` under env-var
       # project linking (VERCEL_ORG_ID/VERCEL_PROJECT_ID) — bump deliberately.
       - name: Install Vercel CLI
-        run: npm install -g vercel@57
+        # zizmor ignore is TEMPORARY: a real (mild) finding — the CLI's transitive tree
+        # re-resolves on every deploy, outside the lockfile and the 24h cooldown.
+        # Tracked in docs/STATUS.md; see docs/adr/ADR-007.
+        run: npm install -g vercel@57 # zizmor: ignore[adhoc-packages]
 
       - name: Guard mobile project id
         if: ${{ inputs.target == 'mobile' }}

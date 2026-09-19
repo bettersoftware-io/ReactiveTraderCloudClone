@@ -35,7 +35,7 @@ exactly the failure it exists to prevent.
 
 > **Adding or removing a gate below?** `CLAUDE.md`'s `/rtc:gauntlet` row states
 > the fast-gate count in prose and nothing verifies it — it has already gone
-> stale twice (14 → 15 → 18 → 19). Update it in the same commit.
+> stale twice (14 → 15 → 18 → 19 → 20). Update it in the same commit.
 
 Run in this order and stop reporting nothing until all have run (run them all
 even if one fails — a single command's failure is not a reason to skip the rest):
@@ -46,6 +46,7 @@ pnpm lint:eslint                        # AST rules
 pnpm test:rules                         # custom rule RuleTester suite
 pnpm lint:css                           # stylelint
 pnpm lint:actions                       # actionlint
+pnpm lint:actions:security              # zizmor (offline audits unless GH_TOKEN is set)
 pnpm check:doc-links                    # md links + anchors
 pnpm check:manifest-drift               # presenter manifest, web ↔ RN
 pnpm check:prototype-shots              # prototype deviation corpus, manifest ↔ tree

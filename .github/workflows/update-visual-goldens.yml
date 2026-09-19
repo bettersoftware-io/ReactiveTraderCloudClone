@@ -61,13 +61,22 @@ jobs:
       SCENARIO_PATTERN: ${{ inputs.scenario_pattern }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # This job pushes (gh-pages / golden commit) with the checkout's token, so it
+          # must stay in .git/config — every OTHER checkout in this repo sets false
+          # (zizmor `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: true
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"

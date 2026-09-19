@@ -1,0 +1,55 @@
+name: Dependency Review
+
+# PR-time gate on the dependency DELTA: fails a PR that introduces (or bumps to)
+# a package version with a known advisory, or one under a strong-copyleft
+# licence. It closes the one window the other supply-chain layers leave open:
+#
+#   - Renovate's 24h cooldown vets release FRESHNESS, not known advisories.
+#   - `pnpm audit --prod` (ci.yml, grep-gates step) scans the whole tree but is
+#     prod-only — a vulnerable devDependency (build tooling, test runners: the
+#     code that runs with CI secrets in reach) sails through it.
+#   - Dependabot security updates act only AFTER a vulnerable version is on main.
+#   - Nothing else checks licences at all.
+#
+# It reads GitHub's dependency graph through the API (pnpm-lock.yaml is a
+# supported manifest), so it needs no checkout, no install, and ~20s.
+#
+# Why this and not Snyk / SonarCloud, and how it layers with CodeQL, Dependabot,
+# zizmor and Scorecard: docs/adr/ADR-007-ci-security-tooling.md.
+on:
+  pull_request:
+
+# A newer push to the same PR cancels the in-flight run.
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only: the verdict goes to the job summary, not a PR comment, so no
+# `pull-requests: write` is needed.
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: dependency review (advisories · licences)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Any known advisory blocks — the repo's standing policy is zero
+          # findings, not a severity budget.
+          fail-on-severity: low
+          # The default is `runtime` only; `development` is the whole point here
+          # (see the header — it is the scope `pnpm audit --prod` cannot see).
+          fail-on-scopes: runtime, development
+          # A DENY list, deliberately, not an allow list. Measured 2026-09-19:
+          # all ~1,200 packages in the tree are permissive (MIT / ISC / Apache /
+          # BSD / …) and the repo itself is MIT, so strong copyleft is the only
+          # class that would actually change what this repo may do. An allow
+          # list would instead red a PR on every novel-but-harmless SPDX id
+          # (BlueOak-1.0.0, MIT-0 and 0BSD are all already in the tree).
+          # Unknown / unparseable licences only warn, by the action's design.
+          deny-licenses: >-
+            AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later,
+            GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later,
+            SSPL-1.0

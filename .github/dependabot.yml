@@ -16,3 +16,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
+    # Belt-and-braces: version updates are already off (limit 0 above), so this
+    # is inert today — but it means re-enabling them can never bypass the
+    # supply-chain cooldown by accident. Cooldown does NOT apply to security
+    # updates, which is the point: CVE fixes still flow immediately.
+    # (zizmor `dependabot-cooldown`; see docs/adr/ADR-007.)
+    cooldown:
+      default-days: 7

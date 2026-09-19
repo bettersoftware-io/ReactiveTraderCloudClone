@@ -29,6 +29,10 @@ jobs:
       # lfs: true materialises the real deck bytes, not the 3-line LFS pointer.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          # This job pushes (gh-pages / golden commit) with the checkout's token, so it
+          # must stay in .git/config — every OTHER checkout in this repo sets false
+          # (zizmor `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: true
           lfs: true
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

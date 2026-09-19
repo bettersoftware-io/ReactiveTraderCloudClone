@@ -1,0 +1,67 @@
+name: Scorecard
+
+# OpenSSF Scorecard: a scheduled POSTURE audit of the repo itself — are actions
+# SHA-pinned, are workflow tokens minimal, is main protected, are there
+# dangerous workflow patterns, binary artifacts, unreviewed changes… Findings
+# land in the same Security → Code scanning tab CodeQL already reports to.
+#
+# It is a DRIFT detector, not a PR gate: the repo already does most of what it
+# scores (every `uses:` SHA-pinned, top-level `permissions:` everywhere, a main
+# ruleset), so its job is to notice the day a new workflow ships without them.
+# zizmor (ci.yml, `pnpm lint:actions`) gates the workflow-level subset per PR;
+# this covers the repo-settings half no in-tree linter can see.
+#
+# REPORT-ONLY by design — it gates nothing, and several checks cannot score
+# well here for reasons that are decisions, not defects (single maintainer ⇒
+# Code-Review; no releases ⇒ Signed-Releases / Packaging; no fuzzing). Read the
+# per-check findings, not the aggregate number. See
+# docs/adr/ADR-007-ci-security-tooling.md.
+on:
+  # Re-score immediately when the thing it audits changes…
+  branch_protection_rule:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/dependabot.yml"
+      - ".github/renovate.json5"
+  # …and weekly regardless (Mon 07:30 UTC — clear of e2e-gherkin-weekly's 06:00),
+  # because the checks themselves evolve and repo settings change without a push.
+  schedule:
+    - cron: "30 7 * * 1"
+  workflow_dispatch:
+
+# Scorecard refuses to run if the WORKFLOW grants any write scope; writes are
+# granted per-job below.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Upload the SARIF to code scanning.
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # false = results stay in THIS repo's code-scanning tab. Flipping to
+          # true publishes the score to the public scorecard.dev API (which is
+          # what the README badge reads) and additionally needs
+          # `id-token: write` on this job. That is an outward-facing choice —
+          # make it deliberately (ADR-007, "Open choices").
+          publish_results: false
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+        with:
+          sarif_file: results.sarif
