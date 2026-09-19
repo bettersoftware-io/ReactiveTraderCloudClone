@@ -5,6 +5,7 @@ import {
   type PreferencesPort,
   PreferencesSimulator,
   type ThemeMode,
+  type ThemeModePreference,
 } from "@rtc/domain";
 
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
@@ -60,6 +61,24 @@ describe("createThemePreferencePresenter (async)", () => {
     });
     expect(errors).toHaveLength(1);
   });
+
+  it("releases the modePreference subscription SYNCHRONOUSLY on unsubscribe, with no colour-scheme source", () => {
+    // No colour-scheme source: `mode$`'s producer never awaits a `relay` of
+    // `prefersDark$`, so `modePreference` is its ONLY upstream — this pins
+    // the synchronous abort-listener release on that seam specifically, not
+    // on the colour-scheme seam the other tests already exercise via
+    // `prefersDark.observed`.
+    const themeMode = new BehaviorSubject<ThemeModePreference>("system");
+    const presenter = createThemePreferencePresenter(
+      createPortWithObservableThemeMode(themeMode),
+    );
+    const sub = presenter.mode$.subscribe(() => {});
+    sub.unsubscribe();
+    // No `await`: if the producer released `modePreference` only in its
+    // trailing `finally` (a few microtasks after abort), this would still
+    // read `true` here.
+    expect(themeMode.observed).toBe(false);
+  });
 });
 
 /** A real simulator whose `themeMode$` errors on subscribe. A Proxy rather
@@ -79,6 +98,30 @@ function createPortWithFailingThemeMode(): PreferencesPort {
           return throwError(() => {
             return new Error("storage");
           });
+        };
+      }
+
+      return Reflect.get(target, property, receiver);
+    },
+  });
+}
+
+/** A real simulator whose `themeMode$` returns the CALLER's own subject, so
+ * the test can assert on that subject's `observed` flag directly — the same
+ * Proxy shape as `createPortWithFailingThemeMode`, for the same reason
+ * (TypeScript drops a class's methods from an object spread). */
+function createPortWithObservableThemeMode(
+  themeMode$: BehaviorSubject<ThemeModePreference>,
+): PreferencesPort {
+  return new Proxy(new PreferencesSimulator(), {
+    get: (
+      target: PreferencesSimulator,
+      property: string | symbol,
+      receiver: unknown,
+    ) => {
+      if (property === "themeMode$") {
+        return () => {
+          return themeMode$;
         };
       }
 

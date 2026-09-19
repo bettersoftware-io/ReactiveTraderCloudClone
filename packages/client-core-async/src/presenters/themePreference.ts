@@ -84,6 +84,9 @@ export function createThemePreferencePresenter(
           ]);
         }
       } finally {
+        // Safe to call again after the synchronous abort listener above
+        // already did: `Topic.subscribe`'s returned unsubscribe tolerates
+        // re-invocation (a second `subscribers.delete` is a no-op).
         stop?.();
       }
     },
