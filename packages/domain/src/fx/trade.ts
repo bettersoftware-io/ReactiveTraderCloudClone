@@ -78,3 +78,13 @@ export const CONFIRMATION_DISMISS_MS = 5_000;
 export const RFQ_TIMEOUT_MS = 10_000;
 /** How long the "Quote expired" rejected state is shown before resetting. */
 export const REJECTED_DISPLAY_MS = 2_000;
+
+/** How long a newly-arrived blotter row stays highlighted (the `rowHighlight`
+ * machine). Beside the other presentational timings above for the same
+ * reason they are here: three application cores and the contract tier read
+ * it. */
+export const BLOTTER_ROW_HIGHLIGHT_MS = 3_000;
+
+/** Maximum number of Activity-feed rows retained, newest first
+ * (`blotter.activity$`). */
+export const ACTIVITY_FEED_CAP = 40;

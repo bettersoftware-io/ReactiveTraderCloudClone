@@ -3,15 +3,13 @@ import { type Observable, shareReplay } from "rxjs";
 import type { PriceStreamPresenter as PriceStreamPresenterApi } from "@rtc/core-api";
 import {
   type CurrencyPair,
+  PRICE_CONFLATION_MS,
   type Price,
   PriceStreamUseCase,
   type PricingPort,
 } from "@rtc/domain";
 
 import { conflateWhen } from "./conflateWhen";
-
-/** Power-saver conflation interval for live prices. */
-const PRICE_CONFLATION_MS = 250;
 
 export class PriceStreamPresenter implements PriceStreamPresenterApi {
   private readonly cache = new Map<string, Observable<Price>>();

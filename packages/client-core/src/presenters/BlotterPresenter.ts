@@ -5,45 +5,31 @@ import type {
   BlotterPresenter as BlotterPresenterApi,
 } from "@rtc/core-api";
 import {
+  ACTIVITY_FEED_CAP,
   type BlotterPort,
-  DEFAULT_TRADER_NAME,
   type Trade,
   TradeBlotterUseCase,
 } from "@rtc/domain";
 
+import {
+  type ActivityScan,
+  createActivityScan,
+  createNewTradeScan,
+  reduceActivity,
+  reduceNewTrades,
+} from "./blotterFolds.js";
 import { warmReplay } from "./warmReplay.js";
-
-interface NewTradeScan {
-  readonly seen: Set<number>;
-  readonly fresh: ReadonlySet<number>;
-  readonly initialized: boolean;
-}
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
 export type { ActivityEntry };
 
-interface ActivityScan {
-  readonly seen: Set<number>;
-  readonly entries: readonly ActivityEntry[];
-  readonly initialized: boolean;
-}
-
 /** Maximum number of Activity feed rows retained (newest-first), mirroring
  * client-prototype's own `ACTIVITY_CAP` (packages/client-prototype/src/fx/useFxRates.ts)
- * for behavioural parity with the v2 design. */
-export const ACTIVITY_CAP = 40;
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function formatClockTime(ms: number): string {
-  const d = new Date(ms);
-
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-}
+ * for behavioural parity with the v2 design. Now the domain's
+ * `ACTIVITY_FEED_CAP`; kept under this name for the two web clients' imports. */
+export const ACTIVITY_CAP: number = ACTIVITY_FEED_CAP;
 
 export class BlotterPresenter implements BlotterPresenterApi {
   readonly trades$: Observable<readonly Trade[]>;
@@ -99,70 +85,17 @@ export class BlotterPresenter implements BlotterPresenterApi {
       .pipe(warmReplay());
 
     this.newTradeIds$ = this.trades$.pipe(
-      scan(
-        (acc: NewTradeScan, trades: readonly Trade[]): NewTradeScan => {
-          const fresh = new Set<number>();
-
-          for (const trade of trades) {
-            if (!acc.seen.has(trade.tradeId)) {
-              // The entire first snapshot is the initial load — nothing is
-              // "new" yet. Only arrivals on later emissions are flagged.
-              if (acc.initialized) {
-                fresh.add(trade.tradeId);
-              }
-
-              acc.seen.add(trade.tradeId);
-            }
-          }
-
-          return { seen: acc.seen, fresh, initialized: true };
-        },
-        {
-          seen: new Set<number>(),
-          fresh: new Set<number>() as ReadonlySet<number>,
-          initialized: false,
-        },
-      ),
-      map((acc: NewTradeScan): ReadonlySet<number> => {
+      scan(reduceNewTrades, createNewTradeScan()),
+      map((acc): ReadonlySet<number> => {
         return acc.fresh;
       }),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
 
     this.activity$ = this.trades$.pipe(
-      scan(
-        (acc: ActivityScan, trades: readonly Trade[]): ActivityScan => {
-          // Collect this emission's arrivals in trades' own order (newest
-          // first — TradeBlotterUseCase/BlotterPort preserve that ordering)
-          // so a batch of simultaneous arrivals stays correctly ordered when
-          // prepended as one block below.
-          const additions: ActivityEntry[] = [];
-
-          for (const trade of trades) {
-            if (acc.seen.has(trade.tradeId)) {
-              continue;
-            }
-
-            acc.seen.add(trade.tradeId);
-
-            if (acc.initialized && trade.tradeName === DEFAULT_TRADER_NAME) {
-              additions.push({ trade, time: formatClockTime(Date.now()) });
-            }
-          }
-
-          const entries =
-            additions.length > 0
-              ? [...additions, ...acc.entries].slice(0, ACTIVITY_CAP)
-              : acc.entries;
-
-          return { seen: acc.seen, entries, initialized: true };
-        },
-        {
-          seen: new Set<number>(),
-          entries: [] as readonly ActivityEntry[],
-          initialized: false,
-        },
-      ),
+      scan((acc: ActivityScan, trades: readonly Trade[]): ActivityScan => {
+        return reduceActivity(acc, trades, Date.now());
+      }, createActivityScan()),
       map((acc: ActivityScan): readonly ActivityEntry[] => {
         return acc.entries;
       }),

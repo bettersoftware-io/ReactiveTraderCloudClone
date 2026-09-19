@@ -2,9 +2,14 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, type Observable } from "rxjs";
 import { distinctUntilChanged, map, scan, startWith } from "rxjs/operators";
 
-import { ConnectionStatus } from "@rtc/domain";
+import type { ConnectionStatus } from "@rtc/domain";
 
 import type { ReadOnlyMachine } from "./machine";
+import {
+  createStaleFlagAcc,
+  reduceStaleFlag,
+  type StaleFlagEvent,
+} from "./staleFlagFold.js";
 
 /** Generic stale-detection derived flag, relocated out of the old
  * useStaleDetection React hook. It has NO intents — it's a pure read-only
@@ -24,84 +29,24 @@ export interface StaleFlagDeps<T> {
   value$: Observable<T>;
 }
 
-type Event<T> =
-  | { kind: "status"; status: ConnectionStatus }
-  | { kind: "value"; value: T };
-
-interface Acc<T> {
-  /** Latched the moment status leaves CONNECTED; cleared on reconnect. */
-  wasDisconnected: boolean;
-  /** Most recent value reference seen on value$. */
-  current: T | undefined;
-  /** Whether a value has been seen at all (so `current` is meaningful). */
-  hasValue: boolean;
-  /** The value reference held at the last reconnect. */
-  valueAtReconnect: T | undefined;
-  /** The derived flag. */
-  stale: boolean;
-}
-
 export function createStaleFlagMachine<T>(
   deps: StaleFlagDeps<T>,
 ): ReadOnlyMachine<boolean> {
   const events$ = merge(
     deps.status$.pipe(
-      map((status): Event<T> => {
+      map((status): StaleFlagEvent<T> => {
         return { kind: "status", status };
       }),
     ),
     deps.value$.pipe(
-      map((value): Event<T> => {
+      map((value): StaleFlagEvent<T> => {
         return { kind: "value", value };
       }),
     ),
   );
 
-  const initial: Acc<T> = {
-    wasDisconnected: false,
-    current: undefined,
-    hasValue: false,
-    valueAtReconnect: undefined,
-    stale: false,
-  };
-
   const stream$ = events$.pipe(
-    scan((acc: Acc<T>, event: Event<T>): Acc<T> => {
-      if (event.kind === "status") {
-        if (event.status !== ConnectionStatus.CONNECTED) {
-          // Mirrors effect 1's `wasDisconnectedRef.current = true` branch.
-          return { ...acc, wasDisconnected: true };
-        }
-
-        // CONNECTED: if we had previously disconnected, this is the reconnect —
-        // snapshot the current value reference and go stale.
-        if (acc.wasDisconnected) {
-          return {
-            ...acc,
-            wasDisconnected: false,
-            valueAtReconnect: acc.current,
-            stale: true,
-          };
-        }
-
-        return acc;
-      }
-
-      // value event: record the new reference; if stale and the reference
-      // differs from the one captured at reconnect, fresh data has arrived —
-      // clear the flag (mirrors effect 2).
-      const next: Acc<T> = {
-        ...acc,
-        current: event.value,
-        hasValue: true,
-      };
-
-      if (acc.stale && event.value !== acc.valueAtReconnect) {
-        next.stale = false;
-      }
-
-      return next;
-    }, initial),
+    scan(reduceStaleFlag, createStaleFlagAcc<T>()),
     map((acc) => {
       return acc.stale;
     }),

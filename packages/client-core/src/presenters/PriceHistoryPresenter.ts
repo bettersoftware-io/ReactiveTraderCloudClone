@@ -2,15 +2,13 @@ import { defer, type Observable, shareReplay, startWith } from "rxjs";
 
 import type { PriceHistoryPresenter as PriceHistoryPresenterApi } from "@rtc/core-api";
 import {
+  PRICE_HISTORY_CONFLATION_MS as HISTORY_CONFLATION_MS,
   PriceHistoryUseCase,
   type PriceTick,
   type PricingPort,
 } from "@rtc/domain";
 
 import { conflateWhen } from "./conflateWhen";
-
-/** Power-saver conflation interval for price history updates. */
-const HISTORY_CONFLATION_MS = 1_000;
 
 export class PriceHistoryPresenter implements PriceHistoryPresenterApi {
   private readonly cache = new Map<string, Observable<readonly PriceTick[]>>();
