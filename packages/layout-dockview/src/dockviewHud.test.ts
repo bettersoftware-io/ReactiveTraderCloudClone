@@ -57,10 +57,27 @@ describe("dockview-hud.css — skin-proof surface painting", () => {
 });
 
 describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
-  it("paints a floating group's box with the panel surface and a lifted shadow", () => {
+  it("gives a floating group's box an OPAQUE base and a lifted shadow", () => {
     const body = declarationsOf(".dockview-theme-rtc .dv-resize-container");
 
-    expect(body).toMatch(/^\s*background:\s*var\(--panel[,)]/m);
+    // A float sits over OTHER panels, and the glass skins' `--panel` is
+    // translucent by design (holo `rgba(6,26,38,0.5)`): painted on the box,
+    // the content of the panel underneath read straight through the float.
+    // The box carries a token that is a solid colour in every skin; the card
+    // inside it (`.dv-groupview`, asserted above) still lays the skin's own
+    // `--panel` over that base, so glass skins keep their look.
+    expect(body).toMatch(
+      new RegExp(
+        `^\\s*background:\\s*var\\((${OPAQUE_BASE_TOKENS.join("|")})[,)]`,
+        "m",
+      ),
+    );
+
+    // And never a translucent or image-valued surface token in its place.
+    for (const token of IMAGE_VALUED_TOKENS) {
+      expect(body).not.toMatch(new RegExp(`var\\(${token}[,)]`));
+    }
+
     expect(body).not.toMatch(/background-color/);
     expect(body).toMatch(/^\s*box-shadow:/m);
     expect(body).toMatch(/^\s*border-radius:\s*6px;/m);
@@ -135,6 +152,12 @@ const css = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "styles", "dockview-hud.css"),
   "utf8",
 );
+
+/** Tokens that are an opaque plain colour in EVERY skin and mode — the page
+ *  ground (packages/client-react/src/ui/shell/theme/tokens.ts: every
+ *  `--bg-primary` / `--bg-secondary` cell is a `#rrggbb` hex, while
+ *  `--panel` / `--bg-tile` are `rgba(…)` or gradients in the glass skins). */
+const OPAQUE_BASE_TOKENS = ["--bg-primary", "--bg-secondary"];
 
 /** Tokens that are gradient IMAGES in at least one skin
  *  (packages/client-react/src/ui/shell/theme/tokens.ts, the 3D skins). */

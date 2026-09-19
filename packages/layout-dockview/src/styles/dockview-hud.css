@@ -168,9 +168,21 @@
  * single header would have). Both get the in-house treatment so a float
  * reads as a lifted version of the same card, not dockview's stock chrome. */
 
-/* `.dv-resize-container`: the box itself — card border + radius, painted
- * through `background` (shorthand), never `background-color`, for the exact
- * reason above. `overflow: hidden` clips the drag rail and the grid content
+/* `.dv-resize-container`: the box itself — card border + radius, and an
+ * OPAQUE base: `--bg-primary`, the page ground a grid card sits on, a solid
+ * colour in every skin and mode. Not `--panel`: a float is layered over
+ * OTHER panels, and the glass skins' panel surface is translucent by design
+ * (holo `rgba(6,26,38,0.5)`), so painting it here let the content of the
+ * panel underneath read straight through the float. The skin's own
+ * `--panel` still paints on top — the float's `.dv-groupview` card rule
+ * above — so a glass float keeps exactly the look of a glass grid card,
+ * glass over the ground, with nothing but the ground beneath it. Two
+ * elements rather than one layered `background` list on purpose: a
+ * `var(--panel)` that is a plain colour cannot be a non-final layer, which
+ * would invalidate the whole declaration and paint NOTHING — the same
+ * silent-transparent family as the `background-color` trap above. Still the
+ * `background` shorthand, never `background-color`, for that reason.
+ * `overflow: hidden` clips the drag rail and the grid content
  * to the rounded corners, as `.dv-groupview`'s own `overflow: hidden`
  * already clips its tab bar. The box-shadow is a literal, always-on
  * elevation shadow — NOT layered onto `--panel-shadow` via a comma list,
@@ -185,7 +197,7 @@
   overflow: hidden;
   border: 1px solid var(--border-primary, #334155);
   border-radius: 6px;
-  background: var(--panel, #1e293b);
+  background: var(--bg-primary, #111827);
   box-shadow:
     0 24px 60px -8px rgba(0, 0, 0, 0.55),
     0 8px 20px rgba(0, 0, 0, 0.35);
