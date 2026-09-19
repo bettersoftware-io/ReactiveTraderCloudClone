@@ -138,9 +138,14 @@ export interface SharedFold<S> {
   readonly run: (update: FoldUpdate<S>) => Effect.Effect<void, unknown>;
 }
 
-interface WarmPeriod {
+interface WarmPeriod<S> {
   scope: Scope.CloseableScope;
   subscribers: number;
+  /** This period's OWN ref, wrapped for delivery — never shared with another
+   * period, so a stale producer's writes (see `startWarmPeriod`'s `update`)
+   * cannot reach a live subscriber even without the generation guard, and no
+   * dead period's last value lingers into the next cold → warm cycle. */
+  changes: StateStream<S>;
 }
 
 /** `shareReplay({ bufferSize: 1, refCount: true })` restated over a
@@ -155,18 +160,8 @@ export function sharedFold<S>(
   host: EffectHost,
   fold: SharedFold<S>,
 ): CoreStream<S> {
-  // `SubscriptionRef.make` needs a concrete `S` synchronously, before any
-  // subscriber exists — but `fold.seed()` must be read at ACTUAL
-  // first-subscribe time (freshness; see `SharedFold.seed`), not now, and
-  // exactly once per warm period. This placeholder is overwritten by
-  // `startWarmPeriod` before any subscriber ever reads it, so it is never
-  // observed — and `fold.seed()` is never called on its account.
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<S>(undefined as unknown as S),
-  );
-  const changes = refToStateStream(host, ref);
   const subscribers = new Set<Subscriber<S>>();
-  let warm: WarmPeriod | null = null;
+  let warm: WarmPeriod<S> | null = null;
   let generation = 0;
 
   function failEverySubscriber(cause: Cause.Cause<unknown>): void {
@@ -179,13 +174,27 @@ export function sharedFold<S>(
     }
   }
 
-  function startWarmPeriod(): WarmPeriod {
+  function startWarmPeriod(): WarmPeriod<S> {
     generation += 1;
     const mine = generation;
     const scope = host.runtime.runSync(
       Scope.fork(host.scope, ExecutionStrategy.sequential),
     );
-    host.runtime.runSync(SubscriptionRef.set(ref, fold.seed()));
+    // A fresh ref per period — `fold.seed()` runs exactly once, right here,
+    // at actual first-subscribe time.
+    const ref = host.runtime.runSync(SubscriptionRef.make(fold.seed()));
+    const period: WarmPeriod<S> = {
+      scope,
+      subscribers: 0,
+      changes: refToStateStream(host, ref),
+    };
+    // Assigned BEFORE `runFork`, not after it returns: the producer runs
+    // synchronously up to its first suspension, and a producer that fails at
+    // once can drive a subscriber's `error()` handler to resubscribe
+    // synchronously (`retry()`, `catchError()`) — that nested subscribe must
+    // see THIS period already warm and join it, never race the assignment
+    // below and start a second one that `warm` then never points back to.
+    warm = period;
 
     function update(next: (current: S) => S): Effect.Effect<void> {
       return Effect.suspend(() => {
@@ -215,7 +224,7 @@ export function sharedFold<S>(
       { scope },
     );
 
-    return { scope, subscribers: 0 };
+    return period;
   }
 
   return new Observable<S>((subscriber) => {
@@ -231,7 +240,7 @@ export function sharedFold<S>(
 
     const period = warm;
     period.subscribers += 1;
-    const inner = changes.subscribe(subscriber);
+    const inner = period.changes.subscribe(subscriber);
 
     return () => {
       inner.unsubscribe();

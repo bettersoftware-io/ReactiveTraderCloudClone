@@ -7,6 +7,7 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect";
+import type { Subscription } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
@@ -328,9 +329,124 @@ describe("bridge/out", () => {
     expect(failure).toBe(boom);
   });
 
+  it("sharedFold() swallows a producer's own self-interrupt without dispatching an error", async () => {
+    // Unlike the scope-close test below — which interrupts the fiber
+    // EXTERNALLY and never reaches `failEverySubscriber` at all (Effect
+    // unwinds via finalizers only, bypassing `catchAllCause`) — a producer
+    // that interrupts ITSELF (`Effect.interrupt`, mirroring
+    // `streamToStream`'s own "keeps an interrupt-only cause silent" test)
+    // has its cause flow through `catchAllCause` normally, exercising
+    // `failEverySubscriber`'s `Cause.isInterruptedOnly` guard: the one
+    // branch the rest of the suite doesn't reach.
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 0;
+      },
+      run: () => {
+        return Effect.interrupt;
+      },
+    });
+    let errored = false;
+    let completed = false;
+    stream.subscribe({
+      next: () => {},
+      error: () => {
+        errored = true;
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    await tick();
+    expect(errored).toBe(false);
+    expect(completed).toBe(false);
+  });
+
+  it("sharedFold() stays on ONE warm period when a synchronous resubscribe races the first — a producer that fails at once, resubscribed from its own error()", async () => {
+    // `.pipe(retry(1))` does NOT trigger this race — rxjs's own `retry`
+    // guards a synchronous first-subscribe failure with a `syncUnsub` flag
+    // and defers its resubscribe until AFTER the outer `subscribe()` call
+    // has returned (measured against rxjs 7.8.2's `retry.js`), by which
+    // point the (buggy) outer `warm = startWarmPeriod()` assignment has
+    // already run. A raw resubscribe from inside a plain `error()` handler
+    // has no such guard and runs the nested `subscribe()` truly synchronously
+    // — still inside `startWarmPeriod()` for the failed period — which is
+    // the actual race Important-1 fixes.
+    const boom = new Error("boom");
+    let seeds = 0;
+    let attempts = 0;
+    let thirdInterrupted = false;
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        seeds += 1;
+        return seeds;
+      },
+      // Fails at once on the FIRST attempt (the failure whose synchronous
+      // fan-out drives the race below); a live producer on any later one.
+      run: () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return Effect.fail(boom);
+        }
+
+        return Effect.never.pipe(
+          Effect.onInterrupt(() => {
+            return Effect.sync(() => {
+              thirdInterrupted = true;
+            });
+          }),
+        );
+      },
+    });
+
+    let nested: Subscription | undefined;
+    const nestedSeen: number[] = [];
+    stream.subscribe({
+      next: () => {},
+      error: () => {
+        // Synchronous, from inside the failing subscriber's own error() —
+        // `sharedFold`'s Observable executor for the FIRST subscribe is
+        // still on the call stack (still inside `startWarmPeriod`).
+        nested = stream.subscribe((v: number) => {
+          nestedSeen.push(v);
+        });
+      },
+    });
+    // Fixed behaviour: the nested resubscribe joins the SAME (already-
+    // failed) period rather than racing a second one into existence — it
+    // sees period 1's own seed, and the producer never runs a second time.
+    // The bug this pins: without assigning `warm` before `runFork`, this
+    // nested subscribe would still see `warm === null` and start ITS OWN
+    // second period (`attempts` reaching 2, `nestedSeen` seeing seed `2`)
+    // — which the OUTER subscribe's later `warm = startWarmPeriod()` then
+    // silently orphans (see the trailing comment below).
+    expect(nestedSeen).toEqual([1]);
+    expect(attempts).toBe(1);
+    nested?.unsubscribe();
+
+    // With the race gone, the (single, now-empty) period's normal teardown
+    // ran: `warm` is back to `null`. The deterministic, externally-
+    // observable proof — rather than reading `warm` directly — is that a
+    // completely fresh subscribe starts a genuinely NEW period (a fresh
+    // `seed()` call) and that period's producer can be interrupted normally
+    // on unsubscribe. Under the bug, the already-errored outer subscriber's
+    // own teardown nulls `warm` out WHILE the live (nested) period was still
+    // attached — orphaning it (never closed, its producer never
+    // interrupted) — so this same sequence would instead start a THIRD,
+    // redundant period on top of the leaked one.
+    const third = stream.subscribe(() => {});
+    expect(seeds).toBe(2);
+    third.unsubscribe();
+    await tick();
+    expect(thirdInterrupted).toBe(true);
+  });
+
   it("sharedFold() producers are interrupted when the host scope closes", async () => {
     const host = createHost();
     let interrupted = false;
+    let errored = false;
     const stream = sharedFold(host, {
       seed: () => {
         return 0;
@@ -345,11 +461,22 @@ describe("bridge/out", () => {
         );
       },
     });
-    stream.subscribe(() => {});
+    stream.subscribe({
+      next: () => {},
+      error: () => {
+        errored = true;
+      },
+    });
     await tick();
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     await tick();
     expect(interrupted).toBe(true);
+    // Interruption is not a failure, from EITHER interruption path: an
+    // externally-closed scope unwinds via finalizers only (never reaching
+    // `failEverySubscriber`'s `catchAllCause` at all — the self-interrupt
+    // test above pins that guard directly), so this asserts the OTHER path
+    // never dispatches a subscriber `error()` either.
+    expect(errored).toBe(false);
     await host.runtime.dispose();
   });
 
