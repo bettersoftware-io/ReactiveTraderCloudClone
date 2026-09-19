@@ -6,9 +6,11 @@ export interface CountingPort<P> {
 
 /** Wraps `port` so every call to `method` is counted — a Proxy rather than a
  * spread, since a class port's methods live on its prototype and a spread
- * would drop them. Counting happens on `get` of the method's function-valued
- * property, which is where a call begins; every other property read falls
- * straight through to `Reflect.get`. Shared by the three port-discipline
+ * would drop them. The `get` trap only INSTALLS the counting wrapper on the
+ * method's function-valued property; the count happens inside that wrapper,
+ * on invocation — so a property read that is never called does not count —
+ * and every other property read falls straight through to `Reflect.get`.
+ * Shared by the three port-discipline
  * tests (`ThemePreferencePresenter`, `BootPreferencePresenter`,
  * `EqWatchlistSortPreferencePresenter`) that each assert their presenter
  * calls its one preferences-port method once, however many times the
