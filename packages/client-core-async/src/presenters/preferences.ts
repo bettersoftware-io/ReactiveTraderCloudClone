@@ -1,9 +1,21 @@
 import type {
+  AmbientStylePresenter,
+  AnimatedBackgroundPresenter,
+  ChartSubstratePresenter,
+  CreditRfqFilterPreferencePresenter,
+  EqBlotterViewPreferencePresenter,
+  ForceBootAnimationPresenter,
+  LayoutEnginePresenter,
   PowerSaverPresenter,
   ThemeSkinPreferencePresenter,
   ViewModePreferencePresenter,
 } from "@rtc/core-api";
 import type {
+  AmbientStyle,
+  ChartSubstrate,
+  CreditRfqFilter,
+  EqBlotterView,
+  LayoutEngine,
   PowerSaverLevel,
   PreferencesPort,
   ThemeSkin,
@@ -65,6 +77,100 @@ export function createPowerSaverPresenter(
     ),
     setLevel: (next: PowerSaverLevel) => {
       preferences.setPowerSaverLevel(next);
+    },
+  };
+}
+
+export function createCreditRfqFilterPreferencePresenter(
+  preferences: PreferencesPort,
+): CreditRfqFilterPreferencePresenter {
+  return {
+    filter$: topicToStream(topicFromObservable(preferences.creditRfqFilter$())),
+    setFilter: (filter: CreditRfqFilter) => {
+      preferences.setCreditRfqFilter(filter);
+    },
+  };
+}
+
+export function createEqBlotterViewPreferencePresenter(
+  preferences: PreferencesPort,
+): EqBlotterViewPreferencePresenter {
+  return {
+    view$: topicToStream(topicFromObservable(preferences.eqBlotterView$())),
+    setView: (view: EqBlotterView) => {
+      preferences.setEqBlotterView(view);
+    },
+  };
+}
+
+export function createAmbientStylePresenter(
+  preferences: PreferencesPort,
+): AmbientStylePresenter {
+  return {
+    style$: topicToStream(topicFromObservable(preferences.ambientStyle$())),
+    setStyle: (style: AmbientStyle) => {
+      preferences.setAmbientStyle(style);
+    },
+  };
+}
+
+export function createChartSubstratePresenter(
+  preferences: PreferencesPort,
+): ChartSubstratePresenter {
+  return {
+    substrate$: topicToStream(
+      topicFromObservable(preferences.chartSubstrate$()),
+    ),
+    setSubstrate: (substrate: ChartSubstrate) => {
+      preferences.setChartSubstrate(substrate);
+    },
+  };
+}
+
+export function createLayoutEnginePresenter(
+  preferences: PreferencesPort,
+): LayoutEnginePresenter {
+  return {
+    engine$: topicToStream(topicFromObservable(preferences.layoutEngine$())),
+    setEngine: (engine: LayoutEngine) => {
+      preferences.setLayoutEngine(engine);
+    },
+  };
+}
+
+/** The two boolean gates. `toggle(current)` flips the SUPPLIED value and
+ * reads nothing — the caller's rendered state is the truth it flips, and a
+ * store-reading toggle would diverge from it exactly when the two disagree
+ * (the contract's `toggle(current)` case pins the difference). */
+
+export function createAnimatedBackgroundPresenter(
+  preferences: PreferencesPort,
+): AnimatedBackgroundPresenter {
+  return {
+    enabled$: topicToStream(
+      topicFromObservable(preferences.animatedBackground$()),
+    ),
+    set: (on: boolean) => {
+      preferences.setAnimatedBackground(on);
+    },
+    toggle: (current: boolean) => {
+      preferences.setAnimatedBackground(!current);
+    },
+  };
+}
+
+export function createForceBootAnimationPresenter(
+  preferences: PreferencesPort,
+): ForceBootAnimationPresenter {
+  return {
+    enabled$: topicToStream(
+      topicFromObservable(preferences.forceBootAnimation$()),
+    ),
+    set: (on: boolean) => {
+      preferences.setForceBootAnimation(on);
+    },
+    toggle: (current: boolean) => {
+      preferences.setForceBootAnimation(!current);
     },
   };
 }
