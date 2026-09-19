@@ -5325,6 +5325,47 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
       engine.dispose();
     });
 
+    // A deferred restore describes the spot the panel docked INTO. Moved
+    // again before the maximize ends (reachable: a nearest-column maximize
+    // strips one column, and the rest of the grid still takes drops), the
+    // panel's remembered extent no longer describes where it is — applying
+    // it on exit sized the new spot to the old one (#770's recorded
+    // residual). The entry is dropped instead.
+    it("drops a deferred restore when the panel moves again before the maximize ends", () => {
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      engine.maximizePanel("fx-rates");
+
+      const sizes = recordSetSize("fx-blotter");
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+      const analytics = api.getPanel("fx-analytics");
+
+      if (rates === undefined || analytics === undefined) {
+        throw new Error("fixture panels missing");
+      }
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "bottom",
+      });
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: analytics.group,
+        position: "bottom",
+      });
+
+      engine.exitMaximize();
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).not.toContainEqual({ height: before });
+      engine.dispose();
+    });
+
     // Both sides of the reload in one test: the write (the sidecar the first
     // engine saved) and the read (a SECOND engine, built from that blob,
     // re-applying it at dock-home). Observable only at the second engine's

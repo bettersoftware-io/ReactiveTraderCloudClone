@@ -2553,6 +2553,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * mutations, which reach the pass through `settleFloatTransitions`. */
   function restoreFloatHomeSizes(): void {
     if (maximized !== null) {
+      noteDeferredLandings();
+
       return;
     }
 
@@ -2561,6 +2563,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (panel === undefined) {
         floatHomeSizes.delete(panelId);
+        deferredLandings.delete(panelId);
         continue;
       }
 
@@ -2571,6 +2574,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       floatHomeSizes.delete(panelId);
       const group: SizableGroup = panel.group;
       const split = group.element.closest(SPLIT_SELECTOR);
+      const landing = deferredLandings.get(panelId);
+
+      deferredLandings.delete(panelId);
+
+      if (landing !== undefined && !isSameLanding(landing, group, split)) {
+        continue;
+      }
 
       if (
         split === null ||
@@ -2593,6 +2603,36 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (Math.abs(axis.size() - size) > 0.5) {
         axis.set(size);
+      }
+    }
+  }
+
+  /** Where each panel whose restore is DEFERRED first docked: the group and
+   * split it landed in while a maximize was live. The remembered extent
+   * describes that spot; a panel moved again before the maximize ends is
+   * somewhere the extent does not describe, and its entry is dropped rather
+   * than applied there (#770's residual). */
+  const deferredLandings = new Map<string, DockLanding>();
+
+  /** Records, under a live maximize, where each remembered panel that is
+   * back in the grid landed — the first time it is seen there — and drops
+   * the entry of one that has since moved on. */
+  function noteDeferredLandings(): void {
+    for (const panelId of [...floatHomeSizes.keys()]) {
+      const group = api.getPanel(panelId)?.group;
+
+      if (group === undefined || !isInGrid(group)) {
+        continue;
+      }
+
+      const split = group.element.closest(SPLIT_SELECTOR);
+      const landing = deferredLandings.get(panelId);
+
+      if (landing === undefined) {
+        deferredLandings.set(panelId, { group: group.element, split });
+      } else if (!isSameLanding(landing, group, split)) {
+        floatHomeSizes.delete(panelId);
+        deferredLandings.delete(panelId);
       }
     }
   }
@@ -3495,6 +3535,22 @@ function sharesWidth(split: Element): boolean {
 /** An instance member the sharing rule sizes: the along-split axis of every
  * group in it (one for a lone instance, several for a stacked column), and
  * its design width as a MODEL size (card + gap). */
+/** Where a panel docked: its group's element and the split holding it. */
+interface DockLanding {
+  readonly group: Element;
+  readonly split: Element | null;
+}
+
+/** Whether `group` still sits where `landing` recorded — the same group
+ * element in the same split. */
+function isSameLanding(
+  landing: DockLanding,
+  group: SizableGroup,
+  split: Element | null,
+): boolean {
+  return landing.group === group.element && landing.split === split;
+}
+
 interface SharedInstance {
   readonly axes: readonly GroupAxis[];
   readonly designModel: number;
