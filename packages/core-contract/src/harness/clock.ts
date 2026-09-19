@@ -2,19 +2,18 @@ import { vi } from "vitest";
 
 /** The clock a timer-driven suite drives. `advance` moves fake time and runs
  * every timer that falls due, awaiting the microtasks between them;
- * `settle` is the fake-clock twin of `#/harness/settle`: two turns, enough
- * for a two-hop chain (port → fold → subscriber) to land on any of the
- * three cores' schedulers. NOT two zero-length advances, though the real
- * `settle` is two zero-delay `setTimeout` turns and that would be the naive
- * mirror: measured against this repo's installed vitest/sinon fake timers,
- * a zero-delay timer that a callback schedules DURING a
- * `advanceTimersByTimeAsync(0)` call never becomes eligible under any
- * number of further zero-length advances — only a later advance that
- * actually moves the clock forward picks it up. So the first turn is
- * zero-length (fires whatever is already due, without over-running a
- * longer real delay some other pending timer might hold) and the second
- * is a 1ms nudge (unsticks a hop scheduled by the first turn's callback);
- * a `settle()` on an already-quiet queue is a harmless no-op either way. */
+ * `settle` is the fake-clock twin of `#/harness/settle`, but MUST NOT move
+ * time — it promises a due macrotask plus the microtask continuations it
+ * queues (what the cores' schedulers actually use), never a nested
+ * macrotask. A suite that needs a further real hop calls `clock.advance(1)`
+ * itself and says why (e.g. a boundary the FX suites drive as
+ * `advance(N - 1)` → `settle()` → still-not-fired → `advance(1)` →
+ * fired). Measured on this repo's installed vitest 4.1.11 (sinon-backed
+ * fake timers): a zero-delay timer a callback schedules DURING a firing
+ * `advanceTimersByTimeAsync(0)` call does not become eligible under
+ * further zero-length advances — but a microtask (`Promise.resolve().then`)
+ * queued from that same callback IS picked up within the same call, which
+ * is why two zero-length advances suffice here. */
 export interface FakeClock {
   advance(ms: number): Promise<void>;
   settle(): Promise<void>;
@@ -37,7 +36,7 @@ export async function withFakeClock(
       },
       settle: async () => {
         await vi.advanceTimersByTimeAsync(0);
-        await vi.advanceTimersByTimeAsync(1);
+        await vi.advanceTimersByTimeAsync(0);
       },
     });
   } finally {

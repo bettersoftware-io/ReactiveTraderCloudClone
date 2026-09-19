@@ -17,17 +17,19 @@ describe("withFakeClock", () => {
     expect(vi.isFakeTimers()).toBe(false);
   });
 
-  it("settle() runs continuations scheduled at zero delay, twice over", async () => {
+  it("settle() runs a zero-delay continuation and the microtasks it queues, without moving time", async () => {
     await withFakeClock(async (clock) => {
       const order: string[] = [];
+      const before = Date.now();
       setTimeout(() => {
-        order.push("first");
-        setTimeout(() => {
-          order.push("second");
-        }, 0);
+        order.push("macrotask");
+        void Promise.resolve().then(() => {
+          order.push("microtask");
+        });
       }, 0);
       await clock.settle();
-      expect(order).toEqual(["first", "second"]);
+      expect(order).toEqual(["macrotask", "microtask"]);
+      expect(Date.now()).toBe(before);
     });
   });
 
