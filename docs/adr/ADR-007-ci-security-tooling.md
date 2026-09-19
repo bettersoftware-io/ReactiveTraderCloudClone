@@ -187,7 +187,11 @@ installing them. Measured, not assumed:
 | 58.0.0 | 353 | 30 — identical |
 | 59.23.1 (newest outside the cooldown) | 390 | 29 — same 8 roots |
 
-So **upgrading the CLI does not help**; upstream has not fixed them. The fix is
+So **upgrading the CLI does not help** with the advisories; upstream has not
+fixed them. (The CLI *was* later unpinned to 59.23.1 for its own sake — a Deploy
+dispatch proved `vercel pull` works again under env-var project linking, the
+58.0.0 regression the 57 pin existed for. Deleting each override in turn at
+59.23.1 re-opened advisories every time, so all nine stayed.) The fix is
 npm `overrides` in the tooling manifest, each lifting exactly one vulnerable
 package onto its patched line (`tar`, `undici`, `js-yaml`, `minimatch`,
 `path-to-regexp` ×2, `smol-toml`, `ajv`, `@tootallnate/once`) → **`npm audit`:
@@ -319,6 +323,10 @@ lighter-weight first try).
   header. All four share one download-verify-then-run helper
   (`scripts/lib/fetch-verified.sh`). Corepack and the Vercel CLI, by contrast,
   **are** Renovate-managed now (ordinary npm manifests + lockfiles).
+- **Renovate may not bump the Vercel CLI across a MAJOR** (`renovate.json5`).
+  CI never runs a deploy, so a green Renovate PR proves nothing about a CLI
+  major — and one has already broken production. Minors and patches flow; a
+  major is done by hand and proven with a Deploy dispatch.
 - **The `overrides` in `scripts/ci-tooling/vercel/package.json` are debt with an
   exit**: delete each one when the Vercel CLI ships the patched dependency
   itself, and re-run `npm audit --package-lock-only` there after any bump.
