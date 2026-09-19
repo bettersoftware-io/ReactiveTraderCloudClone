@@ -2,6 +2,8 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewTheme,
+  directionToPosition,
+  type FloatingGroupOptions,
   type SerializedDockview,
 } from "dockview";
 
@@ -9,6 +11,7 @@ import {
   DOCK_BLOB_VERSION,
   migrateDockBlob,
   withoutDynamicNodes,
+  withoutFloatingGroups,
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
@@ -113,6 +116,10 @@ export interface DockEngineOptions {
    * machine or any persistence, so a reload restores everything docked by
    * construction. Not fired at construction (nothing popped). */
   onPopoutsChange?: (poppedPanelIds: readonly string[]) => void;
+  /** Every panel currently in a FLOATING group, sorted. Fires only on change.
+   * Unlike the popped set, floating IS persisted — a float is layer-3
+   * arrangement, like a drag or a stack (see the Phase 6 design, §3.3). */
+  readonly onFloatsChange?: (floatingPanelIds: readonly string[]) => void;
   /** The pop-out target page dockview opens in the child window (component
    * option; same-origin enforced by dockview). Defaults to dockview's own
    * `/popout.html`. The page ships empty — dockview appends its container
@@ -238,6 +245,12 @@ export interface DockEngine {
    * never persisted, and the blob scrub drops any `popoutGroups` a
    * mid-popout save captured. */
   popoutPanel(panelId: string): Promise<boolean>;
+  /** Floats panelId's group as a box over the grid; false when refused —
+   * unknown panel, already floating, a live maximize (R3), or a collapsed
+   * panel (R8) (see §3.2). */
+  floatPanel(panelId: string): boolean;
+  /** Returns a floating panel to its seed-home slot; no-op when not floating. */
+  dockPanel(panelId: string): void;
   groupCount(): number;
   dispose(): void;
 }
@@ -293,6 +306,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // See RTC_DOCKVIEW_THEME's own doc comment: this is what actually routes
     // the HUD theme's --dv-* variables past dockview's internal defaults.
     theme: RTC_DOCKVIEW_THEME,
+    // `floatingGroupBounds` (dockview-core@8.3.1 options.d.ts:299) keeps a
+    // float draggable but never lets it leave the container — "a float
+    // cannot be dragged out of reach" (Phase 6 design §3.3).
+    floatingGroupBounds: "boundedWithinViewport",
+    // `disableFloatingGroups` deliberately left unset: shift-drag-to-float
+    // and drag-to-dock (dockview's own built-in gestures) are a KEPT
+    // feature, not a deviation this engine suppresses.
     // Only when the client provided one: dockview's default is already
     // /popout.html, and an explicit undefined would still override nothing,
     // but the options object stays minimal like the rest of this literal.
@@ -346,6 +366,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // session-scoped the same way: a mid-popout save re-parents the
         // popped panels onto their hidden reference leaf so a reload
         // restores fully docked — see withoutPopoutGroups.
+        //
+        // Floating state is the opposite: a float persists DELIBERATELY
+        // (design §3.3) via dockview's own `floatingGroups` key, which
+        // `api.toJSON()` already emits and `api.fromJSON()` already
+        // restores — nothing here scrubs it. `withoutFloatingGroups` exists
+        // only as a LOAD-time retry (see loadBlobOrSeed) and must never be
+        // called from this save path; the asymmetry with
+        // `withoutPopoutGroups` above is that decision, not an omission.
         ...(withoutPopoutGroups(withoutLockMarks(api.toJSON())) as ReturnType<
           DockviewApi["toJSON"]
         >),
@@ -397,6 +425,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // change (dockview fires one for the pop-out transaction and again on
   // dock-home), compared, and handed to the client whole.
   let lastPopped: readonly string[] = [];
+  let lastFloating: readonly string[] = [];
 
   function publishPoppedPanels(): void {
     const popped = api.groups
@@ -416,8 +445,32 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Every panel currently in a floating group, sorted. */
+  function floatingPanelIds(): readonly string[] {
+    return api.groups
+      .filter((group) => {
+        return group.api.location.type === "floating";
+      })
+      .flatMap((group) => {
+        return group.panels.map((panel) => {
+          return panel.id;
+        });
+      })
+      .sort();
+  }
+
+  function publishFloatingPanels(): void {
+    const floating = floatingPanelIds();
+
+    if (floating.join(" ") !== lastFloating.join(" ")) {
+      lastFloating = floating;
+      opts.onFloatsChange?.(floating);
+    }
+  }
+
   const changeSub = api.onDidLayoutChange(() => {
     publishPoppedPanels();
+    publishFloatingPanels();
     // Pins are validated on EVERY layout change, not just at save time: a
     // drop that dissolves a rail must release its min=max clamps NOW, or
     // the next resize distributes against a phantom pin for up to
@@ -434,6 +487,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       serializeLayout();
     }, debounceMs);
   });
+
+  // A float the blob restored must be published NOW: `loadBlobOrSeed` ran
+  // `fromJSON` above, BEFORE `changeSub` subscribed, and dockview's
+  // `onDidLayoutChange` is an AsapEvent that deliberately drops a fire
+  // queued before its subscriber arrived (it snapshots the fire count at
+  // subscribe time). Without this the restored float reaches the client
+  // only at the NEXT float transition — until then the bridge renders it
+  // with the docked control set (Collapse/Maximize, no Dock). Same path as
+  // every later transition: a restore with no float publishes nothing.
+  // (Popouts need no twin: they are session-scoped and never restored.)
+  publishFloatingPanels();
 
   // Dockview's dock has NO collapse primitive. `setCollapsed`/`isCollapsed`
   // exist in dockview-core but only for EDGE groups (shell-docked sidebars),
@@ -792,7 +856,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // meanwhile (unpinSplit dropped its record) or one whose shape dissolved
     // stays released.
     for (const record of suspendedPins) {
-      if (designPins.includes(record) && pinStillShaped(record, groupOf)) {
+      if (
+        designPins.includes(record) &&
+        intactPinOwnerSplit(record, groupOf) !== null
+      ) {
         clampPinMembers(record);
       }
     }
@@ -950,6 +1017,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // live pins — persisted in the blob, re-clamped as soon as an absorbing
   // panel returns — just not holding a min=max that would starve the grid.
   let unabsorbedPins: DesignPinRecord[] = [];
+  // Pins whose clamp is LIFTED because a member of theirs has floated out of
+  // the grid, keyed by the panel id whose float lifted them (R5).
+  //
+  // Deliberately NOT `unabsorbedPins`: that list is re-clamped the moment
+  // some panel can absorb the container's spare space again, and an absorber
+  // appearing elsewhere in the dock has nothing to do with a float. Sharing
+  // the list would snap a floated box back to its design width because an
+  // unrelated panel reopened. `settlePinAbsorption` reads neither this map
+  // nor anything holding it, so the exclusion is structural, not a filter.
+  const floatSuspendedPins = new Map<string, readonly DesignPinRecord[]>();
   // The unpinned dynamic panels (chart instances) and their design widths —
   // the members the R17 sharing rule sizes. Seeded from the construction
   // list too, so an unpinned panel a blob restored in place (reconcile never
@@ -1000,6 +1077,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       const members: PinMember[] = [];
       const clamped = new Set<Element>();
+      // A member that is already OUT OF THE GRID at construction means the
+      // blob restored a FLOAT holding this pin — floats are layer-3 persisted
+      // (design §3.3) and `fromJSON` brings them back before this runs. The
+      // pin must land SUSPENDED, exactly as `suspendPinsFor` would have left
+      // it live: clamping min=max onto a floating member is the very state R5
+      // exists to prevent, and it reaches the user as a float that reloads
+      // stuck at its old rail width and refuses every resize.
+      const absentMemberId = pin.panelIds.find((panelId) => {
+        const group = groupOf(panelId);
+
+        return group !== undefined && !isInGrid(group);
+      });
 
       for (const panelId of pin.panelIds) {
         const group = groupOf(panelId);
@@ -1019,13 +1108,33 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // each GROUP once (the branch's constraint is the meet of its
         // children's), not once per panel. Pins persist the PUBLIC design
         // width — the card the user sees — so the model adds the gap.
-        if (!clamped.has(group.element)) {
+        if (absentMemberId === undefined && !clamped.has(group.element)) {
           clamped.add(group.element);
           clampTo(axis, pin.px + GROUP_GAP_PX);
         }
       }
 
-      designPins.push({ pin, members, ownerSplit });
+      const record = { pin, members, ownerSplit };
+
+      if (absentMemberId === undefined) {
+        designPins.push(record);
+        continue;
+      }
+
+      // Keyed by the FIRST non-grid member, which is what the live path does
+      // too: `suspendPinsFor` moves the record out of `designPins` on the
+      // first float, so a second member floating later finds nothing to file.
+      //
+      // `ownerSplit` above is the FLOAT's own private gridview wrapper here,
+      // not the grid split this pin shapes — `declaringSplitOf` walked up from
+      // a floating group. That is tolerated only because a suspended record's
+      // `ownerSplit` is never read, and only because
+      // `clampPinsFloatSuspendedFor` re-derives it on promotion. Do not start
+      // reading it here.
+      floatSuspendedPins.set(absentMemberId, [
+        ...(floatSuspendedPins.get(absentMemberId) ?? []),
+        record,
+      ]);
     }
   }
 
@@ -1158,6 +1267,115 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return suspended;
   }
 
+  /** Lifts and SETS ASIDE every design pin holding `panelId`, because its
+   * group is leaving the grid for a float (R5). A pin is min=max: carried
+   * into a float it would hold the box at the rail's design width and refuse
+   * every resize.
+   *
+   * Unlike {@link suspendPinsHolding} (maximize's version, which leaves its
+   * records in `designPins` so a mid-maximize save still persists them), the
+   * records move OUT of `designPins` — a float can outlive any number of
+   * layout changes, and `intactDesignPins` would dissolve a rail pin whose
+   * member no longer shares the rail. They are persisted from this map
+   * instead, and re-clamped by {@link clampPinsFloatSuspendedFor}. Called
+   * only from `settleFloatTransitions`; true when it moved a record. */
+  function suspendPinsFor(panelId: string): boolean {
+    function holdsPanel(record: DesignPinRecord): boolean {
+      return record.members.some((member) => {
+        return member.panelId === panelId;
+      });
+    }
+
+    const held = designPins.filter(holdsPanel);
+    // A pin ALREADY lifted because nothing absorbs (Ruling 10) moves too
+    // (final review I2). Left in `unabsorbedPins`, the next absorber to
+    // return would re-clamp it ONTO the floating box, and the layout pass
+    // after that would dissolve it for good. Its clamp is already lifted, so
+    // there is nothing to release; `clampPinsFloatSuspendedFor` hands it back
+    // to `designPins`, where `settlePinAbsorption` re-suspends it if the grid
+    // still has nothing to trade against it.
+    const unabsorbed = unabsorbedPins.filter(holdsPanel);
+
+    if (held.length === 0 && unabsorbed.length === 0) {
+      return false;
+    }
+
+    let patchedStrips = false;
+
+    for (const record of held) {
+      patchedStrips = releasePinMembers(record) || patchedStrips;
+    }
+
+    designPins = designPins.filter((record) => {
+      return !held.includes(record);
+    });
+    unabsorbedPins = unabsorbedPins.filter((record) => {
+      return !unabsorbed.includes(record);
+    });
+    floatSuspendedPins.set(panelId, [
+      ...(floatSuspendedPins.get(panelId) ?? []),
+      ...held,
+      ...unabsorbed,
+    ]);
+
+    if (patchedStrips) {
+      settleStrips();
+    }
+
+    return true;
+  }
+
+  /** Re-applies the pins `panelId`'s float suspended, now that it is docked
+   * back in the grid — but only those that still describe reality, the same
+   * `intactPinOwnerSplit` gate `releaseMaximize` applies on its own exit. A
+   * pin whose members no longer share one rail (the panel docked somewhere the
+   * pin never named) is dropped, already released.
+   *
+   * The promoted record carries the RE-DERIVED `ownerSplit`, never the one it
+   * was suspended with. That field is a live DOM Element compared by identity
+   * (`unpinSplit`, `suspendPinsHolding`), and a record suspended while its
+   * member was outside the grid holds the wrong one: at construction it is the
+   * FLOAT's private gridview wrapper, and even on the live path dockview is
+   * free to rebuild a split across the round trip. Promoting it unchanged left
+   * a reload-restored float's rail clamped min=max for the session with no
+   * sash drag able to release it, because `unpinSplit` never matched. One
+   * derivation, used for both the gate and the value it stores back.
+   * Called only from `settleFloatTransitions`; true when `panelId` held any
+   * suspended record. */
+  function clampPinsFloatSuspendedFor(panelId: string): boolean {
+    const held = floatSuspendedPins.get(panelId);
+
+    if (held === undefined) {
+      return false;
+    }
+
+    floatSuspendedPins.delete(panelId);
+
+    for (const record of held) {
+      const ownerSplit = intactPinOwnerSplit(record, groupOf);
+
+      if (ownerSplit !== null) {
+        clampPinMembers(record);
+        designPins = [...designPins, { ...record, ownerSplit }];
+      }
+    }
+
+    return true;
+  }
+
+  /** Every pin a float is currently holding lifted, dropping the entries
+   * whose panel has since left the dock entirely (closed while floating) —
+   * those describe nothing any more. */
+  function floatSuspendedRecords(): readonly DesignPinRecord[] {
+    for (const panelId of [...floatSuspendedPins.keys()]) {
+      if (api.getPanel(panelId) === undefined) {
+        floatSuspendedPins.delete(panelId);
+      }
+    }
+
+    return [...floatSuspendedPins.values()].flat();
+  }
+
   /** True while `group` is still laid out in THIS window's grid.
    *
    * `api.groups` is not pruned when a group leaves the grid, so every "what
@@ -1273,7 +1491,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     const kept: DesignPinRecord[] = [];
 
     for (const record of designPins) {
-      if (pinStillShaped(record, groupOf)) {
+      if (intactPinOwnerSplit(record, groupOf) !== null) {
         kept.push(record);
         continue;
       }
@@ -1296,10 +1514,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     // Suspended pins are still pins — their clamp is lifted so the grid can
     // fill, but the design width must survive a reload, or closing the last
-    // absorbing panel would silently forget the rail's width for good.
-    return [...designPins, ...unabsorbedPins].map((record) => {
-      return record.pin;
-    });
+    // absorbing panel would silently forget the rail's width for good. A
+    // float's suspension (R5) persists for the same reason: a float IS
+    // persisted (design §3.3), so a reload restores the float and must still
+    // know the width to re-clamp when it docks home.
+    return [...designPins, ...unabsorbedPins, ...floatSuspendedRecords()].map(
+      (record) => {
+        return record.pin;
+      },
+    );
   }
 
   function armSashUnpin(event: Event): void {
@@ -1563,7 +1786,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * column is a static member of its parent, and a column's heights are
    * never the rule's. Null then, or when the instance is gone. */
   function instanceSplitOf(instanceId: string): Element | null {
-    let split = groupOf(instanceId)?.element.closest(SPLIT_SELECTOR) ?? null;
+    const group = groupOf(instanceId);
+
+    // R6 (Phase 6 design §3.2): a floating instance leaves the share rule.
+    // The exclusion has to be EXPLICIT, and location is the only test that
+    // works: dockview mounts every float through its own private nested
+    // gridview whose wrapper carries the very same
+    // `.dv-split-view-container` class the grid's splits do (measured, Task 1
+    // Q2), and that private split has no split parent and is not
+    // `dv-vertical` — so the walk below would return it and the rule would go
+    // on to "share" a row of one floating group, resizing a box the user
+    // placed by hand. A DOM-class test cannot see the difference (Ruling 5).
+    if (group === undefined || !isInGrid(group)) {
+      return null;
+    }
+
+    let split = group.element.closest(SPLIT_SELECTOR);
 
     while (split !== null) {
       const parent = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
@@ -1829,6 +2067,156 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", armSashUnpin, true);
 
+  /** True while any panel of `group` is a STRIP — the group is a collapsed
+   * panel's 32px bar. A strip is always alone in its group (`recordStrip`
+   * ejects a panel into its own group before clamping it), so for a collapsed
+   * panel this is exactly `records.has(panelId)` — spelled over the GROUP for
+   * the callers that have one rather than an id. One predicate, two callers,
+   * so the button and gesture refusals cannot drift apart (Ruling 11's
+   * lesson). */
+  function holdsStrippedPanel(group: SizableGroup): boolean {
+    return group.panels.some((panel) => {
+      return records.has(panel.id);
+    });
+  }
+
+  /** The group a shift-drag float gesture would act on: the one whose
+   * `.dv-groupview` element encloses the pointerdown's target. The same
+   * element-identity lookup `directMembersOf` uses — `group.element` IS the
+   * `.dv-groupview`. */
+  function gestureGroupOf(target: Element): SizableGroup | undefined {
+    const element = target.closest(GROUP_SELECTOR);
+
+    return element === null
+      ? undefined
+      : api.groups.find((candidate) => {
+          return candidate.element === element;
+        });
+  }
+
+  /** Cancels a shift-drag-to-float gesture that `floatPanel` would refuse —
+   * a live maximize (R4) or a collapsed panel (R8). The gesture half of
+   * `floatPanel`'s own refusals, on the same two conditions.
+   *
+   * MEASURED, and NOT the mechanism the design named. dockview 8.3.1 starts
+   * that gesture from a POINTERDOWN — one listener on a tab, one on the tab
+   * bar's void container — and each calls `addFloatingGroup` itself after
+   * `event.preventDefault()`, having first bailed when the event was ALREADY
+   * `defaultPrevented`. The public `onWillDragGroup` hook fires from
+   * `onGroupDragStart`, i.e. an HTML5 `dragstart`, which the gesture's own
+   * preventDefault stops from ever happening — subscribing to it would veto
+   * ordinary group drags and never see a float. So the only reachable veto is
+   * that pointerdown, taken in the CAPTURE phase on our own container, ahead
+   * of dockview's target-phase listeners.
+   *
+   * Scoped twice over, so the veto is exactly as wide as the refusal:
+   * - to the two elements that own the gesture, so a future dockview shift
+   *   affordance is not silently disabled here too;
+   * - to a group that is IN THE GRID, because on a group that is ALREADY
+   *   floating the very same shift-pointerdown is dockview's REDOCK gesture
+   *   (`VoidContainer`'s `isFloatingMoveHandle`), and preventing the default
+   *   there would break dragging a float home. */
+  function cancelRefusedShiftFloat(event: Event): void {
+    if (
+      !(event instanceof MouseEvent) ||
+      !event.shiftKey ||
+      !(event.target instanceof Element) ||
+      event.target.closest(FLOAT_GESTURE_SELECTOR) === null
+    ) {
+      return;
+    }
+
+    const group = gestureGroupOf(event.target);
+
+    if (group === undefined || !isInGrid(group)) {
+      return;
+    }
+
+    if (maximized !== null || holdsStrippedPanel(group)) {
+      event.preventDefault();
+    }
+  }
+
+  opts.container.addEventListener("pointerdown", cancelRefusedShiftFloat, true);
+
+  // The floating set the pin, absorption and share rules were last settled
+  // against. Seeded from the restored layout: a float the blob brought back
+  // already had its pins routed by `applyDesignPins`, so it is not a new one.
+  let settledFloating: ReadonlySet<string> = new Set(floatingPanelIds());
+
+  /** Applies the float rules (R5, Ruling 10, R6) to whatever changed since
+   * the last structural mutation — ONE mechanism for every way a panel
+   * enters or leaves a float (final review I1). `floatPanel` and `dockPanel`
+   * are two of them; dockview's own shift-drag float, a drag of a float onto
+   * the grid, and a pop-out window closing back into the grid are the
+   * others, and they call `addFloatingGroup` / `moveGroupOrPanel` themselves
+   * without ever reaching the verbs. When the rules lived on the verbs, the
+   * gesture path left a float clamped min=max until the next layout pass —
+   * where `intactDesignPins` then dissolved the pin for good — and a
+   * shift-drag of the last absorber brought back the #745 void.
+   *
+   * Run from `onDidMutateLayout`, which dockview fires SYNCHRONOUSLY when a
+   * top-level mutation closes (float, move, add, remove, load …) — not from
+   * `onDidLayoutChange`, which is buffered to a microtask: a verb's caller
+   * reads the settled state the moment the verb returns, and the gesture's
+   * transient clamp never exists at all. Every step is idempotent, so a
+   * mutation that touched no float costs one scan of `api.groups`.
+   *
+   * - R5: every floating member's pins are suspended (a record already moved
+   *   finds nothing), and every float-suspended record whose panel is back
+   *   IN THE GRID re-clamps — however it got there.
+   * - Ruling 10: a float removes an absorber exactly as a close does, and a
+   *   returning panel can absorb again, so absorption is re-settled.
+   * - R6: a chart instance that left a float for the grid re-enters the
+   *   equal-share rule at once, as `insertDynamicPanel` does for a newcomer —
+   *   not at the next container resize (final review I4). */
+  function settleFloatTransitions(): void {
+    const floating = new Set(floatingPanelIds());
+    const left = [...settledFloating].filter((panelId) => {
+      return !floating.has(panelId);
+    });
+
+    let changed =
+      left.length > 0 ||
+      [...floating].some((panelId) => {
+        return !settledFloating.has(panelId);
+      });
+
+    settledFloating = floating;
+
+    for (const panelId of floating) {
+      changed = suspendPinsFor(panelId) || changed;
+    }
+
+    for (const panelId of [...floatSuspendedPins.keys()]) {
+      const panel = api.getPanel(panelId);
+
+      if (panel !== undefined && isInGrid(panel.group)) {
+        changed = clampPinsFloatSuspendedFor(panelId) || changed;
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    settlePinAbsorption();
+
+    for (const panelId of left) {
+      const panel = api.getPanel(panelId);
+
+      if (
+        panel !== undefined &&
+        isInGrid(panel.group) &&
+        unpinnedDynamicPanels.has(panelId)
+      ) {
+        shareInstanceSplitOf(panelId);
+      }
+    }
+  }
+
+  const mutateSub = api.onDidMutateLayout(settleFloatTransitions);
+
   // Whether a user has been inside the dock since construction — the ORIGIN
   // test for what dispose may persist. Layer 3 persists ARRANGEMENT (sash
   // drags, DnD, restacks, and the maximize/collapse/pop-out buttons, all of
@@ -1904,7 +2292,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // exact on its own — measured: 0 lossy of 2,103 cases (3 widths ×
     // heights 600–1300), where the same sweep found the seed path lossy in
     // 717 — because that is a round trip, while a seed built at 981 is not.
-    if (!userArranged && restored.seeded) {
+    if (!userArranged && restored.restoreTier === "seed") {
       const exact = convertSeed(opts.seed, nextWidth, nextHeight, {
         gap: GROUP_GAP_PX,
       }).serialized.grid;
@@ -2034,7 +2422,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     maximizePanel: (panelId: string): void => {
       const panel = api.getPanel(panelId);
 
-      if (panel === undefined || maximized?.panelId === panelId) {
+      if (
+        panel === undefined ||
+        maximized?.panelId === panelId ||
+        // R2 (Phase 6 design §3.2): a floating group is outside the grid, so
+        // a maximize has no space to claim for it and no home to restore it
+        // to. Refused here as well as hidden in the head, so the refusal
+        // holds for a replay or a stale bridge too.
+        !isInGrid(panel.group)
+      ) {
         return;
       }
 
@@ -2074,7 +2470,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // lists mid-walk. The maximized panel's own group is skipped whole —
         // its tab siblings stay tabs behind it, as they were.
         for (const group of [...api.groups]) {
-          if (group === panel.group || !boundary.contains(group.element)) {
+          // R7 (Phase 6 design §3.2): DOM containment is NOT grid membership.
+          // A float stays inside this engine's own container — dockview
+          // mounts it in a `.dv-floating-overlay-host` sibling of the grid
+          // (measured, Task 1 Q2) — so `boundary.contains` is TRUE for it and
+          // a maximize would otherwise strip a float to a 32px bar. Floats
+          // are boxes OVER the grid: they stay visible and untouched.
+          if (
+            group === panel.group ||
+            !isInGrid(group) ||
+            !boundary.contains(group.element)
+          ) {
             continue;
           }
 
@@ -2140,6 +2546,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       });
     },
     collapsePanel: (panelId: string): void => {
+      const panel = api.getPanel(panelId);
+
+      // R1 (Phase 6 design §3.2): a floating group is outside the grid, so a
+      // strip has no slot to build around it and no home to restore it to.
+      // An id this engine does not know falls through to the paths below,
+      // which have always handled it — only the FLOATING case is new here.
+      if (panel !== undefined && !isInGrid(panel.group)) {
+        return;
+      }
+
       // Collapsing a panel the maximize already stripped changes nothing on
       // screen, but hands the strip to the user: it now outlives the
       // maximize, as a panel in the in-house `collapsed` set does.
@@ -2286,12 +2702,115 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // only ever take this branch (window.open → null).
       return api.addPopoutGroup(panel.group);
     },
+    floatPanel: (panelId: string): boolean => {
+      const panel = api.getPanel(panelId);
+
+      // R3 (Phase 6 design §3.2): a float while a strip owns the grid has no
+      // coherent home to return to, so a live maximize refuses one outright.
+      //
+      // R8, the same reasoning one panel down: a COLLAPSED panel is a strip
+      // member, and a float has no strip — the two states are mutually
+      // exclusive by construction, exactly as R1/R2 read it from the other
+      // side. Without this, floating a collapsed panel carries the strip's
+      // min=max bar clamp into the float: a ~39px box that cannot be resized
+      // until the panel is expanded again.
+      //
+      // Both refusals are mirrored for the shift-drag gesture by
+      // cancelRefusedShiftFloat, which is the gesture's only reachable veto
+      // point (see that function) and shares this predicate.
+      if (
+        panel === undefined ||
+        maximized !== null ||
+        !isInGrid(panel.group) ||
+        holdsStrippedPanel(panel.group)
+      ) {
+        return false;
+      }
+
+      // R5 (pin suspension) and Ruling 10 (absorption) run inside this call,
+      // from settleFloatTransitions when dockview closes the float mutation —
+      // the same path the shift-drag gesture takes, so the two cannot drift.
+      api.addFloatingGroup(
+        panel.group,
+        floatingBoundsFor(panel.group, opts.container),
+      );
+
+      return true;
+    },
+    dockPanel: (panelId: string): void => {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined || panel.group.api.location.type !== "floating") {
+        return;
+      }
+
+      // The seed tree names where this panel belongs; seedAnchorFor (the
+      // same helper reopenPanel already uses) resolves it to the nearest
+      // GRID-resident seed sibling — restricting "live" to a grid location
+      // (Ruling 5) is what covers both halves of Ruling 4 in one predicate:
+      // a CLOSED sibling is simply not found by seedPanelIdsOf().find, and a
+      // FLOATING one (the anchor's own group "gone" to a float) is excluded
+      // the exact same way, so either case falls through to the grid-group
+      // fallback below rather than throwing.
+      const anchor = seedAnchorFor(opts.seed, panelId, (candidateId) => {
+        const candidate = api.getPanel(candidateId);
+
+        return (
+          candidateId !== panelId &&
+          candidate !== undefined &&
+          isInGrid(candidate.group)
+        );
+      });
+
+      const anchorGroup =
+        anchor === null ? undefined : api.getPanel(anchor.anchorPanelId)?.group;
+
+      if (anchor !== null && anchorGroup !== undefined) {
+        panel.api.moveTo({
+          group: anchorGroup,
+          position: directionToPosition(anchor.direction),
+        });
+      } else if (api.groups.some(isInGrid)) {
+        // No seed home to return to. Two ways to get here: a DYNAMIC panel (a
+        // chart instance) has no seed slot BY CONSTRUCTION — the seed tree
+        // never names one — and a static panel whose every seed sibling is
+        // itself closed, floating or popped finds no live anchor either.
+        // Both dock at the ROOT'S RIGHT EDGE, exactly where
+        // insertDynamicPanel opens an instance.
+        //
+        // It has to be the GROUP api's moveTo: given a bare `position` it
+        // adds a new root-level group and moves this group into it
+        // (dockview-core@8.3.1). The PANEL api's moveTo cannot express that —
+        // with no `group` it centres on the panel's OWN group, a no-op — so
+        // reaching for a grid group to satisfy it instead tabbed the panel
+        // onto whichever group happened to be first, which for an instance is
+        // a stack with a static panel, where the R6 share rule never reaches
+        // it again.
+        panel.group.api.moveTo({ position: "right" });
+      }
+
+      // Nothing grid-resident to dock onto at all (every other panel is
+      // itself closed, floating, or popped) — neither branch ran, and the
+      // panel stays floating rather than throwing.
+      //
+      // The re-clamp of a pin this float suspended (R5), absorption
+      // (Ruling 10) and an instance's re-share (R6) all ran inside the move
+      // above, from settleFloatTransitions — the path a drag home takes too.
+      // With no move, the panel is still floating and none of them run, which
+      // is exactly what R5 requires of a float.
+    },
     groupCount: () => {
       return api.groups.length;
     },
     dispose: () => {
       changeSub.dispose();
+      mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
+      opts.container.removeEventListener(
+        "pointerdown",
+        cancelRefusedShiftFloat,
+        true,
+      );
       opts.container.removeEventListener("pointerdown", markUserArranged, true);
       resizeObserver.disconnect();
       disarmSashUnpin();
@@ -2330,6 +2849,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       api.dispose();
     },
+  };
+}
+
+/** The float's opening box: the group's own current on-screen rect, offset
+ * relative to `container` and clamped so it lands fully inside it — "a
+ * float cannot be dragged out of reach" (Phase 6 design §3.3) applies to
+ * where it OPENS, not only to where a drag can carry it afterwards (that
+ * ongoing clamp is the component-level `floatingGroupBounds` option). */
+function floatingBoundsFor(
+  group: SizableGroup,
+  container: HTMLElement,
+): FloatingGroupOptions {
+  const groupRect = group.element.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const width = groupRect.width;
+  const height = groupRect.height;
+  const maxX = Math.max(0, containerRect.width - width);
+  const maxY = Math.max(0, containerRect.height - height);
+
+  return {
+    x: Math.min(Math.max(groupRect.left - containerRect.left, 0), maxX),
+    y: Math.min(Math.max(groupRect.top - containerRect.top, 0), maxY),
+    width,
+    height,
   };
 }
 
@@ -2457,42 +3000,55 @@ function railViewOf(element: Element, owner: Element): Element | null {
   return view;
 }
 
-/** True while a pin still describes reality: its panels exactly fill their
- * groups AND those groups still share ONE rail (one direct child view of
- * the pin's declaring split). Exact-fill alone passes VACUOUSLY after a
- * drag ejects a member into its own group — both fragments then hold only
- * pinned panels (audit S2) — so the rail identity is the real invariant. */
-function pinStillShaped(
+/** `record`'s declaring split AS THE LIVE DOM HAS IT, or null once the pin no
+ * longer describes reality: its panels must exactly fill their groups AND
+ * those groups must still share ONE rail (one direct child view of that
+ * split). Exact-fill alone passes VACUOUSLY after a drag ejects a member into
+ * its own group — both fragments then hold only pinned panels (audit S2) — so
+ * the rail identity is the real invariant.
+ *
+ * Returns the split rather than a boolean because, for a record whose own
+ * `ownerSplit` may be stale, the re-derivation that answers "is this pin
+ * still real?" is exactly the value to store back — which is why this walk
+ * has one spelling (a second one is how a stale split survived a reload once
+ * already). Today only `clampPinsFloatSuspendedFor` stores it: its records
+ * were suspended outside the grid, so their split is known-wrong.
+ * `intactDesignPins` and `releaseMaximize` use it as a predicate only and
+ * keep the record's existing split — a deliberate, pre-6a behaviour on paths
+ * whose members never left the grid (tracked in docs/STATUS.md). */
+function intactPinOwnerSplit(
   record: DesignPinRecord,
   groupOf: (panelId: string) => SizableGroup | undefined,
-): boolean {
+): Element | null {
   if (!panelsExactlyFill(record.pin.panelIds, groupOf)) {
-    return false;
+    return null;
   }
 
   const first = groupOf(record.pin.panelIds[0] ?? "");
 
   if (first === undefined) {
-    return false;
+    return null;
   }
 
   const owner = declaringSplitOf(first.element, record.pin.axis);
 
   if (owner === null) {
-    return false;
+    return null;
   }
 
   const rail = railViewOf(first.element, owner);
 
   if (rail === null) {
-    return false;
+    return null;
   }
 
-  return record.pin.panelIds.every((panelId) => {
+  const shared = record.pin.panelIds.every((panelId) => {
     const group = groupOf(panelId);
 
     return group !== undefined && railViewOf(group.element, owner) === rail;
   });
+
+  return shared ? owner : null;
 }
 
 /** The split that DECLARED a pin on `axis`, walking up from the pinned
@@ -2573,6 +3129,10 @@ function stripOrientationOf(group: SizableGroup): DockStripOrientation {
 const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
 const VIEW_SELECTOR = ".dv-view";
+/** The two elements dockview 8.3.1 starts its shift-drag-to-float gesture
+ * from — a tab, and the tab bar's void container — each through its own
+ * `pointerdown` listener. See `cancelRefusedShiftFloat`. */
+const FLOAT_GESTURE_SELECTOR = ".dv-tab, .dv-void-container";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
  * siblings side by side (a horizontal split) → a 32px vertical column;
@@ -2827,6 +3387,33 @@ function clampTo(axis: GroupAxis, size: number): void {
   axis.set(size);
 }
 
+/** Which rung of `loadBlobOrSeed`'s retry ladder actually produced the
+ * restored layout, cheapest loss first:
+ * - `"blob"` — the whole saved blob restored as-is, floats included.
+ * - `"blob-without-floats"` — an unrestorable `floatingGroups` entry was
+ *   dropped and the rest of the blob (the whole grid) restored; the float's
+ *   own panels fall to whatever re-seeds them below.
+ * - `"blob-without-dynamic"` — every non-static (Jarvis-docked) leaf was
+ *   scrubbed from the grid and the STATIC arrangement restored; see
+ *   {@link withoutDynamicNodes}.
+ * - `"seed"` — nothing of the blob survived; the seed tree was converted
+ *   fresh. This is the case a settle resize must correct — see
+ *   reapplyExactLayoutOnResize — because a seed conversion is not a round
+ *   trip the way restoring an already-settled blob is.
+ *
+ * The ladder is CUMULATIVE — each rung retries on the OUTPUT of the rung
+ * above it, never the original blob — so a blob damaged in two ways at once
+ * (e.g. an unrestorable float AND an unrestorable dynamic leaf) reports the
+ * LAST and most severe scrub actually needed, `"blob-without-dynamic"`, not
+ * a fourth combined label: the tier's own name already implies every scrub
+ * ABOVE it in this list was applied too, because the ladder only reaches a
+ * rung by falling through every rung before it. */
+export type RestoreTier =
+  | "blob"
+  | "blob-without-floats"
+  | "blob-without-dynamic"
+  | "seed";
+
 /** What a load hands the engine beyond the grid dockview restored: the
  * design pins to apply, and the strip-geometry seeds a re-applied collapse
  * consumes (empty on a seed load or a legacy blob). */
@@ -2836,9 +3423,8 @@ interface RestoredLayout {
   readonly stripSizes: ReadonlyMap<string, number>;
   /** Each persisted flipped split's pre-flip size, by {@link flipKeyFor}. */
   readonly flipSizes: ReadonlyMap<string, number>;
-  /** Whether this load converted the seed (rather than restoring a blob) —
-   * the case a settle resize must correct; see reapplyExactLayoutOnResize. */
-  readonly seeded: boolean;
+  /** Which retry tier actually restored this layout — see {@link RestoreTier}. */
+  readonly restoreTier: RestoreTier;
 }
 
 type SerializedGrid = SerializedDockview["grid"];
@@ -2886,12 +3472,31 @@ function crossAxisOf(along: DockStripOrientation): DockStripOrientation {
   return along === "vertical" ? "horizontal" : "vertical";
 }
 
+/** Lock state is derived (strip membership), never trusted from a blob: a
+ * legacy or hand-edited blob may still carry `locked`, and dockview's
+ * fromJSON restores it verbatim. Normalise after every successful restore
+ * tier; the bridge's collapse replay re-locks the bars. */
+function resetDerivedLocks(api: DockviewApi): void {
+  for (const group of api.groups) {
+    group.api.locked = false;
+  }
+}
+
 /** Restores the persisted blob, falling back to the seed tree on ANY failure —
- * a stale or corrupt blob must never brick the workspace. Returns the design
- * pins to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
- * without the field gets none — that layout may be user-shaped already), or
- * the freshly converted seed's — plus the blob's strip-geometry seeds. */
-function loadBlobOrSeed(
+ * a stale or corrupt blob must never brick the workspace. Tries, in order,
+ * cheapest loss first: the whole blob; the blob with `floatingGroups`
+ * dropped (a damaged float costs only the float); the blob with every
+ * dynamic leaf scrubbed (a damaged Jarvis dock costs only its own panels);
+ * the seed. The ladder is CUMULATIVE: the dynamic-leaf scrub retries on the
+ * FLOATS-ALREADY-DROPPED blob, not the original — a blob damaged in both
+ * ways at once must still cost only those two things, not the whole desk
+ * (see {@link RestoreTier}'s doc comment for the labelling rule this
+ * implies). Exported so the tier a given blob actually lands on is a real,
+ * reachable assertion rather than a private read. Returns the design pins
+ * to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
+ * without the field gets none — that layout may be user-shaped already),
+ * or the freshly converted seed's — plus the blob's strip-geometry seeds. */
+export function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
   width: number,
@@ -2902,52 +3507,91 @@ function loadBlobOrSeed(
       // A gap-7-era blob (no rtcBlobVersion) is lifted into the gap-0 model
       // first — grid sizes and strip-sidecar sizes change units; see
       // migrateDockBlob. dockview's fromJSON reads only the fields it
-      // knows, so the pin and strip-geometry sidecars ride through
-      // untouched.
+      // knows, so the pin, strip-geometry and floating-group sidecars ride
+      // through untouched.
       const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
-
-      // Lock state is derived (strip membership), never trusted from a
-      // blob: a legacy or hand-edited blob may still carry `locked`, and
-      // dockview's fromJSON restores it. Normalise; the bridge's collapse
-      // replay re-locks the bars.
-      for (const group of api.groups) {
-        group.api.locked = false;
-      }
+      resetDerivedLocks(api);
 
       return {
         pins: designPinsIn(parsed),
         ...stripGeometryIn(parsed),
-        seeded: false,
+        restoreTier: "blob",
       };
     } catch {
-      // One dynamic (Jarvis-docked) panel's node can go unrestorable on its
-      // own — a stale/mismatched shape the app never wrote itself — without
-      // the rest of the arrangement being at fault. Before giving up on the
-      // WHOLE blob, retry once with every non-static leaf scrubbed out; a
-      // static-only blob (or one this can't safely operate on) hands back
-      // `null` and falls straight through to the seed below, same as before.
-      const scrubbed = withoutDynamicNodes(
-        opts.blob,
-        seedPanelIdsOf(opts.seed),
-      );
+      // A `floatingGroups` entry can go unrestorable on its own — a stale
+      // or hand-edited shape the app never wrote itself — without the rest
+      // of the DOCKED arrangement being at fault. Floats are the cheaper
+      // thing to lose (design §3.3 persists them, but nothing else depends
+      // on one surviving), so this retries BEFORE the dynamic-node scrub
+      // below: dropping `floatingGroups` outright and re-parsing.
+      //
+      // `floatless` is computed ONCE here and handed down to the
+      // dynamic-node scrub too, rather than each rung re-deriving from
+      // `opts.blob` — that is the difference between a cumulative ladder
+      // and a non-cumulative one: without it, a blob damaged in BOTH ways
+      // would have its dynamic-leaf retry re-parse the STILL-broken
+      // `floatingGroups` entry, throw again, and fall all the way to the
+      // seed, reseeding the user's whole desk over a float that was never
+      // the dynamic scrub's problem to fix. `null` means `opts.blob` itself
+      // was not even parseable JSON, in which case nothing below can help
+      // either.
+      let floatless: string | null;
 
-      if (scrubbed !== null) {
+      try {
+        floatless = JSON.stringify(
+          withoutFloatingGroups(JSON.parse(opts.blob)),
+        );
+      } catch {
+        floatless = null;
+      }
+
+      if (floatless !== null) {
         try {
-          const parsed = migrateDockBlob(JSON.parse(scrubbed), GROUP_GAP_PX);
+          const parsed = migrateDockBlob(JSON.parse(floatless), GROUP_GAP_PX);
           api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
-
-          for (const group of api.groups) {
-            group.api.locked = false;
-          }
+          resetDerivedLocks(api);
 
           return {
             pins: designPinsIn(parsed),
             ...stripGeometryIn(parsed),
-            seeded: false,
+            restoreTier: "blob-without-floats",
           };
         } catch {
-          // fall through to the seed
+          // Dropping the float alone did not fix it either — either the
+          // float was fine and something in the GRID is unrestorable, or
+          // there was no `floatingGroups` to drop at all and this is the
+          // identical failure caught above. One dynamic (Jarvis-docked)
+          // panel's node can go unrestorable on its own without the rest of
+          // the arrangement being at fault; retry once with every
+          // non-static leaf scrubbed out of `floatless` — NOT `opts.blob` —
+          // so a float already known to be unrestorable does not resurrect
+          // itself on this retry and fail it too. A static-only blob (or
+          // one this can't safely operate on) hands back `null` and falls
+          // straight through to the seed below, same as before.
+          const scrubbed = withoutDynamicNodes(
+            floatless,
+            seedPanelIdsOf(opts.seed),
+          );
+
+          if (scrubbed !== null) {
+            try {
+              const parsed = migrateDockBlob(
+                JSON.parse(scrubbed),
+                GROUP_GAP_PX,
+              );
+              api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
+              resetDerivedLocks(api);
+
+              return {
+                pins: designPinsIn(parsed),
+                ...stripGeometryIn(parsed),
+                restoreTier: "blob-without-dynamic",
+              };
+            } catch {
+              // fall through to the seed
+            }
+          }
         }
       }
     }
@@ -2962,7 +3606,7 @@ function loadBlobOrSeed(
     pins,
     stripSizes: new Map(),
     flipSizes: new Map(),
-    seeded: true,
+    restoreTier: "seed",
   };
 }
 

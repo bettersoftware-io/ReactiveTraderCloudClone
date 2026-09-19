@@ -1,7 +1,15 @@
 import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
-import { assertGreaterThanZero, assertTrue } from "./assert";
+import {
+  assertEquals,
+  assertFalse,
+  assertGreaterThanZero,
+  assertGte,
+  assertLte,
+  assertTrue,
+} from "./assert";
+import * as common from "./common";
 
 // Drag the first splitter boundary a healthy distance along its axis; large
 // enough that the resulting size-fraction change clears the assertion margin
@@ -20,6 +28,11 @@ const ENGINE_SWITCH_TIMEOUT_MS = 3_000;
 // (`TESTIDS.layout.dockTab`), not by a label: the tab shows the panel's
 // header, which for the blotter is its "FX Blotter" / "Activity" sub-tabs.
 const BLOTTER_PANEL_ID = "fx-blotter";
+
+// FX_ROOT's left-hand column stacks fx-rates (0.66) over fx-blotter (0.34)
+// (packages/client-core/src/layout/defaultLayoutPort.ts) — fx-rates is the
+// column sibling that should grow once fx-blotter floats out of it.
+const RATES_PANEL_ID = "fx-rates";
 
 // The FX rates panel's own content carries no testid of its own; its
 // CurrencyFilter row (LiveRatesPanel.tsx) is always mounted (no view-mode
@@ -185,4 +198,109 @@ export async function popoutBlotterShowsLiveContentAndDocksHomeOnClose(
   await popup.closeFromInside();
   await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
   await ctx.po.layout.waitDockGroupCount(4, POPUP_TIMEOUT_MS);
+}
+
+// fx-rates starts at 0.66 of the shared column's height; once fx-blotter
+// (0.34) floats out, fx-rates alone should claim the WHOLE column (a ~1.52x
+// grow). 1.2x is a generous floor well below that, safe against header
+// chrome / gutter rounding while still failing hard if the sibling didn't
+// reflow at all.
+const MIN_SIBLING_GROWTH_FACTOR = 1.2;
+
+/**
+ * Floats the blotter panel and proves two things no jsdom witness can see,
+ * because jsdom lays nothing out: first, that fx-rates — its column sibling
+ * in FX_ROOT's left-hand split — actually grows to fill the vacated space
+ * (the real-DOM proof the row was actually left, not merely that the
+ * `data-floating` bookkeeping flipped); second, that the float survives a
+ * reload and then docks back INTO fx-rates' column — fx-rates shrinks back by
+ * the same factor it grew, which a panel still floating cannot produce. It
+ * does not return to the seed height: dockview's move splits the anchor
+ * group in half (see the measurement below). Dockview-engine only — callers
+ * must already be on `engine: "dockview"`.
+ */
+export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
+  ctx: TestContext,
+): Promise<void> {
+  const ratesHeightDocked = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const ratesHeightFloating = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  assertGte(
+    ratesHeightFloating,
+    ratesHeightDocked * MIN_SIBLING_GROWTH_FACTOR,
+    `expected fx-rates to grow once fx-blotter floated out of their shared column (docked height=${ratesHeightDocked}, floating height=${ratesHeightFloating})`,
+  );
+
+  // A plain reload always lands back on the default tab (see the "switching
+  // the layout engine" test above), so the FX tab must be re-selected
+  // before re-asserting the floating witness.
+  //
+  // The restored float is judged on the dock's FIRST render, not by a
+  // polled wait: `waitDockFloating` alone once passed here while the
+  // restore published nothing. The engine's construction never announced
+  // the float; what repaired `data-floating` a microtask later was
+  // unrelated — construction re-clamping the FX rail's design pin, a
+  // layout change the float publisher happens to ride. Measured
+  // (2026-09-19): that clamp fires only because the BLOTTER floated here; a
+  // floated rail member suspends the pin, nothing repairs the witness, and
+  // the float's head offered Float/Collapse/Maximize instead of Dock.
+  await ctx.po.layout.recordFirstDockRender(BLOTTER_PANEL_ID);
+  await common.reloadPage(ctx);
+  await common.clickTab(ctx, "fx");
+  await expectEngine(ctx, "dockview");
+
+  const restored = await ctx.po.layout.firstDockRender(
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  assertEquals(
+    restored.floating.join(" "),
+    BLOTTER_PANEL_ID,
+    `expected the restored float in data-floating on the dock's first render, got "${restored.floating.join(" ")}"`,
+  );
+  assertEquals(
+    restored.floatControlLabel,
+    "Dock Blotter",
+    `expected the restored float's head to offer Dock on its first render, got "${restored.floatControlLabel}"`,
+  );
+  assertFalse(
+    restored.hasCollapseControl,
+    "a restored float's head must not offer Collapse (R1)",
+  );
+  assertFalse(
+    restored.hasMaximizeControl,
+    "a restored float's head must not offer Maximize (R2)",
+  );
+
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+  await expectDockGroups(ctx, 4, 5);
+
+  // The group count reads 4 whether fx-blotter is floating or docked (a
+  // float is still a group), so it cannot witness the dock. fx-rates' height
+  // can: it only shrinks back if fx-blotter re-entered ITS column. Measured
+  // (2026-09-19, React client, this suite's viewport): docked 400 → floating
+  // 613 → home 303. Home is NOT the seed's 400 — dockview's move splits the
+  // anchor group in half rather than restoring the seed's 0.66/0.34 share —
+  // so the assertion is "gave the space back", not "restored the seed
+  // height".
+  const ratesHeightHome = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  assertLte(
+    ratesHeightHome,
+    ratesHeightFloating / MIN_SIBLING_GROWTH_FACTOR,
+    `expected fx-rates to shrink back once fx-blotter docked home into their shared column (floating height=${ratesHeightFloating}, home height=${ratesHeightHome})`,
+  );
 }

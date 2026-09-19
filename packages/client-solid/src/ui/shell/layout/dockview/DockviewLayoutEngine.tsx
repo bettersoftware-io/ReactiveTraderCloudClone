@@ -104,6 +104,13 @@ export function DockviewLayoutEngine(
   // honours, and a reload restores docked (the blob scrub is the second
   // lock).
   const [popped, setPopped] = createSignal<readonly PanelId[]>([]);
+  // Panels currently living in a FLOATING group — the same engine-owned,
+  // whole-set-on-change idiom as `popped` (onFloatsChange mirrors
+  // onPopoutsChange's shape), but UNLIKE popped state, floating IS
+  // persisted: a float is layer-3 arrangement, like a drag or a stack, so a
+  // reload restores it — nothing here clears it on its own the way the reset
+  // effect clears `popped`.
+  const [floating, setFloating] = createSignal<readonly PanelId[]>([]);
   // See the `liveEngine` doc above the component.
   const [liveEngine, setLiveEngine] = createSignal<DockEngine | null>(null);
   let containerEl: HTMLDivElement | undefined;
@@ -143,6 +150,22 @@ export function DockviewLayoutEngine(
       // Fire-and-forget: the engine resolves false when the browser blocks
       // window.open — nothing to surface, the dock simply stays as-is.
       void engine?.popoutPanel(panelId);
+    };
+  }
+
+  // Attached only while no maximize is live (spec §3.2, Ruling 32): a float
+  // while a strip owns the grid has no coherent home, the engine refuses it
+  // (R3), and a control that does nothing is worse than none. Withheld on
+  // EVERY head — a floating panel's "Dock" included, since docking into a
+  // maximize-owned grid lands it in the same incoherent spot.
+  function floatOrDockPanel(panelId: PanelId) {
+    return () => {
+      if (floating().includes(panelId)) {
+        engine?.dockPanel(panelId);
+        return;
+      }
+
+      engine?.floatPanel(panelId);
     };
   }
 
@@ -302,6 +325,9 @@ export function DockviewLayoutEngine(
       onPopoutsChange: (next: readonly string[]): void => {
         setPopped(next as readonly PanelId[]);
       },
+      onFloatsChange: (next: readonly string[]): void => {
+        setFloating(next as readonly PanelId[]);
+      },
       // Read at CONSTRUCTION time only — like react's `dockedRef` /
       // `instancesRef` construction reads — reconciled once here; every later render is
       // handled by the docked and instance diff effects below instead. Both
@@ -391,6 +417,15 @@ export function DockviewLayoutEngine(
           // leaving a stale `poppedHere` to grey a docked panel's controls
           // forever. Same reason `setStrips({})` sits directly above.
           setPopped([]);
+          // A reset rebuilds from the tab's now-CLEARED blob (a fresh
+          // default seed), so any panel that was floating cannot still be —
+          // clear it proactively for the identical reason `setPopped([])`
+          // does: the fresh engine's own `publishFloatingPanels` starts at
+          // `lastFloating = []` and fires only on a CHANGE, so a fresh dock
+          // with no floats is silent, and without this the stale
+          // `floatingHere` would hide collapse/maximize on a panel that is
+          // no longer floating anywhere.
+          setFloating([]);
           applied = [];
           appliedDocked = [];
           appliedInstances = [];
@@ -550,6 +585,7 @@ export function DockviewLayoutEngine(
       data-collapsed={props.collapsed.join(" ")}
       data-closed={props.closed.join(" ")}
       data-popped={popped().join(" ")}
+      data-floating={floating().join(" ")}
       data-instances={instanceIdsOf(props.instances).join(" ")}
       class={styles.engine}
     >
@@ -611,10 +647,16 @@ export function DockviewLayoutEngine(
                     maximizable={specs()[p.panelId]?.maximizable !== false}
                     maximizedHere={props.maximized === p.panelId}
                     poppedHere={popped().includes(p.panelId)}
+                    floatingHere={floating().includes(p.panelId)}
                     onCollapse={collapsePanel(p.panelId)}
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
+                    onFloat={
+                      props.maximized === null
+                        ? floatOrDockPanel(p.panelId)
+                        : undefined
+                    }
                     onClose={
                       isOpenInstance(p.panelId)
                         ? closeInstancePanel(p.panelId)
