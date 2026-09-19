@@ -4951,6 +4951,87 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
       engine.dispose();
     });
 
+    // A drop on a group's CENTRE docks the float as a TAB of that group —
+    // not a return home. In a column of three the column survives the
+    // blotter leaving (rates and positions still stack), so the landing
+    // group sits in a split dividing the same axis the entry was taken on,
+    // and only the tab-join rule keeps it from being resized to the
+    // blotter's old height. Observable on the landing group's own sizing
+    // calls the moment the move returns, and at the next save: the entry is
+    // forgotten, not held for a later home-coming.
+    it("does not resize the group a float joins as a tab", () => {
+      const opts = {
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+        seed: COLUMN_OF_THREE,
+      };
+      const seen = trackLayout();
+      const engine = createDockEngine({ ...opts, ...seen.options });
+
+      engine.floatPanel("fx-blotter");
+
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      const sizes = recordSetSize("fx-rates");
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "center",
+      });
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(rates.group.panels.length).toBe(2);
+      expect(sizes()).toEqual([]);
+
+      touchContainer(opts.container);
+      engine.dispose();
+
+      expect(JSON.parse(seen.blob()).rtcFloatSizes).toBeUndefined();
+    });
+
+    // Drag-home still works under a live maximize (only the head control is
+    // hidden), and re-applying there would shrink the MAXIMIZED panel. The
+    // restore is deferred, not dropped. Observable at two points: when the
+    // move returns under the maximize, the docked group has been sized to
+    // nothing; when `exitMaximize` returns, it has been sized to the
+    // remembered height.
+    it("defers the restore under a live maximize and applies it on exit", () => {
+      const engine = createDockEngine({
+        ...createBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const before = heightOf("fx-blotter");
+
+      engine.floatPanel("fx-blotter");
+      engine.maximizePanel("fx-rates");
+
+      const sizes = recordSetSize("fx-blotter");
+      const api = lastDockviewApi();
+      const rates = api.getPanel("fx-rates");
+
+      if (rates === undefined) {
+        throw new Error("fx-rates is not in the dock");
+      }
+
+      api.getPanel("fx-blotter")?.api.moveTo({
+        group: rates.group,
+        position: "bottom",
+      });
+
+      expect(locationOf("fx-blotter")).toBe("grid");
+      expect(sizes()).not.toContainEqual({ height: before });
+
+      engine.exitMaximize();
+
+      expect(sizes()).toContainEqual({ height: before });
+      engine.dispose();
+    });
+
     // Both sides of the reload in one test: the write (the sidecar the first
     // engine saved) and the read (a SECOND engine, built from that blob,
     // re-applying it at dock-home). Observable only at the second engine's
@@ -6388,6 +6469,27 @@ const RAIL_LIKE = {
  * dynamic leaf's removal must not turn this root into a bare, dockview-
  * rejected leaf). */
 const ADMIN_LIKE = { kind: "panel", panelId: "admin" } as const;
+
+/** FX_LIKE with a THIRD panel in the main column — so the column survives
+ * one of its panels floating out, which a two-panel column does not. */
+const COLUMN_OF_THREE = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.4, 0.3, 0.3],
+      children: [
+        { kind: "panel", panelId: "fx-rates" },
+        { kind: "panel", panelId: "fx-blotter" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
 
 const attachedContainers: HTMLElement[] = [];
 

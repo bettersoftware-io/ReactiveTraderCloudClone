@@ -2270,8 +2270,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * below its minimum (dockview's splitview would refuse to anyway; the clamp
    * makes the engine ask only for what it can have). A group that docked into
    * a split dividing the OTHER axis gets nothing: its old extent measures a
-   * dimension its new home does not share out. */
+   * dimension its new home does not share out. Neither does a panel that
+   * landed as a TAB in a group holding others (a drop on a group's centre):
+   * a tab join is not a return home, and sizing the group it joined would
+   * resize that sibling to the floated panel's old extent.
+   *
+   * While a maximize is live the whole pass is DEFERRED, entries kept: a
+   * float can still be dragged home then (only the head control is hidden),
+   * and re-applying under the maximize would shrink the maximized panel.
+   * `exitMaximize` runs the pass once the maximize has restored; the other
+   * ways a maximize ends (its owner closed or deleted) are dockview
+   * mutations, which reach the pass through `settleFloatTransitions`. */
   function restoreFloatHomeSizes(): void {
+    if (maximized !== null) {
+      return;
+    }
+
     for (const [panelId, entry] of [...floatHomeSizes]) {
       const panel = api.getPanel(panelId);
 
@@ -2290,6 +2304,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (
         split === null ||
+        group.panels.length > 1 ||
         orientationAgainst(split) !== entry.along ||
         hasOwnDockHomeSizing(panelId)
       ) {
@@ -2767,6 +2782,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
         settleStripFreeWorlds();
         settleMaximizeShares(endedBoundary);
+        // A float docked home under this maximize had its size deferred.
+        restoreFloatHomeSizes();
       });
     },
     collapsePanel: (panelId: string): void => {

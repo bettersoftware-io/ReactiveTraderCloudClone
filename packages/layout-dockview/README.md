@@ -273,8 +273,13 @@ the head control, shift-drag, a drag of the float onto the grid, and a
 pop-out closing back into the grid. The re-applied size is clamped to the
 group's own min/max and to what its split can give without pushing a sibling
 below its minimum, so a container resized or a sibling closed while the
-panel floated lands what fits; a panel that docks into a split dividing the
-other axis gets nothing re-applied.
+panel floated lands what fits. Nothing is re-applied to a panel that docks
+into a split dividing the other axis, or that lands as a TAB in a group
+holding others (a drop on a group's centre is not a return home, and sizing
+that group would resize the sibling it joined). Under a live maximize the
+restore is **deferred**, not dropped: drag-home still works then (only the
+head control is hidden), and re-applying would shrink the maximized panel,
+so the entry waits and `exitMaximize` applies it.
 
 The extent is captured on dockview's `onWillMutateLayout`, not in the settle
 itself: `settleFloatTransitions` runs on `onDidMutateLayout`, AFTER the float

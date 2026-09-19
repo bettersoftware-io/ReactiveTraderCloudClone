@@ -223,6 +223,7 @@ const HOME_HEIGHT_TOLERANCE_PX = 2;
 export async function floatBlotterAndDockHomeRestoresItsHeight(
   ctx: TestContext,
 ): Promise<void> {
+  const ratesHeightDocked = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
   const blotterHeightDocked = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
 
   await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
@@ -230,12 +231,13 @@ export async function floatBlotterAndDockHomeRestoresItsHeight(
     [BLOTTER_PANEL_ID],
     ENGINE_SWITCH_TIMEOUT_MS,
   );
+  await expectBlotterInFloat(ctx, true);
 
   await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
   await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
   await expectDockGroups(ctx, 4, 5);
 
-  await expectBlotterHomeHeight(ctx, blotterHeightDocked);
+  await expectBlotterDockedHome(ctx, blotterHeightDocked, ratesHeightDocked);
 }
 
 /**
@@ -263,6 +265,7 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
 
   const ratesHeightFloating = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
 
+  await expectBlotterInFloat(ctx, true);
   assertGte(
     ratesHeightFloating,
     ratesHeightDocked * MIN_SIBLING_GROWTH_FACTOR,
@@ -319,23 +322,56 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
   await expectDockGroups(ctx, 4, 5);
 
-  // The group count reads 4 whether fx-blotter is floating or docked (a
-  // float is still a group), so it cannot witness the dock — the blotter's
-  // own height can, and it is also the claim under test.
-  await expectBlotterHomeHeight(ctx, blotterHeightDocked);
+  await expectBlotterDockedHome(ctx, blotterHeightDocked, ratesHeightDocked);
 }
 
-/** Asserts fx-blotter, just docked home, is back at `dockedHeight` (its
- * height before it floated) within {@link HOME_HEIGHT_TOLERANCE_PX}. */
-async function expectBlotterHomeHeight(
+/** Asserts `panelSitsInFloat` for fx-blotter reads `expected` — the DOM
+ * witness of where the group actually lives. Asserted `true` while floating
+ * too, so a `false` after dock-home cannot come from a selector that never
+ * matches a float at all. */
+async function expectBlotterInFloat(
   ctx: TestContext,
-  dockedHeight: number,
+  expected: boolean,
 ): Promise<void> {
-  const homeHeight = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
+  const inFloat = await ctx.po.layout.panelSitsInFloat(BLOTTER_PANEL_ID);
+
+  assertEquals(
+    inFloat,
+    expected,
+    `expected fx-blotter ${expected ? "inside" : "outside"} dockview's float container`,
+  );
+}
+
+/**
+ * Asserts fx-blotter really docked home at its pre-float size. Its own
+ * height ALONE cannot say so: a float opens at its group's pre-float size
+ * (`floatingBoundsFor`), so a blotter that never docked measures the same.
+ * And `waitDockFloating([])` reads the engine's `data-floating` bookkeeping,
+ * which has read empty once before over a float the engine never published.
+ * Two witnesses that differ between floating and docked carry it: the
+ * group is no longer inside dockview's float container, and fx-rates — its
+ * column sibling, which grew while it floated — is back at its own
+ * pre-float height, i.e. gave the space back. Both within
+ * {@link HOME_HEIGHT_TOLERANCE_PX}.
+ */
+async function expectBlotterDockedHome(
+  ctx: TestContext,
+  blotterHeightDocked: number,
+  ratesHeightDocked: number,
+): Promise<void> {
+  await expectBlotterInFloat(ctx, false);
+
+  const blotterHeightHome = await ctx.po.layout.panelHeight(BLOTTER_PANEL_ID);
+  const ratesHeightHome = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
 
   assertLte(
-    Math.abs(homeHeight - dockedHeight),
+    Math.abs(blotterHeightHome - blotterHeightDocked),
     HOME_HEIGHT_TOLERANCE_PX,
-    `expected fx-blotter to dock home at its pre-float height (docked height=${dockedHeight}, home height=${homeHeight})`,
+    `expected fx-blotter to dock home at its pre-float height (docked height=${blotterHeightDocked}, home height=${blotterHeightHome})`,
+  );
+  assertLte(
+    Math.abs(ratesHeightHome - ratesHeightDocked),
+    HOME_HEIGHT_TOLERANCE_PX,
+    `expected fx-rates to give the space back once fx-blotter docked home (docked height=${ratesHeightDocked}, home height=${ratesHeightHome})`,
   );
 }
