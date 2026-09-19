@@ -36,6 +36,29 @@ test.describe("Layout engine", () => {
     await layout.expectEngine(ctx, "inhouse");
   });
 
+  test("dockview: dragging the rail's sash resizes the rail on a fresh boot", async ({
+    ctx,
+  }) => {
+    // Selected explicitly so the engine is CONSTRUCTED here from the seed —
+    // the fresh-boot path where the rail's design pin is applied — whether or
+    // not dockview is the default.
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.expectRailSashDragResizes(ctx);
+  });
+
+  test("dockview: after a pinned rail panel floats out, its partner's sash still resizes", async ({
+    ctx,
+  }) => {
+    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.expectRailSashDragResizesAfterFloatingRailMember(ctx);
+  });
+
   test("dockview edge-split drag rearranges and persists, and a collapsed panel rejects drops", async ({
     ctx,
   }) => {
