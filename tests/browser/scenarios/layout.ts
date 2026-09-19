@@ -1,7 +1,12 @@
 import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
-import { assertGreaterThanZero, assertGte, assertTrue } from "./assert";
+import {
+  assertGreaterThanZero,
+  assertGte,
+  assertLte,
+  assertTrue,
+} from "./assert";
 import * as common from "./common";
 
 // Drag the first splitter boundary a healthy distance along its axis; large
@@ -206,9 +211,11 @@ const MIN_SIBLING_GROWTH_FACTOR = 1.2;
  * in FX_ROOT's left-hand split — actually grows to fill the vacated space
  * (the real-DOM proof the row was actually left, not merely that the
  * `data-floating` bookkeeping flipped); second, that the float survives a
- * reload before docking back home, restoring both fx-rates' height and the
- * group count. Dockview-engine only — callers must already be on
- * `engine: "dockview"`.
+ * reload and then docks back INTO fx-rates' column — fx-rates shrinks back by
+ * the same factor it grew, which a panel still floating cannot produce. It
+ * does not return to the seed height: dockview's move splits the anchor
+ * group in half (see the measurement below). Dockview-engine only — callers
+ * must already be on `engine: "dockview"`.
  */
 export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   ctx: TestContext,
@@ -243,4 +250,20 @@ export async function floatBlotterGrowsRatesSurvivesReloadAndDocksHome(
   await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
   await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
   await expectDockGroups(ctx, 4, 5);
+
+  // The group count reads 4 whether fx-blotter is floating or docked (a
+  // float is still a group), so it cannot witness the dock. fx-rates' height
+  // can: it only shrinks back if fx-blotter re-entered ITS column. Measured
+  // (2026-09-19, React client, this suite's viewport): docked 400 → floating
+  // 613 → home 303. Home is NOT the seed's 400 — dockview's move splits the
+  // anchor group in half rather than restoring the seed's 0.66/0.34 share —
+  // so the assertion is "gave the space back", not "restored the seed
+  // height".
+  const ratesHeightHome = await ctx.po.layout.panelHeight(RATES_PANEL_ID);
+
+  assertLte(
+    ratesHeightHome,
+    ratesHeightFloating / MIN_SIBLING_GROWTH_FACTOR,
+    `expected fx-rates to shrink back once fx-blotter docked home into their shared column (floating height=${ratesHeightFloating}, home height=${ratesHeightHome})`,
+  );
 }
