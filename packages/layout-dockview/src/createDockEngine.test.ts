@@ -2552,6 +2552,32 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
+  // A nearest-column maximize strips only its OWN column. A chart opened
+  // meanwhile lands at the root's right edge — outside that column — and
+  // must arrive as a full panel, not a strip (the inherited #724 gap:
+  // insertDynamicPanel routed every newcomer through the maximize's strip
+  // path whatever its boundary; reachable by maximizing the watchlist, which
+  // hosts the open-chart button, then opening a chart).
+  it("a chart opened outside a nearest-column maximize's column arrives as a full panel", () => {
+    const strips = recordStrips();
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      ...strips.options,
+      panels: { ...createBase().panels, maximizeScope: railColumnScope },
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    engine.maximizePanel("eq-watchlist");
+
+    const strippedByMaximize = Object.keys(strips.last).sort();
+
+    engine.addDynamicPanel(INSTANCES[2] as (typeof INSTANCES)[number]);
+
+    expect(strips.last).not.toHaveProperty(INSTANCES[2]?.id as string);
+    expect(Object.keys(strips.last).sort()).toEqual(strippedByMaximize);
+    engine.dispose();
+  });
+
   it("R18 root maximize → open an instance → exit: the split is re-shared", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),

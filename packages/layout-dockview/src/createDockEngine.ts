@@ -1707,15 +1707,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // width when the instances divide what is left.
     settlePinAbsorption();
 
+    const newcomer = groupOf(panel.id);
+
     if (maximized !== null) {
-      // A panel docked while a maximize is live must not land full-size next
-      // to a dock of 32px strips — force it into the maximize's own strip
-      // set via the SAME path maximizePanel uses (recordStrip, including its
-      // lock semantics), and fold it into `maximized.stripped` so
-      // exitMaximize restores it like any other panel the maximize forced.
-      // The sharing rule is skipped: there is nothing to share while the
-      // dock is bars.
-      if (recordStrip(panel.id)) {
+      // A panel docked INSIDE a live maximize's boundary must not land
+      // full-size next to a dock of 32px strips — force it into the
+      // maximize's own strip set via the SAME path maximizePanel uses
+      // (recordStrip, including its lock semantics), and fold it into
+      // `maximized.stripped` so exitMaximize restores it like any other panel
+      // the maximize forced.
+      //
+      // Only inside, by the same `boundary.contains` test maximizePanel
+      // applies: a nearest-column maximize strips its own column and nothing
+      // else, so a newcomer landing at the root's right edge — outside that
+      // column — arrives as a full panel. It used to be stripped regardless
+      // (the #724 gap: maximize the watchlist, open a chart from it, and the
+      // chart arrived as a bar).
+      if (
+        newcomer !== undefined &&
+        liveMaximizeBoundary().contains(newcomer.element) &&
+        recordStrip(panel.id)
+      ) {
         maximized = {
           ...maximized,
           stripped: [...maximized.stripped, panel.id],
@@ -1723,6 +1735,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         glide(settleStrips);
       }
 
+      // Inside or out, the share rule waits for the maximize to end: exit
+      // restores the geometry it captured, and a share run now would be
+      // measured against a layout that exit is about to reshape.
       if (panel.unpinned === true) {
         owedShares.set(panel.id, "maximize"); // paid when the maximize ends
       }
