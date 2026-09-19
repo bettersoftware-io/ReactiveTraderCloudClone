@@ -1,4 +1,4 @@
-import { type Observable, shareReplay, take } from "rxjs";
+import { type Observable, shareReplay } from "rxjs";
 
 import type { EqWatchlistSortPreferencePresenter as EqWatchlistSortPreferencePresenterApi } from "@rtc/core-api";
 import {
@@ -7,6 +7,8 @@ import {
   nextEqWatchlistSort,
   type PreferencesPort,
 } from "@rtc/domain";
+
+import { readNow } from "./readNow";
 
 /**
  * App-layer presenter for the equities watchlist sort-mode preference.
@@ -19,10 +21,17 @@ export class EqWatchlistSortPreferencePresenter
 {
   readonly sort$: Observable<EqWatchlistSort>;
 
+  /** The port's stream, captured once at construction — `cycle()` reads
+   * through a fresh subscription of THIS Observable rather than a fresh call
+   * of `preferences.eqWatchlistSort$()`, so the port method is called once
+   * regardless of how many times cycle() runs. */
+  private readonly eqWatchlistSort$: Observable<EqWatchlistSort>;
+
   constructor(private readonly preferences: PreferencesPort) {
-    this.sort$ = preferences
-      .eqWatchlistSort$()
-      .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.eqWatchlistSort$ = preferences.eqWatchlistSort$();
+    this.sort$ = this.eqWatchlistSort$.pipe(
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
   }
 
   setSort(sort: EqWatchlistSort): void {
@@ -34,13 +43,10 @@ export class EqWatchlistSortPreferencePresenter
    * replay-current) rather than from a caller's captured value, so rapid
    * successive clicks each advance from the true state. */
   cycle(): void {
-    let current: EqWatchlistSort = DEFAULT_EQ_WATCHLIST_SORT;
-    this.preferences
-      .eqWatchlistSort$()
-      .pipe(take(1))
-      .subscribe((s) => {
-        current = s;
-      });
-    this.setSort(nextEqWatchlistSort(current));
+    this.setSort(
+      nextEqWatchlistSort(
+        readNow(this.eqWatchlistSort$, DEFAULT_EQ_WATCHLIST_SORT),
+      ),
+    );
   }
 }

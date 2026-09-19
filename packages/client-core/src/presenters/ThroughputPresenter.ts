@@ -10,6 +10,7 @@ import {
 } from "rxjs/operators";
 
 import type {
+  ThroughputMessage,
   ThroughputPresenter as ThroughputPresenterApi,
   ThroughputView,
 } from "@rtc/core-api";
@@ -24,12 +25,6 @@ export const MESSAGE_DISMISS_MS = 3_000;
 /** Default value shown when the initial load fails (mirrors the old hook's
  *  useState(100) seed, which it kept on a failed fetch). */
 const DEFAULT_VALUE = 100;
-
-/** The status banner the AdminPanel renders. Shape matches the old hook. */
-interface ThroughputMessage {
-  text: string;
-  isError: boolean;
-}
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
