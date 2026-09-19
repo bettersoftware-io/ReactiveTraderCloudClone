@@ -449,6 +449,28 @@ describe("PreferencesModal", () => {
     expect(page.jarvisEffortDisabled()).toBe(true);
   });
 
+  it("names the running brain when the saved one is not offered, with no gate", () => {
+    // Simulator mode offers only `scripted`, so a saved Haiku (the default)
+    // runs as scripted. The picker keeps the saved choice highlighted; the
+    // hint line is where the running brain shows, as it does under a gate.
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: null,
+      },
+      jarvisBrain: "claude-haiku-4-5",
+    });
+
+    expect(page.segmentActive("jarvisBrain", "claude-haiku-4-5")).toBe(true);
+    expect(page.jarvisBrainHintText()).toBe(
+      "Haiku 4.5 isn't available — using scripted",
+    );
+    expect(page.jarvisEffortDisabled()).toBe(true);
+  });
+
   it("disables the Effort row entirely when the stored brain is scripted", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },

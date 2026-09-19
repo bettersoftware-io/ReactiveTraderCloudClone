@@ -2,7 +2,7 @@ import type { Accessor, JSX } from "solid-js";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 import {
-  formatGateFallback,
+  formatBrainHint,
   formatGateHint,
   type JarvisState,
 } from "@rtc/client-core";
@@ -116,8 +116,9 @@ export function PreferencesContent(): JSX.Element {
   // gets both `disabled: true` and a `title` explaining why — the same
   // `formatGateHint` copy the hint line below leads with — so the native
   // tooltip and the hint line never drift apart. The hint line also says
-  // what is running when the gate has moved this user off their saved brain,
-  // which the picker keeps highlighting (it resumes when the window resets).
+  // what is running whenever that is not the saved brain (a gate moved them
+  // off it, or the server does not offer it), since the picker keeps
+  // highlighting the saved choice.
   function gate(): JarvisState["gate"] {
     return jarvisState().gate;
   }
@@ -134,11 +135,8 @@ export function PreferencesContent(): JSX.Element {
     return g === null ? undefined : formatGateHint(g.resetsAtMs);
   });
 
-  const gateHintLine = createMemo((): string | undefined => {
-    const hint = gateHint();
-    return hint === undefined
-      ? undefined
-      : `${hint}${formatGateFallback(jarvisBrain(), jarvisState().effectiveBrain)}`;
+  const brainHint = createMemo((): string | undefined => {
+    return formatBrainHint(gate(), jarvisBrain(), jarvisState().effectiveBrain);
   });
 
   // Real (non-"scripted") brain options are disabled when the server isn't
@@ -350,12 +348,12 @@ export function PreferencesContent(): JSX.Element {
           onChange={changeJarvisBrain}
           testid="pref-segment-jarvisBrain"
         />
-        <Show when={gate() !== null}>
+        <Show when={brainHint() !== undefined}>
           <div
             class={styles.gateHint}
             data-testid="pref-segment-jarvisBrain-hint"
           >
-            {gateHintLine()}
+            {brainHint()}
           </div>
         </Show>
         <PrefSegment

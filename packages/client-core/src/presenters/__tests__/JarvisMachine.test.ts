@@ -20,7 +20,7 @@ import type {
 
 import {
   createJarvisMachine,
-  formatGateFallback,
+  formatBrainHint,
   formatGateHint,
   formatGateResetTime,
   JARVIS_GREETING,
@@ -2417,18 +2417,40 @@ describe("createJarvisMachine", () => {
     });
   });
 
-  describe("formatGateFallback", () => {
-    it("is empty while the saved brain is the one running", () => {
-      expect(formatGateFallback("claude-haiku-4-5", "claude-haiku-4-5")).toBe(
-        "",
+  describe("formatBrainHint", () => {
+    it("says nothing when ungated and the saved brain is the one running", () => {
+      expect(
+        formatBrainHint(null, "claude-haiku-4-5", "claude-haiku-4-5"),
+      ).toBeUndefined();
+    });
+
+    it("names the running brain when the saved one is not offered, with no gate", () => {
+      expect(formatBrainHint(null, "claude-haiku-4-5", "scripted")).toBe(
+        "Haiku 4.5 isn't available — using scripted",
       );
     });
 
-    it("names both brains when the gate has moved the user off their choice", () => {
-      expect(formatGateFallback("claude-opus-5", "claude-haiku-4-5")).toBe(
-        " · Opus 5 paused, using Haiku 4.5",
-      );
+    it("is just the gate copy while the gate leaves the saved brain running", () => {
+      expect(
+        formatBrainHint(
+          { level: "soft", resetsAtMs, gated: ["claude-opus-5"] },
+          "claude-haiku-4-5",
+          "claude-haiku-4-5",
+        ),
+      ).toBe(formatGateHint(resetsAtMs));
     });
+
+    it("appends the paused brain when the gate has moved the user off it", () => {
+      expect(
+        formatBrainHint(
+          { level: "soft", resetsAtMs, gated: ["claude-opus-5"] },
+          "claude-opus-5",
+          "claude-haiku-4-5",
+        ),
+      ).toBe(`${formatGateHint(resetsAtMs)} · Opus 5 paused, using Haiku 4.5`);
+    });
+
+    const resetsAtMs = 1_893_456_000_000;
   });
 
   describe("formatGateResetTime", () => {

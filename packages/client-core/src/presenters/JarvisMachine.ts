@@ -186,17 +186,31 @@ export function formatGateHint(resetsAtMs: number): string {
     : `Budget window — resets ${formatGateResetTime(resetsAtMs)}`;
 }
 
-/** The hint line's second clause, for when the gate has moved this user off
- * the brain they chose: the picker keeps highlighting that saved choice (it
- * resumes when the window resets), so the line says what is running
- * instead. Empty when the two agree. */
-export function formatGateFallback(
+/** The Brain row's hint line, or `undefined` when there is nothing to say.
+ * Leads with the gate copy while a gate is active, and names the running
+ * brain whenever it is not the one the user saved: under a gate that moved
+ * them ("paused" — it resumes when the window resets), or because the
+ * server does not offer it at all (simulator mode runs only `scripted`).
+ * The picker keeps highlighting the saved choice either way, so this line
+ * is where the running brain is shown. */
+export function formatBrainHint(
+  gate: JarvisState["gate"],
   preferred: JarvisBrain,
   effective: JarvisBrain,
-): string {
-  return preferred === effective
-    ? ""
-    : ` · ${JARVIS_BRAIN_LABELS[preferred]} paused, using ${JARVIS_BRAIN_LABELS[effective]}`;
+): string | undefined {
+  const moved = preferred !== effective;
+
+  if (gate === null) {
+    return moved
+      ? `${JARVIS_BRAIN_LABELS[preferred]} isn't available — using ${JARVIS_BRAIN_LABELS[effective]}`
+      : undefined;
+  }
+
+  const fallback = moved
+    ? ` · ${JARVIS_BRAIN_LABELS[preferred]} paused, using ${JARVIS_BRAIN_LABELS[effective]}`
+    : "";
+
+  return `${formatGateHint(gate.resetsAtMs)}${fallback}`;
 }
 
 /** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
