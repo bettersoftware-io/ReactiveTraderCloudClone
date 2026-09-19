@@ -454,6 +454,59 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return { records: recordSizes, flips };
   }
 
+  // ——— Pop-out windows wear the opener's theme ———
+  // dockview copies the opener's STYLESHEETS into a pop-out window
+  // (`addStyles`), but a theme here is not only stylesheets: each client's
+  // ThemeProvider writes the skin's token values as inline custom properties
+  // on the opener's `<html>`, plus `data-skin` / `data-mode`, and every rule
+  // reads them through `var(--…)`. A pop-out's own `<html>` carries none of
+  // that, so every token resolved to nothing — text fell back to black and
+  // the window ignored both the skin and light/dark (user report,
+  // 2026-09-19). The engine owns pop-out windows, so it mirrors the opener's
+  // root attributes into each one as it opens, and re-mirrors on every
+  // change, so switching skin or mode repaints an open pop-out live.
+  const openerRoot = opts.container.ownerDocument.documentElement;
+  const popoutRoots = new Set<HTMLElement>();
+
+  /** Makes `target`'s attributes exactly `openerRoot`'s — the inline token
+   * properties (`style`) and `data-skin` / `data-mode` among them. */
+  function mirrorOpenerRootInto(target: HTMLElement): void {
+    for (const name of target.getAttributeNames()) {
+      if (!openerRoot.hasAttribute(name)) {
+        target.removeAttribute(name);
+      }
+    }
+
+    for (const name of openerRoot.getAttributeNames()) {
+      const value = openerRoot.getAttribute(name) ?? "";
+
+      if (target.getAttribute(name) !== value) {
+        target.setAttribute(name, value);
+      }
+    }
+  }
+
+  /** Re-mirrors the opener's root into every open pop-out window. */
+  function mirrorOpenerRootIntoPopouts(): void {
+    for (const root of popoutRoots) {
+      mirrorOpenerRootInto(root);
+    }
+  }
+
+  const openerRootObserver = new MutationObserver(mirrorOpenerRootIntoPopouts);
+
+  openerRootObserver.observe(openerRoot, { attributes: true });
+
+  const popoutAddSub = api.onDidAddPopoutGroup((popout) => {
+    const root = popout.window.document.documentElement;
+
+    popoutRoots.add(root);
+    mirrorOpenerRootInto(root);
+  });
+  const popoutRemoveSub = api.onDidRemovePopoutGroup((popout) => {
+    popoutRoots.delete(popout.window.document.documentElement);
+  });
+
   // The popped set, published like strips: recomputed on every layout
   // change (dockview fires one for the pop-out transaction and again on
   // dock-home), compared, and handed to the client whole.
@@ -3125,13 +3178,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           group: anchorGroup,
           position: directionToPosition(anchor.direction),
         });
-      } else if (api.groups.some(isInGrid)) {
+      } else {
         // No seed home to return to. Two ways to get here: a DYNAMIC panel (a
         // chart instance) has no seed slot BY CONSTRUCTION — the seed tree
         // never names one — and a static panel whose every seed sibling is
         // itself closed, floating or popped finds no live anchor either.
         // Both dock at the ROOT'S RIGHT EDGE, exactly where
-        // insertDynamicPanel opens an instance.
+        // insertDynamicPanel opens an instance. That includes an EMPTY grid
+        // (every panel of the tab floated): the group then becomes the
+        // grid's root, and the panels docked after it find it as their seed
+        // anchor. This branch used to be skipped when nothing was
+        // grid-resident, leaving Dock a silent no-op — a tab whose every
+        // panel floated could never be docked again (user report,
+        // 2026-09-19).
         //
         // It has to be the GROUP api's moveTo: given a bare `position` it
         // adds a new root-level group and moves this group into it
@@ -3144,21 +3203,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         panel.group.api.moveTo({ position: "right" });
       }
 
-      // Nothing grid-resident to dock onto at all (every other panel is
-      // itself closed, floating, or popped) — neither branch ran, and the
-      // panel stays floating rather than throwing.
-      //
       // The re-clamp of a pin this float suspended (R5), absorption
       // (Ruling 10) and an instance's re-share (R6) all ran inside the move
       // above, from settleFloatTransitions — the path a drag home takes too.
-      // With no move, the panel is still floating and none of them run, which
-      // is exactly what R5 requires of a float.
     },
     groupCount: () => {
       return api.groups.length;
     },
     dispose: () => {
       changeSub.dispose();
+      popoutAddSub.dispose();
+      popoutRemoveSub.dispose();
+      openerRootObserver.disconnect();
+      popoutRoots.clear();
       willMutateSub.dispose();
       mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);

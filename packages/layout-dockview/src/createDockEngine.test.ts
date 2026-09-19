@@ -4422,7 +4422,14 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
   // backing it — the clamp reads [100, MAX] whether or not the re-clamp ran,
   // so a clamp assertion here passes for a reason unrelated to the guard. The
   // census sees the call itself.
-  it("does not re-clamp a pin when there is nowhere to dock back to (R5)", () => {
+  // Docking into an EMPTY grid lands the panel as the grid's root — Dock is
+  // never a silent no-op (it used to be here, which stranded a tab whose
+  // every panel had floated). The pin its float suspended stays suspended:
+  // a lone pinned panel has nothing beside it to absorb the dock's spare
+  // width, so clamping it would shrink the whole grid to the rail's 367px
+  // (follow-up (b)'s bug) — R5's "re-clamp if it still applies" does not
+  // apply.
+  it("docks into an empty grid without re-clamping the pin nothing could absorb around (R5)", () => {
     const engine = createDockEngine({
       ...createBase(),
       container: sizedContainer(1440, 900),
@@ -4432,13 +4439,10 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.floatPanel("fx-analytics");
     engine.closePanel("fx-rates");
     engine.closePanel("fx-blotter");
-
-    const touched = spyOnGroupSizing("fx-analytics");
-
     engine.dockPanel("fx-analytics");
 
-    expect(locationOf("fx-analytics")).toBe("floating");
-    expect(touched.calls()).toEqual([]);
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(isWidthClamped("fx-analytics")).toBe(false);
     engine.dispose();
   });
 
@@ -4791,6 +4795,30 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
 
     expect(container.querySelector(".dv-resize-container")).not.toBeNull();
     expect(container.querySelector(".dv-floating-titlebar")).toBeNull();
+    engine.dispose();
+  });
+
+  // Floating EVERY panel leaves the grid empty; Dock must still bring a
+  // panel home (user report, 2026-09-19: "I can't unfloat them anymore").
+  // The first to dock has no grid-resident seed sibling, so it becomes the
+  // grid's new root; the rest then find it and return to their seed
+  // positions around it.
+  it("docks a panel home even when every panel in the tab is floating", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createBase(), container });
+    const ids = ["fx-rates", "fx-blotter", "fx-analytics"];
+
+    for (const id of ids) {
+      engine.floatPanel(id);
+    }
+
+    expect(ids.map(locationOf)).toEqual(["floating", "floating", "floating"]);
+
+    for (const id of ids) {
+      engine.dockPanel(id);
+    }
+
+    expect(ids.map(locationOf)).toEqual(["grid", "grid", "grid"]);
     engine.dispose();
   });
 

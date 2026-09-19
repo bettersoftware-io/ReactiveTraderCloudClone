@@ -137,6 +137,27 @@ export interface LayoutPO {
    * a point that is not one of the head's own controls — where a user takes
    * hold of a dialog. Dockview-engine only. */
   dragFloatByHead(panelId: string, dx: number, dy: number): Promise<void>;
+  /** Resizes the float holding `panelId` by dragging one of dockview's
+   * resize handles — an edge or a corner — by `dx`/`dy` px, gripping the
+   * handle at its centre. Dockview-engine only. */
+  resizeFloatFrom(
+    panelId: string,
+    handle: FloatResizeHandle,
+    dx: number,
+    dy: number,
+  ): Promise<void>;
+}
+
+/** The float resize handles a scenario drives: an edge and a corner. */
+export type FloatResizeHandle = "right" | "bottomright";
+
+/** A document root's theme, as the ThemeProvider writes it: the skin and
+ * mode attributes, and one token value (`--text-primary`) standing for the
+ * inline token set — empty when no tokens reached the document at all. */
+export interface RootTheme {
+  readonly skin: string | null;
+  readonly mode: string | null;
+  readonly textPrimaryToken: string;
 }
 
 /** A float's on-screen box, in viewport px. */
@@ -168,4 +189,10 @@ export interface PopoutWindowPO {
    * runs and dockview docks the panels home — the driver's own page-close
    * skips `beforeunload` and must not be used for this path. */
   closeFromInside(): Promise<void>;
+  /** The CHILD window's own root theme — what its `<html>` carries, read
+   * inside that window. */
+  rootTheme(): Promise<RootTheme>;
+  /** Resolves once the CHILD window's `<html>` carries `data-mode` = `mode`;
+   * rejects after `timeoutMs`. */
+  waitForRootMode(mode: string, timeoutMs: number): Promise<void>;
 }
