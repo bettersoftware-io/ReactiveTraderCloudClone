@@ -10,7 +10,7 @@ afterEach(() => {
 
 test("shows kind, transitions, status, state and intent history newest-first", () => {
   tab.mountMachineTab({
-    machine: machineRow({
+    machine: createMachineRow({
       transitions: 4,
       intents: [
         { name: "submit", args: [], ts: 1 },
@@ -30,7 +30,7 @@ test("clicking an intent name calls onPinIntent with machineId/name/ts", () => {
   const onPinIntent = vi.fn();
 
   tab.mountMachineTab({
-    machine: machineRow({}),
+    machine: createMachineRow({}),
     dev: false,
     onPinIntent,
   });
@@ -40,14 +40,14 @@ test("clicking an intent name calls onPinIntent with machineId/name/ts", () => {
 });
 
 test("hides the intent injector when the app is not a dev build", () => {
-  tab.mountMachineTab({ machine: machineRow({}), dev: false });
+  tab.mountMachineTab({ machine: createMachineRow({}), dev: false });
 
   expect(tab.hasTestId("intent-injector")).toBe(false);
 });
 
 test("shows one invoke button per DISTINCT observed intent name when dev", () => {
   tab.mountMachineTab({
-    machine: machineRow({
+    machine: createMachineRow({
       intents: [
         { name: "submit", args: [], ts: 1 },
         { name: "cancel", args: [], ts: 2 },
@@ -64,7 +64,7 @@ test("confirming an armed intent calls onInvokeIntent with the parsed JSON array
   const onInvokeIntent = vi.fn();
 
   tab.mountMachineTab({
-    machine: machineRow({}),
+    machine: createMachineRow({}),
     dev: true,
     onInvokeIntent,
   });
@@ -82,7 +82,7 @@ test("rejects invalid JSON and non-array JSON without invoking", () => {
   const onInvokeIntent = vi.fn();
 
   tab.mountMachineTab({
-    machine: machineRow({}),
+    machine: createMachineRow({}),
     dev: true,
     onInvokeIntent,
   });
@@ -100,7 +100,7 @@ test("rejects invalid JSON and non-array JSON without invoking", () => {
 });
 
 test("Cancel disarms a pending intent", () => {
-  tab.mountMachineTab({ machine: machineRow({}), dev: true });
+  tab.mountMachineTab({ machine: createMachineRow({}), dev: true });
 
   tab.click("intent-invoke-button");
   expect(tab.hasTestId("intent-confirm")).toBe(true);
@@ -109,7 +109,7 @@ test("Cancel disarms a pending intent", () => {
   expect(tab.hasTestId("intent-confirm")).toBe(false);
 });
 
-function machineRow(overrides: Partial<MachineRow>): MachineRow {
+function createMachineRow(overrides: Partial<MachineRow>): MachineRow {
   return {
     machineId: "m1",
     machineKind: "OrderTicketMachine",

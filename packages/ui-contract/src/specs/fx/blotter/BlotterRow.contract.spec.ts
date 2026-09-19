@@ -10,7 +10,9 @@ afterEach(() => {
 
 describe("BlotterRow", () => {
   it("renders one formatted cell per column", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: false },
+    });
     const cells = row.cellText();
     expect(cells).toHaveLength(10);
     expect(row.hasCell("7001")).toBe(true);
@@ -26,40 +28,53 @@ describe("BlotterRow", () => {
   // presentation hook the row exposes, with no separate line-through class.
   it("marks rejected trades with the rejected row state", () => {
     const row = mount(BlotterRow, {
-      props: { trade: trade({ status: TradeStatus.Rejected }), isNew: false },
+      props: {
+        trade: createTrade({ status: TradeStatus.Rejected }),
+        isNew: false,
+      },
     });
     expect(row.isRejected()).toBe(true);
   });
 
-  it("does not mark a non-rejected trade as rejected", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+  it("does not mark a non-rejected createTrade as rejected", () => {
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: false },
+    });
     expect(row.isRejected()).toBe(false);
   });
 
   // The status-cell colour (Done → positive, Pending → aware accent) hangs
   // off this attribute in CSS, which jsdom can't compute — so the contract
   // pins the attribute itself for every TradeStatus.
-  it("exposes each trade status as a lowercased data-status", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+  it("exposes each createTrade status as a lowercased data-status", () => {
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: false },
+    });
     expect(row.status()).toBe("done");
-    row.setProps({ trade: trade({ status: TradeStatus.Pending }) });
+    row.setProps({ trade: createTrade({ status: TradeStatus.Pending }) });
     expect(row.status()).toBe("pending");
-    row.setProps({ trade: trade({ status: TradeStatus.Rejected }) });
+    row.setProps({ trade: createTrade({ status: TradeStatus.Rejected }) });
     expect(row.status()).toBe("rejected");
   });
 
-  it("flashes a newly arrived trade", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
+  it("flashes a newly arrived createTrade", () => {
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: true },
+    });
     expect(row.backgroundColor()).toBe("animation:backgroundFlash");
   });
 
-  it("does not highlight an existing trade", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+  it("does not highlight an existing createTrade", () => {
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: false },
+    });
     expect(row.backgroundColor()).toBe("transparent");
   });
 
   it("applies a hover background and removes it on mouse-leave", () => {
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: false } });
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: false },
+    });
     expect(row.backgroundColor()).toBe("transparent");
     row.hover();
     expect(row.backgroundColor()).toBe("var(--chip)");
@@ -69,7 +84,9 @@ describe("BlotterRow", () => {
 
   it("clears the flash after the 3s highlight window elapses", () => {
     vi.useFakeTimers();
-    const row = mount(BlotterRow, { props: { trade: trade(), isNew: true } });
+    const row = mount(BlotterRow, {
+      props: { trade: createTrade(), isNew: true },
+    });
     expect(row.backgroundColor()).toBe("animation:backgroundFlash");
     vi.advanceTimersByTime(3000);
     row.setProps({ isNew: true });
@@ -77,7 +94,7 @@ describe("BlotterRow", () => {
   });
 });
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 7001,
     tradeName: "Alice",

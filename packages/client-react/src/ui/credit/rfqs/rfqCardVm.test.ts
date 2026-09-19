@@ -14,14 +14,19 @@ import { rfqCardVm } from "./rfqCardVm";
 
 describe("rfqCardVm", () => {
   it("resolves ticker/cusip/qty from the matching instrument", () => {
-    const vm = rfqCardVm(rfq(), [], [instrument], dealers);
+    const vm = rfqCardVm(createRfq(), [], [instrument], dealers);
     expect(vm.ticker).toBe("T 1.5 02/34");
     expect(vm.cusip).toBe("912828ZQ6");
     expect(vm.qty).toBe("1,000");
   });
 
   it("falls back to empty ticker/cusip when the instrument is missing", () => {
-    const vm = rfqCardVm(rfq({ instrumentId: 999 }), [], [instrument], dealers);
+    const vm = rfqCardVm(
+      createRfq({ instrumentId: 999 }),
+      [],
+      [instrument],
+      dealers,
+    );
     expect(vm.ticker).toBe("");
     expect(vm.cusip).toBe("");
   });
@@ -34,7 +39,7 @@ describe("rfqCardVm", () => {
   ] as const)(
     "maps %s to stateLabel %s and cardState %s",
     (state, stateLabel, cardState) => {
-      const vm = rfqCardVm(rfq({ state }), [], [instrument], dealers);
+      const vm = rfqCardVm(createRfq({ state }), [], [instrument], dealers);
       expect(vm.stateLabel).toBe(stateLabel);
       expect(vm.cardState).toBe(cardState);
       expect(vm.live).toBe(state === RfqState.Open);
@@ -68,7 +73,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ direction: Direction.Buy }),
+      createRfq({ direction: Direction.Buy }),
       quotes,
       [instrument],
       dealers,
@@ -104,7 +109,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ direction: Direction.Sell }),
+      createRfq({ direction: Direction.Sell }),
       quotes,
       [instrument],
       dealers,
@@ -123,7 +128,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Closed }),
+      createRfq({ state: RfqState.Closed }),
       quotes,
       [instrument],
       dealers,
@@ -150,7 +155,7 @@ describe("rfqCardVm", () => {
         state: { type: "pendingWithPrice", price: 98 },
       },
     ];
-    const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
+    const vm = rfqCardVm(createRfq(), quotes, [instrument], dealers);
     expect(
       vm.quotes.find((q) => {
         return q.dealerId === 1;
@@ -176,7 +181,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Open }),
+      createRfq({ state: RfqState.Open }),
       quotes,
       [instrument],
       dealers,
@@ -209,7 +214,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Cancelled }),
+      createRfq({ state: RfqState.Cancelled }),
       quotes,
       [instrument],
       dealers,
@@ -227,7 +232,7 @@ describe("rfqCardVm", () => {
       const quotes: Quote[] = [
         { id: 10, rfqId: 1, dealerId: 1, state: { type } },
       ];
-      const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
+      const vm = rfqCardVm(createRfq(), quotes, [instrument], dealers);
       expect(vm.quotes[0]?.state).toBe(displayState);
       expect(vm.quotes[0]?.priceText).toBe(priceText);
     },
@@ -243,7 +248,7 @@ describe("rfqCardVm", () => {
       const quotes: Quote[] = [
         { id: 10, rfqId: 1, dealerId: 1, state: { type, price: 97.5 } },
       ];
-      const vm = rfqCardVm(rfq(), quotes, [instrument], dealers);
+      const vm = rfqCardVm(createRfq(), quotes, [instrument], dealers);
       expect(vm.quotes[0]?.state).toBe(displayState);
       expect(vm.quotes[0]?.priceText).toBe(priceText);
     },
@@ -261,7 +266,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Closed }),
+      createRfq({ state: RfqState.Closed }),
       quotes,
       [instrument],
       dealers,
@@ -280,7 +285,7 @@ describe("rfqCardVm", () => {
     ];
 
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Closed }),
+      createRfq({ state: RfqState.Closed }),
       quotes,
       [instrument],
       dealers,
@@ -292,7 +297,7 @@ describe("rfqCardVm", () => {
 
   it("has no accepted dealer when not Closed", () => {
     const vm = rfqCardVm(
-      rfq({ state: RfqState.Open }),
+      createRfq({ state: RfqState.Open }),
       [],
       [instrument],
       dealers,
@@ -301,7 +306,7 @@ describe("rfqCardVm", () => {
   });
 });
 
-function rfq(over: Partial<Rfq> = {}): Rfq {
+function createRfq(over: Partial<Rfq> = {}): Rfq {
   return {
     id: 1,
     instrumentId: 1,

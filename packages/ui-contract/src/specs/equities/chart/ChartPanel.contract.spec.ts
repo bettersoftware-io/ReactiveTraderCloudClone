@@ -21,7 +21,7 @@ describe("ChartPanel", () => {
     const panel = mount(ChartPanel, {
       equities: {
         watchlist: INSTRUMENTS,
-        quotes: { AAPL: quote() },
+        quotes: { AAPL: createQuote() },
         candles: { AAPL: CANDLES },
       },
     });
@@ -33,11 +33,11 @@ describe("ChartPanel", () => {
     expect(panel.candleCount()).toBe(60);
   });
 
-  // ChartPanel.tsx: `chartVm(candles, quote?.last ?? 0, flashOn)` — an
-  // instrument can be selected (from the watchlist) before its first quote
+  // ChartPanel.tsx: `chartVm(candles, createQuote?.last ?? 0, flashOn)` — an
+  // instrument can be selected (from the watchlist) before its first createQuote
   // tick arrives, leaving `useEquityQuote(sel)` at its pre-tick `null`. The
   // panel must still render (0 as the live-last overlay) instead of crashing.
-  it("renders without crashing when the selected instrument has no quote yet", () => {
+  it("renders without crashing when the selected instrument has no createQuote yet", () => {
     const panel = mount(ChartPanel, {
       equities: {
         watchlist: INSTRUMENTS,
@@ -51,17 +51,17 @@ describe("ChartPanel", () => {
 
   // Phase 4 dynamic chart instances: a dynamically opened instance panel is
   // pinned to its own symbol via `pinnedSymbol`, independent of the shared
-  // workspace selection. Distinct quote values per symbol below so this
+  // workspace selection. Distinct createQuote values per symbol below so this
   // assertion cannot pass by accident (a bug reading the selected symbol's
-  // quote instead of the pinned one's would show AAPL's 104.00/103.90).
+  // createQuote instead of the pinned one's would show AAPL's 104.00/103.90).
   it("renders the pinned symbol's chart even when the workspace selection is a different symbol", () => {
     const panel = mount(ChartPanel, {
       props: { pinnedSymbol: "MSFT" },
       equities: {
         watchlist: PINNED_INSTRUMENTS,
         quotes: {
-          AAPL: quote(),
-          MSFT: quote({ symbol: "MSFT", last: 250, bid: 249.5 }),
+          AAPL: createQuote(),
+          MSFT: createQuote({ symbol: "MSFT", last: 250, bid: 249.5 }),
         },
         candles: { AAPL: CANDLES, MSFT: CANDLES },
       },
@@ -87,7 +87,7 @@ const PINNED_INSTRUMENTS: readonly EquityInstrument[] = [
   { symbol: "MSFT", name: "Microsoft Corp.", exchange: "NASDAQ" },
 ];
 
-function quote(overrides: Partial<EquityQuote> = {}): EquityQuote {
+function createQuote(overrides: Partial<EquityQuote> = {}): EquityQuote {
   return {
     symbol: "AAPL",
     bid: 103.9,
@@ -107,5 +107,5 @@ const INSTRUMENTS: readonly EquityInstrument[] = [
 // owns the pan/zoom viewport itself, so the panel's default render only shows
 // the newest CANDLE_DEFAULT_VISIBLE["1D"] (60) of them — a real (if small)
 // viewport-windowing behaviour that a 2-candle fixture couldn't exercise at
-// all. lastPrice()/bid() below stay pinned to quote()'s hand-written values.
+// all. lastPrice()/bid() below stay pinned to createQuote()'s hand-written values.
 const CANDLES = generateCandles(300);

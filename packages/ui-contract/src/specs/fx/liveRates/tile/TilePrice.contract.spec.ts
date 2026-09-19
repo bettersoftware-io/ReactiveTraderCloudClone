@@ -7,44 +7,44 @@ import { Direction, type Price, PriceMovementType } from "@rtc/domain";
 
 describe("TilePrice", () => {
   it("labels the two sides SELL (bid) and BUY (ask)", () => {
-    const tp = mount(TilePrice, { props: tileProps() });
+    const tp = mount(TilePrice, { props: createTileProps() });
     expect(tp.labels()).toEqual(["SELL", "BUY"]);
   });
 
   it("renders the formatted bid and ask digits", () => {
-    const tp = mount(TilePrice, { props: tileProps() });
+    const tp = mount(TilePrice, { props: createTileProps() });
     expect(tp.digits("SELL")).toContain("1.53816");
     expect(tp.digits("BUY")).toContain("1.53834");
   });
 
-  it("colours the pips green when the price ticked up", () => {
+  it("colours the pips green when the createPrice ticked up", () => {
     const tp = mount(TilePrice, {
-      props: tileProps({
-        price: price({ movementType: PriceMovementType.UP }),
+      props: createTileProps({
+        price: createPrice({ movementType: PriceMovementType.UP }),
       }),
     });
     expect(tp.pipsColor("BUY")).toBe("var(--accent-positive)");
   });
 
-  it("colours the pips red when the price ticked down", () => {
+  it("colours the pips red when the createPrice ticked down", () => {
     const tp = mount(TilePrice, {
-      props: tileProps({
-        price: price({ movementType: PriceMovementType.DOWN }),
+      props: createTileProps({
+        price: createPrice({ movementType: PriceMovementType.DOWN }),
       }),
     });
     expect(tp.pipsColor("SELL")).toBe("var(--accent-negative)");
   });
 
   it("uses the neutral colour when there is no movement", () => {
-    const tp = mount(TilePrice, { props: tileProps() });
+    const tp = mount(TilePrice, { props: createTileProps() });
     expect(tp.pipsColor("BUY")).toBe("var(--text-primary)");
   });
 
   it("handles a precision with no fractional sub-pip digits (JPY)", () => {
     // USDJPY: ratePrecision=3, pipsPosition=2 → fractionalDigits=1.
     const tp = mount(TilePrice, {
-      props: tileProps({
-        price: price({ symbol: "USDJPY", bid: 156.123, ask: 156.135 }),
+      props: createTileProps({
+        price: createPrice({ symbol: "USDJPY", bid: 156.123, ask: 156.135 }),
         ratePrecision: 3,
         pipsPosition: 2,
       }),
@@ -55,8 +55,8 @@ describe("TilePrice", () => {
   it("renders no fractional sub-pip digits when precision equals pips position", () => {
     // ratePrecision === pipsPosition → fractionalDigits = 0 → fractional = "".
     const tp = mount(TilePrice, {
-      props: tileProps({
-        price: price({ bid: 1.5381, ask: 1.5383 }),
+      props: createTileProps({
+        price: createPrice({ bid: 1.5381, ask: 1.5383 }),
         ratePrecision: 4,
         pipsPosition: 4,
       }),
@@ -64,21 +64,21 @@ describe("TilePrice", () => {
     expect(tp.digits("SELL")).toBe("1.5381");
   });
 
-  it("updates the digits when a fresh price arrives", () => {
-    const tp = mount(TilePrice, { props: tileProps() });
-    tp.setProps({ price: price({ bid: 1.6, ask: 1.61 }) });
+  it("updates the digits when a fresh createPrice arrives", () => {
+    const tp = mount(TilePrice, { props: createTileProps() });
+    tp.setProps({ price: createPrice({ bid: 1.6, ask: 1.61 }) });
     expect(tp.digits("SELL")).toContain("1.60000");
   });
 
-  it("renders the spread between the two price boxes", () => {
-    const tp = mount(TilePrice, { props: tileProps({ spread: "1.8" }) });
+  it("renders the spread between the two createPrice boxes", () => {
+    const tp = mount(TilePrice, { props: createTileProps({ spread: "1.8" }) });
     expect(tp.spreadText()).toBe("1.8");
   });
 
-  it("fires onExecute with Sell when the sell price box is clicked", async () => {
+  it("fires onExecute with Sell when the sell createPrice box is clicked", async () => {
     const calls: Direction[] = [];
     const tp = mount(TilePrice, {
-      props: tileProps({
+      props: createTileProps({
         onExecute: (d: Direction) => {
           calls.push(d);
         },
@@ -88,10 +88,10 @@ describe("TilePrice", () => {
     expect(calls).toEqual([Direction.Sell]);
   });
 
-  it("fires onExecute with Buy when the buy price box is clicked", async () => {
+  it("fires onExecute with Buy when the buy createPrice box is clicked", async () => {
     const calls: Direction[] = [];
     const tp = mount(TilePrice, {
-      props: tileProps({
+      props: createTileProps({
         onExecute: (d: Direction) => {
           calls.push(d);
         },
@@ -101,8 +101,8 @@ describe("TilePrice", () => {
     expect(calls).toEqual([Direction.Buy]);
   });
 
-  it("disables both price boxes when disabled", () => {
-    const tp = mount(TilePrice, { props: tileProps({ disabled: true }) });
+  it("disables both createPrice boxes when disabled", () => {
+    const tp = mount(TilePrice, { props: createTileProps({ disabled: true }) });
     expect(tp.isDisabled("SELL")).toBe(true);
     expect(tp.isDisabled("BUY")).toBe(true);
   });
@@ -121,7 +121,7 @@ describe("SpreadDisplay", () => {
   });
 });
 
-function price(over: Partial<Price> = {}): Price {
+function createPrice(over: Partial<Price> = {}): Price {
   return {
     symbol: "EURUSD",
     bid: 1.53816,
@@ -135,9 +135,9 @@ function price(over: Partial<Price> = {}): Price {
   };
 }
 
-function tileProps(over: Partial<TilePriceProps> = {}): TilePriceProps {
+function createTileProps(over: Partial<TilePriceProps> = {}): TilePriceProps {
   return {
-    price: price(),
+    price: createPrice(),
     ratePrecision: 5,
     pipsPosition: 4,
     spread: "1.8",

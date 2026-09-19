@@ -17,8 +17,8 @@ beforeEach(() => {
 
 test("groups streams from different presenters under separate sections", () => {
   const streams: StreamRow[] = [
-    streamRow({ streamId: "blotter.trades$" }),
-    streamRow({ streamId: 'priceStream.price$[["EURUSD"]]' }),
+    createStreamRow({ streamId: "blotter.trades$" }),
+    createStreamRow({ streamId: 'priceStream.price$[["EURUSD"]]' }),
   ];
 
   panel.mountStateTreePanel({ streams });
@@ -30,12 +30,12 @@ test("groups streams from different presenters under separate sections", () => {
 });
 
 test("re-renders the changed value when the underlying row updates", () => {
-  const initial: StreamRow[] = [streamRow({ lastValue: 1, lastSeq: 1 })];
+  const initial: StreamRow[] = [createStreamRow({ lastValue: 1, lastSeq: 1 })];
   panel.mountStateTreePanel({ streams: initial });
 
   expect(panel.hasText("1")).toBe(true);
 
-  const updated: StreamRow[] = [streamRow({ lastValue: 2, lastSeq: 2 })];
+  const updated: StreamRow[] = [createStreamRow({ lastValue: 2, lastSeq: 2 })];
   panel.rerenderWith({ streams: updated });
 
   expect(panel.hasText("2")).toBe(true);
@@ -44,8 +44,8 @@ test("re-renders the changed value when the underlying row updates", () => {
 
 test("shows a rate badge only when ratePerSec exceeds 0.5", () => {
   const streams: StreamRow[] = [
-    streamRow({ streamId: "a.x$", ratePerSec: 0.1 }),
-    streamRow({ streamId: "b.y$", ratePerSec: 2.7 }),
+    createStreamRow({ streamId: "a.x$", ratePerSec: 0.1 }),
+    createStreamRow({ streamId: "b.y$", ratePerSec: 2.7 }),
   ];
 
   panel.mountStateTreePanel({ streams });
@@ -54,7 +54,7 @@ test("shows a rate badge only when ratePerSec exceeds 0.5", () => {
   expect(panel.hasText("0.1/s")).toBe(false);
 });
 
-function streamRow(overrides: Partial<StreamRow>): StreamRow {
+function createStreamRow(overrides: Partial<StreamRow>): StreamRow {
   return {
     streamId: "blotter.trades$",
     lastValue: null,

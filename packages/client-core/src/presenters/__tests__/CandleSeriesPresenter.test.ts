@@ -92,7 +92,7 @@ describe("CandleSeriesPresenter", () => {
     const olderPage = [candle(100, 10)];
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -125,7 +125,7 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const pending = new Subject<readonly Candle[]>();
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -156,7 +156,7 @@ describe("CandleSeriesPresenter", () => {
     const shortPage = [candle(100, 10)];
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -191,7 +191,7 @@ describe("CandleSeriesPresenter", () => {
     let attempt = 0;
     let currentNow = 0;
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -239,7 +239,7 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     let currentNow = 0;
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -291,7 +291,7 @@ describe("CandleSeriesPresenter", () => {
     let attempt = 0;
     let currentNow = 5000;
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -349,7 +349,7 @@ describe("CandleSeriesPresenter", () => {
     const overlappingPage = [candle(100, 10), candle(200, 99)];
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -384,7 +384,7 @@ describe("CandleSeriesPresenter", () => {
     });
 
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -423,7 +423,7 @@ describe("CandleSeriesPresenter", () => {
     let baseCallCount = 0;
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return defer(() => {
             baseCallCount += 1;
@@ -494,7 +494,7 @@ describe("CandleSeriesPresenter", () => {
     const olderPage = [candle(100, 10)];
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: (_symbol: string, timeframe: CandleTimeframe) => {
           return of(timeframe === "1W" ? base1W : base1D);
         },
@@ -547,7 +547,7 @@ describe("CandleSeriesPresenter", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     let call = 0;
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of(base);
         },
@@ -577,7 +577,7 @@ describe("CandleSeriesPresenter", () => {
   it("loadOlder before any candles$ emission is a no-op: no port call", () => {
     const historyCalls: Array<[string, CandleTimeframe, number, number]> = [];
     const presenter = new CandleSeriesPresenter(
-      scriptedMarketData({
+      createScriptedMarketData({
         candles: () => {
           return of([candle(200, 20)]);
         },
@@ -659,7 +659,7 @@ function candle(time: number, seed: number): Candle {
   };
 }
 
-/** Overrides accepted by {@link scriptedMarketData}: both `candles` and
+/** Overrides accepted by {@link createScriptedMarketData}: both `candles` and
  * `candleHistory` are supplied per-case so each test controls its own base
  * series / history pages and can record the exact calls made to either. */
 interface ScriptedMarketDataOverrides {
@@ -678,7 +678,7 @@ interface ScriptedMarketDataOverrides {
 /** A fully scripted MarketDataPort fake for the backfill-stitching tests
  * below — see {@link ScriptedMarketDataOverrides}. `watchlist`/`quotes`/
  * `depth` are never exercised by this presenter, so they return EMPTY. */
-function scriptedMarketData(
+function createScriptedMarketData(
   overrides: ScriptedMarketDataOverrides,
 ): MarketDataPort {
   return {

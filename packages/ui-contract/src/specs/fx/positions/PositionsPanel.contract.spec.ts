@@ -16,14 +16,18 @@ describe("PositionsPanel", () => {
   });
 
   it("renders the panel with the Net Exposure label once data arrives", () => {
-    const panel = mount(PositionsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(PositionsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.isLoaded()).toBe(true);
     expect(panel.loadingMessage()).toBeNull();
     expect(panel.sectionLabel()).toBe("Net Exposure");
   });
 
   it("renders one bubble per non-zero currency, in PROTO book order", () => {
-    const panel = mount(PositionsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(PositionsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.bubbleCurrencies()).toEqual([
       "EUR",
       "USD",
@@ -36,7 +40,9 @@ describe("PositionsPanel", () => {
   });
 
   it("shows the PROTO net-exposure amount and sign on the EUR and USD bubbles", () => {
-    const panel = mount(PositionsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(PositionsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.bubbleAmountText("EUR")).toBe("+15.2M");
     expect(panel.bubbleSign("EUR")).toBe("pos");
     expect(panel.bubbleAmountText("USD")).toBe("-22.8M");
@@ -44,7 +50,9 @@ describe("PositionsPanel", () => {
   });
 
   it("scales bubble diameter with the absolute exposure amount", () => {
-    const panel = mount(PositionsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(PositionsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     // USD nets to -22.8M (larger magnitude); NZD nets to +2.1M (smaller).
     expect(panel.bubbleDiameter("USD")).toBeGreaterThan(
       panel.bubbleDiameter("NZD"),
@@ -52,7 +60,9 @@ describe("PositionsPanel", () => {
   });
 
   it("renders ladder rows in the same order with matching signed amounts", () => {
-    const panel = mount(PositionsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(PositionsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.ladderCurrencies()).toEqual([
       "EUR",
       "USD",
@@ -132,7 +142,7 @@ const PROTO_POSITIONS: readonly CurrencyPairPosition[] = [
   },
 ];
 
-function updates(over: Partial<PositionUpdates> = {}): PositionUpdates {
+function createUpdates(over: Partial<PositionUpdates> = {}): PositionUpdates {
   return {
     currentPositions: PROTO_POSITIONS,
     history: [],

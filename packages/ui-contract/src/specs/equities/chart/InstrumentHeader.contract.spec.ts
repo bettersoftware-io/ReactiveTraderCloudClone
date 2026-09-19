@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe("InstrumentHeader", () => {
-  it("shows dashes when there is no quote or candle data yet", () => {
+  it("shows dashes when there is no createQuote or candle data yet", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
@@ -27,11 +27,11 @@ describe("InstrumentHeader", () => {
     expect(header.dayRange()).toBe("—");
   });
 
-  it("renders the real quote's last/bid/ask verbatim (not the ±0.03 prototype offset)", () => {
+  it("renders the real createQuote's last/bid/ask verbatim (not the ±0.03 prototype offset)", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote(),
+        quote: createQuote(),
         candles: CANDLES,
         flashOn: false,
         flashDir: "up",
@@ -43,11 +43,11 @@ describe("InstrumentHeader", () => {
     expect(header.ask()).toBe("104.10");
   });
 
-  it("derives the abs+pct change from quote.changePct", () => {
+  it("derives the abs+pct change from createQuote.changePct", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote({ last: 104, changePct: 2 }),
+        quote: createQuote({ last: 104, changePct: 2 }),
         candles: [],
         flashOn: false,
         flashDir: "up",
@@ -62,7 +62,7 @@ describe("InstrumentHeader", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote({ last: 98, changePct: -2 }),
+        quote: createQuote({ last: 98, changePct: -2 }),
         candles: [],
         flashOn: false,
         flashDir: "down",
@@ -76,7 +76,7 @@ describe("InstrumentHeader", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote({ last: 110 }),
+        quote: createQuote({ last: 110 }),
         candles: CANDLES,
         flashOn: false,
         flashDir: "up",
@@ -91,7 +91,7 @@ describe("InstrumentHeader", () => {
     const header = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote(),
+        quote: createQuote(),
         candles: [],
         flashOn: true,
         flashDir: "down",
@@ -110,7 +110,7 @@ describe("InstrumentHeader", () => {
     const a = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote(),
+        quote: createQuote(),
         candles: CANDLES,
         flashOn: false,
         flashDir: "up",
@@ -121,7 +121,7 @@ describe("InstrumentHeader", () => {
     const b = mount(InstrumentHeader, {
       props: {
         symbol: "AAPL",
-        quote: quote(),
+        quote: createQuote(),
         candles: CANDLES,
         flashOn: false,
         flashDir: "up",
@@ -133,7 +133,7 @@ describe("InstrumentHeader", () => {
   });
 });
 
-function quote(overrides: Partial<EquityQuote> = {}): EquityQuote {
+function createQuote(overrides: Partial<EquityQuote> = {}): EquityQuote {
   return {
     symbol: "AAPL",
     bid: 103.9,

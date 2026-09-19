@@ -681,7 +681,9 @@ const CONFIRM_FIXTURE: ConfirmFixture = {
   ratePrecision: 4,
 };
 
-function baseJarvisState(overrides: Partial<JarvisState> = {}): JarvisState {
+function createBaseJarvisState(
+  overrides: Partial<JarvisState> = {},
+): JarvisState {
   return {
     open: false,
     skin: DEFAULT_JARVIS_SKIN,
@@ -794,7 +796,9 @@ interface HarnessOverrides {
  * [command]: ... }))` — see the "step 6"/"stopDemo"/"errored turn" tests
  * below for the pattern. */
 function createHarness(overrides: HarnessOverrides = {}): Harness {
-  const jarvisState$ = new BehaviorSubject<JarvisState>(baseJarvisState());
+  const jarvisState$ = new BehaviorSubject<JarvisState>(
+    createBaseJarvisState(),
+  );
   const jarvisEvents$ = new Subject<JarvisEvent>();
   const nextId: NextIdCounter = { current: 1 };
 

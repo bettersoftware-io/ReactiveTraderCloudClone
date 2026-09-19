@@ -111,8 +111,8 @@ describe("BlotterHeader", () => {
         filters: new Map(),
         onFilter: () => {},
         trades: [
-          trade({ currencyPair: "EURUSD" }),
-          trade({ currencyPair: "USDJPY" }),
+          createTrade({ currencyPair: "EURUSD" }),
+          createTrade({ currencyPair: "USDJPY" }),
         ],
       },
     });
@@ -128,7 +128,7 @@ describe("BlotterHeader", () => {
         onSort: () => {},
         filters: new Map(),
         onFilter: () => {},
-        trades: [trade()],
+        trades: [createTrade()],
       },
     });
     await header.openFilter("Notional");
@@ -142,7 +142,7 @@ describe("BlotterHeader", () => {
         onSort: () => {},
         filters: new Map(),
         onFilter: () => {},
-        trades: [trade()],
+        trades: [createTrade()],
       },
     });
     await header.openFilter("Trade Date");
@@ -156,7 +156,7 @@ describe("BlotterHeader", () => {
         onSort: () => {},
         filters: new Map(),
         onFilter: () => {},
-        trades: [trade()],
+        trades: [createTrade()],
       },
     });
     await header.openFilter("Notional");
@@ -175,7 +175,7 @@ describe("BlotterHeader", () => {
         onFilter: (column: keyof Trade, filter: ColumnFilter | null) => {
           return applied.push({ column, filter });
         },
-        trades: [trade()],
+        trades: [createTrade()],
       },
     });
     await header.openFilter("Notional");
@@ -199,7 +199,7 @@ describe("BlotterHeader", () => {
         onSort: () => {},
         filters,
         onFilter: () => {},
-        trades: [trade()],
+        trades: [createTrade()],
       },
     });
     expect(header.hasActiveFilterDot("CCYCCY")).toBe(true);
@@ -209,7 +209,7 @@ describe("BlotterHeader", () => {
 
 type AppliedFilter = { column: keyof Trade; filter: ColumnFilter | null };
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 1,
     tradeName: "Alice",
