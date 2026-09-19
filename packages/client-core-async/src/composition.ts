@@ -82,60 +82,7 @@ function nativePresenters(ports: AppPorts): Partial<Presenters> {
   };
 }
 
-/** The strangler builds a full RxJS `base` — needed both to delegate every
- * member `nativePresenters` does not cover and for `parity.test.ts`'s
- * reference-inequality check — alongside the native presenters that shadow
- * it. A port method a native member ALSO reads at construction (the four
- * `portDiscipline` witnesses: `connectionEvents.events`, `themeMode$`,
- * `bootVariant$`, `eqWatchlistSort$`) would otherwise be called twice: once
- * building `base`'s now-discarded presenter for that member, once building
- * the native one. Read once, here, and shared with both. */
-function sharePortReads(ports: AppPorts): AppPorts {
-  const connectionEventsSource = ports.connectionEvents.events();
-  const themeModeSource = ports.preferences.themeMode$();
-  const bootVariantSource = ports.preferences.bootVariant$();
-  const eqWatchlistSortSource = ports.preferences.eqWatchlistSort$();
-
-  return {
-    ...ports,
-    connectionEvents: {
-      events: () => {
-        return connectionEventsSource;
-      },
-    },
-    preferences: withCapturedReads(ports.preferences, {
-      themeMode$: themeModeSource,
-      bootVariant$: bootVariantSource,
-      eqWatchlistSort$: eqWatchlistSortSource,
-    }),
-  };
-}
-
-/** Every other property of `port` passes through untouched — including
- * prototype methods a spread would drop, since a concrete port is typically
- * a class instance (`PreferencesSimulator`, `LocalStoragePreferencesAdapter`)
- * whose methods live on its prototype, not as the instance's own properties. */
-function withCapturedReads<P extends object>(
-  port: P,
-  captured: Readonly<Partial<Record<keyof P, unknown>>>,
-): P {
-  return new Proxy(port, {
-    get: (target: P, property: string | symbol, receiver: unknown): unknown => {
-      if (typeof property === "string" && property in captured) {
-        const value = captured[property as keyof P];
-
-        return (): unknown => {
-          return value;
-        };
-      }
-
-      return Reflect.get(target, property, receiver);
-    },
-  });
-}
-
-export function composeWithBase(rawPorts: AppPorts): ComposedApp {
-  const ports = sharePortReads(rawPorts);
+export function composeWithBase(ports: AppPorts): ComposedApp {
   const base = createRxjsApp(ports);
   const app: App = {
     ...base,
