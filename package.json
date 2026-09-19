@@ -55,6 +55,7 @@
     "clean": "turbo run clean && (rm -rf .turbo 2>/dev/null || true)",
     "clean:deep": "turbo run clean:deep && (rm -rf node_modules .pnpm-store .turbo 2>/dev/null || true) && find . -name .DS_Store -type f -delete",
     "lint:actions": "scripts/install-actionlint.sh && .tooling/actionlint -color",
+    "lint:actions:security": "scripts/install-zizmor.sh && .tooling/zizmor --no-progress .github/",
     "check:versions": "manypkg check && syncpack lint",
     "check:scripts": "node scripts/check-workspace-scripts.mjs",
     "check:react-policies": "node scripts/check-react-package-policies.mjs",

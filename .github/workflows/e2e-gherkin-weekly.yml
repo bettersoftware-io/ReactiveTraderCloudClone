@@ -28,11 +28,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
       - name: Enable Corepack
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -65,11 +73,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
       - name: Enable Corepack
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

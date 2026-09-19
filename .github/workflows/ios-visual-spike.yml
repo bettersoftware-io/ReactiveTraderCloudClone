@@ -213,7 +213,11 @@ jobs:
           node-version: 26
 
       - name: Enable Corepack (pins pnpm from the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       # Maestro's own check is a FLOOR (`-lt 17`), not a pin — but 21 is the
       # newest JDK it runs clean on; 25 and 26 warn that bundled deps (jansi,
@@ -249,6 +253,10 @@ jobs:
       # load-bearing question. 14 GB of SSD is documented for macOS standard
       # runners; this monorepo's install is the thing most likely to strain it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - name: pnpm install (timed, with disk delta)
         run: |
@@ -326,13 +334,21 @@ jobs:
         run: df -h /
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

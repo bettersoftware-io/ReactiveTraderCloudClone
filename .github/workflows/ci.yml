@@ -55,13 +55,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
@@ -95,6 +103,18 @@ jobs:
 
       - name: Workflow lint (actionlint)
         run: pnpm lint:actions
+
+      # actionlint's sibling: actionlint asks "is this workflow VALID?", zizmor
+      # asks "is it SAFE?" (template injection, persisted credentials, excessive
+      # permissions, unpinned/impostor action refs). Zero findings, any severity.
+      # GH_TOKEN turns on the ONLINE audits (known-vulnerable-actions,
+      # impostor-commit, ref-confusion); without it — e.g. a local gauntlet run
+      # with no token exported — zizmor degrades to the offline set, so CI is
+      # the authoritative run. See docs/adr/ADR-007-ci-security-tooling.md.
+      - name: Workflow security lint (zizmor)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm lint:actions:security
 
       - name: Docs link check (files + anchors)
         run: pnpm check:doc-links
@@ -224,13 +244,21 @@ jobs:
       RTC_E2E_MAX_PARALLEL: "2"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
@@ -294,13 +322,21 @@ jobs:
       RTC_CORE_IMPL: ${{ matrix.core }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack (provisions the pnpm pinned by the packageManager field)
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Resolve pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"

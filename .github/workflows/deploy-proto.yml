@@ -30,13 +30,21 @@ jobs:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing in this job pushes: keep the token out of .git/config (zizmor
+          # `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
 
       - name: Enable Corepack
-        run: npm install -g corepack@0.35.0 && corepack enable
+        # zizmor ignore is PERMANENT: exact pin + zero deps (`npm view corepack@0.35.0
+        # dependencies` → none), so nothing here floats — and it cannot come from the
+        # lockfile, since it provisions the package manager that READS the lockfile.
+        # See docs/adr/ADR-007.
+        run: npm install -g corepack@0.35.0 && corepack enable # zizmor: ignore[adhoc-packages]
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -44,7 +52,10 @@ jobs:
       # Pinned major: vercel@58 (2026-07-27) breaks `vercel pull` under env-var
       # project linking (VERCEL_ORG_ID/VERCEL_PROJECT_ID) — bump deliberately.
       - name: Install Vercel CLI
-        run: npm install -g vercel@57
+        # zizmor ignore is TEMPORARY: a real (mild) finding — the CLI's transitive tree
+        # re-resolves on every deploy, outside the lockfile and the 24h cooldown.
+        # Tracked in docs/STATUS.md; see docs/adr/ADR-007.
+        run: npm install -g vercel@57 # zizmor: ignore[adhoc-packages]
 
       - name: Build @rtc/client-prototype, generate gate, deploy, smoke
         env:

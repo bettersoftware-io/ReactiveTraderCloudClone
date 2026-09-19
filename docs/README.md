@@ -43,7 +43,9 @@ flowchart TD
   chapters (overview, C4, UML, sequences, package deps, replaceability matrix,
   test strategy, devtools, …).
 - [`adr/`](adr/) — Architecture Decision Records (e.g.
-  [ADR-005 UI-logic placement](adr/ADR-005-ui-logic-placement.md)).
+  [ADR-005 UI-logic placement](adr/ADR-005-ui-logic-placement.md),
+  [ADR-007 CI security tooling](adr/ADR-007-ci-security-tooling.md) — what
+  runs, and why Snyk / SonarCloud were declined).
 - [`performance.md`](performance.md) — **read before any CSS animation/transition
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
 - [`boot-splash-animations.md`](boot-splash-animations.md) — the boot-splash
