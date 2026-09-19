@@ -359,6 +359,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     seededStripSizes.clear();
     seededFlipSizes.clear();
     const stripGeometry = stripGeometrySidecar();
+    // `rtcFloatSizes` (present only while a float remembers a home size)
+    // rides the same way: a float persists, so the extent its dock-home
+    // puts back must persist with it — the grid alone no longer holds it.
+    const floatSizes = floatSizesSidecar();
     opts.onLayoutChange(
       JSON.stringify({
         // Lock marks are derived from strip membership (audit S1) and
@@ -382,8 +386,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         ...(stripGeometry === undefined
           ? {}
           : { rtcStripGeometry: stripGeometry }),
+        ...(floatSizes === undefined ? {} : { rtcFloatSizes: floatSizes }),
       }),
     );
+  }
+
+  /** Each floating panel's remembered home extent, for the blob. Undefined
+   * while nothing is remembered, so a float-free blob keeps its shape. An
+   * entry whose panel has left the dock (closed while floating) describes
+   * nothing and is not written. */
+  function floatSizesSidecar():
+    | Readonly<Record<string, PersistedFloatSize>>
+    | undefined {
+    const sizes: Record<string, PersistedFloatSize> = {};
+
+    for (const [panelId, { along, size }] of floatHomeSizes) {
+      if (api.getPanel(panelId) !== undefined) {
+        sizes[panelId] = {
+          axis: along === "vertical" ? "width" : "height",
+          size,
+        };
+      }
+    }
+
+    return Object.keys(sizes).length === 0 ? undefined : sizes;
   }
 
   /** The strip machinery's restore sizes, for the blob: what recordStrip
@@ -2139,6 +2165,193 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", cancelRefusedShiftFloat, true);
 
+  // ——— Float home sizes (dock-home puts back the extent, not just the slot) ———
+  // Every in-grid panel's extent along its parent split's dividing axis, as
+  // the CURRENT structural mutation opened. `settleFloatTransitions` runs on
+  // `onDidMutateLayout`, i.e. after the float has already detached the group
+  // — by then its grid extent is gone (the siblings have absorbed it) and the
+  // floating box has its own size. `onWillMutateLayout` fires at the opening
+  // of that very same top-level mutation, with the group still laid out in
+  // the grid, for EVERY entry point: dockview brackets `addFloatingGroup`
+  // itself (the button and the shift-drag gesture both land there), so the
+  // snapshot and the settle always describe one transaction.
+  let preMutationExtents: ReadonlyMap<string, FloatHomeSize> = new Map();
+
+  function snapshotGridExtents(): void {
+    const extents = new Map<string, FloatHomeSize>();
+
+    for (const group of api.groups) {
+      const split = isInGrid(group)
+        ? group.element.closest(SPLIT_SELECTOR)
+        : null;
+
+      if (split === null) {
+        continue;
+      }
+
+      const along = orientationAgainst(split);
+      const size = axisOf(group, along).size();
+
+      for (const panel of group.panels) {
+        extents.set(panel.id, { along, size });
+      }
+    }
+
+    preMutationExtents = extents;
+  }
+
+  const willMutateSub = api.onWillMutateLayout(snapshotGridExtents);
+
+  /** True for a panel whose docked extent another rule already owns, so a
+   * remembered float size would fight it — two mechanisms over one extent
+   * is worse than either:
+   * - a design-pin member: its pin re-clamps on dock-home
+   *   (`clampPinsFloatSuspendedFor`) and restores the designed size itself;
+   * - a chart instance (an unpinned dynamic panel): on dock-home it re-enters
+   *   the equal-share rule (R6), which decides every instance's width.
+   * Pin records are looked up in all three homes a record can sit in. */
+  function hasOwnDockHomeSizing(panelId: string): boolean {
+    if (unpinnedDynamicPanels.has(panelId)) {
+      return true;
+    }
+
+    return [
+      ...designPins,
+      ...unabsorbedPins,
+      ...[...floatSuspendedPins.values()].flat(),
+    ].some((record) => {
+      return record.members.some((member) => {
+        return member.panelId === panelId;
+      });
+    });
+  }
+
+  // Each floating panel's pre-float extent, keyed by panel id — recorded as
+  // it floats, re-applied and forgotten as it docks home. Seeded from the
+  // blob's `rtcFloatSizes` sidecar, keeping only entries for a panel that
+  // actually came back floating and is not excluded above (a stale entry for
+  // a docked panel describes nothing a dock-home could consume).
+  const floatHomeSizes = new Map<string, FloatHomeSize>();
+
+  for (const [panelId, entry] of restored.floatSizes) {
+    const panel = api.getPanel(panelId);
+
+    if (
+      panel !== undefined &&
+      panel.group.api.location.type === "floating" &&
+      !hasOwnDockHomeSizing(panelId)
+    ) {
+      floatHomeSizes.set(panelId, entry);
+    }
+  }
+
+  /** Remembers `panelId`'s pre-float extent from the snapshot taken as the
+   * mutation that floated it opened. Nothing is recorded for an excluded
+   * panel, or for one with no grid extent before this mutation (it entered
+   * the float from outside the grid — a pop-out, or a panel added floating). */
+  function rememberFloatHomeSize(panelId: string): void {
+    const extent = preMutationExtents.get(panelId);
+
+    if (extent !== undefined && !hasOwnDockHomeSizing(panelId)) {
+      floatHomeSizes.set(panelId, extent);
+    }
+  }
+
+  /** Puts back each remembered extent whose panel is back IN THE GRID —
+   * however it got there — then forgets it. An entry whose panel is still
+   * floating (or popped out of its float) waits; one whose panel left the
+   * dock is dropped.
+   *
+   * Goes through the axis `set` the strip restores use, after reading the
+   * constraints: the target is clamped to the group's own min/max, and to the
+   * room its split can give — the group's current extent plus what each
+   * sibling view holds ABOVE its minimum — so a container resized or a
+   * sibling closed in the meantime lands what fits and never pushes a sibling
+   * below its minimum (dockview's splitview would refuse to anyway; the clamp
+   * makes the engine ask only for what it can have). A group that docked into
+   * a split dividing the OTHER axis gets nothing: its old extent measures a
+   * dimension its new home does not share out. */
+  function restoreFloatHomeSizes(): void {
+    for (const [panelId, entry] of [...floatHomeSizes]) {
+      const panel = api.getPanel(panelId);
+
+      if (panel === undefined) {
+        floatHomeSizes.delete(panelId);
+        continue;
+      }
+
+      if (!isInGrid(panel.group)) {
+        continue;
+      }
+
+      floatHomeSizes.delete(panelId);
+      const group: SizableGroup = panel.group;
+      const split = group.element.closest(SPLIT_SELECTOR);
+
+      if (
+        split === null ||
+        orientationAgainst(split) !== entry.along ||
+        hasOwnDockHomeSizing(panelId)
+      ) {
+        continue;
+      }
+
+      const axis = axisOf(group, entry.along);
+      const size = Math.max(
+        axis.minimum(),
+        Math.min(
+          entry.size,
+          axis.maximum(),
+          dockHomeRoomOf(group, split, entry.along),
+        ),
+      );
+
+      if (Math.abs(axis.size() - size) > 0.5) {
+        axis.set(size);
+      }
+    }
+  }
+
+  /** The most `group` can grow to along `along` inside `split` without
+   * pushing a sibling view below its minimum: its own extent plus each
+   * sibling view's slack. A sibling view that is a nested split is as small
+   * as its largest group minimum allows (its groups stack across `along`). */
+  function dockHomeRoomOf(
+    group: SizableGroup,
+    split: Element,
+    along: DockStripOrientation,
+  ): number {
+    let room = 0;
+
+    for (const child of childViewsOf(split)) {
+      const groups = api.groups.filter((candidate) => {
+        return child.contains(candidate.element);
+      });
+      const first = groups[0];
+
+      if (first === undefined) {
+        continue;
+      }
+
+      const extent = axisOf(first, along).size();
+
+      if (child.contains(group.element)) {
+        room += extent;
+        continue;
+      }
+
+      room +=
+        extent -
+        Math.max(
+          ...groups.map((member) => {
+            return axisOf(member, along).minimum();
+          }),
+        );
+    }
+
+    return room;
+  }
+
   // The floating set the pin, absorption and share rules were last settled
   // against. Seeded from the restored layout: a float the blob brought back
   // already had its pins routed by `applyDesignPins`, so it is not a new one.
@@ -2169,20 +2382,29 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    *   returning panel can absorb again, so absorption is re-settled.
    * - R6: a chart instance that left a float for the grid re-enters the
    *   equal-share rule at once, as `insertDynamicPanel` does for a newcomer —
-   *   not at the next container resize (final review I4). */
+   *   not at the next container resize (final review I4).
+   * - Home sizes: a panel entering a float has its pre-float extent
+   *   remembered (from the snapshot `onWillMutateLayout` took as this same
+   *   mutation opened), and a remembered panel back in the grid has it put
+   *   back — LAST, once pins are re-clamped and absorption re-settled, so the
+   *   room it measures is the room the settled grid really has. */
   function settleFloatTransitions(): void {
     const floating = new Set(floatingPanelIds());
     const left = [...settledFloating].filter((panelId) => {
       return !floating.has(panelId);
     });
 
-    let changed =
-      left.length > 0 ||
-      [...floating].some((panelId) => {
-        return !settledFloating.has(panelId);
-      });
+    const entered = [...floating].filter((panelId) => {
+      return !settledFloating.has(panelId);
+    });
+
+    let changed = left.length > 0 || entered.length > 0;
 
     settledFloating = floating;
+
+    for (const panelId of entered) {
+      rememberFloatHomeSize(panelId);
+    }
 
     for (const panelId of floating) {
       changed = suspendPinsFor(panelId) || changed;
@@ -2196,23 +2418,25 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    if (!changed) {
-      return;
-    }
+    if (changed) {
+      settlePinAbsorption();
 
-    settlePinAbsorption();
+      for (const panelId of left) {
+        const panel = api.getPanel(panelId);
 
-    for (const panelId of left) {
-      const panel = api.getPanel(panelId);
-
-      if (
-        panel !== undefined &&
-        isInGrid(panel.group) &&
-        unpinnedDynamicPanels.has(panelId)
-      ) {
-        shareInstanceSplitOf(panelId);
+        if (
+          panel !== undefined &&
+          isInGrid(panel.group) &&
+          unpinnedDynamicPanels.has(panelId)
+        ) {
+          shareInstanceSplitOf(panelId);
+        }
       }
     }
+
+    // Outside the gate: a panel popped out OF a float returns to the grid
+    // without the floating set changing at all.
+    restoreFloatHomeSizes();
   }
 
   const mutateSub = api.onDidMutateLayout(settleFloatTransitions);
@@ -2804,6 +3028,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     },
     dispose: () => {
       changeSub.dispose();
+      willMutateSub.dispose();
       mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
       opts.container.removeEventListener(
@@ -3423,6 +3648,9 @@ interface RestoredLayout {
   readonly stripSizes: ReadonlyMap<string, number>;
   /** Each persisted flipped split's pre-flip size, by {@link flipKeyFor}. */
   readonly flipSizes: ReadonlyMap<string, number>;
+  /** Each persisted float's pre-float home extent, by panel id (empty on a
+   * seed load or a blob saved with no float remembering one). */
+  readonly floatSizes: ReadonlyMap<string, FloatHomeSize>;
   /** Which retry tier actually restored this layout — see {@link RestoreTier}. */
   readonly restoreTier: RestoreTier;
 }
@@ -3516,6 +3744,7 @@ export function loadBlobOrSeed(
       return {
         pins: designPinsIn(parsed),
         ...stripGeometryIn(parsed),
+        floatSizes: floatSizesIn(parsed),
         restoreTier: "blob",
       };
     } catch {
@@ -3555,6 +3784,7 @@ export function loadBlobOrSeed(
           return {
             pins: designPinsIn(parsed),
             ...stripGeometryIn(parsed),
+            floatSizes: floatSizesIn(parsed),
             restoreTier: "blob-without-floats",
           };
         } catch {
@@ -3586,6 +3816,7 @@ export function loadBlobOrSeed(
               return {
                 pins: designPinsIn(parsed),
                 ...stripGeometryIn(parsed),
+                floatSizes: floatSizesIn(parsed),
                 restoreTier: "blob-without-dynamic",
               };
             } catch {
@@ -3606,6 +3837,7 @@ export function loadBlobOrSeed(
     pins,
     stripSizes: new Map(),
     flipSizes: new Map(),
+    floatSizes: new Map(),
     restoreTier: "seed",
   };
 }
@@ -3766,6 +3998,65 @@ function stripGeometryIn(
   }
 
   return seeds;
+}
+
+/** A panel's extent along its parent split's dividing axis, named the way
+ * {@link axisOf} names axes (`"vertical"` = the width axis). */
+interface FloatHomeSize {
+  readonly along: DockStripOrientation;
+  readonly size: number;
+}
+
+/** One float's persisted home extent — the axis spelled as a dimension, like
+ * a design pin's, so the wire format does not leak the strip vocabulary. */
+interface PersistedFloatSize {
+  readonly axis: "width" | "height";
+  readonly size: number;
+}
+
+/** A blob that MAY carry the float-size sidecar, unverified. */
+interface FloatSizeSidecarCarrier {
+  readonly rtcFloatSizes?: unknown;
+}
+
+/** One unverified entry of the float-size sidecar. */
+interface UnverifiedFloatSize {
+  readonly axis?: unknown;
+  readonly size?: unknown;
+}
+
+/** The `rtcFloatSizes` sidecar of a parsed blob, dropping anything malformed
+ * — like the strip geometry, it crosses localStorage. Whether each entry's
+ * panel really came back floating is the engine's check, not this one's. */
+function floatSizesIn(parsed: unknown): ReadonlyMap<string, FloatHomeSize> {
+  const sizes = new Map<string, FloatHomeSize>();
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return sizes;
+  }
+
+  const raw = (parsed as FloatSizeSidecarCarrier).rtcFloatSizes;
+
+  if (typeof raw !== "object" || raw === null) {
+    return sizes;
+  }
+
+  for (const [panelId, entry] of Object.entries(raw)) {
+    if (typeof entry !== "object" || entry === null) {
+      continue;
+    }
+
+    const { axis, size } = entry as UnverifiedFloatSize;
+
+    if ((axis === "width" || axis === "height") && isUsableSize(size)) {
+      sizes.set(panelId, {
+        along: axis === "width" ? "vertical" : "horizontal",
+        size,
+      });
+    }
+  }
+
+  return sizes;
 }
 
 function isUsableSize(size: unknown): size is number {
