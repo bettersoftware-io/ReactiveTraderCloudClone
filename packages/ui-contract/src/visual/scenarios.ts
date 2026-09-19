@@ -497,7 +497,9 @@ const baseScenarios: Record<string, Scenario> = {
   // MSFT) open on the equities workspace, seeded via the fixture's
   // `layoutInstances` (never a click — mirrors the layout-STATE twins
   // below). THE THIRD SINGLE-ENGINE SCENARIO (after shell/layout-dockview-
-  // stacked and shell/view-menu-open): instances are layer-2 membership
+  // stacked and shell/view-menu-open; a fourth, shell/layout-dockview-
+  // floating, is added below for the same reason as the stacked one —
+  // see its own comment): instances are layer-2 membership
   // that only the Dockview bridge renders (`instanceRegistryFor` /
   // `instanceSpecsFor` in App.tsx) — the in-house engine projects them away
   // entirely, so no in-house twin CAN exist. `enginePairs.ts` already skips
@@ -789,6 +791,31 @@ const baseScenarios: Record<string, Scenario> = {
   "shell/view-menu-open": { componentKey: "App", fixtureKey: "app-fx" },
   "shell/layout-dockview-stacked": {
     componentKey: "DockviewEngineStacked",
+    fixtureKey: "prefs-open",
+  },
+
+  // A floating panel (Phase 6a, PR #763): fx-analytics floated off its rail
+  // slot, so fx-positions reflows to fill the whole column and the float's
+  // frozen opening rect — the group's own on-screen rect at the moment it
+  // left the grid (see createDockEngine's floatingBoundsFor) — lands over
+  // the now-widened fx-positions underneath it. THE FOURTH SINGLE-ENGINE
+  // SCENARIO, for the same reason as shell/layout-dockview-stacked: a float
+  // is a layer-3 Dockview-private arrangement the in-house engine cannot
+  // express, so no in-house twin exists and visual:engine-parity skips it.
+  // This is the pixel witness for #763's fix: the glass skins' `--panel` is
+  // translucent (holo `rgba(6,26,38,0.5)`), and a float rendered with no
+  // opaque base let the panel underneath read straight through it — fixed
+  // by giving the float's `.dv-resize-container` an opaque `--bg-primary`
+  // base (dockview-hud.css). Seeded by a committed blob fixture
+  // (floatingFxBlob.ts in each client's wrapper dir) captured HONESTLY from
+  // a real engine save — a fresh DockviewLayoutEngine constructed at the
+  // same 1200x700 stage size as this golden's own harness, `floatPanel`
+  // called on fx-analytics via its real head control, and the resulting
+  // `onLayoutChange` blob read back out — never hand-written JSON, so the
+  // shape is one dockview itself actually emits. See that file's own
+  // comment for the exact capture recipe.
+  "shell/layout-dockview-floating": {
+    componentKey: "DockviewEngineFloating",
     fixtureKey: "prefs-open",
   },
 

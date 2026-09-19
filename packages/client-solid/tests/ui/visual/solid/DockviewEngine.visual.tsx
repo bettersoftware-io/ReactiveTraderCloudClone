@@ -5,6 +5,7 @@ import { InMemoryDockLayoutStore } from "@rtc/client-core";
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
+import { FLOATING_FX_BLOB } from "./floatingFxBlob";
 import { STACKED_FX_BLOB } from "./stackedFxBlob";
 
 import styles from "./DockviewEngine.visual.module.css";
@@ -92,6 +93,39 @@ export function DockviewEngineVisual(): JSX.Element {
 export function DockviewEngineStackedVisual(): JSX.Element {
   const store = new InMemoryDockLayoutStore();
   store.save("fx", STACKED_FX_BLOB);
+
+  return (
+    <div class={styles.stage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={visualDockPanelRegistry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={[]}
+        instances={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={noop}
+      />
+    </div>
+  );
+}
+
+/** The floating twin-less sibling (`shell/layout-dockview-floating`, PR
+ * #763), Solid twin of client-react's DockviewEngineFloatingVisual: the same
+ * chrome stage with the store pre-seeded by the committed floating blob —
+ * fx-analytics floated over the reflowed fx-positions — rendering the
+ * float's drag rail, card and opaque base over the panel underneath. A
+ * malformed blob falls back to the seed and un-floats the panel — these
+ * goldens fail loudly then. */
+export function DockviewEngineFloatingVisual(): JSX.Element {
+  const store = new InMemoryDockLayoutStore();
+  store.save("fx", FLOATING_FX_BLOB);
 
   return (
     <div class={styles.stage}>

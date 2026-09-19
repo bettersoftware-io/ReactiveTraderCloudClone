@@ -56,6 +56,7 @@ import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
 import {
+  DockviewEngineFloatingVisual,
   DockviewEngineStackedVisual,
   DockviewEngineVisual,
 } from "./DockviewEngine.visual";
@@ -747,5 +748,10 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   // committed stacked blob — see DockviewEngineStackedVisual.
   DockviewEngineStacked: () => {
     return <DockviewEngineStackedVisual />;
+  },
+  // A floating panel (Phase 6a, PR #763): same stage, store pre-seeded with
+  // the committed floating blob — see DockviewEngineFloatingVisual.
+  DockviewEngineFloating: () => {
+    return <DockviewEngineFloatingVisual />;
   },
 };
