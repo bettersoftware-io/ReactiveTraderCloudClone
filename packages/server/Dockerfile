@@ -2,7 +2,13 @@
 # @rtc/shared resolved from their dist/) resolve at runtime, so we keep the
 # whole installed workspace rather than risk a fragile cross-stage copy. Image
 # size is irrelevant for a demo server.
-FROM node:26-slim
+# Pinned by DIGEST as well as tag: a tag is mutable (node:26-slim is re-pushed on
+# every Debian base refresh), a digest is not — so the image Fly builds from is
+# the one that was reviewed. This is the multi-arch INDEX digest, so it resolves
+# on linux/amd64 (Fly) and linux/arm64 (a local build on Apple silicon) alike.
+# Renovate's docker manager bumps a pinned digest like any other dependency,
+# behind the same 24h cooldown. (OpenSSF Scorecard PinnedDependencies; ADR-007.)
+FROM node:26-slim@sha256:3a771f83944bb763050c23c0225c260638c4b7899e7a72485ef75e5e570499e5
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
