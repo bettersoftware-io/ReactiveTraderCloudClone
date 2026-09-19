@@ -9,9 +9,14 @@ import {
 } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { reconnect$ } from "@rtc/client-core";
+
 import {
   type EffectHost,
+  type FoldUpdate,
+  pushReconnectIntent,
   refToStateStream,
+  sharedFold,
   streamToStream,
 } from "#/bridge/out";
 
@@ -177,6 +182,185 @@ describe("bridge/out", () => {
     await tick();
     expect(second).toEqual([7]);
     secondSub.unsubscribe();
+  });
+
+  it("sharedFold() hands the seed to the first subscriber synchronously", () => {
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 1;
+      },
+      run: () => {
+        return Effect.never;
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([1]);
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() starts the producer on the first subscriber and interrupts it on the last", async () => {
+    let interrupted = false;
+    let starts = 0;
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 0;
+      },
+      run: () => {
+        starts += 1;
+        return Effect.never.pipe(
+          Effect.onInterrupt(() => {
+            return Effect.sync(() => {
+              interrupted = true;
+            });
+          }),
+        );
+      },
+    });
+    const a = stream.subscribe(() => {});
+    const b = stream.subscribe(() => {});
+    await tick();
+    expect(starts).toBe(1);
+    a.unsubscribe();
+    await tick();
+    expect(interrupted).toBe(false);
+    b.unsubscribe();
+    await tick();
+    expect(interrupted).toBe(true);
+  });
+
+  it("sharedFold() delivers updates and de-duplicates Object.is-equal ones", async () => {
+    const writes: FoldUpdate<number>[] = [];
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        return 1;
+      },
+      run: (update: FoldUpdate<number>) => {
+        writes.push(update);
+        return Effect.never;
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    await tick();
+    expect(writes).toHaveLength(1);
+    await host.runtime.runPromise(
+      (writes[0] as FoldUpdate<number>)(() => {
+        return 1;
+      }),
+    );
+    await host.runtime.runPromise(
+      (writes[0] as FoldUpdate<number>)((current) => {
+        return current + 1;
+      }),
+    );
+    await tick();
+    expect(seen).toEqual([1, 2]);
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() re-seeds on every cold → warm cycle and ignores a stale producer's writes", async () => {
+    const writes: FoldUpdate<number>[] = [];
+    let seeds = 0;
+    const host = useHost();
+    const stream = sharedFold(host, {
+      seed: () => {
+        seeds += 1;
+        return seeds * 10;
+      },
+      run: (update: FoldUpdate<number>) => {
+        writes.push(update);
+        return Effect.never;
+      },
+    });
+    const first: number[] = [];
+    const firstSub = stream.subscribe((v: number) => {
+      first.push(v);
+    });
+    await tick();
+    firstSub.unsubscribe();
+    await tick();
+    const second: number[] = [];
+    const secondSub = stream.subscribe((v: number) => {
+      second.push(v);
+    });
+    await tick();
+    expect(first).toEqual([10]);
+    expect(second).toEqual([20]);
+    expect(writes).toHaveLength(2);
+    // The FIRST warm period's producer writing after its period ended.
+    await host.runtime.runPromise(
+      (writes[0] as FoldUpdate<number>)(() => {
+        return 99;
+      }),
+    );
+    await host.runtime.runPromise(
+      (writes[1] as FoldUpdate<number>)(() => {
+        return 21;
+      }),
+    );
+    await tick();
+    expect(second).toEqual([20, 21]);
+    secondSub.unsubscribe();
+  });
+
+  it("sharedFold() surfaces a producer failure as an Observable error", async () => {
+    const boom = new Error("boom");
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 0;
+      },
+      run: () => {
+        return Effect.fail(boom);
+      },
+    });
+
+    const failure = await new Promise<unknown>((resolve) => {
+      stream.subscribe({
+        error: resolve,
+      });
+    });
+    expect(failure).toBe(boom);
+  });
+
+  it("sharedFold() producers are interrupted when the host scope closes", async () => {
+    const host = createHost();
+    let interrupted = false;
+    const stream = sharedFold(host, {
+      seed: () => {
+        return 0;
+      },
+      run: () => {
+        return Effect.never.pipe(
+          Effect.onInterrupt(() => {
+            return Effect.sync(() => {
+              interrupted = true;
+            });
+          }),
+        );
+      },
+    });
+    stream.subscribe(() => {});
+    await tick();
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    expect(interrupted).toBe(true);
+    await host.runtime.dispose();
+  });
+
+  it("pushReconnectIntent() lands a 'reconnect' event on the RxJS core's reconnect$ seam", () => {
+    const seen: unknown[] = [];
+    const sub = reconnect$.subscribe((e) => {
+      seen.push(e);
+    });
+    pushReconnectIntent();
+    expect(seen).toEqual([{ type: "reconnect" }]);
+    sub.unsubscribe();
   });
 
   const hosts: EffectHost[] = [];

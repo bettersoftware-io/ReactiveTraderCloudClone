@@ -1,5 +1,5 @@
 import { Effect, Stream } from "effect";
-import type { Observable, Subscription } from "rxjs";
+import { type Observable, type Subscription, take } from "rxjs";
 
 /** Push an Observable into an Effect Stream. The subscription is acquired
  * when the stream starts and released by the scope finaliser when the
@@ -82,4 +82,19 @@ export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
       endSubscription();
     });
   });
+}
+
+/** The current value of a replay-current Observable, read synchronously —
+ * the seed a `sharedFold` starts a warm period from, and what `cycle()`
+ * advances from. A source that does not emit during `subscribe` yields
+ * `fallback`; the subscription is released before this returns. */
+export function peek<T>(source: Observable<T>, fallback: T): T {
+  let value = fallback;
+  source
+    .pipe(take(1))
+    .subscribe((current) => {
+      value = current;
+    })
+    .unsubscribe();
+  return value;
 }

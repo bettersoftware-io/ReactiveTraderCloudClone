@@ -1,8 +1,8 @@
 import { Chunk, Effect, Fiber, Stream } from "effect";
-import { concat, EMPTY, of, Subject, throwError } from "rxjs";
+import { BehaviorSubject, concat, EMPTY, of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { fromObservable, rpc } from "#/bridge/in";
+import { fromObservable, peek, rpc } from "#/bridge/in";
 
 describe("bridge/in", () => {
   it("rpc() succeeds with the first emission", async () => {
@@ -87,5 +87,17 @@ describe("bridge/in", () => {
       }),
     );
     await expect(Effect.runPromise(rpc(source))).resolves.toBe(1);
+  });
+
+  describe("peek", () => {
+    it("reads a replay-current source synchronously and leaves nothing warm", () => {
+      const source = new BehaviorSubject("a");
+      expect(peek(source, "z")).toBe("a");
+      expect(source.observed).toBe(false);
+    });
+
+    it("returns the fallback for a source that does not emit on subscribe", () => {
+      expect(peek(new Subject<string>(), "z")).toBe("z");
+    });
   });
 });
