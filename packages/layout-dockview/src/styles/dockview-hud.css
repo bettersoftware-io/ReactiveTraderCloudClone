@@ -19,7 +19,7 @@
    * `linear-gradient(...)` images — not <color>s — so the declaration is
    * invalid at computed-value time and the surface goes TRANSPARENT (every
    * panel body showed the page backdrop). The card, the head, and (below) a
-   * floating group's own box and drag rail are all painted instead through
+   * floating group's own box are all painted instead through
    * the `background` shorthand, which takes an image, exactly as the
    * in-house `.panel` / `.panelHeader` do; these variables only feed the
    * surfaces this sheet does NOT separately restyle (tab overflow dropdown,
@@ -161,12 +161,11 @@
  * A float's chrome lives OUTSIDE `.dv-groupview`: dockview wraps it in its
  * own `.dv-resize-container` (the draggable/resizable box itself — measured
  * DOM chain, Phase 6a task 1: dv-view > ... > dv-grid-view, all inside this
- * container, inside `.dv-floating-overlay-host`) plus, since this app never
- * overrides `floatingGroupDragHandle`, a `.dv-floating-titlebar` drag rail
- * above the group's own 38px head (dockview's default keeps both — grabbing
- * the rail moves the whole group without the tab-vs-group drag ambiguity a
- * single header would have). Both get the in-house treatment so a float
- * reads as a lifted version of the same card, not dockview's stock chrome. */
+ * container, inside `.dv-floating-overlay-host`). There is no separate drag
+ * rail: the engine sets `floatingGroupDragHandle: "tabbar"` and moves a float
+ * by its own 38px head (`moveFloatFromHead`), so a float wears exactly a grid
+ * card's chrome. The box gets the in-house treatment so a float reads as a
+ * lifted version of the same card, not dockview's stock chrome. */
 
 /* `.dv-resize-container`: the box itself — card border + radius, and an
  * OPAQUE base: `--bg-primary`, the page ground a grid card sits on, a solid
@@ -182,7 +181,7 @@
  * would invalidate the whole declaration and paint NOTHING — the same
  * silent-transparent family as the `background-color` trap above. Still the
  * `background` shorthand, never `background-color`, for that reason.
- * `overflow: hidden` clips the drag rail and the grid content
+ * `overflow: hidden` clips the grid content
  * to the rounded corners, as `.dv-groupview`'s own `overflow: hidden`
  * already clips its tab bar. The box-shadow is a literal, always-on
  * elevation shadow — NOT layered onto `--panel-shadow` via a comma list,
@@ -201,14 +200,6 @@
   box-shadow:
     0 24px 60px -8px rgba(0, 0, 0, 0.55),
     0 8px 20px rgba(0, 0, 0, 0.35);
-}
-
-/* `.dv-floating-titlebar`: the drag rail, painted in the head surface so the
- * rail and the group's own head below it read as one continuous chrome
- * stack rather than a foreign strip on top of the in-house card. */
-.dockview-theme-rtc .dv-floating-titlebar {
-  background: var(--panel-head, #1f2937);
-  border-bottom: 1px solid var(--border, #334155);
 }
 
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —

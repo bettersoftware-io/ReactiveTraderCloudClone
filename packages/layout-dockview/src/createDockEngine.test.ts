@@ -29,7 +29,6 @@ import {
   loadBlobOrSeed,
   type RestoreTier,
 } from "#/createDockEngine";
-import { HookContentRenderer } from "#/HookContentRenderer";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with a no-op stub. This one
@@ -4780,67 +4779,222 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
-  // The stacked-chrome question, MEASURED both ways rather than argued.
-  // dockview's default `floatingGroupDragHandle: "titlebar"` renders a
-  // separate 22px drag rail ABOVE the group's own 38px head, so a float wears
-  // 60px of chrome where a grid card wears 38.
-  it("renders a separate drag rail above the panel head (the stacked chrome)", () => {
+  // A float wears exactly a grid card's chrome: its own 38px head, no
+  // separate drag rail stacked on top (dockview's default "titlebar" handle
+  // added a blank 22px bar nobody could tell was the only grip). The head
+  // itself is the handle — see the moveFloatFromHead tests below.
+  it("a float carries no separate drag rail above its head", () => {
     const container = sizedContainer(1440, 900);
     const engine = createDockEngine({ ...createBase(), container });
 
     engine.floatPanel("fx-analytics");
 
-    expect(container.querySelector(".dv-floating-titlebar")).not.toBeNull();
+    expect(container.querySelector(".dv-resize-container")).not.toBeNull();
+    expect(container.querySelector(".dv-floating-titlebar")).toBeNull();
     engine.dispose();
   });
 
-  // ...and the other half of the measurement: "tabbar" DOES drop the rail,
-  // but it also makes the tab bar's void container the float's ONLY move
-  // handle (`isFloatingMoveHandle: () => !closest(".dv-resize-container-
-  // with-titlebar")`), and dockview's own stylesheet gives that container
-  // `flex-grow: 0` under `singleTabMode: "fullwidth"`, which this engine sets
-  // so a lone head slot spans the whole 38px bar. A single-panel float — what
-  // `floatPanel` always produces — would therefore have no draggable surface
-  // at all. Hence the rail is KEPT and styled (dockview-hud.css) rather than
-  // traded for an unmovable box; a raw dock is stood up here because the
-  // engine deliberately does not expose the option.
-  it("floatingGroupDragHandle 'tabbar' drops the rail, leaving a full-width single tab no handle", () => {
+  // A float POPS OUT: at most half the dock per axis (never larger than the
+  // panel was), centred, each further float stepped 28px down-right. The
+  // first cut detached in place, covering exactly the slot the panel left, so
+  // floating looked like nothing had happened.
+  it("opens a float centred at up to half the dock, cascading each further float", () => {
     const container = sizedContainer(1440, 900);
-    const api = createDockview(container, {
-      createComponent: () => {
-        return new HookContentRenderer({
-          title: (id: string) => {
-            return id;
-          },
-          mount: () => {
-            return () => {};
-          },
-        });
-      },
-      singleTabMode: "fullwidth",
-      floatingGroupDragHandle: "tabbar",
+    const rects = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function rectFor(this: HTMLElement) {
+        // A float box reads where its own style puts it, as a browser lays
+        // out an absolutely positioned box — dockview re-measures it after
+        // placing it and re-clamps from that reading. Every panel group
+        // reads 900×600; everything else (the dock, the overlay host) reads
+        // as the whole 1440×900 dock.
+        if (this.classList.contains("dv-resize-container")) {
+          return new DOMRect(
+            Number.parseFloat(this.style.left) || 0,
+            Number.parseFloat(this.style.top) || 0,
+            Number.parseFloat(this.style.width) || 0,
+            Number.parseFloat(this.style.height) || 0,
+          );
+        }
+
+        const sized = this.classList.contains("dv-groupview")
+          ? [900, 600]
+          : [1440, 900];
+
+        return new DOMRect(0, 0, sized[0], sized[1]);
+      });
+    const engine = createDockEngine({ ...createBase(), container });
+
+    engine.floatPanel("fx-analytics");
+    engine.floatPanel("fx-blotter");
+
+    const boxes = [
+      ...container.querySelectorAll<HTMLElement>(".dv-resize-container"),
+    ].map((box) => {
+      return [box.style.left, box.style.top, box.style.width, box.style.height];
     });
 
-    api.layout(1440, 900);
-    api.addPanel({ id: "solo", component: "rtc" });
+    expect(boxes).toEqual([
+      ["360px", "225px", "720px", "450px"],
+      ["388px", "253px", "720px", "450px"],
+    ]);
+    rects.mockRestore();
+    engine.dispose();
+  });
 
-    const panel = api.getPanel("solo");
+  describe("moving a float by its head", () => {
+    it("forwards a plain press on the head to the float's move handle, exactly once", () => {
+      const container = sizedContainer(1440, 900);
+      const engine = createDockEngine(probeHeads(container));
+      const { head, pressesOnVoid } = floatedHead(
+        container,
+        engine,
+        "fx-analytics",
+      );
 
-    if (panel === undefined) {
-      throw new Error("solo missing");
+      pressOn(head.querySelector(".probe-title") as Element);
+
+      expect(pressesOnVoid()).toBe(1);
+      engine.dispose();
+    });
+
+    it("leaves a press on a head control to the control", () => {
+      const container = sizedContainer(1440, 900);
+      const engine = createDockEngine(probeHeads(container));
+      const { head, pressesOnVoid } = floatedHead(
+        container,
+        engine,
+        "fx-analytics",
+      );
+
+      pressOn(head.querySelector(".probe-control") as Element);
+
+      expect(pressesOnVoid()).toBe(0);
+      engine.dispose();
+    });
+
+    it("leaves a shift-press to dockview's redock gesture", () => {
+      const container = sizedContainer(1440, 900);
+      const engine = createDockEngine(probeHeads(container));
+      const { head, pressesOnVoid } = floatedHead(
+        container,
+        engine,
+        "fx-analytics",
+      );
+
+      pressOn(head.querySelector(".probe-title") as Element, {
+        shiftKey: true,
+      });
+
+      expect(pressesOnVoid()).toBe(0);
+      engine.dispose();
+    });
+
+    it("never touches a head that is in the grid", () => {
+      const container = sizedContainer(1440, 900);
+      const engine = createDockEngine(probeHeads(container));
+      const title = container.querySelector('[data-probe-panel="fx-blotter"]');
+      const handle = title
+        ?.closest(".dv-tabs-and-actions-container")
+        ?.querySelector(".dv-void-container");
+
+      if (
+        title === null ||
+        title === undefined ||
+        handle === null ||
+        handle === undefined
+      ) {
+        throw new Error("no grid head for fx-blotter");
+      }
+
+      let presses = 0;
+
+      handle.addEventListener("pointerdown", () => {
+        presses += 1;
+      });
+      pressOn(title);
+
+      expect(presses).toBe(0);
+      engine.dispose();
+    });
+
+    /** Floats `panelId` and returns its group's head bar plus a live count
+     * of presses that reached its void container (dockview's move target). */
+    function floatedHead(
+      container: HTMLElement,
+      engine: ReturnType<typeof createDockEngine>,
+      panelId: string,
+    ): FloatedHead {
+      engine.floatPanel(panelId);
+
+      const group = container
+        .querySelector(`.dv-resize-container [data-probe-panel="${panelId}"]`)
+        ?.closest(".dv-groupview");
+      const head = group?.querySelector(".dv-tabs-and-actions-container");
+      const handle = head?.querySelector(".dv-void-container");
+
+      if (
+        head === undefined ||
+        head === null ||
+        handle === undefined ||
+        handle === null
+      ) {
+        throw new Error(`no floating head for ${panelId}`);
+      }
+
+      let presses = 0;
+
+      handle.addEventListener("pointerdown", () => {
+        presses += 1;
+      });
+
+      return {
+        head,
+        pressesOnVoid: () => {
+          return presses;
+        },
+      };
     }
 
-    api.addFloatingGroup(panel.group, { x: 20, y: 20 });
+    function pressOn(target: Element, init: PointerEventInit = {}): void {
+      target.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          pointerId: 7,
+          clientX: 300,
+          clientY: 200,
+          ...init,
+        }),
+      );
+    }
 
-    expect(container.querySelector(".dv-floating-titlebar")).toBeNull();
+    /** Engine options whose head mount paints a plain title span and one
+     * head button, tagged so the tests can find a given panel's head. */
+    function probeHeads(container: HTMLElement): DockEngineOptions {
+      const base = createBase();
 
-    const bar = panel.group.element.querySelector(
-      ".dv-tabs-and-actions-container",
-    );
+      return {
+        ...base,
+        container,
+        panels: {
+          ...base.panels,
+          mountTab: (panelId: string, element: HTMLElement) => {
+            const title = document.createElement("span");
+            title.dataset.probePanel = panelId;
+            title.className = "probe-title";
+            const control = document.createElement("button");
+            control.className = "probe-control";
+            element.append(title, control);
 
-    expect(bar?.classList.contains("dv-single-tab")).toBe(true);
-    expect(bar?.classList.contains("dv-full-width-single-tab")).toBe(true);
-    api.dispose();
+            return () => {
+              element.replaceChildren();
+            };
+          },
+        },
+      };
+    }
   });
 
   // Dock-home puts back the panel's pre-float EXTENT, not only its slot.
@@ -6390,6 +6544,13 @@ async function waitForBranchSize(
 // cannot be dispatched here; moveTo IS the engine-visible half of a drop.
 /** The dockview create options narrowed to the popout target the engine
  * threads through. */
+/** A floated panel's head bar, and how many presses have reached the void
+ * container dockview moves the float from. */
+interface FloatedHead {
+  readonly head: Element;
+  readonly pressesOnVoid: () => number;
+}
+
 interface PopoutUrlCarrier {
   readonly popoutUrl?: string;
 }

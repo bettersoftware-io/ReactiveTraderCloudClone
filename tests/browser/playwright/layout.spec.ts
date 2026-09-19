@@ -125,6 +125,17 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterAndDockHomeRestoresItsHeight(ctx);
   });
 
+  test("a floated panel pops out and moves when dragged by its head", async ({
+    ctx,
+  }) => {
+    // Floating groups are a dockview-only feature; dockview is what the app
+    // boots into.
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatBlotterPopsOutAndMovesByItsHead(ctx);
+  });
+
   test("floating a panel grows its column sibling, survives a reload, and docks home at its pre-float height", async ({
     ctx,
   }) => {

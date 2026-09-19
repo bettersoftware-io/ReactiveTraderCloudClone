@@ -223,6 +223,22 @@ dynamic panel (a chart instance has no seed slot by construction) or a
 panel whose every seed sibling is itself closed, floating or popped, to the
 root's right edge, exactly where `insertDynamicPanel` opens one.
 
+**A float behaves like a window.** It POPS OUT rather than detaching in
+place: `floatingBoundsFor` opens it at most half the dock per axis (never
+larger than the panel was, floored at 420×280), centred, each further float
+stepped 28px down-right. And it moves by its own **head**, as a dialog moves
+by its title bar: the engine sets `floatingGroupDragHandle: "tabbar"` (no
+separate drag rail — a float wears exactly a grid card's chrome) and
+`moveFloatFromHead` forwards a plain press anywhere on a floating head that
+is not one of its controls (buttons, the quick-filter input, …) to the
+group's void container, dockview's move target in that mode. That forwarding
+is needed because the in-house head fills the whole tab
+(`singleTabMode: "fullwidth"`), leaving the void container 0px wide. A
+shift-press is left to dockview's redock gesture, and a grid group's head is
+never touched. The first cut detached in place under a blank 22px rail that
+was the only grip, and floating looked like nothing had happened (user
+report, 2026-09-19).
+
 The design's §3.2 rules reduce to one predicate, `isInGrid` (keyed on
 `group.api.location.type`, never a DOM class — a float's own private nested
 gridview wrapper reuses the grid's `.dv-split-view-container` class, Task
@@ -314,14 +330,11 @@ pre-emptively dropped.
 
 **Known limitations:**
 
-- **A float wears a 60px stacked header.** dockview's default
-  `floatingGroupDragHandle: "titlebar"` renders its own 22px drag rail above
-  this engine's 38px panel head. Dropping the rail via
-  `floatingGroupDragHandle: "tabbar"` was measured and declined: under this
-  engine's `singleTabMode: "fullwidth"`, that mode leaves a single-panel
-  float's tab-bar void with `flex-grow: 0` — no draggable surface at all,
-  and every float `floatPanel` produces is single-panel. The rail and its
-  matching `dockview-hud.css` chrome ship as an accepted cosmetic deviation.
+- **Dragging a float back into the grid is not verified.** The Dock control
+  on a float's head is the supported way home. dockview's own shift-drag
+  redock did not dock the float in a scripted browser drag — on the
+  engine before or after the head-grip change alike (measured 2026-09-19) —
+  and no e2e covers it, so whether it works by hand is unconfirmed.
 - **Floating a panel and reloading within ~250ms can lose the float.**
   Every layout write is debounced 250ms before it reaches storage; this is
   not float-specific — every layout mutation (drag, stack, close, resize)

@@ -126,10 +126,25 @@ export interface LayoutPO {
   /** Whether `panelId`'s dockview group currently sits inside dockview's
    * FLOAT container (a `.dv-resize-container`, the box dockview mounts every
    * floating group in) — read off the DOM, independent of the engine's own
-   * `data-floating` bookkeeping. Exists because a float opens at its group's
-   * pre-float size, so a height alone cannot tell "docked home at that size"
-   * from "never docked". Dockview-engine only. */
+   * `data-floating` bookkeeping. Exists because a height alone cannot tell
+   * "docked home at that size" from "never docked". Dockview-engine only. */
   panelSitsInFloat(panelId: string): Promise<boolean>;
+  /** The on-screen box of the float holding `panelId` — its
+   * `.dv-resize-container`. Throws when the panel is not floating.
+   * Dockview-engine only. */
+  floatBox(panelId: string): Promise<FloatBox>;
+  /** Drags the float holding `panelId` by `dx`/`dy` px, gripping its HEAD at
+   * a point that is not one of the head's own controls — where a user takes
+   * hold of a dialog. Dockview-engine only. */
+  dragFloatByHead(panelId: string, dx: number, dy: number): Promise<void>;
+}
+
+/** A float's on-screen box, in viewport px. */
+export interface FloatBox {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /** What the dock showed for one panel on the first render after a load —

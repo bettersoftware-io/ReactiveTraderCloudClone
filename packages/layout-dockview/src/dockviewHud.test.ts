@@ -83,13 +83,6 @@ describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
     expect(body).toMatch(/^\s*border-radius:\s*6px;/m);
   });
 
-  it("paints the floating drag rail in the head surface", () => {
-    const body = declarationsOf(".dockview-theme-rtc .dv-floating-titlebar");
-
-    expect(body).toMatch(/^\s*background:\s*var\(--panel-head[,)]/m);
-    expect(body).not.toMatch(/background-color/);
-  });
-
   it("gives the float's resize edges a hover affordance, scoped to the float's box", () => {
     expect(css).toMatch(
       /\.dv-resize-container \.dv-resize-handle-top:hover,[\s\S]{0,300}\.dv-resize-container \.dv-resize-handle-right:hover\s*\{[^}]*background:\s*var\(--border-strong/,

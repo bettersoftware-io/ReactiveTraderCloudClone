@@ -310,6 +310,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // float draggable but never lets it leave the container — "a float
     // cannot be dragged out of reach" (Phase 6 design §3.3).
     floatingGroupBounds: "boundedWithinViewport",
+    // No separate drag rail above a float's head: the in-house head IS the
+    // handle (see `moveFloatFromHead`), as a dialog's title bar is. "tabbar"
+    // makes the group's own void container dockview's move target, which
+    // `moveFloatFromHead` forwards a head press to — dockview's default
+    // "titlebar" stacked a blank 22px bar on the 38px head that nobody could
+    // tell was the only grip.
+    floatingGroupDragHandle: "tabbar",
     // `disableFloatingGroups` deliberately left unset: shift-drag-to-float
     // and drag-to-dock (dockview's own built-in gestures) are a KEPT
     // feature, not a deviation this engine suppresses.
@@ -2175,6 +2182,97 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", cancelRefusedShiftFloat, true);
 
+  /** True from a head press `moveFloatFromHead` took over until its pointer
+   * is released — the window in which the head's own tab must not start an
+   * HTML5 drag (see `cancelHeadTabDrag`). */
+  let movingFloatFromHead = false;
+
+  /** Moves a float by its head: a plain press anywhere on a floating group's
+   * head that is not one of its own controls becomes a press on the group's
+   * void container — the element dockview's overlay drags the float from
+   * under `floatingGroupDragHandle: "tabbar"`. The in-house head fills the
+   * whole tab, leaving that void container 0px wide, so without this a
+   * float could not be moved by anything a user would try to grab.
+   *
+   * Left alone, in turn:
+   * - a shift-press: on a float that is dockview's REDOCK gesture (drag the
+   *   tab back into the grid), which keeps working unchanged;
+   * - a press on a control — a head button, the quick-filter input — which
+   *   keeps its own meaning, exactly as a dialog's close button does;
+   * - any group in the grid: there the head's drag is the rearrange DnD.
+   *
+   * Captured on our own container, ahead of the tab's own listeners, and
+   * stopped there so the tab never also starts a panel drag. The forwarded
+   * event is a real `PointerEvent` carrying the original pointer and
+   * coordinates; dockview's overlay reads its drag offset from the first
+   * move, so where on the head the press landed is where the float stays
+   * held. */
+  function moveFloatFromHead(event: Event): void {
+    if (
+      !(event instanceof PointerEvent) ||
+      event.button !== 0 ||
+      event.shiftKey ||
+      !(event.target instanceof Element) ||
+      event.target.closest(HEAD_CONTROL_SELECTOR) !== null ||
+      // A press ON the void container is already dockview's own move — and
+      // is exactly the press this function dispatches, which passes back
+      // through this capture listener on its way down: without this it
+      // re-forwards itself until the stack gives out.
+      event.target.closest(VOID_CONTAINER_SELECTOR) !== null
+    ) {
+      return;
+    }
+
+    const head = event.target.closest(HEAD_BAR_SELECTOR);
+    const group = head === null ? undefined : gestureGroupOf(head);
+    const handle = head?.querySelector(VOID_CONTAINER_SELECTOR);
+
+    if (
+      group === undefined ||
+      group.api.location?.type !== "floating" ||
+      handle === null ||
+      handle === undefined
+    ) {
+      return;
+    }
+
+    event.stopPropagation();
+    movingFloatFromHead = true;
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        isPrimary: event.isPrimary,
+        button: event.button,
+        buttons: event.buttons,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      }),
+    );
+  }
+
+  /** Ends the head-move window `moveFloatFromHead` opened. */
+  function endFloatHeadMove(): void {
+    movingFloatFromHead = false;
+  }
+
+  /** Stops the head's tab from starting an HTML5 drag while that press is
+   * moving the float: `draggable` tabs raise `dragstart` from mouse movement
+   * whatever the pointerdown's fate, and a started drag would steal the
+   * pointer from the move. */
+  function cancelHeadTabDrag(event: Event): void {
+    if (movingFloatFromHead) {
+      event.preventDefault();
+    }
+  }
+
+  opts.container.addEventListener("pointerdown", moveFloatFromHead, true);
+  opts.container.addEventListener("dragstart", cancelHeadTabDrag, true);
+  window.addEventListener("pointerup", endFloatHeadMove, true);
+  window.addEventListener("pointercancel", endFloatHeadMove, true);
+
   // ——— Float home sizes (dock-home puts back the extent, not just the slot) ———
   // Every in-grid panel's extent along its parent split's dividing axis, as
   // the CURRENT structural mutation opened. `settleFloatTransitions` runs on
@@ -2983,7 +3081,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // the same path the shift-drag gesture takes, so the two cannot drift.
       api.addFloatingGroup(
         panel.group,
-        floatingBoundsFor(panel.group, opts.container),
+        floatingBoundsFor(
+          panel.group,
+          opts.container,
+          api.groups.filter((group) => {
+            return group.api.location.type === "floating";
+          }).length,
+        ),
       );
 
       return true;
@@ -3064,6 +3168,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         true,
       );
       opts.container.removeEventListener("pointerdown", markUserArranged, true);
+      opts.container.removeEventListener(
+        "pointerdown",
+        moveFloatFromHead,
+        true,
+      );
+      opts.container.removeEventListener("dragstart", cancelHeadTabDrag, true);
+      window.removeEventListener("pointerup", endFloatHeadMove, true);
+      window.removeEventListener("pointercancel", endFloatHeadMove, true);
       resizeObserver.disconnect();
       disarmSashUnpin();
 
@@ -3104,29 +3216,65 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   };
 }
 
-/** The float's opening box: the group's own current on-screen rect, offset
- * relative to `container` and clamped so it lands fully inside it — "a
- * float cannot be dragged out of reach" (Phase 6 design §3.3) applies to
- * where it OPENS, not only to where a drag can carry it afterwards (that
- * ongoing clamp is the component-level `floatingGroupBounds` option). */
+/** The float's opening box: it POPS OUT of the grid rather than detaching
+ * in place — never larger than the panel was, at most half the dock in each
+ * direction, centred on the dock, and stepped down-right by
+ * `FLOAT_CASCADE_PX` per float already open so a second float never lands
+ * exactly on the first. Detaching in place (the first cut) left the float
+ * covering exactly the slot it came from, so floating a panel looked like
+ * nothing had happened.
+ *
+ * Clamped so it lands fully inside `container` — "a float cannot be dragged
+ * out of reach" (Phase 6 design §3.3) applies to where it OPENS, not only to
+ * where a drag can carry it afterwards (that ongoing clamp is the
+ * component-level `floatingGroupBounds` option). */
 function floatingBoundsFor(
   group: SizableGroup,
   container: HTMLElement,
+  openFloats: number,
 ): FloatingGroupOptions {
   const groupRect = group.element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
-  const width = groupRect.width;
-  const height = groupRect.height;
+  const width = Math.round(
+    Math.min(
+      groupRect.width,
+      Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
+    ),
+  );
+
+  const height = Math.round(
+    Math.min(
+      groupRect.height,
+      Math.max(FLOAT_MIN_HEIGHT_PX, containerRect.height * FLOAT_MAX_SHARE),
+    ),
+  );
   const maxX = Math.max(0, containerRect.width - width);
   const maxY = Math.max(0, containerRect.height - height);
+  const cascade = openFloats * FLOAT_CASCADE_PX;
 
   return {
-    x: Math.min(Math.max(groupRect.left - containerRect.left, 0), maxX),
-    y: Math.min(Math.max(groupRect.top - containerRect.top, 0), maxY),
+    x: Math.round(
+      Math.min(Math.max((containerRect.width - width) / 2 + cascade, 0), maxX),
+    ),
+    y: Math.round(
+      Math.min(
+        Math.max((containerRect.height - height) / 2 + cascade, 0),
+        maxY,
+      ),
+    ),
     width,
     height,
   };
 }
+
+/** A popped-out float's share of the dock, per axis, at most. */
+const FLOAT_MAX_SHARE = 0.5;
+/** Floors under that share, so a float on a small dock stays usable. The
+ * panel's own size still wins when it is smaller. */
+const FLOAT_MIN_WIDTH_PX = 420;
+const FLOAT_MIN_HEIGHT_PX = 280;
+/** How far each further float opens down-right of the previous one. */
+const FLOAT_CASCADE_PX = 28;
 
 /** dockview's public `DockviewGroupPanel` narrowed to what the collapse /
  * expand code touches, so the helpers below stay honest about it. */
@@ -3385,6 +3533,16 @@ const VIEW_SELECTOR = ".dv-view";
  * from — a tab, and the tab bar's void container — each through its own
  * `pointerdown` listener. See `cancelRefusedShiftFloat`. */
 const FLOAT_GESTURE_SELECTOR = ".dv-tab, .dv-void-container";
+/** A group's whole head bar — the tab strip plus the actions slots. */
+const HEAD_BAR_SELECTOR = ".dv-tabs-and-actions-container";
+/** dockview's move target for a float under `floatingGroupDragHandle:
+ * "tabbar"`. See `moveFloatFromHead`. */
+const VOID_CONTAINER_SELECTOR = ".dv-void-container";
+/** What on a head keeps its own meaning when pressed on a float, rather than
+ * moving it. Deliberately not `[role=tab]`: dockview's `.dv-tab` wraps the
+ * WHOLE in-house head, so matching it would exclude every press. */
+const HEAD_CONTROL_SELECTOR =
+  "button, a, input, select, textarea, [contenteditable], [role='button'], [role='menuitem']";
 
 /** Which way a strip reads when its space reclaims along `split`'s axis:
  * siblings side by side (a horizontal split) → a 32px vertical column;
