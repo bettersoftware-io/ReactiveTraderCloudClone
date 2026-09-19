@@ -15,6 +15,7 @@ import {
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
+import { gridGroups, groupsAnywhere, isInGrid } from "#/dockGroups";
 import {
   convertSeed,
   type DockDesignPin,
@@ -23,7 +24,6 @@ import {
   type SeedSplit,
   seedPanelIdsOf,
 } from "#/dockSeed";
-import { gridGroups, groupsAnywhere, isInGrid } from "#/dockGroups";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
@@ -2804,10 +2804,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           // a maximize would otherwise strip a float to a 32px bar. Floats
           // are boxes OVER the grid: they stay visible and untouched, which
           // is why this walks `gridGroups`, not every group.
-          if (
-            group === panel.group ||
-            !boundary.contains(group.element)
-          ) {
+          if (group === panel.group || !boundary.contains(group.element)) {
             continue;
           }
 
