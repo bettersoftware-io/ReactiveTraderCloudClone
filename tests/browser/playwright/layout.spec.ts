@@ -136,6 +136,33 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterPopsOutAndMovesByItsHead(ctx);
   });
 
+  test("a floated panel resizes from an edge and from a corner", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatBlotterResizesFromAnEdgeAndACorner(ctx);
+  });
+
+  test("a floated rail panel pops out, comes back to its float, and docks at its design width", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatedRailPanelPopsOutAndComesBack(ctx);
+  });
+
+  test("a popped-out panel's window wears the app theme and follows a light/dark switch", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.popoutBlotterFollowsTheAppTheme(ctx);
+  });
+
   test("floating a panel grows its column sibling, survives a reload, and docks home at its pre-float height", async ({
     ctx,
   }) => {

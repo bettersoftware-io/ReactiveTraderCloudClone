@@ -6,15 +6,18 @@
     <title>Reactive Trader — Panel</title>
     <style>
       /* Dockview appends its container to this body after `load` and copies
-       * every parent stylesheet across (popoutWindow.js). This page renders
-       * nothing itself — the inline rules below only stop a white flash
-       * before the copied theme paints, and remove the UA margin so the
-       * moved group fills the window edge to edge. */
+       * every parent stylesheet across (popoutWindow.js); the layout engine
+       * then mirrors the opener's <html> attributes — the skin's token
+       * values and data-skin / data-mode — onto this page's, and keeps them
+       * in sync. This page renders nothing itself — the rules below remove
+       * the UA margin so the moved group fills the window edge to edge, and
+       * paint the skin's own page ground, falling back to a dark ground only
+       * for the instant before the tokens arrive (avoiding a white flash). */
       html,
       body {
         margin: 0;
         height: 100%;
-        background: #0d1420;
+        background: var(--bg-primary, #0d1420);
       }
     </style>
   </head>

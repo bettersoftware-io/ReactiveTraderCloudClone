@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -24,7 +24,11 @@
       // fly to visualize a doc (inline CSS/JS by design). Not production code;
       // out of scope for the formatter/linter, same rationale as docs/design.
       // The dir's README.md stays in scope — only the generated HTML is excluded.
-      "!docs/showcase/**/*.html"
+      "!docs/showcase/**/*.html",
+      // Exported presentation decks — single-file HTML (2–4 MiB, fonts and
+      // images inlined), the same kind of artifact as docs/showcase. Past
+      // biome's 1 MiB cap they were skipped anyway, as a warning.
+      "!docs/presentations/**/*.html"
     ]
   },
   "formatter": {

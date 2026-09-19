@@ -5,8 +5,6 @@ import { InMemoryDockLayoutStore } from "@rtc/client-core";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
 
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
-
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way.
 beforeAll(() => {
   if (typeof ResizeObserver === "undefined") {
@@ -58,8 +56,6 @@ describe("dockview portal keys", () => {
     page.unmountAll();
   });
 });
-
-function noop(): void {}
 
 const page = dockviewLayoutEngineStrictModePage();
 

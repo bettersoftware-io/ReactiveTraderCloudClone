@@ -1,12 +1,9 @@
-import { type ReactElement, StrictMode } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
-
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way.
 beforeAll(() => {
@@ -151,8 +148,6 @@ describe("DockviewLayoutEngine under StrictMode", () => {
     );
   });
 });
-
-function noop(): void {}
 
 /** The serialised MODEL size of the leaf holding `panelId`, or null. */
 // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape

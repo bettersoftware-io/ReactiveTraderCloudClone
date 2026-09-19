@@ -83,6 +83,21 @@ describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
     expect(body).toMatch(/^\s*border-radius:\s*6px;/m);
   });
 
+  // The float's resize handles straddle its edge (2px outside it) and are
+  // stacked by dockview through a self-referencing custom property that
+  // resolves to `z-index: auto`, leaving them under the float's content. Both
+  // halves had to be undone for a float to resize at all: no clip on the box,
+  // and an explicit stacking for the handles.
+  it("leaves the float's resize handles reachable: no clip on the box, handles stacked above its content", () => {
+    const box = declarationsOf(".dockview-theme-rtc .dv-resize-container");
+    const handles = declarationsOf(
+      '.dockview-theme-rtc .dv-resize-container > [class*="dv-resize-handle-"]',
+    );
+
+    expect(box).not.toMatch(/overflow/);
+    expect(handles).toMatch(/^\s*z-index:\s*1;/m);
+  });
+
   it("gives the float's resize edges a hover affordance, scoped to the float's box", () => {
     expect(css).toMatch(
       /\.dv-resize-container \.dv-resize-handle-top:hover,[\s\S]{0,300}\.dv-resize-container \.dv-resize-handle-right:hover\s*\{[^}]*background:\s*var\(--border-strong/,

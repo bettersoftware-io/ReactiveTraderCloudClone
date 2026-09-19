@@ -13,17 +13,10 @@
 /* Light mode boots on pure white, not the light themes' grey --bg-primary:
    the scenes' accent strokes are too faint against grey (the canvas side of
    this swap — the dark backdrop washes — is gated on BootDrawCtx.light). The
-   white-alpha bar track and skip border flip to dark ink for the same reason. */
+   white-alpha bar track and skip border flip to dark ink for the same reason
+   (those two overrides sit after their base `.bar` / `.skip` rules below). */
 :global([data-mode="light"]) .boot {
   background: #fff;
-}
-
-:global([data-mode="light"]) .bar {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-:global([data-mode="light"]) .skip {
-  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .boot[data-done="true"] {
@@ -141,4 +134,14 @@
   .boot:not([data-force-anim="true"]) .fill {
     transition: none;
   }
+}
+
+/* Light-mode overrides of `.bar` / `.skip` (see the `.boot` note above) —
+   after their base rules, so source order agrees with specificity. */
+:global([data-mode="light"]) .bar {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+:global([data-mode="light"]) .skip {
+  border-color: rgba(0, 0, 0, 0.15);
 }

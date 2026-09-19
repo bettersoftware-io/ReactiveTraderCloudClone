@@ -146,8 +146,6 @@ describe("dockview bridge floating wiring", () => {
   });
 });
 
-function noop(): void {}
-
 const page = dockviewLayoutEngineBridgePage();
 
 const registry: PanelRegistry = {

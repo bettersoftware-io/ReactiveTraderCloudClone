@@ -3,8 +3,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type {
   FirstDockRender,
   FloatBox,
+  FloatResizeHandle,
   LayoutPO,
   PopoutWindowPO,
+  RootTheme,
 } from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
@@ -417,6 +419,33 @@ export class PlaywrightLayout implements LayoutPO {
           window.close();
         });
       },
+      waitForRootMode: async (
+        mode: string,
+        timeoutMs: number,
+      ): Promise<void> => {
+        await popup.waitForFunction(
+          (expected) => {
+            return (
+              document.documentElement.getAttribute("data-mode") === expected
+            );
+          },
+          mode,
+          { timeout: timeoutMs },
+        );
+      },
+      rootTheme: async (): Promise<RootTheme> => {
+        return popup.evaluate(() => {
+          const root = document.documentElement;
+
+          return {
+            skin: root.getAttribute("data-skin"),
+            mode: root.getAttribute("data-mode"),
+            textPrimaryToken: getComputedStyle(root)
+              .getPropertyValue("--text-primary")
+              .trim(),
+          };
+        });
+      },
     };
   }
 
@@ -667,6 +696,32 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.mouse.move(grip.x, grip.y);
     await this.page.mouse.down();
     await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 15 });
+    await this.page.mouse.up();
+  }
+
+  async resizeFloatFrom(
+    panelId: string,
+    handle: FloatResizeHandle,
+    dx: number,
+    dy: number,
+  ): Promise<void> {
+    const grip = await this.group(panelId).evaluate((element, name) => {
+      const handleElement = element
+        .closest(".dv-resize-container")
+        ?.querySelector(`:scope > .dv-resize-handle-${name}`);
+
+      if (handleElement === null || handleElement === undefined) {
+        throw new Error(`resizeFloatFrom: no ${name} handle on the float`);
+      }
+
+      const r = handleElement.getBoundingClientRect();
+
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }, handle);
+
+    await this.page.mouse.move(grip.x, grip.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 10 });
     await this.page.mouse.up();
   }
 }

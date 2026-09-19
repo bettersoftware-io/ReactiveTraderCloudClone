@@ -7,6 +7,7 @@ import {
   assertGreaterThanZero,
   assertGte,
   assertLte,
+  assertNotEqual,
   assertTrue,
 } from "./assert";
 import * as common from "./common";
@@ -267,6 +268,163 @@ export async function popoutBlotterShowsLiveContentAndDocksHomeOnClose(
   await popup.closeFromInside();
   await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
   await ctx.po.layout.waitDockGroupCount(4, POPUP_TIMEOUT_MS);
+}
+
+/**
+ * Pops the blotter out and proves the window wears the app's THEME, live: its
+ * own `<html>` carries the skin, the mode and the token values (the first
+ * cut carried none — every `var(--…)` resolved to nothing, text went black
+ * and the window ignored skin and light/dark, user report 2026-09-19), and a
+ * light/dark switch in the MAIN window repaints the open pop-out. Needs a
+ * real browser: jsdom cannot open a window at all.
+ */
+export async function popoutBlotterFollowsTheAppTheme(
+  ctx: TestContext,
+): Promise<void> {
+  const popup = await ctx.po.layout.popoutPanel(BLOTTER_PANEL_ID);
+
+  await popup.waitForTestId(TESTIDS.blotter.table, POPUP_TIMEOUT_MS);
+
+  const opened = await popup.rootTheme();
+
+  assertTrue(
+    opened.skin !== null && opened.mode !== null,
+    `expected the pop-out's <html> to carry data-skin and data-mode, got skin=${opened.skin} mode=${opened.mode}`,
+  );
+  assertTrue(
+    opened.textPrimaryToken !== "",
+    "expected the pop-out to carry the skin's token values (--text-primary was empty)",
+  );
+
+  const otherMode = opened.mode === "dark" ? "light" : "dark";
+
+  await ctx.po.themeToggle.click();
+  await popup.waitForRootMode(otherMode, POPUP_TIMEOUT_MS);
+
+  const switched = await popup.rootTheme();
+
+  assertNotEqual(
+    switched.textPrimaryToken,
+    opened.textPrimaryToken,
+    `expected the pop-out's token values to follow the ${otherMode} switch`,
+  );
+
+  await popup.closeFromInside();
+  await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
+}
+
+/** The FX rail's 360px design width, which pins fx-analytics. */
+const ANALYTICS_DESIGN_WIDTH_PX = 360;
+/** Card-edge rounding the rail's docked width may show. */
+const RAIL_WIDTH_SLACK_PX = 2;
+
+/**
+ * Floats the pinned FX rail panel, pops it OUT of its float, closes the
+ * window, and proves the round trip ends where it began: the panel returns to
+ * its float (dockview's pop-out docks home to the group it came from), and
+ * docking it from there re-clamps the rail at its design width. Needs a real
+ * browser — jsdom only reaches a blocked pop-out. Its first run caught a
+ * regression before merge: the pop-out theme mirror read the closing
+ * window's document inside dockview's remove event, the throw aborted the
+ * dock-home, and the panel vanished from the app.
+ */
+export async function floatedRailPanelPopsOutAndComesBack(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.layout.floatPanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const popup = await ctx.po.layout.popoutPanel(ANALYTICS_PANEL_ID);
+
+  await ctx.po.layout.waitDockPopped([ANALYTICS_PANEL_ID], POPUP_TIMEOUT_MS);
+
+  await popup.closeFromInside();
+  await ctx.po.layout.waitDockPopped([], POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(ANALYTICS_PANEL_ID),
+    "expected the panel back in its float after the pop-out closed",
+  );
+
+  await ctx.po.layout.dockPanel(ANALYTICS_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+
+  const docked = await ctx.po.layout.dockPanelWidth(ANALYTICS_PANEL_ID);
+
+  assertLte(
+    Math.abs(docked - ANALYTICS_DESIGN_WIDTH_PX),
+    RAIL_WIDTH_SLACK_PX,
+    `expected the rail back at its ${ANALYTICS_DESIGN_WIDTH_PX}px design width once docked, got ${docked}px`,
+  );
+}
+
+/** How far each float resize drags its handle, and how close the float's
+ * box must follow: one 10-step drag's first step plus rounding. */
+const FLOAT_RESIZE_PX = 120;
+const FLOAT_RESIZE_SLACK_PX = 20;
+
+/**
+ * Floats the blotter and resizes it from an EDGE and from a CORNER, proving
+ * dockview's resize handles are reachable. They were not: dockview's own
+ * stylesheet resolves their z-index to `auto` (a self-referencing custom
+ * property), leaving them under the float's content, and the float's
+ * `overflow: hidden` clipped the corners away (user report, 2026-09-19).
+ * Dockview-engine only.
+ */
+export async function floatBlotterResizesFromAnEdgeAndACorner(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  const opened = await ctx.po.layout.floatBox(BLOTTER_PANEL_ID);
+
+  await ctx.po.layout.resizeFloatFrom(
+    BLOTTER_PANEL_ID,
+    "right",
+    FLOAT_RESIZE_PX,
+    0,
+  );
+
+  const widened = await ctx.po.layout.floatBox(BLOTTER_PANEL_ID);
+
+  assertLte(
+    Math.abs(widened.width - opened.width - FLOAT_RESIZE_PX),
+    FLOAT_RESIZE_SLACK_PX,
+    `expected the right edge to widen the float by ~${FLOAT_RESIZE_PX}px (${opened.width} → ${widened.width})`,
+  );
+
+  await ctx.po.layout.resizeFloatFrom(
+    BLOTTER_PANEL_ID,
+    "bottomright",
+    -FLOAT_RESIZE_PX,
+    FLOAT_RESIZE_PX,
+  );
+
+  const cornered = await ctx.po.layout.floatBox(BLOTTER_PANEL_ID);
+
+  assertLte(
+    Math.abs(widened.width - cornered.width - FLOAT_RESIZE_PX),
+    FLOAT_RESIZE_SLACK_PX,
+    `expected the corner to narrow the float by ~${FLOAT_RESIZE_PX}px (${widened.width} → ${cornered.width})`,
+  );
+  assertLte(
+    Math.abs(cornered.height - widened.height - FLOAT_RESIZE_PX),
+    FLOAT_RESIZE_SLACK_PX,
+    `expected the corner to heighten the float by ~${FLOAT_RESIZE_PX}px (${widened.height} → ${cornered.height})`,
+  );
+
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
 }
 
 // fx-rates starts at 0.66 of the shared column's height; once fx-blotter
