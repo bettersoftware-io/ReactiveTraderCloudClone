@@ -49,7 +49,7 @@ describe("createEqWatchlistSortPreferencePresenter (effect)", () => {
     const subject = new BehaviorSubject<EqWatchlistSort>("sym");
     const presenter = createEqWatchlistSortPreferencePresenter(
       useHost(),
-      createPortWithEqWatchlistSort(subject),
+      createPortWithStream("eqWatchlistSort$", subject),
     );
     presenter.cycle();
     expect(subject.observed).toBe(false);
@@ -79,18 +79,22 @@ describe("createBootPreferencePresenter (effect)", () => {
   it("current() leaves nothing warm on the port", () => {
     const subject = new BehaviorSubject<BootVariant>("geo");
     const presenter = createBootPreferencePresenter(
-      createPortWithBootVariant(subject),
+      createPortWithStream("bootVariant$", subject),
     );
     expect(presenter.current()).toBe("geo");
     expect(subject.observed).toBe(false);
   });
 });
 
-/** A real simulator whose `eqWatchlistSort$` returns the CALLER's subject —
- * the Proxy shape `themePreference.test.ts` uses, for the same reason
- * (TypeScript drops a class's methods from an object spread). */
-function createPortWithEqWatchlistSort(
-  subject: BehaviorSubject<EqWatchlistSort>,
+/** A real simulator whose `name` stream method returns the CALLER's own
+ * subject, so the test can read that subject's `observed` flag directly. A
+ * Proxy rather than an object spread: TypeScript drops a class's methods
+ * from a spread type, so `{ ...simulator, [name]: … }` would not satisfy
+ * `PreferencesPort`; the proxy keeps every other method — and its `this` —
+ * intact (the same shape as `preferenceStreams.test.ts`). */
+function createPortWithStream<T>(
+  name: PortStreamName,
+  subject: BehaviorSubject<T>,
 ): PreferencesPort {
   return new Proxy(new PreferencesSimulator(), {
     get: (
@@ -98,7 +102,7 @@ function createPortWithEqWatchlistSort(
       property: string | symbol,
       receiver: unknown,
     ) => {
-      if (property === "eqWatchlistSort$") {
+      if (property === name) {
         return () => {
           return subject;
         };
@@ -109,22 +113,4 @@ function createPortWithEqWatchlistSort(
   });
 }
 
-function createPortWithBootVariant(
-  subject: BehaviorSubject<BootVariant>,
-): PreferencesPort {
-  return new Proxy(new PreferencesSimulator(), {
-    get: (
-      target: PreferencesSimulator,
-      property: string | symbol,
-      receiver: unknown,
-    ) => {
-      if (property === "bootVariant$") {
-        return () => {
-          return subject;
-        };
-      }
-
-      return Reflect.get(target, property, receiver);
-    },
-  });
-}
+type PortStreamName = Extract<keyof PreferencesPort, `${string}$`>;

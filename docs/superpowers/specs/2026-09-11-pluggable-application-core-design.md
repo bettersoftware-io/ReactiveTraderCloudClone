@@ -332,7 +332,7 @@ alternative cores have them native; e2e matrix green; `parity.json` updated.
 | 6 shell | `layoutFor` + `dockPanel` / `undockPanel` / `dismissPanel` / `resetWorkspaceLayout`, `workspaceNav`, `boot`, `bootGate`, `auth`, `animationDirector` | the per-tab singleton with the structural no-op dispose |
 | 7 jarvis | `jarvis`, `jarvisPanels`, `jarvisDriver`, `jarvisDemo`, `jarvisUsage`, `NarratorMachine` | largest choreography; depends on everything above |
 
-Slice 1a shipped 2026-09-18 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
+Slice 1a shipped 2026-09-19 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
 Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b.md`](../plans/2026-09-19-pluggable-core-slice-1b.md)) — no new primitive was needed; every preference presenter is now native in both alternative cores.
 
 ### Slice 8 — closing
