@@ -62,16 +62,21 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-In this slice every member **delegates** to `@rtc/client-core` (the strangler
-seam): `composeWithBase` builds the RxJS app, mints a `ManagedRuntime` and a
-`Scope`, and overlays whatever this core implements natively — nothing, yet.
-Both are real from day one, so `dispose()` has Effect-side resources to close
-before any member goes native. It tears down in the order base app → scope →
-runtime, each step in a `finally` so one rejection cannot skip the rest, and
-every step is idempotent, so a second `dispose()` is safe. `src/parity.json` is the committed record of that fact
-and `src/parity.test.ts` proves manifest and reality agree by reference
-identity, so a member cannot claim to be native while still being the RxJS
-instance (or vice versa).
+As of slice 1a, six members are **native** — `connection`, `themePreference`,
+`themeSkinPreference`, `viewModePreference`, `powerSaver` and
+`commands.reconnect` — and everything else still **delegates** to
+`@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
+app, mints a `ManagedRuntime` and a `Scope`, and overlays what this core
+implements. The native idiom for a replay-current stream is `sharedFold` (a
+`SubscriptionRef` seeded synchronously on every first subscribe, driven by a
+producer fiber in a per-warm-period child scope) — `Stream.share` cannot be
+the envelope, since it replays to a new subscriber on a fiber rather than in
+the caller's tick; `mirrorPort` is the port-stream special case and
+`Stream.zipLatest` combines two inputs (`mode$`). One documented difference
+from the RxJS core: a `SubscriptionRef` fold conflates `Object.is`-equal
+consecutive states. `src/parity.json` records the split and
+`src/parity.test.ts` proves manifest and reality agree by reference — for
+presenters, machines and commands alike.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set
 against this core under the label `effect`.
