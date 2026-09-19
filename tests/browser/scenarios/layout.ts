@@ -364,6 +364,53 @@ export async function floatedRailPanelPopsOutAndComesBack(
   );
 }
 
+/**
+ * Floats the blotter and docks it back BY DRAG: its head is dragged onto the
+ * left edge of fx-rates with Shift pressed partway (the drag-to-dock
+ * gesture), and the release docks it there — in the grid, to the left of
+ * fx-rates. Before this there was no drag gesture home at all: a plain head
+ * drag moves the float, a shift-drag started no native drag, and dockview's
+ * own redock handle is 0px wide under this engine's full-width head
+ * (user-requested, 2026-09-19). Dockview-engine only.
+ */
+export async function floatBlotterDocksBackByShiftDrag(
+  ctx: TestContext,
+): Promise<void> {
+  const ratesBefore = await ctx.po.layout.dockPanelWidth(RATES_PANEL_ID);
+
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  await ctx.po.layout.shiftDragFloatOnto(
+    BLOTTER_PANEL_ID,
+    RATES_PANEL_ID,
+    "left",
+  );
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+
+  assertFalse(
+    await ctx.po.layout.panelSitsInFloat(BLOTTER_PANEL_ID),
+    "expected the blotter docked in the grid after the drag-to-dock",
+  );
+
+  // Docked BESIDE fx-rates, the two share what was fx-rates' width alone —
+  // unlike the blotter's own home below it, which leaves that width intact.
+  const rates = await ctx.po.layout.dockPanelWidth(RATES_PANEL_ID);
+
+  assertLte(
+    rates,
+    ratesBefore * SIDE_DOCK_MAX_SHARE,
+    `expected fx-rates to give up width to the blotter docked beside it (before=${ratesBefore}, after=${rates})`,
+  );
+}
+
+/** Docked beside fx-rates, the blotter takes a real share of its width:
+ * fx-rates keeps at most this fraction of what it had. */
+const SIDE_DOCK_MAX_SHARE = 0.8;
+
 /** How far each float resize drags its handle, and how close the float's
  * box must follow: one 10-step drag's first step plus rounding. */
 const FLOAT_RESIZE_PX = 120;

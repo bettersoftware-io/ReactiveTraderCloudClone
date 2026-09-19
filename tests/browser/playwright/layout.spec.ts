@@ -136,6 +136,15 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterPopsOutAndMovesByItsHead(ctx);
   });
 
+  test("a floated panel docks back into the grid by a shift-drag of its head", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatBlotterDocksBackByShiftDrag(ctx);
+  });
+
   test("a floated panel resizes from an edge and from a corner", async ({
     ctx,
   }) => {

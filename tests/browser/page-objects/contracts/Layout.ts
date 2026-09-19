@@ -146,7 +146,18 @@ export interface LayoutPO {
     dx: number,
     dy: number,
   ): Promise<void>;
+  /** Drags the float holding `panelId` by its head onto `targetPanelId`'s
+   * group, pressing Shift partway — the drag-to-dock gesture — and releases
+   * near that group's `side` edge. Dockview-engine only. */
+  shiftDragFloatOnto(
+    panelId: string,
+    targetPanelId: string,
+    side: FloatDockSide,
+  ): Promise<void>;
 }
+
+/** The side of a target group a drag-to-dock releases near. */
+export type FloatDockSide = "left" | "right";
 
 /** The float resize handles a scenario drives: an edge and a corner. */
 export type FloatResizeHandle = "right" | "bottomright";

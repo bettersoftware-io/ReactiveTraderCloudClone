@@ -2346,9 +2346,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * whole tab, leaving that void container 0px wide, so without this a
    * float could not be moved by anything a user would try to grab.
    *
+   * A Shift press starts the same move: holding Shift during it turns the
+   * move into a DOCK (see `previewFloatDock` / `dockFloatOnRelease`) —
+   * dockview's own convention that Shift means redock. (Its native redock
+   * handle, the void container, is 0px wide here, and a shift-drag of the
+   * head starts no native drag, so dockview offered no way home by drag.)
+   *
    * Left alone, in turn:
-   * - a shift-press: on a float that is dockview's REDOCK gesture (drag the
-   *   tab back into the grid), which keeps working unchanged;
    * - a press on a control — a head button, the quick-filter input — which
    *   keeps its own meaning, exactly as a dialog's close button does;
    * - any group in the grid: there the head's drag is the rearrange DnD.
@@ -2363,7 +2367,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     if (
       !(event instanceof PointerEvent) ||
       event.button !== 0 ||
-      event.shiftKey ||
       !(event.target instanceof Element) ||
       event.target.closest(HEAD_CONTROL_SELECTOR) !== null ||
       // A press ON the void container is already dockview's own move — and
@@ -2390,6 +2393,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     event.stopPropagation();
     movingFloatFromHead = true;
+    floatBeingMoved = group;
     handle.dispatchEvent(
       new PointerEvent("pointerdown", {
         bubbles: true,
@@ -2408,6 +2412,112 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** Ends the head-move window `moveFloatFromHead` opened. */
   function endFloatHeadMove(): void {
     movingFloatFromHead = false;
+    floatBeingMoved = undefined;
+    clearFloatDockPreview();
+  }
+
+  // ——— Drag-to-dock: Shift during a float's head move docks it ———
+  /** The float a head press is moving, while it moves. */
+  let floatBeingMoved: SizableGroup | undefined;
+  /** The highlight showing where a Shift-release would dock the float. */
+  let dockPreview: HTMLElement | null = null;
+
+  /** Where a release at (`x`, `y`) would dock the moving float: the grid
+   * group under the pointer (looking THROUGH the float itself, which is
+   * under the pointer too) and the side of it the pointer is nearest, or its
+   * centre (join as a tab). Null over no grid group. */
+  function floatDockTargetAt(x: number, y: number): FloatDockTarget | null {
+    const moving = floatBeingMoved;
+    const hits = opts.container.ownerDocument.elementsFromPoint?.(x, y) ?? [];
+
+    for (const hit of hits) {
+      const element = hit.closest(GROUP_SELECTOR);
+      const group =
+        element === null
+          ? undefined
+          : groupsAnywhere(api).find((candidate) => {
+              return candidate.element === element;
+            });
+
+      if (group !== undefined && group !== moving && isInGrid(group)) {
+        const rect = group.element.getBoundingClientRect();
+
+        return { group, position: dockPositionIn(rect, x, y), rect };
+      }
+    }
+
+    return null;
+  }
+
+  /** Shows, while Shift is held during a float's head move, where releasing
+   * would dock it; hides it otherwise. */
+  function previewFloatDock(event: Event): void {
+    if (floatBeingMoved === undefined || !(event instanceof PointerEvent)) {
+      return;
+    }
+
+    const target = event.shiftKey
+      ? floatDockTargetAt(event.clientX, event.clientY)
+      : null;
+
+    if (target === null) {
+      clearFloatDockPreview();
+
+      return;
+    }
+
+    if (dockPreview === null) {
+      dockPreview = opts.container.ownerDocument.createElement("div");
+      dockPreview.className = DOCK_PREVIEW_CLASS;
+      opts.container.appendChild(dockPreview);
+    }
+
+    const area = previewAreaOf(target.rect, target.position);
+
+    dockPreview.dataset.position = target.position;
+    dockPreview.style.left = `${area.left}px`;
+    dockPreview.style.top = `${area.top}px`;
+    dockPreview.style.width = `${area.width}px`;
+    dockPreview.style.height = `${area.height}px`;
+  }
+
+  function clearFloatDockPreview(): void {
+    dockPreview?.remove();
+    dockPreview = null;
+  }
+
+  /** Docks the moving float where a Shift-release lands: beside the grid
+   * group under the pointer, on the side nearest it, or into it as a tab at
+   * its centre. A release without Shift, or over no grid group, leaves the
+   * float where the move put it. The float rules (pins, absorption, shares,
+   * the remembered home size) settle through `settleFloatTransitions`, as
+   * for every other way into the grid. */
+  function dockFloatOnRelease(event: Event): void {
+    const moving = floatBeingMoved;
+
+    if (
+      moving === undefined ||
+      !(event instanceof PointerEvent) ||
+      !event.shiftKey
+    ) {
+      return;
+    }
+
+    const target = floatDockTargetAt(event.clientX, event.clientY);
+
+    // The engine's narrowed `SizableGroup` exposes no `moveTo`; the move
+    // goes through dockview's own group objects, found by element.
+    const float = groupsAnywhere(api).find((group) => {
+      return group.element === moving.element;
+    });
+
+    const home = groupsAnywhere(api).find((group) => {
+      return group.element === target?.group.element;
+    });
+
+    if (float !== undefined && home !== undefined && target !== null) {
+      float.api.moveTo({ group: home, position: target.position });
+    }
   }
 
   /** Stops the head's tab from starting an HTML5 drag while that press is
@@ -2422,6 +2532,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   opts.container.addEventListener("pointerdown", moveFloatFromHead, true);
   opts.container.addEventListener("dragstart", cancelHeadTabDrag, true);
+  window.addEventListener("pointermove", previewFloatDock, true);
+  window.addEventListener("pointerup", dockFloatOnRelease, true);
   window.addEventListener("pointerup", endFloatHeadMove, true);
   window.addEventListener("pointercancel", endFloatHeadMove, true);
 
@@ -3122,6 +3234,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
           settleStrips();
           release();
+          // A strip absorbs nothing: collapsing the row's LAST absorber must
+          // lift a pin nothing else can fill around, as closing it does —
+          // else the row is a strip beside the pinned rail and the rest of
+          // the dock belongs to nobody (Phase-4 follow-up (c), measured
+          // ~1034px of 1440). expandPanel's re-settle clamps it again.
+          settlePinAbsorption();
         });
       }
     },
@@ -3391,8 +3509,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         true,
       );
       opts.container.removeEventListener("dragstart", cancelHeadTabDrag, true);
+      window.removeEventListener("pointermove", previewFloatDock, true);
+      window.removeEventListener("pointerup", dockFloatOnRelease, true);
       window.removeEventListener("pointerup", endFloatHeadMove, true);
       window.removeEventListener("pointercancel", endFloatHeadMove, true);
+      clearFloatDockPreview();
       resizeObserver.disconnect();
       disarmSashUnpin();
 
@@ -3530,6 +3651,76 @@ function sharesWidth(split: Element): boolean {
 /** An instance member the sharing rule sizes: the along-split axis of every
  * group in it (one for a lone instance, several for a stacked column), and
  * its design width as a MODEL size (card + gap). */
+/** Where a Shift-release would dock a moving float. */
+interface FloatDockTarget {
+  readonly group: SizableGroup;
+  readonly position: FloatDockPosition;
+  readonly rect: DOMRect;
+}
+
+type FloatDockPosition = "left" | "right" | "top" | "bottom" | "center";
+
+/** The class of the drag-to-dock highlight (styled in dockview-hud.css). */
+const DOCK_PREVIEW_CLASS = "rtc-dock-preview";
+
+/** How far into a group, as a share of its size, a pointer counts as being
+ * on that EDGE — docking beside it — rather than in its centre, which joins
+ * it as a tab. dockview's own drop overlay uses the same kind of band. */
+const DOCK_EDGE_SHARE = 0.25;
+
+/** Which side of `rect` a pointer at (`x`, `y`) docks on: the nearest edge
+ * when it is within `DOCK_EDGE_SHARE` of it, else the centre. */
+function dockPositionIn(
+  rect: DOMRect,
+  x: number,
+  y: number,
+): FloatDockPosition {
+  const fromLeft = (x - rect.left) / rect.width;
+  const fromTop = (y - rect.top) / rect.height;
+  const edges: readonly [FloatDockPosition, number][] = [
+    ["left", fromLeft],
+    ["right", 1 - fromLeft],
+    ["top", fromTop],
+    ["bottom", 1 - fromTop],
+  ];
+
+  const [side, distance] = edges.reduce((nearest, edge) => {
+    return edge[1] < nearest[1] ? edge : nearest;
+  });
+
+  return distance < DOCK_EDGE_SHARE ? side : "center";
+}
+
+/** The part of a target group the dock preview covers: the half the float
+ * would take beside it, or the whole group for a tab join. */
+function previewAreaOf(rect: DOMRect, position: FloatDockPosition): DOMRect {
+  const halfWidth = rect.width / 2;
+  const halfHeight = rect.height / 2;
+
+  switch (position) {
+    case "left":
+      return new DOMRect(rect.left, rect.top, halfWidth, rect.height);
+    case "right":
+      return new DOMRect(
+        rect.left + halfWidth,
+        rect.top,
+        halfWidth,
+        rect.height,
+      );
+    case "top":
+      return new DOMRect(rect.left, rect.top, rect.width, halfHeight);
+    case "bottom":
+      return new DOMRect(
+        rect.left,
+        rect.top + halfHeight,
+        rect.width,
+        halfHeight,
+      );
+    default:
+      return rect;
+  }
+}
+
 /** Where a panel docked: its group's element and the split holding it. */
 interface DockLanding {
   readonly group: Element;
@@ -3648,7 +3839,11 @@ function railViewOf(element: Element, owner: Element): Element | null {
  * were suspended outside the grid, so their split is known-wrong.
  * `intactDesignPins` and `releaseMaximize` use it as a predicate only and
  * keep the record's existing split — a deliberate, pre-6a behaviour on paths
- * whose members never left the grid (tracked in docs/STATUS.md). */
+ * whose members never left the grid. Checked, not assumed (2026-09-19): a
+ * move that re-wraps the root (a group docked at the dock's top edge) keeps
+ * the rail split's element identity, and a sash drag there still releases
+ * the pin — no stale split surfaced on a grid-only path, so the two stay
+ * predicates. */
 function intactPinOwnerSplit(
   record: DesignPinRecord,
   groupOf: (panelId: string) => SizableGroup | undefined,
