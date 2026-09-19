@@ -2,7 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { statusStripPage } from "#tests/pages/StatusStripPage";
 
-import { ActiveModuleContext } from "./ActiveModuleContext";
 import { DOCK_FAB_SIZE } from "./dockMetrics";
 import { MODULE_ROUTES } from "./moduleRoutes";
 
@@ -31,13 +30,12 @@ test("a module pinned through ActiveModuleContext overrides the pathname", async
   const credit = MODULE_ROUTES.find((m) => {
     return m.key === "credit";
   });
-  await page.mount((children) => {
-    return (
-      <ActiveModuleContext.Provider value={credit ?? null}>
-        {children}
-      </ActiveModuleContext.Provider>
-    );
-  });
+
+  if (credit === undefined) {
+    throw new Error("MODULE_ROUTES has no credit route");
+  }
+
+  await page.mount({ pinnedModule: credit });
   expect(page.hasTextContent("hud-module-label", "CREDIT")).toBe(true);
 });
 

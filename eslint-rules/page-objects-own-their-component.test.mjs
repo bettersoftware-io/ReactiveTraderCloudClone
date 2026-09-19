@@ -24,6 +24,14 @@ ruleTester.run(
   {
     valid: [
       {
+        name: "a function-typed param returning DATA is not a render function",
+        code: "export interface P {\n  seed(read: () => Snapshot): void;\n}\n",
+      },
+      {
+        name: "a `children` render function stays composition, not the subject",
+        code: "export interface P {\n  wrap(children: () => JSX.Element): void;\n}\n",
+      },
+      {
         name: "the sanctioned shape — the contract takes a props object",
         code: "export interface P {\n  mount(props: MountProps): void;\n}\n",
       },
@@ -57,6 +65,16 @@ ruleTester.run(
       },
     ],
     invalid: [
+      {
+        name: "a RENDER FUNCTION is the same defect in Solid's shape — the spec still builds the subject (Solid's render() takes a function)",
+        code: "export interface P {\n  mount(element: () => JSX.Element): void;\n}\n",
+        errors: [{ messageId: "acceptsElement" }],
+      },
+      {
+        name: "a render function returning a ReactElement (the RN wrapper shape)",
+        code: "export interface P {\n  mount(wrapper: () => ReactElement): void;\n}\n",
+        errors: [{ messageId: "acceptsElement" }],
+      },
       {
         name: "a contract taking a bare ReactElement is the defect",
         code: "export interface P {\n  mount(element: ReactElement): void;\n}\n",
