@@ -232,6 +232,39 @@ describe("bridge/out", () => {
     await tick();
     expect(seen).toEqual([0, 5]);
     sub.unsubscribe();
+    await tick();
+    expect(subject.observed).toBe(false);
+  });
+
+  it("sharedFold() delivers every state of a same-tick burst, in order", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), {
+      seed: () => {
+        return 0;
+      },
+      run: (update: FoldUpdate<number>) => {
+        return fromObservable(subject).pipe(
+          Stream.runForEach((e: number) => {
+            return update((s) => {
+              return s + e;
+            });
+          }),
+        );
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    // Same tick, no await between any of these — every intermediate sum
+    // must still arrive, not just the seed and the final total.
+    subject.next(1);
+    subject.next(2);
+    subject.next(3);
+    await tick();
+    await tick();
+    expect(seen).toEqual([0, 1, 3, 6]);
+    sub.unsubscribe();
   });
 
   it("sharedFold() starts the producer on the first subscriber and interrupts it on the last", async () => {

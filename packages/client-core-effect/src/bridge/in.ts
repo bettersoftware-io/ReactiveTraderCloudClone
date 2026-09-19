@@ -35,10 +35,14 @@ import { type Observable, type Subscription, take } from "rxjs";
  * `Stream.runForEach` run of the resulting value — a caller that builds one
  * `fromObservable(source)` stream and drains it to completion more than
  * once will only see the first run's subscription (the second sees an
- * already-unsubscribed source). Every current caller calls `fromObservable`
- * fresh inside the effect it hands to `sharedFold`'s `run`, so it gets a
- * fresh subscription on every warm period; only a caller that hoists the
- * call OUTSIDE `run` and reuses the value across periods would see this. */
+ * already-unsubscribed source).
+ *
+ * The calling rule, stated as what to DO: call it inside a `sharedFold`'s
+ * `run`, once per warm period. Never at presenter construction, never
+ * hoisted, never reused across periods: the subscription exists from the
+ * moment this returns, a stream that is never run leaks it and its
+ * unbounded queue, and two concurrent runs of one returned stream split the
+ * events between them. */
 export function fromObservable<T>(
   source: Observable<T>,
 ): Stream.Stream<T, unknown> {
@@ -120,7 +124,9 @@ export function rpc<T>(source: Observable<T>): Effect.Effect<T, unknown> {
 /** The current value of a replay-current Observable, read synchronously —
  * the seed a `sharedFold` starts a warm period from, and what `cycle()`
  * advances from. A source that does not emit during `subscribe` yields
- * `fallback`; the subscription is released before this returns. */
+ * `fallback`; the subscription is released before this returns. A source
+ * that ERRORS synchronously during `subscribe` rethrows out of `peek` (and
+ * so out of `cycle()`); only a non-emitting source yields `fallback`. */
 export function peek<T>(source: Observable<T>, fallback: T): T {
   let value = fallback;
   source

@@ -63,19 +63,20 @@ describe("createThemePreferencePresenter (effect)", () => {
     expect(prefersDark.observed).toBe(false);
   });
 
-  it("cycle() advances from the stored value three times in a row", async () => {
+  it("cycle() advances round the full ring, one step per call, from the stored value", async () => {
     const preferences = new PreferencesSimulator({ themeMode: "light" });
     const presenter = createThemePreferencePresenter(useHost(), preferences);
-    presenter.cycle();
-    presenter.cycle();
-    presenter.cycle();
     const seen: string[] = [];
-    presenter.modePreference$
-      .subscribe((p) => {
-        seen.push(p);
-      })
-      .unsubscribe();
-    expect(seen).toEqual(["light"]);
+    const sub = presenter.modePreference$.subscribe((p) => {
+      seen.push(p);
+    });
+    presenter.cycle();
+    presenter.cycle();
+    presenter.cycle();
+    await tick();
+    await tick();
+    expect(seen).toEqual(["light", "system", "dark", "light"]);
+    sub.unsubscribe();
   });
 
   it("re-subscribes to the colour-scheme source on a fresh warm period", async () => {

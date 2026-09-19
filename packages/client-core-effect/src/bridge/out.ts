@@ -196,20 +196,34 @@ export function sharedFold<S>(
     // below and start a second one that `warm` then never points back to.
     warm = period;
 
-    // MEASURED (effect 3.22.2): a producer draining several already-queued
-    // events in one uninterrupted burst (e.g. `fromObservable`'s Queue, once
-    // its subscribe is synchronous — see `in.ts`) calls `update` several
-    // times with NO suspension between them, and the fiber runtime's own
-    // cooperative scheduling does not hand control to the SEPARATE fiber
-    // watching `ref.changes` (forked inside `refToStateStream`) until this
-    // one yields or completes — so that watcher only ever observes the
-    // ref's value AS OF whenever it next runs, not every intermediate
-    // `.set()`. Three same-tick `update` calls delivered `[0, 6]` (only the
-    // seed and the final sum) without the trailing `Effect.yieldNow()`
-    // below; with it, `[0, 1, 3, 6]` — every intermediate state. This is
-    // NOT the `Object.is` de-dup guard above (that drops an EQUAL value on
-    // purpose); this was silently dropping DISTINCT ones a slow watcher
-    // fiber hadn't caught up to yet.
+    // MEASURED (effect 3.22.2): a `SubscriptionRef` publishes into a
+    // `PubSub.unbounded()`, and `ref.changes` is `Ref.get →
+    // PubSub.subscribe → concat(head, fromPubSub(...))` — so once the
+    // watcher fiber (forked inside `refToStateStream`) has subscribed to
+    // that PubSub, EVERY publish reaches it in order; there is no
+    // conflation of a fast burst against a slow watcher. With the watcher
+    // subscribed first, three same-tick `.set()` calls delivered
+    // `[0, 1, 3, 6]` — every intermediate state — whether or not `update`
+    // yields between them. The only values a watcher can miss are ones
+    // published BEFORE its PubSub subscription exists: a producer forked
+    // ahead of the watcher that drains several already-queued events (e.g.
+    // `fromObservable`'s Queue, once its own subscribe is synchronous — see
+    // `in.ts`) in one uninterrupted burst can publish all of them before the
+    // watcher fiber has even started, so the watcher's `Ref.get` head
+    // observes only the final value and the PubSub never had a subscriber
+    // to deliver the intermediate ones to — `[6]` instead of `[1, 3, 6]`.
+    // The `Effect.yieldNow()` below exists to lose that race on purpose: it
+    // hands control back to the scheduler after every `set`, giving the
+    // watcher fiber a chance to reach its subscribe before the NEXT publish
+    // fires — with it, the same burst delivered `[0, 1, 3, 6]`. This is a
+    // WON race, not a guarantee — it costs one fiber yield per state change,
+    // and nothing here proves the watcher has actually subscribed by the
+    // time control returns. The structural fix (a later slice) is a latch
+    // the producer awaits until `ref.changes`'s watcher has subscribed,
+    // rather than hoping one yield was enough. This is also NOT the
+    // `Object.is` de-dup guard above (that drops an EQUAL value on
+    // purpose); this is about DISTINCT values a not-yet-subscribed watcher
+    // never had a chance to see.
     function update(next: (current: S) => S): Effect.Effect<void> {
       return Effect.suspend(() => {
         if (mine !== generation) {
@@ -232,7 +246,12 @@ export function sharedFold<S>(
       fold.run(update).pipe(
         Effect.catchAllCause((cause) => {
           return Effect.sync(() => {
-            failEverySubscriber(cause);
+            // A stale period's producer failing asynchronously, in the
+            // unsubscribe → `Scope.close` window, must not error the NEW
+            // period's subscribers — same `mine !== generation` guard `update` uses.
+            if (mine === generation) {
+              failEverySubscriber(cause);
+            }
           });
         }),
       ),

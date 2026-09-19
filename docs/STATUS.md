@@ -28,9 +28,9 @@
 
 - **Pluggable application core (RxJS / async-await / Effect-TS)** — **slice 0 shipped (#717, 2026-09-13); slice 1a shipped (2026-09-18); next: slice 1b (the eleven remaining preferences)** — both alt cores port the eleven remaining preference presenters natively (`creditRfqFilterPreference`, `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`, `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) using slice 1a's `topicFromObservable` / `mirrorPort` idioms; their suites do not exist yet and must be green on RxJS first. Spec: [superpowers/specs/2026-09-11-pluggable-application-core-design.md](superpowers/specs/2026-09-11-pluggable-application-core-design.md) · Plan (slice 0): [superpowers/plans/2026-09-12-pluggable-core-slice-0.md](superpowers/plans/2026-09-12-pluggable-core-slice-0.md) · Plan (slice 1a): [superpowers/plans/2026-09-18-pluggable-core-slice-1a.md](superpowers/plans/2026-09-18-pluggable-core-slice-1a.md)
 
-  **Slice-0 residuals still open (deferred to slice 1b).** Reviewed and
-  accepted for slice 0; the remaining items are re-listed unchanged, each a
-  known, bounded follow-up:
+  **Slice-0 and slice-1a residuals still open (deferred to slice 1b).**
+  Reviewed and accepted for slice 0; the remaining items are re-listed
+  unchanged, each a known, bounded follow-up:
 
   - `Topic`: `void spawn(producer, fail)` lets a throwing subscriber abort the
     fan-out, and producer abort is cooperative — `packages/client-core-async/src/kernel/topic.ts`
@@ -62,6 +62,13 @@
 
     replay-current; `StateStream` would express the warmth guarantee (slice 6) —
     `packages/core-api/src/presenters/auth.ts`
+  - `Collected.errors` is only ever asserted empty; no suite drives a real error through a member's stream yet (slice 2's `execution` is the natural first) — `packages/core-contract/src/harness/collect.ts`
+  - no single test proves `topicFromObservable` → `fail()` on a source error end-to-end (covered transitively via the async `connection` port-error test) — `packages/client-core-async/src/bridge/in.ts`
+  - `sharedFold`'s `generation` guard in `update` is defence-in-depth now that refs are per period; no test discriminates it — keep-or-drop in a later slice — `packages/client-core-effect/src/bridge/out.ts`
+  - `sharedFold`'s `Effect.yieldNow()` after each `set` wins the watcher-subscription race rather than guaranteeing it; the structural close is a latch the producer awaits until the `ref.changes` watcher has subscribed (slice 2, when `priceStream` puts real volume through it) — `packages/client-core-effect/src/bridge/out.ts`
+  - neither alternative core has a completion channel: `Topic` has no `complete`, and `sharedFold` never calls `subscriber.complete()` when the producer's stream ends, while the spec lists "completion" among the envelope-level assertions; no port completes today — decide in slice 1b: add the channel to both, or strike "completion" from the spec's list — `packages/client-core-async/src/kernel/topic.ts`, `packages/client-core-effect/src/bridge/out.ts`
+  - the RxJS core calls `events.events()` once at construction; both alternative cores call it once per warm period — equivalent for every port shipping today, divergent for a port factory with side effects — `packages/client-core-async/src/presenters/connection.ts`, `packages/client-core-effect/src/presenters/connection.ts`
+  - `docs/STATUS.md`'s own lines ~60–64 (the `auth.ts` / `selectCore.ts` residual items) carry interleaved markdown from `d511d4a49a` (2026-09-13); repair in a separate docs PR — `docs/STATUS.md`
 
 ## 🔴 Designed, not built (plan/spec merged, no implementation)
 

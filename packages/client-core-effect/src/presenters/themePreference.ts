@@ -11,6 +11,7 @@ import {
   type PreferencesPort,
   resolveThemeMode,
   type ThemeMode,
+  type ThemeModePreference,
 } from "@rtc/domain";
 
 import { fromObservable, peek } from "#/bridge/in";
@@ -77,7 +78,7 @@ export function createThemePreferencePresenter(
         );
       },
     }),
-    setMode: (next: ThemeMode) => {
+    setMode: (next: ThemeModePreference) => {
       preferences.setThemeMode(next);
     },
     /** Advance from the TRUE stored value, read synchronously from the port

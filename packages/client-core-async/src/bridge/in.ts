@@ -136,7 +136,9 @@ export function relay<T>(
  * what `cycle()` needs (advance from the TRUE stored value, never a stale
  * closure). A source that does not emit during `subscribe` yields
  * `fallback`; the subscription is released before this returns, so nothing
- * is left warm. */
+ * is left warm. A source that ERRORS synchronously during `subscribe`
+ * rethrows out of `peek` (and so out of `cycle()`); only a non-emitting
+ * source yields `fallback`. */
 export function peek<T>(source: Observable<T>, fallback: T): T {
   let value = fallback;
   source
