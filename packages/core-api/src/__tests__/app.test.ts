@@ -14,7 +14,24 @@ describe("App contract", () => {
     >();
   });
 
-  it("Presenters names the interfaces, never a class", () => {
-    expectTypeOf<Presenters["connection"]["status$"]>().not.toBeAny();
+  it("Presenters names interfaces a plain object satisfies, never a class", () => {
+    // A class type with a private member, or a nominal brand, would reject
+    // a structurally identical object literal; an interface accepts it.
+    expectTypeOf<ConnectionStatusShape>().toMatchTypeOf<
+      Presenters["connection"]
+    >();
+    expectTypeOf<AnimatedBackgroundShape>().toMatchTypeOf<
+      Presenters["animatedBackground"]
+    >();
   });
 });
+
+interface ConnectionStatusShape {
+  readonly status$: Presenters["connection"]["status$"];
+}
+
+interface AnimatedBackgroundShape {
+  readonly enabled$: Presenters["animatedBackground"]["enabled$"];
+  set(on: boolean): void;
+  toggle(current: boolean): void;
+}
