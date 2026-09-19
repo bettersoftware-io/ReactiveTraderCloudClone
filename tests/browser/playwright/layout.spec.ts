@@ -116,11 +116,10 @@ test.describe("Layout engine", () => {
   test("floating a panel grows its column sibling, survives a reload, and docks home", async ({
     ctx,
   }) => {
-    // Floating groups are a dockview-only feature, so this test opens by
-    // switching engines — same reasoning as the pop-out test above.
-    await layout.expectEngine(ctx, "inhouse");
-
-    await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
+    // Floating groups are a dockview-only feature. Like the pop-out test
+    // above, no opening engine switch is needed: dockview is what the app
+    // boots into. (This test was written while in-house was the default and
+    // asserted an in-house boot, which the default flip made false.)
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
