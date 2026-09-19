@@ -120,6 +120,13 @@ export interface LayoutPO {
    * panel actually grows once another panel floats out of their shared
    * column — a real-DOM geometry claim no jsdom witness can make. */
   panelHeight(panelId: string): Promise<number>;
+  /** Whether `panelId`'s dockview group currently sits inside dockview's
+   * FLOAT container (a `.dv-resize-container`, the box dockview mounts every
+   * floating group in) — read off the DOM, independent of the engine's own
+   * `data-floating` bookkeeping. Exists because a float opens at its group's
+   * pre-float size, so a height alone cannot tell "docked home at that size"
+   * from "never docked". Dockview-engine only. */
+  panelSitsInFloat(panelId: string): Promise<boolean>;
 }
 
 /** What the dock showed for one panel on the first render after a load —
