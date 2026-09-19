@@ -1658,6 +1658,35 @@ describe("design-width pins (the in-house initialPx semantics)", () => {
     engine.dispose();
   });
 
+  // Phase-4 follow-up (c)'s measured face: closing the last full panel of a
+  // row and THEN collapsing the survivor left the row as a 39px strip beside
+  // the 367px pinned rail — ~1034px of a 1440px dock belonging to nobody. A
+  // strip absorbs nothing, so the collapse took the row's last absorber; the
+  // rail's pin must lift then, exactly as it does when the absorber closes
+  // (settlePinAbsorption) — and clamp again on expand, which already
+  // re-settles.
+  it("collapsing the row's last absorber lifts the rail pin so the dock stays filled", () => {
+    const engine = createDockEngine({
+      ...createRailPinnedBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.closePanel("fx-rates");
+    engine.collapsePanel("fx-blotter");
+
+    const widths = ["fx-blotter", "fx-analytics"].map((id) => {
+      return lastDockviewApi().getPanel(id)?.group.api.width ?? 0;
+    });
+
+    expect(widths[0]).toBeLessThan(60);
+    expect((widths[0] ?? 0) + (widths[1] ?? 0)).toBe(1440);
+
+    engine.expandPanel("fx-blotter");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
   function createRailPinnedBase(): DockEngineOptions {
     return {
       ...createRailBase(),
@@ -5034,7 +5063,9 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
       engine.dispose();
     });
 
-    it("leaves a shift-press to dockview's redock gesture", () => {
+    // Shift starts the same move: holding it DURING the move is what turns
+    // the move into a dock (the drag-to-dock tests below).
+    it("starts the same move on a shift-press", () => {
       const container = sizedContainer(1440, 900);
       const engine = createDockEngine(probeHeads(container));
       const { head, pressesOnVoid } = floatedHead(
@@ -5047,8 +5078,98 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
         shiftKey: true,
       });
 
-      expect(pressesOnVoid()).toBe(0);
+      expect(pressesOnVoid()).toBe(1);
       engine.dispose();
+    });
+
+    describe("drag-to-dock: Shift during a head move docks the float", () => {
+      it("docks beside the group under the pointer, on the nearest side", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointermove", 20, 150, true);
+
+        expect(
+          container.querySelector<HTMLElement>(".rtc-dock-preview")?.dataset
+            .position,
+        ).toBe("left");
+
+        pointerAt("pointerup", 20, 150, true);
+
+        expect(locationOf("fx-analytics")).toBe("grid");
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+        restore();
+        engine.dispose();
+      });
+
+      it("joins the group as a tab at its centre", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointerup", 200, 150, true);
+
+        expect(lastDockviewApi().getPanel("fx-analytics")?.group).toBe(
+          lastDockviewApi().getPanel("fx-rates")?.group,
+        );
+        restore();
+        engine.dispose();
+      });
+
+      it("only moves the float when Shift is not held", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointermove", 20, 150, false);
+
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+
+        pointerAt("pointerup", 20, 150, false);
+
+        expect(locationOf("fx-analytics")).toBe("floating");
+        restore();
+        engine.dispose();
+      });
+
+      /** Floats fx-analytics, presses its head, and points every hit-test at
+       * fx-rates' group, laid out as a 400×300 box at the origin (jsdom has
+       * no `elementsFromPoint` and lays nothing out). */
+      function moveAnalyticsOverRates(
+        container: HTMLElement,
+        engine: ReturnType<typeof createDockEngine>,
+      ): () => void {
+        const { head } = floatedHead(container, engine, "fx-analytics");
+        const rates = lastDockviewApi().getPanel("fx-rates")?.group.element;
+
+        if (rates === undefined) {
+          throw new Error("fx-rates is not in the dock");
+        }
+
+        const restoreHits = createStubElementsFromPoint([rates]);
+        const rect = vi
+          .spyOn(rates, "getBoundingClientRect")
+          .mockReturnValue(new DOMRect(0, 0, 400, 300));
+
+        pressOn(head.querySelector(".probe-title") as Element);
+
+        return () => {
+          restoreHits();
+          rect.mockRestore();
+        };
+      }
+
+      function pointerAt(
+        type: string,
+        x: number,
+        y: number,
+        shiftKey: boolean,
+      ): void {
+        window.dispatchEvent(
+          new PointerEvent(type, { clientX: x, clientY: y, shiftKey }),
+        );
+      }
     });
 
     it("never touches a head that is in the grid", () => {
@@ -6133,6 +6254,20 @@ function spyOnGroupSizing(panelId: string): SizingCensus {
     calls: (): readonly string[] => {
       return seen;
     },
+  };
+}
+
+/** Points `document.elementsFromPoint` — absent in jsdom — at `hits`, and
+ * returns the undo. */
+function createStubElementsFromPoint(hits: readonly Element[]): () => void {
+  const original = document.elementsFromPoint;
+
+  document.elementsFromPoint = (): Element[] => {
+    return [...hits];
+  };
+
+  return () => {
+    document.elementsFromPoint = original;
   };
 }
 

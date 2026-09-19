@@ -46,6 +46,10 @@ flowchart TD
   [ADR-005 UI-logic placement](adr/ADR-005-ui-logic-placement.md),
   [ADR-007 CI security tooling](adr/ADR-007-ci-security-tooling.md) — what
   runs, and why Snyk / SonarCloud were declined).
+- [`security-scorecard.md`](security-scorecard.md) — reading the OpenSSF
+  Scorecard: what each open check measures, why `Code-Review` /
+  `Branch-Protection` are capped for a single maintainer, the property-based
+  (`fast-check`) tests behind `Fuzzing`, and the Best Practices badge walkthrough.
 - [`performance.md`](performance.md) — **read before any CSS animation/transition
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
 - [`boot-splash-animations.md`](boot-splash-animations.md) — the boot-splash

@@ -3,6 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type {
   FirstDockRender,
   FloatBox,
+  FloatDockSide,
   FloatResizeHandle,
   LayoutPO,
   PopoutWindowPO,
@@ -54,6 +55,12 @@ interface DockLayoutLeafData {
 /** The page global `recordFirstDockRender`'s init script writes its
  * snapshot to (read back by `firstDockRender`). Type-only: the init script
  * ships as source text, and this annotation is erased from it. */
+/** A viewport point to press at. */
+interface GripPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 interface FirstDockRenderWindow {
   __rtcFirstDockRender?: unknown;
 }
@@ -640,35 +647,18 @@ export class PlaywrightLayout implements LayoutPO {
     });
   }
 
-  async floatBox(panelId: string): Promise<FloatBox> {
-    return this.group(panelId).evaluate((element) => {
-      const float = element.closest(".dv-resize-container");
-
-      if (float === null) {
-        throw new Error("floatBox: the panel is not in a float");
-      }
-
-      const r = float.getBoundingClientRect();
-
-      return { x: r.x, y: r.y, width: r.width, height: r.height };
-    });
-  }
-
-  async dragFloatByHead(
-    panelId: string,
-    dx: number,
-    dy: number,
-  ): Promise<void> {
+  /** A point on `panelId`'s float head that is not one of its controls. */
+  private floatHeadGrip(panelId: string): Promise<GripPoint> {
     // The grip is found, not assumed: the head is packed with controls
     // (sub-tabs, a filter input, chips), and a press on one of those keeps
     // its own meaning. Walk the head bar's mid-line for the first point
     // whose topmost element is not a control — the same test the engine
     // applies when deciding whether a press moves the float.
-    const grip = await this.group(panelId).evaluate((element) => {
+    return this.group(panelId).evaluate((element) => {
       const head = element.querySelector(".dv-tabs-and-actions-container");
 
       if (head === null) {
-        throw new Error("dragFloatByHead: the group has no head bar");
+        throw new Error("floatHeadGrip: the group has no head bar");
       }
 
       const r = head.getBoundingClientRect();
@@ -688,8 +678,30 @@ export class PlaywrightLayout implements LayoutPO {
         }
       }
 
-      throw new Error("dragFloatByHead: no free point on the head to grip");
+      throw new Error("floatHeadGrip: no free point on the head to grip");
     });
+  }
+
+  async floatBox(panelId: string): Promise<FloatBox> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatBox: the panel is not in a float");
+      }
+
+      const r = float.getBoundingClientRect();
+
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  }
+
+  async dragFloatByHead(
+    panelId: string,
+    dx: number,
+    dy: number,
+  ): Promise<void> {
+    const grip = await this.floatHeadGrip(panelId);
 
     // Stepped, like the sash and tab drags above: dockview's overlay moves
     // the float on each pointermove, taking its grip offset from the first.
@@ -697,6 +709,30 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.mouse.down();
     await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 15 });
     await this.page.mouse.up();
+  }
+
+  async shiftDragFloatOnto(
+    panelId: string,
+    targetPanelId: string,
+    side: FloatDockSide,
+  ): Promise<void> {
+    const grip = await this.floatHeadGrip(panelId);
+    const target = await this.dockGroupBox(targetPanelId);
+    // 10% in from the chosen edge: inside the engine's 25% edge band.
+    const x =
+      side === "left"
+        ? target.x + target.width * 0.1
+        : target.x + target.width * 0.9;
+    const y = target.y + target.height / 2;
+
+    await this.page.mouse.move(grip.x, grip.y);
+    await this.page.mouse.down();
+    // Shift pressed partway, as a user would: the move starts plain.
+    await this.page.mouse.move(grip.x + 40, grip.y + 40, { steps: 4 });
+    await this.page.keyboard.down("Shift");
+    await this.page.mouse.move(x, y, { steps: 12 });
+    await this.page.mouse.up();
+    await this.page.keyboard.up("Shift");
   }
 
   async resizeFloatFrom(

@@ -53,18 +53,17 @@
 
   packageRules: [
     {
-      // The deploy workflows' Vercel CLI (scripts/ci-tooling/vercel) is held on
-      // 57.x: 58.0.0 broke `vercel pull` under env-var project linking
-      // (docs/STATUS.md, "Vercel CLI: unpin…"). That manifest became
-      // Renovate-visible on 2026-09-19 when the CLI moved under a lockfile, and
-      // NOTHING in CI would catch the regression — CI never runs a deploy, so a
-      // 57 → 59 PR would go green and break the next production deploy instead.
-      // Making the PR unrepresentable is the only gate available. Delete this
-      // rule as part of the deliberate unpin, which is proven by a Deploy
-      // dispatch, not by CI.
+      // The deploy workflows' Vercel CLI (scripts/ci-tooling/vercel): MAJOR bumps
+      // are held for a human. NOTHING in CI can vet one — CI never runs a
+      // deploy — and a major has already broken production once (58.0.0 broke
+      // `vercel pull` under env-var project linking, 2026-07-27; the CLI sat
+      // pinned on 57 until a Deploy dispatch proved 59 on 2026-09-19). A green
+      // Renovate PR would therefore mean nothing here. Minors and patches flow
+      // normally; do a major by hand and prove it with a Deploy dispatch.
       matchFileNames: ["scripts/ci-tooling/vercel/**"],
       matchPackageNames: ["vercel"],
-      allowedVersions: "<58",
+      matchUpdateTypes: ["major"],
+      enabled: false,
     },
     {
       // React Native core moves as ONE unit. `react-native` and the official
