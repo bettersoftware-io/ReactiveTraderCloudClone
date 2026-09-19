@@ -161,20 +161,24 @@ explicitly (residual sweep, 2026-09-19):
 2. **A throwing subscriber is isolated.** The other subscribers still receive
    the value; the thrown error is rethrown on a macrotask (rxjs's
    `SafeSubscriber`, the async `reportAsync`, an Effect fiber's own defect
-   path).
+   path). That isolation covers a CONSUMER's `next`: an operator built on a
+   primitive (`mapTopic`, an Effect `Stream` combinator) turns its own
+   projection error into a stream failure instead, as rxjs operators do.
 3. **After `dispose()`, a still-attached subscriber hears nothing.** The RxJS
    core's `dispose()` is a knowing no-op today (its follow-up is a
    `Subscription` bag), so an interrupt-only Effect cause is deliberately
    silent too; completion-on-dispose becomes the contract when that bag
    lands.
-4. **Every port method is called once, at construction.** A stream
-   re-subscribes the captured Observable on every warm period; a synchronous
-   read (`cycle()`, `current()`) reads through a fresh subscription of it and
-   throws the port's synchronous error at the read site. The `portDiscipline`
-   contract suite counts the calls through a Proxy in every runner — the
-   contract witnesses that the count after construction never changes (a
-   strangler core constructs the base presenter too, so its absolute count
-   is 2 until slice 8 removes delegation).
+4. **Every port method is called once, at construction** — including
+   `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
+   A stream re-subscribes the captured Observable on every warm period; a
+   synchronous read (`cycle()`, `current()`) reads through a fresh
+   subscription of it and throws the port's synchronous error at the read
+   site. The `portDiscipline` contract suite counts the calls through a
+   Proxy in every runner — the contract witnesses that the count after
+   construction never changes (a strangler core constructs the base
+   presenter too, so its absolute count is 2 until slice 8 removes
+   delegation).
 
 ## The contract tier
 

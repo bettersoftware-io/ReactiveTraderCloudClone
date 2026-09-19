@@ -252,13 +252,14 @@ predictable from the design alone):
   conflate into its head, conflation, never staleness.)
 - **Port subscriptions belong to the period.** `fromObservable` is reached
   only through `fromPort`; a dependency-cruiser rule confines `bridge/in.ts`.
-- **Every port method is called once, at construction** — a rule for all
-  three cores, contracted by `portDiscipline`. Witnessed as CONSTANCY, not
-  an absolute count: a strangler core's `composeWithBase` constructs the
-  RxJS base app's presenter (one port call) and then the native overlay (one
-  more), so an absolute "once" holds only for the RxJS core until slice 8
-  removes delegation; the suite asserts the count after construction never
-  changes across warm periods or synchronous reads.
+- **Every port method is called once, at construction** — including
+  `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
+  A rule for all three cores, contracted by `portDiscipline`. Witnessed as
+  CONSTANCY, not an absolute count: a strangler core's `composeWithBase`
+  constructs the RxJS base app's presenter (one port call) and then the
+  native overlay (one more), so an absolute "once" holds only for the RxJS
+  core until slice 8 removes delegation; the suite asserts the count after
+  construction never changes across warm periods or synchronous reads.
 - **`peek` throws.** A port that errors on subscribe fails the read at its
   site.
 - **`client-core` class docs carry implementation notes only**; the
