@@ -1,8 +1,10 @@
 export { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
 export {
+  promiseToStream,
   pushReconnectIntent,
   storeToStateStream,
   topicToStream,
+  topicToStreamWithLead,
 } from "#/bridge/out";
 export { createCommands } from "#/commands";
 export {
@@ -14,6 +16,7 @@ export {
   createMachineFactories,
 } from "#/composition";
 export { AbortError } from "#/kernel/AbortError";
+export { relayTopic } from "#/kernel/relayTopic";
 export { sleep } from "#/kernel/sleep";
 export { spawn } from "#/kernel/spawn";
 export { createStore, type Store } from "#/kernel/store";
@@ -24,7 +27,20 @@ export {
   type TopicOptions,
 } from "#/kernel/topic";
 export { untilAborted } from "#/kernel/untilAborted";
+export { createNotionalMachine } from "#/machines/notional";
+export { createRowHighlightMachine } from "#/machines/rowHighlight";
+export {
+  createStaleFlagMachine,
+  type StaleFlagDeps,
+} from "#/machines/staleFlag";
+export {
+  createTileExecutionMachine,
+  type TileExecutionDeps,
+} from "#/machines/tileExecution";
+export { createBlotterPresenter } from "#/presenters/blotter";
+export { createConflatedTopic } from "#/presenters/conflatedTopic";
 export { createConnectionPresenter } from "#/presenters/connection";
+export { createTradeExecutionPresenter } from "#/presenters/execution";
 export {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
@@ -41,8 +57,14 @@ export {
   createThemeSkinPreferencePresenter,
   createViewModePreferencePresenter,
 } from "#/presenters/preferences";
+export { createPriceHistoryPresenter } from "#/presenters/priceHistory";
+export { createPriceStreamPresenter } from "#/presenters/priceStream";
 export {
   createBootPreferencePresenter,
   createEqWatchlistSortPreferencePresenter,
 } from "#/presenters/readPreferences";
 export { createThemePreferencePresenter } from "#/presenters/themePreference";
+export {
+  createAnalyticsPresenter,
+  createCurrencyPairsPresenter,
+} from "#/presenters/warmSingletons";
