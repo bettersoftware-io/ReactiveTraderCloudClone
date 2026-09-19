@@ -2988,6 +2988,45 @@ describe("unpinned dynamic panels share their split (R17)", () => {
     engine.dispose();
   });
 
+  // Phase-4 follow-up (a): collapsing a chart instance handed its WHOLE
+  // freed width to the row's last unpinned member (dockview settles a size
+  // change from the split's last view) — the neighbouring instance ballooned
+  // until the collapsed one was expanded. The freed width belongs to the
+  // static member, the main area; every other instance keeps the width it
+  // had — including one the user dragged (R20), so this is not a re-share.
+  it("collapsing an instance gives its width to the main area, leaving the other instances as they were", () => {
+    const engine = createDockEngine({
+      ...equitiesAt(1907),
+      dynamicPanels: INSTANCES.slice(0, 2),
+    });
+
+    dragWidth("i-aapl", 420);
+
+    const [chartBefore, aaplBefore, msftBefore] = cardWidths([
+      "eq-chart",
+      "i-aapl",
+      "i-msft",
+    ]);
+
+    engine.collapsePanel("i-msft");
+
+    const [chartAfter, aaplAfter] = cardWidths(["eq-chart", "i-aapl"]);
+
+    expect(aaplAfter).toBe(aaplBefore);
+    expect((chartAfter as number) - (chartBefore as number)).toBeGreaterThan(
+      (msftBefore as number) - 60,
+    );
+
+    engine.expandPanel("i-msft");
+
+    expect(cardWidths(["eq-chart", "i-aapl", "i-msft"])).toEqual([
+      chartBefore,
+      aaplBefore,
+      msftBefore,
+    ]);
+    engine.dispose();
+  });
+
   it("R20 a mark kept for a strip is not paid by an unrelated collapse → expand", () => {
     const engine = createDockEngine({
       ...equitiesAt(1907),

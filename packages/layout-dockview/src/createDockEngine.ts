@@ -2091,6 +2091,78 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Holds every OTHER instance member of `panelId`'s width-axis split at
+   * its current width (min=max) and returns the release. While held, the
+   * width a collapsing instance frees can land only on the split's static
+   * member — the main area — instead of on whichever member dockview's
+   * last-view settle reaches first (Phase-4 follow-up (a): the neighbouring
+   * instance used to balloon until the collapsed one was expanded). Widths
+   * are held as they ARE, never re-shared, so an instance the user dragged
+   * keeps its drag (R20). A no-op — nothing held — when `panelId` is not an
+   * unpinned instance, or when its split has no static member to take the
+   * width (holding every other member would leave it nowhere to go). */
+  function holdOtherInstancesOf(panelId: string): () => void {
+    const split = unpinnedDynamicPanels.has(panelId)
+      ? instanceSplitOf(panelId)
+      : null;
+    const own = groupOf(panelId);
+
+    if (split === null || own === undefined) {
+      return () => {};
+    }
+
+    const along = orientationAgainst(split);
+    const held: GroupAxis[] = [];
+    let staticMembers = 0;
+
+    for (const child of childViewsOf(split)) {
+      const groups = api.groups.filter((group) => {
+        return child.contains(group.element);
+      });
+
+      if (
+        groups.length === 0 ||
+        child.contains(own.element) ||
+        isStripView(groups) ||
+        isPinnedView(child, split)
+      ) {
+        continue;
+      }
+
+      if (designPxOfInstanceChild(groups) === undefined) {
+        staticMembers += 1;
+      } else {
+        held.push(
+          ...groups.map((group) => {
+            return axisOf(group, along);
+          }),
+        );
+      }
+    }
+
+    if (staticMembers === 0) {
+      return () => {};
+    }
+
+    const releases = held.map((axis) => {
+      const minimum = axis.minimum();
+      const maximum = axis.maximum();
+      const size = axis.size();
+
+      axis.constrain(size, size);
+
+      return () => {
+        axis.constrain(minimum, maximum);
+      };
+    });
+
+    return () => {
+      for (const release of releases) {
+        release();
+      }
+    };
+  }
+
   /** `split`'s direct child views, in DOM order — each one a leaf group's
    * view or a nested split's. */
   function childViewsOf(split: Element): readonly Element[] {
@@ -3010,7 +3082,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       if (recordStrip(panelId)) {
-        glide(settleStrips);
+        glide(() => {
+          const release = holdOtherInstancesOf(panelId);
+
+          settleStrips();
+          release();
+        });
       }
     },
     expandPanel: (panelId: string): void => {
@@ -3019,9 +3096,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // shares paid — an unrelated expand (a blotter's height bar) pays none.
       const reclaimedWidthSplit =
         lastStrips[panelId] === "vertical" ? widthSplitAbove(panelId) : null;
+      // The mirror of collapse's hold: the width the instance takes back
+      // comes from the main area that took it, never from a neighbouring
+      // instance (Phase-4 follow-up (a)). Taken BEFORE releaseStrip — the
+      // release puts the group's own minimum back, and the strip growing
+      // from its 32px bar to that minimum already takes width from its
+      // last-view neighbour.
+      const release = holdOtherInstancesOf(panelId);
       const restore = releaseStrip(panelId);
 
       if (restore === null) {
+        release();
+
         return;
       }
 
@@ -3029,6 +3115,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStrips();
         restore();
         settleStripFreeWorlds();
+        release();
         // An expanded panel absorbs again, unlike the strip it just was.
         settlePinAbsorption();
 
