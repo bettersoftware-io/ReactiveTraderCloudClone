@@ -159,6 +159,46 @@ describe("composition — jarvis wiring", () => {
     presenters.jarvis.dispose();
   });
 
+  // commands.reportDetachedPanels is the Dockview bridge's session-only
+  // "these panels live outside the grid" channel; the driver reads it per
+  // command and REFUSES maximize/collapse/expand on a detached panel, which
+  // the transcript then explains. Proves the whole seam: command → registry
+  // → driver → recordDriveOutcome fold, with the layout machine untouched.
+  it("a driven 'layout' maximize on a panel reported detached is refused: the layout machine is untouched and the transcript says why", async () => {
+    const { presenters, commands } = createApp({
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
+      connectionEvents: new ConnectionEventsSimulator(),
+      jarvis: createLayoutDrivingJarvisPort(),
+    });
+
+    commands.reportDetachedPanels("equities", ["eq-chart"]);
+    presenters.jarvis.intents.send("maximize the equities chart");
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    const layout = createMachineFactories(presenters).layout("equities");
+    const layoutState = await firstValueFrom(layout.state$);
+    expect(layoutState.maximized).toBeNull();
+
+    const jarvisState = await firstValueFrom(presenters.jarvis.state$);
+    expect(
+      jarvisState.entries.some((entry) => {
+        return (
+          entry.text ===
+          "can't maximize: eq-chart is floating or popped out — dock it first"
+        );
+      }),
+    ).toBe(true);
+
+    presenters.jarvis.dispose();
+  });
+
   // Task 10 follow-up ruling: jarvisDriver.outcomes$ is wired into
   // jarvis.intents.recordDriveOutcome (composition.ts, right after
   // jarvisDriver is built) — proves the WHOLE seam end to end, not just

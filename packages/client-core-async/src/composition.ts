@@ -87,7 +87,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
   const app: App = {
     ...base,
     presenters: { ...base.presenters, ...nativePresenters(ports) },
-    commands: createCommands(),
+    commands: createCommands(base.commands),
     // Every native member so far is a refCounted Topic: it holds nothing
     // between subscribers, so there is nothing app-scoped to abort. A member
     // that spawns an app-lifetime loop (slice 2's conflation is the first

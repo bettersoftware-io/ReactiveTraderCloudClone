@@ -4,8 +4,11 @@
 Review**, **zizmor**, **OpenSSF Scorecard** — on top of the existing CodeQL /
 Dependabot / Renovate / `pnpm audit` / actionlint layers, and records the
 candidates that were considered and declined (Snyk, SonarCloud, the rest of
-GitHub's starter-workflow catalogue). One finding is knowingly left open and
-tracked: see [Open items](#open-items).
+GitHub's starter-workflow catalogue). Revised the same day: every zizmor ignore
+was subsequently removed (see
+[Revision](#revision-2026-09-19-all-17-ignores-removed--and-what-the-lockfile-exposed))
+— which surfaced 30 advisories in the Vercel CLI's tree. What remains open is in
+[Open items](#open-items).
 
 > Sibling decision records live alongside this one in `docs/adr/`. This ADR is
 > about the **pipeline**, not the product: nothing here touches `packages/`.
@@ -114,7 +117,7 @@ rules**. They were resolved as *classes*, not baselined:
 |---|---|---|
 | `artipacked` | 17 | **Fixed.** Every `actions/checkout` now states `persist-credentials` explicitly: `false` on the 13 jobs that never push, `true` — with a comment saying why — on the 4 that do (gh-pages publishing ×3, the golden-regeneration commit). Verified first that no non-pushing job makes a later git network call. |
 | `dependabot-cooldown` | 1 | **Fixed.** `cooldown: default-days: 7` added. Inert today (version updates are off) but it means re-enabling them can never bypass the cooldown by accident. Cooldown does not apply to security updates. |
-| `adhoc-packages` | 17 | **Ignored inline, with reasons** — 13 permanently, 4 temporarily. See below. |
+| `adhoc-packages` | 17 | First **ignored inline, with reasons** (13 "permanently", 4 temporarily) — then **all 17 fixed and every ignore deleted** later the same day. The "permanent" reasoning below was wrong; it is kept, with its correction directly after it. |
 
 **The `adhoc-packages` call.** The rule flags `npm install -g <pkg>` because
 such installs sit outside any lockfile. It fired on two different things, and
@@ -150,6 +153,68 @@ risks. zizmor found **none** — they were already routed through `env:`.
 local gauntlet run without a token degrades to the offline set. **CI is the
 authoritative run.**
 
+#### Revision (2026-09-19): all 17 ignores removed — and what the lockfile exposed
+
+Asked directly *"are these not fixable?"*, the honest answer turned out to be
+**yes, all of them** — and the claim above that Corepack "*cannot* move under
+the lockfile" was **wrong**. It cannot use *pnpm's* lockfile (it is what
+provisions pnpm), but **npm ships with Node**, so an *npm* lockfile works
+perfectly well. The "permanent false positive" was a fixable finding that had
+been reasoned about instead of tested.
+
+What replaced the 17 lines:
+
+| Was | Now |
+|---|---|
+| `npm install -g corepack@0.35.0 && corepack enable` ×13 workflows + the server `Dockerfile` | `scripts/enable-corepack.sh` → `npm ci` from `scripts/ci-tooling/corepack/package-lock.json` (sha512 integrity), installed **outside** the checkout. One manifest Renovate can bump, instead of 14 hand-edited version strings |
+| `npm install -g vercel@57` ×4 | `scripts/install-vercel.sh` → `npm ci` from `scripts/ci-tooling/vercel/package-lock.json`, lifecycle scripts off |
+
+The manifests live under `scripts/`, not `.github/`, because `.dockerignore`
+excludes `.github` and the server image needs the Corepack one. Both lockfiles
+were generated with `npm install --package-lock-only --before=<24h ago>` — npm
+has no `minimumReleaseAge`, and `--before` is how a hand-made lockfile honours
+the same cooldown.
+
+**What the lockfile exposed.** `npm install -g vercel@57` had been invisible to
+every scanner. Under a lockfile, `npm audit` immediately reported **30 known
+advisories in the CLI's tree — 1 critical (`tar`), 18 high** — all traceable to
+8 root packages that `vercel@57.0.0` exact-pins. Every deploy had been
+installing them. Measured, not assumed:
+
+| CLI version | Packages | Advisories |
+|---|---|---|
+| 57.0.0 (pinned) | 353 | 30 (1 critical, 18 high) |
+| 58.0.0 | 353 | 30 — identical |
+| 59.23.1 (newest outside the cooldown) | 390 | 29 — same 8 roots |
+
+So **upgrading the CLI does not help**; upstream has not fixed them. The fix is
+npm `overrides` in the tooling manifest, each lifting exactly one vulnerable
+package onto its patched line (`tar`, `undici`, `js-yaml`, `minimatch`,
+`path-to-regexp` ×2, `smol-toml`, `ajv`, `@tootallnate/once`) → **`npm audit`:
+0**. Seven are same-major bumps; `undici` 5.x → 6.x is the one major jump (the
+5.x line has no patched release).
+
+Verification, and its limit: an **A/B smoke test** ran a real `vercel build` on
+a small static project with the stock tree and with the overridden tree — both
+exit 0 with identical `.vercel/output`. That exercises the build path. It does
+**not** exercise `vercel pull` / `vercel deploy`, which talk to the network
+through `undici` — only a real Deploy dispatch proves those, and **one did**
+(Open items, 1).
+
+This is the first real catch by the **Dependency Review** gate's logic, too:
+with fail-on-severity `low` on both scopes, a lockfile carrying those 30
+advisories could not have merged. The gate forced the question.
+
+The server image was verified for real, not by reading the Dockerfile: a local
+`docker build` of `packages/server/Dockerfile` succeeds, `pnpm --version` inside
+it reports the pinned 12.4.1 resolved from `/opt/corepack/bin` (there is no
+global Corepack in the image any more), `pnpm install --frozen-lockfile` and the
+server build pass, and the container boots and serves `/health`. That was also
+the first real build against the digest pin from the Scorecard follow-up.
+
+The `curl … | sh` installers went the same way — see
+[First Scorecard run](#first-scorecard-run-2026-09-19).
+
 ### Scorecard — report-only, results kept in-repo
 
 - **Report-only by design.** Several checks cannot score well here for reasons
@@ -170,9 +235,9 @@ added it — nothing had ever scored the repo. Triage, by class:
 |---|---|---|
 | `PinnedDependencies` — `packages/server/Dockerfile` `FROM node:26-slim` | **real** — a tag is mutable | **Fixed**: pinned by multi-arch index digest; Renovate's docker manager keeps it current behind the cooldown |
 | `PinnedDependencies` — `scripts/install-actionlint.sh` (`curl … \| bash`) | **real** — unverified download | **Fixed**: direct tarball + per-platform sha256, same shape as `install-zizmor.sh`. Bumped 1.7.7 → 1.7.12 in passing, which knows `macos-26` natively — so `.github/actionlint.yaml`, a suppression whose own comment asked to be deleted on the next bump, is gone |
-| `PinnedDependencies` — `deploy.yml` flyctl (`curl … \| sh`) | **real** | **Deferred** to the deploy-workflow item in `docs/STATUS.md`: replacing a deploy-path installer can only be proven by a real deploy |
-| `PinnedDependencies` — `ios-visual-spike.yml` Maestro (`curl … \| bash`, ×2) | **real** | **Deferred**, tracked in `docs/STATUS.md`: a dispatch-only macOS spike — only a paid macOS run proves a changed installer |
-| `PinnedDependencies` — 18× `npmCommand`: the 13 + 4 workflow `npm install -g corepack` / `vercel` lines, plus the Dockerfile's corepack line | same lines zizmor's `adhoc-packages` flagged | **No change** — already decided above. Scorecard does not read zizmor's ignore comments and has no notion of "exact pin, zero deps"; dismiss in the UI citing this ADR |
+| `PinnedDependencies` — `deploy.yml` flyctl (`curl … \| sh`) | **real** | First deferred, then **fixed**: `scripts/install-flyctl.sh`, pinned release + per-platform sha256, verified locally end to end. Its header states the trade-off — a pinned CLI can rot when Fly retires old versions; that failure is loud and the fix is one file |
+| `PinnedDependencies` — `ios-visual-spike.yml` Maestro (`curl … \| bash`, ×2) | **real** | First deferred, then **fixed**: `scripts/install-maestro.sh`, pinned `maestro.zip` + sha256, same `~/.maestro` end state as upstream's installer. Pinning also makes the spike's measurements comparable run to run. Side effect: the `probe` job's checkout moved ahead of the installers (they are in-repo scripts now) |
+| `PinnedDependencies` — 18× `npmCommand`: the 13 + 4 workflow `npm install -g corepack` / `vercel` lines, plus the Dockerfile's corepack line | same lines zizmor's `adhoc-packages` flagged | First "no change — already decided", then **fixed**: all 18 replaced by lockfile-based `npm ci` (see the Revision above) |
 | `TokenPermissions` ×4 (high) — the four publishing jobs | **half real**: two of the four (`publish-site.yml`, `update-visual-goldens.yml`) granted `contents: write` at the *workflow* level, not on the job that pushes | **Fixed — and all four closed**, which was **not** what this ADR first predicted. The original text here read "tightened, not cleared: Scorecard still warns on job-level write". The re-score after the fix closed all four, *including the two job-level alerts on `visual.yml` and `coverage-report.yml`, which were never edited*. Likely mechanism (inferred from the outcome, not read from Scorecard's source): alerts are emitted per **check**, only workflow-level write deducts from the Token-Permissions score, and once the check reaches full marks every alert under it closes. Practical rule: grant write on the job, never the workflow |
 | `SecurityPolicy` | **real**, cheap | **Fixed**: root `SECURITY.md` (private vulnerability reporting was already enabled) |
 | `CodeReview`, `Fuzzing`, `CIIBestPractices` | structural — single maintainer, a demo, no fuzz targets | **No change**, as predicted above |
@@ -245,37 +310,40 @@ lighter-weight first try).
   new global install must justify itself. That is the gate working as intended.
 - **The local gauntlet grew to 20 fast gates** (`CLAUDE.md` and
   `.claude/commands/rtc/gauntlet.md` updated together).
-- **Two pins Renovate does not manage**: the zizmor version + its four digests
-  (`scripts/install-zizmor.sh`), same as actionlint's. Bump them together, from
-  the `gh api` command in that script's header.
+- **Four pins Renovate does not manage** — zizmor, actionlint, flyctl, Maestro:
+  each is a `VERSION` plus sha256 digest(s) in its `scripts/install-*.sh`. Bump
+  version and digests together, from the `gh api` command in that script's
+  header. All four share one download-verify-then-run helper
+  (`scripts/lib/fetch-verified.sh`). Corepack and the Vercel CLI, by contrast,
+  **are** Renovate-managed now (ordinary npm manifests + lockfiles).
+- **The `overrides` in `scripts/ci-tooling/vercel/package.json` are debt with an
+  exit**: delete each one when the Vercel CLI ships the patched dependency
+  itself, and re-run `npm audit --package-lock-only` there after any bump.
 
 ## Open items
 
 Tracked in [`docs/STATUS.md`](../STATUS.md):
 
-1. **Move the Vercel CLI under a lockfile** and delete the four temporary
-   `adhoc-packages` ignores. Two shapes: a root devDependency run via
-   `pnpm exec vercel` (simplest, but ~35 direct deps on every install and a knip
-   exemption), or a tiny dedicated manifest + lockfile beside the workflows
-   installed with `npm ci` (no cost to normal installs). Own PR; needs a deploy
-   dispatch to verify — pair it with the existing `vercel@57` unpin item, which
-   edits the same four lines.
+1. ~~Prove the new deploy path with one real Deploy dispatch.~~ **Done
+   2026-09-19** (Deploy run 35449185435, dispatched from the PR branch *before*
+   merge, all three targets): lockfile Corepack, `Vercel CLI 57.0.0` through
+   `pull` → `build` → `deploy` → smoke for both web clients — so the `undici`
+   5 → 6 override works over the network, the one thing the local A/B test
+   could not show — `flyctl v0.4.104` from the pinned installer, Fly's remote
+   build of the digest-pinned, lockfile-Corepack `Dockerfile`, and
+   `/health` → `{"ok":true}` on the live server.
 2. **Decide whether `dependency review` becomes a required check** on the `main`
    ruleset. It is a repo-settings change, so it was deliberately not made by the
    PR that introduced the workflow.
-3. **Replace `deploy.yml`'s `curl -L https://fly.io/install.sh | sh`** with a
-   pinned, verified flyctl install. Rides with item 1: same workflow, same
-   "only a real deploy proves it" constraint. Note the trade-off before picking
-   a shape — the SHA-pinned `superfly/flyctl-actions/setup-flyctl` action
-   satisfies Scorecard but, without a `version:`, still installs *latest* at
-   run time (relocating the finding, as with `pnpm/action-setup` above); a
-   pinned `version:` is honest but needs a Renovate regex manager, because Fly's
-   API retires old CLI versions.
-4. **Replace the two Maestro `curl … | bash` installs** in
-   `ios-visual-spike.yml` with a pinned release download + checksum. Do it the
-   next time that spike is dispatched for its own reasons, so the macOS run
-   that proves it is not spent on this alone.
-5. **Read the `BranchProtection` alert properly** — confirm whether it reflects
-   the real `main` ruleset or only what Scorecard's token could see.
-6. **Decide `publish_results`** — flip to `true` (plus `id-token: write`) only if
+3. **`BranchProtection` — resolved as a *genuine* reading, leaving a policy
+   choice.** The guess recorded earlier (that Scorecard's token could not see
+   the ruleset) was **wrong**: it read `main`'s ruleset correctly. All five
+   warnings describe deliberate settings — four are review requirements
+   (approvers, stale-review dismissal, CODEOWNERS, last-push approval) that a
+   single-maintainer repo cannot satisfy without locking itself out, and the
+   fifth, "up-to-date branches", is `strict_required_status_checks_policy:
+   false`, chosen on purpose to avoid the catch-up treadmill (see the
+   `shipping-repo-changes` skill, Rule 3). Nothing to fix unless that policy
+   changes.
+4. **Decide `publish_results`** — flip to `true` (plus `id-token: write`) only if
    a public Scorecard badge is wanted.

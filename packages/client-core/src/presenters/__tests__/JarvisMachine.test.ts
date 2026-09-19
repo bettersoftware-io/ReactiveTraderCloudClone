@@ -1793,6 +1793,57 @@ describe("createJarvisMachine", () => {
         { id: 1, role: "jarvis", text: "drive: eqTimeframe", done: true },
       ]);
     });
+
+    it("a REFUSED outcome appends a jarvis-role entry saying why — 'can't <op>: <reason>' (the layout op for kind layout, else the kind)", () => {
+      const states = run(
+        (ts) => {
+          return {
+            port: basePort(ts),
+            skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+            setSkin: () => {},
+            ...createBaseBrainDeps(),
+          };
+        },
+        ({ machine, ts }) => {
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: {
+                kind: "layout",
+                op: "collapse",
+                tab: "equities",
+                panelId: "eq-chart",
+              },
+              status: "refused",
+              reason: "eq-chart is floating or popped out — dock it first",
+            });
+          }, 1);
+          ts.schedule(() => {
+            machine.intents.recordDriveOutcome({
+              command: { kind: "dockPanel", panelId: "panel-1" },
+              status: "refused",
+              reason: "not allowed",
+            });
+          }, 2);
+        },
+      );
+
+      const last = states.at(-1);
+      expect(last?.entries).toEqual([
+        { id: 0, role: "jarvis", text: JARVIS_GREETING, done: true },
+        {
+          id: 1,
+          role: "jarvis",
+          text: "can't collapse: eq-chart is floating or popped out — dock it first",
+          done: true,
+        },
+        {
+          id: 2,
+          role: "jarvis",
+          text: "can't dockPanel: not allowed",
+          done: true,
+        },
+      ]);
+    });
   });
 
   // Governance round 2 (usage auto-gating): state.gate + the one-line
