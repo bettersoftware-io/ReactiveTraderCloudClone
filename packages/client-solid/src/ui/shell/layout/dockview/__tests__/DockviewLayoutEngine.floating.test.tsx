@@ -200,8 +200,6 @@ describe("dockview bridge floating wiring", () => {
   });
 });
 
-function noop(): void {}
-
 interface DetachedPanelsReport {
   readonly tab: WorkspaceTab;
   readonly panelIds: readonly PanelId[];
