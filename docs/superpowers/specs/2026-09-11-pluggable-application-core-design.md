@@ -203,7 +203,14 @@ Dev-only, consumed by each core as a devDependency, never from `src`.
   `it` subscribes to the member's `Stream` / `StateStream`, drives the
   scripted ports, advances the clock, asserts on collected values.
   Assertions are envelope-level only: values, ordering, completion, teardown
-  on last unsubscribe, synchronous first value, same-key identity. Never
+  on last unsubscribe, synchronous first value, same-key identity.
+  Only that first value is asserted synchronously; every later value is
+  asserted after the harness's `settle()` (two macrotask turns), because
+  an Effect fiber delivers past the seed on the scheduler, never in the
+  caller's tick, and a suite that asserted in the caller's tick would be
+  pinning RxJS's delivery timing rather than the behaviour (ruling
+  2026-09-18, slice 1a).
+  Never
   `shareReplay`, Subjects or operators. **Shipped mechanism for "every member
   has a suite":** `CONTRACT_SUITES` is an exhaustive
   `Record<ContractMember, Suite | null>` keyed off `keyof Presenters` /

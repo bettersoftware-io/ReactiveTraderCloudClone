@@ -8,6 +8,5 @@ export default defineConfig({
     // core's runner file (packages/<core>/src/composition.coreContract.test.ts),
     // never here.
     include: ["src/**/*.test.ts"],
-    passWithNoTests: true,
   },
 });

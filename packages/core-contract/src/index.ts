@@ -8,6 +8,7 @@ export {
   type ScriptedPorts,
   scriptPorts,
 } from "#/harness/scriptedPorts";
+export { settle } from "#/harness/settle";
 export {
   CONTRACT_SUITES,
   type ContractMember,
