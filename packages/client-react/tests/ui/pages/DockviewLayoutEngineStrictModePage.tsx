@@ -31,6 +31,8 @@ interface DockviewLayoutEngineMountProps {
   /** Pass one explicitly to share it across a mount/rerender pair, or to read
    * back what was saved. */
   store: DockLayoutStore;
+  /** Default `null` — no panel maximized. */
+  maximized?: PanelId | null;
   /** Default `[]` — no panel collapsed to a strip. */
   collapsed?: readonly PanelId[];
   /** Default `[]` — no panel closed from the View menu. */
@@ -134,7 +136,7 @@ export function dockviewLayoutEngineStrictModePage(): DockviewLayoutEngineStrict
         tab="fx"
         registry={props.registry}
         store={props.store}
-        maximized={null}
+        maximized={props.maximized ?? null}
         collapsed={props.collapsed ?? []}
         closed={props.closed ?? []}
         docked={props.docked ?? []}

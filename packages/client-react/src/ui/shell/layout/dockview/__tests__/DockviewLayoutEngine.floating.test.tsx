@@ -81,6 +81,37 @@ describe("dockview bridge floating wiring", () => {
     expect(page.controlDisabled("panel-fx-rates-collapse")).toBe(false);
   });
 
+  // Spec §3.2 / Ruling 32: the float control is HIDDEN while a maximize is
+  // live. Asserted on the MAXIMIZED panel's own head, and only alongside its
+  // maximize control: every other head is a strip during a root maximize and
+  // renders no controls at all, so an absence read there would pass whether
+  // or not the float control was withheld. The maximize control present in
+  // the same head is what proves the head rendered and the float control
+  // specifically is gone.
+  it("hides the float control while a maximize is live, and shows it again after", async () => {
+    const store = new InMemoryDockLayoutStore();
+
+    page.mount({ registry, store });
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("panel-fx-rates-float")).toBe(true);
+    });
+
+    page.rerender({ registry, store, maximized: "fx-rates" });
+
+    await page.waitFor(() => {
+      expect(page.engineAttribute("data-maximized")).toBe("fx-rates");
+    });
+    expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+    expect(page.bodyVisible("panel-fx-rates-float")).toBe(false);
+
+    page.rerender({ registry, store, maximized: null });
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("panel-fx-rates-float")).toBe(true);
+    });
+  });
+
   it("clears floating state when a workspace reset rebuilds the engine", async () => {
     const store = new InMemoryDockLayoutStore();
 

@@ -153,6 +153,11 @@ export function DockviewLayoutEngine(
     };
   }
 
+  // Attached only while no maximize is live (spec §3.2, Ruling 32): a float
+  // while a strip owns the grid has no coherent home, the engine refuses it
+  // (R3), and a control that does nothing is worse than none. Withheld on
+  // EVERY head — a floating panel's "Dock" included, since docking into a
+  // maximize-owned grid lands it in the same incoherent spot.
   function floatOrDockPanel(panelId: PanelId) {
     return () => {
       if (floating().includes(panelId)) {
@@ -647,7 +652,11 @@ export function DockviewLayoutEngine(
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
-                    onFloat={floatOrDockPanel(p.panelId)}
+                    onFloat={
+                      props.maximized === null
+                        ? floatOrDockPanel(p.panelId)
+                        : undefined
+                    }
                     onClose={
                       isOpenInstance(p.panelId)
                         ? closeInstancePanel(p.panelId)
