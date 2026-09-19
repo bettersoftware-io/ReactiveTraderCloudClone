@@ -397,6 +397,58 @@ describe("PreferencesModal", () => {
     expect(ungatedPage.jarvisBrainHintText()).toBeNull();
   });
 
+  it("drops the reset clause from the hint and tooltip while no budget window has started", () => {
+    // resetsAtMs 0 is the meter's "forced gate on a fresh window" sentinel:
+    // no reset time exists yet, so there is nothing to print after "resets".
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"],
+        defaultBrain: "claude-haiku-4-5",
+        gate: {
+          level: "soft",
+          resetsAtMs: 0,
+          gated: ["claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+      jarvisBrain: "claude-haiku-4-5",
+    });
+
+    expect(page.jarvisBrainHintText()).toBe("Budget window active");
+    expect(page.jarvisBrainOptionTitle("claude-sonnet-5")).toBe(
+      "Budget window active",
+    );
+  });
+
+  it("names the running brain when the gate moves the user off their saved one, and disables Effort", () => {
+    // A hard gate removes every real brain, so a saved Haiku preference runs
+    // as scripted until the window resets. The picker keeps the saved choice
+    // highlighted (it resumes afterwards); the hint says what is running,
+    // and Effort is disabled because it has no effect on scripted.
+    const resetsAtMs = 1_754_000_000_000;
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      jarvisAvailability: {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: {
+          level: "hard",
+          resetsAtMs,
+          gated: ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
+        },
+      },
+      jarvisBrain: "claude-haiku-4-5",
+    });
+
+    expect(page.segmentActive("jarvisBrain", "claude-haiku-4-5")).toBe(true);
+    expect(page.jarvisBrainHintText()).toBe(
+      `Budget window — resets ${formatGateResetTime(resetsAtMs)} · Haiku 4.5 paused, using scripted`,
+    );
+    expect(page.jarvisEffortDisabled()).toBe(true);
+  });
+
   it("disables the Effort row entirely when the stored brain is scripted", () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
