@@ -2,18 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { type LockUser, lockScreenPage } from "#tests/pages/LockScreenPage";
 
-const USER: LockUser = {
-  name: "Anthony Stark",
-  initials: "AS",
-  role: "Senior FX Trader",
-  id: "TRD-0042",
-  email: "a.stark@reactivetrader.io",
-  desk: "G10 Spot · London",
-  clearance: "LEVEL 4 · FULL",
-};
-
-const page = lockScreenPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -103,3 +91,15 @@ interface MockedHaptics {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string };
 }
+
+const USER: LockUser = {
+  name: "Anthony Stark",
+  initials: "AS",
+  role: "Senior FX Trader",
+  id: "TRD-0042",
+  email: "a.stark@reactivetrader.io",
+  desk: "G10 Spot · London",
+  clearance: "LEVEL 4 · FULL",
+};
+
+const page = lockScreenPage();

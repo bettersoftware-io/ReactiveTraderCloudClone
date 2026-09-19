@@ -10,22 +10,9 @@ const mockClose = jest.fn();
 // Every props object the library's `BottomSheetBackdrop` was rendered with.
 const mockLibraryBackdropProps: Record<string, unknown>[] = [];
 
-const page = ticketBackdropPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-// The props gorhom hands a `backdropComponent` (`BottomSheet.tsx`: an
-// `animatedIndex`, an `animatedPosition` and `StyleSheet.absoluteFill`). Only
-// the identity of `animatedIndex` is asserted, so the pass-through is proven
-// without this test owning the library's own interpolation.
-const animatedIndex = { value: 0 } as SharedValue<number>;
-const backdropProps: BottomSheetBackdropProps = {
-  animatedIndex,
-  animatedPosition: { value: 0 } as SharedValue<number>,
-  style: undefined,
-};
 
 // The reduced-motion / Freeze arm: a scrim with NO tie to `animatedIndex`, so
 // the `enableDynamicSizing` re-measure cannot move it after the content has
@@ -104,3 +91,17 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = ticketBackdropPage();
+
+// The props gorhom hands a `backdropComponent` (`BottomSheet.tsx`: an
+// `animatedIndex`, an `animatedPosition` and `StyleSheet.absoluteFill`). Only
+// the identity of `animatedIndex` is asserted, so the pass-through is proven
+// without this test owning the library's own interpolation.
+const animatedIndex = { value: 0 } as SharedValue<number>;
+
+const backdropProps: BottomSheetBackdropProps = {
+  animatedIndex,
+  animatedPosition: { value: 0 } as SharedValue<number>,
+  style: undefined,
+};

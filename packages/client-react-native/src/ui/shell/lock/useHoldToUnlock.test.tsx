@@ -6,8 +6,6 @@ import { DECAY_MS, HOLD_MS } from "#/ui/shell/lock/useHoldToUnlock";
 import { holdToUnlockPage } from "#tests/pages/UseHoldToUnlockPage";
 
 const mockMotionEnabled = jest.fn<() => boolean>();
-const page = holdToUnlockPage();
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockMotionEnabled.mockReturnValue(true);
@@ -166,3 +164,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = holdToUnlockPage();

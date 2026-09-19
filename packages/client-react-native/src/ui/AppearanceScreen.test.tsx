@@ -4,8 +4,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { appearanceScreenPage } from "#tests/pages/AppearanceScreenPage";
 
-const page = appearanceScreenPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -527,3 +525,5 @@ function parsePercent(value: unknown): number {
 
   return Number.parseFloat(value);
 }
+
+const page = appearanceScreenPage();

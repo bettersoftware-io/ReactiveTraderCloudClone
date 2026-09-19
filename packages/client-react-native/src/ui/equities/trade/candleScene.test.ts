@@ -6,11 +6,6 @@ import {
   lerpBodyGeometries,
 } from "./candleScene";
 
-const CANDLES = [
-  { time: 1, open: 10, high: 12, low: 9, close: 11, volume: 0 },
-  { time: 2, open: 11, high: 11.5, low: 8, close: 9, volume: 0 },
-];
-
 describe("buildCandleScene", () => {
   test("marks rising and falling bars by close vs open", () => {
     const bars = buildCandleScene(CANDLES, 100, 50, 6);
@@ -107,3 +102,8 @@ describe("lerpBodyGeometries", () => {
     expect(done).toEqual([{ top: 20, height: 30 }]);
   });
 });
+
+const CANDLES = [
+  { time: 1, open: 10, high: 12, low: 9, close: 11, volume: 0 },
+  { time: 2, open: 11, high: 11.5, low: 8, close: 9, volume: 0 },
+];

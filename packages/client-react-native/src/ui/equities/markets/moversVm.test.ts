@@ -2,12 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import { sortMovers, sparklinePoints } from "./moversVm";
 
-const ROWS = [
-  { symbol: "AAPL", name: "Apple Inc", last: 227.17, changePct: -1.06 },
-  { symbol: "TSLA", name: "Tesla Inc", last: 248.67, changePct: 1.13 },
-  { symbol: "NVDA", name: "NVIDIA Corp", last: 131.05, changePct: 0.21 },
-];
-
 describe("sortMovers", () => {
   test("chg sorts by change% descending — the design's default board order", () => {
     expect(
@@ -81,3 +75,9 @@ describe("sparklinePoints", () => {
     expect(sparklinePoints([5], 100, 20)).toEqual([]);
   });
 });
+
+const ROWS = [
+  { symbol: "AAPL", name: "Apple Inc", last: 227.17, changePct: -1.06 },
+  { symbol: "TSLA", name: "Tesla Inc", last: 248.67, changePct: 1.13 },
+  { symbol: "NVDA", name: "NVIDIA Corp", last: 131.05, changePct: 0.21 },
+];

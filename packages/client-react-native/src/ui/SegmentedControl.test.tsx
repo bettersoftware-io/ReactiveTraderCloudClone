@@ -3,16 +3,9 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import type { Segment } from "#/ui/SegmentedControl";
 import { segmentedControlPage } from "#tests/pages/SegmentedControlPage";
 
-const page = segmentedControlPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const SEGMENTS: readonly Segment<Key>[] = [
-  { key: "a", label: "ALPHA" },
-  { key: "b", label: "BRAVO" },
-];
 
 test("names the frame and each segment from the id prefix", async () => {
   await page.mount(SEGMENTS, "a", (): void => {}, "demo");
@@ -35,3 +28,10 @@ test("reports the pressed segment's key", async () => {
 });
 
 type Key = "a" | "b";
+
+const page = segmentedControlPage();
+
+const SEGMENTS: readonly Segment<Key>[] = [
+  { key: "a", label: "ALPHA" },
+  { key: "b", label: "BRAVO" },
+];

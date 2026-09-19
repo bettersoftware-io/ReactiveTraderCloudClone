@@ -4,27 +4,9 @@ import type { CurrencyPairPosition } from "@rtc/domain";
 
 import { exposureBubblesPage } from "#tests/pages/ExposureBubblesPage";
 
-const page = exposureBubblesPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-// EURUSD contributes to EUR (base) and USD (counter); USDJPY to USD and JPY.
-const POSITIONS: readonly CurrencyPairPosition[] = [
-  {
-    symbol: "EURUSD",
-    basePnl: 0,
-    baseTradedAmount: 1_000_000,
-    counterTradedAmount: -1_100_000,
-  },
-  {
-    symbol: "USDJPY",
-    basePnl: 0,
-    baseTradedAmount: 500_000,
-    counterTradedAmount: -55_000_000,
-  },
-];
 
 test("mounts a canvas for a book with positions", async () => {
   await page.mount(POSITIONS);
@@ -76,3 +58,21 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = exposureBubblesPage();
+
+// EURUSD contributes to EUR (base) and USD (counter); USDJPY to USD and JPY.
+const POSITIONS: readonly CurrencyPairPosition[] = [
+  {
+    symbol: "EURUSD",
+    basePnl: 0,
+    baseTradedAmount: 1_000_000,
+    counterTradedAmount: -1_100_000,
+  },
+  {
+    symbol: "USDJPY",
+    basePnl: 0,
+    baseTradedAmount: 500_000,
+    counterTradedAmount: -55_000_000,
+  },
+];

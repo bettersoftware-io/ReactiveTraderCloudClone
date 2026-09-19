@@ -5,10 +5,6 @@ import { Direction, ExecutionStatus, TradeStatus } from "@rtc/domain";
 
 import { executionCeremonyPage } from "#tests/pages/ExecutionCeremonyPage";
 
-const Haptics = require("expo-haptics") as MockedHaptics;
-
-const page = executionCeremonyPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -119,3 +115,7 @@ interface MockedHaptics {
   notificationAsync: jest.Mock;
   NotificationFeedbackType: { Success: string; Error: string };
 }
+
+const Haptics = require("expo-haptics") as MockedHaptics;
+
+const page = executionCeremonyPage();

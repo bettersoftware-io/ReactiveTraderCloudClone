@@ -6,8 +6,6 @@ import { Direction, type Rfq, RfqState } from "@rtc/domain";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { rfqCardPage } from "#tests/pages/RfqCardPage";
 
-const page = rfqCardPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -119,3 +117,5 @@ function rfq(state: RfqState): Rfq {
     creationTimestamp: 0,
   };
 }
+
+const page = rfqCardPage();

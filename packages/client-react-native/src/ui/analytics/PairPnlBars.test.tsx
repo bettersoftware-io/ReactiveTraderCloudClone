@@ -5,13 +5,9 @@ import type { CurrencyPairPosition } from "@rtc/domain";
 import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 import { pairPnlBarsPage } from "#tests/pages/PairPnlBarsPage";
 
-const page = pairPnlBarsPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const THEME: RnTheme = rnThemeTokens.holo.dark;
 
 // The MOBILE prototype's per-pair format (dc.html L950) is the compact `fmtK`
 // — one decimal and an uppercase K from a thousand up, always signed, with a
@@ -86,3 +82,7 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
 function pos(symbol: string, basePnl: number): CurrencyPairPosition {
   return { symbol, basePnl, baseTradedAmount: 0, counterTradedAmount: 0 };
 }
+
+const page = pairPnlBarsPage();
+
+const THEME: RnTheme = rnThemeTokens.holo.dark;

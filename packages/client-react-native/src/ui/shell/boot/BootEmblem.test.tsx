@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { bootEmblemPage } from "#tests/pages/BootEmblemPage";
 
-const page = bootEmblemPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -27,3 +25,5 @@ test("still renders under freeze, with the motion gate reporting disabled", asyn
   await page.mount(true);
   expect(page.exists("boot-emblem")).toBe(true);
 });
+
+const page = bootEmblemPage();

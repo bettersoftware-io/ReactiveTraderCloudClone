@@ -3,8 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { sheetSwitchPage } from "#tests/pages/SheetSwitchPage";
 
-const page = sheetSwitchPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -69,3 +67,5 @@ test("the knob has no transform, so a freeze capture is never mid-travel", async
   const knob = page.knobStyle();
   expect(knob.transform).toBeUndefined();
 });
+
+const page = sheetSwitchPage();

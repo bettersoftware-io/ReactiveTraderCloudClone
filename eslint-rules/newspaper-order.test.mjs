@@ -86,21 +86,7 @@ const AFTER = 1;
 `,
     },
     {
-      name: "fixtures option OFF (the default): a const above the tests is left alone",
-      code: `import { describe, it, expect } from "vitest";
-
-const FIXTURE = { a: 1 };
-
-describe("x", () => {
-  it("works", () => {
-    expect(FIXTURE.a).toBe(1);
-  });
-});
-`,
-    },
-    {
-      name: "fixtures ON: a const referenced in a DESCRIBE BODY runs at collection time — not movable",
-      options: [{ fixtures: true }],
+      name: "fixture: a const referenced in a DESCRIBE BODY runs at collection time — not movable",
       code: `import { describe, it, expect } from "vitest";
 
 const CASES = [1, 2];
@@ -115,8 +101,7 @@ describe("x", () => {
 `,
     },
     {
-      name: "fixtures ON: a const reached through a helper the DESCRIBE BODY calls is not movable",
-      options: [{ fixtures: true }],
+      name: "fixture: a const reached through a helper the DESCRIBE BODY calls is not movable",
       code: `import { describe, it, expect } from "vitest";
 
 const SEED = { a: 1 };
@@ -134,8 +119,7 @@ function build() {
 `,
     },
     {
-      name: "fixtures ON: a const reached through a helper CALLED at module level is not movable",
-      options: [{ fixtures: true }],
+      name: "fixture: a const reached through a helper CALLED at module level is not movable",
       code: `import { describe, it, expect } from "vitest";
 
 const SEED = { a: 1 };
@@ -154,8 +138,7 @@ function build() {
 `,
     },
     {
-      name: "fixtures ON: a vi.hoisted const stays put",
-      options: [{ fixtures: true }],
+      name: "fixture: a vi.hoisted const stays put",
       code: `import { describe, it, expect, vi } from "vitest";
 
 const captured = vi.hoisted(() => {
@@ -171,7 +154,6 @@ describe("x", () => {
     },
     {
       name: "fixture GROUP: a fixture feeding a BLOCKED fixture is blocked too",
-      options: [{ fixtures: true }],
       code: `import { describe, it, expect } from "vitest";
 
 const inner = { a: 1 };
@@ -206,7 +188,6 @@ describe("x", () => {
     },
     {
       name: "describe scope: a block-scoped const a NESTED describe reads is not movable",
-      options: [{ fixtures: true }],
       code: `import { describe, it, expect } from "vitest";
 
 describe("outer", () => {
@@ -219,6 +200,23 @@ describe("outer", () => {
       });
     }
   });
+});
+`,
+    },
+    {
+      name: "fixture: a fixture a vi.mock factory closes over stays put",
+      code: `import { describe, it, expect, vi } from "vitest";
+
+const mockValue = { a: 1 };
+
+describe("x", () => {
+  it("works", () => {
+    expect(mockValue.a).toBe(1);
+  });
+});
+
+vi.mock("./dep", () => {
+  return { value: mockValue };
 });
 `,
     },
@@ -409,8 +407,7 @@ function b() {
       errors: [{ messageId: "moveDown", data: { count: "2" } }],
     },
     {
-      name: "fixtures ON: a const referenced only inside it() is moved to the bottom",
-      options: [{ fixtures: true }],
+      name: "a const referenced only inside it() is moved to the bottom — by default, no option",
       code: `import { describe, it, expect } from "vitest";
 
 const FIXTURE = { a: 1 };
@@ -434,8 +431,7 @@ const FIXTURE = { a: 1 };
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },
     {
-      name: "fixtures ON: a let referenced only inside a hook callback is moved down",
-      options: [{ fixtures: true }],
+      name: "fixture: a let referenced only inside a hook callback is moved down",
       code: `import { describe, it, afterEach, expect } from "vitest";
 
 let attached = [];
@@ -467,8 +463,7 @@ let attached = [];
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },
     {
-      name: "fixtures ON: a const and a function above the tests both move, order preserved",
-      options: [{ fixtures: true }],
+      name: "fixture: a const and a function above the tests both move, order preserved",
       code: `import { describe, it, expect } from "vitest";
 
 const FIXTURE = { a: 1 };
@@ -500,8 +495,7 @@ function helper() {
       errors: [{ messageId: "moveDown", data: { count: "2" } }],
     },
     {
-      name: "fixtures ON: a const reached through a helper only it() calls IS movable (transitive)",
-      options: [{ fixtures: true }],
+      name: "fixture: a const reached through a helper only it() calls IS movable (transitive)",
       code: `import { describe, it, expect } from "vitest";
 
 const SEED = { a: 1 };
@@ -534,7 +528,6 @@ const SEED = { a: 1 };
     },
     {
       name: "fixture GROUP: a fixture reached only through another MOVING fixture moves with it",
-      options: [{ fixtures: true }],
       code: `import { describe, it, expect } from "vitest";
 
 const user = { name: "Demo" };
@@ -591,7 +584,6 @@ describe("x", () => {
     },
     {
       name: "describe scope: a block-scoped fixture read only inside it() moves down",
-      options: [{ fixtures: true }],
       code: `import { describe, it, expect } from "vitest";
 
 describe("x", () => {
@@ -616,7 +608,6 @@ describe("x", () => {
     },
     {
       name: "fixture GROUP: a fixture read by an ALREADY-BELOW fixture lands just above it",
-      options: [{ fixtures: true }],
       code: `import { describe, it, expect } from "vitest";
 
 const user = { name: "Demo" };
@@ -640,6 +631,38 @@ describe("x", () => {
 const user = { name: "Demo" };
 
 const session = { user, token: "t" };
+`,
+      errors: [{ messageId: "moveDown", data: { count: "1" } }],
+    },
+    {
+      name: "fixture: a fixture a jest.mock FACTORY closes over stays put (factories are hoisted above imports)",
+      code: `import { describe, it, expect } from "@jest/globals";
+
+const mockValue = { a: 1 };
+
+jest.mock("./dep", () => {
+  return { value: mockValue };
+});
+
+describe("x", () => {
+  it("works", () => {
+    expect(mockValue.a).toBe(1);
+  });
+});
+`,
+      output: `import { describe, it, expect } from "@jest/globals";
+
+const mockValue = { a: 1 };
+
+describe("x", () => {
+  it("works", () => {
+    expect(mockValue.a).toBe(1);
+  });
+});
+
+jest.mock("./dep", () => {
+  return { value: mockValue };
+});
 `,
       errors: [{ messageId: "moveDown", data: { count: "1" } }],
     },

@@ -4,8 +4,6 @@ import { laserScenePage } from "#tests/pages/LaserScenePage";
 
 import { CORNER_TICK_OPACITY, LASER_PANELS } from "./laserGeometry";
 
-const page = laserScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -120,3 +118,5 @@ test("survives elapsedSec sweeping across the whole boot timeline without throwi
   expect(await page.opacityValueOf(lastFlashId)).toBe(0);
   expect(await page.opacityValueOf(lastTicksId)).toBe(CORNER_TICK_OPACITY);
 });
+
+const page = laserScenePage();

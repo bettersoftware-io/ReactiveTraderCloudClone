@@ -5,8 +5,6 @@ import type { Candle } from "@rtc/domain";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { candleChartPage } from "#tests/pages/CandleChartPage";
 
-const page = candleChartPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -48,3 +46,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = candleChartPage();

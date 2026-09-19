@@ -3,15 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { moversRowPage } from "#tests/pages/MoversRowPage";
 
-const ROW = {
-  symbol: "TSLA",
-  name: "Tesla Inc",
-  last: 248.67,
-  changePct: 1.13,
-};
-
-const page = moversRowPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -61,3 +52,12 @@ test("flat skins render no gradient tile surface", async () => {
   await page.mount(ROW, 1, (): void => {});
   expect(page.exists("surface-sheen")).toBe(false);
 });
+
+const ROW = {
+  symbol: "TSLA",
+  name: "Tesla Inc",
+  last: 248.67,
+  changePct: 1.13,
+};
+
+const page = moversRowPage();

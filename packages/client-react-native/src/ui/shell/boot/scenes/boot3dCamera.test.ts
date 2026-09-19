@@ -6,25 +6,6 @@ import {
   projectBootPoint,
 } from "./boot3dCamera";
 
-const UNCLAMPED = bootCameraParams({
-  yaw: 0,
-  pitch: 0,
-  perspectiveK: 0.26,
-  centerX: 200,
-  centerY: 400,
-  projScale: 100,
-});
-
-const CLAMPED = bootCameraParams({
-  yaw: 0,
-  pitch: 0,
-  perspectiveK: 0.24,
-  minPerspectiveDenom: 0.4,
-  centerX: 200,
-  centerY: 400,
-  projScale: 100,
-});
-
 test("a point at the origin lands exactly on the camera centre", () => {
   const p = projectBootPoint(0, 0, 0, UNCLAMPED);
 
@@ -98,4 +79,23 @@ test("a zero drift axis stays zero rather than falling back", () => {
 
   expect(partial.yaw).toBe(0);
   expect(partial.pitch).toBeCloseTo(0.3);
+});
+
+const UNCLAMPED = bootCameraParams({
+  yaw: 0,
+  pitch: 0,
+  perspectiveK: 0.26,
+  centerX: 200,
+  centerY: 400,
+  projScale: 100,
+});
+
+const CLAMPED = bootCameraParams({
+  yaw: 0,
+  pitch: 0,
+  perspectiveK: 0.24,
+  minPerspectiveDenom: 0.4,
+  centerX: 200,
+  centerY: 400,
+  projScale: 100,
 });

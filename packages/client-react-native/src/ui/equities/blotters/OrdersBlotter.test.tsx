@@ -5,8 +5,6 @@ import type { EquityOrder } from "@rtc/domain";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { ordersBlotterPage } from "#tests/pages/OrdersBlotterPage";
 
-const page = ordersBlotterPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -185,3 +183,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = ordersBlotterPage();

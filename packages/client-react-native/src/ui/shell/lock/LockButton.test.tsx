@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { lockButtonPage } from "#tests/pages/LockButtonPage";
 
-const page = lockButtonPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -14,3 +12,5 @@ test("press locks the session", async () => {
   await page.press();
   expect(lock).toHaveBeenCalledTimes(1);
 });
+
+const page = lockButtonPage();

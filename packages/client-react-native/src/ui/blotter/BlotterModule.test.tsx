@@ -8,40 +8,9 @@ const mockTrades = jest.fn();
 const mockNewTradeIds = jest.fn();
 const mockActivity = jest.fn();
 
-const page = blotterModulePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const DONE_TRADE: Trade = {
-  tradeId: 1,
-  tradeName: "Trade 1",
-  currencyPair: "EURUSD",
-  notional: 1_000_000,
-  dealtCurrency: "EUR",
-  direction: Direction.Buy,
-  spotRate: 1.53818,
-  status: TradeStatus.Done,
-  tradeDate: "2026-07-01",
-  valueDate: "2026-07-03",
-};
-
-const PENDING_TRADE: Trade = {
-  ...DONE_TRADE,
-  tradeId: 2,
-  direction: Direction.Sell,
-  status: TradeStatus.Pending,
-};
-
-const REJECTED_TRADE: Trade = {
-  ...DONE_TRADE,
-  tradeId: 3,
-  direction: Direction.Buy,
-  status: TradeStatus.Rejected,
-};
-
-const ALL_TRADES: Trade[] = [DONE_TRADE, PENDING_TRADE, REJECTED_TRADE];
 
 test("renders a row per trade", async () => {
   mockTrades.mockReturnValue(ALL_TRADES);
@@ -124,3 +93,34 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   }; // static in tests — no reanimated layout
 });
+
+const page = blotterModulePage();
+
+const DONE_TRADE: Trade = {
+  tradeId: 1,
+  tradeName: "Trade 1",
+  currencyPair: "EURUSD",
+  notional: 1_000_000,
+  dealtCurrency: "EUR",
+  direction: Direction.Buy,
+  spotRate: 1.53818,
+  status: TradeStatus.Done,
+  tradeDate: "2026-07-01",
+  valueDate: "2026-07-03",
+};
+
+const PENDING_TRADE: Trade = {
+  ...DONE_TRADE,
+  tradeId: 2,
+  direction: Direction.Sell,
+  status: TradeStatus.Pending,
+};
+
+const REJECTED_TRADE: Trade = {
+  ...DONE_TRADE,
+  tradeId: 3,
+  direction: Direction.Buy,
+  status: TradeStatus.Rejected,
+};
+
+const ALL_TRADES: Trade[] = [DONE_TRADE, PENDING_TRADE, REJECTED_TRADE];

@@ -2,9 +2,6 @@ import { expect, test } from "@jest/globals";
 
 import { rankMoveGlidePage } from "#tests/pages/UseRankMoveGlidePage";
 
-const RISE_COLOR = "#2bffb3";
-const FALL_COLOR = "#ff5d73";
-
 test("tints the overlay by direction — rise green, fall red, never the other way", async () => {
   const page = rankMoveGlidePage();
   await page.mount(2, RISE_COLOR, FALL_COLOR, true);
@@ -35,3 +32,7 @@ test("tints the overlay by direction — rise green, fall red, never the other w
 
   await page.unmountAll();
 });
+
+const RISE_COLOR = "#2bffb3";
+
+const FALL_COLOR = "#ff5d73";

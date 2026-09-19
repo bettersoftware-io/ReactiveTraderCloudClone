@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { dockingScenePage } from "#tests/pages/DockingScenePage";
 
-const page = dockingScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -46,3 +44,5 @@ test("survives elapsedSec sweeping across every status threshold without throwin
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = dockingScenePage();

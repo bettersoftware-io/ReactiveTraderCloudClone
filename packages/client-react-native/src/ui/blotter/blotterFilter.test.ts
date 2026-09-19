@@ -10,13 +10,6 @@ import {
   summarize,
 } from "./blotterFilter";
 
-const trades = [
-  trade(1, TradeStatus.Done, Direction.Buy),
-  trade(2, TradeStatus.Rejected, Direction.Sell),
-  trade(3, TradeStatus.Pending, Direction.Buy),
-  trade(4, TradeStatus.Done, Direction.Sell),
-];
-
 describe("filterTrades", () => {
   it("passes everything through for ALL", () => {
     expect(filterTrades(trades, "ALL")).toHaveLength(4);
@@ -85,3 +78,10 @@ function trade(
     valueDate: "2026-07-22",
   };
 }
+
+const trades = [
+  trade(1, TradeStatus.Done, Direction.Buy),
+  trade(2, TradeStatus.Rejected, Direction.Sell),
+  trade(3, TradeStatus.Pending, Direction.Buy),
+  trade(4, TradeStatus.Done, Direction.Sell),
+];

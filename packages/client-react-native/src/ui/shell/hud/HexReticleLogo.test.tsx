@@ -4,8 +4,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 import { hexReticleLogoPage } from "#tests/pages/HexReticleLogoPage";
 
 const mockMotion = jest.fn<() => boolean>();
-const page = hexReticleLogoPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -37,3 +35,5 @@ jest.mock("#/ui/theme/useTheme", () => {
     },
   };
 });
+
+const page = hexReticleLogoPage();

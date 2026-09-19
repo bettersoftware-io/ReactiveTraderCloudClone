@@ -20,16 +20,6 @@ import { Text } from "react-native";
 
 import { bottomSheetModalProviderRequirementPage } from "#tests/pages/BottomSheetModalProviderRequirementPage";
 
-// `jest.requireActual` bypasses the package-wide `__mocks__/@gorhom/
-// bottom-sheet.tsx` double directly — no `jest.unmock` call needed, unlike a
-// plain `import`/`require` of the same module, which the double would still
-// intercept.
-const real = jest.requireActual(
-  "@gorhom/bottom-sheet",
-) as typeof import("@gorhom/bottom-sheet");
-
-const page = bottomSheetModalProviderRequirementPage();
-
 test("the REAL BottomSheetModal throws 'BottomSheetModalInternalContext cannot be null' with no provider ancestor — the exact crash AppearanceOverlay hit on the shell/appearance route", async () => {
   const onError = jest.fn();
   // React's default (uncaught-by-an-app-boundary) error reporter logs the
@@ -68,3 +58,13 @@ test("the REAL BottomSheetModal does NOT throw once wrapped in a BottomSheetModa
 
   expect(onError).not.toHaveBeenCalled();
 });
+
+// `jest.requireActual` bypasses the package-wide `__mocks__/@gorhom/
+// bottom-sheet.tsx` double directly — no `jest.unmock` call needed, unlike a
+// plain `import`/`require` of the same module, which the double would still
+// intercept.
+const real = jest.requireActual(
+  "@gorhom/bottom-sheet",
+) as typeof import("@gorhom/bottom-sheet");
+
+const page = bottomSheetModalProviderRequirementPage();

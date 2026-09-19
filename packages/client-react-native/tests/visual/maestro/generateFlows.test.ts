@@ -7,8 +7,6 @@ import { describe, expect, it } from "vitest";
 import { SCENARIO_IDS } from "../scenarioIds";
 import { flowYaml } from "./generateFlows";
 
-const FLOWS_DIR = join(dirname(fileURLToPath(import.meta.url)), "flows");
-
 describe("flowYaml", () => {
   it("emits a two-step dev-client flow that screenshots the scenario", () => {
     const yaml = flowYaml("blotter/seeded");
@@ -77,3 +75,5 @@ describe("committed flows", () => {
 function flowFileName(scenarioId: string): string {
   return `${scenarioId.replace(/\//g, "_")}.yaml`;
 }
+
+const FLOWS_DIR = join(dirname(fileURLToPath(import.meta.url)), "flows");

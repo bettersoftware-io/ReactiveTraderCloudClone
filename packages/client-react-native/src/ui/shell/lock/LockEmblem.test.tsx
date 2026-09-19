@@ -4,8 +4,6 @@ import * as Reanimated from "react-native-reanimated";
 import { lockEmblemPage } from "#tests/pages/LockEmblemPage";
 
 const mockMotionEnabled = jest.fn<() => boolean>();
-const page = lockEmblemPage();
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockMotionEnabled.mockReturnValue(true);
@@ -43,3 +41,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = lockEmblemPage();

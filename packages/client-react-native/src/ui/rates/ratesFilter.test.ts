@@ -4,8 +4,6 @@ import type { CurrencyPair } from "@rtc/domain";
 
 import { filterPairs, RATE_FILTERS } from "./ratesFilter";
 
-const pairs = [pair("EURUSD"), pair("USDJPY"), pair("GBPUSD"), pair("EURJPY")];
-
 describe("filterPairs", () => {
   it("returns all pairs for ALL", () => {
     expect(filterPairs(pairs, "ALL")).toHaveLength(4);
@@ -41,3 +39,5 @@ function pair(symbol: string): CurrencyPair {
     typicalSpreadPips: 1,
   };
 }
+
+const pairs = [pair("EURUSD"), pair("USDJPY"), pair("GBPUSD"), pair("EURJPY")];

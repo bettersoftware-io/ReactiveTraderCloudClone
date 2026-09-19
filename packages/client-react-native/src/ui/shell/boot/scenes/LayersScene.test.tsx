@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { layersScenePage } from "#tests/pages/LayersScenePage";
 
-const page = layersScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -73,3 +71,5 @@ test("survives a full inspection cycle across all six pullable layers", async ()
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = layersScenePage();

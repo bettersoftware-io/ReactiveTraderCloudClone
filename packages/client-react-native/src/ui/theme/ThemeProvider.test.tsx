@@ -4,8 +4,6 @@ import { afterEach, expect, test } from "@jest/globals";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { themeProviderPage } from "#tests/pages/ThemeProviderPage";
 
-const page = themeProviderPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -30,3 +28,5 @@ test("fills the platform system monospace for the classic skin", async () => {
   expect(typeof mono).toBe("string");
   expect((mono as string).length).toBeGreaterThan(0);
 });
+
+const page = themeProviderPage();
