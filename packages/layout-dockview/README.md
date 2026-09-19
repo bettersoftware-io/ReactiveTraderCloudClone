@@ -209,6 +209,79 @@ While popped, the head's collapse/maximize (and the ↗ control itself)
 render disabled — geometry intents have no meaning for a group parked in
 another document.
 
+## Floating groups (Phase 6a)
+
+A float is a group lifted out of the grid into a draggable, resizable box
+that stays visible over it. Two entry points create one, both deliberately
+kept live: the head's own `Float <title>` / `Dock <title>` control
+(`floatPanel` / `dockPanel`), and dockview's native shift-drag gesture —
+`disableFloatingGroups` stays unset because drag-to-float and drag-to-dock
+are dockview's own gestures, not a deviation this engine suppresses.
+Dock-home resolves through the same `seedAnchorFor` helper `reopenPanel`
+already uses — the nearest GRID-resident seed sibling — falling back, for a
+dynamic panel (a chart instance has no seed slot by construction) or a
+panel whose every seed sibling is itself closed, floating or popped, to the
+root's right edge, exactly where `insertDynamicPanel` opens one.
+
+The design's §3.2 rules reduce to one predicate, `isInGrid` (keyed on
+`group.api.location.type`, never a DOM class — a float's own private nested
+gridview wrapper reuses the grid's `.dv-split-view-container` class, Task
+1's Q2):
+
+| Rule | Refuses / does | Enforced in |
+|---|---|---|
+| R1 | Collapse refused on a floating panel — a strip has no slot or home for it | `collapsePanel` |
+| R2 | Maximize refused on a floating panel — no space to claim, no home to restore | `maximizePanel` |
+| R3 | Float refused (head control) while a maximize is live — no coherent home to return to | `floatPanel` |
+| R4 | Float refused (shift-drag) while a maximize is live — mirrors R3 for the gesture | `cancelRefusedShiftFloat` |
+| R5 | Floating suspends a design pin (min=max) on its own record list; docking home re-clamps it if it still applies | `suspendPinsFor` / `clampPinsFloatSuspendedFor` |
+| R6 | A floating chart instance leaves the equal-share rule | `instanceSplitOf` |
+| R7 | DOM containment is not grid membership — a float sits inside this engine's own container, so `boundary.contains` is true for it; every `api.groups` walk filters explicitly | `isInGrid` call sites |
+| R8 | Float refused (both entry points) for a collapsed panel — a strip and a float are mutually exclusive states | `floatPanel` / `cancelRefusedShiftFloat` |
+
+R4/R8's shift-drag veto is **not** dockview's `onWillDragGroup`: measured
+against the 8.3.1 bundle, that hook fires from an HTML5 `dragstart`, and the
+shift-drag gesture's own `pointerdown` handler calls `event.preventDefault()`
+before `dragstart` would ever fire — subscribing to the hook would never see
+a float. The only reachable veto is a capture-phase `pointerdown` listener
+on this engine's own container, ahead of dockview's target-phase handlers,
+scoped to a group `isInGrid` is true for — on an ALREADY-floating group the
+identical shift-pointerdown is dockview's own **redock** gesture
+(`VoidContainer.isFloatingMoveHandle`), and vetoing it there would break
+dragging a float home.
+
+**Persistence.** Unlike a pop-out (session-scoped, engine-owned state that
+never reaches the blob), a float persists: `toJSON()` emits `floatingGroups`
+and a fresh engine's `fromJSON()` restores `location.type === "floating"`
+for free. `loadBlobOrSeed`'s retry ladder is **cumulative** — each rung
+retries on the OUTPUT of the rung above it, never the original blob —
+`"blob"` → `"blob-without-floats"` → `"blob-without-dynamic"` → `"seed"`, so
+a tier's name implies every scrub above it already ran; a blob damaged two
+ways at once reports the last and most severe scrub, never a combined
+label. `withoutFloatingGroups` is a **load-time retry only**, deliberately
+absent from the save path — a live float is always saved as one, never
+pre-emptively dropped.
+
+**Known limitations:**
+
+- **A float wears a 60px stacked header.** dockview's default
+  `floatingGroupDragHandle: "titlebar"` renders its own 22px drag rail above
+  this engine's 38px panel head. Dropping the rail via
+  `floatingGroupDragHandle: "tabbar"` was measured and declined: under this
+  engine's `singleTabMode: "fullwidth"`, that mode leaves a single-panel
+  float's tab-bar void with `flex-grow: 0` — no draggable surface at all,
+  and every float `floatPanel` produces is single-panel. The rail and its
+  matching `dockview-hud.css` chrome ship as an accepted cosmetic deviation.
+- **Floating a panel and reloading within ~250ms can lose the float.**
+  Every layout write is debounced 250ms before it reaches storage; this is
+  not float-specific — every layout mutation (drag, stack, close, resize)
+  rides the same debounce.
+- **A damaged saved float does not re-dock — it disappears.** When the
+  loader falls back to `"blob-without-floats"`, the floated panel is ABSENT
+  from the restored layout rather than re-docked: dockview never
+  instantiates an unreferenced `panels` entry. The user reopens it from the
+  View menu.
+
 ## Instances consume the dynamic-panel API (Phase 4)
 
 Multi-instance equities charts (one `eq-chart:<symbol>` panel per open

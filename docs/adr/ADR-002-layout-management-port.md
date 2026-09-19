@@ -938,6 +938,25 @@ open-chart button) and then opening a chart makes the new chart arrive as a
 strip until the maximize is exited. The engine fix is deferred to
 `createDockEngine.ts`.
 
+**Phase 6a (floating groups) built 2026-09-19, in review** — floating groups
+move from *reachable* (shift-drag has always worked, unscrubbed) to
+*intentional and survivable*: a head control (`Float <title>` / `Dock
+<title>`) joins the kept shift-drag gesture, both governed by one
+`isInGrid` predicate and eight interplay rules (collapse/maximize refused on
+a float; float refused during a live maximize or for a collapsed panel, on
+both entry points; a design pin suspends on float and re-clamps on
+dock-home; a floating chart instance leaves the equal-share rule; DOM
+containment is not grid membership, so every `api.groups` walk needs an
+explicit filter) — see the
+[layout-dockview README's floating-groups section](../../packages/layout-dockview/README.md#floating-groups-phase-6a)
+for the full table and the known limitations (a 60px stacked header, a
+250ms float-then-reload race, a damaged float that disappears rather than
+re-docking). Floats persist (`floatingGroups` in the blob), unlike a
+pop-out's session-scoped state. **This does not change the engine-parity
+gate's scope**: floats are Dockview-only arrangement, outside the
+shared/seed-derivable subset the gate freezes on, exactly like pop-outs and
+instances before them. Phase 6b (layout presets) remains.
+
 ## References
 
 - **GenUI L3 spec (2026-08-11)** — the round that triggered this rewrite and
