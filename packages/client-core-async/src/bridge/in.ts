@@ -1,4 +1,6 @@
-import { firstValueFrom, type Observable } from "rxjs";
+import { firstValueFrom, type Observable, take } from "rxjs";
+
+import { createTopic, type Topic } from "#/kernel/topic";
 
 /** A source error, boxed so `null` reads as "no error" rather than being
  * confusable with an error value of `null`. */
@@ -93,4 +95,71 @@ export async function* iterate<T>(
     signal.removeEventListener("abort", endIteration);
     subscription.unsubscribe();
   }
+}
+
+/** Push an Observable into a callback, synchronously per emission, until
+ * `signal` aborts. Resolves on abort or on source completion, rejects on a
+ * source error. The synchronous twin of `iterate`: a replay-current port
+ * (BehaviorSubject-backed) emits DURING `subscribe`, and `relay` hands that
+ * emission on in the same tick — the warmth a `for await` cannot give, since
+ * it resumes a microtask later. Use it for hot ports a Topic mirrors; keep
+ * `iterate` for sources a consumer wants to pull at its own pace. */
+export function relay<T>(
+  source: Observable<T>,
+  signal: AbortSignal,
+  next: (value: T) => void,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    const subscription = source.subscribe({
+      next,
+      error: reject,
+      complete: resolve,
+    });
+
+    signal.addEventListener(
+      "abort",
+      () => {
+        subscription.unsubscribe();
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
+/** The current value of a replay-current Observable, read synchronously —
+ * what `cycle()` needs (advance from the TRUE stored value, never a stale
+ * closure). A source that does not emit during `subscribe` yields
+ * `fallback`; the subscription is released before this returns, so nothing
+ * is left warm. A source that errors — synchronously or later — never
+ * surfaces that error here: `peek` yields `fallback` (or the last value
+ * seen before the error) and rxjs reports the error asynchronously as an
+ * unhandled error, since this subscription passes no `error` handler. */
+export function peek<T>(source: Observable<T>, fallback: T): T {
+  let value = fallback;
+  source
+    .pipe(take(1))
+    .subscribe((current) => {
+      value = current;
+    })
+    .unsubscribe();
+  return value;
+}
+
+/** A hot port Observable as a replay-1, refCounted Topic: the port is
+ * subscribed on the topic's first subscriber and released on its last — the
+ * RxJS core's `port$().pipe(shareReplay({ bufferSize: 1, refCount: true }))`,
+ * as a Topic whose whole producer is one `relay`. */
+export function topicFromObservable<T>(source: Observable<T>): Topic<T> {
+  return createTopic<T>(
+    (signal, publish) => {
+      return relay(source, signal, publish);
+    },
+    { replay: true },
+  );
 }

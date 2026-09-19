@@ -3,8 +3,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { shellTelemetryPage } from "#tests/pages/UseShellTelemetryPage";
 
-const page = shellTelemetryPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -40,3 +38,5 @@ jest.mock("react-native-reanimated", () => {
     },
   };
 });
+
+const page = shellTelemetryPage();

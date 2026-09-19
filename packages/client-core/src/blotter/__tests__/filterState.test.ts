@@ -6,12 +6,12 @@ import { applyFilters, type ColumnFilter } from "../filterState";
 
 describe("applyFilters — no filters", () => {
   it("returns all trades when no column filter and empty quick filter", () => {
-    const trades = [trade({ tradeId: 1 }), trade({ tradeId: 2 })];
+    const trades = [createTrade({ tradeId: 1 }), createTrade({ tradeId: 2 })];
     expect(applyFilters(trades, new Map(), "")).toEqual(trades);
   });
 
   it("ignores a whitespace-only quick filter", () => {
-    const trades = [trade({ tradeId: 1 })];
+    const trades = [createTrade({ tradeId: 1 })];
     expect(applyFilters(trades, new Map(), "   ")).toEqual(trades);
   });
 });
@@ -19,9 +19,9 @@ describe("applyFilters — no filters", () => {
 describe("applyFilters — set filter", () => {
   it("keeps only trades whose value is in the selected set", () => {
     const trades = [
-      trade({ tradeId: 1, currencyPair: "EURUSD" }),
-      trade({ tradeId: 2, currencyPair: "USDJPY" }),
-      trade({ tradeId: 3, currencyPair: "GBPUSD" }),
+      createTrade({ tradeId: 1, currencyPair: "EURUSD" }),
+      createTrade({ tradeId: 2, currencyPair: "USDJPY" }),
+      createTrade({ tradeId: 3, currencyPair: "GBPUSD" }),
     ];
 
     const f = filters({
@@ -107,7 +107,11 @@ describe("applyFilters — number filter comparators", () => {
 
   it("passes through trades whose target field is not numeric", () => {
     // currencyPair is a string; a number filter on it cannot apply, so all pass.
-    const strTrades = [trade({ tradeId: 1 }), trade({ tradeId: 2 })];
+    const strTrades = [
+      createTrade({ tradeId: 1 }),
+      createTrade({ tradeId: 2 }),
+    ];
+
     const f = filters({
       type: "number",
       column: "currencyPair",
@@ -122,9 +126,9 @@ describe("applyFilters — number filter comparators", () => {
   });
 
   const trades = [
-    trade({ tradeId: 1, notional: 100 }),
-    trade({ tradeId: 2, notional: 200 }),
-    trade({ tradeId: 3, notional: 300 }),
+    createTrade({ tradeId: 1, notional: 100 }),
+    createTrade({ tradeId: 2, notional: 200 }),
+    createTrade({ tradeId: 3, notional: 300 }),
   ];
 
   function run(filter: ColumnFilter): number[] {
@@ -218,9 +222,9 @@ describe("applyFilters — date filter comparators", () => {
   });
 
   const trades = [
-    trade({ tradeId: 1, tradeDate: "2026-01-01" }),
-    trade({ tradeId: 2, tradeDate: "2026-02-01" }),
-    trade({ tradeId: 3, tradeDate: "2026-03-01" }),
+    createTrade({ tradeId: 1, tradeDate: "2026-01-01" }),
+    createTrade({ tradeId: 2, tradeDate: "2026-02-01" }),
+    createTrade({ tradeId: 3, tradeDate: "2026-03-01" }),
   ];
 
   function run(filter: ColumnFilter): number[] {
@@ -233,9 +237,9 @@ describe("applyFilters — date filter comparators", () => {
 describe("applyFilters — multiple column filters (AND)", () => {
   it("requires every column filter to match", () => {
     const trades = [
-      trade({ tradeId: 1, currencyPair: "EURUSD", notional: 100 }),
-      trade({ tradeId: 2, currencyPair: "EURUSD", notional: 300 }),
-      trade({ tradeId: 3, currencyPair: "USDJPY", notional: 100 }),
+      createTrade({ tradeId: 1, currencyPair: "EURUSD", notional: 100 }),
+      createTrade({ tradeId: 2, currencyPair: "EURUSD", notional: 300 }),
+      createTrade({ tradeId: 3, currencyPair: "USDJPY", notional: 100 }),
     ];
 
     const f = filters(
@@ -253,8 +257,8 @@ describe("applyFilters — multiple column filters (AND)", () => {
 describe("applyFilters — quick filter", () => {
   it("matches a single term against any field (case-insensitive)", () => {
     const trades = [
-      trade({ tradeId: 1, currencyPair: "EURUSD" }),
-      trade({ tradeId: 2, currencyPair: "USDJPY" }),
+      createTrade({ tradeId: 1, currencyPair: "EURUSD" }),
+      createTrade({ tradeId: 2, currencyPair: "USDJPY" }),
     ];
     expect(
       applyFilters(trades, new Map(), "jpy").map((t) => {
@@ -265,8 +269,8 @@ describe("applyFilters — quick filter", () => {
 
   it("requires ALL space-separated terms to match (AND)", () => {
     const trades = [
-      trade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
-      trade({ tradeId: 2, currencyPair: "EURUSD", tradeName: "Bob" }),
+      createTrade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
+      createTrade({ tradeId: 2, currencyPair: "EURUSD", tradeName: "Bob" }),
     ];
     expect(
       applyFilters(trades, new Map(), "eurusd alice").map((t) => {
@@ -277,8 +281,8 @@ describe("applyFilters — quick filter", () => {
 
   it("combines column filters and quick filter", () => {
     const trades = [
-      trade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
-      trade({ tradeId: 2, currencyPair: "USDJPY", tradeName: "Alice" }),
+      createTrade({ tradeId: 1, currencyPair: "EURUSD", tradeName: "Alice" }),
+      createTrade({ tradeId: 2, currencyPair: "USDJPY", tradeName: "Alice" }),
     ];
 
     const f = filters({
@@ -294,7 +298,7 @@ describe("applyFilters — quick filter", () => {
   });
 });
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 1,
     tradeName: "Alice",

@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { creditNavPage } from "#tests/pages/CreditNavPage";
 
-const page = creditNavPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -22,3 +20,5 @@ test("pressing a segment reports the new view", async () => {
   await page.pressTab("new-rfq");
   expect(onChange).toHaveBeenCalledWith("new-rfq");
 });
+
+const page = creditNavPage();

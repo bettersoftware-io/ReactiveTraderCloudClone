@@ -4,6 +4,7 @@ import { DEFAULT_THEME_SKIN } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
+import { settle } from "#/harness/settle";
 
 export function describeThemeSkinPreferenceContract(
   label: string,
@@ -18,6 +19,7 @@ export function describeThemeSkinPreferenceContract(
         const c = collect(p.skin$);
         expect(c.values).toEqual([DEFAULT_THEME_SKIN]);
         p.setSkin("classic");
+        await settle();
         expect(c.values.at(-1)).toBe("classic");
         c.unsubscribe();
       } finally {

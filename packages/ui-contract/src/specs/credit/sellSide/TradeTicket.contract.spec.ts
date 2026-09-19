@@ -15,7 +15,7 @@ describe("TradeTicket", () => {
   it("shows the instrument details and an active price form when awaiting a response", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -28,7 +28,7 @@ describe("TradeTicket", () => {
   it("falls back to an instrument-id label when the instrument is unknown", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument: undefined,
       },
@@ -39,7 +39,7 @@ describe("TradeTicket", () => {
   it("keeps Submit disabled until a price is entered", async () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -52,7 +52,7 @@ describe("TradeTicket", () => {
   it("submits the quoted price and records it on the quote-RFQ command", async () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -67,7 +67,7 @@ describe("TradeTicket", () => {
   it("ignores a submit with a non-positive price", async () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -81,7 +81,7 @@ describe("TradeTicket", () => {
   it("records a pass and shows the responded view", async () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -94,7 +94,7 @@ describe("TradeTicket", () => {
   it("shows the quoted price for a quote that already has a price", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq(),
+        rfq: createRfq(),
         quote: quote({ type: "pendingWithPrice", price: 99 }),
         instrument,
       },
@@ -105,7 +105,7 @@ describe("TradeTicket", () => {
 
   it("shows Passed for a passed quote", () => {
     const ticket = mount(TradeTicket, {
-      props: { rfq: rfq(), quote: quote({ type: "passed" }), instrument },
+      props: { rfq: createRfq(), quote: quote({ type: "passed" }), instrument },
     });
     expect(ticket.hasText(/^Passed$/)).toBe(true);
   });
@@ -113,7 +113,7 @@ describe("TradeTicket", () => {
   it("shows the RFQ Cancelled message when the RFQ was cancelled but the quote stayed pending", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Cancelled }),
+        rfq: createRfq({ state: RfqState.Cancelled }),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -125,7 +125,7 @@ describe("TradeTicket", () => {
   it("shows Expired in the inactive branch when an expired RFQ still has a pending quote", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Expired }),
+        rfq: createRfq({ state: RfqState.Expired }),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -137,7 +137,7 @@ describe("TradeTicket", () => {
   it("shows Closed in the inactive branch when a closed RFQ still has a pending quote", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Closed }),
+        rfq: createRfq({ state: RfqState.Closed }),
         quote: quote({ type: "pendingWithoutPrice" }),
         instrument,
       },
@@ -149,7 +149,7 @@ describe("TradeTicket", () => {
   it("shows the RFQ Expired message when the RFQ expired with a priced quote", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Expired }),
+        rfq: createRfq({ state: RfqState.Expired }),
         quote: quote({ type: "rejectedWithPrice", price: 90 }),
         instrument,
       },
@@ -160,7 +160,7 @@ describe("TradeTicket", () => {
   it("shows a generic Responded message for a closed RFQ with a rejected-without-price quote", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Closed }),
+        rfq: createRfq({ state: RfqState.Closed }),
         quote: quote({ type: "rejectedWithoutPrice" }),
         instrument,
       },
@@ -171,7 +171,7 @@ describe("TradeTicket", () => {
   it("shows the RFQ Cancelled responded message for a cancelled RFQ with a priced quote", () => {
     const ticket = mount(TradeTicket, {
       props: {
-        rfq: rfq({ state: RfqState.Cancelled }),
+        rfq: createRfq({ state: RfqState.Cancelled }),
         quote: quote({ type: "rejectedWithPrice", price: 80 }),
         instrument,
       },
@@ -180,7 +180,7 @@ describe("TradeTicket", () => {
   });
 });
 
-function rfq(over: Partial<Rfq> = {}): Rfq {
+function createRfq(over: Partial<Rfq> = {}): Rfq {
   return {
     id: 10,
     instrumentId: 1,

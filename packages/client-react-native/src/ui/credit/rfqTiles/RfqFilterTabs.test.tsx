@@ -4,8 +4,6 @@ import type { CreditRfqFilter } from "@rtc/domain";
 
 import { rfqFilterTabsPage } from "#tests/pages/RfqFilterTabsPage";
 
-const page = rfqFilterTabsPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -53,3 +51,5 @@ test("every chip is an outlined pill, selected or not", async () => {
 });
 
 function noop(): void {}
+
+const page = rfqFilterTabsPage();

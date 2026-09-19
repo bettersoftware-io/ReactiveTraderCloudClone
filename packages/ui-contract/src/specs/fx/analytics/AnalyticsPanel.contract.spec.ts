@@ -21,7 +21,9 @@ describe("AnalyticsPanel", () => {
   });
 
   it("renders the panel and its sections once data is present", () => {
-    const panel = mount(AnalyticsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(AnalyticsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.isLoaded()).toBe(true);
     expect(panel.loadingMessage()).toBeNull();
     expect(panel.sectionLabels()).toEqual([
@@ -31,14 +33,18 @@ describe("AnalyticsPanel", () => {
   });
 
   it("does not repeat the panel title — the chrome header owns it", () => {
-    const panel = mount(AnalyticsPanel, { hooks: { useAnalytics: updates() } });
+    const panel = mount(AnalyticsPanel, {
+      hooks: { useAnalytics: createUpdates() },
+    });
     expect(panel.hasDuplicateTitle()).toBe(false);
   });
 
   it("summarises the latest historic P&L figure in k-format", () => {
     const panel = mount(AnalyticsPanel, {
       hooks: {
-        useAnalytics: updates({ history: [historic(0), historic(1_500_000)] }),
+        useAnalytics: createUpdates({
+          history: [historic(0), historic(1_500_000)],
+        }),
       },
     });
     expect(panel.latestPnlText()).toMatch(/^[+-]\$\d+\.\dk$/);
@@ -47,7 +53,7 @@ describe("AnalyticsPanel", () => {
 
   it("falls back to zero P&L when there is no history", () => {
     const panel = mount(AnalyticsPanel, {
-      hooks: { useAnalytics: updates({ history: [] }) },
+      hooks: { useAnalytics: createUpdates({ history: [] }) },
     });
     expect(panel.isLoaded()).toBe(true);
     expect(panel.latestPnlText()).toBe("+$0.0k");
@@ -57,21 +63,21 @@ describe("AnalyticsPanel", () => {
     const panel = mount(AnalyticsPanel, { hooks: { useAnalytics: null } });
     expect(panel.isLoaded()).toBe(false);
     panel.emit({
-      useAnalytics: updates({ history: [historic(0), historic(-2_500)] }),
+      useAnalytics: createUpdates({ history: [historic(0), historic(-2_500)] }),
     });
     expect(panel.isLoaded()).toBe(true);
     expect(panel.latestPnlText()).toBe("-$2.5k");
   });
 
-  it("updates the summarised P&L figure when newer analytics stream in", () => {
+  it("createUpdates the summarised P&L figure when newer analytics stream in", () => {
     const panel = mount(AnalyticsPanel, {
       hooks: {
-        useAnalytics: updates({ history: [historic(0), historic(500)] }),
+        useAnalytics: createUpdates({ history: [historic(0), historic(500)] }),
       },
     });
     expect(panel.latestPnlText()).toBe("+$0.5k");
     panel.emit({
-      useAnalytics: updates({
+      useAnalytics: createUpdates({
         history: [historic(0), historic(500), historic(12_500)],
       }),
     });
@@ -79,7 +85,7 @@ describe("AnalyticsPanel", () => {
   });
 
   it("shows the stale overlay after a disconnect/reconnect with no fresh data", () => {
-    const data = updates();
+    const data = createUpdates();
     const panel = mount(AnalyticsPanel, {
       hooks: {
         useAnalytics: data,
@@ -95,7 +101,7 @@ describe("AnalyticsPanel", () => {
 
     // A fresh analytics reference clears the stale flag.
     panel.emit({
-      useAnalytics: updates({ history: [historic(0), historic(7_000)] }),
+      useAnalytics: createUpdates({ history: [historic(0), historic(7_000)] }),
     });
     expect(panel.isStale()).toBe(false);
     expect(panel.latestPnlText()).toBe("+$7.0k");
@@ -121,7 +127,7 @@ function position(symbol: string, basePnl: number): CurrencyPairPosition {
   };
 }
 
-function updates(over: Partial<PositionUpdates> = {}): PositionUpdates {
+function createUpdates(over: Partial<PositionUpdates> = {}): PositionUpdates {
   return {
     currentPositions: [position("EURUSD", 12_500)],
     history: [historic(0, "2026-06-13T00:00:00Z"), historic(12_500)],

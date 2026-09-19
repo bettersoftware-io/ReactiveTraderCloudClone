@@ -5,8 +5,6 @@ import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
 import { SilentSocket } from "./SilentSocket.testHelpers";
 
 describe("createNativeDevtoolsHub", () => {
-  const sockets: SilentSocket[] = [];
-
   afterEach(() => {
     sockets.length = 0;
   });
@@ -31,4 +29,6 @@ describe("createNativeDevtoolsHub", () => {
 
     hub.dispose();
   });
+
+  const sockets: SilentSocket[] = [];
 });

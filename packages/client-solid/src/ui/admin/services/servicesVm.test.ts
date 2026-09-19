@@ -11,9 +11,9 @@ describe("servicesVm", () => {
 
   it("preserves topology order (no re-sorting)", () => {
     const rows = servicesVm([
-      node({ name: "kernel" }),
-      node({ name: "refdata" }),
-      node({ name: "credit" }),
+      createNode({ name: "kernel" }),
+      createNode({ name: "refdata" }),
+      createNode({ name: "credit" }),
     ]);
     expect(
       rows.map((r) => {
@@ -24,53 +24,58 @@ describe("servicesVm", () => {
 
   it("maps status to the prototype's ONLINE/DEGRADED labels", () => {
     const rows = servicesVm([
-      node({ name: "pricing", status: "ok" }),
-      node({ name: "blotter", status: "degraded", health: 86 }),
+      createNode({ name: "pricing", status: "ok" }),
+      createNode({ name: "blotter", status: "degraded", health: 86 }),
     ]);
     expect(rows[0].statusLabel).toBe("ONLINE");
     expect(rows[1].statusLabel).toBe("DEGRADED");
   });
 
-  it("maps a down node to the DOWN label — the real-app extra status the prototype never modelled", () => {
+  it("maps a down createNode to the DOWN label — the real-app extra status the prototype never modelled", () => {
     const rows = servicesVm([
-      node({ name: "execution", status: "down", health: 0, throughput: 0 }),
+      createNode({
+        name: "execution",
+        status: "down",
+        health: 0,
+        throughput: 0,
+      }),
     ]);
     expect(rows[0].statusLabel).toBe("DOWN");
   });
 
   it("formats latency as '<ms>ms'", () => {
-    const rows = servicesVm([node({ latencyMs: 37 })]);
+    const rows = servicesVm([createNode({ latencyMs: 37 })]);
     expect(rows[0].latencyLabel).toBe("37ms");
   });
 
   it("rounds a fractional latencyMs (live simulator emits unrounded floats) so the label never overflows its fixed-width column", () => {
-    const rows = servicesVm([node({ latencyMs: 42.73 })]);
+    const rows = servicesVm([createNode({ latencyMs: 42.73 })]);
     expect(rows[0].latencyLabel).toBe("43ms");
   });
 
   describe("health / barPct", () => {
-    it("exposes the node's health as a whole percent, and barPct IS the health (not relative throughput)", () => {
+    it("exposes the createNode's health as a whole percent, and barPct IS the health (not relative throughput)", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 99, throughput: 200 }),
-        node({ name: "refdata", health: 86, throughput: 900 }),
+        createNode({ name: "kernel", health: 99, throughput: 200 }),
+        createNode({ name: "refdata", health: 86, throughput: 900 }),
       ]);
       expect(rows[0].health).toBe(99);
       expect(rows[0].barPct).toBe(99);
-      // The busier node no longer wins the bar — health does.
+      // The busier createNode no longer wins the bar — health does.
       expect(rows[1].health).toBe(86);
       expect(rows[1].barPct).toBe(86);
     });
 
     it("rounds a fractional health to a whole percent", () => {
-      const rows = servicesVm([node({ health: 93.4 })]);
+      const rows = servicesVm([createNode({ health: 93.4 })]);
       expect(rows[0].health).toBe(93);
       expect(rows[0].barPct).toBe(93);
     });
 
     it("clamps rogue health values into [0, 100]", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 104 }),
-        node({ name: "execution", status: "down", health: -3 }),
+        createNode({ name: "kernel", health: 104 }),
+        createNode({ name: "execution", status: "down", health: -3 }),
       ]);
       expect(rows[0].health).toBe(100);
       expect(rows[1].health).toBe(0);
@@ -81,9 +86,9 @@ describe("servicesVm", () => {
   describe("uptimeLabel", () => {
     it("ok -> 99.9x, the digit rising with health across the 95-100 band", () => {
       const rows = servicesVm([
-        node({ name: "kernel", health: 100 }),
-        node({ name: "pricing", health: 97.5 }),
-        node({ name: "credit", health: 95 }),
+        createNode({ name: "kernel", health: 100 }),
+        createNode({ name: "pricing", health: 97.5 }),
+        createNode({ name: "credit", health: 95 }),
       ]);
       expect(
         rows.map((r) => {
@@ -94,9 +99,9 @@ describe("servicesVm", () => {
 
     it("degraded -> 9x.x%, formatted from live health (90 + health/10)", () => {
       const rows = servicesVm([
-        node({ name: "refdata", status: "degraded", health: 86 }),
-        node({ name: "blotter", status: "degraded", health: 93 }),
-        node({ name: "credit", status: "degraded", health: 70 }),
+        createNode({ name: "refdata", status: "degraded", health: 86 }),
+        createNode({ name: "blotter", status: "degraded", health: 93 }),
+        createNode({ name: "credit", status: "degraded", health: 70 }),
       ]);
       expect(
         rows.map((r) => {
@@ -107,13 +112,18 @@ describe("servicesVm", () => {
 
     it("down -> an em dash, no uptime figure", () => {
       const rows = servicesVm([
-        node({ name: "execution", status: "down", health: 0, throughput: 0 }),
+        createNode({
+          name: "execution",
+          status: "down",
+          health: 0,
+          throughput: 0,
+        }),
       ]);
       expect(rows[0].uptimeLabel).toBe("—");
     });
 
     it("is deterministic across repeat calls for the same input", () => {
-      const credit = node({ name: "credit", health: 98, throughput: 42 });
+      const credit = createNode({ name: "credit", health: 98, throughput: 42 });
       expect(servicesVm([credit])[0].uptimeLabel).toBe(
         servicesVm([credit])[0].uptimeLabel,
       );
@@ -121,7 +131,7 @@ describe("servicesVm", () => {
   });
 });
 
-function node(overrides: Partial<ServiceNode>): ServiceNode {
+function createNode(overrides: Partial<ServiceNode>): ServiceNode {
   return {
     name: "pricing",
     status: "ok",

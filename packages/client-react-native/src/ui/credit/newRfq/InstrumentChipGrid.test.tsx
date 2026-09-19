@@ -4,8 +4,6 @@ import type { Instrument } from "@rtc/domain";
 
 import { instrumentChipGridPage } from "#tests/pages/InstrumentChipGridPage";
 
-const page = instrumentChipGridPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -59,3 +57,5 @@ function instruments(count: number): readonly Instrument[] {
     };
   });
 }
+
+const page = instrumentChipGridPage();

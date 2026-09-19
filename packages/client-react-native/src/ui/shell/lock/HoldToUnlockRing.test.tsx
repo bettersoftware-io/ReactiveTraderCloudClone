@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { holdToUnlockRingPage } from "#tests/pages/HoldToUnlockRingPage";
 
-const page = holdToUnlockRingPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -20,3 +18,5 @@ test("a plain tap on the ring calls onPress — the non-gesture fallback", async
   await page.press();
   expect(onPress).toHaveBeenCalledTimes(1);
 });
+
+const page = holdToUnlockRingPage();

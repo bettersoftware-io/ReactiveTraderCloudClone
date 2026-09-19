@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { appRootPage } from "#tests/pages/AppRootPage";
 
-const page = appRootPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -72,3 +70,5 @@ jest.mock("#/app/devtools/nativeDevtoolsHub", () => {
     },
   };
 });
+
+const page = appRootPage();

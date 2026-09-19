@@ -2,10 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { rankByChipsPage } from "#tests/pages/RankByChipsPage";
 
-const setSort = jest.fn();
-
-const page = rankByChipsPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -57,3 +53,7 @@ test("draws the design's pills — accent-filled when selected", async () => {
   expect(inactive.backgroundColor).toBe("transparent");
   expect(inactive.borderColor).not.toBe(active.borderColor);
 });
+
+const setSort = jest.fn();
+
+const page = rankByChipsPage();

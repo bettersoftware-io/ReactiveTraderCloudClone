@@ -68,21 +68,24 @@ describe("Watchlist view", () => {
     expect(page.watchRowCount()).toBe(3);
   });
 
-  it("colors the Mid cell via a data-sign matching the price movement", async () => {
+  it("colors the Mid cell via a data-sign matching the createPrice movement", async () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
-        prices: { EURUSD: price({ movementType: PriceMovementType.UP }) },
+        prices: { EURUSD: createPrice({ movementType: PriceMovementType.UP }) },
       },
     });
     await page.selectWatchlistTab();
     expect(page.watchMidSign("EURUSD")).toBe("up");
 
-    page.setPrice("EURUSD", price({ movementType: PriceMovementType.DOWN }));
+    page.setPrice(
+      "EURUSD",
+      createPrice({ movementType: PriceMovementType.DOWN }),
+    );
     expect(page.watchMidSign("EURUSD")).toBe("down");
   });
 
-  it("falls back to a flat data-sign and a dash before a price streams in", async () => {
+  it("falls back to a flat data-sign and a dash before a createPrice streams in", async () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
     });
@@ -94,7 +97,7 @@ describe("Watchlist view", () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
-        prices: { EURUSD: price({ movementType: PriceMovementType.UP }) },
+        prices: { EURUSD: createPrice({ movementType: PriceMovementType.UP }) },
         histories: { EURUSD: createTwoTickHistory() },
       },
     });
@@ -106,7 +109,9 @@ describe("Watchlist view", () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
-        prices: { EURUSD: price({ movementType: PriceMovementType.DOWN }) },
+        prices: {
+          EURUSD: createPrice({ movementType: PriceMovementType.DOWN }),
+        },
         histories: { EURUSD: createDescendingHistory() },
       },
     });
@@ -118,7 +123,7 @@ describe("Watchlist view", () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
-        prices: { EURUSD: price() },
+        prices: { EURUSD: createPrice() },
         histories: { EURUSD: createFlatHistory() },
       },
     });
@@ -133,7 +138,7 @@ describe("Watchlist view", () => {
     const page = mount(LiveRatesWorkspace, {
       hooks: { useCurrencyPairs: [eurusd] },
       parametric: {
-        prices: { EURUSD: price() },
+        prices: { EURUSD: createPrice() },
         histories: { EURUSD: createFlatHistory() },
       },
     });
@@ -142,7 +147,7 @@ describe("Watchlist view", () => {
   });
 });
 
-function price(over: Partial<Price> = {}): Price {
+function createPrice(over: Partial<Price> = {}): Price {
   return {
     symbol: "EURUSD",
     bid: 1.0921,

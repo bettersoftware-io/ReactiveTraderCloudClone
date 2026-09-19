@@ -32,7 +32,7 @@ describe("OrdersTable — status display map", () => {
   for (const [status, label] of cases) {
     it(`maps "${status}" to "${label}"`, () => {
       const table = mount(OrdersTable, {
-        props: { orders: [order({ status })], newOrderId: null },
+        props: { orders: [createOrder({ status })], newOrderId: null },
       });
 
       expect(table.statusOf("eq-1")).toBe(status);
@@ -45,7 +45,9 @@ describe("OrdersTable — qty format", () => {
   it("shows filledQty/qty when partially filled", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ status: "partiallyFilled", qty: 100, filledQty: 40 })],
+        orders: [
+          createOrder({ status: "partiallyFilled", qty: 100, filledQty: 40 }),
+        ],
         newOrderId: null,
       },
     });
@@ -63,7 +65,7 @@ describe("OrdersTable — qty format", () => {
     it(`shows plain qty for status "${status}"`, () => {
       const table = mount(OrdersTable, {
         props: {
-          orders: [order({ status, qty: 250, filledQty: 250 })],
+          orders: [createOrder({ status, qty: 250, filledQty: 250 })],
           newOrderId: null,
         },
       });
@@ -77,7 +79,9 @@ describe("OrdersTable — price fallback chain", () => {
   it("prefers avgPrice when present", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ avgPrice: 199.5, limitPrice: 200, status: "filled" })],
+        orders: [
+          createOrder({ avgPrice: 199.5, limitPrice: 200, status: "filled" }),
+        ],
         newOrderId: null,
       },
     });
@@ -88,7 +92,7 @@ describe("OrdersTable — price fallback chain", () => {
   it("falls back to limitPrice when avgPrice is absent", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ limitPrice: 200, type: "limit" })],
+        orders: [createOrder({ limitPrice: 200, type: "limit" })],
         newOrderId: null,
       },
     });
@@ -98,7 +102,7 @@ describe("OrdersTable — price fallback chain", () => {
 
   it("shows an em dash when neither avgPrice nor limitPrice is set", () => {
     const table = mount(OrdersTable, {
-      props: { orders: [order({ type: "market" })], newOrderId: null },
+      props: { orders: [createOrder({ type: "market" })], newOrderId: null },
     });
 
     expect(table.priceTextOf("eq-1")).toBe("—");
@@ -109,7 +113,7 @@ describe("OrdersTable — side/type display + time", () => {
   it("capitalizes side and type for display while the domain values stay lowercase", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ side: "sell", type: "limit", limitPrice: 10 })],
+        orders: [createOrder({ side: "sell", type: "limit", limitPrice: 10 })],
         newOrderId: null,
       },
     });
@@ -121,7 +125,7 @@ describe("OrdersTable — side/type display + time", () => {
   it("renders HH:MM:SS from createdAt", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ createdAt: Date.UTC(2026, 0, 1, 9, 5, 3) })],
+        orders: [createOrder({ createdAt: Date.UTC(2026, 0, 1, 9, 5, 3) })],
         newOrderId: null,
       },
     });
@@ -141,7 +145,7 @@ describe("OrdersTable — data-new flash", () => {
   it("flashes only the row matching newOrderId", () => {
     const table = mount(OrdersTable, {
       props: {
-        orders: [order({ id: "eq-1" }), order({ id: "eq-2" })],
+        orders: [createOrder({ id: "eq-1" }), createOrder({ id: "eq-2" })],
         newOrderId: "eq-2",
       },
     });
@@ -152,14 +156,14 @@ describe("OrdersTable — data-new flash", () => {
 
   it("flashes no row when newOrderId is null", () => {
     const table = mount(OrdersTable, {
-      props: { orders: [order({ id: "eq-1" })], newOrderId: null },
+      props: { orders: [createOrder({ id: "eq-1" })], newOrderId: null },
     });
 
     expect(table.isNew("eq-1")).toBe(false);
   });
 });
 
-function order(overrides: Partial<EquityOrder> = {}): EquityOrder {
+function createOrder(overrides: Partial<EquityOrder> = {}): EquityOrder {
   return {
     id: "eq-1",
     symbol: "AAPL",

@@ -4,26 +4,9 @@ import type { PositionUpdates } from "@rtc/domain";
 
 import { analyticsScreenPage } from "#tests/pages/AnalyticsScreenPage";
 
-const page = analyticsScreenPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const DATA: PositionUpdates = {
-  history: [
-    { timestamp: "t0", usdPnl: 0 },
-    { timestamp: "t1", usdPnl: 1200 },
-  ],
-  currentPositions: [
-    {
-      symbol: "EURUSD",
-      basePnl: 12000,
-      baseTradedAmount: 1_000_000,
-      counterTradedAmount: -1_100_000,
-    },
-  ],
-};
 
 test("shows a loading state before the first emission", async () => {
   await page.mount(null, false);
@@ -72,3 +55,20 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = analyticsScreenPage();
+
+const DATA: PositionUpdates = {
+  history: [
+    { timestamp: "t0", usdPnl: 0 },
+    { timestamp: "t1", usdPnl: 1200 },
+  ],
+  currentPositions: [
+    {
+      symbol: "EURUSD",
+      basePnl: 12000,
+      baseTradedAmount: 1_000_000,
+      counterTradedAmount: -1_100_000,
+    },
+  ],
+};

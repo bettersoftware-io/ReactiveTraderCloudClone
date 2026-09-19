@@ -369,67 +369,16 @@ export default tseslint.config(
     },
   },
   {
-    // Newspaper order for test files: type/helper/vi.mock/jest.mock declarations
-    // must sit BELOW the describe/it blocks. Custom autofixable rule in
-    // eslint-rules/. Scoped to test files only (contract specs included —
-    // reordering is behaviour-preserving; both vi.mock and jest.mock are hoisted
-    // above imports by their runners). class/enum/vi.doMock/jest.doMock/vi.hoisted
-    // stay put.
+    // Newspaper order for test files: helpers, types, hoisted mocks AND
+    // provably-deferred const/let fixtures sit BELOW the tests — at the end of
+    // the file, or of the enclosing `describe`. Custom autofixable rule in
+    // eslint-rules/. Unconditional across every package: the per-package
+    // `fixtures` opt-in list that staged the burn-down is gone now that it
+    // covered the whole repo. class/enum/vi.doMock/jest.doMock/vi.hoisted stay
+    // put, and so does any fixture read during collection.
     files: ["**/*.{spec,test}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
-  },
-  {
-    // MIGRATED PACKAGES — the `fixtures` arm additionally moves module-level
-    // const/let FIXTURES below the tests, not just helpers and types.
-    //
-    // It is opt-in per package rather than repo-wide because a `const` is not
-    // hoisted: unlike a function declaration it cannot be moved blindly, and
-    // 430 declarations across 199 test files is a burn-down, not a flip. The
-    // rule only ever moves a fixture whose every reference is DEFERRED (read
-    // after module evaluation, inside an `it`/hook callback) — see
-    // isMovableFixture — so a fixture a `describe` body reads at collection
-    // time is left alone and the file keeps working.
-    //
-    // ONE package is left: `client-react-native`, held back deliberately. It is
-    // the only package running Jest (`vitest run --passWithNoTests && jest`),
-    // and 43 of its test files use `jest.mock` or a "worklet" directive. This
-    // arm's analysis encodes VITEST's collection-time `describe` semantics and
-    // has only ever been verified against Vitest; Babel also hoists
-    // `jest.mock` factories above the imports, so a factory closing over a
-    // moved fixture would read it in the temporal dead zone. The predicate
-    // should refuse that (a factory body is not a deferred callback) — but on
-    // 119 files it is worth PROVING against a real `jest` run rather than
-    // assuming. It is also ~a third of the whole burn-down on its own.
-    files: [
-      "packages/layout-dockview/**/*.{spec,test}.{ts,tsx}",
-      "packages/agent-tools/**/*.{spec,test}.{ts,tsx}",
-      "packages/ws-effects/**/*.{spec,test}.{ts,tsx}",
-      "packages/devtools-core/**/*.{spec,test}.{ts,tsx}",
-      "packages/devtools-app/**/*.{spec,test}.{ts,tsx}",
-      "packages/devtools-relay/**/*.{spec,test}.{ts,tsx}",
-      "packages/devtools-extension/**/*.{spec,test}.{ts,tsx}",
-      "packages/shared/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-prototype/**/*.{spec,test}.{ts,tsx}",
-      "packages/motion-core/**/*.{spec,test}.{ts,tsx}",
-      "packages/server/**/*.{spec,test}.{ts,tsx}",
-      "packages/domain/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-core/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-solid/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-react/**/*.{spec,test}.{ts,tsx}",
-      "packages/ui-contract/**/*.{spec,test}.{ts,tsx}",
-      "packages/boot-splash/**/*.{spec,test}.{ts,tsx}",
-      "packages/core-api/**/*.{spec,test}.{ts,tsx}",
-      "packages/core-contract/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-core-async/**/*.{spec,test}.{ts,tsx}",
-      "packages/client-core-effect/**/*.{spec,test}.{ts,tsx}",
-      "packages/react-bindings/**/*.{spec,test}.{ts,tsx}",
-      "packages/solid-bindings/**/*.{spec,test}.{ts,tsx}",
-      // The `tests` workspace is not under packages/ — it needs its own glob.
-      "tests/**/*.{spec,test}.{ts,tsx}",
-    ],
-    plugins: { rtc: rtcPlugin },
-    rules: { "rtc/newspaper-order": ["error", { fixtures: true }] },
   },
   {
     // Every package the page-object-isolation plan named (devtools-app,

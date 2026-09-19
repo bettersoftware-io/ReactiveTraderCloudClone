@@ -2,8 +2,6 @@ import { expect, test } from "@jest/globals";
 
 import { appFontsPage } from "#tests/pages/UseAppFontsPage";
 
-const page = appFontsPage();
-
 test("reports a boolean load state for the bundled fonts", async () => {
   // @testing-library/react-native's `renderHook` is async (returns a
   // Promise<RenderHookResult>), unlike the React DOM Testing Library.
@@ -11,3 +9,5 @@ test("reports a boolean load state for the bundled fonts", async () => {
   expect(typeof page.value).toBe("boolean");
   await page.unmountAll();
 });
+
+const page = appFontsPage();

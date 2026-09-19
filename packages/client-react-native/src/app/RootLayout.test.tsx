@@ -2,8 +2,6 @@ import { expect, jest, test } from "@jest/globals";
 
 import { rootLayoutPage } from "#tests/pages/RootLayoutPage";
 
-const page = rootLayoutPage();
-
 test("minimal root renders a Slot inside the gesture-handler root", async () => {
   await page.mount();
   expect(page.exists("router-slot")).toBeTruthy();
@@ -25,3 +23,5 @@ jest.mock("expo-router", () => {
     },
   };
 });
+
+const page = rootLayoutPage();

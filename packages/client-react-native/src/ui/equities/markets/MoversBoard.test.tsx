@@ -2,17 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { moversBoardPage } from "#tests/pages/MoversBoardPage";
 
-// The holo/dark theme's accent tokens (`renderWithTheme`'s default) —
-// `useRankMoveGlide`'s tint shared value seeds at `riseColor`
-// (`accentPositive`), so only a genuine "fell" classification (which needs
-// the row's PREVIOUS rank remembered across the re-sort) can turn it
-// `accentNegative`. A remounted row's fresh `prevRankRef` would read
-// "unchanged" instead and leave the tint at its green seed — indistinguishable
-// from "never moved" if the witness color were `accentPositive` instead.
-const ACCENT_NEGATIVE = "#ff5d73";
-
-const page = moversBoardPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -99,3 +88,14 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+// The holo/dark theme's accent tokens (`renderWithTheme`'s default) —
+// `useRankMoveGlide`'s tint shared value seeds at `riseColor`
+// (`accentPositive`), so only a genuine "fell" classification (which needs
+// the row's PREVIOUS rank remembered across the re-sort) can turn it
+// `accentNegative`. A remounted row's fresh `prevRankRef` would read
+// "unchanged" instead and leave the tint at its green seed — indistinguishable
+// from "never moved" if the witness color were `accentPositive` instead.
+const ACCENT_NEGATIVE = "#ff5d73";
+
+const page = moversBoardPage();

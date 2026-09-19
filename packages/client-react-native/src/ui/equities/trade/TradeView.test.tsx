@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { tradeViewPage } from "#tests/pages/TradeViewPage";
 
-const page = tradeViewPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -35,3 +33,5 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = tradeViewPage();

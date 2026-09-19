@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { topoScenePage } from "#tests/pages/TopoScenePage";
 
-const page = topoScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -61,3 +59,5 @@ test("survives a run of price ticks with all six beacons up", async () => {
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = topoScenePage();

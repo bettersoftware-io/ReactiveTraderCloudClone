@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { rfqCountdownRingPage } from "#tests/pages/RfqCountdownRingPage";
 
-const page = rfqCountdownRingPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -27,3 +25,5 @@ test("clamps a negative remaining to a zero readout", async () => {
   await page.mount(-500);
   expect(page.hasText("0")).toBe(true);
 });
+
+const page = rfqCountdownRingPage();

@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { pnlValuePage } from "#tests/pages/PnlValuePage";
 
-const page = pnlValuePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -41,3 +39,5 @@ test("treats zero as non-negative, matching the prototype's sign test", async ()
   await page.mount(0);
   expect(page.hasTextContent("pnl-value", "+$0")).toBe(true);
 });
+
+const page = pnlValuePage();

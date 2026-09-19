@@ -3,8 +3,6 @@ import { afterEach, expect, test } from "@jest/globals";
 import { FONT_JETBRAINS_MONO } from "#/ui/theme/fontFamilies";
 import { blotterHeaderPage } from "#tests/pages/BlotterHeaderPage";
 
-const page = blotterHeaderPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -32,3 +30,5 @@ test("column captions keep the 8pt / 1.5-tracked mono label recipe", async () =>
   expect(style.letterSpacing).toBe(1.5);
   expect(style.fontWeight).toBeUndefined();
 });
+
+const page = blotterHeaderPage();

@@ -10,6 +10,15 @@ import type {
   Presenters,
 } from "@rtc/core-api";
 
+import { createCommands } from "#/commands";
+import { createConnectionPresenter } from "#/presenters/connection";
+import {
+  createPowerSaverPresenter,
+  createThemeSkinPreferencePresenter,
+  createViewModePreferencePresenter,
+} from "#/presenters/preferences";
+import { createThemePreferencePresenter } from "#/presenters/themePreference";
+
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
  * member. */
@@ -24,18 +33,36 @@ export interface ComposedMachines {
   machines: MachineFactories;
 }
 
-/** Members this core implements natively. Empty in slice 0: every member
- * delegates to the RxJS core. `parity.json` is the committed record of the
- * same fact and `parity.test.ts` proves the two agree by reference. */
-function nativePresenters(_base: Presenters): Partial<Presenters> {
-  return {};
+/** Members this core implements natively — slice 1a: the connection fold,
+ * the four theme/view/power-saver preferences, and `commands` (see
+ * `createCommands`). Everything else still delegates to the RxJS core.
+ * `parity.json` is the committed record of the same fact and
+ * `parity.test.ts` proves the two agree by reference. */
+function nativePresenters(ports: AppPorts): Partial<Presenters> {
+  return {
+    connection: createConnectionPresenter(ports.connectionEvents),
+    themePreference: createThemePreferencePresenter(
+      ports.preferences,
+      ports.colorScheme,
+    ),
+    themeSkinPreference: createThemeSkinPreferencePresenter(ports.preferences),
+    viewModePreference: createViewModePreferencePresenter(ports.preferences),
+    powerSaver: createPowerSaverPresenter(ports.preferences),
+  };
 }
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const base = createRxjsApp(ports);
   const app: App = {
     ...base,
-    presenters: { ...base.presenters, ...nativePresenters(base.presenters) },
+    presenters: { ...base.presenters, ...nativePresenters(ports) },
+    commands: createCommands(),
+    // Every native member so far is a refCounted Topic: it holds nothing
+    // between subscribers, so there is nothing app-scoped to abort. A member
+    // that spawns an app-lifetime loop (slice 2's conflation is the first
+    // candidate) must take an `AbortSignal` minted here and aborted below,
+    // BEFORE the base app is disposed — its loops may still be draining
+    // streams the base owns.
     dispose: async () => {
       await base.dispose();
     },

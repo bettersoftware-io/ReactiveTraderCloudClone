@@ -99,7 +99,7 @@ describe("SetFilter", () => {
 
 type SetFilterTag = { type: "set" };
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 1,
     tradeName: "Alice",
@@ -116,7 +116,7 @@ function trade(over: Partial<Trade> = {}): Trade {
 }
 
 const trades = [
-  trade({ currencyPair: "EURUSD" }),
-  trade({ currencyPair: "USDJPY" }),
-  trade({ currencyPair: "GBPUSD" }),
+  createTrade({ currencyPair: "EURUSD" }),
+  createTrade({ currencyPair: "USDJPY" }),
+  createTrade({ currencyPair: "GBPUSD" }),
 ];

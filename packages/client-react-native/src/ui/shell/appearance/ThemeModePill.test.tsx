@@ -6,8 +6,6 @@ import {
   themeModePillPage,
 } from "#tests/pages/ThemeModePillPage";
 
-const page = themeModePillPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -76,3 +74,5 @@ test("each cell announces its own selected state", async () => {
   expect(page.cellSelected("system")).toBe(true);
   expect(page.cellSelected("dark")).toBe(false);
 });
+
+const page = themeModePillPage();

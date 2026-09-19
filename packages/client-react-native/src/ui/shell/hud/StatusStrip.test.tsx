@@ -7,8 +7,6 @@ import { DOCK_FAB_SIZE } from "./dockMetrics";
 import { MODULE_ROUTES } from "./moduleRoutes";
 
 const mockPathname = jest.fn<() => string>();
-const page = statusStripPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -117,3 +115,5 @@ jest.mock("#/ui/theme/useTheme", () => {
     },
   };
 });
+
+const page = statusStripPage();

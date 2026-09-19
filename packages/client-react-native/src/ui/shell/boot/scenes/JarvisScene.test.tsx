@@ -2,8 +2,6 @@ import { afterEach, expect, test } from "@jest/globals";
 
 import { jarvisScenePage } from "#tests/pages/JarvisScenePage";
 
-const page = jarvisScenePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -73,3 +71,5 @@ test("survives the whole ring sweep-in window", async () => {
 
   expect(await page.awaitExists()).toBe(true);
 });
+
+const page = jarvisScenePage();

@@ -5,8 +5,6 @@ import { ConnectionStatus } from "@rtc/domain";
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { connectionBannerPage } from "#tests/pages/ConnectionBannerPage";
 
-const page = connectionBannerPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -42,3 +40,5 @@ test("shows DISCONNECTED with a RECONNECT button that calls reconnect", async ()
   await page.pressText("RECONNECT ▸");
   expect(reconnect).toHaveBeenCalledTimes(1);
 });
+
+const page = connectionBannerPage();

@@ -10,22 +10,9 @@ const mockMotion = jest.fn<() => boolean>(() => {
   return true;
 });
 
-const page = spotTilePage();
-
 afterEach(() => {
   return page.unmountAll();
 });
-
-const pair = {
-  symbol: "EURUSD",
-  ratePrecision: 5,
-  pipsPosition: 4,
-  base: "EUR",
-  terms: "USD",
-  defaultNotional: 1_000_000,
-  baseMid: 1.08,
-  typicalSpreadPips: 1,
-};
 
 test("renders the ask pips and opens the ticket on tap", async () => {
   mockUsePrice.mockReturnValue({
@@ -84,3 +71,16 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
     },
   };
 });
+
+const page = spotTilePage();
+
+const pair = {
+  symbol: "EURUSD",
+  ratePrecision: 5,
+  pipsPosition: 4,
+  base: "EUR",
+  terms: "USD",
+  defaultNotional: 1_000_000,
+  baseMid: 1.08,
+  typicalSpreadPips: 1,
+};

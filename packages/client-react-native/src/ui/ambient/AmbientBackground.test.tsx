@@ -4,8 +4,6 @@ import * as Reanimated from "react-native-reanimated";
 
 import { ambientBackgroundPage } from "#tests/pages/AmbientBackgroundPage";
 
-const page = ambientBackgroundPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -53,3 +51,5 @@ test("starts the drift loop when power-saver is off", async () => {
 afterEach(() => {
   jest.restoreAllMocks();
 });
+
+const page = ambientBackgroundPage();

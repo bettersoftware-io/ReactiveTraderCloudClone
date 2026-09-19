@@ -4,6 +4,7 @@ import { DEFAULT_POWER_SAVER_LEVEL } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
+import { settle } from "#/harness/settle";
 
 export function describePowerSaverContract(
   label: string,
@@ -37,12 +38,15 @@ export function describePowerSaverContract(
         const calm = collect(p.isCalm$);
         const freeze = collect(p.isFreeze$);
         p.setLevel("calm");
+        await settle();
         expect(calm.values.at(-1)).toBe(true);
         expect(freeze.values.at(-1)).toBe(false);
         p.setLevel("freeze");
+        await settle();
         expect(calm.values.at(-1)).toBe(true);
         expect(freeze.values.at(-1)).toBe(true);
         p.setLevel("off");
+        await settle();
         expect(calm.values.at(-1)).toBe(false);
         expect(freeze.values.at(-1)).toBe(false);
         calm.unsubscribe();

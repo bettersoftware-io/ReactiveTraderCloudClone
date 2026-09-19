@@ -39,18 +39,18 @@ afterEach(() => {
 });
 
 describe("Tile", () => {
-  it("shows a loading state until a price arrives", () => {
+  it("shows a loading state until a createPrice arrives", () => {
     const tile = mount(Tile, { props: { pair: eurusd, showChart: false } });
     expect(tile.isPriceLoading()).toBe(true);
-    // The price boxes ARE the execution buttons now, so with no price yet
+    // The createPrice boxes ARE the execution buttons now, so with no createPrice yet
     // there is nothing to render (and nothing to click).
     expect(tile.hasExecutionButtons()).toBe(false);
   });
 
-  it("renders the header, price and spread once a price streams in", () => {
+  it("renders the header, createPrice and spread once a createPrice streams in", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
     });
     expect(tile.headerText()).toBe("EUR/USD");
     expect(tile.isPriceLoading()).toBe(false);
@@ -62,7 +62,7 @@ describe("Tile", () => {
     const charted = mount(Tile, {
       props: { pair: eurusd, showChart: true },
       parametric: {
-        prices: { EURUSD: price() },
+        prices: { EURUSD: createPrice() },
         histories: { EURUSD: history },
       },
     });
@@ -71,26 +71,26 @@ describe("Tile", () => {
     const flat = mount(Tile, {
       props: { pair: eurusd, showChart: false },
       parametric: {
-        prices: { EURUSD: price() },
+        prices: { EURUSD: createPrice() },
         histories: { EURUSD: history },
       },
     });
     expect(flat.hasChart()).toBe(false);
   });
 
-  it("transitions from loading to live when a price is pushed", () => {
+  it("transitions from loading to live when a createPrice is pushed", () => {
     const tile = mount(Tile, { props: { pair: eurusd, showChart: false } });
     expect(tile.isPriceLoading()).toBe(true);
-    tile.setPrice("EURUSD", price());
+    tile.setPrice("EURUSD", createPrice());
     expect(tile.isPriceLoading()).toBe(false);
     expect(tile.hasPriceButtons()).toBe(true);
   });
 
-  it("enables execution once a price is present and records the executed trade", async () => {
+  it("enables execution once a createPrice is present and records the executed trade", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
-      commands: { executeTrade: tradeResult() },
+      parametric: { prices: { EURUSD: createPrice() } },
+      commands: { executeTrade: createTradeResult() },
     });
     expect(tile.isBuyDisabled()).toBe(false);
     await tile.clickBuy();
@@ -99,11 +99,13 @@ describe("Tile", () => {
     expect(tile.confirmationText()).toMatch(/you bought/i);
   });
 
-  it("records the execute command input including the live price and notional", async () => {
+  it("records the execute command input including the live createPrice and notional", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
-      commands: { executeTrade: tradeResult({ direction: Direction.Sell }) },
+      parametric: { prices: { EURUSD: createPrice() } },
+      commands: {
+        executeTrade: createTradeResult({ direction: Direction.Sell }),
+      },
     });
     await tile.clickSell();
     const cmds = tile.executedTrades();
@@ -122,8 +124,8 @@ describe("Tile", () => {
   it("flags the tile root as booked during the success confirmation, and unflags on dismiss", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
-      commands: { executeTrade: tradeResult() },
+      parametric: { prices: { EURUSD: createPrice() } },
+      commands: { executeTrade: createTradeResult() },
     });
     expect(tile.bookedFlag("EURUSD")).toBe("false");
     await tile.clickBuy();
@@ -137,9 +139,12 @@ describe("Tile", () => {
   it("does not flag the tile as booked when the trade is rejected", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
       commands: {
-        executeTrade: { ...tradeResult(), status: ExecutionStatus.Rejected },
+        executeTrade: {
+          ...createTradeResult(),
+          status: ExecutionStatus.Rejected,
+        },
       },
     });
     await tile.clickBuy();
@@ -151,7 +156,7 @@ describe("Tile", () => {
   it("falls back to a timeout confirmation when the execute command errors", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
       commands: { executeTradeThrows: true },
     });
     await tile.clickBuy();
@@ -162,7 +167,7 @@ describe("Tile", () => {
   it("lets the user edit the notional", async () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
     });
     expect(tile.notionalValue()).toBe("1,000,000");
     tile.setNotional("2500");
@@ -176,7 +181,7 @@ describe("Tile", () => {
   it("shows a notional validation error and blocks execution", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
     });
     tile.setNotional("not-a-number");
     expect(tile.notionalError()).toMatch(/invalid input/i);
@@ -187,7 +192,7 @@ describe("Tile", () => {
   it("switches to RFQ controls when the notional crosses the RFQ threshold", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
     });
     expect(tile.hasExecutionButtons()).toBe(true);
     tile.setNotional("20m");
@@ -197,10 +202,10 @@ describe("Tile", () => {
   it("starts a tile whose default notional already requires an RFQ", () => {
     const tile = mount(Tile, {
       props: { pair: nzdusd, showChart: false },
-      parametric: { prices: { NZDUSD: price({ symbol: "NZDUSD" }) } },
+      parametric: { prices: { NZDUSD: createPrice({ symbol: "NZDUSD" }) } },
     });
     expect(tile.hasInitiateRfq()).toBe(true);
-    // The price boxes still render (they show the live price) but are
+    // The createPrice boxes still render (they show the live createPrice) but are
     // disabled — market execution is blocked while the notional requires
     // going through the RFQ quote flow instead.
     expect(tile.isSellDisabled()).toBe(true);
@@ -216,7 +221,7 @@ describe("Tile", () => {
 
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
       commands: { requestRfqQuote: quoteResult },
     });
     tile.setNotional("20m");
@@ -227,9 +232,9 @@ describe("Tile", () => {
     expect(tile.hasRfqButton("Sell 1.09210")).toBe(true);
   });
 
-  it("accepts an RFQ quote and executes at the quoted price", async () => {
-    // Quote prices differ from the live price so we can prove the SYNTHETIC
-    // quote price (priceVal) — not the live stream price — reaches execution.
+  it("accepts an RFQ quote and executes at the quoted createPrice", async () => {
+    // Quote prices differ from the live createPrice so we can prove the SYNTHETIC
+    // quote createPrice (priceVal) — not the live stream createPrice — reaches execution.
     const quoteResult: RfqQuoteResult = {
       bid: 1.2001,
       ask: 1.2005,
@@ -238,40 +243,43 @@ describe("Tile", () => {
 
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
-      commands: { requestRfqQuote: quoteResult, executeTrade: tradeResult() },
+      parametric: { prices: { EURUSD: createPrice() } },
+      commands: {
+        requestRfqQuote: quoteResult,
+        executeTrade: createTradeResult(),
+      },
     });
     tile.setNotional("20m");
     await tile.clickInitiateRfq();
-    // Accept the buy side → executeTrade runs with the synthetic quote price.
+    // Accept the buy side → executeTrade runs with the synthetic quote createPrice.
     await tile.clickRfqButton("Buy 1.20050");
     const cmds = tile.executedTrades();
     expect(cmds).toHaveLength(1);
     expect(cmds[0].direction).toBe(Direction.Buy);
-    // Notional reflects the 20m RFQ value, and the price is the synthetic quote
-    // (1.2005), distinct from the live stream price (1.0925).
+    // Notional reflects the 20m RFQ value, and the createPrice is the synthetic quote
+    // (1.2005), distinct from the live stream createPrice (1.0925).
     expect(cmds[0].notional).toBe(20_000_000);
     expect(cmds[0].price.ask).toBe(quoteResult.ask);
     expect(cmds[0].price.bid).toBe(quoteResult.bid);
   });
 
-  it("shows the stale overlay after a disconnect/reconnect with no fresh price", () => {
+  it("shows the stale overlay after a disconnect/reconnect with no fresh createPrice", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
       hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
     });
     expect(tile.isStale()).toBe(false);
     tile.emit({ useConnectionStatus: ConnectionStatus.DISCONNECTED });
     tile.emit({ useConnectionStatus: ConnectionStatus.CONNECTED });
     expect(tile.isStale()).toBe(true);
-    // A fresh price reference clears the stale flag.
-    tile.setPrice("EURUSD", price({ bid: 1.1 }));
+    // A fresh createPrice reference clears the stale flag.
+    tile.setPrice("EURUSD", createPrice({ bid: 1.1 }));
     expect(tile.isStale()).toBe(false);
   });
 
   // Tile.tsx's executeTrade guard (`if (!p || hasError || stale) return;`)
-  // gates every execution path, not just the market price boxes — TileRfq's
+  // gates every execution path, not just the market createPrice boxes — TileRfq's
   // accept buttons carry no `disabled` attribute of their own, so this proves
   // the guard (not the DOM) is what blocks execution once the tile goes stale
   // mid-RFQ.
@@ -284,15 +292,18 @@ describe("Tile", () => {
 
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
-      commands: { requestRfqQuote: quoteResult, executeTrade: tradeResult() },
+      parametric: { prices: { EURUSD: createPrice() } },
+      commands: {
+        requestRfqQuote: quoteResult,
+        executeTrade: createTradeResult(),
+      },
       hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
     });
     tile.setNotional("20m");
     await tile.clickInitiateRfq();
     expect(tile.hasRfqButton("Buy 1.09250")).toBe(true);
 
-    // Disconnect/reconnect with no fresh price tick — same recipe as "shows
+    // Disconnect/reconnect with no fresh createPrice tick — same recipe as "shows
     // the stale overlay..." above — flips the tile stale without touching
     // the in-flight RFQ quote.
     tile.emit({ useConnectionStatus: ConnectionStatus.DISCONNECTED });
@@ -309,7 +320,7 @@ describe("Tile", () => {
   it("disables the Buy/Sell buttons while the tile is stale", () => {
     const tile = mount(Tile, {
       props: { pair: eurusd, showChart: false },
-      parametric: { prices: { EURUSD: price() } },
+      parametric: { prices: { EURUSD: createPrice() } },
       hooks: { useConnectionStatus: ConnectionStatus.CONNECTED },
     });
     expect(tile.isStale()).toBe(false);
@@ -320,14 +331,14 @@ describe("Tile", () => {
     expect(tile.isStale()).toBe(true);
     expect(tile.isBuyDisabled()).toBe(true);
     expect(tile.isSellDisabled()).toBe(true);
-    tile.setPrice("EURUSD", price({ bid: 1.1 }));
+    tile.setPrice("EURUSD", createPrice({ bid: 1.1 }));
     expect(tile.isStale()).toBe(false);
     expect(tile.isBuyDisabled()).toBe(false);
     expect(tile.isSellDisabled()).toBe(false);
   });
 });
 
-function price(over: Partial<Price> = {}): Price {
+function createPrice(over: Partial<Price> = {}): Price {
   return {
     symbol: "EURUSD",
     bid: 1.0921,
@@ -341,7 +352,7 @@ function price(over: Partial<Price> = {}): Price {
   };
 }
 
-function tradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
+function createTradeResult(over: Partial<Trade> = {}): ExecuteTradeResult {
   return {
     status: ExecutionStatus.Done,
     trade: {

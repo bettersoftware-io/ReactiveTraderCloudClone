@@ -168,6 +168,53 @@ predictable from the design alone):
   reference only holds if the overlay wraps the factory itself, not a single
   instance it once produced.
 
+**Learned in slice 1a** (2026-09-18):
+
+- **`Stream.share` cannot be an Effect presenter's envelope.** It replays to
+  a new subscriber on a fiber, so the synchronous-first-value guarantee is
+  unmeetable through it. The Effect idiom is `sharedFold`: a
+  `SubscriptionRef` seeded synchronously on every first subscribe (a
+  `peek` of the port for a mirror, a constant for a pure fold), a producer
+  fiber forked into a per-warm-period child `Scope`, the last unsubscribe
+  closing that scope. Writes go through an `update` that publishes only a
+  non-`Object.is`-equal result — a `SubscriptionRef.set` of an equal value
+  re-publishes (measured) — and only for the current warm period, since a
+  scope closes on a fiber and a producer can outlive its period by a tick.
+- **The contract asserts only the first value synchronously.** Everything
+  after a drive is asserted after `settle()`. Slice 0's suites pinned
+  RxJS's delivery tick without meaning to; they passed on both alternative
+  cores only because those cores were still delegating.
+- **The async core needed a synchronous relay, not an iterator, for hot
+  ports.** A `for await` over `iterate(port$)` resumes a microtask after the
+  port's synchronous emission; `relay(port$, signal, publish)` hands it on
+  in the same tick, which is what makes a `Topic` over a `BehaviorSubject`
+  port replay-current. `iterate` remains the pull-paced tool. Release is
+  synchronous for the same reason: a producer that only released its
+  upstream in a `finally` after an `await` was two microtasks late, so
+  `mapTopic` and the theme presenter's `mode$` also release from a
+  synchronous `abort` listener.
+- **Under Effect, subscribing is deferred too, not only delivery.** Measured
+  on 3.22.2: under `Stream.runForEach` + `runFork`, EVERY `Stream` shape
+  (`asyncPush`, `asyncScoped`, `unwrapScoped`, a synchronous `unwrap`) defers
+  even a bare `Effect.sync` by ≥1 microtask, so the rxjs `subscribe` inside
+  the stream ran late and a Subject event emitted synchronously right after
+  a `sharedFold`'s first subscribe was lost (three contract cases red).
+  `fromObservable` (`packages/client-core-effect/src/bridge/in.ts`) now
+  subscribes the port EAGERLY at call time into a `Queue`, before any
+  `Stream` machinery; consequently it must be called inside a
+  `sharedFold`'s `run` (once per warm period), never at presenter
+  construction — `themePreference.ts` had to move its colour-scheme stream
+  inside `run`. Also: `sharedFold`'s `update` now yields
+  (`Effect.yieldNow()`) after each `set`, because publishes made before the
+  `ref.changes` watcher has subscribed its `PubSub` are dropped (a
+  same-tick burst of three events delivered `[0, 6]` instead of
+  `[0, 1, 3, 6]`).
+- **`commands.reconnect` is native in provenance but shared in transport.**
+  Both web clients merge `@rtc/client-core`'s module-level `reconnect$`
+  into `connectionEvents` for every core, so each core's native command
+  pushes into it — through its `bridge/out.ts`, the one place a Subject
+  method is called. Slice 8 moves the seam.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

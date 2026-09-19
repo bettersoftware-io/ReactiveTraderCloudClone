@@ -2,8 +2,6 @@ import { afterEach, expect, jest, test } from "@jest/globals";
 
 import { priceStepperPage } from "#tests/pages/PriceStepperPage";
 
-const page = priceStepperPage();
-
 afterEach(() => {
   return page.unmountAll();
 });
@@ -48,3 +46,5 @@ test("shows the current price to two decimals", async () => {
 });
 
 function noop(): void {}
+
+const page = priceStepperPage();

@@ -47,17 +47,17 @@ afterEach(() => {
 
 describe("exportToCsv", () => {
   it("writes a header row with all column labels", () => {
-    exportFxToCsv([trade()]);
+    exportFxToCsv([createTrade()]);
     const [header] = capturedContent().split("\n");
     expect(header).toBe(
       "Trade ID,Status,Trade Date,Direction,CCYCCY,Deal CCY,Notional,Rate,Value Date,Trader",
     );
   });
 
-  it("serializes one CSV row per trade with unformatted notional", () => {
+  it("serializes one CSV row per createTrade with unformatted notional", () => {
     exportFxToCsv([
-      trade({ tradeId: 11, notional: 2_500_000, tradeName: "Bob" }),
-      trade({ tradeId: 12, notional: 7_000_000, tradeName: "Carol" }),
+      createTrade({ tradeId: 11, notional: 2_500_000, tradeName: "Bob" }),
+      createTrade({ tradeId: 12, notional: 7_000_000, tradeName: "Carol" }),
     ]);
     const lines = capturedContent().split("\n");
     expect(lines).toHaveLength(3); // header + 2 rows
@@ -70,20 +70,20 @@ describe("exportToCsv", () => {
 
   it("quotes cells that contain a comma", () => {
     // A trader name with a comma must be wrapped in double quotes.
-    exportFxToCsv([trade({ tradeName: "Smith, John" })]);
+    exportFxToCsv([createTrade({ tradeName: "Smith, John" })]);
     const row = capturedContent().split("\n")[1];
     expect(row).toContain('"Smith, John"');
   });
 
   it("leaves comma-free cells unquoted", () => {
-    exportFxToCsv([trade({ tradeName: "Alice" })]);
+    exportFxToCsv([createTrade({ tradeName: "Alice" })]);
     const row = capturedContent().split("\n")[1];
     expect(row).not.toContain('"Alice"');
     expect(row).toContain("Alice");
   });
 
   it("revokes the object URL after triggering the download", () => {
-    exportFxToCsv([trade()]);
+    exportFxToCsv([createTrade()]);
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
   });
@@ -92,17 +92,17 @@ describe("exportToCsv", () => {
   // FX convenience pins its own, and the generic export downloads under
   // whatever name its caller passes (CreditBlotter passes credit-trades.csv).
   it("downloads the FX export as fx-trades.csv", () => {
-    exportFxToCsv([trade()]);
+    exportFxToCsv([createTrade()]);
     expect(downloadName).toBe("fx-trades.csv");
   });
 
   it("downloads the generic export under the caller's filename", () => {
-    exportToCsv([trade()], COLUMNS, formatFxCell, "credit-trades.csv");
+    exportToCsv([createTrade()], COLUMNS, formatFxCell, "credit-trades.csv");
     expect(downloadName).toBe("credit-trades.csv");
   });
 });
 
-function trade(over: Partial<Trade> = {}): Trade {
+function createTrade(over: Partial<Trade> = {}): Trade {
   return {
     tradeId: 1,
     tradeName: "Alice",
