@@ -22,8 +22,13 @@ export function resolveCoreImpl(raw: string | undefined): CoreImpl {
   );
 }
 
-// Validation only — fail closed on an unknown value at module init.
-resolveCoreImpl(import.meta.env.VITE_CORE_IMPL);
+/** The validated selection — what `data-core-impl` publishes, so a test or a
+ * human reads "rxjs" under vitest/jsdom (no `define`) rather than the raw
+ * `import.meta.env` string `"undefined"`. Fails closed on an unknown value
+ * at module init. */
+export const selectedCoreImpl: CoreImpl = resolveCoreImpl(
+  import.meta.env.VITE_CORE_IMPL,
+);
 
 /** The application core this build boots. The comparison is made on the
  * literal `import.meta.env.VITE_CORE_IMPL` inlined by Vite's `define`, so
@@ -41,5 +46,5 @@ export const activeCore: CoreFactory =
 // `check:core-bundle` proves the others are absent, this proves this one is
 // present.
 if (typeof document !== "undefined") {
-  document.documentElement.dataset.coreImpl = import.meta.env.VITE_CORE_IMPL;
+  document.documentElement.dataset.coreImpl = selectedCoreImpl;
 }

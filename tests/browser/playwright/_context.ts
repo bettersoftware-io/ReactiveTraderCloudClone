@@ -52,9 +52,15 @@ export const test = base.extend<TestFixtures>({
     { page }: PlaywrightFixtureArgs,
     use: (value: TestContext) => Promise<void>,
   ) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => {
+      pageErrors.push(error.message);
+    });
+
     const ctx: TestContext = {
       po: buildPlaywrightPageObjects(page),
       scratch: new Scratchpad(),
+      pageErrors,
     };
     await use(ctx);
   },
