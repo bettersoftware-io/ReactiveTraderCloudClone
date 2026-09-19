@@ -87,8 +87,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # --error-on-warnings: plain `biome ci` exits 0 on warnings, so they
+      # accumulated unseen (22 by 2026-09-19) under a zero-findings policy.
       - name: Lint + format (Biome)
-        run: pnpm exec biome ci .
+        run: pnpm exec biome ci --error-on-warnings .
 
       - name: ESLint (AST rules)
         run: pnpm lint:eslint

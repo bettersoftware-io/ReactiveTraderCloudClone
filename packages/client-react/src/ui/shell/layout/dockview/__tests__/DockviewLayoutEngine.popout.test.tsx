@@ -1,12 +1,9 @@
-import type { ReactElement } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { InMemoryDockLayoutStore } from "@rtc/client-core";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
-
-import { DockviewLayoutEngine } from "../DockviewLayoutEngine";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way.
 beforeAll(() => {
@@ -124,8 +121,6 @@ describe("dockview bridge pop-out wiring", () => {
     page.unmountAll();
   });
 });
-
-function noop(): void {}
 
 /** The pop-out reset case mounts the same tree twice with a bumped
  * `layoutResets`, so the props live here rather than being duplicated. */

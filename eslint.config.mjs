@@ -95,6 +95,13 @@ const inlineStyleProp = {
 // deliberately does NOT match (direct-child ObjectExpression only): the array
 // form is RN's sanctioned runtime channel, the analogue of the web ban's
 // CSS-custom-property exemption.
+// A raw `.groups` read in @rtc/layout-dockview (see the scoped block below).
+const rawDockviewGroups = {
+  selector: "MemberExpression[computed=false][property.name='groups']",
+  message:
+    "Don't read dockview's `api.groups` directly: it still lists floating and popped-out groups. Use `gridGroups(api)` (in the grid) or `groupsAnywhere(api)` (grid, floating and popped out) from dockGroups.ts.",
+};
+
 const rnInlineStyleProp = {
   selector:
     "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression, JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression",
@@ -201,6 +208,23 @@ export default tseslint.config(
     ],
     rules: {
       "no-restricted-syntax": ["error", ...restrictedSyntax, rnInlineStyleProp],
+    },
+  },
+  {
+    // dockview's `api.groups` is NOT pruned when a group floats or pops out,
+    // so a raw read silently answers "every group anywhere" when the caller
+    // usually means "what is in the dock". That shipped twice (#745's
+    // absorber check, the R7 maximize strip). Every read goes through
+    // dockGroups.ts, whose two accessors make the caller name its question.
+    // Re-lists `restrictedSyntax` because flat config REPLACES (does not
+    // merge) a rule's options across matching blocks.
+    files: ["packages/layout-dockview/src/**/*.ts"],
+    ignores: [
+      "packages/layout-dockview/src/dockGroups.ts",
+      "packages/layout-dockview/src/**/*.test.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, rawDockviewGroups],
     },
   },
   {

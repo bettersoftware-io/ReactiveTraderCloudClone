@@ -381,8 +381,6 @@ describe("DockviewLayoutEngine docked prop", () => {
   });
 });
 
-function noop(): void {}
-
 interface DockviewPanelMeta {
   id: string;
   contentComponent: string;

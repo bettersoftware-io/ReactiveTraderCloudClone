@@ -15,6 +15,7 @@ import {
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
+import { gridGroups, groupsAnywhere, isInGrid } from "#/dockGroups";
 import {
   convertSeed,
   type DockDesignPin,
@@ -454,6 +455,68 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return { records: recordSizes, flips };
   }
 
+  // ——— Pop-out windows wear the opener's theme ———
+  // dockview copies the opener's STYLESHEETS into a pop-out window
+  // (`addStyles`), but a theme here is not only stylesheets: each client's
+  // ThemeProvider writes the skin's token values as inline custom properties
+  // on the opener's `<html>`, plus `data-skin` / `data-mode`, and every rule
+  // reads them through `var(--…)`. A pop-out's own `<html>` carries none of
+  // that, so every token resolved to nothing — text fell back to black and
+  // the window ignored both the skin and light/dark (user report,
+  // 2026-09-19). The engine owns pop-out windows, so it mirrors the opener's
+  // root attributes into each one as it opens, and re-mirrors on every
+  // change, so switching skin or mode repaints an open pop-out live.
+  const openerRoot = opts.container.ownerDocument.documentElement;
+  // Keyed by the pop-out's id, never re-read through its window: by the
+  // time dockview reports a pop-out REMOVED its window can already be gone
+  // (`window` is null when a pop-out of a floated panel closes), and a throw
+  // inside dockview's own emitter aborted the dock-home — the panel vanished.
+  const popoutRoots = new Map<string, HTMLElement>();
+
+  /** Makes `target`'s attributes exactly `openerRoot`'s — the inline token
+   * properties (`style`) and `data-skin` / `data-mode` among them. */
+  function mirrorOpenerRootInto(target: HTMLElement): void {
+    for (const name of target.getAttributeNames()) {
+      if (!openerRoot.hasAttribute(name)) {
+        target.removeAttribute(name);
+      }
+    }
+
+    for (const name of openerRoot.getAttributeNames()) {
+      const value = openerRoot.getAttribute(name) ?? "";
+
+      if (target.getAttribute(name) !== value) {
+        target.setAttribute(name, value);
+      }
+    }
+  }
+
+  /** Re-mirrors the opener's root into every open pop-out window. */
+  function mirrorOpenerRootIntoPopouts(): void {
+    for (const root of popoutRoots.values()) {
+      mirrorOpenerRootInto(root);
+    }
+  }
+
+  const openerRootObserver = new MutationObserver(mirrorOpenerRootIntoPopouts);
+
+  openerRootObserver.observe(openerRoot, { attributes: true });
+
+  const popoutAddSub = api.onDidAddPopoutGroup((popout) => {
+    // Typed non-null, but read defensively all the same: this runs inside
+    // dockview's emitter, where a throw aborts dockview's own transaction.
+    const root = (popout.window as Window | null)?.document.documentElement;
+
+    if (root !== undefined) {
+      popoutRoots.set(popout.id, root);
+      mirrorOpenerRootInto(root);
+    }
+  });
+
+  const popoutRemoveSub = api.onDidRemovePopoutGroup((popout) => {
+    popoutRoots.delete(popout.id);
+  });
+
   // The popped set, published like strips: recomputed on every layout
   // change (dockview fires one for the pop-out transaction and again on
   // dock-home), compared, and handed to the client whole.
@@ -461,7 +524,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let lastFloating: readonly string[] = [];
 
   function publishPoppedPanels(): void {
-    const popped = api.groups
+    const popped = groupsAnywhere(api)
       .filter((group) => {
         return group.api.location.type === "popout";
       })
@@ -480,7 +543,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   /** Every panel currently in a floating group, sorted. */
   function floatingPanelIds(): readonly string[] {
-    return api.groups
+    return groupsAnywhere(api)
       .filter((group) => {
         return group.api.location.type === "floating";
       })
@@ -520,6 +583,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       serializeLayout();
     }, debounceMs);
   });
+
+  /** Lands a save still waiting out the debounce, now. A reload tears the
+   * page down without unmounting anything — dispose's flush never runs — so
+   * a change made inside the last `debounceMs` (a float, then a quick
+   * reload) was simply lost. `pagehide` fires for a reload and a navigation
+   * alike, early enough for the store's synchronous write to land. Only a
+   * PENDING save is flushed: it is exactly the write the debounce would
+   * have made, so this changes when a save lands, never whether. */
+  function flushPendingSave(): void {
+    if (timer === null) {
+      return;
+    }
+
+    clearTimeout(timer);
+    timer = null;
+    serializeLayout();
+  }
+
+  const ownerWindow = opts.container.ownerDocument.defaultView;
+
+  ownerWindow?.addEventListener("pagehide", flushPendingSave);
 
   // A float the blob restored must be published NOW: `loadBlobOrSeed` ran
   // `fromJSON` above, BEFORE `changeSub` subscribed, and dockview's
@@ -750,7 +834,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         continue;
       }
 
-      const member = api.groups.find((candidate) => {
+      const member = gridGroups(api).find((candidate) => {
         return candidate.element === element;
       });
 
@@ -1013,7 +1097,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const split = splitForFlipKey(key);
 
       if (split !== null) {
-        const witness = firstGroupIn(split, api.groups);
+        const witness = firstGroupIn(split, gridGroups(api));
 
         if (witness !== undefined) {
           axisOf(witness, opposite(orientationAgainst(split))).set(size);
@@ -1419,21 +1503,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return [...floatSuspendedPins.values()].flat();
   }
 
-  /** True while `group` is still laid out in THIS window's grid.
-   *
-   * `api.groups` is not pruned when a group leaves the grid, so every "what
-   * is in the dock" question has to ask this rather than assume it. A panel
-   * can stop being present in three ways — closed, popped out, floated — and
-   * only the first removes it from `api.groups`. Named for the question, not
-   * for today's answer, so a fourth way to leave the grid is one edit here.
-   *
-   * `?? "grid"` is deliberate: treating an unreported location as present is
-   * the safe direction, since wrongly excluding a group would release a
-   * constraint that is still doing its job. */
-  function isInGrid(group: SizableGroup): boolean {
-    return (group.api.location?.type ?? "grid") === "grid";
-  }
-
   /** True while some panel can still absorb the container's spare space —
    * any panel that is IN THE GRID, not a member of `held`, and not currently
    * a STRIP. A collapsed panel sits at the strip extent, so it absorbs
@@ -1456,11 +1525,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    return api.groups.some((group) => {
-      if (!isInGrid(group)) {
-        return false;
-      }
-
+    return gridGroups(api).some((group) => {
       return group.panels.some((panel) => {
         return !pinned.has(panel.id) && !records.has(panel.id);
       });
@@ -1632,15 +1697,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // width when the instances divide what is left.
     settlePinAbsorption();
 
+    const newcomer = groupOf(panel.id);
+
     if (maximized !== null) {
-      // A panel docked while a maximize is live must not land full-size next
-      // to a dock of 32px strips — force it into the maximize's own strip
-      // set via the SAME path maximizePanel uses (recordStrip, including its
-      // lock semantics), and fold it into `maximized.stripped` so
-      // exitMaximize restores it like any other panel the maximize forced.
-      // The sharing rule is skipped: there is nothing to share while the
-      // dock is bars.
-      if (recordStrip(panel.id)) {
+      // A panel docked INSIDE a live maximize's boundary must not land
+      // full-size next to a dock of 32px strips — force it into the
+      // maximize's own strip set via the SAME path maximizePanel uses
+      // (recordStrip, including its lock semantics), and fold it into
+      // `maximized.stripped` so exitMaximize restores it like any other panel
+      // the maximize forced.
+      //
+      // Only inside, by the same `boundary.contains` test maximizePanel
+      // applies: a nearest-column maximize strips its own column and nothing
+      // else, so a newcomer landing at the root's right edge — outside that
+      // column — arrives as a full panel. It used to be stripped regardless
+      // (the #724 gap: maximize the watchlist, open a chart from it, and the
+      // chart arrived as a bar).
+      if (
+        newcomer !== undefined &&
+        liveMaximizeBoundary().contains(newcomer.element) &&
+        recordStrip(panel.id)
+      ) {
         maximized = {
           ...maximized,
           stripped: [...maximized.stripped, panel.id],
@@ -1648,6 +1725,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         glide(settleStrips);
       }
 
+      // Inside or out, the share rule waits for the maximize to end: exit
+      // restores the geometry it captured, and a share run now would be
+      // measured against a layout that exit is about to reshape.
       if (panel.unpinned === true) {
         owedShares.set(panel.id, "maximize"); // paid when the maximize ends
       }
@@ -1848,7 +1928,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     while (split !== null) {
       const parent = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
-      const inside = api.groups.filter((group) => {
+      const inside = gridGroups(api).filter((group) => {
         return split?.contains(group.element) === true;
       });
 
@@ -1879,7 +1959,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * expand restores, which the rule cannot have shared. */
   function holdsStripChild(split: Element): boolean {
     return childViewsOf(split).some((child) => {
-      const groups = api.groups.filter((group) => {
+      const groups = gridGroups(api).filter((group) => {
         return child.contains(group.element);
       });
 
@@ -1931,7 +2011,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     let staticMembers = 0;
 
     for (const child of childViewsOf(split)) {
-      const groups = api.groups.filter((group) => {
+      const groups = gridGroups(api).filter((group) => {
         return child.contains(group.element);
       });
 
@@ -2001,12 +2081,84 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Holds every OTHER instance member of `panelId`'s width-axis split at
+   * its current width (min=max) and returns the release. While held, the
+   * width a collapsing instance frees can land only on the split's static
+   * member — the main area — instead of on whichever member dockview's
+   * last-view settle reaches first (Phase-4 follow-up (a): the neighbouring
+   * instance used to balloon until the collapsed one was expanded). Widths
+   * are held as they ARE, never re-shared, so an instance the user dragged
+   * keeps its drag (R20). A no-op — nothing held — when `panelId` is not an
+   * unpinned instance, or when its split has no static member to take the
+   * width (holding every other member would leave it nowhere to go). */
+  function holdOtherInstancesOf(panelId: string): () => void {
+    const split = unpinnedDynamicPanels.has(panelId)
+      ? instanceSplitOf(panelId)
+      : null;
+    const own = groupOf(panelId);
+
+    if (split === null || own === undefined) {
+      return () => {};
+    }
+
+    const along = orientationAgainst(split);
+    const held: GroupAxis[] = [];
+    let staticMembers = 0;
+
+    for (const child of childViewsOf(split)) {
+      const groups = gridGroups(api).filter((group) => {
+        return child.contains(group.element);
+      });
+
+      if (
+        groups.length === 0 ||
+        child.contains(own.element) ||
+        isStripView(groups) ||
+        isPinnedView(child, split)
+      ) {
+        continue;
+      }
+
+      if (designPxOfInstanceChild(groups) === undefined) {
+        staticMembers += 1;
+      } else {
+        held.push(
+          ...groups.map((group) => {
+            return axisOf(group, along);
+          }),
+        );
+      }
+    }
+
+    if (staticMembers === 0) {
+      return () => {};
+    }
+
+    const releases = held.map((axis) => {
+      const minimum = axis.minimum();
+      const maximum = axis.maximum();
+      const size = axis.size();
+
+      axis.constrain(size, size);
+
+      return () => {
+        axis.constrain(minimum, maximum);
+      };
+    });
+
+    return () => {
+      for (const release of releases) {
+        release();
+      }
+    };
+  }
+
   /** `split`'s direct child views, in DOM order — each one a leaf group's
    * view or a nested split's. */
   function childViewsOf(split: Element): readonly Element[] {
     const views: Element[] = [];
 
-    for (const group of api.groups) {
+    for (const group of gridGroups(api)) {
       const view = railViewOf(group.element, split);
 
       if (view !== null && !views.includes(view)) {
@@ -2132,7 +2284,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     return element === null
       ? undefined
-      : api.groups.find((candidate) => {
+      : groupsAnywhere(api).find((candidate) => {
           return candidate.element === element;
         });
   }
@@ -2288,10 +2440,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function snapshotGridExtents(): void {
     const extents = new Map<string, FloatHomeSize>();
 
-    for (const group of api.groups) {
-      const split = isInGrid(group)
-        ? group.element.closest(SPLIT_SELECTOR)
-        : null;
+    for (const group of gridGroups(api)) {
+      const split = group.element.closest(SPLIT_SELECTOR);
 
       if (split === null) {
         continue;
@@ -2391,6 +2541,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * mutations, which reach the pass through `settleFloatTransitions`. */
   function restoreFloatHomeSizes(): void {
     if (maximized !== null) {
+      noteDeferredLandings();
+
       return;
     }
 
@@ -2399,6 +2551,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (panel === undefined) {
         floatHomeSizes.delete(panelId);
+        deferredLandings.delete(panelId);
         continue;
       }
 
@@ -2409,6 +2562,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       floatHomeSizes.delete(panelId);
       const group: SizableGroup = panel.group;
       const split = group.element.closest(SPLIT_SELECTOR);
+      const landing = deferredLandings.get(panelId);
+
+      deferredLandings.delete(panelId);
+
+      if (landing !== undefined && !isSameLanding(landing, group, split)) {
+        continue;
+      }
 
       if (
         split === null ||
@@ -2435,6 +2595,36 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** Where each panel whose restore is DEFERRED first docked: the group and
+   * split it landed in while a maximize was live. The remembered extent
+   * describes that spot; a panel moved again before the maximize ends is
+   * somewhere the extent does not describe, and its entry is dropped rather
+   * than applied there (#770's residual). */
+  const deferredLandings = new Map<string, DockLanding>();
+
+  /** Records, under a live maximize, where each remembered panel that is
+   * back in the grid landed — the first time it is seen there — and drops
+   * the entry of one that has since moved on. */
+  function noteDeferredLandings(): void {
+    for (const panelId of [...floatHomeSizes.keys()]) {
+      const group = api.getPanel(panelId)?.group;
+
+      if (group === undefined || !isInGrid(group)) {
+        continue;
+      }
+
+      const split = group.element.closest(SPLIT_SELECTOR);
+      const landing = deferredLandings.get(panelId);
+
+      if (landing === undefined) {
+        deferredLandings.set(panelId, { group: group.element, split });
+      } else if (!isSameLanding(landing, group, split)) {
+        floatHomeSizes.delete(panelId);
+        deferredLandings.delete(panelId);
+      }
+    }
+  }
+
   /** The most `group` can grow to along `along` inside `split` without
    * pushing a sibling view below its minimum: its own extent plus each
    * sibling view's slack. A sibling view that is a nested split is as small
@@ -2447,7 +2637,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     let room = 0;
 
     for (const child of childViewsOf(split)) {
-      const groups = api.groups.filter((candidate) => {
+      const groups = gridGroups(api).filter((candidate) => {
         return child.contains(candidate.element);
       });
       const first = groups[0];
@@ -2483,10 +2673,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** Applies the float rules (R5, Ruling 10, R6) to whatever changed since
    * the last structural mutation — ONE mechanism for every way a panel
    * enters or leaves a float (final review I1). `floatPanel` and `dockPanel`
-   * are two of them; dockview's own shift-drag float, a drag of a float onto
-   * the grid, and a pop-out window closing back into the grid are the
-   * others, and they call `addFloatingGroup` / `moveGroupOrPanel` themselves
-   * without ever reaching the verbs. When the rules lived on the verbs, the
+   * are two of them; dockview's own shift-drag float and a drag of a float
+   * onto the grid are the others, and they call `addFloatingGroup` /
+   * `moveGroupOrPanel` themselves without ever reaching the verbs. A pop-out
+   * window closing back into the grid is covered too, but NOT at once: its
+   * grid-landing paths (dockview's `disposePopoutWindow` non-sole-member
+   * branch, `handleBlockedPopout`) carry no mutation bracket, so it settles
+   * at the NEXT mutation (Ruling 37c — rare and self-healing). When the rules lived on the verbs, the
    * gesture path left a float clamped min=max until the next layout pass —
    * where `intactDesignPins` then dissolved the pin for good — and a
    * shift-drag of the last absorber brought back the #745 void.
@@ -2532,6 +2725,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     for (const panelId of floating) {
       changed = suspendPinsFor(panelId) || changed;
     }
+
+    // A record whose panel has left the dock (closed while floating) is
+    // dropped HERE, by the settle that follows the close — not lazily. Kept,
+    // a reopen in the same tick found it and re-clamped the pin min=max,
+    // where a panel closed and reopened without a float comes back
+    // unclamped (Ruling 37b).
+    floatSuspendedRecords();
 
     for (const panelId of [...floatSuspendedPins.keys()]) {
       const panel = api.getPanel(panelId);
@@ -2816,18 +3016,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // Snapshots: ejecting a tab sibling into its own group mutates both
         // lists mid-walk. The maximized panel's own group is skipped whole —
         // its tab siblings stay tabs behind it, as they were.
-        for (const group of [...api.groups]) {
+        for (const group of [...gridGroups(api)]) {
           // R7 (Phase 6 design §3.2): DOM containment is NOT grid membership.
           // A float stays inside this engine's own container — dockview
           // mounts it in a `.dv-floating-overlay-host` sibling of the grid
           // (measured, Task 1 Q2) — so `boundary.contains` is TRUE for it and
           // a maximize would otherwise strip a float to a 32px bar. Floats
-          // are boxes OVER the grid: they stay visible and untouched.
-          if (
-            group === panel.group ||
-            !isInGrid(group) ||
-            !boundary.contains(group.element)
-          ) {
+          // are boxes OVER the grid: they stay visible and untouched, which
+          // is why this walks `gridGroups`, not every group.
+          if (group === panel.group || !boundary.contains(group.element)) {
             continue;
           }
 
@@ -2920,7 +3117,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       if (recordStrip(panelId)) {
-        glide(settleStrips);
+        glide(() => {
+          const release = holdOtherInstancesOf(panelId);
+
+          settleStrips();
+          release();
+        });
       }
     },
     expandPanel: (panelId: string): void => {
@@ -2929,9 +3131,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // shares paid — an unrelated expand (a blotter's height bar) pays none.
       const reclaimedWidthSplit =
         lastStrips[panelId] === "vertical" ? widthSplitAbove(panelId) : null;
+      // The mirror of collapse's hold: the width the instance takes back
+      // comes from the main area that took it, never from a neighbouring
+      // instance (Phase-4 follow-up (a)). Taken BEFORE releaseStrip — the
+      // release puts the group's own minimum back, and the strip growing
+      // from its 32px bar to that minimum already takes width from its
+      // last-view neighbour.
+      const release = holdOtherInstancesOf(panelId);
       const restore = releaseStrip(panelId);
 
       if (restore === null) {
+        release();
+
         return;
       }
 
@@ -2939,6 +3150,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         settleStrips();
         restore();
         settleStripFreeWorlds();
+        release();
         // An expanded panel absorbs again, unlike the strip it just was.
         settlePinAbsorption();
 
@@ -3084,7 +3296,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         floatingBoundsFor(
           panel.group,
           opts.container,
-          api.groups.filter((group) => {
+          groupsAnywhere(api).filter((group) => {
             return group.api.location.type === "floating";
           }).length,
         ),
@@ -3125,13 +3337,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           group: anchorGroup,
           position: directionToPosition(anchor.direction),
         });
-      } else if (api.groups.some(isInGrid)) {
+      } else {
         // No seed home to return to. Two ways to get here: a DYNAMIC panel (a
         // chart instance) has no seed slot BY CONSTRUCTION — the seed tree
         // never names one — and a static panel whose every seed sibling is
         // itself closed, floating or popped finds no live anchor either.
         // Both dock at the ROOT'S RIGHT EDGE, exactly where
-        // insertDynamicPanel opens an instance.
+        // insertDynamicPanel opens an instance. That includes an EMPTY grid
+        // (every panel of the tab floated): the group then becomes the
+        // grid's root, and the panels docked after it find it as their seed
+        // anchor. This branch used to be skipped when nothing was
+        // grid-resident, leaving Dock a silent no-op — a tab whose every
+        // panel floated could never be docked again (user report,
+        // 2026-09-19).
         //
         // It has to be the GROUP api's moveTo: given a bare `position` it
         // adds a new root-level group and moves this group into it
@@ -3144,21 +3362,20 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         panel.group.api.moveTo({ position: "right" });
       }
 
-      // Nothing grid-resident to dock onto at all (every other panel is
-      // itself closed, floating, or popped) — neither branch ran, and the
-      // panel stays floating rather than throwing.
-      //
       // The re-clamp of a pin this float suspended (R5), absorption
       // (Ruling 10) and an instance's re-share (R6) all ran inside the move
       // above, from settleFloatTransitions — the path a drag home takes too.
-      // With no move, the panel is still floating and none of them run, which
-      // is exactly what R5 requires of a float.
     },
     groupCount: () => {
-      return api.groups.length;
+      return groupsAnywhere(api).length;
     },
     dispose: () => {
+      ownerWindow?.removeEventListener("pagehide", flushPendingSave);
       changeSub.dispose();
+      popoutAddSub.dispose();
+      popoutRemoveSub.dispose();
+      openerRootObserver.disconnect();
+      popoutRoots.clear();
       willMutateSub.dispose();
       mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
@@ -3313,6 +3530,22 @@ function sharesWidth(split: Element): boolean {
 /** An instance member the sharing rule sizes: the along-split axis of every
  * group in it (one for a lone instance, several for a stacked column), and
  * its design width as a MODEL size (card + gap). */
+/** Where a panel docked: its group's element and the split holding it. */
+interface DockLanding {
+  readonly group: Element;
+  readonly split: Element | null;
+}
+
+/** Whether `group` still sits where `landing` recorded — the same group
+ * element in the same split. */
+function isSameLanding(
+  landing: DockLanding,
+  group: SizableGroup,
+  split: Element | null,
+): boolean {
+  return landing.group === group.element && landing.split === split;
+}
+
 interface SharedInstance {
   readonly axes: readonly GroupAxis[];
   readonly designModel: number;
@@ -3890,7 +4123,7 @@ function crossAxisOf(along: DockStripOrientation): DockStripOrientation {
  * fromJSON restores it verbatim. Normalise after every successful restore
  * tier; the bridge's collapse replay re-locks the bars. */
 function resetDerivedLocks(api: DockviewApi): void {
-  for (const group of api.groups) {
+  for (const group of groupsAnywhere(api)) {
     group.api.locked = false;
   }
 }
