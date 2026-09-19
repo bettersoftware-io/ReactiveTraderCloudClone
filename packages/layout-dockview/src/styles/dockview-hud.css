@@ -181,9 +181,12 @@
  * would invalidate the whole declaration and paint NOTHING — the same
  * silent-transparent family as the `background-color` trap above. Still the
  * `background` shorthand, never `background-color`, for that reason.
- * `overflow: hidden` clips the grid content
- * to the rounded corners, as `.dv-groupview`'s own `overflow: hidden`
- * already clips its tab bar. The box-shadow is a literal, always-on
+ * NO `overflow: hidden` here, deliberately: dockview's eight resize handles
+ * straddle the box's edge (each sits 2px outside it), so clipping the box
+ * cut away their outer halves — the corners entirely, under the 6px radius —
+ * and the float could not be resized from any corner (user report,
+ * 2026-09-19). The grid content inside needs no clip from here: the card
+ * within, `.dv-groupview`, clips itself to its own radius. The box-shadow is a literal, always-on
  * elevation shadow — NOT layered onto `--panel-shadow` via a comma list,
  * because that token is literally the keyword `none` in the flat skins and
  * `box-shadow: none, <shadow>` is invalid at computed-value time (the same
@@ -193,13 +196,26 @@
  * what makes a float read as LIFTED above the grid rather than merely
  * matching its cards. */
 .dockview-theme-rtc .dv-resize-container {
-  overflow: hidden;
   border: 1px solid var(--border-primary, #334155);
   border-radius: 6px;
   background: var(--bg-primary, #111827);
   box-shadow:
     0 24px 60px -8px rgba(0, 0, 0, 0.55),
     0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* The resize handles above the float's own content. dockview stacks them
+ * with `z-index: var(--dv-overlay-z-index)`, but its own stylesheet also
+ * declares `--dv-overlay-z-index: var(--dv-overlay-z-index, 999)` on this
+ * very box — a custom property defined in terms of itself, a cycle CSS
+ * resolves to invalid, so every `z-index` built on it computes to `auto`
+ * (measured, dockview 8.3.1). The handles then sit UNDER the grid view that
+ * follows them in the DOM, and no press ever reached one: a float could not
+ * be resized at all. A plain `1` suffices — the box's `transform` makes it
+ * its own stacking context, so this never competes with anything outside
+ * the float. */
+.dockview-theme-rtc .dv-resize-container > [class*="dv-resize-handle-"] {
+  z-index: 1;
 }
 
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —
