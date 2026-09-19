@@ -1,7 +1,18 @@
 import type { AppCommands, MachineFactories, Presenters } from "@rtc/core-api";
 
 import type { Suite } from "#/harness/harness";
+import { describeAmbientStyleContract } from "#/suites/ambientStyle";
+import { describeAnimatedBackgroundContract } from "#/suites/animatedBackground";
+import { describeBootPreferenceContract } from "#/suites/bootPreference";
+import { describeChartSubstrateContract } from "#/suites/chartSubstrate";
 import { describeConnectionContract } from "#/suites/connection";
+import { describeCreditRfqFilterPreferenceContract } from "#/suites/creditRfqFilterPreference";
+import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
+import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
+import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
+import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
+import { describeLayoutEngineContract } from "#/suites/layoutEngine";
+import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
 import { describePowerSaverContract } from "#/suites/powerSaver";
 import { describeReconnectContract } from "#/suites/reconnect";
 import { describeThemePreferenceContract } from "#/suites/themePreference";
@@ -34,23 +45,25 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.throughput": null,
   "presenters.themePreference": describeThemePreferenceContract,
   "presenters.themeSkinPreference": describeThemeSkinPreferenceContract,
-  "presenters.animatedBackground": null,
-  "presenters.ambientStyle": null,
-  "presenters.chartSubstrate": null,
-  "presenters.layoutEngine": null,
+  "presenters.animatedBackground": describeAnimatedBackgroundContract,
+  "presenters.ambientStyle": describeAmbientStyleContract,
+  "presenters.chartSubstrate": describeChartSubstrateContract,
+  "presenters.layoutEngine": describeLayoutEngineContract,
   "presenters.dockLayoutStore": null,
-  "presenters.forceBootAnimation": null,
+  "presenters.forceBootAnimation": describeForceBootAnimationContract,
   "presenters.powerSaver": describePowerSaverContract,
   "presenters.viewModePreference": describeViewModePreferenceContract,
-  "presenters.creditRfqFilterPreference": null,
-  "presenters.eqWatchlistSortPreference": null,
-  "presenters.eqBlotterViewPreference": null,
+  "presenters.creditRfqFilterPreference":
+    describeCreditRfqFilterPreferenceContract,
+  "presenters.eqWatchlistSortPreference":
+    describeEqWatchlistSortPreferenceContract,
+  "presenters.eqBlotterViewPreference": describeEqBlotterViewPreferenceContract,
   "presenters.animationDirector": null,
-  "presenters.bootPreference": null,
+  "presenters.bootPreference": describeBootPreferenceContract,
   "presenters.bootGate": null,
   "presenters.auth": null,
-  "presenters.loginWaitPreferences": null,
-  "presenters.jarvisPreferences": null,
+  "presenters.loginWaitPreferences": describeLoginWaitPreferencesContract,
+  "presenters.jarvisPreferences": describeJarvisPreferencesContract,
   "presenters.watchlist": null,
   "presenters.candleSeries": null,
   "presenters.depth": null,
@@ -108,21 +121,10 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.dealers",
   "presenters.rfqQuote",
   "presenters.throughput",
-  "presenters.animatedBackground",
-  "presenters.ambientStyle",
-  "presenters.chartSubstrate",
-  "presenters.layoutEngine",
   "presenters.dockLayoutStore",
-  "presenters.forceBootAnimation",
-  "presenters.creditRfqFilterPreference",
-  "presenters.eqWatchlistSortPreference",
-  "presenters.eqBlotterViewPreference",
   "presenters.animationDirector",
-  "presenters.bootPreference",
   "presenters.bootGate",
   "presenters.auth",
-  "presenters.loginWaitPreferences",
-  "presenters.jarvisPreferences",
   "presenters.watchlist",
   "presenters.candleSeries",
   "presenters.depth",

@@ -174,4 +174,34 @@ describe("topicFromObservable", () => {
     stopLate();
     expect(port.observed).toBe(false);
   });
+
+  it("fails the topic when the source errors, and latches the error for a later subscriber", async () => {
+    const source = new Subject<string>();
+    const topic = topicFromObservable(source);
+    const errors: unknown[] = [];
+    const stop = topic.subscribe(
+      () => {},
+      (error) => {
+        errors.push(error);
+      },
+    );
+    source.error(new Error("boom"));
+    // `relay`'s rejection reaches `Topic.fail` through `spawn` — a macrotask
+    // boundary, not a plain microtask (mirrors settle() in @rtc/core-contract).
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(errors).toHaveLength(1);
+    // Topic.fail is terminal: a later subscribe gets the latched error
+    // synchronously, no fresh producer.
+    const late: unknown[] = [];
+    topic.subscribe(
+      () => {},
+      (error) => {
+        late.push(error);
+      },
+    );
+    expect(late).toHaveLength(1);
+    stop();
+  });
 });
