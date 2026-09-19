@@ -488,6 +488,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }, debounceMs);
   });
 
+  // A float the blob restored must be published NOW: `loadBlobOrSeed` ran
+  // `fromJSON` above, BEFORE `changeSub` subscribed, and dockview's
+  // `onDidLayoutChange` is an AsapEvent that deliberately drops a fire
+  // queued before its subscriber arrived (it snapshots the fire count at
+  // subscribe time). Without this the restored float reaches the client
+  // only at the NEXT float transition — until then the bridge renders it
+  // with the docked control set (Collapse/Maximize, no Dock). Same path as
+  // every later transition: a restore with no float publishes nothing.
+  // (Popouts need no twin: they are session-scoped and never restored.)
+  publishFloatingPanels();
+
   // Dockview's dock has NO collapse primitive. `setCollapsed`/`isCollapsed`
   // exist in dockview-core but only for EDGE groups (shell-docked sidebars),
   // which these grid groups are not — so collapse is emulated by clamping the

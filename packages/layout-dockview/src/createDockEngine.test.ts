@@ -4113,6 +4113,60 @@ describe("DockEngine floatPanel / dockPanel / onFloatsChange", () => {
     engine.dispose();
   });
 
+  // A float persists (design §3.3), so a reload restores it through
+  // `fromJSON` at CONSTRUCTION — no transition, no mutation after the
+  // publisher subscribed. The floating set must still reach the client, or
+  // the bridge renders the restored float with the docked control set
+  // (Collapse/Maximize, no Dock) until some later float transition happens
+  // to publish it. Asserted synchronously the moment construction returns,
+  // with nothing awaited and nothing touched: that is when a bridge first
+  // renders the head, so that is where the difference is observable.
+  it("publishes a float the blob restored, at construction", () => {
+    const seen = trackLayout();
+    const opts = { ...createBase(), container: sizedContainer(1440, 900) };
+    const first = createDockEngine({ ...opts, ...seen.options });
+
+    first.floatPanel("fx-analytics");
+    touchContainer(opts.container);
+    first.dispose();
+
+    const floats: (readonly string[])[] = [];
+    const reloaded = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+      blob: seen.blob(),
+      onFloatsChange: (panelIds: readonly string[]): void => {
+        floats.push(panelIds);
+      },
+    });
+
+    // The float really came back (so an empty publish cannot mean "no
+    // float to publish") ...
+    expect(
+      lastDockviewApi().getPanel("fx-analytics")?.group.api.location.type,
+    ).toBe("floating");
+    // ... and it was published, once, before anything else ran.
+    expect(floats).toEqual([["fx-analytics"]]);
+    reloaded.dispose();
+  });
+
+  it("publishes nothing at construction when nothing is floating", async () => {
+    const floats: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+      onFloatsChange: (panelIds: readonly string[]): void => {
+        floats.push(panelIds);
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(floats).toEqual([]);
+    engine.dispose();
+  });
+
   it("floatPanel returns false for an unknown panel and publishes nothing", () => {
     const floats: (readonly string[])[] = [];
     const engine = createDockEngine({
