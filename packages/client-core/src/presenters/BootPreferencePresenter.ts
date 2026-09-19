@@ -9,12 +9,9 @@ import {
 
 import { readNow } from "./readNow";
 
-/**
- * App-layer presenter for the boot-sequence variant preference. Exposes a
- * synchronous current() read (safe because PreferencesPort.bootVariant$() is
- * replay-current / BehaviorSubject-backed) and the write operation, keeping
- * persistence out of the UI and out of BootSequenceMachine.
- */
+/** Implements `BootPreferencePresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. Safe because `PreferencesPort.bootVariant$()`
+ * is BehaviorSubject-backed. */
 export class BootPreferencePresenter implements BootPreferencePresenterApi {
   /** The port's stream, captured once at construction — `current()` reads
    * through a fresh subscription of THIS Observable rather than a fresh call

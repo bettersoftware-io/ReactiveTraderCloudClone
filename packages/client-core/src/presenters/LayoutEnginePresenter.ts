@@ -3,11 +3,9 @@ import { type Observable, shareReplay } from "rxjs";
 import type { LayoutEnginePresenter as LayoutEnginePresenterApi } from "@rtc/core-api";
 import type { LayoutEngine, PreferencesPort } from "@rtc/domain";
 
-/**
- * App-layer presenter for the layout-engine preference. Exposes the
- * replay-current engine stream and the write operation, keeping
- * persistence out of the UI.
- */
+/** Implements `LayoutEnginePresenter` (`@rtc/core-api`) — see the interface
+ * for the contract. `engine$` is the port stream under
+ * `shareReplay({ bufferSize: 1, refCount: true })`. */
 export class LayoutEnginePresenter implements LayoutEnginePresenterApi {
   readonly engine$: Observable<LayoutEngine>;
 

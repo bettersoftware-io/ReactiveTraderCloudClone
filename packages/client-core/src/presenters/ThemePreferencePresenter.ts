@@ -19,13 +19,9 @@ import {
 import type { ColorSchemeSource } from "../theme/colorSchemeSource";
 import { readNow } from "./readNow";
 
-/**
- * App-layer presenter for the theme-mode preference. Exposes two streams:
- * `modePreference$` (the stored CHOICE dark | light | system — drives the
- * header toggle's icon) and `mode$` (the RESOLVED mode that paints, with
- * "system" collapsed against the OS via the ColorSchemeSource). Keeps
- * persistence and the media-query out of the UI.
- */
+/** Implements `ThemePreferencePresenter` (`@rtc/core-api`) — see the
+ * interface for the contract. `mode$` resolves "system" against the OS
+ * scheme via the injected `ColorSchemeSource`. */
 export class ThemePreferencePresenter implements ThemePreferencePresenterApi {
   /** The stored mode choice; "system" is left un-resolved here. */
   readonly modePreference$: Observable<ThemeModePreference>;

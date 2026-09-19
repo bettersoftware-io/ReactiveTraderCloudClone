@@ -10,12 +10,9 @@ import {
 
 import { readNow } from "./readNow";
 
-/**
- * App-layer presenter for the equities watchlist sort-mode preference.
- * Exposes the replay-current sort stream, the write operation, and a cycle()
- * (the Watchlist head's ⇅ button advances sym → chg → price → sym), keeping
- * persistence out of the UI. Mirrors ThemePreferencePresenter's cycle().
- */
+/** Implements `EqWatchlistSortPreferencePresenter` (`@rtc/core-api`) — see
+ * the interface for the contract. Mirrors `ThemePreferencePresenter`'s
+ * `cycle()`. */
 export class EqWatchlistSortPreferencePresenter
   implements EqWatchlistSortPreferencePresenterApi
 {

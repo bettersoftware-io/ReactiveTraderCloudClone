@@ -32,12 +32,8 @@ const UNAUTHENTICATED_STATE: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
-/**
- * App-layer presenter for the login/lock/logout lifecycle. Models the flow as
- * a `BehaviorSubject<AuthViewState>` machine: resumes a non-expired session
- * from the injected `SessionStore` on construction, drives `login`/`unlock`
- * through the injected `AuthPort`, and never logs the password.
- */
+/** Implements `AuthPresenter` (`@rtc/core-api`) — see the interface for the
+ * contract. Models the flow as a `BehaviorSubject<AuthViewState>` machine. */
 export class AuthPresenter implements AuthPresenterApi {
   readonly state$: StateObservable<AuthViewState>;
 

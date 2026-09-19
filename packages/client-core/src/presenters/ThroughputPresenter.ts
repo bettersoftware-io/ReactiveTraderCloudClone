@@ -40,20 +40,12 @@ const INITIAL: ThroughputView = {
 /** A partial view patch folded into the running view by `scan`. */
 type Patch = Partial<ThroughputView>;
 
-/**
- * Throughput control state, relocated out of the old useThroughput React hook.
- *
- * Global/shared state (a single server-side throughput), so the seam binds this
- * presenter's `state$` with react-rxjs `bind` (not a per-mount machine).
- *
- * Behaviour reproduced from the old hook:
- *  - initial load: getThroughput(), starting in loading:true, falling back to
- *    the default value (not-loading) on error;
- *  - setValue: optimistically reflect the value immediately, then debounce the
- *    write by DEBOUNCE_MS; on success show a confirmation banner that
- *    auto-dismisses after MESSAGE_DISMISS_MS; on failure show an error banner
- *    (also auto-dismissing).
- */
+/** Implements `ThroughputPresenter` (`@rtc/core-api`) — see the interface
+ * for the contract. Relocated out of the old `useThroughput` React hook;
+ * global/shared state, so the seam binds `state$` with react-rxjs `bind`
+ * (not a per-mount machine). `setValue` debounces the write by
+ * `DEBOUNCE_MS` and auto-dismisses the resulting banner after
+ * `MESSAGE_DISMISS_MS`. */
 export class ThroughputPresenter implements ThroughputPresenterApi {
   readonly state$: StateObservable<ThroughputView>;
 

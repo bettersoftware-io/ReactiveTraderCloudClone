@@ -5,10 +5,9 @@ import type { MetricSample, TelemetryPort } from "@rtc/domain";
 
 import { windowedSamples } from "./windowedSamples";
 
-/**
- * Error-rate chart series — rolls the last WINDOW samples from
- * TelemetryPort.errorRate$() in oldest-first order.
- */
+/** Implements `ErrorRatePresenter` (`@rtc/core-api`) — see the interface
+ * for the contract. Rolls `TelemetryPort.errorRate$()` via
+ * `windowedSamples`. */
 export class ErrorRatePresenter implements ErrorRatePresenterApi {
   readonly samples$: Observable<readonly MetricSample[]>;
 
