@@ -232,6 +232,38 @@ predictable from the design alone):
   now group by API shape (`preferences.ts`, `groupedPreferences.ts`,
   `readPreferences.ts`) rather than one file per member.
 
+**Decided in the residual sweep** (2026-09-19):
+
+- **Error resets, in every core.** The async `Topic` latched a source error
+  (slice 0) where `shareReplay({ refCount: true })` resets; it now resets
+  (an external `publish()` while no producer run is live — cold, or just
+  after a reset — is dropped, never latched). A throwing subscriber is
+  isolated as rxjs isolates it.
+- **Silence after `dispose()` is the shared behaviour, not a gap.** The RxJS
+  `dispose()` is a knowing no-op; an interrupt-only Effect cause is silent
+  for the same reason. Revisit with the RxJS `Subscription` bag.
+- **`sharedFold` periods may be seedless, and the producer's first write
+  awaits a watcher latch.** `Option`-typed ref; `yieldNow` gone; the
+  generation counter gone (per-period subscriber sets do its one real job).
+  (`seed()` is evaluated before any resource is created, so a throw errors
+  only the triggering subscriber and starts no period; the period's FIRST
+  subscriber gets every intermediate of a same-tick burst — the latch — and
+  a later joiner's intermediates before its own watcher subscription
+  conflate into its head, conflation, never staleness.)
+- **Port subscriptions belong to the period.** `fromObservable` is reached
+  only through `fromPort`; a dependency-cruiser rule confines `bridge/in.ts`.
+- **Every port method is called once, at construction** — a rule for all
+  three cores, contracted by `portDiscipline`. Witnessed as CONSTANCY, not
+  an absolute count: a strangler core's `composeWithBase` constructs the
+  RxJS base app's presenter (one port call) and then the native overlay (one
+  more), so an absolute "once" holds only for the RxJS core until slice 8
+  removes delegation; the suite asserts the count after construction never
+  changes across warm periods or synchronous reads.
+- **`peek` throws.** A port that errors on subscribe fails the read at its
+  site.
+- **`client-core` class docs carry implementation notes only**; the
+  `core-api` interface is the contract's prose.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
