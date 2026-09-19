@@ -218,6 +218,23 @@
   z-index: 1;
 }
 
+/* Drag-to-dock preview: while Shift is held during a float's head move, the
+ * engine positions this box over the part of the grid group the float would
+ * take on release — half of it beside, or all of it for a tab join. Fixed
+ * positioning, because the engine sets its box from the target's viewport
+ * rect; click-through, so the hit-test under the pointer never finds it;
+ * above the float being dragged (dockview stacks floats at up to 999), so
+ * the preview reads through it. No transition: it follows the pointer. */
+.dockview-theme-rtc .rtc-dock-preview {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid var(--accent-primary, #22d3ee);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-primary, #22d3ee) 18%, transparent);
+}
+
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —
  * only a cursor, no default visual — along each straight edge of the float.
  * A hover fill in the same colour the in-house sash grip uses on hover

@@ -5034,7 +5034,9 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
       engine.dispose();
     });
 
-    it("leaves a shift-press to dockview's redock gesture", () => {
+    // Shift starts the same move: holding it DURING the move is what turns
+    // the move into a dock (the drag-to-dock tests below).
+    it("starts the same move on a shift-press", () => {
       const container = sizedContainer(1440, 900);
       const engine = createDockEngine(probeHeads(container));
       const { head, pressesOnVoid } = floatedHead(
@@ -5047,8 +5049,98 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
         shiftKey: true,
       });
 
-      expect(pressesOnVoid()).toBe(0);
+      expect(pressesOnVoid()).toBe(1);
       engine.dispose();
+    });
+
+    describe("drag-to-dock: Shift during a head move docks the float", () => {
+      /** Floats fx-analytics, presses its head, and points every hit-test at
+       * fx-rates' group, laid out as a 400×300 box at the origin (jsdom has
+       * no `elementsFromPoint` and lays nothing out). */
+      function moveAnalyticsOverRates(
+        container: HTMLElement,
+        engine: ReturnType<typeof createDockEngine>,
+      ): () => void {
+        const { head } = floatedHead(container, engine, "fx-analytics");
+        const rates = lastDockviewApi().getPanel("fx-rates")?.group.element;
+
+        if (rates === undefined) {
+          throw new Error("fx-rates is not in the dock");
+        }
+
+        const restoreHits = stubElementsFromPoint([rates]);
+        const rect = vi
+          .spyOn(rates, "getBoundingClientRect")
+          .mockReturnValue(new DOMRect(0, 0, 400, 300));
+
+        pressOn(head.querySelector(".probe-title") as Element);
+
+        return () => {
+          restoreHits();
+          rect.mockRestore();
+        };
+      }
+
+      function pointerAt(
+        type: string,
+        x: number,
+        y: number,
+        shiftKey: boolean,
+      ): void {
+        window.dispatchEvent(
+          new PointerEvent(type, { clientX: x, clientY: y, shiftKey }),
+        );
+      }
+
+      it("docks beside the group under the pointer, on the nearest side", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointermove", 20, 150, true);
+
+        expect(
+          container.querySelector<HTMLElement>(".rtc-dock-preview")?.dataset
+            .position,
+        ).toBe("left");
+
+        pointerAt("pointerup", 20, 150, true);
+
+        expect(locationOf("fx-analytics")).toBe("grid");
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+        restore();
+        engine.dispose();
+      });
+
+      it("joins the group as a tab at its centre", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointerup", 200, 150, true);
+
+        expect(lastDockviewApi().getPanel("fx-analytics")?.group).toBe(
+          lastDockviewApi().getPanel("fx-rates")?.group,
+        );
+        restore();
+        engine.dispose();
+      });
+
+      it("only moves the float when Shift is not held", () => {
+        const container = sizedContainer(1440, 900);
+        const engine = createDockEngine(probeHeads(container));
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointermove", 20, 150, false);
+
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+
+        pointerAt("pointerup", 20, 150, false);
+
+        expect(locationOf("fx-analytics")).toBe("floating");
+        restore();
+        engine.dispose();
+      });
     });
 
     it("never touches a head that is in the grid", () => {
@@ -6133,6 +6225,20 @@ function spyOnGroupSizing(panelId: string): SizingCensus {
     calls: (): readonly string[] => {
       return seen;
     },
+  };
+}
+
+/** Points `document.elementsFromPoint` — absent in jsdom — at `hits`, and
+ * returns the undo. */
+function stubElementsFromPoint(hits: readonly Element[]): () => void {
+  const original = document.elementsFromPoint;
+
+  document.elementsFromPoint = () => {
+    return [...hits];
+  };
+
+  return () => {
+    document.elementsFromPoint = original;
   };
 }
 

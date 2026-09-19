@@ -262,6 +262,22 @@ outer halves of the handles (which straddle the edge) and the corners
 entirely. `dockview-hud.css` now stacks the handles explicitly and does not
 clip the box.
 
+**Drag-to-dock: Shift docks a float where you drop it.** dockview offered no
+drag home here: its redock handle (the void container) is 0px wide under the
+full-width head, a plain head drag is the move, and a shift-drag of the head
+started no native drag. So the engine owns the gesture, in dockview's own
+convention that Shift means redock: a head press (plain or Shift) starts the
+move, and while Shift is held during it `previewFloatDock` hit-tests the grid
+group under the pointer (`elementsFromPoint`, looking through the float) and
+positions a `.rtc-dock-preview` highlight over the half the float would take
+beside it — the nearest edge within 25% of the group — or the whole group for
+a tab join at its centre. A Shift-release docks the float there
+(`dockFloatOnRelease` → the group api's `moveTo`); a release without Shift
+leaves it where the move put it. The float rules settle through
+`settleFloatTransitions` as for every way into the grid. The preview is the
+geometric half: beside a pinned rail the landed width follows the pin rules,
+as dockview's own drop overlay approximates too.
+
 **Dock always docks.** With no grid-resident seed sibling to return beside —
 including an EMPTY grid, when every panel of the tab has floated — the panel
 docks at the root's right edge, becoming the grid's root; the panels docked
@@ -361,11 +377,6 @@ pre-emptively dropped.
 
 **Known limitations:**
 
-- **Dragging a float back into the grid is not verified.** The Dock control
-  on a float's head is the supported way home. dockview's own shift-drag
-  redock did not dock the float in a scripted browser drag — on the
-  engine before or after the head-grip change alike (measured 2026-09-19) —
-  and no e2e covers it, so whether it works by hand is unconfirmed.
 - **Floating a panel and reloading within ~250ms can lose the float.**
   Every layout write is debounced 250ms before it reaches storage; this is
   not float-specific — every layout mutation (drag, stack, close, resize)
