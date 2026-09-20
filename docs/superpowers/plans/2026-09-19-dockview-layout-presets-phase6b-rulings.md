@@ -3,11 +3,12 @@
 **Plan:** [2026-09-19-dockview-layout-presets-phase6b.md](2026-09-19-dockview-layout-presets-phase6b.md) · **Spec:** [../specs/2026-09-15-dockview-floats-and-presets-design.md](../specs/2026-09-15-dockview-floats-and-presets-design.md) §4 · **Status:** implementation and tests complete on `worktree-saved-layouts`, 2026-09-20, pending the controller's real-app pass, user acceptance and merge.
 
 The plan was written before implementation, and a further pre-flight scan was
-run against it before any task was dispatched. Between the two, 18 decisions
+run against it before any task was dispatched. Between the two, 22 decisions
 were taken on the user's behalf — 6 pre-execution rulings (P1–P6), 2
-pre-flight rulings (R1–R2), and 10 further decisions made task by task —
-where the plan or the pre-flight scan was wrong, silent, or overtaken by what
-a task actually found. Each is recorded as
+pre-flight rulings (R1–R2), and 14 further decisions made task by task (10
+during the tasks themselves, 3 while Task 12's docs were being reviewed, and
+1 in the post-review fix wave) — where the plan or the pre-flight scan was
+wrong, silent, or overtaken by what a task actually found. Each is recorded as
 **what was decided — why — what it costs if wrong**, so a later reader can
 tell a deliberate choice from an accident and knows what to revisit if one
 turns out wrong. This file is the durable copy: the working ledger they came
@@ -15,9 +16,11 @@ from (`.superpowers/sdd/2026-09-19-dockview-layout-presets-phase6b/progress.md`)
 is git-ignored scratch and does not survive the branch.
 
 Rulings are grouped by when they were taken — before any task ran (the plan's
-own pre-execution rulings, then the pre-flight scan's), then in task order.
-References to "Task N" are the plan's tasks; "#7xx" are other PRs on `main`
-during execution.
+own pre-execution rulings, then the pre-flight scan's), then in task order,
+then the two groups taken after the tasks were done: during the review of Task
+12's own docs, and in the fix wave after the whole-branch review. References to
+"Task N" are the plan's tasks; "#7xx" are other PRs on `main` during
+execution.
 
 ## Pre-execution rulings (taken while writing the plan)
 
@@ -92,7 +95,7 @@ during execution.
   plan — the exact failure the "commit SDD rulings before cleanup" doctrine
   exists to prevent. Cost if wrong: none.
 
-## Ledger rulings (taken task by task, in the order they were made)
+## Ledger rulings (taken during execution, in the order they were made)
 
 - **Ruling (pre-flight, Task 7's duplication) — the two React
   `createDockEngine` construction bodies stay duplicated verbatim.** A
@@ -194,12 +197,73 @@ during execution.
   leaves the same test passing, because Solid's reactive read cannot itself
   go stale the way React's captured `engine` variable could — this is a
   convergent hardening, not evidence of an independent Solid bug). Kept
-  anyway: it is a genuine regression test for the feature, gives test-shape
-  parity with React, and is captioned in its own file as non-discriminating
-  so a future reader is not misled. Cost if wrong: a future reader might
-  still over-read it as proof the Solid hardening was load-bearing — the
+  anyway: it is a genuine regression test for the feature and gives test-shape
+  parity with React. The mitigation is a caption in its own file saying the
+  test pins the feature, does NOT distinguish hardened from unhardened code,
+  and that the React twin is what proves the guard — *which this file claimed
+  before the caption existed*; the final review caught that, and the caption
+  was written in the post-review fix wave. Cost if wrong: a future reader
+  might still over-read it as proof the Solid hardening was load-bearing — the
   in-file caption is the mitigation; the alternative (deleting it) would
   leave Solid's reopen-on-rebuild path with no unit coverage at all.
+
+### Taken while Task 12's own docs were under review
+
+These three came after the body of this file was first written — which is why
+the final whole-branch review found them missing, and why two of them are the
+awkward kind this file exists for: the controller reversing its own
+instructions.
+
+- **Ruling (Task 12) — REVERSE the controller's own instruction that the ADR
+  say Phase 6b "shipped 2026-09-20".** The controller had told the implementer
+  to write it that way. The reviewer showed that contradicts the same file's
+  Phase 6a precedent one paragraph above ("built 2026-09-19, in review") and
+  asserts a merge that had not happened (no PR, pre-merge checklist unrun), so
+  it was softened to "built 2026-09-20, in review" to match 6a. Cost if wrong:
+  none material — the wording flips to "shipped" once merged; the alternative
+  risked a shipped doc asserting a merge that never happened.
+- **Ruling (Task 12) — OVERRIDE the controller's own "leave the rest of the
+  paragraph as is".** After the softening above, the same ADR paragraph still
+  closed with "every phase (1 through 6b) has now shipped", contradicting its
+  own freshly-softened heading. The "leave the rest as is" instruction was
+  aimed at scope creep, not at preserving a self-contradiction, so a second
+  fix round changed that one sentence too: a document that contradicts itself
+  in adjacent sentences is worse than either wording alone. Cost if wrong:
+  one more docs-only commit.
+- **Ruling (Task 12) — fold the stale `docs/STATUS.md` PR #534 claim into the
+  same commit.** A DIFFERENT, older STATUS entry still described pop-out
+  windows and floating groups as "still pending"; both shipped phases ago
+  (Phase 5 / #727 and Phase 6a / #763). Out of the brief's literal scope, but
+  the branch already edits that file and a false "still pending" is precisely
+  the recorded-blocker-rot class this repo has been burned by — a later reader
+  designs around a blocker that no longer exists. Cost if wrong: a one-line
+  doc edit inside an entry this phase does not own.
+
+### Taken in the post-review fix wave
+
+- **Ruling (final fix wave) — `save` reports a swallowed write; `remove` and
+  `resetTab` do not.** The final review found `saveLayoutPreset` returning
+  `{status:"saved"}` unconditionally while both localStorage adapters swallow a
+  throwing `setItem` by design, so a blocked or full store closed the form with
+  no row and no message. The detection went in the CONTROLLER (a new
+  `storage-failed` status, decided by re-reading the store after the write),
+  not into the port — P1 keeps `LayoutPresetStore` a dumb raw-string store, and
+  a boolean return would have put the rule in three adapters. `remove` and
+  `resetTab` deliberately stay void: a swallowed delete leaves the row on
+  screen and a swallowed `resetTab` leaves the dock blob in place, so both
+  already show the user the truth in the place they were looking — a save is
+  the one operation whose failure is otherwise INVISIBLE. Cost if wrong: a
+  user whose storage is blocked sees a stale row or an unchanged layout with no
+  message, and has to infer the cause from the save refusal they get next.
+
+Not a ruling, but a deviation worth flagging so nobody reconciles the two by
+hand: the plan's own message table (§ the section's testids) still spells
+`unavailable` as "Layouts need the Dockview engine". The same fix wave reworded
+it — the save opener renders ONLY under Dockview, so every user who could read
+that message was already on Dockview and was being told to switch to it. The
+live strings are in each client's `LayoutPresetsSection.tsx`
+`REFUSAL_MESSAGES`, which is the single place the two clients must agree; the
+plan is left as it was written.
 
 ## Findings worth keeping
 
@@ -231,6 +295,16 @@ re-derive, now that the scratch ledger they came from is gone:
   hardened from unhardened code**, for the reason given in the last ledger
   ruling above: it is real coverage of the feature, not evidence the fix
   was necessary in Solid specifically.
+- **A contract World's presets controller outlives the `dockStore` it was
+  built with.** In both clients' `viewModelFromWorld`, each `viewModel(world)`
+  call creates a FRESH `dockStore` while `getLayoutPresets` is WeakMap-cached
+  per World, so only the first call's store is ever captured (the fixture's own
+  comment says so). Remounting the SAME World twice would therefore leave the
+  controller writing preset blobs into the first mount's store. Judged a
+  non-issue — the harness's doctrine is that a reload is always a fresh
+  `createWorld`, and every spec follows it — but it is a latent trap for a
+  future spec author who reuses a World across mounts, and the reasoning would
+  otherwise have died with the git-ignored ledger.
 
 ## Measured facts Task 1 pinned before any preset code was written
 
@@ -284,11 +358,17 @@ test non-discriminating.
   for a re-implemented cap, name check or load order and finding none.
 - **The phase's own "absence reported as a clean reading" catches (the
   vacuous `popoutGroups` half, the self-caught vacuous rebuild test in
-  Task 7, the Solid non-discriminating test, and the corrected "jsdom can't
-  reproduce this" comment) are now four-for-four examples of the same
-  discipline**: before trusting a test, ask where in the lifecycle the
+  Task 7, the Solid non-discriminating test, the corrected "jsdom can't
+  reproduce this" comment, and — found last, by the whole-branch review — the
+  save that reported success over a swallowed write) are five examples of the
+  same discipline**: before trusting a test, ask where in the lifecycle the
   difference it claims to prove becomes observable, and prove it by
-  reverting the fix and watching the test go red.
+  reverting the fix and watching the test go red. The fifth is the one worth
+  remembering, because it was not in a test at all: the same question asked of
+  the PRODUCT — where would a user observe this failing? — is what the four
+  test-level catches had trained, and no single task's review could have asked
+  it, since the swallow, the result union and the message map each sat in a
+  different task.
 - **The controller's own Default-under-Dockview real-rebuild path is what
   found a bug the entire automated test estate had missed for as long as
   "Reset workspace layout" has existed** — a reminder that even a
