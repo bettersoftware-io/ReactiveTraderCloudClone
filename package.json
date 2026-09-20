@@ -71,6 +71,7 @@
     "check:lint-warnings-drift": "node scripts/check-lint-warnings-drift.mjs",
     "sync:lint-warnings": "node scripts/sync-lint-warnings.mjs",
     "check:devtools-dist": "node scripts/check-devtools-dist.mjs",
+    "check:dist": "node scripts/check-dist.mjs",
     "check:compiler": "node scripts/react-compiler-healthcheck.mjs",
     "check:core-bundle": "node scripts/check-core-bundle.mjs",
     "core:parity": "node scripts/core-parity.mjs",
