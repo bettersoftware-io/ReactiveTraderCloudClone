@@ -1,4 +1,5 @@
 import {
+  type AnchoredBox,
   createDockview,
   type DockviewApi,
   type DockviewTheme,
@@ -1715,37 +1716,64 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return;
     }
 
-    // A placement the scrub parked decides WHERE, and only where: the design
-    // width still applies exactly as it does to a first-time dock, so a
-    // panel that merely round-trips a reload comes back the size it always
-    // did. The one exception is a panel rejoining an existing group as a
-    // tab — its size is that group's business, and pinning the shared group
-    // to this panel's design width would shrink whatever it joined.
+    // A placement the scrub parked replaces BOTH halves of the default: the
+    // right edge, and the design width with it. Where the user last put the
+    // panel — and how big they left it — is arrangement, which the blob
+    // owns; re-adding at the design width would undo half of what the blob
+    // just restored. A first-time dock (nothing parked) is unaffected, and
+    // so is a panel rejoining an existing group as a tab, whose size is
+    // that group's business.
     const parked = takeParkedPlacement(panel.id);
-    const joinsGroup = parked?.direction === "within";
+    const ownsItsGroup =
+      parked === null || parked.where === "float"
+        ? true
+        : parked.direction !== "within";
 
     api.addPanel({
       id: panel.id,
       component: RTC_PANEL_COMPONENT,
       title: opts.panels.title(panel.id),
+      // A float is added to the grid first and floated immediately below —
+      // dockview has no "add straight into a floating group" entry point,
+      // and the group it floats is the one this creates.
       position:
-        parked === null
+        parked === null || parked.where === "float"
           ? { direction: "right" }
           : {
               referencePanel: parked.anchorPanelId,
               direction: parked.direction,
             },
-      ...(joinsGroup ? {} : { initialWidth: panel.initialPx + GROUP_GAP_PX }),
+      ...sizeForInsert(panel, parked),
     });
 
     if (panel.unpinned === true) {
       unpinnedDynamicPanels.set(panel.id, panel.initialPx);
-    } else if (!joinsGroup) {
+    } else if (ownsItsGroup && keepsDesignPin(parked)) {
+      // Re-pinning a panel the user had already resized would clamp it
+      // straight back to the design width, undoing the size restored just
+      // above — the pin is theirs to release, and the blob remembers that
+      // they did. A float carries no pin either: floating suspends one
+      // anyway (R5), so registering it would only queue a dock-home clamp.
       registerDesignPin({
         panelIds: [panel.id],
         px: panel.initialPx,
         axis: "width",
       });
+    }
+
+    if (parked?.where === "float") {
+      // Read back through `api.getPanel` (not `groupOf`, whose SizableGroup
+      // is this file's narrowed view) — `addFloatingGroup` wants dockview's
+      // own group object, exactly as floatPanel passes it.
+      const restored = api.getPanel(panel.id);
+
+      if (restored !== undefined) {
+        api.addFloatingGroup(restored.group, {
+          width: parked.box.width,
+          height: parked.box.height,
+          position: parked.box,
+        });
+      }
     }
 
     // The newcomer may be the absorber a suspended pin was waiting for —
@@ -1787,7 +1815,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       if (panel.unpinned === true) {
         owedShares.set(panel.id, "maximize"); // paid when the maximize ends
       }
-    } else if (panel.unpinned === true && !joinsGroup) {
+    } else if (panel.unpinned === true && ownsItsGroup) {
       shareInstanceSplitOf(panel.id);
     }
   }
@@ -1803,14 +1831,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     parkedPlacements.delete(panelId);
 
-    if (
-      parked === undefined ||
-      api.getPanel(parked.anchorPanelId) === undefined
-    ) {
+    if (parked === undefined) {
       return null;
     }
 
-    return parked;
+    // Only a GRID placement names another panel; a float box stands alone.
+    return parked.where === "float" ||
+      api.getPanel(parked.anchorPanelId) !== undefined
+      ? parked
+      : null;
   }
 
   /** Where `panelId` sits RIGHT NOW, as the anchor a later re-add uses.
@@ -1829,19 +1858,53 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return null;
     }
 
+    const serialized = api.toJSON();
+
+    // A float is arrangement too, and it is not in the grid tree at all —
+    // so it is read from the serialized `floatingGroups` entry, not from a
+    // live rect (jsdom has none, and at construction the dock may not be
+    // laid out). A POPPED-OUT panel deliberately gets nothing: pop-outs are
+    // session-scoped and are scrubbed from the blob on purpose, so there is
+    // no state of theirs to preserve.
+    if (panel.group.api.location.type === "floating") {
+      const box = floatBoxOf(serialized, panelId);
+
+      return box === null ? null : { where: "float", box };
+    }
+
     const stackmate = panel.group.panels.find((sibling) => {
       return sibling.id !== panelId && !leaving.has(sibling.id);
     });
 
     if (stackmate !== undefined) {
-      return { anchorPanelId: stackmate.id, direction: "within" };
+      return {
+        where: "grid",
+        anchorPanelId: stackmate.id,
+        direction: "within",
+        // A tab takes the host group's size, and a pin on it would clamp
+        // that group — neither is this panel's to set.
+        sizePx: null,
+        pinned: false,
+      };
     }
 
-    return gridAnchorFor(api.toJSON(), panelId, (candidateId) => {
+    const anchor = gridAnchorFor(serialized, panelId, (candidateId) => {
       return (
         !leaving.has(candidateId) && api.getPanel(candidateId) !== undefined
       );
     });
+
+    return anchor === null
+      ? null
+      : {
+          where: "grid",
+          anchorPanelId: anchor.anchorPanelId,
+          direction: anchor.direction,
+          sizePx: leafSizeOf(serialized, panelId),
+          pinned: designPins.some((record) => {
+            return record.pin.panelIds.includes(panelId);
+          }),
+        };
   }
 
   /** Closes a dynamic panel and its group. Restores anything the panel's own
@@ -4830,9 +4893,121 @@ function applyTitles(api: DockviewApi, hooks: DockPanelHooks): void {
 /** Where a scrubbed dynamic panel sat — the record `parkedPlacements` holds
  * (see it). `"within"` means it shared a group (a user's tab stack); the
  * rest are grid directions, exactly {@link SeedAnchor}'s. */
-interface DockParkedPlacement {
+type DockParkedPlacement = DockParkedGrid | DockParkedFloat;
+
+/** A scrubbed panel that was in the grid: the anchor to re-add it against,
+ * and the extent its own group had along that anchor's split axis.
+ * `"within"` means it was a tab in the anchor's group, where the size is the
+ * host group's business and `sizePx` is null. */
+interface DockParkedGrid {
+  readonly where: "grid";
   readonly anchorPanelId: string;
   readonly direction: SeedAnchor["direction"] | "within";
+  readonly sizePx: number | null;
+  /** Whether a design pin still held this panel when it was scrubbed. It
+   * does until the user drags the split's sash, which is also the moment
+   * `sizePx` starts meaning something they chose — so the two are read
+   * together: re-pin and the design width follows, or honour the size. */
+  readonly pinned: boolean;
+}
+
+/** A scrubbed panel that was FLOATING: the box dockview serialized for it,
+ * replayed verbatim so the float comes back where the user left it rather
+ * than at the cascade position a fresh `floatPanel` would choose. */
+interface DockParkedFloat {
+  readonly where: "float";
+  readonly box: AnchoredBox;
+}
+
+/** The `addPanel` size fields for a re-add: the blob's own extent when one
+ * was parked, else the design width a first-time dock gets. A `"within"`
+ * panel asks for nothing — it takes the group it joins. The axis follows the
+ * parked direction, which is the axis its own split divided.  */
+function sizeForInsert(
+  panel: DockDynamicPanel,
+  parked: DockParkedPlacement | null,
+): InsertSize {
+  if (parked !== null && parked.where === "grid") {
+    if (parked.direction === "within") {
+      return {};
+    }
+
+    if (!parked.pinned && parked.sizePx !== null) {
+      return parked.direction === "left" || parked.direction === "right"
+        ? { initialWidth: parked.sizePx }
+        : { initialHeight: parked.sizePx };
+    }
+  }
+
+  return { initialWidth: panel.initialPx + GROUP_GAP_PX };
+}
+
+/** Whether a re-added panel takes the design pin a first-time dock gets:
+ * nothing parked (it IS a first-time dock), or a parked grid slot whose pin
+ * the user never released. A float never does. */
+function keepsDesignPin(parked: DockParkedPlacement | null): boolean {
+  return parked === null || (parked.where === "grid" && parked.pinned);
+}
+
+/** What {@link sizeForInsert} contributes to `addPanel` — at most one axis,
+ * or neither. */
+interface InsertSize {
+  readonly initialWidth?: number;
+  readonly initialHeight?: number;
+}
+
+/** The extent dockview serialized for `panelId`'s own leaf, along its parent
+ * split's axis — the size the blob restored it at, and so the size a re-add
+ * must reproduce. Read from the tree rather than the live group because a
+ * scrub runs at CONSTRUCTION, where a rect can still be zero. Null when the
+ * panel has no leaf or the leaf carries no size. */
+function leafSizeOf(
+  serialized: SerializedDockview,
+  panelId: string,
+): number | null {
+  function walk(node: GridNode): number | null {
+    if (node.type === "leaf") {
+      return ((node.data as LeafData).views ?? []).includes(panelId)
+        ? (node.size ?? null)
+        : null;
+    }
+
+    for (const child of node.data as readonly GridNode[]) {
+      const found = walk(child);
+
+      if (found !== null) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  return walk(serialized.grid.root);
+}
+
+/** The box dockview serialized for the float holding `panelId`. Reads the
+ * single-group `data.views` form and the nested `grid` form alike (dockview
+ * writes the second only when one window hosts several groups). Null when no
+ * float claims the panel. */
+function floatBoxOf(
+  serialized: SerializedDockview,
+  panelId: string,
+): AnchoredBox | null {
+  for (const entry of serialized.floatingGroups ?? []) {
+    const views =
+      entry.data === undefined
+        ? entry.grid === undefined
+          ? []
+          : panelIdsIn(entry.grid.root)
+        : (entry.data.views ?? []);
+
+    if (views.includes(panelId)) {
+      return entry.position;
+    }
+  }
+
+  return null;
 }
 
 /** {@link seedAnchorFor}'s rule applied to a LIVE arrangement: dockview's

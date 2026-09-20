@@ -58,6 +58,18 @@ test.describe("Jarvis assistant", () => {
     await jarvis.expectDraggedDockedPanelSurvivesReload(ctx);
   });
 
+  test("a docked panel floated by its head comes back floating after a reload", async ({
+    ctx,
+  }) => {
+    await jarvis.expectDockedPanelFloatSurvivesReload(ctx);
+  });
+
+  test("a docked panel widened by its sash keeps that width across a reload", async ({
+    ctx,
+  }) => {
+    await jarvis.expectDockedPanelWidthSurvivesReload(ctx);
+  });
+
   test("docks a panel under the in-house engine, survives reload docked, then unpins", async ({
     ctx,
   }) => {

@@ -822,6 +822,15 @@ export class PlaywrightLayout implements LayoutPO {
     });
   }
 
+  async panelWidth(panelId: string): Promise<number> {
+    const box = await readBoxWhenLaidOut(
+      this.group(panelId),
+      `panel ${panelId}'s dockview group`,
+    );
+
+    return box.width;
+  }
+
   async panelSitsInFloat(panelId: string): Promise<boolean> {
     return this.group(panelId).evaluate((element) => {
       return element.closest(".dv-resize-container") !== null;
