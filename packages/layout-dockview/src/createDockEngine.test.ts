@@ -409,6 +409,82 @@ describe("createDockEngine", () => {
   });
 });
 
+// snapshotLayout() exposes the same blob-building path serializeLayout()
+// hands to onLayoutChange, but on demand and with no debounce wait — a
+// preset save needs the LIVE arrangement, not whatever the store last
+// happened to persist (Phase 6b task 2).
+describe("snapshotLayout — the live blob without the debounce", () => {
+  it("equals the next onLayoutChange write after a collapse", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    const snapshot = engine.snapshotLayout();
+
+    // dockview's onDidLayoutChange notification is microtask-deferred
+    // (AsapEvent); the 0ms debounce timer then needs a macrotask beyond that
+    // to actually fire — see "coalesces two rapid layout mutations" above.
+    await Promise.resolve();
+    await nextMacrotask();
+
+    expect(seen.saves).toBe(1);
+    expect(snapshot).toBe(seen.blob());
+    engine.dispose();
+  });
+
+  it("does not consume a pending strip-size seed (no side effect)", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
+
+    first.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...createBase(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+
+    // Two snapshots taken before the bridge's replay ever consumes the
+    // sidecar's seeded pre-collapse size — must be inert either way.
+    second.snapshotLayout();
+    second.snapshotLayout();
+
+    // The bridge's replay: re-collapsing seeds recordStrip from the
+    // sidecar, same as an untouched reload (see "reload with strips"
+    // above). A snapshotLayout side effect on the seed would have starved
+    // this, landing on the bar dockview's restore clamped to instead of the
+    // true pre-collapse size.
+    second.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+
+    const sidecar = JSON.parse(reloaded.blob()).rtcStripGeometry;
+    expect(sidecar.records["fx-analytics"].size).toEqual(
+      within(before + GROUP_GAP_PX, 1),
+    );
+    second.dispose();
+  });
+
+  it("carries floatingGroups and no popoutGroups while a float is open", async () => {
+    const engine = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    expect(engine.floatPanel("fx-analytics")).toBe(true);
+    await Promise.resolve();
+
+    const snapshot = JSON.parse(engine.snapshotLayout());
+
+    expect(snapshot.floatingGroups).toHaveLength(1);
+    expect(snapshot.popoutGroups).toBeUndefined();
+    engine.dispose();
+  });
+});
+
 // A reload tears the page down without unmounting anything, so dispose's
 // flush never runs — a change still inside the save debounce was simply lost
 // (a float followed by a quick reload came back docked: 6a follow-up). The
