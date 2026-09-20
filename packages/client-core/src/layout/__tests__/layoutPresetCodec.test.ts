@@ -175,6 +175,48 @@ describe("parseLayoutPresetList", () => {
     ]);
   });
 
+  it("a preset record with no layout key at all is unreadable (JSON.stringify drops an undefined property, unlike an array hole)", () => {
+    const record = createPresetRecordWithoutLayout("fx");
+
+    const parsed = parseLayoutPresetList("fx", JSON.stringify([record]));
+
+    expect(parsed.entries).toEqual([
+      {
+        readable: false,
+        id: record.id,
+        name: record.name,
+        raw: record,
+      },
+    ]);
+  });
+
+  it("a fallback id that collides with an already-claimed id is uniquified further, never handed out unchecked", () => {
+    // Both stored elements independently carry the SAME id, "unreadable-1"
+    // — chosen so that index 1's naive fallback (`unreadable-${index}` ===
+    // "unreadable-1") would ALSO equal the very id it's trying to avoid,
+    // reproducing the collision class this test guards against.
+    const first = { ...createReadablePreset("fx"), id: "unreadable-1" };
+    const second = { ...createReadablePreset("fx"), id: "unreadable-1" };
+
+    const parsed = parseLayoutPresetList("fx", JSON.stringify([first, second]));
+
+    expect(parsed.entries).toEqual([
+      { readable: true, preset: first },
+      {
+        readable: false,
+        id: "unreadable-1-2",
+        name: second.name,
+        raw: asStoredJson(second),
+      },
+    ]);
+
+    // The invariant the whole rule exists for: no two rows share one id.
+    const ids = parsed.entries.map((entry) => {
+      return entry.readable ? entry.preset.id : entry.id;
+    });
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("keeps three tabs' worth of presets independent by tab", () => {
     const fxPreset = createReadablePreset("fx");
     const creditPreset = createReadablePreset("credit");
@@ -216,10 +258,11 @@ describe("serializeLayoutPresetList", () => {
     });
   });
 
-  it("the whole-list sentinel is never handed to it by a caller rewriting the list", () => {
-    // Documented behaviour, not a special case in the codec itself: a
-    // caller that read a `wholeListUnreadable` list clears the store key
-    // instead of round-tripping the sentinel entry through this function.
+  it("drops the whole-list sentinel structurally, rather than re-emitting its null raw value", () => {
+    // A caller that handed this sentinel straight back in (e.g. forgot the
+    // `store-unreadable` special case) must NOT get "null" written over the
+    // user's real unreadable stored string — the function protects the
+    // invariant itself rather than relying on caller discipline.
     const sentinelEntries: readonly LayoutPresetEntry[] = [
       {
         readable: false,
@@ -229,9 +272,27 @@ describe("serializeLayoutPresetList", () => {
       },
     ];
 
-    expect(JSON.parse(serializeLayoutPresetList(sentinelEntries))).toEqual([
-      null,
-    ]);
+    expect(JSON.parse(serializeLayoutPresetList(sentinelEntries))).toEqual([]);
+  });
+
+  it("drops only the sentinel when it's mixed with genuinely unreadable entries, which still serialize", () => {
+    const sentinel: LayoutPresetEntry = {
+      readable: false,
+      id: UNREADABLE_LIST_ID,
+      name: "Unreadable saved layouts",
+      raw: null,
+    };
+
+    const otherUnreadable: LayoutPresetEntry = {
+      readable: false,
+      id: "bad-1",
+      name: "Bad",
+      raw: { weird: true },
+    };
+
+    const serialized = serializeLayoutPresetList([sentinel, otherUnreadable]);
+
+    expect(JSON.parse(serialized)).toEqual([{ weird: true }]);
   });
 });
 
@@ -378,5 +439,25 @@ function createReadablePreset(tab: WorkspaceTab): StoredLayoutPreset {
     savedAt: "2026-09-20T00:00:00.000Z",
     blob: JSON.stringify({ grid: { tab } }),
     layout: createTabLayout(tab),
+  };
+}
+
+/** A record with every readable-preset field EXCEPT `layout` — never simply
+ * an otherwise-readable preset with `layout: undefined`, because
+ * `JSON.stringify` drops an object property whose value is `undefined`
+ * entirely (unlike an `undefined` ARRAY element, which becomes `null`; see
+ * the module doc). This is the absent-key shape the wire actually produces,
+ * distinct from a present-but-wrong-typed `layout`. */
+function createPresetRecordWithoutLayout(
+  tab: WorkspaceTab,
+): Record<string, unknown> {
+  const preset = createReadablePreset(tab);
+
+  return {
+    v: preset.v,
+    id: preset.id,
+    name: preset.name,
+    savedAt: preset.savedAt,
+    blob: preset.blob,
   };
 }

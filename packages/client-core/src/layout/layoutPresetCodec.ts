@@ -25,15 +25,19 @@
  * silently discarding a row the user can still see and delete — dropping it
  * would be exactly the "absence reported as a clean reading" failure class.
  * Duplicate ids are resolved first-wins: a later element whose id already
- * appears earlier in the list is downgraded to unreadable with a
- * fresh `unreadable-<index>` id, so the UI can never render two rows
- * sharing one React key.
+ * appears earlier in the list is downgraded to unreadable with a fresh
+ * `unreadable-<index>` id — uniquified against every id already claimed
+ * (readable OR unreadable), not assumed free, since a hostile/hand-edited
+ * payload can carry a stored id that already collides with that generated
+ * form — so the UI can never render two rows sharing one React key.
  *
  * The whole-list sentinel (`id === UNREADABLE_LIST_ID`, produced when the
- * stored string itself isn't a JSON array) never serializes back out —
- * `serializeLayoutPresetList` is only ever handed the OTHER entries; a
- * caller that wants to discard an unreadable-as-a-whole list clears the
- * store key instead of round-tripping the sentinel.
+ * stored string itself isn't a JSON array) can never come back out of
+ * `serializeLayoutPresetList`: that function drops it structurally, because
+ * its `raw` is `null` and re-emitting `null` in place of the sentinel would
+ * silently destroy the user's actual unreadable stored string. A caller
+ * that wants to discard an unreadable-as-a-whole list clears the store key
+ * instead.
  */
 
 import type {
@@ -117,9 +121,16 @@ export function serializeLayoutPresetList(
   entries: readonly LayoutPresetEntry[],
 ): string {
   return JSON.stringify(
-    entries.map((entry) => {
-      return entry.readable ? entry.preset : entry.raw;
-    }),
+    entries
+      .filter((entry) => {
+        // The whole-list sentinel's `raw` is `null` — never re-emit it, or a
+        // rewrite would overwrite the user's real unreadable stored string
+        // with the literal text "null". See the module doc.
+        return entry.readable || entry.id !== UNREADABLE_LIST_ID;
+      })
+      .map((entry) => {
+        return entry.readable ? entry.preset : entry.raw;
+      }),
   );
 }
 
@@ -193,9 +204,35 @@ function toEntry(
     return { readable: true, preset };
   }
 
-  const id = seenIds.has(candidateId) ? `unreadable-${index}` : candidateId;
+  const id = seenIds.has(candidateId)
+    ? uniqueFallbackId(index, seenIds)
+    : candidateId;
   seenIds.add(id);
   return { readable: false, id, name: candidateName, raw: value };
+}
+
+/** A fallback id guaranteed free in `seenIds`, starting from `unreadable-
+ * <index>`. That base form is not assumed free: a hostile/hand-edited
+ * payload can carry a stored id (readable or unreadable) that already
+ * equals it — e.g. two elements both stored with `id: "unreadable-1"`, or
+ * an unrelated element at another index whose own stored id happens to be
+ * `unreadable-5` — so a collision on the base form is resolved by
+ * appending an increasing numeric suffix until the id is actually unique,
+ * never handed out unchecked. */
+function uniqueFallbackId(index: number, seenIds: ReadonlySet<string>): string {
+  const base = `unreadable-${index}`;
+
+  if (!seenIds.has(base)) {
+    return base;
+  }
+
+  let suffix = 2;
+
+  while (seenIds.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${base}-${suffix}`;
 }
 
 function readStoredPreset(
