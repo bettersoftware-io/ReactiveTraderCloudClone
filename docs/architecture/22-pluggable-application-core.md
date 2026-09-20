@@ -280,7 +280,7 @@ its producer, the Effect fold stays silent, the RxJS core never tore down.
 `@rtc/core-contract` mirrors `@rtc/ui-contract`'s shape at a different
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
-and per `AppCommands` member (73 members: 59 presenters, 12 machines, 2
+and per `AppCommands` member (74 members: 60 presenters, 12 machines, 2
 commands). Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
@@ -294,7 +294,8 @@ six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
 `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`) and
 slice 3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
-`rfqSubmission`, `ticketSubmission`, `rfqCountdown`) — and 37 are pending.
+`rfqSubmission`, `ticketSubmission`, `rfqCountdown`) — and 38 are pending
+(37 at slice 3's merge; Dockview Phase 6b's `layoutPresets` joined pending).
 Each suite subscribes to the member's `Stream`/`StateStream`, drives a
 scripted `AppPorts` harness (`scriptPorts` — Subject-backed streams for the
 connection, the colour scheme and the FX and credit ports, an intent-named

@@ -186,7 +186,8 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 3, thirty-six members are **native**. Slice 3 added eight: the
+As of slice 3, thirty-six of 74 members are **native** (the 74th, `layoutPresets`,
+arrived delegated with Dockview Phase 6b). Slice 3 added eight: the
 four credit presenters (`rfqs`, `dealers`, `instruments`, `rfqQuote`) and
 the four RFQ machines (`rfqTile`, `rfqSubmission`, `ticketSubmission`,
 `rfqCountdown`). Slice 2 added eleven:

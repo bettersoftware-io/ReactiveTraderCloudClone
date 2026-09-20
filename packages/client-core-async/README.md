@@ -84,7 +84,8 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 3, **36 of 73** members are native. Slice 1a/1b brought
+As of slice 3, **36 of 74** members are native (the 74th, `layoutPresets`,
+arrived delegated with Dockview Phase 6b). Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,
 `themeSkinPreference`, `viewModePreference`, `powerSaver`,
 `creditRfqFilterPreference`, `eqWatchlistSortPreference`,

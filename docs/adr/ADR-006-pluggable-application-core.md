@@ -377,7 +377,8 @@ predictable from the design alone):
   RFQ card would have kept ticking on an RxJS `timer` whatever the
   alternative cores did. `rfqCountdown` therefore became a
   `MachineFactories` member — the seam's first *growth* rather than a port
-  — taking the member count 72 → 73 and making "36/73" the slice's number.
+  — taking the member count 72 → 73 and making "36/73" the slice's number
+  (36/74 once Dockview Phase 6b's `layoutPresets` landed alongside it, delegated).
   The two `viewModelFromWorld.ts` UI-contract harnesses keep their direct
   import: they build their own view model and are not the seam.
 - **The suites' constants and seeds keep moving to `@rtc/domain`, the
