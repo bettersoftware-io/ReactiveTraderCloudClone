@@ -195,6 +195,15 @@ export class ViewMenuPage extends MountedComponent<Record<string, never>> {
     return message === null ? null : (message.textContent?.trim() ?? "");
   }
 
+  /** True when the name field itself holds the keyboard focus — the witness
+   * that opening it needs no Tab before Enter or Escape apply. Read from the
+   * field's OWN document, so a harness that renders outside `document` cannot
+   * make this vacuously true. */
+  isLayoutNameFieldFocused(): boolean {
+    const field = this.layoutNameField();
+    return field.ownerDocument.activeElement === field;
+  }
+
   private layoutNameField(): HTMLElement {
     return within(this.root).getByTestId("view-menu-layout-name");
   }

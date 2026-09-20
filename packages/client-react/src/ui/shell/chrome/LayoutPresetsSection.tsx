@@ -57,7 +57,11 @@ export function LayoutPresetsSection({
   }
 
   function loadLayoutPreset(id: string): void {
-    load(id);
+    if (!load(id)) {
+      setMessage(MISSING_LAYOUT_MESSAGE);
+      return;
+    }
+
     onDone();
   }
 
@@ -127,6 +131,15 @@ export function LayoutPresetsSection({
     );
   }
 
+  /** Ref callback on the name field: React attaches a ref in the commit phase,
+   * with the node already in the document, so focusing here needs no effect
+   * and no deferral. The field opens on a CLICK, so the keyboard is otherwise
+   * left on the opener button and Enter/Escape — which this section only binds
+   * on the field — would do nothing until the user tabbed. */
+  function focusLayoutNameField(field: HTMLInputElement | null): void {
+    field?.focus();
+  }
+
   function armLayoutDelete(id: string): void {
     setArmedDeleteId(id);
   }
@@ -192,6 +205,7 @@ export function LayoutPresetsSection({
         {naming ? (
           <li className={styles.nameRow}>
             <input
+              ref={focusLayoutNameField}
               type="text"
               data-testid="view-menu-layout-name"
               aria-label="Layout name"
@@ -346,9 +360,21 @@ const REFUSAL_MESSAGES: Readonly<Record<RefusalKey, string>> = {
   "too-long": `${MAX_LAYOUT_PRESET_NAME_LENGTH} characters at most`,
   reserved: `“${DEFAULT_LAYOUT_PRESET_NAME}” is reserved`,
   full: `${MAX_LAYOUT_PRESETS} layouts at most — delete one first`,
-  unavailable: "Layouts need the Dockview engine",
+  // NOT "switch to the Dockview engine": the save opener only renders under
+  // Dockview, so everyone who can reach this message is already on it. The
+  // real cause is that no live engine has registered a snapshot source yet
+  // (mid-mount, or mid-rebuild), which the next attempt usually fixes.
+  unavailable: "No live layout to save yet — try again in a moment",
   "store-unreadable": "Delete the unreadable entry first",
+  "storage-failed": "Couldn’t save — this browser is blocking storage",
 };
+
+/** Shown when a row's `load` answers false: the listed record is gone from the
+ * store, which another browser tab deleting it is the way to reach — this
+ * client's own delete republishes the list. The menu STAYS OPEN, because a
+ * menu that closed on a load that did nothing would report the failure as
+ * success. */
+const MISSING_LAYOUT_MESSAGE = "That layout is no longer there";
 
 /** Every way a save can be REFUSED, as one key space: an invalid name's own
  * `problem`, plus every status that is neither of the two outcomes with a

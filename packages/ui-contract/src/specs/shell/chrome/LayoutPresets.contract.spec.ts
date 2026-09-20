@@ -28,10 +28,10 @@ import {
  * save needs a registered snapshot source, and `App.tsx` is where the live
  * engine's `snapshotLayout` reaches the controller (`onSnapshotSourceChange`
  * ← `useRegisterLayoutSnapshot()`). Unwire that one prop and `save` answers
- * `unavailable`: the "Morning" row never appears and the section shows
- * "Layouts need the Dockview engine" instead — which is exactly why the save
- * cases assert `layoutMessage()` is null as well as asserting the row. A
- * standalone bridge host would make those cases pass while proving nothing.
+ * `unavailable`: the "Morning" row never appears and the section shows "No
+ * live layout to save yet" instead — which is exactly why the save cases
+ * assert `layoutMessage()` is null as well as asserting the row. A standalone
+ * bridge host would make those cases pass while proving nothing.
  */
 
 afterEach(() => {
@@ -77,6 +77,20 @@ describe("View menu LAYOUTS section (Dockview engine)", () => {
     ]);
     // A saved name leaves the form closed, so the next save starts clean.
     expect(app.viewMenu.hasLayoutNameField()).toBe(false);
+  });
+
+  // Enter and Escape are bound on the FIELD, so a field that opens unfocused
+  // makes both keyboard paths below reachable only after a Tab — and the two
+  // clients must agree on that, which is why it is pinned here and not per
+  // client.
+  it("focuses the name field as it opens, so Enter and Escape apply at once", async () => {
+    const app = mountWith(createDockviewWorld(), AppShell);
+    await app.dockviewLayout.waitForGroups(FX_GROUP_COUNT);
+
+    await app.viewMenu.toggle();
+    await app.viewMenu.openSaveLayout();
+
+    expect(app.viewMenu.isLayoutNameFieldFocused()).toBe(true);
   });
 
   it("saves on Enter and abandons the draft on Escape", async () => {
@@ -393,6 +407,11 @@ function createListWithUnreadableRecord(): string {
   const unreadable: LayoutPresetEntry = {
     readable: false,
     id: UNREADABLE_RECORD_ID,
+    // `name` is NOT what the case's asserted "Unreadable layout" label comes
+    // from: the serializer emits an unreadable entry's `raw` alone, so this
+    // field never reaches the store and the label is the codec's own fallback
+    // for a record it cannot read. Kept only because `LayoutPresetEntry`
+    // requires it — do not read it as pinning a stored name.
     name: "Unreadable layout",
     raw: { v: 99, id: UNREADABLE_RECORD_ID },
   };
