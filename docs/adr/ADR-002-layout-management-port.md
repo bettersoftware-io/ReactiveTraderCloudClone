@@ -994,7 +994,7 @@ gate's scope**: floats are Dockview-only arrangement, outside the
 shared/seed-derivable subset the gate freezes on, exactly like pop-outs and
 instances before them.
 
-**Phase 6b (layout presets) built 2026-09-20, in review** — the workstream's last
+**Phase 6b (layout presets) shipped 2026-09-20 (PR #798)** — the workstream's last
 phase and, like instances and floats, Dockview-only: a per-tab named layout
 (save / load / delete) plus a built-in **Default** that restores the
 as-shipped layout, both from a LAYOUTS section in the View menu on both web
@@ -1023,8 +1023,8 @@ effect in each client's Dockview bridge was missing the stale-closure guard
 its four siblings carry, so closing a panel from the View menu and then
 triggering any dock rebuild (including the long-shipped "Reset workspace
 layout") crashed dockview-core and unmounted the engine. **This completes
-the Dockview-native features workstream**: phases 1 through 6a have
-shipped, and 6b is built and in review.
+the Dockview-native features workstream**: phases 1 through 6b have all
+shipped.
 
 ## References
 
