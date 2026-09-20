@@ -501,6 +501,50 @@ describe("createLayoutMachine", () => {
     });
   });
 
+  describe("replaceLayout (Phase 6b layout presets)", () => {
+    it("replaceLayout(s) emits s verbatim, reference-equal — the reducer trusts its caller and does not clone", () => {
+      const m = createLayoutMachine(port);
+      m.intents.replaceLayout(replacement);
+      expect(current(m)).toBe(replacement);
+      m.dispose();
+    });
+
+    it("insertPanel() after a replace whose tree has no dock column builds exactly one — staticIds still derives from port.initial, not the replaced tree", () => {
+      const m = createLayoutMachine(port);
+      m.intents.replaceLayout(replacement);
+      m.intents.insertPanel("jarvis-x");
+      const r = current(m).root;
+
+      if (r.kind !== "split") {
+        throw new Error("split root expected");
+      }
+
+      expect(r.dir).toBe("row");
+      expect(r.children).toEqual([
+        replacement.root,
+        { kind: "panel", panelId: "jarvis-x" },
+      ]);
+      m.dispose();
+    });
+
+    it("reset() after a replace returns port.initial, not the replaced tree", () => {
+      const m = createLayoutMachine(port);
+      m.intents.replaceLayout(replacement);
+      m.intents.reset();
+      expect(current(m)).toEqual(initial);
+      expect(current(m).root).toBe(initial.root);
+      m.dispose();
+    });
+
+    const replacement: LayoutState = {
+      root: { kind: "panel", panelId: "fx-rates" },
+      maximized: "fx-rates",
+      collapsed: [],
+      closed: [],
+      instances: [],
+    };
+  });
+
   // The persistence module must round-trip whatever this machine emits: an
   // instance id is a legitimate `maximized`/`collapsed` value (the Dockview
   // head's own controls dispatch it), even though it is never a tree leaf.

@@ -279,6 +279,7 @@ const LAYOUT_RESULT: LayoutResult = {
   openInstance: noop,
   closeInstance: noop,
   reset: noop,
+  replaceLayout: noop,
 };
 
 /** The Dockview engine's persistence port. Both sides are inert: `load`

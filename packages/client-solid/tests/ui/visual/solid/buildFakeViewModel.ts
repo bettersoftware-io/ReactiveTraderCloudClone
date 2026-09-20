@@ -451,6 +451,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         openInstance: noop,
         closeInstance: noop,
         reset: noop,
+        replaceLayout: noop,
       };
     },
     // Reset workspace layout (Preferences → DATA & PRIVACY): static

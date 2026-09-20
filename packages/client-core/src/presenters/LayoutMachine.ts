@@ -37,7 +37,8 @@ type LayoutEvent =
   | { type: "reopen"; id: PanelId }
   | { type: "openInstance"; kind: "eq-chart"; symbol: string }
   | { type: "closeInstance"; id: PanelId }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "replaceLayout"; state: LayoutState };
 
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
 type OpenInstancePayload = { kind: "eq-chart"; symbol: string };
@@ -214,6 +215,9 @@ function makeReduce(
 
       case "reset":
         return port.initial;
+
+      case "replaceLayout":
+        return event.state;
     }
   };
 }
@@ -241,6 +245,7 @@ export function createLayoutMachine(
   const openInstance$ = new Subject<OpenInstancePayload>();
   const closeInstance$ = new Subject<PanelId>();
   const reset$ = new Subject<void>();
+  const replaceLayout$ = new Subject<LayoutState>();
 
   const events$ = merge(
     maximize$.pipe(
@@ -303,6 +308,11 @@ export function createLayoutMachine(
         return { type: "reset" };
       }),
     ),
+    replaceLayout$.pipe(
+      map((state): LayoutEvent => {
+        return { type: "replaceLayout", state };
+      }),
+    ),
   );
 
   const stream$ = events$.pipe(scan(makeReduce(port, staticIds), startState));
@@ -354,6 +364,9 @@ export function createLayoutMachine(
       reset: () => {
         reset$.next();
       },
+      replaceLayout: (state: LayoutState) => {
+        replaceLayout$.next(state);
+      },
     },
     dispose: () => {
       maximize$.complete();
@@ -368,6 +381,7 @@ export function createLayoutMachine(
       openInstance$.complete();
       closeInstance$.complete();
       reset$.complete();
+      replaceLayout$.complete();
       warm.unsubscribe();
     },
   };
