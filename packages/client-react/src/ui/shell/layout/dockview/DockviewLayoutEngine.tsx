@@ -111,6 +111,7 @@ export function DockviewLayoutEngine({
   onExpand,
   onCloseInstance,
   onDetachedPanelsChange,
+  onSnapshotSourceChange,
 }: DockviewLayoutEngineProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<DockEngine | null>(null);
@@ -165,6 +166,18 @@ export function DockviewLayoutEngine({
   // the raw prop directly instead — `layoutResets` is genuinely one of ITS
   // dependencies, by design.
   const layoutResetsRef = useRef(layoutResets);
+  // Read through a ref for the same reason as `specsRef`/`dockedRef`/
+  // `layoutResetsRef`: the mount and rebuild effects below call the CURRENT
+  // `onSnapshotSourceChange` right after building (and with `null` right
+  // before disposing), but reading the prop directly there would make it a
+  // genuine dependency of those effects — which would tear down and rebuild
+  // the engine on every render where the caller happens to pass a new
+  // function identity (Phase 6b's `useRegisterLayoutSnapshot()` passthrough
+  // is expected to be composition-root-stable, but this bridge doesn't lean
+  // on that assumption any more than it leans on `specs`/`docked` being
+  // stable). Kept current by the same layout effect that syncs the other
+  // construction-time-only refs.
+  const onSnapshotSourceChangeRef = useRef(onSnapshotSourceChange);
   // The collapse set last pushed into the engine, so the collapsed effect
   // below diffs rather than re-asserts (see it). RESET whenever the engine
   // is rebuilt — a fresh engine has nothing collapsed, whatever this said.
@@ -217,6 +230,7 @@ export function DockviewLayoutEngine({
     dockedRef.current = docked;
     instancesRef.current = instances;
     layoutResetsRef.current = layoutResets;
+    onSnapshotSourceChangeRef.current = onSnapshotSourceChange;
   });
 
   // A layout effect, not a passive one: dockview is created — and the slot
@@ -366,6 +380,14 @@ export function DockviewLayoutEngine({
     appliedResetsRef.current = layoutResetsRef.current;
     setGroups(engine.groupCount());
     setLiveEngine(engine);
+    // Hands the controller a source that reads the LIVE engine at call time
+    // (`engineRef.current`), never `engine` itself — the identical NEW-1
+    // hazard this effect's own cleanup guards against, one paragraph below:
+    // a save arriving after a rebuild must read the NEW engine, not the one
+    // this closure happened to capture at construction.
+    onSnapshotSourceChangeRef.current?.(tab, (): string => {
+      return engineRef.current?.snapshotLayout() ?? "";
+    });
 
     return () => {
       // NEW-1 (fix round 2, Critical): dispose the CURRENT engine — read
@@ -388,6 +410,10 @@ export function DockviewLayoutEngine({
       engineRef.current = null;
       setLiveEngine(null);
       setMounted([]);
+      // Unregister BEFORE disposing: a save triggered between this line and
+      // `dispose()` must find no source at all, never one that reads a
+      // torn-down engine.
+      onSnapshotSourceChangeRef.current?.(tab, null);
       currentEngine?.dispose();
     };
   }, [tab, store]);
@@ -524,6 +550,12 @@ export function DockviewLayoutEngine({
       // silent, and without this the stale `floatingHere` would hide
       // collapse/maximize on a panel that is no longer floating anywhere.
       setFloating([]);
+      // Unregister BEFORE disposing the outgoing engine — the mount effect
+      // cleanup's identical ordering, and for the identical reason: a save
+      // triggered by the dispose flush below (or by anything racing it) must
+      // find no source at all, never one that would read the torn-down
+      // engine.
+      onSnapshotSourceChangeRef.current?.(tab, null);
       oldEngine?.dispose();
 
       const engine = createDockEngine({
@@ -577,6 +609,13 @@ export function DockviewLayoutEngine({
       appliedResetsRef.current = layoutResets;
       setGroups(engine.groupCount());
       setLiveEngine(engine);
+      // See the mount effect's identical registration above: the source
+      // reads `engineRef.current`, never this closure's own `engine`, so a
+      // save that arrives after a LATER rebuild reads whichever engine is
+      // current then, not this one.
+      onSnapshotSourceChangeRef.current?.(tab, (): string => {
+        return engineRef.current?.snapshotLayout() ?? "";
+      });
     } finally {
       suppressSaveRef.current = false;
     }
@@ -965,6 +1004,18 @@ export interface DockviewLayoutEngineProps {
   onDetachedPanelsChange?: (
     tab: WorkspaceTab,
     panelIds: readonly PanelId[],
+  ) => void;
+  /** Hands the controller a source that reads the LIVE engine's layout blob
+   * on demand, right after construction; receives `null` right before the
+   * engine that source read is disposed. Phase 6b's preset SAVE reads
+   * through whatever source is currently registered, so this is what makes
+   * a save capture the dock exactly as it looks right now rather than
+   * whatever the last debounced `onLayoutChange` happened to persist.
+   * Optional because nothing needs it outside the real app (every bridge
+   * test page that doesn't exercise presets simply omits it). */
+  onSnapshotSourceChange?: (
+    tab: WorkspaceTab,
+    source: (() => string) | null,
   ) => void;
 }
 

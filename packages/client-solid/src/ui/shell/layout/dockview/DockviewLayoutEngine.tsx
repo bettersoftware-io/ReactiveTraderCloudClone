@@ -341,6 +341,15 @@ export function DockviewLayoutEngine(
     appliedInstances = [];
     setGroups(engine.groupCount());
     setLiveEngine(engine);
+    // Hands the controller a source that reads the LIVE engine at call time —
+    // closing over the outer `engine` variable, never a value captured by
+    // this call, so a save arriving after a LATER rebuild reads whichever
+    // engine is current then (the react twin's `engineRef.current` read,
+    // ported to Solid's plain-variable idiom; see its own doc above `engine`'s
+    // declaration for why a plain variable is the correct read here too).
+    props.onSnapshotSourceChange?.(props.tab, (): string => {
+      return engine?.snapshotLayout() ?? "";
+    });
   }
 
   onMount(() => {
@@ -357,6 +366,10 @@ export function DockviewLayoutEngine(
     const disposed = engine;
     engine = null;
     setLiveEngine(null);
+    // Unregister BEFORE disposing: a save triggered between this line and
+    // `dispose()` must find no source at all, never one that reads a
+    // torn-down engine — the react twin's identical cleanup ordering.
+    props.onSnapshotSourceChange?.(props.tab, null);
     disposed?.dispose();
   });
 
@@ -406,6 +419,12 @@ export function DockviewLayoutEngine(
           const disposed = engine;
           engine = null;
           setLiveEngine(null);
+          // Unregister BEFORE disposing the outgoing engine — the
+          // onCleanup's identical ordering above, and for the identical
+          // reason: a save triggered by the dispose flush below must find
+          // no source at all, never one that would read the torn-down
+          // engine.
+          props.onSnapshotSourceChange?.(props.tab, null);
           disposed?.dispose();
           setMounted([]);
           setGroups(0);
@@ -798,6 +817,18 @@ export interface DockviewLayoutEngineProps {
   onDetachedPanelsChange?: (
     tab: WorkspaceTab,
     panelIds: readonly PanelId[],
+  ) => void;
+  /** Hands the controller a source that reads the LIVE engine's layout blob
+   * on demand, right after construction; receives `null` right before the
+   * engine that source read is disposed. Phase 6b's preset SAVE reads
+   * through whatever source is currently registered, so this is what makes
+   * a save capture the dock exactly as it looks right now rather than
+   * whatever the last debounced `onLayoutChange` happened to persist.
+   * Optional because nothing needs it outside the real app (every bridge
+   * test page that doesn't exercise presets simply omits it). */
+  onSnapshotSourceChange?: (
+    tab: WorkspaceTab,
+    source: (() => string) | null,
   ) => void;
 }
 
