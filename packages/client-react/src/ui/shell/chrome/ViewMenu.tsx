@@ -5,6 +5,8 @@ import type { WorkspaceTab } from "@rtc/client-core";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { LayoutPresetsSection } from "./LayoutPresetsSection";
+
 import styles from "./HeaderChrome.module.css";
 
 /** The app-head "View" dropdown (Phase 3 close/reopen): one checkbox row per
@@ -15,8 +17,9 @@ import styles from "./HeaderChrome.module.css";
  * undock/dismiss controls of their own (recorded Phase 3 decision). */
 export function ViewMenu({ activeTab }: ViewMenuProps): ReactElement {
   const [open, setOpen] = useState(false);
-  const { useLayout } = useViewModel();
+  const { useLayout, useLayoutEngine } = useViewModel();
   const { state, close, reopen } = useLayout(activeTab);
+  const { engine } = useLayoutEngine();
 
   const panelIds = staticPanelIdsFor(activeTab);
   const closed = new Set(state.closed);
@@ -24,6 +27,10 @@ export function ViewMenu({ activeTab }: ViewMenuProps): ReactElement {
 
   function toggleViewMenu(): void {
     setOpen(!open);
+  }
+
+  function closeViewMenu(): void {
+    setOpen(false);
   }
 
   function togglePanelVisibility(panelId: string): void {
@@ -88,6 +95,11 @@ export function ViewMenu({ activeTab }: ViewMenuProps): ReactElement {
               );
             })}
           </ul>
+          <LayoutPresetsSection
+            tab={activeTab}
+            engine={engine}
+            onDone={closeViewMenu}
+          />
         </div>
       ) : null}
     </div>
