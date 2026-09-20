@@ -7,7 +7,7 @@ import { type EffectHost, runnerFor } from "#/bridge/out";
 /** The ports the app was created with, as a service: `createApp(ports)`
  * provides them with `Layer.succeed(AppPortsTag, ports)`. `GenericTag`
  * rather than `class … extends Context.Tag(…)`: a class must name its file
- * (`rtc/class-filename-match`), and twenty-two files for twenty-two tags
+ * (`rtc/class-filename-match`), and twenty-six files for twenty-six tags
  * would be the wrong trade. */
 export const AppPortsTag = Context.GenericTag<AppPorts>(
   "@rtc/client-core-effect/AppPorts",

@@ -183,7 +183,7 @@ explicitly (residual sweep, 2026-09-19):
 ## Warm singletons, conflation and machines
 
 Slice 2 added the three shapes the FX members need, each stated once per
-core:
+core; slice 3 added the credit shapes to the same list:
 
 - **Warm singletons** (`currencyPairs.pairs$`, `blotter.trades$`,
   `blotter.activity$`, `analytics.position$`): the RxJS `warmReplay()`
@@ -229,6 +229,37 @@ core:
   folds the FX members run are `@rtc/client-core` exports in all three cores
   (`blotterFolds`, `staleFlagFold`, `notionalView`, `tileExecutionState`);
   their timing constants live in `@rtc/domain`.
+- **Commands, folds and countdowns** (slice 3, credit — `rfqs`, `dealers`,
+  `instruments`, `rfqQuote`; machines `rfqTile`, `rfqSubmission`,
+  `ticketSubmission`, `rfqCountdown`): no new kernel primitive in either
+  sibling. Each calls `workflow.events()` ONCE and derives both `events$`
+  and the reducer's state from that one Observable — the async core as
+  `topicFromObservable` plus a retained state Topic folding
+  `reduceRfqEvent` from `createEmptyRfqStreamState`, the Effect core as
+  `mirrorPortAsIs` plus a retained `sharedFold` — where the RxJS core
+  calls the port twice for one fact. The three credit singletons are
+  retained (`retainUntil` / `retain: true`); `rfqs$`, `allQuotes$` and
+  `quotesForRfq$(id)` are refCounted derivations over the warm state,
+  suppressed by the shared `createShallowArrayMemo` so that an unchanged
+  roster does not re-emit in ANY core. Every command — `createRfq`,
+  `acceptQuote`, `cancelRfq`, `passQuote`, `quoteRfq`, `requestQuote` — is
+  a one-shot per call, lazy and completing: `promiseToStream(signal =>
+  once(port(...), signal))` (async), `Stream.fromEffect(Effect.suspend(()
+  => rpc(port(...))))` (Effect, the `suspend` being what defers the port
+  call to subscription). The two submission machines are built by the
+  presenter from its own commands (`createSubmission()`,
+  `createTicketSubmission()`), so `createMachineFactories(presenters)`
+  still needs no app handle; a superseding `submit()`/`requestQuote()`
+  cancels the run in flight — by `AbortController` (async), by
+  `Fiber.interrupt` plus a run-token guard on every externally visible
+  step (Effect), or by the RxJS `switchMap`. The
+  countdown is derived from the tick index with the clock read once
+  (`remaining = initial − tick × RFQ_COUNTDOWN_INTERVAL_MS`, clamped,
+  inclusive 0, then the run ends), one looping fiber on the Effect side.
+  `rfqCountdown` is the seam's first *new* member rather than a port: both
+  bindings had imported `createRfqCountdownMachine` from
+  `@rtc/client-core` directly, which no alternative core could intercept,
+  so `MachineFactories` grew it and the member count went 72 → 73.
 
 **Strangler seam.** A base-side consumer of a member that goes native keeps
 the base instance until its own slice: as of slice 2 the RxJS
@@ -249,7 +280,7 @@ its producer, the Effect fold stays silent, the RxJS core never tore down.
 `@rtc/core-contract` mirrors `@rtc/ui-contract`'s shape at a different
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
-and per `AppCommands` member (72 members: 59 presenters, 11 machines, 2
+and per `AppCommands` member (74 members: 60 presenters, 12 machines, 2
 commands). Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
@@ -258,15 +289,22 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 2, twenty-eight members have real suites — slice 1a's
-six, slice 1b's eleven, and slice 2's eleven (`priceStream`, `priceHistory`,
+fails. As of slice 3, thirty-six members have real suites — slice 1a's
+six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
-`analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`) — and 44
-are pending. Each suite subscribes to the member's `Stream`/`StateStream`,
-drives a scripted `AppPorts` harness (`scriptPorts` — Subject-backed streams
-for the connection, the colour scheme and the five FX ports, an
-intent-named `driver` — `tickPrice`, `resolveExecution`, `emitTrades`, …),
-advances vitest's fake timers where a member is timer-driven (`withFakeClock`,
+`analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`) and
+slice 3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
+`rfqSubmission`, `ticketSubmission`, `rfqCountdown`) — and 38 are pending
+(37 at slice 3's merge; Dockview Phase 6b's `layoutPresets` joined pending).
+Each suite subscribes to the member's `Stream`/`StateStream`, drives a
+scripted `AppPorts` harness (`scriptPorts` — Subject-backed streams for the
+connection, the colour scheme and the FX and credit ports, an intent-named
+`driver` — `tickPrice`, `resolveExecution`, `emitTrades`, `emitRfqEvent`,
+`resolveWorkflowCommand`, …). Every one-shot port method is backed by the
+same `createPendingQueue<Req, Res>()` helper — a request is pending from
+SUBSCRIBE until settled or unsubscribed, settled FIFO, a no-op when empty —
+so a suite can witness laziness and cancellation as queue depth rather than
+as an absence. A suite advances vitest's fake timers where a member is timer-driven (`withFakeClock`,
 built around one `it`; `settle()` otherwise), and asserts only at the
 envelope level described above.
 
@@ -286,10 +324,12 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 2 both
-alternative cores list twenty-eight members `"native"` (`connection`, all
+`commands` — and the drift test walks all three. As of slice 3 both
+alternative cores list thirty-six members `"native"` (`connection`, all
 fifteen preference presenters, `commands.reconnect`, the six FX
-pricing/blotter presenters and the five FX machines) and everything else
+pricing/blotter presenters and the five FX machines, the four credit
+presenters and the four RFQ machines — `rfqCountdown` having joined
+`MachineFactories` in slice 3) and everything else
 `"delegated"`; the manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.
