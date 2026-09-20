@@ -1,5 +1,6 @@
 import { firstValueFrom, type Observable, take } from "rxjs";
 
+import { AbortError } from "#/kernel/AbortError";
 import { createTopic, type Topic } from "#/kernel/topic";
 
 /** A source error, boxed so `null` reads as "no error" rather than being
@@ -14,9 +15,69 @@ interface IterateInbox {
   failure: IterateFailure | null;
 }
 
-/** One-shot RPC shape: the first value of an Observable port method. */
-export function once<T>(source: Observable<T>): Promise<T> {
-  return firstValueFrom(source);
+/** One-shot RPC shape: the first value of an Observable port method. With a
+ * `signal`, an abort releases the subscription and rejects with `AbortError`
+ * (the kernel's "normal" rejection, which `spawn` swallows) — how a
+ * superseded or dismissed tile execution lets go of its in-flight port
+ * call. A source that completes without a value rejects, as
+ * `firstValueFrom` does. */
+export function once<T>(
+  source: Observable<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal === undefined) {
+    return firstValueFrom(source);
+  }
+
+  if (signal.aborted) {
+    return Promise.reject(new AbortError());
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    // `take(1)` completes the downstream observer synchronously right after
+    // `next` fires, so without this flag `complete` would call `reject` on
+    // an already-resolved promise on every successful call — harmless (a
+    // settled promise ignores a later settle), but not a shape worth
+    // relying on. The same flag makes the abort listener a no-op once a
+    // result has already landed (it is also `{ once: true }`, so it can
+    // fire at most once regardless).
+    let settled = false;
+    const subscription = source.pipe(take(1)).subscribe({
+      next: (value: T) => {
+        settled = true;
+        resolve(value);
+      },
+      error: (error: unknown) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(error);
+      },
+      complete: () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        reject(new Error("once: source completed without a value"));
+      },
+    });
+    signal.addEventListener(
+      "abort",
+      () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        subscription.unsubscribe();
+        reject(new AbortError());
+      },
+      { once: true },
+    );
+  });
 }
 
 /** Pull an Observable as an AsyncIterable with an unbounded queue. Ends on
@@ -182,12 +243,17 @@ export function peek<T>(source: Observable<T>, fallback: T): T {
 /** A hot port Observable as a replay-1, refCounted Topic: the port is
  * subscribed on the topic's first subscriber and released on its last — the
  * RxJS core's `port$().pipe(shareReplay({ bufferSize: 1, refCount: true }))`,
- * as a Topic whose whole producer is one `relay`. */
-export function topicFromObservable<T>(source: Observable<T>): Topic<T> {
+ * as a Topic whose whole producer is one `relay`. With `retainUntil`, the
+ * release waits for that signal instead of the last unsubscribe — the RxJS
+ * core's `warmReplay()` (`refCount: false`), for the session singletons. */
+export function topicFromObservable<T>(
+  source: Observable<T>,
+  retainUntil?: AbortSignal,
+): Topic<T> {
   return createTopic<T>(
     (signal, publish) => {
       return relay(source, signal, publish);
     },
-    { replay: true },
+    { replay: true, retainUntil },
   );
 }

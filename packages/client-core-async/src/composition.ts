@@ -9,9 +9,16 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
+import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
 
 import { createCommands } from "#/commands";
+import { createNotionalMachine } from "#/machines/notional";
+import { createRowHighlightMachine } from "#/machines/rowHighlight";
+import { createStaleFlagMachine } from "#/machines/staleFlag";
+import { createTileExecutionMachine } from "#/machines/tileExecution";
+import { createBlotterPresenter } from "#/presenters/blotter";
 import { createConnectionPresenter } from "#/presenters/connection";
+import { createTradeExecutionPresenter } from "#/presenters/execution";
 import {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
@@ -28,11 +35,17 @@ import {
   createThemeSkinPreferencePresenter,
   createViewModePreferencePresenter,
 } from "#/presenters/preferences";
+import { createPriceHistoryPresenter } from "#/presenters/priceHistory";
+import { createPriceStreamPresenter } from "#/presenters/priceStream";
 import {
   createBootPreferencePresenter,
   createEqWatchlistSortPreferencePresenter,
 } from "#/presenters/readPreferences";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
+import {
+  createAnalyticsPresenter,
+  createCurrencyPairsPresenter,
+} from "#/presenters/warmSingletons";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
@@ -50,12 +63,21 @@ export interface ComposedMachines {
 
 /** Members this core implements natively — slice 1a: the connection fold,
  * the four theme/view/power-saver preferences, and `commands` (see
- * `createCommands`); slice 1b: the eleven remaining preference presenters.
+ * `createCommands`); slice 1b: the eleven remaining preference presenters;
+ * slice 2: the six FX pricing/blotter/execution presenters, of which the
+ * four warm singletons (`currencyPairs`, `blotter`'s `trades$`/`activity$`,
+ * `analytics`) hold their port subscriptions until `lifetime` aborts.
  * Everything else still delegates to the RxJS core. `parity.json` is the
  * committed record of the same fact and `parity.test.ts` proves the two
  * agree by reference. */
-function nativePresenters(ports: AppPorts): Partial<Presenters> {
+function nativePresenters(
+  ports: AppPorts,
+  lifetime: AbortSignal,
+): Partial<Presenters> {
   const { preferences } = ports;
+  // Hoisted: `priceStream` and `priceHistory` gate their conflation on it —
+  // the RxJS core's order.
+  const powerSaver = createPowerSaverPresenter(preferences);
   return {
     connection: createConnectionPresenter(ports.connectionEvents),
     themePreference: createThemePreferencePresenter(
@@ -64,7 +86,7 @@ function nativePresenters(ports: AppPorts): Partial<Presenters> {
     ),
     themeSkinPreference: createThemeSkinPreferencePresenter(preferences),
     viewModePreference: createViewModePreferencePresenter(preferences),
-    powerSaver: createPowerSaverPresenter(preferences),
+    powerSaver,
     creditRfqFilterPreference:
       createCreditRfqFilterPreferencePresenter(preferences),
     eqWatchlistSortPreference:
@@ -79,22 +101,36 @@ function nativePresenters(ports: AppPorts): Partial<Presenters> {
     chartSubstrate: createChartSubstratePresenter(preferences),
     layoutEngine: createLayoutEnginePresenter(preferences),
     forceBootAnimation: createForceBootAnimationPresenter(preferences),
+    priceStream: createPriceStreamPresenter(ports.pricing, powerSaver.isCalm$),
+    priceHistory: createPriceHistoryPresenter(
+      ports.pricing,
+      powerSaver.isCalm$,
+    ),
+    currencyPairs: createCurrencyPairsPresenter(ports.referenceData, lifetime),
+    blotter: createBlotterPresenter(ports.blotter, lifetime),
+    analytics: createAnalyticsPresenter(ports.analytics, lifetime),
+    execution: createTradeExecutionPresenter(ports.execution),
   };
 }
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const base = createRxjsApp(ports);
+  const lifetime = new AbortController();
   const app: App = {
     ...base,
-    presenters: { ...base.presenters, ...nativePresenters(ports) },
+    presenters: {
+      ...base.presenters,
+      ...nativePresenters(ports, lifetime.signal),
+    },
     commands: createCommands(base.commands),
-    // Every native member so far is a refCounted Topic: it holds nothing
-    // between subscribers, so there is nothing app-scoped to abort. A member
-    // that spawns an app-lifetime loop (slice 2's conflation is the first
-    // candidate) must take an `AbortSignal` minted here and aborted below,
-    // BEFORE the base app is disposed — its loops may still be draining
-    // streams the base owns.
+    // General rule (see docs/architecture/22-pluggable-application-core.md
+    // §22 "Teardown order"): an alternative core releases its own resources
+    // first, then the base app it delegates to. Here that means aborting
+    // the retained singletons' `lifetime` before `base.dispose()` — their
+    // relays may still be draining streams the base app owns. Idempotent: a
+    // second abort is a no-op, and the base's dispose is its own concern.
     dispose: async () => {
+      lifetime.abort();
       await base.dispose();
     },
   };
@@ -110,16 +146,47 @@ export function createApp(ports: AppPorts): App {
  * that builder mints fresh closures on every call, so two calls of it share
  * no identity at all and the manifest's `delegated` claim would be
  * unfalsifiable. Spreading ONE base keeps the delegated members reference-
- * identical to it, so `parity.test.ts` can tell native from delegated. */
-function nativeMachines(_base: MachineFactories): Partial<MachineFactories> {
-  return {};
+ * identical to it, so `parity.test.ts` can tell native from delegated.
+ *
+ * The native factories close over the SAME merged `presenters` the RxJS
+ * builder gets — `staleFlag` reads `priceStream.price$(pair)` and
+ * `analyticsStaleFlag` reads `analytics.position$`, both native above;
+ * `tileExecution` reaches `execution.execute`. */
+function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
+  return {
+    tileExecution: (pair: CurrencyPair) => {
+      return createTileExecutionMachine(pair, {
+        execute: (input: ExecuteTradeInput) => {
+          return presenters.execution.execute(input);
+        },
+      });
+    },
+    staleFlag: (pair: CurrencyPair) => {
+      return createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.priceStream.price$(pair),
+      });
+    },
+    analyticsStaleFlag: () => {
+      return createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.analytics.position$,
+      });
+    },
+    rowHighlight: (isNew: boolean) => {
+      return createRowHighlightMachine(isNew);
+    },
+    notional: (defaultNotional: number) => {
+      return createNotionalMachine(defaultNotional);
+    },
+  };
 }
 
 export function composeMachinesWithBase(
   presenters: Presenters,
 ): ComposedMachines {
   const base = createRxjsMachineFactories(presenters);
-  return { base, machines: { ...base, ...nativeMachines(base) } };
+  return { base, machines: { ...base, ...nativeMachines(presenters) } };
 }
 
 export function createMachineFactories(

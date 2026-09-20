@@ -297,7 +297,7 @@ module.exports = {
       name: "effect-port-subscription-owned-by-the-bridge",
       severity: "error",
       comment:
-        "`fromObservable` subscribes a port eagerly at call time and must only be reached through a sharedFold's period-scoped `fromPort` (packages/client-core-effect/src/bridge/out.ts). Presenters never import bridge/in.ts directly; `peek`/`peekCurrent` live in bridge/peek.ts for that reason.",
+        "`fromObservable` subscribes a port eagerly at call time and must only be reached through a sharedFold's period-scoped `fromPort` (packages/client-core-effect/src/bridge/out.ts). Presenters never import bridge/in.ts directly; `peek`/`peekCurrent` live in bridge/peek.ts for that reason, and `rpc` in `bridge/rpc.ts`.",
       from: {
         path: "^packages/client-core-effect/src",
         pathNot: "^packages/client-core-effect/src/bridge/|\\.test\\.ts$",

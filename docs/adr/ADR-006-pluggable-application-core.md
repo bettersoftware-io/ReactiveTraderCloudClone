@@ -265,6 +265,105 @@ predictable from the design alone):
 - **`client-core` class docs carry implementation notes only**; the
   `core-api` interface is the contract's prose.
 
+**Decided in slice 2** (2026-09-19):
+
+- **Suites shipped ahead of the ports, as their own PR.** The ordering rule
+  ("green on RxJS first") is a merge boundary, not a task order: the ports
+  are judged against a fixed target, and a reviewer can accept the suites
+  and reject a port.
+- **The pure folds are exported from `@rtc/client-core` and imported by both
+  siblings** (`blotterFolds`, `staleFlagFold`, `notionalView`,
+  `tileExecutionState`), and the four app-layer timings/caps the suites need
+  live in `@rtc/domain` (`PRICE_CONFLATION_MS`, `PRICE_HISTORY_CONFLATION_MS`,
+  `BLOTTER_ROW_HIGHLIGHT_MS`, `ACTIVITY_FEED_CAP`) — the contract tier may
+  not import `client-core`. The fold under test is the same function driven
+  by a different runtime; slice 8 moves the folds to `@rtc/core-logic`.
+- **`warmReplay` has a name in each sibling:** `TopicOptions.retainUntil`
+  (an `AbortSignal` the app mints and aborts in `dispose()`, before the base
+  app) and `SharedFold.retain` (the host scope ends the period). Four
+  members use it: the three singletons and `blotter.activity$`.
+- **Conflation is hand-written in both siblings**, as `conflateWhen` is in
+  the RxJS core: neither runtime ships a leading+trailing throttle gated by
+  a flag (Effect's `Stream.throttle` is a token bucket, `aggregateWithin`
+  trailing-only). One producer per core, inside the one place its runtime
+  allows a timer. A flip takes effect at once; a trailing value pending when
+  the flag turns off is discarded (uncontracted); values before the flag has
+  spoken are dropped.
+- **Machines own their lifetime.** `createMachineFactories(presenters)` has
+  no app handle, so an async machine is a `Store` plus an `AbortController`
+  and an Effect machine is a `SubscriptionRef` under a detached host
+  (`Runtime.defaultRuntime` + its own `Scope`). A machine's source failure
+  has no channel on either — the RxJS `state()` would error `state$`, which
+  nothing observes — so it aborts the machine and is rethrown out of band.
+- **The Effect core composes as `Context.GenericTag` services in a `Layer`
+  graph** (`services.ts`, `layers.ts`): `AppPorts` enters as
+  `Layer.succeed`, the host is a `Layer.scoped` owning a closeable child
+  scope, every native presenter is a `Layer`, `createApp` is
+  `ManagedRuntime.make(buildAppLayer(ports))` and ONE synchronous `runSync`.
+  `PowerSaverLive` is merged into the app AND provided to the two dependents;
+  Layer memoisation makes it one instance. `GenericTag` rather than the class
+  form because a class must name its file. `EffectHost.runtime` is the
+  structural `EffectRunner`, so a `ManagedRuntime` (tests) and a captured
+  `Runtime` (the Layer) both serve. `buildAppLayer` provides the host and
+  ports with `Layer.provideMerge`, so the resolved runtime still exposes
+  `HostTag` for the one `runSync`; the conflating fold seeds its calm flag
+  from `peekCurrent(calm$)`, the twin of the RxJS `switchMap` subscribing
+  the flag synchronously before any tick (`Stream.merge` would otherwise
+  drain the tick queue first).
+- **`rpc` is a bridge file of its own** (`bridge/rpc.ts`): lazy, so the
+  eager-subscription rule that confines `bridge/in.ts` does not apply to it.
+- **A one-shot command result completes** (`execute(input)`): the slice-1b
+  ruling was about presenter STREAMS; an RPC result's source ends.
+- **`executions$` is asserted only after `settle()` following subscribe**
+  — the Effect `PubSub` subscription is taken on the subscriber's fiber; a
+  publish in that gap reaches nobody, as on an RxJS `Subject` with no
+  observer.
+- **Fake timers are the suite's, not the harness's** (`withFakeClock`): the
+  harness is built inside the fake clock; `clock.settle()` replaces
+  `settle()` there; Effect's live `Clock` sleeps on the global `setTimeout`,
+  which vitest fakes (measured, `bridge/clock.test.ts`).
+- **Three envelope rulings from the suites' first contact with the RxJS
+  core.** The relative order of events from different sources driven in one
+  synchronous burst is uncontracted (suites `settle()` between sources —
+  measured: a native fiber-scheduled `connection` fold against a
+  synchronous delegated price port); what a machine does after `dispose()`
+  toward a still-attached subscriber is uncontracted (the bindings
+  unsubscribe first; suites assert a fresh subscription after unsubscribe +
+  dispose yields the current value synchronously); for a machine, distinct
+  consecutive states ARE contracted (the stale flag never re-emits `false`;
+  `Store` drops `Object.is`-equal writes, Effect writes through
+  `setRefIfChanged`).
+- **Base-side consumers of a newly native member stay on the base instance
+  until their own slice.** The RxJS `AnimationDirector` and `NarratorMachine`
+  capture the base app's `execution`, `currencyPairs` and `priceStream`
+  streams at construction, and `animationDirector`/`jarvis` are not overlaid
+  until slices 6 and 7 — so under an alternative core the tile fill/reject
+  animations do not play and two FX ports carry a second live subscription
+  (a doubled simulator tick rate for mounted pairs). Accepted and recorded
+  rather than coded around: feeding the base presenter's private Subject
+  from the native `execute()` would make the native member RxJS with extra
+  steps. Production keeps `VITE_CORE_IMPL` unset.
+- **Three cross-core asymmetries are recorded, not coded around.** (1) When
+  the tile's timeout wins, the Effect machine releases the losing execution
+  call at once (`Effect.race` interrupts the loser and `rpc`'s finalizer
+  unsubscribes the port) where the async and RxJS machines hold it until
+  dismiss, a new execute or dispose — each core's unit test witnesses its
+  own side; the contract cannot tell them apart, because the harness's
+  `resolveExecution` is a no-op with nothing pending. (2) A subscriber
+  arriving AFTER `app.dispose()`: the async retained topic restarts its
+  producer, the Effect retained fold stays silent, the RxJS core never tore
+  down — uncontracted; the bindings unsubscribe before disposing. (3) A late
+  joiner of a WARM `priceHistory` period sees two equal emissions (the
+  retained-window lead, then the replay) on the async and RxJS cores and one
+  on Effect, whose seed is the window itself — content-identical,
+  uncontracted.
+- **Teardown order, stated once.** An alternative core releases its own
+  resources first (loops, retained topics and periods), then disposes the
+  base app, then (Effect) the runtime; the Effect composition's base →
+  scope → runtime order is equally safe while the RxJS `dispose()` is a
+  knowing no-op, and slice 8 removes the base — so it stays, and both
+  composition comments point here.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

@@ -1,4 +1,5 @@
 import {
+  Cause,
   Effect,
   Exit,
   Layer,
@@ -8,17 +9,21 @@ import {
   Stream,
   SubscriptionRef,
 } from "effect";
-import { Subject, type Subscription } from "rxjs";
-import { afterEach, describe, expect, it } from "vitest";
+import { BehaviorSubject, Subject, type Subscription } from "rxjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
 
 import {
+  createDetachedHost,
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  fromPortIn,
   pushReconnectIntent,
   refToStateStream,
+  reportOutOfBand,
+  setRefIfChanged,
   sharedFold,
   streamToStream,
 } from "#/bridge/out";
@@ -756,25 +761,123 @@ describe("bridge/out", () => {
     sub.unsubscribe();
   });
 
-  const hosts: EffectHost[] = [];
+  it("sharedFold({ retain: true }) keeps the period across zero subscribers and ends it with the host scope", async () => {
+    const host = useHost();
+    const subject = new BehaviorSubject<number>(1);
+    const stream = sharedFold(host, {
+      retain: true,
+      seed: () => {
+        return Option.none();
+      },
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
+          Stream.runForEach((v: number) => {
+            return update(() => {
+              return v;
+            });
+          }),
+        );
+      },
+    });
+    stream.subscribe(() => {}).unsubscribe();
+    await tick();
+    expect(subject.observed).toBe(true);
+    const seen: number[] = [];
+    stream.subscribe((v: number) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([1]);
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    expect(subject.observed).toBe(false);
+  });
 
-  function useHost(): EffectHost {
+  it("setRefIfChanged publishes a changed value and skips an Object.is-equal one", async () => {
+    const host = useHost();
+    const ref = host.runtime.runSync(SubscriptionRef.make(1));
+    const seen: number[] = [];
+    const sub = refToStateStream(host, ref).subscribe((v: number) => {
+      seen.push(v);
+    });
+    await tick();
+    host.runtime.runSync(
+      setRefIfChanged(ref, () => {
+        return 1;
+      }),
+    );
+    host.runtime.runSync(
+      setRefIfChanged(ref, () => {
+        return 2;
+      }),
+    );
+    await tick();
+    await tick();
+    expect(seen).toEqual([1, 2]);
+    sub.unsubscribe();
+  });
+
+  it("fromPortIn(scope) subscribes at once and the scope's close releases it", async () => {
+    const subject = new Subject<number>();
+    const scope = Effect.runSync(Scope.make());
+    fromPortIn(scope)(subject);
+    expect(subject.observed).toBe(true);
+    await Effect.runPromise(Scope.close(scope, Exit.void));
+    expect(subject.observed).toBe(false);
+  });
+
+  it("createDetachedHost() runs effects on the default runtime under a scope of its own", async () => {
+    const host = createDetachedHost();
+    expect(host.runtime.runSync(Effect.succeed(3))).toBe(3);
+    let interrupted = false;
+    host.runtime.runFork(
+      Effect.never.pipe(
+        Effect.onInterrupt(() => {
+          return Effect.sync(() => {
+            interrupted = true;
+          });
+        }),
+      ),
+      { scope: host.scope },
+    );
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    expect(interrupted).toBe(true);
+  });
+
+  it("reportOutOfBand rethrows a squashed cause on a macrotask", () => {
+    vi.useFakeTimers();
+    reportOutOfBand(Cause.fail(new Error("machine")));
+    expect(() => {
+      vi.runAllTimers();
+    }).toThrow("machine");
+    vi.useRealTimers();
+  });
+
+  const hosts: TestHost[] = [];
+
+  function useHost(): TestHost {
     const host = createHost();
     hosts.push(host);
     return host;
   }
 });
 
-/** A host of the same shape `composeWithBase` builds: a ManagedRuntime plus
- * the scope every stream fiber is forked into. */
-function createHost(): EffectHost {
+/** The host these tests build: a `ManagedRuntime` (which satisfies
+ * `EffectRunner` structurally) plus the scope every stream fiber is forked
+ * into — and, unlike the narrow `EffectHost`, the runtime's own
+ * `runPromise`/`dispose`, which the cases drive directly. */
+interface TestHost extends EffectHost {
+  runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+function createHost(): TestHost {
   return {
     runtime: ManagedRuntime.make(Layer.empty),
     scope: Effect.runSync(Scope.make()),
   };
 }
 
-async function closeHost(host: EffectHost): Promise<void> {
+async function closeHost(host: TestHost): Promise<void> {
   await Effect.runPromise(Scope.close(host.scope, Exit.void));
   await host.runtime.dispose();
 }
