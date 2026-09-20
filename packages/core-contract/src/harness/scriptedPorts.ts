@@ -6,22 +6,34 @@ import type {
   BlotterPort,
   ConnectionEvent,
   ConnectionEventsPort,
+  CreateRfqRequest,
   CurrencyPair,
+  Dealer,
+  DealerPort,
   ExecutionPort,
   ExecutionRequest,
+  Instrument,
+  InstrumentPort,
   PositionUpdates,
   PreferencesPort,
   PriceTick,
   PricingPort,
+  QuoteRequest,
   ReferenceDataPort,
+  RfqEvent,
+  RfqQuoteResult,
   Trade,
+  WorkflowPort,
 } from "@rtc/domain";
+
+import { createPendingQueue } from "#/harness/pendingQueue";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
  * stream methods of `PreferencesPort`, plus the app-lifetime methods the
  * harness supplies itself: `connectionEvents.events`,
- * `colorScheme.prefersDark$`, and the three FX singletons every core calls
- * once at construction. `pricing.getPriceUpdates` is deliberately NOT here:
+ * `colorScheme.prefersDark$`, the three FX singletons every core calls once
+ * at construction, and the three credit singletons every core calls once at
+ * construction. `pricing.getPriceUpdates` is deliberately NOT here:
  * a per-key stream is opened per warm period through the use case's
  * `defer`, in the RxJS core as in the others. */
 export type PortMethodName =
@@ -30,7 +42,26 @@ export type PortMethodName =
   | "colorScheme.prefersDark$"
   | "referenceData.getCurrencyPairs"
   | "blotter.getTradeStream"
-  | "analytics.getAnalytics";
+  | "analytics.getAnalytics"
+  | "workflow.events"
+  | "dealers.getDealers"
+  | "instruments.getInstruments";
+
+/** What `pricing.getRfqQuote` was asked for. */
+export interface RfqQuoteRequest {
+  readonly symbol: string;
+  readonly pipsPosition: number;
+}
+
+/** One workflow command the core has subscribed, by kind — the five
+ * `WorkflowPort` methods share ONE FIFO so a suite reads the order the core
+ * issued them in. */
+export type WorkflowCommand =
+  | { readonly kind: "createRfq"; readonly request: CreateRfqRequest }
+  | { readonly kind: "accept"; readonly quoteId: number }
+  | { readonly kind: "cancelRfq"; readonly rfqId: number }
+  | { readonly kind: "pass"; readonly quoteId: number }
+  | { readonly kind: "quote"; readonly request: QuoteRequest };
 
 /** Wrap a port so every method call is counted by name. A Proxy rather than
  * a spread: a class port's methods live on its prototype, which a spread
@@ -57,12 +88,6 @@ function countCalls<P extends object>(
       return value;
     },
   });
-}
-
-/** One execution the core has SUBSCRIBED and the driver has not yet settled. */
-interface PendingExecution {
-  readonly request: ExecutionRequest;
-  readonly result: Subject<Trade>;
 }
 
 export interface ScriptedDriver {
@@ -108,6 +133,25 @@ export interface ScriptedDriver {
   resolveExecution(trade: Trade): void;
   /** Error the OLDEST pending execution. A no-op when nothing is pending. */
   failExecution(error: unknown): void;
+  /** Push one raw RFQ event into `workflow.events()`. */
+  emitRfqEvent(event: RfqEvent): void;
+  rfqEventsObserved(): boolean;
+  emitDealers(dealers: readonly Dealer[]): void;
+  dealersObserved(): boolean;
+  emitInstruments(instruments: readonly Instrument[]): void;
+  instrumentsObserved(): boolean;
+  /** Every `pricing.getRfqQuote` the core has subscribed and the driver has
+   * not settled, oldest first. */
+  pendingRfqQuotes(): readonly RfqQuoteRequest[];
+  resolveRfqQuote(result: RfqQuoteResult): void;
+  failRfqQuote(error: unknown): void;
+  /** Every workflow command the core has subscribed and the driver has not
+   * settled, oldest first, across all five methods. */
+  pendingWorkflowCommands(): readonly WorkflowCommand[];
+  /** Settle the OLDEST pending workflow command: `rfqId` is the value a
+   * `createRfq` resolves with; the void commands ignore it. */
+  resolveWorkflowCommand(rfqId?: number): void;
+  failWorkflowCommand(error: unknown): void;
 }
 
 export interface ScriptedPorts {
@@ -117,10 +161,11 @@ export interface ScriptedPorts {
 }
 
 /** Wrap a runner-supplied `AppPorts` so the suites can drive connection
- * events, the colour scheme and the five FX ports deterministically. The
- * FX ports are REPLACED, not merged: the base simulators tick on real,
- * random timers a suite cannot assert against. Everything else in `base` is
- * passed through untouched — the runner decides what backs it. */
+ * events, the colour scheme, the five FX ports and the three credit ports
+ * plus `pricing.getRfqQuote` deterministically. The FX and credit ports are
+ * REPLACED, not merged: the base simulators tick on real, random timers a
+ * suite cannot assert against. Everything else in `base` is passed through
+ * untouched — the runner decides what backs it. */
 export function scriptPorts(base: AppPorts): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
@@ -130,7 +175,12 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
   const pairs$ = new Subject<readonly CurrencyPair[]>();
   const trades$ = new Subject<readonly Trade[]>();
   const position$ = new Subject<PositionUpdates>();
-  const pending: PendingExecution[] = [];
+  const executions = createPendingQueue<ExecutionRequest, Trade>();
+  const rfqQuotes = createPendingQueue<RfqQuoteRequest, RfqQuoteResult>();
+  const commands = createPendingQueue<WorkflowCommand, unknown>();
+  const rfqEvents$ = new Subject<RfqEvent>();
+  const dealers$ = new Subject<readonly Dealer[]>();
+  const instruments$ = new Subject<readonly Instrument[]>();
 
   // Built ONCE, and handed to both the core (through `connectionEvents`) and
   // the suites (through `driver.connectionEvents$()`), so the two can never
@@ -164,14 +214,6 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     return fresh;
   }
 
-  function settlePending(settle: (result: Subject<Trade>) => void): void {
-    const oldest = pending.shift();
-
-    if (oldest !== undefined) {
-      settle(oldest.result);
-    }
-  }
-
   const connectionEvents: ConnectionEventsPort = {
     events: (): Observable<ConnectionEvent> => {
       recordCall("connectionEvents.events");
@@ -197,8 +239,11 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     getPriceHistory: (symbol: string): Observable<readonly PriceTick[]> => {
       return base.pricing.getPriceHistory(symbol);
     },
-    getRfqQuote: (symbol: string, pipsPosition: number) => {
-      return base.pricing.getRfqQuote(symbol, pipsPosition);
+    getRfqQuote: (
+      symbol: string,
+      pipsPosition: number,
+    ): Observable<RfqQuoteResult> => {
+      return rfqQuotes.open({ symbol, pipsPosition });
     },
   };
 
@@ -227,23 +272,46 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     // The request becomes pending when the core SUBSCRIBES, not when it
     // calls: a `defer`, so "lazy until subscribed" is the core's property.
     executeTrade: (request: ExecutionRequest): Observable<Trade> => {
-      return new Observable<Trade>((subscriber) => {
-        const entry: PendingExecution = {
-          request,
-          result: new Subject<Trade>(),
-        };
-        pending.push(entry);
-        const inner = entry.result.subscribe(subscriber);
+      return executions.open(request);
+    },
+  };
 
-        return () => {
-          inner.unsubscribe();
-          const index = pending.indexOf(entry);
+  const workflow: WorkflowPort = {
+    events: (): Observable<RfqEvent> => {
+      recordCall("workflow.events");
+      return rfqEvents$;
+    },
+    createRfq: (request: CreateRfqRequest): Observable<number> => {
+      return commands.open({
+        kind: "createRfq",
+        request,
+      }) as Observable<number>;
+    },
+    cancelRfq: (rfqId: number): Observable<void> => {
+      return commands.open({ kind: "cancelRfq", rfqId }) as Observable<void>;
+    },
+    quote: (request: QuoteRequest): Observable<void> => {
+      return commands.open({ kind: "quote", request }) as Observable<void>;
+    },
+    pass: (quoteId: number): Observable<void> => {
+      return commands.open({ kind: "pass", quoteId }) as Observable<void>;
+    },
+    accept: (quoteId: number): Observable<void> => {
+      return commands.open({ kind: "accept", quoteId }) as Observable<void>;
+    },
+  };
 
-          if (index >= 0) {
-            pending.splice(index, 1);
-          }
-        };
-      });
+  const dealers: DealerPort = {
+    getDealers: (): Observable<readonly Dealer[]> => {
+      recordCall("dealers.getDealers");
+      return dealers$;
+    },
+  };
+
+  const instruments: InstrumentPort = {
+    getInstruments: (): Observable<readonly Instrument[]> => {
+      recordCall("instruments.getInstruments");
+      return instruments$;
     },
   };
 
@@ -258,6 +326,9 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       blotter,
       analytics,
       execution,
+      workflow,
+      dealers,
+      instruments,
     },
     driver: {
       emitConnection: (event: ConnectionEvent) => {
@@ -302,22 +373,35 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       positionObserved: () => {
         return position$.observed;
       },
-      pendingExecutions: () => {
-        return pending.map((entry) => {
-          return entry.request;
-        });
+      pendingExecutions: executions.pending,
+      resolveExecution: executions.resolve,
+      failExecution: executions.fail,
+      emitRfqEvent: (event: RfqEvent) => {
+        rfqEvents$.next(event);
       },
-      resolveExecution: (trade: Trade) => {
-        settlePending((result) => {
-          result.next(trade);
-          result.complete();
-        });
+      rfqEventsObserved: () => {
+        return rfqEvents$.observed;
       },
-      failExecution: (error: unknown) => {
-        settlePending((result) => {
-          result.error(error);
-        });
+      emitDealers: (next: readonly Dealer[]) => {
+        dealers$.next(next);
       },
+      dealersObserved: () => {
+        return dealers$.observed;
+      },
+      emitInstruments: (next: readonly Instrument[]) => {
+        instruments$.next(next);
+      },
+      instrumentsObserved: () => {
+        return instruments$.observed;
+      },
+      pendingRfqQuotes: rfqQuotes.pending,
+      resolveRfqQuote: rfqQuotes.resolve,
+      failRfqQuote: rfqQuotes.fail,
+      pendingWorkflowCommands: commands.pending,
+      resolveWorkflowCommand: (rfqId?: number) => {
+        commands.resolve(rfqId);
+      },
+      failWorkflowCommand: commands.fail,
     },
     teardown: () => {
       connection$.complete();
@@ -330,10 +414,12 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       pairs$.complete();
       trades$.complete();
       position$.complete();
-
-      for (const entry of pending.splice(0)) {
-        entry.result.complete();
-      }
+      executions.drain();
+      rfqQuotes.drain();
+      commands.drain();
+      rfqEvents$.complete();
+      dealers$.complete();
+      instruments$.complete();
     },
   };
 }
