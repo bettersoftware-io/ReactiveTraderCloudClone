@@ -864,14 +864,9 @@ function dockedPanelIdsIn(data: AppData): readonly string[] {
     });
 }
 
-/** A later task (Task 11) adds `AppData.layoutPresets` — read it defensively
- * so this fake already tolerates the field once that lands without a
- * revisit: an as-yet-absent field reads as `undefined`, defaulting to `[]`
- * exactly like every other data-driven fake above (e.g. `useWatchlist`).
- * Mirrors the react driver's `layoutPresetsIn` exactly. */
+/** `AppData.layoutPresets` defaults to `[]`, exactly like every other
+ * data-driven fake above (e.g. `useWatchlist`). Mirrors the react driver's
+ * `layoutPresetsIn` exactly. */
 function layoutPresetsIn(data: AppData): readonly LayoutPresetSummary[] {
-  return (
-    (data as AppData & { layoutPresets?: readonly LayoutPresetSummary[] })
-      .layoutPresets ?? []
-  );
+  return data.layoutPresets ?? [];
 }

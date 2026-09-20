@@ -9,6 +9,7 @@ import type {
   JarvisState,
   JarvisUsageSnapshot,
   LayoutPanelInstance,
+  LayoutPresetSummary,
   NotionalView,
   OrderTicketState,
   PanelData,
@@ -128,6 +129,19 @@ export interface AppData {
    * projects them away), so this field only ever affects a `-dockview`
    * fixture — there is no in-house instances scenario to twin. */
   layoutInstances?: readonly LayoutPanelInstance[];
+  /** Saved-layout preset summaries for the View menu's LAYOUTS section
+   * (`LayoutPresetsPresenter.presetsFor`, Phase 6b Task 11); defaults to [].
+   * SEEDED, NEVER CLICKED — like `layoutMaximized` / `layoutCollapsed` /
+   * `layoutClosed` above, this is a fixture for a static capture, not
+   * something the visual host's row buttons ever produce: the visual host's
+   * layout intents are deliberate no-ops (see this file's siblings and
+   * CLAUDE.md's "Engine parity is a number, not an eyeball"). A preset with
+   * `readable: false` (and `savedAt: null`) renders its row disabled and
+   * greyed — see `shell/view-menu-layouts-dockview` in scenarios.ts. Only the
+   * Dockview bridge's LAYOUTS section renders preset rows at all (the
+   * in-house engine shows `Default` only), so this field only ever affects a
+   * `-dockview` fixture. */
+  layoutPresets?: readonly LayoutPresetSummary[];
   /** Live-rates view-mode preference (useViewModePreference); defaults to DEFAULT_VIEW_MODE ("chart"). */
   viewMode?: ViewMode;
   /** Credit RFQs panel filter preference (useCreditRfqFilterPreference); defaults to DEFAULT_CREDIT_RFQ_FILTER ("live"). */
