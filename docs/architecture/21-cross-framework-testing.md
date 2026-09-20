@@ -25,7 +25,7 @@ the three tiers fail on different axes when something is actually wrong.
 ```mermaid
 flowchart TB
     subgraph shared["ONE shared source of truth (@rtc/ui-contract + tests/)"]
-        SPECS["86 *.contract.spec.ts"]
+        SPECS["104 *.contract.spec.ts"]
         SCEN["visual manifest<br/>scenarios.ts (1282 scenarios)"]
         FEAT["Gherkin features<br/>+ page-object contracts"]
     end

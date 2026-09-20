@@ -674,22 +674,6 @@ function useDockedPanelIdsFor(
   );
 }
 
-/** The REAL `createLayoutPresets` controller (Phase 6b Task 6), one instance
- * PER WORLD — same per-World-singleton doctrine as `getLayoutFor`/
- * `getWorkspaceNav` above, mirroring `composition.ts`'s own
- * `Presenters.layoutPresets` singleton. Every rule (save/load/delete/name/
- * cap/unreadable) lives ONCE in the controller; this fixture supplies only
- * its dependencies — `layoutFor`/`layoutStateNow` reuse `getLayoutFor` and
- * `readStateNow` exactly as `useLayout` does below, `dockedPanelIdsNow`
- * reuses the same `dockedPanelIdsFor` filter `useDockedPanelIdsFor` reads,
- * and `rebuildLiveEngine` bumps the SAME `workspaceLayoutResets` subject
- * `resetWorkspaceLayoutFor` does. Seeded from `World.layoutPresetsSeed` — a
- * later contract spec's deliberately unreadable record needs a raw string,
- * not a typed shape (see that field's own doc). `dockStore` is the caller's
- * own per-`reactViewModel`-call instance (mirrors `useDockLayoutStore`'s
- * passthrough): only the FIRST call's store is captured, since the
- * controller itself is cached — the same "first call wins" shape as every
- * other WeakMap-cached singleton here. */
 /** The raw store BEHIND `getLayoutPresets`'s controller for `world` — the
  * per-framework half of `@ui-contract/harness/layoutPresetStore` (registered
  * in `setup.ts`), so a neutral spec can delete a record the way ANOTHER
@@ -715,6 +699,22 @@ const layoutPresetStores = new WeakMap<World, LayoutPresetStore>();
 
 const layoutPresetsControllers = new WeakMap<World, LayoutPresetsPresenter>();
 
+/** The REAL `createLayoutPresets` controller (Phase 6b Task 6), one instance
+ * PER WORLD — same per-World-singleton doctrine as `getLayoutFor`/
+ * `getWorkspaceNav` above, mirroring `composition.ts`'s own
+ * `Presenters.layoutPresets` singleton. Every rule (save/load/delete/name/
+ * cap/unreadable) lives ONCE in the controller; this fixture supplies only
+ * its dependencies — `layoutFor`/`layoutStateNow` reuse `getLayoutFor` and
+ * `readStateNow` exactly as `useLayout` does below, `dockedPanelIdsNow`
+ * reuses the same `dockedPanelIdsFor` filter `useDockedPanelIdsFor` reads,
+ * and `rebuildLiveEngine` bumps the SAME `workspaceLayoutResets` subject
+ * `resetWorkspaceLayoutFor` does. Seeded from `World.layoutPresetsSeed` — a
+ * later contract spec's deliberately unreadable record needs a raw string,
+ * not a typed shape (see that field's own doc). `dockStore` is the caller's
+ * own per-`reactViewModel`-call instance (mirrors `useDockLayoutStore`'s
+ * passthrough): only the FIRST call's store is captured, since the
+ * controller itself is cached — the same "first call wins" shape as every
+ * other WeakMap-cached singleton here. */
 function getLayoutPresets(
   world: World,
   dockStore: DockLayoutStore,

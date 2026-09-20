@@ -532,7 +532,7 @@ export class PlaywrightLayout implements LayoutPO {
     }
 
     throw new Error(
-      `${label}: no drop reached the page in ${DOCK_DRAG_ATTEMPTS} attempts (last attempt: dragstart=${String(last.started)}, dockview drop overlay over the destination=${String(last.offered)}). dragstart=false means the tab never became a drag source at all; dragstart=true with an armed overlay means Chromium ended every drag without delivering it.`,
+      `${label}: no drop reached the page in ${DOCK_DRAG_ATTEMPTS} attempts (last attempt: dragstart=${String(last.started)}, dockview drop overlay over the destination=${String(last.offered)}). dragstart=false means the tab never became a drag source at all. dragstart=true WITH an armed overlay has two causes this witness cannot tell apart, so check the APP before the harness: either dockview still paints its '.dv-drop-target' overlay but no longer accepts the drop (a dragover handler that stops calling preventDefault means the spec fires no drop event at all, by design — a product regression), or Chromium ended every drag without delivering it (the per-gesture flake this retry loop exists for).`,
     );
   }
 
@@ -943,40 +943,50 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.evaluate(() => {
       delete (window as DockQuiescenceWindow).__rtcDockQuiescence;
     });
-    await this.page.waitForFunction(
-      ({ prefix, settleMs }) => {
-        // Runs inside the browser context — self-contained, like
-        // `floatPanel`'s predicate above. The running state lives on
-        // `window` because the predicate is re-evaluated from source on
-        // every poll and keeps nothing between calls.
-        const win = window as DockQuiescenceWindow;
-        const blobs: string[] = [];
 
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = localStorage.key(i);
+    try {
+      await this.page.waitForFunction(
+        ({ prefix, settleMs }) => {
+          // Runs inside the browser context — self-contained, like
+          // `floatPanel`'s predicate above. The running state lives on
+          // `window` because the predicate is re-evaluated from source on
+          // every poll and keeps nothing between calls.
+          const win = window as DockQuiescenceWindow;
+          const blobs: string[] = [];
 
-          if (key?.startsWith(prefix) === true) {
-            blobs.push(`${key}=${localStorage.getItem(key) ?? ""}`);
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+
+            if (key?.startsWith(prefix) === true) {
+              blobs.push(`${key}=${localStorage.getItem(key) ?? ""}`);
+            }
           }
-        }
 
-        const snapshot = blobs.sort().join("\u0000");
-        const seen = win.__rtcDockQuiescence;
+          const snapshot = blobs.sort().join("\u0000");
+          const seen = win.__rtcDockQuiescence;
 
-        if (seen === undefined || seen.snapshot !== snapshot) {
-          win.__rtcDockQuiescence = { snapshot, since: Date.now() };
+          if (seen === undefined || seen.snapshot !== snapshot) {
+            win.__rtcDockQuiescence = { snapshot, since: Date.now() };
 
-          return false;
-        }
+            return false;
+          }
 
-        return Date.now() - seen.since >= settleMs;
-      },
-      {
-        prefix: DOCK_LAYOUT_STORAGE_PREFIX,
-        settleMs: DOCK_LAYOUT_SETTLE_MS,
-      },
-      { timeout: DOCK_LAYOUT_PERSIST_TIMEOUT_MS, polling: 50 },
-    );
+          return Date.now() - seen.since >= settleMs;
+        },
+        {
+          prefix: DOCK_LAYOUT_STORAGE_PREFIX,
+          settleMs: DOCK_LAYOUT_SETTLE_MS,
+        },
+        { timeout: DOCK_LAYOUT_PERSIST_TIMEOUT_MS, polling: 50 },
+      );
+    } catch (cause) {
+      // A bare waitForFunction timeout names neither the channel nor the
+      // window it was watching — the same gap its sibling above closed.
+      throw new Error(
+        `waitDockLayoutQuiescent: the dock blobs under "${DOCK_LAYOUT_STORAGE_PREFIX}" never held still for ${DOCK_LAYOUT_SETTLE_MS}ms inside ${DOCK_LAYOUT_PERSIST_TIMEOUT_MS}ms — something kept rewriting them. Either the app is in a write loop (an engine rebuild that re-serializes the layout and re-triggers its own debounced save), or DOCK_LAYOUT_SETTLE_MS has fallen close to createDockEngine's debounceMs, so an ordinary spaced-out write can keep resetting the window. This is never "the layout was not persisted": an IDLE channel satisfies the very first snapshot, so a timeout here means motion, not absence.`,
+        { cause },
+      );
+    }
   }
 
   async deleteLayoutPreset(name: string): Promise<void> {
