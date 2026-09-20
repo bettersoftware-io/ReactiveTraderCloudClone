@@ -11,10 +11,12 @@ import { describeChartSubstrateContract } from "#/suites/chartSubstrate";
 import { describeConnectionContract } from "#/suites/connection";
 import { describeCreditRfqFilterPreferenceContract } from "#/suites/creditRfqFilterPreference";
 import { describeCurrencyPairsContract } from "#/suites/currencyPairs";
+import { describeDealersContract } from "#/suites/dealers";
 import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
 import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
+import { describeInstrumentsContract } from "#/suites/instruments";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
 import { describeLayoutEngineContract } from "#/suites/layoutEngine";
 import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
@@ -23,10 +25,16 @@ import { describePowerSaverContract } from "#/suites/powerSaver";
 import { describePriceHistoryContract } from "#/suites/priceHistory";
 import { describePriceStreamContract } from "#/suites/priceStream";
 import { describeReconnectContract } from "#/suites/reconnect";
+import { describeRfqCountdownContract } from "#/suites/rfqCountdown";
+import { describeRfqQuoteContract } from "#/suites/rfqQuote";
+import { describeRfqSubmissionContract } from "#/suites/rfqSubmission";
+import { describeRfqsContract } from "#/suites/rfqs";
+import { describeRfqTileContract } from "#/suites/rfqTile";
 import { describeRowHighlightContract } from "#/suites/rowHighlight";
 import { describeStaleFlagContract } from "#/suites/staleFlag";
 import { describeThemePreferenceContract } from "#/suites/themePreference";
 import { describeThemeSkinPreferenceContract } from "#/suites/themeSkinPreference";
+import { describeTicketSubmissionContract } from "#/suites/ticketSubmission";
 import { describeTileExecutionContract } from "#/suites/tileExecution";
 import { describeViewModePreferenceContract } from "#/suites/viewModePreference";
 
@@ -47,12 +55,12 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.execution": describeExecutionContract,
   "presenters.blotter": describeBlotterContract,
   "presenters.analytics": describeAnalyticsContract,
-  "presenters.rfqs": null,
+  "presenters.rfqs": describeRfqsContract,
   "presenters.currencyPairs": describeCurrencyPairsContract,
-  "presenters.instruments": null,
-  "presenters.dealers": null,
+  "presenters.instruments": describeInstrumentsContract,
+  "presenters.dealers": describeDealersContract,
   "presenters.connection": describeConnectionContract,
-  "presenters.rfqQuote": null,
+  "presenters.rfqQuote": describeRfqQuoteContract,
   "presenters.throughput": null,
   "presenters.themePreference": describeThemePreferenceContract,
   "presenters.themeSkinPreference": describeThemeSkinPreferenceContract,
@@ -104,14 +112,14 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.jarvisDriver": null,
   "presenters.jarvisDemo": null,
   "machines.tileExecution": describeTileExecutionContract,
-  "machines.rfqTile": null,
+  "machines.rfqTile": describeRfqTileContract,
   "machines.staleFlag": describeStaleFlagContract,
   "machines.analyticsStaleFlag": describeAnalyticsStaleFlagContract,
   "machines.rowHighlight": describeRowHighlightContract,
   "machines.notional": describeNotionalContract,
-  "machines.rfqSubmission": null,
-  "machines.ticketSubmission": null,
-  "machines.rfqCountdown": null,
+  "machines.rfqSubmission": describeRfqSubmissionContract,
+  "machines.ticketSubmission": describeTicketSubmissionContract,
+  "machines.rfqCountdown": describeRfqCountdownContract,
   "machines.layout": null,
   "machines.boot": null,
   "machines.orderTicket": null,
@@ -123,10 +131,6 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
  * the drift test fails if this list and the `null`s above disagree, so a
  * member cannot silently lose its suite. Shrinks slice by slice. */
 export const PENDING_SUITES: readonly ContractMember[] = [
-  "presenters.rfqs",
-  "presenters.instruments",
-  "presenters.dealers",
-  "presenters.rfqQuote",
   "presenters.throughput",
   "presenters.dockLayoutStore",
   "presenters.animationDirector",
@@ -160,10 +164,6 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.workspaceLayoutResets$",
   "presenters.jarvisDriver",
   "presenters.jarvisDemo",
-  "machines.rfqTile",
-  "machines.rfqSubmission",
-  "machines.ticketSubmission",
-  "machines.rfqCountdown",
   "machines.layout",
   "machines.boot",
   "machines.orderTicket",

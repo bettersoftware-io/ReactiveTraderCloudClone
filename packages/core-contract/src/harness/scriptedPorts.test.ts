@@ -203,6 +203,7 @@ describe("scriptPorts port-call counting", () => {
     const a = ports.dealers.getDealers().subscribe((list) => {
       dealers.push(list);
     });
+
     const b = ports.instruments.getInstruments().subscribe((list) => {
       instruments.push(list);
     });
@@ -253,11 +254,11 @@ describe("scriptPorts port-call counting", () => {
     driver.resolveWorkflowCommand(42);
     expect(ids).toEqual([42]);
     acceptSub.unsubscribe();
-    expect(driver.pendingWorkflowCommands().map((c) => c.kind)).toEqual([
-      "cancelRfq",
-      "pass",
-      "quote",
-    ]);
+    expect(
+      driver.pendingWorkflowCommands().map((c) => {
+        return c.kind;
+      }),
+    ).toEqual(["cancelRfq", "pass", "quote"]);
     driver.failWorkflowCommand(new Error("bust"));
     expect(driver.pendingWorkflowCommands()).toHaveLength(2);
     createdSub.unsubscribe();
