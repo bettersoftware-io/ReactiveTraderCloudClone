@@ -215,7 +215,6 @@ function makeReduce(
 
       case "reset":
         return port.initial;
-
       case "replaceLayout":
         return event.state;
     }

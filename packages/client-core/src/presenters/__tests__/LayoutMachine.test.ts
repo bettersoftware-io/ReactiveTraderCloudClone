@@ -509,21 +509,35 @@ describe("createLayoutMachine", () => {
       m.dispose();
     });
 
-    it("insertPanel() after a replace whose tree has no dock column builds exactly one — staticIds still derives from port.initial, not the replaced tree", () => {
+    it("insertPanel() after a replace whose tree already has a dock column grows it instead of appending a second one — staticIds still derives from port.initial, not the replaced tree", () => {
       const m = createLayoutMachine(port);
       m.intents.replaceLayout(replacement);
-      m.intents.insertPanel("jarvis-x");
+      m.intents.insertPanel("jarvis-2");
       const r = current(m).root;
 
       if (r.kind !== "split") {
         throw new Error("split root expected");
       }
 
-      expect(r.dir).toBe("row");
-      expect(r.children).toEqual([
-        replacement.root,
-        { kind: "panel", panelId: "jarvis-x" },
-      ]);
+      // Still two children: the replaced tree's own leaf plus ONE dock
+      // column, now a 2-child column split — not three children with a
+      // second dock column. This is the case that actually exercises
+      // `isDockColumn`: a replaced tree whose root is not a row split at
+      // all (e.g. a bare leaf) always takes `insertDockedLeaf`'s
+      // unconditional wrap-in-a-new-row branch, which never consults
+      // `staticIds` — so it can't tell a correct implementation from one
+      // that (wrongly) re-derives `staticIds` from the replaced tree.
+      expect(r.children).toHaveLength(2);
+      expect(r.children[0]).toEqual({ kind: "panel", panelId: "fx-rates" });
+      expect(r.children[1]).toEqual({
+        kind: "split",
+        dir: "column",
+        children: [
+          { kind: "panel", panelId: "jarvis-1" },
+          { kind: "panel", panelId: "jarvis-2" },
+        ],
+        sizes: [0.5, 0.5],
+      });
       m.dispose();
     });
 
@@ -536,9 +550,25 @@ describe("createLayoutMachine", () => {
       m.dispose();
     });
 
+    // A row split whose last child is already a dock-column-shaped leaf
+    // (foreign to `port`'s static ids, i.e. not fx-rates/fx-analytics/
+    // fx-blotter) — mirrors the `seedState` describe block's `seededRoot`
+    // below, deliberately: that shape is what actually reaches
+    // `isDockColumn` on the next `insertPanel`, unlike a bare non-split
+    // root (which `insertDockedLeaf` always wraps unconditionally,
+    // regardless of `staticIds`).
     const replacement: LayoutState = {
-      root: { kind: "panel", panelId: "fx-rates" },
-      maximized: "fx-rates",
+      root: {
+        kind: "split",
+        dir: "row",
+        sizes: [0.75, 0.25],
+        children: [
+          { kind: "panel", panelId: "fx-rates" },
+          { kind: "panel", panelId: "jarvis-1" },
+        ],
+        initialPx: [undefined, 360],
+      },
+      maximized: null,
       collapsed: [],
       closed: [],
       instances: [],
