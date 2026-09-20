@@ -360,6 +360,7 @@ Slice 1a shipped 2026-09-19 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a
 Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b.md`](../plans/2026-09-19-pluggable-core-slice-1b.md)) — no new primitive was needed; every preference presenter is now native in both alternative cores.
 Residual sweep shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-residual-sweep.md`](../plans/2026-09-19-pluggable-core-residual-sweep.md)).
 Slice 2 shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-2.md`](../plans/2026-09-19-pluggable-core-slice-2.md)) — suites as PR A, ports as PR B; 28/72 native in both alternative cores; the Effect core composes as a Layer graph.
+Slice 3 shipped 2026-09-20 (plan: [`../plans/2026-09-20-pluggable-core-slice-3.md`](../plans/2026-09-20-pluggable-core-slice-3.md)) — suites as PR A, ports as PR B; 36/73 native in both alternative cores; `rfqCountdown` joined `MachineFactories` (the bindings had bypassed the seam).
 
 ### Slice 8 — closing
 

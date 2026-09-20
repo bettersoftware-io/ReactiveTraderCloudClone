@@ -364,6 +364,100 @@ predictable from the design alone):
   knowing no-op, and slice 8 removes the base — so it stays, and both
   composition comments point here.
 
+**Decided in slice 3** (2026-09-20):
+
+- **A member the seam cannot route is not portable.** Both bindings built
+  the credit countdown by importing `createRfqCountdownMachine` from
+  `@rtc/client-core` directly, so under `VITE_CORE_IMPL=async|effect` the
+  RFQ card would have kept ticking on an RxJS `timer` whatever the
+  alternative cores did. `rfqCountdown` therefore became a
+  `MachineFactories` member — the seam's first *growth* rather than a port
+  — taking the member count 72 → 73 and making "36/73" the slice's number.
+  The two `viewModelFromWorld.ts` UI-contract harnesses keep their direct
+  import: they build their own view model and are not the seam.
+- **The suites' constants and seeds keep moving to `@rtc/domain`, the
+  helpers to `@rtc/client-core`.** `RFQ_COUNTDOWN_INTERVAL_MS` and
+  `RFQ_REDIRECT_DELAY_MS` join the domain cadences (the RxJS files keep
+  their local names as aliases), and `createEmptyRfqStreamState` is
+  exported beside `reduceRfqEvent` — "pure reducers are imported, not
+  duplicated" covers the seed as much as the step. `shallowArrayEquals` +
+  `createShallowArrayMemo` are exported from `@rtc/client-core` so all
+  three cores suppress an unchanged roster through the SAME comparison:
+  `rfqs$` and `quotesForRfq$` do not re-emit after an event that leaves
+  the projection element-wise equal. That is contracted behaviour, not a
+  conflation courtesy — the memo returns the PREVIOUS array, so the async
+  `deriveDistinct` (reference equality) and the Effect `mirrorPort`
+  (`Object.is`) both drop it for free.
+- **One `workflow.events()` call per sibling.** The RxJS core calls it
+  twice — once for the reducer's use case, once for the raw `events$` —
+  which is two port subscriptions for one fact. Both siblings call it once
+  at construction and take two subscriptions of the captured Observable:
+  `topicFromObservable` + a relaying state Topic (async),
+  `mirrorPortAsIs` + a retained `sharedFold` whose `run` calls `fromPort`
+  (Effect). `portDiscipline` witnesses constancy, which holds either way.
+- **The three credit singletons are retained; their derivations are not.**
+  `rfqs.state$`/`events$`, `dealers.list$` and `instruments.list$` take
+  `retainUntil: lifetime` (async) / `retain: true` (Effect) — slice 2's
+  `currencyPairs` shape — while `rfqs$`, `allQuotes$` and
+  `quotesForRfq$(id)` are refCounted derivations over the warm state, as
+  the RxJS `shareReplay({ refCount: true })` over the warm `state$` is. A
+  fresh subscriber replays the current roster synchronously because the
+  retained source is warm.
+- **Every credit command is a one-shot, per call, lazy, and completes.**
+  `createRfq`, `acceptQuote`, `cancelRfq`, `passQuote`, `quoteRfq` and
+  `requestQuote` are `promiseToStream(signal => once(port(...), signal))`
+  (async) and `Stream.fromEffect(Effect.suspend(() => rpc(port(...))))`
+  (Effect) — slice 2's `execution.execute` shape. `Effect.suspend` is what
+  keeps the Effect side lazy per subscription rather than per construction.
+- **The presenter builds its own submission machines from its own
+  commands.** `createSubmission()` / `createTicketSubmission()` hand
+  `{ createRfq }` and `{ quoteRfq, passQuote }` to machines that are a
+  `Store` + `AbortController` (async) or a `SubscriptionRef` under a
+  detached host (Effect) — `createMachineFactories(presenters)` still has
+  no app handle, so a machine still owns its lifetime. A superseding
+  `submit()` / `requestQuote()` cancels the run in flight by abort or
+  `Fiber.interrupt`, the RxJS `switchMap`; every write is guarded on the
+  run token.
+- **The countdown is derived from the tick index, with the clock read
+  once.** `remaining = initial − tick × RFQ_COUNTDOWN_INTERVAL_MS`,
+  clamped at 0, inclusive 0, then the run ends — the RxJS
+  `timer(0, INTERVAL)` + `map` idiom, not a `Date.now()` read per tick.
+  The Effect machine runs it as ONE looping fiber. Equal-value
+  re-emission of the seed on the first tick stays uncontracted (the RxJS
+  timer re-emits `initial`; a `Store` drops it).
+- **Four envelope rulings from the suites' contact with the three cores.**
+  (1) Burst multiplicity on a *state-derived* stream is not contracted:
+  suites settle between the emissions that must be observed separately and
+  assert deltas across settle-separated pairs, because a fiber- or
+  `Store`-backed core legitimately conflates a synchronous burst. (2)
+  Burst multiplicity on `rfqs.events$` IS contracted for an attached
+  subscriber — it is an event stream feeding `AnimationDirector` intents,
+  so a dropped event is a lost fact, not a stale reading. (3) The
+  `rfqTile` suite keeps its tick census across the bulk advance (both
+  endpoints, the first two deltas, and that consecutive received states
+  differ by exactly one interval). (4) `rfqCountdown` pins stillness by
+  emission count and the exact post-dispose value — a knowing exception to
+  "absence is not a reading", since a pure timer has no port-side witness;
+  all three cores satisfy it (RxJS completes, `Store`/Effect drop equal
+  states). All four held on both alternative cores on the first run.
+- **A guard whose race is unreachable today still belongs to the invariant
+  it protects.** The Effect `rfqSubmission`'s `onRedirect` callback is
+  routed through the run token even though, measured on `effect` 3.22.2, a
+  fiber resumed from `Effect.sleep` processes the forked interrupt before
+  its next step. The invariant belongs to the run token the machine owns,
+  not to the scheduler's delivery order.
+- **Three residuals recorded, not coded around.** The "one active run"
+  scaffolding is now copy-pasted five times per core — a `createRunSlot()`
+  kernel/bridge helper is the consolidation, deferred to slice 4 or later
+  so this slice's diff stays one shape per member. The async machines
+  re-check no `signal.aborted` between an awaited resolution and the next
+  `store.set`, leaving a one-microtask window for a stale write after
+  supersede or dispose — the same idiom slice 2's `tileExecution` shipped,
+  so it is a class-wide follow-up, not a slice-3 patch. And the
+  `rfqCountdown` seed is symmetric in its two arguments, so no wiring test
+  can detect a swapped pair — the RxJS and Effect wiring cases share the
+  blind spot.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
