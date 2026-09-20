@@ -44,6 +44,24 @@ const DOCK_LAYOUT_STORAGE_PREFIX = "rtc-dock-layout-";
  */
 const DOCK_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
 
+// `WorkspacePersistenceWriter` debounces the layer-2 LayoutState write
+// (`collapsed`/`closed`/root tree — a SEPARATE channel from the dock blob
+// above) by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
+// packages/client-core/src/layout/workspacePersistenceWriter.ts). Hardcoded
+// here rather than imported, same reasoning as `Jarvis.ts`'s own copy: the
+// suite runs against either client via `RTC_CLIENT_PKG`, and both export the
+// identical string.
+const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
+/**
+ * Loading a saved layout replaces the WHOLE LayoutState (collapsed/closed/
+ * root) synchronously, but the writer above only PERSISTS it after this
+ * debounce — a `loadLayoutPreset` call immediately followed by a reload
+ * (this suite's own persistence step) races it exactly the way `floatPanel`
+ * above already documents for the dock blob's debounce, on this SEPARATE
+ * channel. Generous margin over 500ms for CI jitter.
+ */
+const WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
+
 /** A serialized dockview leaf's own panel-id list — the one field this
  * driver reads off `LeafData` (`createDockEngine.ts`'s internal type; this
  * driver has no import access to it, so it re-states the one shape it
@@ -113,6 +131,24 @@ export class PlaywrightLayout implements LayoutPO {
 
   private floatControl(panelId: string): Locator {
     return this.page.getByTestId(TESTIDS.layout.floatControl(panelId));
+  }
+
+  /** The View menu's LAYOUTS section (`view-menu-layouts`, Phase 6b) — the
+   * neither-client-nor-engine-specific testid `LayoutPresetsSection.tsx`
+   * shares verbatim between the React and Solid clients. Not centralized in
+   * `TESTIDS`: the View menu's own strings never were (see
+   * `ViewMenuPage.ts`'s identical literals), so this mirrors the existing
+   * pattern rather than introducing a second one. */
+  private layoutSection(): Locator {
+    return this.page.getByTestId("view-menu-layouts");
+  }
+
+  /** A saved-layout row found by its ACCESSIBLE NAME (the preset's own
+   * name), never a guessed id — see `LayoutPO.loadLayoutPreset`'s doc for
+   * why. `exact` avoids a short name accidentally substring-matching the
+   * "Save current as…" opener, which is a `menuitem` row too. */
+  private layoutPresetRow(name: string): Locator {
+    return this.layoutSection().getByRole("menuitem", { name, exact: true });
   }
 
   /** `panelId`'s dockview group element — walked up from its `.dv-tab`
@@ -453,6 +489,19 @@ export class PlaywrightLayout implements LayoutPO {
           };
         });
       },
+      isClosed: (): Promise<boolean> => {
+        return Promise.resolve(popup.isClosed());
+      },
+      waitClosed: async (timeoutMs: number): Promise<void> => {
+        // A window closed BEFORE this is called has already fired its one
+        // "close" event — a fresh listener would never see it — so the
+        // already-closed case is read directly rather than awaited.
+        if (popup.isClosed()) {
+          return;
+        }
+
+        await popup.waitForEvent("close", { timeout: timeoutMs });
+      },
     };
   }
 
@@ -564,6 +613,123 @@ export class PlaywrightLayout implements LayoutPO {
       panelIds.join(" "),
       { timeout: timeoutMs },
     );
+  }
+
+  async waitDockClosed(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-closed",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async openViewMenu(): Promise<void> {
+    await this.page.getByTestId("view-menu-toggle").click();
+  }
+
+  async closeViewMenu(): Promise<void> {
+    // The SAME toggle button — the dropdown is a plain open/closed flip.
+    await this.page.getByTestId("view-menu-toggle").click();
+  }
+
+  async toggleViewMenuRow(panelId: string): Promise<void> {
+    // `press` (focus + a native key event), not `click`: a scenario can
+    // legitimately have a FLOATING group's dockview resize-handle strip
+    // spatially covering the open dropdown at this exact moment (the float
+    // is real content sitting above it in the stacking order), which fails
+    // `click`'s "receives pointer events" actionability check even though
+    // the row is genuinely visible and enabled. `press("Enter")` activates
+    // the SAME native `<button>` without a coordinate-based hit test, which
+    // is what a keyboard user driving this exact menu would do anyway.
+    await this.page.getByTestId(`view-menu-row-${panelId}`).press("Enter");
+  }
+
+  async saveLayoutPreset(name: string): Promise<void> {
+    // See `toggleViewMenuRow`'s doc for why `press`, not `click`, on every
+    // LAYOUTS-section button below.
+    await this.layoutSection()
+      .getByRole("menuitem", { name: "Save current as…", exact: true })
+      .press("Enter");
+    // `fill` focuses + sets the value directly (no coordinate-based hit
+    // test), so it needs no such guard even while covered the same way.
+    await this.page.getByTestId("view-menu-layout-name").fill(name);
+    await this.page.getByTestId("view-menu-layout-save-confirm").press("Enter");
+  }
+
+  async loadLayoutPreset(name: string): Promise<void> {
+    await this.withWorkspaceLayoutPersisted(async () => {
+      await this.layoutPresetRow(name).press("Enter");
+    });
+  }
+
+  async loadDefaultLayout(): Promise<void> {
+    await this.withWorkspaceLayoutPersisted(async () => {
+      await this.page.getByTestId("view-menu-layout-default").press("Enter");
+    });
+  }
+
+  /** Runs `action` (a click that replaces the WHOLE LayoutState — a preset
+   * load or Default), then waits out `WorkspacePersistenceWriter`'s
+   * debounce by polling for the persisted blob to actually CHANGE from its
+   * pre-action value — see `WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS`'s doc.
+   * Folded into the action itself, the same idiom `floatPanel` above uses
+   * for the dock blob's own debounce, so a caller that reloads right after
+   * never races it. */
+  private async withWorkspaceLayoutPersisted(
+    action: () => Promise<void>,
+  ): Promise<void> {
+    const before = await this.page.evaluate((key) => {
+      return localStorage.getItem(key);
+    }, WORKSPACE_LAYOUT_STORAGE_KEY);
+
+    await action();
+
+    await this.page.waitForFunction(
+      ({ key, previous }) => {
+        return localStorage.getItem(key) !== previous;
+      },
+      { key: WORKSPACE_LAYOUT_STORAGE_KEY, previous: before },
+      { timeout: WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS },
+    );
+  }
+
+  async deleteLayoutPreset(name: string): Promise<void> {
+    // The row's bin and confirm are plain buttons, not `menuitem`s — found
+    // by their own accessible name (LayoutPresetsSection.tsx's
+    // `aria-label`s), the same "never a guessed id" discipline as
+    // `layoutPresetRow`.
+    await this.layoutSection()
+      .getByRole("button", { name: `Delete ${name}…`, exact: true })
+      .press("Enter");
+    await this.layoutSection()
+      .getByRole("button", { name: `Confirm deleting ${name}`, exact: true })
+      .press("Enter");
+  }
+
+  async layoutPresetNames(): Promise<string[]> {
+    const rows = await this.layoutSection().locator('[role="menuitem"]').all();
+    const names: string[] = [];
+
+    for (const row of rows) {
+      const testid = await row.getAttribute("data-testid");
+
+      // Excludes Default and the "Save current as…" opener — neither is a
+      // stored preset — the same exclusion `ViewMenuPage.layoutRowIds`
+      // applies in the ui-contract tier.
+      if (
+        testid === "view-menu-layout-default" ||
+        testid === "view-menu-layout-save"
+      ) {
+        continue;
+      }
+
+      names.push((await row.textContent())?.trim() ?? "");
+    }
+
+    return names;
   }
 
   async recordFirstDockRender(panelId: string): Promise<void> {

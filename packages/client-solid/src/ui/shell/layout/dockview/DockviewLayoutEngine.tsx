@@ -582,10 +582,22 @@ export function DockviewLayoutEngine(
   // absent panel and reopenPanel on a present one, so re-asserting the whole
   // seed set is already idempotent — every rebuild path (remount, blob saved
   // while closed) converges on the machine's state with no bookkeeping.
+  //
+  // Reads the LIVE `liveEngine()` signal, not the plain `engine` variable
+  // the way this effect used to (Task 10, saved-layouts e2e): the plain
+  // variable is written imperatively outside Solid's reactive graph, so an
+  // engine rebuild alone never re-ran this effect, only ever the SAME tick a
+  // `closed` value also happened to change — the react twin's identical
+  // effect hit exactly this shape of staleness (there, against an already-
+  // DISPOSED engine) badly enough to crash dockview-core's `_doAddPanel`;
+  // reading the signal here is the parallel hardening, matching every OTHER
+  // engine-dependent effect above (maximize/docked/instances/collapsed all
+  // read `liveEngine()` already).
   createEffect(() => {
+    const currentEngine = liveEngine();
     const closed = props.closed;
 
-    if (engine === null) {
+    if (currentEngine === null) {
       return;
     }
 
@@ -593,9 +605,9 @@ export function DockviewLayoutEngine(
       createDefaultLayoutPort(props.tab).initial.root,
     )) {
       if (closed.includes(panelId)) {
-        engine.closePanel(panelId);
+        currentEngine.closePanel(panelId);
       } else {
-        engine.reopenPanel(panelId);
+        currentEngine.reopenPanel(panelId);
       }
     }
   });

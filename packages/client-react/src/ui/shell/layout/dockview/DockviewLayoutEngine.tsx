@@ -782,10 +782,27 @@ export function DockviewLayoutEngine({
   // seed set is already idempotent — and it is what makes every rebuild path
   // (StrictMode double-mount, tab switch, blob saved while closed) converge
   // on the machine's state with no applied-list bookkeeping.
+  //
+  // Task 10 (saved layouts e2e) found this missing the SAME STALE-CLOSURE
+  // GUARD the maximize/docked/instances/collapsed effects above all carry:
+  // a click that both reopens a closed panel (this effect's `closed` dep)
+  // AND rebuilds the engine (Default, or loading a saved layout) — a real
+  // click handler batches BOTH into one commit, but `setLiveEngine` inside
+  // the reset effect's OWN layout effect forces a second, synchronous
+  // re-render before paint, and without the guard THIS effect's stale
+  // Commit-A closure ran reopenPanel/closePanel against the by-then-DISPOSED
+  // old engine — dockview-core's own `_doAddPanel` then throws "Invalid
+  // grid element" trying to add into a torn-down instance's grid, which
+  // React (with no error boundary around this component) unmounts entirely.
+  // No jsdom test caught it: jsdom's React commit/effect timing doesn't
+  // reliably reproduce the double-commit window this guard closes. Solid's
+  // sibling effect (client-solid's own DockviewLayoutEngine.tsx) reads the
+  // live `liveEngine()` signal rather than a plain variable and never hit
+  // this, but was hardened to match anyway (see its own comment).
   useEffect(() => {
     const engine = liveEngine;
 
-    if (engine === null) {
+    if (engine === null || engine !== engineRef.current) {
       return;
     }
 

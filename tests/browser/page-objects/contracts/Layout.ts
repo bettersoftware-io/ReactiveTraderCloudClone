@@ -154,6 +154,51 @@ export interface LayoutPO {
     targetPanelId: string,
     side: FloatDockSide,
   ): Promise<void>;
+  /** Opens the app-head View dropdown (`view-menu-toggle`) — the same
+   * control whichever engine is active, revealing the per-panel visibility
+   * rows and, under Dockview, the LAYOUTS section (Phase 6b saved
+   * layouts). */
+  openViewMenu(): Promise<void>;
+  /** Closes the View dropdown — the SAME toggle button `openViewMenu`
+   * clicks, since it is a plain open/closed flip. */
+  closeViewMenu(): Promise<void>;
+  /** Clicks `panelId`'s View-menu checkbox row (`view-menu-row-<id>`),
+   * closing a visible static panel or reopening a closed one. Requires the
+   * View menu already open (`openViewMenu`). */
+  toggleViewMenuRow(panelId: string): Promise<void>;
+  /** Waits for the dockview engine root's `data-closed` witness (the
+   * LayoutMachine's layer-2 closed set, from a View-menu row toggle OR a
+   * loaded/reset layout) to equal `panelIds` — `waitDockCollapsed`'s twin
+   * for the closed channel. Dockview-engine only (the in-house engine
+   * renders no such witness). */
+  waitDockClosed(panelIds: readonly string[], timeoutMs: number): Promise<void>;
+  /** Opens the LAYOUTS section's "Save current as…" name field, types
+   * `name`, and confirms — leaves the View menu OPEN afterward (the
+   * component never closes it on a save). Requires the View menu already
+   * open. Assumes the save succeeds outright (no same-named preset to
+   * replace) — a scenario driving the replace-confirm path drives the
+   * lower-level testids directly. */
+  saveLayoutPreset(name: string): Promise<void>;
+  /** Clicks the saved-layout row whose visible name is `name` — found by
+   * its accessible name, never a guessed id: the controller MINTS every
+   * preset's id, so no caller can know it up front. Loading closes the View
+   * menu (the component's own `onDone`). Requires the View menu already
+   * open. */
+  loadLayoutPreset(name: string): Promise<void>;
+  /** Clicks the built-in `Default` row — resets the active tab's layout
+   * (a real dock rebuild under Dockview) and closes the View menu. Requires
+   * the View menu already open. */
+  loadDefaultLayout(): Promise<void>;
+  /** Deletes the saved-layout row whose visible name is `name`: its bin,
+   * then that SAME row's confirm — both found by accessible name, never a
+   * guessed id (see `loadLayoutPreset`). Leaves the View menu OPEN
+   * afterward (the component never closes it on a delete). Requires the
+   * View menu already open. */
+  deleteLayoutPreset(name: string): Promise<void>;
+  /** Every saved-layout row's visible name, in DOM order — `Default` and
+   * the "Save current as…" opener excluded, since neither is a stored
+   * preset. Requires the View menu already open. */
+  layoutPresetNames(): Promise<string[]>;
 }
 
 /** The side of a target group a drag-to-dock releases near. */
@@ -206,4 +251,16 @@ export interface PopoutWindowPO {
   /** Resolves once the CHILD window's `<html>` carries `data-mode` = `mode`;
    * rejects after `timeoutMs`. */
   waitForRootMode(mode: string, timeoutMs: number): Promise<void>;
+  /** Whether the window has closed — a POSITIVE witness (true = closed),
+   * read at the instant of the call. True for a window closed FROM INSIDE
+   * (`closeFromInside`) and equally for one an engine rebuild's own
+   * `dispose()` closed out from under it (dockview's own popout manager
+   * calls `window.close()` on dispose) — the one live-browser path this
+   * suite otherwise has no witness for, since jsdom blocks `window.open`
+   * outright. */
+  isClosed(): Promise<boolean>;
+  /** Waits for the window to close, within `timeoutMs` — a no-op if it has
+   * already closed by the time this is called (an already-fired `close`
+   * event would otherwise never be seen by a fresh listener). */
+  waitClosed(timeoutMs: number): Promise<void>;
 }
