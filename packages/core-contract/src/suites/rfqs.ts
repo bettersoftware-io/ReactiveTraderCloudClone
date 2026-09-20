@@ -33,9 +33,13 @@ export function describeRfqsContract(
         const one = createRfq({ id: 1 });
         const two = createRfq({ id: 2 });
         h.driver.emitRfqEvent({ type: "rfqCreated", payload: one });
+        await settle();
         h.driver.emitRfqEvent({ type: "rfqCreated", payload: two });
+        await settle();
         h.driver.emitRfqEvent(END);
         await settle();
+        // Settle-separated, so the exact sequence IS the envelope's promise:
+        // one delivery per event, and end-of-world adding none of its own.
         expect(c.values).toEqual([[], [one], [one, two]]);
         expect(c.errors).toEqual([]);
         c.unsubscribe();
@@ -51,14 +55,19 @@ export function describeRfqsContract(
         const c = collect(h.app.presenters.rfqs.rfqs$);
         const open = createRfq({ id: 1 });
         h.driver.emitRfqEvent(START);
+        await settle();
         h.driver.emitRfqEvent({ type: "rfqCreated", payload: open });
         await settle();
+        const before = c.values.length;
         h.driver.emitRfqEvent({
           type: "quoteCreated",
           payload: createQuote({ id: 5, rfqId: 1 }),
         });
         await settle();
-        expect(c.values).toHaveLength(2);
+        // A quote event moves the quote map, not the RFQ roster: rfqs$ is
+        // silent through it — asserted as "no delivery was added", not as an
+        // absolute count.
+        expect(c.values.length).toBe(before);
         const closed = createRfq({ id: 1, state: RfqState.Closed });
         h.driver.emitRfqEvent({ type: "rfqClosed", payload: closed });
         await settle();
@@ -79,15 +88,23 @@ export function describeRfqsContract(
         const forOne = collect(p.quotesForRfq$(1));
         const forTwo = collect(p.quotesForRfq$(2));
         h.driver.emitRfqEvent(START);
+        await settle();
         h.driver.emitRfqEvent({
           type: "rfqCreated",
           payload: createRfq({ id: 1 }),
         });
         await settle();
+        // Start-of-world delivered the empty map; the rfq event left the
+        // quote map itself untouched, so allQuotes$ stayed silent through it.
         const quotesAfterRfq = all.values.length;
+        expect(quotesAfterRfq).toBe(1);
         const q1 = createQuote({ id: 10, rfqId: 1, dealerId: 1 });
         const q2 = createQuote({ id: 11, rfqId: 2, dealerId: 1 });
         h.driver.emitRfqEvent({ type: "quoteCreated", payload: q1 });
+        await settle();
+        expect(Array.from(all.values.at(-1)?.entries() ?? [])).toEqual([
+          [10, q1],
+        ]);
         h.driver.emitRfqEvent({ type: "quoteCreated", payload: q2 });
         await settle();
         expect(all.values.length).toBe(quotesAfterRfq + 2);
