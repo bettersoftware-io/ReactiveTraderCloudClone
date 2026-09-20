@@ -138,6 +138,11 @@ export function describeRfqsContract(
       try {
         const p = h.app.presenters.rfqs;
         const c = collect(p.events$);
+        // Both events in ONE tick, deliberately — unlike the state-derived
+        // streams above (ruling R5), `events$` is an event stream (the
+        // AnimationDirector's expiry/fill intents ride it), so a core that
+        // conflates two events has lost a fact, not merely a tick: burst
+        // delivery to an attached subscriber IS contracted here (ruling R8).
         h.driver.emitRfqEvent(START);
         const created: RfqEvent = { type: "rfqCreated", payload: createRfq() };
         h.driver.emitRfqEvent(created);

@@ -78,7 +78,8 @@ export function describeRfqCountdownContract(
         const live = h.machines.rfqCountdown(Date.now(), TOTAL_MS);
 
         try {
-          expect(collect(expired.state$).values).toEqual([0]);
+          const done = collect(expired.state$);
+          expect(done.values).toEqual([0]);
           const c = collect(live.state$);
           c.unsubscribe();
           live.dispose();
@@ -86,6 +87,7 @@ export function describeRfqCountdownContract(
           await clock.settle();
           const fresh = collect(live.state$);
           expect(fresh.values).toEqual([TOTAL_MS]);
+          done.unsubscribe();
           fresh.unsubscribe();
         } finally {
           expired.dispose();

@@ -53,6 +53,29 @@ export function describeTicketSubmissionContract(
       }
     });
 
+    it("a second submitPrice() while one is in flight supersedes it: the first command is withdrawn, the second's success flips submitted", async () => {
+      const h = makeHarness();
+      const m = h.machines.ticketSubmission();
+
+      try {
+        const c = collect(m.state$);
+        m.intents.submitPrice(7, 101.5);
+        await settle();
+        m.intents.submitPrice(7, 102);
+        await settle();
+        expect(h.driver.pendingWorkflowCommands()).toEqual([
+          { kind: "quote", request: { quoteId: 7, price: 102 } },
+        ]);
+        h.driver.resolveWorkflowCommand();
+        await settle();
+        expect(c.values.at(-1)).toEqual({ submitted: true });
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
     it("a failed command leaves submitted false (retryable): no true is ever emitted, and a retry can still succeed", async () => {
       const h = makeHarness();
       const m = h.machines.ticketSubmission();
