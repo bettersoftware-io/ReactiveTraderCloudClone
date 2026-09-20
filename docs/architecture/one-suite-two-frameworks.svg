@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 700" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
-  <title>One shared source of truth — 86 contract spec files, 1282 visual scenarios, one Gherkin feature tree — proved independently against @rtc/client-react and @rtc/client-solid: same contract specs into both trios, 1282 scenarios converging on one react-owned golden tree, and RTC_CLIENT_PKG flipping which client the same e2e suites drive.</title>
+  <title>One shared source of truth — 104 contract spec files, 1282 visual scenarios, one Gherkin feature tree — proved independently against @rtc/client-react and @rtc/client-solid: same contract specs into both trios, 1282 scenarios converging on one react-owned golden tree, and RTC_CLIENT_PKG flipping which client the same e2e suites drive.</title>
 
   <rect x="0" y="0" width="980" height="700" rx="12" fill="#0d1117"/>
   <text x="24" y="32" fill="#e6edf3" font-size="17" font-weight="bold" font-family="ui-sans-serif, system-ui, sans-serif">One shared source, two frameworks</text>
-  <text x="24" y="50" fill="#8b949e" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">86 contract specs · 1282 visual scenarios · one .feature tree — proved independently against @rtc/client-react AND @rtc/client-solid</text>
+  <text x="24" y="50" fill="#8b949e" font-size="11" font-family="ui-sans-serif, system-ui, sans-serif">104 contract specs · 1282 visual scenarios · one .feature tree — proved independently against @rtc/client-react AND @rtc/client-solid</text>
 
   <!-- ================= static skeleton: shared source ================= -->
   <g>
@@ -17,7 +17,7 @@
     <text x="850" y="89" fill="#3fb950" font-size="9" text-anchor="middle" font-weight="bold">UNCHANGED</text>
 
     <rect x="90" y="104" width="250" height="72" rx="6" fill="#0d1117" stroke="#21262d" stroke-width="1"/>
-    <text x="215" y="126" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">86 *.contract.spec.ts</text>
+    <text x="215" y="126" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">104 *.contract.spec.ts</text>
     <text x="215" y="144" fill="#8b949e" font-size="9" text-anchor="middle">sociable RTL specs</text>
     <text x="215" y="160" fill="#8b949e" font-size="9" text-anchor="middle">framework-neutral</text>
 
@@ -112,7 +112,7 @@
       <animate attributeName="cx" dur="12s" repeatCount="indefinite" values="490;490;735;735" keyTimes="0;0;0.333;1"/>
       <animate attributeName="cy" dur="12s" repeatCount="indefinite" values="186;186;228;228" keyTimes="0;0;0.333;1"/>
     </circle>
-    <text x="490" y="636" fill="#3fb950" font-size="12" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">Mechanism 1 — the same 86 contract specs stream into both trios (622/622 tests, both clients)</text>
+    <text x="490" y="636" fill="#3fb950" font-size="12" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif">Mechanism 1 — the same 104 contract specs stream into both trios (872/872 tests, both clients)</text>
   </g>
 
   <!-- ================= PHASE B (4-8s): 1282 scenarios converge on the golden tree ================= -->
