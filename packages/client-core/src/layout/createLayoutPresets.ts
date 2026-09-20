@@ -229,7 +229,11 @@ export function createLayoutPresets(
 
   /** The built-in per-tab Default. Same one-batch discipline as
    * `loadLayoutPreset`, and deliberately narrower than
-   * `resetWorkspaceLayout`: one tab, and no preset store is touched. */
+   * `resetWorkspaceLayout`: one tab, and no preset store is touched.
+   *
+   * This stays void and does not report a swallowed write — see `writeList`'s
+   * doc: a swallowed reset leaves the dock blob in place and so the layout
+   * visibly does not change, which is its own feedback. */
   function resetTabLayout(tab: WorkspaceTab): void {
     deps.dockLayoutStore.clear(tab);
     const docked = deps.dockedPanelIdsNow(tab);
