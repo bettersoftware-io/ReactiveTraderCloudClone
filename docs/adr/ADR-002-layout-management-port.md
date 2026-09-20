@@ -1022,9 +1022,9 @@ product bug the phase surfaced and fixed: a `closed`-panel reconciliation
 effect in each client's Dockview bridge was missing the stale-closure guard
 its four siblings carry, so closing a panel from the View menu and then
 triggering any dock rebuild (including the long-shipped "Reset workspace
-layout") crashed dockview-core and unmounted the engine. **This closes the
-Dockview-native features workstream**: every phase (1 through 6b) has now
-shipped.
+layout") crashed dockview-core and unmounted the engine. **This completes
+the Dockview-native features workstream**: phases 1 through 6a have
+shipped, and 6b is built and in review.
 
 ## References
 
