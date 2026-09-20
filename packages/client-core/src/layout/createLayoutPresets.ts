@@ -159,10 +159,18 @@ export function createLayoutPresets(
       blob: source(),
     };
 
-    writeList(
-      tab,
-      withEntry(parsed.entries, match, { readable: true, preset }),
-    );
+    const entries = withEntry(parsed.entries, match, {
+      readable: true,
+      preset,
+    });
+
+    // The ONE place a refusal is decided by evidence rather than by a rule:
+    // everything above knows it is refusing before it writes, while this one
+    // is only knowable AFTER the store has been asked (see `writeList`).
+    if (!writeList(tab, entries)) {
+      return { status: "storage-failed" };
+    }
+
     return { status: "saved", id };
   }
 
@@ -208,6 +216,9 @@ export function createLayoutPresets(
       return;
     }
 
+    // The write result is deliberately dropped here — see `writeList`'s doc:
+    // a delete the store swallowed leaves the row visible, which IS the
+    // feedback, so `remove` stays void rather than growing a result union.
     writeList(
       tab,
       parsed.entries.filter((entry) => {
@@ -244,12 +255,34 @@ export function createLayoutPresets(
     snapshotSources.set(tab, source);
   }
 
+  /** Writes the list and republishes the summaries FROM THE STORE — and
+   * returns whether the write actually landed.
+   *
+   * WHY A RETURN VALUE AND NOT A PORT CHANGE. `LayoutPresetStore.save` returns
+   * nothing (ruling P1: the port is a dumb raw-string store, one shape for
+   * three adapters) and both localStorage adapters deliberately swallow a
+   * throwing `setItem` — "best-effort persistence" — so with storage blocked
+   * or full the store ACCEPTS the call and keeps nothing. The re-read this
+   * function already performs to re-summarize is therefore the only evidence
+   * available: a swallowed write hands the PREVIOUS string back. `save`
+   * converts a false here into `storage-failed`, rather than telling the user
+   * a layout was stored when none was — the repo's "absence reported as a
+   * clean reading" class, one layer out in the product.
+   *
+   * `remove` and `resetTab` deliberately DON'T report it. A swallowed delete
+   * leaves the row on screen and a swallowed `resetTab` leaves the dock blob
+   * in place, so both already give the user the true answer in the only place
+   * they were looking; a save is the one operation whose failure is otherwise
+   * INVISIBLE, because the thing that should have appeared simply doesn't. */
   function writeList(
     tab: WorkspaceTab,
     entries: readonly LayoutPresetEntry[],
-  ): void {
-    deps.store.save(tab, serializeLayoutPresetList(entries));
+  ): boolean {
+    const serialized = serializeLayoutPresetList(entries);
+    deps.store.save(tab, serialized);
+    const stored = deps.store.load(tab);
     publishStoredList(tab);
+    return stored === serialized;
   }
 
   function publishStoredList(tab: WorkspaceTab): void {

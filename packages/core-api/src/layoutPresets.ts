@@ -24,7 +24,14 @@ export type SaveLayoutPresetResult =
   /** No live Dockview engine registered a snapshot source for the tab. */
   | { readonly status: "unavailable" }
   /** The stored list is unreadable as a whole — delete that row first (P6). */
-  | { readonly status: "store-unreadable" };
+  | { readonly status: "store-unreadable" }
+  /** The store ACCEPTED the write and kept nothing: storage is blocked or full
+   * (private-mode Safari, disabled site data, quota exhausted). The port is a
+   * dumb raw-string store by ruling P1 — `save` returns nothing and both
+   * localStorage adapters swallow a throwing `setItem` by design — so the
+   * controller detects this by re-reading the store after the write, never by
+   * asking the adapter. */
+  | { readonly status: "storage-failed" };
 
 /** Options for `LayoutPresetsPresenter.save` — see its own doc. */
 export interface SaveLayoutPresetOptions {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DockLayoutStore,
+  LayoutPresetStore,
   LayoutPresetSummary,
   LayoutPresetsPresenter,
   Machine,
@@ -186,6 +187,38 @@ describe("createLayoutPresets — save", () => {
       status: "store-unreadable",
     });
     expect(harness.store.load("fx")).toBe("{ not an array");
+  });
+
+  // Both localStorage adapters swallow a throwing `setItem` on purpose
+  // ("best-effort persistence"), and the port cannot report it back (ruling
+  // P1 keeps `save` returning void), so with storage blocked or full the
+  // store ACCEPTS the write and keeps nothing. Before the controller re-read
+  // the store to check, `save` answered `saved` here: the form closed, no row
+  // appeared, and the user was told nothing.
+  it("reports storage-failed when the store swallows the write", () => {
+    const harness = createHarness({ store: createSwallowingPresetStore() });
+    registerSource(harness, "fx");
+
+    expect(harness.presets.save("fx", "Wide")).toEqual({
+      status: "storage-failed",
+    });
+  });
+
+  it("publishes no phantom row when the store swallows the write", () => {
+    const harness = createHarness({ store: createSwallowingPresetStore() });
+    registerSource(harness, "fx");
+
+    const seen: (readonly LayoutPresetSummary[])[] = [];
+    const sub = harness.presets.presetsFor("fx").subscribe((summaries) => {
+      seen.push(summaries);
+    });
+
+    harness.presets.save("fx", "Wide");
+    sub.unsubscribe();
+
+    // Every emission, not just the last: a row published and then withdrawn
+    // would still have flickered into the menu.
+    expect(seen.flat().map(idOfSummary)).toEqual([]);
   });
 
   it("reports exists (with the matching id) for a case-insensitive name match", () => {
@@ -713,7 +746,7 @@ function createHarness(options?: HarnessOptions): PresetsHarness {
   const events: string[] = [];
   const dockWrites: DockWrite[] = [];
   const dockLoads: string[] = [];
-  const store = new InMemoryLayoutPresetStore();
+  const store = options?.store ?? new InMemoryLayoutPresetStore();
   const backingDockStore = new InMemoryDockLayoutStore();
   const states = new Map<WorkspaceTab, LayoutState>();
   const machines = new Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>();
@@ -828,6 +861,10 @@ interface HarnessOptions {
   readonly seeded?: Partial<
     Record<WorkspaceTab, readonly StoredLayoutPreset[]>
   >;
+  /** A stand-in for the real store — the swallowing one below. Defaults to
+   * `InMemoryLayoutPresetStore`, which always keeps what it is given, so
+   * `seeded` is only meaningful with the default. */
+  readonly store?: LayoutPresetStore;
   /** What `dockedPanelIdsNow` reports per tab (composition's docked
    * membership). */
   readonly docked?: Partial<Record<WorkspaceTab, readonly string[]>>;
@@ -840,7 +877,9 @@ interface DockWrite {
 
 interface PresetsHarness {
   readonly presets: LayoutPresetsPresenter;
-  readonly store: InMemoryLayoutPresetStore;
+  /** Port-typed, not `InMemoryLayoutPresetStore` — a case may swap in the
+   * swallowing store below. */
+  readonly store: LayoutPresetStore;
   /** The RECORDING dock store the controller was handed — a test writes
    * through it so its own setup writes appear in `dockWrites` too. */
   readonly dockStore: DockLayoutStore;
@@ -861,6 +900,25 @@ interface PresetsHarness {
    * sequence, never by the store's final value. */
   readonly dockWrites: readonly DockWrite[];
   readonly dockLoads: readonly string[];
+}
+
+/** A store that ACCEPTS every write and keeps nothing — exactly what the two
+ * localStorage adapters do when `setItem` throws (private mode, disabled site
+ * data, quota exhausted): they catch and no-op, because ruling P1's port has
+ * no way to say "that didn't land". Reads stay empty, so the controller's
+ * post-write re-read sees the write is absent. */
+function createSwallowingPresetStore(): LayoutPresetStore {
+  return {
+    load: (): string | null => {
+      return null;
+    },
+    save: (): void => {
+      // Swallowed, like the adapters' own `catch { /* best-effort */ }`.
+    },
+    clear: (): void => {
+      // Swallowed for the same reason.
+    },
+  };
 }
 
 function registerSource(harness: PresetsHarness, tab: WorkspaceTab): void {
