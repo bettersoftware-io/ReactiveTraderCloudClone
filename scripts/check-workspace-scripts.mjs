@@ -122,11 +122,29 @@ function sharesBuildInfoAcrossTasks(dir, scripts) {
   return !typecheck.includes("--tsBuildInfoFile");
 }
 
+// A `build` that emits with tsc (`tsc --build`, or `tsc -p … --noCheck` for the
+// vite packages that emit types separately) must end by running
+// scripts/check-dist.mjs: two tsc builds in one checkout can truncate a
+// referenced project's `.d.ts` to zero bytes, tsc's incremental build info
+// then records it as emitted, and turbo caches the broken output. The check
+// makes THAT build fail by name instead, so nothing caches it.
+function emitsWithTsc(scripts) {
+  const build = scripts.build ?? "";
+  return build.includes("tsc --build") || /tsc -p \S+ --noCheck/.test(build);
+}
+
+function buildLacksDistCheck(scripts) {
+  return (
+    emitsWithTsc(scripts) && !(scripts.build ?? "").includes("check-dist.mjs")
+  );
+}
+
 const workspaceDirs = [
   ...new Set(readWorkspaceGlobs().flatMap(expandGlob)),
 ].sort();
 const violations = [];
 const buildInfoViolations = [];
+const distCheckViolations = [];
 let checked = 0;
 
 for (const dir of workspaceDirs) {
@@ -146,6 +164,25 @@ for (const dir of workspaceDirs) {
   if (sharesBuildInfoAcrossTasks(dir, scripts)) {
     buildInfoViolations.push({ name: manifest.name ?? dir, dir });
   }
+  if (buildLacksDistCheck(scripts)) {
+    distCheckViolations.push({ name: manifest.name ?? dir, dir });
+  }
+}
+
+if (distCheckViolations.length > 0) {
+  console.error(
+    "✖ Workspace script gate: a tsc-emitting `build` does not run scripts/check-dist.mjs.\n",
+  );
+  for (const v of distCheckViolations) {
+    console.error(`  ${v.name} (${v.dir})`);
+  }
+  console.error(
+    `\nEvery build that emits with tsc ends with \`&& node ../../scripts/check-dist.mjs\`,\n` +
+      `so a dist truncated by a concurrent build fails that build by name instead of\n` +
+      `being cached by turbo and surfacing later as TS2306 on an untouched file.\n` +
+      `Append it to the build script, then re-run \`pnpm check:scripts\`.`,
+  );
+  process.exit(1);
 }
 
 if (buildInfoViolations.length > 0) {
@@ -185,5 +222,5 @@ if (violations.length > 0) {
 
 console.log(
   `✓ Workspace script gate: all ${checked} workspaces declare the required scripts, ` +
-    `and no package's typecheck shares a tsbuildinfo with its build.`,
+    `no package's typecheck shares a tsbuildinfo with its build, and every tsc-emitting build runs check-dist.`,
 );

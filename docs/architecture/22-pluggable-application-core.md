@@ -198,8 +198,11 @@ core:
   async core writes it as one Topic producer with a window
   `AbortController` (`createConflatedTopic`); the Effect core as a
   `sharedFold` whose `run` holds a `Ref<ConflationState>` moved by atomic
-  `Ref.modify` transitions and a forked `Effect.sleep` (`conflatedFold`).
-  Neither runtime ships the operator. Uncontracted edge: a trailing value
+  `Ref.modify` transitions and ONE window fiber per leading emission that
+  loops in place (`conflatedFold`) — never a timer that forks its successor:
+  a forked Effect child is interrupted when its parent fiber completes, so a
+  window fiber that forked the next window and then ended would kill it at
+  once. Neither runtime ships the operator. Uncontracted edge: a trailing value
   pending when the flag turns off is discarded, as the RxJS `switchMap`
   discards it.
 - **Machines** (`staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`,

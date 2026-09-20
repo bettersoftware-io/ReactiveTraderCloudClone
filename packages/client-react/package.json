@@ -16,7 +16,7 @@
     "#tests/*": "./tests/*"
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.types.json --noCheck && tsc-alias -p tsconfig.types.json",
+    "build": "vite build && tsc -p tsconfig.types.json --noCheck && tsc-alias -p tsconfig.types.json && node ../../scripts/check-dist.mjs",
     "build-types": "tsc -p tsconfig.types.json --noCheck",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.ui-visual.json && tsc --noEmit -p tsconfig.ui-contract.json",
     "test": "vitest run",
