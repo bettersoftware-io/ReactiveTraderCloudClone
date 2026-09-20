@@ -133,14 +133,11 @@ export class PlaywrightLayout implements LayoutPO {
     return this.page.getByTestId(TESTIDS.layout.floatControl(panelId));
   }
 
-  /** The View menu's LAYOUTS section (`view-menu-layouts`, Phase 6b) — the
+  /** The View menu's LAYOUTS section (Phase 6b) — the
    * neither-client-nor-engine-specific testid `LayoutPresetsSection.tsx`
-   * shares verbatim between the React and Solid clients. Not centralized in
-   * `TESTIDS`: the View menu's own strings never were (see
-   * `ViewMenuPage.ts`'s identical literals), so this mirrors the existing
-   * pattern rather than introducing a second one. */
+   * shares verbatim between the React and Solid clients. */
   private layoutSection(): Locator {
-    return this.page.getByTestId("view-menu-layouts");
+    return this.page.getByTestId(TESTIDS.viewMenu.layouts);
   }
 
   /** A saved-layout row found by its ACCESSIBLE NAME (the preset's own
@@ -627,12 +624,12 @@ export class PlaywrightLayout implements LayoutPO {
   }
 
   async openViewMenu(): Promise<void> {
-    await this.page.getByTestId("view-menu-toggle").click();
+    await this.page.getByTestId(TESTIDS.viewMenu.toggle).click();
   }
 
   async closeViewMenu(): Promise<void> {
     // The SAME toggle button — the dropdown is a plain open/closed flip.
-    await this.page.getByTestId("view-menu-toggle").click();
+    await this.page.getByTestId(TESTIDS.viewMenu.toggle).click();
   }
 
   async toggleViewMenuRow(panelId: string): Promise<void> {
@@ -644,7 +641,7 @@ export class PlaywrightLayout implements LayoutPO {
     // the row is genuinely visible and enabled. `press("Enter")` activates
     // the SAME native `<button>` without a coordinate-based hit test, which
     // is what a keyboard user driving this exact menu would do anyway.
-    await this.page.getByTestId(`view-menu-row-${panelId}`).press("Enter");
+    await this.page.getByTestId(TESTIDS.viewMenu.row(panelId)).press("Enter");
   }
 
   async saveLayoutPreset(name: string): Promise<void> {
@@ -655,8 +652,10 @@ export class PlaywrightLayout implements LayoutPO {
       .press("Enter");
     // `fill` focuses + sets the value directly (no coordinate-based hit
     // test), so it needs no such guard even while covered the same way.
-    await this.page.getByTestId("view-menu-layout-name").fill(name);
-    await this.page.getByTestId("view-menu-layout-save-confirm").press("Enter");
+    await this.page.getByTestId(TESTIDS.viewMenu.layoutName).fill(name);
+    await this.page
+      .getByTestId(TESTIDS.viewMenu.layoutSaveConfirm)
+      .press("Enter");
   }
 
   async loadLayoutPreset(name: string): Promise<void> {
@@ -667,7 +666,9 @@ export class PlaywrightLayout implements LayoutPO {
 
   async loadDefaultLayout(): Promise<void> {
     await this.withWorkspaceLayoutPersisted(async () => {
-      await this.page.getByTestId("view-menu-layout-default").press("Enter");
+      await this.page
+        .getByTestId(TESTIDS.viewMenu.layoutDefault)
+        .press("Enter");
     });
   }
 
@@ -720,8 +721,8 @@ export class PlaywrightLayout implements LayoutPO {
       // stored preset — the same exclusion `ViewMenuPage.layoutRowIds`
       // applies in the ui-contract tier.
       if (
-        testid === "view-menu-layout-default" ||
-        testid === "view-menu-layout-save"
+        testid === TESTIDS.viewMenu.layoutDefault ||
+        testid === TESTIDS.viewMenu.layoutSave
       ) {
         continue;
       }
