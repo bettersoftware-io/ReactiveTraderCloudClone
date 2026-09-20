@@ -480,6 +480,10 @@ describe("snapshotLayout — the live blob without the debounce", () => {
     const snapshot = JSON.parse(engine.snapshotLayout());
 
     expect(snapshot.floatingGroups).toHaveLength(1);
+    // NON-DISCRIMINATING, kept for symmetry with the float half above: jsdom
+    // blocks `window.open`, so `popoutGroups` is never present here and this
+    // passes whether or not the scrub runs. The real coverage of the scrub is
+    // `dockBlob.test.ts`'s own units, which feed it a blob that HAS the key.
     expect(snapshot.popoutGroups).toBeUndefined();
     engine.dispose();
   });

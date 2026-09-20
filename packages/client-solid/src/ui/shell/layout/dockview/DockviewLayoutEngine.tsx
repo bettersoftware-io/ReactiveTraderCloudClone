@@ -348,7 +348,20 @@ export function DockviewLayoutEngine(
     // ported to Solid's plain-variable idiom; see its own doc above `engine`'s
     // declaration for why a plain variable is the correct read here too).
     props.onSnapshotSourceChange?.(props.tab, (): string => {
-      return engine?.snapshotLayout() ?? "";
+      const live = engine;
+
+      if (live === null) {
+        // Unreachable while a source is registered (the bridge unregisters
+        // with null on cleanup), and a THROW rather than a fallback on
+        // purpose: an empty string is a valid blob as far as the codec is
+        // concerned, so a save would store a blank one and a later load would
+        // silently restore the seed layout instead of the saved arrangement —
+        // a broken state masquerading as an absent one. React's twin throws
+        // the same way.
+        throw new Error("no live Dockview engine to snapshot");
+      }
+
+      return live.snapshotLayout();
     });
   }
 

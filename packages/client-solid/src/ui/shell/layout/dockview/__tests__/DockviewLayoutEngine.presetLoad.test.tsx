@@ -289,8 +289,17 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
   // was one line short of the same defect class: it read a plain,
   // non-reactive `engine` variable instead of the `liveEngine()` signal every
   // sibling effect reads, so a rebuild alone was never guaranteed to re-run
-  // it. This proves the hardened version still does its one job — reopening
-  // the panel onto the fresh engine — not merely that nothing crashes.
+  // it.
+  //
+  // WHAT THIS CASE DOES AND DOES NOT PROVE. It pins the FEATURE — a panel
+  // closed before a rebuild that arrives in the same batch is reopened onto
+  // the fresh engine. It does NOT distinguish hardened from unhardened code:
+  // reverting Solid's `liveEngine()` hardening leaves this test GREEN, which
+  // was measured twice, independently. The React twin is the case that
+  // discriminates (reverting its guard reproduces the real `Invalid grid
+  // element` crash), so read THAT one — not this one — as the evidence the
+  // guard is load-bearing. This case is kept anyway because deleting it would
+  // leave Solid's reopen-on-rebuild path with no unit coverage at all.
   it("reopens a panel closed before a rebuild that arrives in the same batch", async () => {
     const [closed, setClosed] = createSignal<readonly PanelId[]>([
       "fx-positions",

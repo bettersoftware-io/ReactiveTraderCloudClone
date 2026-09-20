@@ -386,7 +386,19 @@ export function DockviewLayoutEngine({
     // a save arriving after a rebuild must read the NEW engine, not the one
     // this closure happened to capture at construction.
     onSnapshotSourceChangeRef.current?.(tab, (): string => {
-      return engineRef.current?.snapshotLayout() ?? "";
+      const live = engineRef.current;
+
+      if (live === null) {
+        // Unreachable while a source is registered (the bridge unregisters
+        // with null on dispose), and a THROW rather than a fallback on
+        // purpose: an empty string is a valid blob as far as the codec is
+        // concerned, so a save would store a blank one and a later load would
+        // silently restore the seed layout instead of the saved arrangement —
+        // a broken state masquerading as an absent one.
+        throw new Error("no live Dockview engine to snapshot");
+      }
+
+      return live.snapshotLayout();
     });
 
     return () => {
@@ -614,7 +626,19 @@ export function DockviewLayoutEngine({
       // save that arrives after a LATER rebuild reads whichever engine is
       // current then, not this one.
       onSnapshotSourceChangeRef.current?.(tab, (): string => {
-        return engineRef.current?.snapshotLayout() ?? "";
+        const live = engineRef.current;
+
+        if (live === null) {
+          // Unreachable while a source is registered (the bridge unregisters
+          // with null on dispose), and a THROW rather than a fallback on
+          // purpose: an empty string is a valid blob as far as the codec is
+          // concerned, so a save would store a blank one and a later load would
+          // silently restore the seed layout instead of the saved arrangement —
+          // a broken state masquerading as an absent one.
+          throw new Error("no live Dockview engine to snapshot");
+        }
+
+        return live.snapshotLayout();
       });
     } finally {
       suppressSaveRef.current = false;
