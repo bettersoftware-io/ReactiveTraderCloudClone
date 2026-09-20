@@ -63,6 +63,7 @@ describe("createTicketSubmissionMachine (async)", () => {
     });
     m.intents.submitPrice(7, 101.5);
     await vi.advanceTimersByTimeAsync(0);
+    expect(calls.results).toHaveLength(1);
     calls.results[0]?.error(new Error("bust"));
     await vi.advanceTimersByTimeAsync(0);
     expect(seen).toEqual([{ submitted: false }]);

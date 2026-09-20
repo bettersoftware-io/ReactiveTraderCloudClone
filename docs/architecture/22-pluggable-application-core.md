@@ -250,8 +250,9 @@ core; slice 3 added the credit shapes to the same list:
   presenter from its own commands (`createSubmission()`,
   `createTicketSubmission()`), so `createMachineFactories(presenters)`
   still needs no app handle; a superseding `submit()`/`requestQuote()`
-  cancels the run in flight by `AbortController` or `Fiber.interrupt` —
-  the RxJS `switchMap` — and every write is guarded on the run token. The
+  cancels the run in flight — by `AbortController` (async), by
+  `Fiber.interrupt` plus a run-token guard on every externally visible
+  step (Effect), or by the RxJS `switchMap`. The
   countdown is derived from the tick index with the clock read once
   (`remaining = initial − tick × RFQ_COUNTDOWN_INTERVAL_MS`, clamped,
   inclusive 0, then the run ends), one looping fiber on the Effect side.

@@ -83,6 +83,28 @@ describe("createRfqSubmissionMachine (async)", () => {
     expect(redirected).toEqual([]);
   });
 
+  it("a consumer that disposes from INSIDE onRedirect gets no post-dispose write: the state the redirect left stands", async () => {
+    const { deps, calls } = createDeps();
+    let m: ReturnType<typeof createRfqSubmissionMachine> | null = null;
+    const redirected: number[] = [];
+    m = createRfqSubmissionMachine(deps);
+    const seen: RfqSubmissionState[] = [];
+    const sub = m.state$.subscribe((state) => {
+      seen.push(state);
+    });
+    m.intents.submit(INPUT, (rfqId: number) => {
+      redirected.push(rfqId);
+      m?.dispose();
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    calls.results[0]?.next(42);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(RFQ_REDIRECT_DELAY_MS);
+    expect(redirected).toEqual([42]);
+    expect(seen.at(-1)).toEqual({ status: "confirmed", rfqId: 42 });
+    sub.unsubscribe();
+  });
+
   it("dispose() makes submit() inert: no port call, no further state", async () => {
     const { deps, calls } = createDeps();
     const m = createRfqSubmissionMachine(deps);

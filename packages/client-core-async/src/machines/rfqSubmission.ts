@@ -26,7 +26,9 @@ const SUBMITTING: RfqSubmissionState = { status: "submitting" };
  * onRedirect(rfqId) → editing; a failed create returns to editing. A new
  * `submit()` aborts the run in flight (the RxJS `switchMap`), which
  * withdraws its port call; `dispose()` aborts it too, so a pending redirect
- * never fires. */
+ * never fires. A consumer that disposes inside `onRedirect` leaves the state
+ * at `confirmed`; a superseding `submit()` or `dispose()` aborts the run,
+ * which withdraws its port call and drops every later step. */
 export function createRfqSubmissionMachine(
   deps: RfqSubmissionDeps,
 ): Machine<RfqSubmissionState, RfqSubmissionIntents> {
@@ -60,7 +62,17 @@ export function createRfqSubmissionMachine(
 
     store.set({ status: "confirmed", rfqId });
     await sleep(RFQ_REDIRECT_DELAY_MS, signal);
+
+    if (signal.aborted) {
+      return;
+    }
+
     onRedirect(rfqId);
+
+    if (signal.aborted) {
+      return;
+    }
+
     store.set(EDITING);
   }
 

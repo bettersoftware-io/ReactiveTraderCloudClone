@@ -74,6 +74,42 @@ describe("nativeMachines — wiring", () => {
     expect(spies.createTicketSubmission).toHaveBeenCalledTimes(1);
   });
 
+  it("rfqCountdown seeds from BOTH its arguments — a 1 000 ms window created now starts at 1 000", () => {
+    // Freeze the wall clock: the machine reads `Date.now()` a second time
+    // internally, so an unmocked clock can read elapsed=1 on a loaded
+    // runner and flake to 999.
+    //
+    // What this catches, and what it cannot: the seeded VALUE catches a
+    // dropped or hard-coded argument (either one missing reads as a clamped
+    // 0), which `toBeDefined()` would not. It does NOT catch the two
+    // arguments being SWAPPED, and nothing can: the seed is
+    // `totalMs − (now − creationTimestamp)`, i.e. `totalMs +
+    // creationTimestamp − now`, which is symmetric in the pair — verified
+    // by swapping the call in `composition.ts` and watching this stay
+    // green. Argument ORDER here is a types-and-review matter, not a
+    // testable one.
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    try {
+      const { presenters } = createStubPresenters();
+
+      const countdown = composeMachinesWithBase(
+        presenters,
+      ).machines.rfqCountdown(Date.now(), 1_000);
+
+      let seen: number | null = null;
+      countdown.state$
+        .subscribe((value: number) => {
+          seen = value;
+        })
+        .unsubscribe();
+      expect(seen).toBe(1_000);
+      countdown.dispose();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("rowHighlight and notional are native — not the base's factories", () => {
     const { presenters } = createStubPresenters();
     const { base, machines } = composeMachinesWithBase(presenters);

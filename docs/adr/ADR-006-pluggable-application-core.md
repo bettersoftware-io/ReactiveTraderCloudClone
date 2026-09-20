@@ -343,7 +343,7 @@ predictable from the design alone):
   rather than coded around: feeding the base presenter's private Subject
   from the native `execute()` would make the native member RxJS with extra
   steps. Production keeps `VITE_CORE_IMPL` unset.
-- **Three cross-core asymmetries are recorded, not coded around.** (1) When
+- **Four cross-core asymmetries are recorded, not coded around.** (1) When
   the tile's timeout wins, the Effect machine releases the losing execution
   call at once (`Effect.race` interrupts the loser and `rpc`'s finalizer
   unsubscribes the port) where the async and RxJS machines hold it until
@@ -356,7 +356,12 @@ predictable from the design alone):
   joiner of a WARM `priceHistory` period sees two equal emissions (the
   retained-window lead, then the replay) on the async and RxJS cores and one
   on Effect, whose seed is the window itself — content-identical,
-  uncontracted.
+  uncontracted. (4) The Effect core's `events$` is a `mirrorPortAsIs`, which
+  conflates an `Object.is`-equal consecutive event, where the async `Topic`
+  and the RxJS `warmReplay()` re-emit it — unreachable today because every
+  shipping producer (`CreditRfqSimulator`, the WS port factory) builds a
+  fresh event object per event; a hoisted constant event would be the first
+  case to differ (recorded, not re-engineered).
 - **Teardown order, stated once.** An alternative core releases its own
   resources first (loops, retained topics and periods), then disposes the
   base app, then (Effect) the runtime; the Effect composition's base →
@@ -415,9 +420,15 @@ predictable from the design alone):
   `Store` + `AbortController` (async) or a `SubscriptionRef` under a
   detached host (Effect) — `createMachineFactories(presenters)` still has
   no app handle, so a machine still owns its lifetime. A superseding
-  `submit()` / `requestQuote()` cancels the run in flight by abort or
-  `Fiber.interrupt`, the RxJS `switchMap`; every write is guarded on the
-  run token.
+  `submit()` / `requestQuote()` cancels the run in flight — an
+  `AbortController` in the async core, `Fiber.interrupt` in the Effect
+  core, the RxJS `switchMap` in the RxJS core. In the Effect core every
+  externally visible step — the state writes and the `onRedirect`
+  callback — is additionally guarded on the run token, because
+  interruption lands at the run's next suspension point; the async core
+  instead relies on `sleep`/`once` rejecting on abort, plus an explicit
+  `signal.aborted` check before the two steps that follow the redirect
+  timer.
 - **The countdown is derived from the tick index, with the clock read
   once.** `remaining = initial − tick × RFQ_COUNTDOWN_INTERVAL_MS`,
   clamped at 0, inclusive 0, then the run ends — the RxJS
@@ -449,11 +460,13 @@ predictable from the design alone):
 - **Three residuals recorded, not coded around.** The "one active run"
   scaffolding is now copy-pasted five times per core — a `createRunSlot()`
   kernel/bridge helper is the consolidation, deferred to slice 4 or later
-  so this slice's diff stays one shape per member. The async machines
-  re-check no `signal.aborted` between an awaited resolution and the next
-  `store.set`, leaving a one-microtask window for a stale write after
-  supersede or dispose — the same idiom slice 2's `tileExecution` shipped,
-  so it is a class-wide follow-up, not a slice-3 patch. And the
+  so this slice's diff stays one shape per member. The remaining window
+  is the one microtask between an awaited resolution and the next
+  `store.set` in `rfqTile`/`ticketSubmission` (and slice 2's
+  `tileExecution`) — the same idiom, and the class-wide `createRunSlot()`
+  follow-up, not a slice-3 patch; `rfqSubmission` closes that window
+  itself with an explicit `signal.aborted` check before its two
+  post-sleep steps. And the
   `rfqCountdown` seed is symmetric in its two arguments, so no wiring test
   can detect a swapped pair — the RxJS and Effect wiring cases share the
   blind spot.

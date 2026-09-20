@@ -96,7 +96,7 @@ packages/core-contract/                             MODIFIED (Task 3)
   src/suites/{rfqs,dealers,instruments,rfqQuote}.ts NEW
   src/suites/{rfqTile,rfqSubmission,ticketSubmission,rfqCountdown}.ts   NEW
   src/suites/portDiscipline.ts                      + workflow.events, dealers.getDealers, instruments.getInstruments
-  src/registry.ts                                   eight → suites (one new key); PENDING_SUITES −7
+  src/registry.ts                                   eight → suites (one new key); PENDING_SUITES −8 (seven suites + the R1 pending entry; 45 → 37)
   src/registry.test.ts                              + "slice 3 members have suites"
 PR B ───────────────────────────────────────────────────────────────────────────
 packages/client-core-async/                         MODIFIED (Task 4)
