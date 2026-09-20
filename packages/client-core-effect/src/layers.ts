@@ -165,10 +165,11 @@ export type NativeServices =
   | TradeExecutionPresenter;
 
 // Presenters that need only the host and the ports.
-export const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
+const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
   return createConnectionPresenter(host, ports.connectionEvents);
 });
-export const ThemePreferenceLive = presenterLayer(
+
+const ThemePreferenceLive = presenterLayer(
   ThemePreferenceTag,
   (host, ports) => {
     return createThemePreferencePresenter(
@@ -178,107 +179,110 @@ export const ThemePreferenceLive = presenterLayer(
     );
   },
 );
-export const ThemeSkinPreferenceLive = presenterLayer(
+
+const ThemeSkinPreferenceLive = presenterLayer(
   ThemeSkinPreferenceTag,
   (host, ports) => {
     return createThemeSkinPreferencePresenter(host, ports.preferences);
   },
 );
-export const ViewModePreferenceLive = presenterLayer(
+
+const ViewModePreferenceLive = presenterLayer(
   ViewModePreferenceTag,
   (host, ports) => {
     return createViewModePreferencePresenter(host, ports.preferences);
   },
 );
-export const PowerSaverLive = presenterLayer(PowerSaverTag, (host, ports) => {
+
+const PowerSaverLive = presenterLayer(PowerSaverTag, (host, ports) => {
   return createPowerSaverPresenter(host, ports.preferences);
 });
-export const CreditRfqFilterPreferenceLive = presenterLayer(
+
+const CreditRfqFilterPreferenceLive = presenterLayer(
   CreditRfqFilterPreferenceTag,
   (host, ports) => {
     return createCreditRfqFilterPreferencePresenter(host, ports.preferences);
   },
 );
-export const EqWatchlistSortPreferenceLive = presenterLayer(
+
+const EqWatchlistSortPreferenceLive = presenterLayer(
   EqWatchlistSortPreferenceTag,
   (host, ports) => {
     return createEqWatchlistSortPreferencePresenter(host, ports.preferences);
   },
 );
-export const EqBlotterViewPreferenceLive = presenterLayer(
+
+const EqBlotterViewPreferenceLive = presenterLayer(
   EqBlotterViewPreferenceTag,
   (host, ports) => {
     return createEqBlotterViewPreferencePresenter(host, ports.preferences);
   },
 );
-export const BootPreferenceLive = presenterLayer(
-  BootPreferenceTag,
-  (_host, ports) => {
-    return createBootPreferencePresenter(ports.preferences);
-  },
-);
-export const LoginWaitPreferencesLive = presenterLayer(
+
+const BootPreferenceLive = presenterLayer(BootPreferenceTag, (_host, ports) => {
+  return createBootPreferencePresenter(ports.preferences);
+});
+
+const LoginWaitPreferencesLive = presenterLayer(
   LoginWaitPreferencesTag,
   (host, ports) => {
     return createLoginWaitPreferencesPresenter(host, ports.preferences);
   },
 );
-export const JarvisPreferencesLive = presenterLayer(
+
+const JarvisPreferencesLive = presenterLayer(
   JarvisPreferencesTag,
   (host, ports) => {
     return createJarvisPreferencesPresenter(host, ports.preferences);
   },
 );
-export const AnimatedBackgroundLive = presenterLayer(
+
+const AnimatedBackgroundLive = presenterLayer(
   AnimatedBackgroundTag,
   (host, ports) => {
     return createAnimatedBackgroundPresenter(host, ports.preferences);
   },
 );
-export const AmbientStyleLive = presenterLayer(
-  AmbientStyleTag,
-  (host, ports) => {
-    return createAmbientStylePresenter(host, ports.preferences);
-  },
-);
-export const ChartSubstrateLive = presenterLayer(
-  ChartSubstrateTag,
-  (host, ports) => {
-    return createChartSubstratePresenter(host, ports.preferences);
-  },
-);
-export const LayoutEngineLive = presenterLayer(
-  LayoutEngineTag,
-  (host, ports) => {
-    return createLayoutEnginePresenter(host, ports.preferences);
-  },
-);
-export const ForceBootAnimationLive = presenterLayer(
+
+const AmbientStyleLive = presenterLayer(AmbientStyleTag, (host, ports) => {
+  return createAmbientStylePresenter(host, ports.preferences);
+});
+
+const ChartSubstrateLive = presenterLayer(ChartSubstrateTag, (host, ports) => {
+  return createChartSubstratePresenter(host, ports.preferences);
+});
+
+const LayoutEngineLive = presenterLayer(LayoutEngineTag, (host, ports) => {
+  return createLayoutEnginePresenter(host, ports.preferences);
+});
+
+const ForceBootAnimationLive = presenterLayer(
   ForceBootAnimationTag,
   (host, ports) => {
     return createForceBootAnimationPresenter(host, ports.preferences);
   },
 );
-export const CurrencyPairsLive = presenterLayer(
-  CurrencyPairsTag,
-  (host, ports) => {
-    return createCurrencyPairsPresenter(host, ports.referenceData);
-  },
-);
-export const BlotterLive = presenterLayer(BlotterTag, (host, ports) => {
+
+const CurrencyPairsLive = presenterLayer(CurrencyPairsTag, (host, ports) => {
+  return createCurrencyPairsPresenter(host, ports.referenceData);
+});
+
+const BlotterLive = presenterLayer(BlotterTag, (host, ports) => {
   return createBlotterPresenter(host, ports.blotter);
 });
-export const AnalyticsLive = presenterLayer(AnalyticsTag, (host, ports) => {
+
+const AnalyticsLive = presenterLayer(AnalyticsTag, (host, ports) => {
   return createAnalyticsPresenter(host, ports.analytics);
 });
-export const ExecutionLive = presenterLayer(ExecutionTag, (host, ports) => {
+
+const ExecutionLive = presenterLayer(ExecutionTag, (host, ports) => {
   return createTradeExecutionPresenter(host, ports.execution);
 });
 
 // The two presenters that depend on ANOTHER native presenter — the reason
 // this slice introduces the Layer graph: `priceStream` and `priceHistory`
 // gate their conflation on `powerSaver.isCalm$`.
-export const PriceStreamLive: Layer.Layer<
+const PriceStreamLive: Layer.Layer<
   PriceStreamPresenter,
   never,
   EffectHost | AppPorts | PowerSaverPresenter
@@ -291,7 +295,8 @@ export const PriceStreamLive: Layer.Layer<
     return createPriceStreamPresenter(host, ports.pricing, powerSaver.isCalm$);
   }),
 );
-export const PriceHistoryLive: Layer.Layer<
+
+const PriceHistoryLive: Layer.Layer<
   PriceHistoryPresenter,
   never,
   EffectHost | AppPorts | PowerSaverPresenter
