@@ -671,7 +671,12 @@ interface RawPayload {
  * tree (via the same `insertDockedLeaf` the real app uses) AND a matching
  * `docked` entry is added — so it passes `isReconciledWithTree` and can be
  * combined with siblings to build cap-related corpus cases without also
- * tripping the reconciliation check by accident. */
+ * tripping the reconciliation check by accident.
+ *
+ * `layoutPresetCodec.test.ts` keeps its own copy (`createDockedTabLayout`, with
+ * `VALID_PANEL_SPEC` for the spec below) for a different purpose — proving the
+ * codec's P2 `docked` rejection is additional to this validator — so the two
+ * are deliberately unshared; if one changes, check the other. */
 function syntheticDockedTab(
   tab: WorkspaceTab,
   panelIds: readonly string[],

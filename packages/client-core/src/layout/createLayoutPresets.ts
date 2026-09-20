@@ -139,9 +139,15 @@ export function createLayoutPresets(
     }
 
     // A replace keeps the existing id AND its list position; a new record
-    // appends with a fresh id.
-    const id =
-      match !== undefined ? idOfEntry(match) : freshPresetId(parsed.entries);
+    // appends with a fresh id. A replace over an UNREADABLE row is the third
+    // case: its id may be one the CODEC minted from the row's list position
+    // (`unreadable-<index>`), so adopting it would make a real preset's id
+    // depend on where it happens to sit — and collide with the next downgrade
+    // at that same index. Such a replacement takes a fresh id and keeps only
+    // the position, which is the part the user can see.
+    const id = match?.readable
+      ? match.preset.id
+      : freshPresetId(parsed.entries);
 
     const preset: StoredLayoutPreset = {
       v: LAYOUT_PRESET_VERSION,
@@ -216,15 +222,21 @@ export function createLayoutPresets(
       return;
     }
 
+    const remaining = parsed.entries.filter((entry) => {
+      return idOfEntry(entry) !== id;
+    });
+
+    // Nothing to delete: an id no row carries (a list another tab has already
+    // rewritten, say) must not spend a storage write, and must not re-normalize
+    // the stored bytes through the codec for a no-op.
+    if (remaining.length === parsed.entries.length) {
+      return;
+    }
+
     // The write result is deliberately dropped here — see `writeList`'s doc:
     // a delete the store swallowed leaves the row visible, which IS the
     // feedback, so `remove` stays void rather than growing a result union.
-    writeList(
-      tab,
-      parsed.entries.filter((entry) => {
-        return idOfEntry(entry) !== id;
-      }),
-    );
+    writeList(tab, remaining);
   }
 
   /** The built-in per-tab Default. Same one-batch discipline as
@@ -347,7 +359,7 @@ export function createLayoutPresets(
  * `state` rather than re-deriving the tree surgery: `removePanel`'s reducer
  * already collapses an emptied dock column back to exactly the pre-dock tree
  * and drops `maximized`/`collapsed` entries that named the removed id. The
- * scratch machine is disposed before returning, and the LIVE machine for the
+ * scratch machine is disposed on every exit, and the LIVE machine for the
  * tab is never touched — a save must not alter what the user is looking at.
  */
 function withoutDockedLeaves(
@@ -363,13 +375,19 @@ function withoutDockedLeaves(
     seedState: state,
   });
 
-  for (const panelId of dockedPanelIds) {
-    scratch.intents.removePanel(panelId);
-  }
+  try {
+    for (const panelId of dockedPanelIds) {
+      scratch.intents.removePanel(panelId);
+    }
 
-  const stripped = latestStateOf(scratch);
-  scratch.dispose();
-  return stripped;
+    return latestStateOf(scratch);
+  } finally {
+    // `finally`, not a trailing call: `latestStateOf` throws for a machine that
+    // emitted nothing synchronously (deliberately — see its doc), and a scratch
+    // machine left undisposed on that path leaks a warm subscription and its
+    // Subjects.
+    scratch.dispose();
+  }
 }
 
 /** Synchronous peek at a machine's current state. `state$` is a defaulted
