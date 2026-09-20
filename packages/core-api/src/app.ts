@@ -28,9 +28,11 @@ import type {
   DockLayoutStore,
   JarvisPort,
   JarvisUsagePort,
+  LayoutPresetStore,
   SessionStore,
 } from "#/adapters";
 import type { LayoutState, WorkspaceTab } from "#/layout";
+import type { LayoutPresetsPresenter } from "#/layoutPresets";
 import type { Machine, MachineFactories } from "#/machine";
 import type {
   EqDrawingsIntents,
@@ -141,6 +143,13 @@ export interface AppPorts {
    * absent. Browser implementation: `LocalStorageDockLayoutStore`
    * (client-react). */
   dockLayoutStore?: DockLayoutStore;
+  /** Per-tab persistence for a tab's saved layout presets (the View menu's
+   * LAYOUTS section), as ONE serialized list per tab. Optional on the same
+   * terms as `dockLayoutStore` above — `Presenters.layoutPresets` falls back
+   * to a fresh `InMemoryLayoutPresetStore` when absent, so no fake-ports
+   * builder has to change. Browser implementation:
+   * `LocalStorageLayoutPresetStore`. */
+  layoutPresetStore?: LayoutPresetStore;
   /** One-shot boot-splash decision, read once at composition time to seed the
    * BootGatePresenter. Optional — omit in tests/simulators to default to
    * playing the splash. Browser implementation: `shouldPlayBootSplash`
@@ -302,11 +311,27 @@ export interface Presenters {
    * resets every layout machine created this session back to its tab's
    * default tree, and dismisses every docked panel. */
   resetWorkspaceLayout: () => void;
-  /** Bumps once per workspace-layout reset. The Dockview bridges key their
-   * engine rebuild on it, so a live engine re-seeds from the cleared blob
-   * instead of re-persisting the old arrangement; the in-house engine needs
-   * no signal (its tree resets through the LayoutMachine). */
+  /** Bumps once per REBUILD-THE-LIVE-ENGINE request. Two callers today:
+   * `resetWorkspaceLayout` (the whole-workspace discard) and
+   * `layoutPresets`' own `load`/`resetTab` (one tab, Phase 6b — see
+   * controller ruling P4: the preset path reuses this counter rather than
+   * adding a second one). The Dockview bridges key their engine rebuild on
+   * it, so a live engine re-seeds from whatever now sits in
+   * `dockLayoutStore` — the cleared blob after a reset, the preset's blob
+   * after a load — instead of re-persisting the arrangement it still holds;
+   * the in-house engine needs no signal (its tree follows the LayoutMachine).
+   *
+   * The bump is therefore the LAST step of each of those operations, in the
+   * SAME synchronous turn as the `dockLayoutStore` write it publishes: the
+   * outgoing engine has an armed final save, so anything that ran in between
+   * would let it overwrite the new blob and the rebuild would restore the
+   * pre-load layout. */
   workspaceLayoutResets$: Stream<number>;
+  /** Saved layout presets — the View menu's LAYOUTS section: per-tab save /
+   * load / delete over `AppPorts.layoutPresetStore`, plus the built-in
+   * per-tab Default (`resetTab`) and the live-snapshot registry the Dockview
+   * bridge hands its engine's `snapshotLayout` to. */
+  layoutPresets: LayoutPresetsPresenter;
   /** J.A.R.V.I.S. drive-the-app interpreter: turns `jarvis`'s own "command"
    * turn events into staggered intent dispatches on `workspaceNav`,
    * per-tab layout machines, `eqWorkspace`, the theme-skin/power-saver

@@ -44,9 +44,11 @@ import type { JarvisHistoryEntry } from "@rtc/shared";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
+import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
+import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import {
   createDefaultLayoutPort,
   type WorkspaceTab,
@@ -893,6 +895,53 @@ export function createApp(ports: AppPorts): App {
     workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
   }
 
+  /** `Presenters.layoutPresets`' layer-2 read. `latestLayoutStates` already
+   * holds the current state of every tab whose machine exists; for a tab
+   * opened for the FIRST time by this very call, `layoutFor` creates it and
+   * its replayed state is peeked synchronously — the same one-shot read every
+   * preference above uses. */
+  function layoutStateNow(tab: WorkspaceTab): LayoutState {
+    return (
+      latestLayoutStates.get(tab) ??
+      readPreferenceNow(
+        layoutFor(tab).state$,
+        createDefaultLayoutPort(tab).initial,
+      )
+    );
+  }
+
+  /** The synchronous twin of `dockedPanelIdsFor` — ruling P2's "what is docked
+   * into `tab` right now", which `layoutPresets` strips on a save and
+   * re-inserts on a load/resetTab. Reads the same two sources
+   * (`latestPanels` + the dock-time `dockedPanelTabs` attribution) so the two
+   * can never disagree about membership. */
+  function dockedPanelIdsNow(tab: WorkspaceTab): readonly string[] {
+    return latestPanels
+      .filter((panel) => {
+        return panel.docked && dockedPanelTabs.get(panel.panelId) === tab;
+      })
+      .map((panel) => {
+        return panel.panelId;
+      });
+  }
+
+  /** Saved layouts (Phase 6b). Every rule lives in the controller; this hands
+   * it the store (falling back like `dockLayoutStore` above), the per-tab
+   * layout singletons, the two synchronous reads above, and the rebuild
+   * signal — which is `workspaceLayoutResets$` itself (ruling P4: the preset
+   * path reuses the reset counter rather than adding a second one, since both
+   * mean exactly "re-seed the mounted Dockview engine from the store"). */
+  const layoutPresets = createLayoutPresets({
+    store: ports.layoutPresetStore ?? new InMemoryLayoutPresetStore(),
+    dockLayoutStore,
+    layoutFor,
+    layoutStateNow,
+    dockedPanelIdsNow,
+    rebuildLiveEngine: () => {
+      workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
+    },
+  });
+
   // The debounced workspace writer. Kicked by every created layout machine
   // (above) and by the panels fold; assembles the payload read-modify-write
   // so tabs never opened this session keep their stored entry. Session-
@@ -1241,6 +1290,7 @@ export function createApp(ports: AppPorts): App {
     dismissPanel: dismissPanelFromWorkspace,
     resetWorkspaceLayout,
     workspaceLayoutResets$,
+    layoutPresets,
     jarvisDriver,
     jarvisDemo,
   };

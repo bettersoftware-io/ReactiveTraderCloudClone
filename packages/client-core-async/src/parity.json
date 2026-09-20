@@ -58,6 +58,7 @@
     "dismissPanel": "delegated",
     "resetWorkspaceLayout": "delegated",
     "workspaceLayoutResets$": "delegated",
+    "layoutPresets": "delegated",
     "jarvisDriver": "delegated",
     "jarvisDemo": "delegated"
   },

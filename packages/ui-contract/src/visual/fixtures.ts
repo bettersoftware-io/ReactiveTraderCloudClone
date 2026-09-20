@@ -2763,3 +2763,34 @@ fixtures["equities-instances-dockview"] = makeAppData({
     { id: instanceIdFor("eq-chart", "MSFT"), kind: "eq-chart", symbol: "MSFT" },
   ],
 });
+
+// shell/view-menu-layouts-dockview (Phase 6b Task 11): app-fx-dockview plus
+// three saved-layout presets, one of which is UNREADABLE (`readable: false`,
+// `savedAt: null`) so the greyed, load-disabled row is captured alongside the
+// two loadable ones. Dockview-only by construction: LayoutPresetsSection
+// renders preset rows only when `engine === "dockview"` (the in-house arm
+// shows `Default` alone), so seeding `layoutPresets` onto an in-house fixture
+// would be inert — there is nothing for that engine to project.
+fixtures["app-fx-layouts-dockview"] = makeAppData({
+  ...fixtures["app-fx-dockview"],
+  layoutPresets: [
+    {
+      id: "preset-morning-desk",
+      name: "Morning Desk",
+      savedAt: "2026-09-10T08:00:00.000Z",
+      readable: true,
+    },
+    {
+      id: "preset-eod-review",
+      name: "EOD Review",
+      savedAt: "2026-09-15T17:30:00.000Z",
+      readable: true,
+    },
+    {
+      id: "unreadable-0",
+      name: "Unreadable layout",
+      savedAt: null,
+      readable: false,
+    },
+  ],
+});

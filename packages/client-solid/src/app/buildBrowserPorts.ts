@@ -23,6 +23,7 @@ import {
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
 import { LocalStorageDockLayoutStore } from "#/app/adapters/LocalStorageDockLayoutStore";
+import { LocalStorageLayoutPresetStore } from "#/app/adapters/LocalStorageLayoutPresetStore";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
@@ -104,6 +105,7 @@ export function buildBrowserPorts(): AppPorts {
   const sessionStore = new LocalStorageSessionStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   const dockLayoutStore = new LocalStorageDockLayoutStore();
+  const layoutPresetStore = new LocalStorageLayoutPresetStore();
   // One-shot boot-splash decision (webdriver/nosplash suppress it) — read at
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
@@ -153,6 +155,7 @@ export function buildBrowserPorts(): AppPorts {
       connectionEvents,
       colorScheme,
       dockLayoutStore,
+      layoutPresetStore,
       bootSplash,
       transport: ws,
       narratorConfig,
@@ -198,6 +201,7 @@ export function buildBrowserPorts(): AppPorts {
     connectionEvents,
     colorScheme,
     dockLayoutStore,
+    layoutPresetStore,
     bootSplash,
     narratorConfig,
   };

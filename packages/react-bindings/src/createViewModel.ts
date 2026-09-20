@@ -27,6 +27,7 @@ import type {
   JarvisPanelVm,
   JarvisState,
   LayoutIntents,
+  LayoutPresetSummary,
   LayoutState,
   MachineFactories,
   NotionalIntents,
@@ -39,6 +40,8 @@ import type {
   RfqSubmissionIntents,
   RfqSubmissionState,
   RfqTileIntents,
+  SaveLayoutPresetOptions,
+  SaveLayoutPresetResult,
   ThroughputView,
   TicketSubmissionIntents,
   TicketSubmissionState,
@@ -310,6 +313,23 @@ export interface CandleBackfillState {
   historyExhausted: boolean;
 }
 
+/** One tab's View menu LAYOUTS section (Phase 6b) — the summary list plus its
+ * four commands, all pre-bound to the tab. `save`/`load` return
+ * `Presenters.layoutPresets`' result unions straight through (a confirm-gated
+ * "exists"/"full"/"invalid" reply is the caller's to render); `save` can
+ * throw on the one unreachable-today store-corruption case, so no wrapper
+ * here swallows it. */
+export interface UseLayoutPresetsResult {
+  presets: readonly LayoutPresetSummary[];
+  save: (
+    name: string,
+    options?: SaveLayoutPresetOptions,
+  ) => SaveLayoutPresetResult;
+  load: (id: string) => boolean;
+  remove: (id: string) => void;
+  resetTab: () => void;
+}
+
 export interface ViewModel {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -438,6 +458,19 @@ export interface ViewModel {
    * `Presenters.workspaceLayoutResets$`. The Dockview bridges key their
    * engine rebuild on it. Starts 0. */
   useWorkspaceLayoutResets: () => number;
+  /** The View menu's LAYOUTS section for one workspace tab (Phase 6b) —
+   * `Presenters.layoutPresets` pre-bound to `tab`: the summary list (keyed
+   * `bind()` like `useDockedPanelIds` above) plus save/load/remove/resetTab. */
+  useLayoutPresets: (tab: WorkspaceTab) => UseLayoutPresetsResult;
+  /** `Presenters.layoutPresets.registerSnapshotSource` passed straight
+   * through — the Dockview bridge's own hand-off point (mirrors
+   * `useDockLayoutStore`'s plain passthrough above), so it hands the live
+   * engine's `snapshotLayout` to the controller on mount and `null` on
+   * dispose. */
+  useRegisterLayoutSnapshot: () => (
+    tab: WorkspaceTab,
+    source: (() => string) | null,
+  ) => void;
   /** Boot-sequence animation — progress ramp + skip intent. One per app mount.
    * Calls onDone when the ramp completes or skip is invoked. */
   useBootSequence: (onDone: () => void) => UseBootSequenceResult;
@@ -939,6 +972,15 @@ export function createViewModel(
     0,
   );
 
+  // Keyed bind — one cached stream per tab, same shape as useDockedPanelIds
+  // above.
+  const [usePresetsForTab] = bind(
+    (tab: WorkspaceTab) => {
+      return presenters.layoutPresets.presetsFor(tab);
+    },
+    [] as readonly LayoutPresetSummary[],
+  );
+
   // Docked-safe dismissal — see `Presenters.dismissPanel`'s doc. Routes
   // through composition's `dismissPanelFromWorkspace`, not the raw
   // `JarvisPanelsPresenter.dismissPanel`, so a docked panel's layout leaf is
@@ -1342,6 +1384,26 @@ export function createViewModel(
     },
     useDockedPanelIds,
     useWorkspaceLayoutResets: useWorkspaceLayoutResetsValue,
+    useLayoutPresets: (tab: WorkspaceTab) => {
+      return {
+        presets: usePresetsForTab(tab),
+        save: (name: string, options?: SaveLayoutPresetOptions) => {
+          return presenters.layoutPresets.save(tab, name, options);
+        },
+        load: (id: string) => {
+          return presenters.layoutPresets.load(tab, id);
+        },
+        remove: (id: string) => {
+          presenters.layoutPresets.remove(tab, id);
+        },
+        resetTab: () => {
+          presenters.layoutPresets.resetTab(tab);
+        },
+      };
+    },
+    useRegisterLayoutSnapshot: () => {
+      return presenters.layoutPresets.registerSnapshotSource;
+    },
     useBootSequence: (onDone: () => void) => {
       return useMachine(() => {
         return machines.boot(onDone);

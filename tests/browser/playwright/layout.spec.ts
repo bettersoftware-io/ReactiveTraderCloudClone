@@ -184,4 +184,17 @@ test.describe("Layout engine", () => {
 
     await layout.floatBlotterGrowsRatesSurvivesReloadAndDocksHome(ctx);
   });
+
+  test("a saved layout survives rearrange, a live pop-out, and a reload, then deletes cleanly", async ({
+    ctx,
+  }) => {
+    // Saved layouts are a Dockview-only feature (LayoutPresetsSection
+    // renders no preset rows under in-house); dockview is what the app
+    // boots into, so no opening engine switch is needed (same as every
+    // other Dockview-only test above).
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.savedLayoutRestoresAfterRearrangeAndReload(ctx);
+  });
 });

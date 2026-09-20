@@ -789,6 +789,21 @@ const baseScenarios: Record<string, Scenario> = {
   // than layout-dockview-stacked's layer-3 privacy), so a twin would
   // duplicate pixels without adding a witness.
   "shell/view-menu-open": { componentKey: "App", fixtureKey: "app-fx" },
+
+  // The View menu's LAYOUTS section with three saved presets (Phase 6b Task
+  // 11), one UNREADABLE (greyed, load-disabled) row among them. SINGLE-ENGINE
+  // BY CONSTRUCTION (ruling P5): LayoutPresetsSection renders preset rows
+  // only under `engine === "dockview"` — the in-house arm renders `Default`
+  // alone regardless of `layoutPresets` — so an in-house twin would differ
+  // from this one BY DESIGN and read as a permanent whole-row divergence in
+  // `pnpm visual:engine-parity` forever, the same trap `equities-instances-
+  // dockview` above avoids for the same structural reason. `enginePairs.ts`
+  // already skips a `-dockview` golden with no un-suffixed sibling, so this
+  // needs no extra registration there.
+  "shell/view-menu-layouts-dockview": {
+    componentKey: "App",
+    fixtureKey: "app-fx-layouts-dockview",
+  },
   "shell/layout-dockview-stacked": {
     componentKey: "DockviewEngineStacked",
     fixtureKey: "prefs-open",

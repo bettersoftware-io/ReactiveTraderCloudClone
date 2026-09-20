@@ -79,6 +79,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
     useDockedPanelIds,
     useWorkspaceLayoutResets,
     useReportDetachedPanels,
+    useRegisterLayoutSnapshot,
   } = useViewModel();
 
   const { state, maximize, restore, collapse, expand, resize, closeInstance } =
@@ -86,6 +87,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
   const docked = useDockedPanelIds(tab);
   const layoutResets = useWorkspaceLayoutResets();
   const reportDetachedPanels = useReportDetachedPanels();
+  const registerLayoutSnapshot = useRegisterLayoutSnapshot();
   // The in-house engine renders the VISIBLE projection: View-menu-closed
   // leaves are pruned from the tree it sees (visibleRootOf is referentially
   // stable when nothing is closed). The Dockview branch keeps the raw state
@@ -160,6 +162,7 @@ function WorkspaceEngine({ tab }: WorkspaceEngineProps): ReactElement {
             onExpand={expand}
             onCloseInstance={closeInstance}
             onDetachedPanelsChange={reportDetachedPanels}
+            onSnapshotSourceChange={registerLayoutSnapshot}
           />
         ) : (
           <InhouseLayoutEngine

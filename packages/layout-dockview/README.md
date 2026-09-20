@@ -392,6 +392,54 @@ pre-emptively dropped.
   pin's record no longer fills its panels at restore, so the re-docked
   panel comes back unpinned.
 
+## Saved layouts (Phase 6b)
+
+A preset is a named snapshot of a tab's whole visible arrangement —
+save it, load it back, delete it — plus a built-in per-tab **Default** that
+restores the as-shipped layout. This package's one contribution is
+`DockEngine.snapshotLayout(): string`, which returns exactly the blob the
+next debounced `onLayoutChange` write would carry, built fresh from the
+live engine on every call. It exists because a save must not read the
+`DockLayoutStore`'s last write: that write trails the real arrangement by up
+to the 250ms debounce, so a save taken right after a drag would silently
+persist the arrangement from *before* the drag. `snapshotLayout()` shares
+`serializeLayout`'s blob-building half (`buildLayoutBlob`) but skips its
+seed-expiry side effect, so calling it any number of times — including from
+a UI that re-reads it on every keystroke of a "Save current as…" field —
+changes nothing about what a real save later persists.
+
+Everything else lives one layer up, in `@rtc/client-core`'s
+`createLayoutPresets` controller, but two of its rules are worth recording
+here because they bear directly on this engine's blob and its rebuild path:
+
+- **A preset never carries a Jarvis-docked panel.** A docked panel is live
+  session content owned by `JarvisPanelsMachine` (a global cap, session-unique
+  ids), not workspace arrangement — restoring one from a preset could collide
+  with a live id or exceed the cap. So a save strips docked leaves from the
+  layer-2 tree before it is written, and a load or Default re-inserts
+  whatever is docked into that tab *right now*, at its usual seed position.
+  One rule covers both directions: a layout operation rearranges: it never
+  creates or destroys content. A chart instance is the opposite case and
+  stays IN a preset — it is ordinary layer-2 state (`LayoutState.instances`)
+  with no owner outside the layout machine.
+- **The blob write and the engine rebuild are one synchronous batch.** A
+  load writes the preset's blob straight to `DockLayoutStore`, replaces the
+  layer-2 state through `LayoutIntents.replaceLayout`, re-inserts the
+  currently-docked panels, and only then bumps the existing
+  `workspaceLayoutResets$` counter that both bridges already watch to
+  rebuild their engine in place. Nothing in that sequence may `await`, defer,
+  debounce or schedule: the OUTGOING engine (the one about to be disposed by
+  the rebuild) still has an armed final save, and anything that runs between
+  the store write and the counter bump lets that save overwrite the blob
+  just written — the fresh engine would then re-seed from the *pre-load*
+  layout, and the load would silently do nothing. This was measured, not
+  assumed, against the real rebuild path before any preset code was written:
+  see `snapshotLayout`'s sibling tests in `createDockEngine.test.ts` and the
+  bridge-level probes each client's `DockviewLayoutEngine` test suite carries
+  for the four things a load depends on (the new blob wins over the old,
+  layer-2 state replays onto the *new* engine, no stale write follows, and a
+  docked panel reconciles back in).
+
 ## Instances consume the dynamic-panel API (Phase 4)
 
 Multi-instance equities charts (one `eq-chart:<symbol>` panel per open
