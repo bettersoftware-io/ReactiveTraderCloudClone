@@ -1,8 +1,10 @@
 import { setDriver } from "@ui-contract/harness/activeDriver";
+import { setLayoutPresetStoreLookup } from "@ui-contract/harness/layoutPresetStore";
 import { cleanupMounted } from "@ui-contract/mount";
 import { afterEach } from "vitest";
 
 import { solidDriver } from "./render";
+import { layoutPresetStoreFor } from "./viewModelFromWorld";
 
 // jsdom (this tier's environment) has no ResizeObserver at all — `SceneCanvas`
 // (the canvas-substrate host, Task 4's solid twin) observes its own box
@@ -27,6 +29,10 @@ class ResizeObserverStub {
 (globalThis as Record<string, unknown>).ResizeObserver = ResizeObserverStub;
 
 setDriver(solidDriver);
+// The preset store behind this World's ViewModel, for the ONE contract case
+// that must delete a record the way another browser tab would (see the
+// lookup module's own doc).
+setLayoutPresetStoreLookup(layoutPresetStoreFor);
 afterEach(() => {
   return cleanupMounted();
 });
