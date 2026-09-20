@@ -974,7 +974,7 @@ open-chart button) and then opening a chart makes the new chart arrive as a
 strip until the maximize is exited. The engine fix is deferred to
 `createDockEngine.ts`.
 
-**Phase 6a (floating groups) built 2026-09-19, in review** — floating groups
+**Phase 6a (floating groups) shipped 2026-09-19 (PR #763)** — floating groups
 move from *reachable* (shift-drag has always worked, unscrubbed) to
 *intentional and survivable*: a head control (`Float <title>` / `Dock
 <title>`) joins the kept shift-drag gesture, both governed by one

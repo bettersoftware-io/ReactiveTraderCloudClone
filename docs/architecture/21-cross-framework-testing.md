@@ -58,7 +58,7 @@ this section.
 
 | Tier | Shared source | React result | Solid result |
 |---|---|---|---|
-| UI contract (sociable RTL) | 86 `*.contract.spec.ts` files, one tree | 86 files, 622 tests passing | 86 files, 622 tests passing — **full parity**, `notYetPortedSpecs` is `[]` |
+| UI contract (sociable RTL) | 104 `*.contract.spec.ts` files, one tree | 104 files, 872 tests passing | 104 files, 872 tests passing — **full parity**, `notYetPortedSpecs` is `[]` |
 | Visual goldens (`playwright` tier, CI-asserted since the 2026-07-20 bake-off retirement — see [§9.7](09-test-strategy.md#97-visual-golden-tiers)) | 1282 scenarios (`scenarios.ts`, theme-matrix expanded) | Owns the golden tree — the only client permitted to `:update` it | Same 1282 scenarios, **assert-only** against the `ui-contract/goldens/playwright/` tree (generated only from client-react renders) — owns zero goldens of its own |
 | e2e (Gherkin behavioural) | Same `.feature` files + step definitions + page objects | 2 browser suites, ports 3001–3002 | 2 browser suites, ports 3003–3004 (`playwright`, `playwright-cucumber`) — full parity, `notYetPortedSpecs` is `[]` |
 | Devtools inspector panel | Same `@rtc/devtools-core` protocol + `InspectorApp` | App id `rtc-web` | App id `rtc-web-solid` — full panel parity shipped in PR #262 (one line: same inspector UI, same protocol, different app id) |
@@ -76,10 +76,10 @@ same bake-off retirement). That 7-suite figure is the **full local run**
 native Playwright the gating browser SOT (`tests/STRATEGY.md` §7.1) — leaving
 2 native-Playwright browser suites + 1 presenter + 2 full-stack gating.
 
-**How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `86`;
+**How this was verified**: `find packages/ui-contract/src -name "*.contract.spec.ts" | wc -l` → `104`;
 `pnpm --filter @rtc/client-react test:ui:contract` and the same for
-`@rtc/client-solid` → both `Test Files 86 passed (86)` / `Tests 622 passed
-(622)`; the scenario count came from evaluating the built
+`@rtc/client-solid` → both `Test Files 104 passed (104)` / `Tests 872 passed
+(872)`; the scenario count came from evaluating the built
 `packages/ui-contract/dist/visual/scenarios.js`'s exported `scenarios` map
 (`Object.keys(scenarios).length` → `1282`) rather than trusting any README's
 stated figure, since `packages/client-react/tests/ui/visual/README.md` does
@@ -424,8 +424,8 @@ Every current asymmetry between the two clients' test coverage, in one place:
 Three items from earlier in the port's life are **no longer true** and are
 recorded here only so a stale doc elsewhere doesn't outlive this correction:
 the UI-contract tier used to exclude the two `shell/auth` specs on Solid (84
-of 86 shared) — as of this chapter's write time both clients pass all 86 spec
-files, 622 tests each, with `notYetPortedSpecs = []`. `devtools.spec.ts` is
+of 86 shared at the time) — both clients now pass all 104 spec files, 872
+tests each, with `notYetPortedSpecs = []`. `devtools.spec.ts` is
 not excluded on Solid — `client-solid`'s Vite config now serves `/devtools/`
 same as `client-react`'s. The e2e `login.spec.ts` is no longer excluded
 on Solid either — enabled 2026-07-19, once `client-solid`'s
