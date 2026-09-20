@@ -56,6 +56,11 @@ export interface DockviewLayoutEngineDockedPage {
   bodyVisible(testId: string): boolean;
   /** Whether `panelId`'s tab slot carries dockview-hud.css's strip marker
    * (`data-dock-strip`). */
+  /** The panel titles sharing `panelId`'s dockview group, in tab order —
+   * the witness for WHERE a panel sits (a group COUNT cannot tell a panel
+   * stacked into a neighbour from one re-added as its own column). Mirrors
+   * the react twin's own `groupMatesOf`. */
+  groupMatesOf(panelId: string): readonly string[];
   stripMarked(panelId: string): boolean;
   /** Whether both panels' tab slots sit inside the SAME dockview group
    * element — the LIVE-DOM stack witness. `groupsAttr` only COUNTS groups;
@@ -120,6 +125,16 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;
+    },
+    groupMatesOf(panelId: string): readonly string[] {
+      const tab = screen.queryByTestId(`dock-tab-${panelId}`);
+      const group = tab?.closest(".dv-groupview");
+
+      return [...(group?.querySelectorAll("[data-panel-title]") ?? [])].map(
+        (slot) => {
+          return slot.getAttribute("data-panel-title") ?? "";
+        },
+      );
     },
     stripMarked(panelId: string): boolean {
       return (

@@ -178,6 +178,19 @@ export async function openPreferencesAndSelectLayoutEngine(
  * carries no testid), docking the two panels into a single dockview group.
  * Dockview-engine only — callers must already be on `engine: "dockview"`.
  */
+/**
+ * Drags ANY dockview tab onto Live Rates' body centre — the same gesture
+ * {@link dragBlotterTabOntoRates} performs for the blotter, parameterised so
+ * the Jarvis suite can drag a DOCKED panel (its own panel id is minted at
+ * runtime, so it cannot be a constant here). Dockview-engine only.
+ */
+export async function dragPanelTabOntoRates(
+  ctx: TestContext,
+  panelId: string,
+): Promise<void> {
+  await ctx.po.layout.dragDockTabOnto(panelId, RATES_PANEL_DROP_TARGET);
+}
+
 export async function dragBlotterTabOntoRates(ctx: TestContext): Promise<void> {
   await ctx.po.layout.dragDockTabOnto(
     BLOTTER_PANEL_ID,

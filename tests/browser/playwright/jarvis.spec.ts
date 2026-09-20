@@ -47,6 +47,17 @@ test.describe("Jarvis assistant", () => {
     await jarvis.expectDockedPanelSurvivesReload(ctx);
   });
 
+  test("a docked panel dragged onto Live Rates comes back in that group after a reload", async ({
+    ctx,
+  }) => {
+    // Dockview is the default engine, so this needs no switch. The panel's
+    // POSITION is the point: the reload test above proves it comes back
+    // docked and live, which a right-edge re-add satisfies just as well.
+    // The ride ends with the panel still DOCKED — no dismiss to do (the
+    // floating layer is empty, and each test gets its own fresh context).
+    await jarvis.expectDraggedDockedPanelSurvivesReload(ctx);
+  });
+
   test("docks a panel under the in-house engine, survives reload docked, then unpins", async ({
     ctx,
   }) => {

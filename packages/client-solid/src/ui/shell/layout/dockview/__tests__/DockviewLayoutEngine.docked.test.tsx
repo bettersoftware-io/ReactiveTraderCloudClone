@@ -178,6 +178,45 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 
+  // The react twin's own case, for the same reason: the docked set is bound
+  // through a stream whose accessor starts at its default `[]`, so a reload
+  // (and a tab switch back) builds the engine before the set is known. The
+  // engine scrubs the blob's dynamic node then — it cannot tell "undocked"
+  // from "not loaded yet" — and parks where it was so the late listing
+  // lands back there instead of at the grid's right edge.
+  it("keeps a dragged docked panel's blob position when the docked set arrives late", async () => {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", createStackedFxBlob());
+    const [docked, setDocked] = createSignal<readonly PanelId[]>([]);
+
+    page.mount({
+      tab: "fx",
+      registry,
+      store,
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed: () => {
+        return [];
+      },
+      docked,
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    setDocked(["panel-dyn-1"]);
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+    });
+    expect(page.groupMatesOf("panel-dyn-1")).toEqual([
+      "Live Rates",
+      "panel-dyn-1",
+    ]);
+  });
+
   it("removes the docked panel when the prop empties, dropping its group", async () => {
     // The SAME store instance across the whole test: this exercises the
     // DIFF effect's `removeDynamicPanel` on the still-live engine, not a
@@ -530,3 +569,101 @@ const registry: PanelRegistry = {
     return <div data-testid="panel-dyn-1-body">DYN</div>;
   },
 };
+
+/** The FX blob a user leaves behind after dragging the docked panel onto Live
+ * Rates: the two share `group-1`, a shape a fresh seed conversion never
+ * produces — so a case asserting it can only pass through a genuine restore.
+ * Mirrors the react twin's fixture exactly. */
+function createStackedFxBlob(): string {
+  return JSON.stringify({
+    grid: {
+      root: {
+        type: "branch",
+        data: [
+          {
+            type: "branch",
+            data: [
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-rates", "panel-dyn-1"],
+                  activeView: "panel-dyn-1",
+                  id: "group-1",
+                },
+                size: 526,
+              },
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-blotter"],
+                  activeView: "fx-blotter",
+                  id: "group-2",
+                },
+                size: 274,
+              },
+            ],
+            size: 1220,
+          },
+          {
+            type: "branch",
+            data: [
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-analytics"],
+                  activeView: "fx-analytics",
+                  id: "group-3",
+                },
+                size: 400,
+              },
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-positions"],
+                  activeView: "fx-positions",
+                  id: "group-4",
+                },
+                size: 400,
+              },
+            ],
+            size: 367,
+          },
+        ],
+        size: 800,
+      },
+      width: 1587,
+      height: 800,
+      orientation: "HORIZONTAL",
+    },
+    panels: {
+      "fx-rates": {
+        id: "fx-rates",
+        contentComponent: "rtc-panel",
+        title: "Live Rates",
+      },
+      "panel-dyn-1": {
+        id: "panel-dyn-1",
+        contentComponent: "rtc-panel",
+        tabComponent: "rtc-tab",
+        title: "panel-dyn-1",
+      },
+      "fx-blotter": {
+        id: "fx-blotter",
+        contentComponent: "rtc-panel",
+        title: "Blotter",
+      },
+      "fx-analytics": {
+        id: "fx-analytics",
+        contentComponent: "rtc-panel",
+        title: "Analytics",
+      },
+      "fx-positions": {
+        id: "fx-positions",
+        contentComponent: "rtc-panel",
+        title: "Positions",
+      },
+    },
+    activeGroup: "group-1",
+    rtcBlobVersion: 2,
+  });
+}

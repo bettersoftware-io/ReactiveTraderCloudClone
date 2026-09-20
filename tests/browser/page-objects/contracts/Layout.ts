@@ -123,6 +123,11 @@ export interface LayoutPO {
    * panel actually grows once another panel floats out of their shared
    * column — a real-DOM geometry claim no jsdom witness can make. */
   panelHeight(panelId: string): Promise<number>;
+  /** The panel titles sharing `panelId`'s dockview group, in tab order — the
+   * witness for WHERE a docked panel sits. A group COUNT cannot say it: a
+   * panel stacked into a neighbour's group and a panel re-added as its own
+   * column can leave the same count behind. Dockview-engine only. */
+  dockGroupMates(panelId: string): Promise<readonly string[]>;
   /** Whether `panelId`'s dockview group currently sits inside dockview's
    * FLOAT container (a `.dv-resize-container`, the box dockview mounts every
    * floating group in) — read off the DOM, independent of the engine's own
