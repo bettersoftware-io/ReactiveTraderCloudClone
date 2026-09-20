@@ -187,5 +187,74 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("rfqs: two warm periods of rfqs$ and of events$ do not call workflow.events() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("workflow.events");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.rfqs;
+        const firstRfqs = collect(p.rfqs$);
+        firstRfqs.unsubscribe();
+        await settle();
+        const secondRfqs = collect(p.rfqs$);
+        await settle();
+        secondRfqs.unsubscribe();
+        const firstEvents = collect(p.events$);
+        firstEvents.unsubscribe();
+        await settle();
+        const secondEvents = collect(p.events$);
+        await settle();
+        secondEvents.unsubscribe();
+        expect(h.driver.portCalls("workflow.events")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("dealers: subscribe, unsubscribe, subscribe again does not call dealers.getDealers() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("dealers.getDealers");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.dealers;
+        const first = collect(p.list$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.list$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("dealers.getDealers")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("instruments: subscribe, unsubscribe, subscribe again does not call instruments.getInstruments() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("instruments.getInstruments");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.instruments;
+        const first = collect(p.list$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.list$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("instruments.getInstruments")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }

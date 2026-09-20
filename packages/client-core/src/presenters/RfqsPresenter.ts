@@ -26,6 +26,7 @@ import {
   CreateRfqUseCase,
   type Quote,
   type QuoteRequest,
+  RFQ_REDIRECT_DELAY_MS,
   type Rfq,
   type RfqEvent,
   type RfqStreamState,
@@ -34,6 +35,7 @@ import {
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
+import { shallowArrayEquals } from "./shallowArrayEquals.js";
 import { warmReplay } from "./warmReplay.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
@@ -46,32 +48,13 @@ export type {
   TicketSubmissionState,
 };
 
-/** Delay between confirming a freshly-created RFQ and redirecting the user back
- * to the RFQ list. Presenter-local — a UI cadence concern, not a domain
- * constant. Relocated from NewRfqForm's `setTimeout(..., 1500)`. */
-const REDIRECT_DELAY_MS = 1500;
+/** Presenter-local alias of the domain cadence, so the machine reads as it
+ * always has. */
+const REDIRECT_DELAY_MS: number = RFQ_REDIRECT_DELAY_MS;
 
 interface SubmitCommand {
   input: CreateRfqInput;
   onRedirect: (rfqId: number) => void;
-}
-
-function shallowArrayEquals<T>(a: readonly T[], b: readonly T[]): boolean {
-  if (a === b) {
-    return true;
-  }
-
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 export class RfqsPresenter implements RfqsPresenterApi {

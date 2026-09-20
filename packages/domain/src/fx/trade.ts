@@ -79,6 +79,11 @@ export const RFQ_TIMEOUT_MS = 10_000;
 /** How long the "Quote expired" rejected state is shown before resetting. */
 export const REJECTED_DISPLAY_MS = 2_000;
 
+/** How often an RFQ countdown ticks — the FX tile's received-quote countdown
+ * and the credit RFQ card's live timer. Three application cores and the
+ * contract tier read it, which is why it lives here and not in a presenter. */
+export const RFQ_COUNTDOWN_INTERVAL_MS = 100;
+
 /** How long a newly-arrived blotter row stays highlighted (the `rowHighlight`
  * machine). Beside the other presentational timings above for the same
  * reason they are here: three application cores and the contract tier read

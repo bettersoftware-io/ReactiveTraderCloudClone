@@ -2,11 +2,13 @@ import { type StateObservable, state } from "@rx-state/core";
 import { timer } from "rxjs";
 import { map, takeWhile } from "rxjs/operators";
 
+import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
+
 import type { ReadOnlyMachine } from "./machine";
 
-/** How often the credit-RFQ countdown ticks. Presenter-local — a UI cadence
- * concern, not a domain constant. Mirrors RfqTileMachine's COUNTDOWN_INTERVAL_MS. */
-const COUNTDOWN_INTERVAL_MS = 100;
+/** How often the credit-RFQ countdown ticks. Presenter-local alias of the
+ * domain cadence. Mirrors RfqTileMachine's COUNTDOWN_INTERVAL_MS. */
+const COUNTDOWN_INTERVAL_MS: number = RFQ_COUNTDOWN_INTERVAL_MS;
 
 /** Live-countdown machine for an open credit RFQ (rtc-original CreditRfqTimer.tsx).
  * State is remainingMs, ticking every COUNTDOWN_INTERVAL_MS, clamped at 0.
