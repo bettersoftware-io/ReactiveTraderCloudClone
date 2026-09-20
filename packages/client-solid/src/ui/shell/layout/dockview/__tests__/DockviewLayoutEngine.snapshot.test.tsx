@@ -133,17 +133,20 @@ describe("dockview bridge layout-snapshot registration", () => {
 
     expect(afterReset.source).not.toBe(beforeReset.source);
 
+    const afterResetRoot = JSON.parse(afterReset.source()).grid.root;
+
     // MUTATE-CHECK: the rebuilt engine no longer shares fx-rates/fx-blotter
     // in one group (it rebuilt from the seed, unstacked) — a source that
-    // still read the OLD, disposed (stacked) engine would report `true`
-    // here and fail this assertion.
-    expect(
-      sharesGroup(
-        JSON.parse(afterReset.source()).grid.root,
-        "fx-rates",
-        "fx-blotter",
-      ),
-    ).toBe(false);
+    // still read the OLD, disposed (stacked) engine would ALSO report
+    // `false` here (a disposed engine's `snapshotLayout()` serializes every
+    // leaf with an EMPTY `views` array, which trivially fails `sharesGroup`
+    // too — the exact "absence read as a clean reading" shape), so a bare
+    // negative assertion alone would not discriminate the two. The positive
+    // witness below is what actually does: every leaf still carries a REAL
+    // panel view, which only the freshly-built (not disposed) engine's own
+    // serialize produces.
+    expect(sharesGroup(afterResetRoot, "fx-rates", "fx-blotter")).toBe(false);
+    expect(everyLeafHasViews(afterResetRoot)).toBe(true);
   });
 
   it("unregisters with null as the last call on unmount", () => {
@@ -294,6 +297,28 @@ function sharesGroup(node: any, a: string, b: string): boolean {
   // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
   return ((node.data ?? []) as any[]).some((child) => {
     return sharesGroup(child, a, b);
+  });
+}
+
+/** Whether EVERY leaf under `node` still carries at least one panel view —
+ * the positive half of the rebuild test's discriminator, mirroring the
+ * react twin's identical NEW-1 witness. A disposed engine's panel-less
+ * serialize produces a grid whose leaves carry `"views":[]`, not a grid
+ * missing leaves entirely, and that shape ALSO fails `sharesGroup` — so
+ * `sharesGroup(...) === false` alone cannot tell "genuinely rebuilt,
+ * unstacked" from "read a disposed, panel-less engine"; this walk is what
+ * actually can. */
+// biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+function everyLeafHasViews(node: any): boolean {
+  if (node.type === "leaf") {
+    const views: unknown[] = node.data?.views ?? [];
+
+    return views.length > 0;
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  return ((node.data ?? []) as any[]).every((child) => {
+    return everyLeafHasViews(child);
   });
 }
 
