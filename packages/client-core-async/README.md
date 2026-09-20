@@ -42,7 +42,7 @@ and the published contract is two files:
   result: value, then complete; an abort is silence) / `storeToStateStream`,
   the only places in the package that construct an Observable.
 
-### Conflation and machines
+### Conflation, machines and commands
 
 `createConflatedTopic(source, calm$, ms)` is the RxJS core's
 `conflateWhen(flag$, ms)` as ONE producer: while calm, a leading value
@@ -58,31 +58,56 @@ ending the machine's own loops. A machine's SOURCE failure has no channel on
 a Store, so it aborts the machine and is rethrown on a macrotask
 (`reportAsync`) rather than reaching a subscriber.
 
+The credit members added in slice 3 use three shapes and nothing new. A
+port COMMAND is `once` over the port's Observable inside `promiseToStream`,
+built per call and lazily — the port is reached on subscribe, and
+unsubscribing aborts `once`'s signal, which withdraws the request
+(`rfqs.createRfq`/`acceptQuote`/`cancelRfq`/`passQuote`/`quoteRfq`,
+`rfqQuote.requestQuote`). A DERIVED roster stream is `deriveDistinct` (a
+refCounted, replay-1 topic that publishes only when the projection's result
+changes by reference) over the retained `RfqStreamState` fold; paired with
+`createShallowArrayMemo` — imported from `@rtc/client-core`, not
+re-implemented — that is exactly the RxJS core's
+`distinctUntilChanged(shallowArrayEquals)` on `rfqs$`/`quotesForRfq$`, and
+paired with a bare field read it is the reference check on `allQuotes$`.
+`workflow.events()` is called ONCE per presenter: `events$` mirrors it
+retained, and the reducer fold (`reduceRfqEvent` from
+`createEmptyRfqStreamState`, both the domain's) is a second, likewise
+retained relay of the same Observable. A COUNTDOWN (`rfqTile`'s received
+tick, `rfqCountdown`) derives `remainingMs` from the tick INDEX — never
+`Date.now()` — so `sleep` + fake timers land on the exact boundary; the
+clock is read once, at construction.
+
 Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
 core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 2, **28 of 72** members are native. Slice 1a/1b brought
+As of slice 3, **36 of 73** members are native. Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,
 `themeSkinPreference`, `viewModePreference`, `powerSaver`,
 `creditRfqFilterPreference`, `eqWatchlistSortPreference`,
 `eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`,
 `jarvisPreferences`, `animatedBackground`, `ambientStyle`,
 `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
-`commands.reconnect`. Slice 2 adds eleven more: the presenters
+`commands.reconnect`. Slice 2 added eleven more: the presenters
 `priceStream`, `priceHistory`, `execution`, `blotter`, `analytics` and
 `currencyPairs`, and the machines `tileExecution`, `staleFlag`,
-`analyticsStaleFlag`, `rowHighlight` and `notional`. Everything else still
+`analyticsStaleFlag`, `rowHighlight` and `notional`. Slice 3 adds the
+credit column: the presenters `rfqs`, `dealers`, `instruments` and
+`rfqQuote`, and the machines `rfqTile`, `rfqSubmission`,
+`ticketSubmission` and `rfqCountdown`. Everything else still
 **delegates** to
 `@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
 app and overlays what this core implements. The native idiom for a
 replay-current stream is `topicFromObservable` (a port as a replay-1,
 refCounted `Topic` whose producer is one synchronous `relay`), `mapTopic`
 for a projection of it, a hand-written `createTopic` producer where two
-inputs combine (`mode$`), and `peek` for a synchronous read of the stored
-value (`cycle()`, `current()` — `src/presenters/readPreferences.ts`). The
+inputs combine (`mode$`) or a projection must de-duplicate by reference
+(`deriveDistinct`, `src/presenters/rfqs.ts`), and `peek` for a synchronous
+read of the stored value (`cycle()`, `current()` —
+`src/presenters/readPreferences.ts`). The
 presenter files group by API shape: `preferences.ts` (one stream plus
 setters, including the two boolean toggles), `groupedPreferences.ts`
 (several independent streams under one member), `readPreferences.ts`.

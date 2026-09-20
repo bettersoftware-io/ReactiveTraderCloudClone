@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import type {
   AnalyticsPort,
   CurrencyPair,
+  Dealer,
+  DealerPort,
+  Instrument,
+  InstrumentPort,
   PositionUpdates,
   ReferenceDataPort,
 } from "@rtc/domain";
@@ -11,6 +15,8 @@ import type {
 import {
   createAnalyticsPresenter,
   createCurrencyPairsPresenter,
+  createDealersPresenter,
+  createInstrumentsPresenter,
 } from "#/presenters/warmSingletons";
 
 describe("warm singleton presenters (async)", () => {
@@ -38,6 +44,30 @@ describe("warm singleton presenters (async)", () => {
     expect(position.observed).toBe(false);
   });
 
+  it("dealers: same warm-singleton shape", () => {
+    const { port, calls, roster } = createDealers();
+    const lifetime = new AbortController();
+    const presenter = createDealersPresenter(port, lifetime.signal);
+    expect(calls.count).toBe(1);
+    presenter.list$.subscribe(() => {}).unsubscribe();
+    expect(calls.count).toBe(1);
+    expect(roster.observed).toBe(true);
+    lifetime.abort();
+    expect(roster.observed).toBe(false);
+  });
+
+  it("instruments: same warm-singleton shape", () => {
+    const { port, calls, roster } = createInstruments();
+    const lifetime = new AbortController();
+    const presenter = createInstrumentsPresenter(port, lifetime.signal);
+    expect(calls.count).toBe(1);
+    presenter.list$.subscribe(() => {}).unsubscribe();
+    expect(calls.count).toBe(1);
+    expect(roster.observed).toBe(true);
+    lifetime.abort();
+    expect(roster.observed).toBe(false);
+  });
+
   interface CallCount {
     count: number;
   }
@@ -52,6 +82,18 @@ describe("warm singleton presenters (async)", () => {
     port: AnalyticsPort;
     calls: CallCount;
     position: Subject<PositionUpdates>;
+  }
+
+  interface DealersFixture {
+    port: DealerPort;
+    calls: CallCount;
+    roster: Subject<readonly Dealer[]>;
+  }
+
+  interface InstrumentsFixture {
+    port: InstrumentPort;
+    calls: CallCount;
+    roster: Subject<readonly Instrument[]>;
   }
 
   function createReferenceData(): ReferenceDataFixture {
@@ -79,6 +121,36 @@ describe("warm singleton presenters (async)", () => {
         getAnalytics: () => {
           calls.count += 1;
           return position;
+        },
+      },
+    };
+  }
+
+  function createDealers(): DealersFixture {
+    const calls: CallCount = { count: 0 };
+    const roster = new Subject<readonly Dealer[]>();
+    return {
+      calls,
+      roster,
+      port: {
+        getDealers: () => {
+          calls.count += 1;
+          return roster;
+        },
+      },
+    };
+  }
+
+  function createInstruments(): InstrumentsFixture {
+    const calls: CallCount = { count: 0 };
+    const roster = new Subject<readonly Instrument[]>();
+    return {
+      calls,
+      roster,
+      port: {
+        getInstruments: () => {
+          calls.count += 1;
+          return roster;
         },
       },
     };

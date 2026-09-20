@@ -1,5 +1,5 @@
 import { NEVER, of } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Presenters } from "@rtc/core-api";
 import type { CurrencyPair } from "@rtc/domain";
@@ -14,6 +14,14 @@ import { composeMachinesWithBase } from "#/composition";
 // `packages/client-core/src/composition.machineFactories.test.ts`.
 
 describe("nativeMachines — wiring", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("staleFlag watches the PRICE stream for its pair", () => {
     const { presenters, spies } = createStubPresenters();
 
@@ -42,19 +50,48 @@ describe("nativeMachines — wiring", () => {
     machine.dispose();
   });
 
+  it("rfqTile reaches rfqQuote.requestQuote lazily — not at construction", () => {
+    const { presenters, spies } = createStubPresenters();
+
+    const machine = composeMachinesWithBase(presenters).machines.rfqTile(PAIR);
+
+    expect(spies.requestQuote).not.toHaveBeenCalled();
+    machine.intents.requestQuote();
+    expect(spies.requestQuote).toHaveBeenCalledWith("EURUSD", 4);
+    machine.dispose();
+  });
+
+  it("rfqSubmission and ticketSubmission reach for DIFFERENT rfqs members", () => {
+    const { presenters, spies } = createStubPresenters();
+    const { machines } = composeMachinesWithBase(presenters);
+
+    machines.rfqSubmission();
+
+    expect(spies.createSubmission).toHaveBeenCalledTimes(1);
+    expect(spies.createTicketSubmission).not.toHaveBeenCalled();
+    machines.ticketSubmission();
+    expect(spies.createSubmission).toHaveBeenCalledTimes(1);
+    expect(spies.createTicketSubmission).toHaveBeenCalledTimes(1);
+  });
+
   it("rowHighlight and notional are native — not the base's factories", () => {
     const { presenters } = createStubPresenters();
     const { base, machines } = composeMachinesWithBase(presenters);
 
     expect(machines.rowHighlight).not.toBe(base.rowHighlight);
     expect(machines.notional).not.toBe(base.notional);
+    expect(machines.rfqTile).not.toBe(base.rfqTile);
+    expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
     // A delegated member is still reference-identical to the base's.
-    expect(machines.rfqTile).toBe(base.rfqTile);
+    expect(machines.boot).toBe(base.boot);
   });
 
   interface FactorySpies {
     price$: ReturnType<typeof vi.fn>;
     execute: ReturnType<typeof vi.fn>;
+    requestQuote: ReturnType<typeof vi.fn>;
+    createSubmission: ReturnType<typeof vi.fn>;
+    createTicketSubmission: ReturnType<typeof vi.fn>;
   }
 
   interface PresenterStub {
@@ -73,6 +110,11 @@ describe("nativeMachines — wiring", () => {
       execute: vi.fn(() => {
         return of(undefined);
       }),
+      requestQuote: vi.fn(() => {
+        return NEVER;
+      }),
+      createSubmission: vi.fn(),
+      createTicketSubmission: vi.fn(),
     };
 
     const presenters = {
@@ -80,10 +122,10 @@ describe("nativeMachines — wiring", () => {
       connection: { status$: NEVER },
       analytics: { position$: NEVER },
       execution: { execute: spies.execute },
-      rfqQuote: { requestQuote: vi.fn() },
+      rfqQuote: { requestQuote: spies.requestQuote },
       rfqs: {
-        createSubmission: vi.fn(),
-        createTicketSubmission: vi.fn(),
+        createSubmission: spies.createSubmission,
+        createTicketSubmission: spies.createTicketSubmission,
       },
       ordersBlotter: { place: vi.fn() },
       bootPreference: {

@@ -1,8 +1,17 @@
-import type { AnalyticsPresenter, CurrencyPairsPresenter } from "@rtc/core-api";
+import type {
+  AnalyticsPresenter,
+  CurrencyPairsPresenter,
+  DealersPresenter,
+  InstrumentsPresenter,
+} from "@rtc/core-api";
 import {
   type AnalyticsPort,
   AnalyticsUseCase,
   CurrencyPairsUseCase,
+  type DealerPort,
+  DealersUseCase,
+  type InstrumentPort,
+  InstrumentsUseCase,
   type ReferenceDataPort,
 } from "@rtc/domain";
 
@@ -30,4 +39,24 @@ export function createAnalyticsPresenter(
   const source = new AnalyticsUseCase(analytics).execute();
 
   return { position$: topicToStream(topicFromObservable(source, lifetime)) };
+}
+
+/** The credit dealer roster — the same retained-singleton shape. */
+export function createDealersPresenter(
+  dealers: DealerPort,
+  lifetime: AbortSignal,
+): DealersPresenter {
+  const source = new DealersUseCase(dealers).execute();
+
+  return { list$: topicToStream(topicFromObservable(source, lifetime)) };
+}
+
+/** The credit instrument roster — the same retained-singleton shape. */
+export function createInstrumentsPresenter(
+  instruments: InstrumentPort,
+  lifetime: AbortSignal,
+): InstrumentsPresenter {
+  const source = new InstrumentsUseCase(instruments).execute();
+
+  return { list$: topicToStream(topicFromObservable(source, lifetime)) };
 }

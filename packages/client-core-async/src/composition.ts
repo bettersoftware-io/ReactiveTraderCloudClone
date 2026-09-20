@@ -13,6 +13,8 @@ import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
 
 import { createCommands } from "#/commands";
 import { createNotionalMachine } from "#/machines/notional";
+import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
+import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
@@ -41,10 +43,14 @@ import {
   createBootPreferencePresenter,
   createEqWatchlistSortPreferencePresenter,
 } from "#/presenters/readPreferences";
+import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
+import { createRfqsPresenter } from "#/presenters/rfqs";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 import {
   createAnalyticsPresenter,
   createCurrencyPairsPresenter,
+  createDealersPresenter,
+  createInstrumentsPresenter,
 } from "#/presenters/warmSingletons";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
@@ -66,7 +72,9 @@ export interface ComposedMachines {
  * `createCommands`); slice 1b: the eleven remaining preference presenters;
  * slice 2: the six FX pricing/blotter/execution presenters, of which the
  * four warm singletons (`currencyPairs`, `blotter`'s `trades$`/`activity$`,
- * `analytics`) hold their port subscriptions until `lifetime` aborts.
+ * `analytics`) hold their port subscriptions until `lifetime` aborts;
+ * slice 3: the four credit presenters, of which `rfqs`, `dealers` and
+ * `instruments` hold their port subscriptions until `lifetime` aborts.
  * Everything else still delegates to the RxJS core. `parity.json` is the
  * committed record of the same fact and `parity.test.ts` proves the two
  * agree by reference. */
@@ -110,6 +118,10 @@ function nativePresenters(
     blotter: createBlotterPresenter(ports.blotter, lifetime),
     analytics: createAnalyticsPresenter(ports.analytics, lifetime),
     execution: createTradeExecutionPresenter(ports.execution),
+    rfqs: createRfqsPresenter(ports.workflow, lifetime),
+    dealers: createDealersPresenter(ports.dealers, lifetime),
+    instruments: createInstrumentsPresenter(ports.instruments, lifetime),
+    rfqQuote: createRfqQuotePresenter(ports.pricing),
   };
 }
 
@@ -151,7 +163,10 @@ export function createApp(ports: AppPorts): App {
  * The native factories close over the SAME merged `presenters` the RxJS
  * builder gets — `staleFlag` reads `priceStream.price$(pair)` and
  * `analyticsStaleFlag` reads `analytics.position$`, both native above;
- * `tileExecution` reaches `execution.execute`. */
+ * `tileExecution` reaches `execution.execute`; `rfqTile` reaches
+ * `rfqQuote.requestQuote`, and `rfqSubmission`/`ticketSubmission` ARE the
+ * per-mount machines `rfqs` mints (the RxJS builder's own wiring), so the
+ * commands they run are that presenter's. */
 function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
   return {
     tileExecution: (pair: CurrencyPair) => {
@@ -178,6 +193,22 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     notional: (defaultNotional: number) => {
       return createNotionalMachine(defaultNotional);
+    },
+    rfqTile: (pair: CurrencyPair) => {
+      return createRfqTileMachine(pair, {
+        requestQuote: (symbol: string, pipsPosition: number) => {
+          return presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+        },
+      });
+    },
+    rfqSubmission: () => {
+      return presenters.rfqs.createSubmission();
+    },
+    ticketSubmission: () => {
+      return presenters.rfqs.createTicketSubmission();
+    },
+    rfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return createRfqCountdownMachine(creationTimestamp, totalMs);
     },
   };
 }
