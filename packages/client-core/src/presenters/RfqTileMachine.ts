@@ -13,6 +13,7 @@ import type { RfqQuote, RfqState, RfqTileIntents } from "@rtc/core-api";
 import {
   type CurrencyPair,
   REJECTED_DISPLAY_MS,
+  RFQ_COUNTDOWN_INTERVAL_MS,
   RFQ_TIMEOUT_MS,
   type RfqQuoteResult,
 } from "@rtc/domain";
@@ -33,9 +34,9 @@ export interface RfqTileDeps {
   ) => Observable<RfqQuoteResult>;
 }
 
-/** How often the received-quote countdown ticks. Presenter-local — a UI cadence
- * concern, not a domain constant. */
-const COUNTDOWN_INTERVAL_MS = 100;
+/** How often the received-quote countdown ticks. Presenter-local alias of the
+ * domain cadence. */
+const COUNTDOWN_INTERVAL_MS: number = RFQ_COUNTDOWN_INTERVAL_MS;
 
 const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
 const REQUESTED: RfqState = {

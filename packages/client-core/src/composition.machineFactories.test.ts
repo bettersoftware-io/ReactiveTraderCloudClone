@@ -84,6 +84,32 @@ describe("createMachineFactories — wiring", () => {
     expect(spies.requestQuote).not.toHaveBeenCalled();
     expect(spies.place).not.toHaveBeenCalled();
   });
+
+  it("rfqCountdown seeds from its two arguments — a 300 ms window created now starts at 300", () => {
+    // Freeze the wall clock — createRfqCountdownMachine reads Date.now() a
+    // second time internally (RfqCountdownMachine.ts), so an unmocked clock
+    // occasionally reads elapsed=1 on a loaded runner and this flakes to 299
+    // (the "expected 499 to be 500" class of CI failure the sibling
+    // RfqCountdownMachine.test.ts documents and guards the same way).
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    try {
+      const factories = createMachineFactories(
+        createStubPresenters().presenters,
+      );
+      const machine = factories.rfqCountdown(Date.now(), 300);
+      let seen: number | null = null;
+      machine.state$
+        .subscribe((value) => {
+          seen = value;
+        })
+        .unsubscribe();
+      expect(seen).toBe(300);
+      machine.dispose();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });
 
 interface FactorySpies {

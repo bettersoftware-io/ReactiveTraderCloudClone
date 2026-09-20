@@ -84,6 +84,7 @@ import {
   createNarratorMachine,
   createNotionalMachine,
   createOrderTicketMachine,
+  createRfqCountdownMachine,
   createRfqTileMachine,
   createRowHighlightMachine,
   createStaleFlagMachine,
@@ -1412,6 +1413,9 @@ export function createMachineFactories(
     },
     ticketSubmission: () => {
       return presenters.rfqs.createTicketSubmission();
+    },
+    rfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return createRfqCountdownMachine(creationTimestamp, totalMs);
     },
     layout: (tab: WorkspaceTab) => {
       return presenters.layoutFor(tab);

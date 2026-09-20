@@ -68,6 +68,14 @@ export interface MachineFactories {
     TicketSubmissionState,
     TicketSubmissionIntents
   >;
+  /** Live countdown for an open credit RFQ (the RFQ card's timer):
+   * `remainingMs`, ticking every `RFQ_COUNTDOWN_INTERVAL_MS` from
+   * `totalMs − (now − creationTimestamp)` down to an inclusive 0, then still.
+   * Intent-free. One per card mount. */
+  rfqCountdown: (
+    creationTimestamp: number,
+    totalMs: number,
+  ) => ReadOnlyMachine<number>;
   /** Layout view-model for a workspace tab — the in-house engine's tree
    * state. UNLIKE every other factory here, this resolves to
    * `Presenters.layoutFor(tab)`, a composition-root SINGLETON (one instance
