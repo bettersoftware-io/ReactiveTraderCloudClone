@@ -3,9 +3,11 @@
 **Plan:** [2026-09-19-dockview-layout-presets-phase6b.md](2026-09-19-dockview-layout-presets-phase6b.md) · **Spec:** [../specs/2026-09-15-dockview-floats-and-presets-design.md](../specs/2026-09-15-dockview-floats-and-presets-design.md) §4 · **Status:** implementation and tests complete on `worktree-saved-layouts`, 2026-09-20, pending the controller's real-app pass, user acceptance and merge.
 
 The plan was written before implementation, and a further pre-flight scan was
-run against it before any task was dispatched. Between the two, 19 decisions
-were taken on the user's behalf — where the plan or the pre-flight scan was
-wrong, silent, or overtaken by what a task actually found. Each is recorded as
+run against it before any task was dispatched. Between the two, 18 decisions
+were taken on the user's behalf — 6 pre-execution rulings (P1–P6), 2
+pre-flight rulings (R1–R2), and 10 further decisions made task by task —
+where the plan or the pre-flight scan was wrong, silent, or overtaken by what
+a task actually found. Each is recorded as
 **what was decided — why — what it costs if wrong**, so a later reader can
 tell a deliberate choice from an accident and knows what to revisit if one
 turns out wrong. This file is the durable copy: the working ledger they came

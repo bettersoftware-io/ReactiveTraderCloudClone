@@ -994,7 +994,7 @@ gate's scope**: floats are Dockview-only arrangement, outside the
 shared/seed-derivable subset the gate freezes on, exactly like pop-outs and
 instances before them.
 
-**Phase 6b (layout presets) shipped 2026-09-20** — the workstream's last
+**Phase 6b (layout presets) built 2026-09-20, in review** — the workstream's last
 phase and, like instances and floats, Dockview-only: a per-tab named layout
 (save / load / delete) plus a built-in **Default** that restores the
 as-shipped layout, both from a LAYOUTS section in the View menu on both web
