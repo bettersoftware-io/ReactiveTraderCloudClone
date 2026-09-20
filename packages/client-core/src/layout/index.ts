@@ -1,3 +1,9 @@
+// The saved-layouts controller is public for the same reason the
+// workspace-persistence pair below is: each web client's ui-contract fixture
+// reproduces composition.ts's wiring over the neutral World, and a fixture
+// that re-implemented the preset rules would prove nothing about the real
+// ones. Otherwise consumed only by `composition.ts`.
+export * from "#/layout/createLayoutPresets";
 export * from "#/layout/defaultLayoutPort";
 // Only the design-width constant is public — `dockColumn.ts`'s leaf
 // insert/remove helpers stay internal to LayoutMachine/workspace persistence;
