@@ -5,6 +5,8 @@ import type { WorkspaceTab } from "@rtc/client-core";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/client-core";
 import { useViewModel } from "@rtc/solid-bindings";
 
+import { LayoutPresetsSection } from "./LayoutPresetsSection";
+
 import styles from "./HeaderChrome.module.css";
 
 /** The app-head "View" dropdown (Phase 3 close/reopen): one checkbox row per
@@ -21,11 +23,12 @@ import styles from "./HeaderChrome.module.css";
  * intents, not a pure subscription). */
 export function ViewMenu(props: ViewMenuProps): JSX.Element {
   const [open, setOpen] = createSignal(false);
-  const { useLayout } = useViewModel();
+  const { useLayout, useLayoutEngine } = useViewModel();
   const tab = untrack((): WorkspaceTab => {
     return props.activeTab;
   });
   const { state, close, reopen } = useLayout(tab);
+  const { engine } = useLayoutEngine();
 
   const panelIds = staticPanelIdsFor(tab);
   const closedSet = createMemo((): ReadonlySet<string> => {
@@ -38,6 +41,10 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
 
   function toggleViewMenu(): void {
     setOpen(!open());
+  }
+
+  function closeViewMenu(): void {
+    setOpen(false);
   }
 
   function togglePanelVisibility(panelId: string): void {
@@ -121,6 +128,11 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
               }}
             </For>
           </ul>
+          <LayoutPresetsSection
+            tab={tab}
+            engine={engine}
+            onDone={closeViewMenu}
+          />
         </div>
       </Show>
     </div>

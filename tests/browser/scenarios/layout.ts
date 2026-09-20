@@ -178,6 +178,19 @@ export async function openPreferencesAndSelectLayoutEngine(
  * carries no testid), docking the two panels into a single dockview group.
  * Dockview-engine only — callers must already be on `engine: "dockview"`.
  */
+/**
+ * Drags ANY dockview tab onto Live Rates' body centre — the same gesture
+ * {@link dragBlotterTabOntoRates} performs for the blotter, parameterised so
+ * the Jarvis suite can drag a DOCKED panel (its own panel id is minted at
+ * runtime, so it cannot be a constant here). Dockview-engine only.
+ */
+export async function dragPanelTabOntoRates(
+  ctx: TestContext,
+  panelId: string,
+): Promise<void> {
+  await ctx.po.layout.dragDockTabOnto(panelId, RATES_PANEL_DROP_TARGET);
+}
+
 export async function dragBlotterTabOntoRates(ctx: TestContext): Promise<void> {
   await ctx.po.layout.dragDockTabOnto(
     BLOTTER_PANEL_ID,
@@ -677,6 +690,178 @@ async function expectBlotterInFloat(
     inFloat,
     expected,
     `expected fx-blotter ${expected ? "inside" : "outside"} dockview's float container`,
+  );
+}
+
+// PANEL_SPECS' fx-positions panel id — the same literal `RAIL_REMAINING_PANEL_ID`
+// above names for the sash-resize scenarios' own purpose; a separate constant
+// here reads naturally for THIS scenario's own concern (the View-menu close/
+// reopen channel, unrelated to the rail).
+const POSITIONS_PANEL_ID = "fx-positions";
+
+const SAVED_LAYOUT_NAME = "Desk A";
+
+/**
+ * The full saved-layout lifecycle end to end — the one tier that can prove
+ * ANY of it, since jsdom blocks `window.open` outright and lays nothing out
+ * (a strip's collapse, a float's detachment, a real pop-out are all real-DOM
+ * facts no unit/contract test can witness):
+ *
+ * 1. Collapse analytics and float the blotter, then save "Desk A".
+ * 2. Rearrange away from it: expand analytics, dock the blotter home, close
+ *    positions from the View menu.
+ * 3. Pop the rates panel out into a real child window (Task 1's question 5).
+ * 4. Load "Desk A": analytics is a strip again, the blotter floats again,
+ *    positions is visible again, AND the live rates pop-out has closed —
+ *    the one fact no jsdom witness can see at all, closed by the loaded
+ *    layout's own engine rebuild disposing the old one (dockview-core's
+ *    popout manager closes its window on dispose).
+ * 5. Reload and reselect FX: the same three arrangement facts survived the
+ *    round trip through storage.
+ * 6. Delete "Desk A" (bin + confirm): no saved layout remains.
+ *
+ * Plus a controller ruling on top of the six: Default under the DOCKVIEW
+ * engine is exercised nowhere else — the contract tier's `Default` coverage
+ * is in-house only, where choosing it never rebuilds a live dock at all. A
+ * fresh collapse plus `Default` proves the real Dockview rebuild path: the
+ * collapse, the leftover float, AND the group count all revert to the
+ * tab's shipped arrangement.
+ *
+ * Dockview-engine only — presets don't exist under the in-house engine
+ * (LayoutPresetsSection renders no preset rows there); Dockview has been the
+ * default engine since #755, so no opening engine switch is needed here (see
+ * this suite's other Dockview-only tests).
+ */
+export async function savedLayoutRestoresAfterRearrangeAndReload(
+  ctx: TestContext,
+): Promise<void> {
+  // 1. Collapse analytics, float the blotter, save "Desk A".
+  await collapseAnalyticsPanel(ctx);
+  await ctx.po.layout.floatPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  await ctx.po.layout.openViewMenu();
+  await ctx.po.layout.saveLayoutPreset(SAVED_LAYOUT_NAME);
+  // `assertEquals` is `Object.is` under the hood (see assert.ts), so two
+  // arrays of equal CONTENT are never equal by reference — joined into one
+  // string first, the same idiom every `data-floating`/`data-collapsed`/
+  // `data-closed` witness in this file already uses.
+  assertEquals(
+    (await ctx.po.layout.layoutPresetNames()).join(" "),
+    SAVED_LAYOUT_NAME,
+    `expected "${SAVED_LAYOUT_NAME}" saved`,
+  );
+  await ctx.po.layout.closeViewMenu();
+
+  // 2. Rearrange away from the saved arrangement: expand analytics, dock the
+  // blotter home, close positions from the View menu.
+  await expandAnalyticsPanel(ctx);
+  await ctx.po.layout.dockPanel(BLOTTER_PANEL_ID);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+
+  await ctx.po.layout.openViewMenu();
+  await ctx.po.layout.toggleViewMenuRow(POSITIONS_PANEL_ID);
+  await ctx.po.layout.closeViewMenu();
+  await ctx.po.layout.waitDockClosed(
+    [POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  // 3. Pop the rates panel out into a real child window.
+  const ratesPopup = await ctx.po.layout.popoutPanel(RATES_PANEL_ID);
+  await ratesPopup.waitForTestId(
+    TESTIDS.layout.dockTab(RATES_PANEL_ID),
+    POPUP_TIMEOUT_MS,
+  );
+  await ctx.po.layout.waitDockPopped([RATES_PANEL_ID], POPUP_TIMEOUT_MS);
+  assertFalse(
+    await ratesPopup.isClosed(),
+    "expected the rates pop-out open before loading the saved layout",
+  );
+
+  // 4. Load "Desk A": analytics is a strip, the blotter floats, positions is
+  // visible, and the rates pop-out has closed.
+  await ctx.po.layout.openViewMenu();
+  await ctx.po.layout.loadLayoutPreset(SAVED_LAYOUT_NAME);
+  await expectDeskALayout(ctx);
+
+  await ratesPopup.waitClosed(POPUP_TIMEOUT_MS);
+  assertTrue(
+    await ratesPopup.isClosed(),
+    "expected the rates pop-out to have closed once the saved layout replaced the live dock",
+  );
+
+  // 5. Reload, reselect FX: the same three arrangement facts survived.
+  await common.reloadPage(ctx);
+  await common.clickTab(ctx, "fx");
+  await expectEngine(ctx, "dockview");
+  await expectDeskALayout(ctx);
+
+  // 6. Delete "Desk A" (bin + confirm): no saved layout remains.
+  await ctx.po.layout.openViewMenu();
+  await ctx.po.layout.deleteLayoutPreset(SAVED_LAYOUT_NAME);
+  assertEquals(
+    (await ctx.po.layout.layoutPresetNames()).join(" "),
+    "",
+    `expected no saved layouts left after deleting "${SAVED_LAYOUT_NAME}"`,
+  );
+  await ctx.po.layout.closeViewMenu();
+
+  // Controller ruling: Default under DOCKVIEW rebuilds the live dock — a
+  // path the contract tier's Default coverage (in-house only) never
+  // exercises. A fresh collapse on a panel with nothing else pending proves
+  // the rebuild reverts it, the leftover float, AND the group count.
+  await ctx.po.layout.collapsePanel(RATES_PANEL_ID);
+  await ctx.po.layout.waitDockCollapsed(
+    [ANALYTICS_PANEL_ID, RATES_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  await ctx.po.layout.openViewMenu();
+  await ctx.po.layout.loadDefaultLayout();
+
+  await ctx.po.layout.waitDockCollapsed([], ENGINE_SWITCH_TIMEOUT_MS);
+  await ctx.po.layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+  await expectDockGroups(ctx, 4, 5);
+}
+
+/** The three arrangement facts "Desk A" was saved with, asserted identically
+ * right after loading it and again after a reload — {@link
+ * savedLayoutRestoresAfterRearrangeAndReload}'s steps 4 and 5.
+ *
+ * The blotter's float and positions' visibility both get a SECOND, stronger
+ * witness beyond the engine root's own bookkeeping attributes (fix round 1):
+ * `data-floating` "has read empty once before over a float the engine never
+ * published" (see `expectBlotterDockedHome`'s doc above), so
+ * `panelSitsInFloat` — the same real-DOM witness `expectBlotterInFloat`
+ * already uses — is asserted too, positively. And `data-closed=""` is
+ * rendered straight from the LayoutMachine's own in-memory state (the
+ * `replaceLayout` call itself sets it), so it cannot tell "positions was
+ * re-added to the live dock" from "nothing was ever closed" — exactly the
+ * distinction the reconciliation bug this task fixed hinged on. A positive
+ * `waitForTestId` on positions' own `dockTab` mount closes that gap: it can
+ * only pass once dockview-core has genuinely added the panel BACK into the
+ * rebuilt engine's grid. */
+async function expectDeskALayout(ctx: TestContext): Promise<void> {
+  await ctx.po.layout.waitDockCollapsed(
+    [ANALYTICS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  await ctx.po.layout.waitDockFloating(
+    [BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(BLOTTER_PANEL_ID),
+    "expected fx-blotter inside dockview's float container",
+  );
+  await ctx.po.layout.waitDockClosed([], ENGINE_SWITCH_TIMEOUT_MS);
+  await ctx.po.layout.waitForTestId(
+    TESTIDS.layout.dockTab(POSITIONS_PANEL_ID),
+    ENGINE_SWITCH_TIMEOUT_MS,
   );
 }
 

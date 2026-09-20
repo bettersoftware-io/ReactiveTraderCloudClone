@@ -409,6 +409,86 @@ describe("createDockEngine", () => {
   });
 });
 
+// snapshotLayout() exposes the same blob-building path serializeLayout()
+// hands to onLayoutChange, but on demand and with no debounce wait — a
+// preset save needs the LIVE arrangement, not whatever the store last
+// happened to persist (Phase 6b task 2).
+describe("snapshotLayout — the live blob without the debounce", () => {
+  it("equals the next onLayoutChange write after a collapse", async () => {
+    const seen = trackLayout();
+    const engine = createDockEngine({ ...createBase(), ...seen.options });
+
+    engine.collapsePanel("fx-analytics");
+    const snapshot = engine.snapshotLayout();
+
+    // dockview's onDidLayoutChange notification is microtask-deferred
+    // (AsapEvent); the 0ms debounce timer then needs a macrotask beyond that
+    // to actually fire — see "coalesces two rapid layout mutations" above.
+    await Promise.resolve();
+    await nextMacrotask();
+
+    expect(seen.saves).toBe(1);
+    expect(snapshot).toBe(seen.blob());
+    engine.dispose();
+  });
+
+  it("does not consume a pending strip-size seed (no side effect)", async () => {
+    const seen = trackLayout();
+    const first = createDockEngine({ ...createBase(), ...seen.options });
+    const before = baselineSize(createBase(), "fx-analytics");
+
+    first.collapsePanel("fx-analytics");
+    await waitForSize(seen, "fx-analytics", STRIP);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...createBase(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+
+    // Two snapshots taken before the bridge's replay ever consumes the
+    // sidecar's seeded pre-collapse size — must be inert either way.
+    second.snapshotLayout();
+    second.snapshotLayout();
+
+    // The bridge's replay: re-collapsing seeds recordStrip from the
+    // sidecar, same as an untouched reload (see "reload with strips"
+    // above). A snapshotLayout side effect on the seed would have starved
+    // this, landing on the bar dockview's restore clamped to instead of the
+    // true pre-collapse size.
+    second.collapsePanel("fx-analytics");
+    await waitForSize(reloaded, "fx-analytics", STRIP);
+
+    const sidecar = JSON.parse(reloaded.blob()).rtcStripGeometry;
+    expect(sidecar.records["fx-analytics"].size).toEqual(
+      within(before + GROUP_GAP_PX, 1),
+    );
+    second.dispose();
+  });
+
+  it("carries floatingGroups and no popoutGroups while a float is open", async () => {
+    const engine = createDockEngine({
+      ...createBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    expect(engine.floatPanel("fx-analytics")).toBe(true);
+    await Promise.resolve();
+
+    const snapshot = JSON.parse(engine.snapshotLayout());
+
+    expect(snapshot.floatingGroups).toHaveLength(1);
+    // NON-DISCRIMINATING, kept for symmetry with the float half above: jsdom
+    // blocks `window.open`, so `popoutGroups` is never present here and this
+    // passes whether or not the scrub runs. The real coverage of the scrub is
+    // `dockBlob.test.ts`'s own units, which feed it a blob that HAS the key.
+    expect(snapshot.popoutGroups).toBeUndefined();
+    engine.dispose();
+  });
+});
+
 // A reload tears the page down without unmounting anything, so dispose's
 // flush never runs — a change still inside the save debounce was simply lost
 // (a float followed by a quick reload came back docked: 6a follow-up). The
@@ -3420,6 +3500,95 @@ describe("dynamic-panel reconciliation at construction", () => {
     });
     const api2 = lastDockviewApi();
     expect(api2.getPanel("panel-dyn-1")?.group.panels.length).toBe(2);
+    second.dispose();
+  });
+
+  // The listing does NOT always arrive with the engine. Both clients bind
+  // the docked set through a stream whose hook returns its DEFAULT (`[]`) on
+  // the first render, so a reload — and a tab switch back — builds the
+  // engine before the set is known, and the orphan rule above scrubs the
+  // blob's dynamic node on the way in. Re-adding it at the right edge then
+  // silently discards the arrangement the blob had just restored: measured
+  // in a browser, a panel a user dragged onto Live Rates came back a
+  // separate right-edge column on every reload. The scrub therefore parks
+  // where the panel was, and a late listing lands back there.
+  it("returns a late-listed dynamic panel to the group the blob stacked it in", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const dyn = api.getPanel("panel-dyn-1");
+    const rates = api.getPanel("fx-rates");
+
+    if (!dyn || !rates) {
+      throw new Error("fixture panels missing");
+    }
+
+    dyn.api.moveTo({ group: rates.group, position: "center" }); // the drag
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    }); // no dynamicPanels — the docked set has not arrived yet
+    const api2 = lastDockviewApi();
+
+    expect(api2.getPanel("panel-dyn-1")).toBeUndefined(); // orphan rule held
+
+    second.addDynamicPanel(DYN); // ...and now the listing arrives
+
+    expect(api2.getPanel("panel-dyn-1")?.group).toBe(
+      api2.getPanel("fx-rates")?.group,
+    );
+    second.dispose();
+  });
+
+  // The same rule for a drag that made its OWN group rather than a tab
+  // stack: the panel is re-added beside the neighbour it was beside, on the
+  // side it was on — not at the grid's right edge.
+  it("returns a late-listed dynamic panel to its own group's side of the neighbour", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const dyn = api.getPanel("panel-dyn-1");
+    const rates = api.getPanel("fx-rates");
+
+    if (!dyn || !rates) {
+      throw new Error("fixture panels missing");
+    }
+
+    dyn.api.moveTo({ group: rates.group, position: "left" }); // its own group
+    expect(leafIndexOf(lastDockviewApi(), "panel-dyn-1")).toBeLessThan(
+      leafIndexOf(lastDockviewApi(), "fx-rates"),
+    );
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    });
+    const api2 = lastDockviewApi();
+
+    second.addDynamicPanel(DYN);
+
+    expect(leafIndexOf(api2, "panel-dyn-1")).toBeLessThan(
+      leafIndexOf(api2, "fx-rates"),
+    );
     second.dispose();
   });
 
@@ -6992,3 +7161,35 @@ const COLUMN_OF_THREE = {
 const attachedContainers: HTMLElement[] = [];
 
 const STRIP = 32;
+
+/** A panel's position in the grid's LEAF ORDER, reading dockview's own
+ * serialized tree — the jsdom-safe stand-in for "which column is it in",
+ * since jsdom gives every element a zero rect. Throws when the panel is
+ * absent, so a miss reads as a failure rather than a silent -1 comparison. */
+function leafIndexOf(api: DockviewApi, panelId: string): number {
+  const views: string[][] = [];
+
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  function walk(node: any): void {
+    if (node.type === "leaf") {
+      views.push((node.data?.views ?? []) as string[]);
+      return;
+    }
+
+    // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+    for (const child of (node.data ?? []) as any[]) {
+      walk(child);
+    }
+  }
+
+  walk(api.toJSON().grid.root);
+  const index = views.findIndex((leaf) => {
+    return leaf.includes(panelId);
+  });
+
+  if (index < 0) {
+    throw new Error(`leafIndexOf: ${panelId} is not in the grid`);
+  }
+
+  return index;
+}

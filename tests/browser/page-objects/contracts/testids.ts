@@ -220,6 +220,33 @@ export const TESTIDS = {
       return `pref-segment-layoutEngine-${value}`;
     },
   },
+  /**
+   * The app-head "View" dropdown (Phase 3 close/reopen) and its LAYOUTS
+   * section (Phase 6b saved layouts, `LayoutPresetsSection.tsx`) — one
+   * shared shape between the two web clients (`ViewMenu.tsx` /
+   * `LayoutPresetsSection.tsx`). `row` and `layout` are functions since
+   * their ids are per-panel / per-preset; the rest are the section's own
+   * fixed controls.
+   */
+  viewMenu: {
+    toggle: "view-menu-toggle",
+    panel: "view-menu-panel",
+    /** A static panel's own visibility-toggle row (`view-menu-row-<id>`). */
+    row: (panelId: string) => {
+      return `view-menu-row-${panelId}`;
+    },
+    layouts: "view-menu-layouts",
+    layoutDefault: "view-menu-layout-default",
+    /** A saved preset's own row — testid `view-menu-layout-<id>`. The
+     * controller MINTS every preset's id, so a caller reads it off a row
+     * rather than assuming one (see `LayoutPO.loadLayoutPreset`'s doc). */
+    layout: (id: string) => {
+      return `view-menu-layout-${id}`;
+    },
+    layoutSave: "view-menu-layout-save",
+    layoutName: "view-menu-layout-name",
+    layoutSaveConfirm: "view-menu-layout-save-confirm",
+  },
   layout: {
     // Splitter handles carry a dynamic id `handle-<pathKey>-<index>`; the engine
     // owns the full id, so consumers match on this stable prefix.

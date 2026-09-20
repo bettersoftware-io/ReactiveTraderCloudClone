@@ -1,0 +1,169 @@
+/* The View menu's LAYOUTS section (Phase 6b saved layouts). Token values are
+   copied from HeaderChrome.module.css BY VALUE rather than composed: the head
+   matches that file's `.dropdownHead`/`.dropdownTitle` look, and a preset row
+   matches its `.viewRow` (same 8px/13px padding, same display font at 11px),
+   so the section reads as one more block of the same dropdown.
+
+   NO TRANSITIONS ANYWHERE IN HERE, deliberately (docs/performance.md): this
+   markup mounts and unmounts with the dropdown, and every state change is a
+   row swap rather than a moving box — a transition would buy nothing and add
+   per-frame work to a permanently-animated HUD. */
+
+/* A <fieldset>, not a div with role="group": the accessible grouping is the
+   same (implicit role group + aria-label), and a native element is what the
+   a11y gate insists on. Its own chrome is reset to nothing — the only border
+   this section wants is the rule that separates it from the panel list. */
+.section {
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  border: none;
+  border-top: 1px solid var(--border-primary);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel-head);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--accent-primary);
+}
+
+.list {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+
+/* A preset row is the load button plus its bin, side by side on one line. */
+.presetRow {
+  display: flex;
+  align-items: center;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 13px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover:not(:disabled) {
+  background: var(--panel-head);
+}
+
+/* An unreadable stored record: still listed (so it can be deleted), never
+   loadable. */
+.row:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.binButton,
+.confirmButton,
+.cancelButton {
+  flex: none;
+  padding: 8px 9px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 15px;
+  cursor: pointer;
+}
+
+.binButton {
+  color: var(--text-muted);
+}
+
+.confirmButton {
+  color: var(--accent-negative);
+}
+
+.cancelButton {
+  color: var(--text-secondary);
+}
+
+/* The in-menu name field: one line, field + Save + Cancel. */
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+}
+
+.nameField {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background-color: var(--bg-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.nameButton {
+  flex: none;
+  padding: 5px 7px;
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  background-color: transparent;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.nameButton:hover {
+  color: var(--text-primary);
+}
+
+/* The overwrite confirm, shown only when the typed name is already taken. */
+.confirmRow {
+  display: block;
+  width: 100%;
+  padding: 8px 13px;
+  border: none;
+  background: var(--panel-head);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--accent-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.message {
+  margin: 0;
+  padding: 0 13px 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}

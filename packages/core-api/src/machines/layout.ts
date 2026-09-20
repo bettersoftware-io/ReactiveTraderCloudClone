@@ -40,6 +40,13 @@ export interface LayoutIntents {
   /** Discard the tree, `maximized`, `collapsed`, and `instances` back to
    * `port.initial` — the port this machine was created with. */
   reset(): void;
+  /** Replace the whole layer-2 state — tree, `maximized`, `collapsed`,
+   * `closed`, `instances` — with `state` (a layout preset load). The caller
+   * validates `state` first (`parseLayoutPresetList` does, through
+   * `parseWorkspaceLayout`'s walk); the reducer trusts it. `staticIds` keep
+   * deriving from `port.initial`, so a replaced tree's dock column is still
+   * recognised as one. */
+  replaceLayout(state: LayoutState): void;
 }
 
 export interface LayoutMachineOptions {

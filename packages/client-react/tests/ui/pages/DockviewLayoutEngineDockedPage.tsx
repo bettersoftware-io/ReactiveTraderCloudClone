@@ -62,10 +62,30 @@ export interface DockviewLayoutEngineDockedPage {
   maximizedAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
+  /** The panel titles sharing `panelId`'s dockview group, in tab order —
+   * the witness for WHERE a panel sits, which `groupsAttr` cannot give (a
+   * panel stacked into another group and a panel scrubbed away both leave
+   * the group count unchanged). Empty when the panel is not mounted. */
+  groupMatesOf(panelId: string): readonly string[];
   /** Whether `panelId`'s tab slot carries dockview-hud.css's strip marker
    * (`data-dock-strip`) — set the instant the live diff effect calls
    * `collapsePanel`, so unlike `groupsAttr` this needs no `waitFor`. */
   stripMarked(panelId: string): boolean;
+  /** Whether both panels' tab slots sit inside the SAME dockview group
+   * element — the LIVE-DOM stack witness. `groupsAttr` only COUNTS groups;
+   * this says WHICH panels share one, so a blob whose distinguishing
+   * structure is "these two are tabbed together" can be asserted positively
+   * on the rendered tree rather than only in the persisted JSON.
+   * `.dv-groupview` is the same dockview-internal class name the bridge's own
+   * mount callback keys off. */
+  sharesGroupInDom(panelIdA: string, panelIdB: string): boolean;
+  /** Dispatches a bubbling `pointerdown` inside the engine's dockview
+   * container, which arms `createDockEngine`'s `userArranged` origin flag —
+   * the gate on whether its `dispose()` flushes one final serialize. jsdom
+   * never produces a real pointer, so an untouched engine skips that flush
+   * entirely: without this, a spec measuring what a REBUILD does with the
+   * outgoing engine's last write would pass with the hazard simply absent. */
+  pressDockContainer(): void;
   /** Runs `assertion` until it stops throwing (or `options.timeout` elapses)
    * — the spec supplies the assertion, this page owns the polling mechanic. */
   waitFor(assertion: () => void, options?: WaitForOptions): Promise<void>;
@@ -135,6 +155,16 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;
     },
+    groupMatesOf(panelId: string): readonly string[] {
+      const tab = screen.queryByTestId(`dock-tab-${panelId}`);
+      const group = tab?.closest(".dv-groupview");
+
+      return [...(group?.querySelectorAll("[data-panel-title]") ?? [])].map(
+        (slot) => {
+          return slot.getAttribute("data-panel-title") ?? "";
+        },
+      );
+    },
     stripMarked(panelId: string): boolean {
       return (
         screen
@@ -142,8 +172,38 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
           .getAttribute("data-dock-strip") === "true"
       );
     },
+    sharesGroupInDom(panelIdA: string, panelIdB: string): boolean {
+      const groupA = dockGroupOf(panelIdA);
+
+      return groupA !== null && groupA === dockGroupOf(panelIdB);
+    },
+    pressDockContainer(): void {
+      dockContainer().dispatchEvent(
+        new Event("pointerdown", { bubbles: true }),
+      );
+    },
     waitFor(assertion: () => void, options?: WaitForOptions): Promise<void> {
       return waitFor(assertion, options);
     },
   };
+}
+
+/** The dockview group element `panelId`'s tab slot lives in, or null when the
+ * tab is not inside one — see `sharesGroupInDom`. */
+function dockGroupOf(panelId: string): Element | null {
+  return screen.getByTestId(`dock-tab-${panelId}`).closest(".dv-groupview");
+}
+
+/** The element the bridge hands `createDockEngine` as its `container` — the
+ * engine root's only child (see the component's render). Throws rather than
+ * returning null: a missing container means the bridge stopped rendering it,
+ * which must fail loudly instead of making `pressDockContainer` a no-op. */
+function dockContainer(): HTMLElement {
+  const container = screen.getByTestId("layout-engine").firstElementChild;
+
+  if (!(container instanceof HTMLElement)) {
+    throw new Error("the engine root has no dockview container child");
+  }
+
+  return container;
 }

@@ -252,6 +252,15 @@ export interface DockEngine {
   floatPanel(panelId: string): boolean;
   /** Returns a floating panel to its seed-home slot; no-op when not floating. */
   dockPanel(panelId: string): void;
+  /** The exact string the next debounced `onLayoutChange` write would carry,
+   * built from the LIVE arrangement right now — no debounce wait, no seed
+   * expiry, and no call to `onLayoutChange` itself. For a preset save, which
+   * must capture what the user is looking at rather than whatever the store
+   * last happened to persist. Goes through the same scrubs the save path
+   * does: a popped-out panel is never carried (session-scoped), a floating
+   * one always is (persisted by design). Side-effect-free: safe to call any
+   * number of times without changing what the debounced save later writes. */
+  snapshotLayout(): string;
   groupCount(): number;
   dispose(): void;
 }
@@ -349,7 +358,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   const debounceMs = opts.debounceMs ?? 250;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
-  function serializeLayout(): void {
+  /** The blob `serializeLayout` hands `onLayoutChange` — built fresh from the
+   * live engine state every call, with no seed expiry and no callback of its
+   * own. `snapshotLayout()` exposes it so a preset save captures the LIVE
+   * arrangement rather than the debounced store's last write.
+   *
+   * Safe to call any number of times with no observable difference between
+   * calls: `stripGeometrySidecar`/`floatSizesSidecar` below read `records` /
+   * `flippedSplits` / `floatHomeSizes` — the resolved live ledgers — never
+   * `seededStripSizes`/`seededFlipSizes` (those are consumed only inside
+   * `recordStrip` and `settleStrips`, on the intent-replay path). So moving
+   * the seed-expiry clears out of this function, into `serializeLayout`
+   * below, changes nothing about the bytes this produces. */
+  function buildLayoutBlob(): string {
     // With no theme gap, dockview's toJSON IS the model — no compensation.
     // `rtcBlobVersion` marks the blob as gap-0 era; a blob without it is
     // migrated on load (migrateDockBlob).
@@ -361,42 +382,50 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // way: the grid itself serialises AS RENDERED — bars included — so
     // without it a reload's re-applied collapse would remember the restored
     // bar (clamped up to dockview's ~100px default minimum) as the size to
-    // restore. The first save also expires any seeds the bridge's intent
-    // replay did not consume: past this point they describe strips the
-    // machine never re-applied, and a later collapse must measure live.
-    seededStripSizes.clear();
-    seededFlipSizes.clear();
+    // restore.
     const stripGeometry = stripGeometrySidecar();
     // `rtcFloatSizes` (present only while a float remembers a home size)
     // rides the same way: a float persists, so the extent its dock-home
     // puts back must persist with it — the grid alone no longer holds it.
     const floatSizes = floatSizesSidecar();
-    opts.onLayoutChange(
-      JSON.stringify({
-        // Lock marks are derived from strip membership (audit S1) and
-        // must never persist — see withoutLockMarks. Popout state is
-        // session-scoped the same way: a mid-popout save re-parents the
-        // popped panels onto their hidden reference leaf so a reload
-        // restores fully docked — see withoutPopoutGroups.
-        //
-        // Floating state is the opposite: a float persists DELIBERATELY
-        // (design §3.3) via dockview's own `floatingGroups` key, which
-        // `api.toJSON()` already emits and `api.fromJSON()` already
-        // restores — nothing here scrubs it. `withoutFloatingGroups` exists
-        // only as a LOAD-time retry (see loadBlobOrSeed) and must never be
-        // called from this save path; the asymmetry with
-        // `withoutPopoutGroups` above is that decision, not an omission.
-        ...(withoutPopoutGroups(withoutLockMarks(api.toJSON())) as ReturnType<
-          DockviewApi["toJSON"]
-        >),
-        rtcBlobVersion: DOCK_BLOB_VERSION,
-        rtcDesignPins: intactDesignPins(),
-        ...(stripGeometry === undefined
-          ? {}
-          : { rtcStripGeometry: stripGeometry }),
-        ...(floatSizes === undefined ? {} : { rtcFloatSizes: floatSizes }),
-      }),
-    );
+
+    return JSON.stringify({
+      // Lock marks are derived from strip membership (audit S1) and
+      // must never persist — see withoutLockMarks. Popout state is
+      // session-scoped the same way: a mid-popout save re-parents the
+      // popped panels onto their hidden reference leaf so a reload
+      // restores fully docked — see withoutPopoutGroups.
+      //
+      // Floating state is the opposite: a float persists DELIBERATELY
+      // (design §3.3) via dockview's own `floatingGroups` key, which
+      // `api.toJSON()` already emits and `api.fromJSON()` already
+      // restores — nothing here scrubs it. `withoutFloatingGroups` exists
+      // only as a LOAD-time retry (see loadBlobOrSeed) and must never be
+      // called from this save path; the asymmetry with
+      // `withoutPopoutGroups` above is that decision, not an omission.
+      ...(withoutPopoutGroups(withoutLockMarks(api.toJSON())) as ReturnType<
+        DockviewApi["toJSON"]
+      >),
+      rtcBlobVersion: DOCK_BLOB_VERSION,
+      rtcDesignPins: intactDesignPins(),
+      ...(stripGeometry === undefined
+        ? {}
+        : { rtcStripGeometry: stripGeometry }),
+      ...(floatSizes === undefined ? {} : { rtcFloatSizes: floatSizes }),
+    });
+  }
+
+  function serializeLayout(): void {
+    // The first save also expires any seeds the bridge's intent replay did
+    // not consume: past this point they describe strips the machine never
+    // re-applied, and a later collapse must measure live. This clear sits
+    // BEFORE `buildLayoutBlob()` — matching the order the two had inside the
+    // one function this was split from — though the order is not actually
+    // load-bearing for the bytes produced: see `buildLayoutBlob`'s own
+    // comment for why.
+    seededStripSizes.clear();
+    seededFlipSizes.clear();
+    opts.onLayoutChange(buildLayoutBlob());
   }
 
   /** Each floating panel's remembered home extent, for the blob. Undefined
@@ -1158,6 +1187,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return [panel.id, panel.initialPx] as const;
       }),
   );
+  // Where the construction-time orphan scrub found each dynamic panel it
+  // removed, so a LATE listing puts it back there instead of at the grid's
+  // right edge. The scrub cannot tell "layer 2 dropped this panel" from
+  // "layer 2 has not loaded yet" — both clients bind the docked set through
+  // a stream whose hook returns its default `[]` on the first render, so a
+  // reload (and a tab switch back) builds the engine before the set is
+  // known — and it must keep removing the first while no longer DESTROYING
+  // the second. Parking is what makes the removal recoverable: a panel the
+  // user dragged onto another group comes back to that group, not to a
+  // fresh right-edge column. Entries are consumed by the re-add and are
+  // otherwise inert for the engine's life.
+  const parkedPlacements = new Map<string, DockParkedPlacement>();
   // Width-axis splits that owe a share (R18–R20), keyed by a member
   // INSTANCE's panel id, never a split Element — dockview rebuilds split
   // Elements on restructure, so the split is re-derived from the id's group
@@ -1674,17 +1715,32 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return;
     }
 
+    // A placement the scrub parked decides WHERE, and only where: the design
+    // width still applies exactly as it does to a first-time dock, so a
+    // panel that merely round-trips a reload comes back the size it always
+    // did. The one exception is a panel rejoining an existing group as a
+    // tab — its size is that group's business, and pinning the shared group
+    // to this panel's design width would shrink whatever it joined.
+    const parked = takeParkedPlacement(panel.id);
+    const joinsGroup = parked?.direction === "within";
+
     api.addPanel({
       id: panel.id,
       component: RTC_PANEL_COMPONENT,
       title: opts.panels.title(panel.id),
-      position: { direction: "right" },
-      initialWidth: panel.initialPx + GROUP_GAP_PX,
+      position:
+        parked === null
+          ? { direction: "right" }
+          : {
+              referencePanel: parked.anchorPanelId,
+              direction: parked.direction,
+            },
+      ...(joinsGroup ? {} : { initialWidth: panel.initialPx + GROUP_GAP_PX }),
     });
 
     if (panel.unpinned === true) {
       unpinnedDynamicPanels.set(panel.id, panel.initialPx);
-    } else {
+    } else if (!joinsGroup) {
       registerDesignPin({
         panelIds: [panel.id],
         px: panel.initialPx,
@@ -1731,9 +1787,61 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       if (panel.unpinned === true) {
         owedShares.set(panel.id, "maximize"); // paid when the maximize ends
       }
-    } else if (panel.unpinned === true) {
+    } else if (panel.unpinned === true && !joinsGroup) {
       shareInstanceSplitOf(panel.id);
     }
+  }
+
+  /** The parked placement for `panelId`, removed from the map as it is read
+   * — a placement is spent by the re-add it serves, and a panel the user
+   * drags again parks afresh. Null when nothing is parked, or when the
+   * anchor it names has since left the grid (a second scrubbed panel it was
+   * stacked with, a closed static panel), which is the caller's cue to fall
+   * back to the right edge. */
+  function takeParkedPlacement(panelId: string): DockParkedPlacement | null {
+    const parked = parkedPlacements.get(panelId);
+
+    parkedPlacements.delete(panelId);
+
+    if (
+      parked === undefined ||
+      api.getPanel(parked.anchorPanelId) === undefined
+    ) {
+      return null;
+    }
+
+    return parked;
+  }
+
+  /** Where `panelId` sits RIGHT NOW, as the anchor a later re-add uses.
+   * Read from the live arrangement immediately before the scrub removes it:
+   * a group-mate (the user's tab stack) if it has one that is staying, else
+   * its position in the grid, which {@link gridAnchorFor} reads off
+   * dockview's own serialized tree — jsdom gives every element a zero rect,
+   * so geometry is not a witness here. */
+  function placementOf(
+    panelId: string,
+    leaving: ReadonlySet<string>,
+  ): DockParkedPlacement | null {
+    const panel = api.getPanel(panelId);
+
+    if (panel === undefined) {
+      return null;
+    }
+
+    const stackmate = panel.group.panels.find((sibling) => {
+      return sibling.id !== panelId && !leaving.has(sibling.id);
+    });
+
+    if (stackmate !== undefined) {
+      return { anchorPanelId: stackmate.id, direction: "within" };
+    }
+
+    return gridAnchorFor(api.toJSON(), panelId, (candidateId) => {
+      return (
+        !leaving.has(candidateId) && api.getPanel(candidateId) !== undefined
+      );
+    });
   }
 
   /** Closes a dynamic panel and its group. Restores anything the panel's own
@@ -2247,10 +2355,26 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }),
     );
 
-    for (const panel of [...api.panels]) {
-      if (!staticIds.has(panel.id) && !listed.has(panel.id)) {
-        deleteDynamicPanel(panel.id);
+    // Everything the scrub is about to take, known BEFORE the first removal
+    // so a placement never anchors to a panel that is leaving too.
+    const leaving = new Set(
+      api.panels
+        .filter((panel) => {
+          return !staticIds.has(panel.id) && !listed.has(panel.id);
+        })
+        .map((panel) => {
+          return panel.id;
+        }),
+    );
+
+    for (const panelId of leaving) {
+      const placement = placementOf(panelId, leaving);
+
+      if (placement !== null) {
+        parkedPlacements.set(panelId, placement);
       }
+
+      deleteDynamicPanel(panelId);
     }
 
     for (const panel of listed.values()) {
@@ -3484,6 +3608,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // (Ruling 10) and an instance's re-share (R6) all ran inside the move
       // above, from settleFloatTransitions — the path a drag home takes too.
     },
+    snapshotLayout: (): string => {
+      return buildLayoutBlob();
+    },
     groupCount: () => {
       return groupsAnywhere(api).length;
     },
@@ -4698,6 +4825,84 @@ function applyTitles(api: DockviewApi, hooks: DockPanelHooks): void {
   for (const panel of api.panels) {
     panel.setTitle(hooks.title(panel.id));
   }
+}
+
+/** Where a scrubbed dynamic panel sat — the record `parkedPlacements` holds
+ * (see it). `"within"` means it shared a group (a user's tab stack); the
+ * rest are grid directions, exactly {@link SeedAnchor}'s. */
+interface DockParkedPlacement {
+  readonly anchorPanelId: string;
+  readonly direction: SeedAnchor["direction"] | "within";
+}
+
+/** {@link seedAnchorFor}'s rule applied to a LIVE arrangement: dockview's
+ * serialized grid converted to the same shape, so one proximity-and-
+ * direction walk serves both the seed (a reopened static panel) and the
+ * grid (a re-added dynamic one). Null when the tree holds no live anchor. */
+function gridAnchorFor(
+  serialized: SerializedDockview,
+  panelId: string,
+  isLive: (candidateId: string) => boolean,
+): SeedAnchor | null {
+  const tree = seedLikeTreeOf(
+    serialized.grid.root,
+    serialized.grid.orientation === "VERTICAL" ? "column" : "row",
+  );
+
+  return tree === null ? null : seedAnchorFor(tree, panelId, isLive);
+}
+
+/** dockview's serialized grid as a {@link DockSeedNode}. Dockview's gridview
+ * alternates orientation by DEPTH — the root branch arranges its children
+ * along the grid's own orientation, each child branch along the other — so
+ * `dir` flips on the way down rather than being read per node (the
+ * serialized form carries it only at the root). A leaf holding several views
+ * is a tab stack: it becomes a split whose `dir` never decides anything,
+ * because a panel inside it is reached as an anchor, never as the subject
+ * (a stacked subject takes the group-mate branch in `placementOf`).
+ * `sizes` is filled evenly: the anchor walk reads structure, not extent. */
+function seedLikeTreeOf(
+  node: GridNode,
+  dir: "row" | "column",
+): DockSeedNode | null {
+  if (node.type === "leaf") {
+    const views = (node.data as LeafData).views ?? [];
+
+    const panels = views.map((panelId): DockSeedNode => {
+      return { kind: "panel", panelId };
+    });
+
+    return panels.length === 0
+      ? null
+      : panels[0] !== undefined && panels.length === 1
+        ? panels[0]
+        : {
+            kind: "split",
+            dir,
+            children: panels,
+            sizes: evenSizes(panels.length),
+          };
+  }
+
+  const children = (node.data as readonly GridNode[])
+    .map((child) => {
+      return seedLikeTreeOf(child, dir === "row" ? "column" : "row");
+    })
+    .filter((child): child is DockSeedNode => {
+      return child !== null;
+    });
+
+  return children.length === 0
+    ? null
+    : { kind: "split", dir, children, sizes: evenSizes(children.length) };
+}
+
+/** `count` fractions summing to 1 — the placeholder a structural walk needs
+ * and never reads. */
+function evenSizes(count: number): readonly number[] {
+  return Array.from({ length: count }, () => {
+    return 1 / count;
+  });
 }
 
 /** Where a reopened panel goes: addPanel relative to the anchor panel's

@@ -74,6 +74,15 @@ const scenarioActions: Record<string, ScenarioAction> = {
     click: "view-menu-toggle",
     waitForText: "4/4 visible",
   },
+  // Same interaction as shell/view-menu-open (open the real dropdown), over
+  // the app-fx-layouts-dockview fixture: "Morning Desk" is a saved-preset
+  // row's own name, so it only appears once the LAYOUTS section's Dockview
+  // arm has rendered — proving the section itself, not just the menu.
+  "shell/view-menu-layouts-dockview": {
+    fullPage: true,
+    click: "view-menu-toggle",
+    waitForText: "Morning Desk",
+  },
   // The aurora ambient-style variant of the FX page — a full-bleed App scenario
   // like app/fx, so it must capture full-page (App renders no scenario-root
   // wrapper). #259 added the scenario without this action, so the harness fell

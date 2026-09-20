@@ -54,6 +54,26 @@ export interface DockLayoutStore {
   clear(tab: string): void;
 }
 
+/** Per-tab persistence for a tab's saved layout presets, as ONE opaque
+ * serialized list per tab (`serializeLayoutPresetList`'s output). A raw
+ * string on purpose — the twin of `DockLayoutStore`: every rule (versions,
+ * unreadable records, names) lives once in client-core's codec, not in each
+ * client's adapter copy. `load` returns null when nothing is stored.
+ *
+ * INVARIANT: After `save(tab, s)`, a `load(tab)` must return **exactly** the
+ * string `s`, byte for byte. This invariant is relied on by `writeList` to
+ * detect writes the browser silently swallowed (private-mode Safari, disabled
+ * site data, exhausted quota): a re-read that returns the previous string
+ * instead of the one just written signals a failed write. Adapters that
+ * normalize on read — trimming, compressing, re-serializing JSON, or a
+ * server-backed store echoing a canonical body — will make every save report
+ * `storage-failed`. */
+export interface LayoutPresetStore {
+  load(tab: string): string | null;
+  save(tab: string, serialized: string): void;
+  clear(tab: string): void;
+}
+
 /** Brain + effort selection threaded onto one `ask()` turn — forwarded onto
  * the wire `JarvisChatPayload.brain`/`.effort` by `WsJarvisAdapter`;
  * `ScriptedJarvisAdapter` (the scripted brain has no notion of either)

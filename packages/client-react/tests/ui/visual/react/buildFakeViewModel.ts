@@ -69,6 +69,7 @@ import type {
   JarvisDriverState,
   JarvisPanelVm,
   JarvisState,
+  LayoutPresetSummary,
   LayoutState,
   NotionalView,
   SessionUser,
@@ -409,6 +410,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         openInstance: noop,
         closeInstance: noop,
         reset: noop,
+        replaceLayout: noop,
       };
     },
     // Reset workspace layout (Preferences → DATA & PRIVACY): static
@@ -427,6 +429,25 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // a reset.
     useWorkspaceLayoutResets: () => {
       return 0;
+    },
+    // Saved layouts (Phase 6b Task 6): the seeded summary list (`data
+    // .layoutPresets`, Task 11) with inert commands — static screenshots
+    // never save/load/delete a preset.
+    useLayoutPresets: (_tab: WorkspaceTab) => {
+      return {
+        presets: layoutPresetsIn(data),
+        save: () => {
+          return { status: "unavailable" as const };
+        },
+        load: () => {
+          return false;
+        },
+        remove: noop,
+        resetTab: noop,
+      };
+    },
+    useRegisterLayoutSnapshot: () => {
+      return noop;
     },
     // Boot sequence: visual goldens capture post-boot UI; return a static initial
     // state with noop skip. The BootSequence component is not rendered in any
@@ -760,4 +781,10 @@ function dockedPanelIdsIn(data: AppData): readonly string[] {
     .map((panel) => {
       return panel.panelId;
     });
+}
+
+/** `AppData.layoutPresets` defaults to `[]`, exactly like every other
+ * data-driven fake above (e.g. `useWatchlist`). */
+function layoutPresetsIn(data: AppData): readonly LayoutPresetSummary[] {
+  return data.layoutPresets ?? [];
 }

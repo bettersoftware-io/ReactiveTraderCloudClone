@@ -42,6 +42,13 @@ interface DockviewLayoutEngineBridgeMountProps {
     tab: WorkspaceTab,
     panelIds: readonly PanelId[],
   ) => void;
+  /** Default absent — the bridge registers its live snapshot source with
+   * nobody. The snapshot spec passes a recorder to assert the source/null
+   * sequence and what each registered source reads. */
+  onSnapshotSourceChange?: (
+    tab: WorkspaceTab,
+    source: (() => string) | null,
+  ) => void;
 }
 
 function noop(): void {}
@@ -133,6 +140,7 @@ export function dockviewLayoutEngineBridgePage(): DockviewLayoutEngineBridgePage
             onExpand={noop}
             onCloseInstance={props.onCloseInstance ?? noop}
             onDetachedPanelsChange={props.onDetachedPanelsChange}
+            onSnapshotSourceChange={props.onSnapshotSourceChange}
           />
         );
       });
