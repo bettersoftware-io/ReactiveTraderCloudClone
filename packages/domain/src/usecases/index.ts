@@ -19,6 +19,7 @@ export { RfqQuoteUseCase } from "./RfqQuoteUseCase.js";
 export { TradeBlotterUseCase } from "./TradeBlotterUseCase.js";
 export type { RfqStreamState } from "./WorkflowEventStreamUseCase.js";
 export {
+  createEmptyRfqStreamState,
   reduceRfqEvent,
   WorkflowEventStreamUseCase,
 } from "./WorkflowEventStreamUseCase.js";

@@ -84,6 +84,19 @@ describe("createMachineFactories — wiring", () => {
     expect(spies.requestQuote).not.toHaveBeenCalled();
     expect(spies.place).not.toHaveBeenCalled();
   });
+
+  it("rfqCountdown seeds from its two arguments — a 300 ms window created now starts at 300", () => {
+    const factories = createMachineFactories(createStubPresenters().presenters);
+    const machine = factories.rfqCountdown(Date.now(), 300);
+    let seen: number | null = null;
+    machine.state$
+      .subscribe((value) => {
+        seen = value;
+      })
+      .unsubscribe();
+    expect(seen).toBe(300);
+    machine.dispose();
+  });
 });
 
 interface FactorySpies {

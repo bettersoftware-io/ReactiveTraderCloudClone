@@ -10,7 +10,10 @@ export interface RfqStreamState {
   readonly quotes: ReadonlyMap<number, Quote>;
 }
 
-function emptyState(): RfqStreamState {
+/** The reducer's seed — what the RFQ stream holds before the first event
+ * and after `startOfStateOfTheWorld`. Exported because every application
+ * core runs `reduceRfqEvent` from this same seed under its own runtime. */
+export function createEmptyRfqStreamState(): RfqStreamState {
   return { rfqs: new Map(), quotes: new Map() };
 }
 
@@ -20,7 +23,7 @@ export function reduceRfqEvent(
 ): RfqStreamState {
   switch (event.type) {
     case "startOfStateOfTheWorld":
-      return emptyState();
+      return createEmptyRfqStreamState();
     case "endOfStateOfTheWorld":
       return state;
     case "rfqCreated":
@@ -48,6 +51,8 @@ export class WorkflowEventStreamUseCase {
   constructor(private readonly workflow: WorkflowPort) {}
 
   execute(): Observable<RfqStreamState> {
-    return this.workflow.events().pipe(scan(reduceRfqEvent, emptyState()));
+    return this.workflow
+      .events()
+      .pipe(scan(reduceRfqEvent, createEmptyRfqStreamState()));
   }
 }

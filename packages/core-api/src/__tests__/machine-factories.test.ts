@@ -7,7 +7,7 @@ import type {
 } from "#/index";
 
 describe("MachineFactories contract", () => {
-  it("has exactly the eleven factory members", () => {
+  it("has exactly the twelve factory members", () => {
     expectTypeOf<keyof MachineFactories>().toEqualTypeOf<
       | "tileExecution"
       | "rfqTile"
@@ -17,6 +17,7 @@ describe("MachineFactories contract", () => {
       | "notional"
       | "rfqSubmission"
       | "ticketSubmission"
+      | "rfqCountdown"
       | "layout"
       | "boot"
       | "orderTicket"

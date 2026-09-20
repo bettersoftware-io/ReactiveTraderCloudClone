@@ -70,6 +70,7 @@
     "notional": "native",
     "rfqSubmission": "delegated",
     "ticketSubmission": "delegated",
+    "rfqCountdown": "delegated",
     "layout": "delegated",
     "boot": "delegated",
     "orderTicket": "delegated"
