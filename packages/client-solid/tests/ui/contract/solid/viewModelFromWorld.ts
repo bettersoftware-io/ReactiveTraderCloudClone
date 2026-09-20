@@ -16,6 +16,7 @@ import { createSignal } from "solid-js";
 
 import type {
   DockedPanelPlacement,
+  DockLayoutStore,
   DriveOutcome,
   JarvisDemoMachineHandle,
   JarvisDriverMachineHandle,
@@ -25,11 +26,14 @@ import type {
   JarvisPanelVm,
   LayoutIntents,
   LayoutNode,
+  LayoutPresetSummary,
+  LayoutPresetsPresenter,
   LayoutState,
   Machine,
   PanelData,
   PanelInstance,
   RfqSubmissionState,
+  SaveLayoutPresetOptions,
   TicketSubmissionState,
   WorkspaceLayoutV1,
   WorkspaceNavIntents,
@@ -45,6 +49,7 @@ import {
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
+  createLayoutPresets,
   createNotionalMachine,
   createOrderTicketMachine,
   createRfqCountdownMachine,
@@ -55,6 +60,7 @@ import {
   createWorkspaceNavMachine,
   createWorkspacePersistenceWriter,
   InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
   JarvisPanelsPresenter,
   parseWorkspaceLayout,
   STATIC_WORKSPACE_PANEL_IDS,
@@ -948,6 +954,66 @@ function dockedPanelIds$(
   );
 }
 
+/** The REAL `createLayoutPresets` controller (Phase 6b Task 6), one instance
+ * PER WORLD — same per-World-singleton doctrine as `getLayoutFor`/
+ * `getWorkspaceNav` above, mirroring `composition.ts`'s own
+ * `Presenters.layoutPresets` singleton (and the react driver's identical
+ * `getLayoutPresets`). Every rule (save/load/delete/name/cap/unreadable)
+ * lives ONCE in the controller; this fixture supplies only its dependencies
+ * — `layoutFor`/`layoutStateNow` reuse `getLayoutFor`/`readStateNow` exactly
+ * as `useLayout` does below, `dockedPanelIdsNow` reuses the same
+ * `dockedPanelIdsFor` filter `dockedPanelIds$` reads, and `rebuildLiveEngine`
+ * bumps the SAME `workspaceLayoutResets` subject `resetWorkspaceLayoutFor`
+ * does. Seeded from `World.layoutPresetsSeed` — a later contract spec's
+ * deliberately unreadable record needs a raw string, not a typed shape (see
+ * that field's own doc). `dockStore` is the caller's own per-`solidViewModel`
+ * -call instance (mirrors `useDockLayoutStore`'s passthrough): only the
+ * FIRST call's store is captured, since the controller itself is cached —
+ * the same "first call wins" shape as every other WeakMap-cached singleton
+ * here. */
+const layoutPresetsControllers = new WeakMap<World, LayoutPresetsPresenter>();
+
+function getLayoutPresets(
+  world: World,
+  dockStore: DockLayoutStore,
+): LayoutPresetsPresenter {
+  const cached = layoutPresetsControllers.get(world);
+
+  if (cached) {
+    return cached;
+  }
+
+  const store = new InMemoryLayoutPresetStore();
+
+  for (const [tab, raw] of Object.entries(world.layoutPresetsSeed)) {
+    store.save(tab, raw);
+  }
+
+  const controller = createLayoutPresets({
+    store,
+    dockLayoutStore: dockStore,
+    layoutFor: (tab: WorkspaceTab) => {
+      return getLayoutFor(world, tab);
+    },
+    layoutStateNow: (tab: WorkspaceTab) => {
+      return readStateNow(
+        getLayoutFor(world, tab).state$,
+        createDefaultLayoutPort(tab).initial,
+      );
+    },
+    dockedPanelIdsNow: (tab: WorkspaceTab) => {
+      return dockedPanelIdsFor(world, tab);
+    },
+    rebuildLiveEngine: () => {
+      world.workspaceLayoutResets.next(
+        world.workspaceLayoutResets.getValue() + 1,
+      );
+    },
+  });
+  layoutPresetsControllers.set(world, controller);
+  return controller;
+}
+
 /** Build a reactive ViewModel backed by the neutral World — the Solid
  * counterpart of the react driver's `reactViewModel`. Member-by-member this
  * mirrors that file (same World, same machine factories, same command
@@ -1496,6 +1562,35 @@ export function solidViewModel(world: World): ViewModel {
     // `Presenters.workspaceLayoutResets$`, bumped by `resetWorkspaceLayoutFor`.
     useWorkspaceLayoutResets: () => {
       return wrapSubject(world.workspaceLayoutResets);
+    },
+    // Saved layouts (Phase 6b Task 6): the REAL createLayoutPresets
+    // controller (getLayoutPresets above), pre-bound to `tab` — every rule
+    // lives in the controller, this hook is a direct passthrough.
+    useLayoutPresets: (tab: WorkspaceTab) => {
+      const controller = getLayoutPresets(world, dockStore);
+      return {
+        presets: toSignal(
+          state(
+            controller.presetsFor(tab),
+            [] as readonly LayoutPresetSummary[],
+          ),
+        ),
+        save: (name: string, options?: SaveLayoutPresetOptions) => {
+          return controller.save(tab, name, options);
+        },
+        load: (id: string) => {
+          return controller.load(tab, id);
+        },
+        remove: (id: string) => {
+          controller.remove(tab, id);
+        },
+        resetTab: () => {
+          controller.resetTab(tab);
+        },
+      };
+    },
+    useRegisterLayoutSnapshot: () => {
+      return getLayoutPresets(world, dockStore).registerSnapshotSource;
     },
     // Boot sequence: no contract spec exercises the boot sequence beyond its
     // own BootSequence.contract.spec.ts (Task 9); use the REAL machine with a

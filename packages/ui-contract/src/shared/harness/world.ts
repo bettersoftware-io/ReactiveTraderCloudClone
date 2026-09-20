@@ -16,6 +16,7 @@ import type {
   PanelStreamDeps,
   SessionUser,
   ThroughputView,
+  WorkspaceTab,
 } from "@rtc/client-core";
 import {
   createEqDrawingsMachine,
@@ -459,6 +460,19 @@ export interface World {
    * `createWorld(…, workspaceLayoutSeed)` seeded with the string read back off
    * the first World — see `createWorld`'s `workspaceLayoutSeed` parameter. */
   readonly workspaceLayout: BehaviorSubject<string | null>;
+  /** Raw serialized layout-preset-list strings (Phase 6b Task 6), one per
+   * tab, exactly as `LayoutPresetStore` stores them — read ONCE by each
+   * framework's `viewModelFromWorld` driver to seed the `InMemoryLayoutPresetStore`
+   * it builds its `LayoutPresetsPresenter` over. A raw string on purpose,
+   * mirroring `workspaceLayout` above: a later contract spec seeds a
+   * deliberately unreadable record (an unknown version, or the whole-list
+   * sentinel) to prove the menu greys it out, which is impossible through a
+   * typed shape — see `layoutPresetCodec`'s module doc. Unlike
+   * `workspaceLayout` this is not reactive (no BehaviorSubject): the preset
+   * list's own liveness comes from the controller's `presetsFor(tab)`
+   * stream, not from World directly. Defaults to `{}` (every tab starts with
+   * no saved presets). */
+  readonly layoutPresetsSeed: Readonly<Partial<Record<WorkspaceTab, string>>>;
   /** Bumps once per workspace-layout reset — the fake-World form of
    * `Presenters.workspaceLayoutResets$`. Each framework's
    * `viewModelFromWorld` driver's `resetWorkspaceLayoutFor` nexts this at
@@ -637,6 +651,8 @@ export function createWorld(
    * fixture's `parseWorkspaceLayout` is fail-closed, so the World simply
    * boots on defaults. */
   workspaceLayoutSeed?: string | null,
+  /** Seeds `World.layoutPresetsSeed` (Phase 6b Task 6); defaults to `{}`. */
+  layoutPresetsSeed?: Readonly<Partial<Record<WorkspaceTab, string>>>,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -1056,6 +1072,7 @@ export function createWorld(
       return jarvisUsage$.next(value);
     },
     workspaceLayout,
+    layoutPresetsSeed: layoutPresetsSeed ?? {},
     workspaceLayoutResets,
     animatedBackground,
     powerSaverLevel,

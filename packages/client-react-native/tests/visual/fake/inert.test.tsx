@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { inertSlice } from "./inert";
 
 describe("inertSlice", () => {
-  it("has exactly the 22 hooks InertSlice names — no more, no fewer", () => {
+  it("has exactly the 24 hooks InertSlice names — no more, no fewer", () => {
     const expectedKeys = [
       "useAnimationIntents",
       "useDockedPanelIds",
@@ -18,7 +18,9 @@ describe("inertSlice", () => {
       "useJarvisUsage",
       "useLayout",
       "useLayoutEngine",
+      "useLayoutPresets",
       "useMetrics",
+      "useRegisterLayoutSnapshot",
       "useReportDetachedPanels",
       "useSessionCountSeries",
       "useSessions",
@@ -223,6 +225,34 @@ describe("inertSlice.useLayout", () => {
   });
 });
 
+describe("inertSlice.useLayoutPresets", () => {
+  it("returns the same result, by reference, regardless of which tab is requested", () => {
+    const first = inertSlice.useLayoutPresets("fx");
+    const second = inertSlice.useLayoutPresets("equities");
+
+    expect(second).toBe(first);
+  });
+
+  it("starts with an empty preset list", () => {
+    const { presets } = inertSlice.useLayoutPresets("fx");
+
+    expect(presets).toHaveLength(0);
+  });
+
+  it("save reports unavailable, load reports not-found, remove/resetTab are callable and leave the next read unchanged", () => {
+    const before = inertSlice.useLayoutPresets("fx");
+
+    expect(before.save("My Layout")).toStrictEqual({ status: "unavailable" });
+    expect(before.load("preset-1")).toBe(false);
+    expect(() => {
+      before.remove("preset-1");
+      before.resetTab();
+    }).not.toThrow();
+
+    expect(inertSlice.useLayoutPresets("fx")).toBe(before);
+  });
+});
+
 describe("inertSlice.useMetrics", () => {
   it("returns the same result, by reference, on every call", () => {
     const first = inertSlice.useMetrics();
@@ -237,6 +267,19 @@ describe("inertSlice.useMetrics", () => {
     expect(throughput).toHaveLength(0);
     expect(latency).toHaveLength(0);
     expect(errorRate).toHaveLength(0);
+  });
+});
+
+describe("inertSlice.useRegisterLayoutSnapshot", () => {
+  it("returns a callable no-op, on every call", () => {
+    const register = inertSlice.useRegisterLayoutSnapshot();
+
+    expect(() => {
+      register("fx", () => {
+        return "{}";
+      });
+      register("fx", null);
+    }).not.toThrow();
   });
 });
 

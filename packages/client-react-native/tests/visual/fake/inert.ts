@@ -56,7 +56,7 @@ type WorkspaceNavResult = { state: WorkspaceNavState } & WorkspaceNavIntents;
 type ThroughputResult = ThroughputView & { setValue: (value: number) => void };
 
 /**
- * The 16 `ViewModel` hooks no React Native surface reads today (see
+ * The 18 `ViewModel` hooks no React Native surface reads today (see
  * `sliceTypes.ts`'s `InertSlice` doc). Every value below is the emptiest
  * thing its own type admits — no fixtures, no fabricated data — because the
  * only job this slice does is let `buildFakeViewModel` (the composed
@@ -101,6 +101,15 @@ export const inertSlice: InertSlice = {
   },
   useLayoutEngine: () => {
     return LAYOUT_ENGINE_RESULT;
+  },
+  // Saved layouts (Phase 6b Task 6): RN has no Dockview bridge (no View
+  // menu LAYOUTS section either), so this is a plain inert stub — always
+  // empty, mirroring useDockLayoutStore's DOCK_LAYOUT_STORE above.
+  useLayoutPresets: (_tab: WorkspaceTab) => {
+    return LAYOUT_PRESETS_RESULT;
+  },
+  useRegisterLayoutSnapshot: () => {
+    return noop;
   },
   useWorkspaceReset: () => {
     return noop;
@@ -303,6 +312,24 @@ const DOCK_LAYOUT_STORE: ReturnType<ViewModel["useDockLayoutStore"]> = {
 const LAYOUT_ENGINE_RESULT: ReturnType<ViewModel["useLayoutEngine"]> = {
   engine: "inhouse",
   setEngine: noop,
+};
+
+/** `useLayoutPresets()`'s resting result — same value regardless of which
+ * `WorkspaceTab` is requested (no RN surface reads this hook today, so
+ * there is no per-tab scenario to differentiate): an empty preset list,
+ * `save` always reports "unavailable" (no live Dockview engine ever
+ * registers a snapshot source on RN), `load` always reports "not found",
+ * `remove`/`resetTab` no-ops. */
+const LAYOUT_PRESETS_RESULT: ReturnType<ViewModel["useLayoutPresets"]> = {
+  presets: [],
+  save: () => {
+    return { status: "unavailable" };
+  },
+  load: () => {
+    return false;
+  },
+  remove: noop,
+  resetTab: noop,
 };
 
 /**
