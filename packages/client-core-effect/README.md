@@ -35,8 +35,8 @@ on (`layers.test.ts` pins that). The base is `provideMerge`d rather than
 `provide`d so `HostTag` stays resolvable from the finished runtime — a
 `provide` would satisfy the presenters while hiding the service the teardown
 owns. Tags are `Context.GenericTag`, never `class X extends Context.Tag(…)`:
-a class must name its file (`rtc/class-filename-match`), and twenty-two
-files for twenty-two tags would be the wrong trade.
+a class must name its file (`rtc/class-filename-match`), and twenty-six
+files for twenty-six tags would be the wrong trade.
 
 There is no kernel folder here, and there will not be one: `effect` already
 supplies the primitives `@rtc/client-core-async` had to write by hand —
@@ -160,13 +160,36 @@ read at each write, because interruption lands at the run's next suspension,
 not at the `Fiber.interrupt` call. A source failure in `staleFlag` has no
 channel on a ref, so the scope closes and the cause is rethrown out of band.
 
+**Commands and countdowns** (slice 3). A one-shot command is `rpc` under
+`Effect.suspend`, per call: `Stream.fromEffect(Effect.suspend(() =>
+rpc(port(...))))` through `streamToStream`, so nothing is subscribed until
+the returned stream is, and an unsubscribe interrupts the fiber, which
+releases the port through `rpc`'s finalizer. The five `rfqs` commands and
+`rfqQuote.requestQuote` are all that shape. The credit roster derivations
+are `mirrorPort` over a RETAINED `sharedFold` of `workflow.events()` with
+the domain reducer, each projected through a `createShallowArrayMemo` built
+ONCE per derived stream: the memo returns the PREVIOUS array whenever the
+new one is shallow-equal, which is exactly what the fold's `Object.is`
+guard then drops — `distinctUntilChanged(shallowArrayEquals)` restated
+where this core already de-duplicates. A countdown (`rfqCountdown`, and
+`rfqTile`'s received phase) is ONE looping fiber writing `setRefIfChanged`
+per tick, with `remainingMs` derived from the tick INDEX rather than the
+clock; never a timer that forks its successor, since a forked child is
+interrupted when its parent completes (the §22 fiber-ownership rule). The
+two submission machines are built by `rfqs` itself, over its own commands,
+so the wiring table hands out `presenters.rfqs.createSubmission()` rather
+than reaching for the workflow port a second time.
+
 Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
 core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 2, twenty-eight members are **native**. Slice 2 added eleven:
+As of slice 3, thirty-six members are **native**. Slice 3 added eight: the
+four credit presenters (`rfqs`, `dealers`, `instruments`, `rfqQuote`) and
+the four RFQ machines (`rfqTile`, `rfqSubmission`, `ticketSubmission`,
+`rfqCountdown`). Slice 2 added eleven:
 the FX pricing pair (`priceStream`, `priceHistory` — conflated folds),
 the three warm singletons (`currencyPairs`, `analytics`, `blotter`),
 `execution`, and five machines (`tileExecution`, `staleFlag`,

@@ -17,6 +17,8 @@ import type { EffectHost } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
 import { createNotionalMachine } from "#/machines/notional";
+import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
+import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
@@ -116,6 +118,22 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     notional: (defaultNotional: number) => {
       return createNotionalMachine(defaultNotional);
+    },
+    rfqTile: (pair: CurrencyPair) => {
+      return createRfqTileMachine(pair, {
+        requestQuote: (symbol: string, pipsPosition: number) => {
+          return presenters.rfqQuote.requestQuote(symbol, pipsPosition);
+        },
+      });
+    },
+    rfqSubmission: () => {
+      return presenters.rfqs.createSubmission();
+    },
+    ticketSubmission: () => {
+      return presenters.rfqs.createTicketSubmission();
+    },
+    rfqCountdown: (creationTimestamp: number, totalMs: number) => {
+      return createRfqCountdownMachine(creationTimestamp, totalMs);
     },
   };
 }

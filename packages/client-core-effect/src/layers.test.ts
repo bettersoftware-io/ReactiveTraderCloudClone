@@ -37,7 +37,7 @@ describe("buildAppLayer", () => {
     const { presenters, host } = runtime.runSync(
       Effect.all({ presenters: nativePresentersEffect, host: HostTag }),
     );
-    expect(Object.keys(presenters)).toHaveLength(22);
+    expect(Object.keys(presenters)).toHaveLength(26);
     expect(host.scope).toBeDefined();
     expect(counted.powerSaverLevelCalls()).toBe(1);
     // Opening a conflated fold subscribes the gate through `fromPort`, which

@@ -1,8 +1,17 @@
-import type { AnalyticsPresenter, CurrencyPairsPresenter } from "@rtc/core-api";
+import type {
+  AnalyticsPresenter,
+  CurrencyPairsPresenter,
+  DealersPresenter,
+  InstrumentsPresenter,
+} from "@rtc/core-api";
 import {
   type AnalyticsPort,
   AnalyticsUseCase,
   CurrencyPairsUseCase,
+  type DealerPort,
+  DealersUseCase,
+  type InstrumentPort,
+  InstrumentsUseCase,
   type ReferenceDataPort,
 } from "@rtc/domain";
 
@@ -29,4 +38,25 @@ export function createAnalyticsPresenter(
   const source = new AnalyticsUseCase(analytics).execute();
 
   return { position$: mirrorPortAsIs(host, source, { retain: true }) };
+}
+
+/** The credit dealer roster — the same retained-mirror shape as
+ * `currencyPairs`. Port called ONCE, at construction. */
+export function createDealersPresenter(
+  host: EffectHost,
+  dealers: DealerPort,
+): DealersPresenter {
+  const source = new DealersUseCase(dealers).execute();
+
+  return { list$: mirrorPortAsIs(host, source, { retain: true }) };
+}
+
+/** The credit instrument roster — the same retained-mirror shape. */
+export function createInstrumentsPresenter(
+  host: EffectHost,
+  instruments: InstrumentPort,
+): InstrumentsPresenter {
+  const source = new InstrumentsUseCase(instruments).execute();
+
+  return { list$: mirrorPortAsIs(host, source, { retain: true }) };
 }

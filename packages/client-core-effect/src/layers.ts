@@ -11,9 +11,11 @@ import type {
   ConnectionStatusPresenter,
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
+  DealersPresenter,
   EqBlotterViewPreferencePresenter,
   EqWatchlistSortPreferencePresenter,
   ForceBootAnimationPresenter,
+  InstrumentsPresenter,
   JarvisPreferencesPresenter,
   LayoutEnginePresenter,
   LoginWaitPreferencesPresenter,
@@ -21,6 +23,8 @@ import type {
   Presenters,
   PriceHistoryPresenter,
   PriceStreamPresenter,
+  RfqQuotePresenter,
+  RfqsPresenter,
   ThemePreferencePresenter,
   ThemeSkinPreferencePresenter,
   TradeExecutionPresenter,
@@ -53,10 +57,14 @@ import {
   createBootPreferencePresenter,
   createEqWatchlistSortPreferencePresenter,
 } from "#/presenters/readPreferences";
+import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
+import { createRfqsPresenter } from "#/presenters/rfqs";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 import {
   createAnalyticsPresenter,
   createCurrencyPairsPresenter,
+  createDealersPresenter,
+  createInstrumentsPresenter,
 } from "#/presenters/warmSingletons";
 import { AppPortsTag, HostLive, HostTag, presenterLayer } from "#/services";
 
@@ -137,6 +145,18 @@ export const AnalyticsTag = Context.GenericTag<AnalyticsPresenter>(
 export const ExecutionTag = Context.GenericTag<TradeExecutionPresenter>(
   "@rtc/client-core-effect/execution",
 );
+export const RfqsTag = Context.GenericTag<RfqsPresenter>(
+  "@rtc/client-core-effect/rfqs",
+);
+export const DealersTag = Context.GenericTag<DealersPresenter>(
+  "@rtc/client-core-effect/dealers",
+);
+export const InstrumentsTag = Context.GenericTag<InstrumentsPresenter>(
+  "@rtc/client-core-effect/instruments",
+);
+export const RfqQuoteTag = Context.GenericTag<RfqQuotePresenter>(
+  "@rtc/client-core-effect/rfqQuote",
+);
 
 /** Every native service the app layer provides — the identifier of each
  * `GenericTag` is its service type. */
@@ -162,7 +182,11 @@ export type NativeServices =
   | CurrencyPairsPresenter
   | BlotterPresenter
   | AnalyticsPresenter
-  | TradeExecutionPresenter;
+  | TradeExecutionPresenter
+  | RfqsPresenter
+  | DealersPresenter
+  | InstrumentsPresenter
+  | RfqQuotePresenter;
 
 // Presenters that need only the host and the ports.
 const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
@@ -279,6 +303,22 @@ const ExecutionLive = presenterLayer(ExecutionTag, (host, ports) => {
   return createTradeExecutionPresenter(host, ports.execution);
 });
 
+const RfqsLive = presenterLayer(RfqsTag, (host, ports) => {
+  return createRfqsPresenter(host, ports.workflow);
+});
+
+const DealersLive = presenterLayer(DealersTag, (host, ports) => {
+  return createDealersPresenter(host, ports.dealers);
+});
+
+const InstrumentsLive = presenterLayer(InstrumentsTag, (host, ports) => {
+  return createInstrumentsPresenter(host, ports.instruments);
+});
+
+const RfqQuoteLive = presenterLayer(RfqQuoteTag, (host, ports) => {
+  return createRfqQuotePresenter(host, ports.pricing);
+});
+
 // The two presenters that depend on ANOTHER native presenter — the reason
 // this slice introduces the Layer graph: `priceStream` and `priceHistory`
 // gate their conflation on `powerSaver.isCalm$`.
@@ -346,6 +386,10 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     BlotterLive,
     AnalyticsLive,
     ExecutionLive,
+    RfqsLive,
+    DealersLive,
+    InstrumentsLive,
+    RfqQuoteLive,
   );
 
   const dependent = Layer.mergeAll(PriceStreamLive, PriceHistoryLive).pipe(
@@ -383,4 +427,8 @@ export const nativePresentersEffect: Effect.Effect<
   blotter: BlotterTag,
   analytics: AnalyticsTag,
   execution: ExecutionTag,
+  rfqs: RfqsTag,
+  dealers: DealersTag,
+  instruments: InstrumentsTag,
+  rfqQuote: RfqQuoteTag,
 });
