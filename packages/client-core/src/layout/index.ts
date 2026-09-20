@@ -6,6 +6,8 @@ export * from "#/layout/defaultLayoutPort";
 // `DockEngine.addDynamicPanel`.
 export { DOCK_COLUMN_INITIAL_PX } from "#/layout/dockColumn";
 export * from "#/layout/layoutPort";
+export * from "#/layout/layoutPresetCodec";
+export * from "#/layout/layoutPresets";
 export * from "#/layout/maximizeBoundary";
 // The instance id/cap pair is public (both web clients' watchlist + Dockview
 // bridge read them); the namespace predicate stays internal to client-core's

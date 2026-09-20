@@ -54,6 +54,17 @@ export interface DockLayoutStore {
   clear(tab: string): void;
 }
 
+/** Per-tab persistence for a tab's saved layout presets, as ONE opaque
+ * serialized list per tab (`serializeLayoutPresetList`'s output). A raw
+ * string on purpose — the twin of `DockLayoutStore`: every rule (versions,
+ * unreadable records, names) lives once in client-core's codec, not in each
+ * client's adapter copy. `load` returns null when nothing is stored. */
+export interface LayoutPresetStore {
+  load(tab: string): string | null;
+  save(tab: string, serialized: string): void;
+  clear(tab: string): void;
+}
+
 /** Brain + effort selection threaded onto one `ask()` turn — forwarded onto
  * the wire `JarvisChatPayload.brain`/`.effort` by `WsJarvisAdapter`;
  * `ScriptedJarvisAdapter` (the scripted brain has no notion of either)
