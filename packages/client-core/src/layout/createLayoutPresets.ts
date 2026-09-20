@@ -228,8 +228,16 @@ export function createLayoutPresets(
 
     // Nothing to delete: an id no row carries (a list another tab has already
     // rewritten, say) must not spend a storage write, and must not re-normalize
-    // the stored bytes through the codec for a no-op.
+    // the stored bytes through the codec for a no-op. It STILL republishes:
+    // the summaries subject is the only thing the UI reads (`presetsFor` hands
+    // it out, and nothing re-reads the store when the menu opens), so skipping
+    // the publish would leave the already-deleted row listed forever, with the
+    // bin doing nothing and saying nothing — and `writeList`'s doc makes a
+    // SURVIVING row mean "the delete did not happen", so the two would be
+    // indistinguishable. Republishing from the store heals the stale row here
+    // rather than by the side effect of a write nobody needed.
     if (remaining.length === parsed.entries.length) {
+      publishStoredList(tab);
       return;
     }
 

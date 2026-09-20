@@ -710,6 +710,40 @@ describe("createLayoutPresets — remove", () => {
     expect(harness.store.load("fx")).toBe(before);
   });
 
+  // The other side of that no-write: the summaries subject is the ONLY thing
+  // the UI reads, so the unknown-id path still has to republish. Without it a
+  // row another writer already deleted stays listed forever and the bin does
+  // nothing at all — and since a surviving row is exactly how `writeList` says
+  // "the delete did not happen", the two would be indistinguishable.
+  it("re-emits the store's list for an unknown id, clearing a row another writer deleted", () => {
+    const harness = createHarness({
+      seeded: {
+        fx: [
+          createStoredPreset("fx", { id: "p1", name: "Wide" }),
+          createStoredPreset("fx", { id: "p2", name: "Narrow" }),
+        ],
+      },
+    });
+
+    const seen: (readonly LayoutPresetSummary[])[] = [];
+    const sub = harness.presets.presetsFor("fx").subscribe((summaries) => {
+      seen.push(summaries);
+    });
+    // Another writer rewrote the list behind this controller's back: the
+    // subject still carries `p1`, the store no longer does.
+    harness.store.save(
+      "fx",
+      JSON.stringify([createStoredPreset("fx", { id: "p2", name: "Narrow" })]),
+    );
+
+    harness.presets.remove("fx", "p1");
+    sub.unsubscribe();
+
+    expect(seen.at(0)?.map(nameOf)).toEqual(["Wide", "Narrow"]);
+    expect(seen.at(-1)?.map(nameOf)).toEqual(["Narrow"]);
+    expect(seen).toHaveLength(2);
+  });
+
   it("never rebuilds the live engine", () => {
     const harness = createHarness({
       seeded: { fx: [createStoredPreset("fx", { id: "p1", name: "Wide" })] },
