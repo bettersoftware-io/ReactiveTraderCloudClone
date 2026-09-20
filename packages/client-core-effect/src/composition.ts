@@ -1,4 +1,4 @@
-import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
+import { Effect, Exit, ManagedRuntime, Scope } from "effect";
 
 import {
   createApp as createRxjsApp,
@@ -11,41 +11,24 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
+import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
 import { createCommands } from "#/commands";
-import { createConnectionPresenter } from "#/presenters/connection";
-import {
-  createJarvisPreferencesPresenter,
-  createLoginWaitPreferencesPresenter,
-} from "#/presenters/groupedPreferences";
-import {
-  createAmbientStylePresenter,
-  createAnimatedBackgroundPresenter,
-  createChartSubstratePresenter,
-  createCreditRfqFilterPreferencePresenter,
-  createEqBlotterViewPreferencePresenter,
-  createForceBootAnimationPresenter,
-  createLayoutEnginePresenter,
-  createPowerSaverPresenter,
-  createThemeSkinPreferencePresenter,
-  createViewModePreferencePresenter,
-} from "#/presenters/preferences";
-import {
-  createBootPreferencePresenter,
-  createEqWatchlistSortPreferencePresenter,
-} from "#/presenters/readPreferences";
-import { createThemePreferencePresenter } from "#/presenters/themePreference";
+import { buildAppLayer, nativePresentersEffect } from "#/layers";
+import { createNotionalMachine } from "#/machines/notional";
+import { createRowHighlightMachine } from "#/machines/rowHighlight";
+import { createStaleFlagMachine } from "#/machines/staleFlag";
+import { createTileExecutionMachine } from "#/machines/tileExecution";
+import { HostTag } from "#/services";
 
-/** What `composeWithBase` hands back: the RxJS app it delegated to, and the
- * app this core presents. `parity.test.ts` compares the two member by
- * member. */
+/** What `composeWithBase` hands back: the RxJS app it delegated to, the app
+ * this core presents, and the Effect host the app owns — exposed so the
+ * teardown guarantee is observable from a test rather than taken on trust.
+ * `parity.test.ts` compares the two apps member by member. */
 export interface ComposedApp {
   base: App;
   app: App;
-  /** The Effect side the app owns — what a native presenter runs under, and
-   * what `app.dispose()` tears down. Exposed so the teardown guarantee is
-   * observable from a test rather than taken on trust. */
   host: EffectHost;
 }
 
@@ -55,86 +38,43 @@ export interface ComposedMachines {
   machines: MachineFactories;
 }
 
-/** Members this core implements natively — slice 1a: the connection fold,
- * the four theme/view/power-saver preferences, and `commands` (see
- * `createCommands`); slice 1b: the eleven remaining preference presenters.
- * Everything else still delegates to the RxJS core. `parity.json` is the
- * committed record of the same fact and `parity.test.ts` proves the two
- * agree by reference. Every native stream is a `sharedFold` over `host`, so
- * `app.dispose()` (which closes `host.scope`) ends whatever is still warm;
- * `bootPreference` owns no stream and takes no host. */
-function nativePresenters(
-  ports: AppPorts,
-  host: EffectHost,
-): Partial<Presenters> {
-  const { preferences } = ports;
-  return {
-    connection: createConnectionPresenter(host, ports.connectionEvents),
-    themePreference: createThemePreferencePresenter(
-      host,
-      preferences,
-      ports.colorScheme,
-    ),
-    themeSkinPreference: createThemeSkinPreferencePresenter(host, preferences),
-    viewModePreference: createViewModePreferencePresenter(host, preferences),
-    powerSaver: createPowerSaverPresenter(host, preferences),
-    creditRfqFilterPreference: createCreditRfqFilterPreferencePresenter(
-      host,
-      preferences,
-    ),
-    eqWatchlistSortPreference: createEqWatchlistSortPreferencePresenter(
-      host,
-      preferences,
-    ),
-    eqBlotterViewPreference: createEqBlotterViewPreferencePresenter(
-      host,
-      preferences,
-    ),
-    bootPreference: createBootPreferencePresenter(preferences),
-    loginWaitPreferences: createLoginWaitPreferencesPresenter(
-      host,
-      preferences,
-    ),
-    jarvisPreferences: createJarvisPreferencesPresenter(host, preferences),
-    animatedBackground: createAnimatedBackgroundPresenter(host, preferences),
-    ambientStyle: createAmbientStylePresenter(host, preferences),
-    chartSubstrate: createChartSubstratePresenter(host, preferences),
-    layoutEngine: createLayoutEnginePresenter(host, preferences),
-    forceBootAnimation: createForceBootAnimationPresenter(host, preferences),
-  };
-}
-
+/** The app is a `ManagedRuntime` over the native Layer graph (`layers.ts`):
+ * every native presenter is a service, `AppPorts` enters as
+ * `Layer.succeed`, the host is a scoped Layer, and ONE `runSync` resolves
+ * the `Presenters` overlay — slice 2's Tag/Layer composition (ADR-006).
+ * Everything not in the graph still delegates to the RxJS core;
+ * `parity.json` records which is which and `parity.test.ts` proves it. */
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const base = createRxjsApp(ports);
-  // The app owns a ManagedRuntime from day one, so `dispose()` has a real
-  // Effect-side resource to close even before any member goes native — and a
-  // Scope, because `ManagedRuntime.runFork` mints ROOT fibers that disposing
-  // the runtime would NOT interrupt. Closing the scope is what ends them.
-  const runtime = ManagedRuntime.make(Layer.empty);
-  const scope = Effect.runSync(Scope.make());
-  const host: EffectHost = { runtime, scope };
+  const runtime = ManagedRuntime.make(buildAppLayer(ports));
+  const { host, presenters } = runtime.runSync(
+    Effect.all({ host: HostTag, presenters: nativePresentersEffect }),
+  );
+
   const app: App = {
     ...base,
-    presenters: {
-      ...base.presenters,
-      ...nativePresenters(ports, host),
-    },
+    presenters: { ...base.presenters, ...presenters },
     commands: createCommands(base.commands),
-    // Order matters: the RxJS app goes first (its teardown may still drive
-    // streams this core bridged), THEN the scope interrupts whatever fibers
-    // remain, and only then is the runtime disposed — disposing it earlier
-    // would replace its effect with a defect, so the scope's own finalizers
-    // would have nothing sound to run under. Every step is in a `finally` so
-    // one rejection cannot skip the rest, and each step is idempotent, so
-    // calling `dispose()` twice is safe.
+    // General rule (see docs/architecture/22-pluggable-application-core.md
+    // §22 "Teardown order"): an alternative core releases its own resources
+    // first, then the base app, then (for Effect) the runtime. THIS core's
+    // order differs from that rule — `base.dispose()` runs first, then the
+    // host scope interrupts whatever fibers remain (every fold period and
+    // retained singleton is forked from it), and only then is the runtime
+    // disposed, closing the Layer scope the host's is a child of (a no-op
+    // by then). That reversed order is equally safe today because the RxJS
+    // core's `dispose()` is a knowing no-op for the members this core has
+    // ported natively, so it never races the host's own teardown; slice 8
+    // removes the base delegation entirely, at which point this ordering
+    // question disappears. Every step is in a `finally` so one rejection
+    // cannot skip the rest; each is idempotent, so calling `dispose()`
+    // twice is safe.
     dispose: async () => {
       try {
         await base.dispose();
       } finally {
         try {
-          // The global runtime, not the managed one: this must still work if
-          // the managed runtime has already been disposed.
-          await Effect.runPromise(Scope.close(scope, Exit.void));
+          await Effect.runPromise(Scope.close(host.scope, Exit.void));
         } finally {
           await runtime.dispose();
         }
@@ -148,21 +88,43 @@ export function createApp(ports: AppPorts): App {
   return composeWithBase(ports).app;
 }
 
-/** The machine half of the same fact, and the same overlay seam. It has to
- * be an overlay rather than a bare `return createRxjsMachineFactories(...)`:
- * that builder mints fresh closures on every call, so two calls of it share
- * no identity at all and the manifest's `delegated` claim would be
- * unfalsifiable. Spreading ONE base keeps the delegated members reference-
- * identical to it, so `parity.test.ts` can tell native from delegated. */
-function nativeMachines(_base: MachineFactories): Partial<MachineFactories> {
-  return {};
+/** Native machine factories, closing over the SAME merged `presenters` the
+ * RxJS builder gets. Each machine owns a detached host (slice 2 ruling 8). */
+function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
+  return {
+    tileExecution: (pair: CurrencyPair) => {
+      return createTileExecutionMachine(pair, {
+        execute: (input: ExecuteTradeInput) => {
+          return presenters.execution.execute(input);
+        },
+      });
+    },
+    staleFlag: (pair: CurrencyPair) => {
+      return createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.priceStream.price$(pair),
+      });
+    },
+    analyticsStaleFlag: () => {
+      return createStaleFlagMachine({
+        status$: presenters.connection.status$,
+        value$: presenters.analytics.position$,
+      });
+    },
+    rowHighlight: (isNew: boolean) => {
+      return createRowHighlightMachine(isNew);
+    },
+    notional: (defaultNotional: number) => {
+      return createNotionalMachine(defaultNotional);
+    },
+  };
 }
 
 export function composeMachinesWithBase(
   presenters: Presenters,
 ): ComposedMachines {
   const base = createRxjsMachineFactories(presenters);
-  return { base, machines: { ...base, ...nativeMachines(base) } };
+  return { base, machines: { ...base, ...nativeMachines(presenters) } };
 }
 
 export function createMachineFactories(

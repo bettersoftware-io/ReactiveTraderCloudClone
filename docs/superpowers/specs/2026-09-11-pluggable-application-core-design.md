@@ -158,6 +158,8 @@ async function run(cmd: ExecuteCommand, signal: AbortSignal): Promise<void> {
 // intents.execute aborts the previous controller and spawns run(); dismiss aborts and resets.
 ```
 
+Shipped as written in slice 2 (`machines/tileExecution.ts`).
+
 Pure reducers (the stale-flag fold, `reduceRfqEvent`, …) are
 paradigm-neutral and are **imported from `@rtc/client-core`**, not
 duplicated — the fold under test is the same function driven by a different
@@ -174,6 +176,9 @@ Pinned to `effect` 3.22.x.
   is `Effect.cachedFunction` inside the presenter's Layer scope, so same-key
   identity holds by construction. Conflation / rolling windows are `Stream`
   combinators, not a hand-rolled kernel — that is the point of the comparison.
+  **Amended in slice 2:** a leading+trailing throttle gated by a flag is not
+  a shipped combinator; `conflatedFold` hand-rolls it inside a fold's `run`
+  (ADR-006, "Decided in slice 2").
   **Amended in slice 1a:** `Stream.share` replays on a fiber, so it cannot be
   the outward envelope; presenter streams are `sharedFold`s (a synchronously
   seeded `SubscriptionRef` + a per-warm-period `Scope`) — ADR-006, "Learned
@@ -192,11 +197,11 @@ Pinned to `effect` 3.22.x.
   `Layer`; `AppPorts` enters as `Layer.succeed(AppPortsTag, ports)`;
   `createApp(ports)` is `ManagedRuntime.make(AppLive)` + one `runSync` that
   resolves the tags into the `Presenters` record; `App.dispose` calls
-  `runtime.dispose()`. **Deferred to slice 2:** the Tag/Layer shape buys
-  nothing while no native member depends on another native member;
-  `priceStream` (which consumes `powerSaver.isCalm$`) is the first such
-  dependency. Slice 1a keeps slice 0's plain-object overlay with `host`
-  injected.
+  `runtime.dispose()`. **Landed in slice 2:** `Context.GenericTag` services +
+  one `Layer` per native presenter (`layers.ts`), `AppPorts` as
+  `Layer.succeed`, the host as `Layer.scoped`, `createApp` =
+  `ManagedRuntime.make(buildAppLayer(ports))` + one `runSync`; `priceStream`
+  gating on `powerSaver.isCalm$` was the first native-on-native dependency.
 - **Bridge.** `bridge/in.ts` — `fromObservable(obs, scope?): Stream<T>` —
   subscribes EAGERLY at call time into a Queue (slice 1a), reachable only
   through `sharedFold`'s `fromPort`; `peek`/`peekCurrent` (`bridge/peek.ts`)
@@ -354,6 +359,7 @@ alternative cores have them native; e2e matrix green; `parity.json` updated.
 Slice 1a shipped 2026-09-19 (plan: [`../plans/2026-09-18-pluggable-core-slice-1a.md`](../plans/2026-09-18-pluggable-core-slice-1a.md)).
 Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b.md`](../plans/2026-09-19-pluggable-core-slice-1b.md)) — no new primitive was needed; every preference presenter is now native in both alternative cores.
 Residual sweep shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-residual-sweep.md`](../plans/2026-09-19-pluggable-core-residual-sweep.md)).
+Slice 2 shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-2.md`](../plans/2026-09-19-pluggable-core-slice-2.md)) — suites as PR A, ports as PR B; 28/72 native in both alternative cores; the Effect core composes as a Layer graph.
 
 ### Slice 8 — closing
 

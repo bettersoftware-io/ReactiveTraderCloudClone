@@ -1,10 +1,17 @@
+import { relayTopic } from "#/kernel/relayTopic";
 import { reportAsync } from "#/kernel/reportAsync";
 import { spawn } from "#/kernel/spawn";
-import { untilAborted } from "#/kernel/untilAborted";
 
 export interface TopicOptions {
   /** Hand the most recent value to late subscribers (shareReplay bufferSize 1). */
   replay?: boolean;
+  /** Keep the producer running across zero subscribers until this signal
+   * aborts — the RxJS core's `warmReplay` (`shareReplay({ refCount: false
+   * })`) for an app-lifetime singleton. The abort ends the run and forgets
+   * the replayed value; subscribers attached at that moment hear nothing
+   * more (silence after `dispose()` is the shared behaviour, §22), and a
+   * later subscriber starts a fresh run. Failure still resets, as ever. */
+  retainUntil?: AbortSignal;
 }
 
 /** A hot multicast channel with refCount semantics: the producer starts on
@@ -24,7 +31,13 @@ export interface TopicOptions {
  * built on a Topic (`mapTopic`) turns its own projection error into a
  * stream failure instead, as rxjs's `map` does. `publish()`
  * from outside reaches subscribers only while a producer run is live; on a
- * cold or reset topic it is dropped, never latched. */
+ * cold or reset topic it is dropped, never latched.
+ *
+ * `retainUntil` (`TopicOptions`) relaxes the refCount half alone: the
+ * producer then survives zero subscribers and is ended by that signal
+ * instead — `shareReplay({ refCount: false })`, the RxJS core's
+ * `warmReplay`. Everything above still holds; only the moment the run ends
+ * moves. */
 export interface Topic<T> {
   subscribe(
     next: (value: T) => void,
@@ -59,6 +72,20 @@ export function createTopic<T>(
   const subscribers = new Set<Subscriber<T>>();
   let run: ProducerRun | null = null;
   let last: Replayed<T> | null = null;
+
+  function retained(): boolean {
+    return options.retainUntil !== undefined && !options.retainUntil.aborted;
+  }
+
+  options.retainUntil?.addEventListener(
+    "abort",
+    () => {
+      if (run !== null) {
+        endRun(run);
+      }
+    },
+    { once: true },
+  );
 
   function deliver(value: T): void {
     if (options.replay === true) {
@@ -155,7 +182,7 @@ export function createTopic<T>(
       return () => {
         subscribers.delete(subscriber);
 
-        if (subscribers.size === 0 && run !== null) {
+        if (subscribers.size === 0 && run !== null && !retained()) {
           endRun(run);
         }
       };
@@ -166,53 +193,17 @@ export function createTopic<T>(
 /** A topic derived from another by a pure projection — `map` over a hot
  * source, keeping the replay-1 + refCount shape: the first subscriber here
  * subscribes the source (starting ITS producer if this is the source's first
- * subscriber too), the last unsubscribe releases it. A source failure is the
- * producer's rejection, so it fails this topic the way `spawn` fails any
- * other. */
+ * subscriber too), the last unsubscribe releases it. A throwing projection
+ * fails this topic, as rxjs's `map` does (`relayTopic`'s rule). */
 export function mapTopic<T, U>(
   source: Topic<T>,
   project: (value: T) => U,
 ): Topic<U> {
   return createTopic<U>(
-    async (signal, publish) => {
-      // No initializer, so this is an assignment target rather than a
-      // function-expression binding (rtc's `func-style` forbids `let x = ()
-      // => {}`) — assigned synchronously below, before anything can read it.
-      let stop: (() => void) | undefined;
-      const sourceFailed = new Promise<never>((_, reject) => {
-        stop = source.subscribe((value) => {
-          // A projection is the OPERATOR's own code, not a consumer's, so
-          // its failure fails this derived topic (rejecting the producer →
-          // `failFrom` → reset) rather than being isolated and dropped the
-          // way `createTopic` isolates a subscriber. That is what rxjs's
-          // `map` does with a throwing projection.
-          try {
-            publish(project(value));
-          } catch (error) {
-            reject(error);
-          }
-        }, reject);
+    (signal, publish) => {
+      return relayTopic(source, signal, (value) => {
+        publish(project(value));
       });
-
-      // Released SYNCHRONOUSLY on abort, matching the refCount contract's own
-      // synchronous release (createTopic's unsubscribe aborts its controller
-      // immediately, no microtask gap). Waiting on the `finally` below alone
-      // would still release it — just a few microtask ticks late, since it
-      // has to round-trip through `Promise.race` — which is late enough to
-      // fail a caller that checks release state right after unsubscribing.
-      signal.addEventListener(
-        "abort",
-        () => {
-          stop?.();
-        },
-        { once: true },
-      );
-
-      try {
-        await Promise.race([sourceFailed, untilAborted(signal)]);
-      } finally {
-        stop?.();
-      }
     },
     { replay: true },
   );

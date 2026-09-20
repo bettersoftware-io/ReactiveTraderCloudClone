@@ -13,8 +13,8 @@ import {
 
 import { peek, relay, topicFromObservable } from "#/bridge/in";
 import { topicToStream } from "#/bridge/out";
+import { relayTopic } from "#/kernel/relayTopic";
 import { createTopic } from "#/kernel/topic";
-import { untilAborted } from "#/kernel/untilAborted";
 
 /** `modePreference$` mirrors the stored choice. `mode$` is the RxJS core's
  * `combineLatest([modePreference$, prefersDark$]) → map(resolveThemeMode) →
@@ -56,47 +56,29 @@ export function createThemePreferencePresenter(
         }
       }
 
-      // No initializer, so this is an assignment target rather than a
-      // function-expression binding (rtc's `func-style` forbids `let x = ()
-      // => {}`) — assigned synchronously below, before anything can read it.
-      let stop: (() => void) | undefined;
-      const preferenceFailed = new Promise<never>((_, reject) => {
-        stop = modePreference.subscribe((value) => {
+      // `relayTopic` owns the subscription, its synchronous release on
+      // abort, and the rule that a failing source fails this producer.
+      const preferenceRelay = relayTopic(
+        modePreference,
+        signal,
+        (value: ThemeModePreference) => {
           preference = value;
           resolve();
-        }, reject);
-      });
-
-      // Released SYNCHRONOUSLY on abort, matching the refCount contract's own
-      // synchronous release — see `mapTopic` in `#/kernel/topic` for the same
-      // pattern and why the `finally` below alone is a few microtasks late.
-      signal.addEventListener(
-        "abort",
-        () => {
-          stop?.();
         },
-        { once: true },
       );
 
-      try {
-        if (prefersDarkSource === undefined) {
-          prefersDark = false;
-          resolve();
-          await Promise.race([preferenceFailed, untilAborted(signal)]);
-        } else {
-          await Promise.race([
-            preferenceFailed,
-            relay(prefersDarkSource, signal, (value) => {
-              prefersDark = value;
-              resolve();
-            }),
-          ]);
-        }
-      } finally {
-        // Safe to call again after the synchronous abort listener above
-        // already did: `Topic.subscribe`'s returned unsubscribe tolerates
-        // re-invocation (a second `subscribers.delete` is a no-op).
-        stop?.();
+      if (prefersDarkSource === undefined) {
+        prefersDark = false;
+        resolve();
+        await preferenceRelay;
+      } else {
+        await Promise.race([
+          preferenceRelay,
+          relay(prefersDarkSource, signal, (value) => {
+            prefersDark = value;
+            resolve();
+          }),
+        ]);
       }
     },
     { replay: true },

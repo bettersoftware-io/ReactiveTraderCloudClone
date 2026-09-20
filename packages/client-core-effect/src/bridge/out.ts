@@ -6,8 +6,8 @@ import {
   ExecutionStrategy,
   Exit,
   Fiber,
-  type ManagedRuntime,
   Option,
+  Runtime,
   Scope,
   Stream,
   SubscriptionRef,
@@ -19,14 +19,82 @@ import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
 
 import { fromObservable } from "#/bridge/in";
 
+/** What a host runs Effects with: the two operations every bridge helper
+ * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
+ * keeps building one); `runnerFor` adapts a plain `Runtime` — what a Layer
+ * captures with `Effect.runtime`, and what a detached machine host takes
+ * from `Runtime.defaultRuntime`. */
+export interface EffectRunner {
+  runSync<A, E>(effect: Effect.Effect<A, E>): A;
+  runFork<A, E>(
+    effect: Effect.Effect<A, E>,
+    options?: Runtime.RunForkOptions,
+  ): Fiber.RuntimeFiber<A, E>;
+}
+
 /** What the bridge needs from the app to run Effects on its behalf: the
- * runtime to run them under, and the scope every forked stream fiber is
- * attached to. `ManagedRuntime.runFork` produces ROOT fibers — disposing the
- * runtime does NOT interrupt them — so the scope is what makes the app able
- * to end them, and `composeWithBase` owns both. */
+ * runner to run them with, and the scope every forked stream fiber is
+ * attached to. `runFork` produces ROOT fibers — disposing a `ManagedRuntime`
+ * does NOT interrupt them — so the scope is what makes the app able to end
+ * them, and `composeWithBase` owns both. */
 export interface EffectHost {
-  readonly runtime: ManagedRuntime.ManagedRuntime<never, never>;
+  readonly runtime: EffectRunner;
   readonly scope: Scope.CloseableScope;
+}
+
+export function runnerFor(runtime: Runtime.Runtime<never>): EffectRunner {
+  return {
+    runSync: Runtime.runSync(runtime),
+    runFork: Runtime.runFork(runtime),
+  };
+}
+
+/** A host for something that owns its own lifetime rather than the app's —
+ * a machine: `createMachineFactories(presenters)` has no app handle, so each
+ * machine forks under the default runtime into a scope of its own and
+ * `dispose()` closes it (slice 2 ruling 8). */
+export function createDetachedHost(): EffectHost {
+  return {
+    runtime: runnerFor(Runtime.defaultRuntime),
+    scope: Effect.runSync(Scope.make()),
+  };
+}
+
+/** `SubscriptionRef.set` that publishes only a changed value: a
+ * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
+ * machine's `state$` promises `distinctUntilChanged`. The same guard
+ * `sharedFold`'s `update` applies, for a ref a machine owns directly. */
+export function setRefIfChanged<S>(
+  ref: SubscriptionRef.SubscriptionRef<S>,
+  next: (current: S) => S,
+): Effect.Effect<void> {
+  return SubscriptionRef.get(ref).pipe(
+    Effect.flatMap((current) => {
+      const value = next(current);
+      return Object.is(value, current)
+        ? Effect.void
+        : SubscriptionRef.set(ref, value);
+    }),
+  );
+}
+
+/** A `FromPort` bound to a scope that is not a fold period's — a machine's
+ * own. Same rule as the period-scoped one: call it once per port per scope;
+ * the subscription exists from the moment it returns and the scope's close
+ * releases it. */
+export function fromPortIn(scope: Scope.Scope): FromPort {
+  return <T>(source: CoreStream<T>) => {
+    return fromObservable(source, scope);
+  };
+}
+
+/** Rethrow a cause on a macrotask, outside every fiber — the Effect twin of
+ * the async core's `reportAsync`, for a machine whose source failed and
+ * whose `SubscriptionRef` has no error channel (slice 2 ruling 8). */
+export function reportOutOfBand(cause: Cause.Cause<unknown>): void {
+  setTimeout(() => {
+    throw Cause.squash(cause);
+  }, 0);
 }
 
 /** Run an Effect Stream under each Observable subscribe as a forked fiber;
@@ -166,6 +234,9 @@ export interface SharedFold<S> {
    * `seed` fails the subscriber that triggered it. */
   readonly seed: () => Option.Option<S>;
   readonly run: FoldRun<S>;
+  /** Keep the warm period across zero subscribers; only the host scope
+   * ends it — the RxJS core's `warmReplay()` for a session singleton. */
+  readonly retain?: boolean;
 }
 
 interface WarmPeriod<S> {
@@ -397,7 +468,7 @@ export function sharedFold<S>(
       inner.unsubscribe();
       period.subscribers.delete(subscriber);
 
-      if (period.subscribers.size === 0) {
+      if (period.subscribers.size === 0 && fold.retain !== true) {
         endPeriod(period);
       }
     };

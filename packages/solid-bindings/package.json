@@ -19,7 +19,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "build": "tsc --build && tsc-alias -p tsconfig.json",
+    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mjs",
     "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run",
     "clean": "rm -rf dist .turbo *.tsbuildinfo reports coverage 2>/dev/null || true",

@@ -442,4 +442,89 @@ describe("mapTopic", () => {
     });
     expect(errors).toHaveLength(1);
   });
+
+  it("retainUntil: the producer outlives the last unsubscribe and is ended by the signal", () => {
+    const lifetime = new AbortController();
+    let aborted = false;
+    const topic = createTopic<number>(
+      (signal, publish) => {
+        publish(1);
+        return new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => {
+            aborted = true;
+            resolve();
+          });
+        });
+      },
+      { replay: true, retainUntil: lifetime.signal },
+    );
+    const stop = topic.subscribe(() => {});
+    stop();
+    expect(aborted).toBe(false);
+    // Still warm: a late subscriber gets the replayed value at once.
+    const seen: number[] = [];
+    const stopAgain = topic.subscribe((v) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([1]);
+    stopAgain();
+    lifetime.abort();
+    expect(aborted).toBe(true);
+  });
+
+  it("retainUntil: after the signal has aborted, a subscriber starts a fresh run rather than joining nothing", () => {
+    const lifetime = new AbortController();
+    let runs = 0;
+    const topic = createTopic<number>(
+      async (signal, publish) => {
+        runs += 1;
+        publish(runs);
+        await new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => {
+            resolve();
+          });
+        });
+      },
+      { replay: true, retainUntil: lifetime.signal },
+    );
+    topic.subscribe(() => {})();
+    lifetime.abort();
+    const seen: number[] = [];
+    const stop = topic.subscribe((v) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([2]);
+    stop();
+    // No signal left to retain it: the last unsubscribe ends this run.
+    expect(runs).toBe(2);
+  });
+
+  it("mapTopic: a throwing projection fails the derived topic and releases the source (relayTopic)", async () => {
+    const source = createTopic<number>(
+      (signal, publish) => {
+        publish(1);
+        return new Promise<void>((resolve) => {
+          signal.addEventListener("abort", () => {
+            resolve();
+          });
+        });
+      },
+      { replay: true },
+    );
+
+    const derived = mapTopic(source, () => {
+      throw new Error("bad projection");
+    });
+    const errors: unknown[] = [];
+    derived.subscribe(
+      () => {},
+      (e) => {
+        errors.push(e);
+      },
+    );
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    expect(errors).toHaveLength(1);
+  });
 });

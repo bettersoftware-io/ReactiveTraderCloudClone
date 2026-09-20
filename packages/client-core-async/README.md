@@ -23,6 +23,8 @@ Four primitives, and nothing else:
 | `Topic<T>` | `shareReplay({ bufferSize: 1, refCount: true })` written out explicitly — including its reset on error and rxjs's isolation of a throwing subscriber |
 | `spawn` | source subscription: abort ends it silently, any other error is routed |
 | `sleep` | `timer(…)` / `delay(…)` under an `AbortSignal` |
+| `TopicOptions.retainUntil` | `shareReplay({ refCount: false })` — the RxJS core's `warmReplay`: the producer survives zero subscribers and is ended by that signal |
+| `relayTopic` | a producer CONSUMING another topic (`map` / `scan`): released synchronously on abort, and a source failure or a throwing consumer fails the producer |
 
 ### Bridge
 
@@ -30,10 +32,31 @@ Four primitives, and nothing else:
 `@rx-state/core` `StateObservable`), so the seam between this core's kernel
 and the published contract is two files:
 
-- `bridge/in.ts` — `once` (first value of a port Observable) and `iterate`
-  (an Observable pulled as an `AsyncIterable`).
-- `bridge/out.ts` — `topicToStream` / `storeToStateStream`, the only places
-  in the package that construct an Observable.
+- `bridge/in.ts` — `once(source, signal?)` (first value of a port
+  Observable; with a signal, an abort releases the subscription and rejects
+  with `AbortError`), `iterate` (an Observable pulled as an `AsyncIterable`),
+  `relay`, and `topicFromObservable(source, retainUntil?)`.
+- `bridge/out.ts` — `topicToStream` / `topicToStreamWithLead` (a synchronous
+  lead value ahead of the topic's own, the RxJS `defer(() =>
+  shared.pipe(startWith(seed)))`) / `promiseToStream` (a one-shot command
+  result: value, then complete; an abort is silence) / `storeToStateStream`,
+  the only places in the package that construct an Observable.
+
+### Conflation and machines
+
+`createConflatedTopic(source, calm$, ms)` is the RxJS core's
+`conflateWhen(flag$, ms)` as ONE producer: while calm, a leading value
+publishes at once and opens a window of `ms`, later values replace a pending
+slot, and the window's end publishes the pending value and opens the next —
+so a steady feed yields one value per `ms`. A flag flip takes effect at once
+(calm → off drops the open window and its pending value).
+
+A machine here is a `Store` plus an `AbortController`: the Store is the
+`state(…, seed)` warmth guarantee AND the `distinctUntilChanged` (an
+`Object.is`-equal write is dropped), and `dispose()` aborts the controller,
+ending the machine's own loops. A machine's SOURCE failure has no channel on
+a Store, so it aborts the machine and is rethrown on a macrotask
+(`reportAsync`) rather than reaching a subscriber.
 
 Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
@@ -41,13 +64,18 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 1b, seventeen members are **native** — `connection`, every
-preference presenter (`themePreference`, `themeSkinPreference`,
-`viewModePreference`, `powerSaver`, `creditRfqFilterPreference`,
-`eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`,
-`loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`,
-`ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
-`commands.reconnect` — and everything else still **delegates** to
+As of slice 2, **28 of 72** members are native. Slice 1a/1b brought
+`connection`, every preference presenter (`themePreference`,
+`themeSkinPreference`, `viewModePreference`, `powerSaver`,
+`creditRfqFilterPreference`, `eqWatchlistSortPreference`,
+`eqBlotterViewPreference`, `bootPreference`, `loginWaitPreferences`,
+`jarvisPreferences`, `animatedBackground`, `ambientStyle`,
+`chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
+`commands.reconnect`. Slice 2 adds eleven more: the presenters
+`priceStream`, `priceHistory`, `execution`, `blotter`, `analytics` and
+`currencyPairs`, and the machines `tileExecution`, `staleFlag`,
+`analyticsStaleFlag`, `rowHighlight` and `notional`. Everything else still
+**delegates** to
 `@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
 app and overlays what this core implements. The native idiom for a
 replay-current stream is `topicFromObservable` (a port as a replay-1,

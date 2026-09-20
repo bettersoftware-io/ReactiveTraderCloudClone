@@ -180,13 +180,77 @@ explicitly (residual sweep, 2026-09-19):
    presenter too, so its absolute count is 2 until slice 8 removes
    delegation).
 
+## Warm singletons, conflation and machines
+
+Slice 2 added the three shapes the FX members need, each stated once per
+core:
+
+- **Warm singletons** (`currencyPairs.pairs$`, `blotter.trades$`,
+  `blotter.activity$`, `analytics.position$`): the RxJS `warmReplay()`
+  (`shareReplay({ refCount: false })`) keeps the port subscribed for the
+  session. The async core's `Topic` takes `retainUntil: AbortSignal` — the
+  app mints it in `composeWithBase` and aborts it in `dispose()` before the
+  base app is disposed; the Effect core's `SharedFold` takes `retain: true`
+  — the last unsubscribe does not end the period, the host scope does.
+  Subscribers attached when the app is disposed hear nothing more.
+- **Conflation** (`priceStream`, `priceHistory` under `powerSaver.isCalm$`):
+  a leading+trailing throttle gated by a flag with immediate effect. The
+  async core writes it as one Topic producer with a window
+  `AbortController` (`createConflatedTopic`); the Effect core as a
+  `sharedFold` whose `run` holds a `Ref<ConflationState>` moved by atomic
+  `Ref.modify` transitions and ONE window fiber per leading emission that
+  loops in place (`conflatedFold`) — never a timer that forks its successor:
+  a forked Effect child is interrupted when its parent fiber completes, so a
+  window fiber that forked the next window and then ended would kill it at
+  once. Neither runtime ships the operator. Uncontracted edge: a trailing value
+  pending when the flag turns off is discarded, as the RxJS `switchMap`
+  discards it.
+- **Machines** (`staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`,
+  `tileExecution`): `createMachineFactories(presenters)` has no app handle,
+  so a machine owns its lifetime — a `Store` plus an `AbortController`
+  (async), a `SubscriptionRef` under a detached host with its own `Scope`
+  (Effect); `dispose()` aborts or closes it. The tile execution is the
+  spec's sketch in both: one run per `execute()`, cancelled by the next
+  `execute()`, by `dismiss()` and by `dispose()`; a `race` between the RPC
+  and the timeout; a too-long marker that a terminal state ignores. A
+  machine's source failure has no channel on a `Store`/`SubscriptionRef`
+  and is rethrown out of band (`reportAsync` / `reportOutOfBand`); the
+  RxJS `state()` would error `state$` — uncontracted, nothing observes it.
+  When the execution timeout wins, the Effect machine releases the
+  in-flight port call at once and the async machine holds it until
+  dismiss/new execute/dispose, as the RxJS machine does — recorded in
+  ADR-006.
+- **The Effect Layer graph.** `priceStream` gating on `powerSaver.isCalm$`
+  is the first native-on-native dependency, and the reason the Effect core
+  now composes as services: `services.ts` (`AppPortsTag`, `HostTag`,
+  `HostLive`, `presenterLayer`), `layers.ts` (one `GenericTag` + one `Live`
+  layer per native presenter, `buildAppLayer(ports)`), and a
+  `composeWithBase` that is `ManagedRuntime.make` + one `runSync`. The pure
+  folds the FX members run are `@rtc/client-core` exports in all three cores
+  (`blotterFolds`, `staleFlagFold`, `notionalView`, `tileExecutionState`);
+  their timing constants live in `@rtc/domain`.
+
+**Strangler seam.** A base-side consumer of a member that goes native keeps
+the base instance until its own slice: as of slice 2 the RxJS
+`AnimationDirector` and `NarratorMachine` still read the base `execution`,
+`currencyPairs` and `priceStream` (see the STATUS residual). Slice 8 ends
+the seam.
+
+**Teardown order.** An alternative core releases its own resources first —
+the async lifetime signal, the Effect host scope — then disposes the base
+app, then (Effect) the runtime. The Effect composition today runs base →
+scope → runtime; both orders are safe while the RxJS `dispose()` is a
+no-op, and slice 8 removes the base. A subscriber arriving after
+`dispose()` is not a shipped path: the async retained topic would restart
+its producer, the Effect fold stays silent, the RxJS core never tore down.
+
 ## The contract tier
 
 `@rtc/core-contract` mirrors `@rtc/ui-contract`'s shape at a different
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
-and `commands.reconnect` (71 members: 59 presenters, 11 machines, 1
-command). Adding a member to `Presenters` or `MachineFactories` without
+and per `AppCommands` member (72 members: 59 presenters, 11 machines, 2
+commands). Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 
@@ -194,13 +258,17 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. At slice 0, six members have real suites (`connection`,
-`themePreference`, `themeSkinPreference`, `viewModePreference`, `powerSaver`,
-`commands.reconnect` — slice 1a's scope) and 65 are pending. Each suite
-subscribes to the member's `Stream`/`StateStream`, drives a scripted
-`AppPorts` harness (`scriptPorts` — Subject-backed streams, an
-intent-named `driver`), advances vitest's fake timers, and asserts only at
-the envelope level described above.
+fails. As of slice 2, twenty-eight members have real suites — slice 1a's
+six, slice 1b's eleven, and slice 2's eleven (`priceStream`, `priceHistory`,
+`currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
+`analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`) — and 44
+are pending. Each suite subscribes to the member's `Stream`/`StateStream`,
+drives a scripted `AppPorts` harness (`scriptPorts` — Subject-backed streams
+for the connection, the colour scheme and the five FX ports, an
+intent-named `driver` — `tickPrice`, `resolveExecution`, `emitTrades`, …),
+advances vitest's fake timers where a member is timer-driven (`withFakeClock`,
+built around one `it`; `settle()` otherwise), and asserts only at the
+envelope level described above.
 
 One runner file per core imports every suite against that core's own
 `makeHarness`: `packages/client-core/src/composition.coreContract.test.ts`
@@ -218,9 +286,10 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 1b both
-alternative cores list seventeen members `"native"` (`connection`, all
-fifteen preference presenters, `commands.reconnect`) and everything else
+`commands` — and the drift test walks all three. As of slice 2 both
+alternative cores list twenty-eight members `"native"` (`connection`, all
+fifteen preference presenters, `commands.reconnect`, the six FX
+pricing/blotter presenters and the five FX machines) and everything else
 `"delegated"`; the manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.
