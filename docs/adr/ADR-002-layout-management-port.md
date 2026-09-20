@@ -992,7 +992,39 @@ pin while the bridges re-dock the panel itself). Floats persist (`floatingGroups
 pop-out's session-scoped state. **This does not change the engine-parity
 gate's scope**: floats are Dockview-only arrangement, outside the
 shared/seed-derivable subset the gate freezes on, exactly like pop-outs and
-instances before them. Phase 6b (layout presets) remains.
+instances before them.
+
+**Phase 6b (layout presets) shipped 2026-09-20** — the workstream's last
+phase and, like instances and floats, Dockview-only: a per-tab named layout
+(save / load / delete) plus a built-in **Default** that restores the
+as-shipped layout, both from a LAYOUTS section in the View menu on both web
+clients. The new port is `LayoutPresetStore` (`@rtc/core-api`), a raw-string
+twin of `DockLayoutStore` keyed `rtc-layout-presets-<tab>` — one opaque
+serialized list per tab, so every rule (versioning, name validation, an
+unreadable record) lives once, in a `@rtc/client-core` codec, rather than in
+each client's own localStorage adapter. `createLayoutPresets(deps)` is the
+framework-free controller behind `Presenters.layoutPresets`; a save reads a
+*live* engine snapshot (`DockEngine.snapshotLayout()`, new on this package)
+rather than the debounced store's last write, and a load writes that blob to
+the dock store, replaces layer 2 through a new `LayoutIntents.replaceLayout`
+intent, and bumps the existing `workspaceLayoutResets$` rebuild counter —
+all in one synchronous batch, because the outgoing engine's own armed final
+save would otherwise land in the gap and silently undo the load. Docked
+Jarvis panels are deliberately excluded from a preset and re-inserted as
+they stand at load time (a layout operation rearranges; it never creates or
+destroys content); chart instances, having no owner outside the layout
+machine, ARE recorded. See the
+[layout-dockview README's saved-layouts section](../../packages/layout-dockview/README.md#saved-layouts-phase-6b)
+for `snapshotLayout()` and the one-batch load order, and
+[the phase's execution rulings](../superpowers/plans/2026-09-19-dockview-layout-presets-phase6b-rulings.md)
+for every deviation taken while building it — including a pre-existing
+product bug the phase surfaced and fixed: a `closed`-panel reconciliation
+effect in each client's Dockview bridge was missing the stale-closure guard
+its four siblings carry, so closing a panel from the View menu and then
+triggering any dock rebuild (including the long-shipped "Reset workspace
+layout") crashed dockview-core and unmounted the engine. **This closes the
+Dockview-native features workstream**: every phase (1 through 6b) has now
+shipped.
 
 ## References
 

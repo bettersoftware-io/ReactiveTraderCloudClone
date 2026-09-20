@@ -12,6 +12,8 @@
 
 **Precedent to read first:** [2026-09-16-dockview-floating-groups-phase6a-rulings.md](2026-09-16-dockview-floating-groups-phase6a-rulings.md) — how 6a's plan met reality. Several of its rulings (the rebuild trap, jsdom's blind spots, the `api.groups` filter) bind here too.
 
+**Execution rulings:** [2026-09-19-dockview-layout-presets-phase6b-rulings.md](2026-09-19-dockview-layout-presets-phase6b-rulings.md) — every decision taken while executing this plan (pre-execution rulings P1–P6, pre-flight rulings R1–R2, and each ledger ruling made task by task), with its rationale and what it costs if wrong.
+
 ## Global Constraints
 
 - **Both web clients move together.** Every UI addition ships in `client-react` and `client-solid`; the shared contract specs in `@rtc/ui-contract` run against both via the swap-trio.
