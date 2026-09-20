@@ -7,6 +7,7 @@ import {
   assertTrue,
 } from "./assert";
 import * as common from "./common";
+import { dragPanelTabOntoRates } from "./layout";
 
 const QUOTE_REPLY_FRAGMENT = "EURUSD is trading at";
 
@@ -246,6 +247,51 @@ export async function expectDockedPanelSurvivesReload(
   assertFalse(
     await ctx.po.jarvis.isPanelDocked(SCRIPTED_PANEL_ID),
     "expected the panel to return to the floating layer after undock",
+  );
+}
+
+/**
+ * Docks the scripted panel, DRAGS it onto Live Rates so the two share a
+ * dockview group, then reloads and asserts it is still there.
+ *
+ * {@link expectDockedPanelSurvivesReload} asserts the panel is docked and
+ * live after a reload but never asks WHERE, and the drag suite next door
+ * only ever drags STATIC panels — between them a dragged Jarvis panel could
+ * (and did) come back a fresh right-edge column on every reload while both
+ * suites stayed green. The engine scrubs a blob's dynamic node whenever the
+ * docked set has not loaded yet, which is every reload; it now parks where
+ * the panel was so the late listing lands back there. Dockview-engine only:
+ * the in-house engine has no drag.
+ */
+export async function expectDraggedDockedPanelSurvivesReload(
+  ctx: TestContext,
+): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.ask("show me gbp volatility");
+  await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForReplyDone();
+  // The overlay covers the desk the panel cascade sits on — see
+  // expectDockedPanelSurvivesReload's own note.
+  await ctx.po.jarvis.closeViaButton();
+  await ctx.po.jarvis.dockPanel(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+
+  await dragPanelTabOntoRates(ctx, SCRIPTED_PANEL_ID);
+  const mates = await ctx.po.layout.dockGroupMates(SCRIPTED_PANEL_ID);
+
+  assertTrue(
+    mates.length > 1,
+    `expected the dragged panel to share a group with Live Rates, saw ${JSON.stringify(mates)}`,
+  );
+
+  await common.reloadPage(ctx);
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+  const afterReload = await ctx.po.layout.dockGroupMates(SCRIPTED_PANEL_ID);
+
+  assertEquals(
+    afterReload.join("+"),
+    mates.join("+"),
+    "expected the dragged panel to come back in the SAME group after a reload",
   );
 }
 

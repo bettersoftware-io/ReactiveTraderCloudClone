@@ -641,6 +641,14 @@ export class PlaywrightLayout implements LayoutPO {
     return box.height;
   }
 
+  async dockGroupMates(panelId: string): Promise<readonly string[]> {
+    return this.group(panelId).evaluate((element) => {
+      return [...element.querySelectorAll("[data-panel-title]")].map((slot) => {
+        return slot.getAttribute("data-panel-title") ?? "";
+      });
+    });
+  }
+
   async panelSitsInFloat(panelId: string): Promise<boolean> {
     return this.group(panelId).evaluate((element) => {
       return element.closest(".dv-resize-container") !== null;

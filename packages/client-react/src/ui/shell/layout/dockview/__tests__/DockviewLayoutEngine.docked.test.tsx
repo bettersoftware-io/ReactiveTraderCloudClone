@@ -44,6 +44,32 @@ describe("DockviewLayoutEngine docked prop", () => {
     expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
   });
 
+  // The docked set does NOT always arrive with the first render: it is bound
+  // through a stream whose hook returns its default `[]` until the
+  // subscription delivers, so a reload — and a tab switch back — builds the
+  // engine before the set is known. The engine's orphan rule scrubs the
+  // blob's dynamic node on the way in (it cannot tell "undocked" from "not
+  // loaded yet"), and re-adding it at the right edge would throw away the
+  // arrangement the blob just restored. Measured in a browser before the
+  // engine started parking the scrub: a panel dragged onto Live Rates came
+  // back its own right-edge column on every reload, while a STATIC panel
+  // dragged the same way survived.
+  it("keeps a dragged docked panel's blob position when the docked set arrives a render late", async () => {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", createStackedFxBlob());
+
+    page.mount({ registry, store, docked: [] });
+    page.rerender({ registry, store, docked: ["panel-dyn-1"] });
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("panel-dyn-1-body")).toBe(true);
+    });
+    expect(page.groupMatesOf("panel-dyn-1")).toEqual([
+      "Live Rates",
+      "panel-dyn-1",
+    ]);
+  });
+
   // `data-maximized` mirrors InhouseLayoutEngine's own root attribute exactly
   // (the maximized panel id, or "" when none). It is the engine-agnostic
   // witness the shared page objects read — `JarvisDriverPage.maximizedPanelId`
@@ -521,3 +547,101 @@ const registry: PanelRegistry = {
     return <div data-testid="panel-dyn-1-body">DYN</div>;
   },
 };
+
+/** The FX blob a user leaves behind after dragging the docked panel onto Live
+ * Rates: the two share `group-1`, which is a shape a fresh seed conversion
+ * never produces — so a case asserting it can only be passing through a
+ * genuine restore. Shaped exactly like one captured from a browser session. */
+function createStackedFxBlob(): string {
+  return JSON.stringify({
+    grid: {
+      root: {
+        type: "branch",
+        data: [
+          {
+            type: "branch",
+            data: [
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-rates", "panel-dyn-1"],
+                  activeView: "panel-dyn-1",
+                  id: "group-1",
+                },
+                size: 526,
+              },
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-blotter"],
+                  activeView: "fx-blotter",
+                  id: "group-2",
+                },
+                size: 274,
+              },
+            ],
+            size: 1220,
+          },
+          {
+            type: "branch",
+            data: [
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-analytics"],
+                  activeView: "fx-analytics",
+                  id: "group-3",
+                },
+                size: 400,
+              },
+              {
+                type: "leaf",
+                data: {
+                  views: ["fx-positions"],
+                  activeView: "fx-positions",
+                  id: "group-4",
+                },
+                size: 400,
+              },
+            ],
+            size: 367,
+          },
+        ],
+        size: 800,
+      },
+      width: 1587,
+      height: 800,
+      orientation: "HORIZONTAL",
+    },
+    panels: {
+      "fx-rates": {
+        id: "fx-rates",
+        contentComponent: "rtc-panel",
+        title: "Live Rates",
+      },
+      "panel-dyn-1": {
+        id: "panel-dyn-1",
+        contentComponent: "rtc-panel",
+        tabComponent: "rtc-tab",
+        title: "panel-dyn-1",
+      },
+      "fx-blotter": {
+        id: "fx-blotter",
+        contentComponent: "rtc-panel",
+        title: "Blotter",
+      },
+      "fx-analytics": {
+        id: "fx-analytics",
+        contentComponent: "rtc-panel",
+        title: "Analytics",
+      },
+      "fx-positions": {
+        id: "fx-positions",
+        contentComponent: "rtc-panel",
+        title: "Positions",
+      },
+    },
+    activeGroup: "group-1",
+    rtcBlobVersion: 2,
+  });
+}

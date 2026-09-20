@@ -62,6 +62,11 @@ export interface DockviewLayoutEngineDockedPage {
   maximizedAttr(): string | null;
   /** Whether a testid the registry/portal tree renders is present. */
   bodyVisible(testId: string): boolean;
+  /** The panel titles sharing `panelId`'s dockview group, in tab order —
+   * the witness for WHERE a panel sits, which `groupsAttr` cannot give (a
+   * panel stacked into another group and a panel scrubbed away both leave
+   * the group count unchanged). Empty when the panel is not mounted. */
+  groupMatesOf(panelId: string): readonly string[];
   /** Whether `panelId`'s tab slot carries dockview-hud.css's strip marker
    * (`data-dock-strip`) — set the instant the live diff effect calls
    * `collapsePanel`, so unlike `groupsAttr` this needs no `waitFor`. */
@@ -134,6 +139,16 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
     },
     bodyVisible(testId: string): boolean {
       return screen.queryByTestId(testId) !== null;
+    },
+    groupMatesOf(panelId: string): readonly string[] {
+      const tab = screen.queryByTestId(`dock-tab-${panelId}`);
+      const group = tab?.closest(".dv-groupview");
+
+      return [...(group?.querySelectorAll("[data-panel-title]") ?? [])].map(
+        (slot) => {
+          return slot.getAttribute("data-panel-title") ?? "";
+        },
+      );
     },
     stripMarked(panelId: string): boolean {
       return (
