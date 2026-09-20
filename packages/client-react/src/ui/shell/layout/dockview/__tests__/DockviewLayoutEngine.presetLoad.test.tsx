@@ -235,6 +235,37 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
   // ABSENCE nothing in this environment could have produced — it would pass
   // whatever the rebuild does to a real pop-out. The question is deferred to
   // the Gherkin e2e (Task 10), where a real browser owns the window.
+
+  // QUESTION 6 (Task 10 e2e fix round 1) — does a panel closed via the View
+  // menu get REOPENED once a rebuild lands, when `closed` empties in the SAME
+  // commit as the `layoutResets` bump — exactly `loadLayoutPreset`'s and
+  // `resetTabLayout`'s (Default's) own shape? The `closed` reconciliation
+  // effect was missing the SAME stale-closure guard `maximized`/`docked`/
+  // `instances`/`collapsed` above all carry: unguarded, this commit's stale
+  // Commit-A closure ran `reopenPanel` against the by-then-DISPOSED old
+  // engine, and dockview-core's own grid bookkeeping on a torn-down instance
+  // threw "Invalid grid element" — a REAL crash, not a mismatched assertion
+  // (see the component's own comment on that effect for the full mechanism).
+  // The guard makes Commit A's stale call a no-op; the follow-up commit
+  // (`setLiveEngine`) is what actually reopens the panel onto the FRESH
+  // engine, so this needs the same `waitFor` polling QUESTION 2 does.
+  it("reopens a panel closed before a rebuild that arrives in the same commit", async () => {
+    const store = new InMemoryDockLayoutStore();
+
+    page.mount({ registry, store, closed: ["fx-positions"] });
+
+    // The premise: the panel starts genuinely absent from the grid, not
+    // merely hidden — a positive visibility check on the OTHER seed panels
+    // rules out a page-object wiring mistake that hid everything.
+    expect(page.bodyVisible("fx-positions-body")).toBe(false);
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+
+    page.rerender({ registry, store, closed: [], layoutResets: 1 });
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("fx-positions-body")).toBe(true);
+    });
+  });
 });
 
 interface DockviewPanelMeta {

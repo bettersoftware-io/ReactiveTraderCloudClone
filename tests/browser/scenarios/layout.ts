@@ -817,7 +817,21 @@ export async function savedLayoutRestoresAfterRearrangeAndReload(
 
 /** The three arrangement facts "Desk A" was saved with, asserted identically
  * right after loading it and again after a reload — {@link
- * savedLayoutRestoresAfterRearrangeAndReload}'s steps 4 and 5. */
+ * savedLayoutRestoresAfterRearrangeAndReload}'s steps 4 and 5.
+ *
+ * The blotter's float and positions' visibility both get a SECOND, stronger
+ * witness beyond the engine root's own bookkeeping attributes (fix round 1):
+ * `data-floating` "has read empty once before over a float the engine never
+ * published" (see `expectBlotterDockedHome`'s doc above), so
+ * `panelSitsInFloat` — the same real-DOM witness `expectBlotterInFloat`
+ * already uses — is asserted too, positively. And `data-closed=""` is
+ * rendered straight from the LayoutMachine's own in-memory state (the
+ * `replaceLayout` call itself sets it), so it cannot tell "positions was
+ * re-added to the live dock" from "nothing was ever closed" — exactly the
+ * distinction the reconciliation bug this task fixed hinged on. A positive
+ * `waitForTestId` on positions' own `dockTab` mount closes that gap: it can
+ * only pass once dockview-core has genuinely added the panel BACK into the
+ * rebuilt engine's grid. */
 async function expectDeskALayout(ctx: TestContext): Promise<void> {
   await ctx.po.layout.waitDockCollapsed(
     [ANALYTICS_PANEL_ID],
@@ -827,7 +841,15 @@ async function expectDeskALayout(ctx: TestContext): Promise<void> {
     [BLOTTER_PANEL_ID],
     ENGINE_SWITCH_TIMEOUT_MS,
   );
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(BLOTTER_PANEL_ID),
+    "expected fx-blotter inside dockview's float container",
+  );
   await ctx.po.layout.waitDockClosed([], ENGINE_SWITCH_TIMEOUT_MS);
+  await ctx.po.layout.waitForTestId(
+    TESTIDS.layout.dockTab(POSITIONS_PANEL_ID),
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
 }
 
 /**

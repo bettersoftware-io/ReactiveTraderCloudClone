@@ -279,6 +279,54 @@ describe("DockviewLayoutEngine preset load (layoutResets rebuild)", () => {
   // ABSENCE nothing in this environment could have produced — it would pass
   // whatever the rebuild does to a real pop-out. The question is deferred to
   // the Gherkin e2e (Task 10), where a real browser owns the window.
+
+  // QUESTION 6 (Task 10 e2e fix round 1) — the Solid twin of the react spec's
+  // identically-numbered case: does a panel closed via the View menu get
+  // REOPENED once a rebuild lands, when `closed` empties in the SAME batch as
+  // the `layoutResets` bump — exactly `loadLayoutPreset`'s and
+  // `resetTabLayout`'s (Default's) own shape? Solid's `closed` effect did NOT
+  // reproduce the react twin's crash (different reactivity timing), but it
+  // was one line short of the same defect class: it read a plain,
+  // non-reactive `engine` variable instead of the `liveEngine()` signal every
+  // sibling effect reads, so a rebuild alone was never guaranteed to re-run
+  // it. This proves the hardened version still does its one job — reopening
+  // the panel onto the fresh engine — not merely that nothing crashes.
+  it("reopens a panel closed before a rebuild that arrives in the same batch", async () => {
+    const [closed, setClosed] = createSignal<readonly PanelId[]>([
+      "fx-positions",
+    ]);
+    const [layoutResets, setLayoutResets] = createSignal(0);
+
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed,
+      docked: () => {
+        return [];
+      },
+      layoutResets,
+    });
+
+    // The premise: the panel starts genuinely absent from the grid, not
+    // merely hidden — a positive visibility check on another seed panel
+    // rules out a page-object wiring mistake that hid everything.
+    expect(page.bodyVisible("fx-positions-body")).toBe(false);
+    expect(page.bodyVisible("fx-rates-body")).toBe(true);
+
+    batch(() => {
+      setClosed([]);
+      setLayoutResets(1);
+    });
+
+    await page.waitFor(() => {
+      expect(page.bodyVisible("fx-positions-body")).toBe(true);
+    });
+  });
 });
 
 interface DockviewPanelMeta {

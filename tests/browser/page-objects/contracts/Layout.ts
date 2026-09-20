@@ -199,6 +199,11 @@ export interface LayoutPO {
    * the "Save current as…" opener excluded, since neither is a stored
    * preset. Requires the View menu already open. */
   layoutPresetNames(): Promise<string[]>;
+  /** Resolves once `testId` is attached to the MAIN document — a positive
+   * engine-side witness that an element genuinely rendered (e.g. a reopened
+   * panel's own `TESTIDS.layout.dockTab` mount), mirroring
+   * `PopoutWindowPO.waitForTestId`'s identical idiom for the child window. */
+  waitForTestId(testId: string, timeoutMs: number): Promise<void>;
 }
 
 /** The side of a target group a drag-to-dock releases near. */

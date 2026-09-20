@@ -794,11 +794,17 @@ export function DockviewLayoutEngine({
   // old engine — dockview-core's own `_doAddPanel` then throws "Invalid
   // grid element" trying to add into a torn-down instance's grid, which
   // React (with no error boundary around this component) unmounts entirely.
-  // No jsdom test caught it: jsdom's React commit/effect timing doesn't
-  // reliably reproduce the double-commit window this guard closes. Solid's
-  // sibling effect (client-solid's own DockviewLayoutEngine.tsx) reads the
-  // live `liveEngine()` signal rather than a plain variable and never hit
-  // this, but was hardened to match anyway (see its own comment).
+  // jsdom DOES reproduce this reliably — confirmed by temporarily weakening
+  // this guard back to `engine === null` and watching the sibling bridge
+  // spec's own "reopens a panel closed before a rebuild that arrives in the
+  // same commit" case throw the identical "Invalid grid element" error, then
+  // restoring it. No EXISTING bridge test caught it before, simply because
+  // none of the four preset-load/reset spec files combined a `closed`
+  // change with a `layoutResets` bump in one commit until that case was
+  // added. Solid's sibling effect (client-solid's own
+  // DockviewLayoutEngine.tsx) reads the live `liveEngine()` signal rather
+  // than a plain variable and never hit this, but was hardened to match
+  // anyway (see its own comment).
   useEffect(() => {
     const engine = liveEngine;
 

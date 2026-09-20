@@ -732,6 +732,12 @@ export class PlaywrightLayout implements LayoutPO {
     return names;
   }
 
+  async waitForTestId(testId: string, timeoutMs: number): Promise<void> {
+    await this.page
+      .getByTestId(testId)
+      .waitFor({ state: "attached", timeout: timeoutMs });
+  }
+
   async recordFirstDockRender(panelId: string): Promise<void> {
     // `addInitScript` runs in every document this page loads from here on,
     // before any app script — so the observer is watching when the dock's
