@@ -44,6 +44,15 @@ const DOCK_LAYOUT_STORAGE_PREFIX = "rtc-dock-layout-";
  */
 const DOCK_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
 
+/**
+ * How long the dock blob's bytes must hold still before
+ * `waitDockLayoutQuiescent` calls the channel settled. Comfortably over the
+ * 250ms debounce above — that margin is what makes it a witness rather than
+ * a sleep: the blob is UNCHANGED across a window longer than any pending
+ * write could take to land, so there is no pending write.
+ */
+const DOCK_LAYOUT_SETTLE_MS = 600;
+
 // `WorkspacePersistenceWriter` debounces the layer-2 LayoutState write
 // (`collapsed`/`closed`/root tree — a SEPARATE channel from the dock blob
 // above) by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
@@ -61,6 +70,19 @@ const WORKSPACE_LAYOUT_STORAGE_KEY = "rtc-workspace-layout-v1";
  * channel. Generous margin over 500ms for CI jitter.
  */
 const WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS = 5_000;
+
+/** Stands in for the saved-layout row names when the LAYOUTS section is not
+ * on screen at all — see `presetRowNames`. Spelled as prose so it can never
+ * collide with a real preset name a scenario might save. */
+const NO_LAYOUTS_SECTION = "<no LAYOUTS section on screen>";
+
+/** How many times `dragDockTabToPoint` re-drives a dock-tab drag whose
+ * release the page never received. Four, because the loss is a per-gesture
+ * coin flip measured at ~7% under an 8× CPU throttle and independent
+ * between attempts — four leaves a residue far below this suite's other
+ * noise, while a genuine "the page never takes this drop" still fails in
+ * well under a second of extra gesture. */
+const DOCK_DRAG_ATTEMPTS = 4;
 
 /** A serialized dockview leaf's own panel-id list — the one field this
  * driver reads off `LeafData` (`createDockEngine.ts`'s internal type; this
@@ -81,6 +103,29 @@ interface GripPoint {
 
 interface FirstDockRenderWindow {
   __rtcFirstDockRender?: unknown;
+}
+
+/** What one dock-tab drag gesture can be shown to have done to the page —
+ * see `dragDockTabToPoint`, which re-drives the gesture until `dropped`. */
+interface DockDragWitness {
+  started: boolean;
+  offered: boolean;
+  dropped: boolean;
+}
+
+/** The page globals `armDockDragWitness` writes: the record itself (carrying
+ * the destination point its `offered` test is against) and the once-per-
+ * document guard for its listeners. Type-only, like the two below. */
+interface DockDragWitnessWindow {
+  __rtcDockDragWitness?: DockDragWitness & { x: number; y: number };
+  __rtcDockDragListening?: boolean;
+}
+
+/** The page global `waitDockLayoutQuiescent` keeps its running state on:
+ * the last dock-blob snapshot it saw and when that snapshot first appeared.
+ * Type-only, like `FirstDockRenderWindow` above. */
+interface DockQuiescenceWindow {
+  __rtcDockQuiescence?: { snapshot: string; since: number };
 }
 
 /** One node of a `floatingGroups` entry's own nested grid (the rare
@@ -332,31 +377,19 @@ export class PlaywrightLayout implements LayoutPO {
         "xpath=ancestor::*[contains(concat(' ', @class, ' '), ' dv-content-container ')]",
       )
       .first();
-    const srcBox = await tab.boundingBox();
     const dstBox = await target.boundingBox();
 
-    if (srcBox === null || dstBox === null) {
+    if (dstBox === null) {
       throw new Error(
-        `dragDockTabOnto: missing bounding box for tab ${JSON.stringify(panelId)} or drop target ${JSON.stringify(targetTestId)}`,
+        `dragDockTabOnto: missing bounding box for drop target ${JSON.stringify(targetTestId)}`,
       );
     }
 
-    const srcX = srcBox.x + srcBox.width / 2;
-    const srcY = srcBox.y + srcBox.height / 2;
-    const dstX = dstBox.x + dstBox.width / 2;
-    const dstY = dstBox.y + dstBox.height / 2;
-
-    // Locator.dragTo's single-jump move (down, ONE move, up) never crosses
-    // the browser's native-HTML5-drag movement threshold — dockview's tab
-    // is `draggable=true` and relies on real incremental pointer movement to
-    // promote a mousedown into a `dragstart` (confirmed against dockview-
-    // core's own pointer-backend threshold detection). A multi-step
-    // `mouse.move` (like `dragFirstHandleBy`'s splitter drag) supplies that
-    // incremental movement in one gesture.
-    await this.page.mouse.move(srcX, srcY);
-    await this.page.mouse.down();
-    await this.page.mouse.move(dstX, dstY, { steps: 12 });
-    await this.page.mouse.up();
+    await this.dragDockTabToPoint(
+      tab,
+      { x: dstBox.x + dstBox.width / 2, y: dstBox.y + dstBox.height / 2 },
+      `dragDockTabOnto(${panelId} → ${targetTestId})`,
+    );
   }
 
   async dragDockTabToEdge(
@@ -378,12 +411,11 @@ export class PlaywrightLayout implements LayoutPO {
         "xpath=ancestor::*[contains(concat(' ', @class, ' '), ' dv-content-container ')]",
       )
       .first();
-    const srcBox = await tab.boundingBox();
     const dstBox = await target.boundingBox();
 
-    if (srcBox === null || dstBox === null) {
+    if (dstBox === null) {
       throw new Error(
-        `dragDockTabToEdge: missing bounding box for tab ${JSON.stringify(panelId)} or drop target ${JSON.stringify(targetTestId)}`,
+        `dragDockTabToEdge: missing bounding box for drop target ${JSON.stringify(targetTestId)}`,
       );
     }
 
@@ -405,13 +437,196 @@ export class PlaywrightLayout implements LayoutPO {
           ? dstBox.y + dstBox.height * (1 - inset)
           : dstBox.y + dstBox.height / 2;
 
-    await this.page.mouse.move(
-      srcBox.x + srcBox.width / 2,
-      srcBox.y + srcBox.height / 2,
+    await this.dragDockTabToPoint(
+      tab,
+      { x: dstX, y: dstY },
+      `dragDockTabToEdge(${panelId} → ${targetTestId}, ${edge})`,
     );
-    await this.page.mouse.down();
-    await this.page.mouse.move(dstX, dstY, { steps: 12 });
-    await this.page.mouse.up();
+  }
+
+  /**
+   * Presses `tab`, drags it to `dst` and releases — and only returns once
+   * the page can be shown to have RECEIVED that release as a drag `drop`
+   * event, re-driving the whole gesture when it did not.
+   *
+   * The retry exists because a Playwright drag can be lost with no error at
+   * all, and this suite has been red on `main` twice for it (runs
+   * 35459103406 / 35531428856, `layout.spec.ts:68`, both alternative-core
+   * lanes, one react and one solid). `layout.spec.ts:18` had been carried
+   * as a separate "known flake" with the same `data-groups` expected-3-
+   * got-4 signature; it drives the same helper, so it is the same loss, not
+   * a second one.
+   *
+   * Measured locally under `Emulation.setCPUThrottlingRate` — 0 failures in
+   * 10 gestures unthrottled, 2 in 30 at 8×, 0 in 25 at 20×. The lost
+   * gesture fires `dragstart` and a full run of `dragover`s, dockview's own
+   * `.dv-drop-target` overlay IS showing over the destination, and then
+   * Chromium ends the drag with `dragend` and no `drop`: the renderer's
+   * accept state for the last `dragover` has not reached the browser
+   * process by the time `mouse.up`'s CDP drop command arrives. Nothing is
+   * dropped, nothing throws, and the caller's next assertion blames the
+   * product for a gesture the product was never shown.
+   *
+   * Which is why the witness is the `drop` EVENT and not a longer wait on
+   * the outcome: a longer timeout cannot turn a release that was never
+   * delivered into one that was.
+   *
+   * What still fails, and for the right reason:
+   * - dockview stops MERGING a centre drop → the drop is still delivered,
+   *   so this returns on the first attempt and the caller's
+   *   `expectDockGroups` fails exactly as it does today.
+   * - dockview stops OFFERING the drop (its overlay never covers the
+   *   destination — what a collapsed panel's locked strip does on purpose,
+   *   measured: no overlay, and the drop lands unhandled) → this returns
+   *   without retrying, so `dragBlotterOntoCollapsedAnalyticsIsRejected`
+   *   still proves rejection rather than waiting one out.
+   * - the tab stops being draggable at all → no `dragstart`, every attempt
+   *   spent, and the throw below names THAT, instead of a group count.
+   */
+  private async dragDockTabToPoint(
+    tab: Locator,
+    dst: GripPoint,
+    label: string,
+  ): Promise<void> {
+    let last: DockDragWitness = {
+      started: false,
+      offered: false,
+      dropped: false,
+    };
+
+    for (let attempt = 1; attempt <= DOCK_DRAG_ATTEMPTS; attempt += 1) {
+      const srcBox = await tab.boundingBox();
+
+      if (srcBox === null) {
+        throw new Error(`${label}: the dragged tab has no bounding box`);
+      }
+
+      await this.armDockDragWitness(dst);
+      // Locator.dragTo's single-jump move (down, ONE move, up) never crosses
+      // the browser's native-HTML5-drag movement threshold — dockview's tab
+      // is `draggable=true` and relies on real incremental pointer movement
+      // to promote a mousedown into a `dragstart` (confirmed against
+      // dockview-core's own pointer-backend threshold detection). A
+      // multi-step `mouse.move` (like `dragFirstHandleBy`'s splitter drag)
+      // supplies that incremental movement in one gesture.
+      await this.page.mouse.move(
+        srcBox.x + srcBox.width / 2,
+        srcBox.y + srcBox.height / 2,
+      );
+      await this.page.mouse.down();
+      await this.page.mouse.move(dst.x, dst.y, { steps: 12 });
+      await this.page.mouse.up();
+
+      last = await this.readDockDragWitness(label);
+
+      if (last.dropped) {
+        return;
+      }
+
+      if (last.started && !last.offered) {
+        // The page saw the drag and declined to take it — a real answer
+        // from the app, not a lost gesture. Returning leaves the caller's
+        // own assertion to judge it.
+        return;
+      }
+    }
+
+    throw new Error(
+      `${label}: no drop reached the page in ${DOCK_DRAG_ATTEMPTS} attempts (last attempt: dragstart=${String(last.started)}, dockview drop overlay over the destination=${String(last.offered)}). dragstart=false means the tab never became a drag source at all; dragstart=true with an armed overlay means Chromium ended every drag without delivering it.`,
+    );
+  }
+
+  /** Installs (once per document) the drag listeners `dragDockTabToPoint`
+   * reads, and arms a fresh record for a gesture aimed at `dst`. The
+   * listeners are page-side and passive on purpose: a CDP round trip
+   * between the last `dragover` and the drop is itself enough to change the
+   * timing being measured. */
+  private async armDockDragWitness(dst: GripPoint): Promise<void> {
+    await this.page.evaluate((point) => {
+      // Runs inside the browser context — self-contained, like
+      // `floatPanel`'s predicate above.
+      const win = window as DockDragWitnessWindow;
+      win.__rtcDockDragWitness = {
+        x: point.x,
+        y: point.y,
+        started: false,
+        offered: false,
+        dropped: false,
+      };
+
+      if (win.__rtcDockDragListening === true) {
+        return;
+      }
+
+      win.__rtcDockDragListening = true;
+      document.addEventListener(
+        "dragstart",
+        () => {
+          const record = (window as DockDragWitnessWindow).__rtcDockDragWitness;
+
+          if (record !== undefined) {
+            record.started = true;
+          }
+        },
+        { capture: true },
+      );
+      document.addEventListener(
+        "dragover",
+        () => {
+          const record = (window as DockDragWitnessWindow).__rtcDockDragWitness;
+
+          if (record === undefined) {
+            return;
+          }
+
+          // dockview-core's own drop overlay. Overwritten every dragover,
+          // so what survives is its state at the LAST one — the state the
+          // release was about to be judged against.
+          const overlay = document.querySelector(".dv-drop-target");
+
+          if (overlay === null) {
+            record.offered = false;
+
+            return;
+          }
+
+          const r = overlay.getBoundingClientRect();
+          record.offered =
+            record.x >= r.x &&
+            record.x <= r.x + r.width &&
+            record.y >= r.y &&
+            record.y <= r.y + r.height;
+        },
+        { capture: true },
+      );
+      document.addEventListener(
+        "drop",
+        () => {
+          const record = (window as DockDragWitnessWindow).__rtcDockDragWitness;
+
+          if (record !== undefined) {
+            record.dropped = true;
+          }
+        },
+        { capture: true },
+      );
+    }, dst);
+  }
+
+  private async readDockDragWitness(label: string): Promise<DockDragWitness> {
+    const record = await this.page.evaluate(() => {
+      return (window as DockDragWitnessWindow).__rtcDockDragWitness;
+    });
+
+    if (record === undefined) {
+      // Only reachable if the document was replaced mid-gesture, which is
+      // worth saying out loud rather than reading as "no drop".
+      throw new Error(
+        `${label}: the drag witness is gone — the page navigated during the gesture`,
+      );
+    }
+
+    return record;
   }
 
   async collapsePanel(panelId: string): Promise<void> {
@@ -673,12 +888,17 @@ export class PlaywrightLayout implements LayoutPO {
   }
 
   /** Runs `action` (a click that replaces the WHOLE LayoutState — a preset
-   * load or Default), then waits out `WorkspacePersistenceWriter`'s
-   * debounce by polling for the persisted blob to actually CHANGE from its
-   * pre-action value — see `WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS`'s doc.
-   * Folded into the action itself, the same idiom `floatPanel` above uses
-   * for the dock blob's own debounce, so a caller that reloads right after
-   * never races it. */
+   * load or Default), then waits until BOTH persistence channels the action
+   * writes have actually landed, so a caller that reloads right after never
+   * races either one. Folded into the action itself, the same idiom
+   * `floatPanel` above uses for the dock blob's own debounce.
+   *
+   * The two channels are genuinely separate and are waited on separately:
+   * the layer-2 LayoutState under `WORKSPACE_LAYOUT_STORAGE_KEY` (500ms
+   * debounce) by its value CHANGING, and `createDockEngine`'s own dock blob
+   * (250ms debounce) by it falling QUIESCENT. Waiting only the longer one
+   * and inferring the shorter had flushed is an ordering assumption, not a
+   * witness — and it is the dock blob that carries a restored float. */
   private async withWorkspaceLayoutPersisted(
     action: () => Promise<void>,
   ): Promise<void> {
@@ -688,12 +908,74 @@ export class PlaywrightLayout implements LayoutPO {
 
     await action();
 
+    try {
+      await this.page.waitForFunction(
+        ({ key, previous }) => {
+          return localStorage.getItem(key) !== previous;
+        },
+        { key: WORKSPACE_LAYOUT_STORAGE_KEY, previous: before },
+        { timeout: WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS },
+      );
+    } catch (cause) {
+      // The bare waitForFunction timeout reads as "the app never persisted
+      // the layout", which is only one of the two ways to get here — and
+      // the other one is not a defect at all.
+      throw new Error(
+        `withWorkspaceLayoutPersisted: "${WORKSPACE_LAYOUT_STORAGE_KEY}" still held its pre-action value after ${WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS}ms. Either the action never replaced the LayoutState, or it replaced it with a state BYTE-IDENTICAL to the live one — loading a preset equal to the current arrangement writes the same bytes back, and this change-witness can never fire for it. A caller in the second case must drive the click directly instead of through this helper, which has no way to tell "not persisted yet" from "persisted the same thing".`,
+        { cause },
+      );
+    }
+
+    await this.waitDockLayoutQuiescent();
+  }
+
+  /** Resolves once the dock-layout blob has stopped moving: its bytes have
+   * been unchanged for longer than `createDockEngine`'s own debounce window
+   * (see `DOCK_LAYOUT_PERSIST_TIMEOUT_MS`'s doc for the 250ms figure), so no
+   * write can still be in flight.
+   *
+   * Quiescence rather than "the value changed", deliberately: a preset whose
+   * dock tree matches the live one writes no new bytes at all, and a
+   * change-witness would hang on it forever — the very trap the caller's own
+   * failure message above names for the OTHER channel. Quiescence is
+   * satisfied immediately in that case and is correct either way. */
+  private async waitDockLayoutQuiescent(): Promise<void> {
+    await this.page.evaluate(() => {
+      delete (window as DockQuiescenceWindow).__rtcDockQuiescence;
+    });
     await this.page.waitForFunction(
-      ({ key, previous }) => {
-        return localStorage.getItem(key) !== previous;
+      ({ prefix, settleMs }) => {
+        // Runs inside the browser context — self-contained, like
+        // `floatPanel`'s predicate above. The running state lives on
+        // `window` because the predicate is re-evaluated from source on
+        // every poll and keeps nothing between calls.
+        const win = window as DockQuiescenceWindow;
+        const blobs: string[] = [];
+
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+
+          if (key?.startsWith(prefix) === true) {
+            blobs.push(`${key}=${localStorage.getItem(key) ?? ""}`);
+          }
+        }
+
+        const snapshot = blobs.sort().join("\u0000");
+        const seen = win.__rtcDockQuiescence;
+
+        if (seen === undefined || seen.snapshot !== snapshot) {
+          win.__rtcDockQuiescence = { snapshot, since: Date.now() };
+
+          return false;
+        }
+
+        return Date.now() - seen.since >= settleMs;
       },
-      { key: WORKSPACE_LAYOUT_STORAGE_KEY, previous: before },
-      { timeout: WORKSPACE_LAYOUT_PERSIST_TIMEOUT_MS },
+      {
+        prefix: DOCK_LAYOUT_STORAGE_PREFIX,
+        settleMs: DOCK_LAYOUT_SETTLE_MS,
+      },
+      { timeout: DOCK_LAYOUT_PERSIST_TIMEOUT_MS, polling: 50 },
     );
   }
 
@@ -710,8 +992,50 @@ export class PlaywrightLayout implements LayoutPO {
       .press("Enter");
   }
 
-  async layoutPresetNames(): Promise<string[]> {
-    const rows = await this.layoutSection().locator('[role="menuitem"]').all();
+  async waitLayoutPresetNames(
+    names: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    // `expect.poll` re-reads the whole row list until it matches, the same
+    // retrying discipline as this driver's `toHaveAttribute` witnesses — a
+    // save and a delete both reach the DOM through a published stream, so a
+    // single snapshot read the instant after one of them races it.
+    await expect
+      .poll(
+        () => {
+          return this.presetRowNames();
+        },
+        { timeout: timeoutMs },
+      )
+      .toEqual([...names]);
+  }
+
+  /** The saved-layout rows' visible names, in DOM order — or the single
+   * `NO_LAYOUTS_SECTION` marker when the section's own two always-rendered
+   * rows are not both on screen.
+   *
+   * The marker is the point: the rows are read out of a DROPDOWN, so a
+   * View menu that closed (or an engine with no LAYOUTS section at all)
+   * yields the same bare `[]` a genuinely empty preset list does, and
+   * `waitLayoutPresetNames([])` would then pass on a page showing nothing.
+   * A distinct value makes that absence fail, and name itself in the
+   * failure. */
+  private async presetRowNames(): Promise<string[]> {
+    const section = this.layoutSection();
+    const anchors = await Promise.all([
+      section.getByTestId(TESTIDS.viewMenu.layoutDefault).count(),
+      section.getByTestId(TESTIDS.viewMenu.layoutSave).count(),
+    ]);
+
+    const anchored = anchors.every((count) => {
+      return count === 1;
+    });
+
+    if (!anchored) {
+      return [NO_LAYOUTS_SECTION];
+    }
+
+    const rows = await section.locator('[role="menuitem"]').all();
     const names: string[] = [];
 
     for (const row of rows) {
