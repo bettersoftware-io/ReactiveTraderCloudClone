@@ -47,6 +47,33 @@ export function mirrorPort<T, U>(
   });
 }
 
+/** A port stream followed WITHOUT a seed peek: a seedless `sharedFold`
+ * whose producer is one `fromPort`. For a keyed wire stream — `mirrorPort`'s
+ * `peekCurrent` is a subscribe + unsubscribe, which on a server-refcounted
+ * per-symbol stream is subscribe/unsubscribe/subscribe on the wire at the
+ * start of every warm period. The price: the first value arrives a fiber
+ * hop after subscribe, never in the caller's tick. A late joiner still
+ * replays the latest synchronously; equal consecutive values conflate. */
+export function followPort<T>(
+  host: EffectHost,
+  source: CoreStream<T>,
+): CoreStream<T> {
+  return sharedFold(host, {
+    seed: () => {
+      return Option.none();
+    },
+    run: (update: FoldUpdate<T>, fromPort: FromPort) => {
+      return fromPort(source).pipe(
+        Stream.runForEach((value) => {
+          return update(() => {
+            return value;
+          });
+        }),
+      );
+    },
+  });
+}
+
 /** `mirrorPort` with the identity projection: the port's own values,
  * unchanged — what most preference streams are. Same seed, same producer,
  * same notes as `mirrorPort`. */

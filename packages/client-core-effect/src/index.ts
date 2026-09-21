@@ -1,4 +1,5 @@
 export {
+  createChildHost,
   createDetachedHost,
   type EffectHost,
   type EffectRunner,
@@ -8,12 +9,15 @@ export {
   fromPortIn,
   pushReconnectIntent,
   refToStateStream,
+  refToWarmStateStream,
   reportOutOfBand,
   runnerFor,
   type SharedFold,
+  scopedPortStream,
   setRefIfChanged,
   sharedFold,
   streamToStream,
+  type WarmStateStream,
 } from "#/bridge/out";
 export { peek, peekCurrent } from "#/bridge/peek";
 export { rpc } from "#/bridge/rpc";
@@ -33,21 +37,28 @@ export {
   BlotterTag,
   BootPreferenceTag,
   buildAppLayer,
+  CandleSeriesTag,
   ChartSubstrateTag,
   ConnectionTag,
   CreditRfqFilterPreferenceTag,
   CurrencyPairsTag,
   DealersTag,
+  DepthTag,
   EqBlotterViewPreferenceTag,
+  EqDrawingsTag,
   EqWatchlistSortPreferenceTag,
+  EqWorkspaceTag,
   ExecutionTag,
   ForceBootAnimationTag,
   InstrumentsTag,
   JarvisPreferencesTag,
   LayoutEngineTag,
   LoginWaitPreferencesTag,
+  type NativePresenters,
   type NativeServices,
   nativePresentersEffect,
+  OrdersBlotterTag,
+  PositionsTag,
   PowerSaverTag,
   PriceHistoryTag,
   PriceStreamTag,
@@ -56,8 +67,18 @@ export {
   ThemePreferenceTag,
   ThemeSkinPreferenceTag,
   ViewModePreferenceTag,
+  WatchlistTag,
 } from "#/layers";
+export { createEqDrawingsMachine } from "#/machines/eqDrawings";
+export {
+  createEqWorkspaceMachine,
+  type EqWorkspaceDeps,
+} from "#/machines/eqWorkspace";
 export { createNotionalMachine } from "#/machines/notional";
+export {
+  createOrderTicketMachine,
+  type OrderTicketDeps,
+} from "#/machines/orderTicket";
 export { createRfqCountdownMachine } from "#/machines/rfqCountdown";
 export {
   createRfqSubmissionMachine,
@@ -79,18 +100,22 @@ export {
   type TileExecutionDeps,
 } from "#/machines/tileExecution";
 export { createBlotterPresenter } from "#/presenters/blotter";
+export { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 export { conflatedFold } from "#/presenters/conflatedFold";
 export { createConnectionPresenter } from "#/presenters/connection";
+export { createDepthPresenter } from "#/presenters/depth";
 export { createTradeExecutionPresenter } from "#/presenters/execution";
 export {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
 export {
+  followPort,
   type MirrorOptions,
   mirrorPort,
   mirrorPortAsIs,
 } from "#/presenters/mirrorPort";
+export { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 export {
   createAmbientStylePresenter,
   createAnimatedBackgroundPresenter,
@@ -117,7 +142,9 @@ export {
   createCurrencyPairsPresenter,
   createDealersPresenter,
   createInstrumentsPresenter,
+  createPositionsPresenter,
 } from "#/presenters/warmSingletons";
+export { createWatchlistPresenter } from "#/presenters/watchlist";
 export {
   AppPortsTag,
   HostLive,

@@ -6,8 +6,10 @@ import type {
   CurrencyPair,
   Dealer,
   DealerPort,
+  EquityPosition,
   Instrument,
   InstrumentPort,
+  PositionPort,
   PositionUpdates,
   ReferenceDataPort,
 } from "@rtc/domain";
@@ -17,6 +19,7 @@ import {
   createCurrencyPairsPresenter,
   createDealersPresenter,
   createInstrumentsPresenter,
+  createPositionsPresenter,
 } from "#/presenters/warmSingletons";
 
 describe("warm singleton presenters (async)", () => {
@@ -68,6 +71,18 @@ describe("warm singleton presenters (async)", () => {
     expect(roster.observed).toBe(false);
   });
 
+  it("positions: same warm-singleton shape", () => {
+    const { port, calls, book } = createPositions();
+    const lifetime = new AbortController();
+    const presenter = createPositionsPresenter(port, lifetime.signal);
+    expect(calls.count).toBe(1);
+    presenter.positions$.subscribe(() => {}).unsubscribe();
+    expect(calls.count).toBe(1);
+    expect(book.observed).toBe(true);
+    lifetime.abort();
+    expect(book.observed).toBe(false);
+  });
+
   interface CallCount {
     count: number;
   }
@@ -94,6 +109,12 @@ describe("warm singleton presenters (async)", () => {
     port: InstrumentPort;
     calls: CallCount;
     roster: Subject<readonly Instrument[]>;
+  }
+
+  interface PositionsFixture {
+    port: PositionPort;
+    calls: CallCount;
+    book: Subject<readonly EquityPosition[]>;
   }
 
   function createReferenceData(): ReferenceDataFixture {
@@ -151,6 +172,21 @@ describe("warm singleton presenters (async)", () => {
         getInstruments: () => {
           calls.count += 1;
           return roster;
+        },
+      },
+    };
+  }
+
+  function createPositions(): PositionsFixture {
+    const calls: CallCount = { count: 0 };
+    const book = new Subject<readonly EquityPosition[]>();
+    return {
+      calls,
+      book,
+      port: {
+        positions: () => {
+          calls.count += 1;
+          return book;
         },
       },
     };

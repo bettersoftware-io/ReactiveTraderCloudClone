@@ -83,9 +83,31 @@ Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
 core would be RxJS with extra steps.
 
+Slice 4 (equities) adds three more shapes, still nothing new in the
+kernel. `createKeyedPortStreams(open)` is the per-symbol idiom shared by
+`watchlist.quote$`, `depth.depth$` and (via its own hand-rolled variant)
+`candleSeries.candles$`: `open(key)` runs once, at the first REQUEST for
+that key (not the first subscribe), and the result is a memoised,
+refCounted `Topic` that releases the port on the last unsubscribe and
+starts fresh — no replay — on the next warm period. `storeToWarmStateStream`
+(bridge/out.ts) is the app-lifetime-singleton idiom `eqWorkspace` and
+`eqDrawings` share with the RxJS presenters' own internal
+`state$.subscribe()`: a `StateStream` held warm by a subscription of its
+own, so a cold `getValue()` — what a first render reads — never falls back
+to the construction-time default. `ordersBlotter`'s `orders$` combines a
+retained (`retainUntil: lifetime`) `Topic` with `portCallToStream` (the
+lifecycle twin of `promiseToStream`: a per-call port stream, every value
+tapped through `onValue` before the subscriber, releases the port on
+unsubscribe) for `place()`. Composition is **native-first**:
+`composeWithBase` builds this core's own `eqWorkspace`/`ordersBlotter`
+before the RxJS base app, then hands them to `createRxjsApp` as
+`CoreSeams` — so the base's `JarvisDriverMachine` and `AnimationDirector`
+drive and observe the workspace and fills the UI actually renders, not a
+second, unreachable RxJS instance of each.
+
 ## Parity
 
-As of slice 3, **36 of 74** members are native (the 74th, `layoutPresets`,
+As of slice 4, **44 of 74** members are native (the 74th, `layoutPresets`,
 arrived delegated with Dockview Phase 6b). Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,
 `themeSkinPreference`, `viewModePreference`, `powerSaver`,
@@ -96,10 +118,16 @@ arrived delegated with Dockview Phase 6b). Slice 1a/1b brought
 `commands.reconnect`. Slice 2 added eleven more: the presenters
 `priceStream`, `priceHistory`, `execution`, `blotter`, `analytics` and
 `currencyPairs`, and the machines `tileExecution`, `staleFlag`,
-`analyticsStaleFlag`, `rowHighlight` and `notional`. Slice 3 adds the
+`analyticsStaleFlag`, `rowHighlight` and `notional`. Slice 3 added the
 credit column: the presenters `rfqs`, `dealers`, `instruments` and
 `rfqQuote`, and the machines `rfqTile`, `rfqSubmission`,
-`ticketSubmission` and `rfqCountdown`. Everything else still
+`ticketSubmission` and `rfqCountdown`. Slice 4 adds the equities column:
+the presenters `watchlist`, `candleSeries`, `depth`, `ordersBlotter` and
+`positions` (`watchlist`'s roster, `ordersBlotter`'s `orders$` and
+`positions` are retained singletons), the machines `eqWorkspace` (seeded
+from `watchlist$` via `firstWatchlistSymbol`), `eqDrawings` and
+`orderTicket` (its `place` dep reaches `ordersBlotter.place`, wired
+together in `composition.ts`'s `nativeMachines`). Everything else still
 **delegates** to
 `@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
 app and overlays what this core implements. The native idiom for a

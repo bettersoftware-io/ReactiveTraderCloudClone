@@ -260,12 +260,57 @@ core; slice 3 added the credit shapes to the same list:
   bindings had imported `createRfqCountdownMachine` from
   `@rtc/client-core` directly, which no alternative core could intercept,
   so `MachineFactories` grew it and the member count went 72 → 73.
+- **Keyed streams, lifecycle commands and singletons** (slice 4, equities —
+  `watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`; the
+  two composition singletons `eqWorkspace`/`eqDrawings`; machine
+  `orderTicket`): the async core adds `createKeyedPortStreams<T>(open)`
+  (memoised by key, `open(key)` called once per key at first request,
+  refCounted release on last unsubscribe) under `watchlist.quote$` and
+  `depth.depth$`, a new `portCallToStream` bridge export for
+  `ordersBlotter.place()`'s per-call lifecycle stream, and holds
+  `eqWorkspace`/`eqDrawings` warm through `storeToWarmStateStream`; all
+  three re-express over the imported `reduceEqWorkspace` /
+  `reduceEqDrawings` / `reduceOrderTicket` folds. `orderTicket` runs on the
+  shared `createRunSlot` kernel; `orders$` instead supersedes its own
+  query with a per-query `AbortController` inside the retained Topic's
+  producer (`presenters/ordersBlotter.ts`). The Effect core adds
+  `followPort(host, source)` — a seedless `sharedFold` over one
+  `fromPort`, so `quote$`/`depth$` are NOT peeked at warm-period start the
+  way `mirrorPort`'s other seeded uses are — plus a new `scopedPortStream`
+  bridge export (`Stream.unwrapScoped`) for `place()`; `orders$` there
+  supersedes its own query with `Stream.flatMap(…, { switch: true })`
+  inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
+  two singletons warm through `refToWarmStateStream`, and grows the Layer
+  graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). Both siblings
+  gained `createApp`'s new `CoreSeams` argument so the base app's
+  `JarvisDriverMachine` and `AnimationDirector` read the native
+  `eqWorkspace`/`fills$` instead of an unreachable RxJS-only instance. A
+  `Scope.addFinalizer` on each Effect singleton's child scope marks it
+  disposed and releases its keep-warm, so `app.dispose()` and the
+  machine's own `dispose()` converge — what the async twin's `lifetime`
+  abort listener does.
 
 **Strangler seam.** A base-side consumer of a member that goes native keeps
 the base instance until its own slice: as of slice 2 the RxJS
 `AnimationDirector` and `NarratorMachine` still read the base `execution`,
 `currencyPairs` and `priceStream` (see the STATUS residual). Slice 8 ends
 the seam.
+
+**Core seams (slice 4).** `createApp(ports, seams = {})` gives a sibling a
+way to redirect specific base-side reads without waiting for that
+consumer's own slice: `CoreSeams { eqWorkspace?, equityFills$? }` lets
+`jarvisDriver`'s dep and `AnimationDirector`'s `equityFills$` read
+`seams.x ?? own` instead of the base's own instance. What it deliberately
+does NOT do: the base app still builds and exposes its own `eqWorkspace`
+as `base.presenters.eqWorkspace`, so the parity drift test's
+reference-inequality assertion (a `"native"` member must not literally be
+the RxJS instance) stays meaningful even after the seam redirects the UI.
+`CoreSeams` is strangler-phase scaffolding, deleted along with delegation
+in slice 8, and the same shape is available to close slice 2's
+`AnimationDirector` residual (`executions$`, `pairs$`, `priceFor`,
+`rfqEvents$`) whenever that gets its own slot — equities needed it now
+only because `tests/browser/scenarios/jarvis.ts` is the one e2e witness
+that would otherwise go red.
 
 **Teardown order.** An alternative core releases its own resources first —
 the async lifetime signal, the Effect host scope — then disposes the base
@@ -289,24 +334,37 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 3, thirty-six members have real suites — slice 1a's
+fails. As of slice 4, forty-four members have real suites — slice 1a's
 six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
-`analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`) and
-slice 3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
-`rfqSubmission`, `ticketSubmission`, `rfqCountdown`) — and 38 are pending
-(37 at slice 3's merge; Dockview Phase 6b's `layoutPresets` joined pending).
-Each suite subscribes to the member's `Stream`/`StateStream`, drives a
-scripted `AppPorts` harness (`scriptPorts` — Subject-backed streams for the
-connection, the colour scheme and the FX and credit ports, an intent-named
-`driver` — `tickPrice`, `resolveExecution`, `emitTrades`, `emitRfqEvent`,
-`resolveWorkflowCommand`, …). Every one-shot port method is backed by the
-same `createPendingQueue<Req, Res>()` helper — a request is pending from
+`analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`), slice
+3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
+`rfqSubmission`, `ticketSubmission`, `rfqCountdown`) and slice 4's eight
+(`watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`;
+`eqWorkspace`, `eqDrawings`, `orderTicket`) — and 30 are pending (37 at
+slice 3's merge, 38 once Dockview Phase 6b's `layoutPresets` joined). Each
+suite subscribes to the member's
+`Stream`/`StateStream`, drives a scripted `AppPorts` harness (`scriptPorts`
+— Subject-backed streams for the connection, the colour scheme, the FX,
+credit and equities ports, an intent-named `driver` — `tickPrice`,
+`resolveExecution`, `emitTrades`, `emitRfqEvent`, `resolveWorkflowCommand`,
+`emitWatchlist`, `emitCandles`, `emitOrderUpdate`, …). `scriptPorts` also
+takes an optional seed (`HarnessSeed { watchlist? }`, threaded through
+`makeHarness({ watchlist })` in every runner) so a member that peeks a
+port synchronously at composition — `eqWorkspace`'s
+`peekFirstWatchlistSymbol` — finds a value pre-loaded into a
+`ReplaySubject(1)` rather than only ever exercising its asynchronous
+fallback. Every one-shot port method is backed by the same
+`createPendingQueue<Req, Res>()` helper — a request is pending from
 SUBSCRIBE until settled or unsubscribed, settled FIFO, a no-op when empty —
 so a suite can witness laziness and cancellation as queue depth rather than
-as an absence. A suite advances vitest's fake timers where a member is timer-driven (`withFakeClock`,
-built around one `it`; `settle()` otherwise), and asserts only at the
-envelope level described above.
+as an absence. A multi-value port call gets the streaming variant of the
+same queue: `orders.place()`'s pending entry is settled by zero or more
+`emitOrderUpdate` NEXTs before a terminal `completeOrder`/`failOrder`,
+rather than the one-shot queue's single next-and-complete. A suite
+advances vitest's fake timers where a member is timer-driven
+(`withFakeClock`, built around one `it`; `settle()` otherwise), and
+asserts only at the envelope level described above.
 
 One runner file per core imports every suite against that core's own
 `makeHarness`: `packages/client-core/src/composition.coreContract.test.ts`
@@ -324,12 +382,15 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 3 both
-alternative cores list thirty-six members `"native"` (`connection`, all
+`commands` — and the drift test walks all three. As of slice 4 both
+alternative cores list forty-four members `"native"` (`connection`, all
 fifteen preference presenters, `commands.reconnect`, the six FX
 pricing/blotter presenters and the five FX machines, the four credit
 presenters and the four RFQ machines — `rfqCountdown` having joined
-`MachineFactories` in slice 3) and everything else
+`MachineFactories` in slice 3 — and slice 4's eight: the five equities
+presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
+`positions`), the two equities workspace singletons (`eqWorkspace`,
+`eqDrawings`) and the machine `orderTicket`) and everything else
 `"delegated"`; the manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.

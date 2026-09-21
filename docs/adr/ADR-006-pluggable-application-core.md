@@ -472,6 +472,236 @@ predictable from the design alone):
   can detect a swapped pair — the RxJS and Effect wiring cases share the
   blind spot.
 
+**Decided in slice 4** (2026-09-21):
+
+- **The core seam is observed, not deferred, because an e2e scenario
+  watches it.** Slices 2–3 recorded their equivalent coupling
+  (`AnimationDirector`'s `executions$`, `rfqs.events$`) as an unobserved
+  residual — nothing in the shipped suite told the difference. Equities
+  cannot: `JarvisDriverMachine` is composed inside the RxJS `createApp`
+  against the base `eqWorkspace`, so the moment a sibling owns `eqWorkspace`
+  natively the UI reads the native instance while a Jarvis drive batch
+  (`eqSelect`, `eqTimeframe`, `eqIndicator`, `eqPane`) still mutated the
+  base one — `tests/browser/scenarios/jarvis.ts` asserts the indicator
+  appears, so the async and Effect e2e legs would go red on the seam
+  alone. `createApp` therefore takes an optional second argument,
+  `CoreSeams { eqWorkspace?, equityFills$? }`: the base still BUILDS its
+  own `eqWorkspace` and exposes it as `base.presenters.eqWorkspace` (so the
+  parity drift test's reference-inequality assertion stays meaningful),
+  while `jarvisDriver`'s dep and `AnimationDirector`'s `equityFills$` read
+  `seams.x ?? own`. Both siblings build their native presenters FIRST and
+  pass the seams to the base; `CoreFactory.createApp` stays assignable (an
+  optional trailing parameter). Strangler-phase scaffolding, deleted with
+  delegation in slice 8. Deliberately NOT closed this slice: the same seam
+  would close slice 2's `AnimationDirector` residual (`executions$`,
+  `pairs$`, `priceFor`, `rfqEvents$`) — left for its own PR so this one
+  stays the equities slice.
+- **The state transitions moved to pure folds in `@rtc/client-core`.**
+  `eqWorkspaceFold.ts`, `eqDrawingsFold.ts`, `orderTicketFold.ts` and
+  `candleStitch.ts` join the `staleFlagFold.ts` / `tileExecutionState.ts` /
+  `blotterFolds.ts` precedent — event-union reducers returning the SAME
+  reference for a no-op transition — and the RxJS machines are
+  re-expressed over them. The RxJS machines' existing unit tests (32
+  `EqWorkspaceMachine` cases, 13 `EqDrawingsMachine`, `OrderTicketMachine`,
+  19 `CandleSeriesPresenter`) pass UNCHANGED, the regression witness the
+  refactor needed. One cadence moved with them:
+  `CANDLE_HISTORY_RETRY_COOLDOWN_MS` now lives in `@rtc/domain` beside
+  `CANDLE_HISTORY_PAGE`, because the suite drives the cooldown edge to the
+  millisecond and `@rtc/core-contract` may not import `client-core`; the
+  RxJS file keeps its old name as a local alias.
+- **The harness gained a seed.** `makeHarness({ watchlist })` pre-loads a
+  scripted watchlist (a `ReplaySubject(1)`) so `eqWorkspace`'s
+  composition-time peek (`peekFirstWatchlistSymbol`) finds something — the
+  simulator's `of(WATCHLIST)` path, and the deployed default. `eqWorkspace`
+  reads the watchlist ONCE, synchronously, at composition, and only falls
+  back to the async `seed$` when that peek finds nothing (WS-real); a
+  driver verb acting after construction can therefore only ever exercise
+  the fallback.
+- **Singleton machines are warm from construction, contracted through
+  `getValue()`.** React's `useStateObservable(presenters.eqWorkspace.state$)`
+  reads `getValue()` on the first render, and a cold `StateObservable`
+  would hand back its construction-time default however stale. The
+  siblings hold the same internal subscription through
+  `storeToWarmStateStream` / `refToWarmStateStream` (new bridge exports —
+  the `.subscribe()` call stays in `bridge/`), and the suites assert
+  `state$.getValue()` after a zero-subscriber mutation. Per-mount
+  `orderTicket` stays cold-capable, as slices 2–3 left theirs. The two
+  singletons are also app-lifetime, not detached: the async
+  `createEqWorkspaceMachine(deps, lifetime)` aborts its watchlist relay and
+  releases the keep-warm when `lifetime` fires; the Effect
+  `createChildHost(parent)` (a new `bridge/out.ts` export) runs on the
+  DEFAULT runtime with a scope forked from the app host's, so an intent
+  arriving after `app.dispose()` cannot die on a disposed runtime and
+  `app.dispose()` still ends the machine. A `Scope.addFinalizer` on that
+  child scope marks the machine disposed and releases its keep-warm
+  (`packages/client-core-effect/src/machines/eqWorkspace.ts`,
+  `eqDrawings.ts`), so `app.dispose()` and `machine.dispose()` converge —
+  what the async twin's `lifetime` abort listener does.
+- **Keyed streams are refCounted exactly as the RxJS core memoises them,
+  and the Effect core follows a keyed wire stream WITHOUT peeking it.**
+  `watchlist$`, `orders$`, `positions$` are retained; `quote$(symbol)`,
+  `depth$(symbol)`, `candles$(symbol, tf)` are per-key, memoised,
+  refCounted, and release their port on the last unsubscribe — the async
+  core's new `createKeyedPortStreams<T>(open)` (memoised by key, `open(key)`
+  called once per key at first REQUEST, refCounted release). The Effect
+  core's `mirrorPort` seeds a warm period by `peekCurrent(source)` — a
+  subscribe + unsubscribe, then subscribe again — which on a keyed WS
+  stream is subscribe/unsubscribe/subscribe on the wire at the start of
+  every warm period; `quote$`/`depth$` avoid that by using a new
+  `followPort(host, source)` (`presenters/mirrorPort.ts`): a seedless
+  `sharedFold` whose producer is one `fromPort`. The recorded asymmetry:
+  the Effect core's first value arrives a fiber hop AFTER subscribe rather
+  than in the caller's tick, where the async and RxJS cores deliver it
+  synchronously; the bindings bind both with a `null` default and the
+  suites assert them after `settle()`. The seed that feeds `eqWorkspace`
+  is one watchlist relay guarded by a flag rather than an abort from
+  inside the callback (`relay` registers its abort listener after
+  `subscribe` returns, so aborting during a synchronous first emission
+  would strand the subscription): the async machine keeps the relay for
+  its lifetime and ignores every list after the first non-empty one, the
+  Effect machine uses `Stream.take(1)`, and the reducer's own guard
+  (`seed` applies only while `sel === ""`) makes a user selection win in
+  every core.
+- **`orders()` is treated as the one-shot query its own doc already says
+  it is.** The RxJS core re-subscribes `orderPort.orders()` inside a
+  `switchMap` on every lifecycle update; the siblings take its FIRST value
+  per refresh (async: single-flight, newest-wins; Effect: `rpc`) —
+  identical for every shipping adapter. `orders$`'s first value is
+  therefore NOT contracted as synchronous (it is an RPC on WS-real); the
+  bindings bind it with `[]`. `orders$` stays retained AND replay-current
+  regardless: a fresh subscriber after zero subscribers gets the latest
+  book synchronously, because a lifecycle update refreshes it even with
+  nobody watching.
+- **`place()` is a per-call, multi-value, lazy stream, and it earned one
+  new bridge export per core.** Async: `portCallToStream(open, onValue)`
+  in `bridge/out.ts` — an `Observable` over `relay`, the twin of
+  `promiseToStream`, whose `onValue` runs before the subscriber sees the
+  value and whose unsubscribe aborts and releases the port. Effect:
+  `scopedPortStream(open)` — `Stream.unwrapScoped` over
+  `fromObservable(open(), scope)`. MEASURED on `effect` 3.22.2 (the named
+  `Stream.acquireRelease` fallback was not needed): `Stream.unwrapScoped`
+  keeps the scope it provides open for the WHOLE consumption of the
+  stream, and `Effect.scope` is re-evaluated per run — so
+  `scopedPortStream` is lazy, two runs of the same stream value are two
+  independent port calls with two live subscriptions, and an interrupt
+  releases the source. A failing `place()` ERRORS the returned per-call
+  stream in both siblings (no out-of-band rethrow on this path) — the
+  plan's ruling 12 "uncontracted" language is about the ticket MACHINE's
+  `state$` only, and PR A's review made the distinction explicit in the
+  suite.
+- **`candleSeries` keeps the RxJS semantics to the letter, including its
+  two knowing oddities.** A fresh warm period RESETS the key's backfill
+  (`older`, `exhausted`, the anchor) because the base series regenerates
+  from a new "now"; an in-flight history fetch is NOT cancelled by the
+  period ending — it clears its own flags on completion, bound to the app
+  lifetime in both siblings where the RxJS core binds it to nothing.
+  `candles$("")` is an empty series that never touches the port in any
+  core. The cooldown reads an injectable `now` (default `Date.now`, faked
+  by vitest); `loadingOlder$`/`historyExhausted$` are the SAME per-key cell
+  across warm periods, replay-current, with a synchronous first value,
+  because they are presenter-owned cells and not port reads.
+- **`orderTicket`'s in-flight gate is the imported reducer, not a
+  re-derivation.** `reduceOrderTicket(acc, candidate)` IS the RxJS
+  machine's suppression `scan` step; each sibling keeps the form as plain
+  mutable state, offers candidates through the reducer, and writes
+  `acc.state`. A valid `submit()` supersedes the run in flight; an
+  INVALID `submit()` also ends it. A failing `place()` stays uncontracted
+  at the ticket level: RxJS errors `state$`, the siblings rethrow it out
+  of band and the ticket stays `submitting` — mapping it to `rejected` is
+  a product fix for all three cores, not a port concern, and is carried
+  forward as a residual rather than coded around this slice.
+- **`createRunSlot` paid the slice-3 residual before a sixth hand-rolled
+  copy was written, and closed the window class-wide.** One kernel/bridge
+  helper per sibling now owns the "one active run" scaffolding for all
+  four superseding machines (`tileExecution`, `rfqTile`, `rfqSubmission`,
+  `ticketSubmission`) plus `orderTicket`, its fifth consumer. Async
+  `Run<S> = { signal, set(next), ifCurrent(step) }` — `set`/`ifCurrent`
+  drop once `signal.aborted`, closing the one-microtask stale-write
+  window (an awaited resolution landing in the same tick as a supersede)
+  at once, everywhere. Effect `Run<S> = { write(next), guarded(step) }` —
+  the run-token guard slice 3 already had; `dispose()` on the Effect slot
+  also closes the host scope. The two shapes are named differently on
+  purpose (`set`/`ifCurrent` vs. `write`/`guarded`) — plan ruling 15
+  records it as a naming asymmetry, not a defect. Both are
+  behaviour-preserving: the four machines' existing unit tests and the
+  127→173-case contract runners pass UNCHANGED. Review found that
+  neither slot's guard had ever actually been exercised by a test: the
+  Effect slot's token guard and interrupt filter were never executed by
+  any test until driven directly with no fiber in play, and the fix added
+  a direct witness rather than trusting the supersede case to reach it
+  through a live fiber.
+- **The dependent Layer.** The Effect Layer graph grows by seven: six
+  independents (`WatchlistLive`, `CandleSeriesLive`, `DepthLive`,
+  `OrdersBlotterLive`, `PositionsLive`, `EqDrawingsLive`) and one
+  dependent, `EqWorkspaceLive`, which requires `WatchlistTag` —
+  `WatchlistLive` is both merged into the app and provided to it,
+  memoised by reference so it is built exactly ONCE (the `PowerSaverLive`
+  shape). `layers.test.ts` goes 26 → 33 and pins the memoisation with a
+  Proxy counting `marketData.watchlist()` invocations at exactly 1 from
+  building the native graph — the evidence that `presenters.watchlist` IS
+  the instance `eqWorkspace` seeded from, not a second copy hidden behind
+  `Layer.provide`.
+- **Two more review catches, recorded rather than silently fixed.** The
+  candle contiguity filter in `stitchCandles` was unwitnessed repo-wide:
+  in every existing case — the new fold test, the new contract case, and
+  the pre-existing `CandleSeriesPresenter` "contiguity guard" test — the
+  dropped candle's time also existed in the base series, so dedupe-by-time
+  alone produced the same array and deleting the filter would have stayed
+  green; the fix added a page candle newer than the base's first and
+  absent from it, proven RED with the filter removed. And the plan's
+  claim that the Effect run slot's out-of-band rethrow was "new but
+  unreachable" was too strong: a throwing `onRedirect` (wrapped in
+  `run.guarded(Effect.sync(...))`) becomes a `Die` that reaches
+  `reportOutOfBand` — which CONVERGES the Effect core onto what the async
+  core has always done (spawn + `reportAsync`; slice 2 ruling 8), so it
+  shipped rather than being treated as a bug.
+- **Four cross-core asymmetries are recorded, not coded around.** (1)
+  `quote$`/`depth$`'s first value arrives a fiber hop after subscribe
+  under the Effect core (`followPort`, no seed peek), where the async and
+  RxJS cores deliver it synchronously when the port emits on subscribe.
+  (2) `orders()` is taken as a one-shot per refresh in both siblings,
+  where the RxJS core re-subscribes on every lifecycle update; identical
+  for every shipping adapter. (3) In all three cores an in-flight candle
+  history page is allowed to complete after its warm period has ended
+  (the RxJS core binds it to nothing, the siblings to the app lifetime);
+  MEASURED: a page that lands after a NEW period has opened is stitched
+  into that period in all three cores, because the prepend accumulator is
+  one cell per key whose VALUE the new period resets. (4) A failing
+  `place()` errors the returned per-call stream in every core, but at the
+  ticket-machine level the RxJS core errors `state$` while the siblings
+  rethrow out of band and leave the ticket `submitting` — plus a purely
+  cosmetic fifth: `Run`'s members are named differently in the two
+  siblings (`set`/`ifCurrent` vs. `write`/`guarded`).
+- **Nine more cross-core asymmetries, surfaced by PR B's final
+  whole-branch review and pinned by no suite.** (1) A failing
+  `watchlist()` kills `eqWorkspace.state$` in the RxJS core — the error
+  flows through `seed$` into the `merge` — while both siblings keep the
+  workspace alive and rethrow the failure out of band. (2) A failing
+  `orders()` query behaves the SAME in all three cores: the current
+  subscribers error, the NEXT subscriber re-queries, and a refresh alone
+  does not recover — recorded because it is easy to assume otherwise. (3)
+  A port that completes WITHOUT a value: the siblings treat a
+  `candleHistory` page as an error plus cooldown and error `orders$`,
+  where the RxJS core is a silent no-op — no shipping adapter does this.
+  (4) `candleHistory` and `orders()` emitting more than once: the RxJS
+  core takes every value, the siblings only the first. (5) `candles$("")`
+  completes in the RxJS core (`of([])`) and never completes in the
+  siblings. (6) `loadingOlder$` turns `true` synchronously in the RxJS
+  and async cores, and inside the forked effect under the Effect core.
+  (7) Under the Effect core, `fills$` and the refresh signal cross a
+  `PubSub`, so their own subscribers hear the fill and the book refresh
+  fiber hops AFTER the ticket machine sees `filled`; in the RxJS and
+  async cores both fire synchronously before it. (8) `app.dispose()`: a
+  no-op in the RxJS core; the async core ends the retained topics, the
+  two singletons and any in-flight `candleHistory` page, while a keyed
+  stream or an already-subscribed `place()` call keeps working; the
+  Effect core ends everything through the closing host scope, and a
+  detached `orderTicket` that submits afterward sticks at `submitting`
+  with an out-of-band throw. (9) A `watchlist()` that errors
+  SYNCHRONOUSLY on subscribe makes both siblings' `createApp` throw (the
+  composition-time `peekCurrent`), where the RxJS peek has no error
+  handler and so reports the failure asynchronously instead.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

@@ -75,6 +75,26 @@ describe("createMachineFactories — native wiring", () => {
     tile.dispose();
   });
 
+  it("orderTicket reaches ordersBlotter.place lazily — not at construction", async () => {
+    const { presenters, spies } = createStubPresenters();
+
+    const ticket = createMachineFactories(presenters).orderTicket("AAPL");
+    await settle();
+
+    expect(spies.place).not.toHaveBeenCalled();
+    ticket.intents.setQty(10);
+    ticket.intents.submit();
+    await settle();
+    expect(spies.place).toHaveBeenCalledWith({
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 10,
+      limitPrice: undefined,
+    });
+    ticket.dispose();
+  });
+
   it("rfqSubmission and ticketSubmission reach for DIFFERENT rfqs members", () => {
     const { presenters, spies } = createStubPresenters();
     const factories = createMachineFactories(presenters);
@@ -147,6 +167,7 @@ interface FactorySpies {
   requestQuote: ReturnType<typeof vi.fn>;
   createSubmission: ReturnType<typeof vi.fn>;
   createTicketSubmission: ReturnType<typeof vi.fn>;
+  place: ReturnType<typeof vi.fn>;
   setVariant: ReturnType<typeof vi.fn>;
 }
 
@@ -173,6 +194,9 @@ function createStubPresenters(): PresenterStub {
     }),
     createSubmission: vi.fn(createInertMachine),
     createTicketSubmission: vi.fn(createInertMachine),
+    place: vi.fn(() => {
+      return NEVER;
+    }),
     setVariant: vi.fn(),
   };
 
@@ -186,11 +210,7 @@ function createStubPresenters(): PresenterStub {
       createSubmission: spies.createSubmission,
       createTicketSubmission: spies.createTicketSubmission,
     },
-    ordersBlotter: {
-      place: () => {
-        return of(undefined);
-      },
-    },
+    ordersBlotter: { place: spies.place },
     bootPreference: {
       current: () => {
         return "core";

@@ -3,6 +3,7 @@ import type {
   CurrencyPairsPresenter,
   DealersPresenter,
   InstrumentsPresenter,
+  PositionsPresenter,
 } from "@rtc/core-api";
 import {
   type AnalyticsPort,
@@ -12,6 +13,7 @@ import {
   DealersUseCase,
   type InstrumentPort,
   InstrumentsUseCase,
+  type PositionPort,
   type ReferenceDataPort,
 } from "@rtc/domain";
 
@@ -59,4 +61,15 @@ export function createInstrumentsPresenter(
   const source = new InstrumentsUseCase(instruments).execute();
 
   return { list$: topicToStream(topicFromObservable(source, lifetime)) };
+}
+
+/** The equity position book — the same retained-singleton shape. The port
+ * method is called ONCE, here. */
+export function createPositionsPresenter(
+  positions: PositionPort,
+  lifetime: AbortSignal,
+): PositionsPresenter {
+  const source = positions.positions();
+
+  return { positions$: topicToStream(topicFromObservable(source, lifetime)) };
 }

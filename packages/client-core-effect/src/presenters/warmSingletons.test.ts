@@ -7,8 +7,10 @@ import type {
   CurrencyPair,
   Dealer,
   DealerPort,
+  EquityPosition,
   Instrument,
   InstrumentPort,
+  PositionPort,
   PositionUpdates,
   ReferenceDataPort,
 } from "@rtc/domain";
@@ -19,6 +21,7 @@ import {
   createCurrencyPairsPresenter,
   createDealersPresenter,
   createInstrumentsPresenter,
+  createPositionsPresenter,
 } from "#/presenters/warmSingletons";
 
 describe("warm singletons", () => {
@@ -141,6 +144,36 @@ describe("warm singletons", () => {
     expect(roster.observed).toBe(false);
   });
 
+  it("positions: the port is called once at construction, stays subscribed across zero subscribers, and replays the book synchronously", async () => {
+    const book = new Subject<readonly EquityPosition[]>();
+    let calls = 0;
+    const positions: PositionPort = {
+      positions: () => {
+        calls += 1;
+        return book;
+      },
+    };
+    const host = useHost();
+    const p = createPositionsPresenter(host, positions);
+    expect(calls).toBe(1);
+    const sub = p.positions$.subscribe(() => {});
+    const snapshot: readonly EquityPosition[] = [createPosition()];
+    book.next(snapshot);
+    await tick();
+    sub.unsubscribe();
+    await tick();
+    expect(book.observed).toBe(true);
+    const again: (readonly EquityPosition[])[] = [];
+    p.positions$.subscribe((value: readonly EquityPosition[]) => {
+      again.push(value);
+    });
+    expect(again).toEqual([snapshot]);
+    expect(calls).toBe(1);
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    expect(book.observed).toBe(false);
+  });
+
   it("retained is not eager: the port Observable stays unsubscribed until the first subscriber", async () => {
     const roster = new Subject<readonly CurrencyPair[]>();
     const p = createCurrencyPairsPresenter(useHost(), {
@@ -169,6 +202,16 @@ describe("warm singletons", () => {
 
 interface TestHost extends EffectHost {
   runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+function createPosition(): EquityPosition {
+  return {
+    symbol: "AAPL",
+    qty: 100,
+    avgPrice: 190,
+    markPrice: 191,
+    unrealisedPnl: 100,
+  };
 }
 
 function createInstrument(): Instrument {

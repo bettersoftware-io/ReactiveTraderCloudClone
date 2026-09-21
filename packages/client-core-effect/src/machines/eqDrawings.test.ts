@@ -1,0 +1,121 @@
+import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
+import { afterEach, describe, expect, it } from "vitest";
+
+import type { EqDrawing, EqDrawingsState } from "@rtc/core-api";
+
+import type { EffectHost } from "#/bridge/out";
+import { createEqDrawingsMachine } from "#/machines/eqDrawings";
+
+describe("eqDrawings machine", () => {
+  afterEach(async () => {
+    while (hosts.length > 0) {
+      const host = hosts.pop();
+
+      if (host) {
+        await Effect.runPromise(Scope.close(host.scope, Exit.void));
+        await host.runtime.dispose();
+      }
+    }
+  });
+
+  it("is warm from construction: a change made with nobody watching is the next subscriber's first value", async () => {
+    const m = createEqDrawingsMachine(useHost());
+    m.intents.addDrawing("AAPL", TREND);
+    await tick();
+    expect(m.state$.getValue()).toMatchObject({ drawings: { AAPL: [TREND] } });
+    const seen: EqDrawingsState[] = [];
+    m.state$.subscribe((state: EqDrawingsState) => {
+      seen.push(state);
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.selectedId).toBe("t1");
+    m.dispose();
+  });
+
+  it("an intent after dispose() is ignored, and dispose() is safe to repeat", async () => {
+    const m = createEqDrawingsMachine(useHost());
+    m.intents.setTool("hline");
+    await tick();
+    m.dispose();
+    m.dispose();
+    m.intents.setTool("trendline");
+    await tick();
+    // Read through a fresh SUBSCRIPTION, not `getValue()`: releasing the
+    // keep-warm drops `state()`'s cached current value, so a cold
+    // `getValue()` is back to the construction-time default (uncontracted
+    // after dispose, slice 2). The ref itself is what the intent must not
+    // have moved.
+    const seen: EqDrawingsState[] = [];
+    m.state$.subscribe((state: EqDrawingsState) => {
+      seen.push(state);
+    });
+    expect(seen[0]?.tool).toBe("hline");
+  });
+
+  it("closing the PARENT scope leaves the machine exactly as dispose() does, and a later intent is ignored", async () => {
+    // The two ends must converge, and the RELEASE of the keep-warm is what
+    // makes that observable: while the keep-warm subscription is still
+    // held, `state()` sits at refCount 1 and hands every probe its cached
+    // value, so "disposed" and "frozen" look identical. Once released,
+    // refCount drops to 0 and `getValue()` falls back to `state()`'s
+    // construction-time default — the same signature `dispose()` produces.
+    // That is the discriminating assertion: without the child scope's
+    // finalizer the parent-close path stays warm and reads "hline" here
+    // while the `dispose()` path reads "cursor".
+    const viaDispose = createEqDrawingsMachine(useHost());
+    viaDispose.intents.setTool("hline");
+    await tick();
+    viaDispose.dispose();
+    await tick();
+    const afterDispose = viaDispose.state$.getValue();
+
+    const parent = useHost();
+    const viaParent = createEqDrawingsMachine(parent);
+    viaParent.intents.setTool("hline");
+    await tick();
+    // `app.dispose()`'s path, without the machine's own `dispose()`.
+    await Effect.runPromise(Scope.close(parent.scope, Exit.void));
+    await tick();
+    expect(viaParent.state$.getValue()).toEqual(afterDispose);
+
+    // And the `disposed` flag came with it: a later intent does not move
+    // the ref, so a cold read still shows the tool set before the close.
+    // (Cold only BECAUSE the keep-warm was released — this half rides on
+    // the assertion above rather than discriminating on its own.)
+    viaParent.intents.setTool("trendline");
+    await tick();
+    const seen: EqDrawingsState[] = [];
+    viaParent.state$.subscribe((state: EqDrawingsState) => {
+      seen.push(state);
+    });
+    expect(seen[0]?.tool).toBe("hline");
+  });
+
+  const hosts: TestHost[] = [];
+
+  function useHost(): TestHost {
+    const host: TestHost = {
+      runtime: ManagedRuntime.make(Layer.empty),
+      scope: Effect.runSync(Scope.make()),
+    };
+    hosts.push(host);
+    return host;
+  }
+});
+
+interface TestHost extends EffectHost {
+  runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+function tick(): Promise<unknown> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+const TREND: EqDrawing = {
+  id: "t1",
+  kind: "trendline",
+  a: { index: 10, price: 100 },
+  b: { index: 20, price: 110 },
+};

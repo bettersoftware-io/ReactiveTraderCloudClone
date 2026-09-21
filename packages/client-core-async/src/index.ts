@@ -1,10 +1,13 @@
 export { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
 export {
+  portCallToStream,
   promiseToStream,
   pushReconnectIntent,
   storeToStateStream,
+  storeToWarmStateStream,
   topicToStream,
   topicToStreamWithLead,
+  type WarmStateStream,
 } from "#/bridge/out";
 export { createCommands } from "#/commands";
 export {
@@ -28,7 +31,16 @@ export {
   type TopicOptions,
 } from "#/kernel/topic";
 export { untilAborted } from "#/kernel/untilAborted";
+export { createEqDrawingsMachine } from "#/machines/eqDrawings";
+export {
+  createEqWorkspaceMachine,
+  type EqWorkspaceDeps,
+} from "#/machines/eqWorkspace";
 export { createNotionalMachine } from "#/machines/notional";
+export {
+  createOrderTicketMachine,
+  type OrderTicketDeps,
+} from "#/machines/orderTicket";
 export { createRfqCountdownMachine } from "#/machines/rfqCountdown";
 export {
   createRfqSubmissionMachine,
@@ -49,13 +61,17 @@ export {
   type TileExecutionDeps,
 } from "#/machines/tileExecution";
 export { createBlotterPresenter } from "#/presenters/blotter";
+export { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 export { createConflatedTopic } from "#/presenters/conflatedTopic";
 export { createConnectionPresenter } from "#/presenters/connection";
+export { createDepthPresenter } from "#/presenters/depth";
 export { createTradeExecutionPresenter } from "#/presenters/execution";
 export {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
+export { createKeyedPortStreams } from "#/presenters/keyedPortStreams";
+export { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 export {
   createAmbientStylePresenter,
   createAnimatedBackgroundPresenter,
@@ -82,4 +98,6 @@ export {
   createCurrencyPairsPresenter,
   createDealersPresenter,
   createInstrumentsPresenter,
+  createPositionsPresenter,
 } from "#/presenters/warmSingletons";
+export { createWatchlistPresenter } from "#/presenters/watchlist";

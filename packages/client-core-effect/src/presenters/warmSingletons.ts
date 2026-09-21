@@ -3,6 +3,7 @@ import type {
   CurrencyPairsPresenter,
   DealersPresenter,
   InstrumentsPresenter,
+  PositionsPresenter,
 } from "@rtc/core-api";
 import {
   type AnalyticsPort,
@@ -12,6 +13,7 @@ import {
   DealersUseCase,
   type InstrumentPort,
   InstrumentsUseCase,
+  type PositionPort,
   type ReferenceDataPort,
 } from "@rtc/domain";
 
@@ -59,4 +61,16 @@ export function createInstrumentsPresenter(
   const source = new InstrumentsUseCase(instruments).execute();
 
   return { list$: mirrorPortAsIs(host, source, { retain: true }) };
+}
+
+/** The equity position book — the same retained-mirror shape, with no use
+ * case between the presenter and the port. Port called ONCE, at
+ * construction. */
+export function createPositionsPresenter(
+  host: EffectHost,
+  positions: PositionPort,
+): PositionsPresenter {
+  return {
+    positions$: mirrorPortAsIs(host, positions.positions(), { retain: true }),
+  };
 }

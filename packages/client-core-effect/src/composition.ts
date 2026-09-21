@@ -11,12 +11,17 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
-import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
+import type {
+  CurrencyPair,
+  ExecuteTradeInput,
+  PlaceOrderRequest,
+} from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
 import { createNotionalMachine } from "#/machines/notional";
+import { createOrderTicketMachine } from "#/machines/orderTicket";
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
 import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
@@ -47,11 +52,20 @@ export interface ComposedMachines {
  * Everything not in the graph still delegates to the RxJS core;
  * `parity.json` records which is which and `parity.test.ts` proves it. */
 export function composeWithBase(ports: AppPorts): ComposedApp {
-  const base = createRxjsApp(ports);
   const runtime = ManagedRuntime.make(buildAppLayer(ports));
   const { host, presenters } = runtime.runSync(
     Effect.all({ host: HostTag, presenters: nativePresentersEffect }),
   );
+
+  // Native FIRST (see `CoreSeams`): the base's Jarvis driver and animation
+  // director are pointed at this core's own workspace and fills — without
+  // that a drive batch would mutate a workspace the UI no longer renders,
+  // and a ticket fill placed through the NATIVE blotter would choreograph
+  // nothing.
+  const base = createRxjsApp(ports, {
+    eqWorkspace: presenters.eqWorkspace,
+    equityFills$: presenters.ordersBlotter.fills$,
+  });
 
   const app: App = {
     ...base,
@@ -134,6 +148,14 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     rfqCountdown: (creationTimestamp: number, totalMs: number) => {
       return createRfqCountdownMachine(creationTimestamp, totalMs);
+    },
+    orderTicket: (defaultSymbol: string) => {
+      return createOrderTicketMachine({
+        place: (req: PlaceOrderRequest) => {
+          return presenters.ordersBlotter.place(req);
+        },
+        defaultSymbol,
+      });
     },
   };
 }
