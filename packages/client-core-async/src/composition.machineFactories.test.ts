@@ -118,8 +118,19 @@ describe("nativeMachines — wiring", () => {
     expect(machines.notional).not.toBe(base.notional);
     expect(machines.rfqTile).not.toBe(base.rfqTile);
     expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
+    expect(machines.orderTicket).not.toBe(base.orderTicket);
     // A delegated member is still reference-identical to the base's.
     expect(machines.boot).toBe(base.boot);
+  });
+
+  it("orderTicket reaches ordersBlotter.place lazily — not at construction", () => {
+    const { presenters, spies } = createStubPresenters();
+
+    const machine =
+      composeMachinesWithBase(presenters).machines.orderTicket("AAPL");
+
+    expect(spies.place).not.toHaveBeenCalled();
+    machine.dispose();
   });
 
   interface FactorySpies {
@@ -128,6 +139,7 @@ describe("nativeMachines — wiring", () => {
     requestQuote: ReturnType<typeof vi.fn>;
     createSubmission: ReturnType<typeof vi.fn>;
     createTicketSubmission: ReturnType<typeof vi.fn>;
+    place: ReturnType<typeof vi.fn>;
   }
 
   interface PresenterStub {
@@ -151,6 +163,9 @@ describe("nativeMachines — wiring", () => {
       }),
       createSubmission: vi.fn(),
       createTicketSubmission: vi.fn(),
+      place: vi.fn(() => {
+        return NEVER;
+      }),
     };
 
     const presenters = {
@@ -163,7 +178,7 @@ describe("nativeMachines — wiring", () => {
         createSubmission: spies.createSubmission,
         createTicketSubmission: spies.createTicketSubmission,
       },
-      ordersBlotter: { place: vi.fn() },
+      ordersBlotter: { place: spies.place },
       bootPreference: {
         current: () => {
           return "core";

@@ -1,6 +1,8 @@
 import {
+  type CoreSeams,
   createApp as createRxjsApp,
   createMachineFactories as createRxjsMachineFactories,
+  firstWatchlistSymbol,
 } from "@rtc/client-core";
 import type {
   App,
@@ -9,22 +11,33 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
-import type { CurrencyPair, ExecuteTradeInput } from "@rtc/domain";
+import type {
+  CurrencyPair,
+  ExecuteTradeInput,
+  PlaceOrderRequest,
+} from "@rtc/domain";
 
+import { peek } from "#/bridge/in";
 import { createCommands } from "#/commands";
+import { createEqDrawingsMachine } from "#/machines/eqDrawings";
+import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createNotionalMachine } from "#/machines/notional";
+import { createOrderTicketMachine } from "#/machines/orderTicket";
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
 import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
 import { createBlotterPresenter } from "#/presenters/blotter";
+import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
+import { createDepthPresenter } from "#/presenters/depth";
 import { createTradeExecutionPresenter } from "#/presenters/execution";
 import {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
+import { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 import {
   createAmbientStylePresenter,
   createAnimatedBackgroundPresenter,
@@ -51,7 +64,9 @@ import {
   createCurrencyPairsPresenter,
   createDealersPresenter,
   createInstrumentsPresenter,
+  createPositionsPresenter,
 } from "#/presenters/warmSingletons";
+import { createWatchlistPresenter } from "#/presenters/watchlist";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
@@ -67,6 +82,13 @@ export interface ComposedMachines {
   machines: MachineFactories;
 }
 
+/** `nativePresenters`' return type: every native member is present, PLUS the
+ * two slice-4 seams `composeWithBase` hands to the base RxJS app
+ * (`CoreSeams`) — typed narrow rather than a non-null assertion at the call
+ * site. */
+type NativePresenters = Partial<Presenters> &
+  Pick<Presenters, "eqWorkspace" | "ordersBlotter">;
+
 /** Members this core implements natively — slice 1a: the connection fold,
  * the four theme/view/power-saver preferences, and `commands` (see
  * `createCommands`); slice 1b: the eleven remaining preference presenters;
@@ -74,18 +96,30 @@ export interface ComposedMachines {
  * four warm singletons (`currencyPairs`, `blotter`'s `trades$`/`activity$`,
  * `analytics`) hold their port subscriptions until `lifetime` aborts;
  * slice 3: the four credit presenters, of which `rfqs`, `dealers` and
- * `instruments` hold their port subscriptions until `lifetime` aborts.
- * Everything else still delegates to the RxJS core. `parity.json` is the
- * committed record of the same fact and `parity.test.ts` proves the two
- * agree by reference. */
+ * `instruments` hold their port subscriptions until `lifetime` aborts;
+ * slice 4: the five equities presenters — `watchlist`, `orders$` and
+ * `positions` retained — and the two workspace singletons. Everything else
+ * still delegates to the RxJS core. `parity.json` is the committed record
+ * of the same fact and `parity.test.ts` proves the two agree by
+ * reference. */
 function nativePresenters(
   ports: AppPorts,
   lifetime: AbortSignal,
-): Partial<Presenters> {
+): NativePresenters {
   const { preferences } = ports;
   // Hoisted: `priceStream` and `priceHistory` gate their conflation on it —
   // the RxJS core's order.
   const powerSaver = createPowerSaverPresenter(preferences);
+  const watchlist = createWatchlistPresenter(ports.marketData, lifetime);
+  const ordersBlotter = createOrdersBlotterPresenter(ports.orders, lifetime);
+  const eqWorkspace = createEqWorkspaceMachine(
+    {
+      initialSymbol: firstWatchlistSymbol(peek(watchlist.watchlist$, [])),
+      watchlist$: watchlist.watchlist$,
+    },
+    lifetime,
+  );
+
   return {
     connection: createConnectionPresenter(ports.connectionEvents),
     themePreference: createThemePreferencePresenter(
@@ -122,17 +156,32 @@ function nativePresenters(
     dealers: createDealersPresenter(ports.dealers, lifetime),
     instruments: createInstrumentsPresenter(ports.instruments, lifetime),
     rfqQuote: createRfqQuotePresenter(ports.pricing),
+    watchlist,
+    candleSeries: createCandleSeriesPresenter(ports.marketData, lifetime),
+    depth: createDepthPresenter(ports.marketData),
+    ordersBlotter,
+    positions: createPositionsPresenter(ports.positions, lifetime),
+    eqWorkspace,
+    eqDrawings: createEqDrawingsMachine(lifetime),
   };
 }
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
-  const base = createRxjsApp(ports);
   const lifetime = new AbortController();
+  // Native FIRST: the base app's Jarvis driver and animation director are
+  // pointed at this core's own workspace and fills (`CoreSeams`) — without
+  // that a drive batch would mutate a workspace the UI no longer renders.
+  const native = nativePresenters(ports, lifetime.signal);
+  const seams: CoreSeams = {
+    eqWorkspace: native.eqWorkspace,
+    equityFills$: native.ordersBlotter.fills$,
+  };
+  const base = createRxjsApp(ports, seams);
   const app: App = {
     ...base,
     presenters: {
       ...base.presenters,
-      ...nativePresenters(ports, lifetime.signal),
+      ...native,
     },
     commands: createCommands(base.commands),
     // General rule (see docs/architecture/22-pluggable-application-core.md
@@ -209,6 +258,14 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     rfqCountdown: (creationTimestamp: number, totalMs: number) => {
       return createRfqCountdownMachine(creationTimestamp, totalMs);
+    },
+    orderTicket: (defaultSymbol: string) => {
+      return createOrderTicketMachine({
+        place: (req: PlaceOrderRequest) => {
+          return presenters.ordersBlotter.place(req);
+        },
+        defaultSymbol,
+      });
     },
   };
 }

@@ -4,7 +4,7 @@ import { Observable } from "rxjs";
 import { reconnect$ } from "@rtc/client-core";
 import type { StateStream, Stream } from "@rtc/core-api";
 
-import type { Peeked } from "#/bridge/in";
+import { type Peeked, relay } from "#/bridge/in";
 import { AbortError } from "#/kernel/AbortError";
 import type { Store } from "#/kernel/store";
 import type { Topic } from "#/kernel/topic";
@@ -90,4 +90,61 @@ export function storeToStateStream<S>(store: Store<S>): StateStream<S> {
  * `@rtc/client-core` and this becomes the core's own topic. */
 export function pushReconnectIntent(): void {
   reconnect$.next({ type: "reconnect" });
+}
+
+/** A per-call, multi-value port stream as a Stream — the lifecycle twin of
+ * `promiseToStream`: `open` runs on each subscribe (lazy; two subscribers
+ * are two port calls, as with the RxJS core's bare port Observable), every
+ * value goes through `onValue` first, completion and errors pass through,
+ * and an unsubscribe releases the port. */
+export function portCallToStream<T>(
+  open: () => Stream<T>,
+  onValue: (value: T) => void = () => {},
+): Stream<T> {
+  return new Observable<T>((subscriber) => {
+    const controller = new AbortController();
+    relay(open(), controller.signal, (value) => {
+      onValue(value);
+      subscriber.next(value);
+    }).then(
+      () => {
+        // `relay` also resolves on abort — that is an unsubscribe, not an end.
+        if (!controller.signal.aborted) {
+          subscriber.complete();
+        }
+      },
+      (error: unknown) => {
+        subscriber.error(error);
+      },
+    );
+
+    return () => {
+      controller.abort();
+    };
+  });
+}
+
+/** A `StateStream` and the release of its keep-warm. */
+export interface WarmStateStream<S> {
+  readonly state$: StateStream<S>;
+  release(): void;
+}
+
+/** `storeToStateStream` held warm by a subscription of its own, for an
+ * app-lifetime singleton: `@rx-state/core` drops a `StateObservable`'s
+ * current value at refCount 0, so a cold `getValue()` — what React's
+ * `useStateObservable` reads on a first render — would hand back the
+ * construction-time default however far the store has moved. The RxJS
+ * singletons hold the same internal subscription for the same reason. The
+ * `.subscribe()` lives here because the bridge owns rxjs. */
+export function storeToWarmStateStream<S>(store: Store<S>): WarmStateStream<S> {
+  const state$ = storeToStateStream(store);
+  const warm = state$.subscribe();
+
+  return {
+    state$,
+    release: () => {
+      warm.unsubscribe();
+    },
+  };
 }

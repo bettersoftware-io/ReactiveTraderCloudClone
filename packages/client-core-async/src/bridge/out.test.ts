@@ -1,11 +1,14 @@
+import { Subject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { reconnect$ } from "@rtc/client-core";
 
 import {
+  portCallToStream,
   promiseToStream,
   pushReconnectIntent,
   storeToStateStream,
+  storeToWarmStateStream,
   topicToStream,
   topicToStreamWithLead,
 } from "#/bridge/out";
@@ -193,4 +196,112 @@ describe("bridge/out", () => {
     });
     expect(silent).toEqual([]);
   });
+
+  it("portCallToStream() opens lazily, once per subscription, runs onValue before the subscriber, and completes/errors/releases correctly", () => {
+    let opens = 0;
+    const sources: Subject<number>[] = [];
+    const onValueSeen: number[] = [];
+    const subscriberSeen: number[] = [];
+
+    const stream = portCallToStream<number>(
+      () => {
+        opens += 1;
+        const source = new Subject<number>();
+        sources.push(source);
+        return source;
+      },
+      (value: number) => {
+        onValueSeen.push(value);
+      },
+    );
+    expect(opens).toBe(0);
+
+    // `onValue` must have already run by the time the subscriber sees the
+    // value — asserted from inside the subscriber callback itself.
+    const sub1 = stream.subscribe((v: number) => {
+      subscriberSeen.push(v);
+      expect(onValueSeen).toEqual(subscriberSeen);
+    });
+    expect(opens).toBe(1);
+    sources[0]?.next(1);
+    expect(onValueSeen).toEqual([1]);
+    expect(subscriberSeen).toEqual([1]);
+
+    const sub2 = stream.subscribe(() => {});
+    expect(opens).toBe(2);
+
+    expect(sources[0]?.observed).toBe(true);
+    sub1.unsubscribe();
+    expect(sources[0]?.observed).toBe(false);
+    // A late complete after the unsubscribe must not reach the subscriber.
+    sources[0]?.complete();
+    sub2.unsubscribe();
+  });
+
+  it("portCallToStream() defaults onValue to a no-op when omitted", () => {
+    const source = new Subject<number>();
+    const seen: number[] = [];
+    const sub = portCallToStream<number>(() => {
+      return source;
+    }).subscribe((v: number) => {
+      seen.push(v);
+    });
+    source.next(1);
+    expect(seen).toEqual([1]);
+    sub.unsubscribe();
+  });
+
+  it("portCallToStream() completes on source completion and errors on source failure", async () => {
+    const complete$ = new Subject<number>();
+    let completed = false;
+    portCallToStream<number>(() => {
+      return complete$;
+    }).subscribe({
+      complete: () => {
+        completed = true;
+      },
+    });
+    complete$.complete();
+    await settleMicrotasks();
+    expect(completed).toBe(true);
+
+    const fail$ = new Subject<number>();
+    const errors: unknown[] = [];
+    portCallToStream<number>(() => {
+      return fail$;
+    }).subscribe({
+      error: (e: unknown) => {
+        errors.push(e);
+      },
+    });
+    fail$.error(new Error("bust"));
+    await settleMicrotasks();
+    expect(errors).toHaveLength(1);
+  });
+
+  it("storeToWarmStateStream() keeps the store's set visible with zero external subscribers, release() is idempotent, and a fresh subscription still yields the current value synchronously", () => {
+    const store = createStore(1);
+    const warm = storeToWarmStateStream(store);
+    store.set(2);
+    expect(warm.state$.getValue()).toBe(2);
+
+    warm.release();
+    warm.release();
+
+    const seen: number[] = [];
+    const sub = warm.state$.subscribe((v: number) => {
+      seen.push(v);
+    });
+    expect(seen).toEqual([2]);
+    sub.unsubscribe();
+  });
 });
+
+/** One macrotask turn — `portCallToStream`'s completion/error path runs
+ * through `relay`'s promise, which settles a microtask after the source's
+ * own notification. */
+function settleMicrotasks(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
