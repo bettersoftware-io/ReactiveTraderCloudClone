@@ -66,4 +66,59 @@ describe("createPendingQueue", () => {
     expect(completed).toBe(2);
     expect(queue.pending()).toEqual([]);
   });
+
+  it("emit delivers to the OLDEST pending result without completing it, and it stays pending", () => {
+    const queue = createPendingQueue<string, number>();
+    const seenA: number[] = [];
+    const seenB: number[] = [];
+    let completedA = false;
+    queue.open("a").subscribe({
+      next: (value: number) => {
+        seenA.push(value);
+      },
+      complete: () => {
+        completedA = true;
+      },
+    });
+    queue.open("b").subscribe((value) => {
+      seenB.push(value);
+    });
+    queue.emit(1);
+    queue.emit(2);
+    expect(seenA).toEqual([1, 2]);
+    expect(seenB).toEqual([]);
+    expect(completedA).toBe(false);
+    expect(queue.pending()).toEqual(["a", "b"]);
+  });
+
+  it("complete completes the OLDEST and drops it; a following emit reaches the next one", () => {
+    const queue = createPendingQueue<string, number>();
+    const seenA: number[] = [];
+    const seenB: number[] = [];
+    let completedA = false;
+    queue.open("a").subscribe({
+      next: (value: number) => {
+        seenA.push(value);
+      },
+      complete: () => {
+        completedA = true;
+      },
+    });
+    queue.open("b").subscribe((value) => {
+      seenB.push(value);
+    });
+    queue.complete();
+    expect(completedA).toBe(true);
+    expect(queue.pending()).toEqual(["b"]);
+    queue.emit(3);
+    expect(seenA).toEqual([]);
+    expect(seenB).toEqual([3]);
+  });
+
+  it("emit and complete are no-ops when nothing is pending", () => {
+    const queue = createPendingQueue<string, number>();
+    queue.emit(1);
+    queue.complete();
+    expect(queue.pending()).toEqual([]);
+  });
 });
