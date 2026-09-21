@@ -52,22 +52,43 @@ describe("eqDrawings machine", () => {
     expect(seen[0]?.tool).toBe("hline");
   });
 
-  it("the parent host's scope ending disposes the machine's own", async () => {
-    const parent = useHost();
-    const m = createEqDrawingsMachine(parent);
-    m.intents.setTool("hline");
+  it("closing the PARENT scope leaves the machine exactly as dispose() does, and a later intent is ignored", async () => {
+    // The two ends must converge, and the RELEASE of the keep-warm is what
+    // makes that observable: while the keep-warm subscription is still
+    // held, `state()` sits at refCount 1 and hands every probe its cached
+    // value, so "disposed" and "frozen" look identical. Once released,
+    // refCount drops to 0 and `getValue()` falls back to `state()`'s
+    // construction-time default — the same signature `dispose()` produces.
+    // That is the discriminating assertion: without the child scope's
+    // finalizer the parent-close path stays warm and reads "hline" here
+    // while the `dispose()` path reads "cursor".
+    const viaDispose = createEqDrawingsMachine(useHost());
+    viaDispose.intents.setTool("hline");
     await tick();
+    viaDispose.dispose();
+    await tick();
+    const afterDispose = viaDispose.state$.getValue();
+
+    const parent = useHost();
+    const viaParent = createEqDrawingsMachine(parent);
+    viaParent.intents.setTool("hline");
+    await tick();
+    // `app.dispose()`'s path, without the machine's own `dispose()`.
     await Effect.runPromise(Scope.close(parent.scope, Exit.void));
     await tick();
-    // The warm fiber was forked into the machine's scope, a child of the
-    // parent's — so the parent's close is what ends it. A fresh subscriber
-    // still reads the ref, which is all a disposed machine promises.
+    expect(viaParent.state$.getValue()).toEqual(afterDispose);
+
+    // And the `disposed` flag came with it: a later intent does not move
+    // the ref, so a cold read still shows the tool set before the close.
+    // (Cold only BECAUSE the keep-warm was released — this half rides on
+    // the assertion above rather than discriminating on its own.)
+    viaParent.intents.setTool("trendline");
+    await tick();
     const seen: EqDrawingsState[] = [];
-    m.state$.subscribe((state: EqDrawingsState) => {
+    viaParent.state$.subscribe((state: EqDrawingsState) => {
       seen.push(state);
     });
-    expect(seen).toHaveLength(1);
-    m.dispose();
+    expect(seen[0]?.tool).toBe("hline");
   });
 
   const hosts: TestHost[] = [];

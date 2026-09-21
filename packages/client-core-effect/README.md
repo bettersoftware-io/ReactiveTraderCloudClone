@@ -212,10 +212,15 @@ after subscribe, which is why the contract leaves a keyed wire stream's
 first value uncontracted while a presenter-owned CELL's is synchronous.
 `ordersBlotter` pairs two `PubSub`s (`fills$` and an internal refresh
 signal, both hot with no replay) with a RETAINED fold whose producer is
-`Stream.merge(Stream.make(undefined), Stream.fromPubSub(refreshes))` —
-`merge`, not `concat`, so the PubSub subscription exists from the run's
-first step — flat-mapped with `switch` into one `rpc(orders.orders())` per
-trigger, newest winning. Its `place()` is `scopedPortStream` tapped, so its
+`Stream.merge(Stream.make(undefined), Stream.fromPubSub(refreshes))`,
+flat-mapped with `switch` into one `rpc(orders.orders())` per trigger,
+newest winning. MEASURED on 3.22.2, sweeping the microtask distance between
+the period's first subscribe and a publish: `merge` loses a refresh
+published 0–2 microtasks after the subscribe and hears one from 3 on;
+`concat` loses through 3. So there IS a window and `merge` only narrows it —
+what makes it harmless is that in every lost case the initial `orders()`
+query had not completed (with `merge`, not even started), so the update a
+lost refresh carried is one that query goes on to observe anyway. Its `place()` is `scopedPortStream` tapped, so its
 own failure ERRORS that per-call stream: a per-call stream has an error
 channel, unlike the ticket machine's ref. `candleSeries` keeps the two
 backfill flags as presenter-owned `SubscriptionRef` CELLS (replay-current

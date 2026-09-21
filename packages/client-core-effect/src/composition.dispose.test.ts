@@ -82,6 +82,33 @@ describe("composition teardown", () => {
     expect(subscribers).toBe(withoutThisCore);
   });
 
+  it("an intent on a workspace singleton after dispose() is a silent no-op (ruling 13)", async () => {
+    const { app } = composeWithBase(createPorts());
+    await app.dispose();
+    await tick();
+
+    // The behavioural promise: a late click — a panel still mounted while
+    // the app tears down — must not throw at the caller.
+    //
+    // MEASURED which mechanism carries it, by swapping `createChildHost`'s
+    // runner for the parent's `ManagedRuntime` and re-running: this case
+    // stays GREEN. `app.dispose()` closes the host scope before disposing
+    // the runtime, and the child scope's finalizer marks the machine
+    // disposed, so the intent is refused at that guard and never reaches a
+    // runtime at all. The DEFAULT runtime is the second line of defence,
+    // for an intent that arrives before the finalizer has run; the witness
+    // for THAT is `bridge/out.test.ts`'s "createChildHost() still runs an
+    // effect after the parent ManagedRuntime is disposed", which the same
+    // swap turns red.
+    expect(() => {
+      app.presenters.eqWorkspace.intents.select("MSFT");
+    }).not.toThrow();
+    expect(() => {
+      app.presenters.eqDrawings.intents.setTool("hline");
+    }).not.toThrow();
+    await tick();
+  });
+
   it("ONE runSync: composeWithBase builds the whole Layer graph without an async boundary", async () => {
     // An async Layer build would surface here as `runSync` throwing
     // `AsyncFiberException` — the witness that the graph stays synchronous.

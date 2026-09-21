@@ -144,6 +144,47 @@ describe("candleSeries presenter", () => {
     expect(again.at(-1)?.[0]?.time).toBe(pageStart);
   });
 
+  it("closing the host scope mid-page abandons the fetch: the port is released and Effect.ensuring still clears the key", async () => {
+    const scripted = createScriptedCandles();
+    const host = useHost();
+    const p = createCandleSeriesPresenter(host, scripted.port);
+    p.candles$("AAPL").subscribe(() => {});
+    await tick();
+    scripted.emitCandles("AAPL", "1D", createCandles(3, T0, STEP_MS));
+    await tick();
+
+    const loading: boolean[] = [];
+    const watching = p.loadingOlder$("AAPL").subscribe((value: boolean) => {
+      loading.push(value);
+    });
+    p.loadOlder("AAPL");
+    await tick();
+    expect(scripted.pendingHistory()).toHaveLength(1);
+    expect(scripted.historyObserved()).toBe(true);
+    expect(loading.at(-1)).toBe(true);
+    // Dropped so the cell goes cold: while a subscriber holds `state()` at
+    // refCount 1 a later read is its cache, not the ref.
+    watching.unsubscribe();
+    await tick();
+
+    // `app.dispose()`'s path while the page is still in flight.
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    // `rpc`'s finalizer ran: the history request is no longer subscribed.
+    expect(scripted.historyObserved()).toBe(false);
+    expect(scripted.pendingHistory()).toEqual([]);
+
+    // `Effect.ensuring` runs on interruption too, so the key is not left
+    // wedged with `inFlight` true. `inFlight` itself is internal; the
+    // honest proxy is the `loading` cell it is cleared beside, read cold so
+    // the value comes from the ref rather than a cache.
+    const afterClose: boolean[] = [];
+    p.loadingOlder$("AAPL").subscribe((value: boolean) => {
+      afterClose.push(value);
+    });
+    expect(afterClose).toEqual([false]);
+  });
+
   it("loadOlder before the series has emitted asks for nothing — there is no anchor yet", async () => {
     const scripted = createScriptedCandles();
     const p = createCandleSeriesPresenter(useHost(), scripted.port);
@@ -154,9 +195,20 @@ describe("candleSeries presenter", () => {
     expect(scripted.pendingHistory()).toEqual([]);
   });
 
-  it("loadingOlder$ and historyExhausted$ are the SAME per-key cells across warm periods", async () => {
+  it("loadingOlder$ and historyExhausted$ hand back the SAME instance per key, and the cell survives warm periods", async () => {
     const scripted = createScriptedCandles();
     const p = createCandleSeriesPresenter(useHost(), scripted.port);
+    // Memoised per key, like the RxJS core's `BehaviorSubject`s — a caller
+    // that re-reads the accessor keeps the same cell rather than a fresh
+    // view of it.
+    expect(p.historyExhausted$("AAPL")).toBe(p.historyExhausted$("AAPL"));
+    expect(p.loadingOlder$("AAPL")).toBe(p.loadingOlder$("AAPL"));
+    expect(p.historyExhausted$("AAPL")).not.toBe(p.historyExhausted$("MSFT"));
+    expect(p.historyExhausted$("AAPL")).not.toBe(p.loadingOlder$("AAPL"));
+    expect(p.historyExhausted$("AAPL")).not.toBe(
+      p.historyExhausted$("AAPL", "1W"),
+    );
+
     const exhausted: boolean[] = [];
     p.historyExhausted$("AAPL").subscribe((value: boolean) => {
       exhausted.push(value);
@@ -178,17 +230,14 @@ describe("candleSeries presenter", () => {
     first.unsubscribe();
     await tick();
     p.candles$("AAPL").subscribe(() => {});
-    // The fresh period clears the very same cell in the caller's tick, so a
-    // subscriber arriving now reads `false` synchronously …
-    const fresh: boolean[] = [];
-    p.historyExhausted$("AAPL").subscribe((value: boolean) => {
-      fresh.push(value);
-    });
-    expect(fresh).toEqual([false]);
-    // … and the watcher that was already attached hears the clear a fiber
-    // hop later, as every ref change reaches an existing subscriber.
+    // The fresh period clears the very same cell — the watcher attached
+    // since before the first period hears it, which is what "the SAME cell
+    // across periods" means. It arrives a fiber hop later, as every ref
+    // change reaches an existing subscriber.
     await tick();
     expect(exhausted.at(-1)).toBe(false);
+    // Latched then cleared, not merely never latched.
+    expect(exhausted).toContain(true);
   });
 
   const hosts: TestHost[] = [];
@@ -227,6 +276,9 @@ interface ScriptedCandles {
     candles: readonly Candle[],
   ) => void;
   pendingHistory: () => readonly HistoryRequest[];
+  /** Whether any history request is currently SUBSCRIBED — the release
+   * witness for `rpc`'s finalizer. */
+  historyObserved: () => boolean;
   resolveHistory: (page: readonly Candle[]) => void;
   failHistory: (error: unknown) => void;
 }
@@ -312,6 +364,11 @@ function createScriptedCandles(): ScriptedCandles {
     pendingHistory: () => {
       return history.map((entry) => {
         return entry.request;
+      });
+    },
+    historyObserved: () => {
+      return history.some((entry) => {
+        return entry.result.observed;
       });
     },
     resolveHistory: (page: readonly Candle[]) => {

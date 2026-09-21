@@ -49,7 +49,16 @@ describe("orderTicket machine", () => {
     m.dispose();
   });
 
-  it("a superseded run's port subscription is released and its late update ignored", async () => {
+  it("a superseding submit RELEASES the first place() and the second's updates land", async () => {
+    // What this pins is the RELEASE, not the run token. Once the first
+    // lifecycle Observable has been torn down its Subject has no observers,
+    // so a late `next` on it is swallowed by rxjs before `run.guarded` is
+    // ever consulted — removing every `guarded` from the machine leaves
+    // this case green. The token itself is witnessed directly in
+    // `machines/runSlot.test.ts`, where a `Run`'s `write`/`guarded` are
+    // driven after the slot has moved on; a machine-level witness is not
+    // constructible, because the interrupt replaces the resumed effect
+    // rather than letting the superseded body run one more step.
     const scripted = createScriptedPlace();
     const m = createOrderTicketMachine({
       defaultSymbol: "AAPL",
@@ -69,13 +78,15 @@ describe("orderTicket machine", () => {
     m.intents.submit();
     await settle();
     // The first run was interrupted, so its port call is gone and only the
-    // second is live.
+    // second is live — one open subscription, carrying the second request.
     expect(scripted.open()).toBe(1);
     expect(scripted.requests().at(-1)?.qty).toBe(2);
+    expect(superseded?.observed).toBe(false);
 
-    superseded?.next(createOrder("filled"));
+    // The SECOND run's updates are the ones that land.
+    scripted.oldest()?.next(createOrder("working"));
     await settle();
-    expect(seen.at(-1)).toEqual({ phase: "submitting" });
+    expect(seen.at(-1)).toMatchObject({ phase: "working" });
     m.dispose();
   });
 

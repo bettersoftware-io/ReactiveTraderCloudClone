@@ -33,6 +33,11 @@ const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
 interface Backfill {
   readonly loading: SubscriptionRef.SubscriptionRef<boolean>;
   readonly exhausted: SubscriptionRef.SubscriptionRef<boolean>;
+  /** The two cells as streams, built ONCE with the refs: `loadingOlder$`
+   * and `historyExhausted$` hand back the same instance per key, as the
+   * RxJS core's `BehaviorSubject`s do. */
+  readonly loading$: CoreStream<boolean>;
+  readonly exhausted$: CoreStream<boolean>;
   older: readonly Candle[];
   /** First candle of the latest stitched emission — the next page's anchor. */
   latestFirst: Candle | null;
@@ -75,9 +80,13 @@ export function createCandleSeriesPresenter(
       return existing;
     }
 
+    const loading = host.runtime.runSync(SubscriptionRef.make(false));
+    const exhausted = host.runtime.runSync(SubscriptionRef.make(false));
     const created: Backfill = {
-      loading: host.runtime.runSync(SubscriptionRef.make(false)),
-      exhausted: host.runtime.runSync(SubscriptionRef.make(false)),
+      loading,
+      exhausted,
+      loading$: refToStateStream(host, loading),
+      exhausted$: refToStateStream(host, exhausted),
       older: [],
       latestFirst: null,
       inFlight: false,
@@ -270,19 +279,13 @@ export function createCandleSeriesPresenter(
       symbol: string,
       timeframe: CandleTimeframe = DEFAULT_TIMEFRAME,
     ) => {
-      return refToStateStream(
-        host,
-        backfillFor(`${symbol}|${timeframe}`).loading,
-      );
+      return backfillFor(`${symbol}|${timeframe}`).loading$;
     },
     historyExhausted$: (
       symbol: string,
       timeframe: CandleTimeframe = DEFAULT_TIMEFRAME,
     ) => {
-      return refToStateStream(
-        host,
-        backfillFor(`${symbol}|${timeframe}`).exhausted,
-      );
+      return backfillFor(`${symbol}|${timeframe}`).exhausted$;
     },
   };
 }

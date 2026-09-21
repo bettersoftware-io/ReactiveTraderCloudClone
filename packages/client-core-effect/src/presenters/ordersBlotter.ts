@@ -48,8 +48,21 @@ export function createOrdersBlotterPresenter(
         return Option.none();
       },
       run: (update: FoldUpdate<readonly EquityOrder[]>) => {
-        // `merge`, not `concat`: the PubSub subscription must exist from
-        // the run's first step, not only after the initial query.
+        // MEASURED (effect 3.22.2), sweeping the microtask distance between
+        // this period's first subscribe and a `PubSub.publish`: with
+        // `merge`, a refresh published 0–2 microtasks after the subscribe
+        // reaches NOBODY and one published from 3 on is heard; with
+        // `concat` the lost window is 0–3, one microtask wider. So the
+        // PubSub subscription does NOT exist "from the run's first step" —
+        // there is a real window, and `merge` only makes it narrower.
+        //
+        // What makes the window harmless is the second half of the same
+        // measurement: in every lost case, for both shapes, the initial
+        // `orders()` query had not completed — with `merge` it had not even
+        // started at any swept distance. A refresh that reaches nobody is
+        // therefore one whose update the initial query goes on to observe
+        // anyway, so the book cannot be left stale by it. `merge` is kept
+        // for the narrower window, not for an absolute guarantee.
         return Stream.merge(
           Stream.make(undefined),
           Stream.fromPubSub(refreshes),

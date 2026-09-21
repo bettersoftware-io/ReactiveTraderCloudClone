@@ -110,6 +110,62 @@ describe("eqWorkspace machine", () => {
     }
   });
 
+  it("closing the PARENT scope releases the still-pending seed's port — no dispose() call", async () => {
+    const parent = useHost();
+    const roster = new Subject<readonly EquityInstrument[]>();
+    createEqWorkspaceMachine(parent, {
+      initialSymbol: "",
+      watchlist$: roster,
+    });
+    await tick();
+    // Non-vacuous: the seed is still pending — the roster never emitted, so
+    // `take(1)` has not completed the stream and the subscription is live.
+    expect(roster.observed).toBe(true);
+
+    // `app.dispose()`'s path, without the machine's own `dispose()`: the
+    // parent→child scope link is the only thing that can release this.
+    await Effect.runPromise(Scope.close(parent.scope, Exit.void));
+    await tick();
+    expect(roster.observed).toBe(false);
+  });
+
+  it("closing the PARENT scope leaves the machine exactly as dispose() does, and a later intent is ignored", async () => {
+    // See `eqDrawings.test.ts`'s twin for why the RELEASE of the keep-warm
+    // is the discriminating probe: while it is held, `state()` sits at
+    // refCount 1 and hands every reader its cached value, so "disposed" and
+    // "frozen" look identical. Released, `getValue()` falls back to
+    // `state()`'s construction-time default — the signature `dispose()`
+    // produces. Without the child scope's finalizer the parent-close path
+    // stays warm and reads "TSLA" here while the `dispose()` path reads the
+    // default.
+    const viaDispose = createEqWorkspaceMachine(useHost(), {
+      initialSymbol: "AAPL",
+    });
+    viaDispose.intents.select("TSLA");
+    await tick();
+    viaDispose.dispose();
+    await tick();
+    const afterDispose = viaDispose.state$.getValue();
+
+    const parent = useHost();
+    const viaParent = createEqWorkspaceMachine(parent, {
+      initialSymbol: "AAPL",
+    });
+    viaParent.intents.select("TSLA");
+    await tick();
+    await Effect.runPromise(Scope.close(parent.scope, Exit.void));
+    await tick();
+    expect(viaParent.state$.getValue()).toEqual(afterDispose);
+
+    viaParent.intents.select("MSFT");
+    await tick();
+    const seen: EqWorkspaceState[] = [];
+    viaParent.state$.subscribe((state: EqWorkspaceState) => {
+      seen.push(state);
+    });
+    expect(seen[0]).toMatchObject({ sel: "TSLA" });
+  });
+
   it("with no watchlist$ at all it opens on the initial symbol and nothing seeds it later", async () => {
     const m = createEqWorkspaceMachine(useHost(), { initialSymbol: "AAPL" });
     const seen: EqWorkspaceState[] = [];
