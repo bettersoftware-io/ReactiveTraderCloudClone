@@ -1,5 +1,5 @@
 import { stitchCandles } from "@rtc/client-core";
-import type { CandleSeriesPresenter, Stream } from "@rtc/core-api";
+import type { CandleSeriesPresenter, StateStream, Stream } from "@rtc/core-api";
 import {
   CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,
@@ -19,10 +19,17 @@ import { createTopic } from "#/kernel/topic";
 const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
 
 /** Per-(symbol|timeframe) backfill state. Everything but the two flags is
- * plain mutable state the key's producer and `loadOlder` share. */
+ * plain mutable state the key's producer and `loadOlder` share. The two
+ * `*Stream` fields are the `StateStream`s wrapping `loading`/`exhausted`,
+ * built once alongside the Stores they wrap — presenter-owned cells, not
+ * port reads (slice 4 ruling), so `loadingOlder$`/`historyExhausted$` must
+ * hand back the SAME reference on a repeat call for the same key, the way
+ * the RxJS presenter's `BehaviorSubject` per key does. */
 interface Backfill {
   readonly loading: Store<boolean>;
   readonly exhausted: Store<boolean>;
+  readonly loadingStream: StateStream<boolean>;
+  readonly exhaustedStream: StateStream<boolean>;
   older: readonly Candle[];
   /** The live base series of the CURRENT warm period; null between periods. */
   base: readonly Candle[] | null;
@@ -57,9 +64,13 @@ export function createCandleSeriesPresenter(
       return existing;
     }
 
+    const loading = createStore(false);
+    const exhausted = createStore(false);
     const created: Backfill = {
-      loading: createStore(false),
-      exhausted: createStore(false),
+      loading,
+      exhausted,
+      loadingStream: storeToStateStream(loading),
+      exhaustedStream: storeToStateStream(exhausted),
       older: [],
       base: null,
       latestFirst: null,
@@ -194,15 +205,13 @@ export function createCandleSeriesPresenter(
       symbol: string,
       timeframe: CandleTimeframe = DEFAULT_TIMEFRAME,
     ) => {
-      return storeToStateStream(backfillFor(`${symbol}|${timeframe}`).loading);
+      return backfillFor(`${symbol}|${timeframe}`).loadingStream;
     },
     historyExhausted$: (
       symbol: string,
       timeframe: CandleTimeframe = DEFAULT_TIMEFRAME,
     ) => {
-      return storeToStateStream(
-        backfillFor(`${symbol}|${timeframe}`).exhausted,
-      );
+      return backfillFor(`${symbol}|${timeframe}`).exhaustedStream;
     },
   };
 }

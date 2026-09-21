@@ -202,6 +202,7 @@ describe("bridge/out", () => {
     const sources: Subject<number>[] = [];
     const onValueSeen: number[] = [];
     const subscriberSeen: number[] = [];
+    let completedAfterUnsubscribe = false;
 
     const stream = portCallToStream<number>(
       () => {
@@ -218,9 +219,14 @@ describe("bridge/out", () => {
 
     // `onValue` must have already run by the time the subscriber sees the
     // value — asserted from inside the subscriber callback itself.
-    const sub1 = stream.subscribe((v: number) => {
-      subscriberSeen.push(v);
-      expect(onValueSeen).toEqual(subscriberSeen);
+    const sub1 = stream.subscribe({
+      next: (v: number) => {
+        subscriberSeen.push(v);
+        expect(onValueSeen).toEqual(subscriberSeen);
+      },
+      complete: () => {
+        completedAfterUnsubscribe = true;
+      },
     });
     expect(opens).toBe(1);
     sources[0]?.next(1);
@@ -235,6 +241,7 @@ describe("bridge/out", () => {
     expect(sources[0]?.observed).toBe(false);
     // A late complete after the unsubscribe must not reach the subscriber.
     sources[0]?.complete();
+    expect(completedAfterUnsubscribe).toBe(false);
     sub2.unsubscribe();
   });
 
@@ -262,7 +269,7 @@ describe("bridge/out", () => {
       },
     });
     complete$.complete();
-    await settleMicrotasks();
+    await settleMacrotask();
     expect(completed).toBe(true);
 
     const fail$ = new Subject<number>();
@@ -275,7 +282,7 @@ describe("bridge/out", () => {
       },
     });
     fail$.error(new Error("bust"));
-    await settleMicrotasks();
+    await settleMacrotask();
     expect(errors).toHaveLength(1);
   });
 
@@ -300,7 +307,7 @@ describe("bridge/out", () => {
 /** One macrotask turn — `portCallToStream`'s completion/error path runs
  * through `relay`'s promise, which settles a microtask after the source's
  * own notification. */
-function settleMicrotasks(): Promise<void> {
+function settleMacrotask(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });

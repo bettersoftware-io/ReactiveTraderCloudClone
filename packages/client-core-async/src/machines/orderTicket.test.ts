@@ -39,7 +39,21 @@ describe("createOrderTicketMachine", () => {
     }
   });
 
-  it("a superseded run's late update is ignored", async () => {
+  // A superseding submit WITHDRAWS the run in flight: `slot.start` aborts
+  // the run's signal, and `relay` observes that SYNCHRONOUSLY —
+  // unsubscribing `firstOrders` before the second `place()` call is even
+  // made. `firstOrders.observed === false` is the actual witness of that
+  // withdrawal; a late `firstOrders.next(...)` reaching nobody would prove
+  // nothing more (relay's own unsubscribe already means nothing is
+  // listening, regardless of `run.ifCurrent`'s guard). `run.ifCurrent`
+  // around `offer` is still real — it defends `set`/`ifCurrent` against a
+  // callback that resolves in the SAME tick a superseding `start()` runs, a
+  // race that has nothing to do with `relay`'s subscription lifecycle and is
+  // exercised directly against the slot in `kernel/runSlot.test.ts`
+  // ("closes the post-await stale-write window"); it happens to be moot for
+  // THIS scenario because the relay's synchronous unsubscribe already closes
+  // the window before the guard would ever be asked to.
+  it("a superseding submit withdraws the first place() call; only the second's updates land", async () => {
     const firstOrders = new Subject<EquityOrder>();
     const secondOrders = new Subject<EquityOrder>();
     const requests: PlaceOrderRequest[] = [];
@@ -57,17 +71,13 @@ describe("createOrderTicketMachine", () => {
     machine.intents.setQty(1);
     machine.intents.submit();
     await flushMicrotasks();
+    expect(firstOrders.observed).toBe(true);
 
     machine.intents.setQty(2);
     machine.intents.submit();
     await flushMicrotasks();
     expect(requests).toHaveLength(2);
-
-    // The FIRST run's stream is superseded but not itself unsubscribed by
-    // the test double — a late update from it must not reach the ticket.
-    firstOrders.next(createOrder({ id: "stale" }));
-    await flushMicrotasks();
-    expect(seen.at(-1)).toEqual({ phase: "submitting" });
+    expect(firstOrders.observed).toBe(false);
 
     secondOrders.next(createOrder({ id: "live", status: "filled" }));
     await flushMicrotasks();

@@ -123,13 +123,22 @@ describe("nativeMachines — wiring", () => {
     expect(machines.boot).toBe(base.boot);
   });
 
-  it("orderTicket reaches ordersBlotter.place lazily — not at construction", () => {
+  it("orderTicket reaches ordersBlotter.place lazily — not at construction, then with the submitted request", () => {
     const { presenters, spies } = createStubPresenters();
 
     const machine =
       composeMachinesWithBase(presenters).machines.orderTicket("AAPL");
 
     expect(spies.place).not.toHaveBeenCalled();
+    machine.intents.setQty(1);
+    machine.intents.submit();
+    expect(spies.place).toHaveBeenCalledTimes(1);
+    expect(spies.place).toHaveBeenCalledWith({
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 1,
+    });
     machine.dispose();
   });
 

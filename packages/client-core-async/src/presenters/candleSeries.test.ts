@@ -9,9 +9,11 @@ import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 describe("createCandleSeriesPresenter", () => {
   it('candles$("") never calls marketData.candles and yields an empty series synchronously', () => {
     let calls = 0;
-    const marketData = createMarketDataStub(() => {
-      calls += 1;
-      return new Subject<readonly Candle[]>();
+    const marketData = createMarketDataStub({
+      candles: () => {
+        calls += 1;
+        return new Subject<readonly Candle[]>();
+      },
     });
 
     const presenter = createCandleSeriesPresenter(
@@ -26,12 +28,38 @@ describe("createCandleSeriesPresenter", () => {
     expect(calls).toBe(0);
   });
 
+  it("loadingOlder$/historyExhausted$ are memoised per (symbol, timeframe) — a repeat call is the SAME reference", () => {
+    const presenter = createCandleSeriesPresenter(
+      createMarketDataStub(),
+      new AbortController().signal,
+    );
+
+    expect(presenter.loadingOlder$("AAPL")).toBe(
+      presenter.loadingOlder$("AAPL", "1D"),
+    );
+    expect(presenter.loadingOlder$("AAPL")).not.toBe(
+      presenter.loadingOlder$("AAPL", "1W"),
+    );
+    expect(presenter.historyExhausted$("AAPL")).toBe(
+      presenter.historyExhausted$("AAPL", "1D"),
+    );
+    expect(presenter.historyExhausted$("AAPL")).not.toBe(
+      presenter.historyExhausted$("MSFT"),
+    );
+  });
+
   it("now is injectable and the cooldown honours it without fake timers", async () => {
     const history: Subject<readonly Candle[]>[] = [];
-    const marketData = createMarketDataStub(() => {
-      const source = new Subject<readonly Candle[]>();
-      history.push(source);
-      return source;
+    const base$ = new Subject<readonly Candle[]>();
+    const marketData = createMarketDataStub({
+      candles: () => {
+        return base$;
+      },
+      candleHistory: () => {
+        const source = new Subject<readonly Candle[]>();
+        history.push(source);
+        return source;
+      },
     });
     let clock = 0;
     const presenter = createCandleSeriesPresenter(
@@ -41,11 +69,6 @@ describe("createCandleSeriesPresenter", () => {
         return clock;
       },
     );
-    const base$ = new Subject<readonly Candle[]>();
-
-    marketData.candles = (): Subject<readonly Candle[]> => {
-      return base$;
-    };
 
     presenter.candles$("AAPL").subscribe(() => {});
     base$.next([createCandle(1_000)]);
@@ -70,63 +93,93 @@ describe("createCandleSeriesPresenter", () => {
     expect(history).toHaveLength(2);
   });
 
-  it("a page landing after its period ended does not publish and the next period starts with older reset", async () => {
+  // The reachable half of `publishStitched`'s guard: a page requested in
+  // period 1 can land AFTER period 2 has already reset `state.base` to null
+  // (its own base hasn't arrived yet) — `state.base === null` is not
+  // defensive dead code, it is exactly this window. Ordering, precisely:
+  // period 1 gets a base and starts a loadOlder (anchored on it) → period 1
+  // ends → period 2 starts, resetting `older`/`base`/`latestFirst` → THEN
+  // the stale page resolves (nothing publishes: base is still null) → THEN
+  // period 2's own base arrives (now it publishes).
+  //
+  // What lands in period 2's series once it does publish: this MATCHES the
+  // RxJS `CandleSeriesPresenter`, checked directly against its source
+  // (`packages/client-core/src/presenters/CandleSeriesPresenter.ts`) — its
+  // `older$` is one BehaviorSubject that survives across periods; a fresh
+  // cycle's `defer` only `.next([])`s its VALUE, and the stale page's own
+  // `next` handler still runs `older$.next([...page, ...older$.value])`
+  // whenever it lands, landing in whatever period is live at THAT moment.
+  // So a page that resolves after the reset but before the new base ends up
+  // prepended into the NEW period too — not dropped. This port's `state`
+  // object is the same shape (one mutable cell per key, `older` reset
+  // in-place at the start of each producer run), so it reproduces the same
+  // outcome: the stale page survives into period 2's first published series.
+  it("a page requested in one period, landing after the NEXT period has already reset base, publishes nothing until the new base arrives — then carries the stale page forward, matching the RxJS presenter", async () => {
     const history: Subject<readonly Candle[]>[] = [];
-    const marketData = createMarketDataStub(() => {
-      const source = new Subject<readonly Candle[]>();
-      history.push(source);
-      return source;
-    });
     const base$ = new Subject<readonly Candle[]>();
-
-    marketData.candles = (): Subject<readonly Candle[]> => {
-      return base$;
-    };
+    const marketData = createMarketDataStub({
+      candles: () => {
+        return base$;
+      },
+      candleHistory: () => {
+        const source = new Subject<readonly Candle[]>();
+        history.push(source);
+        return source;
+      },
+    });
 
     const presenter = createCandleSeriesPresenter(
       marketData,
       new AbortController().signal,
     );
-    const sub = presenter.candles$("AAPL").subscribe(() => {});
-    base$.next([createCandle(1_000)]);
+
+    // Period 1: a base arrives, loadOlder anchors on it and goes in flight.
+    const first = presenter.candles$("AAPL").subscribe(() => {});
+    base$.next([BASE_T0]);
     await settle();
     presenter.loadOlder("AAPL");
     await settle();
     expect(history).toHaveLength(1);
 
-    // Period ends: the last subscriber releases the port-backed topic.
-    sub.unsubscribe();
+    // Period 1 ends; period 2 starts (same cached stream, fresh producer
+    // run) — this synchronously resets `state.base` to null.
+    first.unsubscribe();
     await settle();
-
-    // The stale page lands after the period ended: nobody is subscribed to
-    // throw through, and settling afterwards must not surface a rejection.
-    history[0]?.next([createCandle(500)]);
-    await settle();
-
-    // A fresh period starts clean: no replay of the old base or the stale
-    // page, and `older` is reset (a loadOlder before any base is a no-op).
     const values: (readonly Candle[])[] = [];
     presenter.candles$("AAPL").subscribe((v) => {
       values.push(v);
     });
     expect(values).toEqual([]);
-    presenter.loadOlder("AAPL");
+
+    // The stale page resolves NOW — after the reset, before period 2's own
+    // base. `publishStitched` reads `state.base === null` and returns early:
+    // nothing is published.
+    history[0]?.next([STALE_CANDLE]);
     await settle();
-    expect(history).toHaveLength(1);
+    expect(values).toEqual([]);
+
+    // Period 2's own base finally arrives: `publishStitched` now has both a
+    // base and a live `state.publish`, and stitches the stale page (still
+    // sitting in `state.older` from the early-returned call above) ahead of
+    // it.
+    base$.next([BASE_T0, BASE_T0_PLUS_STEP]);
+    await settle();
+    expect(values).toEqual([[STALE_CANDLE, BASE_T0, BASE_T0_PLUS_STEP]]);
   });
 
   it("lifetime.abort() abandons an in-flight page silently", async () => {
     const history: Subject<readonly Candle[]>[] = [];
-    const marketData = createMarketDataStub(() => {
-      const source = new Subject<readonly Candle[]>();
-      history.push(source);
-      return source;
-    });
     const base$ = new Subject<readonly Candle[]>();
-
-    marketData.candles = (): Subject<readonly Candle[]> => {
-      return base$;
-    };
+    const marketData = createMarketDataStub({
+      candles: () => {
+        return base$;
+      },
+      candleHistory: () => {
+        const source = new Subject<readonly Candle[]>();
+        history.push(source);
+        return source;
+      },
+    });
 
     const lifetime = new AbortController();
     const presenter = createCandleSeriesPresenter(marketData, lifetime.signal);
@@ -146,6 +199,14 @@ describe("createCandleSeriesPresenter", () => {
   });
 });
 
+const T0 = 1_000;
+const STEP_MS = 100;
+const BASE_T0: Candle = createCandle(T0);
+const BASE_T0_PLUS_STEP: Candle = createCandle(T0 + STEP_MS);
+// Strictly before BASE_T0 — the contiguity guard `stitchCandles` applies
+// (`packages/client-core/src/presenters/candleStitch.ts`) keeps it.
+const STALE_CANDLE: Candle = createCandle(T0 - STEP_MS);
+
 function createCandle(time: number, close = 100): Candle {
   return {
     time,
@@ -158,7 +219,7 @@ function createCandle(time: number, close = 100): Candle {
 }
 
 function createMarketDataStub(
-  candleHistory: () => Subject<readonly Candle[]>,
+  overrides: Partial<MarketDataPort> = {},
 ): MarketDataPort {
   return {
     watchlist: () => {
@@ -170,10 +231,13 @@ function createMarketDataStub(
     candles: () => {
       return new Subject<readonly Candle[]>();
     },
-    candleHistory,
+    candleHistory: () => {
+      return new Subject<readonly Candle[]>();
+    },
     depth: () => {
       return new Subject();
     },
+    ...overrides,
   };
 }
 
