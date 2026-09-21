@@ -7,13 +7,17 @@ import { describeAnalyticsStaleFlagContract } from "#/suites/analyticsStaleFlag"
 import { describeAnimatedBackgroundContract } from "#/suites/animatedBackground";
 import { describeBlotterContract } from "#/suites/blotter";
 import { describeBootPreferenceContract } from "#/suites/bootPreference";
+import { describeCandleSeriesContract } from "#/suites/candleSeries";
 import { describeChartSubstrateContract } from "#/suites/chartSubstrate";
 import { describeConnectionContract } from "#/suites/connection";
 import { describeCreditRfqFilterPreferenceContract } from "#/suites/creditRfqFilterPreference";
 import { describeCurrencyPairsContract } from "#/suites/currencyPairs";
 import { describeDealersContract } from "#/suites/dealers";
+import { describeDepthContract } from "#/suites/depth";
 import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
+import { describeEqDrawingsContract } from "#/suites/eqDrawings";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
+import { describeEqWorkspaceContract } from "#/suites/eqWorkspace";
 import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
 import { describeInstrumentsContract } from "#/suites/instruments";
@@ -21,6 +25,9 @@ import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
 import { describeLayoutEngineContract } from "#/suites/layoutEngine";
 import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
 import { describeNotionalContract } from "#/suites/notional";
+import { describeOrdersBlotterContract } from "#/suites/ordersBlotter";
+import { describeOrderTicketContract } from "#/suites/orderTicket";
+import { describePositionsContract } from "#/suites/positions";
 import { describePowerSaverContract } from "#/suites/powerSaver";
 import { describePriceHistoryContract } from "#/suites/priceHistory";
 import { describePriceStreamContract } from "#/suites/priceStream";
@@ -37,6 +44,7 @@ import { describeThemeSkinPreferenceContract } from "#/suites/themeSkinPreferenc
 import { describeTicketSubmissionContract } from "#/suites/ticketSubmission";
 import { describeTileExecutionContract } from "#/suites/tileExecution";
 import { describeViewModePreferenceContract } from "#/suites/viewModePreference";
+import { describeWatchlistContract } from "#/suites/watchlist";
 
 type PresenterMember = `presenters.${keyof Presenters & string}`;
 type MachineMember = `machines.${keyof MachineFactories & string}`;
@@ -83,16 +91,16 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.auth": null,
   "presenters.loginWaitPreferences": describeLoginWaitPreferencesContract,
   "presenters.jarvisPreferences": describeJarvisPreferencesContract,
-  "presenters.watchlist": null,
-  "presenters.candleSeries": null,
-  "presenters.depth": null,
-  "presenters.ordersBlotter": null,
-  "presenters.positions": null,
+  "presenters.watchlist": describeWatchlistContract,
+  "presenters.candleSeries": describeCandleSeriesContract,
+  "presenters.depth": describeDepthContract,
+  "presenters.ordersBlotter": describeOrdersBlotterContract,
+  "presenters.positions": describePositionsContract,
   "presenters.incident": null,
-  "presenters.eqWorkspace": null,
+  "presenters.eqWorkspace": describeEqWorkspaceContract,
   "presenters.workspaceNav": null,
   "presenters.layoutFor": null,
-  "presenters.eqDrawings": null,
+  "presenters.eqDrawings": describeEqDrawingsContract,
   "presenters.throughputMetric": null,
   "presenters.latencyMetric": null,
   "presenters.errorRateMetric": null,
@@ -123,7 +131,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.rfqCountdown": describeRfqCountdownContract,
   "machines.layout": null,
   "machines.boot": null,
-  "machines.orderTicket": null,
+  "machines.orderTicket": describeOrderTicketContract,
   "commands.reconnect": describeReconnectContract,
   "commands.reportDetachedPanels": null,
 };
@@ -137,16 +145,9 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.animationDirector",
   "presenters.bootGate",
   "presenters.auth",
-  "presenters.watchlist",
-  "presenters.candleSeries",
-  "presenters.depth",
-  "presenters.ordersBlotter",
-  "presenters.positions",
   "presenters.incident",
-  "presenters.eqWorkspace",
   "presenters.workspaceNav",
   "presenters.layoutFor",
-  "presenters.eqDrawings",
   "presenters.throughputMetric",
   "presenters.latencyMetric",
   "presenters.errorRateMetric",
@@ -168,6 +169,5 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.jarvisDemo",
   "machines.layout",
   "machines.boot",
-  "machines.orderTicket",
   "commands.reportDetachedPanels",
 ];

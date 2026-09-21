@@ -78,4 +78,19 @@ describe("core-contract registry", () => {
       expect(CONTRACT_SUITES[member]).not.toBeNull();
     }
   });
+
+  it("slice 4 members have suites", () => {
+    for (const member of [
+      "presenters.watchlist",
+      "presenters.candleSeries",
+      "presenters.depth",
+      "presenters.ordersBlotter",
+      "presenters.positions",
+      "presenters.eqWorkspace",
+      "presenters.eqDrawings",
+      "machines.orderTicket",
+    ] as const) {
+      expect(CONTRACT_SUITES[member]).not.toBeNull();
+    }
+  });
 });
