@@ -12,6 +12,11 @@ import type {
 } from "@rtc/core-api";
 import type { CandleTimeframe } from "@rtc/domain";
 
+import {
+  createEqWorkspaceState,
+  type EqWorkspaceEvent,
+  reduceEqWorkspace,
+} from "./eqWorkspaceFold";
 import type { Machine } from "./machine";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
@@ -43,8 +48,6 @@ export interface EqWorkspaceDeps {
   readonly seed$?: Observable<string>;
 }
 
-type Patch = (s: EqWorkspaceState) => EqWorkspaceState;
-
 /**
  * Cross-panel equities workspace state: the selected symbol, the open
  * instrument tabs, and the shared chart timeframe. This is a
@@ -64,181 +67,22 @@ type Patch = (s: EqWorkspaceState) => EqWorkspaceState;
 export function createEqWorkspaceMachine(
   deps: EqWorkspaceDeps,
 ): Machine<EqWorkspaceState, EqWorkspaceIntents> {
-  const select$ = new Subject<string>();
-  const closeTab$ = new Subject<string>();
-  const setTimeframe$ = new Subject<CandleTimeframe>();
-  const setChartType$ = new Subject<EqChartType>();
-  const toggleIndicator$ = new Subject<EqIndicatorId>();
-  const togglePane$ = new Subject<EqPaneId>();
-  const toggleYScale$ = new Subject<void>();
-  const setCompare$ = new Subject<string | null>();
+  const event$ = new Subject<EqWorkspaceEvent>();
+  const initial = createEqWorkspaceState(deps.initialSymbol);
 
-  // An empty initialSymbol means no tab is open yet (WS-real, watchlist not
-  // arrived synchronously) — NOT a phantom "" tab. InstrumentTabs then simply
-  // renders nothing until seedPatch$ (or a user select()) populates openTabs.
-  const initial: EqWorkspaceState = {
-    sel: deps.initialSymbol,
-    openTabs: deps.initialSymbol === "" ? [] : [deps.initialSymbol],
-    timeframe: "1D",
-    chartType: "candles",
-    indicators: [],
-    panes: [],
-    yScale: "linear",
-    compare: null,
-  };
-
-  // select: adds the symbol to openTabs if it isn't already there, then
-  // (re)selects it — the prototype's "click watchlist row" behaviour.
-  // Selecting the currently-compared symbol clears the comparison (the
-  // primary absorbs it — comparing a symbol against itself is meaningless).
-  const selectPatch$ = select$.pipe(
-    map((sym): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        const openTabs = s.openTabs.includes(sym)
-          ? s.openTabs
-          : [...s.openTabs, sym];
-        const compare = s.compare === sym ? null : s.compare;
-        return { ...s, sel: sym, openTabs, compare };
-      };
-    }),
-  );
-
-  // closeTab: never empties the tab strip — closing the sole remaining tab,
-  // or a symbol that isn't open, is a no-op. Closing the SELECTED tab falls
-  // back to its nearest remaining neighbour: the tab that slides into its
-  // vacated slot, or the new last tab if it was the rightmost one.
-  const closeTabPatch$ = closeTab$.pipe(
-    map((sym): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        const idx = s.openTabs.indexOf(sym);
-
-        if (idx === -1) {
-          return s;
-        }
-
-        if (s.openTabs.length === 1) {
-          return s;
-        }
-
-        const openTabs = [
-          ...s.openTabs.slice(0, idx),
-          ...s.openTabs.slice(idx + 1),
-        ];
-
-        if (s.sel !== sym) {
-          return { ...s, openTabs };
-        }
-
-        const neighbourIdx = Math.min(idx, openTabs.length - 1);
-        return { ...s, sel: openTabs[neighbourIdx], openTabs };
-      };
-    }),
-  );
-
-  const setTimeframePatch$ = setTimeframe$.pipe(
-    map((timeframe): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        return { ...s, timeframe };
-      };
-    }),
-  );
-
-  const setChartTypePatch$ = setChartType$.pipe(
-    map((chartType): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        return { ...s, chartType };
-      };
-    }),
-  );
-
-  // toggleIndicator: adds the indicator to the shared workspace's active set
-  // when absent, removes it when already present.
-  const toggleIndicatorPatch$ = toggleIndicator$.pipe(
-    map((id): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        const indicators = s.indicators.includes(id)
-          ? s.indicators.filter((existing) => {
-              return existing !== id;
-            })
-          : [...s.indicators, id];
-        return { ...s, indicators };
-      };
-    }),
-  );
-
-  // togglePane: adds the pane to the shared workspace's active set when
-  // absent, removes it when already present — independent of `indicators`
-  // (a separate active set with its own subject/patch pair, same shape).
-  const togglePanePatch$ = togglePane$.pipe(
-    map((id): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        const panes = s.panes.includes(id)
-          ? s.panes.filter((existing) => {
-              return existing !== id;
-            })
-          : [...s.panes, id];
-        return { ...s, panes };
-      };
-    }),
-  );
-
-  // toggleYScale: flips the price axis between linear and log — a binary
-  // toggle (no payload), unlike the id-keyed indicator/pane sets.
-  const toggleYScalePatch$ = toggleYScale$.pipe(
-    map((): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        return { ...s, yScale: s.yScale === "log" ? "linear" : "log" };
-      };
-    }),
-  );
-
-  // setCompare: sets/clears the comparison symbol. Comparing the selected
-  // symbol against itself is guarded here too (the pills already exclude
-  // it) — a no-op, not a clear.
-  const setComparePatch$ = setCompare$.pipe(
-    map((sym): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        if (sym !== null && sym === s.sel) {
-          return s;
-        }
-
-        return { ...s, compare: sym };
-      };
-    }),
-  );
-
-  // Recovery patch: takes exactly one emission from seed$ (or never emits,
-  // when seed$ is omitted) and seeds sel/openTabs — but only while sel is
-  // still "", so a synchronous initialSymbol or an intervening user select()
-  // always wins. This is the ONLY path that can turn an empty workspace into
-  // a seeded one when the watchlist arrives asynchronously (WS-real).
-  const seedPatch$ = (deps.seed$ ?? EMPTY).pipe(
+  // Recovery: exactly one emission from seed$ (or none, when it is omitted).
+  // The fold applies it only while `sel` is still "" — the ONLY path that
+  // turns an empty workspace into a seeded one when the watchlist arrives
+  // asynchronously (WS-real).
+  const seedEvent$ = (deps.seed$ ?? EMPTY).pipe(
     take(1),
-    map((sym): Patch => {
-      return (s: EqWorkspaceState): EqWorkspaceState => {
-        if (s.sel !== "") {
-          return s;
-        }
-
-        return { ...s, sel: sym, openTabs: [sym] };
-      };
+    map((sym): EqWorkspaceEvent => {
+      return { kind: "seed", sym };
     }),
   );
 
-  const stream$ = merge(
-    selectPatch$,
-    closeTabPatch$,
-    setTimeframePatch$,
-    setChartTypePatch$,
-    toggleIndicatorPatch$,
-    togglePanePatch$,
-    toggleYScalePatch$,
-    setComparePatch$,
-    seedPatch$,
-  ).pipe(
-    scan((s, patch) => {
-      return patch(s);
-    }, initial),
+  const stream$ = merge(event$, seedEvent$).pipe(
+    scan(reduceEqWorkspace, initial),
   );
 
   const state$: StateObservable<EqWorkspaceState> = state(stream$, initial);
@@ -252,39 +96,32 @@ export function createEqWorkspaceMachine(
     state$,
     intents: {
       select: (sym: string): void => {
-        select$.next(sym);
+        event$.next({ kind: "select", sym });
       },
       closeTab: (sym: string): void => {
-        closeTab$.next(sym);
+        event$.next({ kind: "closeTab", sym });
       },
       setTimeframe: (tf: CandleTimeframe): void => {
-        setTimeframe$.next(tf);
+        event$.next({ kind: "setTimeframe", timeframe: tf });
       },
       setChartType: (kind: EqChartType): void => {
-        setChartType$.next(kind);
+        event$.next({ kind: "setChartType", chartType: kind });
       },
       toggleIndicator: (id: EqIndicatorId): void => {
-        toggleIndicator$.next(id);
+        event$.next({ kind: "toggleIndicator", id });
       },
       togglePane: (id: EqPaneId): void => {
-        togglePane$.next(id);
+        event$.next({ kind: "togglePane", id });
       },
       toggleYScale: (): void => {
-        toggleYScale$.next();
+        event$.next({ kind: "toggleYScale" });
       },
       setCompare: (sym: string | null): void => {
-        setCompare$.next(sym);
+        event$.next({ kind: "setCompare", sym });
       },
     },
     dispose: () => {
-      select$.complete();
-      closeTab$.complete();
-      setTimeframe$.complete();
-      setChartType$.complete();
-      toggleIndicator$.complete();
-      togglePane$.complete();
-      toggleYScale$.complete();
-      setCompare$.complete();
+      event$.complete();
       warm.unsubscribe();
     },
   };

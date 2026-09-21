@@ -23,6 +23,13 @@ export const CANDLE_HISTORY_TOTAL = 300;
 /** Candles per backfill page — what the client requests per near-edge fetch. */
 export const CANDLE_HISTORY_PAGE = 300;
 
+/** How long a failed backfill page blocks the next attempt. The near-edge
+ * trigger is an effect that can re-fire at render cadence while the viewport
+ * sits at the wall, so an unthrottled retry would hammer the port every
+ * frame. Every application core honours it; the contract suite drives the
+ * edge to the millisecond. */
+export const CANDLE_HISTORY_RETRY_COOLDOWN_MS = 1_000;
+
 /** Total obtainable history per (symbol, timeframe): the live
  * CANDLE_HISTORY_TOTAL plus 9 backfill pages. Requests beyond it return
  * short/empty pages — the exhaustion signal. */
