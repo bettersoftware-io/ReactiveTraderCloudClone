@@ -31,7 +31,9 @@ interface Backfill {
   readonly loadingStream: StateStream<boolean>;
   readonly exhaustedStream: StateStream<boolean>;
   older: readonly Candle[];
-  /** The live base series of the CURRENT warm period; null between periods. */
+  /** The live base series of the CURRENT warm period; null between periods
+   * — cleared by the producer's own abort listener when a period ends, not
+   * only reset at the next period's start. */
   base: readonly Candle[] | null;
   /** First candle of the latest stitched emission — the next page's anchor. */
   latestFirst: Candle | null;
@@ -113,6 +115,19 @@ export function createCandleSeriesPresenter(
           state.latestFirst = null;
           state.base = null;
           state.publish = publish;
+          // A page can still land BETWEEN periods (`fetchOlderPage` is
+          // bound to `lifetime`, not this signal) — clear the pair the
+          // moment THIS period ends, not only at the next period's start,
+          // so a between-periods `publishStitched` early-returns instead
+          // of stitching against a stale base and moving `latestFirst`.
+          signal.addEventListener(
+            "abort",
+            () => {
+              state.base = null;
+              state.publish = null;
+            },
+            { once: true },
+          );
           return relay(base$, signal, (base) => {
             state.base = base;
             publishStitched(state);

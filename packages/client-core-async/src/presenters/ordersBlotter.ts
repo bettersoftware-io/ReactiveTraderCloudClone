@@ -38,7 +38,20 @@ export function createOrdersBlotterPresenter(
           const current = new AbortController();
           query = current;
           void spawn(async () => {
-            publish(await once(orders.orders(), current.signal));
+            const book = await once(orders.orders(), current.signal);
+
+            // `once()`'s own abort guard only protects ITS promise (a
+            // `settled` flag) — once that promise has resolved, a later
+            // abort of `current.signal` no longer has anything to do. A
+            // refresh arriving in the SAME tick as this resolution still
+            // supersedes this query (a fresh `AbortController`), so the
+            // one-microtask window between that resolve and this
+            // continuation resuming needs its own check — the same
+            // stale-write window `createRunSlot` closes for the machines
+            // everywhere else (ADR-006).
+            if (!current.signal.aborted) {
+              publish(book);
+            }
           }, reject);
         }
 
