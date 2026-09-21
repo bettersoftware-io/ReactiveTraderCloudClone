@@ -130,7 +130,10 @@ is the middle ground between a detached host and a fold period's scope: the
 DEFAULT runtime as the runner (an intent arriving after `app.dispose()` must
 not die on a disposed managed runtime) over a scope forked from the app
 host's, so `app.dispose()` ends the machine — what the two workspace
-singletons take. `refToWarmStateStream(host, ref)` is `refToStateStream`
+singletons take. A `Scope.addFinalizer` on that child scope marks the
+machine disposed and releases its keep-warm (`machines/eqWorkspace.ts`,
+`eqDrawings.ts`), so `app.dispose()` and `machine.dispose()` converge — what
+the async twin's `lifetime` abort listener does. `refToWarmStateStream(host, ref)` is `refToStateStream`
 held warm by a subscription of its own, with a `release()`: an app-lifetime
 singleton must survive a cold `getValue()` between one panel unmounting and
 the next mounting, which is exactly what the RxJS singletons' internal

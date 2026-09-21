@@ -270,18 +270,25 @@ core; slice 3 added the credit shapes to the same list:
   `ordersBlotter.place()`'s per-call lifecycle stream, and holds
   `eqWorkspace`/`eqDrawings` warm through `storeToWarmStateStream`; all
   three re-express over the imported `reduceEqWorkspace` /
-  `reduceEqDrawings` / `reduceOrderTicket` folds and route
-  `ordersBlotter`/`orderTicket` through the shared `createRunSlot` kernel.
-  The Effect core adds `followPort(host, source)` — a seedless
-  `sharedFold` over one `fromPort`, so `quote$`/`depth$` are NOT peeked at
-  warm-period start the way `mirrorPort`'s other seeded uses are — plus a
-  new `scopedPortStream` bridge export (`Stream.unwrapScoped`) for
-  `place()`, holds its two singletons warm through `refToWarmStateStream`,
-  and grows the Layer graph by seven (`presenters/mirrorPort.ts`,
-  `layers.ts`). Both siblings gained `createApp`'s new `CoreSeams`
-  argument so the base app's `JarvisDriverMachine` and `AnimationDirector`
-  read the native `eqWorkspace`/`fills$` instead of an unreachable
-  RxJS-only instance.
+  `reduceEqDrawings` / `reduceOrderTicket` folds. `orderTicket` runs on the
+  shared `createRunSlot` kernel; `orders$` instead supersedes its own
+  query with a per-query `AbortController` inside the retained Topic's
+  producer (`presenters/ordersBlotter.ts`). The Effect core adds
+  `followPort(host, source)` — a seedless `sharedFold` over one
+  `fromPort`, so `quote$`/`depth$` are NOT peeked at warm-period start the
+  way `mirrorPort`'s other seeded uses are — plus a new `scopedPortStream`
+  bridge export (`Stream.unwrapScoped`) for `place()`; `orders$` there
+  supersedes its own query with `Stream.flatMap(…, { switch: true })`
+  inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
+  two singletons warm through `refToWarmStateStream`, and grows the Layer
+  graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). Both siblings
+  gained `createApp`'s new `CoreSeams` argument so the base app's
+  `JarvisDriverMachine` and `AnimationDirector` read the native
+  `eqWorkspace`/`fills$` instead of an unreachable RxJS-only instance. A
+  `Scope.addFinalizer` on each Effect singleton's child scope marks it
+  disposed and releases its keep-warm, so `app.dispose()` and the
+  machine's own `dispose()` converge — what the async twin's `lifetime`
+  abort listener does.
 
 **Strangler seam.** A base-side consumer of a member that goes native keeps
 the base instance until its own slice: as of slice 2 the RxJS
@@ -334,8 +341,9 @@ six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
 `rfqSubmission`, `ticketSubmission`, `rfqCountdown`) and slice 4's eight
 (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`;
-`eqWorkspace`, `eqDrawings`, `orderTicket`) — and 30 are pending (38 at
-slice 3's merge). Each suite subscribes to the member's
+`eqWorkspace`, `eqDrawings`, `orderTicket`) — and 30 are pending (37 at
+slice 3's merge, 38 once Dockview Phase 6b's `layoutPresets` joined). Each
+suite subscribes to the member's
 `Stream`/`StateStream`, drives a scripted `AppPorts` harness (`scriptPorts`
 — Subject-backed streams for the connection, the colour scheme, the FX,
 credit and equities ports, an intent-named `driver` — `tickPrice`,

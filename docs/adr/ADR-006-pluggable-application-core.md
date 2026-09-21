@@ -532,7 +532,11 @@ predictable from the design alone):
   `createChildHost(parent)` (a new `bridge/out.ts` export) runs on the
   DEFAULT runtime with a scope forked from the app host's, so an intent
   arriving after `app.dispose()` cannot die on a disposed runtime and
-  `app.dispose()` still ends the machine.
+  `app.dispose()` still ends the machine. A `Scope.addFinalizer` on that
+  child scope marks the machine disposed and releases its keep-warm
+  (`packages/client-core-effect/src/machines/eqWorkspace.ts`,
+  `eqDrawings.ts`), so `app.dispose()` and `machine.dispose()` converge —
+  what the async twin's `lifetime` abort listener does.
 - **Keyed streams are refCounted exactly as the RxJS core memoises them,
   and the Effect core follows a keyed wire stream WITHOUT peeking it.**
   `watchlist$`, `orders$`, `positions$` are retained; `quote$(symbol)`,
@@ -654,17 +658,49 @@ predictable from the design alone):
 - **Four cross-core asymmetries are recorded, not coded around.** (1)
   `quote$`/`depth$`'s first value arrives a fiber hop after subscribe
   under the Effect core (`followPort`, no seed peek), where the async and
-  RxJS cores deliver it synchronously. (2) `orders()` is taken as a
-  one-shot per refresh in both siblings, where the RxJS core
-  re-subscribes on every lifecycle update; identical for every shipping
-  adapter. (3) An in-flight candle history page is bound to the app
-  lifetime in both siblings and to nothing in the RxJS core, which lets it
-  complete after its warm period has ended. (4) A failing `place()` errors
-  the returned per-call stream in every core, but at the ticket-machine
-  level the RxJS core errors `state$` while the siblings rethrow out of
-  band and leave the ticket `submitting` — plus a purely cosmetic fifth:
-  `Run`'s members are named differently in the two siblings (`set`/
-  `ifCurrent` vs. `write`/`guarded`).
+  RxJS cores deliver it synchronously when the port emits on subscribe.
+  (2) `orders()` is taken as a one-shot per refresh in both siblings,
+  where the RxJS core re-subscribes on every lifecycle update; identical
+  for every shipping adapter. (3) In all three cores an in-flight candle
+  history page is allowed to complete after its warm period has ended
+  (the RxJS core binds it to nothing, the siblings to the app lifetime);
+  MEASURED: a page that lands after a NEW period has opened is stitched
+  into that period in all three cores, because the prepend accumulator is
+  one cell per key whose VALUE the new period resets. (4) A failing
+  `place()` errors the returned per-call stream in every core, but at the
+  ticket-machine level the RxJS core errors `state$` while the siblings
+  rethrow out of band and leave the ticket `submitting` — plus a purely
+  cosmetic fifth: `Run`'s members are named differently in the two
+  siblings (`set`/`ifCurrent` vs. `write`/`guarded`).
+- **Nine more cross-core asymmetries, surfaced by PR B's final
+  whole-branch review and pinned by no suite.** (1) A failing
+  `watchlist()` kills `eqWorkspace.state$` in the RxJS core — the error
+  flows through `seed$` into the `merge` — while both siblings keep the
+  workspace alive and rethrow the failure out of band. (2) A failing
+  `orders()` query behaves the SAME in all three cores: the current
+  subscribers error, the NEXT subscriber re-queries, and a refresh alone
+  does not recover — recorded because it is easy to assume otherwise. (3)
+  A port that completes WITHOUT a value: the siblings treat a
+  `candleHistory` page as an error plus cooldown and error `orders$`,
+  where the RxJS core is a silent no-op — no shipping adapter does this.
+  (4) `candleHistory` and `orders()` emitting more than once: the RxJS
+  core takes every value, the siblings only the first. (5) `candles$("")`
+  completes in the RxJS core (`of([])`) and never completes in the
+  siblings. (6) `loadingOlder$` turns `true` synchronously in the RxJS
+  and async cores, and inside the forked effect under the Effect core.
+  (7) Under the Effect core, `fills$` and the refresh signal cross a
+  `PubSub`, so their own subscribers hear the fill and the book refresh
+  fiber hops AFTER the ticket machine sees `filled`; in the RxJS and
+  async cores both fire synchronously before it. (8) `app.dispose()`: a
+  no-op in the RxJS core; the async core ends the retained topics, the
+  two singletons and any in-flight `candleHistory` page, while a keyed
+  stream or an already-subscribed `place()` call keeps working; the
+  Effect core ends everything through the closing host scope, and a
+  detached `orderTicket` that submits afterward sticks at `submitting`
+  with an out-of-band throw. (9) A `watchlist()` that errors
+  SYNCHRONOUSLY on subscribe makes both siblings' `createApp` throw (the
+  composition-time `peekCurrent`), where the RxJS peek has no error
+  handler and so reports the failure asynchronously instead.
 
 ## Follow-ups
 
