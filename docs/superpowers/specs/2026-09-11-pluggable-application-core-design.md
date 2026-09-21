@@ -361,6 +361,7 @@ Slice 1b shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-1b
 Residual sweep shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-residual-sweep.md`](../plans/2026-09-19-pluggable-core-residual-sweep.md)).
 Slice 2 shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-2.md`](../plans/2026-09-19-pluggable-core-slice-2.md)) — suites as PR A, ports as PR B; 28/72 native in both alternative cores; the Effect core composes as a Layer graph.
 Slice 3 shipped 2026-09-20 (plan: [`../plans/2026-09-20-pluggable-core-slice-3.md`](../plans/2026-09-20-pluggable-core-slice-3.md)) — suites as PR A, ports as PR B; 36/73 native in both alternative cores (36/74 with Dockview Phase 6b's `layoutPresets`, delegated, merged the same day); `rfqCountdown` joined `MachineFactories` (the bindings had bypassed the seam).
+Slice 4 shipped 2026-09-21 (plan: [`../plans/2026-09-21-pluggable-core-slice-4.md`](../plans/2026-09-21-pluggable-core-slice-4.md)) — suites as PR A, the run slot as PR R, ports as PR B; 44/74 native in both alternative cores; `createApp` gained core seams so the base Jarvis driver reaches the native equities workspace.
 
 ### Slice 8 — closing
 
