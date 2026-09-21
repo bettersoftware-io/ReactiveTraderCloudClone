@@ -152,13 +152,17 @@ scope under the default runtime, closed by `dispose()`. `state$` is
 subscription after `dispose()` still yields the current value
 synchronously, which is what the contract asserts. Intents are synchronous
 `setRefIfChanged` writes; timers are fibers forked into the machine's scope,
-so `dispose()` interrupts them. `tileExecution` is `Effect.race` of the
-`rpc` against `Effect.sleep(EXECUTION_TIMEOUT_MS)`, with the too-long marker
-a forked child of the run (finishing cancels the escalation) and switch-map
-semantics as `Fiber.interrupt` of the previous run — guarded by a run token
-read at each write, because interruption lands at the run's next suspension,
-not at the `Fiber.interrupt` call. A source failure in `staleFlag` has no
-channel on a ref, so the scope closes and the cause is rethrown out of band.
+so `dispose()` interrupts them. The run token and the fiber behind
+switch-map semantics live in one place, `createRunSlot`
+(`src/machines/runSlot.ts`), shared by `tileExecution`, `rfqTile`,
+`rfqSubmission` and `ticketSubmission`: `start` interrupts the previous
+run's fiber and forks the next, and every write is guarded by a run token
+read at each write, because interruption lands at the run's next
+suspension, not at the `Fiber.interrupt` call. `tileExecution` itself is
+`Effect.race` of the `rpc` against `Effect.sleep(EXECUTION_TIMEOUT_MS)`,
+with the too-long marker a forked child of the run (finishing cancels the
+escalation). A source failure in `staleFlag` has no channel on a ref, so
+the scope closes and the cause is rethrown out of band.
 
 **Commands and countdowns** (slice 3). A one-shot command is `rpc` under
 `Effect.suspend`, per call: `Stream.fromEffect(Effect.suspend(() =>

@@ -14,7 +14,11 @@ export interface Run<S> {
 
 export interface RunSlot<S> {
   /** End the run in flight, if any, and start `body` as the live run. A
-   * no-op once disposed. */
+   * no-op once disposed. Calling `start` from INSIDE a live body ends that
+   * calling run first, exactly as a superseding `start` from outside does —
+   * `switchMap`-correct — so the second run executes and every later
+   * `set`/`ifCurrent` the caller's own continuation makes is dropped, the
+   * calling run having self-aborted. */
   start(body: (run: Run<S>) => Promise<void>): void;
   /** End the run in flight, if any. */
   end(): void;

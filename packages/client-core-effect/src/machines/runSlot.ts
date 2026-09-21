@@ -24,8 +24,13 @@ export interface Run<S> {
   guarded(step: Effect.Effect<void>): Effect.Effect<void>;
 }
 
-/** "At most one live run" for a ref-backed machine. */
+/** "At most one live run" for a ref-backed machine, one per machine. */
 export interface RunSlot<S> {
+  /** End the run in flight, if any, and start `build` as the live run.
+   * Calling `start` from INSIDE a live build self-interrupts that calling
+   * run first, exactly as a superseding `start` from outside does —
+   * `switchMap`-correct — so the second run executes and every later
+   * `write`/`guarded` the caller's own continuation yields is dropped. */
   start(build: (run: Run<S>) => Effect.Effect<void, unknown>): void;
   end(): void;
   /** End the run in flight, refuse every later `start`, and close the

@@ -46,6 +46,20 @@ describe("createRunSlot", () => {
     expect(firstIfCurrentRan).toBe(false);
   });
 
+  it("a body that calls start() on its OWN slot ends itself first; the second run executes and the first run's later set() after the inner start is dropped", async () => {
+    const store = createStore("init");
+    const slot = createRunSlot(store);
+    slot.start(async (run) => {
+      slot.start(async (run2) => {
+        run2.set("second");
+      });
+      run.set("from-first-after-self-start");
+    });
+    await flushMicrotasks();
+
+    expect(store.get()).toBe("second");
+  });
+
   it("closes the post-await stale-write window: a resolution and a superseding start() land in the SAME tick, but set() still never reaches the store", async () => {
     const store = createStore("init");
     const slot = createRunSlot(store);
@@ -63,6 +77,9 @@ describe("createRunSlot", () => {
     release?.();
     slot.start(async () => {});
 
+    // Deliberate: exactly enough turns for the first body's continuation to
+    // run after it was superseded — not the flush helper, which would give
+    // it more turns than the same-tick race actually needs.
     await Promise.resolve();
     await Promise.resolve();
 
@@ -80,6 +97,22 @@ describe("createRunSlot", () => {
 
     slot.end();
     expect(signal?.aborted).toBe(true);
+  });
+
+  it("end() with nothing live is a harmless no-op; a following start() still runs", async () => {
+    const store = createStore("init");
+    const slot = createRunSlot(store);
+
+    expect(() => {
+      slot.end();
+    }).not.toThrow();
+
+    slot.start(async (run) => {
+      run.set("after-noop-end");
+    });
+    await flushMicrotasks();
+
+    expect(store.get()).toBe("after-noop-end");
   });
 
   it("dispose() aborts the run in flight, makes start() a no-op, and is idempotent; isDisposed() reports it", async () => {

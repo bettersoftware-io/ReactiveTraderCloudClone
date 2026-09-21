@@ -20,15 +20,8 @@ export interface RfqSubmissionDeps {
 const EDITING: RfqSubmissionState = { status: "editing" };
 const SUBMITTING: RfqSubmissionState = { status: "submitting" };
 
-/** editing → submitting → confirmed{rfqId} → (RFQ_REDIRECT_DELAY_MS)
- * onRedirect(rfqId) → editing; a failed create returns to editing. A new
- * `submit()` supersedes the run in flight (`createRunSlot`'s switch-map
- * semantics), which withdraws its port call through `rpc`'s finalizer;
- * `dispose()` ends it too. A pending redirect never fires: every
- * externally visible step — `onRedirect` as much as a state write — runs
- * through `run.guarded`, so that promise rests on the run token
- * `createRunSlot` owns and not only on when Effect chooses to deliver an
- * interrupt. */
+/** The body of the one live run `createRfqSubmissionMachine`'s `submit()`
+ * starts. */
 function runSubmit(
   input: CreateRfqInput,
   onRedirect: (rfqId: number) => void,
@@ -75,8 +68,16 @@ function runSubmit(
   });
 }
 
-/** The RxJS machine's shape on a `SubscriptionRef` under a detached host,
- * with `createRunSlot` owning the run token and fiber. */
+/** editing → submitting → confirmed{rfqId} → (RFQ_REDIRECT_DELAY_MS)
+ * onRedirect(rfqId) → editing; a failed create returns to editing. A new
+ * `submit()` supersedes the run in flight (`createRunSlot`'s switch-map
+ * semantics), which withdraws its port call through `rpc`'s finalizer;
+ * `dispose()` ends it too. A pending redirect never fires: every
+ * externally visible step — `onRedirect` as much as a state write — runs
+ * through `run.guarded`, so that promise rests on the run token
+ * `createRunSlot` owns and not only on when Effect chooses to deliver an
+ * interrupt. The RxJS machine's shape on a `SubscriptionRef` under a
+ * detached host, with `createRunSlot` owning the run token and fiber. */
 export function createRfqSubmissionMachine(
   deps: RfqSubmissionDeps,
 ): Machine<RfqSubmissionState, RfqSubmissionIntents> {

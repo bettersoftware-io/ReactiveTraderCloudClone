@@ -83,6 +83,26 @@ describe("createRunSlot", () => {
     expect(guardedRan).toBe(false);
   });
 
+  it("a build that calls start() on its OWN slot interrupts itself first; the second run executes and the first run's write yielded after the inner start never reaches the ref", async () => {
+    const { host, ref, slot } = createHarness();
+
+    slot.start((run: Run<number>) => {
+      return Effect.gen(function* runFirst() {
+        slot.start((run2: Run<number>) => {
+          return run2.write(() => {
+            return 2;
+          });
+        });
+        yield* run.write(() => {
+          return 1;
+        });
+      });
+    });
+    await settle();
+
+    expect(current(host, ref)).toBe(2);
+  });
+
   it("start() reassigning the token stops a captured run's write()/guarded() driven DIRECTLY — no fiber, no interrupt in play (positive control: the still-live run's write/guarded do land)", () => {
     const { host, ref, slot } = createHarness();
     const captured = captureRun(slot);
@@ -161,6 +181,23 @@ describe("createRunSlot", () => {
       ),
     );
     expect(guardedRan).toBe(false);
+  });
+
+  it("end() with nothing live is a harmless no-op; a following start() still runs", async () => {
+    const { host, ref, slot } = createHarness();
+
+    expect(() => {
+      slot.end();
+    }).not.toThrow();
+
+    slot.start((run: Run<number>) => {
+      return run.write(() => {
+        return 5;
+      });
+    });
+    await settle();
+
+    expect(current(host, ref)).toBe(5);
   });
 
   it("dispose() interrupts the run in flight, closes the host's scope, refuses a later start(), and is idempotent", async () => {
