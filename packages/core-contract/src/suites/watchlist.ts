@@ -17,6 +17,7 @@ export function describeWatchlistContract(
         const p = h.app.presenters.watchlist;
         const c = collect(p.watchlist$);
         expect(c.values).toEqual([]);
+        await settle();
         h.driver.emitWatchlist([AAPL, MSFT]);
         await settle();
         expect(c.values).toEqual([[AAPL, MSFT]]);

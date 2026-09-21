@@ -81,6 +81,12 @@ export function describeCandleSeriesContract(
       }
     });
 
+    // The empty-symbol series above and these two flags are replay-current
+    // CELLS the presenter itself owns, not port reads — a replay-current
+    // stream's first value is synchronous in every core (the slice 1a
+    // envelope promise). Only a keyed WIRE stream's first value (`quote$`,
+    // `depth$`, a fresh `candles$` period) is left uncontracted, because a
+    // core may follow the port a scheduler hop later.
     it("the backfill flags start false, synchronously", async () => {
       const h = makeHarness();
 
@@ -251,15 +257,21 @@ export function describeCandleSeriesContract(
       try {
         const p = h.app.presenters.candleSeries;
         const first = collect(p.candles$("AAPL"));
+        const exhaustedFirst = collect(p.historyExhausted$("AAPL"));
         await settle();
         h.driver.emitCandles("AAPL", "1D", BASE);
         await settle();
         p.loadOlder("AAPL");
         await settle();
+        // A one-candle page is SHORT, so exhaustion latches — the precondition
+        // this case's "cleared" claim is measured against, local to this
+        // period rather than assumed from an earlier case.
         h.driver.resolveCandleHistory([createCandle(T0 - STEP_MS)]);
         await settle();
         expect(first.values.at(-1)).toHaveLength(BASE.length + 1);
+        expect(exhaustedFirst.values.at(-1)).toBe(true);
         first.unsubscribe();
+        exhaustedFirst.unsubscribe();
         await settle();
         expect(h.driver.candlesObserved("AAPL", "1D")).toBe(false);
         const again = collect(p.candles$("AAPL"));

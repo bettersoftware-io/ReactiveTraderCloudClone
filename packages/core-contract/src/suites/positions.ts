@@ -17,6 +17,7 @@ export function describePositionsContract(
         const p = h.app.presenters.positions;
         const c = collect(p.positions$);
         expect(c.values).toEqual([]);
+        await settle();
         const book = [createEquityPosition("AAPL")];
         h.driver.emitPositions(book);
         await settle();

@@ -186,6 +186,7 @@ export function describeOrderTicketContract(
           form: { ...DEFAULT_FORM, qty: 5, side: "sell" },
           error: null,
         });
+        // An edit suppressed while in flight must never surface as a rejection.
         expect(phases(c.values)).not.toContain("rejected");
         c.unsubscribe();
       } finally {
@@ -272,7 +273,7 @@ export function describeOrderTicketContract(
       }
     });
 
-    it("dispose() after the last unsubscribe withdraws the order in flight; a later submit places nothing; a fresh subscription yields the current value synchronously", async () => {
+    it("dispose() after the last unsubscribe withdraws the order in flight; a later submit places nothing; a fresh subscription still yields a value synchronously", async () => {
       const h = makeHarness();
       const m = h.machines.orderTicket("AAPL");
 
@@ -290,6 +291,9 @@ export function describeOrderTicketContract(
         await settle();
         expect(h.driver.pendingOrders()).toEqual([]);
         const fresh = collect(m.state$);
+        // The post-dispose VALUE is uncontracted (slice 2) — a disposed RxJS
+        // `state()` replays its default; only that a fresh subscriber is not
+        // left silent is promised.
         expect(fresh.values).toHaveLength(1);
         fresh.unsubscribe();
       } finally {

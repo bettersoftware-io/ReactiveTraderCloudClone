@@ -135,6 +135,7 @@ export function describeOrdersBlotterContract(
         expect(placed.values).toEqual([]);
         expect(fills.values).toEqual([]);
         fills.unsubscribe();
+        placed.unsubscribe();
       } finally {
         await h.teardown();
       }
