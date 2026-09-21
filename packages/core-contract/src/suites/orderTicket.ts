@@ -273,7 +273,16 @@ export function describeOrderTicketContract(
           reason: "venue down",
         });
         expect(c.errors).toEqual([]);
+        // EDITABLE again, not merely submittable: a `submitting` candidate
+        // is accepted whatever `inFlight` says, so only a form edit
+        // surfacing proves the rejection cleared the in-flight gate.
         m.intents.reset();
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "editing",
+          form: DEFAULT_FORM,
+          error: null,
+        });
         m.intents.setQty(2);
         m.intents.submit();
         await settle();
@@ -282,6 +291,30 @@ export function describeOrderTicketContract(
         h.driver.emitOrderUpdate(working);
         await settle();
         expect(c.values.at(-1)).toEqual({ phase: "working", order: working });
+        expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a place() that fails AFTER delivering the fill leaves the ticket filled", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setQty(1);
+        m.intents.submit();
+        await settle();
+        const filled = createEquityOrder({ status: "filled", filledQty: 1 });
+        h.driver.emitOrderUpdate(filled);
+        await settle();
+        h.driver.failOrder(new Error("socket closed"));
+        await settle();
+        expect(c.values.at(-1)).toEqual({ phase: "filled", order: filled });
+        expect(phases(c.values)).not.toContain("rejected");
         expect(c.errors).toEqual([]);
         c.unsubscribe();
       } finally {

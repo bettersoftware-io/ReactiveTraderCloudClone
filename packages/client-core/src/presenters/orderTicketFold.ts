@@ -93,7 +93,8 @@ export function toPlaceOrderRequest(form: OrderTicketForm): PlaceOrderRequest {
 /** One step of the ticket fold over CANDIDATE states — an `editing` from a
  * form edit, an `editing` with an error from a failed validation, or a
  * lifecycle phase from `place()`. A valid submit (`submitting`) sets
- * `inFlight`; a terminal phase or a validation error clears it; while in
+ * `inFlight`; a terminal phase or a validation error clears it (and a
+ * `rejected` arriving AFTER a `filled` is dropped — the SAME `acc`); while in
  * flight a plain form edit is suppressed (the SAME `acc` comes back), so it
  * cannot clobber submitting/working/…. */
 export function reduceOrderTicket(
@@ -102,6 +103,14 @@ export function reduceOrderTicket(
 ): OrderTicketAcc {
   if (next.phase === "submitting") {
     return { inFlight: true, state: next };
+  }
+
+  // A fill is final. The only `rejected` that can follow one is a FAILURE of
+  // the `place()` stream after it delivered the fill (a socket dropping on
+  // the way out) — telling the user a filled order was rejected would be a
+  // lie about money.
+  if (acc.state.phase === "filled" && next.phase === "rejected") {
+    return acc;
   }
 
   if (next.phase === "filled" || next.phase === "rejected") {

@@ -109,15 +109,16 @@ export function createOrderTicketMachine(
           run.ifCurrent(() => {
             offer({ phase: "submitting" });
           });
+
           try {
             await relay(deps.place(request), run.signal, (order) => {
               run.ifCurrent(() => {
                 offer(orderToTicketPhase(order));
               });
             });
-          } catch (error: unknown) {
+          } catch (failure: unknown) {
             run.ifCurrent(() => {
-              offer(placeFailureToTicketPhase(error));
+              offer(placeFailureToTicketPhase(failure));
             });
           }
         });

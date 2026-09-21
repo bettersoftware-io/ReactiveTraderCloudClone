@@ -41,7 +41,7 @@ describe("orderTicket machine", () => {
     lifecycle.error(new Error("venue down"));
     // Caught inside the build: the slot has no failed build to rethrow on
     // a macrotask, which is where the old "stays submitting" reported it.
-    await expect(vi.advanceTimersByTimeAsync(0)).resolves.toBeDefined();
+    await vi.advanceTimersByTimeAsync(0);
     expect(seen.at(-1)).toEqual({ phase: "rejected", reason: "venue down" });
     expect(errors).toEqual([]);
     m.dispose();

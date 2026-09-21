@@ -189,6 +189,17 @@ describe("reduceOrderTicket", () => {
     expect(next.inFlight).toBe(false);
   });
 
+  it("a rejected arriving AFTER a filled is dropped — the same acc, still filled", () => {
+    const acc: ReturnType<typeof createOrderTicketAcc> = {
+      inFlight: false,
+      state: { phase: "filled", order: createOrder("filled") },
+    };
+
+    expect(
+      reduceOrderTicket(acc, { phase: "rejected", reason: "socket closed" }),
+    ).toBe(acc);
+  });
+
   it("an editing state WITH an error clears inFlight", () => {
     const acc: ReturnType<typeof createOrderTicketAcc> = {
       inFlight: true,

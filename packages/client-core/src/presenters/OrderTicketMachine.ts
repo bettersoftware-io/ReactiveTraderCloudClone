@@ -92,8 +92,8 @@ export function createOrderTicketMachine(
         of<OrderTicketState>({ phase: "submitting" }),
         deps.place(req).pipe(
           map(orderToTicketPhase),
-          catchError((error: unknown) => {
-            return of(placeFailureToTicketPhase(error));
+          catchError((failure: unknown) => {
+            return of(placeFailureToTicketPhase(failure));
           }),
         ),
       );
