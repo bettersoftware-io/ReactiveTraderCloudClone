@@ -13,7 +13,7 @@ The framework-neutral UI test contract: the shared sociable-RTL harness, the `*.
 
 | Path | What lives here |
 |---|---|
-| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/admin/`, `src/specs/shell/` | 86 shared `*.contract.spec.ts` files / 622 tests (2026-07-19) — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
+| `src/specs/fx/`, `src/specs/credit/`, `src/specs/equities/`, `src/specs/admin/`, `src/specs/shell/` | 104 shared `*.contract.spec.ts` files / 872 tests (2026-09-20) — sociable React Testing Library specs that assert text, roles, structure, recorded command inputs, and dynamic re-renders, written once against a render-target-neutral `ComponentToken` |
 | `src/shared/harness/activeDriver.ts` | The framework seam: `UiContractDriver` interface + `setDriver`/`getDriver` — each client's swap-trio registers its own driver (`render()` into the DOM, plus optional `flushSync`/`flushAsync` hooks for frameworks that batch updates, e.g. React's `act()`) |
 | `src/shared/harness/component.ts` | `ComponentToken`/`MountedComponent`/`PageContext` — the types a spec mounts against, independent of any framework |
 | `src/shared/harness/world.ts` | `createWorld`/`World` — the controllable fake-hook state a mounted component reads, driven by the spec via `PageContext` setters |

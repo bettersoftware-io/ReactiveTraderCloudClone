@@ -423,6 +423,9 @@ function createDockedTabLayout(
   };
 }
 
+/** Copy of `VALID_SPEC` in `workspaceLayoutPersistence.test.ts` — kept
+ * separate on purpose (see `createDockedTabLayout` above); if one changes, the
+ * other must be checked. */
 const VALID_PANEL_SPEC: PanelSpecV1 = {
   v: 1,
   title: "P&L overview",

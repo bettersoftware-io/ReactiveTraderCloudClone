@@ -701,6 +701,13 @@ const POSITIONS_PANEL_ID = "fx-positions";
 
 const SAVED_LAYOUT_NAME = "Desk A";
 
+// A save and a delete both reach the LAYOUTS rows through a published
+// stream, so the row list is polled until it settles rather than sampled
+// once — the same retrying discipline as every `data-*` witness above. The
+// ceiling matches ENGINE_SWITCH_TIMEOUT_MS: both are "a local store
+// publishes and the dropdown re-renders", not a network round trip.
+const PRESET_ROWS_TIMEOUT_MS: number = ENGINE_SWITCH_TIMEOUT_MS;
+
 /**
  * The full saved-layout lifecycle end to end — the one tier that can prove
  * ANY of it, since jsdom blocks `window.open` outright and lays nothing out
@@ -745,14 +752,9 @@ export async function savedLayoutRestoresAfterRearrangeAndReload(
 
   await ctx.po.layout.openViewMenu();
   await ctx.po.layout.saveLayoutPreset(SAVED_LAYOUT_NAME);
-  // `assertEquals` is `Object.is` under the hood (see assert.ts), so two
-  // arrays of equal CONTENT are never equal by reference — joined into one
-  // string first, the same idiom every `data-floating`/`data-collapsed`/
-  // `data-closed` witness in this file already uses.
-  assertEquals(
-    (await ctx.po.layout.layoutPresetNames()).join(" "),
-    SAVED_LAYOUT_NAME,
-    `expected "${SAVED_LAYOUT_NAME}" saved`,
+  await ctx.po.layout.waitLayoutPresetNames(
+    [SAVED_LAYOUT_NAME],
+    PRESET_ROWS_TIMEOUT_MS,
   );
   await ctx.po.layout.closeViewMenu();
 
@@ -803,11 +805,7 @@ export async function savedLayoutRestoresAfterRearrangeAndReload(
   // 6. Delete "Desk A" (bin + confirm): no saved layout remains.
   await ctx.po.layout.openViewMenu();
   await ctx.po.layout.deleteLayoutPreset(SAVED_LAYOUT_NAME);
-  assertEquals(
-    (await ctx.po.layout.layoutPresetNames()).join(" "),
-    "",
-    `expected no saved layouts left after deleting "${SAVED_LAYOUT_NAME}"`,
-  );
+  await ctx.po.layout.waitLayoutPresetNames([], PRESET_ROWS_TIMEOUT_MS);
   await ctx.po.layout.closeViewMenu();
 
   // Controller ruling: Default under DOCKVIEW rebuilds the live dock — a

@@ -26,6 +26,7 @@ import type {
   JarvisPanelVm,
   LayoutIntents,
   LayoutNode,
+  LayoutPresetStore,
   LayoutPresetSummary,
   LayoutPresetsPresenter,
   LayoutState,
@@ -954,6 +955,31 @@ function dockedPanelIds$(
   );
 }
 
+/** The raw store BEHIND `getLayoutPresets`'s controller for `world` — the
+ * per-framework half of `@ui-contract/harness/layoutPresetStore` (registered
+ * in `setup.ts`), so a neutral spec can delete a record the way ANOTHER
+ * browser tab would: behind the controller's back, leaving the published list
+ * still showing the row. Throws rather than minting a store: a World whose
+ * ViewModel has not been built yet has no controller and therefore no store,
+ * and answering with an empty stand-in would let a spec assert against a store
+ * the UI never reads. */
+export function layoutPresetStoreFor(world: World): LayoutPresetStore {
+  const store = layoutPresetStores.get(world);
+
+  if (!store) {
+    throw new Error(
+      "No layout-preset store for this World — build its ViewModel (mount a " +
+        "component) before reaching the store behind it.",
+    );
+  }
+
+  return store;
+}
+
+const layoutPresetStores = new WeakMap<World, LayoutPresetStore>();
+
+const layoutPresetsControllers = new WeakMap<World, LayoutPresetsPresenter>();
+
 /** The REAL `createLayoutPresets` controller (Phase 6b Task 6), one instance
  * PER WORLD — same per-World-singleton doctrine as `getLayoutFor`/
  * `getWorkspaceNav` above, mirroring `composition.ts`'s own
@@ -971,8 +997,6 @@ function dockedPanelIds$(
  * FIRST call's store is captured, since the controller itself is cached —
  * the same "first call wins" shape as every other WeakMap-cached singleton
  * here. */
-const layoutPresetsControllers = new WeakMap<World, LayoutPresetsPresenter>();
-
 function getLayoutPresets(
   world: World,
   dockStore: DockLayoutStore,
@@ -984,6 +1008,7 @@ function getLayoutPresets(
   }
 
   const store = new InMemoryLayoutPresetStore();
+  layoutPresetStores.set(world, store);
 
   for (const [tab, raw] of Object.entries(world.layoutPresetsSeed)) {
     store.save(tab, raw);

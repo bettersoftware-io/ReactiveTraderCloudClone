@@ -248,6 +248,25 @@ describe("createLayoutPresets — save", () => {
     });
   });
 
+  // The two halves of the match crossed: case-insensitivity is pinned above on
+  // a READABLE entry and the unreadable match on an EXACT name, so neither
+  // case would notice a match that lower-cased only the readable half — though
+  // both run through the one `entryNamed` comparison.
+  it("reports exists for a case-insensitive name match on an UNREADABLE entry", () => {
+    const harness = createHarness();
+    registerSource(harness, "fx");
+    harness.store.save(
+      "fx",
+      JSON.stringify([{ v: 99, id: "old-1", name: "Wide" }]),
+    );
+
+    expect(harness.presets.save("fx", "  wIdE  ")).toEqual({
+      status: "exists",
+      id: "old-1",
+    });
+    expect(presetsIn(harness, "fx")).toEqual([]);
+  });
+
   it("reports full at the cap when the name is new", () => {
     const harness = createHarness({ seeded: { fx: createFullList("fx") } });
     registerSource(harness, "fx");
@@ -348,6 +367,40 @@ describe("createLayoutPresets — save", () => {
     expect(stored.map(nameOf)).toEqual(["Wide", "narrow", "Tall"]);
     expect(stored[1]?.id).toBe("p2");
     expect(stored[1]?.blob).toBe(BLOB);
+  });
+
+  // The codec mints an unreadable row's id from its list POSITION when the
+  // stored id is a duplicate (`unreadable-<index>`, first-wins). Adopting that
+  // id for the replacement would tie a real preset's identity to where it sits
+  // and collide with the next downgrade at the same index — so the replacement
+  // takes a fresh id, and keeps only the position.
+  it("a replace over an UNREADABLE row mints a fresh id and keeps the position", () => {
+    const harness = createHarness();
+    registerSource(harness, "fx");
+    harness.store.save("fx", createListWithDuplicateIds("fx"));
+    expect(summariesNow(harness, "fx").map(idOfSummary)).toEqual([
+      "p1",
+      "unreadable-1",
+      "p2",
+    ]);
+
+    const result = harness.presets.save("fx", "Narrow", { replace: true });
+
+    expect(result.status).toBe("saved");
+    const stored = presetsIn(harness, "fx");
+    expect(stored.map(nameOf)).toEqual(["Wide", "Narrow", "Tall"]);
+    const replaced = stored[1];
+    expect(replaced?.id).not.toBe("unreadable-1");
+    // Not just "not that one id": nothing position-derived at all, since the
+    // next downgrade at index 1 would mint the same shape again.
+    expect(replaced?.id).not.toMatch(/^unreadable-/);
+    expect(replaced?.blob).toBe(BLOB);
+    // The row the user sees stayed put, and no row was added or dropped.
+    expect(summariesNow(harness, "fx").map(idOfSummary)).toEqual([
+      "p1",
+      replaced?.id,
+      "p2",
+    ]);
   });
 
   it("mints distinct ids for two saves inside the SAME millisecond", () => {
@@ -634,6 +687,61 @@ describe("createLayoutPresets — remove", () => {
     harness.presets.remove("fx", "nope");
 
     expect(presetsIn(harness, "fx")).toEqual(before);
+  });
+
+  // The sibling case above is over the parsed CONTENT, which a full rewrite
+  // also satisfies. This one is over the BYTES: an unknown id must not reach
+  // the store at all, so the stored string keeps the exact normalization it
+  // had — a rewrite would re-emit it through the codec (which reorders a split
+  // node's keys) and spend a storage write for a no-op.
+  it("writes nothing at all for an unknown id — the stored bytes are untouched", () => {
+    const harness = createHarness({
+      seeded: {
+        fx: [
+          createStoredPreset("fx", { id: "p1", name: "Wide" }),
+          createStoredPreset("fx", { id: "p2", name: "Narrow" }),
+        ],
+      },
+    });
+    const before = harness.store.load("fx");
+
+    harness.presets.remove("fx", "nope");
+
+    expect(harness.store.load("fx")).toBe(before);
+  });
+
+  // The other side of that no-write: the summaries subject is the ONLY thing
+  // the UI reads, so the unknown-id path still has to republish. Without it a
+  // row another writer already deleted stays listed forever and the bin does
+  // nothing at all — and since a surviving row is exactly how `writeList` says
+  // "the delete did not happen", the two would be indistinguishable.
+  it("re-emits the store's list for an unknown id, clearing a row another writer deleted", () => {
+    const harness = createHarness({
+      seeded: {
+        fx: [
+          createStoredPreset("fx", { id: "p1", name: "Wide" }),
+          createStoredPreset("fx", { id: "p2", name: "Narrow" }),
+        ],
+      },
+    });
+
+    const seen: (readonly LayoutPresetSummary[])[] = [];
+    const sub = harness.presets.presetsFor("fx").subscribe((summaries) => {
+      seen.push(summaries);
+    });
+    // Another writer rewrote the list behind this controller's back: the
+    // subject still carries `p1`, the store no longer does.
+    harness.store.save(
+      "fx",
+      JSON.stringify([createStoredPreset("fx", { id: "p2", name: "Narrow" })]),
+    );
+
+    harness.presets.remove("fx", "p1");
+    sub.unsubscribe();
+
+    expect(seen.at(0)?.map(nameOf)).toEqual(["Wide", "Narrow"]);
+    expect(seen.at(-1)?.map(nameOf)).toEqual(["Narrow"]);
+    expect(seen).toHaveLength(2);
   });
 
   it("never rebuilds the live engine", () => {
@@ -1012,6 +1120,19 @@ function createMaximizedLayout(
     layout: { ...createDefaultLayoutPort(tab).initial, maximized: "fx-rates" },
     docked: [],
   };
+}
+
+/** Three records whose MIDDLE one repeats the first's id — the codec resolves
+ * duplicates first-wins, so that middle element is downgraded to unreadable
+ * and handed the position-derived id `unreadable-1` while keeping its stored
+ * name. Raw JSON on purpose: a typed list cannot express a duplicate id, since
+ * `serializeLayoutPresetList` would re-emit the downgraded element's `raw`. */
+function createListWithDuplicateIds(tab: WorkspaceTab): string {
+  return JSON.stringify([
+    createStoredPreset(tab, { id: "p1", name: "Wide" }),
+    createStoredPreset(tab, { id: "p1", name: "Narrow", blob: "old" }),
+    createStoredPreset(tab, { id: "p2", name: "Tall" }),
+  ]);
 }
 
 /** `MAX_LAYOUT_PRESETS` readable records, ids `seeded-0`…`seeded-9`. */

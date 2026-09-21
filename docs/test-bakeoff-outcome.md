@@ -71,7 +71,7 @@ The initial retirement deleted all three non-winner peers. A later decision kept
 
 ### Contract tier — untouched
 
-Its four "variants" were never a bake-off: they are `{react, solid} × {plain, coverage}` over **one** spec corpus (86 files / 622 tests) — parity insurance plus the ≥95% coverage gates. Left exactly as-is.
+Its four "variants" were never a bake-off: they are `{react, solid} × {plain, coverage}` over **one** spec corpus (104 files / 872 tests) — parity insurance plus the ≥95% coverage gates. Left exactly as-is.
 
 ## Measured before → after (CI job-time)
 

@@ -200,10 +200,22 @@ export interface LayoutPO {
    * afterward (the component never closes it on a delete). Requires the
    * View menu already open. */
   deleteLayoutPreset(name: string): Promise<void>;
-  /** Every saved-layout row's visible name, in DOM order — `Default` and
-   * the "Save current as…" opener excluded, since neither is a stored
-   * preset. Requires the View menu already open. */
-  layoutPresetNames(): Promise<string[]>;
+  /** Resolves once the saved-layout rows read exactly `names`, in DOM order
+   * — `Default` and the "Save current as…" opener excluded, since neither
+   * is a stored preset. RETRYING, like every other witness in this
+   * contract: both a save and a delete land through a published stream, so
+   * a single snapshot taken the instant after one of them races it.
+   *
+   * It also requires the LAYOUTS section's two ALWAYS-rendered rows to be
+   * present, so an empty `names` cannot be satisfied by a View menu that
+   * closed (or never opened) — an absent section reads as a distinct,
+   * named state rather than as a clean empty list.
+   *
+   * Requires the View menu already open. */
+  waitLayoutPresetNames(
+    names: readonly string[],
+    timeoutMs: number,
+  ): Promise<void>;
   /** Resolves once `testId` is attached to the MAIN document — a positive
    * engine-side witness that an element genuinely rendered (e.g. a reopened
    * panel's own `TESTIDS.layout.dockTab` mount), mirroring

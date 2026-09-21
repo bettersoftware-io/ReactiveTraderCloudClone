@@ -1,4 +1,5 @@
 import { AppShell } from "@ui-contract/components";
+import { layoutPresetStoreFor } from "@ui-contract/harness/layoutPresetStore";
 import type { World } from "@ui-contract/harness/world";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
@@ -264,6 +265,42 @@ describe("View menu LAYOUTS section (Dockview engine)", () => {
       "Morning",
       SAVE_OPENER_LABEL,
     ]);
+  });
+
+  // The positive control and the failure are the SAME click on the SAME row:
+  // it loads first, and refuses only once the record has left the store. A row
+  // that had stopped working for any other reason (a store the UI never reads,
+  // a row rendered disabled, a menu that never closes) fails the first half, so
+  // this case cannot pass by the load being broken from the start.
+  //
+  // Reaching past the menu to delete is the point: only another BROWSER TAB can
+  // produce a listed-but-gone record, since this client's own delete
+  // republishes the list and takes the row with it.
+  it("keeps the menu open with a message when a listed record has left the store", async () => {
+    const world = createDockviewWorld();
+    const app = mountWith(world, AppShell);
+    await app.dockviewLayout.waitForGroups(FX_GROUP_COUNT);
+
+    await app.viewMenu.toggle();
+    await app.viewMenu.openSaveLayout();
+    await app.viewMenu.typeLayoutName("Morning");
+    await app.viewMenu.confirmSaveLayout();
+    const [morningId] = app.viewMenu.layoutRowIds();
+
+    await app.viewMenu.loadLayout(morningId);
+    expect(app.viewMenu.isOpen()).toBe(false);
+
+    layoutPresetStoreFor(world).clear("fx");
+    await app.viewMenu.toggle();
+    await app.viewMenu.loadLayout(morningId);
+
+    expect(app.viewMenu.layoutMessage()).toBe("That layout is no longer there");
+    // The menu STAYS OPEN — closing it on a load that did nothing would report
+    // the failure as success — and the row it refused is still listed, because
+    // nothing republished the list.
+    expect(app.viewMenu.isOpen()).toBe(true);
+    expect(app.viewMenu.layoutRowIds()).toEqual([morningId]);
+    expect(app.viewMenu.isLayoutRowDisabled(morningId)).toBe(false);
   });
 
   it("keeps the save opener at the cap and reports the cap when it is pressed", async () => {

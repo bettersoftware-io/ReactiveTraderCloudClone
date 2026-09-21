@@ -201,7 +201,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ④ Frameworks & Drivers -- a test-only leaf, not part of either client's runtime bundle |
 | **Depends on** | `@rtc/client-core`, `@rtc/domain`, `rxjs` (`packages/ui-contract/package.json` `dependencies`) |
 | **Consumed by** | `client-react` and `client-solid`, both as a **devDependency** -- it never appears in either client's `src/` (only their `tests/`) |
-| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the 86 shared contract spec files / 622 tests (fx/credit/equities/admin/shell); each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
+| **Non-obvious** | `src/visual/` is the piece with the highest leverage: `scenarios.ts`, `scenarioActions.ts`, `fixtures.ts`, `appData.ts`, `goldenPath.ts`, and `freezeClock.ts` are the single source of truth every visual tier-runner loops over -- adding a scenario here gives all three (react's CI-asserted `playwright` tier, solid's assert-only `playwright` tier, and react's coverage-only `vitest-browser` instrument) the test for free. `src/specs/` holds the 104 shared contract spec files / 872 tests per client (fx/credit/equities/admin/shell); each client supplies only its own render-target "swap trio" (`react/` vs `solid/`) that the specs mount against. `goldens/` -- the committed golden PNG trees for the single asserted `playwright` tier, generated only from `client-react` renders -- sits beside `src/` at the package root; it is not compiled, not exported, and not part of the `tsconfig`/knip/biome surface. |
 | **README** | [`packages/ui-contract/README.md`](../../packages/ui-contract/README.md) |
 
 #### `@rtc/ws-effects`
@@ -381,7 +381,7 @@ src/
 `@rtc/ui-contract`:
 ```
 src/
-├── specs/fx/ credit/ equities/ admin/ shell/    86 shared *.contract.spec.ts files / 622 tests, sociable RTL over a render-target prop
+├── specs/fx/ credit/ equities/ admin/ shell/    104 shared *.contract.spec.ts files / 872 tests per client, sociable RTL over a render-target prop
 ├── shared/harness/, shared/pages/                mount helper + Page-Object-ish query helpers, framework-neutral
 ├── shared/components.ts, shared/mount.ts          the render-target seam each client's swap-trio implements
 └── visual/     scenarios.ts · scenarioActions.ts · fixtures.ts · appData.ts · goldenPath.ts · freezeClock.ts
