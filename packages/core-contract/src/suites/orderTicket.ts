@@ -233,9 +233,16 @@ export function describeOrderTicketContract(
         await settle();
         h.driver.emitOrderUpdate(createEquityOrder({ status: "working" }));
         await settle();
+        // Edited while in flight — the edit does not surface in state (that
+        // is the prior case's contract), but it is what the second submit
+        // sends: the first request (qty 1) is withdrawn, so the driver's
+        // pending order is the second one, not a stale duplicate of the first.
+        m.intents.setQty(2);
         m.intents.submit();
         await settle();
-        expect(h.driver.pendingOrders()).toHaveLength(1);
+        expect(h.driver.pendingOrders()).toEqual([
+          { symbol: "AAPL", side: "buy", type: "market", qty: 2 },
+        ]);
         expect(c.values.at(-1)).toEqual({ phase: "submitting" });
         const filled = createEquityOrder({ id: "ord-2", status: "filled" });
         h.driver.emitOrderUpdate(filled);

@@ -35,7 +35,7 @@ describe("reduceEqDrawings — addDrawing", () => {
       ...INITIAL_EQ_DRAWINGS_STATE,
       tool: "trendline",
     };
-    const t1 = trendline("t1");
+    const t1 = createTrendline("t1");
     const next = reduceEqDrawings(state, {
       kind: "addDrawing",
       sym: "AAPL",
@@ -49,9 +49,9 @@ describe("reduceEqDrawings — addDrawing", () => {
 
 describe("reduceEqDrawings — updateDrawing", () => {
   it("replaces the matching id in place, z-order stable", () => {
-    const a = hline("d1", 100);
-    const b = hline("d2", 110);
-    const c = hline("d3", 120);
+    const a = createHline("d1", 100);
+    const b = createHline("d2", 110);
+    const c = createHline("d3", 120);
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
       drawings: { AAPL: [a, b, c] },
@@ -60,13 +60,13 @@ describe("reduceEqDrawings — updateDrawing", () => {
     const next = reduceEqDrawings(state, {
       kind: "updateDrawing",
       sym: "AAPL",
-      drawing: hline("d2", 999),
+      drawing: createHline("d2", 999),
     });
-    expect(next.drawings.AAPL).toEqual([a, hline("d2", 999), c]);
+    expect(next.drawings.AAPL).toEqual([a, createHline("d2", 999), c]);
   });
 
   it("returns the same reference for an unknown id", () => {
-    const a = hline("d1", 100);
+    const a = createHline("d1", 100);
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
       drawings: { AAPL: [a] },
@@ -75,7 +75,7 @@ describe("reduceEqDrawings — updateDrawing", () => {
     const next = reduceEqDrawings(state, {
       kind: "updateDrawing",
       sym: "AAPL",
-      drawing: hline("ghost", 1),
+      drawing: createHline("ghost", 1),
     });
     expect(next).toBe(state);
   });
@@ -95,7 +95,7 @@ describe("reduceEqDrawings — deleteSelected", () => {
   it("is the same reference when nothing is selected", () => {
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
-      drawings: { AAPL: [hline("d1", 100)] },
+      drawings: { AAPL: [createHline("d1", 100)] },
     };
 
     const next = reduceEqDrawings(state, {
@@ -108,7 +108,7 @@ describe("reduceEqDrawings — deleteSelected", () => {
   it("is the same reference when the selected id is not in that symbol's list", () => {
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
-      drawings: { AAPL: [hline("d1", 100)] },
+      drawings: { AAPL: [createHline("d1", 100)] },
       selectedId: "not-here",
     };
 
@@ -120,7 +120,7 @@ describe("reduceEqDrawings — deleteSelected", () => {
   });
 
   it("removes the selected drawing and clears the selection", () => {
-    const d1 = hline("d1", 100);
+    const d1 = createHline("d1", 100);
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
       drawings: { AAPL: [d1] },
@@ -138,9 +138,9 @@ describe("reduceEqDrawings — deleteSelected", () => {
 
 describe("reduceEqDrawings — shiftAnchors", () => {
   it("moves BOTH anchors of every trendline for that symbol, leaving hlines and other symbols alone", () => {
-    const t1 = trendline("t1");
-    const h1 = hline("h1", 150);
-    const otherSymTrendline = trendline("t2");
+    const t1 = createTrendline("t1");
+    const h1 = createHline("h1", 150);
+    const otherSymTrendline = createTrendline("t2");
     const state: EqDrawingsState = {
       ...INITIAL_EQ_DRAWINGS_STATE,
       drawings: { AAPL: [t1, h1], TSLA: [otherSymTrendline] },
@@ -177,7 +177,7 @@ interface TrendlineTag {
 }
 type Trendline = Extract<EqDrawing, TrendlineTag>;
 
-function trendline(id: string): Trendline {
+function createTrendline(id: string): Trendline {
   return {
     id,
     kind: "trendline",
@@ -186,6 +186,6 @@ function trendline(id: string): Trendline {
   };
 }
 
-function hline(id: string, price: number): EqDrawing {
+function createHline(id: string, price: number): EqDrawing {
   return { id, kind: "hline", price };
 }

@@ -50,6 +50,7 @@ export function describeCandleSeriesContract(
         p.loadOlder("");
         await settle();
         expect(h.driver.pendingCandleHistory()).toEqual([]);
+        expect(h.driver.candlesObserved("", "1D")).toBe(false);
         expect(c.errors).toEqual([]);
         c.unsubscribe();
       } finally {
@@ -173,7 +174,7 @@ export function describeCandleSeriesContract(
       }
     });
 
-    it("an EMPTY page latches exhaustion and leaves the series alone; a page overlapping the base never duplicates a candle", async () => {
+    it("an EMPTY page latches exhaustion and leaves the series alone; a page overlapping the base never duplicates a candle, and a page candle newer than the base's first contributes nothing", async () => {
       const h = makeHarness();
 
       try {
@@ -196,6 +197,10 @@ export function describeCandleSeriesContract(
         h.driver.resolveCandleHistory([
           createCandle(T0 - STEP_MS),
           createCandle(T0, 999),
+          // The contiguity witness: strictly newer than BASE[0] (T0) and not
+          // itself a base candle, so dedupe-by-time alone cannot explain its
+          // absence below — only the contiguity guard drops it.
+          createCandle(T0 + STEP_MS / 2),
         ]);
         await settle();
         expect(times(msft.values.at(-1))).toEqual([

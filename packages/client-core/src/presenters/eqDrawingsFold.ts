@@ -27,7 +27,10 @@ export const INITIAL_EQ_DRAWINGS_STATE: EqDrawingsState = {
 };
 
 /** The chart-annotation state transition, shared by every application core.
- * A transition that changes nothing returns the SAME reference. */
+ * The guarded no-ops — `updateDrawing` of an unknown id, `deleteSelected`
+ * with nothing to remove, `shiftAnchors` for a symbol with no drawings —
+ * return the SAME reference; `selectDrawing` with the current id still
+ * builds a new object. */
 export function reduceEqDrawings(
   state: EqDrawingsState,
   event: EqDrawingsEvent,

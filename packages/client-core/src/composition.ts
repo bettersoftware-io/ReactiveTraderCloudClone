@@ -100,6 +100,7 @@ import {
   ErrorRatePresenter,
   EventLogPresenter,
   ForceBootAnimationPresenter,
+  firstWatchlistSymbol,
   InstrumentsPresenter,
   type JarvisDriverDeps,
   type JarvisEntry,
@@ -213,7 +214,7 @@ function peekFirstWatchlistSymbol(
   let first = "";
   const sub = watchlist$.subscribe((list) => {
     if (first === "" && list.length > 0) {
-      first = list[0]?.symbol ?? "";
+      first = firstWatchlistSymbol(list);
     }
   });
   sub.unsubscribe();
@@ -233,7 +234,7 @@ export function firstWatchlistSymbol$(
 ): Observable<string> {
   return watchlist$.pipe(
     map((list) => {
-      return list[0]?.symbol ?? "";
+      return firstWatchlistSymbol(list);
     }),
     filter((symbol) => {
       return symbol !== "";

@@ -195,10 +195,14 @@ export interface ScriptedDriver {
   /** Push the equities roster into `marketData.watchlist()`. */
   emitWatchlist(list: readonly EquityInstrument[]): void;
   watchlistObserved(): boolean;
-  /** Push one equity quote into `marketData.quotes(quote.symbol)`. */
+  /** Push one equity quote into `marketData.quotes(quote.symbol)`. An
+   * emission for a key nobody has subscribed reaches nobody (the key's
+   * Subject is created on first subscribe). */
   emitEquityQuote(quote: EquityQuote): void;
   equityQuoteObserved(symbol: string): boolean;
-  /** Push one candle series into `marketData.candles(symbol, timeframe)`. */
+  /** Push one candle series into `marketData.candles(symbol, timeframe)`. An
+   * emission for a key nobody has subscribed reaches nobody (the key's
+   * Subject is created on first subscribe). */
   emitCandles(
     symbol: string,
     timeframe: CandleTimeframe,
@@ -214,7 +218,9 @@ export interface ScriptedDriver {
   /** Error the OLDEST pending candle-history request. A no-op when nothing
    * is pending. */
   failCandleHistory(error: unknown): void;
-  /** Push one depth book into `marketData.depth(book.symbol)`. */
+  /** Push one depth book into `marketData.depth(book.symbol)`. An emission
+   * for a key nobody has subscribed reaches nobody (the key's Subject is
+   * created on first subscribe). */
   emitDepth(book: DepthBook): void;
   depthObserved(symbol: string): boolean;
   /** Replace the book `orders.orders()` snapshots on the NEXT subscribe. */

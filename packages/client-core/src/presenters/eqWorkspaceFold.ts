@@ -47,8 +47,12 @@ export function firstWatchlistSymbol(
 }
 
 /** The equities-workspace state transition, shared by every application
- * core. A transition that changes nothing returns the SAME reference, so a
- * core whose cell drops an `Object.is`-equal write stays silent through it. */
+ * core. The GUARDED no-ops — `closeTab` of an unknown or the sole tab,
+ * `setCompare` of the selected symbol, a `seed` on a populated workspace —
+ * return the SAME reference, so a core whose cell drops an `Object.is`-equal
+ * write stays silent through them; an idempotent set (`select` of the
+ * current selection, `setTimeframe`/`setChartType` with the current value)
+ * still builds a new object, as the RxJS machine always did. */
 export function reduceEqWorkspace(
   state: EqWorkspaceState,
   event: EqWorkspaceEvent,

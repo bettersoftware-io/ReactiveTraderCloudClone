@@ -32,14 +32,14 @@ describe("createEqWorkspaceState", () => {
 describe("reduceEqWorkspace — select", () => {
   it("appends an unopened symbol to openTabs and selects it", () => {
     const state = createEqWorkspaceState("AAPL");
-    const next = reduceEqWorkspace(state, selectEvent("MSFT"));
+    const next = reduceEqWorkspace(state, createSelectEvent("MSFT"));
     expect(next.sel).toBe("MSFT");
     expect(next.openTabs).toEqual(["AAPL", "MSFT"]);
   });
 
   it("re-selecting an already-open symbol does not duplicate the tab", () => {
     const state = createEqWorkspaceState("AAPL");
-    const next = reduceEqWorkspace(state, selectEvent("AAPL"));
+    const next = reduceEqWorkspace(state, createSelectEvent("AAPL"));
     expect(next.openTabs).toEqual(["AAPL"]);
   });
 
@@ -48,7 +48,7 @@ describe("reduceEqWorkspace — select", () => {
       ...createEqWorkspaceState("AAPL"),
       compare: "MSFT",
     };
-    const next = reduceEqWorkspace(state, selectEvent("MSFT"));
+    const next = reduceEqWorkspace(state, createSelectEvent("MSFT"));
     expect(next.sel).toBe("MSFT");
     expect(next.compare).toBeNull();
   });
@@ -57,13 +57,13 @@ describe("reduceEqWorkspace — select", () => {
 describe("reduceEqWorkspace — closeTab", () => {
   it("closing an unknown symbol returns the same reference", () => {
     const state = createEqWorkspaceState("AAPL");
-    const next = reduceEqWorkspace(state, closeTabEvent("ZZZZ"));
+    const next = reduceEqWorkspace(state, createCloseTabEvent("ZZZZ"));
     expect(next).toBe(state);
   });
 
   it("closing the sole remaining tab returns the same reference", () => {
     const state = createEqWorkspaceState("AAPL");
-    const next = reduceEqWorkspace(state, closeTabEvent("AAPL"));
+    const next = reduceEqWorkspace(state, createCloseTabEvent("AAPL"));
     expect(next).toBe(state);
   });
 
@@ -72,7 +72,7 @@ describe("reduceEqWorkspace — closeTab", () => {
       ...createEqWorkspaceState("AAPL"),
       openTabs: ["AAPL", "MSFT"],
     };
-    const next = reduceEqWorkspace(state, closeTabEvent("MSFT"));
+    const next = reduceEqWorkspace(state, createCloseTabEvent("MSFT"));
     expect(next.sel).toBe("AAPL");
     expect(next.openTabs).toEqual(["AAPL"]);
   });
@@ -83,7 +83,7 @@ describe("reduceEqWorkspace — closeTab", () => {
       sel: "MSFT",
       openTabs: ["AAPL", "MSFT", "TSLA"],
     };
-    const next = reduceEqWorkspace(state, closeTabEvent("MSFT"));
+    const next = reduceEqWorkspace(state, createCloseTabEvent("MSFT"));
     expect(next.openTabs).toEqual(["AAPL", "TSLA"]);
     expect(next.sel).toBe("TSLA");
   });
@@ -94,7 +94,7 @@ describe("reduceEqWorkspace — closeTab", () => {
       sel: "TSLA",
       openTabs: ["AAPL", "MSFT", "TSLA"],
     };
-    const next = reduceEqWorkspace(state, closeTabEvent("TSLA"));
+    const next = reduceEqWorkspace(state, createCloseTabEvent("TSLA"));
     expect(next.openTabs).toEqual(["AAPL", "MSFT"]);
     expect(next.sel).toBe("MSFT");
   });
@@ -212,21 +212,21 @@ describe("firstWatchlistSymbol", () => {
 
   it("is the first symbol of a two-item list", () => {
     const list: readonly EquityInstrument[] = [
-      instrument("AAPL"),
-      instrument("MSFT"),
+      createInstrument("AAPL"),
+      createInstrument("MSFT"),
     ];
     expect(firstWatchlistSymbol(list)).toBe("AAPL");
   });
 });
 
-function selectEvent(sym: string): EqWorkspaceEvent {
+function createSelectEvent(sym: string): EqWorkspaceEvent {
   return { kind: "select", sym };
 }
 
-function closeTabEvent(sym: string): EqWorkspaceEvent {
+function createCloseTabEvent(sym: string): EqWorkspaceEvent {
   return { kind: "closeTab", sym };
 }
 
-function instrument(symbol: string): EquityInstrument {
+function createInstrument(symbol: string): EquityInstrument {
   return { symbol, name: symbol, exchange: "NASDAQ" };
 }

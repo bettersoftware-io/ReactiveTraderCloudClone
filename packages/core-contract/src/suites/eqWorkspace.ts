@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { EqWorkspaceState } from "@rtc/core-api";
 
 import { collect } from "#/harness/collect";
-import { AAPL, MSFT } from "#/harness/fixtures";
+import { AAPL, MSFT, TSLA } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
 
@@ -67,14 +67,14 @@ export function describeEqWorkspaceContract(
       try {
         const m = h.app.presenters.eqWorkspace;
         const c = collect(m.state$);
-        m.intents.select("TSLA");
+        m.intents.select(TSLA.symbol);
         await settle();
         h.driver.emitWatchlist([AAPL]);
         await settle();
         expect(c.values.at(-1)).toEqual({
           ...SEEDED,
-          sel: "TSLA",
-          openTabs: ["TSLA"],
+          sel: TSLA.symbol,
+          openTabs: [TSLA.symbol],
         });
         c.unsubscribe();
       } finally {
@@ -89,31 +89,31 @@ export function describeEqWorkspaceContract(
         const m = h.app.presenters.eqWorkspace;
         const c = collect(m.state$);
         m.intents.select("MSFT");
-        m.intents.select("TSLA");
+        m.intents.select(TSLA.symbol);
         m.intents.select("MSFT");
         await settle();
         expect(c.values.at(-1)).toMatchObject({
           sel: "MSFT",
-          openTabs: ["AAPL", "MSFT", "TSLA"],
+          openTabs: ["AAPL", "MSFT", TSLA.symbol],
         });
         m.intents.closeTab("NVDA");
         m.intents.closeTab("AAPL");
         await settle();
         expect(c.values.at(-1)).toMatchObject({
           sel: "MSFT",
-          openTabs: ["MSFT", "TSLA"],
+          openTabs: ["MSFT", TSLA.symbol],
         });
         m.intents.closeTab("MSFT");
         await settle();
         expect(c.values.at(-1)).toMatchObject({
-          sel: "TSLA",
-          openTabs: ["TSLA"],
+          sel: TSLA.symbol,
+          openTabs: [TSLA.symbol],
         });
-        m.intents.closeTab("TSLA");
+        m.intents.closeTab(TSLA.symbol);
         await settle();
         expect(c.values.at(-1)).toMatchObject({
-          sel: "TSLA",
-          openTabs: ["TSLA"],
+          sel: TSLA.symbol,
+          openTabs: [TSLA.symbol],
         });
         c.unsubscribe();
       } finally {

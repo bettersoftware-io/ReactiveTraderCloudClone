@@ -24,52 +24,56 @@ describe("createOrderTicketForm", () => {
 
 describe("validateOrderTicket", () => {
   it("rejects a non-positive quantity", () => {
-    expect(validateOrderTicket(form({ qty: 0 }))).toBe(
+    expect(validateOrderTicket(createForm({ qty: 0 }))).toBe(
       "Quantity must be greater than zero",
     );
-    expect(validateOrderTicket(form({ qty: -5 }))).toBe(
+    expect(validateOrderTicket(createForm({ qty: -5 }))).toBe(
       "Quantity must be greater than zero",
     );
   });
 
   it("rejects a limit order with no limit price", () => {
-    expect(validateOrderTicket(form({ qty: 10, type: "limit" }))).toBe(
+    expect(validateOrderTicket(createForm({ qty: 10, type: "limit" }))).toBe(
       "Limit price required for a limit order",
     );
   });
 
   it("rejects a limit order with a non-positive limit price", () => {
     expect(
-      validateOrderTicket(form({ qty: 10, type: "limit", limitPrice: 0 })),
+      validateOrderTicket(
+        createForm({ qty: 10, type: "limit", limitPrice: 0 }),
+      ),
     ).toBe("Limit price required for a limit order");
   });
 
   it("accepts a valid market order", () => {
-    expect(validateOrderTicket(form({ qty: 10 }))).toBeNull();
+    expect(validateOrderTicket(createForm({ qty: 10 }))).toBeNull();
   });
 
   it("accepts a valid limit order", () => {
     expect(
-      validateOrderTicket(form({ qty: 10, type: "limit", limitPrice: 150 })),
+      validateOrderTicket(
+        createForm({ qty: 10, type: "limit", limitPrice: 150 }),
+      ),
     ).toBeNull();
   });
 });
 
 describe("orderToTicketPhase", () => {
   it("maps working/partiallyFilled/filled to the phase carrying the order", () => {
-    const working = order("working");
+    const working = createOrder("working");
     expect(orderToTicketPhase(working)).toEqual({
       phase: "working",
       order: working,
     });
 
-    const partial = order("partiallyFilled");
+    const partial = createOrder("partiallyFilled");
     expect(orderToTicketPhase(partial)).toEqual({
       phase: "partiallyFilled",
       order: partial,
     });
 
-    const filled = order("filled");
+    const filled = createOrder("filled");
     expect(orderToTicketPhase(filled)).toEqual({
       phase: "filled",
       order: filled,
@@ -77,15 +81,17 @@ describe("orderToTicketPhase", () => {
   });
 
   it("maps rejected to a phase carrying a fixed reason", () => {
-    expect(orderToTicketPhase(order("rejected"))).toEqual({
+    expect(orderToTicketPhase(createOrder("rejected"))).toEqual({
       phase: "rejected",
       reason: "Order rejected",
     });
   });
 
   it("maps new and cancelled to submitting", () => {
-    expect(orderToTicketPhase(order("new"))).toEqual({ phase: "submitting" });
-    expect(orderToTicketPhase(order("cancelled"))).toEqual({
+    expect(orderToTicketPhase(createOrder("new"))).toEqual({
+      phase: "submitting",
+    });
+    expect(orderToTicketPhase(createOrder("cancelled"))).toEqual({
       phase: "submitting",
     });
   });
@@ -93,7 +99,7 @@ describe("orderToTicketPhase", () => {
 
 describe("toPlaceOrderRequest", () => {
   it("copies the five form fields", () => {
-    const f = form({ qty: 10, type: "limit", limitPrice: 150 });
+    const f = createForm({ qty: 10, type: "limit", limitPrice: 150 });
     expect(toPlaceOrderRequest(f)).toEqual({
       symbol: f.symbol,
       side: f.side,
@@ -117,7 +123,7 @@ describe("reduceOrderTicket", () => {
       inFlight: true,
       state: { phase: "submitting" },
     };
-    const filled = order("filled");
+    const filled = createOrder("filled");
     const next = reduceOrderTicket(acc, { phase: "filled", order: filled });
     expect(next.inFlight).toBe(false);
   });
@@ -165,20 +171,20 @@ describe("reduceOrderTicket", () => {
 
   it("any other state passes through, keeping inFlight", () => {
     const acc = createOrderTicketAcc(createOrderTicketForm("AAPL"));
-    const working = order("working");
+    const working = createOrder("working");
     const next = reduceOrderTicket(acc, { phase: "working", order: working });
     expect(next.inFlight).toBe(acc.inFlight);
     expect(next.state).toEqual({ phase: "working", order: working });
   });
 });
 
-function form(
+function createForm(
   overrides: Partial<ReturnType<typeof createOrderTicketForm>>,
 ): ReturnType<typeof createOrderTicketForm> {
   return { ...createOrderTicketForm("AAPL"), ...overrides };
 }
 
-function order(status: EquityOrder["status"]): EquityOrder {
+function createOrder(status: EquityOrder["status"]): EquityOrder {
   return {
     id: "o1",
     symbol: "AAPL",
