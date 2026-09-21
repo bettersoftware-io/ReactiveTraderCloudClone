@@ -610,6 +610,17 @@ predictable from the design alone):
   of band and the ticket stays `submitting` — mapping it to `rejected` is
   a product fix for all three cores, not a port concern, and is carried
   forward as a residual rather than coded around this slice.
+  **Closed 2026-09-21, and now contracted:** a failing `place()` lands on
+  `{ phase: "rejected", reason }` in all three cores through the imported
+  `placeFailureToTicketPhase` (the error's own message, else "Order
+  rejected") — RxJS by a `catchError` on the INNER stream so `state$`
+  survives, async by a `try`/`catch` around `relay` under `ifCurrent`,
+  Effect by `Effect.catchAll` under `guarded` (failures only, so a
+  supersede's interrupt still ends a run silently). The same PR made
+  `reset()` REPLACE the form through the imported `reduceOrderTicketForm`
+  — the three cores had each spread the default over the form, so a
+  `limitPrice` entered earlier rode along on the next market order and
+  onto its blotter record.
 - **`createRunSlot` paid the slice-3 residual before a sixth hand-rolled
   copy was written, and closed the window class-wide.** One kernel/bridge
   helper per sibling now owns the "one active run" scaffolding for all

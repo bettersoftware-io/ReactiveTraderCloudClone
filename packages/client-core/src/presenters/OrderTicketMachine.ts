@@ -1,6 +1,6 @@
 import { type StateObservable, state } from "@rx-state/core";
 import { concat, merge, type Observable, of, Subject } from "rxjs";
-import { map, scan, startWith, switchMap } from "rxjs/operators";
+import { catchError, map, scan, startWith, switchMap } from "rxjs/operators";
 
 import type {
   OrderTicketForm,
@@ -18,8 +18,11 @@ import type { Machine } from "./machine";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
+  type OrderTicketFormEvent,
   orderToTicketPhase,
+  placeFailureToTicketPhase,
   reduceOrderTicket,
+  reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
 } from "./orderTicketFold";
@@ -28,8 +31,8 @@ import {
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. `OrderTicketForm` was moved alongside `OrderTicketState`
  * (which embeds it in its "editing" variant) though not itself in Task 3's
- * move table — this file imports it back for local use (the `Patch` alias,
- * `initialForm`) but does NOT re-export it, matching its original
+ * move table — this file imports it back for local use (the patch
+ * subject, `initialForm`) but does NOT re-export it, matching its original
  * (unexported) visibility here. */
 export type { OrderTicketIntents, OrderTicketState };
 
@@ -38,31 +41,28 @@ export interface OrderTicketDeps {
   defaultSymbol: string;
 }
 
-type Patch = Partial<OrderTicketForm>;
-
 export function createOrderTicketMachine(
   deps: OrderTicketDeps,
 ): Machine<OrderTicketState, OrderTicketIntents> {
-  const patch$ = new Subject<Patch>();
+  const patch$ = new Subject<Partial<OrderTicketForm>>();
   const submit$ = new Subject<void>();
   const reset$ = new Subject<void>();
 
   const initialForm = createOrderTicketForm(deps.defaultSymbol);
 
-  // Editing form folds patches; resets restore the default.
+  // Editing form folds patches; a reset REPLACES it with the default.
   const form$ = merge(
-    patch$,
-    reset$.pipe(
-      map(() => {
-        return { ...initialForm } as Patch;
+    patch$.pipe(
+      map((change): OrderTicketFormEvent => {
+        return { kind: "patch", change };
       }),
     ),
-  ).pipe(
-    scan((acc, p) => {
-      return { ...acc, ...p };
-    }, initialForm),
-    startWith(initialForm),
-  );
+    reset$.pipe(
+      map((): OrderTicketFormEvent => {
+        return { kind: "reset", form: initialForm };
+      }),
+    ),
+  ).pipe(scan(reduceOrderTicketForm, initialForm), startWith(initialForm));
 
   let currentForm = initialForm;
   const formSub = form$.subscribe((f) => {
@@ -86,9 +86,16 @@ export function createOrderTicketMachine(
 
       const req = toPlaceOrderRequest(currentForm);
       // Emit "submitting" immediately, then lifecycle updates from place().
+      // A failing place() is caught HERE, on the inner stream: uncaught it
+      // would error `state$` and kill the ticket for good.
       return concat(
         of<OrderTicketState>({ phase: "submitting" }),
-        deps.place(req).pipe(map(orderToTicketPhase)),
+        deps.place(req).pipe(
+          map(orderToTicketPhase),
+          catchError((error: unknown) => {
+            return of(placeFailureToTicketPhase(error));
+          }),
+        ),
       );
     }),
   );

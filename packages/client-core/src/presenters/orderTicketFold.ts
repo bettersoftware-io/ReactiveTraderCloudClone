@@ -12,6 +12,24 @@ export function createOrderTicketForm(defaultSymbol: string): OrderTicketForm {
   return { symbol: defaultSymbol, side: "buy", type: "market", qty: 0 };
 }
 
+/** One step of the FORM fold. A setter's patch merges; a reset REPLACES —
+ * spreading the default over the form would leave every optional field the
+ * default lacks (`limitPrice`) behind, to ride along on the next order. */
+export type OrderTicketFormEvent =
+  | { readonly kind: "patch"; readonly change: Partial<OrderTicketForm> }
+  | { readonly kind: "reset"; readonly form: OrderTicketForm };
+
+export function reduceOrderTicketForm(
+  form: OrderTicketForm,
+  event: OrderTicketFormEvent,
+): OrderTicketForm {
+  if (event.kind === "reset") {
+    return { ...event.form };
+  }
+
+  return { ...form, ...event.change };
+}
+
 export function createOrderTicketAcc(form: OrderTicketForm): OrderTicketAcc {
   return { inFlight: false, state: { phase: "editing", form, error: null } };
 }
@@ -40,10 +58,26 @@ export function orderToTicketPhase(order: EquityOrder): OrderTicketState {
     case "filled":
       return { phase: "filled", order };
     case "rejected":
-      return { phase: "rejected", reason: "Order rejected" };
+      return { phase: "rejected", reason: ORDER_REJECTED_REASON };
     default:
       return { phase: "submitting" };
   }
+}
+
+/** Generic reason for a `place()` failure that carries no message of its
+ * own — the wording `orderToTicketPhase` gives a rejected order. */
+const ORDER_REJECTED_REASON = "Order rejected";
+
+/** A FAILED `place()` call — a nack, a dropped socket — is a rejection the
+ * user can retry from, not a dead machine: it lands on the same `rejected`
+ * phase a rejected order does, carrying the failure's own message. */
+export function placeFailureToTicketPhase(error: unknown): OrderTicketState {
+  const reason =
+    error instanceof Error && error.message.length > 0
+      ? error.message
+      : ORDER_REJECTED_REASON;
+
+  return { phase: "rejected", reason };
 }
 
 export function toPlaceOrderRequest(form: OrderTicketForm): PlaceOrderRequest {

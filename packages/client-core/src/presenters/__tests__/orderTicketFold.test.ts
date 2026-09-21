@@ -6,7 +6,9 @@ import {
   createOrderTicketAcc,
   createOrderTicketForm,
   orderToTicketPhase,
+  placeFailureToTicketPhase,
   reduceOrderTicket,
+  reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
 } from "#/presenters/orderTicketFold";
@@ -18,6 +20,52 @@ describe("createOrderTicketForm", () => {
       side: "buy",
       type: "market",
       qty: 0,
+    });
+  });
+});
+
+describe("reduceOrderTicketForm", () => {
+  it("a patch MERGES into the form, leaving the other fields alone", () => {
+    const form = createForm({ qty: 10, type: "limit", limitPrice: 150 });
+    expect(
+      reduceOrderTicketForm(form, { kind: "patch", change: { side: "sell" } }),
+    ).toEqual({ ...form, side: "sell" });
+  });
+
+  it("a reset REPLACES the form, so an optional field the default lacks does not survive", () => {
+    const form = createForm({ qty: 10, type: "limit", limitPrice: 150 });
+    const next = reduceOrderTicketForm(form, {
+      kind: "reset",
+      form: createOrderTicketForm("AAPL"),
+    });
+    expect(next).toEqual(createOrderTicketForm("AAPL"));
+    expect("limitPrice" in next).toBe(false);
+  });
+
+  it("a reset hands back a COPY, never the default object itself", () => {
+    const defaults = createOrderTicketForm("AAPL");
+    expect(
+      reduceOrderTicketForm(createForm({}), { kind: "reset", form: defaults }),
+    ).not.toBe(defaults);
+  });
+});
+
+describe("placeFailureToTicketPhase", () => {
+  it("rejects with an Error's own message", () => {
+    expect(placeFailureToTicketPhase(new Error("venue down"))).toEqual({
+      phase: "rejected",
+      reason: "venue down",
+    });
+  });
+
+  it("rejects with the generic reason for a non-Error failure or an empty message", () => {
+    expect(placeFailureToTicketPhase("nack")).toEqual({
+      phase: "rejected",
+      reason: "Order rejected",
+    });
+    expect(placeFailureToTicketPhase(new Error(""))).toEqual({
+      phase: "rejected",
+      reason: "Order rejected",
     });
   });
 });
