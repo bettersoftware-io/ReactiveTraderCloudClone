@@ -58,7 +58,7 @@ function runSubmit(
     // and interruption only lands at the run's next suspension. This is
     // belt AND braces, deliberately: MEASURED on effect 3.22.2, a fiber
     // resumed out of `Effect.sleep` processes the interrupt signal
-    // `endActive()` forked before it runs this step, so the interrupt
+    // `slot.end()` forked before it runs this step, so the interrupt
     // alone already suppresses the callback and no external test can
     // tell the two apart (`rfqSubmission.test.ts` pins the outcome; the
     // unguarded variant passes it too). The guard is here so the
