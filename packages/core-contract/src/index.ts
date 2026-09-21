@@ -5,7 +5,14 @@ import { describePortDisciplineContract } from "#/suites/portDiscipline";
 export { type FakeClock, withFakeClock } from "#/harness/clock";
 export { type Collected, collect } from "#/harness/collect";
 export {
+  AAPL,
+  createCandle,
+  createCandles,
   createDealer,
+  createDepthBook,
+  createEquityOrder,
+  createEquityPosition,
+  createEquityQuote,
   createInstrument,
   createPositionUpdates,
   createPrice,
@@ -16,6 +23,8 @@ export {
   createTrade,
   EURUSD,
   GBPUSD,
+  MSFT,
+  TSLA,
 } from "#/harness/fixtures";
 export type { CoreHarness, MakeHarness, Suite } from "#/harness/harness";
 export {
@@ -23,6 +32,8 @@ export {
   type PendingQueue,
 } from "#/harness/pendingQueue";
 export {
+  type CandleHistoryRequest,
+  type HarnessSeed,
   type PortMethodName,
   type RfqQuoteRequest,
   type ScriptedDriver,

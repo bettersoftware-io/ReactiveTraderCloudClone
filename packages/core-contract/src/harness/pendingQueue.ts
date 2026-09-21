@@ -11,12 +11,19 @@ interface PendingRequest<Req, Res> {
  * `defer`, so "lazy until subscribed" stays the core's property, witnessed
  * here), leaves the queue when it is settled or unsubscribed, and settles
  * FIFO. `resolve` is next + complete — every one-shot port in the repo
- * emits once and completes. A settle with nothing pending is a no-op. */
+ * emits once and completes. A settle with nothing pending is a no-op.
+ * A lifecycle port (`orders.place`) emits several values per request:
+ * `emit` is one of them, `complete` ends it. `resolve` stays `emit` +
+ * `complete` for the one-shot ports. */
 export interface PendingQueue<Req, Res> {
   open(request: Req): Observable<Res>;
   pending(): readonly Req[];
   resolve(value: Res): void;
   fail(error: unknown): void;
+  /** Next on the OLDEST pending result; it stays pending. */
+  emit(value: Res): void;
+  /** Complete the OLDEST pending result and drop it from the queue. */
+  complete(): void;
   /** Complete every pending result — teardown. */
   drain(): void;
 }
@@ -66,6 +73,14 @@ export function createPendingQueue<Req, Res>(): PendingQueue<Req, Res> {
     fail: (error: unknown) => {
       settleOldest((result) => {
         result.error(error);
+      });
+    },
+    emit: (value: Res) => {
+      queue[0]?.result.next(value);
+    },
+    complete: () => {
+      settleOldest((result) => {
+        result.complete();
       });
     },
     drain: () => {

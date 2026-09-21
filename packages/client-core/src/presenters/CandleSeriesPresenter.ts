@@ -12,10 +12,13 @@ import {
 import type { CandleSeriesPresenter as CandleSeriesPresenterApi } from "@rtc/core-api";
 import {
   CANDLE_HISTORY_PAGE,
+  CANDLE_HISTORY_RETRY_COOLDOWN_MS,
   type Candle,
   type CandleTimeframe,
   type MarketDataPort,
 } from "@rtc/domain";
+
+import { stitchCandles } from "./candleStitch";
 
 const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
 
@@ -23,7 +26,7 @@ const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
  * within this window of the last error is a no-op (rather than hammering
  * the port at render/near-edge-effect cadence, which can re-fire every
  * frame while the viewport sits at the edge). */
-const ERROR_RETRY_COOLDOWN_MS = 1000;
+const ERROR_RETRY_COOLDOWN_MS: number = CANDLE_HISTORY_RETRY_COOLDOWN_MS;
 
 /** Per-(symbol|timeframe) backfill state — see loadOlder. */
 interface BackfillState {
@@ -115,16 +118,7 @@ export class CandleSeriesPresenter implements CandleSeriesPresenterApi {
 
       return combineLatest([state.older$, base$]).pipe(
         map(([older, base]) => {
-          const first = base[0];
-
-          if (older.length === 0 || !first) {
-            return dedupeByTime(base);
-          }
-
-          const older2 = older.filter((c) => {
-            return c.time < first.time;
-          });
-          return dedupeByTime([...older2, ...base]);
+          return stitchCandles(older, base);
         }),
         tap((series) => {
           state.latestFirst = series[0] ?? null;
@@ -221,19 +215,4 @@ export class CandleSeriesPresenter implements CandleSeriesPresenterApi {
     this.backfill.set(key, created);
     return created;
   }
-}
-
-/** M2: collapses a candle array to at most one entry per `time`, preserving
- * the FIRST-seen position for each time (a `Map`'s `.set` on an existing key
- * updates the value without moving it) — so a duplicate page landing twice
- * in `older$` (or an overlap surviving the contiguity filter) can never
- * render twice, regardless of which copy the duplicate values differ by. */
-function dedupeByTime(candles: readonly Candle[]): readonly Candle[] {
-  const byTime = new Map<number, Candle>();
-
-  for (const c of candles) {
-    byTime.set(c.time, c);
-  }
-
-  return [...byTime.values()];
 }

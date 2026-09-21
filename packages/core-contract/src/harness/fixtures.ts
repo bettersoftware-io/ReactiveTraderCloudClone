@@ -1,7 +1,13 @@
 import {
+  type Candle,
   type CurrencyPair,
   type Dealer,
+  type DepthBook,
   Direction,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   type Instrument,
   KNOWN_CURRENCY_PAIRS,
   type PositionUpdates,
@@ -126,4 +132,89 @@ function findPair(symbol: string): CurrencyPair {
   }
 
   return pair;
+}
+
+export const AAPL: EquityInstrument = {
+  symbol: "AAPL",
+  name: "Apple Inc.",
+  exchange: "NASDAQ",
+};
+export const MSFT: EquityInstrument = {
+  symbol: "MSFT",
+  name: "Microsoft Corp.",
+  exchange: "NASDAQ",
+};
+export const TSLA: EquityInstrument = {
+  symbol: "TSLA",
+  name: "Tesla Inc.",
+  exchange: "NASDAQ",
+};
+
+/** An equity quote around `last` with a 2-cent spread. */
+export function createEquityQuote(
+  symbol: string,
+  last: number,
+  at = 0,
+): EquityQuote {
+  return {
+    symbol,
+    bid: last - 0.01,
+    ask: last + 0.01,
+    last,
+    changePct: 0,
+    timestamp: at,
+  };
+}
+
+export function createCandle(time: number, close = 100): Candle {
+  return {
+    time,
+    open: close,
+    high: close + 1,
+    low: close - 1,
+    close,
+    volume: 1_000,
+  };
+}
+
+/** `count` candles ascending from `fromTime`, one per `stepMs`. */
+export function createCandles(
+  count: number,
+  fromTime: number,
+  stepMs = 60_000,
+): readonly Candle[] {
+  return Array.from({ length: count }, (_unused, index) => {
+    return createCandle(fromTime + index * stepMs);
+  });
+}
+
+export function createDepthBook(symbol: string, mid = 100): DepthBook {
+  return {
+    symbol,
+    bids: [{ price: mid - 0.01, size: 100 }],
+    asks: [{ price: mid + 0.01, size: 100 }],
+  };
+}
+
+export function createEquityOrder(
+  overrides: Partial<EquityOrder> = {},
+): EquityOrder {
+  return {
+    id: "ord-1",
+    symbol: "AAPL",
+    side: "buy",
+    type: "market",
+    qty: 100,
+    status: "working",
+    filledQty: 0,
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
+export function createEquityPosition(
+  symbol: string,
+  qty = 100,
+): EquityPosition {
+  return { symbol, qty, avgPrice: 100, markPrice: 101, unrealisedPnl: qty };
 }

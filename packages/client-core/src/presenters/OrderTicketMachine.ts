@@ -15,14 +15,22 @@ import type {
 } from "@rtc/domain";
 
 import type { Machine } from "./machine";
+import {
+  createOrderTicketAcc,
+  createOrderTicketForm,
+  orderToTicketPhase,
+  reduceOrderTicket,
+  toPlaceOrderRequest,
+  validateOrderTicket,
+} from "./orderTicketFold";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. `OrderTicketForm` was moved alongside `OrderTicketState`
  * (which embeds it in its "editing" variant) though not itself in Task 3's
- * move table — this file imports it back for local use (`validate`, the
- * `Patch` alias, `initialForm`) but does NOT re-export it, matching its
- * original (unexported) visibility here. */
+ * move table — this file imports it back for local use (the `Patch` alias,
+ * `initialForm`) but does NOT re-export it, matching its original
+ * (unexported) visibility here. */
 export type { OrderTicketIntents, OrderTicketState };
 
 export interface OrderTicketDeps {
@@ -32,36 +40,6 @@ export interface OrderTicketDeps {
 
 type Patch = Partial<OrderTicketForm>;
 
-function validate(form: OrderTicketForm): string | null {
-  if (form.qty <= 0) {
-    return "Quantity must be greater than zero";
-  }
-
-  if (
-    form.type === "limit" &&
-    (form.limitPrice === undefined || form.limitPrice <= 0)
-  ) {
-    return "Limit price required for a limit order";
-  }
-
-  return null;
-}
-
-function orderToPhase(order: EquityOrder): OrderTicketState {
-  switch (order.status) {
-    case "working":
-      return { phase: "working", order };
-    case "partiallyFilled":
-      return { phase: "partiallyFilled", order };
-    case "filled":
-      return { phase: "filled", order };
-    case "rejected":
-      return { phase: "rejected", reason: "Order rejected" };
-    default:
-      return { phase: "submitting" };
-  }
-}
-
 export function createOrderTicketMachine(
   deps: OrderTicketDeps,
 ): Machine<OrderTicketState, OrderTicketIntents> {
@@ -69,12 +47,7 @@ export function createOrderTicketMachine(
   const submit$ = new Subject<void>();
   const reset$ = new Subject<void>();
 
-  const initialForm: OrderTicketForm = {
-    symbol: deps.defaultSymbol,
-    side: "buy",
-    type: "market",
-    qty: 0,
-  };
+  const initialForm = createOrderTicketForm(deps.defaultSymbol);
 
   // Editing form folds patches; resets restore the default.
   const form$ = merge(
@@ -101,7 +74,7 @@ export function createOrderTicketMachine(
   // emissions while a valid submission is in progress.
   const submissions$: Observable<OrderTicketState> = submit$.pipe(
     switchMap(() => {
-      const error = validate(currentForm);
+      const error = validateOrderTicket(currentForm);
 
       if (error) {
         return of<OrderTicketState>({
@@ -111,17 +84,11 @@ export function createOrderTicketMachine(
         });
       }
 
-      const req: PlaceOrderRequest = {
-        symbol: currentForm.symbol,
-        side: currentForm.side,
-        type: currentForm.type,
-        qty: currentForm.qty,
-        limitPrice: currentForm.limitPrice,
-      };
+      const req = toPlaceOrderRequest(currentForm);
       // Emit "submitting" immediately, then lifecycle updates from place().
       return concat(
         of<OrderTicketState>({ phase: "submitting" }),
-        deps.place(req).pipe(map(orderToPhase)),
+        deps.place(req).pipe(map(orderToTicketPhase)),
       );
     }),
   );
@@ -130,7 +97,6 @@ export function createOrderTicketMachine(
   // submit sets inFlight=true; a terminal state (filled/rejected) clears it.
   // This prevents a stray form emission from clobbering the submitting/working/...
   // states if the form ever re-emits while the lifecycle is running.
-  type InFlightAcc = { inFlight: boolean; state: OrderTicketState };
   const stream$: Observable<OrderTicketState> = merge(
     form$.pipe(
       map((form): OrderTicketState => {
@@ -139,46 +105,13 @@ export function createOrderTicketMachine(
     ),
     submissions$,
   ).pipe(
-    scan(
-      (acc: InFlightAcc, next: OrderTicketState): InFlightAcc => {
-        if (next.phase === "submitting") {
-          return { inFlight: true, state: next };
-        }
-
-        if (next.phase === "filled" || next.phase === "rejected") {
-          return { inFlight: false, state: next };
-        }
-
-        if (next.phase === "editing" && next.error !== null) {
-          return { inFlight: false, state: next };
-        }
-
-        // While in flight, suppress stray editing (null-error) emissions.
-        if (acc.inFlight && next.phase === "editing" && next.error === null) {
-          return acc;
-        }
-
-        return { inFlight: acc.inFlight, state: next };
-      },
-      {
-        inFlight: false,
-        state: {
-          phase: "editing",
-          form: initialForm,
-          error: null,
-        } as OrderTicketState,
-      },
-    ),
+    scan(reduceOrderTicket, createOrderTicketAcc(initialForm)),
     map((acc) => {
       return acc.state;
     }),
   );
 
-  const initial: OrderTicketState = {
-    phase: "editing",
-    form: initialForm,
-    error: null,
-  };
+  const initial: OrderTicketState = createOrderTicketAcc(initialForm).state;
   const state$: StateObservable<OrderTicketState> = state(stream$, initial);
   const warm = state$.subscribe();
 

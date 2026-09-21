@@ -1,19 +1,38 @@
-import { BehaviorSubject, merge, Observable, Subject } from "rxjs";
+import {
+  BehaviorSubject,
+  defer,
+  merge,
+  Observable,
+  of,
+  ReplaySubject,
+  Subject,
+} from "rxjs";
 
 import type { AppPorts, ColorSchemeSource, Stream } from "@rtc/core-api";
 import type {
   AnalyticsPort,
   BlotterPort,
+  Candle,
+  CandleTimeframe,
   ConnectionEvent,
   ConnectionEventsPort,
   CreateRfqRequest,
   CurrencyPair,
   Dealer,
   DealerPort,
+  DepthBook,
+  EquityInstrument,
+  EquityOrder,
+  EquityPosition,
+  EquityQuote,
   ExecutionPort,
   ExecutionRequest,
   Instrument,
   InstrumentPort,
+  MarketDataPort,
+  OrderPort,
+  PlaceOrderRequest,
+  PositionPort,
   PositionUpdates,
   PreferencesPort,
   PriceTick,
@@ -32,10 +51,13 @@ import { createPendingQueue } from "#/harness/pendingQueue";
  * stream methods of `PreferencesPort`, plus the app-lifetime methods the
  * harness supplies itself: `connectionEvents.events`,
  * `colorScheme.prefersDark$`, the three FX singletons every core calls once
- * at construction, and the three credit singletons every core calls once at
+ * at construction, the three credit singletons every core calls once at
+ * construction, and the two equities singletons every core calls once at
  * construction. `pricing.getPriceUpdates` is deliberately NOT here:
  * a per-key stream is opened per warm period through the use case's
- * `defer`, in the RxJS core as in the others. */
+ * `defer`, in the RxJS core as in the others. `marketData.quotes/candles/depth`
+ * are per-key and `candleHistory`, `orders.place`, `orders.orders` per-invocation —
+ * none of them under the constancy rule. */
 export type PortMethodName =
   | Extract<keyof PreferencesPort, `${string}$`>
   | "connectionEvents.events"
@@ -45,12 +67,30 @@ export type PortMethodName =
   | "analytics.getAnalytics"
   | "workflow.events"
   | "dealers.getDealers"
-  | "instruments.getInstruments";
+  | "instruments.getInstruments"
+  | "marketData.watchlist"
+  | "positions.positions";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
   readonly symbol: string;
   readonly pipsPosition: number;
+}
+
+/** What the world holds BEFORE the app is composed. `eqWorkspace` reads the
+ * watchlist once, synchronously, at composition (the simulator's
+ * `of(WATCHLIST)` path, the deployed default) — a roster pushed through
+ * `emitWatchlist` can only ever exercise the asynchronous fallback. */
+export interface HarnessSeed {
+  readonly watchlist?: readonly EquityInstrument[];
+}
+
+/** What `marketData.candleHistory` was asked for. */
+export interface CandleHistoryRequest {
+  readonly symbol: string;
+  readonly timeframe: CandleTimeframe;
+  readonly beforeTime: number;
+  readonly count: number;
 }
 
 /** One workflow command the core has subscribed, by kind — the five
@@ -152,6 +192,52 @@ export interface ScriptedDriver {
    * `createRfq` resolves with; the void commands ignore it. */
   resolveWorkflowCommand(rfqId?: number): void;
   failWorkflowCommand(error: unknown): void;
+  /** Push the equities roster into `marketData.watchlist()`. */
+  emitWatchlist(list: readonly EquityInstrument[]): void;
+  watchlistObserved(): boolean;
+  /** Push one equity quote into `marketData.quotes(quote.symbol)`. An
+   * emission for a key nobody has subscribed reaches nobody (the key's
+   * Subject is created on first subscribe). */
+  emitEquityQuote(quote: EquityQuote): void;
+  equityQuoteObserved(symbol: string): boolean;
+  /** Push one candle series into `marketData.candles(symbol, timeframe)`. An
+   * emission for a key nobody has subscribed reaches nobody (the key's
+   * Subject is created on first subscribe). */
+  emitCandles(
+    symbol: string,
+    timeframe: CandleTimeframe,
+    candles: readonly Candle[],
+  ): void;
+  candlesObserved(symbol: string, timeframe: CandleTimeframe): boolean;
+  /** Every `marketData.candleHistory` the core has subscribed and the
+   * driver has not settled, oldest first. */
+  pendingCandleHistory(): readonly CandleHistoryRequest[];
+  /** Settle the OLDEST pending candle-history request with this page (next
+   * + complete). A no-op when nothing is pending. */
+  resolveCandleHistory(page: readonly Candle[]): void;
+  /** Error the OLDEST pending candle-history request. A no-op when nothing
+   * is pending. */
+  failCandleHistory(error: unknown): void;
+  /** Push one depth book into `marketData.depth(book.symbol)`. An emission
+   * for a key nobody has subscribed reaches nobody (the key's Subject is
+   * created on first subscribe). */
+  emitDepth(book: DepthBook): void;
+  depthObserved(symbol: string): boolean;
+  /** Replace the book `orders.orders()` snapshots on the NEXT subscribe. */
+  setOrderBook(orders: readonly EquityOrder[]): void;
+  /** Every `orders.place` the core has subscribed and the driver has not
+   * completed, oldest first. */
+  pendingOrders(): readonly PlaceOrderRequest[];
+  /** Next on the OLDEST pending `orders.place` request; it stays pending. */
+  emitOrderUpdate(order: EquityOrder): void;
+  /** Complete the OLDEST pending `orders.place` request and drop it. */
+  completeOrder(): void;
+  /** Error the OLDEST pending `orders.place` request. A no-op when nothing
+   * is pending. */
+  failOrder(error: unknown): void;
+  /** Push one positions snapshot into `positions.positions()`. */
+  emitPositions(positions: readonly EquityPosition[]): void;
+  positionsObserved(): boolean;
 }
 
 export interface ScriptedPorts {
@@ -161,12 +247,15 @@ export interface ScriptedPorts {
 }
 
 /** Wrap a runner-supplied `AppPorts` so the suites can drive connection
- * events, the colour scheme, the five FX ports and the three credit ports
- * plus `pricing.getRfqQuote` deterministically. The FX and credit ports are
- * REPLACED, not merged: the base simulators tick on real, random timers a
- * suite cannot assert against. Everything else in `base` is passed through
- * untouched — the runner decides what backs it. */
-export function scriptPorts(base: AppPorts): ScriptedPorts {
+ * events, the colour scheme, the five FX ports, the three credit ports plus
+ * `pricing.getRfqQuote`, and the three equities ports deterministically. The
+ * FX and credit ports are REPLACED, not merged: the base simulators tick on
+ * real, random timers a suite cannot assert against. Everything else in
+ * `base` is passed through untouched — the runner decides what backs it. */
+export function scriptPorts(
+  base: AppPorts,
+  seed: HarnessSeed = {},
+): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
   const calls = new Map<string, number>();
@@ -181,6 +270,28 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
   const rfqEvents$ = new Subject<RfqEvent>();
   const dealers$ = new Subject<readonly Dealer[]>();
   const instruments$ = new Subject<readonly Instrument[]>();
+  const watchlist$ = new ReplaySubject<readonly EquityInstrument[]>(1);
+  const equityQuotes = new Map<string, Subject<EquityQuote>>();
+  const candleSeries = new Map<string, Subject<readonly Candle[]>>();
+  const depthBooks = new Map<string, Subject<DepthBook>>();
+  const candleHistory = createPendingQueue<
+    CandleHistoryRequest,
+    readonly Candle[]
+  >();
+  const orderPlacements = createPendingQueue<PlaceOrderRequest, EquityOrder>();
+  const positions$ = new Subject<readonly EquityPosition[]>();
+  let orderBook: readonly EquityOrder[] = [];
+
+  if (seed.watchlist !== undefined) {
+    watchlist$.next(seed.watchlist);
+  }
+
+  function candleKey(
+    symbol: string,
+    timeframe: CandleTimeframe = "1D",
+  ): string {
+    return `${symbol}|${timeframe}`;
+  }
 
   // Built ONCE, and handed to both the core (through `connectionEvents`) and
   // the suites (through `driver.connectionEvents$()`), so the two can never
@@ -200,18 +311,32 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     calls.set(method, (calls.get(method) ?? 0) + 1);
   }
 
-  /** The live Subject for a symbol — replaced after a failure, so the next
+  /** The live Subject for a key — replaced after a failure, so the next
    * subscription starts clean (a terminated Subject would replay its error). */
-  function priceSubject(symbol: string): Subject<PriceTick> {
-    const existing = prices.get(symbol);
+  function liveSubject<T>(
+    subjects: Map<string, Subject<T>>,
+    key: string,
+  ): Subject<T> {
+    const existing = subjects.get(key);
 
     if (existing !== undefined && !existing.closed && !existing.hasError) {
       return existing;
     }
 
-    const fresh = new Subject<PriceTick>();
-    prices.set(symbol, fresh);
+    const fresh = new Subject<T>();
+    subjects.set(key, fresh);
     return fresh;
+  }
+
+  /** A per-key port stream: deferred so each SUBSCRIPTION resolves the live
+   * Subject. */
+  function keyedStream<T>(
+    subjects: Map<string, Subject<T>>,
+    key: string,
+  ): Observable<T> {
+    return new Observable<T>((subscriber) => {
+      return liveSubject(subjects, key).subscribe(subscriber);
+    });
   }
 
   const connectionEvents: ConnectionEventsPort = {
@@ -232,9 +357,7 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     // Deferred so each SUBSCRIPTION resolves the live Subject: after a
     // `failPrice` the replacement is what a fresh warm period gets.
     getPriceUpdates: (symbol: string): Observable<PriceTick> => {
-      return new Observable<PriceTick>((subscriber) => {
-        return priceSubject(symbol).subscribe(subscriber);
-      });
+      return keyedStream(prices, symbol);
     },
     getPriceHistory: (symbol: string): Observable<readonly PriceTick[]> => {
       return base.pricing.getPriceHistory(symbol);
@@ -315,6 +438,58 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
     },
   };
 
+  const marketData: MarketDataPort = {
+    watchlist: (): Observable<readonly EquityInstrument[]> => {
+      recordCall("marketData.watchlist");
+      return watchlist$;
+    },
+    quotes: (symbol: string): Observable<EquityQuote> => {
+      return keyedStream(equityQuotes, symbol);
+    },
+    candles: (
+      symbol: string,
+      timeframe?: CandleTimeframe,
+    ): Observable<readonly Candle[]> => {
+      return keyedStream(candleSeries, candleKey(symbol, timeframe));
+    },
+    candleHistory: (
+      symbol: string,
+      timeframe: CandleTimeframe,
+      beforeTime: number,
+      count: number,
+    ): Observable<readonly Candle[]> => {
+      return candleHistory.open({ symbol, timeframe, beforeTime, count });
+    },
+    depth: (symbol: string): Observable<DepthBook> => {
+      return keyedStream(depthBooks, symbol);
+    },
+  };
+
+  const orders: OrderPort = {
+    // A lifecycle stream: pending from SUBSCRIBE, several updates, then
+    // (optionally) completion.
+    place: (request: PlaceOrderRequest): Observable<EquityOrder> => {
+      return orderPlacements.open(request);
+    },
+    // No presenter cancels an order today; the base keeps the method honest.
+    cancel: (orderId: string): Observable<void> => {
+      return base.orders.cancel(orderId);
+    },
+    // A one-shot snapshot of whatever the book holds when SUBSCRIBED.
+    orders: (): Observable<readonly EquityOrder[]> => {
+      return defer(() => {
+        return of(orderBook);
+      });
+    },
+  };
+
+  const positions: PositionPort = {
+    positions: (): Observable<readonly EquityPosition[]> => {
+      recordCall("positions.positions");
+      return positions$;
+    },
+  };
+
   return {
     ports: {
       ...base,
@@ -329,6 +504,9 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       workflow,
       dealers,
       instruments,
+      marketData,
+      orders,
+      positions,
     },
     driver: {
       emitConnection: (event: ConnectionEvent) => {
@@ -402,6 +580,52 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
         commands.resolve(rfqId);
       },
       failWorkflowCommand: commands.fail,
+      emitWatchlist: (list: readonly EquityInstrument[]) => {
+        watchlist$.next(list);
+      },
+      watchlistObserved: () => {
+        return watchlist$.observed;
+      },
+      emitEquityQuote: (quote: EquityQuote) => {
+        equityQuotes.get(quote.symbol)?.next(quote);
+      },
+      equityQuoteObserved: (symbol: string) => {
+        return equityQuotes.get(symbol)?.observed ?? false;
+      },
+      emitCandles: (
+        symbol: string,
+        timeframe: CandleTimeframe,
+        candles: readonly Candle[],
+      ) => {
+        candleSeries.get(candleKey(symbol, timeframe))?.next(candles);
+      },
+      candlesObserved: (symbol: string, timeframe: CandleTimeframe) => {
+        return (
+          candleSeries.get(candleKey(symbol, timeframe))?.observed ?? false
+        );
+      },
+      pendingCandleHistory: candleHistory.pending,
+      resolveCandleHistory: candleHistory.resolve,
+      failCandleHistory: candleHistory.fail,
+      emitDepth: (book: DepthBook) => {
+        depthBooks.get(book.symbol)?.next(book);
+      },
+      depthObserved: (symbol: string) => {
+        return depthBooks.get(symbol)?.observed ?? false;
+      },
+      setOrderBook: (next: readonly EquityOrder[]) => {
+        orderBook = next;
+      },
+      pendingOrders: orderPlacements.pending,
+      emitOrderUpdate: orderPlacements.emit,
+      completeOrder: orderPlacements.complete,
+      failOrder: orderPlacements.fail,
+      emitPositions: (next: readonly EquityPosition[]) => {
+        positions$.next(next);
+      },
+      positionsObserved: () => {
+        return positions$.observed;
+      },
     },
     teardown: () => {
       connection$.complete();
@@ -420,6 +644,23 @@ export function scriptPorts(base: AppPorts): ScriptedPorts {
       rfqEvents$.complete();
       dealers$.complete();
       instruments$.complete();
+      watchlist$.complete();
+
+      for (const subject of equityQuotes.values()) {
+        subject.complete();
+      }
+
+      for (const subject of candleSeries.values()) {
+        subject.complete();
+      }
+
+      for (const subject of depthBooks.values()) {
+        subject.complete();
+      }
+
+      candleHistory.drain();
+      orderPlacements.drain();
+      positions$.complete();
     },
   };
 }

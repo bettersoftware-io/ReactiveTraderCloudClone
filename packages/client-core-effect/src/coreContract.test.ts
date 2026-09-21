@@ -16,13 +16,14 @@ import {
 import {
   type CoreHarness,
   describeCoreContract,
+  type HarnessSeed,
   scriptPorts,
 } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createApp, createMachineFactories } from "#/composition";
 
-function createEffectHarness(): CoreHarness {
+function createEffectHarness(seed?: HarnessSeed): CoreHarness {
   const base: AppPorts = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
@@ -39,7 +40,7 @@ function createEffectHarness(): CoreHarness {
       },
     },
   };
-  const { ports, driver, teardown } = scriptPorts(base);
+  const { ports, driver, teardown } = scriptPorts(base, seed);
   const app = createApp(ports);
   return {
     app,

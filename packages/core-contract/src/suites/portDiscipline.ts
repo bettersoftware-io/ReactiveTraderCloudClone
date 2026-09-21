@@ -256,5 +256,47 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("watchlist: subscribe, unsubscribe, subscribe again does not call marketData.watchlist() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("marketData.watchlist");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.watchlist;
+        const first = collect(p.watchlist$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.watchlist$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("marketData.watchlist")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("positions: subscribe, unsubscribe, subscribe again does not call positions.positions() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("positions.positions");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.positions;
+        const first = collect(p.positions$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.positions$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("positions.positions")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }

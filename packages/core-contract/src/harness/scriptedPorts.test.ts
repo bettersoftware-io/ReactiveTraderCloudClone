@@ -3,11 +3,18 @@ import { describe, expect, it } from "vitest";
 import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
+  type Candle,
   type CreateRfqRequest,
   type CurrencyPair,
   type Dealer,
+  type DepthBook,
   Direction,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
   type Instrument,
+  type PlaceOrderRequest,
   type PositionUpdates,
   PreferencesSimulator,
   type RfqEvent,
@@ -16,13 +23,20 @@ import {
 } from "@rtc/domain";
 
 import {
+  AAPL,
+  createCandles,
   createDealer,
+  createDepthBook,
+  createEquityOrder,
+  createEquityPosition,
+  createEquityQuote,
   createInstrument,
   createPositionUpdates,
   createRfqQuoteResult,
   createTick,
   createTrade,
   EURUSD,
+  MSFT,
 } from "#/harness/fixtures";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
@@ -298,6 +312,211 @@ describe("scriptPorts port-call counting", () => {
     sub.unsubscribe();
     expect(driver.pendingExecutions()).toEqual([]);
     teardown();
+  });
+});
+
+describe("scriptPorts — equities", () => {
+  it("watchlist: a seed is delivered SYNCHRONOUSLY to the first subscriber; unseeded is silent until emitWatchlist, and a late subscriber then replays it; portCalls counts calls, not subscriptions", () => {
+    const seeded = scriptPorts(createBasePorts(), { watchlist: [AAPL] });
+    const seenSeeded: (readonly EquityInstrument[])[] = [];
+    seeded.ports.marketData.watchlist().subscribe((list) => {
+      seenSeeded.push(list);
+    });
+    expect(seenSeeded).toEqual([[AAPL]]);
+
+    const unseeded = scriptPorts(createBasePorts());
+    const stream = unseeded.ports.marketData.watchlist();
+    const seenFirst: (readonly EquityInstrument[])[] = [];
+    stream.subscribe((list) => {
+      seenFirst.push(list);
+    });
+    expect(seenFirst).toEqual([]);
+    unseeded.driver.emitWatchlist([MSFT]);
+    expect(seenFirst).toEqual([[MSFT]]);
+    const seenLate: (readonly EquityInstrument[])[] = [];
+    stream.subscribe((list) => {
+      seenLate.push(list);
+    });
+    expect(seenLate).toEqual([[MSFT]]);
+    expect(unseeded.driver.portCalls("marketData.watchlist")).toBe(1);
+  });
+
+  it("emitEquityQuote reaches only that symbol's subscribers; equityQuoteObserved flips with subscribe/unsubscribe", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    expect(driver.equityQuoteObserved("AAPL")).toBe(false);
+    const seen: EquityQuote[] = [];
+    const sub = ports.marketData.quotes("AAPL").subscribe((quote) => {
+      seen.push(quote);
+    });
+    expect(driver.equityQuoteObserved("AAPL")).toBe(true);
+    const aaplQuote = createEquityQuote("AAPL", 150);
+    driver.emitEquityQuote(aaplQuote);
+    driver.emitEquityQuote(createEquityQuote("MSFT", 300));
+    expect(seen).toEqual([aaplQuote]);
+    sub.unsubscribe();
+    expect(driver.equityQuoteObserved("AAPL")).toBe(false);
+  });
+
+  it("emitDepth reaches only that symbol's subscribers; depthObserved flips with subscribe/unsubscribe", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    expect(driver.depthObserved("AAPL")).toBe(false);
+    const seen: DepthBook[] = [];
+    const sub = ports.marketData.depth("AAPL").subscribe((book) => {
+      seen.push(book);
+    });
+    expect(driver.depthObserved("AAPL")).toBe(true);
+    const aaplBook = createDepthBook("AAPL");
+    driver.emitDepth(aaplBook);
+    driver.emitDepth(createDepthBook("MSFT"));
+    expect(seen).toEqual([aaplBook]);
+    sub.unsubscribe();
+    expect(driver.depthObserved("AAPL")).toBe(false);
+  });
+
+  it("candles are keyed by (symbol, timeframe): emitCandles('AAPL','1W',…) reaches candles('AAPL','1W') and not candles('AAPL'); candles('AAPL') and candles('AAPL','1D') share a key", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const seenDefault: (readonly Candle[])[] = [];
+    const seen1D: (readonly Candle[])[] = [];
+    const seen1W: (readonly Candle[])[] = [];
+    ports.marketData.candles("AAPL").subscribe((candles) => {
+      seenDefault.push(candles);
+    });
+    ports.marketData.candles("AAPL", "1D").subscribe((candles) => {
+      seen1D.push(candles);
+    });
+    ports.marketData.candles("AAPL", "1W").subscribe((candles) => {
+      seen1W.push(candles);
+    });
+    const weekly = createCandles(3, 0);
+    driver.emitCandles("AAPL", "1W", weekly);
+    expect(seen1W).toEqual([weekly]);
+    expect(seenDefault).toEqual([]);
+    expect(seen1D).toEqual([]);
+    const daily = createCandles(2, 0);
+    driver.emitCandles("AAPL", "1D", daily);
+    expect(seenDefault).toEqual([daily]);
+    expect(seen1D).toEqual([daily]);
+    expect(driver.candlesObserved("AAPL", "1D")).toBe(true);
+    expect(driver.candlesObserved("AAPL", "1W")).toBe(true);
+  });
+
+  it("candleHistory is lazy (pending only once subscribed); the pending request is {symbol,timeframe,beforeTime,count}; resolveCandleHistory emits the page and completes; failCandleHistory errors", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const request = ports.marketData.candleHistory("AAPL", "1D", 1_000, 300);
+    expect(driver.pendingCandleHistory()).toEqual([]);
+    const seen: (readonly Candle[])[] = [];
+    let completed = false;
+    request.subscribe({
+      next: (candles: readonly Candle[]) => {
+        seen.push(candles);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    expect(driver.pendingCandleHistory()).toEqual([
+      { symbol: "AAPL", timeframe: "1D", beforeTime: 1_000, count: 300 },
+    ]);
+    const page = createCandles(300, 0);
+    driver.resolveCandleHistory(page);
+    expect(seen).toEqual([page]);
+    expect(completed).toBe(true);
+    expect(driver.pendingCandleHistory()).toEqual([]);
+
+    const errors: unknown[] = [];
+    ports.marketData.candleHistory("AAPL", "1D", 700, 300).subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    driver.failCandleHistory(new Error("bust"));
+    expect(errors).toHaveLength(1);
+  });
+
+  it("orders.place is lazy; emitOrderUpdate twice then completeOrder delivers both and completes; failOrder errors; an unsubscribe withdraws the pending order", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const request: PlaceOrderRequest = {
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 100,
+    };
+    const placed = ports.orders.place(request);
+    expect(driver.pendingOrders()).toEqual([]);
+    const seen: EquityOrder[] = [];
+    let completed = false;
+    placed.subscribe({
+      next: (order: EquityOrder) => {
+        seen.push(order);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    expect(driver.pendingOrders()).toEqual([request]);
+    const working = createEquityOrder({ status: "working" });
+    const filled = createEquityOrder({ status: "filled", filledQty: 100 });
+    driver.emitOrderUpdate(working);
+    driver.emitOrderUpdate(filled);
+    expect(seen).toEqual([working, filled]);
+    expect(completed).toBe(false);
+    driver.completeOrder();
+    expect(completed).toBe(true);
+    expect(driver.pendingOrders()).toEqual([]);
+
+    const errors: unknown[] = [];
+    ports.orders.place({ ...request, qty: 50 }).subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    driver.failOrder(new Error("bust"));
+    expect(errors).toHaveLength(1);
+
+    const sub = ports.orders.place({ ...request, qty: 25 }).subscribe();
+    expect(driver.pendingOrders()).toHaveLength(1);
+    sub.unsubscribe();
+    expect(driver.pendingOrders()).toEqual([]);
+  });
+
+  it("orders.orders() emits the CURRENT book on each subscribe (setOrderBook between two subscriptions shows through) and completes", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const first: (readonly EquityOrder[])[] = [];
+    let firstCompleted = false;
+    ports.orders.orders().subscribe({
+      next: (list: readonly EquityOrder[]) => {
+        first.push(list);
+      },
+      complete: () => {
+        firstCompleted = true;
+      },
+    });
+    expect(first).toEqual([[]]);
+    expect(firstCompleted).toBe(true);
+
+    const order = createEquityOrder();
+    driver.setOrderBook([order]);
+    const second: (readonly EquityOrder[])[] = [];
+    ports.orders.orders().subscribe((list) => {
+      second.push(list);
+    });
+    expect(second).toEqual([[order]]);
+  });
+
+  it("emitPositions reaches positions.positions() subscribers; positionsObserved flips with subscribe/unsubscribe; portCalls counted", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    expect(driver.positionsObserved()).toBe(false);
+    const seen: (readonly EquityPosition[])[] = [];
+    const sub = ports.positions.positions().subscribe((list) => {
+      seen.push(list);
+    });
+    expect(driver.positionsObserved()).toBe(true);
+    expect(driver.portCalls("positions.positions")).toBe(1);
+    const positions = [createEquityPosition("AAPL")];
+    driver.emitPositions(positions);
+    expect(seen).toEqual([positions]);
+    sub.unsubscribe();
+    expect(driver.positionsObserved()).toBe(false);
   });
 });
 

@@ -21,6 +21,9 @@ import type {
   AppPorts,
   AuthPresenter as AuthPresenterApi,
   CoreFactory,
+  EquityFillSignal,
+  EqWorkspaceIntents,
+  EqWorkspaceState,
   Presenters,
 } from "@rtc/core-api";
 import type {
@@ -97,6 +100,7 @@ import {
   ErrorRatePresenter,
   EventLogPresenter,
   ForceBootAnimationPresenter,
+  firstWatchlistSymbol,
   InstrumentsPresenter,
   type JarvisDriverDeps,
   type JarvisEntry,
@@ -210,7 +214,7 @@ function peekFirstWatchlistSymbol(
   let first = "";
   const sub = watchlist$.subscribe((list) => {
     if (first === "" && list.length > 0) {
-      first = list[0]?.symbol ?? "";
+      first = firstWatchlistSymbol(list);
     }
   });
   sub.unsubscribe();
@@ -230,7 +234,7 @@ export function firstWatchlistSymbol$(
 ): Observable<string> {
   return watchlist$.pipe(
     map((list) => {
-      return list[0]?.symbol ?? "";
+      return firstWatchlistSymbol(list);
     }),
     filter((symbol) => {
       return symbol !== "";
@@ -403,7 +407,19 @@ function wireJarvisHistorySource(
   };
 }
 
-export function createApp(ports: AppPorts): App {
+/** Members an alternative core owns NATIVELY while this app's internal
+ * consumers still need to reach them — strangler-phase scaffolding, deleted
+ * with delegation in slice 8. The base app still builds and exposes its OWN
+ * instance of each (so the siblings' parity drift test can tell native from
+ * delegated by reference); a seam only redirects what `JarvisDriverMachine`
+ * and `AnimationDirector` read. Without it, a Jarvis drive batch would
+ * mutate a workspace the UI no longer renders. */
+export interface CoreSeams {
+  readonly eqWorkspace?: Machine<EqWorkspaceState, EqWorkspaceIntents>;
+  readonly equityFills$?: Observable<EquityFillSignal>;
+}
+
+export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
   const connection = new ConnectionStatusPresenter(ports.connectionEvents);
@@ -1023,7 +1039,7 @@ export function createApp(ports: AppPorts): App {
     ),
     workspaceNav,
     layout: layoutFor,
-    eqWorkspace,
+    eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
     setThemeSkin: (skin: ThemeSkin): void => {
       themeSkinPreference.setSkin(skin);
     },
@@ -1195,7 +1211,7 @@ export function createApp(ports: AppPorts): App {
       connectionStatus$: connection.status$,
       executions$: execution.executions$,
       rfqEvents$: rfqs.events$,
-      equityFills$: ordersBlotter.fills$,
+      equityFills$: seams.equityFills$ ?? ordersBlotter.fills$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),
     // Boot-splash visibility, seeded once from the platform's boot-splash
