@@ -9,8 +9,7 @@ import type { QuoteRequest } from "@rtc/domain";
 import { once } from "#/bridge/in";
 import { storeToStateStream } from "#/bridge/out";
 import { AbortError } from "#/kernel/AbortError";
-import { reportAsync } from "#/kernel/reportAsync";
-import { spawn } from "#/kernel/spawn";
+import { createRunSlot } from "#/kernel/runSlot";
 import { createStore } from "#/kernel/store";
 
 export interface TicketSubmissionDeps {
@@ -28,36 +27,23 @@ export function createTicketSubmissionMachine(
   deps: TicketSubmissionDeps,
 ): Machine<TicketSubmissionState, TicketSubmissionIntents> {
   const store = createStore<TicketSubmissionState>(NOT_SUBMITTED);
-  let active: AbortController | null = null;
-  let disposed = false;
-
-  function endActive(): void {
-    active?.abort();
-    active = null;
-  }
+  const slot = createRunSlot(store);
 
   function runCommand(command: Stream<void>): void {
-    if (disposed) {
-      return;
-    }
-
-    endActive();
-    const controller = new AbortController();
-    active = controller;
-    void spawn(async () => {
+    slot.start(async (run) => {
       try {
-        await once(command, controller.signal);
+        await once(command, run.signal);
       } catch (error) {
         if (error instanceof AbortError) {
           throw error;
         }
 
-        store.set(NOT_SUBMITTED);
+        run.set(NOT_SUBMITTED);
         return;
       }
 
-      store.set(SUBMITTED);
-    }, reportAsync);
+      run.set(SUBMITTED);
+    });
   }
 
   return {
@@ -71,8 +57,7 @@ export function createTicketSubmissionMachine(
       },
     },
     dispose: () => {
-      disposed = true;
-      endActive();
+      slot.dispose();
     },
   };
 }

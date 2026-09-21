@@ -16,9 +16,8 @@ import {
 import { once } from "#/bridge/in";
 import { storeToStateStream } from "#/bridge/out";
 import { AbortError } from "#/kernel/AbortError";
-import { reportAsync } from "#/kernel/reportAsync";
+import { createRunSlot, type Run } from "#/kernel/runSlot";
 import { sleep } from "#/kernel/sleep";
-import { spawn } from "#/kernel/spawn";
 import { createStore } from "#/kernel/store";
 
 export interface RfqTileDeps {
@@ -50,37 +49,22 @@ export function createRfqTileMachine(
   deps: RfqTileDeps,
 ): Machine<RfqState, RfqTileIntents> {
   const store = createStore<RfqState>(INIT);
-  let active: AbortController | null = null;
-  let disposed = false;
+  const slot = createRunSlot(store);
 
-  function endActive(): void {
-    active?.abort();
-    active = null;
+  async function holdRejected(run: Run<RfqState>): Promise<void> {
+    run.set(REJECTED);
+    await sleep(REJECTED_DISPLAY_MS, run.signal);
+    run.set(INIT);
   }
 
-  function start(run: (signal: AbortSignal) => Promise<void>): void {
-    endActive();
-    const controller = new AbortController();
-    active = controller;
-    void spawn(() => {
-      return run(controller.signal);
-    }, reportAsync);
-  }
-
-  async function holdRejected(signal: AbortSignal): Promise<void> {
-    store.set(REJECTED);
-    await sleep(REJECTED_DISPLAY_MS, signal);
-    store.set(INIT);
-  }
-
-  async function runQuote(signal: AbortSignal): Promise<void> {
-    store.set(REQUESTED);
+  async function runQuote(run: Run<RfqState>): Promise<void> {
+    run.set(REQUESTED);
     let quote: RfqQuote | null = null;
 
     try {
       const result = await once(
         deps.requestQuote(pair.symbol, pair.pipsPosition),
-        signal,
+        run.signal,
       );
       quote = { bid: result.bid, ask: result.ask, timeoutMs: RFQ_TIMEOUT_MS };
     } catch (error) {
@@ -95,43 +79,42 @@ export function createRfqTileMachine(
         remainingMs > 0;
         remainingMs -= RFQ_COUNTDOWN_INTERVAL_MS
       ) {
-        store.set({ status: "received", quote, remainingMs });
-        await sleep(RFQ_COUNTDOWN_INTERVAL_MS, signal);
+        run.set({ status: "received", quote, remainingMs });
+        await sleep(RFQ_COUNTDOWN_INTERVAL_MS, run.signal);
       }
     }
 
-    await holdRejected(signal);
+    await holdRejected(run);
   }
 
   return {
     state$: storeToStateStream(store),
     intents: {
       requestQuote: () => {
-        if (!disposed && store.get().status === "init") {
-          start(runQuote);
+        if (!slot.isDisposed() && store.get().status === "init") {
+          slot.start(runQuote);
         }
       },
       cancel: () => {
-        if (!disposed && store.get().status === "requested") {
-          endActive();
+        if (!slot.isDisposed() && store.get().status === "requested") {
+          slot.end();
           store.set(INIT);
         }
       },
       accept: () => {
-        if (!disposed && store.get().status === "received") {
-          endActive();
+        if (!slot.isDisposed() && store.get().status === "received") {
+          slot.end();
           store.set(INIT);
         }
       },
       reject: () => {
-        if (!disposed && store.get().status === "received") {
-          start(holdRejected);
+        if (!slot.isDisposed() && store.get().status === "received") {
+          slot.start(holdRejected);
         }
       },
     },
     dispose: () => {
-      disposed = true;
-      endActive();
+      slot.dispose();
     },
   };
 }

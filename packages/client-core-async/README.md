@@ -15,7 +15,7 @@ src/parity.json      which members are native vs delegated
 
 ### Kernel
 
-Four primitives, and nothing else:
+Seven primitives, and nothing else:
 
 | primitive | RxJS equivalent |
 |---|---|
@@ -25,6 +25,7 @@ Four primitives, and nothing else:
 | `sleep` | `timer(…)` / `delay(…)` under an `AbortSignal` |
 | `TopicOptions.retainUntil` | `shareReplay({ refCount: false })` — the RxJS core's `warmReplay`: the producer survives zero subscribers and is ended by that signal |
 | `relayTopic` | a producer CONSUMING another topic (`map` / `scan`): released synchronously on abort, and a source failure or a throwing consumer fails the producer |
+| `createRunSlot` | at most one live run for a Store-backed machine — the RxJS `switchMap` written once; the run reaches the world only through a `Run` whose `set`/`ifCurrent` are dropped once its signal has aborted |
 
 ### Bridge
 

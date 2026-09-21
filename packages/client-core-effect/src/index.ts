@@ -65,6 +65,7 @@ export {
 } from "#/machines/rfqSubmission";
 export { createRfqTileMachine, type RfqTileDeps } from "#/machines/rfqTile";
 export { createRowHighlightMachine } from "#/machines/rowHighlight";
+export { createRunSlot, type Run, type RunSlot } from "#/machines/runSlot";
 export {
   createStaleFlagMachine,
   type StaleFlagDeps,

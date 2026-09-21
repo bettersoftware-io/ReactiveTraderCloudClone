@@ -1,12 +1,4 @@
-import {
-  Duration,
-  Effect,
-  Exit,
-  Fiber,
-  Option,
-  Scope,
-  SubscriptionRef,
-} from "effect";
+import { Duration, Effect, Option, SubscriptionRef } from "effect";
 
 import type {
   Machine,
@@ -29,6 +21,7 @@ import {
   setRefIfChanged,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface RfqTileDeps {
   /** The request-quote command (`RfqQuotePresenter.requestQuote`), injected
@@ -39,10 +32,6 @@ export interface RfqTileDeps {
   ) => Stream<RfqQuoteResult>;
 }
 
-/** What a run writes with: a guard on the run token, so a run superseded a
- * fiber-step ago cannot write over its successor's state. */
-type Write = (next: (current: RfqState) => RfqState) => Effect.Effect<void>;
-
 const INIT: RfqState = { status: "init", quote: null, remainingMs: 0 };
 const REQUESTED: RfqState = {
   status: "requested",
@@ -51,108 +40,83 @@ const REQUESTED: RfqState = {
 };
 const REJECTED: RfqState = { status: "rejected", quote: null, remainingMs: 0 };
 
+function holdRejected(run: Run<RfqState>): Effect.Effect<void> {
+  return Effect.gen(function* runRejectedHold() {
+    yield* run.write(() => {
+      return REJECTED;
+    });
+    yield* Effect.sleep(Duration.millis(REJECTED_DISPLAY_MS));
+    yield* run.write(() => {
+      return INIT;
+    });
+  });
+}
+
+function runQuote(
+  pair: CurrencyPair,
+  deps: RfqTileDeps,
+  run: Run<RfqState>,
+): Effect.Effect<void> {
+  return Effect.gen(function* runQuoteRequest() {
+    yield* run.write(() => {
+      return REQUESTED;
+    });
+    const result = yield* rpc(
+      deps.requestQuote(pair.symbol, pair.pipsPosition),
+    ).pipe(
+      Effect.map(Option.some),
+      Effect.catchAll(() => {
+        return Effect.succeed(Option.none<RfqQuoteResult>());
+      }),
+    );
+
+    if (Option.isSome(result)) {
+      const quote: RfqQuote = {
+        bid: result.value.bid,
+        ask: result.value.ask,
+        timeoutMs: RFQ_TIMEOUT_MS,
+      };
+
+      for (
+        let remainingMs = RFQ_TIMEOUT_MS;
+        remainingMs > 0;
+        remainingMs -= RFQ_COUNTDOWN_INTERVAL_MS
+      ) {
+        const tick: RfqState = { status: "received", quote, remainingMs };
+        yield* run.write(() => {
+          return tick;
+        });
+        yield* Effect.sleep(Duration.millis(RFQ_COUNTDOWN_INTERVAL_MS));
+      }
+    }
+
+    yield* holdRejected(run);
+  });
+}
+
 /** The RxJS machine's one-run-per-request shape on a `SubscriptionRef`
- * under a detached host: `requested`, then a received countdown derived
- * from the tick index in ONE looping fiber (never a timer that forks its
- * successor — a forked child is interrupted when its parent completes,
- * §22), falling through to the rejected hold at zero, or the hold at once
- * when the request fails. `cancel`/`accept` interrupt the run and reset;
- * `reject` interrupts it and runs the hold alone; intents are guarded to
- * their state. Interruption releases the in-flight port call through
- * `rpc`'s finalizer. */
+ * under a detached host, with `createRunSlot` owning the run token and
+ * fiber: `requested`, then a received countdown derived from the tick
+ * index in ONE looping fiber (never a timer that forks its successor — a
+ * forked child is interrupted when its parent completes, §22), falling
+ * through to the rejected hold at zero, or the hold at once when the
+ * request fails. `cancel`/`accept` end the run and reset; `reject` ends it
+ * and runs the hold alone; intents are guarded to their state. Interruption
+ * releases the in-flight port call through `rpc`'s finalizer. */
 export function createRfqTileMachine(
   pair: CurrencyPair,
   deps: RfqTileDeps,
 ): Machine<RfqState, RfqTileIntents> {
   const host = createDetachedHost();
   const ref = host.runtime.runSync(SubscriptionRef.make<RfqState>(INIT));
-  // The live run's token and fiber. The token guards every write:
-  // interruption lands at the run's next suspension, not at the
-  // `Fiber.interrupt` call, so a superseded run must not be able to write
-  // over its successor's state (`tileExecution`'s shape).
-  let active: object | null = null;
-  let activeFiber: Fiber.RuntimeFiber<void> | null = null;
-  let disposed = false;
+  const slot = createRunSlot(host, ref);
 
   function current(): RfqState {
     return host.runtime.runSync(SubscriptionRef.get(ref));
   }
 
-  function endActive(): void {
-    active = null;
-
-    if (activeFiber !== null) {
-      Effect.runFork(Fiber.interrupt(activeFiber));
-      activeFiber = null;
-    }
-  }
-
-  function holdRejected(write: Write): Effect.Effect<void> {
-    return Effect.gen(function* runRejectedHold() {
-      yield* write(() => {
-        return REJECTED;
-      });
-      yield* Effect.sleep(Duration.millis(REJECTED_DISPLAY_MS));
-      yield* write(() => {
-        return INIT;
-      });
-    });
-  }
-
-  function runQuote(write: Write): Effect.Effect<void> {
-    return Effect.gen(function* runQuoteRequest() {
-      yield* write(() => {
-        return REQUESTED;
-      });
-      const result = yield* rpc(
-        deps.requestQuote(pair.symbol, pair.pipsPosition),
-      ).pipe(
-        Effect.map(Option.some),
-        Effect.catchAll(() => {
-          return Effect.succeed(Option.none<RfqQuoteResult>());
-        }),
-      );
-
-      if (Option.isSome(result)) {
-        const quote: RfqQuote = {
-          bid: result.value.bid,
-          ask: result.value.ask,
-          timeoutMs: RFQ_TIMEOUT_MS,
-        };
-
-        for (
-          let remainingMs = RFQ_TIMEOUT_MS;
-          remainingMs > 0;
-          remainingMs -= RFQ_COUNTDOWN_INTERVAL_MS
-        ) {
-          const tick: RfqState = { status: "received", quote, remainingMs };
-          yield* write(() => {
-            return tick;
-          });
-          yield* Effect.sleep(Duration.millis(RFQ_COUNTDOWN_INTERVAL_MS));
-        }
-      }
-
-      yield* holdRejected(write);
-    });
-  }
-
-  function start(build: (write: Write) => Effect.Effect<void>): void {
-    endActive();
-    const token = {};
-    active = token;
-
-    function write(next: (state: RfqState) => RfqState): Effect.Effect<void> {
-      return Effect.suspend(() => {
-        return active === token ? setRefIfChanged(ref, next) : Effect.void;
-      });
-    }
-
-    activeFiber = host.runtime.runFork(build(write), { scope: host.scope });
-  }
-
   function reset(): void {
-    endActive();
+    slot.end();
     host.runtime.runSync(
       setRefIfChanged(ref, () => {
         return INIT;
@@ -164,30 +128,32 @@ export function createRfqTileMachine(
     state$: refToStateStream(host, ref),
     intents: {
       requestQuote: () => {
-        if (!disposed && current().status === "init") {
-          start(runQuote);
+        if (!slot.isDisposed() && current().status === "init") {
+          slot.start((run: Run<RfqState>) => {
+            return runQuote(pair, deps, run);
+          });
         }
       },
       cancel: () => {
-        if (!disposed && current().status === "requested") {
+        if (!slot.isDisposed() && current().status === "requested") {
           reset();
         }
       },
       accept: () => {
-        if (!disposed && current().status === "received") {
+        if (!slot.isDisposed() && current().status === "received") {
           reset();
         }
       },
       reject: () => {
-        if (!disposed && current().status === "received") {
-          start(holdRejected);
+        if (!slot.isDisposed() && current().status === "received") {
+          slot.start((run: Run<RfqState>) => {
+            return holdRejected(run);
+          });
         }
       },
     },
     dispose: () => {
-      disposed = true;
-      endActive();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      slot.dispose();
     },
   };
 }
