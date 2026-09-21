@@ -27,9 +27,8 @@ import {
 import { once } from "#/bridge/in";
 import { storeToStateStream } from "#/bridge/out";
 import { AbortError } from "#/kernel/AbortError";
-import { reportAsync } from "#/kernel/reportAsync";
+import { createRunSlot, type Run } from "#/kernel/runSlot";
 import { sleep } from "#/kernel/sleep";
-import { spawn } from "#/kernel/spawn";
 import { createStore } from "#/kernel/store";
 
 export interface TileExecutionDeps {
@@ -52,19 +51,13 @@ export function createTileExecutionMachine(
   deps: TileExecutionDeps,
 ): Machine<TileExecutionState, TileExecutionIntents> {
   const store = createStore<TileExecutionState>(READY_TILE_EXECUTION);
-  let active: AbortController | null = null;
-  let disposed = false;
+  const slot = createRunSlot(store);
 
-  function endActive(): void {
-    active?.abort();
-    active = null;
-  }
-
-  async function run(
+  async function runExecution(
     input: ExecuteTradeInput,
-    signal: AbortSignal,
+    run: Run<TileExecutionState>,
   ): Promise<void> {
-    store.set(STARTED_TILE_EXECUTION);
+    run.set(STARTED_TILE_EXECUTION);
     // This sleep is never cancelled on outcome (only on abort), and its
     // guard reads the LIVE store — unlike the RxJS core, whose guard reads
     // the scan accumulator, which is already terminal by the time this
@@ -74,9 +67,9 @@ export function createTileExecutionMachine(
     // earlier than outcome + 5 000 ms, so this guard can never observe a
     // `ready` store. If the constants ever cross, a dismissed tile would
     // re-enter `tooLong`.
-    void sleep(TOO_LONG_THRESHOLD_MS, signal).then(
+    void sleep(TOO_LONG_THRESHOLD_MS, run.signal).then(
       () => {
-        store.set((current) => {
+        run.set((current) => {
           return isTerminalTileExecution(current)
             ? current
             : TOO_LONG_TILE_EXECUTION;
@@ -87,7 +80,7 @@ export function createTileExecutionMachine(
       },
     );
     const outcome = await Promise.race([
-      once(deps.execute(input), signal).then(
+      once(deps.execute(input), run.signal).then(
         finishedTileExecution,
         (error: unknown) => {
           if (error instanceof AbortError) {
@@ -97,42 +90,34 @@ export function createTileExecutionMachine(
           return TIMED_OUT_TILE_EXECUTION;
         },
       ),
-      sleep(EXECUTION_TIMEOUT_MS, signal).then(() => {
+      sleep(EXECUTION_TIMEOUT_MS, run.signal).then(() => {
         return TIMEOUT_TILE_EXECUTION;
       }),
     ]);
-    store.set(outcome);
-    await sleep(CONFIRMATION_DISMISS_MS, signal);
-    store.set(READY_TILE_EXECUTION);
+    run.set(outcome);
+    await sleep(CONFIRMATION_DISMISS_MS, run.signal);
+    run.set(READY_TILE_EXECUTION);
   }
 
   return {
     state$: storeToStateStream(store),
     intents: {
       execute: (direction: Direction, price: Price, notional: number) => {
-        if (disposed) {
-          return;
-        }
-
-        endActive();
-        const controller = new AbortController();
-        active = controller;
-        void spawn(() => {
-          return run({ pair, direction, price, notional }, controller.signal);
-        }, reportAsync);
+        slot.start((run) => {
+          return runExecution({ pair, direction, price, notional }, run);
+        });
       },
       dismiss: () => {
-        if (disposed) {
+        if (slot.isDisposed()) {
           return;
         }
 
-        endActive();
+        slot.end();
         store.set(READY_TILE_EXECUTION);
       },
     },
     dispose: () => {
-      disposed = true;
-      endActive();
+      slot.dispose();
     },
   };
 }

@@ -9,9 +9,8 @@ import { type CreateRfqInput, RFQ_REDIRECT_DELAY_MS } from "@rtc/domain";
 import { once } from "#/bridge/in";
 import { storeToStateStream } from "#/bridge/out";
 import { AbortError } from "#/kernel/AbortError";
-import { reportAsync } from "#/kernel/reportAsync";
+import { createRunSlot, type Run } from "#/kernel/runSlot";
 import { sleep } from "#/kernel/sleep";
-import { spawn } from "#/kernel/spawn";
 import { createStore } from "#/kernel/store";
 
 export interface RfqSubmissionDeps {
@@ -33,68 +32,49 @@ export function createRfqSubmissionMachine(
   deps: RfqSubmissionDeps,
 ): Machine<RfqSubmissionState, RfqSubmissionIntents> {
   const store = createStore<RfqSubmissionState>(EDITING);
-  let active: AbortController | null = null;
-  let disposed = false;
+  const slot = createRunSlot(store);
 
-  function endActive(): void {
-    active?.abort();
-    active = null;
-  }
-
-  async function run(
+  async function submitRfq(
     input: CreateRfqInput,
     onRedirect: (rfqId: number) => void,
-    signal: AbortSignal,
+    run: Run<RfqSubmissionState>,
   ): Promise<void> {
-    store.set(SUBMITTING);
+    run.set(SUBMITTING);
     let rfqId: number;
 
     try {
-      rfqId = await once(deps.createRfq(input), signal);
+      rfqId = await once(deps.createRfq(input), run.signal);
     } catch (error) {
       if (error instanceof AbortError) {
         throw error;
       }
 
-      store.set(EDITING);
+      run.set(EDITING);
       return;
     }
 
-    store.set({ status: "confirmed", rfqId });
-    await sleep(RFQ_REDIRECT_DELAY_MS, signal);
-
-    if (signal.aborted) {
-      return;
-    }
-
-    onRedirect(rfqId);
-
-    if (signal.aborted) {
-      return;
-    }
-
-    store.set(EDITING);
+    run.set({ status: "confirmed", rfqId });
+    await sleep(RFQ_REDIRECT_DELAY_MS, run.signal);
+    // Through the run, like a write: a consumer that disposes INSIDE the
+    // callback aborts this run, and the trailing `editing` is then dropped —
+    // the machine stays `confirmed`, as the Effect twin does (slice 3 R11).
+    run.ifCurrent(() => {
+      onRedirect(rfqId);
+    });
+    run.set(EDITING);
   }
 
   return {
     state$: storeToStateStream(store),
     intents: {
       submit: (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
-        if (disposed) {
-          return;
-        }
-
-        endActive();
-        const controller = new AbortController();
-        active = controller;
-        void spawn(() => {
-          return run(input, onRedirect, controller.signal);
-        }, reportAsync);
+        slot.start((run) => {
+          return submitRfq(input, onRedirect, run);
+        });
       },
     },
     dispose: () => {
-      disposed = true;
-      endActive();
+      slot.dispose();
     },
   };
 }

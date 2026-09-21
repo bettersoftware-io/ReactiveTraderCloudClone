@@ -17,6 +17,7 @@ export {
 } from "#/composition";
 export { AbortError } from "#/kernel/AbortError";
 export { relayTopic } from "#/kernel/relayTopic";
+export { createRunSlot, type Run, type RunSlot } from "#/kernel/runSlot";
 export { sleep } from "#/kernel/sleep";
 export { spawn } from "#/kernel/spawn";
 export { createStore, type Store } from "#/kernel/store";
