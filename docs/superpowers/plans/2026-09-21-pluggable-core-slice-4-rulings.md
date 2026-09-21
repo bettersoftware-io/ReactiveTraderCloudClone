@@ -1,6 +1,6 @@
 # Slice 4 — rulings ledger (SDD execution, 2026-09-21)
 
-Plan: [2026-09-21-pluggable-core-slice-4.md](2026-09-21-pluggable-core-slice-4.md) (PR #807). Three PRs: **PR R** #808 (Tasks 4–5: `createRunSlot` in both alternative cores), **PR A** #809 (Tasks 1–3: pure folds, core seams, the scripted equities harness, eight suites), **PR B** (Tasks 6–8: the ports, docs, the gate). Every `Ruling:` line from the three execution ledgers, in the order made, each with what it costs if wrong; then the up-front rulings that changed shape once they met the code, what the reviews caught, the implementers' recorded deviations, and the deferred minors with their triage. The plan's own seventeen up-front rulings are in the plan file.
+Plan: [2026-09-21-pluggable-core-slice-4.md](2026-09-21-pluggable-core-slice-4.md) (PR #807). Three PRs: **PR R** #808 (Tasks 4–5: `createRunSlot` in both alternative cores), **PR A** #809 (Tasks 1–3: pure folds, core seams, the scripted equities harness, eight suites), **PR B** #810 (Tasks 6–8: the ports, docs, the gate). Every `Ruling:` line from the three execution ledgers, in the order made, each with what it costs if wrong; then the up-front rulings that changed shape once they met the code, what the reviews caught, the implementers' recorded deviations, and the deferred minors with their triage. The plan's own seventeen up-front rulings are in the plan file.
 
 ## Rulings made during execution
 
