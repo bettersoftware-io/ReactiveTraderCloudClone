@@ -2,6 +2,7 @@ import {
   Cause,
   Effect,
   Exit,
+  Fiber,
   Layer,
   ManagedRuntime,
   Option,
@@ -15,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { reconnect$ } from "@rtc/client-core";
 
 import {
+  createChildHost,
   createDetachedHost,
   type EffectHost,
   type FoldUpdate,
@@ -22,7 +24,9 @@ import {
   fromPortIn,
   pushReconnectIntent,
   refToStateStream,
+  refToWarmStateStream,
   reportOutOfBand,
+  scopedPortStream,
   setRefIfChanged,
   sharedFold,
   streamToStream,
@@ -851,6 +855,176 @@ describe("bridge/out", () => {
       vi.runAllTimers();
     }).toThrow("machine");
     vi.useRealTimers();
+  });
+
+  it("scopedPortStream() calls open when the stream RUNS, not when it is built — and once per run", async () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const opened: Subject<number>[] = [];
+    const sources = [first, second];
+    const stream = scopedPortStream<number>(() => {
+      const source = sources[opened.length] as Subject<number>;
+      opened.push(source);
+      return source;
+    });
+    // Built, not run: nothing called, nothing subscribed.
+    expect(opened).toEqual([]);
+    expect(first.observed).toBe(false);
+
+    const firstRun = Effect.runFork(
+      Stream.runForEach(stream, () => {
+        return Effect.void;
+      }),
+    );
+    await tick();
+    expect(opened).toEqual([first]);
+    expect(first.observed).toBe(true);
+
+    // A SECOND run of the same value is a second port call, with its own
+    // subscription — the property `rpc` has and a hoisted `fromObservable`
+    // does not.
+    const secondRun = Effect.runFork(
+      Stream.runForEach(stream, () => {
+        return Effect.void;
+      }),
+    );
+    await tick();
+    expect(opened).toEqual([first, second]);
+    expect(second.observed).toBe(true);
+
+    await Effect.runPromise(Fiber.interrupt(firstRun));
+    await Effect.runPromise(Fiber.interrupt(secondRun));
+  });
+
+  it("scopedPortStream() delivers every value in order and ends on the source's completion", async () => {
+    const subject = new Subject<number>();
+    const seen: number[] = [];
+    const drained = Effect.runPromise(
+      Stream.runForEach(
+        scopedPortStream(() => {
+          return subject;
+        }),
+        (value: number) => {
+          return Effect.sync(() => {
+            seen.push(value);
+          });
+        },
+      ),
+    );
+    await tick();
+    subject.next(1);
+    subject.next(2);
+    subject.next(3);
+    subject.complete();
+    await drained;
+    expect(seen).toEqual([1, 2, 3]);
+  });
+
+  it("scopedPortStream() releases the source when the running fiber is interrupted", async () => {
+    const subject = new Subject<number>();
+    const fiber = Effect.runFork(
+      Stream.runForEach(
+        scopedPortStream(() => {
+          return subject;
+        }),
+        () => {
+          return Effect.void;
+        },
+      ),
+    );
+    await tick();
+    expect(subject.observed).toBe(true);
+    await Effect.runPromise(Fiber.interrupt(fiber));
+    await tick();
+    expect(subject.observed).toBe(false);
+  });
+
+  it("scopedPortStream() fails the stream when the source errors", async () => {
+    const boom = new Error("boom");
+    const subject = new Subject<number>();
+    const exit = Effect.runPromiseExit(
+      Stream.runForEach(
+        scopedPortStream(() => {
+          return subject;
+        }),
+        () => {
+          return Effect.void;
+        },
+      ),
+    );
+    await tick();
+    subject.error(boom);
+    expect(Exit.isFailure(await exit)).toBe(true);
+  });
+
+  it("createChildHost() ends with the parent scope", async () => {
+    const parent = useHost();
+    const child = createChildHost(parent);
+    let released = false;
+    Effect.runSync(
+      Scope.addFinalizer(
+        child.scope,
+        Effect.sync(() => {
+          released = true;
+        }),
+      ),
+    );
+    await Effect.runPromise(Scope.close(parent.scope, Exit.void));
+    expect(released).toBe(true);
+  });
+
+  it("createChildHost() closing the CHILD leaves the parent open", async () => {
+    const parent = useHost();
+    const child = createChildHost(parent);
+    let parentReleased = false;
+    Effect.runSync(
+      Scope.addFinalizer(
+        parent.scope,
+        Effect.sync(() => {
+          parentReleased = true;
+        }),
+      ),
+    );
+    await Effect.runPromise(Scope.close(child.scope, Exit.void));
+    expect(parentReleased).toBe(false);
+    // Still usable: a later fork into the parent's scope is not stranded.
+    expect(parent.runtime.runSync(Effect.succeed(1))).toBe(1);
+  });
+
+  it("createChildHost() still runs an effect after the parent ManagedRuntime is disposed", async () => {
+    const parent = createHost();
+    const child = createChildHost(parent);
+    await parent.runtime.dispose();
+    // The DEFAULT runtime, deliberately: an intent arriving after
+    // `app.dispose()` must not die on a disposed managed runtime.
+    expect(child.runtime.runSync(Effect.succeed(9))).toBe(9);
+    await Effect.runPromise(Scope.close(parent.scope, Exit.void));
+  });
+
+  it("refToWarmStateStream() keeps a cold getValue() current, and release() is idempotent", async () => {
+    const host = useHost();
+    const ref = host.runtime.runSync(SubscriptionRef.make(1));
+    // The contrast that makes the claim non-vacuous: a plain
+    // `refToStateStream` with nobody subscribed hands back its
+    // construction-time value however far the ref has moved.
+    const cold = refToStateStream(host, ref);
+    const warm = refToWarmStateStream(host, ref);
+    host.runtime.runSync(
+      setRefIfChanged(ref, () => {
+        return 2;
+      }),
+    );
+    await tick();
+    expect(cold.getValue()).toBe(1);
+    expect(warm.state$.getValue()).toBe(2);
+    warm.release();
+    warm.release();
+    const seen: number[] = [];
+    const sub = warm.state$.subscribe((value: number) => {
+      seen.push(value);
+    });
+    expect(seen).toEqual([2]);
+    sub.unsubscribe();
   });
 
   const hosts: TestHost[] = [];

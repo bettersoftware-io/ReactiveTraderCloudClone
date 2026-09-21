@@ -60,6 +60,74 @@ export function createDetachedHost(): EffectHost {
   };
 }
 
+/** A host for an app-lifetime machine: the DEFAULT runtime as the runner —
+ * an intent that arrives after `app.dispose()` must not die on a disposed
+ * managed runtime — and a scope forked from the app host's, so
+ * `app.dispose()` ends the machine. The middle ground between
+ * `createDetachedHost` (a per-mount machine, whose lifetime is its own) and
+ * a fold period's scope (a warm period's). */
+export function createChildHost(parent: EffectHost): EffectHost {
+  return {
+    runtime: runnerFor(Runtime.defaultRuntime),
+    scope: Effect.runSync(
+      Scope.fork(parent.scope, ExecutionStrategy.sequential),
+    ),
+  };
+}
+
+/** A per-call, multi-value port stream as an Effect Stream, owned by the
+ * stream's own scope: `open()` is called — and the port subscribed — when
+ * the stream STARTS (lazy until run; two runs are two port calls), and
+ * released when that scope closes, whether the stream ended, failed, or its
+ * fiber was interrupted. The lifecycle twin of `rpc`.
+ *
+ * MEASURED on effect 3.22.2 (`bridge/out.test.ts`, the four
+ * `scopedPortStream()` cases): `Stream.unwrapScoped` keeps the scope it
+ * provides open for as long as the resulting stream is being consumed — the
+ * finalizer `fromObservable` registers on it runs at the END of the run, not
+ * before the inner stream is drained, so values still flow and an interrupt
+ * of the running fiber is what releases the source. `Effect.scope` is
+ * re-evaluated per run, which is why `open()` is per run rather than per
+ * value: the eager subscribe `fromObservable` performs then happens inside
+ * the run, not at build time. The brief's `Stream.acquireRelease` fallback
+ * (a `Scope.fork` of the fiber's own scope, closed in the release) was
+ * therefore not needed. */
+export function scopedPortStream<T>(
+  open: () => CoreStream<T>,
+): Stream.Stream<T, unknown> {
+  return Stream.unwrapScoped(
+    Effect.map(Effect.scope, (scope) => {
+      return fromObservable(open(), scope);
+    }),
+  );
+}
+
+/** A `StateStream` and the release of its keep-warm. */
+export interface WarmStateStream<S> {
+  readonly state$: StateStream<S>;
+  release(): void;
+}
+
+/** `refToStateStream` held warm by a subscription of its own, for an
+ * app-lifetime singleton — see that function's doc: a COLD `getValue()`
+ * hands back the construction-time value however stale, and that is what
+ * React's `useStateObservable` reads on a first render. The RxJS singletons
+ * hold the same internal subscription for the same reason. */
+export function refToWarmStateStream<S>(
+  host: EffectHost,
+  ref: SubscriptionRef.SubscriptionRef<S>,
+): WarmStateStream<S> {
+  const state$ = refToStateStream(host, ref);
+  const warm = state$.subscribe();
+
+  return {
+    state$,
+    release: () => {
+      warm.unsubscribe();
+    },
+  };
+}
+
 /** `SubscriptionRef.set` that publishes only a changed value: a
  * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
  * machine's `state$` promises `distinctUntilChanged`. The same guard

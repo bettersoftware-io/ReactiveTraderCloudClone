@@ -118,6 +118,24 @@ head survives. Each period also owns its own subscriber set, so a stale
 producer failing in the unsubscribe → scope-close window cannot error the
 next period's subscribers.
 
+Slice 4 adds three more bridge exports. `scopedPortStream(open)` is the
+lifecycle twin of `rpc`: a per-call, MULTI-value port stream whose `open()`
+runs — and whose port is subscribed — when the stream STARTS, and whose
+subscription is released when that scope closes, however the run ended.
+MEASURED on effect 3.22.2: `Stream.unwrapScoped` keeps the scope it provides
+open for the whole consumption of the resulting stream, and re-evaluates
+`Effect.scope` per run, so two runs are two port calls; the brief's
+`Stream.acquireRelease` fallback was not needed. `createChildHost(parent)`
+is the middle ground between a detached host and a fold period's scope: the
+DEFAULT runtime as the runner (an intent arriving after `app.dispose()` must
+not die on a disposed managed runtime) over a scope forked from the app
+host's, so `app.dispose()` ends the machine — what the two workspace
+singletons take. `refToWarmStateStream(host, ref)` is `refToStateStream`
+held warm by a subscription of its own, with a `release()`: an app-lifetime
+singleton must survive a cold `getValue()` between one panel unmounting and
+the next mounting, which is exactly what the RxJS singletons' internal
+`state$.subscribe()` is for.
+
 Four smaller bridge primitives carry slice 2: `setRefIfChanged` (a
 `SubscriptionRef.set` that skips an `Object.is`-equal value — the
 `distinctUntilChanged` a machine's `state$` promises, since a
@@ -184,14 +202,59 @@ two submission machines are built by `rfqs` itself, over its own commands,
 so the wiring table hands out `presenters.rfqs.createSubmission()` rather
 than reaching for the workflow port a second time.
 
+**Equities** (slice 4). A keyed WIRE stream (`watchlist.quote$`,
+`depth.depth$`) is `followPort` — a seedless `sharedFold` whose producer is
+one `fromPort`, memoised per symbol — rather than `mirrorPort`: the seed
+peek is a subscribe + unsubscribe, which on a server-refcounted per-symbol
+stream would be subscribe/unsubscribe/subscribe on the wire at the start of
+every warm period. The price is that its first value arrives a fiber hop
+after subscribe, which is why the contract leaves a keyed wire stream's
+first value uncontracted while a presenter-owned CELL's is synchronous.
+`ordersBlotter` pairs two `PubSub`s (`fills$` and an internal refresh
+signal, both hot with no replay) with a RETAINED fold whose producer is
+`Stream.merge(Stream.make(undefined), Stream.fromPubSub(refreshes))` —
+`merge`, not `concat`, so the PubSub subscription exists from the run's
+first step — flat-mapped with `switch` into one `rpc(orders.orders())` per
+trigger, newest winning. Its `place()` is `scopedPortStream` tapped, so its
+own failure ERRORS that per-call stream: a per-call stream has an error
+channel, unlike the ticket machine's ref. `candleSeries` keeps the two
+backfill flags as presenter-owned `SubscriptionRef` CELLS (replay-current
+across warm periods, cleared synchronously when a period starts) while the
+series itself is a seedless fold whose `run` is the SINGLE writer:
+`loadOlder` never publishes, it grows `older` and offers to the period's
+nudge `Queue`, which the fold merges with the base port and re-stitches
+through the imported `stitchCandles`. A page landing between periods offers
+to a queue nobody drains, which is inert, and the next period resets
+`older` anyway. The two workspace singletons (`eqWorkspace`, `eqDrawings`)
+are `createChildHost` + `refToWarmStateStream` over the imported folds;
+`eqWorkspace`'s seed is ONE forked fiber over the roster with
+`Stream.take(1)` after the empty-symbol filter, so an empty roster never
+seeds and a later one never re-seeds. `orderTicket` is a per-mount DETACHED
+host on `createRunSlot`, with `scopedPortStream(deps.place)` inside the run
+so a superseding submit's interrupt withdraws the order in flight.
+
+**Native-first composition.** `composeWithBase` now mints the runtime and
+resolves the native overlay BEFORE building the RxJS base, and hands the
+base `CoreSeams` — `{ eqWorkspace, equityFills$ }` pointing at this core's
+own instances. Without that seam a Jarvis drive batch would mutate a
+workspace the UI no longer renders, and a ticket fill placed through the
+native blotter would choreograph nothing
+(`composition.seams.test.ts`). `WatchlistLive` joins `PowerSaverLive` as a
+Layer that is both merged into the app and provided to a dependent
+(`EqWorkspaceLive`), memoised by reference so it is built once —
+`layers.test.ts` counts `marketData.watchlist()` calls as the witness.
+
 Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
 core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 3, thirty-six of 74 members are **native** (the 74th, `layoutPresets`,
-arrived delegated with Dockview Phase 6b). Slice 3 added eight: the
+As of slice 4, forty-four of 74 members are **native** (the 74th, `layoutPresets`,
+arrived delegated with Dockview Phase 6b). Slice 4 added eight: the five
+equities presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
+`positions`), the two workspace singletons (`eqWorkspace`, `eqDrawings`)
+and `machines.orderTicket`. Slice 3 added eight: the
 four credit presenters (`rfqs`, `dealers`, `instruments`, `rfqQuote`) and
 the four RFQ machines (`rfqTile`, `rfqSubmission`, `ticketSubmission`,
 `rfqCountdown`). Slice 2 added eleven:
