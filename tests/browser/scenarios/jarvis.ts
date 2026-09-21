@@ -296,6 +296,93 @@ export async function expectDraggedDockedPanelSurvivesReload(
 }
 
 /**
+ * Floats the docked scripted panel, reloads, and asserts it comes back
+ * FLOATING.
+ *
+ * The sibling {@link expectDraggedDockedPanelSurvivesReload} covers the grid
+ * position; a float is the same layer-3 arrangement on a different axis and
+ * took the same scrub-and-re-add path — measured in a browser, a floated
+ * Jarvis panel came back docked in the grid on every reload while a floated
+ * STATIC panel beside it stayed floating. Dockview-engine only.
+ */
+export async function expectDockedPanelFloatSurvivesReload(
+  ctx: TestContext,
+): Promise<void> {
+  await dockScriptedPanel(ctx);
+  await ctx.po.layout.floatPanel(SCRIPTED_PANEL_ID);
+
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(SCRIPTED_PANEL_ID),
+    "expected the panel to be floating before the reload",
+  );
+
+  await common.reloadPage(ctx);
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+
+  assertTrue(
+    await ctx.po.layout.panelSitsInFloat(SCRIPTED_PANEL_ID),
+    "expected the panel to come back FLOATING after a reload",
+  );
+}
+
+/**
+ * Widens the docked scripted panel by its own sash, reloads, and asserts it
+ * keeps that width — not the 360px design width it was docked at.
+ *
+ * A docked panel arrives design-pinned; the first sash drag releases the pin,
+ * and from then on the width is the user's. Measured in a browser before the
+ * engine parked it: 360 → 557 by drag, then 360 again on reload, while a
+ * static rail widened the same way kept 557.
+ */
+export async function expectDockedPanelWidthSurvivesReload(
+  ctx: TestContext,
+): Promise<void> {
+  await dockScriptedPanel(ctx);
+  await ctx.po.layout.dragDockSashLeftOf(SCRIPTED_PANEL_ID, PANEL_WIDEN_PX);
+  const widened = await ctx.po.layout.panelWidth(SCRIPTED_PANEL_ID);
+
+  assertTrue(
+    widened > DOCKED_DESIGN_WIDTH_PX + MIN_WIDEN_PX,
+    `expected the sash drag to widen the panel past ${DOCKED_DESIGN_WIDTH_PX + MIN_WIDEN_PX}px, saw ${widened}`,
+  );
+
+  await common.reloadPage(ctx);
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+  const afterReload = await ctx.po.layout.panelWidth(SCRIPTED_PANEL_ID);
+
+  assertTrue(
+    Math.abs(afterReload - widened) <= WIDTH_TOLERANCE_PX,
+    `expected the panel to keep its ${widened}px width across a reload, saw ${afterReload}`,
+  );
+}
+
+/** Spawns the scripted panel and pins it into the workspace, leaving the chat
+ * closed — the opening both reload rides above share. */
+async function dockScriptedPanel(ctx: TestContext): Promise<void> {
+  await ctx.po.jarvis.openViaOrb();
+  await ctx.po.jarvis.ask("show me gbp volatility");
+  await ctx.po.jarvis.waitForPanelLive(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForReplyDone();
+  // The overlay covers the desk the panel cascade sits on — see
+  // expectDockedPanelSurvivesReload's own note.
+  await ctx.po.jarvis.closeViaButton();
+  await ctx.po.jarvis.dockPanel(SCRIPTED_PANEL_ID);
+  await ctx.po.jarvis.waitForPanelDockedLive(SCRIPTED_PANEL_ID);
+}
+
+/** The width a Jarvis-docked panel arrives at (DOCK_COLUMN_INITIAL_PX in
+ * @rtc/client-core), the design pin the first sash drag releases. */
+const DOCKED_DESIGN_WIDTH_PX = 360;
+/** Leftwards, so the panel at the RIGHT edge grows. Well past the assertion
+ * margin below at any viewport this suite runs. */
+const PANEL_WIDEN_PX = -160;
+/** Growth that cannot be sub-pixel noise or a settle. */
+const MIN_WIDEN_PX = 80;
+/** A reload re-lays the whole dock out, so the restored width can land a
+ * pixel either side of the model size it was saved at. */
+const WIDTH_TOLERANCE_PX = 2;
+
+/**
  * Dismisses the scripted GBP-volatility panel (the same `SCRIPTED_PANEL_ID`
  * {@link expectDockedPanelSurvivesReload} docks/undocks) via its own ✕
  * control and waits for the floating layer to be empty. NOT folded into

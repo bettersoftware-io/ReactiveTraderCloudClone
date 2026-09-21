@@ -3592,6 +3592,81 @@ describe("dynamic-panel reconciliation at construction", () => {
     second.dispose();
   });
 
+  // #799 parked the GRID position; a float and a user's width took the same
+  // scrub-and-re-add path and were lost with it (measured in a browser: a
+  // floated Jarvis panel came back docked, and one widened from 360 to 557
+  // came back 360, while the STATIC panels beside them kept both).
+  it("returns a late-listed dynamic panel to the float the blob had it in", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+
+    expect(first.floatPanel("panel-dyn-1")).toBe(true);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    }); // no dynamicPanels — the docked set has not arrived yet
+    const api2 = lastDockviewApi();
+
+    expect(api2.getPanel("panel-dyn-1")).toBeUndefined();
+
+    second.addDynamicPanel(DYN);
+
+    expect(api2.getPanel("panel-dyn-1")?.group.api.location.type).toBe(
+      "floating",
+    );
+    second.dispose();
+  });
+
+  it("returns a late-listed dynamic panel at the width the blob recorded", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    const api = lastDockviewApi();
+    const dyn = api.getPanel("panel-dyn-1");
+
+    if (!dyn) {
+      throw new Error("fixture panel missing");
+    }
+
+    // A docked panel arrives design-pinned (min=max at its 360 width), and
+    // the pin only releases on a real sash drag — so the resize has to go
+    // through the same two steps a user's does, not setSize alone.
+    dragSash(firstOpts.container, ".dv-horizontal");
+    // setSize speaks dockview's MODEL width; the tracker (like the seed and
+    // the pins) speaks card px, which is the model minus one gap.
+    dyn.group.api.setSize({ width: RESIZED + GROUP_GAP_PX });
+    await waitForSize(seen, "panel-dyn-1", RESIZED);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const second = createDockEngine({
+      ...createBase(),
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+    await waitForSize(reloaded, "panel-dyn-1", RESIZED);
+    touchContainer(createBase().container);
+    second.dispose();
+  });
+
   it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
     const seen = trackLayout();
     const first = createDockEngine({
@@ -3745,6 +3820,9 @@ describe("dynamic-panel reconciliation at construction", () => {
   });
 
   const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+  /** A width no design pin or seed share would produce on its own, so a
+   * panel found at it can only have come from the blob. */
+  const RESIZED = 520;
 });
 
 const capturedDockview = vi.hoisted(() => {
