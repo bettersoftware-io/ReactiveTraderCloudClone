@@ -222,6 +222,129 @@ export function describeOrderTicketContract(
       }
     });
 
+    it("reset REPLACES the form: a limit price entered before it does not ride along on the next market order", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setType("limit");
+        m.intents.setLimitPrice(190);
+        m.intents.reset();
+        await settle();
+        const afterReset = c.values.at(-1);
+        expect(afterReset).toEqual({
+          phase: "editing",
+          form: DEFAULT_FORM,
+          error: null,
+        });
+        // `toEqual` reads an absent key and an `undefined` one alike, and
+        // would read a lingering 190 as a failure only by accident of the
+        // fixture — assert the field itself.
+        expect(
+          afterReset?.phase === "editing" ? afterReset.form.limitPrice : 190,
+        ).toBeUndefined();
+        m.intents.setQty(5);
+        m.intents.submit();
+        await settle();
+        const request = h.driver.pendingOrders().at(-1);
+        expect(request).toMatchObject({ type: "market", qty: 5 });
+        expect(request?.limitPrice).toBeUndefined();
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a failing place() rejects the ticket with the error's message, errors no subscriber, and leaves the machine usable", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setQty(1);
+        m.intents.submit();
+        await settle();
+        h.driver.failOrder(new Error("venue down"));
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "rejected",
+          reason: "venue down",
+        });
+        expect(c.errors).toEqual([]);
+        // EDITABLE again, not merely submittable: a `submitting` candidate
+        // is accepted whatever `inFlight` says, so only a form edit
+        // surfacing proves the rejection cleared the in-flight gate.
+        m.intents.reset();
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "editing",
+          form: DEFAULT_FORM,
+          error: null,
+        });
+        m.intents.setQty(2);
+        m.intents.submit();
+        await settle();
+        expect(c.values.at(-1)).toEqual({ phase: "submitting" });
+        const working = createEquityOrder({ status: "working" });
+        h.driver.emitOrderUpdate(working);
+        await settle();
+        expect(c.values.at(-1)).toEqual({ phase: "working", order: working });
+        expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a place() that fails AFTER delivering the fill leaves the ticket filled", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setQty(1);
+        m.intents.submit();
+        await settle();
+        const filled = createEquityOrder({ status: "filled", filledQty: 1 });
+        h.driver.emitOrderUpdate(filled);
+        await settle();
+        h.driver.failOrder(new Error("socket closed"));
+        await settle();
+        expect(c.values.at(-1)).toEqual({ phase: "filled", order: filled });
+        expect(phases(c.values)).not.toContain("rejected");
+        expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("a failure that is not an Error rejects with the generic reason", async () => {
+      const h = makeHarness();
+      const m = h.machines.orderTicket("AAPL");
+
+      try {
+        const c = collect(m.state$);
+        m.intents.setQty(1);
+        m.intents.submit();
+        await settle();
+        h.driver.failOrder("nack");
+        await settle();
+        expect(c.values.at(-1)).toEqual({
+          phase: "rejected",
+          reason: "Order rejected",
+        });
+        c.unsubscribe();
+      } finally {
+        m.dispose();
+        await h.teardown();
+      }
+    });
+
     it("a second submit supersedes the order in flight: the first is withdrawn, the second's updates land", async () => {
       const h = makeHarness();
       const m = h.machines.orderTicket("AAPL");

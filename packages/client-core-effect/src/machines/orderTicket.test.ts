@@ -15,7 +15,7 @@ describe("orderTicket machine", () => {
     vi.useRealTimers();
   });
 
-  it("a failing place() is reported out of band and leaves the ticket submitting", async () => {
+  it("a failing place() lands on rejected, errors no subscriber, and reports nothing out of band", async () => {
     const lifecycle = new Subject<EquityOrder>();
     const m = createOrderTicketMachine({
       defaultSymbol: "AAPL",
@@ -39,12 +39,10 @@ describe("orderTicket machine", () => {
     expect(seen.at(-1)).toEqual({ phase: "submitting" });
 
     lifecycle.error(new Error("venue down"));
-    // A ref has no error channel: the cause is rethrown on a macrotask,
-    // which the advance below surfaces (the `staleFlag` idiom).
-    await expect(vi.advanceTimersByTimeAsync(0)).rejects.toThrow("venue down");
-    // The state stays where the failure found it, and no subscriber was
-    // errored — the difference from the blotter's own `place()` stream.
-    expect(seen.at(-1)).toEqual({ phase: "submitting" });
+    // Caught inside the build: the slot has no failed build to rethrow on
+    // a macrotask, which is where the old "stays submitting" reported it.
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen.at(-1)).toEqual({ phase: "rejected", reason: "venue down" });
     expect(errors).toEqual([]);
     m.dispose();
   });

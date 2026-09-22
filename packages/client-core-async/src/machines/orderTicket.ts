@@ -1,8 +1,11 @@
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
+  type OrderTicketFormEvent,
   orderToTicketPhase,
+  placeFailureToTicketPhase,
   reduceOrderTicket,
+  reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
 } from "@rtc/client-core";
@@ -34,9 +37,10 @@ export interface OrderTicketDeps {
  * every candidate state goes through the imported `reduceOrderTicket`, so
  * the in-flight gate is the RxJS core's own rule. A valid `submit()`
  * supersedes the order in flight; an invalid one ends it too (the RxJS
- * `switchMap` switches to the error). A failing `place()` has no channel on
- * a Store: it is rethrown on a macrotask and the ticket stays `submitting`
- * (slice 2 ruling 8; slice 4 ruling 12). */
+ * `switchMap` switches to the error). A failing `place()` is caught inside
+ * the run and lands on `rejected` through the imported
+ * `placeFailureToTicketPhase` — the RxJS core's `catchError` on the inner
+ * stream; `ifCurrent` keeps a superseded run's failure off the ticket. */
 export function createOrderTicketMachine(
   deps: OrderTicketDeps,
 ): Machine<OrderTicketState, OrderTicketIntents> {
@@ -50,13 +54,17 @@ export function createOrderTicketMachine(
     store.set(acc.state);
   }
 
-  function patch(change: Partial<OrderTicketForm>): void {
+  function edit(event: OrderTicketFormEvent): void {
     if (slot.isDisposed()) {
       return;
     }
 
-    form = { ...form, ...change };
+    form = reduceOrderTicketForm(form, event);
     offer({ phase: "editing", form, error: null });
+  }
+
+  function patch(change: Partial<OrderTicketForm>): void {
+    edit({ kind: "patch", change });
   }
 
   return {
@@ -78,7 +86,10 @@ export function createOrderTicketMachine(
         patch({ limitPrice });
       },
       reset: () => {
-        patch(createOrderTicketForm(deps.defaultSymbol));
+        edit({
+          kind: "reset",
+          form: createOrderTicketForm(deps.defaultSymbol),
+        });
       },
       submit: () => {
         if (slot.isDisposed()) {
@@ -98,11 +109,18 @@ export function createOrderTicketMachine(
           run.ifCurrent(() => {
             offer({ phase: "submitting" });
           });
-          await relay(deps.place(request), run.signal, (order) => {
-            run.ifCurrent(() => {
-              offer(orderToTicketPhase(order));
+
+          try {
+            await relay(deps.place(request), run.signal, (order) => {
+              run.ifCurrent(() => {
+                offer(orderToTicketPhase(order));
+              });
             });
-          });
+          } catch (failure: unknown) {
+            run.ifCurrent(() => {
+              offer(placeFailureToTicketPhase(failure));
+            });
+          }
         });
       },
     },

@@ -4,8 +4,11 @@ import {
   createOrderTicketAcc,
   createOrderTicketForm,
   type OrderTicketAcc,
+  type OrderTicketFormEvent,
   orderToTicketPhase,
+  placeFailureToTicketPhase,
   reduceOrderTicket,
+  reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
 } from "@rtc/client-core";
@@ -43,8 +46,10 @@ export interface OrderTicketDeps {
  * a form edit made while an order is in flight returns the SAME accumulator,
  * which `setRefIfChanged` then drops. A valid `submit()` supersedes the
  * order in flight (the RxJS `switchMap`); an invalid one ends it too. A
- * failing `place()` fails the build, which the slot rethrows out of band:
- * a ref has no error channel (slice 2 ruling 8; slice 4 ruling 12). */
+ * failing `place()` is caught inside the build and lands on `rejected`
+ * through the imported `placeFailureToTicketPhase` — the RxJS core's
+ * `catchError` on the inner stream. `catchAll` sees FAILURES only, so a
+ * superseding submit's interrupt still ends the run silently. */
 export function createOrderTicketMachine(
   deps: OrderTicketDeps,
 ): Machine<OrderTicketState, OrderTicketIntents> {
@@ -69,13 +74,17 @@ export function createOrderTicketMachine(
   /** A write made OUTSIDE a run — a form edit, a reset, the invalid-submit
    * error state. The slot only guards writes made through a `Run`, so
    * these carry their own disposal guard. */
-  function patch(change: Partial<OrderTicketForm>): void {
+  function edit(event: OrderTicketFormEvent): void {
     if (slot.isDisposed()) {
       return;
     }
 
-    form = { ...form, ...change };
+    form = reduceOrderTicketForm(form, event);
     host.runtime.runSync(offer({ phase: "editing", form, error: null }));
+  }
+
+  function patch(change: Partial<OrderTicketForm>): void {
+    edit({ kind: "patch", change });
   }
 
   return {
@@ -96,12 +105,11 @@ export function createOrderTicketMachine(
       setLimitPrice: (limitPrice: number | undefined) => {
         patch({ limitPrice });
       },
-      // A patch of the whole default form REPLACES only the fields the
-      // default carries — `createOrderTicketForm` has no `limitPrice`, and
-      // the RxJS `scan` spreads the same object, so a stale `limitPrice`
-      // survives a reset there too. Parity, deliberately.
       reset: () => {
-        patch(createOrderTicketForm(deps.defaultSymbol));
+        edit({
+          kind: "reset",
+          form: createOrderTicketForm(deps.defaultSymbol),
+        });
       },
       submit: () => {
         if (slot.isDisposed()) {
@@ -127,6 +135,9 @@ export function createOrderTicketMachine(
               }).pipe(
                 Stream.runForEach((order: EquityOrder) => {
                   return run.guarded(offer(orderToTicketPhase(order)));
+                }),
+                Effect.catchAll((failure: unknown) => {
+                  return run.guarded(offer(placeFailureToTicketPhase(failure)));
                 }),
               ),
             ),
