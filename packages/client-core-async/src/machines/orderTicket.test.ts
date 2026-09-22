@@ -7,7 +7,7 @@ import type { EquityOrder, PlaceOrderRequest } from "@rtc/domain";
 import { createOrderTicketMachine } from "#/machines/orderTicket";
 
 describe("createOrderTicketMachine", () => {
-  it("a failing place() is reported out of band and the state stays submitting", async () => {
+  it("a failing place() lands on rejected and reports nothing out of band", async () => {
     vi.useFakeTimers();
 
     try {
@@ -29,10 +29,12 @@ describe("createOrderTicketMachine", () => {
 
       orders.error(new Error("bust"));
       await flushMicrotasks();
+      // Caught inside the run: the slot has nothing to rethrow on a
+      // macrotask, which is where the old "stays submitting" reported it.
       expect(() => {
         vi.runAllTimers();
-      }).toThrow("bust");
-      expect(seen.at(-1)).toEqual({ phase: "submitting" });
+      }).not.toThrow();
+      expect(seen.at(-1)).toEqual({ phase: "rejected", reason: "bust" });
       machine.dispose();
     } finally {
       vi.useRealTimers();

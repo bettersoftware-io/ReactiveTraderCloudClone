@@ -610,6 +610,21 @@ predictable from the design alone):
   of band and the ticket stays `submitting` — mapping it to `rejected` is
   a product fix for all three cores, not a port concern, and is carried
   forward as a residual rather than coded around this slice.
+  **Closed 2026-09-21, and now contracted:** a failing `place()` lands on
+  `{ phase: "rejected", reason }` in all three cores through the imported
+  `placeFailureToTicketPhase` (the error's own message, else "Order
+  rejected") — RxJS by a `catchError` on the INNER stream so `state$`
+  survives, async by a `try`/`catch` around `relay` under `ifCurrent`,
+  Effect by `Effect.catchAll` under `guarded` (failures only, so a
+  supersede's interrupt still ends a run silently). The same PR made
+  `reset()` REPLACE the form through the imported `reduceOrderTicketForm`
+  — the three cores had each spread the default over the form, so a
+  `limitPrice` entered earlier rode along on the next market order and
+  onto its blotter record. One consequence was decided rather than left
+  to fall out: a `place()` stream that FAILS AFTER delivering the fill (a
+  socket dropping on the way out) would now have overwritten `filled` with
+  `rejected`, so `reduceOrderTicket` drops a `rejected` that follows a
+  `filled` — a fill is final. Contracted too.
 - **`createRunSlot` paid the slice-3 residual before a sixth hand-rolled
   copy was written, and closed the window class-wide.** One kernel/bridge
   helper per sibling now owns the "one active run" scaffolding for all
@@ -667,9 +682,10 @@ predictable from the design alone):
   MEASURED: a page that lands after a NEW period has opened is stitched
   into that period in all three cores, because the prepend accumulator is
   one cell per key whose VALUE the new period resets. (4) A failing
-  `place()` errors the returned per-call stream in every core, but at the
-  ticket-machine level the RxJS core errors `state$` while the siblings
-  rethrow out of band and leave the ticket `submitting` — plus a purely
+  `place()` errors the returned per-call stream in every core; the
+  ticket-machine half of this asymmetry (RxJS errored `state$`, the
+  siblings stayed `submitting`) is CLOSED — all three now land on
+  `rejected`, see the `orderTicket` bullet above — plus a purely
   cosmetic fifth: `Run`'s members are named differently in the two
   siblings (`set`/`ifCurrent` vs. `write`/`guarded`).
 - **Nine more cross-core asymmetries, surfaced by PR B's final
@@ -697,7 +713,9 @@ predictable from the design alone):
   stream or an already-subscribed `place()` call keeps working; the
   Effect core ends everything through the closing host scope, and a
   detached `orderTicket` that submits afterward sticks at `submitting`
-  with an out-of-band throw. (9) A `watchlist()` that errors
+  (MEASURED 2026-09-22: silently — the closed scope interrupts the
+  `place()` run, which is not a failure, so nothing is rethrown and the
+  ticket's failure mapping never sees it). (9) A `watchlist()` that errors
   SYNCHRONOUSLY on subscribe makes both siblings' `createApp` throw (the
   composition-time `peekCurrent`), where the RxJS peek has no error
   handler and so reports the failure asynchronously instead.
