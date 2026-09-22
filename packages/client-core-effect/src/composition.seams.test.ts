@@ -117,11 +117,13 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
-  it("the base app's own readers hold no port a native member already holds: the watchlist, the pairs and a pair's prices are each subscribed ONCE", async () => {
+  it("the base app's own readers hold no port a native member already holds: the watchlist, the pairs, a pair's prices, the credit workflow and the connection events are each subscribed ONCE", async () => {
     const simulated = createPorts({});
     const watchlist = createTally();
     const pairs = createTally();
     const prices = createTally();
+    const rfqEvents = createTally();
+    const connectionEvents = createTally();
     const { app } = composeWithBase({
       ...simulated,
       marketData: countSubscriptions(
@@ -141,7 +143,7 @@ describe("composeWithBase — core seams", () => {
       // settle below, and keeps `live` meaningful.
       referenceData: {
         getCurrencyPairs: () => {
-          return counted(concat(of([EURUSD]), NEVER), pairs);
+          return countInto(concat(of([EURUSD]), NEVER), pairs);
         },
       },
       pricing: countSubscriptions(
@@ -151,6 +153,17 @@ describe("composeWithBase — core seams", () => {
           return symbol === "EURUSD" ? prices : createTally();
         },
       ),
+      // `RfqsPresenter.events$` is `warmReplay()` (refCount false): a base
+      // director left on the base instance would hold `workflow.events()`
+      // for the whole session — under WS-real, a duplicated server stream.
+      workflow: countSubscriptions(simulated.workflow, "events", () => {
+        return rfqEvents;
+      }),
+      connectionEvents: {
+        events: () => {
+          return countInto(reconnect$, connectionEvents);
+        },
+      },
     });
 
     try {
@@ -161,6 +174,8 @@ describe("composeWithBase — core seams", () => {
         app.presenters.animationDirector
           .intentsFor("tile:EURUSD")
           .subscribe(() => {}),
+        app.presenters.rfqs.events$.subscribe(() => {}),
+        app.presenters.connection.status$.subscribe(() => {}),
       ];
       await waitForDrive();
 
@@ -170,7 +185,15 @@ describe("composeWithBase — core seams", () => {
         watchlist: watchlist.live,
         pairs: pairs.live,
         prices: prices.live,
-      }).toEqual({ watchlist: 1, pairs: 1, prices: 1 });
+        rfqEvents: rfqEvents.live,
+        connectionEvents: connectionEvents.live,
+      }).toEqual({
+        watchlist: 1,
+        pairs: 1,
+        prices: 1,
+        rfqEvents: 1,
+        connectionEvents: 1,
+      });
 
       for (const sub of subs) {
         sub.unsubscribe();
@@ -311,7 +334,7 @@ function countSubscriptions<P extends object>(
   port: P,
   method: keyof P & string,
   tallyFor: (...args: readonly unknown[]) => Tally,
-  reshape: (source: Observable<unknown>) => Observable<unknown> = keep,
+  reshape: (source: Observable<unknown>) => Observable<unknown> = passThrough,
 ): P {
   return new Proxy(port, {
     get: (target: P, property: string | symbol): unknown => {
@@ -326,7 +349,7 @@ function countSubscriptions<P extends object>(
       }
 
       return (...args: readonly unknown[]): Observable<unknown> => {
-        return counted(
+        return countInto(
           reshape(member.apply(target, args) as Observable<unknown>),
           tallyFor(...args),
         );
@@ -335,7 +358,7 @@ function countSubscriptions<P extends object>(
   });
 }
 
-function counted<T>(source: Observable<T>, tally: Tally): Observable<T> {
+function countInto<T>(source: Observable<T>, tally: Tally): Observable<T> {
   return new Observable<T>((subscriber) => {
     tally.live += 1;
     const inner = source.subscribe(subscriber);
@@ -347,6 +370,6 @@ function counted<T>(source: Observable<T>, tally: Tally): Observable<T> {
   });
 }
 
-function keep<T>(source: Observable<T>): Observable<T> {
+function passThrough<T>(source: Observable<T>): Observable<T> {
   return source;
 }

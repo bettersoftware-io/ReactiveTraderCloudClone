@@ -294,7 +294,11 @@ core; slice 3 added the credit shapes to the same list:
 keep reading the base instance until its own slice — the RxJS
 `AnimationDirector`, `NarratorMachine`, `JarvisDriverMachine` and the base
 `eqWorkspace`'s seed all capture base streams at construction. `CoreSeams`
-(next paragraph) redirects every one of those reads; slice 8 ends the seam.
+(next paragraph) redirects every one of those DATA reads; the base's own
+preference presenters (the narrator's `preference$`, the driver's
+`setThemeSkin`) still read the preferences port beside the native ones,
+port-backed and idempotent, so nothing is stale and nothing ticks twice.
+Slice 8 ends the seam.
 
 **Core seams (slice 4, completed 2026-09-22).** `createApp(ports, seams = {})`
 gives a sibling a way to redirect the base app's INTERNAL reads without
@@ -316,7 +320,9 @@ workspace the UI no longer renders; a fill or FX execution made through a
 NATIVE presenter never reaches the director (its `executions$` is a
 Subject only the base `execute()` feeds); and every port those readers
 share with a native member is held twice — for the simulator's pricing, a
-doubled tick rate. What the seam deliberately does NOT do: the base app
+doubled tick rate. (`workflow.events()` was the sharpest case: the base
+`rfqs.events$` is `warmReplay()`, so one `intentsFor` consumer would have
+held a second credit stream for the whole session.) What the seam deliberately does NOT do: the base app
 still builds and exposes its own instance of every member (so the parity
 drift test's reference-inequality assertion — a `"native"` member must not
 literally be the RxJS instance — stays meaningful), and it never feeds a

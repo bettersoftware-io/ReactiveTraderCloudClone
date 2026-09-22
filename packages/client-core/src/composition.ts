@@ -1218,6 +1218,9 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     eqBlotterViewPreference: new EqBlotterViewPreferencePresenter(
       ports.preferences,
     ),
+    // INVARIANT: every source is `seams.x ?? own` — a dep added to
+    // `AnimationDirectorDeps` joins `CoreSeams` through the `Partial` and
+    // must be routed the same way here, never as a bare `own`.
     animationDirector: new AnimationDirector({
       pairs$,
       priceFor,

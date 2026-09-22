@@ -508,7 +508,16 @@ predictable from the design alone):
   pair's price stream and the watchlist each carried TWO live
   subscriptions; after it, one each. `live` is the only count comparable
   across cores — the Effect core's `mirrorPort` peeks a port (subscribe,
-  unsubscribe) before following it, so it OPENS one twice by design.
+  unsubscribe) before following it, so it OPENS one twice by design. One
+  new cross-core asymmetry, recorded not coded around: the base
+  `NarratorMachine`'s deliberately unused `stop()` pins `priceFor(pair)`
+  warm for every roster pair, and that pin now lands on the NATIVE
+  `priceStream`, whose per-symbol streams are refcounted rather than
+  lifetime-retained — after `app.dispose()` the async core's price topics
+  keep that never-unsubscribed base reader (as the RxJS base always did),
+  while the Effect core's closing host scope interrupts them regardless.
+  Not a regression — the identical pin sat on the base `priceStream`
+  before — and strictly an improvement for Effect.
 - **The state transitions moved to pure folds in `@rtc/client-core`.**
   `eqWorkspaceFold.ts`, `eqDrawingsFold.ts`, `orderTicketFold.ts` and
   `candleStitch.ts` join the `staleFlagFold.ts` / `tileExecutionState.ts` /
