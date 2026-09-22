@@ -474,9 +474,12 @@ predictable from the design alone):
   (`remainingMs = creationTimestamp + totalMs − now`), so no wiring test
   could detect a swapped pair — the RxJS and Effect wiring cases shared
   the blind spot. **Closed 2026-09-22, by the signature rather than a
-  test**: no fixture can witness a commutative swap, so the seam and all
-  three factories now take one `RfqCountdownSeed` object
-  (`{ creationTimestamp, totalMs }`) and a swap is a type error.
+  test**: no fixture can witness a commutative swap, so the seam, all
+  three factories AND the bindings' `useRfqCountdown` hook now take one
+  `RfqCountdownSeed` object (`{ creationTimestamp, totalMs }`) — the UI
+  builds it once from the `Rfq` and it is carried unchanged to the
+  factory, so a swap is a type error at every site that used to pair two
+  bare numbers.
 
 **Decided in slice 4** (2026-09-21):
 

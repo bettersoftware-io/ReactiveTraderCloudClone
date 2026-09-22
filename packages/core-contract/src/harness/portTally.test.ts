@@ -35,7 +35,7 @@ describe("countInto", () => {
 });
 
 describe("countSubscriptions", () => {
-  it("counts the named method's streams into the tally chosen per call, reshaped, and leaves the port's other members — prototype methods included — working", () => {
+  it("counts the named method's streams into the tally chosen per call, reshaped, and still delivers the port's OWN stream", () => {
     const port = new PrototypePort();
     const eurusd = createTally();
     const other = createTally();
@@ -50,15 +50,44 @@ describe("countSubscriptions", () => {
       },
     );
 
-    const sub = counted.price("EURUSD").subscribe();
+    // The port's own emission, produced with the port's own `this`: a proxy
+    // that manufactured a stream, or applied the method unbound, fails here.
+    const seen: string[] = [];
+    const sub = counted.price("EURUSD").subscribe((value) => {
+      seen.push(value);
+    });
+    expect(seen).toEqual(["a field:EURUSD"]);
     counted.price("GBPUSD").subscribe();
     expect(eurusd.live).toBe(1);
     expect(other.live).toBe(1);
     sub.unsubscribe();
     expect(eurusd.live).toBe(0);
+  });
 
-    // Detached, so `this` is whatever the pass-through bound — nothing, unless
-    // it bound the real port.
+  it("without a reshape the stream is counted as-is — a completing one reads 0, a live one 1", () => {
+    const tally = createTally();
+    const counted = countSubscriptions(new PrototypePort(), "price", () => {
+      return tally;
+    });
+
+    counted.price("EURUSD").subscribe();
+    expect(tally.live).toBe(0);
+    counted.forever().subscribe();
+    expect(tally.live).toBe(0);
+    const live = countSubscriptions(new PrototypePort(), "forever", () => {
+      return tally;
+    });
+    live.forever().subscribe();
+    expect(tally.live).toBe(1);
+  });
+
+  it("every other member passes through bound to the real port — prototype methods included", () => {
+    const counted = countSubscriptions(new PrototypePort(), "price", () => {
+      return createTally();
+    });
+
+    // Detached, so `this` is whatever the pass-through bound: the real port,
+    // or nothing at all.
     const { name } = counted;
     expect(name()).toBe("proto");
     expect(counted.label).toBe("a field");
@@ -66,16 +95,22 @@ describe("countSubscriptions", () => {
 });
 
 /** Methods on the prototype, as the domain simulators keep them — a spread
- * copy would lose `price` and `name` both. */
+ * copy would lose every one of them. */
 class PrototypePort {
   readonly label = "a field";
 
+  /** Reads `this`, so the emission proves the method ran against the port. */
   price(symbol: string): Observable<string> {
-    return of(`${symbol}:1`);
+    return of(`${this.label}:${symbol}`);
   }
 
-  /** Reads `this` — a pass-through that forgot to bind would return "unbound". */
+  forever(): Observable<never> {
+    return NEVER;
+  }
+
+  /** Reads `this` (optionally — class bodies are strict, so an unbound call
+   * would otherwise throw rather than reach the "unbound" branch). */
   name(): string {
-    return this.label === "a field" ? "proto" : "unbound";
+    return this?.label === "a field" ? "proto" : "unbound";
   }
 }

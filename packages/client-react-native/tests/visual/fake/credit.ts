@@ -1,4 +1,5 @@
 import type {
+  RfqCountdownSeed,
   RfqSubmissionIntents,
   RfqSubmissionState,
   RfqTileIntents,
@@ -50,7 +51,7 @@ type TicketSubmissionFixture = {
  * by what these two scenarios mount:
  *
  *  - **`useRfqCountdown`** — `RfqCard` and `SellSideTicket` both call it
- *    directly (`useRfqCountdown(rfq.creationTimestamp, totalMs)`), but both
+ *    directly (`useRfqCountdown({ creationTimestamp, totalMs })`), but both
  *    fixtures also pass a `pinnedRemainingMs` prop, and
  *    `pinnedRemainingMs ?? liveRemainingMs` means the fixture's pin always
  *    wins — this hook's return value is computed and then discarded in both
@@ -95,7 +96,7 @@ export const creditSlice: CreditSlice = {
   useQuotesForRfq: (rfqId: number) => {
     return QUOTES_BY_RFQ_ID[rfqId] ?? EMPTY_QUOTES;
   },
-  useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
+  useRfqCountdown: (seed: RfqCountdownSeed) => {
     // Derived from `totalMs` (a plain argument, not a clock read) — 35% of
     // the window remaining, clear of both the empty and the full edge values
     // so a golden that ever exercises the live path (rather than a fixture's
@@ -103,7 +104,7 @@ export const creditSlice: CreditSlice = {
     // arc. Mirrors `fixtures.tsx`'s own `PINNED_REMAINING_MS` comment
     // ("mid-window, above the urgent threshold") at the same 120s expiry:
     // 120_000 * 0.35 = 42_000, the exact value that file pins by hand.
-    return Math.round(totalMs * 0.35);
+    return Math.round(seed.totalMs * 0.35);
   },
   useRfqs: () => {
     return RFQS;

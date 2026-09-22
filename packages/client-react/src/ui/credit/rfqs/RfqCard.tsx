@@ -55,7 +55,7 @@ export function RfqCard(props: RfqCardProps): ReactElement {
   } = props;
   const totalMs = expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
-  const remainingMs = useRfqCountdown(creationTimestamp, totalMs);
+  const remainingMs = useRfqCountdown({ creationTimestamp, totalMs });
   const secs = Math.ceil(remainingMs / 1000);
   // Captured ONCE at mount (useState initializer): the drain bar is a single
   // mount-time CSS animation over the RFQ's full lifetime, fast-forwarded to

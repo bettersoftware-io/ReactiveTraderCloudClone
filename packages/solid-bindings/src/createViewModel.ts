@@ -37,6 +37,7 @@ import type {
   OrderTicketState,
   PanelData,
   Presenters,
+  RfqCountdownSeed,
   RfqState,
   RfqSubmissionIntents,
   RfqSubmissionState,
@@ -491,11 +492,9 @@ export interface ViewModel {
   useBootGate: () => UseBootGateResult;
   /** Per-RFQ countdown — remainingMs, ticking every 100ms, clamped at 0.
    * Cosmetic-only; the authoritative expiry is server-driven (CreditRfqSimulator).
-   * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). */
-  useRfqCountdown: (
-    creationTimestamp: number,
-    totalMs: number,
-  ) => Accessor<number>;
+   * Mirrors rtc-original CreditRfqTimer (creditRfqs.ts:102-112). Seeded by
+   * an object, not two numbers — see `RfqCountdownSeed`. */
+  useRfqCountdown: (seed: RfqCountdownSeed) => Accessor<number>;
   /** Latest animation intent for a target (e.g. "tile:EURUSD", "banner:connection").
    * Null until the AnimationDirector emits a real domain-driven intent; the dumb
    * UI maps the intent's kind to a CSS class / Motion One call. */
@@ -1424,9 +1423,9 @@ export function createViewModel(
         dismiss: dismissBootSplash,
       };
     },
-    useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
+    useRfqCountdown: (seed: RfqCountdownSeed) => {
       return useMachine(() => {
-        return machines.rfqCountdown({ creationTimestamp, totalMs });
+        return machines.rfqCountdown(seed);
       }).state;
     },
     useAnimationIntents: (target: MaybeAccessor<string>) => {

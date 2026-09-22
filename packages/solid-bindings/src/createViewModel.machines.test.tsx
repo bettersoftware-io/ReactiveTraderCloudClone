@@ -149,12 +149,12 @@ describe("createViewModel — machine-backed members", () => {
     expect(typeof result.pass).toBe("function");
   });
 
-  it("useRfqCountdown(creationTimestamp, totalMs) starts near totalMs and ticks down", () => {
+  it("useRfqCountdown({ creationTimestamp, totalMs }) starts near totalMs and ticks down", () => {
     const vm = createViewModelFixture();
     const totalMs = 10_000;
 
     const { result } = renderHook(() => {
-      return vm.useRfqCountdown(Date.now(), totalMs);
+      return vm.useRfqCountdown({ creationTimestamp: Date.now(), totalMs });
     });
 
     expect(result()).toBeLessThanOrEqual(totalMs);

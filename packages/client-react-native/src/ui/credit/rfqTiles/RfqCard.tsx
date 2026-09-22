@@ -48,7 +48,10 @@ export function RfqCard({
 }: RfqCardProps): JSX.Element {
   const totalMs = rfq.expirySecs * 1000;
   const { useRfqCountdown } = useViewModel();
-  const liveRemainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const liveRemainingMs = useRfqCountdown({
+    creationTimestamp: rfq.creationTimestamp,
+    totalMs,
+  });
   const remainingMs = pinnedRemainingMs ?? liveRemainingMs;
   const styles = useThemedStyles(makeStyles);
 

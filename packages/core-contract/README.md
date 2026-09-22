@@ -25,6 +25,8 @@ core at all, so a second or third core can be added without a workspace cycle.
 | `src/harness/collect.ts` | `collect(stream)` — subscribe and keep every emission; `values` is live. |
 | `src/harness/scriptedPorts.ts` | `scriptPorts(base)` — wraps a runner's `AppPorts` so a suite can drive connection events and the OS colour scheme deterministically. Everything else passes through untouched. |
 | `src/harness/harness.ts` | `CoreHarness` / `MakeHarness` / `Suite` — what a runner hands the suites. |
+| `src/harness/portTally.ts` | `countSubscriptions(port, method, tallyFor, reshape?)` / `countInto` / `createTally` — the seam witnesses' instrument: a Proxy over a port counting LIVE subscriptions to one method's streams (live, not opened — the Effect `mirrorPort` peeks; reshape a completing source to `concat(…, NEVER)`). |
+| `src/harness/clock.ts`, `pendingQueue.ts`, `fixtures.ts`, `settle.ts` | `withFakeClock`, `createPendingQueue` (a scripted port's request queue), the `create*` domain fixtures, `settle()`. |
 | `src/registry.ts` | `CONTRACT_SUITES`, the **exhaustive** member→suite map (a new `Presenters` or `MachineFactories` key is a compile error until it is listed), plus the hand-maintained `PENDING_SUITES` list. |
 | `src/registry.test.ts` | The drift test: the `null`s in the registry and `PENDING_SUITES` must agree. |
 | `src/suites/*.ts` | One behavioural suite per contract member. |

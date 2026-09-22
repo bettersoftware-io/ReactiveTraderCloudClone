@@ -44,7 +44,10 @@ export function SellSideTicket({
 }: SellSideTicketProps): JSX.Element {
   const { useRfqCountdown, useTicketSubmission } = useViewModel();
   const totalMs = rfq.expirySecs * 1000;
-  const liveRemainingMs = useRfqCountdown(rfq.creationTimestamp, totalMs);
+  const liveRemainingMs = useRfqCountdown({
+    creationTimestamp: rfq.creationTimestamp,
+    totalMs,
+  });
   const remainingMs = pinnedRemainingMs ?? liveRemainingMs;
   const { submitPrice, pass } = useTicketSubmission();
   const styles = useThemedStyles(makeStyles);
