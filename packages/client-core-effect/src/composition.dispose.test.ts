@@ -46,10 +46,11 @@ describe("composition teardown", () => {
   });
 
   it("dispose() closes the host scope: a retained singleton's port is released", async () => {
-    // Counted rather than probed with `observed`: the RxJS BASE app holds a
-    // warm subscription of its own to the same port and its `dispose()` is a
-    // knowing no-op today (see `streamToStream`), so `observed` would stay
-    // true whatever this core did. The delta is the honest witness.
+    // Counted rather than probed with `observed`: the count is the whole
+    // witness. The base `NarratorMachine` reads THIS core's `pairs$` through
+    // `CoreSeams` from construction, so the retained singleton holds the
+    // port from composition on — one subscription, and none from the RxJS
+    // base app (its own `currencyPairs` is built but has no reader).
     let subscribers = 0;
     const roster = new Observable<readonly CurrencyPair[]>(() => {
       subscribers += 1;
@@ -68,18 +69,18 @@ describe("composition teardown", () => {
       },
     });
     await tick();
-    const withoutThisCore = subscribers;
+    expect(subscribers).toBe(1);
     const sub = app.presenters.currencyPairs.pairs$.subscribe(() => {});
     await tick();
-    expect(subscribers).toBe(withoutThisCore + 1);
+    expect(subscribers).toBe(1);
     // Retained: the last unsubscribe does NOT end the period …
     sub.unsubscribe();
     await tick();
-    expect(subscribers).toBe(withoutThisCore + 1);
+    expect(subscribers).toBe(1);
     // … only the host scope does.
     await app.dispose();
     await tick();
-    expect(subscribers).toBe(withoutThisCore);
+    expect(subscribers).toBe(0);
   });
 
   it("an intent on a workspace singleton after dispose() is a silent no-op (ruling 13)", async () => {

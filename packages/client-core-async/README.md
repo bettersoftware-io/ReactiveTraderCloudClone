@@ -99,11 +99,14 @@ retained (`retainUntil: lifetime`) `Topic` with `portCallToStream` (the
 lifecycle twin of `promiseToStream`: a per-call port stream, every value
 tapped through `onValue` before the subscriber, releases the port on
 unsubscribe) for `place()`. Composition is **native-first**:
-`composeWithBase` builds this core's own `eqWorkspace`/`ordersBlotter`
-before the RxJS base app, then hands them to `createRxjsApp` as
-`CoreSeams` — so the base's `JarvisDriverMachine` and `AnimationDirector`
-drive and observe the workspace and fills the UI actually renders, not a
-second, unreachable RxJS instance of each.
+`composeWithBase` builds this core's native presenters before the RxJS
+base app, then hands their streams to `createRxjsApp` as `CoreSeams` —
+`eqWorkspace`, `equityFills$`, `watchlist$`, `pairs$`, `priceFor`,
+`executions$`, `rfqEvents$`, `connectionStatus$` — so the base's
+`JarvisDriverMachine`, `AnimationDirector`, `NarratorMachine` and workspace
+seed drive and observe what the UI actually renders, not a second,
+unreachable RxJS instance of each, and no port they share with a native
+member is held twice (`composition.seams.test.ts`).
 
 ## Parity
 

@@ -243,10 +243,12 @@ so a superseding submit's interrupt withdraws the order in flight.
 
 **Native-first composition.** `composeWithBase` now mints the runtime and
 resolves the native overlay BEFORE building the RxJS base, and hands the
-base `CoreSeams` — `{ eqWorkspace, equityFills$ }` pointing at this core's
-own instances. Without that seam a Jarvis drive batch would mutate a
-workspace the UI no longer renders, and a ticket fill placed through the
-native blotter would choreograph nothing
+base `CoreSeams` — `eqWorkspace`, `equityFills$`, `watchlist$`, `pairs$`,
+`priceFor`, `executions$`, `rfqEvents$`, `connectionStatus$`, all pointing
+at this core's own instances. Without that seam a Jarvis drive batch would
+mutate a workspace the UI no longer renders, a ticket fill or FX execution
+made through a native presenter would choreograph nothing, and every port
+the base's internal readers share with a native member would be held twice
 (`composition.seams.test.ts`). `WatchlistLive` joins `PowerSaverLive` as a
 Layer that is both merged into the app and provided to a dependent
 (`EqWorkspaceLive`), memoised by reference so it is built once —

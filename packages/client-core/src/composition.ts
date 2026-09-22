@@ -21,7 +21,6 @@ import type {
   AppPorts,
   AuthPresenter as AuthPresenterApi,
   CoreFactory,
-  EquityFillSignal,
   EqWorkspaceIntents,
   EqWorkspaceState,
   Presenters,
@@ -35,6 +34,7 @@ import type {
   JarvisSkin,
   LoginWaitVariant,
   PowerSaverLevel,
+  Price,
   ThemeSkin,
 } from "@rtc/domain";
 import {
@@ -66,6 +66,7 @@ import {
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
   AnimationDirector,
+  type AnimationDirectorDeps,
   AuthPresenter,
   BlotterPresenter,
   BootGatePresenter,
@@ -411,12 +412,17 @@ function wireJarvisHistorySource(
  * consumers still need to reach them — strangler-phase scaffolding, deleted
  * with delegation in slice 8. The base app still builds and exposes its OWN
  * instance of each (so the siblings' parity drift test can tell native from
- * delegated by reference); a seam only redirects what `JarvisDriverMachine`
- * and `AnimationDirector` read. Without it, a Jarvis drive batch would
- * mutate a workspace the UI no longer renders. */
-export interface CoreSeams {
+ * delegated by reference); a seam only redirects what this app's INTERNAL
+ * readers — `JarvisDriverMachine`, `AnimationDirector`, `NarratorMachine`
+ * and the base `eqWorkspace`'s seed — read. Without one, a Jarvis drive
+ * batch would mutate a workspace the UI no longer renders, an FX fill made
+ * through the native `execution` would never reach the director, and every
+ * port those readers share with a native member would be held twice (for
+ * the simulator's pricing, a doubled tick rate). Every `AnimationDirector`
+ * source is a seam, hence the `Partial`. */
+export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly eqWorkspace?: Machine<EqWorkspaceState, EqWorkspaceIntents>;
-  readonly equityFills$?: Observable<EquityFillSignal>;
+  readonly watchlist$?: Observable<readonly EquityInstrument[]>;
 }
 
 export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
@@ -446,10 +452,21 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // jarvisPanels — can target this singleton's intents from "eqSelect"/
   // "eqTimeframe"/"eqChartType"/"eqIndicator"/"eqPane" DriveCommands. Only
   // needs `watchlist`, already built above.
+  // The roster this app's own readers (the workspace seed below, the Jarvis
+  // driver's `knownSymbols$`) follow — a native core's, when it has one.
+  const watchlist$ = seams.watchlist$ ?? watchlist.watchlist$;
   const eqWorkspace = createEqWorkspaceMachine({
-    initialSymbol: peekFirstWatchlistSymbol(watchlist.watchlist$),
-    seed$: firstWatchlistSymbol$(watchlist.watchlist$),
+    initialSymbol: peekFirstWatchlistSymbol(watchlist$),
+    seed$: firstWatchlistSymbol$(watchlist$),
   });
+  // Likewise the FX roster and per-pair prices `AnimationDirector` and
+  // `NarratorMachine` both read.
+  const pairs$ = seams.pairs$ ?? currencyPairs.pairs$;
+  const priceFor =
+    seams.priceFor ??
+    ((pair: CurrencyPair): Observable<Price> => {
+      return priceStream.price$(pair);
+    });
 
   // Hoisted (rather than built inline in the `presenters` literal below,
   // where it used to live) so JarvisDriverMachine's `setThemeSkin` closure
@@ -1053,7 +1070,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     detachedPanelIds: (tab: WorkspaceTab): readonly string[] => {
       return detachedPanelIdsByTab.get(tab) ?? [];
     },
-    knownSymbols$: watchlist.watchlist$.pipe(
+    knownSymbols$: watchlist$.pipe(
       map((list) => {
         return list.map((instrument) => {
           return instrument.symbol;
@@ -1149,10 +1166,8 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // the full rationale and the two accepted consequences (permanently
   // pinning those shared streams warm; conflation under power-saver calm).
   createNarratorMachine({
-    pairs$: currencyPairs.pairs$,
-    priceFor: (pair: CurrencyPair) => {
-      return priceStream.price$(pair);
-    },
+    pairs$,
+    priceFor,
     narrate: (prompt: string): void => {
       jarvis.intents.narrate(prompt);
     },
@@ -1203,14 +1218,15 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     eqBlotterViewPreference: new EqBlotterViewPreferencePresenter(
       ports.preferences,
     ),
+    // INVARIANT: every source is `seams.x ?? own` — a dep added to
+    // `AnimationDirectorDeps` joins `CoreSeams` through the `Partial` and
+    // must be routed the same way here, never as a bare `own`.
     animationDirector: new AnimationDirector({
-      pairs$: currencyPairs.pairs$,
-      priceFor: (pair: CurrencyPair) => {
-        return priceStream.price$(pair);
-      },
-      connectionStatus$: connection.status$,
-      executions$: execution.executions$,
-      rfqEvents$: rfqs.events$,
+      pairs$,
+      priceFor,
+      connectionStatus$: seams.connectionStatus$ ?? connection.status$,
+      executions$: seams.executions$ ?? execution.executions$,
+      rfqEvents$: seams.rfqEvents$ ?? rfqs.events$,
       equityFills$: seams.equityFills$ ?? ordersBlotter.fills$,
     }),
     bootPreference: new BootPreferencePresenter(ports.preferences),

@@ -82,12 +82,22 @@ export interface ComposedMachines {
   machines: MachineFactories;
 }
 
-/** `nativePresenters`' return type: every native member is present, PLUS the
- * two slice-4 seams `composeWithBase` hands to the base RxJS app
- * (`CoreSeams`) — typed narrow rather than a non-null assertion at the call
+/** `nativePresenters`' return type: every native member is present, PLUS
+ * the members whose streams `composeWithBase` hands to the base RxJS app as
+ * `CoreSeams` — typed narrow rather than a non-null assertion at the call
  * site. */
 type NativePresenters = Partial<Presenters> &
-  Pick<Presenters, "eqWorkspace" | "ordersBlotter">;
+  Pick<
+    Presenters,
+    | "connection"
+    | "currencyPairs"
+    | "eqWorkspace"
+    | "execution"
+    | "ordersBlotter"
+    | "priceStream"
+    | "rfqs"
+    | "watchlist"
+  >;
 
 /** Members this core implements natively — slice 1a: the connection fold,
  * the four theme/view/power-saver preferences, and `commands` (see
@@ -168,13 +178,24 @@ function nativePresenters(
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const lifetime = new AbortController();
-  // Native FIRST: the base app's Jarvis driver and animation director are
-  // pointed at this core's own workspace and fills (`CoreSeams`) — without
-  // that a drive batch would mutate a workspace the UI no longer renders.
+  // Native FIRST (see `CoreSeams`): every internal reader of the base app —
+  // its Jarvis driver, animation director, narrator and workspace seed — is
+  // pointed at this core's own members. Without that a drive batch would
+  // mutate a workspace the UI no longer renders, a fill or an FX execution
+  // made through a NATIVE presenter would choreograph nothing, and each
+  // port those readers share with a native member would be held twice.
   const native = nativePresenters(ports, lifetime.signal);
   const seams: CoreSeams = {
     eqWorkspace: native.eqWorkspace,
     equityFills$: native.ordersBlotter.fills$,
+    watchlist$: native.watchlist.watchlist$,
+    pairs$: native.currencyPairs.pairs$,
+    priceFor: (pair: CurrencyPair) => {
+      return native.priceStream.price$(pair);
+    },
+    executions$: native.execution.executions$,
+    rfqEvents$: native.rfqs.events$,
+    connectionStatus$: native.connection.status$,
   };
   const base = createRxjsApp(ports, seams);
   const app: App = {

@@ -57,14 +57,23 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     Effect.all({ host: HostTag, presenters: nativePresentersEffect }),
   );
 
-  // Native FIRST (see `CoreSeams`): the base's Jarvis driver and animation
-  // director are pointed at this core's own workspace and fills — without
-  // that a drive batch would mutate a workspace the UI no longer renders,
-  // and a ticket fill placed through the NATIVE blotter would choreograph
-  // nothing.
+  // Native FIRST (see `CoreSeams`): every internal reader of the base app —
+  // its Jarvis driver, animation director, narrator and workspace seed — is
+  // pointed at this core's own members. Without that a drive batch would
+  // mutate a workspace the UI no longer renders, a fill or an FX execution
+  // made through a NATIVE presenter would choreograph nothing, and each
+  // port those readers share with a native member would be held twice.
   const base = createRxjsApp(ports, {
     eqWorkspace: presenters.eqWorkspace,
     equityFills$: presenters.ordersBlotter.fills$,
+    watchlist$: presenters.watchlist.watchlist$,
+    pairs$: presenters.currencyPairs.pairs$,
+    priceFor: (pair: CurrencyPair) => {
+      return presenters.priceStream.price$(pair);
+    },
+    executions$: presenters.execution.executions$,
+    rfqEvents$: presenters.rfqs.events$,
+    connectionStatus$: presenters.connection.status$,
   });
 
   const app: App = {

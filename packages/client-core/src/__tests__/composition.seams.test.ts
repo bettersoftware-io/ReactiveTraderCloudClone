@@ -1,11 +1,19 @@
-import { firstValueFrom, type Observable, of, Subject } from "rxjs";
+import { firstValueFrom, NEVER, Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { EquityFillSignal } from "@rtc/core-api";
+import type { EquityFillSignal, ExecutionOutcome } from "@rtc/core-api";
+import { createPrice, createQuote, EURUSD } from "@rtc/core-contract";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  ConnectionStatus,
+  type CurrencyPair,
+  type EquityInstrument,
+  ExecutionStatus,
+  type MarketDataPort,
   PreferencesSimulator,
+  type Price,
+  type RfqEvent,
 } from "@rtc/domain";
 import type { JarvisEvent } from "@rtc/shared";
 
@@ -69,6 +77,120 @@ describe("createApp — core seams (strangler phase)", () => {
     expect(intents).toEqual([{ target: "ticket:AAPL", kind: "fill" }]);
     sub.unsubscribe();
   });
+
+  it("every other AnimationDirector source is a seam too: a supplied executions$, rfqEvents$ and connectionStatus$ each drive their intent", () => {
+    const executions$ = new Subject<ExecutionOutcome>();
+    const rfqEvents$ = new Subject<RfqEvent>();
+    const connectionStatus$ = new Subject<ConnectionStatus>();
+    const { presenters } = createApp(createPorts({}), {
+      executions$,
+      rfqEvents$,
+      connectionStatus$,
+    });
+    const intents: AnimationIntent[] = [];
+    const subs = ["tile:EURUSD", "rfq:7", "banner:connection"].map((target) => {
+      return presenters.animationDirector
+        .intentsFor(target)
+        .subscribe((intent) => {
+          // The simulator's own ticks land on the tile target as well.
+          if (intent.kind !== "tickUp" && intent.kind !== "tickDown") {
+            intents.push(intent);
+          }
+        });
+    });
+
+    executions$.next({ symbol: "EURUSD", status: ExecutionStatus.Done });
+    rfqEvents$.next({
+      type: "quoteAccepted",
+      payload: createQuote({ rfqId: 7 }),
+    });
+    // The director skips the replayed CURRENT status and animates changes.
+    connectionStatus$.next(ConnectionStatus.CONNECTED);
+    connectionStatus$.next(ConnectionStatus.DISCONNECTED);
+
+    expect(intents).toEqual([
+      { target: "tile:EURUSD", kind: "fill" },
+      { target: "rfq:7", kind: "fill" },
+      { target: "banner:connection", kind: "connectionChange" },
+    ]);
+
+    for (const sub of subs) {
+      sub.unsubscribe();
+    }
+  });
+
+  it("with pairs$, priceFor and watchlist$ supplied, this app's own readers open none of those three ports", async () => {
+    const opened = { pairs: 0, prices: 0, watchlist: 0 };
+    const simulated = createPorts({});
+    const prices$ = new Subject<Price>();
+    const { presenters } = createApp(
+      {
+        ...simulated,
+        referenceData: {
+          getCurrencyPairs: () => {
+            return new Observable<readonly CurrencyPair[]>(() => {
+              opened.pairs += 1;
+            });
+          },
+        },
+        pricing: {
+          getPriceUpdates: () => {
+            return new Observable<never>(() => {
+              opened.prices += 1;
+            });
+          },
+          getPriceHistory: () => {
+            return NEVER;
+          },
+          getRfqQuote: () => {
+            return NEVER;
+          },
+        },
+        marketData: new Proxy(simulated.marketData, {
+          get: (target: MarketDataPort, property: string | symbol): unknown => {
+            if (property === "watchlist") {
+              return () => {
+                return new Observable<readonly EquityInstrument[]>(() => {
+                  opened.watchlist += 1;
+                });
+              };
+            }
+
+            const member: unknown = Reflect.get(target, property, target);
+            return typeof member === "function" ? member.bind(target) : member;
+          },
+        }),
+      },
+      {
+        pairs$: of([EURUSD]),
+        priceFor: () => {
+          return prices$;
+        },
+        watchlist$: of([MSFT_INSTRUMENT]),
+      },
+    );
+    const ticks: AnimationIntent[] = [];
+    const sub = presenters.animationDirector
+      .intentsFor("tile:EURUSD")
+      .subscribe((intent) => {
+        ticks.push(intent);
+      });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    prices$.next(createPrice("EURUSD", 1.1));
+    prices$.next(createPrice("EURUSD", 1.2));
+
+    expect(ticks).toEqual([{ target: "tile:EURUSD", kind: "tickUp" }]);
+    // Seeded from the SUPPLIED roster, synchronously, at composition.
+    expect((await firstValueFrom(presenters.eqWorkspace.state$)).sel).toBe(
+      "MSFT",
+    );
+    expect(opened).toEqual({ pairs: 0, prices: 0, watchlist: 0 });
+    sub.unsubscribe();
+    presenters.jarvis.dispose();
+  });
 });
 
 function createPorts(overrides: Partial<AppPorts>): AppPorts {
@@ -98,3 +220,9 @@ function createSelectingJarvisPort(symbol: string): JarvisPort {
     },
   };
 }
+
+const MSFT_INSTRUMENT: EquityInstrument = {
+  symbol: "MSFT",
+  name: "Microsoft",
+  exchange: "NASDAQ",
+};
