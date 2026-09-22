@@ -3,7 +3,16 @@ import { describe, expect, it } from "vitest";
 
 import type { ConnectionEvent, MetricControl, Perturbation } from "@rtc/domain";
 
-import { createIncidentMachine } from "../IncidentMachine";
+import type {
+  IncidentEvent,
+  IncidentKind,
+  IncidentState,
+} from "../IncidentMachine";
+import {
+  createIncidentMachine,
+  incidentConnectionEvent,
+  reduceIncident,
+} from "../IncidentMachine";
 
 describe("IncidentMachine", () => {
   it("inject(latencySpike) perturbs controls and pushes gatewayDisconnected", async () => {
@@ -82,10 +91,84 @@ describe("IncidentMachine", () => {
   });
 });
 
+describe("reduceIncident", () => {
+  it("inject adds the kind to an empty active list", () => {
+    const next = reduceIncident(
+      { active: [] },
+      createInjectEvent("latencySpike"),
+    );
+
+    expect(next.active).toEqual(["latencySpike"]);
+  });
+
+  it("injecting the same kind twice leaves the state unchanged", () => {
+    const first = reduceIncident(
+      { active: [] },
+      createInjectEvent("latencySpike"),
+    );
+    const second = reduceIncident(first, createInjectEvent("latencySpike"));
+
+    expect(second).toBe(first);
+    expect(second.active).toEqual(["latencySpike"]);
+  });
+
+  it("keeps inject order", () => {
+    const first = reduceIncident(
+      { active: [] },
+      createInjectEvent("errorBurst"),
+    );
+    const second = reduceIncident(first, createInjectEvent("serviceDown"));
+
+    expect(second.active).toEqual(["errorBurst", "serviceDown"]);
+  });
+
+  it("clear resets to the initial empty state from any state", () => {
+    const populated: IncidentState = {
+      active: ["latencySpike", "errorBurst"],
+    };
+
+    expect(reduceIncident(populated, createClearEvent())).toEqual({
+      active: [],
+    });
+  });
+});
+
+describe("incidentConnectionEvent", () => {
+  it("inject(latencySpike) disconnects the gateway", () => {
+    expect(incidentConnectionEvent(createInjectEvent("latencySpike"))).toEqual({
+      type: "gatewayDisconnected",
+    });
+  });
+
+  it("inject(serviceDown) disconnects the gateway", () => {
+    expect(incidentConnectionEvent(createInjectEvent("serviceDown"))).toEqual({
+      type: "gatewayDisconnected",
+    });
+  });
+
+  it("inject(errorBurst) does not disconnect the gateway", () => {
+    expect(incidentConnectionEvent(createInjectEvent("errorBurst"))).toBeNull();
+  });
+
+  it("clear reconnects the gateway", () => {
+    expect(incidentConnectionEvent(createClearEvent())).toEqual({
+      type: "gatewayConnected",
+    });
+  });
+});
+
 type FakeControl = MetricControl & {
   calls: Perturbation[];
   cleared: number;
 };
+
+function createInjectEvent(incident: IncidentKind): IncidentEvent {
+  return { kind: "inject", incident };
+}
+
+function createClearEvent(): IncidentEvent {
+  return { kind: "clear" };
+}
 
 function createFakeControl(): FakeControl {
   const calls: Perturbation[] = [];

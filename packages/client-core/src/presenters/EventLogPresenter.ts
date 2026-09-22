@@ -2,10 +2,17 @@ import { type Observable, shareReplay } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
 import type { EventLogPresenter as EventLogPresenterApi } from "@rtc/core-api";
-import type { EventLogPort, LogEvent } from "@rtc/domain";
+import {
+  MAX_LOG_ROWS as DOMAIN_MAX_LOG_ROWS,
+  type EventLogPort,
+  type LogEvent,
+} from "@rtc/domain";
 
-/** Maximum number of log rows retained in the rolling window (newest-first). */
-export const MAX_LOG_ROWS = 200;
+import { prependLogEvent } from "./adminFolds.js";
+
+/** Maximum number of log rows retained in the rolling window (newest-first).
+ * Kept for existing importers: re-exports the domain constant. */
+export const MAX_LOG_ROWS: number = DOMAIN_MAX_LOG_ROWS;
 
 /** Implements `EventLogPresenter` (`@rtc/core-api`) — see the interface for
  * the contract. Accumulates `EventLogPort.events$()` via `scan`.
@@ -27,15 +34,12 @@ export class EventLogPresenter implements EventLogPresenterApi {
   readonly events$: Observable<readonly LogEvent[]>;
 
   constructor(port: EventLogPort) {
-    this.events$ = port.events$().pipe(
-      scan(
-        (acc, e) => {
-          return [e, ...acc].slice(0, MAX_LOG_ROWS) as readonly LogEvent[];
-        },
-        [] as readonly LogEvent[],
-      ),
-      startWith([] as readonly LogEvent[]),
-      shareReplay({ bufferSize: 1, refCount: false }),
-    );
+    this.events$ = port
+      .events$()
+      .pipe(
+        scan(prependLogEvent, [] as readonly LogEvent[]),
+        startWith([] as readonly LogEvent[]),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
   }
 }

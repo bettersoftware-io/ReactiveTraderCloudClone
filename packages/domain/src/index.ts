@@ -270,6 +270,13 @@ export {
   TradeStoreSimulator,
 } from "./simulators/index.js";
 // Telemetry
+export {
+  DEFAULT_THROUGHPUT,
+  MAX_LOG_ROWS,
+  METRIC_WINDOW,
+  THROUGHPUT_DEBOUNCE_MS,
+  THROUGHPUT_MESSAGE_DISMISS_MS,
+} from "./telemetry/adminCadence.js";
 export type { LogEvent, Severity } from "./telemetry/log.js";
 export type { MetricSample } from "./telemetry/metrics.js";
 export { mulberry32 } from "./telemetry/prng.js";
