@@ -45,8 +45,10 @@ const TELEMETRY_EMITTERS: readonly EmitSample[] = [
  * folds over a telemetry stream — synchronous `[]` seed, append-and-truncate
  * to `METRIC_WINDOW`, retained across a full unsubscribe (`refCount:
  * false`), and isolated from the other two telemetry methods. One
- * parameterised builder shared by all three (Task 3 Step 1). */
-export function describeMetricWindowContract(
+ * parameterised builder shared by all three (Task 3 Step 1) — local to this
+ * file: the registry imports the three named suites below, never the
+ * builder. */
+function describeMetricWindowContract(
   member: string,
   select: SelectSamples,
   emit: EmitSample,
