@@ -4,7 +4,7 @@ import { map, scan, startWith } from "rxjs/operators";
 import type { SessionsKpiPresenter as SessionsKpiPresenterApi } from "@rtc/core-api";
 import type { MetricSample, SessionsPort } from "@rtc/domain";
 
-import { WINDOW } from "./windowedSamples";
+import { appendMetricSample } from "./adminFolds.js";
 
 /** Implements `SessionsKpiPresenter` (`@rtc/core-api`) — see the interface
  * for the contract. Maps each `SessionsPort.sessions$()` emission to a
@@ -32,12 +32,7 @@ export class SessionsKpiPresenter implements SessionsKpiPresenterApi {
       map((sessions) => {
         return { t: Date.now(), value: sessions.length };
       }),
-      scan(
-        (acc, sample) => {
-          return [...acc, sample].slice(-WINDOW) as readonly MetricSample[];
-        },
-        [] as readonly MetricSample[],
-      ),
+      scan(appendMetricSample, [] as readonly MetricSample[]),
       startWith([] as readonly MetricSample[]),
       shareReplay({ bufferSize: 1, refCount: false }),
     );

@@ -14,17 +14,24 @@ import type {
   ThroughputPresenter as ThroughputPresenterApi,
   ThroughputView,
 } from "@rtc/core-api";
-import type { AdminPort } from "@rtc/domain";
+import {
+  type AdminPort,
+  DEFAULT_THROUGHPUT,
+  THROUGHPUT_DEBOUNCE_MS,
+  THROUGHPUT_MESSAGE_DISMISS_MS,
+} from "@rtc/domain";
 
-/** UI cadence constants relocated out of the old useThroughput React hook.
- *  These are presentation timings (debounce the write, auto-dismiss the
- *  confirmation), not domain rules, so they live here in the presenter. */
-export const DEBOUNCE_MS = 300;
-export const MESSAGE_DISMISS_MS = 3_000;
+import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "./adminFolds.js";
+
+/** UI cadence constants relocated out of the old useThroughput React hook —
+ *  now sourced from `@rtc/domain` (pluggable-core slice 5). Kept for
+ *  existing importers: re-exports the domain constants. */
+export const DEBOUNCE_MS: number = THROUGHPUT_DEBOUNCE_MS;
+export const MESSAGE_DISMISS_MS: number = THROUGHPUT_MESSAGE_DISMISS_MS;
 
 /** Default value shown when the initial load fails (mirrors the old hook's
  *  useState(100) seed, which it kept on a failed fetch). */
-const DEFAULT_VALUE = 100;
+const DEFAULT_VALUE: number = DEFAULT_THROUGHPUT;
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -75,27 +82,27 @@ export class ThroughputPresenter implements ThroughputPresenterApi {
     // banner that auto-dismisses. switchMap drops an in-flight write/dismiss
     // when a newer debounced value arrives.
     const write$: Observable<Patch> = this.setValue$.pipe(
-      debounceTime(DEBOUNCE_MS),
+      debounceTime(THROUGHPUT_DEBOUNCE_MS),
       switchMap((value) => {
         return admin.setThroughput(value).pipe(
           map((): ThroughputMessage => {
             return {
-              text: `Throughput has been set to ${value}`,
+              text: throughputSetMessage(value),
               isError: false,
             };
           }),
           catchError(() => {
             return of<ThroughputMessage>({
-              text: "Error setting throughput",
+              text: THROUGHPUT_SET_ERROR,
               isError: true,
             });
           }),
           switchMap((message) =>
-            // Show the banner, then dismiss it after MESSAGE_DISMISS_MS.
+            // Show the banner, then dismiss it after THROUGHPUT_MESSAGE_DISMISS_MS.
             {
               return concat(
                 of<Patch>({ message }),
-                timer(MESSAGE_DISMISS_MS).pipe(
+                timer(THROUGHPUT_MESSAGE_DISMISS_MS).pipe(
                   map((): Patch => {
                     return { message: null };
                   }),

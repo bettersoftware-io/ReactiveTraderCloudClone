@@ -31,7 +31,39 @@ const DISCONNECTING: ReadonlySet<IncidentKind> = new Set([
   "serviceDown",
 ]);
 
-type Patch = (s: IncidentState) => IncidentState;
+/** One incident intent, as the pure fold sees it. */
+export type IncidentEvent =
+  | { readonly kind: "inject"; readonly incident: IncidentKind }
+  | { readonly kind: "clear" };
+
+/** The state transition for one incident intent. */
+export function reduceIncident(
+  state: IncidentState,
+  event: IncidentEvent,
+): IncidentState {
+  if (event.kind === "clear") {
+    return INITIAL;
+  }
+
+  return state.active.includes(event.incident)
+    ? state
+    : { active: [...state.active, event.incident] };
+}
+
+/** The connection event an incident intent pushes, if any — latencySpike and
+ * serviceDown break the gateway; errorBurst is degraded-but-connected; a
+ * clear always reconnects. */
+export function incidentConnectionEvent(
+  event: IncidentEvent,
+): ConnectionEvent | null {
+  if (event.kind === "clear") {
+    return { type: "gatewayConnected" };
+  }
+
+  return DISCONNECTING.has(event.incident)
+    ? { type: "gatewayDisconnected" }
+    : null;
+}
 
 export function createIncidentMachine(
   deps: IncidentDeps,
@@ -39,43 +71,43 @@ export function createIncidentMachine(
   const inject$ = new Subject<IncidentKind>();
   const clear$ = new Subject<void>();
 
-  const injectPatch$ = inject$.pipe(
-    map((kind): Patch => {
+  const injectEvent$ = inject$.pipe(
+    map((kind): IncidentEvent => {
       // Perturb every control; each simulator reacts only to its own kind (errorBurst moves error-rate/log, not latency/topology).
       for (const c of deps.controls) {
         c.perturb(kind);
       }
 
-      if (DISCONNECTING.has(kind)) {
-        deps.pushConnectionEvent({ type: "gatewayDisconnected" });
+      const event: IncidentEvent = { kind: "inject", incident: kind };
+      const connectionEvent = incidentConnectionEvent(event);
+
+      if (connectionEvent !== null) {
+        deps.pushConnectionEvent(connectionEvent);
       }
 
-      return (s: IncidentState): IncidentState => {
-        return {
-          active: s.active.includes(kind) ? s.active : [...s.active, kind],
-        };
-      };
+      return event;
     }),
   );
 
-  const clearPatch$ = clear$.pipe(
-    map((): Patch => {
+  const clearEvent$ = clear$.pipe(
+    map((): IncidentEvent => {
       for (const c of deps.controls) {
         c.clearPerturbation();
       }
 
-      deps.pushConnectionEvent({ type: "gatewayConnected" });
+      const event: IncidentEvent = { kind: "clear" };
+      const connectionEvent = incidentConnectionEvent(event);
 
-      return () => {
-        return INITIAL;
-      };
+      if (connectionEvent !== null) {
+        deps.pushConnectionEvent(connectionEvent);
+      }
+
+      return event;
     }),
   );
 
-  const stream$ = merge(injectPatch$, clearPatch$).pipe(
-    scan((s, patch) => {
-      return patch(s);
-    }, INITIAL),
+  const stream$ = merge(injectEvent$, clearEvent$).pipe(
+    scan(reduceIncident, INITIAL),
   );
   const state$: StateObservable<IncidentState> = state(stream$, INITIAL);
 

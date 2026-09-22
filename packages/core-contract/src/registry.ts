@@ -18,12 +18,19 @@ import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewP
 import { describeEqDrawingsContract } from "#/suites/eqDrawings";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
 import { describeEqWorkspaceContract } from "#/suites/eqWorkspace";
+import { describeEventLogContract } from "#/suites/eventLog";
 import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
+import { describeIncidentContract } from "#/suites/incident";
 import { describeInstrumentsContract } from "#/suites/instruments";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
 import { describeLayoutEngineContract } from "#/suites/layoutEngine";
 import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
+import {
+  describeErrorRateMetricContract,
+  describeLatencyMetricContract,
+  describeThroughputMetricContract,
+} from "#/suites/metricWindows";
 import { describeNotionalContract } from "#/suites/notional";
 import { describeOrdersBlotterContract } from "#/suites/ordersBlotter";
 import { describeOrderTicketContract } from "#/suites/orderTicket";
@@ -38,11 +45,15 @@ import { describeRfqSubmissionContract } from "#/suites/rfqSubmission";
 import { describeRfqsContract } from "#/suites/rfqs";
 import { describeRfqTileContract } from "#/suites/rfqTile";
 import { describeRowHighlightContract } from "#/suites/rowHighlight";
+import { describeSessionsContract } from "#/suites/sessions";
+import { describeSessionsKpiContract } from "#/suites/sessionsKpi";
 import { describeStaleFlagContract } from "#/suites/staleFlag";
 import { describeThemePreferenceContract } from "#/suites/themePreference";
 import { describeThemeSkinPreferenceContract } from "#/suites/themeSkinPreference";
+import { describeThroughputContract } from "#/suites/throughput";
 import { describeTicketSubmissionContract } from "#/suites/ticketSubmission";
 import { describeTileExecutionContract } from "#/suites/tileExecution";
+import { describeTopologyContract } from "#/suites/topology";
 import { describeViewModePreferenceContract } from "#/suites/viewModePreference";
 import { describeWatchlistContract } from "#/suites/watchlist";
 
@@ -69,7 +80,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.dealers": describeDealersContract,
   "presenters.connection": describeConnectionContract,
   "presenters.rfqQuote": describeRfqQuoteContract,
-  "presenters.throughput": null,
+  "presenters.throughput": describeThroughputContract,
   "presenters.themePreference": describeThemePreferenceContract,
   "presenters.themeSkinPreference": describeThemeSkinPreferenceContract,
   "presenters.animatedBackground": describeAnimatedBackgroundContract,
@@ -96,18 +107,18 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.depth": describeDepthContract,
   "presenters.ordersBlotter": describeOrdersBlotterContract,
   "presenters.positions": describePositionsContract,
-  "presenters.incident": null,
+  "presenters.incident": describeIncidentContract,
   "presenters.eqWorkspace": describeEqWorkspaceContract,
   "presenters.workspaceNav": null,
   "presenters.layoutFor": null,
   "presenters.eqDrawings": describeEqDrawingsContract,
-  "presenters.throughputMetric": null,
-  "presenters.latencyMetric": null,
-  "presenters.errorRateMetric": null,
-  "presenters.topology": null,
-  "presenters.eventLog": null,
-  "presenters.sessions": null,
-  "presenters.sessionsKpi": null,
+  "presenters.throughputMetric": describeThroughputMetricContract,
+  "presenters.latencyMetric": describeLatencyMetricContract,
+  "presenters.errorRateMetric": describeErrorRateMetricContract,
+  "presenters.topology": describeTopologyContract,
+  "presenters.eventLog": describeEventLogContract,
+  "presenters.sessions": describeSessionsContract,
+  "presenters.sessionsKpi": describeSessionsKpiContract,
   "presenters.jarvis": null,
   "presenters.jarvisUsage": null,
   "presenters.jarvisPanels": null,
@@ -140,21 +151,12 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
  * the drift test fails if this list and the `null`s above disagree, so a
  * member cannot silently lose its suite. Shrinks slice by slice. */
 export const PENDING_SUITES: readonly ContractMember[] = [
-  "presenters.throughput",
   "presenters.dockLayoutStore",
   "presenters.animationDirector",
   "presenters.bootGate",
   "presenters.auth",
-  "presenters.incident",
   "presenters.workspaceNav",
   "presenters.layoutFor",
-  "presenters.throughputMetric",
-  "presenters.latencyMetric",
-  "presenters.errorRateMetric",
-  "presenters.topology",
-  "presenters.eventLog",
-  "presenters.sessions",
-  "presenters.sessionsKpi",
   "presenters.jarvis",
   "presenters.jarvisUsage",
   "presenters.jarvisPanels",

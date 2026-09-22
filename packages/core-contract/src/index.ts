@@ -39,6 +39,7 @@ export {
 } from "#/harness/portTally";
 export {
   type CandleHistoryRequest,
+  type ControlCall,
   type HarnessSeed,
   type PortMethodName,
   type RfqQuoteRequest,
