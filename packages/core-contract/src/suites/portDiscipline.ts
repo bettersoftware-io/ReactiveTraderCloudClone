@@ -428,6 +428,12 @@ export function describePortDisciplineContract(
       }
     });
 
+    // Counts CALLS, not subscriptions — the distinction slice 5's ruling 5
+    // turns on. How often the load is SUBSCRIBED across a cold resubscribe is
+    // deliberately uncontracted (the RxJS core re-runs it; a sibling may keep
+    // it warm), but the port method itself is obtained once, when the
+    // presenter is built. A core that called `getThroughput()` afresh per
+    // subscriber would fail here, which is the constancy this file exists for.
     it("throughput: two warm periods of state$ do not call admin.getThroughput() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("admin.getThroughput");

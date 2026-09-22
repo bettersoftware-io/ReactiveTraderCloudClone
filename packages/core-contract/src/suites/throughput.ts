@@ -94,10 +94,20 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
+          // The load LANDED: BASELINE_VALUE, not DEFAULT_THROUGHPUT. This is
+          // what makes the resolve load-bearing in every case that starts
+          // from a loaded view — a resolve issued before the first subscriber
+          // finds an empty queue and does nothing, which reads exactly like a
+          // resolved load until something asserts the value.
+          expect(c.values.at(-1)).toEqual({
+            value: BASELINE_VALUE,
+            loading: false,
+            message: null,
+          });
           m.setValue(300);
           await clock.settle();
           expect(c.values.at(-1)?.value).toBe(300);
@@ -119,14 +129,17 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           // `state$` is a cold `StateObservable` (`@rx-state/core`), not a
           // `shareReplay`-warmed stream — a live subscriber is what keeps
           // `write$`'s `debounceTime`/`switchMap` chain running at all, so
           // every case in this suite holds one collector open (ruling 5).
+          // It also has to be subscribed BEFORE the load is resolved: the
+          // port is called on first subscribe, so a resolve issued earlier
+          // finds an empty queue and silently does nothing.
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(1);
           await clock.advance(100);
           m.setValue(2);
@@ -145,10 +158,10 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(2);
           await clock.advance(THROUGHPUT_DEBOUNCE_MS);
           h.driver.resolveThroughputWrite();
@@ -177,10 +190,10 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(2);
           await clock.advance(THROUGHPUT_DEBOUNCE_MS);
           h.driver.failThroughputWrite(new Error("nope"));
@@ -208,10 +221,10 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(5);
           await clock.advance(THROUGHPUT_DEBOUNCE_MS);
           expect(h.driver.pendingThroughputWrites()).toEqual([5]);
@@ -235,10 +248,10 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(5);
           await clock.advance(THROUGHPUT_DEBOUNCE_MS);
           expect(h.driver.pendingThroughputWrites()).toEqual([5]);
@@ -274,10 +287,10 @@ export function describeThroughputContract(
         const h = makeHarness();
 
         try {
-          h.driver.resolveThroughputLoad(BASELINE_VALUE);
-          await clock.settle();
           const m = h.app.presenters.throughput;
           const c = collect(m.state$);
+          h.driver.resolveThroughputLoad(BASELINE_VALUE);
+          await clock.settle();
           m.setValue(5);
           await clock.advance(THROUGHPUT_DEBOUNCE_MS);
           h.driver.resolveThroughputWrite();
