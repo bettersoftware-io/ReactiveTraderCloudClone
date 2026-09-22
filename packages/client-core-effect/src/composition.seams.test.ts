@@ -10,7 +10,14 @@ import {
   type JarvisPort,
   reconnect$,
 } from "@rtc/client-core";
-import { createPrice, createTrade, EURUSD } from "@rtc/core-contract";
+import {
+  countInto,
+  countSubscriptions,
+  createPrice,
+  createTally,
+  createTrade,
+  EURUSD,
+} from "@rtc/core-contract";
 import type {
   EquityOrder,
   ExecutionPort,
@@ -313,63 +320,4 @@ async function settle(): Promise<void> {
       setTimeout(resolve, 0);
     });
   }
-}
-
-/** Live subscriptions to one port stream. Only `live` is comparable across
- * cores — the Effect core's `mirrorPort` PEEKS a port (subscribe, then
- * unsubscribe) before it follows it, so it opens one twice by design —
- * and only on a source that never completes. */
-interface Tally {
-  live: number;
-}
-
-function createTally(): Tally {
-  return { live: 0 };
-}
-
-/** `port` with every stream `method` returns counted into the tally
- * `tallyFor` picks from the call's arguments — a Proxy, because the
- * simulators keep their methods on a prototype a spread would drop. */
-function countSubscriptions<P extends object>(
-  port: P,
-  method: keyof P & string,
-  tallyFor: (...args: readonly unknown[]) => Tally,
-  reshape: (source: Observable<unknown>) => Observable<unknown> = passThrough,
-): P {
-  return new Proxy(port, {
-    get: (target: P, property: string | symbol): unknown => {
-      const member: unknown = Reflect.get(target, property, target);
-
-      if (typeof member !== "function") {
-        return member;
-      }
-
-      if (property !== method) {
-        return member.bind(target);
-      }
-
-      return (...args: readonly unknown[]): Observable<unknown> => {
-        return countInto(
-          reshape(member.apply(target, args) as Observable<unknown>),
-          tallyFor(...args),
-        );
-      };
-    },
-  });
-}
-
-function countInto<T>(source: Observable<T>, tally: Tally): Observable<T> {
-  return new Observable<T>((subscriber) => {
-    tally.live += 1;
-    const inner = source.subscribe(subscriber);
-
-    return () => {
-      tally.live -= 1;
-      inner.unsubscribe();
-    };
-  });
-}
-
-function passThrough<T>(source: Observable<T>): Observable<T> {
-  return source;
 }

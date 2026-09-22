@@ -72,6 +72,7 @@ import type {
   LayoutPresetSummary,
   LayoutState,
   NotionalView,
+  RfqCountdownSeed,
   SessionUser,
 } from "@rtc/client-core";
 import {
@@ -369,8 +370,8 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // animations:"disabled" had always produced; that removed the flake by
     // locking in the wrong picture, and left the FX tile's own countdown
     // (fixture-driven, not hook-driven) untouched.
-    useRfqCountdown: (_creationTimestamp: number, totalMs: number) => {
-      return Math.round(totalMs * 0.6);
+    useRfqCountdown: (seed: RfqCountdownSeed) => {
+      return Math.round(seed.totalMs * 0.6);
     },
     // Animation intents: static screenshots never fire intents, so the bar
     // renders in its neutral, un-animated state.

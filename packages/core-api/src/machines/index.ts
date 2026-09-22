@@ -10,6 +10,7 @@ export type * from "#/machines/layout";
 export type * from "#/machines/narrator";
 export type * from "#/machines/notional";
 export type * from "#/machines/orderTicket";
+export type * from "#/machines/rfqCountdown";
 export type * from "#/machines/rfqTile";
 export type * from "#/machines/submissions";
 export type * from "#/machines/tileExecution";

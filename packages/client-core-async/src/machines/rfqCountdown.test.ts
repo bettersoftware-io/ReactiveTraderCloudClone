@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
@@ -14,7 +15,7 @@ describe("createRfqCountdownMachine (async)", () => {
   });
 
   it("starts at totalMs − elapsed synchronously and ticks one interval per RFQ_COUNTDOWN_INTERVAL_MS to an inclusive 0", async () => {
-    const m = createRfqCountdownMachine(CREATED_AT, TOTAL_MS, () => {
+    const m = createRfqCountdownMachine(SEED, () => {
       return CREATED_AT;
     });
     const seen: number[] = [];
@@ -34,7 +35,7 @@ describe("createRfqCountdownMachine (async)", () => {
   });
 
   it("an RFQ created before its expiry starts at 0 and never ticks", async () => {
-    const m = createRfqCountdownMachine(CREATED_AT, TOTAL_MS, () => {
+    const m = createRfqCountdownMachine(SEED, () => {
       return CREATED_AT + TOTAL_MS + 1;
     });
     const seen: number[] = [];
@@ -49,7 +50,7 @@ describe("createRfqCountdownMachine (async)", () => {
   });
 
   it("dispose() before the first tick stops the countdown", async () => {
-    const m = createRfqCountdownMachine(CREATED_AT, TOTAL_MS, () => {
+    const m = createRfqCountdownMachine(SEED, () => {
       return CREATED_AT;
     });
     const sub = m.state$.subscribe(() => {});
@@ -69,3 +70,8 @@ describe("createRfqCountdownMachine (async)", () => {
 const CREATED_AT = 1_000_000;
 
 const TOTAL_MS: number = 3 * RFQ_COUNTDOWN_INTERVAL_MS;
+
+const SEED: RfqCountdownSeed = {
+  creationTimestamp: CREATED_AT,
+  totalMs: TOTAL_MS,
+};

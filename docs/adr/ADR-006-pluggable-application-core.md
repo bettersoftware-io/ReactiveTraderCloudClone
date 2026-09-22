@@ -470,9 +470,16 @@ predictable from the design alone):
   follow-up, not a slice-3 patch; `rfqSubmission` closes that window
   itself with an explicit `signal.aborted` check before its two
   post-sleep steps. And the
-  `rfqCountdown` seed is symmetric in its two arguments, so no wiring test
-  can detect a swapped pair — the RxJS and Effect wiring cases share the
-  blind spot.
+  `rfqCountdown` seed was symmetric in its two positional arguments
+  (`remainingMs = creationTimestamp + totalMs − now`), so no wiring test
+  could detect a swapped pair — the RxJS and Effect wiring cases shared
+  the blind spot. **Closed 2026-09-22, by the signature rather than a
+  test**: no fixture can witness a commutative swap, so the seam, all
+  three factories AND the bindings' `useRfqCountdown` hook now take one
+  `RfqCountdownSeed` object (`{ creationTimestamp, totalMs }`) — the UI
+  builds it once from the `Rfq` and it is carried unchanged to the
+  factory, so a swap is a type error at every site that used to pair two
+  bare numbers.
 
 **Decided in slice 4** (2026-09-21):
 

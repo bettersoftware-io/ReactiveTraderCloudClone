@@ -1,27 +1,28 @@
 import { describe, expect, it } from "@jest/globals";
 
+import type { RfqCountdownSeed } from "@rtc/client-core";
 import { type CurrencyPair, Direction } from "@rtc/domain";
 
 import { creditSlice } from "./credit";
 
 describe("creditSlice.useRfqCountdown", () => {
   it("returns the identical value on two successive calls", () => {
-    const first = creditSlice.useRfqCountdown(0, 120_000);
-    const second = creditSlice.useRfqCountdown(0, 120_000);
+    const first = creditSlice.useRfqCountdown(createSeedAt(0));
+    const second = creditSlice.useRfqCountdown(createSeedAt(0));
 
     expect(second).toBe(first);
   });
 
   it("returns the identical value after an await tick — this is the assertion that fails if anyone reintroduces a real (clock-driven) countdown", async () => {
-    const before = creditSlice.useRfqCountdown(0, 120_000);
+    const before = creditSlice.useRfqCountdown(createSeedAt(0));
     await Promise.resolve();
-    const after = creditSlice.useRfqCountdown(0, 120_000);
+    const after = creditSlice.useRfqCountdown(createSeedAt(0));
 
     expect(after).toBe(before);
   });
 
   it("derives a mid-window value — not full, not empty, not exactly half", () => {
-    const remainingMs = creditSlice.useRfqCountdown(0, 120_000);
+    const remainingMs = creditSlice.useRfqCountdown(createSeedAt(0));
 
     expect(remainingMs).toBeGreaterThan(0);
     expect(remainingMs).toBeLessThan(120_000);
@@ -29,10 +30,9 @@ describe("creditSlice.useRfqCountdown", () => {
   });
 
   it("ignores creationTimestamp — same totalMs yields the same value regardless", () => {
-    const atZero = creditSlice.useRfqCountdown(0, 120_000);
+    const atZero = creditSlice.useRfqCountdown(createSeedAt(0));
     const atAnotherInstant = creditSlice.useRfqCountdown(
-      1_700_000_000_000,
-      120_000,
+      createSeedAt(1_700_000_000_000),
     );
 
     expect(atAnotherInstant).toBe(atZero);
@@ -188,3 +188,7 @@ const DUMMY_PAIR: CurrencyPair = {
   baseMid: 1.1,
   typicalSpreadPips: 1.5,
 };
+
+function createSeedAt(creationTimestamp: number): RfqCountdownSeed {
+  return { creationTimestamp, totalMs: 120_000 };
+}

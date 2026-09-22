@@ -63,6 +63,7 @@ import {
   STATIC_WORKSPACE_PANEL_IDS,
   type WorkspaceTab,
 } from "@rtc/client-core";
+import type { RfqCountdownSeed } from "@rtc/core-api";
 import type {
   AmbientStyle,
   Candle,
@@ -1630,9 +1631,9 @@ export function reactViewModel(world: World): ViewModel {
     // Per-RFQ countdown: the REAL createRfqCountdownMachine, exercising the
     // relocated countdown logic through the same useMachine bridge the app uses.
     // Contract specs drive the countdown with fake timers.
-    useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
+    useRfqCountdown: (seed: RfqCountdownSeed) => {
       return useMachine(() => {
-        return createRfqCountdownMachine(creationTimestamp, totalMs);
+        return createRfqCountdownMachine(seed);
       }).state;
     },
     // Animation intents: backed by the World's per-target intent subject so the

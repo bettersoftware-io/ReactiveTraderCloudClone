@@ -32,6 +32,12 @@ export {
   type PendingQueue,
 } from "#/harness/pendingQueue";
 export {
+  countInto,
+  countSubscriptions,
+  createTally,
+  type SubscriptionTally,
+} from "#/harness/portTally";
+export {
   type CandleHistoryRequest,
   type HarnessSeed,
   type PortMethodName,

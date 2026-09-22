@@ -11,6 +11,7 @@ import type {
   OrderTicketIntents,
   OrderTicketState,
 } from "#/machines/orderTicket";
+import type { RfqCountdownSeed } from "#/machines/rfqCountdown";
 import type { RfqState, RfqTileIntents } from "#/machines/rfqTile";
 import type {
   RfqSubmissionIntents,
@@ -71,11 +72,9 @@ export interface MachineFactories {
   /** Live countdown for an open credit RFQ (the RFQ card's timer):
    * `remainingMs`, ticking every `RFQ_COUNTDOWN_INTERVAL_MS` from
    * `totalMs − (now − creationTimestamp)` down to an inclusive 0, then still.
-   * Intent-free. One per card mount. */
-  rfqCountdown: (
-    creationTimestamp: number,
-    totalMs: number,
-  ) => ReadOnlyMachine<number>;
+   * Intent-free. One per card mount. Seeded by an object (see
+   * `RfqCountdownSeed` for why not two numbers). */
+  rfqCountdown: (seed: RfqCountdownSeed) => ReadOnlyMachine<number>;
   /** Layout view-model for a workspace tab — the in-house engine's tree
    * state. UNLIKE every other factory here, this resolves to
    * `Presenters.layoutFor(tab)`, a composition-root SINGLETON (one instance

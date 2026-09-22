@@ -1,4 +1,4 @@
-import type { ReadOnlyMachine } from "@rtc/core-api";
+import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import { storeToStateStream } from "#/bridge/out";
@@ -12,11 +12,10 @@ import { createStore } from "#/kernel/store";
  * the tick index — never the clock — so fake timers are exact. `dispose()`
  * aborts the ticks. */
 export function createRfqCountdownMachine(
-  creationTimestamp: number,
-  totalMs: number,
+  seed: RfqCountdownSeed,
   now: () => number = Date.now,
 ): ReadOnlyMachine<number> {
-  const initial = Math.max(0, totalMs - (now() - creationTimestamp));
+  const initial = Math.max(0, seed.totalMs - (now() - seed.creationTimestamp));
   const store = createStore(initial);
   const controller = new AbortController();
 

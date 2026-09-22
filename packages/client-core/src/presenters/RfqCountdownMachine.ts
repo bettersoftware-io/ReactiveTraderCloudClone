@@ -2,9 +2,15 @@ import { type StateObservable, state } from "@rx-state/core";
 import { timer } from "rxjs";
 import { map, takeWhile } from "rxjs/operators";
 
+import type { RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import type { ReadOnlyMachine } from "./machine";
+
+/** Re-exported from `@rtc/core-api` (same convention as `RfqTileMachine`'s
+ * `RfqState`) so the bindings keep importing every machine type from
+ * `@rtc/client-core`. */
+export type { RfqCountdownSeed };
 
 /** How often the credit-RFQ countdown ticks. Presenter-local alias of the
  * domain cadence. Mirrors RfqTileMachine's COUNTDOWN_INTERVAL_MS. */
@@ -15,11 +21,10 @@ const COUNTDOWN_INTERVAL_MS: number = RFQ_COUNTDOWN_INTERVAL_MS;
  * Deterministic under fake timers because remaining is derived from the timer
  * tick index, not Date.now() — same idiom as RfqTileMachine receivedFlow (line 89-103). */
 export function createRfqCountdownMachine(
-  creationTimestamp: number,
-  totalMs: number,
+  seed: RfqCountdownSeed,
 ): ReadOnlyMachine<number> {
-  const elapsed = Date.now() - creationTimestamp;
-  const initialRemaining = Math.max(0, totalMs - elapsed);
+  const elapsed = Date.now() - seed.creationTimestamp;
+  const initialRemaining = Math.max(0, seed.totalMs - elapsed);
 
   // Tick every COUNTDOWN_INTERVAL_MS, derive remaining from tick index.
   // takeWhile(inclusive: true) emits the final 0 tick, then completes the stream.

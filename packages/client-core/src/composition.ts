@@ -24,6 +24,7 @@ import type {
   EqWorkspaceIntents,
   EqWorkspaceState,
   Presenters,
+  RfqCountdownSeed,
 } from "@rtc/core-api";
 import type {
   BootVariant,
@@ -1446,8 +1447,8 @@ export function createMachineFactories(
     ticketSubmission: () => {
       return presenters.rfqs.createTicketSubmission();
     },
-    rfqCountdown: (creationTimestamp: number, totalMs: number) => {
-      return createRfqCountdownMachine(creationTimestamp, totalMs);
+    rfqCountdown: (seed: RfqCountdownSeed) => {
+      return createRfqCountdownMachine(seed);
     },
     layout: (tab: WorkspaceTab) => {
       return presenters.layoutFor(tab);

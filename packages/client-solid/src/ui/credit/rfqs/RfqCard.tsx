@@ -63,12 +63,12 @@ export function RfqCard(props: RfqCardProps): JSX.Element {
     return props.expirySecs * 1000;
   });
   const { useRfqCountdown } = useViewModel();
-  const remainingMs = useRfqCountdown(
-    untrack((): number => {
+  const remainingMs = useRfqCountdown({
+    creationTimestamp: untrack((): number => {
       return props.creationTimestamp;
     }),
     totalMs,
-  );
+  });
 
   const secs = createMemo((): number => {
     return Math.ceil(remainingMs() / 1000);
