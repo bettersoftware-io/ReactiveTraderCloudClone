@@ -333,6 +333,13 @@ intent; with `pairs$`/`priceFor`/`watchlist$` supplied the base opens none
 of those three ports) and each sibling's `composition.seams.test.ts` (an
 FX execution through the native `execution` reaches the director; the
 watchlist, the pairs and a pair's prices each carry ONE live subscription).
+The instrument behind those counts is `@rtc/core-contract`'s
+`countSubscriptions` / `countInto` / `createTally` (`harness/portTally.ts`):
+a Proxy over a port that counts LIVE subscriptions to one method's streams
+— live, not opened, because the Effect `mirrorPort` peeks a port before
+following it; and only on a never-completing source, so a witness reshapes
+`of(…)` to `concat(…, NEVER)`. Later slices' seam witnesses import it
+rather than copying it.
 Strangler-phase scaffolding, deleted along with delegation in slice 8.
 
 **Teardown order.** An alternative core releases its own resources first —

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Stream } from "@rtc/core-api";
+import type { RfqCountdownSeed, Stream } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
@@ -15,7 +15,7 @@ describe("createRfqCountdownMachine", () => {
   });
 
   it("starts at totalMs − elapsed synchronously and ticks one interval at a time", async () => {
-    const m = createRfqCountdownMachine(1_000, TOTAL_MS, createClock(1_000));
+    const m = createRfqCountdownMachine(seedAt(1_000), createClock(1_000));
     const seen = collect(m.state$);
     expect(seen).toEqual([TOTAL_MS]);
     await vi.advanceTimersByTimeAsync(RFQ_COUNTDOWN_INTERVAL_MS - 1);
@@ -29,8 +29,7 @@ describe("createRfqCountdownMachine", () => {
 
   it("an RFQ created earlier starts lower, clamps at an inclusive 0 and then stays still", async () => {
     const m = createRfqCountdownMachine(
-      1_000,
-      TOTAL_MS,
+      seedAt(1_000),
       createClock(1_000 + RFQ_COUNTDOWN_INTERVAL_MS),
     );
     const seen = collect(m.state$);
@@ -46,11 +45,7 @@ describe("createRfqCountdownMachine", () => {
   });
 
   it("an already-expired RFQ starts at 0 and runs no timer at all", async () => {
-    const m = createRfqCountdownMachine(
-      0,
-      TOTAL_MS,
-      createClock(10 * TOTAL_MS),
-    );
+    const m = createRfqCountdownMachine(seedAt(0), createClock(10 * TOTAL_MS));
     const seen = collect(m.state$);
     expect(seen).toEqual([0]);
     await vi.advanceTimersByTimeAsync(10 * TOTAL_MS);
@@ -60,7 +55,7 @@ describe("createRfqCountdownMachine", () => {
   });
 
   it("dispose() stops the ticks; a fresh subscription still yields the current value synchronously", async () => {
-    const m = createRfqCountdownMachine(1_000, TOTAL_MS, createClock(1_000));
+    const m = createRfqCountdownMachine(seedAt(1_000), createClock(1_000));
     const seen = collect(m.state$);
     m.dispose();
     await vi.advanceTimersByTimeAsync(TOTAL_MS);
@@ -76,6 +71,10 @@ function createClock(at: number): () => number {
   return () => {
     return at;
   };
+}
+
+function seedAt(creationTimestamp: number): RfqCountdownSeed {
+  return { creationTimestamp, totalMs: TOTAL_MS };
 }
 
 function collect(stream: Stream<number>): number[] {

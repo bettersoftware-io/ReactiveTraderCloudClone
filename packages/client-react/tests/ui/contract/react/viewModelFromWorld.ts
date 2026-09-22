@@ -1632,7 +1632,7 @@ export function reactViewModel(world: World): ViewModel {
     // Contract specs drive the countdown with fake timers.
     useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
       return useMachine(() => {
-        return createRfqCountdownMachine(creationTimestamp, totalMs);
+        return createRfqCountdownMachine({ creationTimestamp, totalMs });
       }).state;
     },
     // Animation intents: backed by the World's per-target intent subject so the

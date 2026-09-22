@@ -97,7 +97,11 @@ describe("createMachineFactories — wiring", () => {
       const factories = createMachineFactories(
         createStubPresenters().presenters,
       );
-      const machine = factories.rfqCountdown(Date.now(), 300);
+
+      const machine = factories.rfqCountdown({
+        creationTimestamp: Date.now(),
+        totalMs: 300,
+      });
       let seen: number | null = null;
       machine.state$
         .subscribe((value) => {

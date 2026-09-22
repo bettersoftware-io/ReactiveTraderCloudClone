@@ -21,7 +21,10 @@ describe("createRfqCountdownMachine", () => {
   it("initial state equals totalMs (creationTimestamp = now → elapsed ≈ 0)", () => {
     const ts = scheduler();
     ts.run(() => {
-      const machine = createRfqCountdownMachine(Date.now(), TOTAL_MS);
+      const machine = createRfqCountdownMachine({
+        creationTimestamp: Date.now(),
+        totalMs: TOTAL_MS,
+      });
       let current: number | undefined;
       const sub = machine.state$.subscribe((v) => {
         current = v;
@@ -87,7 +90,10 @@ describe("createRfqCountdownMachine", () => {
   it("dispose() tears the machine down before completion (no further emissions)", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
-      const machine = createRfqCountdownMachine(Date.now(), TOTAL_MS);
+      const machine = createRfqCountdownMachine({
+        creationTimestamp: Date.now(),
+        totalMs: TOTAL_MS,
+      });
       const seen: number[] = [];
       const sub = machine.state$.subscribe((v) => {
         return seen.push(v);
@@ -119,7 +125,11 @@ function run(totalMs: number): Array<FrameEmission> {
   const seen: Array<FrameEmission> = [];
   const ts = scheduler();
   ts.run(({ flush }) => {
-    const machine = createRfqCountdownMachine(Date.now(), totalMs);
+    const machine = createRfqCountdownMachine({
+      creationTimestamp: Date.now(),
+      totalMs,
+    });
+
     const sub = machine.state$.subscribe((value) => {
       return seen.push({ frame: ts.now(), value });
     });

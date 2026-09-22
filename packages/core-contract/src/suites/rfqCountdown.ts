@@ -16,7 +16,10 @@ export function describeRfqCountdownContract(
     it("starts at totalMs − elapsed synchronously and ticks down one interval per RFQ_COUNTDOWN_INTERVAL_MS", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
-        const m = h.machines.rfqCountdown(Date.now(), TOTAL_MS);
+        const m = h.machines.rfqCountdown({
+          creationTimestamp: Date.now(),
+          totalMs: TOTAL_MS,
+        });
 
         try {
           const c = collect(m.state$);
@@ -44,10 +47,10 @@ export function describeRfqCountdownContract(
     it("an RFQ created earlier starts lower; the countdown clamps at an inclusive 0 and then stays still", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
-        const m = h.machines.rfqCountdown(
-          Date.now() - RFQ_COUNTDOWN_INTERVAL_MS,
-          TOTAL_MS,
-        );
+        const m = h.machines.rfqCountdown({
+          creationTimestamp: Date.now() - RFQ_COUNTDOWN_INTERVAL_MS,
+          totalMs: TOTAL_MS,
+        });
 
         try {
           const c = collect(m.state$);
@@ -71,11 +74,15 @@ export function describeRfqCountdownContract(
     it("an already-expired RFQ starts at 0; dispose() stops the ticks and a fresh subscription yields the current value synchronously", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
-        const expired = h.machines.rfqCountdown(
-          Date.now() - 2 * TOTAL_MS,
-          TOTAL_MS,
-        );
-        const live = h.machines.rfqCountdown(Date.now(), TOTAL_MS);
+        const expired = h.machines.rfqCountdown({
+          creationTimestamp: Date.now() - 2 * TOTAL_MS,
+          totalMs: TOTAL_MS,
+        });
+
+        const live = h.machines.rfqCountdown({
+          creationTimestamp: Date.now(),
+          totalMs: TOTAL_MS,
+        });
 
         try {
           const done = collect(expired.state$);

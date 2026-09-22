@@ -10,6 +10,7 @@ import type {
   CoreFactory,
   MachineFactories,
   Presenters,
+  RfqCountdownSeed,
 } from "@rtc/core-api";
 import type {
   CurrencyPair,
@@ -277,8 +278,8 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     ticketSubmission: () => {
       return presenters.rfqs.createTicketSubmission();
     },
-    rfqCountdown: (creationTimestamp: number, totalMs: number) => {
-      return createRfqCountdownMachine(creationTimestamp, totalMs);
+    rfqCountdown: (seed: RfqCountdownSeed) => {
+      return createRfqCountdownMachine(seed);
     },
     orderTicket: (defaultSymbol: string) => {
       return createOrderTicketMachine({

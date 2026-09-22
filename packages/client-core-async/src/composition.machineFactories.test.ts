@@ -95,7 +95,10 @@ describe("nativeMachines — wiring", () => {
 
       const countdown = composeMachinesWithBase(
         presenters,
-      ).machines.rfqCountdown(Date.now(), 1_000);
+      ).machines.rfqCountdown({
+        creationTimestamp: Date.now(),
+        totalMs: 1_000,
+      });
 
       let seen: number | null = null;
       countdown.state$

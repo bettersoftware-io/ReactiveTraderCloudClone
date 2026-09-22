@@ -129,10 +129,10 @@ describe("createMachineFactories — native wiring", () => {
     try {
       const { presenters } = createStubPresenters();
 
-      const countdown = createMachineFactories(presenters).rfqCountdown(
-        Date.now(),
-        1_000,
-      );
+      const countdown = createMachineFactories(presenters).rfqCountdown({
+        creationTimestamp: Date.now(),
+        totalMs: 1_000,
+      });
 
       let seen: number | null = null;
       countdown.state$

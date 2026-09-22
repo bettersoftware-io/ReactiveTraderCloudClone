@@ -1426,7 +1426,7 @@ export function createViewModel(
     },
     useRfqCountdown: (creationTimestamp: number, totalMs: number) => {
       return useMachine(() => {
-        return machines.rfqCountdown(creationTimestamp, totalMs);
+        return machines.rfqCountdown({ creationTimestamp, totalMs });
       }).state;
     },
     useAnimationIntents: (target: MaybeAccessor<string>) => {

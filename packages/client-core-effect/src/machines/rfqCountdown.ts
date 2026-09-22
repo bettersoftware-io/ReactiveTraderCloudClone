@@ -1,6 +1,6 @@
 import { Duration, Effect, Exit, Scope, SubscriptionRef } from "effect";
 
-import type { ReadOnlyMachine } from "@rtc/core-api";
+import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import {
@@ -16,12 +16,11 @@ import {
  * successor, which a completing parent would interrupt (§22). `dispose()`
  * closes the machine's scope, which interrupts it. */
 export function createRfqCountdownMachine(
-  creationTimestamp: number,
-  totalMs: number,
+  seed: RfqCountdownSeed,
   now: () => number = Date.now,
 ): ReadOnlyMachine<number> {
   const host = createDetachedHost();
-  const initial = Math.max(0, totalMs - (now() - creationTimestamp));
+  const initial = Math.max(0, seed.totalMs - (now() - seed.creationTimestamp));
   const ref = host.runtime.runSync(SubscriptionRef.make(initial));
 
   if (initial > 0) {
