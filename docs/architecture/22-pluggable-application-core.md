@@ -282,35 +282,52 @@ core; slice 3 added the credit shapes to the same list:
   inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
   two singletons warm through `refToWarmStateStream`, and grows the Layer
   graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). Both siblings
-  gained `createApp`'s new `CoreSeams` argument so the base app's
-  `JarvisDriverMachine` and `AnimationDirector` read the native
-  `eqWorkspace`/`fills$` instead of an unreachable RxJS-only instance. A
+  pass `createApp`'s `CoreSeams` argument so the base app's internal
+  readers follow the native members instead of an unreachable RxJS-only
+  instance of each (see "Core seams" below). A
   `Scope.addFinalizer` on each Effect singleton's child scope marks it
   disposed and releases its keep-warm, so `app.dispose()` and the
   machine's own `dispose()` converge — what the async twin's `lifetime`
   abort listener does.
 
-**Strangler seam.** A base-side consumer of a member that goes native keeps
-the base instance until its own slice: as of slice 2 the RxJS
-`AnimationDirector` and `NarratorMachine` still read the base `execution`,
-`currencyPairs` and `priceStream` (see the STATUS residual). Slice 8 ends
-the seam.
+**Strangler seam.** A base-side consumer of a member that goes native would
+keep reading the base instance until its own slice — the RxJS
+`AnimationDirector`, `NarratorMachine`, `JarvisDriverMachine` and the base
+`eqWorkspace`'s seed all capture base streams at construction. `CoreSeams`
+(next paragraph) redirects every one of those reads; slice 8 ends the seam.
 
-**Core seams (slice 4).** `createApp(ports, seams = {})` gives a sibling a
-way to redirect specific base-side reads without waiting for that
-consumer's own slice: `CoreSeams { eqWorkspace?, equityFills$? }` lets
-`jarvisDriver`'s dep and `AnimationDirector`'s `equityFills$` read
-`seams.x ?? own` instead of the base's own instance. What it deliberately
-does NOT do: the base app still builds and exposes its own `eqWorkspace`
-as `base.presenters.eqWorkspace`, so the parity drift test's
-reference-inequality assertion (a `"native"` member must not literally be
-the RxJS instance) stays meaningful even after the seam redirects the UI.
-`CoreSeams` is strangler-phase scaffolding, deleted along with delegation
-in slice 8, and the same shape is available to close slice 2's
-`AnimationDirector` residual (`executions$`, `pairs$`, `priceFor`,
-`rfqEvents$`) whenever that gets its own slot — equities needed it now
-only because `tests/browser/scenarios/jarvis.ts` is the one e2e witness
-that would otherwise go red.
+**Core seams (slice 4, completed 2026-09-22).** `createApp(ports, seams = {})`
+gives a sibling a way to redirect the base app's INTERNAL reads without
+waiting for that consumer's own slice. `CoreSeams` is
+`Partial<AnimationDirectorDeps>` — `pairs$`, `priceFor`,
+`connectionStatus$`, `executions$`, `rfqEvents$`, `equityFills$` — plus
+`eqWorkspace?` and `watchlist$?`; each internal reader takes
+`seams.x ?? own`:
+
+| reader (base app) | reads through the seam |
+|---|---|
+| `JarvisDriverMachine` | `eqWorkspace`, `knownSymbols$` ← `watchlist$` |
+| base `eqWorkspace` seed | `watchlist$` (the composition-time peek and `seed$`) |
+| `AnimationDirector` | all six of its sources |
+| `NarratorMachine` | `pairs$`, `priceFor` |
+
+Without it, under an alternative core: a Jarvis drive batch mutates a
+workspace the UI no longer renders; a fill or FX execution made through a
+NATIVE presenter never reaches the director (its `executions$` is a
+Subject only the base `execute()` feeds); and every port those readers
+share with a native member is held twice — for the simulator's pricing, a
+doubled tick rate. What the seam deliberately does NOT do: the base app
+still builds and exposes its own instance of every member (so the parity
+drift test's reference-inequality assertion — a `"native"` member must not
+literally be the RxJS instance — stays meaningful), and it never feeds a
+base presenter's private Subject from a native call, which would make the
+native member RxJS with extra steps. It redirects the READER. Witnesses:
+`client-core/src/__tests__/composition.seams.test.ts` (each seam drives its
+intent; with `pairs$`/`priceFor`/`watchlist$` supplied the base opens none
+of those three ports) and each sibling's `composition.seams.test.ts` (an
+FX execution through the native `execution` reaches the director; the
+watchlist, the pairs and a pair's prices each carry ONE live subscription).
+Strangler-phase scaffolding, deleted along with delegation in slice 8.
 
 **Teardown order.** An alternative core releases its own resources first —
 the async lifetime signal, the Effect host scope — then disposes the base

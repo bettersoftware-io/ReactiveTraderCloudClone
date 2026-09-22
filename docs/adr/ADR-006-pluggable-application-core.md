@@ -342,7 +342,9 @@ predictable from the design alone):
   (a doubled simulator tick rate for mounted pairs). Accepted and recorded
   rather than coded around: feeding the base presenter's private Subject
   from the native `execute()` would make the native member RxJS with extra
-  steps. Production keeps `VITE_CORE_IMPL` unset.
+  steps. Production keeps `VITE_CORE_IMPL` unset. **Closed 2026-09-22**
+  without doing that — slice 4's `CoreSeams` redirects the READER instead
+  (see "Decided in slice 4").
 - **Four cross-core asymmetries are recorded, not coded around.** (1) When
   the tile's timeout wins, the Effect machine releases the losing execution
   call at once (`Effect.race` interrupts the loser and `rpc`'s finalizer
@@ -495,7 +497,18 @@ predictable from the design alone):
   delegation in slice 8. Deliberately NOT closed this slice: the same seam
   would close slice 2's `AnimationDirector` residual (`executions$`,
   `pairs$`, `priceFor`, `rfqEvents$`) — left for its own PR so this one
-  stays the equities slice.
+  stays the equities slice. **Closed 2026-09-22 by that PR:** `CoreSeams`
+  is now `Partial<AnimationDirectorDeps>` plus `eqWorkspace?` and
+  `watchlist$?`, and every internal reader of the base app —
+  `AnimationDirector` (all six sources), `NarratorMachine` (`pairs$`,
+  `priceFor`), `JarvisDriverMachine` (`eqWorkspace`, `knownSymbols$`) and
+  the base `eqWorkspace`'s seed — reads `seams.x ?? own`. MEASURED before
+  the change, under both siblings: an FX execution through the native
+  `execution` produced no tile intent, and the currency-pairs port, a
+  pair's price stream and the watchlist each carried TWO live
+  subscriptions; after it, one each. `live` is the only count comparable
+  across cores — the Effect core's `mirrorPort` peeks a port (subscribe,
+  unsubscribe) before following it, so it OPENS one twice by design.
 - **The state transitions moved to pure folds in `@rtc/client-core`.**
   `eqWorkspaceFold.ts`, `eqDrawingsFold.ts`, `orderTicketFold.ts` and
   `candleStitch.ts` join the `staleFlagFold.ts` / `tileExecutionState.ts` /

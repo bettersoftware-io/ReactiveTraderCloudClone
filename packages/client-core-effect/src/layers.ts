@@ -496,11 +496,22 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
   return Layer.merge(independent, dependent).pipe(Layer.provideMerge(base));
 }
 
-/** The native overlay's type: `Partial<Presenters>`, except for the two
- * members `composeWithBase` must hand the RxJS base as `CoreSeams` — those
- * are typed present, so the seam needs no non-null assertion. */
+/** The native overlay's type: `Partial<Presenters>`, except for the
+ * members whose streams `composeWithBase` must hand the RxJS base as
+ * `CoreSeams` — those are typed present, so a seam needs no non-null
+ * assertion. */
 export type NativePresenters = Partial<Presenters> &
-  Pick<Presenters, "eqWorkspace" | "ordersBlotter">;
+  Pick<
+    Presenters,
+    | "connection"
+    | "currencyPairs"
+    | "eqWorkspace"
+    | "execution"
+    | "ordersBlotter"
+    | "priceStream"
+    | "rfqs"
+    | "watchlist"
+  >;
 
 /** Resolve every tag into the `Presenters` overlay — the ONE `runSync`
  * `composeWithBase` makes. */
