@@ -10,6 +10,7 @@ import {
 
 import type { AppPorts, ColorSchemeSource, Stream } from "@rtc/core-api";
 import type {
+  AdminPort,
   AnalyticsPort,
   BlotterPort,
   Candle,
@@ -25,12 +26,17 @@ import type {
   EquityOrder,
   EquityPosition,
   EquityQuote,
+  EventLogPort,
   ExecutionPort,
   ExecutionRequest,
   Instrument,
   InstrumentPort,
+  LogEvent,
   MarketDataPort,
+  MetricControl,
+  MetricSample,
   OrderPort,
+  Perturbation,
   PlaceOrderRequest,
   PositionPort,
   PositionUpdates,
@@ -41,6 +47,11 @@ import type {
   ReferenceDataPort,
   RfqEvent,
   RfqQuoteResult,
+  ServiceHealthPort,
+  ServiceTopology,
+  SessionInfo,
+  SessionsPort,
+  TelemetryPort,
   Trade,
   WorkflowPort,
 } from "@rtc/domain";
@@ -52,12 +63,16 @@ import { createPendingQueue } from "#/harness/pendingQueue";
  * harness supplies itself: `connectionEvents.events`,
  * `colorScheme.prefersDark$`, the three FX singletons every core calls once
  * at construction, the three credit singletons every core calls once at
- * construction, and the two equities singletons every core calls once at
- * construction. `pricing.getPriceUpdates` is deliberately NOT here:
- * a per-key stream is opened per warm period through the use case's
- * `defer`, in the RxJS core as in the others. `marketData.quotes/candles/depth`
- * are per-key and `candleHistory`, `orders.place`, `orders.orders` per-invocation —
- * none of them under the constancy rule. */
+ * construction, the two equities singletons every core calls once at
+ * construction, and the seven admin singletons every core calls once at
+ * construction: telemetry's three streams, `serviceHealth.topology$`,
+ * `eventLog.events$`, `sessions.sessions$`, and `admin.getThroughput`.
+ * `pricing.getPriceUpdates` is deliberately NOT here: a per-key stream is
+ * opened per warm period through the use case's `defer`, in the RxJS core
+ * as in the others. `marketData.quotes/candles/depth` are per-key and
+ * `candleHistory`, `orders.place`, `orders.orders` per-invocation — none of
+ * them under the constancy rule. `admin.setThroughput` is likewise NOT
+ * here: it is called once per user edit, not once at construction. */
 export type PortMethodName =
   | Extract<keyof PreferencesPort, `${string}$`>
   | "connectionEvents.events"
@@ -69,7 +84,14 @@ export type PortMethodName =
   | "dealers.getDealers"
   | "instruments.getInstruments"
   | "marketData.watchlist"
-  | "positions.positions";
+  | "positions.positions"
+  | "telemetry.throughput$"
+  | "telemetry.latency$"
+  | "telemetry.errorRate$"
+  | "serviceHealth.topology$"
+  | "eventLog.events$"
+  | "sessions.sessions$"
+  | "admin.getThroughput";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -102,6 +124,18 @@ export type WorkflowCommand =
   | { readonly kind: "cancelRfq"; readonly rfqId: number }
   | { readonly kind: "pass"; readonly quoteId: number }
   | { readonly kind: "quote"; readonly request: QuoteRequest };
+
+/** One call the core has made against a `metricControls` entry, by its
+ * index (0..2) — the `IncidentMachine` contract's witness that every
+ * control is perturbed/cleared, in `metricControls` order, on every
+ * `inject`/`clear` intent. */
+export type ControlCall =
+  | {
+      readonly control: number;
+      readonly call: "perturb";
+      readonly kind: Perturbation;
+    }
+  | { readonly control: number; readonly call: "clear" };
 
 /** Wrap a port so every method call is counted by name. A Proxy rather than
  * a spread: a class port's methods live on its prototype, which a spread
@@ -238,6 +272,41 @@ export interface ScriptedDriver {
   /** Push one positions snapshot into `positions.positions()`. */
   emitPositions(positions: readonly EquityPosition[]): void;
   positionsObserved(): boolean;
+  /** Push one sample into `telemetry.throughput$()`; reaches only that
+   * method's own subscribers — a separate `Subject` from `latency$`/
+   * `errorRate$`. */
+  emitThroughputSample(sample: MetricSample): void;
+  /** Push one sample into `telemetry.latency$()`. */
+  emitLatencySample(sample: MetricSample): void;
+  /** Push one sample into `telemetry.errorRate$()`. */
+  emitErrorRateSample(sample: MetricSample): void;
+  /** Push one topology snapshot into `serviceHealth.topology$()`. */
+  emitTopology(topology: ServiceTopology): void;
+  /** Push one log line into `eventLog.events$()`. */
+  emitLogEvent(event: LogEvent): void;
+  /** Push one sessions snapshot into `sessions.sessions$()`. */
+  emitSessions(sessions: readonly SessionInfo[]): void;
+  /** How many `admin.getThroughput()` calls the core has subscribed and the
+   * driver has not yet settled. */
+  pendingThroughputLoads(): number;
+  /** Settle the OLDEST pending `getThroughput()` load with this value (next
+   * + complete). A no-op when nothing is pending. */
+  resolveThroughputLoad(value: number): void;
+  /** Error the OLDEST pending `getThroughput()` load. A no-op when nothing
+   * is pending. */
+  failThroughputLoad(error: unknown): void;
+  /** Every value the core has subscribed to `admin.setThroughput(value)`
+   * and the driver has not settled, oldest first. */
+  pendingThroughputWrites(): readonly number[];
+  /** Settle the OLDEST pending `setThroughput` write (next `undefined` +
+   * complete). A no-op when nothing is pending. */
+  resolveThroughputWrite(): void;
+  /** Error the OLDEST pending `setThroughput` write. A no-op when nothing
+   * is pending. */
+  failThroughputWrite(error: unknown): void;
+  /** Every call the core has made against a `metricControls` entry (three
+   * recording controls, index 0..2), in order. */
+  controlCalls(): readonly ControlCall[];
 }
 
 export interface ScriptedPorts {
@@ -281,6 +350,27 @@ export function scriptPorts(
   const orderPlacements = createPendingQueue<PlaceOrderRequest, EquityOrder>();
   const positions$ = new Subject<readonly EquityPosition[]>();
   let orderBook: readonly EquityOrder[] = [];
+  const throughputSamples$ = new Subject<MetricSample>();
+  const latencySamples$ = new Subject<MetricSample>();
+  const errorRateSamples$ = new Subject<MetricSample>();
+  const topology$ = new Subject<ServiceTopology>();
+  const logEvents$ = new Subject<LogEvent>();
+  const sessionsList$ = new Subject<readonly SessionInfo[]>();
+  const throughputLoads = createPendingQueue<void, number>();
+  const throughputWrites = createPendingQueue<number, void>();
+  const controlCallLog: ControlCall[] = [];
+  const metricControls: readonly MetricControl[] = [0, 1, 2].map(
+    (index): MetricControl => {
+      return {
+        perturb: (kind: Perturbation) => {
+          controlCallLog.push({ control: index, call: "perturb", kind });
+        },
+        clearPerturbation: () => {
+          controlCallLog.push({ control: index, call: "clear" });
+        },
+      };
+    },
+  );
 
   if (seed.watchlist !== undefined) {
     watchlist$.next(seed.watchlist);
@@ -490,6 +580,69 @@ export function scriptPorts(
     },
   };
 
+  // The five admin ports are counted through the same Proxy `preferences`
+  // uses — one prefix per port — rather than a `recordCall` per method: each
+  // carries more than one method (telemetry, admin), so wrapping the whole
+  // port once is the same economy `preferences` gets.
+  const telemetry = countCalls<TelemetryPort>(
+    {
+      throughput$: (): Observable<MetricSample> => {
+        return throughputSamples$;
+      },
+      latency$: (): Observable<MetricSample> => {
+        return latencySamples$;
+      },
+      errorRate$: (): Observable<MetricSample> => {
+        return errorRateSamples$;
+      },
+    },
+    calls,
+    "telemetry.",
+  );
+
+  const serviceHealth = countCalls<ServiceHealthPort>(
+    {
+      topology$: (): Observable<ServiceTopology> => {
+        return topology$;
+      },
+    },
+    calls,
+    "serviceHealth.",
+  );
+
+  const eventLog = countCalls<EventLogPort>(
+    {
+      events$: (): Observable<LogEvent> => {
+        return logEvents$;
+      },
+    },
+    calls,
+    "eventLog.",
+  );
+
+  const sessions = countCalls<SessionsPort>(
+    {
+      sessions$: (): Observable<readonly SessionInfo[]> => {
+        return sessionsList$;
+      },
+    },
+    calls,
+    "sessions.",
+  );
+
+  const admin = countCalls<AdminPort>(
+    {
+      getThroughput: (): Observable<number> => {
+        return throughputLoads.open(undefined);
+      },
+      setThroughput: (value: number): Observable<void> => {
+        return throughputWrites.open(value);
+      },
+    },
+    calls,
+    "admin.",
+  );
+
   return {
     ports: {
       ...base,
@@ -507,6 +660,12 @@ export function scriptPorts(
       marketData,
       orders,
       positions,
+      telemetry,
+      serviceHealth,
+      eventLog,
+      sessions,
+      admin,
+      metricControls,
     },
     driver: {
       emitConnection: (event: ConnectionEvent) => {
@@ -626,6 +785,37 @@ export function scriptPorts(
       positionsObserved: () => {
         return positions$.observed;
       },
+      emitThroughputSample: (sample: MetricSample) => {
+        throughputSamples$.next(sample);
+      },
+      emitLatencySample: (sample: MetricSample) => {
+        latencySamples$.next(sample);
+      },
+      emitErrorRateSample: (sample: MetricSample) => {
+        errorRateSamples$.next(sample);
+      },
+      emitTopology: (next: ServiceTopology) => {
+        topology$.next(next);
+      },
+      emitLogEvent: (event: LogEvent) => {
+        logEvents$.next(event);
+      },
+      emitSessions: (next: readonly SessionInfo[]) => {
+        sessionsList$.next(next);
+      },
+      pendingThroughputLoads: () => {
+        return throughputLoads.pending().length;
+      },
+      resolveThroughputLoad: throughputLoads.resolve,
+      failThroughputLoad: throughputLoads.fail,
+      pendingThroughputWrites: throughputWrites.pending,
+      resolveThroughputWrite: () => {
+        throughputWrites.resolve(undefined);
+      },
+      failThroughputWrite: throughputWrites.fail,
+      controlCalls: () => {
+        return controlCallLog.slice();
+      },
     },
     teardown: () => {
       connection$.complete();
@@ -661,6 +851,14 @@ export function scriptPorts(
       candleHistory.drain();
       orderPlacements.drain();
       positions$.complete();
+      throughputSamples$.complete();
+      latencySamples$.complete();
+      errorRateSamples$.complete();
+      topology$.complete();
+      logEvents$.complete();
+      sessionsList$.complete();
+      throughputLoads.drain();
+      throughputWrites.drain();
     },
   };
 }

@@ -14,11 +14,15 @@ import {
   type EquityPosition,
   type EquityQuote,
   type Instrument,
+  type LogEvent,
+  type MetricSample,
   type PlaceOrderRequest,
   type PositionUpdates,
   PreferencesSimulator,
   type RfqEvent,
   type RfqQuoteResult,
+  type ServiceTopology,
+  type SessionInfo,
   type Trade,
 } from "@rtc/domain";
 
@@ -517,6 +521,159 @@ describe("scriptPorts — equities", () => {
     expect(seen).toEqual([positions]);
     sub.unsubscribe();
     expect(driver.positionsObserved()).toBe(false);
+  });
+});
+
+describe("scriptPorts — admin", () => {
+  it("telemetry: emitThroughputSample/emitLatencySample/emitErrorRateSample reach only their own method's subscribers (a shared Subject would leak across streams)", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const throughput: MetricSample[] = [];
+    const latency: MetricSample[] = [];
+    const errorRate: MetricSample[] = [];
+    ports.telemetry.throughput$().subscribe((sample) => {
+      throughput.push(sample);
+    });
+    ports.telemetry.latency$().subscribe((sample) => {
+      latency.push(sample);
+    });
+    ports.telemetry.errorRate$().subscribe((sample) => {
+      errorRate.push(sample);
+    });
+    driver.emitThroughputSample({ t: 1, value: 10 });
+    expect(throughput).toEqual([{ t: 1, value: 10 }]);
+    expect(latency).toEqual([]);
+    expect(errorRate).toEqual([]);
+    expect(driver.portCalls("telemetry.throughput$")).toBe(1);
+    expect(driver.portCalls("telemetry.latency$")).toBe(1);
+    expect(driver.portCalls("telemetry.errorRate$")).toBe(1);
+    teardown();
+  });
+
+  it("counts telemetry.throughput$ on INVOCATION, not on the property read that installs the wrapper", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const throughput$ = ports.telemetry.throughput$;
+    expect(driver.portCalls("telemetry.throughput$")).toBe(0);
+    throughput$().subscribe();
+    expect(driver.portCalls("telemetry.throughput$")).toBe(1);
+    teardown();
+  });
+
+  it("serviceHealth.topology$, eventLog.events$ and sessions.sessions$ are Subjects the driver feeds, with counted port calls", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const topologies: ServiceTopology[] = [];
+    const events: LogEvent[] = [];
+    const sessions: (readonly SessionInfo[])[] = [];
+    ports.serviceHealth.topology$().subscribe((topology) => {
+      topologies.push(topology);
+    });
+    ports.eventLog.events$().subscribe((event) => {
+      events.push(event);
+    });
+    ports.sessions.sessions$().subscribe((roster) => {
+      sessions.push(roster);
+    });
+    const topology: ServiceTopology = { nodes: [], edges: [] };
+    const event: LogEvent = {
+      t: 1,
+      severity: "info",
+      service: "pricing",
+      message: "up",
+    };
+
+    const roster: readonly SessionInfo[] = [
+      { id: "s1", user: "astark", region: "us", lat: 0, lon: 0 },
+    ];
+    driver.emitTopology(topology);
+    driver.emitLogEvent(event);
+    driver.emitSessions(roster);
+    expect(topologies).toEqual([topology]);
+    expect(events).toEqual([event]);
+    expect(sessions).toEqual([roster]);
+    expect(driver.portCalls("serviceHealth.topology$")).toBe(1);
+    expect(driver.portCalls("eventLog.events$")).toBe(1);
+    expect(driver.portCalls("sessions.sessions$")).toBe(1);
+    teardown();
+  });
+
+  it("admin.getThroughput is lazy; pendingThroughputLoads counts a subscribed load; resolveThroughputLoad delivers the value then completes; failThroughputLoad errors", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    expect(driver.pendingThroughputLoads()).toBe(0);
+    const seen: number[] = [];
+    let completed = false;
+    ports.admin.getThroughput().subscribe({
+      next: (value: number) => {
+        seen.push(value);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    expect(driver.pendingThroughputLoads()).toBe(1);
+    driver.resolveThroughputLoad(7);
+    expect(seen).toEqual([7]);
+    expect(completed).toBe(true);
+    expect(driver.pendingThroughputLoads()).toBe(0);
+
+    const errors: unknown[] = [];
+    ports.admin.getThroughput().subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    driver.failThroughputLoad(new Error("bust"));
+    expect(errors).toHaveLength(1);
+    expect(driver.pendingThroughputLoads()).toBe(0);
+    expect(driver.portCalls("admin.getThroughput")).toBe(2);
+    teardown();
+  });
+
+  it("admin.setThroughput queues the values asked, FIFO; resolveThroughputWrite resolves the OLDEST with undefined then completes; an unsubscribed write leaves the queue", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    expect(driver.pendingThroughputWrites()).toEqual([]);
+    const results: unknown[] = [];
+    let completed = false;
+    ports.admin.setThroughput(5).subscribe({
+      next: (value: unknown) => {
+        results.push(value);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    // An error-only observer: `failThroughputWrite` below settles this one
+    // (it's the survivor once the first write resolves), and a bare
+    // `.subscribe()` would leave rxjs's default unhandled-error reporting to
+    // throw and fail the run — otherwise this request is only witnessed
+    // through `pendingThroughputWrites`.
+    const sub = ports.admin.setThroughput(9).subscribe({ error: () => {} });
+    expect(driver.pendingThroughputWrites()).toEqual([5, 9]);
+    driver.resolveThroughputWrite();
+    expect(results).toEqual([undefined]);
+    expect(completed).toBe(true);
+    expect(driver.pendingThroughputWrites()).toEqual([9]);
+    sub.unsubscribe();
+    expect(driver.pendingThroughputWrites()).toEqual([]);
+    // Nothing pending: a no-op, never a throw.
+    driver.resolveThroughputWrite();
+    driver.failThroughputWrite(new Error("bust"));
+    teardown();
+  });
+
+  it("controlCalls records perturb on controls 0, 1, 2 in order, then clear", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    expect(driver.controlCalls()).toEqual([]);
+    expect(ports.metricControls).toHaveLength(3);
+    ports.metricControls[0]?.perturb("latencySpike");
+    ports.metricControls[1]?.perturb("errorBurst");
+    ports.metricControls[2]?.perturb("serviceDown");
+    ports.metricControls[0]?.clearPerturbation();
+    expect(driver.controlCalls()).toEqual([
+      { control: 0, call: "perturb", kind: "latencySpike" },
+      { control: 1, call: "perturb", kind: "errorBurst" },
+      { control: 2, call: "perturb", kind: "serviceDown" },
+      { control: 0, call: "clear" },
+    ]);
+    teardown();
   });
 });
 
