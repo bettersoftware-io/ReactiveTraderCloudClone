@@ -344,6 +344,35 @@ this shape, so a new parameterised factory is a review call, not a lint error.
 rather than flattening it — `create` states the effect, `Fake`/`Stub` states what
 is produced.
 
+### Proving a test can fail — `scripts/mutation-check.mjs`
+
+The defect this repo produces most often is not a wrong assertion but a test
+that **cannot fail**: a witness called through the proxy that supplies its
+`this`, an invariant whose setup could never violate it, a resolve issued
+before the subscriber that would have received it (all three shipped, all three
+caught in review). A passing test says nothing about which of those it is. The
+only thing that does is a mutant: change the implementation to be wrong in a
+specific way and confirm the test goes red.
+
+`scripts/mutation-check.mjs` runs a batch of those and prints a kill table:
+
+```bash
+node scripts/mutation-check.mjs mutants.json [--keep-going]
+```
+
+Each mutant is `{ name, file, find, replace, test }`; `find` is a literal that
+must match **exactly once** (an ambiguous mutant is an error, not a guess), and
+the file is restored in a `finally` — so a crash mid-run cannot leave a mutant
+in the tree, which is otherwise read as a real result by the next run.
+
+Two rules that make the table mean something:
+- write the mutant that a **plausible wrong implementation** would contain
+  (`slice(0, N)` for `slice(-N)`, a dropped `includes` guard, `refCount: true`),
+  not a syntax error;
+- a SURVIVED row is a finding about the **test**, not about the tool. Either
+  strengthen the test until it kills the mutant, or record why that behaviour
+  is deliberately uncontracted.
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):
