@@ -298,5 +298,155 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("throughputMetric: two warm periods of samples$ do not call telemetry.throughput$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("telemetry.throughput$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.throughputMetric;
+        const first = collect(p.samples$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.samples$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("telemetry.throughput$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("latencyMetric: two warm periods of samples$ do not call telemetry.latency$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("telemetry.latency$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.latencyMetric;
+        const first = collect(p.samples$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.samples$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("telemetry.latency$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("errorRateMetric: two warm periods of samples$ do not call telemetry.errorRate$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("telemetry.errorRate$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.errorRateMetric;
+        const first = collect(p.samples$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.samples$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("telemetry.errorRate$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("topology: two warm periods of topology$ do not call serviceHealth.topology$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("serviceHealth.topology$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.topology;
+        const first = collect(p.topology$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.topology$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("serviceHealth.topology$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("eventLog: two warm periods of events$ do not call eventLog.events$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("eventLog.events$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.eventLog;
+        const first = collect(p.events$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.events$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("eventLog.events$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("sessions: two warm periods of sessions$ do not call sessions.sessions$() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("sessions.sessions$");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      // Not necessarily 1: `sessionsKpi` also calls `sessions.sessions$()`
+      // once at construction (ruling 9) — the rule this suite witnesses is
+      // constancy across warm periods, not an absolute count.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.sessions;
+        const first = collect(p.sessions$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.sessions$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("sessions.sessions$")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("throughput: two warm periods of state$ do not call admin.getThroughput() again", async () => {
+      const h = makeHarness();
+      const before = h.driver.portCalls("admin.getThroughput");
+      // A zero baseline would mean the counted wrapper was bypassed or the
+      // presenter was never constructed — the absence has to be visible.
+      expect(before).toBeGreaterThan(0);
+
+      try {
+        const p = h.app.presenters.throughput;
+        const first = collect(p.state$);
+        first.unsubscribe();
+        await settle();
+        const second = collect(p.state$);
+        await settle();
+        second.unsubscribe();
+        expect(h.driver.portCalls("admin.getThroughput")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }
