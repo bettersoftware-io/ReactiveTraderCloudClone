@@ -46,6 +46,25 @@ It fetches, then branches explicitly off `origin/main`, and prints the base comm
 
 Pre-existing uncommitted files in the primary checkout stay there, untouched — that's the point of isolating.
 
+**A fresh worktree cannot run a single test until it is installed and built.**
+It has no `node_modules` and no `dist`, and 13 packages resolve their workspace
+deps through dist — so `pnpm --filter @rtc/client-core test` there does not
+report "this tree was never installed", it fails to resolve `@rtc/domain`,
+which reads like a broken change. Pass `--ready` (the script then runs
+`pnpm install && pnpm build`), or run those two yourself, and **prove it with
+one real test before doing anything else**:
+
+```bash
+./scripts/new-worktree.sh <name> --ready
+pnpm --filter @rtc/domain test        # the proof; ~10s
+```
+
+This is non-negotiable **before handing the tree to a subagent**: an agent that
+cannot run tests does not stop, it improvises — inventing throwaway alias
+configs, or hand-tracing tests it cannot execute and reporting the result as if
+it had. Two implementers burned ~500k tokens that way in one slice-5 wave, and
+both owed their verification again afterwards.
+
 ## Rule 2 — One PR per reviewable unit, then loop on CI
 
 ### What belongs in ONE PR
@@ -177,6 +196,20 @@ git merge-base --is-ancestor $HEAD_SHA origin/main   # exit 0 = your work is on 
 Confirming your commit is an ancestor of `origin/main` is the gate for Rule 6 — do not clean up before `git merge-base --is-ancestor` exits 0.
 
 ## Rule 6 — Clean up the worktree
+
+**First: anything you want to keep must already be committed or outside the
+worktree.** `git worktree remove` deletes the whole directory, *including every
+git-ignored file in it* — which is exactly where working notes live:
+`.superpowers/sdd/` (SDD ledger, task briefs, agent reports), scratch logs,
+generated artifacts. This is silent — a successful removal looks the same
+whether or not it took your only copy of the day's rulings with it. Slice 5 of
+the pluggable-core workstream lost its ledger and five agent reports this way,
+with a memory note about the trap already on file. Before removing:
+
+- the rulings file belongs in `docs/superpowers/plans/<plan>-rulings.md`, **committed
+  with the PR it belongs to**, not written after cleanup;
+- keep the live ledger and agent reports in the **session scratchpad**, not in
+  the worktree, so a removal cannot reach them.
 
 A merged PR with its worktree still on disk is *not done*. Once the commit is confirmed on `origin/main`:
 

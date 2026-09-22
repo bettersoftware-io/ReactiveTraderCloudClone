@@ -274,6 +274,14 @@ byte, since key order is insertion order — so it never needs a golden re-pin.
 Both thresholds were **measured**, not assumed, and sit in empirically empty
 bands; re-measure rather than re-guess before moving either.
 
+**A test is only worth its lines if some wrong implementation makes it fail.**
+Prove it with a mutant rather than by reading: `node scripts/mutation-check.mjs
+<spec.json>` applies each `{file, find, replace}`, runs that mutant's test,
+expects RED and restores the file in a `finally` (so a crash can never leave a
+mutant behind for the next run to read as real). A SURVIVED row is a finding
+about the test. See `docs/architecture/09-test-strategy.md` §"Proving a test
+can fail".
+
 A fixture factory is named **`create*`** — never a bare noun, nor `make*` /
 `build*` / `fake*` / `stub*` (`rtc/name-fixture-factories`, specs only;
 `createFake*` / `createStub*` keep the xUnit test-double vocabulary). A bare
