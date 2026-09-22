@@ -72,8 +72,6 @@ describe("countSubscriptions", () => {
 
     counted.price("EURUSD").subscribe();
     expect(tally.live).toBe(0);
-    counted.forever().subscribe();
-    expect(tally.live).toBe(0);
     const live = countSubscriptions(new PrototypePort(), "forever", () => {
       return tally;
     });
@@ -81,10 +79,16 @@ describe("countSubscriptions", () => {
     expect(tally.live).toBe(1);
   });
 
-  it("every other member passes through bound to the real port — prototype methods included", () => {
+  it("every other member passes through uncounted and bound to the real port — prototype methods included", () => {
+    const tally = createTally();
     const counted = countSubscriptions(new PrototypePort(), "price", () => {
-      return createTally();
+      return tally;
     });
+
+    // A stream from a method that is NOT the named one is not tallied — a
+    // proxy counting every function member would read 1 here.
+    counted.forever().subscribe();
+    expect(tally.live).toBe(0);
 
     // Detached, so `this` is whatever the pass-through bound: the real port,
     // or nothing at all.
