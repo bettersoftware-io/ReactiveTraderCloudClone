@@ -41,7 +41,7 @@ describe("buildAppLayer", () => {
     const { presenters, host } = runtime.runSync(
       Effect.all({ presenters: nativePresentersEffect, host: HostTag }),
     );
-    expect(Object.keys(presenters)).toHaveLength(42);
+    expect(Object.keys(presenters)).toHaveLength(46);
     expect(host.scope).toBeDefined();
     expect(counted.powerSaverLevelCalls()).toBe(1);
     expect(ports.watchlistCalls()).toBe(1);

@@ -13,6 +13,7 @@ import type {
   RfqCountdownSeed,
 } from "@rtc/core-api";
 import type {
+  BootVariant,
   CurrencyPair,
   ExecuteTradeInput,
   PlaceOrderRequest,
@@ -21,6 +22,7 @@ import type {
 import type { EffectHost } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
+import { createBootMachine } from "#/machines/boot";
 import { createNotionalMachine } from "#/machines/notional";
 import { createOrderTicketMachine } from "#/machines/orderTicket";
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
@@ -75,6 +77,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     executions$: presenters.execution.executions$,
     rfqEvents$: presenters.rfqs.events$,
     connectionStatus$: presenters.connection.status$,
+    workspaceNav: presenters.workspaceNav,
   });
 
   const app: App = {
@@ -158,6 +161,15 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     rfqCountdown: (seed: RfqCountdownSeed) => {
       return createRfqCountdownMachine(seed);
+    },
+    boot: (onDone: () => void) => {
+      return createBootMachine({
+        variant: presenters.bootPreference.current(),
+        advance: (next: BootVariant) => {
+          presenters.bootPreference.setVariant(next);
+        },
+        onDone,
+      });
     },
     orderTicket: (defaultSymbol: string) => {
       return createOrderTicketMachine({
