@@ -37,3 +37,33 @@ Committed with each PR, not left in a git-ignored ledger (slice 5 lost one).
   RxJS presenters/machines and 3 harness verbs.
 - Runners: RxJS 2950/2950 (`client-core`), async 489/489, effect 497/497 (the
   five still delegate). `PENDING_SUITES` 21 → 16.
+
+## Independent review, PR A (opus, read-only) — SHIP, 0 must-fix
+
+Taken:
+- **The `latestActiveTab` mirror had no witness** (the ledger's "both halves"
+  receipt above overstated Task 1's mutation coverage — it covered the driver
+  routing and the seam default, not the mirror). New seam test: a panel docked
+  after the SEAM nav moved lands in the seam's tab. Mutant killed.
+- **The login-wait cycle is asserted through the stored preference**, via a
+  new uncounted harness verb `storedLoginWaitVariant()`, and **a pinned style
+  is its own case.** A-6: with two treatments, an advance made while pinned
+  is visible only when the pin equals the stored treatment; two drafts of
+  the case pinned the other one and the "pin freezes the cycle" mutant
+  survived both. The case now pins the other treatment (pin honoured) and
+  then the stored one (cycle frozen). All four review mutants killed.
+- **The unlock-with-nobody case** counts `portCalls("auth.login")` and covers
+  signed-out-at-start as well as after-logout.
+- **The expired-store blind spot (A-5)** is now stated in the suite itself.
+- Minors: duplicated `// FX` comment in `domain/src/index.ts`; `./shellFolds`
+  import spelling; `LoginCall` un-exported (knip).
+
+Declined:
+- **"A repeated identical connection status must not flash again."** The
+  RxJS core DOES flash it again (its connection fold does not conflate), so
+  the case would force a sibling to differ from the reference. Left
+  uncontracted and said so in the suite.
+
+**Gate:** full local gauntlet 32/33 before the review fixes — the one red was
+knip's unused `LoginCall` export, fixed here; biome, ESLint, knip and
+typecheck re-run green on the final tree.
