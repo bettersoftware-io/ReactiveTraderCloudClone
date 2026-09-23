@@ -60,7 +60,27 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
-  it("the base animation director hears a fill placed through the NATIVE ordersBlotter", async () => {
+  it("a Jarvis drive batch switching tab lands on THIS core's workspaceNav, and the base's own stays on fx", async () => {
+    const { app, base } = composeWithBase(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("go to credit");
+      await settle();
+
+      const afterApp = await firstValueFrom(app.presenters.workspaceNav.state$);
+      const afterBase = await firstValueFrom(
+        base.presenters.workspaceNav.state$,
+      );
+      expect(afterApp.activeTab).toBe("credit");
+      expect(afterBase.activeTab).toBe("fx");
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("the app's animation director hears a fill placed through the NATIVE ordersBlotter", async () => {
     const scripted = createScriptedOrders();
     const composed = composeWithBase(createPorts({ orders: scripted.port }));
 
@@ -86,7 +106,7 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
-  it("an FX execution through the NATIVE execution presenter reaches the base's own animationDirector as a tile fill", async () => {
+  it("an FX execution through the NATIVE execution presenter reaches the app's animationDirector as a tile fill", async () => {
     const execution: ExecutionPort = {
       executeTrade: (): Observable<Trade> => {
         return of(createTrade());
@@ -399,6 +419,24 @@ function waitForDrive(): Promise<void> {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, 50);
   });
+}
+
+/** A JarvisPort whose ask() replies with one drive batch switching to
+ * `tab`. */
+function createSwitchingJarvisPort(
+  tab: "fx" | "credit" | "equities",
+): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: { v: 1, commands: [{ kind: "switchTab", tab }] },
+      });
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
 }
 
 async function settle(): Promise<void> {
