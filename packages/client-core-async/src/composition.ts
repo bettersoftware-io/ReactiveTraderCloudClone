@@ -1,5 +1,6 @@
 import {
   type CoreSeams,
+  createAuthDeps,
   createApp as createRxjsApp,
   createMachineFactories as createRxjsMachineFactories,
   firstWatchlistSymbol,
@@ -13,6 +14,7 @@ import type {
   RfqCountdownSeed,
 } from "@rtc/core-api";
 import type {
+  BootVariant,
   CurrencyPair,
   ExecuteTradeInput,
   PlaceOrderRequest,
@@ -21,6 +23,7 @@ import type {
 import { peek } from "#/bridge/in";
 import { pushIncidentEvent } from "#/bridge/out";
 import { createCommands } from "#/commands";
+import { createBootMachine } from "#/machines/boot";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createIncidentMachine } from "#/machines/incident";
@@ -31,6 +34,7 @@ import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
+import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
 import {
   createEventLogPresenter,
   createMetricWindowPresenter,
@@ -68,6 +72,11 @@ import {
 } from "#/presenters/readPreferences";
 import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
 import { createRfqsPresenter } from "#/presenters/rfqs";
+import {
+  createAnimationDirector,
+  createAuthPresenter,
+  createBootGatePresenter,
+} from "#/presenters/shell";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 import { createThroughputPresenter } from "#/presenters/throughput";
 import {
@@ -108,6 +117,7 @@ type NativePresenters = Partial<Presenters> &
     | "priceStream"
     | "rfqs"
     | "watchlist"
+    | "workspaceNav"
   >;
 
 /** Members this core implements natively — slice 1a: the connection fold,
@@ -135,6 +145,18 @@ function nativePresenters(
   // Hoisted: `priceStream` and `priceHistory` gate their conflation on it —
   // the RxJS core's order.
   const powerSaver = createPowerSaverPresenter(preferences);
+  const connection = createConnectionPresenter(ports.connectionEvents);
+  const priceStream = createPriceStreamPresenter(
+    ports.pricing,
+    powerSaver.isCalm$,
+  );
+
+  const currencyPairs = createCurrencyPairsPresenter(
+    ports.referenceData,
+    lifetime,
+  );
+  const execution = createTradeExecutionPresenter(ports.execution);
+  const rfqs = createRfqsPresenter(ports.workflow, lifetime);
   const watchlist = createWatchlistPresenter(ports.marketData, lifetime);
   const ordersBlotter = createOrdersBlotterPresenter(ports.orders, lifetime);
   const eqWorkspace = createEqWorkspaceMachine(
@@ -146,7 +168,7 @@ function nativePresenters(
   );
 
   return {
-    connection: createConnectionPresenter(ports.connectionEvents),
+    connection,
     themePreference: createThemePreferencePresenter(
       preferences,
       ports.colorScheme,
@@ -168,16 +190,16 @@ function nativePresenters(
     chartSubstrate: createChartSubstratePresenter(preferences),
     layoutEngine: createLayoutEnginePresenter(preferences),
     forceBootAnimation: createForceBootAnimationPresenter(preferences),
-    priceStream: createPriceStreamPresenter(ports.pricing, powerSaver.isCalm$),
+    priceStream,
     priceHistory: createPriceHistoryPresenter(
       ports.pricing,
       powerSaver.isCalm$,
     ),
-    currencyPairs: createCurrencyPairsPresenter(ports.referenceData, lifetime),
+    currencyPairs,
     blotter: createBlotterPresenter(ports.blotter, lifetime),
     analytics: createAnalyticsPresenter(ports.analytics, lifetime),
-    execution: createTradeExecutionPresenter(ports.execution),
-    rfqs: createRfqsPresenter(ports.workflow, lifetime),
+    execution,
+    rfqs,
     dealers: createDealersPresenter(ports.dealers, lifetime),
     instruments: createInstrumentsPresenter(ports.instruments, lifetime),
     rfqQuote: createRfqQuotePresenter(ports.pricing),
@@ -188,6 +210,19 @@ function nativePresenters(
     positions: createPositionsPresenter(ports.positions, lifetime),
     eqWorkspace,
     eqDrawings: createEqDrawingsMachine(lifetime),
+    workspaceNav: createWorkspaceNavMachine(lifetime),
+    bootGate: createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
+    auth: createAuthPresenter(createAuthDeps(ports), lifetime),
+    animationDirector: createAnimationDirector({
+      pairs$: currencyPairs.pairs$,
+      priceFor: (pair: CurrencyPair) => {
+        return priceStream.price$(pair);
+      },
+      connectionStatus$: connection.status$,
+      executions$: execution.executions$,
+      rfqEvents$: rfqs.events$,
+      equityFills$: ordersBlotter.fills$,
+    }),
     throughput: createThroughputPresenter(ports.admin, lifetime),
     throughputMetric: createMetricWindowPresenter(
       ports.telemetry.throughput$(),
@@ -235,6 +270,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     executions$: native.execution.executions$,
     rfqEvents$: native.rfqs.events$,
     connectionStatus$: native.connection.status$,
+    workspaceNav: native.workspaceNav,
   };
   const base = createRxjsApp(ports, seams);
   const app: App = {
@@ -318,6 +354,15 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
     },
     rfqCountdown: (seed: RfqCountdownSeed) => {
       return createRfqCountdownMachine(seed);
+    },
+    boot: (onDone: () => void) => {
+      return createBootMachine({
+        variant: presenters.bootPreference.current(),
+        advance: (next: BootVariant) => {
+          presenters.bootPreference.setVariant(next);
+        },
+        onDone,
+      });
     },
     orderTicket: (defaultSymbol: string) => {
       return createOrderTicketMachine({

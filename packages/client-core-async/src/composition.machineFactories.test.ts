@@ -118,8 +118,9 @@ describe("nativeMachines — wiring", () => {
     expect(machines.rfqTile).not.toBe(base.rfqTile);
     expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
     expect(machines.orderTicket).not.toBe(base.orderTicket);
+    expect(machines.boot).not.toBe(base.boot);
     // A delegated member is still reference-identical to the base's.
-    expect(machines.boot).toBe(base.boot);
+    expect(machines.layout).toBe(base.layout);
   });
 
   it("orderTicket reaches ordersBlotter.place lazily — not at construction, then with the submitted request", () => {

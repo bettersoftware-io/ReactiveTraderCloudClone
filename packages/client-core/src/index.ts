@@ -1,3 +1,4 @@
+export * from "#/adapters/authDeps";
 export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/dockLayoutStore";
 export * from "#/adapters/HttpAuthAdapter";
