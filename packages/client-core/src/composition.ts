@@ -35,16 +35,9 @@ import type {
   EquityInstrument,
   ExecuteTradeInput,
   JarvisSkin,
-  LoginWaitVariant,
   PowerSaverLevel,
   Price,
   ThemeSkin,
-} from "@rtc/domain";
-import {
-  DEFAULT_LOGIN_WAIT_DELAY,
-  DEFAULT_LOGIN_WAIT_STYLE,
-  DEFAULT_LOGIN_WAIT_VARIANT,
-  LOGIN_WAIT_DELAY_MS,
 } from "@rtc/domain";
 import type { JarvisHistoryEntry } from "@rtc/shared";
 
