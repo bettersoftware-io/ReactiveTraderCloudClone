@@ -216,32 +216,32 @@ export const EqWorkspaceTag = Context.GenericTag<
 export const EqDrawingsTag = Context.GenericTag<
   Machine<EqDrawingsState, EqDrawingsIntents>
 >("@rtc/client-core-effect/eqDrawings");
-export const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
+const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
   "@rtc/client-core-effect/throughput",
 );
-export const ThroughputMetricTag =
+const ThroughputMetricTag =
   Context.GenericTag<ThroughputMetricPresenter>(
     "@rtc/client-core-effect/throughputMetric",
   );
-export const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
+const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
   "@rtc/client-core-effect/latencyMetric",
 );
-export const ErrorRateMetricTag = Context.GenericTag<ErrorRatePresenter>(
+const ErrorRateMetricTag = Context.GenericTag<ErrorRatePresenter>(
   "@rtc/client-core-effect/errorRateMetric",
 );
-export const TopologyTag = Context.GenericTag<ServiceTopologyPresenter>(
+const TopologyTag = Context.GenericTag<ServiceTopologyPresenter>(
   "@rtc/client-core-effect/topology",
 );
-export const EventLogTag = Context.GenericTag<EventLogPresenter>(
+const EventLogTag = Context.GenericTag<EventLogPresenter>(
   "@rtc/client-core-effect/eventLog",
 );
-export const SessionsTag = Context.GenericTag<SessionsPresenter>(
+const SessionsTag = Context.GenericTag<SessionsPresenter>(
   "@rtc/client-core-effect/sessions",
 );
-export const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
+const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
   "@rtc/client-core-effect/sessionsKpi",
 );
-export const IncidentTag = Context.GenericTag<
+const IncidentTag = Context.GenericTag<
   Machine<IncidentState, IncidentIntents>
 >("@rtc/client-core-effect/incident");
 
