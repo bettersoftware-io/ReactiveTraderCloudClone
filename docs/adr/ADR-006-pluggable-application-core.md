@@ -808,6 +808,36 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   `@rtc/domain`, because the suites assert them and `@rtc/core-contract`
   may not import `client-core` (the slice-4 cooldown precedent).
 
+**Decided in slice 5 — PR B, the async half** (2026-09-23):
+
+- **The ports ship one core at a time.** PR B was split so the async core
+  could land before the Effect core, whose `throughput` timers wait on an
+  unmeasured question (does Effect's `Clock` follow vitest fake timers?).
+  Between the two PRs the manifests disagree — async 53/74, effect 44/74 —
+  which the parity tooling reports and nothing forbids.
+- **`foldTopic` is the warm-fold primitive** (`kernel/foldTopic.ts`): each
+  producer run publishes the seed synchronously, then one accumulator per
+  source value, replay-current and — with `retainUntil` — held across zero
+  subscribers. The five warm folds are `foldTopic` over a refCounted
+  `topicFromObservable` of the port, so the port is subscribed once per run.
+- **A port METHOD is called at construction; only its subscription is
+  lazy.** The first draft of `throughput` called `getThroughput()` on the
+  first subscriber, and the port-discipline suite failed it (two calls where
+  the RxJS core makes one). `storeToStateStream` gained an `onSubscribe`
+  hook (runs on each zero-to-one transition) to start the load lazily.
+- **Uncontracted divergences, recorded:** (1) a `setThroughput` that throws
+  synchronously (the simulator's range check) shows the error banner in the
+  async core, where the RxJS `switchMap` would error `state$`; (2) a
+  `setValue` made while `state$` has no subscriber is applied and written by
+  the async core, where the RxJS `Subject` drops it; (3) after `lifetime`
+  aborts, the async `setValue` neither echoes nor writes. Nothing shipped
+  observes any of the three — the admin view holds `state$` while it is
+  mounted.
+- **The seam witness (ruling 8) holds:** with every native admin stream
+  subscribed, each admin port stream is live once (`sessions$` twice, for
+  its two native readers) — the base app's own admin presenters stay cold,
+  so no `CoreSeams` change was needed.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
