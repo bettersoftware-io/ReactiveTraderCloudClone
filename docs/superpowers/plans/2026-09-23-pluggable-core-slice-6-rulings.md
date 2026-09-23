@@ -67,3 +67,32 @@ Declined:
 **Gate:** full local gauntlet 32/33 before the review fixes — the one red was
 knip's unused `LoginCall` export, fixed here; biome, ESLint, knip and
 typecheck re-run green on the final tree.
+
+## PR B — the ports
+
+1. **B-1 — the `bootGate` and `auth` suites settled.** Both asserted an
+   intent's new state reached an EXISTING subscriber synchronously; the
+   Effect core failed them (its refs are followed on a fiber, as every other
+   Effect member's are, whose suites already settle). Over-specification of an
+   RxJS incidental — the suites now settle before reading a stream; the
+   synchronous `visible` getter stays pinned.
+2. **B-2 — `createAuthDeps` was not exported from `@rtc/client-core`'s
+   entry.** PR A's plan required it; the RxJS core used it only internally, so
+   neither knip nor a test noticed. Exported here.
+3. **B-3 — both siblings' `boot.dispose()` stops the ramp** (RxJS keeps it
+   live for an attached subscriber, which A-3 left uncontracted); each
+   sibling's unit test pins its own stop.
+4. **B-4 — the Effect director is a `sharedFold`** over a merged Effect
+   `Stream`; per-pair prices are `scopedPortStream`s under
+   `flatMap(..., { switch: true })`, because `fromPort` would pile a period-
+   lived subscription per roster. Unit test: a dropped pair's price stream is
+   released on the roster switch.
+5. **B-5 — Effect layer count is 46, not the plan's 47:** `boot` is a
+   machine factory, not a Layer.
+6. **B-6 — the machine-factory witnesses' delegated example moved from
+   `boot` to `layout`** in both siblings.
+
+**Receipts.** `core:parity` 58/74 both. Runners: RxJS 2960, async 500, effect
+498 (+ unit tests). Mutation: async 25/25, Effect 24/24 (first pass each).
+A-5 is closed for the siblings: each one's own unit test pins the expired-
+session clear.

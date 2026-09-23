@@ -363,6 +363,7 @@ Slice 2 shipped 2026-09-19 (plan: [`../plans/2026-09-19-pluggable-core-slice-2.m
 Slice 3 shipped 2026-09-20 (plan: [`../plans/2026-09-20-pluggable-core-slice-3.md`](../plans/2026-09-20-pluggable-core-slice-3.md)) — suites as PR A, ports as PR B; 36/73 native in both alternative cores (36/74 with Dockview Phase 6b's `layoutPresets`, delegated, merged the same day); `rfqCountdown` joined `MachineFactories` (the bindings had bypassed the seam).
 Slice 4 shipped 2026-09-21 (plan: [`../plans/2026-09-21-pluggable-core-slice-4.md`](../plans/2026-09-21-pluggable-core-slice-4.md)) — suites as PR A, the run slot as PR R, ports as PR B; 44/74 native in both alternative cores; `createApp` gained core seams so the base Jarvis driver reaches the native equities workspace.
 Slice 5 shipped 2026-09-23 (plan: [`../plans/2026-09-22-pluggable-core-slice-5.md`](../plans/2026-09-22-pluggable-core-slice-5.md)) — suites as PR A (#814), then the ports one core at a time (async #817, Effect after it); 53/74 native in both alternative cores.
+Slice 6a (shell) shipped 2026-09-23 (plan: [`../plans/2026-09-23-pluggable-core-slice-6.md`](../plans/2026-09-23-pluggable-core-slice-6.md)) — `auth`, `bootGate`, `workspaceNav`, `animationDirector` and `boot`; 58/74 native in both. The row's layout/dock family (`layoutFor`, the dock bridges and their kin — eleven members) moved to slice 7: every dock bridge writes `jarvisPanels` synchronously.
 
 ### Slice 8 — closing
 

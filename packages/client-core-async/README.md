@@ -110,12 +110,16 @@ member is held twice (`composition.seams.test.ts`).
 
 ## Parity
 
-As of slice 5, **53 of 74** members are native (the 74th, `layoutPresets`,
+As of slice 6a, **58 of 74** members are native (the 74th, `layoutPresets`,
 arrived delegated with Dockview Phase 6b). Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as warm
 folds over `kernel/foldTopic.ts`, `topology` and `sessions` as warm
 mirrors, `throughput`, and the `incident` singleton, whose connection
-events reach the RxJS core's `incident$` seam through `pushIncidentEvent`. Slice 1a/1b brought
+events reach the RxJS core's `incident$` seam through `pushIncidentEvent`.
+Slice 6a added five shell members: `workspaceNav`, `bootGate` and `auth`
+over Stores (`auth` over the shared `createAuthDeps`), the `boot` ramp, and
+`animationDirector` — one refCounted topic over the native members' streams
+that re-keys its per-pair tick relays on each roster. Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,
 `themeSkinPreference`, `viewModePreference`, `powerSaver`,
 `creditRfqFilterPreference`, `eqWatchlistSortPreference`,

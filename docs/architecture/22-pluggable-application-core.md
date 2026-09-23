@@ -364,7 +364,7 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 5, fifty-three members have real suites — slice 1a's
+fails. As of slice 6a, fifty-eight members have real suites — slice 1a's
 six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
 `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`), slice
@@ -373,9 +373,10 @@ six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`;
 `eqWorkspace`, `eqDrawings`, `orderTicket`) and slice 5's nine (`throughput`,
 `throughputMetric`, `latencyMetric`, `errorRateMetric`, `topology`,
-`eventLog`, `sessions`, `sessionsKpi`; `incident`) — and 21 are pending (37
-at slice 3's merge, 38 once Dockview Phase 6b's `layoutPresets` joined, 30
-after slice 4). Each
+`eventLog`, `sessions`, `sessionsKpi`; `incident`) and slice 6a's five
+(`auth`, `bootGate`, `workspaceNav`, `animationDirector`; `boot`) — and 16
+are pending (37 at slice 3's merge, 38 once Dockview Phase 6b's
+`layoutPresets` joined, 30 after slice 4, 21 after slice 5). Each
 suite subscribes to the member's
 `Stream`/`StateStream`, drives a scripted `AppPorts` harness (`scriptPorts`
 — Subject-backed streams for the connection, the colour scheme, the FX,
@@ -416,15 +417,15 @@ inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
 `commands` — and the drift test walks all three. As of slice 5 both
-alternative cores list fifty-three members `"native"` (`connection`, all
+alternative cores list fifty-eight members `"native"` (`connection`, all
 fifteen preference presenters, `commands.reconnect`, the six FX
 pricing/blotter presenters and the five FX machines, the four credit
 presenters and the four RFQ machines — `rfqCountdown` having joined
 `MachineFactories` in slice 3 — and slice 4's eight: the five equities
 presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two equities workspace singletons (`eqWorkspace`,
-`eqDrawings`) and the machine `orderTicket`, and slice 5's nine admin
-members) and everything else `"delegated"`. Slice 5 landed one core at a
+`eqDrawings`) and the machine `orderTicket`, slice 5's nine admin members,
+and slice 6a's five shell members) and everything else `"delegated"`. Slice 5 landed one core at a
 time — async first, Effect the same day — so for a few hours the two
 manifests disagreed, which the tooling reports and nothing forbids. The
 manifest says so explicitly rather than leaving it
