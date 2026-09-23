@@ -32,12 +32,16 @@ describe("createThroughputPresenter (effect)", () => {
     vi.useRealTimers();
   });
 
-  it("calls getThroughput() once at construction but subscribes it only on the first subscriber", () => {
+  it("calls getThroughput() once at construction but subscribes it only on the first subscriber", async () => {
     const admin = createScriptedAdmin();
-    createThroughputPresenter(useHost(), admin.port);
+    const presenter = createThroughputPresenter(useHost(), admin.port);
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(admin.loadCalls()).toBe(1);
     expect(admin.load.observed).toBe(false);
+    watch(presenter);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(admin.load.observed).toBe(true);
   });
 
   it("starts loading, lands the loaded value, and falls back to the default when the load fails", async () => {
