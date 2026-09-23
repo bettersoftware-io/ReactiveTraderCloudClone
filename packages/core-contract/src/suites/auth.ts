@@ -157,28 +157,28 @@ export function describeAuthContract(
       });
     });
 
-    // The cycle has only two treatments, so the case first moves it once
-    // (stored → NEXT_VARIANT) and then pins the OTHER one: an unpinned read
-    // would show NEXT_VARIANT, and an advance while pinned would move the
-    // stored value back — both are visible only from this starting point.
+    // The cycle has only two treatments, so an advance made while pinned is
+    // visible only when the pin EQUALS the stored treatment (its successor is
+    // then the other one). The case pins the other treatment first — an
+    // unpinned read would show the stored one — then the stored one.
     it("a pinned wait style is the treatment every attempt shows, and the cycle does not move while pinned", async () => {
-      await withFakeClock(async (clock) => {
+      await withFakeClock(async () => {
         vi.setSystemTime(NOW);
         const h = makeHarness();
 
         try {
           const auth = h.app.presenters.auth;
+          const prefs = h.app.presenters.loginWaitPreferences;
           const c = collect(auth.state$);
-          auth.login(DEMO.username, "wrong");
-          h.driver.resolveLogin({ ok: false, reason: "invalid" });
-          await clock.settle();
-          expect(h.driver.storedLoginWaitVariant()).toBe(NEXT_VARIANT);
-          h.app.presenters.loginWaitPreferences.setStyle(
-            DEFAULT_LOGIN_WAIT_VARIANT,
-          );
+          prefs.setStyle(NEXT_VARIANT);
+          auth.login(DEMO.username, "pw");
+          expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
+          prefs.setStyle(DEFAULT_LOGIN_WAIT_VARIANT);
           auth.login(DEMO.username, "pw");
           expect(c.values.at(-1)?.waitVariant).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
-          expect(h.driver.storedLoginWaitVariant()).toBe(NEXT_VARIANT);
+          expect(h.driver.storedLoginWaitVariant()).toBe(
+            DEFAULT_LOGIN_WAIT_VARIANT,
+          );
           c.unsubscribe();
         } finally {
           await h.teardown();
