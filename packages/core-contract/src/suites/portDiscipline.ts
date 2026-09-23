@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { ROSTER } from "@rtc/domain";
+
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
@@ -450,6 +452,35 @@ export function describePortDisciplineContract(
         await settle();
         second.unsubscribe();
         expect(h.driver.portCalls("admin.getThroughput")).toBe(before);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    // Resuming a stored session reads the STORE, never the auth port: a core
+    // that re-validated the session over the wire at composition would make
+    // a login call nobody asked for. Each intent then costs exactly one call.
+    it("auth: no login call at composition or resume; one per login() and one per unlock()", async () => {
+      const h = makeHarness({
+        session: {
+          token: "stored",
+          user: ROSTER[0].user,
+          username: ROSTER[0].username,
+          exp: Date.now() + 60_000,
+        },
+      });
+
+      try {
+        const auth = h.app.presenters.auth;
+        const c = collect(auth.state$);
+        expect(h.driver.portCalls("auth.login")).toBe(0);
+        auth.lock();
+        auth.unlock("pw");
+        expect(h.driver.portCalls("auth.login")).toBe(1);
+        auth.logout();
+        auth.login(ROSTER[0].username, "pw");
+        expect(h.driver.portCalls("auth.login")).toBe(2);
+        c.unsubscribe();
       } finally {
         await h.teardown();
       }

@@ -1,4 +1,4 @@
-import { firstValueFrom, NEVER, Observable, of, Subject } from "rxjs";
+import { firstValueFrom, from, NEVER, Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { EquityFillSignal, ExecutionOutcome } from "@rtc/core-api";
@@ -15,14 +15,17 @@ import {
   type Price,
   type RfqEvent,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisPort } from "#/adapters/jarvisPort";
 import { type AppPorts, createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 import type { AnimationIntent } from "#/presenters/AnimationDirector";
-import { createEqWorkspaceMachine } from "#/presenters/index";
+import {
+  createEqWorkspaceMachine,
+  createWorkspaceNavMachine,
+} from "#/presenters/index";
 
 describe("createApp — core seams (strangler phase)", () => {
   it("a supplied eqWorkspace is the one a Jarvis drive batch mutates; the app's own stays where it was", async () => {
@@ -59,6 +62,66 @@ describe("createApp — core seams (strangler phase)", () => {
     expect((await firstValueFrom(presenters.eqWorkspace.state$)).sel).toBe(
       "MSFT",
     );
+    presenters.jarvis.dispose();
+  });
+
+  it("a supplied workspaceNav is the one a Jarvis switchTab mutates; the app's own stays on fx", async () => {
+    const seam = createWorkspaceNavMachine();
+    const { presenters } = createApp(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+      { workspaceNav: seam },
+    );
+
+    presenters.jarvis.intents.send("go to credit");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect((await firstValueFrom(seam.state$)).activeTab).toBe("credit");
+    expect(
+      (await firstValueFrom(presenters.workspaceNav.state$)).activeTab,
+    ).toBe("fx");
+    presenters.jarvis.dispose();
+    seam.dispose();
+  });
+
+  it("a panel docked after the seam nav moved docks into the SEAM's active tab, not the app's own", async () => {
+    const seam = createWorkspaceNavMachine();
+    const { presenters } = createApp(
+      createPorts({ jarvis: createSpawningJarvisPort("jarvis-1") }),
+      { workspaceNav: seam },
+    );
+    seam.intents.switchTab("credit");
+    presenters.jarvis.intents.send("spawn a panel");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    presenters.dockPanel("jarvis-1");
+
+    expect(
+      await firstValueFrom(presenters.dockedPanelIdsFor("credit")),
+    ).toEqual(["jarvis-1"]);
+    expect(await firstValueFrom(presenters.dockedPanelIdsFor("fx"))).toEqual(
+      [],
+    );
+    presenters.jarvis.dispose();
+    seam.dispose();
+  });
+
+  it("with no workspaceNav seam the switchTab mutates the app's own nav, as before", async () => {
+    const { presenters } = createApp(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+    );
+
+    presenters.jarvis.intents.send("go to credit");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect(
+      (await firstValueFrom(presenters.workspaceNav.state$)).activeTab,
+    ).toBe("credit");
     presenters.jarvis.dispose();
   });
 
@@ -213,6 +276,48 @@ function createSelectingJarvisPort(symbol: string): JarvisPort {
       return of<JarvisEvent>({
         type: "command",
         batch: { v: 1, commands: [{ kind: "eqSelect", symbol }] },
+      });
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
+}
+
+/** A JarvisPort whose ask() spawns one floating desk panel, `panelId`. */
+function createSpawningJarvisPort(panelId: string): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      const turn: readonly JarvisEvent[] = [
+        { type: "panel", panelId, spec: PANEL_SPEC },
+        { type: "done" },
+      ];
+      return from(turn);
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
+}
+
+const PANEL_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "P&L overview",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
+
+/** A JarvisPort whose ask() replies with one drive batch switching to
+ * `tab`. */
+function createSwitchingJarvisPort(
+  tab: "fx" | "credit" | "equities",
+): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: { v: 1, commands: [{ kind: "switchTab", tab }] },
       });
     },
     confirm: (): void => {

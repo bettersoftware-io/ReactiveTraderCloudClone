@@ -5,7 +5,11 @@ import { describeAmbientStyleContract } from "#/suites/ambientStyle";
 import { describeAnalyticsContract } from "#/suites/analytics";
 import { describeAnalyticsStaleFlagContract } from "#/suites/analyticsStaleFlag";
 import { describeAnimatedBackgroundContract } from "#/suites/animatedBackground";
+import { describeAnimationDirectorContract } from "#/suites/animationDirector";
+import { describeAuthContract } from "#/suites/auth";
 import { describeBlotterContract } from "#/suites/blotter";
+import { describeBootContract } from "#/suites/boot";
+import { describeBootGateContract } from "#/suites/bootGate";
 import { describeBootPreferenceContract } from "#/suites/bootPreference";
 import { describeCandleSeriesContract } from "#/suites/candleSeries";
 import { describeChartSubstrateContract } from "#/suites/chartSubstrate";
@@ -56,6 +60,7 @@ import { describeTileExecutionContract } from "#/suites/tileExecution";
 import { describeTopologyContract } from "#/suites/topology";
 import { describeViewModePreferenceContract } from "#/suites/viewModePreference";
 import { describeWatchlistContract } from "#/suites/watchlist";
+import { describeWorkspaceNavContract } from "#/suites/workspaceNav";
 
 type PresenterMember = `presenters.${keyof Presenters & string}`;
 type MachineMember = `machines.${keyof MachineFactories & string}`;
@@ -96,10 +101,10 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.eqWatchlistSortPreference":
     describeEqWatchlistSortPreferenceContract,
   "presenters.eqBlotterViewPreference": describeEqBlotterViewPreferenceContract,
-  "presenters.animationDirector": null,
+  "presenters.animationDirector": describeAnimationDirectorContract,
   "presenters.bootPreference": describeBootPreferenceContract,
-  "presenters.bootGate": null,
-  "presenters.auth": null,
+  "presenters.bootGate": describeBootGateContract,
+  "presenters.auth": describeAuthContract,
   "presenters.loginWaitPreferences": describeLoginWaitPreferencesContract,
   "presenters.jarvisPreferences": describeJarvisPreferencesContract,
   "presenters.watchlist": describeWatchlistContract,
@@ -109,7 +114,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.positions": describePositionsContract,
   "presenters.incident": describeIncidentContract,
   "presenters.eqWorkspace": describeEqWorkspaceContract,
-  "presenters.workspaceNav": null,
+  "presenters.workspaceNav": describeWorkspaceNavContract,
   "presenters.layoutFor": null,
   "presenters.eqDrawings": describeEqDrawingsContract,
   "presenters.throughputMetric": describeThroughputMetricContract,
@@ -141,7 +146,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.ticketSubmission": describeTicketSubmissionContract,
   "machines.rfqCountdown": describeRfqCountdownContract,
   "machines.layout": null,
-  "machines.boot": null,
+  "machines.boot": describeBootContract,
   "machines.orderTicket": describeOrderTicketContract,
   "commands.reconnect": describeReconnectContract,
   "commands.reportDetachedPanels": null,
@@ -152,10 +157,6 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
  * member cannot silently lose its suite. Shrinks slice by slice. */
 export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.dockLayoutStore",
-  "presenters.animationDirector",
-  "presenters.bootGate",
-  "presenters.auth",
-  "presenters.workspaceNav",
   "presenters.layoutFor",
   "presenters.jarvis",
   "presenters.jarvisUsage",
@@ -170,6 +171,5 @@ export const PENDING_SUITES: readonly ContractMember[] = [
   "presenters.jarvisDriver",
   "presenters.jarvisDemo",
   "machines.layout",
-  "machines.boot",
   "commands.reportDetachedPanels",
 ];

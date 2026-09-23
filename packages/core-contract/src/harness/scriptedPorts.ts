@@ -8,10 +8,18 @@ import {
   Subject,
 } from "rxjs";
 
-import type { AppPorts, ColorSchemeSource, Stream } from "@rtc/core-api";
+import type {
+  AppPorts,
+  ColorSchemeSource,
+  SessionStore,
+  StoredSession,
+  Stream,
+} from "@rtc/core-api";
 import type {
   AdminPort,
   AnalyticsPort,
+  AuthOutcome,
+  AuthPort,
   BlotterPort,
   Candle,
   CandleTimeframe,
@@ -55,6 +63,7 @@ import type {
   Trade,
   WorkflowPort,
 } from "@rtc/domain";
+import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
 import { createPendingQueue } from "#/harness/pendingQueue";
 
@@ -91,7 +100,8 @@ export type PortMethodName =
   | "serviceHealth.topology$"
   | "eventLog.events$"
   | "sessions.sessions$"
-  | "admin.getThroughput";
+  | "admin.getThroughput"
+  | "auth.login";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -105,6 +115,18 @@ export interface RfqQuoteRequest {
  * `emitWatchlist` can only ever exercise the asynchronous fallback. */
 export interface HarnessSeed {
   readonly watchlist?: readonly EquityInstrument[];
+  /** The session the store holds before composition — what `auth` resumes
+   * from. Absent: an empty store. */
+  readonly session?: StoredSession | null;
+  /** `ports.bootSplash.shouldPlay()`. Absent: no `bootSplash` port at all
+   * (the base's, if it has one, is passed through). */
+  readonly bootSplash?: boolean;
+}
+
+/** One `auth.login(username, password)` the core has subscribed. */
+interface LoginCall {
+  readonly username: string;
+  readonly password: string;
 }
 
 /** What `marketData.candleHistory` was asked for. */
@@ -307,6 +329,17 @@ export interface ScriptedDriver {
   /** Every call the core has made against a `metricControls` entry (three
    * recording controls, index 0..2), in order. */
   controlCalls(): readonly ControlCall[];
+  /** Every `auth.login` the core has subscribed and the driver has not
+   * settled, oldest first. */
+  pendingLogins(): readonly LoginCall[];
+  /** Settle the OLDEST pending login with this outcome (next + complete). A
+   * no-op when nothing is pending. */
+  resolveLogin(outcome: AuthOutcome): void;
+  /** What the session store holds now. */
+  storedSession(): StoredSession | null;
+  /** The login-wait variant the preferences port holds now — read on the
+   * UNCOUNTED base port, so reading it never moves `portCalls`. */
+  storedLoginWaitVariant(): LoginWaitVariant;
 }
 
 export interface ScriptedPorts {
@@ -358,6 +391,8 @@ export function scriptPorts(
   const sessionsList$ = new Subject<readonly SessionInfo[]>();
   const throughputLoads = createPendingQueue<void, number>();
   const throughputWrites = createPendingQueue<number, void>();
+  const logins = createPendingQueue<LoginCall, AuthOutcome>();
+  let stored: StoredSession | null = seed.session ?? null;
   const controlCallLog: ControlCall[] = [];
   const metricControls: readonly MetricControl[] = [0, 1, 2].map(
     (index): MetricControl => {
@@ -643,9 +678,43 @@ export function scriptPorts(
     "admin.",
   );
 
+  const auth = countCalls<AuthPort>(
+    {
+      login: (username: string, password: string): Observable<AuthOutcome> => {
+        return logins.open({ username, password });
+      },
+    },
+    calls,
+    "auth.",
+  );
+
+  const sessionStore: SessionStore = {
+    read: () => {
+      return stored;
+    },
+    write: (session: StoredSession) => {
+      stored = session;
+    },
+    clear: () => {
+      stored = null;
+    },
+  };
+  const bootSplashSeed = seed.bootSplash;
+  const bootSplash =
+    bootSplashSeed === undefined
+      ? base.bootSplash
+      : {
+          shouldPlay: (): boolean => {
+            return bootSplashSeed;
+          },
+        };
+
   return {
     ports: {
       ...base,
+      auth,
+      sessionStore,
+      bootSplash,
       preferences,
       connectionEvents,
       colorScheme,
@@ -816,6 +885,22 @@ export function scriptPorts(
       controlCalls: () => {
         return controlCallLog.slice();
       },
+      pendingLogins: logins.pending,
+      resolveLogin: logins.resolve,
+      storedSession: () => {
+        return stored;
+      },
+      storedLoginWaitVariant: () => {
+        let variant: LoginWaitVariant = DEFAULT_LOGIN_WAIT_VARIANT;
+        base.preferences
+          .loginWaitVariant$()
+          .subscribe((v) => {
+            variant = v;
+          })
+          .unsubscribe();
+
+        return variant;
+      },
     },
     teardown: () => {
       connection$.complete();
@@ -859,6 +944,7 @@ export function scriptPorts(
       sessionsList$.complete();
       throughputLoads.drain();
       throughputWrites.drain();
+      logins.drain();
     },
   };
 }

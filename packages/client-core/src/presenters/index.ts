@@ -64,6 +64,7 @@ export * from "#/presenters/ServiceTopologyPresenter";
 export * from "#/presenters/SessionsKpiPresenter";
 export * from "#/presenters/SessionsPresenter";
 export * from "#/presenters/StaleFlagMachine";
+export * from "#/presenters/shellFolds";
 export * from "#/presenters/staleFlagFold";
 export * from "#/presenters/ThemePreferencePresenter";
 export * from "#/presenters/ThemeSkinPreferencePresenter";

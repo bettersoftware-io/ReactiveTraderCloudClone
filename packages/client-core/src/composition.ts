@@ -25,6 +25,8 @@ import type {
   EqWorkspaceState,
   Presenters,
   RfqCountdownSeed,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
 } from "@rtc/core-api";
 import type {
   BootVariant,
@@ -33,24 +35,18 @@ import type {
   EquityInstrument,
   ExecuteTradeInput,
   JarvisSkin,
-  LoginWaitVariant,
   PowerSaverLevel,
   Price,
   ThemeSkin,
 } from "@rtc/domain";
-import {
-  DEFAULT_LOGIN_WAIT_DELAY,
-  DEFAULT_LOGIN_WAIT_STYLE,
-  DEFAULT_LOGIN_WAIT_VARIANT,
-  LOGIN_WAIT_DELAY_MS,
-} from "@rtc/domain";
 import type { JarvisHistoryEntry } from "@rtc/shared";
 
-import { withLoginDelay } from "#/adapters/delayedAuthPort";
+import { createAuthDeps } from "#/adapters/authDeps";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
 import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
+import { readPreferenceNow } from "#/adapters/readPreferenceNow";
 import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import {
@@ -179,25 +175,6 @@ export const reconnect$ = new Subject<ReconnectIntent>();
  * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
  */
 export const incident$ = new Subject<ConnectionEvent>();
-
-/**
- * Reads the current value of a replay-current preference stream synchronously.
- *
- * Every PreferencesPort adapter is BehaviorSubject-backed, so the value lands
- * before `.subscribe()` returns. The `fallback` guards a hypothetical
- * non-replaying implementation: without it the caller would see `undefined`,
- * and for the login-wait cycle that meant `LOGIN_WAIT_VARIANTS.indexOf(undefined)`
- * → -1 and a wait treatment that silently failed to render — precisely the
- * no-feedback state these preferences exist to fix.
- */
-function readPreferenceNow<T>(source$: Observable<T>, fallback: T): T {
-  let value: T | undefined;
-  const sub = source$.pipe(take(1)).subscribe((v) => {
-    value = v;
-  });
-  sub.unsubscribe();
-  return value ?? fallback;
-}
 
 /** One-shot synchronous peek at the watchlist's first symbol, used only to
  * seed EqWorkspaceMachine's initial tab/selection at composition time. The
@@ -424,6 +401,7 @@ function wireJarvisHistorySource(
 export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly eqWorkspace?: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   readonly watchlist$?: Observable<readonly EquityInstrument[]>;
+  readonly workspaceNav?: Machine<WorkspaceNavState, WorkspaceNavIntents>;
 }
 
 export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
@@ -551,12 +529,18 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // from a "switchTab" DriveCommand. Takes no deps, unlike eqWorkspace/
   // incident, so it needs nothing else built first.
   const workspaceNav = createWorkspaceNavMachine();
+  // The INTERNAL readers — the Jarvis driver's `switchTab` and the dock
+  // bridges' `latestActiveTab` mirror — follow the native nav when a sibling
+  // core supplies one (`CoreSeams.workspaceNav`); `presenters.workspaceNav`
+  // stays this app's own instance, the `eqWorkspace` precedent.
+  const activeNav = seams.workspaceNav ?? workspaceNav;
+  const authDeps = createAuthDeps(ports);
 
   // Session-lifetime mirror of the active tab, for the same synchronous-read
   // reason as `latestPanels` above: `dockPanelIntoWorkspace` has to know
   // which tab is on screen at the instant of the dock.
   let latestActiveTab: WorkspaceTab = "fx";
-  workspaceNav.state$.subscribe((navState) => {
+  activeNav.state$.subscribe((navState) => {
     latestActiveTab = navState.activeTab;
   });
 
@@ -1055,7 +1039,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
         return EMPTY;
       }),
     ),
-    workspaceNav,
+    workspaceNav: activeNav,
     layout: layoutFor,
     eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
     setThemeSkin: (skin: ThemeSkin): void => {
@@ -1234,61 +1218,14 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     // Boot-splash visibility, seeded once from the platform's boot-splash
     // decision (defaults to playing when no bootSplash port is supplied).
     bootGate: new BootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
-    // Login/lock/logout lifecycle over the injected AuthPort + SessionStore.
-    //
-    // The AuthPort is wrapped so the "Login wait delay" preference holds the
-    // outcome back; at "off" the wrapper passes through synchronously, so the
-    // default path is byte-for-byte today's behaviour.
-    //
-    // The 4th argument is the login-wait variant cycle, read and advanced
-    // through the preferences seam — same pattern as boot's variant. The
-    // "Login wait style" pin is resolved HERE rather than inside
-    // AuthPresenter: when a concrete style is chosen, `current` returns it and
-    // `advance` is a no-op, so the presenter keeps asking one question ("which
-    // treatment for this attempt?") and composition decides whether the answer
-    // comes from a cycle or from a pin. That also leaves the cycle pointer
-    // untouched while pinned, so switching back to "auto" resumes where the
-    // user left off instead of somewhere they never chose.
+    // Login/lock/logout lifecycle over the injected AuthPort + SessionStore;
+    // the login-delay wrapper and the wait-style cycle are `createAuthDeps`,
+    // shared with the sibling cores (pluggable-core slice 6).
     auth: new AuthPresenter(
-      withLoginDelay(ports.auth, () => {
-        return LOGIN_WAIT_DELAY_MS[
-          readPreferenceNow(
-            ports.preferences.loginWaitDelay$(),
-            DEFAULT_LOGIN_WAIT_DELAY,
-          )
-        ];
-      }),
-      ports.sessionStore,
+      authDeps.auth,
+      authDeps.store,
       undefined,
-      {
-        current: (): LoginWaitVariant => {
-          const style = readPreferenceNow(
-            ports.preferences.loginWaitStyle$(),
-            DEFAULT_LOGIN_WAIT_STYLE,
-          );
-
-          if (style !== "auto") {
-            return style;
-          }
-
-          return readPreferenceNow(
-            ports.preferences.loginWaitVariant$(),
-            DEFAULT_LOGIN_WAIT_VARIANT,
-          );
-        },
-        advance: (next: LoginWaitVariant): void => {
-          const style = readPreferenceNow(
-            ports.preferences.loginWaitStyle$(),
-            DEFAULT_LOGIN_WAIT_STYLE,
-          );
-
-          if (style !== "auto") {
-            return;
-          }
-
-          ports.preferences.setLoginWaitVariant(next);
-        },
-      },
+      authDeps.cycle,
     ),
     loginWaitPreferences: new LoginWaitPreferencesPresenter(ports.preferences),
     jarvisPreferences,

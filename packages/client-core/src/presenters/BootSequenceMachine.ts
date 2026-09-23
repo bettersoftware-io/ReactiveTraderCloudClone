@@ -3,17 +3,23 @@ import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
 import type { BootSequenceIntents, BootSequenceState } from "@rtc/core-api";
-import { BOOT_VARIANTS, type BootVariant } from "@rtc/domain";
+import {
+  BOOT_TICK_MS,
+  BOOT_VARIANTS,
+  type BootVariant,
+  BOOT_DURATION_MS as DOMAIN_BOOT_DURATION_MS,
+} from "@rtc/domain";
 
 import type { Machine } from "./machine";
+import { bootProgress, nextBootVariant } from "./shellFolds";
 
 export type { BootVariant };
 // Cycle order lives in domain (PROTO _startBoot v3 list: core → laser →
 // docking → hologram → geo → layers → jarvis → topo); re-exported for
 // existing consumers.
 export { BOOT_VARIANTS };
-export const BOOT_DURATION_MS = 4200;
-const BOOT_TICK_MS = 90;
+/** Re-exported for existing importers; the value lives in `@rtc/domain`. */
+export const BOOT_DURATION_MS: number = DOMAIN_BOOT_DURATION_MS;
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -29,25 +35,22 @@ export interface BootSequenceDeps {
   readonly onDone: () => void;
 }
 
-const TICKS = Math.ceil(BOOT_DURATION_MS / BOOT_TICK_MS);
-
 export function createBootSequenceMachine(
   deps: BootSequenceDeps,
 ): Machine<BootSequenceState, BootSequenceIntents> {
   const variant = deps.variant;
   // Advance the persisted cycle pointer immediately, like the prototype does at
   // boot start (Reactive Trader.dc.html:846) — next run gets the next variant.
-  const nextIdx = (BOOT_VARIANTS.indexOf(variant) + 1) % BOOT_VARIANTS.length;
-  deps.advance(BOOT_VARIANTS[nextIdx]);
+  deps.advance(nextBootVariant(variant));
 
   const skip$ = new Subject<void>();
   const initial: BootSequenceState = { variant, progress: 0, done: false };
 
-  // Progress derived from tick index i: pct = min(100, round(i / TICKS * 100)).
+  // Progress derived from tick index i (`bootProgress`, shared with the sibling cores).
   // Deterministic under fake timers — no Date.now() in the math.
   const ramp$ = timer(0, BOOT_TICK_MS).pipe(
     map((i): BootSequenceState => {
-      const progress = Math.min(100, Math.round((i / TICKS) * 100));
+      const progress = bootProgress(i);
       return { variant, progress, done: progress >= 100 };
     }),
     takeWhile((s) => {
