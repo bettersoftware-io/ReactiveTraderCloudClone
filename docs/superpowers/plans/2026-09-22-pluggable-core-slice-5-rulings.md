@@ -96,9 +96,13 @@ tooling). Worktree made with `new-worktree.sh --ready`, proved with a full
    admin.getThroughput() again" failed it (2 vs 1, the base's call plus the
    native's). The load's SUBSCRIPTION stays lazy via a new `onSubscribe` hook
    on `storeToStateStream`.
-4. **B-4 — three uncontracted divergences recorded in ADR-006**, not coded
-   around: synchronous `setThroughput` throw → error banner; `setValue` with
-   no subscriber is applied; post-`lifetime` `setValue` is silent.
+4. **B-4 — four uncontracted divergences plus one user-visible one recorded
+   in ADR-006**, not coded around: synchronous `setThroughput` throw → error
+   banner; `setValue` with no subscriber is applied; post-`lifetime`
+   `setValue` is silent; an emit-less `setThroughput` completion → error
+   banner; and (visible, allowed by ruling 5) `throughput` stays warm across
+   the Admin tab's remount where RxJS cancels and reloads. The last two were
+   added from the independent review.
 5. **B-5 — the seam-witness test has no mutant.** It can only fail if the
    base app's admin presenters become hot, which no find/replace on this
    branch produces; it stands as slice 4's witnesses do, as a guard against
@@ -112,3 +116,11 @@ post-lifetime `throughput` case asserted only writes; the `incident` case
 called `dispose()` itself) and two ERROR (a `find` matched the doc comment
 too); after strengthening both tests, **25/25 killed**. `core:parity`:
 `native: async 53/74, effect 44/74`.
+
+**Independent review (opus, read-only):** SHIP, 0 must-fix. Should-fix 1 — the
+lifetime-abort release of an in-flight write and of the debounce timer had no
+test that could fail — fixed with two cases. Should-fix 2 — the tab-remount
+divergence was missing from the ADR — recorded. Minors taken: `incident`'s
+clear-order test now logs every state emission; eventLog/sessionsKpi gained
+retention + release tests. The seam witness's inability to tell native from
+delegated stands as B-5 (parity.json proves provenance).

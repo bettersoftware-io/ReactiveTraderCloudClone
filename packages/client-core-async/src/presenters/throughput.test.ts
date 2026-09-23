@@ -178,6 +178,34 @@ describe("createThroughputPresenter (async)", () => {
     expect(admin.writes()).toEqual([]);
     expect(view.last().value).toBe(700);
   });
+
+  it("a lifetime abort releases an in-flight write, and its late resolution shows no banner", async () => {
+    const admin = createScriptedAdmin();
+    const lifetime = new AbortController();
+    const presenter = createThroughputPresenter(admin.port, lifetime.signal);
+    const view = watch(presenter);
+    presenter.setValue(700);
+    await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
+    expect(admin.writeObserved(0)).toBe(true);
+
+    lifetime.abort();
+    expect(admin.writeObserved(0)).toBe(false);
+    admin.resolveWrite(0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(view.last().message).toBeNull();
+  });
+
+  it("a lifetime abort mid-debounce leaves no timer behind", async () => {
+    const admin = createScriptedAdmin();
+    const lifetime = new AbortController();
+    const presenter = createThroughputPresenter(admin.port, lifetime.signal);
+    presenter.setValue(700);
+    expect(vi.getTimerCount()).toBe(1);
+
+    lifetime.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
 
 interface Watched {

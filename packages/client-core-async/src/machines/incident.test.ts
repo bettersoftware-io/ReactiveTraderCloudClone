@@ -39,10 +39,21 @@ describe("createIncidentMachine (async)", () => {
     const rig = createRig();
     rig.machine.intents.clear();
 
-    expect(rig.log).toEqual(["c0.clear", "c1.clear", "push(gatewayConnected)"]);
+    expect(rig.log).toEqual([
+      "c0.clear",
+      "c1.clear",
+      "push(gatewayConnected)",
+      "state([])",
+    ]);
     rig.machine.intents.inject("errorBurst");
+    rig.log.length = 0;
     rig.machine.intents.clear();
-    expect(rig.machine.state$.getValue()).toEqual({ active: [] });
+    expect(rig.log).toEqual([
+      "c0.clear",
+      "c1.clear",
+      "push(gatewayConnected)",
+      "state([])",
+    ]);
   });
 
   // Subscribed FIRST and kept: after dispose() a cold getValue() would read
@@ -103,10 +114,15 @@ function createRig(): Rig {
     },
     lifetime.signal,
   );
+  let seeded = false;
+  // Every emission after the seed is logged — a reset to [] included — so the
+  // order assertions see WHEN state changed relative to the side effects.
   machine.state$.subscribe((s) => {
-    if (s.active.length > 0) {
+    if (seeded) {
       log.push(`state([${s.active.join(",")}])`);
     }
+
+    seeded = true;
   });
 
   return { machine, log, lifetime };

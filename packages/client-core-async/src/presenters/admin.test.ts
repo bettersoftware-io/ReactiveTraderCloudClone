@@ -147,6 +147,47 @@ describe("admin presenters (async)", () => {
     sub.unsubscribe();
   });
 
+  it("eventLog and sessionsKpi: each keeps its window across a full unsubscribe and releases its port on the lifetime abort", () => {
+    const events = new Subject<LogEvent>();
+    const roster = new Subject<readonly SessionInfo[]>();
+    const lifetime = new AbortController();
+    const port: EventLogPort = {
+      events$: () => {
+        return events;
+      },
+    };
+    const log = createEventLogPresenter(port, lifetime.signal);
+    const kpi = createSessionsKpiPresenter(
+      createSessionsPort(roster),
+      lifetime.signal,
+      () => {
+        return 5;
+      },
+    );
+    log.events$.subscribe(() => {}).unsubscribe();
+    kpi.countSeries$.subscribe(() => {}).unsubscribe();
+    events.next(createLogEvent(1));
+    roster.next([SESSION]);
+    const lateLog: (readonly LogEvent[])[] = [];
+    const lateKpi: (readonly MetricSample[])[] = [];
+    log.events$
+      .subscribe((l) => {
+        lateLog.push(l);
+      })
+      .unsubscribe();
+    kpi.countSeries$
+      .subscribe((w) => {
+        lateKpi.push(w);
+      })
+      .unsubscribe();
+
+    expect(lateLog).toEqual([[createLogEvent(1)]]);
+    expect(lateKpi).toEqual([[{ t: 5, value: 1 }]]);
+    lifetime.abort();
+    expect(events.observed).toBe(false);
+    expect(roster.observed).toBe(false);
+  });
+
   it("sessionsKpi: each roster becomes a sample timestamped by now() at emission, valued by its length", () => {
     const roster = new Subject<readonly SessionInfo[]>();
     let clock = 1_000;

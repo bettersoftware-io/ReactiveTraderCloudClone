@@ -830,9 +830,21 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   async core, where the RxJS `switchMap` would error `state$`; (2) a
   `setValue` made while `state$` has no subscriber is applied and written by
   the async core, where the RxJS `Subject` drops it; (3) after `lifetime`
-  aborts, the async `setValue` neither echoes nor writes. Nothing shipped
-  observes any of the three — the admin view holds `state$` while it is
-  mounted.
+  aborts, the async `setValue` neither echoes nor writes; (4) a
+  `setThroughput` that completes WITHOUT emitting shows the error banner in
+  the async core (`once` rejects) where RxJS shows none — neither the WS
+  port nor the simulator does that today. None of the four is observable in
+  the shipped app.
+- **One divergence IS user-visible, and is allowed by ruling 5:** the RxJS
+  `state()` is refCounted, so when the Admin tab unmounts (every tab switch
+  remounts it via `key={activeTab}`) it drops a pending debounce and any
+  in-flight write, and on return resets to `{ value: 100, loading: true }`
+  and loads again. The async core keeps `throughput` warm: the value
+  survives, a write typed within 300 ms of a tab switch still persists, and
+  the load is not repeated — so under WS-real a throughput change made by
+  another user is not re-read until reload. Ruling 5 left load-count across
+  resubscribe uncontracted precisely so a sibling may keep it warm; this is
+  the cost, recorded rather than coded around.
 - **The seam witness (ruling 8) holds:** with every native admin stream
   subscribed, each admin port stream is live once (`sessions$` twice, for
   its two native readers) — the base app's own admin presenters stay cold,
