@@ -1,11 +1,12 @@
 import { Subject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { reconnect$ } from "@rtc/client-core";
+import { incident$, reconnect$ } from "@rtc/client-core";
 
 import {
   portCallToStream,
   promiseToStream,
+  pushIncidentEvent,
   pushReconnectIntent,
   storeToStateStream,
   storeToWarmStateStream,
@@ -102,6 +103,30 @@ describe("bridge/out", () => {
     pushReconnectIntent();
     expect(seen).toEqual([{ type: "reconnect" }]);
     sub.unsubscribe();
+  });
+
+  it("pushIncidentEvent() lands the event on the RxJS core's incident$ seam", () => {
+    const seen: unknown[] = [];
+    const sub = incident$.subscribe((e) => {
+      seen.push(e);
+    });
+    pushIncidentEvent({ type: "gatewayDisconnected" });
+    expect(seen).toEqual([{ type: "gatewayDisconnected" }]);
+    sub.unsubscribe();
+  });
+
+  it("storeToStateStream runs onSubscribe on each zero-to-one subscriber transition, not per subscriber", () => {
+    let starts = 0;
+    const state$ = storeToStateStream(createStore(1), () => {
+      starts += 1;
+    });
+    const a = state$.subscribe(() => {});
+    const b = state$.subscribe(() => {});
+    expect(starts).toBe(1);
+    a.unsubscribe();
+    b.unsubscribe();
+    state$.subscribe(() => {}).unsubscribe();
+    expect(starts).toBe(2);
   });
 
   it("topicToStreamWithLead hands each subscriber the lead value synchronously, before the topic's own", () => {

@@ -219,6 +219,87 @@ describe("composeWithBase — core seams", () => {
       await app.dispose();
     }
   });
+
+  // Slice 5 ruling 8: no CoreSeams change, because no internal reader of the
+  // base app consumes an admin member and each base copy is lazy. This is
+  // the witness: with every native admin stream subscribed, each admin port
+  // stream is held ONCE — twice for sessions$, which two native presenters
+  // (sessions, sessionsKpi) each hold, exactly as the RxJS core's two do.
+  it("the base app's own admin presenters stay cold: each admin port stream is held only by the native members", async () => {
+    const simulated = createPorts({});
+    const tallies = {
+      throughput: createTally(),
+      latency: createTally(),
+      errorRate: createTally(),
+      topology: createTally(),
+      events: createTally(),
+      sessions: createTally(),
+    };
+    const telemetry = countSubscriptions(
+      countSubscriptions(
+        countSubscriptions(simulated.telemetry, "throughput$", () => {
+          return tallies.throughput;
+        }),
+        "latency$",
+        () => {
+          return tallies.latency;
+        },
+      ),
+      "errorRate$",
+      () => {
+        return tallies.errorRate;
+      },
+    );
+    const { app } = composeWithBase({
+      ...simulated,
+      telemetry,
+      serviceHealth: countSubscriptions(simulated.serviceHealth, "topology$", () => {
+        return tallies.topology;
+      }),
+      eventLog: countSubscriptions(simulated.eventLog, "events$", () => {
+        return tallies.events;
+      }),
+      sessions: countSubscriptions(simulated.sessions, "sessions$", () => {
+        return tallies.sessions;
+      }),
+    });
+
+    try {
+      const { presenters } = app;
+      const subs = [
+        presenters.throughputMetric.samples$.subscribe(() => {}),
+        presenters.latencyMetric.samples$.subscribe(() => {}),
+        presenters.errorRateMetric.samples$.subscribe(() => {}),
+        presenters.topology.topology$.subscribe(() => {}),
+        presenters.eventLog.events$.subscribe(() => {}),
+        presenters.sessions.sessions$.subscribe(() => {}),
+        presenters.sessionsKpi.countSeries$.subscribe(() => {}),
+      ];
+      await settle();
+
+      expect({
+        throughput: tallies.throughput.live,
+        latency: tallies.latency.live,
+        errorRate: tallies.errorRate.live,
+        topology: tallies.topology.live,
+        events: tallies.events.live,
+        sessions: tallies.sessions.live,
+      }).toEqual({
+        throughput: 1,
+        latency: 1,
+        errorRate: 1,
+        topology: 1,
+        events: 1,
+        sessions: 2,
+      });
+
+      for (const sub of subs) {
+        sub.unsubscribe();
+      }
+    } finally {
+      await app.dispose();
+    }
+  });
 });
 
 const REQUEST: PlaceOrderRequest = {
