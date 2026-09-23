@@ -219,27 +219,35 @@ export const EqDrawingsTag = Context.GenericTag<
 const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
   "@rtc/client-core-effect/throughput",
 );
+
 const ThroughputMetricTag = Context.GenericTag<ThroughputMetricPresenter>(
   "@rtc/client-core-effect/throughputMetric",
 );
+
 const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
   "@rtc/client-core-effect/latencyMetric",
 );
+
 const ErrorRateMetricTag = Context.GenericTag<ErrorRatePresenter>(
   "@rtc/client-core-effect/errorRateMetric",
 );
+
 const TopologyTag = Context.GenericTag<ServiceTopologyPresenter>(
   "@rtc/client-core-effect/topology",
 );
+
 const EventLogTag = Context.GenericTag<EventLogPresenter>(
   "@rtc/client-core-effect/eventLog",
 );
+
 const SessionsTag = Context.GenericTag<SessionsPresenter>(
   "@rtc/client-core-effect/sessions",
 );
+
 const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
   "@rtc/client-core-effect/sessionsKpi",
 );
+
 const IncidentTag = Context.GenericTag<Machine<IncidentState, IncidentIntents>>(
   "@rtc/client-core-effect/incident",
 );
