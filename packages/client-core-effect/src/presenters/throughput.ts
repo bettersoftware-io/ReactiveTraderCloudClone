@@ -37,7 +37,9 @@ const INITIAL: ThroughputView = {
  * `debounceTime` → `switchMap` — supersede at the debounce, not the
  * keystroke). `Effect.sleep` follows vitest fake timers (measured in
  * `bridge/clock.test.ts`). Everything runs in a child of the app host's
- * scope, so `app.dispose()` ends the load, the timer and the write. */
+ * scope, so `app.dispose()` ends the load, the timer and the write — and
+ * `disposed` flips on the PARENT scope, before that child closes, so no
+ * timer firing mid-close can start work in a closed scope. */
 export function createThroughputPresenter(
   parent: EffectHost,
   admin: AdminPort,
@@ -47,12 +49,18 @@ export function createThroughputPresenter(
   const writes = createRunSlot(host, ref);
   const load$ = admin.getThroughput();
   let debounce: Fiber.RuntimeFiber<void> | null = null;
+  let debounceToken: object | null = null;
   let loadStarted = false;
   let disposed = false;
 
+  // Added to the PARENT after `createChildHost` forked the child, so a
+  // sequential close (reverse order) runs it FIRST: the flag is up before
+  // any fiber in the child scope is interrupted. On the child it would run
+  // last — after the interrupts — leaving a window in which a debounce
+  // firing mid-close forks an unowned write into the closed scope.
   host.runtime.runSync(
     Scope.addFinalizer(
-      host.scope,
+      parent.scope,
       Effect.sync(() => {
         disposed = true;
       }),
@@ -134,10 +142,18 @@ export function createThroughputPresenter(
       Effect.runFork(Fiber.interrupt(debounce));
     }
 
+    // The interrupt above is delivered asynchronously; an older timer due
+    // in the same batch could still fire. The token makes it a no-op.
+    const token = {};
+    debounceToken = token;
     debounce = host.runtime.runFork(
       Effect.sleep(THROUGHPUT_DEBOUNCE_MS).pipe(
         Effect.andThen(
           Effect.sync(() => {
+            if (disposed || debounceToken !== token) {
+              return;
+            }
+
             writes.start((run) => {
               return persist(run, value);
             });

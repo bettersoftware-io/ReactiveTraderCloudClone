@@ -208,7 +208,7 @@ describe("admin presenters (effect)", () => {
     expect(roster.observed).toBe(false);
   });
 
-  it("sessionsKpi: each roster becomes a sample timestamped by now() at emission, valued by its length", async () => {
+  it("sessionsKpi: each roster becomes a sample timestamped by now(), valued by its length", async () => {
     const roster = new Subject<readonly SessionInfo[]>();
     let clock = 1_000;
     const presenter = createSessionsKpiPresenter(

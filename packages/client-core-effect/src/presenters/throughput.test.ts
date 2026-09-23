@@ -172,11 +172,13 @@ describe("createThroughputPresenter (effect)", () => {
     });
   });
 
+  // The echo is read from a FRESH subscriber's synchronous seed, which reads
+  // the ref: a subscriber made before the close follows the ref on a fiber
+  // the close interrupted, so it would read 700 whether or not 800 landed.
   it("after the host scope closes, setValue neither writes nor echoes", async () => {
     const admin = createScriptedAdmin();
     const host = useHost();
     const presenter = createThroughputPresenter(host, admin.port);
-    const view = watch(presenter);
     presenter.setValue(700);
     await closeScope(host);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -184,7 +186,29 @@ describe("createThroughputPresenter (effect)", () => {
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
 
     expect(admin.writes()).toEqual([]);
-    expect(view.last().value).toBe(700);
+    const fresh: ThroughputView[] = [];
+    presenter.state$
+      .subscribe((v) => {
+        fresh.push(v);
+      })
+      .unsubscribe();
+    expect(
+      fresh.map((v) => {
+        return v.value;
+      }),
+    ).toEqual([700]);
+  });
+
+  it("a debounce due while the host scope closes starts no write", async () => {
+    const admin = createScriptedAdmin();
+    const host = useHost();
+    const presenter = createThroughputPresenter(host, admin.port);
+    presenter.setValue(700);
+    await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS - 1);
+    Effect.runFork(Scope.close(host.scope, Exit.void));
+    await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
+
+    expect(admin.writes()).toEqual([]);
   });
 
   it("closing the host scope releases an in-flight write, and its late resolution shows no banner", async () => {

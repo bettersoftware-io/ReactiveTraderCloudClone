@@ -38,6 +38,12 @@ describe("createIncidentMachine (effect)", () => {
   it("errorBurst pushes nothing; a repeated inject perturbs and pushes again but does not duplicate the kind", async () => {
     const rig = createRig(useHost());
     rig.machine.intents.inject("errorBurst");
+    await tick();
+    expect(rig.log).toEqual([
+      "c0.perturb(errorBurst)",
+      "c1.perturb(errorBurst)",
+      "state([errorBurst])",
+    ]);
     rig.machine.intents.inject("serviceDown");
     await tick();
     rig.log.length = 0;
@@ -77,24 +83,26 @@ describe("createIncidentMachine (effect)", () => {
     expect(rig.log).toContain("push(gatewayConnected)");
   });
 
-  // Subscribed FIRST and kept: after dispose a cold getValue() would read
-  // the seed whether or not the guard ran (see eqWorkspace.test.ts).
+  // State is read from a FRESH subscriber's seed, which reads the ref: an
+  // earlier subscriber follows the ref on a fiber the close interrupted, and
+  // would read the old state whether or not the guard ran.
   it("an intent after the host scope closes touches no control, pushes nothing and changes no state", async () => {
     const host = useHost();
     const rig = createRig(host);
-    const seen: IncidentState[] = [];
-    const sub = rig.machine.state$.subscribe((s) => {
-      seen.push(s);
-    });
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     rig.log.length = 0;
     rig.machine.intents.inject("serviceDown");
-    rig.machine.intents.clear();
     await tick();
 
     expect(rig.log).toEqual([]);
-    expect(seen).toEqual([{ active: [] }]);
-    sub.unsubscribe();
+    rig.stop();
+    const fresh: IncidentState[] = [];
+    rig.machine.state$
+      .subscribe((s) => {
+        fresh.push(s);
+      })
+      .unsubscribe();
+    expect(fresh).toEqual([{ active: [] }]);
   });
 
   it("dispose() is idempotent and ends intents the same way", () => {
@@ -126,6 +134,8 @@ interface TestHost extends EffectHost {
 interface Rig {
   readonly machine: ReturnType<typeof createIncidentMachine>;
   readonly log: string[];
+  /** Unsubscribe the rig's own logging subscriber. */
+  stop(): void;
 }
 
 function createRig(host: EffectHost): Rig {
@@ -150,7 +160,7 @@ function createRig(host: EffectHost): Rig {
   let seeded = false;
   // Every emission after the seed is logged — a reset to [] included — so the
   // order assertions see WHEN state changed relative to the side effects.
-  machine.state$.subscribe((s) => {
+  const logging = machine.state$.subscribe((s) => {
     if (seeded) {
       log.push(`state([${s.active.join(",")}])`);
     }
@@ -158,7 +168,13 @@ function createRig(host: EffectHost): Rig {
     seeded = true;
   });
 
-  return { machine, log };
+  return {
+    machine,
+    log,
+    stop: () => {
+      logging.unsubscribe();
+    },
+  };
 }
 
 function tick(): Promise<unknown> {
