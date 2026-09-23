@@ -13,7 +13,7 @@ import {
 import { BehaviorSubject, Subject, type Subscription } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { reconnect$ } from "@rtc/client-core";
+import { incident$, reconnect$ } from "@rtc/client-core";
 
 import {
   createChildHost,
@@ -22,6 +22,7 @@ import {
   type FoldUpdate,
   type FromPort,
   fromPortIn,
+  pushIncidentEvent,
   pushReconnectIntent,
   refToStateStream,
   refToWarmStateStream,
@@ -763,6 +764,32 @@ describe("bridge/out", () => {
     pushReconnectIntent();
     expect(seen).toEqual([{ type: "reconnect" }]);
     sub.unsubscribe();
+  });
+
+  it("pushIncidentEvent() lands the event on the RxJS core's incident$ seam", () => {
+    const seen: unknown[] = [];
+    const sub = incident$.subscribe((e) => {
+      seen.push(e);
+    });
+    pushIncidentEvent({ type: "gatewayDisconnected" });
+    expect(seen).toEqual([{ type: "gatewayDisconnected" }]);
+    sub.unsubscribe();
+  });
+
+  it("refToStateStream runs onSubscribe on each zero-to-one subscriber transition, not per subscriber", async () => {
+    const host = useHost();
+    const ref = Effect.runSync(SubscriptionRef.make(1));
+    let starts = 0;
+    const state$ = refToStateStream(host, ref, () => {
+      starts += 1;
+    });
+    const a = state$.subscribe(() => {});
+    const b = state$.subscribe(() => {});
+    expect(starts).toBe(1);
+    a.unsubscribe();
+    b.unsubscribe();
+    state$.subscribe(() => {}).unsubscribe();
+    expect(starts).toBe(2);
   });
 
   it("sharedFold({ retain: true }) keeps the period across zero subscribers and ends it with the host scope", async () => {

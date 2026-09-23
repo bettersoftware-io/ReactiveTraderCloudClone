@@ -124,3 +124,41 @@ divergence was missing from the ADR — recorded. Minors taken: `incident`'s
 clear-order test now logs every state emission; eventLog/sessionsKpi gained
 retention + release tests. The seam witness's inability to tell native from
 delegated stands as B-5 (parity.json proves provenance).
+
+## PR B, Effect half (2026-09-23)
+
+Same regime as the async half, same day (the user judged the weekly budget
+sufficient). No new primitive: retained `sharedFold`s and mirrors, a
+`SubscriptionRef` + debounce fiber + `createRunSlot` for `throughput`, a
+child-host singleton for `incident`, one Tag + Layer each (`layers.test.ts`
+33 → 42).
+
+1. **E-1 — the "unmeasured" Clock question was already measured.**
+   `bridge/clock.test.ts` has pinned `Effect.sleep` under fake timers since
+   slice 2; STATUS had called it open. Checked before writing, not after.
+2. **E-2 — `incident` unit tests wait a tick for state.** The ref is followed
+   on a fiber, so the synchronous-state assertions of the async tests do not
+   transfer; the contract suites already settle.
+3. **E-3 — one equivalent mutant.** Moving the ref write before the push is
+   unobservable (state reaches subscribers a tick later either way); recorded
+   in ADR-006 rather than tested around.
+
+**Receipts.** `client-core-effect` 468/468; all nine admin contract suites
+native. `pnpm mutation-check`: 26/28 first pass — one weak test (a synchronous
+`observed` check a microtask-deferred load slipped past; fixed, now killed) and
+one equivalent mutant (E-3). `core:parity`: 53/74 both.
+
+**Independent review of the Effect half (opus, read-only):** SHIP, 0 must-fix.
+Taken: (1) `throughput`'s `disposed` flag flipped LAST in the child scope's
+reverse-order close, so a debounce due mid-close could fork an unowned write —
+it now flips on the PARENT scope, first, and a token drops a superseded timer
+due in the same batch; (2)–(3) three tests read state through a subscriber the
+close had already interrupted — an absence reported as a clean reading, the
+repo's recurring class — and now read a fresh subscriber's seed; (4) the
+`errorBurst` case cleared its log before asserting. Mutation pass on the fixes:
+3/6 killed. **E-4 — the three survivors are race guards no deterministic test
+reaches:** under fake timers the scope close always interrupts the sleeping
+debounce fiber before its timer is due, and an interrupt is delivered before a
+same-batch stale timer, so the window the reviewer found by reading Effect's
+`ScopeImpl.close` / `runtime.ts` cannot be opened in a test. Kept as defence,
+recorded here rather than claimed as tested.

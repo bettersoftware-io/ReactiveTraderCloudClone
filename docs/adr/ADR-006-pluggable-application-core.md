@@ -850,6 +850,28 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   its two native readers) — the base app's own admin presenters stay cold,
   so no `CoreSeams` change was needed.
 
+**Decided in slice 5 — PR B, the Effect half** (2026-09-23):
+
+- **The Clock question was already answered.** `bridge/clock.test.ts` (slice
+  2) proves `Effect.sleep` advances under vitest fake timers, so
+  `throughput`'s debounce and dismiss are plain `Effect.sleep`s in fibers
+  forked into a child of the app host's scope; nothing had to be measured
+  anew.
+- **No new primitive.** The warm folds are `sharedFold({ retain: true })`
+  seeded `Option.some([])`; `topology`/`sessions` are
+  `mirrorPortAsIs(..., { retain: true })`. `refToStateStream` gained the same
+  `onSubscribe` hook the async `storeToStateStream` did.
+- **A synchronous `setThroughput` throw is a failed write** (`Effect.try`),
+  matching the async core's error banner rather than becoming a defect.
+- **`incident`'s state reaches subscribers a tick after its side effects**
+  (the ref is followed on a fiber, as every Effect machine's is), so the
+  order a subscriber can observe is controls → push → state, as RxJS; where
+  the ref write falls relative to the push inside the intent is not
+  observable, and the mutation pass confirms it (an equivalent mutant).
+- The async half's recorded divergences (ADR above) hold for the Effect core
+  too: warm across the Admin-tab remount, emit-less completion → error
+  banner, post-dispose `setValue` silent.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

@@ -14,8 +14,9 @@ import {
 } from "effect";
 import { filter, map, Observable, type Subscriber } from "rxjs";
 
-import { reconnect$ } from "@rtc/client-core";
+import { incident$, reconnect$ } from "@rtc/client-core";
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
+import type { ConnectionEvent } from "@rtc/domain";
 
 import { fromObservable } from "#/bridge/in";
 
@@ -233,12 +234,17 @@ export function streamToStream<T, E>(
 export function refToStateStream<S>(
   host: EffectHost,
   ref: SubscriptionRef.SubscriptionRef<S>,
+  onSubscribe: () => void = () => {},
 ): StateStream<S> {
   function readCurrent(): S {
     return host.runtime.runSync(SubscriptionRef.get(ref));
   }
 
+  // `onSubscribe` runs on each zero-to-one subscriber transition
+  // (`@rx-state/core` shares this source) — how a presenter starts a lazy
+  // load on its first subscriber, as the RxJS core's `state()` does.
   const perSubscription = new Observable<S>((subscriber) => {
+    onSubscribe();
     const seed = readCurrent();
     subscriber.next(seed);
 
@@ -551,4 +557,13 @@ export function sharedFold<S>(
  * `@rtc/client-core`. */
 export function pushReconnectIntent(): void {
   reconnect$.next({ type: "reconnect" });
+}
+
+/** Push an admin incident's connection event into the RxJS core's
+ * module-level `incident$` — the twin of `pushReconnectIntent`: both web
+ * clients merge that Subject into `connectionEvents` for EVERY core, so a
+ * native `presenters.incident` must speak to it or its gateway drop is
+ * invisible. Slice 8 moves the seam into the core. */
+export function pushIncidentEvent(event: ConnectionEvent): void {
+  incident$.next(event);
 }

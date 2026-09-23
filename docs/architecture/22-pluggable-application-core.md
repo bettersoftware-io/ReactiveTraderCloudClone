@@ -415,18 +415,19 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 4 both
-alternative cores list forty-four members `"native"` (`connection`, all
+`commands` — and the drift test walks all three. As of slice 5 both
+alternative cores list fifty-three members `"native"` (`connection`, all
 fifteen preference presenters, `commands.reconnect`, the six FX
 pricing/blotter presenters and the five FX machines, the four credit
 presenters and the four RFQ machines — `rfqCountdown` having joined
 `MachineFactories` in slice 3 — and slice 4's eight: the five equities
 presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two equities workspace singletons (`eqWorkspace`,
-`eqDrawings`) and the machine `orderTicket`) and everything else
-`"delegated"`. Slice 5 lands one core at a time: the async core lists
-fifty-three `"native"` (the nine admin members too) while the Effect core
-stays at forty-four until its half ships. The manifest says so explicitly rather than leaving it
+`eqDrawings`) and the machine `orderTicket`, and slice 5's nine admin
+members) and everything else `"delegated"`. Slice 5 landed one core at a
+time — async first, Effect the same day — so for a few hours the two
+manifests disagreed, which the tooling reports and nothing forbids. The
+manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.
 
