@@ -51,7 +51,9 @@ function warmFold<T, S>(
         Stream.runForEach((value) => {
           return update((current) => {
             return step(
-              Option.getOrElse(current, () => {return initial}),
+              Option.getOrElse(current, () => {
+                return initial;
+              }),
               value,
             );
           });
