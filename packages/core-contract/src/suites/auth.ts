@@ -5,6 +5,7 @@ import {
   DEFAULT_LOGIN_WAIT_VARIANT,
   LOGIN_WAIT_VARIANTS,
   ROSTER,
+  type RosterEntry,
 } from "@rtc/domain";
 
 import { withFakeClock } from "#/harness/clock";
@@ -12,7 +13,7 @@ import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
 
 const NOW: number = 1_800_000_000_000;
-const [DEMO] = ROSTER;
+const DEMO: RosterEntry = ROSTER[0];
 
 const SIGNED_OUT: AuthViewState = {
   status: "unauthenticated",
