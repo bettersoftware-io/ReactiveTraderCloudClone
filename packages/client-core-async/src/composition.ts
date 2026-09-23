@@ -19,9 +19,11 @@ import type {
 } from "@rtc/domain";
 
 import { peek } from "#/bridge/in";
+import { pushIncidentEvent } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
+import { createIncidentMachine } from "#/machines/incident";
 import { createNotionalMachine } from "#/machines/notional";
 import { createOrderTicketMachine } from "#/machines/orderTicket";
 import { createRfqCountdownMachine } from "#/machines/rfqCountdown";
@@ -29,6 +31,13 @@ import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
+import {
+  createEventLogPresenter,
+  createMetricWindowPresenter,
+  createSessionsKpiPresenter,
+  createSessionsPresenter,
+  createTopologyPresenter,
+} from "#/presenters/admin";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -60,6 +69,7 @@ import {
 import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
 import { createRfqsPresenter } from "#/presenters/rfqs";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
+import { createThroughputPresenter } from "#/presenters/throughput";
 import {
   createAnalyticsPresenter,
   createCurrencyPairsPresenter,
@@ -109,7 +119,11 @@ type NativePresenters = Partial<Presenters> &
  * slice 3: the four credit presenters, of which `rfqs`, `dealers` and
  * `instruments` hold their port subscriptions until `lifetime` aborts;
  * slice 4: the five equities presenters — `watchlist`, `orders$` and
- * `positions` retained — and the two workspace singletons. Everything else
+ * `positions` retained — and the two workspace singletons; slice 5: the
+ * admin nine — the three metric windows, `eventLog` and `sessionsKpi` as
+ * warm folds, `topology` and `sessions` as warm mirrors, `throughput`, and
+ * the `incident` singleton, whose connection events still land on the RxJS
+ * core's `incident$` seam (`pushIncidentEvent`). Everything else
  * still delegates to the RxJS core. `parity.json` is the committed record
  * of the same fact and `parity.test.ts` proves the two agree by
  * reference. */
@@ -174,6 +188,30 @@ function nativePresenters(
     positions: createPositionsPresenter(ports.positions, lifetime),
     eqWorkspace,
     eqDrawings: createEqDrawingsMachine(lifetime),
+    throughput: createThroughputPresenter(ports.admin, lifetime),
+    throughputMetric: createMetricWindowPresenter(
+      ports.telemetry.throughput$(),
+      lifetime,
+    ),
+    latencyMetric: createMetricWindowPresenter(
+      ports.telemetry.latency$(),
+      lifetime,
+    ),
+    errorRateMetric: createMetricWindowPresenter(
+      ports.telemetry.errorRate$(),
+      lifetime,
+    ),
+    topology: createTopologyPresenter(ports.serviceHealth, lifetime),
+    eventLog: createEventLogPresenter(ports.eventLog, lifetime),
+    sessions: createSessionsPresenter(ports.sessions, lifetime),
+    sessionsKpi: createSessionsKpiPresenter(ports.sessions, lifetime),
+    incident: createIncidentMachine(
+      {
+        controls: ports.metricControls,
+        pushConnectionEvent: pushIncidentEvent,
+      },
+      lifetime,
+    ),
   };
 }
 

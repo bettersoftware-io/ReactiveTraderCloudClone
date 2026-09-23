@@ -78,3 +78,49 @@ this slice's process failures is PR #815 (`f280bd773`).
 231/231 (the nine admin members still delegate by reference). Gauntlet full green
 incl. build, `check:devtools-dist`, `check:core-bundle`. CodeQL: 4 open alerts, all
 pre-existing Scorecard policy alerts on `main` from 2026-09-19, none from this branch.
+
+## PR B, async half (2026-09-23)
+
+Executed in-session by the controller rather than by subagents — the direct
+response to PR A's cost (see "What the reviews caught" above and the #815
+tooling). Worktree made with `new-worktree.sh --ready`, proved with a full
+`client-core-async` test run before the first edit.
+
+1. **B-1 — PR B split by core.** The async half ships alone; the Effect half
+   follows after the weekly usage reset, and first measures whether Effect's
+   `Clock` follows vitest fake timers. Cost if wrong: one extra PR cycle.
+2. **B-2 — `foldTopic` added to `kernel/`** (the plan's Step 3 fallback): no
+   existing primitive folded a topic into a replay-current seeded stream.
+3. **B-3 — `getThroughput()` moved to construction.** The first draft called
+   it on first subscribe; `portDiscipline`'s "two warm periods do not call
+   admin.getThroughput() again" failed it (2 vs 1, the base's call plus the
+   native's). The load's SUBSCRIPTION stays lazy via a new `onSubscribe` hook
+   on `storeToStateStream`.
+4. **B-4 — four uncontracted divergences plus one user-visible one recorded
+   in ADR-006**, not coded around: synchronous `setThroughput` throw → error
+   banner; `setValue` with no subscriber is applied; post-`lifetime`
+   `setValue` is silent; an emit-less `setThroughput` completion → error
+   banner; and (visible, allowed by ruling 5) `throughput` stays warm across
+   the Admin tab's remount where RxJS cancels and reloads. The last two were
+   added from the independent review.
+5. **B-5 — the seam-witness test has no mutant.** It can only fail if the
+   base app's admin presenters become hot, which no find/replace on this
+   branch produces; it stands as slice 4's witnesses do, as a guard against
+   a future base change.
+
+## Receipts, PR B async half
+
+`client-core-async`: 458/458 (47 files), `coreContract` all nine admin suites
+native. `pnpm mutation-check`: first pass 21/25 — two SURVIVED (the
+post-lifetime `throughput` case asserted only writes; the `incident` case
+called `dispose()` itself) and two ERROR (a `find` matched the doc comment
+too); after strengthening both tests, **25/25 killed**. `core:parity`:
+`native: async 53/74, effect 44/74`.
+
+**Independent review (opus, read-only):** SHIP, 0 must-fix. Should-fix 1 — the
+lifetime-abort release of an in-flight write and of the debounce timer had no
+test that could fail — fixed with two cases. Should-fix 2 — the tab-remount
+divergence was missing from the ADR — recorded. Minors taken: `incident`'s
+clear-order test now logs every state emission; eventLog/sessionsKpi gained
+retention + release tests. The seam witness's inability to tell native from
+delegated stands as B-5 (parity.json proves provenance).

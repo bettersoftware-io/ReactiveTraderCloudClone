@@ -1,8 +1,9 @@
 import { state } from "@rx-state/core";
 import { Observable } from "rxjs";
 
-import { reconnect$ } from "@rtc/client-core";
+import { incident$, reconnect$ } from "@rtc/client-core";
 import type { StateStream, Stream } from "@rtc/core-api";
+import type { ConnectionEvent } from "@rtc/domain";
 
 import { type Peeked, relay } from "#/bridge/in";
 import { AbortError } from "#/kernel/AbortError";
@@ -73,8 +74,17 @@ export function promiseToStream<T>(
   });
 }
 
-export function storeToStateStream<S>(store: Store<S>): StateStream<S> {
+/** A Store as a `StateStream`. `onSubscribe`, when given, runs each time
+ * the stream goes from zero subscribers to one (`@rx-state/core` shares the
+ * source) — how a presenter starts a lazy load on its first subscriber, as
+ * the RxJS core's `state()` does. */
+export function storeToStateStream<S>(
+  store: Store<S>,
+  onSubscribe: () => void = () => {},
+): StateStream<S> {
   const changes = new Observable<S>((subscriber) => {
+    onSubscribe();
+
     return store.subscribe((value) => {
       subscriber.next(value);
     });
@@ -90,6 +100,15 @@ export function storeToStateStream<S>(store: Store<S>): StateStream<S> {
  * `@rtc/client-core` and this becomes the core's own topic. */
 export function pushReconnectIntent(): void {
   reconnect$.next({ type: "reconnect" });
+}
+
+/** Push an admin incident's connection event into the RxJS core's
+ * module-level `incident$` — the twin of `pushReconnectIntent`: both web
+ * clients merge that Subject into `connectionEvents` for EVERY core, so a
+ * native `presenters.incident` must speak to it or its gateway drop is
+ * invisible. Slice 8 moves the seam into the core. */
+export function pushIncidentEvent(event: ConnectionEvent): void {
+  incident$.next(event);
 }
 
 /** A per-call, multi-value port stream as a Stream — the lifecycle twin of

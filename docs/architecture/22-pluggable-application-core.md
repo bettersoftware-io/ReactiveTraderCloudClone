@@ -364,15 +364,18 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 4, forty-four members have real suites — slice 1a's
+fails. As of slice 5, fifty-three members have real suites — slice 1a's
 six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
 `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`), slice
 3's eight (`rfqs`, `dealers`, `instruments`, `rfqQuote`; `rfqTile`,
 `rfqSubmission`, `ticketSubmission`, `rfqCountdown`) and slice 4's eight
 (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`;
-`eqWorkspace`, `eqDrawings`, `orderTicket`) — and 30 are pending (37 at
-slice 3's merge, 38 once Dockview Phase 6b's `layoutPresets` joined). Each
+`eqWorkspace`, `eqDrawings`, `orderTicket`) and slice 5's nine (`throughput`,
+`throughputMetric`, `latencyMetric`, `errorRateMetric`, `topology`,
+`eventLog`, `sessions`, `sessionsKpi`; `incident`) — and 21 are pending (37
+at slice 3's merge, 38 once Dockview Phase 6b's `layoutPresets` joined, 30
+after slice 4). Each
 suite subscribes to the member's
 `Stream`/`StateStream`, drives a scripted `AppPorts` harness (`scriptPorts`
 — Subject-backed streams for the connection, the colour scheme, the FX,
@@ -421,7 +424,9 @@ presenters and the four RFQ machines — `rfqCountdown` having joined
 presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two equities workspace singletons (`eqWorkspace`,
 `eqDrawings`) and the machine `orderTicket`) and everything else
-`"delegated"`; the manifest says so explicitly rather than leaving it
+`"delegated"`. Slice 5 lands one core at a time: the async core lists
+fifty-three `"native"` (the nine admin members too) while the Effect core
+stays at forty-four until its half ships. The manifest says so explicitly rather than leaving it
 implied. `pnpm core:parity` prints both manifests as one table, for a PR
 description or `docs/STATUS.md`.
 
