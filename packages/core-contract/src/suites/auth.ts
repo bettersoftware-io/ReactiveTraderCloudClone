@@ -157,20 +157,28 @@ export function describeAuthContract(
       });
     });
 
+    // The cycle has only two treatments, so the case first moves it once
+    // (stored → NEXT_VARIANT) and then pins the OTHER one: an unpinned read
+    // would show NEXT_VARIANT, and an advance while pinned would move the
+    // stored value back — both are visible only from this starting point.
     it("a pinned wait style is the treatment every attempt shows, and the cycle does not move while pinned", async () => {
-      await withFakeClock(async () => {
+      await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
         const h = makeHarness();
 
         try {
           const auth = h.app.presenters.auth;
           const c = collect(auth.state$);
-          h.app.presenters.loginWaitPreferences.setStyle(NEXT_VARIANT);
-          auth.login(DEMO.username, "pw");
-          expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
-          expect(h.driver.storedLoginWaitVariant()).toBe(
+          auth.login(DEMO.username, "wrong");
+          h.driver.resolveLogin({ ok: false, reason: "invalid" });
+          await clock.settle();
+          expect(h.driver.storedLoginWaitVariant()).toBe(NEXT_VARIANT);
+          h.app.presenters.loginWaitPreferences.setStyle(
             DEFAULT_LOGIN_WAIT_VARIANT,
           );
+          auth.login(DEMO.username, "pw");
+          expect(c.values.at(-1)?.waitVariant).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
+          expect(h.driver.storedLoginWaitVariant()).toBe(NEXT_VARIANT);
           c.unsubscribe();
         } finally {
           await h.teardown();
