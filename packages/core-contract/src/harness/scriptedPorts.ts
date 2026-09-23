@@ -63,6 +63,7 @@ import type {
   Trade,
   WorkflowPort,
 } from "@rtc/domain";
+import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
 import { createPendingQueue } from "#/harness/pendingQueue";
 
@@ -123,7 +124,7 @@ export interface HarnessSeed {
 }
 
 /** One `auth.login(username, password)` the core has subscribed. */
-export interface LoginCall {
+interface LoginCall {
   readonly username: string;
   readonly password: string;
 }
@@ -336,6 +337,9 @@ export interface ScriptedDriver {
   resolveLogin(outcome: AuthOutcome): void;
   /** What the session store holds now. */
   storedSession(): StoredSession | null;
+  /** The login-wait variant the preferences port holds now — read on the
+   * UNCOUNTED base port, so reading it never moves `portCalls`. */
+  storedLoginWaitVariant(): LoginWaitVariant;
 }
 
 export interface ScriptedPorts {
@@ -885,6 +889,17 @@ export function scriptPorts(
       resolveLogin: logins.resolve,
       storedSession: () => {
         return stored;
+      },
+      storedLoginWaitVariant: () => {
+        let variant: LoginWaitVariant = DEFAULT_LOGIN_WAIT_VARIANT;
+        base.preferences
+          .loginWaitVariant$()
+          .subscribe((v) => {
+            variant = v;
+          })
+          .unsubscribe();
+
+        return variant;
       },
     },
     teardown: () => {

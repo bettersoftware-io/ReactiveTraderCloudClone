@@ -7,8 +7,6 @@ export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
-// FX
-
 export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
 export {
   aggregatePositionsByCurrency,

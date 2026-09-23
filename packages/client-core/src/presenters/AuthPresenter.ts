@@ -16,7 +16,7 @@ import {
 } from "@rtc/domain";
 
 import type { SessionStore, StoredSession } from "../adapters/sessionStore.js";
-import { describeAuthFailure, nextLoginWaitVariant } from "./shellFolds.js";
+import { describeAuthFailure, nextLoginWaitVariant } from "./shellFolds";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

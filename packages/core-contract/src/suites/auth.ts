@@ -4,6 +4,7 @@ import type { AuthViewState, StoredSession } from "@rtc/core-api";
 import {
   DEFAULT_LOGIN_WAIT_VARIANT,
   LOGIN_WAIT_VARIANTS,
+  type LoginWaitVariant,
   ROSTER,
   type RosterEntry,
 } from "@rtc/domain";
@@ -13,6 +14,11 @@ import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
 
 const NOW: number = 1_800_000_000_000;
+const NEXT_VARIANT: LoginWaitVariant =
+  LOGIN_WAIT_VARIANTS[
+    (LOGIN_WAIT_VARIANTS.indexOf(DEFAULT_LOGIN_WAIT_VARIANT) + 1) %
+      LOGIN_WAIT_VARIANTS.length
+  ];
 const DEMO: RosterEntry = ROSTER[0];
 
 const SIGNED_OUT: AuthViewState = {
@@ -67,6 +73,10 @@ export function describeAuthContract(
       });
     });
 
+    // The store-cleared half cannot fail against a SIBLING core today: the
+    // base app it delegates to builds its own auth at composition and
+    // resumes — and clears — from the same store (slice-6 ledger A-5). The
+    // siblings' own unit tests pin their clear.
     it("a session expiring exactly now is expired: signed out, and the store cleared", async () => {
       await withFakeClock(async () => {
         vi.setSystemTime(NOW);
@@ -133,14 +143,33 @@ export function describeAuthContract(
           const auth = h.app.presenters.auth;
           const c = collect(auth.state$);
           auth.login(DEMO.username, "wrong");
+          // Advanced through the PREFERENCE, at the attempt, not on its
+          // outcome: an attempt abandoned by a reload still moves the cycle.
+          expect(h.driver.storedLoginWaitVariant()).toBe(NEXT_VARIANT);
           h.driver.resolveLogin({ ok: false, reason: "invalid" });
           await clock.settle();
           auth.login(DEMO.username, "wrong");
-          expect(c.values.at(-1)?.waitVariant).toBe(
-            LOGIN_WAIT_VARIANTS[
-              (LOGIN_WAIT_VARIANTS.indexOf(DEFAULT_LOGIN_WAIT_VARIANT) + 1) %
-                LOGIN_WAIT_VARIANTS.length
-            ],
+          expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a pinned wait style is the treatment every attempt shows, and the cycle does not move while pinned", async () => {
+      await withFakeClock(async () => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness();
+
+        try {
+          const auth = h.app.presenters.auth;
+          const c = collect(auth.state$);
+          h.app.presenters.loginWaitPreferences.setStyle(NEXT_VARIANT);
+          auth.login(DEMO.username, "pw");
+          expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
+          expect(h.driver.storedLoginWaitVariant()).toBe(
+            DEFAULT_LOGIN_WAIT_VARIANT,
           );
           c.unsubscribe();
         } finally {
@@ -253,18 +282,22 @@ export function describeAuthContract(
       });
     });
 
-    it("unlock with nobody signed in — including after logout — makes no login call", async () => {
+    it("unlock with nobody signed in — from the start, or after logout — makes no login call", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
+        const fresh = makeHarness();
         const h = makeHarness({ session: createSession(NOW + 1) });
 
         try {
+          fresh.app.presenters.auth.unlock("pw");
           const auth = h.app.presenters.auth;
           auth.logout();
           auth.unlock("pw");
           await clock.settle();
-          expect(h.driver.pendingLogins()).toEqual([]);
+          expect(fresh.driver.portCalls("auth.login")).toBe(0);
+          expect(h.driver.portCalls("auth.login")).toBe(0);
         } finally {
+          await fresh.teardown();
           await h.teardown();
         }
       });

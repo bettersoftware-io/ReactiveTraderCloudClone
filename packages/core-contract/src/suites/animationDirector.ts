@@ -140,6 +140,8 @@ export function describeAnimationDirectorContract(
         h.driver.emitConnection({ type: "gatewayDisconnected" });
         await settle();
         expect(kinds(c.values)).toEqual(["connectionChange"]);
+        // Uncontracted: whether a REPEAT of the same status flashes again
+        // (the RxJS core's connection fold does not conflate it, so it does).
         c.unsubscribe();
       } finally {
         await h.teardown();
