@@ -124,3 +124,26 @@ divergence was missing from the ADR — recorded. Minors taken: `incident`'s
 clear-order test now logs every state emission; eventLog/sessionsKpi gained
 retention + release tests. The seam witness's inability to tell native from
 delegated stands as B-5 (parity.json proves provenance).
+
+## PR B, Effect half (2026-09-23)
+
+Same regime as the async half, same day (the user judged the weekly budget
+sufficient). No new primitive: retained `sharedFold`s and mirrors, a
+`SubscriptionRef` + debounce fiber + `createRunSlot` for `throughput`, a
+child-host singleton for `incident`, one Tag + Layer each (`layers.test.ts`
+33 → 42).
+
+1. **E-1 — the "unmeasured" Clock question was already measured.**
+   `bridge/clock.test.ts` has pinned `Effect.sleep` under fake timers since
+   slice 2; STATUS had called it open. Checked before writing, not after.
+2. **E-2 — `incident` unit tests wait a tick for state.** The ref is followed
+   on a fiber, so the synchronous-state assertions of the async tests do not
+   transfer; the contract suites already settle.
+3. **E-3 — one equivalent mutant.** Moving the ref write before the push is
+   unobservable (state reaches subscribers a tick later either way); recorded
+   in ADR-006 rather than tested around.
+
+**Receipts.** `client-core-effect` 469/469; all nine admin contract suites
+native. `pnpm mutation-check`: 26/28 first pass — one weak test (a synchronous
+`observed` check a microtask-deferred load slipped past; fixed, now killed) and
+one equivalent mutant (E-3). `core:parity`: 53/74 both.

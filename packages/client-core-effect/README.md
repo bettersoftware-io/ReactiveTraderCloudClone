@@ -260,8 +260,13 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 4, forty-four of 74 members are **native** (the 74th, `layoutPresets`,
-arrived delegated with Dockview Phase 6b). Slice 4 added eight: the five
+As of slice 5, fifty-three of 74 members are **native** (the 74th, `layoutPresets`,
+arrived delegated with Dockview Phase 6b). Slice 5 added the nine admin
+members: the three metric windows, `eventLog` and `sessionsKpi` as retained
+`sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
+`throughput` (a `SubscriptionRef`, a debounce fiber and `createRunSlot`), and
+the `incident` singleton, whose connection events reach the RxJS core's
+`incident$` seam through `pushIncidentEvent`. Slice 4 added eight: the five
 equities presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two workspace singletons (`eqWorkspace`, `eqDrawings`)
 and `machines.orderTicket`. Slice 3 added eight: the
