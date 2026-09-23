@@ -749,6 +749,65 @@ predictable from the design alone):
   composition-time `peekCurrent`), where the RxJS peek has no error
   handler and so reports the failure asynchronously instead.
 
+**Decided in slice 5 — PR A, the suites** (2026-09-22):
+
+The admin members' suites landed on their own (#814) ahead of the ports,
+so these are contract decisions the two alternative cores must satisfy when
+their natives arrive, not descriptions of shipped sibling behaviour.
+
+- **Seven warm singletons, in two shapes.** `throughputMetric`,
+  `latencyMetric`, `errorRateMetric`, `eventLog` and `sessionsKpi` are warm
+  FOLDS: a synchronous `[]` seed, one window per port emission, retained
+  across a full unsubscribe (the RxJS `refCount: false`). `topology` and
+  `sessions` are warm MIRRORS: NO seed — silent until the port emits — with
+  the latest value retained the same way. Both shapes are contracted for
+  retention (a late subscriber reads the window/value synchronously) and
+  for holding ONE port subscription however many subscribers attach. The
+  distinction matters because "reads `[]` at once" and "reads nothing yet"
+  are indistinguishable to a subscriber that only ever looks after a
+  settle, which is how a seedless mirror could quietly grow a seed.
+- **`throughput` supersedes at the DEBOUNCE, not at the keystroke.** A
+  `setValue` while a write is in flight does not cancel that write: if it
+  resolves before the newer value's debounce elapses, its banner shows. Once
+  the newer debounce fires, RxJS's `switchMap` unsubscribes the whole prior
+  inner Observable — the write-completion path AND its dismiss timer —
+  whether or not that write had already settled, so an already-shown banner
+  is orphaned rather than dismissed on schedule. MEASURED against the RxJS
+  core and written to match; a sibling that cancels at the keystroke, or
+  that keeps the dismiss timer alive across a supersede, fails the suite.
+- **What `throughput` does NOT contract:** how many times `getThroughput`
+  is SUBSCRIBED across a cold resubscribe (the RxJS `state()` re-runs the
+  load; a sibling may keep it warm). The port-discipline case counts CALLS,
+  which are constant — the method is obtained once, when the presenter is
+  built — and says so, because the two readings differ only in a case that
+  unsubscribes, which no suite case does.
+- **`incident` orders its three effects.** `inject(k)` perturbs EVERY
+  control, in `metricControls` order, synchronously within the call, THEN
+  pushes the connection event, THEN folds the state. `latencySpike` and
+  `serviceDown` push `gatewayDisconnected`; `errorBurst` stays connected. A
+  repeated `inject(k)` re-perturbs and re-pushes without duplicating `k` in
+  `active`; `clear()` clears every control and pushes `gatewayConnected`
+  even when nothing was active. The push itself still lands on the RxJS
+  core's module-level `incident$` (each sibling will reach it through a
+  `pushIncidentEvent` bridge export, the twin of `pushReconnectIntent`) —
+  shared transport, native provenance, removed in slice 8.
+- **No `CoreSeams` extension this slice.** Verified across the base
+  composition: no internal reader (Jarvis driver, `AnimationDirector`,
+  `NarratorMachine`, workspace seed) consumes any of the nine, and every
+  base copy is lazy — `warmReplay`/`shareReplay`/`state()` subscribe on
+  their first subscriber, and `incident`'s eager keep-warm subscribes only
+  its own Subjects — so a native member does not leave an admin port held
+  twice. PR B carries the `countSubscriptions` witness that proves it
+  rather than asserting it.
+- **Pure folds, imported not duplicated:** `appendMetricSample`,
+  `prependLogEvent`, `throughputSetMessage`/`THROUGHPUT_SET_ERROR` and
+  `reduceIncident`/`incidentConnectionEvent` are exported from
+  `@rtc/client-core`; the five cadence numbers (`METRIC_WINDOW`,
+  `MAX_LOG_ROWS`, `THROUGHPUT_DEBOUNCE_MS`,
+  `THROUGHPUT_MESSAGE_DISMISS_MS`, `DEFAULT_THROUGHPUT`) moved to
+  `@rtc/domain`, because the suites assert them and `@rtc/core-contract`
+  may not import `client-core` (the slice-4 cooldown precedent).
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

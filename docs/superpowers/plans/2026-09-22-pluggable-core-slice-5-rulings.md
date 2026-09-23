@@ -1,0 +1,80 @@
+# Slice 5 — rulings ledger (SDD execution, 2026-09-22)
+
+Reconstructed from the controller's context after the worktree removal deleted the
+git-ignored `.superpowers/sdd/` ledger and the five agent reports. The rulings
+below are the controller's own record; the per-agent reports are NOT recoverable.
+
+Plan: [`2026-09-22-pluggable-core-slice-5.md`](2026-09-22-pluggable-core-slice-5.md).
+**PR A** #814 (Tasks 1–3, merged `8826fee7a`) — this file ships with the docs
+PR that followed it rather than with PR B, because a ledger that waits for the
+next PR is a ledger that can be lost in between (it was, once, already).
+**PR B** (Tasks 4–6, the ports) pending. The prevention tooling that came out of
+this slice's process failures is PR #815 (`f280bd773`).
+
+## Rulings made during execution
+
+1. **P1 (process) — implementers on `sonnet`, foreground only, `git -C "$WORKTREE"`,
+   commit by pathspec, NO builds; the controller prebuilds per wave.** Slice-4 P1
+   carried. Cost if wrong: a rebuild.
+2. **P2 — Tasks 1 and 2 dispatched in parallel** (disjoint packages: domain +
+   client-core/presenters vs core-contract + the three runner test files). Held.
+   Cost if wrong: one re-run.
+3. **P3 — `scripts/new-worktree.sh` does not install, and nothing was built.**
+   Both first-wave implementers ran in a tree where no test could execute: Task 1
+   improvised a throwaway vitest alias config, Task 2 hand-traced and handed back
+   inspection-only results, and both owed mutation checks afterwards. The
+   controller ran `pnpm install` + `pnpm build` once both settled; the real runs
+   were green (client-core 2780, core-contract 47, async 378, effect 389, domain
+   494). **A future plan installs and builds BEFORE the first dispatch.** Cost as
+   incurred: ~500k tokens of workaround plus a deferred mutation pass.
+4. **P4 — the resumed Task 2 implementer wedged for 4 h mid-mutation-pass** and was
+   stopped with a mutant (mutant 5) still in the working tree. The controller
+   restored the file and ran the remaining mutants itself in minutes: shared
+   Subject (RED, witnessed by the reviewer), count-on-read (3 RED), write value+1
+   (RED), control index 0 (RED), clear unrecorded (RED). **A controller test run
+   raced that agent's restore and read a live mutant as "survived"** — never run
+   tests against a file an agent is mutating. Cost if wrong: a false defect report.
+5. **R-3d — the Task 3 must-fix.** Seven of the ten `throughput` cases called
+   `resolveThroughputLoad(BASELINE_VALUE)` BEFORE the first `collect(m.state$)`.
+   `ThroughputPresenter` calls `admin.getThroughput()` on first subscribe and
+   `createPendingQueue.open()` only enqueues inside the subscribe body, so the
+   resolve found an empty queue and did nothing: the cases ran against a
+   still-loading view and read clean — the repo's recurring "absence reported as a
+   clean reading" class, this time inside the suites. Fixed by the controller
+   (`5449fe97c`): subscribe first, then resolve, and assert the loaded view
+   (`BASELINE_VALUE`, `loading: false`) so the ordering is load-bearing.
+   Mutation-proved: restoring the old order fails the case. Cost if wrong: none.
+6. **R-3e — the `admin.getThroughput` port-discipline case now states that it counts
+   CALLS, not subscriptions** (ruling 5's boundary): how often the load is
+   subscribed across a cold resubscribe is uncontracted, but the port method is
+   obtained once, at construction. A core calling it per subscriber fails there.
+7. **R-3f — `describeMetricWindowContract` made file-local** (`3ed45e7f7`): knip
+   flagged it as an unused export; the registry imports the three named suites.
+8. **R-3g (deviation, ledgered by the implementer) — throughput case 10.** RxJS's
+   `switchMap` unsubscribes the whole prior inner Observable — the write-completion
+   path AND the dismiss timer — whether or not that write had settled, so a newer
+   value's debounce orphans an already-shown banner. Verified against the RxJS core
+   and written to match; RxJS is the contract.
+9. **Controller trap — `git checkout -- <file>` after a mutation run also discarded
+   the controller's own uncommitted fix to that file.** Commit a fix BEFORE
+   mutating the same file.
+10. **Cleanup trap — the worktree was removed before the ledger was committed**, so
+    `.superpowers/sdd/` (ledger + five agent reports) was lost. This file is the
+    reconstruction. Commit the rulings file BEFORE `git worktree remove`.
+
+## What the reviews caught
+
+- **T1+T2 review:** spec ✅ ✅, quality ✅, 0 must-fix. Behaviour identity of the five
+  rewritten RxJS presenters confirmed line by line, including `IncidentMachine`'s
+  controls-perturbed-before-connection-push ordering in both branches. One minor
+  (a `getThroughput` harness test does not re-assert the pending count before
+  failing it) — SHIP.
+- **T3 review:** spec ✅, quality ❌ — 1 must-fix (R-3d), 1 should-fix (R-3e), 2
+  minor (incident cases 2 and 5) — SHIP for the minors.
+
+## Receipts at PR A merge
+
+`PENDING_SUITES` 30 → 21. Contract runners: RxJS 462/462, async 231/231, effect
+231/231 (the nine admin members still delegate by reference). Gauntlet full green
+incl. build, `check:devtools-dist`, `check:core-bundle`. CodeQL: 4 open alerts, all
+pre-existing Scorecard policy alerts on `main` from 2026-09-19, none from this branch.
