@@ -11,12 +11,12 @@ import {
   type AuthOutcome,
   type AuthPort,
   DEFAULT_LOGIN_WAIT_VARIANT,
-  LOGIN_WAIT_VARIANTS,
   type LoginWaitVariant,
   type SessionUser,
 } from "@rtc/domain";
 
 import type { SessionStore, StoredSession } from "../adapters/sessionStore.js";
+import { describeAuthFailure, nextLoginWaitVariant } from "./shellFolds.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -66,9 +66,7 @@ export class AuthPresenter implements AuthPresenterApi {
    * an attempt abandoned by a reload still flips the variant for next time. */
   private pickWaitVariant(): LoginWaitVariant {
     const variant = this.cycle.current();
-    const nextIdx =
-      (LOGIN_WAIT_VARIANTS.indexOf(variant) + 1) % LOGIN_WAIT_VARIANTS.length;
-    this.cycle.advance(LOGIN_WAIT_VARIANTS[nextIdx]);
+    this.cycle.advance(nextLoginWaitVariant(variant));
     return variant;
   }
 
@@ -209,8 +207,4 @@ export class AuthPresenter implements AuthPresenterApi {
     const session: StoredSession = { token, user, username, exp };
     this.store.write(session);
   }
-}
-
-function describeAuthFailure(reason: "invalid" | "unavailable"): string {
-  return reason === "invalid" ? "Invalid credentials" : "Service unavailable";
 }

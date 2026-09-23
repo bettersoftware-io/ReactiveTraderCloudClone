@@ -22,7 +22,10 @@ import type { JarvisPort } from "#/adapters/jarvisPort";
 import { type AppPorts, createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 import type { AnimationIntent } from "#/presenters/AnimationDirector";
-import { createEqWorkspaceMachine } from "#/presenters/index";
+import {
+  createEqWorkspaceMachine,
+  createWorkspaceNavMachine,
+} from "#/presenters/index";
 
 describe("createApp — core seams (strangler phase)", () => {
   it("a supplied eqWorkspace is the one a Jarvis drive batch mutates; the app's own stays where it was", async () => {
@@ -59,6 +62,42 @@ describe("createApp — core seams (strangler phase)", () => {
     expect((await firstValueFrom(presenters.eqWorkspace.state$)).sel).toBe(
       "MSFT",
     );
+    presenters.jarvis.dispose();
+  });
+
+  it("a supplied workspaceNav is the one a Jarvis switchTab mutates; the app's own stays on fx", async () => {
+    const seam = createWorkspaceNavMachine();
+    const { presenters } = createApp(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+      { workspaceNav: seam },
+    );
+
+    presenters.jarvis.intents.send("go to credit");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect((await firstValueFrom(seam.state$)).activeTab).toBe("credit");
+    expect(
+      (await firstValueFrom(presenters.workspaceNav.state$)).activeTab,
+    ).toBe("fx");
+    presenters.jarvis.dispose();
+    seam.dispose();
+  });
+
+  it("with no workspaceNav seam the switchTab mutates the app's own nav, as before", async () => {
+    const { presenters } = createApp(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+    );
+
+    presenters.jarvis.intents.send("go to credit");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect(
+      (await firstValueFrom(presenters.workspaceNav.state$)).activeTab,
+    ).toBe("credit");
     presenters.jarvis.dispose();
   });
 
@@ -213,6 +252,24 @@ function createSelectingJarvisPort(symbol: string): JarvisPort {
       return of<JarvisEvent>({
         type: "command",
         batch: { v: 1, commands: [{ kind: "eqSelect", symbol }] },
+      });
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
+}
+
+/** A JarvisPort whose ask() replies with one drive batch switching to
+ * `tab`. */
+function createSwitchingJarvisPort(
+  tab: "fx" | "credit" | "equities",
+): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: { v: 1, commands: [{ kind: "switchTab", tab }] },
       });
     },
     confirm: (): void => {
