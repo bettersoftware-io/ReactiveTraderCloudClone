@@ -21,9 +21,14 @@ import type {
   EqWatchlistSortPreferencePresenter,
   EqWorkspaceIntents,
   EqWorkspaceState,
+  ErrorRatePresenter,
+  EventLogPresenter,
   ForceBootAnimationPresenter,
+  IncidentIntents,
+  IncidentState,
   InstrumentsPresenter,
   JarvisPreferencesPresenter,
+  LatencyPresenter,
   LayoutEnginePresenter,
   LoginWaitPreferencesPresenter,
   Machine,
@@ -35,17 +40,30 @@ import type {
   PriceStreamPresenter,
   RfqQuotePresenter,
   RfqsPresenter,
+  ServiceTopologyPresenter,
+  SessionsKpiPresenter,
+  SessionsPresenter,
   ThemePreferencePresenter,
   ThemeSkinPreferencePresenter,
+  ThroughputMetricPresenter,
+  ThroughputPresenter,
   TradeExecutionPresenter,
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "@rtc/core-api";
 
-import type { EffectHost } from "#/bridge/out";
+import { type EffectHost, pushIncidentEvent } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
+import { createIncidentMachine } from "#/machines/incident";
+import {
+  createEventLogPresenter,
+  createMetricWindowPresenter,
+  createSessionsKpiPresenter,
+  createSessionsPresenter,
+  createTopologyPresenter,
+} from "#/presenters/admin";
 import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
@@ -77,6 +95,7 @@ import {
 import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
 import { createRfqsPresenter } from "#/presenters/rfqs";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
+import { createThroughputPresenter } from "#/presenters/throughput";
 import {
   createAnalyticsPresenter,
   createCurrencyPairsPresenter,
@@ -197,6 +216,34 @@ export const EqWorkspaceTag = Context.GenericTag<
 export const EqDrawingsTag = Context.GenericTag<
   Machine<EqDrawingsState, EqDrawingsIntents>
 >("@rtc/client-core-effect/eqDrawings");
+export const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
+  "@rtc/client-core-effect/throughput",
+);
+export const ThroughputMetricTag =
+  Context.GenericTag<ThroughputMetricPresenter>(
+    "@rtc/client-core-effect/throughputMetric",
+  );
+export const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
+  "@rtc/client-core-effect/latencyMetric",
+);
+export const ErrorRateMetricTag = Context.GenericTag<ErrorRatePresenter>(
+  "@rtc/client-core-effect/errorRateMetric",
+);
+export const TopologyTag = Context.GenericTag<ServiceTopologyPresenter>(
+  "@rtc/client-core-effect/topology",
+);
+export const EventLogTag = Context.GenericTag<EventLogPresenter>(
+  "@rtc/client-core-effect/eventLog",
+);
+export const SessionsTag = Context.GenericTag<SessionsPresenter>(
+  "@rtc/client-core-effect/sessions",
+);
+export const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
+  "@rtc/client-core-effect/sessionsKpi",
+);
+export const IncidentTag = Context.GenericTag<
+  Machine<IncidentState, IncidentIntents>
+>("@rtc/client-core-effect/incident");
 
 /** Every native service the app layer provides — the identifier of each
  * `GenericTag` is its service type. */
@@ -233,7 +280,16 @@ export type NativeServices =
   | OrdersBlotterPresenter
   | PositionsPresenter
   | Machine<EqWorkspaceState, EqWorkspaceIntents>
-  | Machine<EqDrawingsState, EqDrawingsIntents>;
+  | Machine<EqDrawingsState, EqDrawingsIntents>
+  | ThroughputPresenter
+  | ThroughputMetricPresenter
+  | LatencyPresenter
+  | ErrorRatePresenter
+  | ServiceTopologyPresenter
+  | EventLogPresenter
+  | SessionsPresenter
+  | SessionsKpiPresenter
+  | Machine<IncidentState, IncidentIntents>;
 
 // Presenters that need only the host and the ports.
 const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
@@ -386,6 +442,55 @@ const PositionsLive = presenterLayer(PositionsTag, (host, ports) => {
   return createPositionsPresenter(host, ports.positions);
 });
 
+// Slice 5: the admin nine. The metric windows, eventLog and sessionsKpi are
+// retained folds, topology and sessions retained mirrors; incident is an
+// app-lifetime singleton whose connection events reach the RxJS core's
+// `incident$` seam.
+const ThroughputLive = presenterLayer(ThroughputTag, (host, ports) => {
+  return createThroughputPresenter(host, ports.admin);
+});
+
+const ThroughputMetricLive = presenterLayer(
+  ThroughputMetricTag,
+  (host, ports) => {
+    return createMetricWindowPresenter(host, ports.telemetry.throughput$());
+  },
+);
+
+const LatencyMetricLive = presenterLayer(LatencyMetricTag, (host, ports) => {
+  return createMetricWindowPresenter(host, ports.telemetry.latency$());
+});
+
+const ErrorRateMetricLive = presenterLayer(
+  ErrorRateMetricTag,
+  (host, ports) => {
+    return createMetricWindowPresenter(host, ports.telemetry.errorRate$());
+  },
+);
+
+const TopologyLive = presenterLayer(TopologyTag, (host, ports) => {
+  return createTopologyPresenter(host, ports.serviceHealth);
+});
+
+const EventLogLive = presenterLayer(EventLogTag, (host, ports) => {
+  return createEventLogPresenter(host, ports.eventLog);
+});
+
+const SessionsLive = presenterLayer(SessionsTag, (host, ports) => {
+  return createSessionsPresenter(host, ports.sessions);
+});
+
+const SessionsKpiLive = presenterLayer(SessionsKpiTag, (host, ports) => {
+  return createSessionsKpiPresenter(host, ports.sessions);
+});
+
+const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
+  return createIncidentMachine(host, {
+    controls: ports.metricControls,
+    pushConnectionEvent: pushIncidentEvent,
+  });
+});
+
 // The one native machine that needs nothing but the host — `ports` is
 // deliberately unused.
 const EqDrawingsLive = presenterLayer(EqDrawingsTag, (host) => {
@@ -486,6 +591,15 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     OrdersBlotterLive,
     PositionsLive,
     EqDrawingsLive,
+    ThroughputLive,
+    ThroughputMetricLive,
+    LatencyMetricLive,
+    ErrorRateMetricLive,
+    TopologyLive,
+    EventLogLive,
+    SessionsLive,
+    SessionsKpiLive,
+    IncidentLive,
   );
 
   const dependent = Layer.mergeAll(
@@ -553,4 +667,13 @@ export const nativePresentersEffect: Effect.Effect<
   positions: PositionsTag,
   eqWorkspace: EqWorkspaceTag,
   eqDrawings: EqDrawingsTag,
+  throughput: ThroughputTag,
+  throughputMetric: ThroughputMetricTag,
+  latencyMetric: LatencyMetricTag,
+  errorRateMetric: ErrorRateMetricTag,
+  topology: TopologyTag,
+  eventLog: EventLogTag,
+  sessions: SessionsTag,
+  sessionsKpi: SessionsKpiTag,
+  incident: IncidentTag,
 });
