@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AppPorts } from "@rtc/core-api";
+import type { AppPorts, StoredSession } from "@rtc/core-api";
 import {
   AuthSimulator,
   type Candle,
@@ -21,6 +21,7 @@ import {
   PreferencesSimulator,
   type RfqEvent,
   type RfqQuoteResult,
+  ROSTER,
   type ServiceTopology,
   type SessionInfo,
   type Trade,
@@ -679,6 +680,74 @@ describe("scriptPorts — admin", () => {
 
 /** The narrowest `AppPorts` the harness accepts: only the members it reads
  * are real; the rest are typed through a cast the test owns. */
+describe("scriptPorts auth, session store and boot splash", () => {
+  it("queues logins FIFO and settles the oldest", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const seen: string[] = [];
+    ports.auth.login("a", "1").subscribe((o) => {
+      seen.push(`a:${String(o.ok)}`);
+    });
+    ports.auth.login("b", "2").subscribe((o) => {
+      seen.push(`b:${String(o.ok)}`);
+    });
+
+    expect(driver.pendingLogins()).toEqual([
+      { username: "a", password: "1" },
+      { username: "b", password: "2" },
+    ]);
+    driver.resolveLogin({ ok: false, reason: "invalid" });
+    expect(seen).toEqual(["a:false"]);
+    expect(driver.pendingLogins()).toEqual([{ username: "b", password: "2" }]);
+    expect(driver.portCalls("auth.login")).toBe(2);
+    teardown();
+  });
+
+  it("the session store starts at the seed and reflects write and clear", () => {
+    const session = createStoredSession();
+    const { ports, driver, teardown } = scriptPorts(createBasePorts(), {
+      session,
+    });
+
+    expect(ports.sessionStore.read()).toBe(session);
+    ports.sessionStore.clear();
+    expect(driver.storedSession()).toBeNull();
+    ports.sessionStore.write(session);
+    expect(driver.storedSession()).toBe(session);
+    teardown();
+  });
+
+  it("an unseeded store starts empty", () => {
+    const { driver, teardown } = scriptPorts(createBasePorts());
+
+    expect(driver.storedSession()).toBeNull();
+    teardown();
+  });
+
+  it("a bootSplash seed decides shouldPlay; no seed leaves the base's port", () => {
+    const off = scriptPorts(createBasePorts(), { bootSplash: false });
+    const on = scriptPorts(createBasePorts(), { bootSplash: true });
+    const none = scriptPorts(createBasePorts());
+
+    expect(off.ports.bootSplash?.shouldPlay()).toBe(false);
+    expect(on.ports.bootSplash?.shouldPlay()).toBe(true);
+    expect(none.ports.bootSplash).toBeUndefined();
+    off.teardown();
+    on.teardown();
+    none.teardown();
+  });
+});
+
+function createStoredSession(): StoredSession {
+  const [first] = ROSTER;
+
+  return {
+    token: "t",
+    user: first.user,
+    username: first.username,
+    exp: 2_000_000_000_000,
+  };
+}
+
 function createBasePorts(): AppPorts {
   return {
     preferences: new PreferencesSimulator(),
