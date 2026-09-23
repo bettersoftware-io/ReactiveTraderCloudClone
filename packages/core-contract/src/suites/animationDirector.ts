@@ -69,9 +69,35 @@ export function describeAnimationDirectorContract(
         await settle();
         h.driver.tickPrice(createTick("EURUSD", 1.3));
         await settle();
+        h.driver.tickPrice(createTick("GBPUSD", 1.3));
+        await settle();
+        h.driver.tickPrice(createTick("GBPUSD", 1.2));
+        await settle();
         expect(kinds(eur.values)).toEqual(["tickUp"]);
+        expect(kinds(gbp.values)).toEqual(["tickDown"]);
         eur.unsubscribe();
         gbp.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    // A tile that mounts after a flash replays it: the director keeps its
+    // latest intent while any subscriber holds it live (the RxJS core's
+    // `shareReplay(1)`), and a new `intentsFor` for that intent's target
+    // receives it.
+    it("while the director is live, a late subscriber for the latest intent's target receives that intent", async () => {
+      const h = makeHarness();
+
+      try {
+        const director = h.app.presenters.animationDirector;
+        const holder = collect(director.intentsFor("tile:EURUSD"));
+        await execute(h, TradeStatus.Done);
+        const late = collect(director.intentsFor("tile:EURUSD"));
+        await settle();
+        expect(kinds(late.values)).toEqual(["fill"]);
+        holder.unsubscribe();
+        late.unsubscribe();
       } finally {
         await h.teardown();
       }

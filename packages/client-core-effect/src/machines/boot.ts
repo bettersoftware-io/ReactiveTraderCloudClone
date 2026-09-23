@@ -51,6 +51,13 @@ export function createBootMachine(
 
   const ramp = Effect.gen(function* runRamp() {
     for (let tick = 0; ; tick += 1) {
+      // The fiber starts on the scheduler, AFTER a skip() made in the same
+      // tick as creation; without this it would write progress 0 over the
+      // skipped state before the interrupt lands.
+      if (finished || disposed) {
+        return;
+      }
+
       const progress = bootProgress(tick);
       yield* SubscriptionRef.set(ref, {
         variant,

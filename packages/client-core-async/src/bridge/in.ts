@@ -42,9 +42,28 @@ export function once<T>(
     // result has already landed (it is also `{ once: true }`, so it can
     // fire at most once regardless).
     let settled = false;
+
+    // Removed as soon as the call settles: `signal` is often an app-lifetime
+    // one, and a listener per call would otherwise accumulate — each one
+    // holding its subscription — until the app is disposed.
+    function abortCall(): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      subscription.unsubscribe();
+      reject(new AbortError());
+    }
+
+    function settle(): void {
+      settled = true;
+      signal?.removeEventListener("abort", abortCall);
+    }
+
     const subscription = source.pipe(take(1)).subscribe({
       next: (value: T) => {
-        settled = true;
+        settle();
         resolve(value);
       },
       error: (error: unknown) => {
@@ -52,7 +71,7 @@ export function once<T>(
           return;
         }
 
-        settled = true;
+        settle();
         reject(error);
       },
       complete: () => {
@@ -60,23 +79,16 @@ export function once<T>(
           return;
         }
 
-        settled = true;
+        settle();
         reject(new Error("once: source completed without a value"));
       },
     });
-    signal.addEventListener(
-      "abort",
-      () => {
-        if (settled) {
-          return;
-        }
 
-        settled = true;
-        subscription.unsubscribe();
-        reject(new AbortError());
-      },
-      { once: true },
-    );
+    if (settled) {
+      return;
+    }
+
+    signal.addEventListener("abort", abortCall, { once: true });
   });
 }
 

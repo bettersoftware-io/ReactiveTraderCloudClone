@@ -95,6 +95,29 @@ describe("createBootMachine (effect)", () => {
     m.dispose();
   });
 
+  it("a skip in the same tick as creation stays finished — the ramp fiber, starting later, writes nothing over it", async () => {
+    vi.useFakeTimers();
+    let done = 0;
+    const m = createBootMachine({
+      variant: BOOT_VARIANTS[0],
+      advance: () => {},
+      onDone: () => {
+        done += 1;
+      },
+    });
+    const seen: BootSequenceState[] = [];
+    const sub = m.state$.subscribe((s) => {
+      seen.push(s);
+    });
+    m.intents.skip();
+    await vi.advanceTimersByTimeAsync(BOOT_TICK_MS * 3);
+
+    expect(seen.at(-1)).toMatchObject({ progress: 100, done: true });
+    expect(done).toBe(1);
+    sub.unsubscribe();
+    m.dispose();
+  });
+
   it("dispose stops the ramp itself — no later state for an attached subscriber — and onDone never runs", async () => {
     vi.useFakeTimers();
     let done = 0;

@@ -95,8 +95,11 @@ describe("createAuthPresenter (async)", () => {
       user: ROSTER[0].user,
       exp: Date.now() + 1_000,
     });
-    await Promise.resolve();
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
 
+    expect(rig.reply.observed).toBe(false);
     expect(seen.at(-1)).toBe("authenticating");
     expect(rig.stored()).toBeNull();
     sub.unsubscribe();
