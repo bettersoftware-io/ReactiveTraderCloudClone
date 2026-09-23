@@ -143,7 +143,7 @@ child-host singleton for `incident`, one Tag + Layer each (`layers.test.ts`
    unobservable (state reaches subscribers a tick later either way); recorded
    in ADR-006 rather than tested around.
 
-**Receipts.** `client-core-effect` 469/469; all nine admin contract suites
+**Receipts.** `client-core-effect` 468/468; all nine admin contract suites
 native. `pnpm mutation-check`: 26/28 first pass — one weak test (a synchronous
 `observed` check a microtask-deferred load slipped past; fixed, now killed) and
 one equivalent mutant (E-3). `core:parity`: 53/74 both.
