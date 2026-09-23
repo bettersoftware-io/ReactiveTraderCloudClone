@@ -2,7 +2,7 @@ import { Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/client-core";
-import type { ThroughputView } from "@rtc/core-api";
+import type { ThroughputPresenter, ThroughputView } from "@rtc/core-api";
 import {
   type AdminPort,
   DEFAULT_THROUGHPUT,
@@ -31,22 +31,41 @@ describe("createThroughputPresenter (async)", () => {
 
   it("starts loading, lands the loaded value, and falls back to the default when the load fails", async () => {
     const ok = createScriptedAdmin();
-    const loaded = watch(createThroughputPresenter(ok.port, new AbortController().signal));
-    expect(loaded.last()).toEqual({ value: DEFAULT_THROUGHPUT, loading: true, message: null });
+    const loaded = watch(
+      createThroughputPresenter(ok.port, new AbortController().signal),
+    );
+    expect(loaded.last()).toEqual({
+      value: DEFAULT_THROUGHPUT,
+      loading: true,
+      message: null,
+    });
     ok.load.next(250);
     await vi.advanceTimersByTimeAsync(0);
-    expect(loaded.last()).toEqual({ value: 250, loading: false, message: null });
+    expect(loaded.last()).toEqual({
+      value: 250,
+      loading: false,
+      message: null,
+    });
 
     const bad = createScriptedAdmin();
-    const failed = watch(createThroughputPresenter(bad.port, new AbortController().signal));
+    const failed = watch(
+      createThroughputPresenter(bad.port, new AbortController().signal),
+    );
     bad.load.error(new Error("down"));
     await vi.advanceTimersByTimeAsync(0);
-    expect(failed.last()).toEqual({ value: DEFAULT_THROUGHPUT, loading: false, message: null });
+    expect(failed.last()).toEqual({
+      value: DEFAULT_THROUGHPUT,
+      loading: false,
+      message: null,
+    });
   });
 
   it("echoes setValue at once, writes nothing before the debounce, and writes only the LAST of a burst", async () => {
     const admin = createScriptedAdmin();
-    const presenter = createThroughputPresenter(admin.port, new AbortController().signal);
+    const presenter = createThroughputPresenter(
+      admin.port,
+      new AbortController().signal,
+    );
     const view = watch(presenter);
     presenter.setValue(200);
     await vi.advanceTimersByTimeAsync(100);
@@ -61,14 +80,20 @@ describe("createThroughputPresenter (async)", () => {
 
   it("shows the success banner and clears it exactly THROUGHPUT_MESSAGE_DISMISS_MS later", async () => {
     const admin = createScriptedAdmin();
-    const presenter = createThroughputPresenter(admin.port, new AbortController().signal);
+    const presenter = createThroughputPresenter(
+      admin.port,
+      new AbortController().signal,
+    );
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     admin.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(view.last().message).toEqual({ text: throughputSetMessage(400), isError: false });
+    expect(view.last().message).toEqual({
+      text: throughputSetMessage(400),
+      isError: false,
+    });
     await vi.advanceTimersByTimeAsync(THROUGHPUT_MESSAGE_DISMISS_MS - 1);
     expect(view.last().message).not.toBeNull();
     await vi.advanceTimersByTimeAsync(1);
@@ -77,19 +102,28 @@ describe("createThroughputPresenter (async)", () => {
 
   it("shows the error banner when the write fails", async () => {
     const admin = createScriptedAdmin();
-    const presenter = createThroughputPresenter(admin.port, new AbortController().signal);
+    const presenter = createThroughputPresenter(
+      admin.port,
+      new AbortController().signal,
+    );
     const view = watch(presenter);
     presenter.setValue(400);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     admin.failWrite(0);
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(view.last().message).toEqual({ text: THROUGHPUT_SET_ERROR, isError: true });
+    expect(view.last().message).toEqual({
+      text: THROUGHPUT_SET_ERROR,
+      isError: true,
+    });
   });
 
   it("supersedes at the DEBOUNCE, not the keystroke: a new setValue leaves write b in flight until its own debounce fires", async () => {
     const admin = createScriptedAdmin();
-    const presenter = createThroughputPresenter(admin.port, new AbortController().signal);
+    const presenter = createThroughputPresenter(
+      admin.port,
+      new AbortController().signal,
+    );
     const view = watch(presenter);
     presenter.setValue(500);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -106,26 +140,35 @@ describe("createThroughputPresenter (async)", () => {
 
   it("a write resolved before the next debounce shows its banner, and the next debounce drops that banner's dismiss timer with it", async () => {
     const admin = createScriptedAdmin();
-    const presenter = createThroughputPresenter(admin.port, new AbortController().signal);
+    const presenter = createThroughputPresenter(
+      admin.port,
+      new AbortController().signal,
+    );
     const view = watch(presenter);
     presenter.setValue(500);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     presenter.setValue(600);
     admin.resolveWrite(0);
     await vi.advanceTimersByTimeAsync(0);
-    expect(view.last().message).toEqual({ text: throughputSetMessage(500), isError: false });
+    expect(view.last().message).toEqual({
+      text: throughputSetMessage(500),
+      isError: false,
+    });
 
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
     await vi.advanceTimersByTimeAsync(THROUGHPUT_MESSAGE_DISMISS_MS);
     // b's dismiss was dropped with it; c's write is still unresolved.
-    expect(view.last().message).toEqual({ text: throughputSetMessage(500), isError: false });
+    expect(view.last().message).toEqual({
+      text: throughputSetMessage(500),
+      isError: false,
+    });
   });
 
-  it("after the lifetime aborts, setValue writes nothing and an in-flight banner is never dismissed or replaced", async () => {
+  it("after the lifetime aborts, setValue neither writes nor echoes", async () => {
     const admin = createScriptedAdmin();
     const lifetime = new AbortController();
     const presenter = createThroughputPresenter(admin.port, lifetime.signal);
-    watch(presenter);
+    const view = watch(presenter);
     presenter.setValue(700);
     lifetime.abort();
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
@@ -133,6 +176,7 @@ describe("createThroughputPresenter (async)", () => {
     await vi.advanceTimersByTimeAsync(THROUGHPUT_DEBOUNCE_MS);
 
     expect(admin.writes()).toEqual([]);
+    expect(view.last().value).toBe(700);
   });
 });
 
@@ -140,7 +184,7 @@ interface Watched {
   last(): ThroughputView;
 }
 
-function watch(presenter: { state$: { subscribe(next: (v: ThroughputView) => void): unknown } }): Watched {
+function watch(presenter: ThroughputPresenter): Watched {
   let latest: ThroughputView | null = null;
   presenter.state$.subscribe((v) => {
     latest = v;
@@ -157,6 +201,12 @@ function watch(presenter: { state$: { subscribe(next: (v: ThroughputView) => voi
   };
 }
 
+/** One `setThroughput` call and the reply the test settles. */
+interface PendingWrite {
+  readonly value: number;
+  readonly reply: Subject<void>;
+}
+
 interface ScriptedAdmin {
   readonly port: AdminPort;
   readonly load: Subject<number>;
@@ -170,7 +220,7 @@ interface ScriptedAdmin {
 function createScriptedAdmin(): ScriptedAdmin {
   const load = new Subject<number>();
   let loadCalls = 0;
-  const writes: { value: number; reply: Subject<void> }[] = [];
+  const writes: PendingWrite[] = [];
 
   return {
     port: {

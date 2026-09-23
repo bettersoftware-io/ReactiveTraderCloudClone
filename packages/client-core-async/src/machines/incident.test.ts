@@ -39,11 +39,7 @@ describe("createIncidentMachine (async)", () => {
     const rig = createRig();
     rig.machine.intents.clear();
 
-    expect(rig.log).toEqual([
-      "c0.clear",
-      "c1.clear",
-      "push(gatewayConnected)",
-    ]);
+    expect(rig.log).toEqual(["c0.clear", "c1.clear", "push(gatewayConnected)"]);
     rig.machine.intents.inject("errorBurst");
     rig.machine.intents.clear();
     expect(rig.machine.state$.getValue()).toEqual({ active: [] });
@@ -58,7 +54,6 @@ describe("createIncidentMachine (async)", () => {
       seen.push(s);
     });
     rig.lifetime.abort();
-    rig.machine.dispose();
     rig.log.length = 0;
     rig.machine.intents.inject("serviceDown");
     rig.machine.intents.clear();
@@ -66,6 +61,16 @@ describe("createIncidentMachine (async)", () => {
     expect(rig.log).toEqual([]);
     expect(seen).toEqual([{ active: [] }]);
     sub.unsubscribe();
+  });
+
+  it("dispose() is idempotent and ends intents the same way", () => {
+    const rig = createRig();
+    rig.machine.dispose();
+    rig.machine.dispose();
+    rig.log.length = 0;
+    rig.machine.intents.inject("serviceDown");
+
+    expect(rig.log).toEqual([]);
   });
 });
 
@@ -88,6 +93,7 @@ function createRig(): Rig {
       },
     };
   });
+
   const machine = createIncidentMachine(
     {
       controls,

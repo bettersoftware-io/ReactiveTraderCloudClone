@@ -1,3 +1,4 @@
+import { appendMetricSample, prependLogEvent } from "@rtc/client-core";
 import type {
   EventLogPresenter,
   ServiceTopologyPresenter,
@@ -5,7 +6,6 @@ import type {
   SessionsPresenter,
   Stream,
 } from "@rtc/core-api";
-import { appendMetricSample, prependLogEvent } from "@rtc/client-core";
 import type {
   EventLogPort,
   LogEvent,
@@ -63,7 +63,9 @@ export function createSessionsPresenter(
   lifetime: AbortSignal,
 ): SessionsPresenter {
   return {
-    sessions$: topicToStream(topicFromObservable(sessions.sessions$(), lifetime)),
+    sessions$: topicToStream(
+      topicFromObservable(sessions.sessions$(), lifetime),
+    ),
   };
 }
 

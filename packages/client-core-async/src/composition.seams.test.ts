@@ -235,6 +235,7 @@ describe("composeWithBase — core seams", () => {
       events: createTally(),
       sessions: createTally(),
     };
+
     const telemetry = countSubscriptions(
       countSubscriptions(
         countSubscriptions(simulated.telemetry, "throughput$", () => {
@@ -250,12 +251,17 @@ describe("composeWithBase — core seams", () => {
         return tallies.errorRate;
       },
     );
+
     const { app } = composeWithBase({
       ...simulated,
       telemetry,
-      serviceHealth: countSubscriptions(simulated.serviceHealth, "topology$", () => {
-        return tallies.topology;
-      }),
+      serviceHealth: countSubscriptions(
+        simulated.serviceHealth,
+        "topology$",
+        () => {
+          return tallies.topology;
+        },
+      ),
       eventLog: countSubscriptions(simulated.eventLog, "events$", () => {
         return tallies.events;
       }),

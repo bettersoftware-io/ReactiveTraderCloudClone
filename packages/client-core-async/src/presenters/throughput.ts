@@ -1,7 +1,4 @@
-import {
-  THROUGHPUT_SET_ERROR,
-  throughputSetMessage,
-} from "@rtc/client-core";
+import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/client-core";
 import type {
   ThroughputMessage,
   ThroughputPresenter,
@@ -76,7 +73,10 @@ export function createThroughputPresenter(
     void spawn(load, reportAsync);
   }
 
-  async function persist(run: Run<ThroughputView>, value: number): Promise<void> {
+  async function persist(
+    run: Run<ThroughputView>,
+    value: number,
+  ): Promise<void> {
     let message: ThroughputMessage;
 
     try {

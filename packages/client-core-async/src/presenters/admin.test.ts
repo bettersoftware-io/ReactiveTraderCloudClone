@@ -124,6 +124,7 @@ describe("admin presenters (async)", () => {
         return events;
       },
     };
+
     const presenter = createEventLogPresenter(
       port,
       new AbortController().signal,
@@ -183,7 +184,9 @@ function createLogEvent(i: number): LogEvent {
   return { id: `e-${i}` } as unknown as LogEvent;
 }
 
-function createSessionsPort(roster: Subject<readonly SessionInfo[]>): SessionsPort {
+function createSessionsPort(
+  roster: Subject<readonly SessionInfo[]>,
+): SessionsPort {
   return {
     sessions$: () => {
       return roster;
