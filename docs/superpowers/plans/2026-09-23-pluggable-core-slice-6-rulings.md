@@ -96,3 +96,29 @@ typecheck re-run green on the final tree.
 498 (+ unit tests). Mutation: async 25/25, Effect 24/24 (first pass each).
 A-5 is closed for the siblings: each one's own unit test pins the expired-
 session clear.
+
+## Independent review, PR B (opus, read-only) — SHIP, 0 must-fix
+
+Gate before the review fixes: full gauntlet 33/33, `VITE_CORE_IMPL=async`
+e2e 7/7 suites, `VITE_CORE_IMPL=effect` e2e 7/7 suites.
+
+Taken:
+- **Effect boot skip race** — the reviewer read that `runFork` defers the
+  ramp fiber, so a `skip()` in the creation tick could be overwritten by the
+  ramp's first `progress: 0` write. Guard added (the ramp stands down once
+  finished or disposed) plus a skip-at-t=0 unit case. **B-7: the race did
+  not reproduce** — with the guard mutated away the case still passes, so on
+  effect 3.22.2 the interrupt reaches the ramp fiber before its first write.
+  The guard stays as cheap defence; it is recorded here as an untested race
+  guard, not claimed as proved.
+- **async `once()` leaked an abort listener per call** on the app-lifetime
+  signal (each holding its subscription until dispose) — now removed when the
+  call settles; general fix in `bridge/in.ts`, unit test + mutant killed.
+- **Late `intentsFor` replay is now contracted** — all three cores replay the
+  director's latest intent to a new subscriber while it is live (a tile that
+  mounts after a flash replays it). Mutant (async `replay: false`) killed.
+- **The target-filter case ticks the NEW roster's pair** (it checked nothing
+  before); the async post-lifetime login case waits a macrotask and asserts
+  the port released.
+
+Mutation on the fixes: 3/4 killed + B-7.

@@ -906,6 +906,10 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   overlapping; the Effect director conflating a same-tick burst of intents for
   a late joiner (it is a `sharedFold`, whose first subscriber hears every
   write).
+- **Contracted after review:** a new `intentsFor` subscriber receives the
+  director's latest intent while the director is live — the RxJS
+  `shareReplay(1)`, which every core reproduces and a user sees as a tile
+  replaying a flash it mounted after.
 
 ## Follow-ups
 
