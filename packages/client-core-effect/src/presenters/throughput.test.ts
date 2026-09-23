@@ -199,7 +199,7 @@ describe("createThroughputPresenter (effect)", () => {
     ).toEqual([700]);
   });
 
-  it("a debounce due while the host scope closes starts no write", async () => {
+  it("closing the host scope mid-debounce starts no write", async () => {
     const admin = createScriptedAdmin();
     const host = useHost();
     const presenter = createThroughputPresenter(host, admin.port);

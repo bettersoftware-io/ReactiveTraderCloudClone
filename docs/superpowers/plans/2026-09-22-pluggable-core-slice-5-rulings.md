@@ -147,3 +147,18 @@ child-host singleton for `incident`, one Tag + Layer each (`layers.test.ts`
 native. `pnpm mutation-check`: 26/28 first pass — one weak test (a synchronous
 `observed` check a microtask-deferred load slipped past; fixed, now killed) and
 one equivalent mutant (E-3). `core:parity`: 53/74 both.
+
+**Independent review of the Effect half (opus, read-only):** SHIP, 0 must-fix.
+Taken: (1) `throughput`'s `disposed` flag flipped LAST in the child scope's
+reverse-order close, so a debounce due mid-close could fork an unowned write —
+it now flips on the PARENT scope, first, and a token drops a superseded timer
+due in the same batch; (2)–(3) three tests read state through a subscriber the
+close had already interrupted — an absence reported as a clean reading, the
+repo's recurring class — and now read a fresh subscriber's seed; (4) the
+`errorBurst` case cleared its log before asserting. Mutation pass on the fixes:
+3/6 killed. **E-4 — the three survivors are race guards no deterministic test
+reaches:** under fake timers the scope close always interrupts the sleeping
+debounce fiber before its timer is due, and an interrupt is delivered before a
+same-batch stale timer, so the window the reviewer found by reading Effect's
+`ScopeImpl.close` / `runtime.ts` cannot be opened in a test. Kept as defence,
+recorded here rather than claimed as tested.

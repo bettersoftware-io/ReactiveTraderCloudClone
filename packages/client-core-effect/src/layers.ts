@@ -219,10 +219,9 @@ export const EqDrawingsTag = Context.GenericTag<
 const ThroughputTag = Context.GenericTag<ThroughputPresenter>(
   "@rtc/client-core-effect/throughput",
 );
-const ThroughputMetricTag =
-  Context.GenericTag<ThroughputMetricPresenter>(
-    "@rtc/client-core-effect/throughputMetric",
-  );
+const ThroughputMetricTag = Context.GenericTag<ThroughputMetricPresenter>(
+  "@rtc/client-core-effect/throughputMetric",
+);
 const LatencyMetricTag = Context.GenericTag<LatencyPresenter>(
   "@rtc/client-core-effect/latencyMetric",
 );
@@ -241,9 +240,9 @@ const SessionsTag = Context.GenericTag<SessionsPresenter>(
 const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
   "@rtc/client-core-effect/sessionsKpi",
 );
-const IncidentTag = Context.GenericTag<
-  Machine<IncidentState, IncidentIntents>
->("@rtc/client-core-effect/incident");
+const IncidentTag = Context.GenericTag<Machine<IncidentState, IncidentIntents>>(
+  "@rtc/client-core-effect/incident",
+);
 
 /** Every native service the app layer provides — the identifier of each
  * `GenericTag` is its service type. */
