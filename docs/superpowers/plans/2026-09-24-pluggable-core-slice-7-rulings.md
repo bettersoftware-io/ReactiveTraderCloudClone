@@ -118,3 +118,36 @@ Runners 306/306 ×3; client-core 3059/3059; mutation on the fixes 5/5.
   - Ruling: `composition.machineFactories.test.ts`'s "a delegated member is
     still reference-identical" assertion flipped — `machines.layout` was the
     last delegated machine; every machine factory is now native.
+- Gauntlet (33 gates) green but knip (the exported-but-local
+  `NativeWorkspacePresenters`, fixed); `VITE_CORE_IMPL=async pnpm test:e2e`
+  exit 0 (91 Playwright + 2×47 Gherkin scenarios), run BEFORE the review
+  fixes below (composition holder + debounce guard — both covered by the
+  contract and unit tiers).
+
+### PR B review (one read-only opus reviewer)
+
+No Critical: semantics match the RxJS core on persistence, membership
+timing, panel-data lifecycle (one port subscription per live panel), warm
+preset lists, teardown, and the composition's factory ordering. Taken:
+- Real-time waits in `composition.seams.test.ts` → `vi.waitFor` on the
+  positive condition, then one debounce window for a would-be second writer.
+- The hand-ported `combineLatest`+`scan` had no multi-symbol test: new unit
+  case (two symbols, points accumulate, nothing before every symbol ticks).
+- Overclaiming/vacuous unit tests: the analytics half added; the dismiss
+  case asserts live data before the `null`; the layout lifetime case split
+  from the explicit-dispose case. Mutation on these 4/4.
+- Debounce: a kick or the lifetime's end landing between the timer and its
+  callback no longer orphans the newer window or writes after the end
+  (`pending === window` guard is back, as a guard on the NULLING only —
+  equivalent under mutation, kept for that race).
+- One constant empty data stream for unsupported panels (the RxJS `EMPTY`).
+- Stale `commands.ts` doc; dead `layouts` map; the `never`-narrowed `let`
+  holder became an array.
+- Ruling (finding 5): dispose aborts a pending write where the RxJS writer
+  never unsubscribes — `app.dispose()` does not run in production; a write
+  after teardown would be the bug — cost if wrong: one lost debounce window
+  at a teardown nobody performs.
+- Ruling (finding 6): a data topic whose port FAILED stays attached until
+  the roster changes (RxJS propagates the error) — documented in
+  `followPanelData`; ports here do not error — cost if wrong: a frozen desk
+  panel after a port failure.
