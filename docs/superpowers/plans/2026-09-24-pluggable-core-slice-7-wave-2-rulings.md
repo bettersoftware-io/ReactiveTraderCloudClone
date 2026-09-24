@@ -32,10 +32,20 @@ Copied from the git-ignored SDD ledger so it survives the worktree.
 - Final: fixed I3 driver per-kind vacuous — reasons asserted; applied eqSelect/eqIndicator/eqPane; watchlist-not-loaded; unknown/already-docked/dock-full cases; reader mutants killed.
 - Final: fixed I4 expiry decline unguarded — jarvisController.test RED→GREEN; decline now inside the pending-guarded patch (RxJS-identical).
 - Final: fixed I5 mid-turn append + demo behind a queued turn — two contract cases; mutants killed. Mutation 9/9; runners 367/367 ×3.
-- Final: minor (deferred): JarvisMachine binds port.confirm at construction (spy after construction bypassed).
-- Final: minor (deferred): driver shell reads powerSaverLevel$ for command 0 too (extra read per batch).
-- Final: minor (deferred): JarvisPatch doc should say patches are apply-exactly-once (id allocation, port calls).
-- Final: minor (deferred): stale "CommandEventTag above" comment in jarvisDriveCommands.ts.
-- Final: minor (deferred): demo freeze case uses zero-length pauses only — PR B/C may need a 1 ms hop (watch when porting).
-- Final: minor (deferred): no boundary check at DEMO_STEP_BEAT_MS−1 for the decline; narration copy only toContain("EURUSD").
-- Final: minor (deferred): the harness always seeds availability$ synchronously, so "first send before the first frame" is uncontracted — PR B/C unit tests own it.
+- Final: minor (fixed after review, at the user's request): JarvisMachine binds port.confirm at construction (spy after construction bypassed).
+- Final: minor (fixed after review, at the user's request): driver shell reads powerSaverLevel$ for command 0 too (extra read per batch).
+- Final: minor (fixed after review, at the user's request): JarvisPatch doc should say patches are apply-exactly-once (id allocation, port calls).
+- Final: minor (fixed after review, at the user's request): stale "CommandEventTag above" comment in jarvisDriveCommands.ts.
+- Final: minor (fixed after review, at the user's request): demo freeze case uses zero-length pauses only — PR B/C may need a 1 ms hop (watch when porting).
+- Final: minor (fixed after review, at the user's request): no boundary check at DEMO_STEP_BEAT_MS−1 for the decline; narration copy only toContain("EURUSD").
+- Final: minor (fixed after review, at the user's request): the harness always seeds availability$ synchronously, so "first send before the first frame" is uncontracted — PR B/C unit tests own it.
+
+### The seven Minors, fixed in PR A (the user asked not to defer them)
+
+- `port.confirm` is looked up per call — `JarvisMachine.test` RED→GREEN.
+- The driver's first command reads no power-saver level — `JarvisDriverMachine.test` RED→GREEN.
+- `JarvisPatch` documents apply-exactly-once; the stale tag comment is rewritten.
+- The demo freeze case steps 1 ms. Ruling: no mutant can prove this on RxJS — it makes the case tolerate a core whose zero-length beat is a scheduled timer; its test is PR B/C's native demo — cost if wrong: none.
+- The confirming step's decline is pinned at `DEMO_STEP_BEAT_MS − 1`; the narration copy is pinned exactly (a regex over the format).
+- Harness seed `jarvisAvailabilityPending` + contract case "a send before the first availability reply runs on the preferred brain".
+- Mutation 7/7; runners 368/368 ×3.
