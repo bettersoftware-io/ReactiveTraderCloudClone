@@ -39,7 +39,7 @@ import type {
   Price,
   ThemeSkin,
 } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createAuthDeps } from "#/adapters/authDeps";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
@@ -127,6 +127,7 @@ import {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
+import { modelFacingHistory } from "#/presenters/jarvisController";
 
 /** The reconnect-intent event emitted from the Reconnect button. */
 interface ReconnectIntent {
@@ -223,38 +224,9 @@ export {
   LAYOUT_PANEL_IDS,
   STATIC_WORKSPACE_PANEL_IDS,
 } from "#/layout/workspaceDock";
-
-/**
- * Defensive guard, currently UNREACHABLE in production — kept so a natural
- * future refactor doesn't silently reintroduce a double-send bug. Read
- * `wireJarvisHistorySource`'s doc first for why `ask()`'s `historySource()`
- * read is EAGER (runs before `JarvisMachine`'s "start" patch ever appends the
- * new turn's own `[userEntry, jarvisEntry stub]` pair to `state.entries`), so
- * in today's call shape this function's `slice` branch never actually fires:
- * proven by the direct unit test next to this function in
- * `composition.jarvisHistory.test.ts`, which is the ONLY thing currently
- * exercising it (mutate this function and that test goes red; nothing else
- * would notice).
- *
- * Why keep it: `ask()`'s eager read is an incidental consequence of today's
- * call shape, not a documented contract of `WsJarvisAdapter` — wrapping
- * `ask()`'s body in `defer(() => …)` (so `historySource()` is read at
- * SUBSCRIBE time instead, matching how `createJarvisTurnStream` already
- * defers its `ws.send()`) is a natural-looking refactor that would flip the
- * ordering and make this exclusion load-bearing: a history snapshot read at
- * that later point WOULD contain the in-flight turn's own pair, and
- * `WsJarvisAdapter.ask()` already sends that same text separately as
- * `JarvisChatPayload.text` — so echoing it back inside `history` too would
- * hand the model its own newest message twice. Cheaper to keep a guard that
- * costs one array slice per turn than to silently reintroduce that bug the
- * day someone makes `ask()` lazy.
- */
-export function historyEntriesExcludingInFlightTurn(
-  entries: readonly JarvisEntry[],
-): readonly JarvisEntry[] {
-  const last = entries[entries.length - 1];
-  return last && !last.done ? entries.slice(0, -2) : entries;
-}
+/** Moved to `./presenters/jarvisController` (pluggable-core slice 7 wave
+ * 2) with the rest of the history rules — re-exported for existing imports. */
+export { historyEntriesExcludingInFlightTurn } from "#/presenters/jarvisController";
 
 /**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
@@ -312,19 +284,7 @@ function wireJarvisHistorySource(
   });
 
   jarvisPort.setHistorySource(() => {
-    return historyEntriesExcludingInFlightTurn(latestEntries)
-      .filter((entry) => {
-        // `origin: "system"` (the budget-downgrade line — JarvisMachine's
-        // `availabilityPatches$`) is UI-only bookkeeping, not something the
-        // model ever produced or should see echoed back as its own past
-        // turn — excluded here. `"narrator"` (proactive app-driving turns)
-        // and drive-outcome rows (no `origin` at all, same as any ordinary
-        // reply) stay: both are genuine turns the model itself is party to.
-        return entry.done && entry.text.length > 0 && entry.origin !== "system";
-      })
-      .map((entry): JarvisHistoryEntry => {
-        return { role: entry.role, text: entry.text };
-      });
+    return modelFacingHistory(latestEntries);
   });
 
   const disposeMachine = jarvisMachine.dispose;

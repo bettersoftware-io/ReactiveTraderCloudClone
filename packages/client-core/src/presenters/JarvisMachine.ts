@@ -29,11 +29,6 @@ import type {
   JarvisState,
 } from "@rtc/core-api";
 import {
-  DEFAULT_JARVIS_BRAIN,
-  DEFAULT_JARVIS_EFFORT,
-  DEFAULT_JARVIS_SKIN,
-  JARVIS_BRAIN_LABELS,
-  JARVIS_BRAINS,
   JARVIS_CONFIRM_TIMEOUT_MS,
   JARVIS_GREETING,
   JARVIS_NARRATION_PREFIX,
@@ -45,6 +40,28 @@ import {
 import type { JarvisAvailability, JarvisEvent } from "#/adapters/jarvisPort";
 
 import type { DriveOutcome } from "./JarvisDriverMachine";
+import {
+  approvePatch,
+  closePatch,
+  confirmTotalTicks,
+  createJarvisController,
+  declinePatch,
+  JARVIS_INITIAL_STATE,
+  JARVIS_SIM_AVAILABILITY,
+  type JarvisPatch,
+  type JarvisTurnRequest,
+  openPatch,
+  skinPatch,
+  togglePatch,
+} from "./jarvisController";
+
+/** Moved to `./jarvisController` (pluggable-core slice 7 wave 2) —
+ * re-exported so existing imports keep working. */
+export {
+  formatBrainHint,
+  formatGateHint,
+  formatGateResetTime,
+} from "./jarvisController";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -84,301 +101,6 @@ export interface JarvisDeps {
  * contract suites can read them (pluggable-core slice 7 wave 2). */
 export { JARVIS_CONFIRM_TIMEOUT_MS, JARVIS_GREETING, JARVIS_NARRATION_PREFIX };
 
-/** Strip `JARVIS_NARRATION_PREFIX` from a narrate prompt for display; a
- * prompt without the prefix passes through unchanged (defensive — every
- * real caller is `NarratorMachine`, which always includes it). */
-function stripNarrationPrefix(prompt: string): string {
-  return prompt.startsWith(JARVIS_NARRATION_PREFIX)
-    ? prompt.slice(JARVIS_NARRATION_PREFIX.length)
-    : prompt;
-}
-
-type Patch = (s: JarvisState) => JarvisState;
-
-const GREETING_ENTRY: JarvisEntry = {
-  id: 0,
-  role: "jarvis",
-  text: JARVIS_GREETING,
-  done: true,
-};
-
-const INITIAL: JarvisState = {
-  open: false,
-  skin: DEFAULT_JARVIS_SKIN,
-  unread: 0,
-  unreadNarration: false,
-  phase: "idle",
-  entries: [GREETING_ENTRY],
-  pendingConfirmation: null,
-  available: true,
-  brains: JARVIS_BRAINS,
-  effectiveBrain: DEFAULT_JARVIS_BRAIN,
-  gate: null,
-  openCount: 0,
-};
-
-/** Sim-mode / legacy-caller default for `JarvisDeps.availability$`: always
- * available, offering only the scripted (offline) brain — matches
- * `ScriptedJarvisAdapter`'s actual capability, unlike `INITIAL.brains`
- * (which offers every selectable brain before any real availability
- * feed has resolved). */
-const DEFAULT_AVAILABILITY: JarvisAvailability = {
-  available: true,
-  brains: ["scripted"],
-  defaultBrain: "scripted",
-  gate: null,
-};
-
-/** Resolves which brain a turn actually runs with: the preferred brain when
- * it's among the ones currently on offer, else the availability feed's own
- * default. `availability.brains` is trusted as-is — an empty array (nothing
- * offered) falls through to `defaultBrain` the same as any other
- * not-offered case; no separate check on `availability.available` is
- * needed here (see `JarvisAvailability`'s "key everything off `available`"
- * doc — that's a caution for CONSUMERS of `state.available`, not a
- * precondition this resolver needs to duplicate). */
-function resolveEffectiveBrain(
-  preferredBrain: JarvisBrain,
-  availability: JarvisAvailability,
-): JarvisBrain {
-  return availability.brains.includes(preferredBrain)
-    ? preferredBrain
-    : availability.defaultBrain;
-}
-
-/** Locale `HH:MM` rendering of a gate's `resetsAtMs` (e.g. the footer chip,
- * the picker's disabled-row reset copy, and the budget-downgrade system
- * line below all share this one formatting rule). `0` is the meter's
- * "forced gate on a fresh window" sentinel — see `JarvisAvailabilityGate`'s
- * doc — rendered as "—" rather than the 1970 epoch a naive `Date(0)` would
- * produce. */
-export function formatGateResetTime(resetsAtMs: number): string {
-  if (resetsAtMs === 0) {
-    return "—";
-  }
-
-  return new Date(resetsAtMs).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** The budget-downgrade system line's trailing clause: empty for the `0`
- * sentinel (the line reads "...continuing on Haiku 4.5." with no dangling
- * "until —"), else " until HH:MM". */
-function untilClause(resetsAtMs: number): string {
-  return resetsAtMs === 0 ? "" : ` until ${formatGateResetTime(resetsAtMs)}`;
-}
-
-/** The transcript text a folded `DriveOutcome` reads as — `"applied"` →
- * `drive: <kind>`; `"refused"` → `can't <op>: <reason>` (`op` is the layout
- * command's own `op` for kind `"layout"`, else the command's `kind`). Only
- * called for the two statuses `recordDriveOutcome`'s fold keeps. */
-function formatDriveOutcomeText(outcome: DriveOutcome): string {
-  if (outcome.status !== "refused") {
-    return `drive: ${outcome.command.kind}`;
-  }
-
-  const op =
-    outcome.command.kind === "layout"
-      ? outcome.command.op
-      : outcome.command.kind;
-  return `can't ${op}: ${outcome.reason ?? "refused"}`;
-}
-
-/** The budget-gate copy the Preferences Brain row shows, shared by both web
- * clients: the hint line under the row AND each gated option's tooltip, so
- * the two never drift apart. `0` drops the reset clause, the same rule
- * `untilClause` applies to the downgrade line, rather than printing
- * "resets —". */
-export function formatGateHint(resetsAtMs: number): string {
-  return resetsAtMs === 0
-    ? "Budget window active"
-    : `Budget window — resets ${formatGateResetTime(resetsAtMs)}`;
-}
-
-/** The Brain row's hint line, or `undefined` when there is nothing to say.
- * Leads with the gate copy while a gate is active, and names the running
- * brain whenever it is not the one the user saved: under a gate that moved
- * them ("paused" — it resumes when the window resets), or because the
- * server does not offer it at all (simulator mode runs only `scripted`).
- * The picker keeps highlighting the saved choice either way, so this line
- * is where the running brain is shown. */
-export function formatBrainHint(
-  gate: JarvisState["gate"],
-  preferred: JarvisBrain,
-  effective: JarvisBrain,
-): string | undefined {
-  const moved = preferred !== effective;
-
-  if (gate === null) {
-    return moved
-      ? `${JARVIS_BRAIN_LABELS[preferred]} isn't available — using ${JARVIS_BRAIN_LABELS[effective]}`
-      : undefined;
-  }
-
-  const fallback = moved
-    ? ` · ${JARVIS_BRAIN_LABELS[preferred]} paused, using ${JARVIS_BRAIN_LABELS[effective]}`
-    : "";
-
-  return `${formatGateHint(gate.resetsAtMs)}${fallback}`;
-}
-
-/** Fold `fn` onto the entry with the given `id` — the streaming/accumulating
- * entry `turnItems$`'s concatMap allocated for the CURRENT in-flight turn
- * (tracked by `entryPatches$`, cleared on that turn's own done/error — see
- * its doc). Targeting by id, not "the last entry" (this function's
- * predecessor, `updateLastEntry`), matters because an UNRELATED source can
- * append a new entry mid-turn — `availabilityPatches$`'s budget-downgrade
- * system line and `driveOutcomePatches$`'s drive row both do, and either
- * can land between two deltas of an in-flight turn (the gate line in
- * particular: the server pushes the availability frame synchronously off
- * the very turn's own `recordTokens`, so this is the MODAL path, not an
- * edge case). Under "the last entry", that appended row becomes the new
- * tail and hijacks every subsequent delta/toolEvent/done/error meant for
- * the real streaming entry — its text glues onto the notice/drive row, and
- * the real entry never gets its `done: true`, stuck spinning forever.
- * Targeting by id sidesteps this by construction: an append changes what's
- * LAST but never what MATCHES the tracked id. A missing `id` (no turn in
- * flight) or an id no longer present is a no-op, mirroring
- * `updateLastEntry`'s own defensive empty-array return. */
-function updateEntryById(
-  entries: readonly JarvisEntry[],
-  id: number | null,
-  fn: (e: JarvisEntry) => JarvisEntry,
-): readonly JarvisEntry[] {
-  if (id === null) {
-    return entries;
-  }
-
-  const index = entries.findIndex((e) => {
-    return e.id === id;
-  });
-
-  if (index === -1) {
-    return entries;
-  }
-
-  const target = entries[index];
-
-  if (!target) {
-    return entries;
-  }
-
-  const next = [...entries];
-  next[index] = fn(target);
-  return next;
-}
-
-/** Fold one reply event from an in-flight turn into a state Patch.
- * `turnOrigin` is the enclosing turn's origin (set by `turnItems$`'s
- * `concatMap` when it builds each turn's "start" item — see its doc): only
- * `"narrator"`-origin turns bump `unreadNarration` on completion.
- * `entryId` is the in-flight streaming entry's own id, captured by
- * `entryPatches$` at the turn's "start" item — see `updateEntryById`'s doc
- * for why every case below targets by id rather than "the last entry". */
-function eventPatch(
-  event: JarvisEvent,
-  turnOrigin: "narrator" | undefined,
-  entryId: number | null,
-): Patch {
-  switch (event.type) {
-    case "delta":
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          entries: updateEntryById(s.entries, entryId, (e) => {
-            return { ...e, text: e.text + event.text };
-          }),
-        };
-      };
-
-    case "toolEvent":
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          entries: updateEntryById(s.entries, entryId, (e) => {
-            return { ...e, tool: { name: event.tool, status: event.status } };
-          }),
-        };
-      };
-
-    case "done":
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          phase: "idle",
-          unread: s.open ? s.unread : s.unread + 1,
-          unreadNarration:
-            turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
-          entries: updateEntryById(s.entries, entryId, (e) => {
-            return { ...e, done: true };
-          }),
-        };
-      };
-
-    case "error":
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          phase: "idle",
-          unread: s.open ? s.unread : s.unread + 1,
-          unreadNarration:
-            turnOrigin === "narrator" && !s.open ? true : s.unreadNarration,
-          // Drop `tool` entirely rather than leaving it at whatever status a
-          // prior toolEvent left it in: a later sequential snapshot read
-          // (e.g. ScriptedJarvisAdapter's pnl/movers turns) can still time
-          // out into an error after toolEvent(running) already landed, and
-          // without clearing it the finalized entry would show error text
-          // alongside a permanently-stuck "running" badge.
-          entries: updateEntryById(s.entries, entryId, (e) => {
-            const { tool: _tool, ...rest } = e;
-            return { ...rest, text: event.message, done: true };
-          }),
-        };
-      };
-
-    case "confirmRequest":
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          pendingConfirmation: {
-            confirmationId: event.confirmationId,
-            symbol: event.symbol,
-            direction: event.direction,
-            notional: event.notional,
-            quotedPrice: event.quotedPrice,
-            ratePrecision: event.ratePrecision,
-            remainingFraction: 1,
-          },
-        };
-      };
-
-    case "panel":
-      // Deliberate no-op: panel events are owned by the separate
-      // JarvisPanelsMachine (Task 5), not this chat-state machine.
-      return (s: JarvisState): JarvisState => {
-        return s;
-      };
-
-    case "command":
-      // Deliberate no-op, mirroring "panel" above: command batches are
-      // applied by a separate drive-the-app machine/adapter (a later P5
-      // task), not folded into chat entries here.
-      return (s: JarvisState): JarvisState => {
-        return s;
-      };
-
-    default: {
-      const _exhaustive: never = event;
-
-      return (s: JarvisState): JarvisState => {
-        return s;
-      };
-    }
-  }
-}
-
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
 // so `Extract<JarvisEvent, ...>` never takes an inline object type argument —
 // the repo's `no-restricted-syntax` bans that even inside a type alias (see
@@ -392,96 +114,41 @@ function isConfirmRequest(event: JarvisEvent): event is ConfirmRequestEvent {
   return event.type === "confirmRequest";
 }
 
-/** The synthetic "start" of a turn (`send()` or `narrate()`): user entry +
- * streaming jarvis stub appended, phase → speaking. */
+/** The synthetic "start" of a turn: the controller's patch appending the
+ * user entry + streaming jarvis stub, phase → speaking. */
 interface TurnStartItem {
   readonly kind: "start";
-  readonly userEntry: JarvisEntry;
-  readonly jarvisEntry: JarvisEntry;
+  readonly patch: JarvisPatch;
 }
 
 /** One reply event forwarded from `port.ask(text)`. `origin` is the
  * enclosing turn's origin (undefined for an ordinary `send()` turn,
- * `"narrator"` for a `narrate()` turn) — threaded through so `eventPatch`'s
- * "done"/"error" cases can fold `unreadNarration` without any mutable
- * cross-turn state. */
+ * `"narrator"` for a `narrate()` turn) — threaded through so the event
+ * patch can fold `unreadNarration` without any mutable cross-turn state. */
 interface TurnEventItem {
   readonly kind: "event";
   readonly event: JarvisEvent;
   readonly origin: "narrator" | undefined;
 }
 
-/** One item flowing through a single turn (`send()` or `narrate()`). */
+/** One item flowing through a single turn. */
 type TurnItem = TurnStartItem | TurnEventItem;
-
-/** One request enqueued into the shared turn queue — `send()`, `narrate()`,
- * and `sendScripted()` all feed the same `concatMap`, so any one of them
- * arriving while another is in flight queues behind it. `"sendScripted"` is
- * an ordinary user turn shape-wise (same as `"send"`); only its `kind` is
- * read at the `port.ask` call site to pin the turn's brain to `"scripted"`
- * regardless of `effectiveBrain`. */
-type TurnRequest =
-  | { readonly kind: "send"; readonly text: string }
-  | { readonly kind: "sendScripted"; readonly text: string }
-  | { readonly kind: "narrate"; readonly prompt: string };
 
 function isTurnEventItem(item: TurnItem): item is TurnEventItem {
   return item.kind === "event";
 }
 
+/** The RxJS shell over `createJarvisController` (`./jarvisController`):
+ * the rules live there; this file owns only the timing — the serial turn
+ * queue, the confirmation countdown and the preference subscriptions. */
 export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const availabilitySource$: Observable<JarvisAvailability> =
-    deps.availability$ ?? of(DEFAULT_AVAILABILITY);
+    deps.availability$ ?? of(JARVIS_SIM_AVAILABILITY);
+  const controller = createJarvisController();
+  const confirm = deps.port.confirm.bind(deps.port);
 
-  // Synchronous mutable caches, kept in lockstep by availabilityPatches$ /
-  // preferredBrainPatches$ / effortSubscription below (the only
-  // subscribers of their respective sources, active from construction via
-  // the `warm` state$ subscription / the dedicated effort$ subscription).
-  // send() needs the CURRENT values at call time, not a stream to fold into
-  // a patch — and, per wireJarvisHistorySource's doc in composition.ts,
-  // state$'s getValue() isn't reliably synchronous, so a mutable cache
-  // updated by the one live subscription is the same pattern used there.
-  // Seeded to match INITIAL (available, every selectable brain offered),
-  // NOT DEFAULT_AVAILABILITY (the sim-mode scripted-only fallback) — this
-  // cache is what a same-tick send() reads before the FIRST
-  // availabilityPatches$ emission lands, and in WS-real mode that first
-  // emission is a genuine round-trip (availability$ emits nothing until
-  // JARVIS_AVAILABILITY replies, unbounded while the socket is still
-  // connecting — WsAdapter buffers pre-open sends, so a send() in that
-  // window is real, not hypothetical). Seeding this with the scripted-only
-  // shape would silently pin brain:"scripted" onto that first turn even
-  // though the desk's real brain roster hasn't been ruled out yet — the
-  // server honors the brain a keyed turn carries, so the user would get a
-  // canned scripted reply instead of the real model. Sim mode is
-  // unaffected: `availabilitySource$`'s `of(DEFAULT_AVAILABILITY)` fallback
-  // still emits synchronously and corrects this cache (see
-  // availabilityPatches$ below) before the machine is even returned to the
-  // caller, well before any send() can fire.
-  let available = true;
-  let availability: JarvisAvailability = {
-    available: true,
-    brains: JARVIS_BRAINS,
-    defaultBrain: DEFAULT_JARVIS_BRAIN,
-    gate: null,
-  };
-  let preferredBrain: JarvisBrain = DEFAULT_JARVIS_BRAIN;
-  let effectiveBrain: JarvisBrain = INITIAL.effectiveBrain;
-  let effort: JarvisEffort = DEFAULT_JARVIS_EFFORT;
-  // The CURRENT turn's own streaming jarvis entry id, or `null` when no turn
-  // is in flight. Set by entryPatches$ at the turn's "start" item (the same
-  // id turnItems$'s concatMap just allocated for `jarvisEntry`), cleared on
-  // that turn's own done/error. eventPatch's delta/toolEvent/done/error
-  // cases target this id (via updateEntryById) rather than "the last
-  // entry" — see updateEntryById's doc for why: an unrelated mid-turn
-  // append (the budget-downgrade system line, a drive-outcome row) would
-  // otherwise become the new "last entry" and hijack every following event
-  // meant for the real streaming entry.
-  let inFlightEntryId: number | null = null;
-
-  const send$ = new Subject<string>();
-  const sendScripted$ = new Subject<string>();
-  const narrate$ = new Subject<string>();
+  const turn$ = new Subject<JarvisTurnRequest>();
   const open$ = new Subject<void>();
   const close$ = new Subject<void>();
   const toggle$ = new Subject<void>();
@@ -489,77 +156,27 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const decline$ = new Subject<void>();
   const driveOutcome$ = new Subject<DriveOutcome>();
 
-  let nextEntryId = 1; // 0 is the greeting entry
-
-  // send(), sendScripted(), and narrate() feed the SAME queue — merged
-  // upstream of concatMap so any one arriving mid-turn queues behind
-  // whichever is in flight, per JarvisIntents.narrate's and
-  // JarvisIntents.sendScripted's docs.
-  const turnRequests$: Observable<TurnRequest> = merge(
-    send$.pipe(
-      map((text): TurnRequest => {
-        return { kind: "send", text };
-      }),
-    ),
-    sendScripted$.pipe(
-      map((text): TurnRequest => {
-        return { kind: "sendScripted", text };
-      }),
-    ),
-    narrate$.pipe(
-      map((prompt): TurnRequest => {
-        return { kind: "narrate", prompt };
-      }),
-    ),
-  );
-
   // Turns run sequentially: concatMap only advances to the next queued
-  // request once the previous turn's port.ask() observable has completed.
-  // share() is required here — entryPatches$ and confirmRequests$ below are
-  // two independent consumers, and without it each would trigger its own
-  // subscription (and its own port.ask() call + entry-id allocation).
-  const turnItems$: Observable<TurnItem> = turnRequests$.pipe(
+  // request once the previous turn's port.ask() observable has completed —
+  // and plans each turn only when it is DEQUEUED (the controller's
+  // `planTurn` doc). send(), sendScripted() and narrate() all feed `turn$`,
+  // so any one arriving mid-turn queues behind whichever is in flight.
+  // share() is required: entryPatches$ and events$ are independent
+  // consumers, and without it each would trigger its own port.ask() call
+  // and entry-id allocation.
+  const turnItems$: Observable<TurnItem> = turn$.pipe(
     concatMap((req) => {
-      // Unavailable → silent no-op: no user entry appended (the "start"
-      // item below is never built) and port.ask is never called.
-      if (!available) {
+      const plan = controller.planTurn(req);
+
+      if (plan === null) {
         return EMPTY;
       }
 
-      const origin: "narrator" | undefined =
-        req.kind === "narrate" ? "narrator" : undefined;
-      // narrate()'s wire text is the prompt AS GIVEN (prefix included, per
-      // JarvisIntents.narrate's doc); the transcript's display text strips
-      // it. send()'s text is used verbatim for both.
-      const wireText = req.kind === "narrate" ? req.prompt : req.text;
-      const displayText =
-        req.kind === "narrate" ? stripNarrationPrefix(req.prompt) : req.text;
-
-      const userEntry: JarvisEntry = {
-        id: nextEntryId++,
-        role: "user",
-        text: displayText,
-        done: true,
-        ...(origin ? { origin } : {}),
-      };
-
-      const jarvisEntry: JarvisEntry = {
-        id: nextEntryId++,
-        role: "jarvis",
-        text: "",
-        done: false,
-      };
-      // sendScripted() pins the turn's brain to "scripted" regardless of
-      // effectiveBrain — see JarvisIntents.sendScripted's doc. Every other
-      // request kind runs with the resolved effective brain, exactly as
-      // before.
-      const brain = req.kind === "sendScripted" ? "scripted" : effectiveBrain;
-
       return concat(
-        of<TurnItem>({ kind: "start", userEntry, jarvisEntry }),
-        deps.port.ask(wireText, { brain, effort }).pipe(
+        of<TurnItem>({ kind: "start", patch: plan.start }),
+        deps.port.ask(plan.wireText, plan.options).pipe(
           map((event): TurnItem => {
-            return { kind: "event", event, origin };
+            return { kind: "event", event, origin: plan.origin };
           }),
         ),
       );
@@ -567,35 +184,11 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     share(),
   );
 
-  const entryPatches$: Observable<Patch> = turnItems$.pipe(
-    map((item): Patch => {
-      if (item.kind === "start") {
-        // Track the freshly-allocated streaming entry's id BEFORE this
-        // turn's first event can possibly arrive (map() runs synchronously
-        // per emission, and turnItems$'s concat() always emits "start"
-        // before anything from port.ask() — see turnItems$'s doc).
-        inFlightEntryId = item.jarvisEntry.id;
-
-        return (s: JarvisState): JarvisState => {
-          return {
-            ...s,
-            phase: "speaking",
-            entries: [...s.entries, item.userEntry, item.jarvisEntry],
-          };
-        };
-      }
-
-      const patch = eventPatch(item.event, item.origin, inFlightEntryId);
-
-      // done/error are this turn's terminal events (JarvisPort.ask's own
-      // contract — see its doc): clear the tracked id so a stray later
-      // event (there shouldn't be one) is a no-op rather than mistargeting
-      // whatever the NEXT turn's own streaming entry happens to be.
-      if (item.event.type === "done" || item.event.type === "error") {
-        inFlightEntryId = null;
-      }
-
-      return patch;
+  const entryPatches$: Observable<JarvisPatch> = turnItems$.pipe(
+    map((item): JarvisPatch => {
+      return item.kind === "start"
+        ? item.patch
+        : controller.eventPatch(item.event, item.origin);
     }),
   );
 
@@ -608,279 +201,104 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     }),
   );
 
-  const confirmRequests$: Observable<ConfirmRequestEvent> = events$.pipe(
-    filter(isConfirmRequest),
-  );
-
   // Resolved by an explicit approve/decline, cancelling the ticking timer
   // early. A later confirmRequest also supersedes it (switchMap).
   const resolution$ = merge(approve$, decline$);
 
-  const timerPatches$: Observable<Patch> = confirmRequests$.pipe(
+  const timerPatches$: Observable<JarvisPatch> = events$.pipe(
+    filter(isConfirmRequest),
     switchMap((req) => {
-      const totalTicks = Math.max(1, Math.round(confirmTimeoutMs / 1000));
+      const totalTicks = confirmTotalTicks(confirmTimeoutMs);
       return interval(1000).pipe(
         take(totalTicks),
-        map((tickIndex): Patch => {
-          const ticksElapsed = tickIndex + 1;
-
-          if (ticksElapsed >= totalTicks) {
-            // Expiry: auto-decline and clear.
-            deps.port.confirm(req.confirmationId, false);
-
-            return (s: JarvisState): JarvisState => {
-              if (
-                s.pendingConfirmation?.confirmationId !== req.confirmationId
-              ) {
-                return s;
-              }
-
-              return { ...s, pendingConfirmation: null };
-            };
-          }
-
-          const remainingFraction = 1 - ticksElapsed / totalTicks;
-
-          return (s: JarvisState): JarvisState => {
-            if (
-              !s.pendingConfirmation ||
-              s.pendingConfirmation.confirmationId !== req.confirmationId
-            ) {
-              return s;
-            }
-
-            return {
-              ...s,
-              pendingConfirmation: {
-                ...s.pendingConfirmation,
-                remainingFraction,
-              },
-            };
-          };
+        map((tickIndex): JarvisPatch => {
+          return controller.confirmTickPatch(
+            req.confirmationId,
+            tickIndex + 1,
+            totalTicks,
+            confirm,
+          );
         }),
         takeUntil(resolution$),
       );
     }),
   );
 
-  const approvePatches$: Observable<Patch> = approve$.pipe(
-    map((): Patch => {
-      return (s: JarvisState): JarvisState => {
-        if (!s.pendingConfirmation) {
-          return s;
-        }
-
-        deps.port.confirm(s.pendingConfirmation.confirmationId, true);
-        return { ...s, pendingConfirmation: null };
-      };
+  const driveOutcomePatches$: Observable<JarvisPatch> = driveOutcome$.pipe(
+    map((outcome) => {
+      return controller.driveOutcomePatch(outcome);
+    }),
+    filter((patch): patch is JarvisPatch => {
+      return patch !== null;
     }),
   );
 
-  const declinePatches$: Observable<Patch> = decline$.pipe(
-    map((): Patch => {
-      return (s: JarvisState): JarvisState => {
-        if (!s.pendingConfirmation) {
-          return s;
-        }
+  // The single live subscriber of each source (via the `warm` subscription
+  // below), so each availability / preferred-brain value refreshes the
+  // controller's caches exactly once.
+  const availabilityPatches$: Observable<JarvisPatch> =
+    availabilitySource$.pipe(
+      map((value) => {
+        return controller.availabilityPatch(value);
+      }),
+    );
 
-        deps.port.confirm(s.pendingConfirmation.confirmationId, false);
-        return { ...s, pendingConfirmation: null };
-      };
-    }),
-  );
+  const preferredBrainPatches$: Observable<JarvisPatch> =
+    deps.preferredBrain$.pipe(
+      map((brain) => {
+        return controller.preferredBrainPatch(brain);
+      }),
+    );
 
-  const openPatches$: Observable<Patch> = open$.pipe(
-    map((): Patch => {
-      return (s: JarvisState): JarvisState => {
-        return {
-          ...s,
-          open: true,
-          unread: 0,
-          unreadNarration: false,
-          // Guarded increment: bumps only on a genuine closed→open
-          // transition, not on a repeated open() while already open — see
-          // JarvisState.openCount's doc.
-          openCount: s.open ? s.openCount : s.openCount + 1,
-        };
-      };
-    }),
-  );
-
-  const closePatches$: Observable<Patch> = close$.pipe(
-    map((): Patch => {
-      return (s: JarvisState): JarvisState => {
-        return { ...s, open: false };
-      };
-    }),
-  );
-
-  const togglePatches$: Observable<Patch> = toggle$.pipe(
-    map((): Patch => {
-      return (s: JarvisState): JarvisState => {
-        const open = !s.open;
-        return {
-          ...s,
-          open,
-          unread: open ? 0 : s.unread,
-          unreadNarration: open ? false : s.unreadNarration,
-          // Only the opening branch bumps — mirrors openPatches$'s own
-          // guarded increment (closing never touches it).
-          openCount: open ? s.openCount + 1 : s.openCount,
-        };
-      };
-    }),
-  );
-
-  // recordDriveOutcome's fold — see JarvisIntents.recordDriveOutcome's doc
-  // for why the filter (applied + refused fold, skipped doesn't) lives HERE
-  // rather than at the outcomes$ source. nextEntryId is the SAME counter turnItems$'s concatMap
-  // above allocates from — ids just need to be unique, not contiguous
-  // within one source.
-  const driveOutcomePatches$: Observable<Patch> = driveOutcome$.pipe(
-    filter((outcome) => {
-      return outcome.status !== "skipped";
-    }),
-    map((outcome): Patch => {
-      const entry: JarvisEntry = {
-        id: nextEntryId++,
-        role: "jarvis",
-        text: formatDriveOutcomeText(outcome),
-        done: true,
-      };
-
-      return (s: JarvisState): JarvisState => {
-        return { ...s, entries: [...s.entries, entry] };
-      };
-    }),
-  );
-
-  // The port is the source of truth for the skin, same loop as every other
-  // preference: setSkin() writes through deps.setSkin, and state.skin only
-  // ever changes by following skin$ back.
-  const skinPatches$: Observable<Patch> = deps.skin$.pipe(
-    map((skin): Patch => {
-      return (s: JarvisState): JarvisState => {
-        return { ...s, skin };
-      };
-    }),
-  );
-
-  // The single live subscriber of availabilitySource$ (via stream$'s `warm`
-  // subscription below): folds the value into state AND refreshes the
-  // `available`/`availability` caches that turnItems$'s concatMap reads
-  // synchronously. Also re-resolves `effectiveBrain` — an availability flip
-  // can un-offer the currently-preferred brain mid-session, so this must
-  // recompute it here too, not only on preferredBrain$'s own emissions.
-  //
-  // This is ALSO the sole home of the budget-downgrade system line: one
-  // availability emission must produce one atomic state patch (gate +
-  // brains + effectiveBrain + the optional entry), so no intermediate state
-  // is ever observable — a separate subscription reacting to the same
-  // source would risk an observer catching effectiveBrain updated but the
-  // entry not yet appended (or vice versa).
-  const availabilityPatches$: Observable<Patch> = availabilitySource$.pipe(
-    map((value): Patch => {
-      available = value.available;
-      availability = value;
-      effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
-      const nextEffectiveBrain = effectiveBrain;
-      const gate = value.gate;
-
-      return (s: JarvisState): JarvisState => {
-        // Read from the FOLDED state, not a mutable closure snapshot: this
-        // keeps the patch pure in (s, value) rather than leaning on
-        // subscribe-order between this map()'s synchronous cache write and
-        // whenever `scan` actually applies the returned patch — the two are
-        // one and the same today, but reading `s.effectiveBrain` deletes
-        // that ordering hazard by construction rather than relying on it
-        // staying true forever.
-        const previousEffectiveBrain = s.effectiveBrain;
-
-        const base: JarvisState = {
-          ...s,
-          available: value.available,
-          brains: value.brains,
-          gate,
-          effectiveBrain: nextEffectiveBrain,
-        };
-
-        // The system line appends only when: a gate is actually active
-        // (never on lift — `gate` goes back to `null` there, so this whole
-        // branch is skipped, matching "no line on gate LIFT"); it actually
-        // MOVED this session's effective brain (an unaffected user's
-        // `nextEffectiveBrain` doesn't change, matching "no line for
-        // unaffected users" — including a republished frame at the SAME
-        // gate level with only e.g. `resetsAtMs` bumped, since
-        // `nextEffectiveBrain` doesn't move on a re-judge either); and
-        // there is an open conversation to append it to — more than just
-        // the canned `GREETING_ENTRY` (id 0), which every fresh transcript
-        // already carries regardless of whether the user has said anything
-        // yet (matching "no line when [the conversation reads as] empty").
-        if (
-          gate === null ||
-          nextEffectiveBrain === previousEffectiveBrain ||
-          s.entries.length <= 1
-        ) {
-          return base;
-        }
-
-        const entry: JarvisEntry = {
-          id: nextEntryId++,
-          role: "jarvis",
-          text: `Usage budget reached — continuing on ${JARVIS_BRAIN_LABELS[nextEffectiveBrain]}${untilClause(gate.resetsAtMs)}.`,
-          done: true,
-          origin: "system",
-        };
-
-        return { ...base, entries: [...s.entries, entry] };
-      };
-    }),
-  );
-
-  // The single live subscriber of deps.preferredBrain$ (via stream$'s `warm`
-  // subscription below): refreshes the `preferredBrain` cache and
-  // re-resolves `effectiveBrain` against the CURRENT availability cache — a
-  // preference change mid-session must be reflected in the very next
-  // send(), per JarvisState.effectiveBrain's doc.
-  const preferredBrainPatches$: Observable<Patch> = deps.preferredBrain$.pipe(
-    map((value): Patch => {
-      preferredBrain = value;
-      effectiveBrain = resolveEffectiveBrain(preferredBrain, availability);
-
-      return (s: JarvisState): JarvisState => {
-        return { ...s, effectiveBrain };
-      };
-    }),
-  );
-
-  // effort$ has no visible JarvisState field of its own (see
-  // JarvisDeps.effort$'s doc) — only ask()'s wire payload reads the cache —
-  // so this is a plain side-channel subscription rather than a patch folded
-  // into stream$'s scan, torn down alongside the other subscriptions in
-  // dispose() below.
+  // effort has no JarvisState field of its own — only ask()'s options read
+  // it — so this is a plain side-channel subscription rather than a patch,
+  // torn down alongside the others in dispose() below.
   const effortSubscription = deps.effort$.subscribe((value) => {
-    effort = value;
+    controller.setEffort(value);
   });
 
   const stream$ = merge(
     entryPatches$,
     timerPatches$,
-    approvePatches$,
-    declinePatches$,
-    openPatches$,
-    closePatches$,
-    togglePatches$,
+    approve$.pipe(
+      map(() => {
+        return approvePatch(confirm);
+      }),
+    ),
+    decline$.pipe(
+      map(() => {
+        return declinePatch(confirm);
+      }),
+    ),
+    open$.pipe(
+      map(() => {
+        return openPatch;
+      }),
+    ),
+    close$.pipe(
+      map(() => {
+        return closePatch;
+      }),
+    ),
+    toggle$.pipe(
+      map(() => {
+        return togglePatch;
+      }),
+    ),
     driveOutcomePatches$,
-    skinPatches$,
+    deps.skin$.pipe(map(skinPatch)),
     availabilityPatches$,
     preferredBrainPatches$,
   ).pipe(
-    scan((s, patch) => {
+    scan((s: JarvisState, patch: JarvisPatch) => {
       return patch(s);
-    }, INITIAL),
+    }, JARVIS_INITIAL_STATE),
   );
 
-  const state$: StateObservable<JarvisState> = state(stream$, INITIAL);
+  const state$: StateObservable<JarvisState> = state(
+    stream$,
+    JARVIS_INITIAL_STATE,
+  );
 
   // Keep state$ warm so it carries its default (and any synchronous skin$
   // replay) before useMachine first renders.
@@ -900,13 +318,13 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         toggle$.next();
       },
       send: (text: string) => {
-        send$.next(text);
+        turn$.next({ kind: "send", text });
       },
       sendScripted: (text: string) => {
-        sendScripted$.next(text);
+        turn$.next({ kind: "sendScripted", text });
       },
       narrate: (prompt: string) => {
-        narrate$.next(prompt);
+        turn$.next({ kind: "narrate", prompt });
       },
       approveConfirmation: () => {
         approve$.next();
@@ -926,9 +344,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       // react-rxjs state$ derived from it — completes, then release the warm
       // subscription that was keeping state$ alive, and the side-channel
       // effort$ subscription alongside it.
-      send$.complete();
-      sendScripted$.complete();
-      narrate$.complete();
+      turn$.complete();
       open$.complete();
       close$.complete();
       toggle$.complete();
