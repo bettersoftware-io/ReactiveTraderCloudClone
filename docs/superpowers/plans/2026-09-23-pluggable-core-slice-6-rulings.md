@@ -1,4 +1,4 @@
-# Slice 6a — execution rulings ledger
+# Slice 6 — execution rulings ledger
 
 Plan: [`2026-09-23-pluggable-core-slice-6.md`](2026-09-23-pluggable-core-slice-6.md).
 Regime: in-session implementation, `--ready` worktree, scripted

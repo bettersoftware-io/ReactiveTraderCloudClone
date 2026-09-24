@@ -1,4 +1,4 @@
-# Pluggable Application Core — Slice 6a (Shell) Implementation Plan
+# Pluggable Application Core — Slice 6 (Shell) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (the regime slice 5's PR B proved: in-session implementation, one independent reviewer per PR). Steps use checkbox (`- [ ]`) syntax for tracking.
 

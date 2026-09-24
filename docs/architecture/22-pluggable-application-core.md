@@ -364,7 +364,7 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 6a, fifty-eight members have real suites — slice 1a's
+fails. As of slice 6, fifty-eight members have real suites — slice 1a's
 six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
 `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`), slice
@@ -373,7 +373,7 @@ six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`, `positions`;
 `eqWorkspace`, `eqDrawings`, `orderTicket`) and slice 5's nine (`throughput`,
 `throughputMetric`, `latencyMetric`, `errorRateMetric`, `topology`,
-`eventLog`, `sessions`, `sessionsKpi`; `incident`) and slice 6a's five
+`eventLog`, `sessions`, `sessionsKpi`; `incident`) and slice 6's five
 (`auth`, `bootGate`, `workspaceNav`, `animationDirector`; `boot`) — and 16
 are pending (37 at slice 3's merge, 38 once Dockview Phase 6b's
 `layoutPresets` joined, 30 after slice 4, 21 after slice 5). Each
@@ -425,7 +425,7 @@ presenters and the four RFQ machines — `rfqCountdown` having joined
 presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two equities workspace singletons (`eqWorkspace`,
 `eqDrawings`) and the machine `orderTicket`, slice 5's nine admin members,
-and slice 6a's five shell members) and everything else `"delegated"`. Slice 5 landed one core at a
+and slice 6's five shell members) and everything else `"delegated"`. Slice 5 landed one core at a
 time — async first, Effect the same day — so for a few hours the two
 manifests disagreed, which the tooling reports and nothing forbids. The
 manifest says so explicitly rather than leaving it

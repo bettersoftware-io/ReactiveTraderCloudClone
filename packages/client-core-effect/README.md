@@ -260,13 +260,13 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 6a, fifty-eight of 74 members are **native** (the 74th, `layoutPresets`,
+As of slice 6, fifty-eight of 74 members are **native** (the 74th, `layoutPresets`,
 arrived delegated with Dockview Phase 6b). Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
 `sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
 `throughput` (a `SubscriptionRef`, a debounce fiber and `createRunSlot`), and
 the `incident` singleton, whose connection events reach the RxJS core's
-`incident$` seam through `pushIncidentEvent`. Slice 6a added five shell
+`incident$` seam through `pushIncidentEvent`. Slice 6 added five shell
 members: `workspaceNav`, `bootGate` and `auth` over `SubscriptionRef`s,
 the `boot` ramp as a fiber of `Effect.sleep` steps, and `animationDirector`
 — a refCounted `sharedFold` over a merged Effect `Stream` whose per-pair
