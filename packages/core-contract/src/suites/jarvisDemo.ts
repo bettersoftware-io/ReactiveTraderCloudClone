@@ -172,6 +172,33 @@ export function describeJarvisDemoContract(
       });
     });
 
+    it("a user turn queued ahead of step 1 does not settle it: the demo waits for its own turn's done", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness();
+        const pause = clockPause(clock);
+
+        try {
+          h.app.presenters.jarvis.intents.send("mine");
+          await pause();
+          h.app.presenters.jarvisDemo.intents.startDemo();
+          await pause();
+          expect(h.driver.pendingAsks()).toEqual(["mine"]);
+          await completeTurn(h, [], pause);
+          await clock.advance(DEMO_STEP_BEAT_MS * 2);
+          await pause();
+          expect(h.driver.askLog()).toHaveLength(2);
+          expect((await readDemo(h, clock)).stepIndex).toBe(1);
+          await completeTurn(h, [], pause);
+          await clock.advance(DEMO_STEP_BEAT_MS);
+          await pause();
+          expect(h.driver.askLog()).toHaveLength(3);
+          expect((await readDemo(h, clock)).stepIndex).toBe(2);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("startDemo while a run is in flight is dropped, not queued", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();

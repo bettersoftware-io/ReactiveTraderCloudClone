@@ -363,10 +363,10 @@ export interface JarvisController {
   availabilityPatch(value: JarvisAvailability): JarvisPatch;
   preferredBrainPatch(brain: JarvisBrain): JarvisPatch;
   setEffort(effort: JarvisEffort): void;
-  /** One confirmation-countdown tick. At the last tick it declines through
-   * `confirm` at once and returns the patch that clears the card; before
-   * it, the patch lowers `remainingFraction`. Either patch is a no-op once a
-   * different confirmation is pending. */
+  /** One confirmation-countdown tick. At the last tick the patch declines
+   * the card through `confirm` and clears it; before it, the patch lowers
+   * `remainingFraction`. Either patch is a no-op — no port call — once a
+   * different confirmation, or none, is pending. */
   confirmTickPatch(
     confirmationId: string,
     ticksElapsed: number,
@@ -633,14 +633,16 @@ export function createJarvisController(): JarvisController {
       confirm: JarvisPort["confirm"],
     ): JarvisPatch => {
       if (ticksElapsed >= totalTicks) {
-        // Expiry: auto-decline and clear.
-        confirm(confirmationId, false);
-
+        // Expiry: auto-decline and clear — only while THIS card is still the
+        // pending one. A core whose countdown cancels asynchronously can
+        // deliver a last tick after an approve; declining then would send the
+        // port a "no" for a trade it was just told "yes".
         return (s: JarvisState): JarvisState => {
           if (!isPending(s.pendingConfirmation, confirmationId)) {
             return s;
           }
 
+          confirm(confirmationId, false);
           return { ...s, pendingConfirmation: null };
         };
       }

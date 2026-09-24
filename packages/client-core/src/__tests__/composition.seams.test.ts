@@ -262,7 +262,12 @@ describe("createApp — core seams (strangler phase)", () => {
       setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
     });
 
-    expect(rig.calls).toEqual({ ask: 0, availability: 0, history: 0 });
+    expect(rig.calls).toEqual({
+      ask: 0,
+      availability: 0,
+      history: 0,
+      usage: 0,
+    });
     expect(await firstValueFrom(rig.ports.preferences.workspaceLayout$())).toBe(
       null,
     );
@@ -307,7 +312,14 @@ describe("createApp — core seams (strangler phase)", () => {
       setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
     });
 
-    expect(rig.calls).toEqual({ ask: 1, availability: 1, history: 1 });
+    rig.presenters.jarvisUsage.usage$.subscribe().unsubscribe();
+
+    expect(rig.calls).toEqual({
+      ask: 1,
+      availability: 1,
+      history: 1,
+      usage: 1,
+    });
     expect(
       await firstValueFrom(rig.ports.preferences.workspaceLayout$()),
     ).not.toBe(null);
@@ -449,6 +461,7 @@ interface StandDownCalls {
   ask: number;
   availability: number;
   history: number;
+  usage: number;
 }
 
 interface StandDownRig {
@@ -464,11 +477,22 @@ interface StandDownRig {
  * narrator switched on and a tiny detector window, reading prices from a
  * supplied `priceFor` seam the rig drives. */
 function createStandDownRig(extraSeams: CoreSeams): StandDownRig {
-  const calls: StandDownCalls = { ask: 0, availability: 0, history: 0 };
+  const calls: StandDownCalls = {
+    ask: 0,
+    availability: 0,
+    history: 0,
+    usage: 0,
+  };
   const prices$ = new Subject<Price>();
   const ports = createPorts({
     preferences: new PreferencesSimulator({ jarvisNarrator: "on" }),
     narratorConfig: STAND_DOWN_NARRATOR_CONFIG,
+    jarvisUsage: {
+      usage$: () => {
+        calls.usage += 1;
+        return NEVER;
+      },
+    },
     jarvis: {
       ask: () => {
         calls.ask += 1;

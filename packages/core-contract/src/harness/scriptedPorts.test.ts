@@ -902,6 +902,20 @@ describe("scriptPorts — Jarvis turns, confirmations, availability, history and
     expect(driver.portCalls("jarvisUsage.usage$")).toBe(1);
   });
 
+  it("counts SUBSCRIPTIONS to availability$ and usage$, not just calls: one call subscribed twice counts two", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const availability$ = ports.jarvis.availability$?.();
+    const usage$ = ports.jarvisUsage.usage$();
+
+    availability$?.subscribe().unsubscribe();
+    availability$?.subscribe().unsubscribe();
+    usage$.subscribe().unsubscribe();
+
+    expect(driver.portCalls("jarvis.availability$")).toBe(1);
+    expect(driver.jarvisAvailabilitySubscriptions()).toBe(2);
+    expect(driver.jarvisUsageSubscriptions()).toBe(1);
+  });
+
   it("the narratorConfig seed reaches ports.narratorConfig", () => {
     const { ports } = scriptPorts(createBasePorts(), {
       narratorConfig: { windowSize: 8 },

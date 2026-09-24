@@ -504,12 +504,13 @@ export function describePortDisciplineContract(
       }
     });
 
-    it("jarvis: the app asks for availability once and registers ONE history source, and confirms nothing, however many cores compose it", async () => {
+    it("jarvis: the app subscribes availability once and registers ONE history source, and confirms nothing, however many cores compose it", async () => {
       const h = makeHarness();
 
       try {
         await settle();
         expect(h.driver.portCalls("jarvis.availability$")).toBe(1);
+        expect(h.driver.jarvisAvailabilitySubscriptions()).toBe(1);
         expect(h.driver.portCalls("jarvis.setHistorySource")).toBe(1);
         expect(h.driver.portCalls("jarvis.confirm")).toBe(0);
         expect(h.driver.jarvisHistory()).not.toBe(null);
@@ -533,6 +534,7 @@ export function describePortDisciplineContract(
         await settle();
         third.unsubscribe();
         expect(h.driver.portCalls("jarvisUsage.usage$")).toBe(1);
+        expect(h.driver.jarvisUsageSubscriptions()).toBe(1);
       } finally {
         await h.teardown();
       }

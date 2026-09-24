@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DriveOutcome } from "@rtc/core-api";
-import { DRIVE_STAGGER_MS } from "@rtc/domain";
+import { DRIVE_STAGGER_MS, MAX_DOCKED_PANELS } from "@rtc/domain";
 
 import { type FakeClock, withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
@@ -119,47 +119,139 @@ export function describeJarvisDriverContract(
       });
     });
 
-    it("per kind: an unknown watchlist symbol and an indicator already at the requested value are skipped; setTheme and setPowerSaver write their preference", async () => {
+    it("equities: a watchlist symbol is selected, an unknown one is skipped 'unknown symbol'; an indicator or pane not at the requested value toggles, one already there is skipped 'already set'", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness({ watchlist: [AAPL, MSFT] });
         const pause = clockPause(clock);
 
         try {
-          h.app.presenters.powerSaver.setLevel("freeze");
-          await pause();
-          const indicators = (
-            await readLatest(h.app.presenters.eqWorkspace.state$, pause)
-          ).indicators;
+          await freeze(h, clock);
+          const before = await readLatest(
+            h.app.presenters.eqWorkspace.state$,
+            pause,
+          );
+          const smaOn = before.indicators.includes("sma20");
+          const rsiOn = before.panes.includes("rsi");
           await driveBatch(
             h,
             [
+              { kind: "eqSelect", symbol: MSFT.symbol },
               { kind: "eqSelect", symbol: "NOT-A-SYMBOL" },
-              {
-                kind: "eqIndicator",
-                id: "sma20",
-                on: indicators.includes("sma20"),
-              },
+              { kind: "eqIndicator", id: "sma20", on: !smaOn },
+              { kind: "eqIndicator", id: "sma20", on: !smaOn },
+              { kind: "eqPane", id: "rsi", on: !rsiOn },
+              { kind: "eqPane", id: "rsi", on: !rsiOn },
+            ],
+            pause,
+          );
+          await applyZeroStagger(clock);
+          expect(await batchResults(h, pause)).toEqual([
+            ["applied", undefined],
+            ["skipped", 'unknown symbol "NOT-A-SYMBOL"'],
+            ["applied", undefined],
+            ["skipped", "already set"],
+            ["applied", undefined],
+            ["skipped", "already set"],
+          ]);
+          const after = await readLatest(
+            h.app.presenters.eqWorkspace.state$,
+            pause,
+          );
+          expect(after.sel).toBe(MSFT.symbol);
+          expect(after.indicators.includes("sma20")).toBe(!smaOn);
+          expect(after.panes.includes("rsi")).toBe(!rsiOn);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("eqSelect before the watchlist has loaded is skipped 'watchlist not loaded', never 'unknown symbol'", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness();
+        const pause = clockPause(clock);
+
+        try {
+          await driveBatch(
+            h,
+            [{ kind: "eqSelect", symbol: MSFT.symbol }],
+            pause,
+          );
+          await applyZeroStagger(clock);
+          expect(await batchResults(h, pause)).toEqual([
+            ["skipped", "watchlist not loaded"],
+          ]);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("setTheme and setPowerSaver write their preference", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness();
+        const pause = clockPause(clock);
+
+        try {
+          await freeze(h, clock);
+          await driveBatch(
+            h,
+            [
               { kind: "setTheme", skin: "terminal" },
               { kind: "setPowerSaver", level: "calm" },
             ],
             pause,
           );
           await applyZeroStagger(clock);
-          expect(await batchStatuses(h, pause)).toEqual([
-            "skipped",
-            "skipped",
-            "applied",
-            "applied",
-          ]);
+          expect(await batchStatuses(h, pause)).toEqual(["applied", "applied"]);
           expect(
             await readLatest(h.app.presenters.themeSkinPreference.skin$, pause),
           ).toBe("terminal");
           expect(
-            (await readLatest(h.app.presenters.eqWorkspace.state$, pause)).sel,
-          ).toBe(AAPL.symbol);
-          expect(
             await readLatest(h.app.presenters.powerSaver.level$, pause),
           ).toBe("calm");
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("dockPanel of an unknown id, of a docked panel, and past MAX_DOCKED_PANELS is skipped with its reason; nothing more docks", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness();
+        const pause = clockPause(clock);
+
+        try {
+          await freeze(h, clock);
+          const docked = Array.from({ length: MAX_DOCKED_PANELS }, (_, i) => {
+            return `p${i}`;
+          });
+          await spawnPanels(h, docked, pause);
+          await driveBatch(
+            h,
+            docked.map((panelId): DriveCommand => {
+              return { kind: "dockPanel", panelId };
+            }),
+            pause,
+          );
+          await applyZeroStagger(clock);
+          await spawnPanels(h, ["overflow"], pause);
+          await driveBatch(
+            h,
+            [
+              { kind: "dockPanel", panelId: "nope" },
+              { kind: "dockPanel", panelId: "p0" },
+              { kind: "dockPanel", panelId: "overflow" },
+            ],
+            pause,
+          );
+          await applyZeroStagger(clock);
+          expect(await batchResults(h, pause)).toEqual([
+            ["skipped", 'unknown panelId "nope"'],
+            ["skipped", "already docked"],
+            ["skipped", "dock full"],
+          ]);
+          expect(await dockedIds(h, pause)).toEqual(docked);
         } finally {
           await h.teardown();
         }
@@ -287,6 +379,17 @@ async function batchTabs(
   );
 }
 
+async function batchResults(
+  h: CoreHarness,
+  pause: () => Promise<void>,
+): Promise<[string, string | undefined][]> {
+  return (
+    await readLatest(h.app.presenters.jarvisDriver.state$, pause)
+  ).lastBatch.map((outcome): [string, string | undefined] => {
+    return [outcome.status, outcome.reason];
+  });
+}
+
 async function batchStatuses(
   h: CoreHarness,
   pause: () => Promise<void> = settle,
@@ -310,7 +413,7 @@ async function applyZeroStagger(clock: FakeClock): Promise<void> {
 }
 
 /** More steps than any batch here has commands. */
-const ZERO_STAGGER_STEPS = 5;
+const ZERO_STAGGER_STEPS = 8;
 
 /** Power-saver freeze: every batch applies without a stagger. */
 async function freeze(h: CoreHarness, clock: FakeClock): Promise<void> {

@@ -23,15 +23,25 @@ describe("createJarvisController — guards every core's timing relies on", () =
     expect(tick(state)).toBe(state);
   });
 
-  it("the expiry tick still declines through the port but leaves another pending card alone", () => {
+  it("the expiry tick for a card that is no longer pending tells the port nothing — a late tick must never decline a trade already resolved", () => {
     const controller = createJarvisController();
     const confirm = vi.fn();
     const state = createPendingState("other");
 
     const expiry = controller.confirmTickPatch("stale", 60, 60, confirm);
 
-    expect(confirm).toHaveBeenCalledWith("stale", false);
     expect(expiry(state)).toBe(state);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("the expiry tick for the pending card declines it through the port and clears it", () => {
+    const controller = createJarvisController();
+    const confirm = vi.fn();
+
+    const expiry = controller.confirmTickPatch("c-1", 60, 60, confirm);
+
+    expect(expiry(createPendingState("c-1")).pendingConfirmation).toBe(null);
+    expect(confirm).toHaveBeenCalledWith("c-1", false);
   });
 
   it("a stray event after a turn's done changes no entry — the finished turn is no longer the target", () => {

@@ -314,6 +314,35 @@ function describeJarvisTurnCases(makeHarness: MakeHarness): void {
       }
     });
 
+    it("a row appended mid-turn does not hijack the streaming reply: later deltas and the done still land on the turn's own stub", async () => {
+      const h = makeHarness();
+
+      try {
+        h.app.presenters.jarvis.intents.send("go");
+        await settle();
+        h.driver.replyJarvis([{ type: "delta", text: "a" }]);
+        await settle();
+        h.app.presenters.jarvis.intents.recordDriveOutcome({
+          command: { kind: "switchTab", tab: "credit" },
+          status: "applied",
+        });
+        await settle();
+        await completeTurn(h, [{ type: "delta", text: "b" }]);
+        const rows = (await readJarvis(h)).entries.slice(1);
+        expect(
+          rows.map((row: JarvisEntry) => {
+            return [row.role, row.text, row.done];
+          }),
+        ).toEqual([
+          ["user", "go", true],
+          ["jarvis", "ab", true],
+          ["jarvis", "drive: switchTab", true],
+        ]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("skin follows the stored preference, and setSkin writes it", async () => {
       const h = makeHarness();
 

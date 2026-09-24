@@ -393,6 +393,13 @@ export interface ScriptedDriver {
   jarvisHistory(): readonly JarvisHistoryEntry[] | null;
   /** Push the next `jarvisUsage.usage$()` snapshot. */
   pushJarvisUsage(payload: JarvisUsagePayload): void;
+  /** Subscriptions to anything `jarvis.availability$()` returned. On the
+   * real WS adapter EACH one is a fresh server request, so this — not the
+   * call count — is what "asked once" means. */
+  jarvisAvailabilitySubscriptions(): number;
+  /** Subscriptions to anything `jarvisUsage.usage$()` returned — each one a
+   * wire subscribe on the real adapter. */
+  jarvisUsageSubscriptions(): number;
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
@@ -405,13 +412,13 @@ export interface ScriptedDriver {
 }
 
 /** One `jarvis.ask` the core made. */
-export interface JarvisAskRecord {
+interface JarvisAskRecord {
   readonly text: string;
   readonly options: JarvisAskOptions | undefined;
 }
 
 /** One `jarvis.confirm` the core made. */
-export interface JarvisConfirmRecord {
+interface JarvisConfirmRecord {
   readonly id: string;
   readonly approved: boolean;
 }
@@ -482,6 +489,8 @@ export function scriptPorts(
   );
   const usage$ = new Subject<JarvisUsagePayload>();
   let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
+  let availabilitySubscriptions = 0;
+  let usageSubscriptions = 0;
 
   if (seed.workspaceLayout !== undefined) {
     base.preferences.setWorkspaceLayout(seed.workspaceLayout);
@@ -815,7 +824,10 @@ export function scriptPorts(
         confirmations.push({ id: confirmationId, approved });
       },
       availability$: (): Observable<JarvisAvailability> => {
-        return availability$;
+        return defer(() => {
+          availabilitySubscriptions += 1;
+          return availability$;
+        });
       },
       setHistorySource: (source: () => readonly JarvisHistoryEntry[]) => {
         historySource = source;
@@ -828,7 +840,10 @@ export function scriptPorts(
   const jarvisUsage = countCalls<JarvisUsagePort>(
     {
       usage$: (): Observable<JarvisUsagePayload> => {
-        return usage$;
+        return defer(() => {
+          usageSubscriptions += 1;
+          return usage$;
+        });
       },
     },
     calls,
@@ -1068,6 +1083,12 @@ export function scriptPorts(
       },
       pushJarvisUsage: (payload: JarvisUsagePayload) => {
         usage$.next(payload);
+      },
+      jarvisAvailabilitySubscriptions: () => {
+        return availabilitySubscriptions;
+      },
+      jarvisUsageSubscriptions: () => {
+        return usageSubscriptions;
       },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];
