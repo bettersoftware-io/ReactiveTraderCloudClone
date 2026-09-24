@@ -42,3 +42,23 @@ Task 3. No conflict found between the plan's rulings and the tasks.
   `@rtc/shared` — cost if wrong: none, the derivations are exact.
   Ruling: the harness now REPLACES `ports.jarvis` for every suite (no earlier
   suite used it).
+- Task 3: complete — twelve members' suites + `jarvis.ask` discipline;
+  RxJS runner 304/304, async 304/304, Effect 304/304 (they delegate);
+  mutation against the RxJS core 46/46 killed (one mutant per contract
+  point, in the SHARED controllers where the rules now live and in the
+  RxJS shells: membership sort/distinct, the writer debounce, both
+  persist-kick filters, the inert handle dispose).
+  - Ruling: the suites live in five files (`layout.ts`, `dock.ts`,
+    `reset.ts`, `layoutPresets.ts`, `reportDetachedPanels.ts`, plus
+    `jarvisPanels.ts`) exporting one describe function per member, not the
+    plan's twelve files — the members share fixtures and the grouping
+    follows the plan's own ruling-6 headings — cost if wrong: none.
+  - Ruling: a contract point the plan missed — a docked panel is restored,
+    docked, into the tab it was docked into, in the next session. Without
+    it the "boot restores docked panels" mutant would have survived.
+  - The suite-local kit (`suites/workspaceKit.ts`) reads every stream
+    through a FRESH subscriber and throws when nothing arrived (absence is
+    never a value).
+  - Uncontracted (ledgered, per plan ruling 6): the unsupported-sentinel
+    panel path — the sentinel is minted by the adapters and unreachable
+    from ports.
