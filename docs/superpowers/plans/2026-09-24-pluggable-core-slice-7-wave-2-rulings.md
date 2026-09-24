@@ -23,3 +23,19 @@ Copied from the git-ignored SDD ledger so it survives the worktree.
 - Task 3: Ruling: driver freeze cases step the fake clock 5×1 ms (applyZeroStagger) — each zero-delay command is scheduled only after the previous lands; far below DRIVE_STAGGER_MS so a staggering batch would still fail — cost if wrong: none.
 - Task 3: Ruling: a batch-serialisation mutant in the RxJS driver shell (concatMap→mergeMap) was NOT run — the shell imports no merge operator, so it needs a two-edit mutant the script can't express; the contract case "second batch waits for the first" is the pin, re-proven when each sibling is ported — cost if wrong: an unproven case on RxJS only.
 - Task 3: mutation — suites 43/43 (after 2 test fixes: toggle clears unread; unknown-symbol needs a loaded watchlist), harness 6/6.
+
+## PR A — gauntlet and review
+
+- PR A gauntlet (1st): 4 red, all mine — knip (2 exported harness record types), typecheck + both ui-contract gates (the clients' viewModelFromWorld dock bridge returned void; the driver now reads a void as refused). Fixed: the fixture bridge returns boolean; the types are module-local. Re-run green.
+- Final: fixed I1 base usage port opened under nativeJarvis — seams witness usage:0 RED→GREEN (JarvisUsagePresenter defers the port call).
+- Final: fixed I2 discipline counted calls not subscriptions — harness subscription counters RED→GREEN, discipline asserts them.
+- Final: fixed I3 driver per-kind vacuous — reasons asserted; applied eqSelect/eqIndicator/eqPane; watchlist-not-loaded; unknown/already-docked/dock-full cases; reader mutants killed.
+- Final: fixed I4 expiry decline unguarded — jarvisController.test RED→GREEN; decline now inside the pending-guarded patch (RxJS-identical).
+- Final: fixed I5 mid-turn append + demo behind a queued turn — two contract cases; mutants killed. Mutation 9/9; runners 367/367 ×3.
+- Final: minor (deferred): JarvisMachine binds port.confirm at construction (spy after construction bypassed).
+- Final: minor (deferred): driver shell reads powerSaverLevel$ for command 0 too (extra read per batch).
+- Final: minor (deferred): JarvisPatch doc should say patches are apply-exactly-once (id allocation, port calls).
+- Final: minor (deferred): stale "CommandEventTag above" comment in jarvisDriveCommands.ts.
+- Final: minor (deferred): demo freeze case uses zero-length pauses only — PR B/C may need a 1 ms hop (watch when porting).
+- Final: minor (deferred): no boundary check at DEMO_STEP_BEAT_MS−1 for the decline; narration copy only toContain("EURUSD").
+- Final: minor (deferred): the harness always seeds availability$ synchronously, so "first send before the first frame" is uncontracted — PR B/C unit tests own it.
