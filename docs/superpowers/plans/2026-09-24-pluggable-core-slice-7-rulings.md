@@ -96,3 +96,25 @@ taken:
    resize case asserts `initialPx` was set; the repeat dock checks the
    roster too.
 Runners 306/306 ×3; client-core 3059/3059; mutation on the fixes 5/5.
+
+## Wave 1 · PR B (the async core)
+
+- Task 4: the twelve native on the Store/Topic kernel — `machines/layout.ts`,
+  `presenters/jarvisPanels.ts`, `presenters/workspace.ts`; composition wires
+  the `CoreSeams.workspace` factory. Contract runner 307/307 native; unit
+  tests for the paths the suites don't reach (unsupported panels, the
+  priceHistory/blotter/unknown sources, a spec edit rebuilding its data,
+  the lifetime's end). Mutation 16/16 after two findings:
+  - `panels fold panel events only` SURVIVED — no suite had a turn of
+    non-panel events. New contract case in `jarvisPanels.ts` (RxJS passes).
+  - `the debounce restarts on a kick` SURVIVED, and so did its twin on the
+    `pending === window` guard: each mechanism hid the other. Ruling: the
+    abort is the ONE supersede mechanism, the guard is gone — cost if wrong:
+    none, an aborted `sleep` rejects.
+  - Ruling: `followPanelData` attaches to a panel's data through `relay`, not
+    a raw `.subscribe` — the kernel's convention that subscribing to rxjs
+    streams lives in `bridge/` — and `emptyStream` (the unsupported panel's
+    data) joins `bridge/out.ts`.
+  - Ruling: `composition.machineFactories.test.ts`'s "a delegated member is
+    still reference-identical" assertion flipped — `machines.layout` was the
+    last delegated machine; every machine factory is now native.
