@@ -12,7 +12,10 @@ import type {
   AppPorts,
   ColorSchemeSource,
   DockLayoutStore,
+  JarvisAskOptions,
+  JarvisAvailability,
   JarvisPort,
+  JarvisUsagePort,
   LayoutPresetStore,
   SessionStore,
   StoredSession,
@@ -22,6 +25,7 @@ import type {
 import type {
   AdminPort,
   AnalyticsPort,
+  AnomalyDetectorConfig,
   AuthOutcome,
   AuthPort,
   BlotterPort,
@@ -69,7 +73,11 @@ import type {
 } from "@rtc/domain";
 import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
-import type { JarvisEvent } from "#/harness/jarvisTypes";
+import type {
+  JarvisEvent,
+  JarvisHistoryEntry,
+  JarvisUsagePayload,
+} from "#/harness/jarvisTypes";
 import { createPendingQueue } from "#/harness/pendingQueue";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
@@ -107,7 +115,11 @@ export type PortMethodName =
   | "sessions.sessions$"
   | "admin.getThroughput"
   | "auth.login"
-  | "jarvis.ask";
+  | "jarvis.ask"
+  | "jarvis.confirm"
+  | "jarvis.availability$"
+  | "jarvis.setHistorySource"
+  | "jarvisUsage.usage$";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -139,6 +151,11 @@ export interface HarnessSeed {
   /** The preset store accepts every write and keeps none — blocked or full
    * storage, the `storage-failed` save outcome. */
   readonly presetStoreDropsWrites?: boolean;
+  /** What `jarvis.availability$()` replays first. Absent: the simulator's
+   * always-available, scripted-only value. */
+  readonly jarvisAvailability?: JarvisAvailability;
+  /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
+  readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
 }
 
 /** One `auth.login(username, password)` the core has subscribed. */
@@ -364,6 +381,18 @@ export interface ScriptedDriver {
   /** Reply to the OLDEST pending ask with `events`, in order; a trailing
    * `done`/`error` event also completes that turn. */
   replyJarvis(events: readonly JarvisEvent[]): void;
+  /** Every `jarvis.ask` ever subscribed, in order — its text and options —
+   * including the ones already replied to. */
+  askLog(): readonly JarvisAskRecord[];
+  /** Every `jarvis.confirm` call, in order. */
+  confirmations(): readonly JarvisConfirmRecord[];
+  /** Push the next `jarvis.availability$()` value. */
+  pushJarvisAvailability(availability: JarvisAvailability): void;
+  /** What the core's registered history source returns NOW, or `null`
+   * when no core has called `jarvis.setHistorySource`. */
+  jarvisHistory(): readonly JarvisHistoryEntry[] | null;
+  /** Push the next `jarvisUsage.usage$()` snapshot. */
+  pushJarvisUsage(payload: JarvisUsagePayload): void;
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
@@ -374,6 +403,26 @@ export interface ScriptedDriver {
    * (null when the harness supplied no store). */
   presetList(tab: WorkspaceTab): string | null;
 }
+
+/** One `jarvis.ask` the core made. */
+export interface JarvisAskRecord {
+  readonly text: string;
+  readonly options: JarvisAskOptions | undefined;
+}
+
+/** One `jarvis.confirm` the core made. */
+export interface JarvisConfirmRecord {
+  readonly id: string;
+  readonly approved: boolean;
+}
+
+/** The simulator's availability: always on, the scripted brain only. */
+const SIM_JARVIS_AVAILABILITY: JarvisAvailability = {
+  available: true,
+  brains: ["scripted"],
+  defaultBrain: "scripted",
+  gate: null,
+};
 
 export interface ScriptedPorts {
   ports: AppPorts;
@@ -426,6 +475,13 @@ export function scriptPorts(
   const throughputWrites = createPendingQueue<number, void>();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
   const asks = createPendingQueue<string, JarvisEvent>();
+  const askLog: JarvisAskRecord[] = [];
+  const confirmations: JarvisConfirmRecord[] = [];
+  const availability$ = new BehaviorSubject<JarvisAvailability>(
+    seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY,
+  );
+  const usage$ = new Subject<JarvisUsagePayload>();
+  let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
 
   if (seed.workspaceLayout !== undefined) {
     base.preferences.setWorkspaceLayout(seed.workspaceLayout);
@@ -746,16 +802,37 @@ export function scriptPorts(
 
   const jarvis = countCalls<JarvisPort>(
     {
-      ask: (text: string): Observable<JarvisEvent> => {
-        return asks.open(text);
+      ask: (
+        text: string,
+        options?: JarvisAskOptions,
+      ): Observable<JarvisEvent> => {
+        return defer(() => {
+          askLog.push({ text, options });
+          return asks.open(text);
+        });
       },
-      confirm: (): void => {
-        // Accepted and ignored: no suite settles a confirmation through the
-        // port — the turn's own events carry every outcome.
+      confirm: (confirmationId: string, approved: boolean): void => {
+        confirmations.push({ id: confirmationId, approved });
+      },
+      availability$: (): Observable<JarvisAvailability> => {
+        return availability$;
+      },
+      setHistorySource: (source: () => readonly JarvisHistoryEntry[]) => {
+        historySource = source;
       },
     },
     calls,
     "jarvis.",
+  );
+
+  const jarvisUsage = countCalls<JarvisUsagePort>(
+    {
+      usage$: (): Observable<JarvisUsagePayload> => {
+        return usage$;
+      },
+    },
+    calls,
+    "jarvisUsage.",
   );
 
   const sessionStore: SessionStore = {
@@ -786,6 +863,8 @@ export function scriptPorts(
       sessionStore,
       bootSplash,
       jarvis,
+      jarvisUsage,
+      narratorConfig: seed.narratorConfig ?? base.narratorConfig,
       dockLayoutStore,
       layoutPresetStore,
       preferences,
@@ -975,6 +1054,21 @@ export function scriptPorts(
           asks.complete();
         }
       },
+      askLog: () => {
+        return [...askLog];
+      },
+      confirmations: () => {
+        return [...confirmations];
+      },
+      pushJarvisAvailability: (availability: JarvisAvailability) => {
+        availability$.next(availability);
+      },
+      jarvisHistory: () => {
+        return historySource === null ? null : historySource();
+      },
+      pushJarvisUsage: (payload: JarvisUsagePayload) => {
+        usage$.next(payload);
+      },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];
         base.preferences
@@ -1057,6 +1151,8 @@ export function scriptPorts(
       throughputWrites.drain();
       logins.drain();
       asks.drain();
+      availability$.complete();
+      usage$.complete();
     },
   };
 }
