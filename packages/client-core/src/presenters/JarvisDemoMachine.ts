@@ -32,7 +32,11 @@ import type {
   JarvisDemoStep,
   JarvisIntents,
 } from "@rtc/core-api";
-import type { PowerSaverLevel } from "@rtc/domain";
+import {
+  DEMO_STEP_BEAT_MS,
+  DEMO_STEP_TIMEOUT_MS,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
@@ -76,34 +80,9 @@ export interface JarvisDemoDeps {
   readonly scheduler?: SchedulerLike;
 }
 
-/** How long the demo pauses between one step settling and the next step's
- * `sendScripted` — the visible "beat" that gives a viewer time to actually
- * read what just happened. Collapses to 0 under power-saver `"freeze"`
- * (read fresh per step from `powerSaverLevel$`, mirroring
- * `JarvisDriverMachine.DRIVE_STAGGER_MS`'s identical motion-free
- * guarantee — `docs/performance.md`/`docs/power-saver-mode.md`). */
-export const DEMO_STEP_BEAT_MS = 1200;
-
-/** Upper bound on how long ONE step may wait for its turn to settle before
- * the whole demo gives up and aborts to idle — the SAME abort path an
- * errored turn takes (`runStepPatches$`'s doc): both throw, and
- * `runDemo$`'s `catchError` funnels either one to the identical
- * reopen-and-reset tail.
- *
- * Exists because `sendScripted` is a SILENT no-op while `JarvisMachine`'s
- * `available` is false (`JarvisMachine.ts`'s `turnRequests$` `concatMap`:
- * `if (!available) return EMPTY;` — no user/jarvis entry pair ever appears,
- * so `runStep`'s own settle detection has nothing to observe, and no
- * `jarvisEvents$` emission ever arrives either). A WS-mode disconnect mid-demo
- * would otherwise pin `JarvisDemoState.running` at `true` forever with no
- * way out — worse, if it happens to die on step 7, the overlay stays closed
- * (`closesOverlay`) permanently too. `runStep`'s `timeout({ first: ... })`
- * wrapper measures from SUBSCRIBE (i.e. from `sendScripted` being called) to
- * the step's one-and-only settle emission, so a normal turn (deltas complete
- * in well under a second) is never at risk — 30s is comfortably above any
- * real scripted-brain turn while still short enough that a genuinely stuck
- * demo self-heals inside one viewing. */
-export const DEMO_STEP_TIMEOUT_MS = 30_000;
+/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
+ * contract suites can read them (pluggable-core slice 7 wave 2). */
+export { DEMO_STEP_BEAT_MS, DEMO_STEP_TIMEOUT_MS };
 
 /** Looks up one command string from `JARVIS_GUIDE_CATALOG` by section title
  * + item index, so `JARVIS_DEMO_STEPS` below never re-types a command that

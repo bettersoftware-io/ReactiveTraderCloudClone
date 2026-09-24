@@ -47,7 +47,6 @@ import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore"
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { readPreferenceNow } from "#/adapters/readPreferenceNow";
-import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import {
   createDefaultLayoutPort,
@@ -259,11 +258,12 @@ export function historyEntriesExcludingInFlightTurn(
 
 /**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
- * chat-history replay source — only when `ports.jarvis` is a
- * `WsJarvisAdapter` (WS-real mode; `jarvisPort.ts`'s surface stays unchanged,
- * so this is an instanceof check rather than a port-interface method).
- * Simulator mode's `ScriptedJarvisAdapter` has no `setHistorySource` and
- * needs none — its brain already runs against the live application state
+ * chat-history replay source — only when `ports.jarvis` offers the
+ * optional `setHistorySource` (`WsJarvisAdapter`, WS-real mode; an optional
+ * port member rather than an instanceof check since pluggable-core slice 7
+ * wave 2, so a port that cannot be that class — an alternative core's, the
+ * contract harness's — is wired the same way). Simulator mode's
+ * `ScriptedJarvisAdapter` has no `setHistorySource` and needs none — its brain already runs against the live application state
  * directly, with no wire history to replay.
  *
  * Late-bound rather than constructor-injected: `JarvisMachine` (built here,
@@ -301,7 +301,7 @@ function wireJarvisHistorySource(
   jarvisPort: AppPorts["jarvis"],
   jarvisMachine: Presenters["jarvis"],
 ): void {
-  if (!(jarvisPort instanceof WsJarvisAdapter)) {
+  if (jarvisPort.setHistorySource === undefined) {
     return;
   }
 
@@ -450,17 +450,13 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     setSkin: (s: JarvisSkin): void => {
       ports.preferences.setJarvisSkin(s);
     },
-    // Only WsJarvisAdapter (WS-real mode) exposes availability$ — see
-    // wireJarvisHistorySource's doc above for why this is an instanceof
-    // check rather than a JarvisPort method (jarvisPort.ts's surface stays
-    // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
+    // Only WsJarvisAdapter (WS-real mode) offers the optional
+    // availability$ — see wireJarvisHistorySource's doc above for why it is
+    // an optional port member. Simulator mode's ScriptedJarvisAdapter has none and
     // needs none: createJarvisMachine defaults an absent availability$ to
     // an always-available, scripted-only value, so sim stays permanently
     // available offering only the scripted brain.
-    availability$:
-      ports.jarvis instanceof WsJarvisAdapter
-        ? ports.jarvis.availability$()
-        : undefined,
+    availability$: ports.jarvis.availability$?.(),
     preferredBrain$: ports.preferences.jarvisBrain$(),
     effort$: ports.preferences.jarvisEffort$(),
   });

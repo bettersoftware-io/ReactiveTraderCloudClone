@@ -21,6 +21,8 @@ import {
   type CurrencyPair,
   detectAnomalies,
   type JarvisNarratorPreference,
+  MAX_NARRATIONS_PER_SESSION,
+  NARRATION_COOLDOWN_MS,
   type PriceTick,
 } from "@rtc/domain";
 
@@ -94,20 +96,9 @@ export interface NarratorDeps {
   readonly config?: Partial<AnomalyDetectorConfig>;
 }
 
-/** How long a successful narration silences the channel — measured on
- * `NarratorDeps.scheduler` (`scheduler.now()`), NEVER `Date.now()` directly,
- * so the gate is deterministic under a `TestScheduler`'s virtual time in
- * tests and still correct in production (the default scheduler's `now()`
- * IS `Date.now()` — see `deps.scheduler`'s doc). */
-export const NARRATION_COOLDOWN_MS = 300_000;
-
-/** Hard per-session cap: the 5th surviving anomaly (and every one after it)
- * is dropped forever, regardless of how long it has been since the last
- * narration. Session-lifetime — there is no reset, matching this machine's
- * own session-lifetime composition-root lifecycle (mirrors
- * `JarvisPanelsMachine`/`JarvisDriverMachine`: built once, never
- * re-composed per consumer). */
-export const MAX_NARRATIONS_PER_SESSION = 4;
+/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
+ * contract suites can read them (pluggable-core slice 7 wave 2). */
+export { MAX_NARRATIONS_PER_SESSION, NARRATION_COOLDOWN_MS };
 
 /** The pinned narration copy (T7 review ruling): the vol channel detects a
  * large single-tick MOVE against the window's own trailing σ, not a rise in

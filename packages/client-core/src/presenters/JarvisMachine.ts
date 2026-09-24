@@ -34,6 +34,9 @@ import {
   DEFAULT_JARVIS_SKIN,
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
+  JARVIS_CONFIRM_TIMEOUT_MS,
+  JARVIS_GREETING,
+  JARVIS_NARRATION_PREFIX,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
@@ -77,17 +80,9 @@ export interface JarvisDeps {
   confirmTimeoutMs?: number;
 }
 
-export const JARVIS_CONFIRM_TIMEOUT_MS = 60_000;
-export const JARVIS_GREETING =
-  "Good morning, sir. J.A.R.V.I.S online — all trading systems nominal. " +
-  "I can quote the majors, report the movers, brief you on the desk, or execute FX orders. How may I assist?";
-
-/** The literal prefix a `narrate()` prompt is expected to carry (per
- * `NarratorMachine`'s pinned prompt format — see its doc). `narrate()`
- * strips this for the transcript's DISPLAY text but forwards the prompt
- * unchanged (prefix included) to `port.ask` as the wire text — see
- * `JarvisIntents.narrate`'s doc. */
-export const JARVIS_NARRATION_PREFIX = "[narration] ";
+/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
+ * contract suites can read them (pluggable-core slice 7 wave 2). */
+export { JARVIS_CONFIRM_TIMEOUT_MS, JARVIS_GREETING, JARVIS_NARRATION_PREFIX };
 
 /** Strip `JARVIS_NARRATION_PREFIX` from a narrate prompt for display; a
  * prompt without the prefix passes through unchanged (defensive — every

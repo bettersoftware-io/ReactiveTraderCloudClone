@@ -6,6 +6,7 @@ import type { PriceTick } from "../fx/price.js";
 import {
   type AnomalyDetectorConfig,
   type AnomalyEvent,
+  createAnomalyDetector,
   DEFAULT_ANOMALY_CONFIG,
   detectAnomalies,
 } from "./anomalyDetector.js";
@@ -250,6 +251,45 @@ describe("detectAnomalies — vol spike", () => {
   };
 });
 
+describe("createAnomalyDetector — the synchronous step", () => {
+  it("returns, tick by tick, exactly the events detectAnomalies emits for the same series", async () => {
+    const ticks = createEdgeTriggerSeries();
+    const step = createAnomalyDetector(edgeCfg);
+    const stepped = ticks.flatMap((tick) => {
+      return [...step(tick)];
+    });
+
+    expect(stepped).toHaveLength(2);
+    expect(stepped).toEqual(await collect(ticks, edgeCfg));
+  });
+
+  it("returns an empty array for a tick that crosses nothing", () => {
+    const step = createAnomalyDetector(edgeCfg);
+
+    expect(step(spikeSpreadTick("EURUSD", 0))).toEqual([]);
+  });
+
+  it("keeps its windows per instance: a fresh detector starts cold", () => {
+    const ticks = createEdgeTriggerSeries();
+    const warm = createAnomalyDetector(edgeCfg);
+
+    for (const tick of ticks.slice(0, 36)) {
+      warm(tick);
+    }
+
+    const cold = createAnomalyDetector(edgeCfg);
+    const spike = spikeSpreadTick("EURUSD", 36);
+
+    expect(cold(spike)).toEqual([]);
+    expect(warm(spike)).toHaveLength(1);
+  });
+
+  const edgeCfg: Partial<AnomalyDetectorConfig> = {
+    windowSize: 100,
+    minWindowFill: 36,
+  };
+});
+
 describe("detectAnomalies — self-silencing / adaptivity", () => {
   it("a sustained wide-spread regime produces exactly one emission, not one per tick", async () => {
     const cfg: Partial<AnomalyDetectorConfig> = {
@@ -331,6 +371,24 @@ async function collect(
   config: Partial<AnomalyDetectorConfig>,
 ): Promise<AnomalyEvent[]> {
   return lastValueFrom(detectAnomalies(of(...ticks), config).pipe(toArray()));
+}
+
+/** The edge-trigger case's series: 36 jittered baseline ticks, then
+ * spike, spike, baseline, spike — two spread crossings. */
+function createEdgeTriggerSeries(): PriceTick[] {
+  const ticks: PriceTick[] = [];
+  let i = 0;
+  let parity = 0;
+
+  for (let n = 0; n < 36; n++) {
+    ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++));
+  }
+
+  ticks.push(spikeSpreadTick("EURUSD", i++));
+  ticks.push(spikeSpreadTick("EURUSD", i++));
+  ticks.push(jitteredBaselineSpreadTick("EURUSD", parity++, i++));
+  ticks.push(spikeSpreadTick("EURUSD", i++));
+  return ticks;
 }
 
 function flatBaselineSpreadTick(symbol: string, i: number): PriceTick {

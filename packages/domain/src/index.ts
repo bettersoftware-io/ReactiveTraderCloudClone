@@ -131,9 +131,19 @@ export type {
   AnomalyEvent,
 } from "./jarvis/anomalyDetector.js";
 export {
+  createAnomalyDetector,
   DEFAULT_ANOMALY_CONFIG,
   detectAnomalies,
 } from "./jarvis/anomalyDetector.js";
+export {
+  DEMO_STEP_BEAT_MS,
+  DEMO_STEP_TIMEOUT_MS,
+  JARVIS_CONFIRM_TIMEOUT_MS,
+  JARVIS_GREETING,
+  JARVIS_NARRATION_PREFIX,
+  MAX_NARRATIONS_PER_SESSION,
+  NARRATION_COOLDOWN_MS,
+} from "./jarvis/jarvisConstants.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { AuthOutcome, AuthPort } from "./ports/authPort.js";
