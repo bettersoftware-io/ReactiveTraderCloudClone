@@ -370,13 +370,19 @@ function describeJarvisOverlayCases(makeHarness: MakeHarness): void {
       }
     });
 
-    it("a turn done while closed counts one unread; opening clears it", async () => {
+    it("a turn done while closed counts one unread; opening — by open or by toggle — clears it", async () => {
       const h = makeHarness();
 
       try {
         await sendTurn(h, "q");
         expect((await readJarvis(h)).unread).toBe(1);
         h.app.presenters.jarvis.intents.open();
+        await settle();
+        expect((await readJarvis(h)).unread).toBe(0);
+        h.app.presenters.jarvis.intents.close();
+        await sendTurn(h, "again");
+        expect((await readJarvis(h)).unread).toBe(1);
+        h.app.presenters.jarvis.intents.toggle();
         await settle();
         expect((await readJarvis(h)).unread).toBe(0);
       } finally {

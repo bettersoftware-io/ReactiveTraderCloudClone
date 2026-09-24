@@ -5,6 +5,7 @@ import { DRIVE_STAGGER_MS } from "@rtc/domain";
 
 import { type FakeClock, withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
+import { AAPL, MSFT } from "#/harness/fixtures";
 import type { CoreHarness, MakeHarness } from "#/harness/harness";
 import type { DriveCommand } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
@@ -120,7 +121,7 @@ export function describeJarvisDriverContract(
 
     it("per kind: an unknown watchlist symbol and an indicator already at the requested value are skipped; setTheme and setPowerSaver write their preference", async () => {
       await withFakeClock(async (clock) => {
-        const h = makeHarness();
+        const h = makeHarness({ watchlist: [AAPL, MSFT] });
         const pause = clockPause(clock);
 
         try {
@@ -153,6 +154,9 @@ export function describeJarvisDriverContract(
           expect(
             await readLatest(h.app.presenters.themeSkinPreference.skin$, pause),
           ).toBe("terminal");
+          expect(
+            (await readLatest(h.app.presenters.eqWorkspace.state$, pause)).sel,
+          ).toBe(AAPL.symbol);
           expect(
             await readLatest(h.app.presenters.powerSaver.level$, pause),
           ).toBe("calm");
