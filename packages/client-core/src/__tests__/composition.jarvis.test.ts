@@ -14,7 +14,7 @@ import {
 import type { JarvisEvent } from "@rtc/shared";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { JarvisPort } from "#/adapters/jarvisPort";
+import type { JarvisAvailability, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
 import { DRIVE_STAGGER_MS } from "#/presenters/JarvisDriverMachine";
@@ -54,6 +54,34 @@ describe("composition — jarvis wiring", () => {
     const state = await firstValueFrom(presenters.jarvis.state$);
     expect(state.skin).toBe("reactor");
     expect(await firstValueFrom(preferences.jarvisSkin$())).toBe("reactor");
+
+    presenters.jarvis.dispose();
+  });
+
+  it("reads availability from any jarvis port that offers availability$, not only a WsJarvisAdapter", async () => {
+    const sim = createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+
+    const jarvis = {
+      ask: sim.jarvis.ask.bind(sim.jarvis),
+      confirm: sim.jarvis.confirm.bind(sim.jarvis),
+      availability$: (): Observable<JarvisAvailability> => {
+        return of(createUnavailable());
+      },
+    };
+
+    const { presenters } = createApp({
+      ...sim,
+      jarvis,
+      connectionEvents: new ConnectionEventsSimulator(),
+    });
+
+    const state = await firstValueFrom(presenters.jarvis.state$);
+
+    expect(state.available).toBe(false);
 
     presenters.jarvis.dispose();
   });
@@ -238,6 +266,10 @@ describe("composition — jarvis wiring", () => {
     presenters.jarvis.dispose();
   });
 });
+
+function createUnavailable(): JarvisAvailability {
+  return { available: false, brains: [], defaultBrain: "scripted", gate: null };
+}
 
 function createExplodingJarvisPort(): JarvisPort {
   return {
