@@ -260,8 +260,20 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 6, fifty-eight of 74 members are **native** (the 74th, `layoutPresets`,
-arrived delegated with Dockview Phase 6b). Slice 5 added the nine admin
+As of slice 7's wave 1, seventy of 74 members are **native** (the 74th,
+`layoutPresets`, arrived delegated with Dockview Phase 6b; the four left
+are Jarvis's, wave 2). Wave 1 added the workspace — built by the
+`CoreSeams.workspace` factory on a child of the app host, outside the Layer
+graph (its input, the base's Jarvis events, only exists inside the base's
+`createApp`): per-tab layout machines and the panels roster as `SyncRef`s
+(`SubscriptionRef`s committed with `runSync`, whose in-core mirrors hear a
+change synchronously — the workspace's sync-fold contract), each live
+panel's data as a `sharedFold` over the shared frame steps
+(`Stream.zipLatestAll` for multi-symbol sources), `panelData$` as a
+`sharedFold` that switches with the roster, and the persist debounce as an
+`Effect.sleep` fiber — all over `@rtc/client-core`'s shared
+`createWorkspaceDock` / `createLayoutPresetsController` /
+`writeWorkspaceLayout`. Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
 `sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
 `throughput` (a `SubscriptionRef`, a debounce fiber and `createRunSlot`), and
