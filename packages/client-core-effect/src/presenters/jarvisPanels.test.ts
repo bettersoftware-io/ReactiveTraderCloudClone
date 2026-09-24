@@ -45,7 +45,15 @@ describe("jarvisPanels (effect)", () => {
       },
     });
     expect(completed).toBe(true);
-    expect(await latest(presenter.panelData$("bad"))).toBe(null);
+    // Synchronously, as the RxJS presenter's `of(null)`: no tick first.
+    const immediate: (PanelData | null)[] = [];
+    presenter
+      .panelData$("bad")
+      .subscribe((value) => {
+        immediate.push(value);
+      })
+      .unsubscribe();
+    expect(immediate).toEqual([null]);
   });
 
   it("a priceHistory panel renders once every symbol has a history", async () => {
