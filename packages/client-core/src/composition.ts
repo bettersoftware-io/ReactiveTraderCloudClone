@@ -39,7 +39,7 @@ import type {
   Price,
   ThemeSkin,
 } from "@rtc/domain";
-import type { JarvisHistoryEntry } from "@rtc/shared";
+import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import { createAuthDeps } from "#/adapters/authDeps";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
@@ -53,10 +53,8 @@ import {
   createDefaultLayoutPort,
   type WorkspaceTab,
 } from "#/layout/defaultLayoutPort";
-import type { LayoutNode, LayoutState } from "#/layout/layoutPort";
-import { isPanelInstanceId } from "#/layout/panelInstances";
-import { parseWorkspaceLayout } from "#/layout/workspaceLayoutPersistence";
-import type { DockedPanelPlacement } from "#/layout/workspacePersistenceWriter";
+import type { LayoutState } from "#/layout/layoutPort";
+import { createWorkspaceDock, LAYOUT_PANEL_IDS } from "#/layout/workspaceDock";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
 import {
   AmbientStylePresenter,
@@ -222,59 +220,10 @@ export function firstWatchlistSymbol$(
   );
 }
 
-/** Every `PanelId` reachable in one layout tree, walked from its root — a
- * `"panel"` leaf contributes its own id, a `"split"` node contributes its
- * children's. Pure and static (the default trees never change at runtime),
- * so `LAYOUT_PANEL_IDS` below computes this once per tab at module load
- * rather than per `JarvisDriverMachine` call. */
-function collectPanelIds(node: LayoutNode): readonly string[] {
-  if (node.kind === "panel") {
-    return [node.panelId];
-  }
-
-  return node.children.flatMap(collectPanelIds);
-}
-
-const WORKSPACE_TABS: readonly WorkspaceTab[] = [
-  "fx",
-  "credit",
-  "equities",
-  "admin",
-];
-
-/** `JarvisDriverMachine`'s `knownLayoutPanelIds` dep source: the static panel
- * ids in each tab's DEFAULT layout tree (e.g. "fx-rates", "eq-chart") — the
- * `"layout"` DriveCommand's membership check. Deliberately the tree's
- * default shape, not whatever a live per-mount layout machine's current
- * `root` happens to be (panel ids never move between tabs at runtime, so the
- * default tree's id set is exactly the live set too). Also used by the
- * client-core conformance test to verify DESK_PANEL_ROSTER against the
- * real layout trees. */
-export const LAYOUT_PANEL_IDS: Readonly<
-  Record<WorkspaceTab, readonly string[]>
-> = Object.fromEntries(
-  WORKSPACE_TABS.map((tab) => {
-    return [tab, collectPanelIds(createDefaultLayoutPort(tab).initial.root)];
-  }),
-) as Readonly<Record<WorkspaceTab, readonly string[]>>;
-
-/**
- * Union of every static panel id across ALL FOUR tabs' default layout trees
- * — `dockPanelIntoWorkspace`'s id-collision guard reads this, not just the
- * active tab's slice of `LAYOUT_PANEL_IDS`. Reason for the union rather than
- * a per-tab check: `App.tsx`'s registry/spec/head merge
- * (`{...appPanelRegistry, ...dockedRegistryFor(dockedPanels, ...)}`) is
- * GLOBAL — one `PanelId → renderer` map shared by every tab's
- * `InhouseLayoutEngine` — so a wire-minted "fx-rates" panel would shadow
- * Live Rates' body/head/title in `credit`/`equities`/`admin` too, not only
- * in `fx`. A wire-minted panelId only needs to collide with SOME tab's
- * static roster to poison all of them.
- */
-export const STATIC_WORKSPACE_PANEL_IDS: ReadonlySet<string> = new Set(
-  WORKSPACE_TABS.flatMap((tab) => {
-    return LAYOUT_PANEL_IDS[tab];
-  }),
-);
+export {
+  LAYOUT_PANEL_IDS,
+  STATIC_WORKSPACE_PANEL_IDS,
+} from "#/layout/workspaceDock";
 
 /**
  * Defensive guard, currently UNREACHABLE in production — kept so a natural
@@ -402,6 +351,31 @@ export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly eqWorkspace?: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   readonly watchlist$?: Observable<readonly EquityInstrument[]>;
   readonly workspaceNav?: Machine<WorkspaceNavState, WorkspaceNavIntents>;
+  /** A FACTORY, unlike every other seam (pluggable-core slice 7): a sibling
+   * core's native workspace needs this app's Jarvis events (`jarvis` is
+   * still delegated), while this app's Jarvis driver needs the native
+   * workspace. `createApp` breaks the cycle by calling this once, right
+   * after building `jarvis`, with the guarded `jarvis.events$` its own folds
+   * read; the driver then drives the returned workspace, and this app's own
+   * workspace stays idle (see `nativeWorkspace` in `createApp`). */
+  readonly workspace?: (
+    jarvisEvents$: Observable<JarvisEvent>,
+  ) => WorkspaceSeam;
+}
+
+/** What a sibling core's native workspace hands back through
+ * `CoreSeams.workspace` — exactly the members the base's Jarvis driver
+ * reads. */
+export interface WorkspaceSeam {
+  readonly layoutFor: (
+    tab: WorkspaceTab,
+  ) => Machine<LayoutState, LayoutIntents>;
+  readonly dockPanel: (panelId: string) => void;
+  readonly undockPanel: (panelId: string) => void;
+  readonly dismissPanel: (panelId: string) => void;
+  readonly livePanelIds$: Observable<readonly string[]>;
+  readonly dockedPanelIds$: Observable<readonly string[]>;
+  readonly detachedPanelIds: (tab: WorkspaceTab) => readonly string[];
 }
 
 export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
@@ -491,17 +465,31 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     effort$: ports.preferences.jarvisEffort$(),
   });
 
+  // One guarded source for every fold over `jarvis.events$`: each fold's
+  // `events$` input is TERMINAL on error (kills its fold + reports
+  // unhandled), and nothing about `jarvis.events$` itself rules that out.
+  // A cold pipe, so each fold still holds its own subscription.
+  const jarvisEvents$ = jarvis.events$.pipe(
+    catchError(() => {
+      return EMPTY;
+    }),
+  );
+
+  // A sibling core's native workspace (`CoreSeams.workspace`), built from
+  // this app's own Jarvis events — see `CoreSeams.workspace`'s doc. When
+  // there is one, this app's own workspace stays IDLE: its panels machine
+  // folds nothing (so its presenter opens no port streams), no docked panel
+  // is restored into it, and it never creates the persistence writer — the
+  // `workspaceLayout` preference has exactly one writer, the native core's.
+  const nativeWorkspace = seams.workspace?.(jarvisEvents$);
+
   // Hoisted out of the `JarvisPanelsPresenter` construction below (where it
   // used to be an inline argument) because the workspace-persistence wiring
   // needs the MACHINE's own state, not the presenter's VM rows: the writer
   // has to persist each docked panel's `PanelSpecV1`, and `JarvisPanelVm`
   // deliberately carries an interpreted `data$` instead of the raw spec.
   const jarvisPanelsMachine = createJarvisPanelsMachine(
-    jarvis.events$.pipe(
-      catchError(() => {
-        return EMPTY;
-      }),
-    ),
+    nativeWorkspace ? EMPTY : jarvisEvents$,
   );
 
   const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
@@ -511,13 +499,12 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     analytics: ports.analytics,
   });
 
-  // Session-lifetime mirror of the panels fold, so the dock/undock bridge and
-  // the persistence writer can both read "what is docked right now"
-  // synchronously. Every emission is synchronous with the intent that caused
-  // it (Subject → scan → state), which is what lets `dockPanelIntoWorkspace`
-  // below decide whether the machine actually changed anything by reading
-  // this before and after the call. Never unsubscribed — same session-
-  // lifetime doctrine as `jarvisPanels`/`jarvisDriver` themselves.
+  // Session-lifetime mirror of the panels fold, so the dock bridges and the
+  // persistence writer can read "what is docked right now" synchronously
+  // (`createWorkspaceDock`'s `panels.current()` contract). Every emission is
+  // synchronous with the intent that caused it (Subject → scan → state).
+  // Never unsubscribed — same session-lifetime doctrine as
+  // `jarvisPanels`/`jarvisDriver` themselves.
   let latestPanels: readonly PanelInstance[] = [];
   jarvisPanelsMachine.state$.subscribe((panelsState) => {
     latestPanels = panelsState.panels;
@@ -544,30 +531,8 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     latestActiveTab = navState.activeTab;
   });
 
-  // The persisted workspace, read ONCE synchronously here — before the first
-  // `layoutFor(tab)` call below, which is the only moment a layout machine
-  // can be seeded (see `LayoutMachineOptions.seedState`). Every
-  // PreferencesPort adapter is BehaviorSubject-backed, so `readPreferenceNow`
-  // really does have the stored value by the time it returns (same peek the
-  // login-wait preferences above rely on). `parseWorkspaceLayout` is
-  // fail-closed on the WHOLE payload — a non-null result can be replayed
-  // blindly: every tab in it is internally consistent, its docked entries
-  // reconcile with its tree, and the global docked total is within the cap.
-  //
-  // MUTABLE, and it matters: `layoutFor` is lazy, so this seed is consulted
-  // again every time a tab is opened for the FIRST time — which can be long
-  // after boot, and after a `resetWorkspaceLayout()`. Left `const`, Reset
-  // would clear the preference and the machines that happen to exist, then
-  // the next never-opened tab would seed straight back out of this stale
-  // snapshot and resurrect the pre-reset tree (docked leaves included), which
-  // the next debounced write would re-persist. `resetWorkspaceLayout` nulls
-  // it for exactly that reason.
-  let persistedWorkspace = parseWorkspaceLayout(
-    readPreferenceNow(ports.preferences.workspaceLayout$(), null),
-  );
-
-  /** Backs `Presenters.dockLayoutStore` — hoisted to a local so
-   * `resetWorkspaceLayout`'s per-tab `clear()` sweep and the presenters
+  /** Backs `Presenters.dockLayoutStore` — hoisted to a local so the
+   * workspace dock's reset sweep, the presets controller and the presenters
    * literal below share the exact SAME instance rather than each evaluating
    * `ports.dockLayoutStore ?? new InMemoryDockLayoutStore()` separately
    * (which would construct two independent fallback stores, leaving Reset
@@ -575,41 +540,55 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   const dockLayoutStore =
     ports.dockLayoutStore ?? new InMemoryDockLayoutStore();
 
-  /** Which tab each docked panel belongs to — seeded from the persisted
-   * payload at boot and updated on every dock/undock. This is the rule the
-   * writer persists by: a docked panel lands under the tab that was ACTIVE
-   * when it was docked, not under whichever tab is showing when the write
-   * finally fires. */
-  const dockedPanelTabs = new Map<string, WorkspaceTab>();
-
-  /** Kicked after EVERY mutation of `dockedPanelTabs` (`set` here and in
-   * `dockPanelIntoWorkspace`, `delete` in `detachDockedLeaf`, `clear` in
-   * `resetWorkspaceLayout`) — see `dockedPanelIdsFor`'s doc for why this
-   * exists: `jarvisPanelsMachine.state$` emits a panel's `docked` flip
-   * SYNCHRONOUSLY, before the caller has had a chance to attribute it to a
-   * tab in this map, so subscribing to `state$` alone would combine the
-   * flip with a still-stale (or not-yet-updated) map read. Nexting this
-   * AFTER the map write is what makes the attributed membership visible. */
+  /** Kicked after EVERY change to which tab a docked panel belongs to (the
+   * dock's `onDockedMembershipChange`) — see `dockedPanelIdsFor`'s doc for
+   * why this exists: `jarvisPanelsMachine.state$` emits a panel's `docked`
+   * flip SYNCHRONOUSLY, before the dock bridge has had a chance to attribute
+   * it to a tab, so subscribing to `state$` alone would combine the flip with
+   * a not-yet-updated attribution. Nexting this AFTER the attribution write
+   * is what makes the attributed membership visible. */
   const dockedPanelTabsKick$ = new BehaviorSubject<void>(undefined);
 
-  /** Backs `Presenters.workspaceLayoutResets$` — see its doc. Incremented
-   * exactly once, at the very END of `resetWorkspaceLayout`, after every
-   * other reset side effect has already landed (machines reset, panels
-   * dismissed, `dockedPanelTabs` cleared, dock blobs cleared). */
+  /** Backs `Presenters.workspaceLayoutResets$` — see its doc. Bumped exactly
+   * once, as the LAST step of a reset or a preset load/resetTab. */
   const workspaceLayoutResets$ = new BehaviorSubject<number>(0);
 
-  for (const tab of WORKSPACE_TABS) {
-    const persistedTab = persistedWorkspace?.tabs[tab];
+  /** One kick per change worth persisting; the writer debounces the burst. */
+  const persistKick$ = new Subject<void>();
 
-    if (!persistedTab) {
-      continue;
-    }
-
-    for (const entry of persistedTab.docked) {
-      jarvisPanelsMachine.restoreDockedPanel(entry.panelId, entry.spec);
-      dockedPanelTabs.set(entry.panelId, tab);
+  // The dock bridges and their bookkeeping — the shared, rxjs-free rules
+  // every application core wires (see `createWorkspaceDock`'s doc).
+  const workspaceDock = createWorkspaceDock({
+    panels: {
+      current: (): readonly PanelInstance[] => {
+        return latestPanels;
+      },
+      dock: jarvisPanelsMachine.dockPanel,
+      undock: jarvisPanelsMachine.undockPanel,
+      dismiss: jarvisPanels.dismissPanel,
+      restore: jarvisPanelsMachine.restoreDockedPanel,
+    },
+    layoutFor,
+    activeTab: (): WorkspaceTab => {
+      return latestActiveTab;
+    },
+    readStoredLayout: (): string | null => {
+      return readPreferenceNow(ports.preferences.workspaceLayout$(), null);
+    },
+    clearStoredLayout: (): void => {
+      ports.preferences.setWorkspaceLayout(null);
+    },
+    dockLayoutStore,
+    onDockedMembershipChange: (): void => {
       dockedPanelTabsKick$.next(undefined);
-    }
+    },
+    onResetsBump: (): void => {
+      workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
+    },
+  });
+
+  if (!nativeWorkspace) {
+    workspaceDock.restorePersistedDocks();
   }
 
   // Per-tab layout SINGLETON map (Presenters.layoutFor's backing store) —
@@ -651,14 +630,6 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     Machine<LayoutState, LayoutIntents>
   >();
 
-  /** Current `LayoutState` of every tab whose machine has been CREATED — the
-   * writer's "modify" set. A tab absent here was never opened this session,
-   * so its persisted entry is left exactly as stored. */
-  const latestLayoutStates = new Map<WorkspaceTab, LayoutState>();
-
-  /** One kick per change worth persisting; the writer debounces the burst. */
-  const persistKick$ = new Subject<void>();
-
   function layoutFor(tab: WorkspaceTab): Machine<LayoutState, LayoutIntents> {
     const existingHandle = layoutHandles.get(tab);
 
@@ -673,12 +644,14 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     // column), and `reset()` returns `port.initial` (the default tree, which
     // is the whole point of the intent). See `LayoutMachineOptions.seedState`.
     const machine = createLayoutMachine(createDefaultLayoutPort(tab), {
-      seedState: persistedWorkspace?.tabs[tab]?.layout,
+      seedState: workspaceDock.seedFor(tab),
     });
     layoutMachinesReal.set(tab, machine);
 
+    // Records synchronously (the replay-current `state$`), before this
+    // function returns — `createWorkspaceDock`'s `layoutFor` contract.
     machine.state$.subscribe((layoutState) => {
-      latestLayoutStates.set(tab, layoutState);
+      workspaceDock.recordLayoutState(tab, layoutState);
     });
 
     // `skip(1)` drops the replay of the state this machine was just created
@@ -705,147 +678,15 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     return handle;
   }
 
-  function isPanelDocked(panelId: string): boolean {
-    return latestPanels.some((panel) => {
-      return panel.panelId === panelId && panel.docked;
-    });
-  }
-
-  /** Dock intent bridge — see `Presenters.dockPanel`'s doc. The panels
-   * machine goes FIRST because it owns every no-op rule (unknown id, already
-   * docked, `MAX_DOCKED_PANELS` reached); the layout mutation only follows
-   * when that call genuinely changed the docked set, so a rejected dock can
-   * never leave an orphan leaf behind in the tree.
-   *
-   * ID-COLLISION GUARD (first check, before either machine is touched): a
-   * panelId arriving off the wire is validated by `JarvisPanelsMachine` only
-   * for length, so nothing stops the brain from minting one that collides
-   * with a STATIC workspace panel id (e.g. "fx-rates"). Docking such an id
-   * would be doubly destructive:
-   *   1. `App.tsx` spreads the docked-registry helpers LAST over
-   *      `appPanelRegistry`/`PANEL_SPECS`/`appHeadRegistry`
-   *      (`{...appPanelRegistry, ...dockedRegistryFor(...)}`), so the docked
-   *      entry would silently REPLACE the static panel's body/head/title —
-   *      see `STATIC_WORKSPACE_PANEL_IDS`'s doc for why this reaches every
-   *      tab, not just the one being docked into.
-   *   2. `parseWorkspaceLayout`'s reconciliation classifies each dock-column
-   *      leaf by static-id membership; a docked leaf carrying a static id
-   *      does not reconcile as a docked leaf, so the whole payload is
-   *      rejected — silently killing persistence for the rest of the
-   *      session (every later write from `layoutFor`'s `skip(1)` subscriber
-   *      would be validated against, and fail, the same parser on reload).
-   * Guarding here — before either machine is touched — keeps the panel
-   * genuinely undocked and the tree untouched, so persistence stays healthy.
-   *
-   * The guard also refuses the chart-instance NAMESPACE (`isPanelInstanceId`,
-   * derived from `instanceIdFor` — every `eq-chart:<symbol>` id): a docked
-   * panel sharing an id with an open (or later opened) chart instance would
-   * put ONE engine panel under two owners — the Dockview bridge's docked and
-   * instance diff effects would add/remove it against each other, and the
-   * registry merge would let one shadow the other's body. Refusing the whole
-   * prefix, not just ids open right now, keeps a later `openInstance` from
-   * colliding with an earlier dock.
-   *
-   * KNOWN RESIDUAL (documented, not fixed here — see task-7-report.md fix
-   * round 1): `JarvisDriverMachine`'s `dockPanel` case (the DriveCommand
-   * path a scripted/AI turn uses) checks only `livePanelIds`/
-   * `dockedPanelIds`/`MAX_DOCKED_PANELS` before calling `deps.dockPanel` —
-   * it has no visibility into this guard, so for a colliding id it still
-   * reports `{status: "applied"}` even though this function no-ops. The
-   * driver's four pinned skip-reason strings ("unknown panelId", "already
-   * docked", "dock full", "not docked") don't cover this case, and minting a
-   * fifth string is out of scope for this fix round. The UI-visible effect
-   * is limited to a misleading driver-reply status text for this one
-   * scripted/AI path — the panel itself never docks, the static panel is
-   * never shadowed, and persistence never breaks, because this guard runs
-   * first regardless of caller. */
-  function dockPanelIntoWorkspace(panelId: string): void {
-    if (STATIC_WORKSPACE_PANEL_IDS.has(panelId) || isPanelInstanceId(panelId)) {
-      return;
-    }
-
-    if (isPanelDocked(panelId)) {
-      return;
-    }
-
-    jarvisPanelsMachine.dockPanel(panelId);
-
-    if (!isPanelDocked(panelId)) {
-      return;
-    }
-
-    const tab = latestActiveTab;
-    dockedPanelTabs.set(panelId, tab);
-    dockedPanelTabsKick$.next(undefined);
-    layoutFor(tab).intents.insertPanel(panelId);
-  }
-
-  /** Undock intent bridge — the inverse of `dockPanelIntoWorkspace`. The leaf
-   * is removed from the tab the panel was docked INTO (`dockedPanelTabs`),
-   * which is not necessarily the tab on screen now. */
-  function undockPanelFromWorkspace(panelId: string): void {
-    if (!isPanelDocked(panelId)) {
-      return;
-    }
-
-    jarvisPanelsMachine.undockPanel(panelId);
-
-    if (isPanelDocked(panelId)) {
-      return;
-    }
-
-    detachDockedLeaf(panelId);
-  }
-
-  /** Drop `panelId`'s docked leaf from the tab it was docked into, and forget
-   * its attribution. `layoutFor(tab)` CREATES that tab's machine if this
-   * session never opened it — deliberately: the writer only ever rewrites
-   * tabs whose machine exists, so without this the tab's stored entry would
-   * keep the now-dead docked panel and hand it back at the next boot. */
-  function detachDockedLeaf(panelId: string): void {
-    const tab = dockedPanelTabs.get(panelId);
-    dockedPanelTabs.delete(panelId);
-    dockedPanelTabsKick$.next(undefined);
-
-    if (tab) {
-      layoutFor(tab).intents.removePanel(panelId);
-    }
-  }
-
-  /** Dismiss bridge — the docked-safe `dismissPanel`, and the one the UI and
-   * the driver must both use.
-   *
-   * `JarvisPanelsMachine.dismissPanel` alone drops the panel from the roster
-   * while leaving its leaf in whichever layout tree it was docked into: an
-   * empty pane with no removal control, a stored entry that resurrects the
-   * panel on the next reload, and — worst — a payload whose docked total can
-   * climb past `MAX_DOCKED_PANELS`, at which point the writer's own guard
-   * refuses every later write for the session.
-   *
-   * The leaf is detached DIRECTLY rather than by running the undock bridge
-   * first, even though undock-then-dismiss reads more symmetrically:
-   * `undockPanel`'s reducer re-admits the panel to the floating set, which
-   * can evict an unrelated floating panel to stay inside `MAX_LIVE_PANELS` —
-   * a panel the user never touched, lost to a dismissal of a different one.
-   * Detaching the leaf skips that entirely. */
-  function dismissPanelFromWorkspace(panelId: string): void {
-    if (isPanelDocked(panelId)) {
-      detachDockedLeaf(panelId);
-    }
-
-    jarvisPanels.dismissPanel(panelId);
-  }
-
   /** See `Presenters.dockedPanelIdsFor`'s doc. `combineLatest` with
    * `dockedPanelTabsKick$` is load-bearing, not decorative: `jarvisPanelsMachine`
-   * flips a panel's `docked` flag SYNCHRONOUSLY inside `dockPanelIntoWorkspace`
-   * (via `jarvisPanelsMachine.dockPanel`), before that same call goes on to
-   * attribute the panel to a tab in `dockedPanelTabs` — so a bare
+   * flips a panel's `docked` flag SYNCHRONOUSLY inside the dock bridge, before
+   * that same call goes on to attribute the panel to a tab — so a bare
    * `jarvisPanelsMachine.state$.pipe(map(...))` would compute this tab's
-   * membership against a map that hasn't been written to yet, on the very
-   * emission that matters. Kicking `dockedPanelTabsKick$` AFTER every map
-   * mutation (dock, undock, dismiss, reset) is what makes the attributed
-   * membership visible to a subscriber. */
+   * membership against an attribution that hasn't been written yet, on the
+   * very emission that matters. The dock kicks `dockedPanelTabsKick$` AFTER
+   * every attribution change (dock, undock, dismiss, reset), which is what
+   * makes the attributed membership visible to a subscriber. */
   function dockedPanelIdsFor(tab: WorkspaceTab): Observable<readonly string[]> {
     return combineLatest([
       jarvisPanelsMachine.state$,
@@ -857,14 +698,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
         // contract — sorting stabilizes the emitted array's identity for
         // downstream element-wise-equals consumers (both clients' bridge
         // props) against a reorder that isn't a real membership change.
-        return panelsState.panels
-          .filter((panel) => {
-            return panel.docked && dockedPanelTabs.get(panel.panelId) === tab;
-          })
-          .map((panel) => {
-            return panel.panelId;
-          })
-          .sort();
+        return workspaceDock.dockedIdsIn(tab, panelsState.panels).sort();
       }),
       distinctUntilChanged((prev, next) => {
         return (
@@ -877,75 +711,9 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     );
   }
 
-  /** Discard the persisted workspace — see `Presenters.resetWorkspaceLayout`.
-   * `dismissPanel` works on a docked panel directly, so there is no
-   * undock-then-dismiss dance; the layout machines are reset wholesale
-   * anyway, which drops every docked leaf with them. The reset's own state
-   * changes still kick the writer, so the next debounced write re-persists
-   * the (now default, docked-free) workspace rather than leaving the cleared
-   * preference and live state disagreeing.
-   *
-   * Clearing `persistedWorkspace` is as load-bearing as clearing the stored
-   * string: `layoutFor` is lazy, so a tab opened for the first time AFTER a
-   * reset would otherwise seed from this snapshot and resurrect exactly the
-   * tree the user just discarded (see the seed's own doc). */
-  function resetWorkspaceLayout(): void {
-    ports.preferences.setWorkspaceLayout(null);
-    persistedWorkspace = null;
-
-    for (const machine of layoutHandles.values()) {
-      machine.intents.reset();
-    }
-
-    for (const panel of latestPanels) {
-      if (panel.docked) {
-        jarvisPanels.dismissPanel(panel.panelId);
-      }
-    }
-
-    dockedPanelTabs.clear();
-    dockedPanelTabsKick$.next(undefined);
-
-    for (const tab of WORKSPACE_TABS) {
-      dockLayoutStore.clear(tab);
-    }
-
-    workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
-  }
-
-  /** `Presenters.layoutPresets`' layer-2 read. `latestLayoutStates` already
-   * holds the current state of every tab whose machine exists; for a tab
-   * opened for the FIRST time by this very call, `layoutFor` creates it and
-   * its replayed state is peeked synchronously — the same one-shot read every
-   * preference above uses. */
-  function layoutStateNow(tab: WorkspaceTab): LayoutState {
-    return (
-      latestLayoutStates.get(tab) ??
-      readPreferenceNow(
-        layoutFor(tab).state$,
-        createDefaultLayoutPort(tab).initial,
-      )
-    );
-  }
-
-  /** The synchronous twin of `dockedPanelIdsFor` — ruling P2's "what is docked
-   * into `tab` right now", which `layoutPresets` strips on a save and
-   * re-inserts on a load/resetTab. Reads the same two sources
-   * (`latestPanels` + the dock-time `dockedPanelTabs` attribution) so the two
-   * can never disagree about membership. */
-  function dockedPanelIdsNow(tab: WorkspaceTab): readonly string[] {
-    return latestPanels
-      .filter((panel) => {
-        return panel.docked && dockedPanelTabs.get(panel.panelId) === tab;
-      })
-      .map((panel) => {
-        return panel.panelId;
-      });
-  }
-
   /** Saved layouts (Phase 6b). Every rule lives in the controller; this hands
    * it the store (falling back like `dockLayoutStore` above), the per-tab
-   * layout singletons, the two synchronous reads above, and the rebuild
+   * layout singletons, the dock's two synchronous reads, and the rebuild
    * signal — which is `workspaceLayoutResets$` itself (ruling P4: the preset
    * path reuses the reset counter rather than adding a second one, since both
    * mean exactly "re-seed the mounted Dockview engine from the store"). */
@@ -953,65 +721,51 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     store: ports.layoutPresetStore ?? new InMemoryLayoutPresetStore(),
     dockLayoutStore,
     layoutFor,
-    layoutStateNow,
-    dockedPanelIdsNow,
+    layoutStateNow: workspaceDock.layoutStateNow,
+    dockedPanelIdsNow: workspaceDock.dockedPanelIdsNow,
     rebuildLiveEngine: () => {
       workspaceLayoutResets$.next(workspaceLayoutResets$.value + 1);
     },
   });
 
-  // The debounced workspace writer. Kicked by every created layout machine
-  // (above) and by the panels fold; assembles the payload read-modify-write
-  // so tabs never opened this session keep their stored entry. Session-
-  // lifetime, never unsubscribed — same doctrine as the driver-outcomes
-  // subscription below.
-  //
-  // `map` + `distinctUntilChanged` on the panels ARRAY, not the state
-  // object: every intent produces a fresh state object even when its reducer
-  // was a no-op (`{ ...s, panels }` with the very same `panels` reference),
-  // so subscribing to `state$` directly would kick — and write — on a
-  // rejected dock of an unknown panel id. Reference equality is exactly the
-  // right test here: the panels reducers only build a new array when they
-  // actually change something.
-  jarvisPanelsMachine.state$
-    .pipe(
-      map((panelsState) => {
-        return panelsState.panels;
-      }),
-      distinctUntilChanged(),
-      skip(1),
-    )
-    .subscribe(() => {
-      persistKick$.next();
-    });
-
-  createWorkspacePersistenceWriter({
-    kick$: persistKick$,
-    readStoredLayout: () => {
-      return readPreferenceNow(ports.preferences.workspaceLayout$(), null);
-    },
-    writeStoredLayout: (value: string) => {
-      ports.preferences.setWorkspaceLayout(value);
-    },
-    createdLayouts: () => {
-      return latestLayoutStates;
-    },
-    dockedPanels: (): readonly DockedPanelPlacement[] => {
-      return latestPanels.flatMap((panel): readonly DockedPanelPlacement[] => {
-        const tab = dockedPanelTabs.get(panel.panelId);
-
-        // A docked panel with no spec (an "unsupported" instance) or no
-        // recorded tab cannot be persisted; the writer prunes its leaf from
-        // the written tree instead of emitting an entry the parser would
-        // reject on the next boot.
-        if (!panel.docked || !panel.spec || !tab) {
-          return [];
-        }
-
-        return [{ panelId: panel.panelId, spec: panel.spec, tab }];
+  if (!nativeWorkspace) {
+    // The debounced workspace writer. Kicked by every created layout machine
+    // (above) and by the panels fold; assembles the payload read-modify-write
+    // so tabs never opened this session keep their stored entry. Session-
+    // lifetime, never unsubscribed — same doctrine as the driver-outcomes
+    // subscription below.
+    //
+    // `map` + `distinctUntilChanged` on the panels ARRAY, not the state
+    // object: every intent produces a fresh state object even when its
+    // reducer was a no-op (`{ ...s, panels }` with the very same `panels`
+    // reference), so subscribing to `state$` directly would kick — and write
+    // — on a rejected dock of an unknown panel id. Reference equality is
+    // exactly the right test here: the panels reducers only build a new array
+    // when they actually change something.
+    jarvisPanelsMachine.state$
+      .pipe(
+        map((panelsState) => {
+          return panelsState.panels;
+        }),
+        distinctUntilChanged(),
+        skip(1),
+      )
+      .subscribe(() => {
+        persistKick$.next();
       });
-    },
-  });
+
+    createWorkspacePersistenceWriter({
+      kick$: persistKick$,
+      readStoredLayout: () => {
+        return readPreferenceNow(ports.preferences.workspaceLayout$(), null);
+      },
+      writeStoredLayout: (value: string) => {
+        ports.preferences.setWorkspaceLayout(value);
+      },
+      createdLayouts: workspaceDock.createdLayouts,
+      dockedPanels: workspaceDock.dockedPlacements,
+    });
+  }
 
   // JarvisDriverMachine: the total DriveCommand interpreter (Task 6). SAME
   // catchError/EMPTY guard as jarvisPanels above — createJarvisDriverMachine's
@@ -1026,21 +780,10 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // Built as an intermediate const rather than an inline call argument
   // purely for length: the deps list grew four members with the pinned-panel
   // round (`dockPanel`, `undockPanel`, `livePanelIds$`, `dockedPanelIds$`).
-  // Session-only registry of the panels per tab that currently live OUTSIDE
-  // the grid (floating / popped out) — written WHOLE-SET by the Dockview
-  // bridge through `commands.reportDetachedPanels`, read synchronously by the
-  // driver's `detachedPanelIds` per `layout` command. Never persisted and
-  // never part of `LayoutState`: floats/pop-outs are engine-owned "layer 3".
-  const detachedPanelIdsByTab = new Map<WorkspaceTab, readonly string[]>();
-
   const jarvisDriverDeps: JarvisDriverDeps = {
-    events$: jarvis.events$.pipe(
-      catchError(() => {
-        return EMPTY;
-      }),
-    ),
+    events$: jarvisEvents$,
     workspaceNav: activeNav,
-    layout: layoutFor,
+    layout: nativeWorkspace?.layoutFor ?? layoutFor,
     eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
     setThemeSkin: (skin: ThemeSkin): void => {
       themeSkinPreference.setSkin(skin);
@@ -1048,13 +791,12 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     setPowerSaver: (level: PowerSaverLevel): void => {
       powerSaver.setLevel(level);
     },
-    dismissPanel: dismissPanelFromWorkspace,
+    dismissPanel: nativeWorkspace?.dismissPanel ?? workspaceDock.dismissPanel,
     knownLayoutPanelIds: (tab: WorkspaceTab): readonly string[] => {
       return LAYOUT_PANEL_IDS[tab];
     },
-    detachedPanelIds: (tab: WorkspaceTab): readonly string[] => {
-      return detachedPanelIdsByTab.get(tab) ?? [];
-    },
+    detachedPanelIds:
+      nativeWorkspace?.detachedPanelIds ?? workspaceDock.detachedPanelIds,
     knownSymbols$: watchlist$.pipe(
       map((list) => {
         return list.map((instrument) => {
@@ -1066,28 +808,32 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     /** Every live desk-panel id, floating or docked — the membership check a
      * driven `dockPanel` command needs (unlike `dismissPanel`, docking an
      * unknown id is worth reporting as skipped). */
-    livePanelIds$: jarvisPanelsMachine.state$.pipe(
-      map((panelsState) => {
-        return panelsState.panels.map((panel) => {
-          return panel.panelId;
-        });
-      }),
-    ),
-    /** The docked subset of `livePanelIds$` — a driven `undockPanel`'s own
-     * membership check, and what tells a redundant dock apart from a real one. */
-    dockedPanelIds$: jarvisPanelsMachine.state$.pipe(
-      map((panelsState) => {
-        return panelsState.panels
-          .filter((panel) => {
-            return panel.docked;
-          })
-          .map((panel) => {
+    livePanelIds$:
+      nativeWorkspace?.livePanelIds$ ??
+      jarvisPanelsMachine.state$.pipe(
+        map((panelsState) => {
+          return panelsState.panels.map((panel) => {
             return panel.panelId;
           });
-      }),
-    ),
-    dockPanel: dockPanelIntoWorkspace,
-    undockPanel: undockPanelFromWorkspace,
+        }),
+      ),
+    /** The docked subset of `livePanelIds$` — a driven `undockPanel`'s own
+     * membership check, and what tells a redundant dock apart from a real one. */
+    dockedPanelIds$:
+      nativeWorkspace?.dockedPanelIds$ ??
+      jarvisPanelsMachine.state$.pipe(
+        map((panelsState) => {
+          return panelsState.panels
+            .filter((panel) => {
+              return panel.docked;
+            })
+            .map((panel) => {
+              return panel.panelId;
+            });
+        }),
+      ),
+    dockPanel: nativeWorkspace?.dockPanel ?? workspaceDock.dockPanel,
+    undockPanel: nativeWorkspace?.undockPanel ?? workspaceDock.undockPanel,
   };
 
   const jarvisDriver = createJarvisDriverMachine(jarvisDriverDeps);
@@ -1119,11 +865,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // never-approve turns.
   const jarvisDemo = createJarvisDemoMachine({
     jarvisState$: jarvis.state$,
-    jarvisEvents$: jarvis.events$.pipe(
-      catchError(() => {
-        return EMPTY;
-      }),
-    ),
+    jarvisEvents$,
     jarvis: jarvis.intents,
     powerSaverLevel$: powerSaver.level$,
   });
@@ -1254,11 +996,11 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     jarvis,
     jarvisUsage: new JarvisUsagePresenter(ports.jarvisUsage),
     jarvisPanels,
-    dockPanel: dockPanelIntoWorkspace,
+    dockPanel: workspaceDock.dockPanel,
     dockedPanelIdsFor,
-    undockPanel: undockPanelFromWorkspace,
-    dismissPanel: dismissPanelFromWorkspace,
-    resetWorkspaceLayout,
+    undockPanel: workspaceDock.undockPanel,
+    dismissPanel: workspaceDock.dismissPanel,
+    resetWorkspaceLayout: workspaceDock.resetWorkspaceLayout,
     workspaceLayoutResets$,
     layoutPresets,
     jarvisDriver,
@@ -1272,12 +1014,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     reconnect: () => {
       reconnect$.next({ type: "reconnect" });
     },
-    reportDetachedPanels: (
-      tab: WorkspaceTab,
-      panelIds: readonly string[],
-    ): void => {
-      detachedPanelIdsByTab.set(tab, [...panelIds]);
-    },
+    reportDetachedPanels: workspaceDock.reportDetachedPanels,
   };
   return {
     presenters,

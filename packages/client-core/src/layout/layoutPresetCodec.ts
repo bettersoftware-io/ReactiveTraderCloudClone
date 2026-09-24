@@ -44,6 +44,7 @@ import type {
   LayoutPresetNameProblem,
   LayoutPresetSummary,
 } from "@rtc/core-api";
+import { MAX_LAYOUT_PRESETS as DOMAIN_MAX_LAYOUT_PRESETS } from "@rtc/domain";
 
 import type { WorkspaceTab } from "./defaultLayoutPort";
 import type {
@@ -56,7 +57,7 @@ import {
 } from "./workspaceLayoutPersistence";
 
 export const LAYOUT_PRESET_VERSION = 1;
-export const MAX_LAYOUT_PRESETS = 10;
+export const MAX_LAYOUT_PRESETS: number = DOMAIN_MAX_LAYOUT_PRESETS;
 export const MAX_LAYOUT_PRESET_NAME_LENGTH = 40;
 export const DEFAULT_LAYOUT_PRESET_NAME = "Default";
 export const UNREADABLE_LIST_ID = "unreadable-list";

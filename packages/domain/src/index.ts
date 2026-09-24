@@ -7,6 +7,8 @@ export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
+// FX
+
 export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
 export {
   aggregatePositionsByCurrency,
@@ -314,3 +316,11 @@ export {
   TradeBlotterUseCase,
   WorkflowEventStreamUseCase,
 } from "./usecases/index.js";
+export {
+  DRIVE_STAGGER_MS,
+  MAX_DOCKED_PANELS,
+  MAX_LAYOUT_PRESETS,
+  MAX_LIVE_PANELS,
+  MAX_PANEL_INSTANCES,
+  WORKSPACE_PERSIST_DEBOUNCE_MS,
+} from "./workspace/workspaceLimits.js";
