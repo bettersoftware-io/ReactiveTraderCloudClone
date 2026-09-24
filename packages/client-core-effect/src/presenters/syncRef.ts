@@ -2,21 +2,25 @@ import { SubscriptionRef } from "effect";
 
 import {
   type EffectHost,
-  refToWarmStateStream,
+  listenToWarmStateStream,
   setRefIfChanged,
   type WarmStateStream,
 } from "#/bridge/out";
 
 /** A `SubscriptionRef` whose writes COMMIT synchronously (`runSync`) and
- * whose in-core listeners hear a committed change synchronously too.
+ * whose in-core listeners AND subscribers (`warm()`) hear a committed change
+ * synchronously too — never through `ref.changes`.
  *
- * Why the listeners: the workspace's state is a synchronous fold (the
+ * Why: the workspace's state is a synchronous fold (the
  * contract stated in `@rtc/core-contract`'s `workspaceKit`) — the shared
  * `createWorkspaceDock` reads the roster and the recorded layout states
  * right after calling into them, and the persistence kicks and the docked
  * membership must follow each change in the same tick. `ref.changes` is
- * delivered on a fiber, a step later, so those in-core mirrors hang off
- * `listen` instead; SUBSCRIBERS still get the ref through `warm()`. */
+ * delivered on a fiber, a step later — measured in the browser: after a
+ * reload the restored docked panel reached the UI's first render one step
+ * late, the Dockview bridge's orphan scrub read the empty set and threw
+ * the panel's dragged position away. So both the mirrors and the UI hear a
+ * commit synchronously. */
 export interface SyncRef<S> {
   get(): S;
   /** Commit `next` (dropped when `Object.is`-equal) and notify listeners. */
@@ -24,7 +28,8 @@ export interface SyncRef<S> {
   /** Hear every committed change; called at once with the current value,
    * as the async core's `Store.subscribe`. */
   listen(listener: (value: S) => void): () => void;
-  /** The ref as a warm `StateStream` (one per call — hold on to it). */
+  /** The ref as a warm `StateStream`, fed from the commit path (one per
+   * call — hold on to it). */
   warm(): WarmStateStream<S>;
 }
 
@@ -34,6 +39,15 @@ export function createSyncRef<S>(host: EffectHost, initial: S): SyncRef<S> {
 
   function get(): S {
     return host.runtime.runSync(SubscriptionRef.get(ref));
+  }
+
+  function listen(listener: (value: S) => void): () => void {
+    listeners.add(listener);
+    listener(get());
+
+    return () => {
+      listeners.delete(listener);
+    };
   }
 
   return {
@@ -54,16 +68,9 @@ export function createSyncRef<S>(host: EffectHost, initial: S): SyncRef<S> {
         listener(get());
       }
     },
-    listen: (listener: (value: S) => void) => {
-      listeners.add(listener);
-      listener(get());
-
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    listen,
     warm: () => {
-      return refToWarmStateStream(host, ref);
+      return listenToWarmStateStream(listen, get);
     },
   };
 }
