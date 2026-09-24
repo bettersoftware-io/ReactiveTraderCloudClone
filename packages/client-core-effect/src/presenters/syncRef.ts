@@ -47,8 +47,11 @@ export function createSyncRef<S>(host: EffectHost, initial: S): SyncRef<S> {
         return;
       }
 
+      // Each listener hears the value CURRENT when it is called: a listener
+      // that writes this ref re-enters `set`, and a later listener must not
+      // then hear the older value after the newer one.
       for (const listener of [...listeners]) {
-        listener(current);
+        listener(get());
       }
     },
     listen: (listener: (value: S) => void) => {

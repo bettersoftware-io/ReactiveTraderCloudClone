@@ -98,7 +98,21 @@ export function createNativeWorkspace(
 ): NativeWorkspace {
   const host = createChildHost(parent);
   const { ports } = deps;
+  // Everything the workspace holds is released when the host scope closes
+  // (the app's `dispose()`); anything created AFTER that is released at once
+  // — a late `layoutFor(tab)` must not leak a keep-warm into a drained list.
   const releases: (() => void)[] = [];
+  let closed = false;
+
+  function track(release: () => void): void {
+    if (closed) {
+      release();
+      return;
+    }
+
+    releases.push(release);
+  }
+
   const panelStreamDeps: PanelStreamDeps = {
     referenceData: ports.referenceData,
     pricing: ports.pricing,
@@ -111,24 +125,30 @@ export function createNativeWorkspace(
     panelsMachine,
     panelStreamDeps,
   );
-  releases.push(jarvisPanels.release);
+  track(jarvisPanels.release);
   const dockLayoutStore =
     ports.dockLayoutStore ?? new InMemoryDockLayoutStore();
   const membership = createSyncRef(host, 0);
   const resets = createSyncRef(host, 0);
   const resets$ = resets.warm();
-  releases.push(resets$.release);
+  track(resets$.release);
   const handles = new Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>();
-  const persist = createPersistDebounce(host, () => {
-    writeWorkspaceLayout({
-      readStoredLayout,
-      writeStoredLayout: (value: string) => {
-        ports.preferences.setWorkspaceLayout(value);
-      },
-      createdLayouts: dock.createdLayouts,
-      dockedPanels: dock.dockedPlacements,
-    });
-  });
+  const persist = createPersistDebounce(
+    host,
+    () => {
+      return closed;
+    },
+    () => {
+      writeWorkspaceLayout({
+        readStoredLayout,
+        writeStoredLayout: (value: string) => {
+          ports.preferences.setWorkspaceLayout(value);
+        },
+        createdLayouts: dock.createdLayouts,
+        dockedPanels: dock.dockedPlacements,
+      });
+    },
+  );
 
   function readStoredLayout(): string | null {
     return peek(ports.preferences.workspaceLayout$(), null);
@@ -186,7 +206,7 @@ export function createNativeWorkspace(
       createDefaultLayoutPort(tab).initial,
       dock.seedFor(tab),
     );
-    releases.push(machine.dispose);
+    track(machine.dispose);
     let replayed = false;
     machine.ref.listen((state) => {
       dock.recordLayoutState(tab, state);
@@ -214,7 +234,7 @@ export function createNativeWorkspace(
   dock.restorePersistedDocks();
 
   let lastPanels = panelsMachine.ref.get().panels;
-  panelsMachine.ref.listen((state) => {
+  const unlistenKicks = panelsMachine.ref.listen((state) => {
     // A fresh state object with the SAME `panels` array is a no-op intent
     // (a rejected dock, an unknown id): not a change worth persisting.
     if (state.panels !== lastPanels) {
@@ -222,6 +242,7 @@ export function createNativeWorkspace(
       persist.kick();
     }
   });
+  track(unlistenKicks);
 
   const dockedByTab = new Map<
     WorkspaceTab,
@@ -257,10 +278,10 @@ export function createNativeWorkspace(
       });
     }
 
-    releases.push(panelsMachine.ref.listen(recompute));
-    releases.push(membership.listen(recompute));
+    track(panelsMachine.ref.listen(recompute));
+    track(membership.listen(recompute));
     const warm = ids.warm();
-    releases.push(warm.release);
+    track(warm.release);
     dockedByTab.set(tab, warm);
     return warm.state$;
   }
@@ -274,12 +295,12 @@ export function createNativeWorkspace(
       dockedPanelIdsNow: dock.dockedPanelIdsNow,
       rebuildLiveEngine: bumpResets,
     },
-    createRefSummaryChannel(host, releases),
+    createRefSummaryChannel(host, track),
   );
 
   const livePanelIds = createSyncRef<readonly string[]>(host, []);
   const dockedPanelIds = createSyncRef<readonly string[]>(host, []);
-  panelsMachine.ref.listen((state) => {
+  const unlistenSeamIds = panelsMachine.ref.listen((state) => {
     livePanelIds.set(() => {
       return state.panels.map((panel) => {
         return panel.panelId;
@@ -295,14 +316,18 @@ export function createNativeWorkspace(
         });
     });
   });
+  track(unlistenSeamIds);
   const livePanelIds$ = livePanelIds.warm();
   const dockedPanelIds$ = dockedPanelIds.warm();
-  releases.push(livePanelIds$.release, dockedPanelIds$.release);
+  track(livePanelIds$.release);
+  track(dockedPanelIds$.release);
 
   host.runtime.runSync(
     Scope.addFinalizer(
       host.scope,
       Effect.sync(() => {
+        closed = true;
+
         for (const release of releases.splice(0)) {
           release();
         }
@@ -347,19 +372,35 @@ interface PersistDebounce {
  * close (the app's `dispose()`) interrupts a pending one. */
 function createPersistDebounce(
   host: EffectHost,
+  isClosed: () => boolean,
   write: () => void,
 ): PersistDebounce {
   let pending: Fiber.RuntimeFiber<void> | null = null;
 
   return {
     kick: () => {
+      // After the host scope closed, a fork would run in an already-closed
+      // child scope and still write: a kick after `dispose()` is a no-op.
+      if (isClosed()) {
+        return;
+      }
+
+      // `Fiber.interrupt` is itself scheduled: a window whose timer already
+      // fired can still write once — reading LIVE state, so identical to the
+      // write the new window will make (one extra write, never a stale one).
       if (pending !== null) {
         Effect.runFork(Fiber.interrupt(pending));
       }
 
       pending = host.runtime.runFork(
         Effect.sleep(WORKSPACE_PERSIST_DEBOUNCE_MS).pipe(
-          Effect.andThen(Effect.sync(write)),
+          Effect.andThen(
+            Effect.sync(() => {
+              if (!isClosed()) {
+                write();
+              }
+            }),
+          ),
         ),
         { scope: host.scope },
       );
@@ -375,7 +416,7 @@ interface SummaryEntry {
 /** The presets summaries as one warm ref per tab. */
 function createRefSummaryChannel(
   host: EffectHost,
-  releases: (() => void)[],
+  track: (release: () => void) => void,
 ): PresetSummaryChannel {
   const byTab = new Map<WorkspaceTab, SummaryEntry>();
 
@@ -391,7 +432,7 @@ function createRefSummaryChannel(
 
     const ref = createSyncRef(host, initial());
     const entry = { ref, warm: ref.warm() };
-    releases.push(entry.warm.release);
+    track(entry.warm.release);
     byTab.set(tab, entry);
     return entry;
   }

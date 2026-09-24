@@ -195,6 +195,33 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
+  it("after dispose() the workspace never writes the preference, whatever the roster does", async () => {
+    const preferences = new PreferencesSimulator();
+    const writes: (string | null)[] = [];
+    const setWorkspaceLayout = preferences.setWorkspaceLayout.bind(preferences);
+
+    preferences.setWorkspaceLayout = (value: string | null): void => {
+      writes.push(value);
+      setWorkspaceLayout(value);
+    };
+
+    const { app } = composeWithBase(createPorts({ preferences }));
+    await app.dispose();
+
+    app.presenters.jarvisPanels.restoreDockedPanel("late", {
+      v: 1,
+      title: "Late",
+      source: { kind: "analytics" },
+      transforms: [],
+      viz: { kind: "table" },
+    });
+    await new Promise((resolve) => {
+      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+    });
+
+    expect(writes).toEqual([]);
+  });
+
   it("the app's animation director hears a fill placed through the NATIVE ordersBlotter", async () => {
     const scripted = createScriptedOrders();
     const composed = composeWithBase(createPorts({ orders: scripted.port }));

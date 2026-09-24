@@ -1,5 +1,5 @@
 import { Effect, Exit, Scope } from "effect";
-import { NEVER, type Observable, Subject } from "rxjs";
+import { NEVER, Observable, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -201,6 +201,46 @@ describe("jarvisPanels (effect)", () => {
     expect((await latest(presenter.panels$))[0].data$).not.toBe(first);
   });
 
+  it("a live panel holds its port ONCE, however many read its data; dismissal, a spec edit and the scope's close release it", async () => {
+    const positions = new Subject<PositionUpdates>();
+    let open = 0;
+    const counted = new Observable<PositionUpdates>((subscriber) => {
+      open += 1;
+      const inner = positions.subscribe(subscriber);
+
+      return () => {
+        open -= 1;
+        inner.unsubscribe();
+      };
+    });
+
+    const { events$, presenter, host } = await createFixture({
+      analytics: counted,
+    });
+    events$.next(createPanelEvent("p", createAnalyticsSpec("A")));
+    await tick();
+    const first = presenter.panelData$("p").subscribe(() => {});
+    const second = presenter.panelData$("p").subscribe(() => {});
+    await tick();
+    expect(open).toBe(1);
+
+    presenter.dismissPanel("p");
+    await tick();
+    expect(open).toBe(0);
+
+    events$.next(createPanelEvent("p", createAnalyticsSpec("A")));
+    await tick();
+    events$.next(createPanelEvent("p", createAnalyticsSpec("B")));
+    await tick();
+    expect(open).toBe(1);
+
+    first.unsubscribe();
+    second.unsubscribe();
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+    await tick();
+    expect(open).toBe(0);
+  });
+
   it("the host scope's close stops the roster following its events", async () => {
     const { events$, presenter, host } = await createFixture();
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
@@ -217,7 +257,7 @@ describe("jarvisPanels (effect)", () => {
       symbol: string,
     ) => Subject<readonly PriceTick[]>;
     readonly blotter?: Subject<readonly Trade[]>;
-    readonly analytics?: Subject<PositionUpdates>;
+    readonly analytics?: Observable<PositionUpdates>;
   }
 
   interface Fixture {
