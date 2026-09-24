@@ -172,7 +172,7 @@ export function describeJarvisDemoContract(
       });
     });
 
-    it("startDemo while a run is in flight is ignored", async () => {
+    it("startDemo while a run is in flight is dropped, not queued", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness();
         const pause = clockPause(clock);
@@ -184,6 +184,13 @@ export function describeJarvisDemoContract(
           await pause();
           expect(h.driver.askLog()).toHaveLength(1);
           expect((await readDemo(h, clock)).stepIndex).toBe(1);
+          // Dropped, not queued: ending this run starts no second one.
+          h.driver.replyJarvis([{ type: "error", message: "stop" }]);
+          await pause();
+          await clock.advance(DEMO_STEP_BEAT_MS * 2);
+          await pause();
+          expect(h.driver.askLog()).toHaveLength(1);
+          expect(await readDemo(h, clock)).toEqual(createIdle());
         } finally {
           await h.teardown();
         }
