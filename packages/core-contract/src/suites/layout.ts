@@ -12,6 +12,7 @@ import type { MakeHarness } from "#/harness/harness";
 import {
   dockedIds,
   leafIds,
+  readLatest,
   readLayout,
   spawnPanels,
 } from "#/suites/workspaceKit";
@@ -225,6 +226,41 @@ export function describeLayoutForContract(
           writes.unsubscribe();
         } finally {
           await h.teardown();
+        }
+      });
+    });
+
+    it("a docked panel comes back docked, into the tab it was docked into, in the next session", async () => {
+      await withFakeClock(async (clock) => {
+        const h1 = makeHarness();
+        let stored: string | null = null;
+
+        try {
+          await spawnPanels(h1, ["p1"], clock.settle);
+          h1.app.presenters.workspaceNav.intents.switchTab("credit");
+          await clock.settle();
+          h1.app.presenters.dockPanel("p1");
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          stored = h1.driver.storedWorkspaceLayout();
+        } finally {
+          await h1.teardown();
+        }
+
+        const h2 = makeHarness({ workspaceLayout: stored });
+
+        try {
+          expect(await dockedIds(h2, clock.settle)).toEqual(["p1"]);
+          expect(
+            leafIds((await readLayout(h2, "credit", clock.settle)).root),
+          ).toContain("p1");
+          expect(
+            await readLatest(
+              h2.app.presenters.dockedPanelIdsFor("credit"),
+              clock.settle,
+            ),
+          ).toEqual(["p1"]);
+        } finally {
+          await h2.teardown();
         }
       });
     });
