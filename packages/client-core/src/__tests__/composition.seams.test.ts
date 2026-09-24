@@ -1,7 +1,11 @@
 import { firstValueFrom, from, NEVER, Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { EquityFillSignal, ExecutionOutcome } from "@rtc/core-api";
+import type {
+  EquityFillSignal,
+  ExecutionOutcome,
+  Presenters,
+} from "@rtc/core-api";
 import { createPrice, createQuote, EURUSD } from "@rtc/core-contract";
 import {
   AuthSimulator,
@@ -22,7 +26,7 @@ import type { DriveBatchV1, JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisPort } from "#/adapters/jarvisPort";
 import { type AppPorts, createSimulatorPorts } from "#/adapters/portFactory";
-import { createApp, type WorkspaceSeam } from "#/composition";
+import { type CoreSeams, createApp, type WorkspaceSeam } from "#/composition";
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type { AnimationIntent } from "#/presenters/AnimationDirector";
 import {
@@ -249,6 +253,38 @@ describe("createApp — core seams (strangler phase)", () => {
     );
   });
 
+  it("with nativeJarvis the app's own Jarvis family never reaches the wire: no availability request, no history source, no narration ask, no workspace write", async () => {
+    const rig = createStandDownRig({ nativeJarvis: true });
+
+    rig.pushAnomaly();
+    rig.presenters.layoutFor("fx").intents.maximize("fx-rates");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+    });
+
+    expect(rig.calls).toEqual({ ask: 0, availability: 0, history: 0 });
+    expect(await firstValueFrom(rig.ports.preferences.workspaceLayout$())).toBe(
+      null,
+    );
+    rig.presenters.jarvis.dispose();
+  });
+
+  it("without nativeJarvis the same app DOES reach the wire — the stand-down check above is not vacuous", async () => {
+    const rig = createStandDownRig({});
+
+    rig.pushAnomaly();
+    rig.presenters.layoutFor("fx").intents.maximize("fx-rates");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+    });
+
+    expect(rig.calls).toEqual({ ask: 1, availability: 1, history: 1 });
+    expect(
+      await firstValueFrom(rig.ports.preferences.workspaceLayout$()),
+    ).not.toBe(null);
+    rig.presenters.jarvis.dispose();
+  });
+
   it("a supplied equityFills$ drives the ticket fill intent", () => {
     const fills$ = new Subject<EquityFillSignal>();
     const { presenters } = createApp(createPorts({}), { equityFills$: fills$ });
@@ -379,6 +415,81 @@ describe("createApp — core seams (strangler phase)", () => {
     presenters.jarvis.dispose();
   });
 });
+
+interface StandDownCalls {
+  ask: number;
+  availability: number;
+  history: number;
+}
+
+interface StandDownRig {
+  readonly ports: AppPorts;
+  readonly presenters: Presenters;
+  readonly calls: StandDownCalls;
+  /** A jittered baseline long enough to fill the detector, then one spread
+   * spike — one anomaly under `STAND_DOWN_NARRATOR_CONFIG`. */
+  readonly pushAnomaly: () => void;
+}
+
+/** An app over a jarvis port that counts every wire-facing call, with the
+ * narrator switched on and a tiny detector window, reading prices from a
+ * supplied `priceFor` seam the rig drives. */
+function createStandDownRig(extraSeams: CoreSeams): StandDownRig {
+  const calls: StandDownCalls = { ask: 0, availability: 0, history: 0 };
+  const prices$ = new Subject<Price>();
+  const ports = createPorts({
+    preferences: new PreferencesSimulator({ jarvisNarrator: "on" }),
+    narratorConfig: STAND_DOWN_NARRATOR_CONFIG,
+    jarvis: {
+      ask: () => {
+        calls.ask += 1;
+        return NEVER;
+      },
+      confirm: () => {
+        // unused by these tests
+      },
+      availability$: () => {
+        calls.availability += 1;
+        return NEVER;
+      },
+      setHistorySource: () => {
+        calls.history += 1;
+      },
+    },
+  });
+
+  const { presenters } = createApp(ports, {
+    ...extraSeams,
+    pairs$: of([EURUSD]),
+    priceFor: () => {
+      return prices$;
+    },
+  });
+
+  return {
+    ports,
+    presenters,
+    calls,
+    pushAnomaly: () => {
+      for (let i = 0; i < STAND_DOWN_NARRATOR_CONFIG.minWindowFill; i++) {
+        const halfSpread = i % 2 === 0 ? 0.00009 : 0.00011;
+        prices$.next(createSpreadPrice(halfSpread));
+      }
+
+      prices$.next(createSpreadPrice(0.025));
+    },
+  };
+}
+
+const STAND_DOWN_NARRATOR_CONFIG = { windowSize: 8, minWindowFill: 4 };
+
+function createSpreadPrice(halfSpread: number): Price {
+  return {
+    ...createPrice("EURUSD", 1.1),
+    bid: 1.1 - halfSpread,
+    ask: 1.1 + halfSpread,
+  };
+}
 
 function createPorts(overrides: Partial<AppPorts>): AppPorts {
   return {

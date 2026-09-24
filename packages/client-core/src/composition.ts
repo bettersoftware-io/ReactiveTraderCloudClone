@@ -321,6 +321,15 @@ export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly workspace?: (
     jarvisEvents$: Observable<JarvisEvent>,
   ) => WorkspaceSeam;
+  /** "A sibling core owns the Jarvis family and its workspace"
+   * (pluggable-core slice 7 wave 2, ruling 5). This app still builds every
+   * member — the parity drift test needs its own instances — but none of
+   * them reaches a port or the wire: its `jarvis` subscribes no
+   * `availability$` (a cold, per-subscription server request) and registers
+   * no history source (a single-slot port method); no narrator is built (it
+   * would ask a second time per anomaly); the panels, driver and demo fold
+   * nothing; and its workspace restores nothing and writes nothing. */
+  readonly nativeJarvis?: true;
 }
 
 /** What a sibling core's native workspace hands back through
@@ -416,7 +425,9 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     // needs none: createJarvisMachine defaults an absent availability$ to
     // an always-available, scripted-only value, so sim stays permanently
     // available offering only the scripted brain.
-    availability$: ports.jarvis.availability$?.(),
+    availability$: seams.nativeJarvis
+      ? undefined
+      : ports.jarvis.availability$?.(),
     preferredBrain$: ports.preferences.jarvisBrain$(),
     effort$: ports.preferences.jarvisEffort$(),
   });
@@ -438,6 +449,13 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // is restored into it, and it never creates the persistence writer — the
   // `workspaceLayout` preference has exactly one writer, the native core's.
   const nativeWorkspace = seams.workspace?.(jarvisEvents$);
+  // Every internal fold over this app's Jarvis events, or nothing at all
+  // when a sibling core owns the family (`CoreSeams.nativeJarvis`).
+  const foldedJarvisEvents$ = seams.nativeJarvis ? EMPTY : jarvisEvents$;
+  // This app's own workspace stays idle — no restore, no writer — when a
+  // sibling core owns it, either way.
+  const workspaceIsNative =
+    nativeWorkspace !== undefined || seams.nativeJarvis === true;
 
   // Hoisted out of the `JarvisPanelsPresenter` construction below (where it
   // used to be an inline argument) because the workspace-persistence wiring
@@ -445,7 +463,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // has to persist each docked panel's `PanelSpecV1`, and `JarvisPanelVm`
   // deliberately carries an interpreted `data$` instead of the raw spec.
   const jarvisPanelsMachine = createJarvisPanelsMachine(
-    nativeWorkspace ? EMPTY : jarvisEvents$,
+    nativeWorkspace ? EMPTY : foldedJarvisEvents$,
   );
 
   const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
@@ -588,7 +606,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // subscription below (a restore is not a change worth persisting). A
   // seamed app's own panels stay empty: the native core restores into ITS
   // workspace.
-  if (!nativeWorkspace) {
+  if (!workspaceIsNative) {
     workspaceDock.restorePersistedDocks();
   }
 
@@ -690,7 +708,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     },
   });
 
-  if (!nativeWorkspace) {
+  if (!workspaceIsNative) {
     // The debounced workspace writer. Kicked by every created layout machine
     // (above) and by the panels fold; assembles the payload read-modify-write
     // so tabs never opened this session keep their stored entry. Session-
@@ -743,7 +761,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // purely for length: the deps list grew four members with the pinned-panel
   // round (`dockPanel`, `undockPanel`, `livePanelIds$`, `dockedPanelIds$`).
   const jarvisDriverDeps: JarvisDriverDeps = {
-    events$: jarvisEvents$,
+    events$: foldedJarvisEvents$,
     workspaceNav: activeNav,
     layout: nativeWorkspace?.layoutFor ?? layoutFor,
     eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
@@ -827,7 +845,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // never-approve turns.
   const jarvisDemo = createJarvisDemoMachine({
     jarvisState$: jarvis.state$,
-    jarvisEvents$,
+    jarvisEvents$: foldedJarvisEvents$,
     jarvis: jarvis.intents,
     powerSaverLevel$: powerSaver.level$,
   });
@@ -854,15 +872,17 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // #171 tick-acceleration family) — see NarratorDeps.priceFor's doc for
   // the full rationale and the two accepted consequences (permanently
   // pinning those shared streams warm; conflation under power-saver calm).
-  createNarratorMachine({
-    pairs$,
-    priceFor,
-    narrate: (prompt: string): void => {
-      jarvis.intents.narrate(prompt);
-    },
-    preference$: jarvisPreferences.narrator$,
-    config: ports.narratorConfig,
-  });
+  if (!seams.nativeJarvis) {
+    createNarratorMachine({
+      pairs$,
+      priceFor,
+      narrate: (prompt: string): void => {
+        jarvis.intents.narrate(prompt);
+      },
+      preference$: jarvisPreferences.narrator$,
+      config: ports.narratorConfig,
+    });
+  }
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
@@ -969,7 +989,10 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     jarvisDemo,
   };
 
-  wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
+  if (!seams.nativeJarvis) {
+    wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
+  }
+
   gateTransportOnAuth(ports.transport, presenters.auth);
 
   const commands: AppCommands = {
