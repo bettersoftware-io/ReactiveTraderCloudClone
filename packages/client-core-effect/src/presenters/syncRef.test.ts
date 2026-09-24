@@ -43,6 +43,23 @@ describe("SyncRef", () => {
     expect(heard).toEqual(["same"]);
   });
 
+  it("a subscriber joining after a commit reads the committed value at once — no fiber step", () => {
+    const ref = createSyncRef(useHost(), "initial");
+    const warm = ref.warm();
+    ref.set(() => {
+      return "restored";
+    });
+
+    const seen: string[] = [];
+    warm.state$
+      .subscribe((value) => {
+        seen.push(value);
+      })
+      .unsubscribe();
+    expect(seen).toEqual(["restored"]);
+    warm.release();
+  });
+
   const hosts: EffectHost[] = [];
 
   function useHost(): EffectHost {

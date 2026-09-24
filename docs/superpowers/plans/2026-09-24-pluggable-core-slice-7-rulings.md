@@ -207,11 +207,22 @@ No Critical. Taken:
   release loop over the panel cache (closing the host scope already ends
   every panel's `sharedFold` period) and the kick-time `closed` check (the
   kick listener is released and the write re-checks).
-- Ruling (finding 3, latent): a seam READ through a warm `SyncRef` stream or
-  the native nav's `state$` lags a synchronous change by one scheduler step
-  (it follows `ref.changes`). Unreachable today — the driver runs every
-  command behind a stagger timer — so recorded, not restructured; the
-  fix, if a same-tick case ever appears, is feeding `warm()` from the
-  listener path — cost if wrong: a "spawn and dock in one tick" drive would
-  report the wrong outcome.
+- Finding 3 (rated latent by the reviewer) WAS REACHABLE — CI's Solid +
+  Effect e2e ("a docked panel dragged onto Live Rates comes back in that
+  group after a reload") failed on it: `SyncRef.warm()` followed
+  `ref.changes`, so after a reload the restored docked panel reached the
+  UI's FIRST render one fiber step late; the Dockview bridge's orphan scrub
+  read the empty docked set and dropped the panel's dragged position (the
+  "reconcile against unloaded input" trap). Fix: `warm()` is fed from the
+  synchronous commit path (`bridge/out.ts` `listenToWarmStateStream`). New
+  unit case (a subscriber joining after a commit reads it at once) and a
+  new CONTRACT point in the restore case: at composition, before any
+  pause, `dockedPanels$` and `dockedPanelIdsFor` already list the restored
+  panel — both RED on the old wiring, GREEN now, green on all three cores.
+  Local e2e had passed: the race depends on render timing. Lesson: a
+  "latent, unreachable today" rating on a delivery-timing finding needs a
+  test, not a ledger line. Still recorded: the native `workspaceNav`
+  (slice 6) is a `refToWarmStateStream`, so `activeTab()` read in the same
+  tick as a `switchTab` sees the old tab — every current path settles or
+  staggers first.
 

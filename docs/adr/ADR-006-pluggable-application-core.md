@@ -937,8 +937,12 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   scheduled. The shared dock reads the roster and the recorded layout
   states right after calling into them, and `layoutStateNow` throws on a core
   whose `layoutFor` records late. The Effect core commits through
-  `SubscriptionRef`s with `runSync` and notifies its in-core mirrors
-  synchronously (`SyncRef`); `ref.changes` still feeds subscribers.
+  `SubscriptionRef`s with `runSync` and feeds both its in-core mirrors and
+  its subscribers from that synchronous commit (`SyncRef`), never from
+  `ref.changes`. The contract adds the one delivery rule this makes
+  necessary: RESTORED state is readable at composition, before any pause —
+  a UI's first render must list a restored docked panel, or the Dockview
+  bridge scrubs its position (caught by CI's Solid + Effect e2e).
 - **The Effect workspace lives outside the Layer graph** (on a child of the
   app host), because its input only exists inside the base's `createApp`.
   The Layer count is unchanged.

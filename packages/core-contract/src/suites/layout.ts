@@ -295,6 +295,23 @@ export function describeLayoutForContract(
         const h2 = makeHarness({ workspaceLayout: stored });
 
         try {
+          // At composition, before any pause: a UI's FIRST render must see
+          // the restored panel docked — the Dockview bridge scrubs a docked
+          // panel its first read does not list, losing its position.
+          const firstRead = collect(
+            h2.app.presenters.jarvisPanels.dockedPanels$,
+          );
+          const firstMembership = collect(
+            h2.app.presenters.dockedPanelIdsFor("credit"),
+          );
+          firstRead.unsubscribe();
+          firstMembership.unsubscribe();
+          expect(
+            firstRead.values.at(-1)?.map((row) => {
+              return row.panelId;
+            }),
+          ).toEqual(["p1"]);
+          expect(firstMembership.values.at(-1)).toEqual(["p1"]);
           expect(await dockedIds(h2, clock.settle)).toEqual(["p1"]);
           expect(
             leafIds((await readLayout(h2, "credit", clock.settle)).root),
