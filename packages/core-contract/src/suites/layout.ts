@@ -301,6 +301,7 @@ export function describeLayoutForContract(
           const firstRead = collect(
             h2.app.presenters.jarvisPanels.dockedPanels$,
           );
+
           const firstMembership = collect(
             h2.app.presenters.dockedPanelIdsFor("credit"),
           );
