@@ -159,7 +159,13 @@ export function listenToWarmStateStream<S>(
  * `data$.subscribe()` keep-warm) and hand back its release. The subscribe
  * lives here because the bridge owns rxjs. */
 export function holdWarm<T>(stream: CoreStream<T>): () => void {
-  const subscription = stream.subscribe();
+  // The keep-warm swallows a failure: the stream's REAL subscribers hear it,
+  // and an unhandled copy from this silent holder would only be noise.
+  const subscription = stream.subscribe({
+    error: () => {
+      // deliberately empty — see above
+    },
+  });
 
   return () => {
     subscription.unsubscribe();

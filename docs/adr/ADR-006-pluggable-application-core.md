@@ -953,9 +953,9 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 - **Recorded, uncontracted:** the unsupported-sentinel panel path (the
   sentinel is minted by the adapters); a sibling's persist writer stops at
   `app.dispose()` — a pending write is dropped and no later change writes —
-  where the RxJS writer never unsubscribes; a
-  panel whose data port FAILED stays attached in the async core until the
-  roster changes (RxJS propagates the error).
+  where the RxJS writer never unsubscribes. (A panel whose data port FAILED
+  used to stay attached in the async core; after the wave both siblings
+  propagate the error to `panelData$` subscribers, as RxJS does.)
 
 ## Follow-ups
 

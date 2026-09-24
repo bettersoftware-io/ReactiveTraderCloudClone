@@ -163,6 +163,27 @@ describe("jarvisPanels (async)", () => {
     expect(latest(presenter.panels$)[0].data$).not.toBe(first);
   });
 
+  it("a panel whose data port FAILS fails its panelData$ subscribers, as the RxJS switchMap does", () => {
+    const positions = new Subject<PositionUpdates>();
+    const { events$, presenter } = createFixture({ analytics: positions });
+    events$.next(createPanelEvent("p"));
+    const errors: unknown[] = [];
+    presenter.panelData$("p").subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+
+    const failure = new Error("port down");
+    positions.error(failure);
+
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    }).then(() => {
+      expect(errors).toEqual([failure]);
+    });
+  });
+
   it("the lifetime's end stops the roster following its events", () => {
     const lifetime = new AbortController();
     const { events$, presenter } = createFixture({}, lifetime.signal);

@@ -262,46 +262,53 @@ export function createJarvisPanelsPresenter(
     signal: AbortSignal,
     publish: (value: PanelData | null) => void,
   ): Promise<void> {
-    let attached: Stream<PanelData> | null = null;
-    let detach: (() => void) | null = null;
+    return new Promise<void>((resolve, reject) => {
+      let attached: Stream<PanelData> | null = null;
+      let detach: (() => void) | null = null;
 
-    const unsubscribeRows = rows.subscribe((vms) => {
-      const vm = vms.find((row) => {
-        return row.panelId === panelId;
+      function stop(): void {
+        unsubscribeRows();
+        detach?.();
+        detach = null;
+      }
+
+      const unsubscribeRows = rows.subscribe((vms) => {
+        const vm = vms.find((row) => {
+          return row.panelId === panelId;
+        });
+        const target = vm?.status === "live" ? vm.data$ : null;
+
+        if (target !== null && target === attached) {
+          return;
+        }
+
+        detach?.();
+        detach = null;
+        attached = target;
+
+        if (target === null) {
+          publish(null);
+          return;
+        }
+
+        const attachment = new AbortController();
+        // A data stream that FAILS fails this follow too — its subscribers
+        // hear the error, as the RxJS presenter's `switchMap` propagates it
+        // (the next subscriber starts afresh, re-reading the roster).
+        relay(target, attachment.signal, publish).catch((error: unknown) => {
+          stop();
+          reject(error);
+        });
+
+        detach = (): void => {
+          attachment.abort();
+        };
       });
-      const target = vm?.status === "live" ? vm.data$ : null;
 
-      // Known limit: a data topic whose port FAILED has cleared its
-      // subscribers (the relay's rejection goes to `reportAsync`), and this
-      // attachment stays on it until the roster changes — the RxJS presenter
-      // propagates the error instead. Ports here do not error in practice.
-      if (target !== null && target === attached) {
-        return;
-      }
-
-      detach?.();
-      detach = null;
-      attached = target;
-
-      if (target === null) {
-        publish(null);
-        return;
-      }
-
-      const attachment = new AbortController();
-      relay(target, attachment.signal, publish).catch(reportAsync);
-
-      detach = (): void => {
-        attachment.abort();
-      };
-    });
-
-    return new Promise<void>((resolve) => {
       signal.addEventListener(
         "abort",
         () => {
-          unsubscribeRows();
-          detach?.();
+          stop();
           resolve();
         },
         { once: true },
