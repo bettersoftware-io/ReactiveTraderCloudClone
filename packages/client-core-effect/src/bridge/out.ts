@@ -129,6 +129,25 @@ export function refToWarmStateStream<S>(
   };
 }
 
+/** Hold a stream warm with a subscription of its own (the RxJS presenters'
+ * `data$.subscribe()` keep-warm) and hand back its release. The subscribe
+ * lives here because the bridge owns rxjs. */
+export function holdWarm<T>(stream: CoreStream<T>): () => void {
+  const subscription = stream.subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/** A stream that completes at once without a value — an unsupported desk
+ * panel's `data$` (the RxJS presenter's `EMPTY`). */
+export function emptyStream<T>(): CoreStream<T> {
+  return new Observable<T>((subscriber) => {
+    subscriber.complete();
+  });
+}
+
 /** `SubscriptionRef.set` that publishes only a changed value: a
  * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
  * machine's `state$` promises `distinctUntilChanged`. The same guard
