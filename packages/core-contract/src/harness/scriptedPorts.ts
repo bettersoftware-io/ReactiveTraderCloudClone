@@ -434,13 +434,16 @@ export function scriptPorts(
   const dockBlobs = new Map<string, string>(
     Object.entries(seed.dockLayouts ?? {}),
   );
+
   const presetLists = new Map<string, string>(
     Object.entries(seed.layoutPresets ?? {}),
   );
+
   const dockLayoutStore: DockLayoutStore | undefined =
     seed.dockLayouts === undefined
       ? base.dockLayoutStore
       : createMapStore(dockBlobs, false);
+
   const layoutPresetStore: LayoutPresetStore | undefined =
     seed.layoutPresets === undefined && seed.presetStoreDropsWrites !== true
       ? base.layoutPresetStore

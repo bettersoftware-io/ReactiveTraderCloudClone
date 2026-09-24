@@ -174,6 +174,7 @@ describe("createApp — core seams (strangler phase)", () => {
     const ports = createPorts({
       jarvis: createSpawningJarvisPort("jarvis-1"),
     });
+
     const { presenters } = createApp(ports, {
       workspace: () => {
         return seam.workspace;

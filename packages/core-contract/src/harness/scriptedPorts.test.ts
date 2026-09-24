@@ -738,17 +738,6 @@ describe("scriptPorts auth, session store and boot splash", () => {
   });
 });
 
-function createStoredSession(): StoredSession {
-  const [first] = ROSTER;
-
-  return {
-    token: "t",
-    user: first.user,
-    username: first.username,
-    exp: 2_000_000_000_000,
-  };
-}
-
 describe("scriptPorts — Jarvis, the workspace preference and the two stores", () => {
   it("queues asks FIFO; replyJarvis feeds the OLDEST and completes it on done", () => {
     const { ports, driver } = scriptPorts(createBasePorts());
@@ -844,4 +833,15 @@ function createBasePorts(): AppPorts {
 
 interface Unsubscribable {
   unsubscribe(): void;
+}
+
+function createStoredSession(): StoredSession {
+  const [first] = ROSTER;
+
+  return {
+    token: "t",
+    user: first.user,
+    username: first.username,
+    exp: 2_000_000_000_000,
+  };
 }

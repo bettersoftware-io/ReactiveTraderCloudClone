@@ -22,7 +22,7 @@ interface CommandTag {
 }
 
 /** One drive batch, as a `command` event carries it. */
-export type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
+type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
 
 /** One drive command of a batch. */
 export type DriveCommand = DriveBatch["commands"][number];

@@ -22,6 +22,7 @@ export function describeReportDetachedPanelsContract(
           const [panelId] = leafIds(
             (await readLayout(h, "fx", clock.settle)).root,
           );
+
           const maximize = [
             { kind: "layout", op: "maximize", tab: "fx", panelId },
           ] as const;

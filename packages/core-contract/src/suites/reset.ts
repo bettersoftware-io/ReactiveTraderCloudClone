@@ -69,7 +69,11 @@ export function describeResetWorkspaceLayoutContract(
         }
 
         expect(resets.values.at(-1)).toBe(before + 1);
-        expect(resets.values.filter((v) => v === before + 1)).toHaveLength(1);
+        expect(
+          resets.values.filter((v) => {
+            return v === before + 1;
+          }),
+        ).toHaveLength(1);
         expect(seenAtBump).toEqual([null, null, null, null]);
         sub.unsubscribe();
         resets.unsubscribe();
