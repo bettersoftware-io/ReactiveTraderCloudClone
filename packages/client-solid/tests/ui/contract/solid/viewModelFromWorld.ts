@@ -474,20 +474,22 @@ function isPanelDockedIn(world: World, panelId: string): boolean {
  * panel through App.tsx's global registry merge AND make every later payload
  * unparseable), then the panels machine — which owns every no-op rule
  * (unknown id / already docked / `MAX_DOCKED_PANELS`) — and only then, if the
- * docked set genuinely changed, the leaf insertion into the ACTIVE tab. */
-function dockPanelIntoWorkspace(world: World, panelId: string): void {
+ * docked set genuinely changed, the leaf insertion into the ACTIVE tab.
+ * Returns whether THIS call docked the panel — the Jarvis driver reports a
+ * `false` as a refused dock (pluggable-core slice 7 wave 2, ruling 6). */
+function dockPanelIntoWorkspace(world: World, panelId: string): boolean {
   if (STATIC_WORKSPACE_PANEL_IDS.has(panelId)) {
-    return;
+    return false;
   }
 
   if (isPanelDockedIn(world, panelId)) {
-    return;
+    return false;
   }
 
   getJarvisPanelsMachine(world).dockPanel(panelId);
 
   if (!isPanelDockedIn(world, panelId)) {
-    return;
+    return false;
   }
 
   const tab = readStateNow(
@@ -496,6 +498,7 @@ function dockPanelIntoWorkspace(world: World, panelId: string): void {
   ).activeTab;
   getWorkspaceDock(world).dockedTabs.set(panelId, tab);
   getLayoutFor(world, tab).intents.insertPanel(panelId);
+  return true;
 }
 
 /** `Presenters.undockPanel` — the inverse; the leaf leaves the tab the panel
@@ -704,7 +707,7 @@ function getJarvisDriverMachine(world: World): JarvisDriverMachineHandle {
         dismissPanelFromWorkspace(world, panelId);
       },
       dockPanel: (panelId: string) => {
-        dockPanelIntoWorkspace(world, panelId);
+        return dockPanelIntoWorkspace(world, panelId);
       },
       undockPanel: (panelId: string) => {
         undockPanelFromWorkspace(world, panelId);

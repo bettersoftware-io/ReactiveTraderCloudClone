@@ -39,7 +39,7 @@ import type {
   Price,
   ThemeSkin,
 } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createAuthDeps } from "#/adapters/authDeps";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
@@ -47,7 +47,6 @@ import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore"
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { readPreferenceNow } from "#/adapters/readPreferenceNow";
-import { WsJarvisAdapter } from "#/adapters/WsJarvisAdapter";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import {
   createDefaultLayoutPort,
@@ -128,6 +127,7 @@ import {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
+import { modelFacingHistory } from "#/presenters/jarvisController";
 
 /** The reconnect-intent event emitted from the Reconnect button. */
 interface ReconnectIntent {
@@ -224,46 +224,18 @@ export {
   LAYOUT_PANEL_IDS,
   STATIC_WORKSPACE_PANEL_IDS,
 } from "#/layout/workspaceDock";
-
-/**
- * Defensive guard, currently UNREACHABLE in production — kept so a natural
- * future refactor doesn't silently reintroduce a double-send bug. Read
- * `wireJarvisHistorySource`'s doc first for why `ask()`'s `historySource()`
- * read is EAGER (runs before `JarvisMachine`'s "start" patch ever appends the
- * new turn's own `[userEntry, jarvisEntry stub]` pair to `state.entries`), so
- * in today's call shape this function's `slice` branch never actually fires:
- * proven by the direct unit test next to this function in
- * `composition.jarvisHistory.test.ts`, which is the ONLY thing currently
- * exercising it (mutate this function and that test goes red; nothing else
- * would notice).
- *
- * Why keep it: `ask()`'s eager read is an incidental consequence of today's
- * call shape, not a documented contract of `WsJarvisAdapter` — wrapping
- * `ask()`'s body in `defer(() => …)` (so `historySource()` is read at
- * SUBSCRIBE time instead, matching how `createJarvisTurnStream` already
- * defers its `ws.send()`) is a natural-looking refactor that would flip the
- * ordering and make this exclusion load-bearing: a history snapshot read at
- * that later point WOULD contain the in-flight turn's own pair, and
- * `WsJarvisAdapter.ask()` already sends that same text separately as
- * `JarvisChatPayload.text` — so echoing it back inside `history` too would
- * hand the model its own newest message twice. Cheaper to keep a guard that
- * costs one array slice per turn than to silently reintroduce that bug the
- * day someone makes `ask()` lazy.
- */
-export function historyEntriesExcludingInFlightTurn(
-  entries: readonly JarvisEntry[],
-): readonly JarvisEntry[] {
-  const last = entries[entries.length - 1];
-  return last && !last.done ? entries.slice(0, -2) : entries;
-}
+/** Moved to `./presenters/jarvisController` (pluggable-core slice 7 wave
+ * 2) with the rest of the history rules — re-exported for existing imports. */
+export { historyEntriesExcludingInFlightTurn } from "#/presenters/jarvisController";
 
 /**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
- * chat-history replay source — only when `ports.jarvis` is a
- * `WsJarvisAdapter` (WS-real mode; `jarvisPort.ts`'s surface stays unchanged,
- * so this is an instanceof check rather than a port-interface method).
- * Simulator mode's `ScriptedJarvisAdapter` has no `setHistorySource` and
- * needs none — its brain already runs against the live application state
+ * chat-history replay source — only when `ports.jarvis` offers the
+ * optional `setHistorySource` (`WsJarvisAdapter`, WS-real mode; an optional
+ * port member rather than an instanceof check since pluggable-core slice 7
+ * wave 2, so a port that cannot be that class — an alternative core's, the
+ * contract harness's — is wired the same way). Simulator mode's
+ * `ScriptedJarvisAdapter` has no `setHistorySource` and needs none — its brain already runs against the live application state
  * directly, with no wire history to replay.
  *
  * Late-bound rather than constructor-injected: `JarvisMachine` (built here,
@@ -301,7 +273,7 @@ function wireJarvisHistorySource(
   jarvisPort: AppPorts["jarvis"],
   jarvisMachine: Presenters["jarvis"],
 ): void {
-  if (!(jarvisPort instanceof WsJarvisAdapter)) {
+  if (jarvisPort.setHistorySource === undefined) {
     return;
   }
 
@@ -312,19 +284,7 @@ function wireJarvisHistorySource(
   });
 
   jarvisPort.setHistorySource(() => {
-    return historyEntriesExcludingInFlightTurn(latestEntries)
-      .filter((entry) => {
-        // `origin: "system"` (the budget-downgrade line — JarvisMachine's
-        // `availabilityPatches$`) is UI-only bookkeeping, not something the
-        // model ever produced or should see echoed back as its own past
-        // turn — excluded here. `"narrator"` (proactive app-driving turns)
-        // and drive-outcome rows (no `origin` at all, same as any ordinary
-        // reply) stay: both are genuine turns the model itself is party to.
-        return entry.done && entry.text.length > 0 && entry.origin !== "system";
-      })
-      .map((entry): JarvisHistoryEntry => {
-        return { role: entry.role, text: entry.text };
-      });
+    return modelFacingHistory(latestEntries);
   });
 
   const disposeMachine = jarvisMachine.dispose;
@@ -361,6 +321,15 @@ export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly workspace?: (
     jarvisEvents$: Observable<JarvisEvent>,
   ) => WorkspaceSeam;
+  /** "A sibling core owns the Jarvis family and its workspace"
+   * (pluggable-core slice 7 wave 2, ruling 5). This app still builds every
+   * member — the parity drift test needs its own instances — but none of
+   * them reaches a port or the wire: its `jarvis` subscribes no
+   * `availability$` (a cold, per-subscription server request) and registers
+   * no history source (a single-slot port method); no narrator is built (it
+   * would ask a second time per anomaly); the panels, driver and demo fold
+   * nothing; and its workspace restores nothing and writes nothing. */
+  readonly nativeJarvis?: true;
 }
 
 /** What a sibling core's native workspace hands back through
@@ -370,7 +339,7 @@ export interface WorkspaceSeam {
   readonly layoutFor: (
     tab: WorkspaceTab,
   ) => Machine<LayoutState, LayoutIntents>;
-  readonly dockPanel: (panelId: string) => void;
+  readonly dockPanel: (panelId: string) => boolean;
   readonly undockPanel: (panelId: string) => void;
   readonly dismissPanel: (panelId: string) => void;
   readonly livePanelIds$: Observable<readonly string[]>;
@@ -450,17 +419,15 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     setSkin: (s: JarvisSkin): void => {
       ports.preferences.setJarvisSkin(s);
     },
-    // Only WsJarvisAdapter (WS-real mode) exposes availability$ — see
-    // wireJarvisHistorySource's doc above for why this is an instanceof
-    // check rather than a JarvisPort method (jarvisPort.ts's surface stays
-    // unchanged). Simulator mode's ScriptedJarvisAdapter has none and
+    // Only WsJarvisAdapter (WS-real mode) offers the optional
+    // availability$ — see wireJarvisHistorySource's doc above for why it is
+    // an optional port member. Simulator mode's ScriptedJarvisAdapter has none and
     // needs none: createJarvisMachine defaults an absent availability$ to
     // an always-available, scripted-only value, so sim stays permanently
     // available offering only the scripted brain.
-    availability$:
-      ports.jarvis instanceof WsJarvisAdapter
-        ? ports.jarvis.availability$()
-        : undefined,
+    availability$: seams.nativeJarvis
+      ? undefined
+      : ports.jarvis.availability$?.(),
     preferredBrain$: ports.preferences.jarvisBrain$(),
     effort$: ports.preferences.jarvisEffort$(),
   });
@@ -482,6 +449,13 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // is restored into it, and it never creates the persistence writer — the
   // `workspaceLayout` preference has exactly one writer, the native core's.
   const nativeWorkspace = seams.workspace?.(jarvisEvents$);
+  // Every internal fold over this app's Jarvis events, or nothing at all
+  // when a sibling core owns the family (`CoreSeams.nativeJarvis`).
+  const foldedJarvisEvents$ = seams.nativeJarvis ? EMPTY : jarvisEvents$;
+  // This app's own workspace stays idle — no restore, no writer — when a
+  // sibling core owns it, either way.
+  const workspaceIsNative =
+    nativeWorkspace !== undefined || seams.nativeJarvis === true;
 
   // Hoisted out of the `JarvisPanelsPresenter` construction below (where it
   // used to be an inline argument) because the workspace-persistence wiring
@@ -489,7 +463,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // has to persist each docked panel's `PanelSpecV1`, and `JarvisPanelVm`
   // deliberately carries an interpreted `data$` instead of the raw spec.
   const jarvisPanelsMachine = createJarvisPanelsMachine(
-    nativeWorkspace ? EMPTY : jarvisEvents$,
+    nativeWorkspace ? EMPTY : foldedJarvisEvents$,
   );
 
   const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
@@ -632,7 +606,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // subscription below (a restore is not a change worth persisting). A
   // seamed app's own panels stay empty: the native core restores into ITS
   // workspace.
-  if (!nativeWorkspace) {
+  if (!workspaceIsNative) {
     workspaceDock.restorePersistedDocks();
   }
 
@@ -734,7 +708,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     },
   });
 
-  if (!nativeWorkspace) {
+  if (!workspaceIsNative) {
     // The debounced workspace writer. Kicked by every created layout machine
     // (above) and by the panels fold; assembles the payload read-modify-write
     // so tabs never opened this session keep their stored entry. Session-
@@ -787,7 +761,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // purely for length: the deps list grew four members with the pinned-panel
   // round (`dockPanel`, `undockPanel`, `livePanelIds$`, `dockedPanelIds$`).
   const jarvisDriverDeps: JarvisDriverDeps = {
-    events$: jarvisEvents$,
+    events$: foldedJarvisEvents$,
     workspaceNav: activeNav,
     layout: nativeWorkspace?.layoutFor ?? layoutFor,
     eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
@@ -871,7 +845,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // never-approve turns.
   const jarvisDemo = createJarvisDemoMachine({
     jarvisState$: jarvis.state$,
-    jarvisEvents$,
+    jarvisEvents$: foldedJarvisEvents$,
     jarvis: jarvis.intents,
     powerSaverLevel$: powerSaver.level$,
   });
@@ -898,15 +872,17 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // #171 tick-acceleration family) — see NarratorDeps.priceFor's doc for
   // the full rationale and the two accepted consequences (permanently
   // pinning those shared streams warm; conflation under power-saver calm).
-  createNarratorMachine({
-    pairs$,
-    priceFor,
-    narrate: (prompt: string): void => {
-      jarvis.intents.narrate(prompt);
-    },
-    preference$: jarvisPreferences.narrator$,
-    config: ports.narratorConfig,
-  });
+  if (!seams.nativeJarvis) {
+    createNarratorMachine({
+      pairs$,
+      priceFor,
+      narrate: (prompt: string): void => {
+        jarvis.intents.narrate(prompt);
+      },
+      preference$: jarvisPreferences.narrator$,
+      config: ports.narratorConfig,
+    });
+  }
 
   // Fall back to a light-always scheme when no OS color-scheme source is provided
   // (tests, simulator, environments without matchMedia).
@@ -1013,7 +989,10 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     jarvisDemo,
   };
 
-  wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
+  if (!seams.nativeJarvis) {
+    wireJarvisHistorySource(ports.jarvis, presenters.jarvis);
+  }
+
   gateTransportOnAuth(ports.transport, presenters.auth);
 
   const commands: AppCommands = {

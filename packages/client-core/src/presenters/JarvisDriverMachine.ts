@@ -24,12 +24,15 @@ import type {
 } from "@rtc/core-api";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
 import { DRIVE_STAGGER_MS as DOMAIN_DRIVE_STAGGER_MS } from "@rtc/domain";
-import type { DriveCommandV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
 import type { EqWorkspaceState } from "./EqWorkspaceMachine";
-import { MAX_DOCKED_PANELS } from "./JarvisPanelsMachine";
+import {
+  applyDriveCommand,
+  type DriveCommandDeps,
+  driveStaggerMs,
+} from "./jarvisDriveCommands";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -72,8 +75,10 @@ export interface JarvisDriverDeps {
    * idempotent-safe to call blindly: the reducer's own no-op guards exist,
    * but `dockPanel`'s `DriveOutcome` needs to tell "already docked" and
    * "dock full" apart, which only this machine's own reads of
-   * `livePanelIds$`/`dockedPanelIds$` can do). */
-  readonly dockPanel: (panelId: string) => void;
+   * `livePanelIds$`/`dockedPanelIds$` can do). Returns `false` when the
+   * workspace refused the dock (`WorkspaceDock.dockPanel`'s id-collision
+   * guard), which the driver reports as `"refused"`. */
+  readonly dockPanel: (panelId: string) => boolean;
   /** `JarvisPanelsMachineHandle.undockPanel` — the `undockPanel` command's
    * effect, applied only after the `dockedPanelIds$` membership check below. */
   readonly undockPanel: (panelId: string) => void;
@@ -123,17 +128,6 @@ export const DRIVE_STAGGER_MS: number = DOMAIN_DRIVE_STAGGER_MS;
 
 const INITIAL_STATE: JarvisDriverState = { lastBatch: [] };
 
-const FALLBACK_EQ_STATE: EqWorkspaceState = {
-  sel: "",
-  openTabs: [],
-  timeframe: "1D",
-  chartType: "candles",
-  indicators: [],
-  panes: [],
-  yScale: "linear",
-  compare: null,
-};
-
 // A named tag (rather than an inline `{ type: "command" }` literal) so
 // `Extract<JarvisEvent, ...>` never takes an inline object type argument —
 // mirrors JarvisPanelsMachine.ts's identical PanelTag idiom (the repo's
@@ -146,14 +140,6 @@ type CommandEvent = Extract<JarvisEvent, CommandEventTag>;
 function isCommandEvent(event: JarvisEvent): event is CommandEvent {
   return event.type === "command";
 }
-
-// Same named-tag idiom as CommandEventTag above, for the "layout" branch of
-// DriveCommandV1 — `Extract<DriveCommandV1, { readonly kind: "layout" }>`
-// inline would be an inline object type as a type argument, also banned.
-interface LayoutCommandTag {
-  readonly kind: "layout";
-}
-type LayoutCommand = Extract<DriveCommandV1, LayoutCommandTag>;
 
 type Patch = (s: JarvisDriverState) => JarvisDriverState;
 
@@ -183,211 +169,35 @@ function readNow<T>(source$: Observable<T>, fallback: T): T {
   return readLatest(source$) ?? fallback;
 }
 
-function applyLayoutCommand(
-  cmd: LayoutCommand,
-  deps: JarvisDriverDeps,
-): DriveOutcome {
-  const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
-  const known = [...deps.knownLayoutPanelIds(cmd.tab), ...dockedPanelIds];
-
-  if (!known.includes(cmd.panelId)) {
-    return {
-      command: cmd,
-      status: "skipped",
-      reason: `unknown panelId "${cmd.panelId}" for tab "${cmd.tab}"`,
-    };
-  }
-
-  if (
-    cmd.op !== "restore" &&
-    deps.detachedPanelIds(cmd.tab).includes(cmd.panelId)
-  ) {
-    return {
-      command: cmd,
-      status: "refused",
-      reason: `${cmd.panelId} is floating or popped out — dock it first`,
-    };
-  }
-
-  const machine = deps.layout(cmd.tab);
-
-  switch (cmd.op) {
-    case "maximize":
-      machine.intents.maximize(cmd.panelId);
-      break;
-    case "restore":
-      machine.intents.restore();
-      break;
-    case "collapse":
-      machine.intents.collapse(cmd.panelId);
-      break;
-    case "expand":
-      machine.intents.expand(cmd.panelId);
-      break;
-
-    default:
-      return { command: cmd, status: "skipped", reason: "unknown layout op" };
-  }
-
-  return { command: cmd, status: "applied" };
-}
-
-/** Applies one `DriveCommandV1` to the injected machines/presenters and
- * reports what happened. TOTAL by construction (the `composePanelStream`
- * doctrine): every branch returns a `DriveOutcome`, nothing throws, and an
- * unrecognized `kind` (unreachable through the closed union, reachable only
- * via a test's cast) falls through to a genuine `"skipped"` outcome rather
- * than the `_exhaustive: never` shortcut some sibling interpreters use —
- * that shortcut would hand a malformed value back typed as a real
- * `DriveOutcome`, exactly the crash risk `composePanelStream.ts`'s
- * `unknownSourceFrame` doc warns against. */
-function applyCommand(
-  cmd: DriveCommandV1,
-  deps: JarvisDriverDeps,
-): DriveOutcome {
-  switch (cmd.kind) {
-    case "switchTab":
-      deps.workspaceNav.intents.switchTab(cmd.tab);
-      return { command: cmd, status: "applied" };
-
-    case "layout":
-      return applyLayoutCommand(cmd, deps);
-
-    case "eqSelect": {
-      const knownSymbols = readLatest(deps.knownSymbols$);
-
-      if (knownSymbols === undefined) {
-        return {
-          command: cmd,
-          status: "skipped",
-          reason: "watchlist not loaded",
-        };
-      }
-
-      if (!knownSymbols.includes(cmd.symbol)) {
-        return {
-          command: cmd,
-          status: "skipped",
-          reason: `unknown symbol "${cmd.symbol}"`,
-        };
-      }
-
-      deps.eqWorkspace.intents.select(cmd.symbol);
-      return { command: cmd, status: "applied" };
-    }
-
-    case "eqTimeframe":
-      deps.eqWorkspace.intents.setTimeframe(cmd.tf);
-      return { command: cmd, status: "applied" };
-
-    case "eqChartType":
-      deps.eqWorkspace.intents.setChartType(cmd.chart);
-      return { command: cmd, status: "applied" };
-
-    case "eqIndicator": {
-      const current = readNow(deps.eqWorkspace.state$, FALLBACK_EQ_STATE);
-
-      if (current.indicators.includes(cmd.id) === cmd.on) {
-        return { command: cmd, status: "skipped", reason: "already set" };
-      }
-
-      deps.eqWorkspace.intents.toggleIndicator(cmd.id);
-      return { command: cmd, status: "applied" };
-    }
-
-    case "eqPane": {
-      const current = readNow(deps.eqWorkspace.state$, FALLBACK_EQ_STATE);
-
-      if (current.panes.includes(cmd.id) === cmd.on) {
-        return { command: cmd, status: "skipped", reason: "already set" };
-      }
-
-      deps.eqWorkspace.intents.togglePane(cmd.id);
-      return { command: cmd, status: "applied" };
-    }
-
-    case "setTheme":
-      deps.setThemeSkin(cmd.skin);
-      return { command: cmd, status: "applied" };
-
-    case "setPowerSaver":
-      deps.setPowerSaver(cmd.level);
-      return { command: cmd, status: "applied" };
-
-    case "dismissPanel":
-      deps.dismissPanel(cmd.panelId);
-      return { command: cmd, status: "applied" };
-
-    case "dockPanel": {
-      const livePanelIds = readNow(deps.livePanelIds$, []);
-      const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
-
-      if (!livePanelIds.includes(cmd.panelId)) {
-        return {
-          command: cmd,
-          status: "skipped",
-          reason: `unknown panelId "${cmd.panelId}"`,
-        };
-      }
-
-      if (dockedPanelIds.includes(cmd.panelId)) {
-        return { command: cmd, status: "skipped", reason: "already docked" };
-      }
-
-      if (dockedPanelIds.length >= MAX_DOCKED_PANELS) {
-        return { command: cmd, status: "skipped", reason: "dock full" };
-      }
-
-      deps.dockPanel(cmd.panelId);
-      return { command: cmd, status: "applied" };
-    }
-
-    case "undockPanel": {
-      const dockedPanelIds = readNow(deps.dockedPanelIds$, []);
-
-      if (!dockedPanelIds.includes(cmd.panelId)) {
-        return { command: cmd, status: "skipped", reason: "not docked" };
-      }
-
-      deps.undockPanel(cmd.panelId);
-      return { command: cmd, status: "applied" };
-    }
-
-    default:
-      return {
-        command: cmd,
-        status: "skipped",
-        reason: "unknown command kind",
-      };
-  }
-}
-
-function staggerMsFor(level: PowerSaverLevel): number {
-  return level === "freeze" ? 0 : DRIVE_STAGGER_MS;
-}
-
-/** `applyCommand`, guarded: an injected dep (any intent method, `setThemeSkin`,
- * `dismissPanel`, ...) is caller-supplied and can throw for reasons entirely
- * outside this machine's control — an uncaught throw here would propagate
- * out of the `map()` callback below and error `state$` PERMANENTLY (RxJS: an
- * error terminates a stream; there is no recovering it). Composition already
- * guards the SOURCE (`catchError(() => EMPTY)` on `events$`) for exactly
- * this class of problem; this is the same doctrine applied to the
- * DISPATCH side, so a single bad command can't take the whole driver down
- * for every batch after it. */
-function safeApplyCommand(
-  cmd: DriveCommandV1,
-  deps: JarvisDriverDeps,
-): DriveOutcome {
-  try {
-    return applyCommand(cmd, deps);
-  } catch (err) {
-    return {
-      command: cmd,
-      status: "skipped",
-      reason: err instanceof Error ? err.message : String(err),
-    };
-  }
+/** Adapts this machine's observable deps to the shared interpreter's
+ * synchronous readers (`./jarvisDriveCommands`). */
+function createCommandDeps(deps: JarvisDriverDeps): DriveCommandDeps {
+  return {
+    switchTab: (tab: WorkspaceTab) => {
+      deps.workspaceNav.intents.switchTab(tab);
+    },
+    layout: deps.layout,
+    eqWorkspace: deps.eqWorkspace.intents,
+    eqWorkspaceState: () => {
+      return readLatest(deps.eqWorkspace.state$);
+    },
+    setThemeSkin: deps.setThemeSkin,
+    setPowerSaver: deps.setPowerSaver,
+    dismissPanel: deps.dismissPanel,
+    dockPanel: deps.dockPanel,
+    undockPanel: deps.undockPanel,
+    knownLayoutPanelIds: deps.knownLayoutPanelIds,
+    detachedPanelIds: deps.detachedPanelIds,
+    livePanelIds: () => {
+      return readNow(deps.livePanelIds$, []);
+    },
+    dockedPanelIds: () => {
+      return readNow(deps.dockedPanelIds$, []);
+    },
+    knownSymbols: () => {
+      return readLatest(deps.knownSymbols$);
+    },
+  };
 }
 
 /**
@@ -421,6 +231,7 @@ export function createJarvisDriverMachine(
   // `map()` callback that computes each command's outcome (below), so its
   // emission order/timing is identical to how `lastBatch` fills in.
   const outcomes$ = new Subject<DriveOutcome>();
+  const commandDeps = createCommandDeps(deps);
 
   const patches$: Observable<Patch> = deps.events$.pipe(
     filter(isCommandEvent),
@@ -436,14 +247,15 @@ export function createJarvisDriverMachine(
           // The batch's own first command (index 0) fires immediately — see
           // this function's doc. Every later command reads powerSaverLevel$
           // fresh, right before it schedules its own wait.
+          // The first command never waits, so it never reads the level.
           const staggerMs =
             index === 0
               ? 0
-              : staggerMsFor(readNow(deps.powerSaverLevel$, "off"));
+              : driveStaggerMs(index, readNow(deps.powerSaverLevel$, "off"));
 
           return timer(staggerMs, deps.scheduler).pipe(
             map((): Patch => {
-              const outcome = safeApplyCommand(cmd, deps);
+              const outcome = applyDriveCommand(cmd, commandDeps);
               outcomes$.next(outcome);
 
               return (s: JarvisDriverState): JarvisDriverState => {

@@ -119,8 +119,9 @@ export interface WorkspaceDockDeps {
 }
 
 export interface WorkspaceDock {
-  /** `Presenters.dockPanel`. */
-  dockPanel(panelId: string): void;
+  /** `Presenters.dockPanel`. `true` only when THIS call docked the panel —
+   * the Jarvis driver reports a `false` as a refused dock. */
+  dockPanel(panelId: string): boolean;
   /** `Presenters.undockPanel`. */
   undockPanel(panelId: string): void;
   /** `Presenters.dismissPanel` — the docked-safe dismissal. */
@@ -229,38 +230,31 @@ export function createWorkspaceDock(deps: WorkspaceDockDeps): WorkspaceDock {
    * prefix, not just ids open right now, keeps a later `openInstance` from
    * colliding with an earlier dock.
    *
-   * KNOWN RESIDUAL (documented, not fixed here — see task-7-report.md fix
-   * round 1): `JarvisDriverMachine`'s `dockPanel` case (the DriveCommand
-   * path a scripted/AI turn uses) checks only `livePanelIds`/
-   * `dockedPanelIds`/`MAX_DOCKED_PANELS` before calling `deps.dockPanel` —
-   * it has no visibility into this guard, so for a colliding id it still
-   * reports `{status: "applied"}` even though this function no-ops. The
-   * driver's four pinned skip-reason strings ("unknown panelId", "already
-   * docked", "dock full", "not docked") don't cover this case, and minting a
-   * fifth string is out of scope for this fix round. The UI-visible effect
-   * is limited to a misleading driver-reply status text for this one
-   * scripted/AI path — the panel itself never docks, the static panel is
-   * never shadowed, and persistence never breaks, because this guard runs
-   * first regardless of caller. */
-  function dockPanel(panelId: string): void {
+   * Returns whether THIS call docked the panel. The Jarvis driver's
+   * `dockPanel` case pre-checks only membership, already-docked and the cap,
+   * so it has no view of this guard; a `false` here is how it tells the user
+   * the dock was refused rather than reporting it applied (pluggable-core
+   * slice 7 wave 2, ruling 6). */
+  function dockPanel(panelId: string): boolean {
     if (STATIC_WORKSPACE_PANEL_IDS.has(panelId) || isPanelInstanceId(panelId)) {
-      return;
+      return false;
     }
 
     if (isPanelDocked(panelId)) {
-      return;
+      return false;
     }
 
     deps.panels.dock(panelId);
 
     if (!isPanelDocked(panelId)) {
-      return;
+      return false;
     }
 
     const tab = deps.activeTab();
     dockedPanelTabs.set(panelId, tab);
     deps.onDockedMembershipChange();
     deps.layoutFor(tab).intents.insertPanel(panelId);
+    return true;
   }
 
   /** Undock intent bridge — the inverse of `dockPanel`. The leaf is removed

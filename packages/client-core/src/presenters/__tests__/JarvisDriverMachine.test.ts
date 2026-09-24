@@ -1,4 +1,4 @@
-import { BehaviorSubject, NEVER, of, Subject } from "rxjs";
+import { BehaviorSubject, defer, NEVER, of, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -138,6 +138,39 @@ describe("createJarvisDriverMachine", () => {
         return e.frame;
       }),
     ).toEqual([1, 1]);
+  });
+
+  it("the first command of a batch never reads powerSaverLevel$ — its stagger is 0 regardless; only later commands read it", () => {
+    let reads = 0;
+    const powerSaverLevel$ = defer(() => {
+      reads += 1;
+      return of<PowerSaverLevel>("off");
+    });
+
+    run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(commandEvent([{ kind: "switchTab", tab: "credit" }]));
+        }, 1);
+      },
+      { powerSaverLevel$ },
+    );
+    expect(reads).toBe(0);
+
+    run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              { kind: "switchTab", tab: "credit" },
+              { kind: "switchTab", tab: "fx" },
+            ]),
+          );
+        }, 1);
+      },
+      { powerSaverLevel$ },
+    );
+    expect(reads).toBe(1);
   });
 
   it("an unknown layout panelId is skipped with a reason; later commands still apply", () => {
@@ -697,6 +730,32 @@ describe("createJarvisDriverMachine", () => {
     expect(harness.dockPanel).toHaveBeenCalledWith("panel-scripted-1");
   });
 
+  it("dockPanel: a dock the workspace refuses (a live id colliding with a workspace panel id) is REFUSED with a reason, never reported applied", () => {
+    const { seen, harness } = run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([{ kind: "dockPanel", panelId: "fx-rates" }]),
+          );
+        }, 1);
+      },
+      {
+        livePanelIds$: of(["fx-rates"]),
+        dockedPanelIds$: of([]),
+        dockAccepts: false,
+      },
+    );
+
+    expect(seen.at(-1)?.lastBatch).toEqual([
+      {
+        command: { kind: "dockPanel", panelId: "fx-rates" },
+        status: "refused",
+        reason: "fx-rates collides with a workspace panel id",
+      },
+    ]);
+    expect(harness.dockPanel).toHaveBeenCalledWith("fx-rates");
+  });
+
   it("undockPanel: a panelId not in dockedPanelIds$ is skipped 'not docked'; the injected undockPanel is never called", () => {
     const { seen, harness } = run(
       (h) => {
@@ -1069,7 +1128,7 @@ interface Harness {
     typeof vi.fn<(level: PowerSaverLevel) => void>
   >;
   readonly dismissPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
-  readonly dockPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
+  readonly dockPanel: ReturnType<typeof vi.fn<(panelId: string) => boolean>>;
   readonly undockPanel: ReturnType<typeof vi.fn<(panelId: string) => void>>;
 }
 
@@ -1080,6 +1139,8 @@ interface HarnessOverrides {
   readonly livePanelIds$?: JarvisDriverDeps["livePanelIds$"];
   readonly dockedPanelIds$?: JarvisDriverDeps["dockedPanelIds$"];
   readonly detachedPanelIds?: JarvisDriverDeps["detachedPanelIds"];
+  /** What the injected `dockPanel` reports; `true` (accepted) by default. */
+  readonly dockAccepts?: boolean;
 }
 
 function createHarness(
@@ -1101,7 +1162,9 @@ function createHarness(
     setThemeSkin: vi.fn<(skin: ThemeSkin) => void>(),
     setPowerSaver: vi.fn<(level: PowerSaverLevel) => void>(),
     dismissPanel: vi.fn<(panelId: string) => void>(),
-    dockPanel: vi.fn<(panelId: string) => void>(),
+    dockPanel: vi.fn<(panelId: string) => boolean>(() => {
+      return overrides.dockAccepts ?? true;
+    }),
     undockPanel: vi.fn<(panelId: string) => void>(),
   };
 }

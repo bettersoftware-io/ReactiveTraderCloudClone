@@ -32,12 +32,23 @@ import type {
   JarvisDemoStep,
   JarvisIntents,
 } from "@rtc/core-api";
-import type { PowerSaverLevel } from "@rtc/domain";
+import {
+  DEMO_STEP_BEAT_MS,
+  DEMO_STEP_TIMEOUT_MS,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
-import type { JarvisEntry, JarvisState } from "./JarvisMachine";
-import { JARVIS_GUIDE_CATALOG } from "./jarvisGuideCatalog";
+import type { JarvisState } from "./JarvisMachine";
+import {
+  advanceDemoPatch,
+  createDemoStepWatch,
+  demoBeatMs,
+  JARVIS_DEMO_INITIAL_STATE,
+  JARVIS_DEMO_STEPS,
+  lastEntryId,
+} from "./jarvisDemoScript";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -76,108 +87,13 @@ export interface JarvisDemoDeps {
   readonly scheduler?: SchedulerLike;
 }
 
-/** How long the demo pauses between one step settling and the next step's
- * `sendScripted` — the visible "beat" that gives a viewer time to actually
- * read what just happened. Collapses to 0 under power-saver `"freeze"`
- * (read fresh per step from `powerSaverLevel$`, mirroring
- * `JarvisDriverMachine.DRIVE_STAGGER_MS`'s identical motion-free
- * guarantee — `docs/performance.md`/`docs/power-saver-mode.md`). */
-export const DEMO_STEP_BEAT_MS = 1200;
+/** Moved to `./jarvisDemoScript` (pluggable-core slice 7 wave 2) —
+ * re-exported so existing imports keep working. */
+export { guideCommand, JARVIS_DEMO_STEPS } from "./jarvisDemoScript";
 
-/** Upper bound on how long ONE step may wait for its turn to settle before
- * the whole demo gives up and aborts to idle — the SAME abort path an
- * errored turn takes (`runStepPatches$`'s doc): both throw, and
- * `runDemo$`'s `catchError` funnels either one to the identical
- * reopen-and-reset tail.
- *
- * Exists because `sendScripted` is a SILENT no-op while `JarvisMachine`'s
- * `available` is false (`JarvisMachine.ts`'s `turnRequests$` `concatMap`:
- * `if (!available) return EMPTY;` — no user/jarvis entry pair ever appears,
- * so `runStep`'s own settle detection has nothing to observe, and no
- * `jarvisEvents$` emission ever arrives either). A WS-mode disconnect mid-demo
- * would otherwise pin `JarvisDemoState.running` at `true` forever with no
- * way out — worse, if it happens to die on step 7, the overlay stays closed
- * (`closesOverlay`) permanently too. `runStep`'s `timeout({ first: ... })`
- * wrapper measures from SUBSCRIBE (i.e. from `sendScripted` being called) to
- * the step's one-and-only settle emission, so a normal turn (deltas complete
- * in well under a second) is never at risk — 30s is comfortably above any
- * real scripted-brain turn while still short enough that a genuinely stuck
- * demo self-heals inside one viewing. */
-export const DEMO_STEP_TIMEOUT_MS = 30_000;
-
-/** Looks up one command string from `JARVIS_GUIDE_CATALOG` by section title
- * + item index, so `JARVIS_DEMO_STEPS` below never re-types a command that
- * already lives in the catalog (and would silently drift from it — a demo
- * step sending stale wording the scripted brain no longer recognizes).
- * Throws — never returns `undefined` — on a miss: a demo step wired to a
- * nonexistent catalog entry must fail LOUD at module load (every importer
- * of this module evaluates `JARVIS_DEMO_STEPS` eagerly), not silently hand
- * an empty string to `sendScripted` at demo-run time. */
-export function guideCommand(sectionTitle: string, index: number): string {
-  const section = JARVIS_GUIDE_CATALOG.find((candidate) => {
-    return candidate.title === sectionTitle;
-  });
-
-  if (section === undefined) {
-    throw new Error(
-      `JarvisDemoMachine: no guide section titled "${sectionTitle}"`,
-    );
-  }
-
-  const item = section.items[index];
-
-  if (item === undefined) {
-    throw new Error(
-      `JarvisDemoMachine: guide section "${sectionTitle}" has no item at index ${index}`,
-    );
-  }
-
-  return item.command;
-}
-
-/**
- * The hands-free scripted demo's fixed 7-step script (spec table, §5) —
- * every command resolved from `JARVIS_GUIDE_CATALOG` via `guideCommand`
- * rather than re-typed, so a future catalog edit that moves or reworks one
- * of these rows fails this module's own top-level evaluation instead of
- * silently sending a stale command. `label` groups steps 2 and 3 under the
- * same "MARKET INTEL" tag, and steps 4 and 5 under "GENERATIVE UI" — both
- * are two-command beats within the SAME catalog section (`DESK
- * INTELLIGENCE`, `GENERATIVE UI` respectively), reflected in the label
- * rather than the (single) catalog section title. Step 7 ("morning
- * workspace") deliberately runs LAST and sets `closesOverlay` so the
- * `JarvisDriverMachine` choreography it triggers is visible once the
- * overlay is out of the way — see `createJarvisDemoMachine`'s doc for the
- * full step fold.
- */
-export const JARVIS_DEMO_STEPS: readonly JarvisDemoStep[] = [
-  { label: "DESK BRIEFING", command: guideCommand("DESK INTELLIGENCE", 3) },
-  { label: "MARKET INTEL", command: guideCommand("DESK INTELLIGENCE", 1) },
-  { label: "MARKET INTEL", command: guideCommand("DESK INTELLIGENCE", 0) },
-  { label: "GENERATIVE UI", command: guideCommand("GENERATIVE UI", 0) },
-  { label: "GENERATIVE UI", command: guideCommand("GENERATIVE UI", 2) },
-  {
-    label: "EXECUTION",
-    command: guideCommand("EXECUTION", 0),
-    awaitsConfirmation: true,
-  },
-  {
-    label: "MORNING WORKSPACE",
-    command: guideCommand("DESK CONTROL", 0),
-    closesOverlay: true,
-  },
-];
-
-const INITIAL_STATE: JarvisDemoState = {
-  running: false,
-  stepIndex: 0,
-  stepCount: JARVIS_DEMO_STEPS.length,
-  label: null,
-};
-
-function beatMsFor(level: PowerSaverLevel): number {
-  return level === "freeze" ? 0 : DEMO_STEP_BEAT_MS;
-}
+/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
+ * contract suites can read them (pluggable-core slice 7 wave 2). */
+export { DEMO_STEP_BEAT_MS, DEMO_STEP_TIMEOUT_MS };
 
 /** Reads a warm/replay-backed Observable's CURRENT value synchronously, or
  * `undefined` if nothing has emitted yet — same idiom as
@@ -195,42 +111,6 @@ function readLatest<T>(source$: Observable<T>): T | undefined {
   return value;
 }
 
-function lastEntryId(entries: readonly JarvisEntry[] | undefined): number {
-  if (!entries || entries.length === 0) {
-    return -1;
-  }
-
-  const last = entries[entries.length - 1];
-  return last ? last.id : -1;
-}
-
-/** True once `entries` contains the exact `[userEntry, jarvisEntry]` pair
- * `sendScripted(command)` appends for THIS step: a user-role entry with no
- * `origin` (an ordinary `send()`/`sendScripted()` turn, never a `narrate()`
- * one — see `JarvisEntry.origin`'s doc), id above `watermarkId` (appended
- * AFTER this step began, never a stale entry from an earlier step reusing
- * the same command text), text matching `command` exactly, immediately
- * followed by a jarvis-role entry (the streaming reply stub `turnItems$`'s
- * "start" item allocates in the SAME patch — see `JarvisMachine.ts`'s
- * `entryPatches$` doc). This is `runStep`'s sole signal that ITS turn (as
- * opposed to some OTHER turn already queued ahead of it, e.g. a racing
- * `narrate()` call) has actually started. */
-function turnHasStarted(
-  entries: readonly JarvisEntry[],
-  watermarkId: number,
-  command: string,
-): boolean {
-  return entries.some((entry, index) => {
-    return (
-      entry.id > watermarkId &&
-      entry.role === "user" &&
-      entry.origin === undefined &&
-      entry.text === command &&
-      entries[index + 1]?.role === "jarvis"
-    );
-  });
-}
-
 interface StateWatchItem {
   readonly kind: "state";
   readonly state: JarvisState;
@@ -245,70 +125,29 @@ type WatchItem = StateWatchItem | EventWatchItem;
 
 /**
  * Drives ONE demo step's real Jarvis turn to completion and reports how it
- * ended (`"done"` or `"error"`) — the settle-detection core this machine's
- * whole design turns on.
- *
- * **Correlation, not phase-watching.** The known interference risk: a
- * `narrate()` turn (`NarratorMachine`'s proactive dispatch) can land
- * mid-demo and drives the exact same `phase: "speaking" → "idle"`
- * transition a naive `pairwise()` watch on `phase` would mistake for THIS
- * step's own settle. Instead, `deps.jarvisState$`'s `entries` array is
- * watched for the precise `[userEntry, jarvisEntry]` pair `sendScripted`
- * is about to append (`turnHasStarted`, keyed off a `watermark` id captured
- * just before the call) — a narrator's own pair carries `origin:
- * "narrator"` and fails that match by construction, and even a same-text
- * coincidence can't fool it once `JarvisMachine`'s single turn-queue
- * `concatMap` is accounted for: if a `narrate()` call is already queued
- * ahead of this step's `sendScripted()`, THAT turn's pair appears first,
- * `turnHasStarted` correctly stays false against `command`, and this
- * function keeps waiting — it only starts trusting `jarvisEvents$` once
- * ITS OWN pair is visible.
- *
- * **Why the terminal signal comes from `jarvisEvents$`, not
- * `entries[...].done`.** `JarvisMachine.ts`'s own `eventPatch` sets
- * `JarvisEntry.done = true` identically for both `"done"` and `"error"` —
- * there is no separate error flag on `JarvisEntry` (verified against the
- * landed Task 4 interface; the original plan's "check the last entry's
- * error flag" sketch predates that shape). The raw `JarvisEvent.type`
- * discriminant is the only thing that actually distinguishes them, hence
- * `deps.jarvisEvents$`. Once `turnHasStarted` flips true, `JarvisMachine`'s
- * strict turn serialization (`concatMap` never advances to the next queued
- * request until the current turn's own `port.ask()` observable completes)
- * guarantees the very next `"done"`/`"error"` from `jarvisEvents$` belongs
- * to THIS turn — nothing else can be in flight until it ends — so the
- * correlation holds without needing a turn/entry id on the event itself.
- *
- * **Subscribe-before-fire.** The watcher (`merge` of both sources) is
- * subscribed FIRST, and `deps.jarvis.sendScripted(step.command)` is only
- * called from inside that subscription's setup — never the other way
- * around. `jarvisState$` is a replay-current `state()` stream so a "late"
- * subscriber would still see the pair (no real race there), but
- * `jarvisEvents$` is a plain hot multicast with no replay buffer; firing
- * `sendScripted` before the watcher is live risks missing a
- * synchronously-emitted event outright. Subscribing first is correct under
- * either timing assumption, so it costs nothing to be safe here.
- *
- * `step.awaitsConfirmation` (only step 6) additionally waits for the
- * matching `"confirmRequest"` event once the turn has started, delays one
- * beat (power-saver-aware, same `beatMsFor` every step's post-settle delay
- * uses), then calls `declineConfirmation()` — never `approveConfirmation()`.
+ * ended (`"done"` or `"error"`): the RxJS shell over `createDemoStepWatch`
+ * (`./jarvisDemoScript` — its doc carries the correlation rules). The
+ * watcher (`merge` of both sources) is subscribed FIRST and
+ * `sendScripted(step.command)` is called from inside that subscription's
+ * setup, never the other way round: `jarvisEvents$` is a hot multicast with
+ * no replay.
  *
  * **Watchdog.** The whole thing is wrapped in `timeout({ first:
  * DEMO_STEP_TIMEOUT_MS })`: if no settle arrives within that window (the
  * `sendScripted`-while-unavailable silent no-op is the real-world trigger —
  * see `DEMO_STEP_TIMEOUT_MS`'s doc), rxjs errors this observable with a
  * `TimeoutError`, which propagates out exactly like the `"error"` outcome
- * does downstream (`runStepPatches$`'s `catchError`-driven abort path) —
- * no separate handling needed here.
+ * does downstream (`runStepPatches$`'s `catchError`-driven abort path).
  */
 function runStep(
   step: JarvisDemoStep,
   deps: JarvisDemoDeps,
 ): Observable<"done" | "error"> {
   const watched$ = new Observable<"done" | "error">((subscriber) => {
-    const watermark = lastEntryId(readLatest(deps.jarvisState$)?.entries);
-    let started = false;
-    let confirmationHandled = false;
+    const watch = createDemoStepWatch(
+      step,
+      lastEntryId(readLatest(deps.jarvisState$)?.entries),
+    );
     let declineTimerSub: Subscription | undefined;
 
     const watcher$: Observable<WatchItem> = merge(
@@ -325,44 +164,24 @@ function runStep(
     );
 
     const sub = watcher$.subscribe((item) => {
-      if (!started) {
-        if (
-          item.kind === "state" &&
-          turnHasStarted(item.state.entries, watermark, step.command)
-        ) {
-          started = true;
-        }
-
+      if (item.kind === "state") {
+        watch.observeState(item.state);
         return;
       }
 
-      if (item.kind !== "event") {
-        return;
-      }
+      const signal = watch.observeEvent(item.event);
 
-      if (
-        step.awaitsConfirmation &&
-        !confirmationHandled &&
-        item.event.type === "confirmRequest"
-      ) {
-        confirmationHandled = true;
-        const beat = beatMsFor(readLatest(deps.powerSaverLevel$) ?? "off");
+      if (signal === "decline") {
+        const beat = demoBeatMs(readLatest(deps.powerSaverLevel$) ?? "off");
 
         declineTimerSub = timer(beat, deps.scheduler).subscribe(() => {
           deps.jarvis.declineConfirmation();
         });
-
         return;
       }
 
-      if (item.event.type === "done") {
-        subscriber.next("done");
-        subscriber.complete();
-        return;
-      }
-
-      if (item.event.type === "error") {
-        subscriber.next("error");
+      if (signal !== null) {
+        subscriber.next(signal);
         subscriber.complete();
       }
     });
@@ -425,7 +244,7 @@ function finishPatch$(
     }),
     map((): Patch => {
       return (): JarvisDemoState => {
-        return INITIAL_STATE;
+        return JARVIS_DEMO_INITIAL_STATE;
       };
     }),
   );
@@ -445,14 +264,7 @@ function advancePatch$(
       }
     }),
     map((): Patch => {
-      return (s: JarvisDemoState): JarvisDemoState => {
-        return {
-          ...s,
-          running: true,
-          stepIndex: index + 1,
-          label: step.label,
-        };
-      };
+      return advanceDemoPatch(step, index);
     }),
   );
 }
@@ -480,7 +292,7 @@ function runStepPatches$(
         });
       }
 
-      const beat = beatMsFor(readLatest(deps.powerSaverLevel$) ?? "off");
+      const beat = demoBeatMs(readLatest(deps.powerSaverLevel$) ?? "off");
       return timer(beat, deps.scheduler).pipe(ignoreElements());
     }),
   );
@@ -563,7 +375,7 @@ export function createJarvisDemoMachine(
   const stopPatches$: Observable<Patch> = stop$.pipe(
     map((): Patch => {
       return (): JarvisDemoState => {
-        return INITIAL_STATE;
+        return JARVIS_DEMO_INITIAL_STATE;
       };
     }),
   );
@@ -571,12 +383,12 @@ export function createJarvisDemoMachine(
   const stream$ = merge(runPatches$, stopPatches$).pipe(
     scan((s, patch): JarvisDemoState => {
       return patch(s);
-    }, INITIAL_STATE),
+    }, JARVIS_DEMO_INITIAL_STATE),
   );
 
   const state$: StateObservable<JarvisDemoState> = state(
     stream$,
-    INITIAL_STATE,
+    JARVIS_DEMO_INITIAL_STATE,
   );
 
   // Keep state$ warm, same rationale as JarvisDriverMachine/JarvisPanelsMachine:

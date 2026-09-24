@@ -11,10 +11,10 @@ import {
   ConnectionEventsSimulator,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { JarvisPort } from "#/adapters/jarvisPort";
+import type { JarvisAvailability, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
 import { DRIVE_STAGGER_MS } from "#/presenters/JarvisDriverMachine";
@@ -54,6 +54,34 @@ describe("composition — jarvis wiring", () => {
     const state = await firstValueFrom(presenters.jarvis.state$);
     expect(state.skin).toBe("reactor");
     expect(await firstValueFrom(preferences.jarvisSkin$())).toBe("reactor");
+
+    presenters.jarvis.dispose();
+  });
+
+  it("reads availability from any jarvis port that offers availability$, not only a WsJarvisAdapter", async () => {
+    const sim = createSimulatorPorts({
+      preferences: new PreferencesSimulator(),
+      auth: new AuthSimulator({}),
+      sessionStore: new InMemorySessionStore(),
+    });
+
+    const jarvis = {
+      ask: sim.jarvis.ask.bind(sim.jarvis),
+      confirm: sim.jarvis.confirm.bind(sim.jarvis),
+      availability$: (): Observable<JarvisAvailability> => {
+        return of(createUnavailable());
+      },
+    };
+
+    const { presenters } = createApp({
+      ...sim,
+      jarvis,
+      connectionEvents: new ConnectionEventsSimulator(),
+    });
+
+    const state = await firstValueFrom(presenters.jarvis.state$);
+
+    expect(state.available).toBe(false);
 
     presenters.jarvis.dispose();
   });
@@ -204,6 +232,37 @@ describe("composition — jarvis wiring", () => {
   // jarvisDriver is built) — proves the WHOLE seam end to end, not just
   // JarvisDriverMachine.test.ts's outcomes$ unit tests or
   // JarvisMachine.test.ts's recordDriveOutcome fold unit tests in isolation.
+  it("a driven dock of a live panel whose id collides with a workspace panel is refused in the transcript, never reported applied", async () => {
+    const { presenters } = createApp({
+      ...createSimulatorPorts({
+        preferences: new PreferencesSimulator(),
+        auth: new AuthSimulator({}),
+        sessionStore: new InMemorySessionStore(),
+      }),
+      connectionEvents: new ConnectionEventsSimulator(),
+      jarvis: createCollidingDockJarvisPort(),
+    });
+
+    presenters.jarvis.intents.send("dock the rates panel");
+
+    // A batch's first command is applied on a zero-delay timer — still a
+    // macrotask on the real scheduler at this composition level.
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    const state = await firstValueFrom(presenters.jarvis.state$);
+
+    expect(state.entries.at(-1)?.text).toBe(
+      "can't dockPanel: fx-rates collides with a workspace panel id",
+    );
+    expect(await firstValueFrom(presenters.jarvisPanels.dockedPanels$)).toEqual(
+      [],
+    );
+
+    presenters.jarvis.dispose();
+  });
+
   it("a command batch through createApp yields 'drive: <kind>' transcript entries for APPLIED commands only", async () => {
     const { presenters } = createApp({
       ...createSimulatorPorts({
@@ -238,6 +297,42 @@ describe("composition — jarvis wiring", () => {
     presenters.jarvis.dispose();
   });
 });
+
+function createUnavailable(): JarvisAvailability {
+  return { available: false, brains: [], defaultBrain: "scripted", gate: null };
+}
+
+/** Spawns a live desk panel whose id collides with the static "fx-rates"
+ * panel, then drives a dock of it. */
+function createCollidingDockJarvisPort(): JarvisPort {
+  const spawn: JarvisEvent = {
+    type: "panel",
+    panelId: "fx-rates",
+    spec: COLLIDING_PANEL_SPEC,
+  };
+
+  const dock: JarvisEvent = {
+    type: "command",
+    batch: { v: 1, commands: [{ kind: "dockPanel", panelId: "fx-rates" }] },
+  };
+
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of(spawn, dock);
+    },
+    confirm: (): void => {
+      // unused by this test
+    },
+  };
+}
+
+const COLLIDING_PANEL_SPEC: PanelSpecV1 = {
+  v: 1,
+  title: "Rates",
+  source: { kind: "analytics" },
+  transforms: [],
+  viz: { kind: "table" },
+};
 
 function createExplodingJarvisPort(): JarvisPort {
   return {
