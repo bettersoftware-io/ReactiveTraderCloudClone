@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { JarvisState } from "@rtc/core-api";
+import { Direction } from "@rtc/domain";
 
 import {
   createJarvisController,
@@ -36,7 +37,10 @@ describe("createJarvisController — guards every core's timing relies on", () =
   it("an event with no turn in flight changes no entry", () => {
     const controller = createJarvisController();
 
-    const patch = controller.eventPatch({ type: "delta", text: "x" }, undefined);
+    const patch = controller.eventPatch(
+      { type: "delta", text: "x" },
+      undefined,
+    );
 
     expect(patch(JARVIS_INITIAL_STATE).entries).toBe(
       JARVIS_INITIAL_STATE.entries,
@@ -50,7 +54,7 @@ function createPendingState(confirmationId: string): JarvisState {
     pendingConfirmation: {
       confirmationId,
       symbol: "EURUSD",
-      direction: "Buy",
+      direction: Direction.Buy,
       notional: 1_000_000,
       quotedPrice: 1.1,
       ratePrecision: 5,
