@@ -109,7 +109,7 @@ describe("nativeMachines — wiring", () => {
     }
   });
 
-  it("rowHighlight and notional are native — not the base's factories", () => {
+  it("every machine factory is native — none is the base's", () => {
     const { presenters } = createStubPresenters();
     const { base, machines } = composeMachinesWithBase(presenters);
 
@@ -119,8 +119,7 @@ describe("nativeMachines — wiring", () => {
     expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
     expect(machines.orderTicket).not.toBe(base.orderTicket);
     expect(machines.boot).not.toBe(base.boot);
-    // A delegated member is still reference-identical to the base's.
-    expect(machines.layout).toBe(base.layout);
+    expect(machines.layout).not.toBe(base.layout);
   });
 
   it("orderTicket reaches ordersBlotter.place lazily — not at construction, then with the submitted request", () => {

@@ -19,7 +19,7 @@
     "ambientStyle": "native",
     "chartSubstrate": "native",
     "layoutEngine": "native",
-    "dockLayoutStore": "delegated",
+    "dockLayoutStore": "native",
     "forceBootAnimation": "native",
     "powerSaver": "native",
     "viewModePreference": "native",
@@ -40,7 +40,7 @@
     "incident": "native",
     "eqWorkspace": "native",
     "workspaceNav": "native",
-    "layoutFor": "delegated",
+    "layoutFor": "native",
     "eqDrawings": "native",
     "throughputMetric": "native",
     "latencyMetric": "native",
@@ -51,14 +51,14 @@
     "sessionsKpi": "native",
     "jarvis": "delegated",
     "jarvisUsage": "delegated",
-    "jarvisPanels": "delegated",
-    "dockPanel": "delegated",
-    "dockedPanelIdsFor": "delegated",
-    "undockPanel": "delegated",
-    "dismissPanel": "delegated",
-    "resetWorkspaceLayout": "delegated",
-    "workspaceLayoutResets$": "delegated",
-    "layoutPresets": "delegated",
+    "jarvisPanels": "native",
+    "dockPanel": "native",
+    "dockedPanelIdsFor": "native",
+    "undockPanel": "native",
+    "dismissPanel": "native",
+    "resetWorkspaceLayout": "native",
+    "workspaceLayoutResets$": "native",
+    "layoutPresets": "native",
     "jarvisDriver": "delegated",
     "jarvisDemo": "delegated"
   },
@@ -72,12 +72,12 @@
     "rfqSubmission": "native",
     "ticketSubmission": "native",
     "rfqCountdown": "native",
-    "layout": "delegated",
+    "layout": "native",
     "boot": "native",
     "orderTicket": "native"
   },
   "commands": {
     "reconnect": "native",
-    "reportDetachedPanels": "delegated"
+    "reportDetachedPanels": "native"
   }
 }

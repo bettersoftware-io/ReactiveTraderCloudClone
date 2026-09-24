@@ -1,6 +1,7 @@
 import {
   concat,
   firstValueFrom,
+  from,
   NEVER,
   type Observable,
   of,
@@ -32,7 +33,13 @@ import type {
   PlaceOrderRequest,
   Trade,
 } from "@rtc/domain";
-import { AuthSimulator, Direction, PreferencesSimulator } from "@rtc/domain";
+import {
+  AuthSimulator,
+  Direction,
+  DRIVE_STAGGER_MS,
+  PreferencesSimulator,
+  WORKSPACE_PERSIST_DEBOUNCE_MS,
+} from "@rtc/domain";
 
 import { composeWithBase } from "#/composition";
 
@@ -73,6 +80,94 @@ describe("composeWithBase — core seams", () => {
       );
       expect(afterApp.activeTab).toBe("credit");
       expect(afterBase.activeTab).toBe("fx");
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("a Jarvis layout drive lands on the app's NATIVE layoutFor, not the base's own", async () => {
+    const { app, base } = composeWithBase(
+      createPorts({
+        jarvis: createTurnJarvisPort([
+          {
+            type: "command",
+            batch: {
+              v: 1,
+              commands: [
+                {
+                  kind: "layout",
+                  op: "maximize",
+                  tab: "fx",
+                  panelId: "fx-rates",
+                },
+              ],
+            },
+          },
+        ]),
+      }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("maximize the rates");
+      await wait(DRIVE_STAGGER_MS + 100);
+
+      expect(
+        (await firstValueFrom(app.presenters.layoutFor("fx").state$)).maximized,
+      ).toBe("fx-rates");
+      expect(
+        (await firstValueFrom(base.presenters.layoutFor("fx").state$))
+          .maximized,
+      ).toBe(null);
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("a Jarvis dock lands in the NATIVE workspace, and the workspace preference has ONE writer", async () => {
+    const preferences = new PreferencesSimulator();
+    const writes: (string | null)[] = [];
+    const setWorkspaceLayout = preferences.setWorkspaceLayout.bind(preferences);
+
+    preferences.setWorkspaceLayout = (value: string | null): void => {
+      writes.push(value);
+      setWorkspaceLayout(value);
+    };
+
+    const { app, base } = composeWithBase(
+      createPorts({
+        preferences,
+        jarvis: createTurnJarvisPort([
+          {
+            type: "panel",
+            panelId: "j1",
+            spec: {
+              v: 1,
+              title: "P&L",
+              source: { kind: "analytics" },
+              transforms: [],
+              viz: { kind: "table" },
+            },
+          },
+          {
+            type: "command",
+            batch: { v: 1, commands: [{ kind: "dockPanel", panelId: "j1" }] },
+          },
+        ]),
+      }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("dock a panel");
+      await wait(DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+
+      expect(
+        await firstValueFrom(app.presenters.dockedPanelIdsFor("fx")),
+      ).toEqual(["j1"]);
+      expect(
+        await firstValueFrom(base.presenters.dockedPanelIdsFor("fx")),
+      ).toEqual([]);
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toContain("j1");
     } finally {
       await app.dispose();
     }
@@ -403,5 +498,23 @@ function createSwitchingJarvisPort(
 function settle(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, 50);
+  });
+}
+
+/** A JarvisPort whose ask() replies with `events`, then completes. */
+function createTurnJarvisPort(events: readonly JarvisEvent[]): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return from(events);
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
   });
 }

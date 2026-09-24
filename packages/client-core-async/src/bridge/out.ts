@@ -167,3 +167,11 @@ export function storeToWarmStateStream<S>(store: Store<S>): WarmStateStream<S> {
     },
   };
 }
+
+/** A stream that completes at once without a value — an unsupported desk
+ * panel's `data$` (the RxJS presenter's `EMPTY`). */
+export function emptyStream<T>(): Stream<T> {
+  return new Observable<T>((subscriber) => {
+    subscriber.complete();
+  });
+}

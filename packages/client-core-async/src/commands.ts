@@ -1,4 +1,4 @@
-import type { AppCommands } from "@rtc/core-api";
+import type { AppCommands, WorkspaceTab } from "@rtc/core-api";
 
 import { pushReconnectIntent } from "#/bridge/out";
 
@@ -8,11 +8,16 @@ import { pushReconnectIntent } from "#/bridge/out";
  * `reportDetachedPanels` DELEGATES to `base` by reference: its registry is
  * read by the Jarvis driver, which is itself still delegated to the RxJS
  * core, so the write must land in that same core's registry. */
-export function createCommands(base: AppCommands): AppCommands {
+export function createCommands(
+  reportDetachedPanels: (
+    tab: WorkspaceTab,
+    panelIds: readonly string[],
+  ) => void,
+): AppCommands {
   return {
     reconnect: () => {
       pushReconnectIntent();
     },
-    reportDetachedPanels: base.reportDetachedPanels,
+    reportDetachedPanels,
   };
 }
