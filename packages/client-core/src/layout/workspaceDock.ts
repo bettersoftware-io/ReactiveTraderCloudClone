@@ -396,7 +396,17 @@ export function createWorkspaceDock(deps: WorkspaceDockDeps): WorkspaceDock {
     }
 
     deps.layoutFor(tab);
-    return latestLayoutStates.get(tab) ?? createDefaultLayoutPort(tab).initial;
+    const recorded = latestLayoutStates.get(tab);
+
+    // A core whose `layoutFor` records late would otherwise hand a preset
+    // save the DEFAULT tree for a seeded tab — absence read as a value.
+    if (recorded === undefined) {
+      throw new Error(
+        `workspaceDock: layoutFor("${tab}") did not record its state before returning`,
+      );
+    }
+
+    return recorded;
   }
 
   function dockedPlacements(): readonly DockedPanelPlacement[] {

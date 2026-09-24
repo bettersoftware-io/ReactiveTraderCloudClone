@@ -48,9 +48,12 @@ export function describeResetWorkspaceLayoutContract(
         const resets = collect(h.app.presenters.workspaceLayoutResets$);
         await settle();
         const sub = h.app.presenters.workspaceLayoutResets$.subscribe(() => {
-          seenAtBump = WORKSPACE_TABS.map((tab) => {
-            return h.driver.dockLayout(tab);
-          });
+          seenAtBump = [
+            ...WORKSPACE_TABS.map((tab) => {
+              return h.driver.dockLayout(tab);
+            }),
+            h.driver.storedWorkspaceLayout(),
+          ];
         });
         await settle();
         const before = resets.values.at(-1) ?? -1;
@@ -74,7 +77,7 @@ export function describeResetWorkspaceLayoutContract(
             return v === before + 1;
           }),
         ).toHaveLength(1);
-        expect(seenAtBump).toEqual([null, null, null, null]);
+        expect(seenAtBump).toEqual([null, null, null, null, null]);
         sub.unsubscribe();
         resets.unsubscribe();
       } finally {
@@ -98,6 +101,7 @@ export function describeResetWorkspaceLayoutContract(
           await h1.teardown();
         }
 
+        expect(stored).toContain('"maximized":"admin-dashboard"');
         const h2 = makeHarness({ workspaceLayout: stored });
 
         try {

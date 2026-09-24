@@ -587,10 +587,6 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     },
   });
 
-  if (!nativeWorkspace) {
-    workspaceDock.restorePersistedDocks();
-  }
-
   // Per-tab layout SINGLETON map (Presenters.layoutFor's backing store) —
   // resolves the Task 6 review's documented deferral: `layout` used to be a
   // bare "fresh machine per call" factory (mirroring MachineFactories'
@@ -629,6 +625,16 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     WorkspaceTab,
     Machine<LayoutState, LayoutIntents>
   >();
+
+  // Boot-time rehydration of the stored docked panels — after the layout
+  // maps above exist (a restore that ever reached `layoutFor` must not hit
+  // their temporal dead zone) and before the writer's `skip(1)` panels
+  // subscription below (a restore is not a change worth persisting). A
+  // seamed app's own panels stay empty: the native core restores into ITS
+  // workspace.
+  if (!nativeWorkspace) {
+    workspaceDock.restorePersistedDocks();
+  }
 
   function layoutFor(tab: WorkspaceTab): Machine<LayoutState, LayoutIntents> {
     const existingHandle = layoutHandles.get(tab);

@@ -16,7 +16,19 @@ import { settle } from "#/harness/settle";
 
 /* Shared by the slice-7 workspace suites: spawning desk panels through the
  * (scripted) Jarvis port, reading a stream's current value from a FRESH
- * subscriber, and walking a layout tree. */
+ * subscriber, and walking a layout tree.
+ *
+ * A CONTRACT POINT these suites rely on, stated once here: the workspace's
+ * STATE — the panels roster and every layout machine — is a synchronous
+ * fold. An intent (`dockPanel`, `maximize`, `resetWorkspaceLayout`, a preset
+ * `save`/`load`…) has changed that state by the time it returns, so the next
+ * synchronous call sees it (the shared `createWorkspaceDock` reads the roster
+ * and the recorded layout states right after calling into them, and a preset
+ * `save` straight after a `maximize` must store the maximized tree). Only
+ * DELIVERY to a subscriber may be scheduled — which is why every stream read
+ * here goes through `readLatest`, after a pause. A core that folds on a
+ * fiber must still commit the new state synchronously (the Effect core:
+ * `SubscriptionRef` updates via `runSync`). */
 
 /** Lets the core's scheduled deliveries land — `settle` on real timers,
  * `clock.settle` inside `withFakeClock`. */

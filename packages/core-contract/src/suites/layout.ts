@@ -129,6 +129,7 @@ export function describeLayoutForContract(
         const initial = await readLayout(h, "fx");
         const root = initial.root as Extract<LayoutNode, SplitTag>;
         expect(root.kind).toBe("split");
+        expect(root.initialPx).toBeDefined();
         const sizes = root.children.map(() => {
           return 1 / root.children.length;
         });
@@ -208,6 +209,51 @@ export function describeLayoutForContract(
           expect(fx.collapsed).toEqual([b]);
         } finally {
           await h2.teardown();
+        }
+      });
+    });
+
+    it("a write keeps the stored entry of a tab this session never opened", async () => {
+      await withFakeClock(async (clock) => {
+        const h1 = makeHarness();
+        let seeded: string | null = null;
+
+        try {
+          const [admin] = leafIds(
+            (await readLayout(h1, "admin", clock.settle)).root,
+          );
+          h1.app.presenters.layoutFor("admin").intents.maximize(admin);
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          seeded = h1.driver.storedWorkspaceLayout();
+        } finally {
+          await h1.teardown();
+        }
+
+        expect(seeded).toContain("admin-dashboard");
+        const h2 = makeHarness({ workspaceLayout: seeded });
+        let rewritten: string | null = null;
+
+        try {
+          const [fx] = leafIds((await readLayout(h2, "fx", clock.settle)).root);
+          h2.app.presenters.layoutFor("fx").intents.maximize(fx);
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          rewritten = h2.driver.storedWorkspaceLayout();
+        } finally {
+          await h2.teardown();
+        }
+
+        expect(rewritten).not.toBe(seeded);
+        const h3 = makeHarness({ workspaceLayout: rewritten });
+
+        try {
+          expect((await readLayout(h3, "admin", clock.settle)).maximized).toBe(
+            "admin-dashboard",
+          );
+          expect((await readLayout(h3, "fx", clock.settle)).maximized).not.toBe(
+            null,
+          );
+        } finally {
+          await h3.teardown();
         }
       });
     });

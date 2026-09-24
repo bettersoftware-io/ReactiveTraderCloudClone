@@ -147,6 +147,34 @@ export function describeLayoutPresetsContract(
       }
     });
 
+    it("load and resetTab write the dock blob BEFORE bumping the reset counter", async () => {
+      const h = makeHarness({ layoutPresets: {}, dockLayouts: { fx: "live" } });
+
+      try {
+        const presets = h.app.presenters.layoutPresets;
+        registerBlob(h, "saved-blob");
+        const saved = presets.save("fx", "Mine");
+        const blobsAtBump: (string | null)[] = [];
+        const c = collect(h.app.presenters.workspaceLayoutResets$);
+        await settle();
+        const sub = h.app.presenters.workspaceLayoutResets$.subscribe(() => {
+          blobsAtBump.push(h.driver.dockLayout("fx"));
+        });
+        await settle();
+        blobsAtBump.length = 0;
+
+        presets.load("fx", saved.status === "saved" ? saved.id : "");
+        await settle();
+        presets.resetTab("fx");
+        await settle();
+        expect(blobsAtBump).toEqual(["saved-blob", null]);
+        sub.unsubscribe();
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("resetTab clears the tab's blob and resets its layout, keeping its docked leaves", async () => {
       const h = makeHarness({ layoutPresets: {} });
 

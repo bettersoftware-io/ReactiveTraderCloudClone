@@ -976,15 +976,22 @@ export function scriptPorts(
         }
       },
       storedWorkspaceLayout: () => {
-        let layout: string | null = null;
+        const seen: (string | null)[] = [];
         base.preferences
           .workspaceLayout$()
           .subscribe((value) => {
-            layout = value;
+            seen.push(value);
           })
           .unsubscribe();
 
-        return layout;
+        // Absence must not read as a stored `null`.
+        if (seen.length === 0) {
+          throw new Error(
+            "storedWorkspaceLayout: the preferences port replayed nothing",
+          );
+        }
+
+        return seen[seen.length - 1];
       },
       dockLayout: (tab: WorkspaceTab) => {
         return seed.dockLayouts === undefined

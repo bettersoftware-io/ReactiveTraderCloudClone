@@ -194,6 +194,47 @@ describe("createApp — core seams (strangler phase)", () => {
     presenters.jarvis.dispose();
   });
 
+  it("with a workspace seam the app's own panels restore nothing from a stored docked payload", async () => {
+    const seedPorts = createPorts({
+      jarvis: createSpawningJarvisPort("jarvis-1"),
+    });
+    const seedApp = createApp(seedPorts);
+    seedApp.presenters.jarvis.intents.send("spawn a panel");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+    seedApp.presenters.dockPanel("jarvis-1");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+    });
+    const stored = await firstValueFrom(
+      seedPorts.preferences.workspaceLayout$(),
+    );
+    expect(stored).toContain("jarvis-1");
+    seedApp.presenters.jarvis.dispose();
+
+    const preferences = new PreferencesSimulator();
+    preferences.setWorkspaceLayout(stored);
+    const unseamed = createApp(createPorts({ preferences }));
+    expect(
+      (await firstValueFrom(unseamed.presenters.jarvisPanels.panels$)).map(
+        (row) => {
+          return row.panelId;
+        },
+      ),
+    ).toEqual(["jarvis-1"]);
+
+    const seam = createFakeWorkspaceSeam();
+    const seamed = createApp(createPorts({ preferences }), {
+      workspace: () => {
+        return seam.workspace;
+      },
+    });
+    expect(
+      await firstValueFrom(seamed.presenters.jarvisPanels.panels$),
+    ).toEqual([]);
+  });
+
   it("with no workspace seam the same layout change IS written — the idle check above is not vacuous", async () => {
     const ports = createPorts({});
     const { presenters } = createApp(ports);

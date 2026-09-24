@@ -55,6 +55,8 @@ export function describeDockPanelContract(
         const docked = await readLayout(h, "fx");
         h.app.presenters.dockPanel("p1");
         expect((await readLayout(h, "fx")).root).toEqual(docked.root);
+        expect(await dockedIds(h)).toEqual(["p1"]);
+        expect(await panelIds(h)).toEqual([staticId, "eq-chart:AAPL", "p1"]);
       } finally {
         await h.teardown();
       }
