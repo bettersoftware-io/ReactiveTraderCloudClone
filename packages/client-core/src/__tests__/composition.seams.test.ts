@@ -491,6 +491,7 @@ function createFakeWorkspaceSeam(): FakeWorkspaceSeam {
       },
       dockPanel: (panelId: string) => {
         docked.push(panelId);
+        return true;
       },
       undockPanel: () => {
         // unused by these tests

@@ -75,8 +75,10 @@ export interface JarvisDriverDeps {
    * idempotent-safe to call blindly: the reducer's own no-op guards exist,
    * but `dockPanel`'s `DriveOutcome` needs to tell "already docked" and
    * "dock full" apart, which only this machine's own reads of
-   * `livePanelIds$`/`dockedPanelIds$` can do). */
-  readonly dockPanel: (panelId: string) => void;
+   * `livePanelIds$`/`dockedPanelIds$` can do). Returns `false` when the
+   * workspace refused the dock (`WorkspaceDock.dockPanel`'s id-collision
+   * guard), which the driver reports as `"refused"`. */
+  readonly dockPanel: (panelId: string) => boolean;
   /** `JarvisPanelsMachineHandle.undockPanel` — the `undockPanel` command's
    * effect, applied only after the `dockedPanelIds$` membership check below. */
   readonly undockPanel: (panelId: string) => void;

@@ -330,7 +330,7 @@ export interface WorkspaceSeam {
   readonly layoutFor: (
     tab: WorkspaceTab,
   ) => Machine<LayoutState, LayoutIntents>;
-  readonly dockPanel: (panelId: string) => void;
+  readonly dockPanel: (panelId: string) => boolean;
   readonly undockPanel: (panelId: string) => void;
   readonly dismissPanel: (panelId: string) => void;
   readonly livePanelIds$: Observable<readonly string[]>;

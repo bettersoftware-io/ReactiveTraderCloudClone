@@ -39,7 +39,9 @@ export interface DriveCommandDeps {
   readonly setThemeSkin: (skin: ThemeSkin) => void;
   readonly setPowerSaver: (level: PowerSaverLevel) => void;
   readonly dismissPanel: (panelId: string) => void;
-  readonly dockPanel: (panelId: string) => void;
+  /** Docks the panel; `false` when the workspace refused it (an id
+   * colliding with a workspace panel id — see `WorkspaceDock.dockPanel`). */
+  readonly dockPanel: (panelId: string) => boolean;
   readonly undockPanel: (panelId: string) => void;
   /** The static panel ids in `tab`'s default layout tree. */
   readonly knownLayoutPanelIds: (tab: WorkspaceTab) => readonly string[];
@@ -235,7 +237,14 @@ function applyCommand(
         return { command: cmd, status: "skipped", reason: "dock full" };
       }
 
-      deps.dockPanel(cmd.panelId);
+      if (!deps.dockPanel(cmd.panelId)) {
+        return {
+          command: cmd,
+          status: "refused",
+          reason: `${cmd.panelId} collides with a workspace panel id`,
+        };
+      }
+
       return { command: cmd, status: "applied" };
     }
 
