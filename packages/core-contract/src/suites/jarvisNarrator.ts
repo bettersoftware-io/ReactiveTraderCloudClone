@@ -19,6 +19,12 @@ import {
   pushSpreadSpike,
 } from "#/suites/jarvisKit";
 
+/** The pinned narration copy: the prefix, the symbol, the channel ("spread
+ * widened" for this spread spike), the size to one decimal, the window. */
+const NARRATION_FORMAT = new RegExp(
+  `^${escapeRegExp(JARVIS_NARRATION_PREFIX)}EURUSD spread widened \\d+\\.\\dσ over the last window\\.$`,
+);
+
 /** The narrator — internal, no presenter of its own: an anomaly on a
  * published pair's prices becomes a `narrate()` turn, gated by the user's
  * preference, a cooldown and a per-session cap. */
@@ -36,7 +42,7 @@ export function describeJarvisNarratorCases(makeHarness: MakeHarness): void {
           await pause();
           const asked = narrationAsks(h, JARVIS_NARRATION_PREFIX);
           expect(asked).toHaveLength(1);
-          expect(asked[0]).toContain("EURUSD");
+          expect(asked[0]).toMatch(NARRATION_FORMAT);
         } finally {
           await h.teardown();
         }
@@ -135,4 +141,8 @@ export function describeJarvisNarratorCases(makeHarness: MakeHarness): void {
       });
     });
   });
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

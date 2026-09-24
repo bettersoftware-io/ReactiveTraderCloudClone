@@ -41,7 +41,13 @@ function stripNarrationPrefix(prompt: string): string {
 }
 
 /** One state change. Every core applies these to its own container (RxJS
- * `scan`, the async core's `Store.set`, the Effect core's `SyncRef`). */
+ * `scan`, the async core's `Store.set`, the Effect core's `SyncRef`).
+ *
+ * Apply each patch EXACTLY ONCE, in order, and never inside an update that
+ * may retry: several have effects at apply time — `approvePatch`,
+ * `declinePatch` and the countdown's expiry call the port, and the budget
+ * line allocates an entry id — so a replayed patch would confirm a trade
+ * twice or skip an id. */
 export type JarvisPatch = (s: JarvisState) => JarvisState;
 
 const GREETING_ENTRY: JarvisEntry = {

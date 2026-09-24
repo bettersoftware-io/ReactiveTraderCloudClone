@@ -247,10 +247,11 @@ export function createJarvisDriverMachine(
           // The batch's own first command (index 0) fires immediately — see
           // this function's doc. Every later command reads powerSaverLevel$
           // fresh, right before it schedules its own wait.
-          const staggerMs = driveStaggerMs(
-            index,
-            readNow(deps.powerSaverLevel$, "off"),
-          );
+          // The first command never waits, so it never reads the level.
+          const staggerMs =
+            index === 0
+              ? 0
+              : driveStaggerMs(index, readNow(deps.powerSaverLevel$, "off"));
 
           return timer(staggerMs, deps.scheduler).pipe(
             map((): Patch => {

@@ -874,6 +874,22 @@ describe("scriptPorts — Jarvis turns, confirmations, availability, history and
     ]);
   });
 
+  it("jarvisAvailabilityPending holds availability$ silent until the first push", () => {
+    const { ports, driver } = scriptPorts(createBasePorts(), {
+      jarvisAvailabilityPending: true,
+    });
+    const seen: boolean[] = [];
+    ports.jarvis.availability$?.().subscribe((value) => {
+      seen.push(value.available);
+    });
+
+    expect(seen).toEqual([]);
+
+    driver.pushJarvisAvailability(createAvailability(false));
+
+    expect(seen).toEqual([false]);
+  });
+
   it("jarvisHistory is null until a source is set, then reads that source LIVE", () => {
     const { ports, driver } = scriptPorts(createBasePorts());
 

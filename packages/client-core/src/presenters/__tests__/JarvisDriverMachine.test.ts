@@ -1,4 +1,4 @@
-import { BehaviorSubject, NEVER, of, Subject } from "rxjs";
+import { BehaviorSubject, defer, NEVER, of, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -138,6 +138,39 @@ describe("createJarvisDriverMachine", () => {
         return e.frame;
       }),
     ).toEqual([1, 1]);
+  });
+
+  it("the first command of a batch never reads powerSaverLevel$ — its stagger is 0 regardless; only later commands read it", () => {
+    let reads = 0;
+    const powerSaverLevel$ = defer(() => {
+      reads += 1;
+      return of<PowerSaverLevel>("off");
+    });
+
+    run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(commandEvent([{ kind: "switchTab", tab: "credit" }]));
+        }, 1);
+      },
+      { powerSaverLevel$ },
+    );
+    expect(reads).toBe(0);
+
+    run(
+      (h) => {
+        h.ts.schedule(() => {
+          h.events$.next(
+            commandEvent([
+              { kind: "switchTab", tab: "credit" },
+              { kind: "switchTab", tab: "fx" },
+            ]),
+          );
+        }, 1);
+      },
+      { powerSaverLevel$ },
+    );
+    expect(reads).toBe(1);
   });
 
   it("an unknown layout panelId is skipped with a reason; later commands still apply", () => {

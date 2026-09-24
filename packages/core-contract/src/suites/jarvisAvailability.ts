@@ -103,6 +103,24 @@ export function describeJarvisAvailabilityCases(
       }
     });
 
+    it("a send before the first availability reply runs on the preferred brain — not a scripted-only fallback", async () => {
+      const h = makeHarness({ jarvisAvailabilityPending: true });
+
+      try {
+        h.app.presenters.jarvisPreferences.setBrain("claude-sonnet-5");
+        await settle();
+        h.app.presenters.jarvis.intents.send("early");
+        await settle();
+        expect(
+          h.driver.askLog().map((ask) => {
+            return ask.options?.brain;
+          }),
+        ).toEqual(["claude-sonnet-5"]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("availability going off makes send a no-op", async () => {
       const h = makeHarness();
 

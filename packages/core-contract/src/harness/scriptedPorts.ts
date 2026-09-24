@@ -154,6 +154,10 @@ export interface HarnessSeed {
   /** What `jarvis.availability$()` replays first. Absent: the simulator's
    * always-available, scripted-only value. */
   readonly jarvisAvailability?: JarvisAvailability;
+  /** `jarvis.availability$()` replays NOTHING until the first
+   * `pushJarvisAvailability` — the WS adapter before the server's first
+   * availability reply. */
+  readonly jarvisAvailabilityPending?: boolean;
   /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
   readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
 }
@@ -484,9 +488,12 @@ export function scriptPorts(
   const asks = createPendingQueue<string, JarvisEvent>();
   const askLog: JarvisAskRecord[] = [];
   const confirmations: JarvisConfirmRecord[] = [];
-  const availability$ = new BehaviorSubject<JarvisAvailability>(
-    seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY,
-  );
+  const availability$ = new ReplaySubject<JarvisAvailability>(1);
+
+  if (seed.jarvisAvailabilityPending !== true) {
+    availability$.next(seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY);
+  }
+
   const usage$ = new Subject<JarvisUsagePayload>();
   let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
   let availabilitySubscriptions = 0;

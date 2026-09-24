@@ -74,9 +74,10 @@ const FALLBACK_EQ_STATE: EqWorkspaceState = {
   compare: null,
 };
 
-// Same named-tag idiom as CommandEventTag above, for the "layout" branch of
-// DriveCommandV1 — `Extract<DriveCommandV1, { readonly kind: "layout" }>`
-// inline would be an inline object type as a type argument, also banned.
+// A named tag for the "layout" branch of DriveCommandV1:
+// `Extract<DriveCommandV1, { readonly kind: "layout" }>` would take an inline
+// object type as a type argument, which the repo's `no-restricted-syntax`
+// bans.
 interface LayoutCommandTag {
   readonly kind: "layout";
 }

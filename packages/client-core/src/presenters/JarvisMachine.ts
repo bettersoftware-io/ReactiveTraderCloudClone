@@ -146,7 +146,12 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const availabilitySource$: Observable<JarvisAvailability> =
     deps.availability$ ?? of(JARVIS_SIM_AVAILABILITY);
   const controller = createJarvisController();
-  const confirm = deps.port.confirm.bind(deps.port);
+
+  // Looked up on every call, never captured: a port whose `confirm` is
+  // replaced after construction (a spy, a decorator) is still the one told.
+  function confirmThroughPort(confirmationId: string, approved: boolean): void {
+    deps.port.confirm(confirmationId, approved);
+  }
 
   const turn$ = new Subject<JarvisTurnRequest>();
   const open$ = new Subject<void>();
@@ -216,7 +221,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
             req.confirmationId,
             tickIndex + 1,
             totalTicks,
-            confirm,
+            confirmThroughPort,
           );
         }),
         takeUntil(resolution$),
@@ -262,12 +267,12 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
     timerPatches$,
     approve$.pipe(
       map(() => {
-        return approvePatch(confirm);
+        return approvePatch(confirmThroughPort);
       }),
     ),
     decline$.pipe(
       map(() => {
-        return declinePatch(confirm);
+        return declinePatch(confirmThroughPort);
       }),
     ),
     open$.pipe(

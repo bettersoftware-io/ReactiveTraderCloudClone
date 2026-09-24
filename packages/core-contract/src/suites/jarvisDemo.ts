@@ -84,6 +84,9 @@ export function describeJarvisDemoContract(
           h.app.presenters.jarvisDemo.intents.startDemo();
           await pause();
           await completeTurn(h, [], pause);
+          // One millisecond — far below DEMO_STEP_BEAT_MS — lets a core whose
+          // zero-length beat is itself a scheduled timer take it.
+          await clock.advance(1);
           await pause();
           expect(h.driver.askLog()).toHaveLength(2);
         } finally {
@@ -103,8 +106,10 @@ export function describeJarvisDemoContract(
           await runSteps(h, clock, CONFIRMING_STEP - 1);
           h.driver.replyJarvis([createConfirmRequest("trade")]);
           await pause();
+          await clock.advance(DEMO_STEP_BEAT_MS - 1);
+          await pause();
           expect(h.driver.confirmations()).toEqual([]);
-          await clock.advance(DEMO_STEP_BEAT_MS);
+          await clock.advance(1);
           await pause();
           expect(h.driver.confirmations()).toEqual([
             { id: "trade", approved: false },
