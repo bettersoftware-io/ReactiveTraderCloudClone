@@ -106,6 +106,11 @@ export function createJarvisPanelsMachine(
 
 const UNSUPPORTED_TITLE = "Unsupported panel";
 
+/** An unsupported (or not-yet-cached) panel's data: ONE constant, as the
+ * RxJS presenter's `EMPTY`, so a consumer keyed on `data$` identity does not
+ * re-subscribe on every roster change. */
+const NO_PANEL_DATA: Stream<PanelData> = emptyStream<PanelData>();
+
 interface PanelCacheEntry {
   readonly spec: PanelSpecV1;
   readonly data$: Stream<PanelData>;
@@ -174,7 +179,7 @@ export function createJarvisPanelsPresenter(
         rationale: null,
         status: "unsupported",
         vizKind: null,
-        data$: emptyStream<PanelData>(),
+        data$: NO_PANEL_DATA,
         docked: panel.docked,
       };
     }
@@ -185,7 +190,7 @@ export function createJarvisPanelsPresenter(
       rationale: panel.spec.rationale ?? null,
       status: "live",
       vizKind: panel.spec.viz.kind,
-      data$: cache.get(panel.panelId)?.data$ ?? emptyStream<PanelData>(),
+      data$: cache.get(panel.panelId)?.data$ ?? NO_PANEL_DATA,
       docked: panel.docked,
     };
   }
@@ -266,6 +271,10 @@ export function createJarvisPanelsPresenter(
       });
       const target = vm?.status === "live" ? vm.data$ : null;
 
+      // Known limit: a data topic whose port FAILED has cleared its
+      // subscribers (the relay's rejection goes to `reportAsync`), and this
+      // attachment stays on it until the roster changes — the RxJS presenter
+      // propagates the error instead. Ports here do not error in practice.
       if (target !== null && target === attached) {
         return;
       }

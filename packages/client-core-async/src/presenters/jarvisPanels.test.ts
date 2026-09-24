@@ -84,7 +84,45 @@ describe("jarvisPanels (async)", () => {
     const seen = collectData(presenter.panelData$("trades"));
     trades.next([createTrade()]);
     expect(seen.at(-1)).toMatchObject({ kind: "table" });
-    expect(JSON.stringify(seen.at(-1))).toContain("EURUSD");
+    expect(JSON.stringify(seen.at(-1))).toContain("T1");
+
+    events$.next(createPanelEvent("book", createAnalyticsSpec("Book")));
+    const book = collectData(presenter.panelData$("book"));
+    positions.next(createPositions());
+    expect(book.at(-1)).toMatchObject({ kind: "table" });
+    expect(JSON.stringify(book.at(-1))).toContain("GBPJPY");
+  });
+
+  it("an fxTicks panel waits for EVERY symbol, then accumulates each symbol's points", () => {
+    const prices = new Map<string, Subject<PriceTick>>([
+      ["EURUSD", new Subject<PriceTick>()],
+      ["GBPUSD", new Subject<PriceTick>()],
+    ]);
+
+    const { events$, presenter } = createFixture({
+      getPriceUpdates: (symbol: string) => {
+        return prices.get(symbol) ?? new Subject<PriceTick>();
+      },
+    });
+    events$.next(
+      createPanelEvent("ticks", {
+        v: 1,
+        title: "Ticks",
+        source: { kind: "fxTicks", symbols: ["EURUSD", "GBPUSD"] },
+        transforms: [],
+        viz: { kind: "line" },
+      }),
+    );
+    const seen = collectData(presenter.panelData$("ticks"));
+
+    prices.get("EURUSD")?.next(createTick("EURUSD", 1.11));
+    prices.get("EURUSD")?.next(createTick("EURUSD", 1.12));
+    expect(seen.filter(isData)).toEqual([]);
+    prices.get("GBPUSD")?.next(createTick("GBPUSD", 1.31));
+    const frame = JSON.stringify(seen.at(-1));
+    expect(frame).toContain("1.11");
+    expect(frame).toContain("1.12");
+    expect(frame).toContain("1.31");
   });
 
   it("an unknown source renders its empty frame at once", () => {
@@ -103,10 +141,13 @@ describe("jarvisPanels (async)", () => {
     });
   });
 
-  it("panelData$ follows the roster: null once its panel is dismissed", () => {
-    const { events$, presenter } = createFixture();
+  it("panelData$ follows the roster: data while the panel lives, null once it is dismissed", () => {
+    const positions = new Subject<PositionUpdates>();
+    const { events$, presenter } = createFixture({ analytics: positions });
     events$.next(createPanelEvent("p"));
     const seen = collectData(presenter.panelData$("p"));
+    positions.next(createPositions());
+    expect(seen.at(-1)).toMatchObject({ kind: "table" });
     presenter.dismissPanel("p");
     expect(seen.at(-1)).toBe(null);
   });
@@ -132,6 +173,7 @@ describe("jarvisPanels (async)", () => {
 });
 
 interface Overrides {
+  readonly getPriceUpdates?: (symbol: string) => Subject<PriceTick>;
   readonly getPriceHistory?: (symbol: string) => Subject<readonly PriceTick[]>;
   readonly blotter?: Subject<readonly Trade[]>;
   readonly analytics?: Subject<PositionUpdates>;
@@ -150,7 +192,7 @@ function createFixture(
   const deps = {
     referenceData: { getCurrencyPairs: createNever },
     pricing: {
-      getPriceUpdates: createNever,
+      getPriceUpdates: overrides.getPriceUpdates ?? createNever,
       getPriceHistory: overrides.getPriceHistory ?? createNever,
       getRfqQuote: createNever,
     },
@@ -247,4 +289,18 @@ type PanelSpec = NonNullable<PanelInstance["spec"]>;
 
 function createNever(): Observable<never> {
   return NEVER;
+}
+
+function createPositions(): PositionUpdates {
+  return {
+    currentPositions: [
+      {
+        symbol: "GBPJPY",
+        basePnl: 1200,
+        baseTradedAmount: 1_000_000,
+        counterTradedAmount: 150_000_000,
+      },
+    ],
+    history: [],
+  } as unknown as PositionUpdates;
 }

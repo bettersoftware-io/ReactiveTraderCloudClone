@@ -267,6 +267,10 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
   // made through a NATIVE presenter would choreograph nothing, and each
   // port those readers share with a native member would be held twice.
   const native = nativePresenters(ports, lifetime.signal);
+  // Filled by the `workspace` seam factory below, inside `createRxjsApp` —
+  // an array, not a `let`, so the type does not narrow to `null` across the
+  // closure's assignment.
+  const builtWorkspaces: NativeWorkspace[] = [];
   const seams: CoreSeams = {
     eqWorkspace: native.eqWorkspace,
     equityFills$: native.ordersBlotter.fills$,
@@ -283,21 +287,21 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     // and the base's Jarvis driver needs the native workspace: `createApp`
     // calls this factory right after building `jarvis` (slice 7, wave 1).
     workspace: (jarvisEvents$: Stream<JarvisEvent>): WorkspaceSeam => {
-      workspace = createNativeWorkspace(
+      const workspace = createNativeWorkspace(
         { ports, jarvisEvents$, workspaceNav: native.workspaceNav },
         lifetime.signal,
       );
+      builtWorkspaces.push(workspace);
       return workspace.seam;
     },
   };
-  let workspace: NativeWorkspace | null = null;
   const base = createRxjsApp(ports, seams);
+  const [nativeWorkspace] = builtWorkspaces;
 
-  if (workspace === null) {
+  if (nativeWorkspace === undefined) {
     throw new Error("createApp never called the workspace seam");
   }
 
-  const nativeWorkspace: NativeWorkspace = workspace;
   const app: App = {
     ...base,
     presenters: {

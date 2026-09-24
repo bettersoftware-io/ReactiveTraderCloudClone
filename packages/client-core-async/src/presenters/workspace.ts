@@ -33,7 +33,7 @@ import { AbortError } from "#/kernel/AbortError";
 import { reportAsync } from "#/kernel/reportAsync";
 import { sleep } from "#/kernel/sleep";
 import { createStore, type Store } from "#/kernel/store";
-import { createLayoutMachine, type LayoutMachine } from "#/machines/layout";
+import { createLayoutMachine } from "#/machines/layout";
 import {
   createJarvisPanelsMachine,
   createJarvisPanelsPresenter,
@@ -41,7 +41,7 @@ import {
 
 /** The twelve workspace members this core owns natively (pluggable-core
  * slice 7, wave 1). */
-export interface NativeWorkspacePresenters {
+interface NativeWorkspacePresenters {
   readonly dockLayoutStore: DockLayoutStore;
   readonly layoutFor: (
     tab: WorkspaceTab,
@@ -100,7 +100,6 @@ export function createNativeWorkspace(
   const membership = createStore(0);
   const resets = createStore(0);
   const resets$ = storeToWarmStateStream(resets);
-  const layouts = new Map<WorkspaceTab, LayoutMachine>();
   const handles = new Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>();
   const persist = createPersistDebounce(() => {
     writeWorkspaceLayout({
@@ -172,7 +171,6 @@ export function createNativeWorkspace(
       dock.seedFor(tab),
       lifetime,
     );
-    layouts.set(tab, machine);
     let replayed = false;
     machine.store.subscribe((state) => {
       dock.recordLayoutState(tab, state);
@@ -363,10 +361,17 @@ function createPersistDebounce(
       pending = window;
       sleep(WORKSPACE_PERSIST_DEBOUNCE_MS, window.signal).then(
         () => {
-          // A superseded window never gets here: the next kick aborted its
-          // sleep, which rejects.
-          pending = null;
-          write();
+          // A superseded window rejects (the next kick aborted its sleep).
+          // A kick or the lifetime's end can still land between the timer
+          // and this callback: never orphan the newer window, never write
+          // after the end.
+          if (pending === window) {
+            pending = null;
+          }
+
+          if (!lifetime.aborted) {
+            write();
+          }
         },
         (error: unknown) => {
           if (!(error instanceof AbortError)) {

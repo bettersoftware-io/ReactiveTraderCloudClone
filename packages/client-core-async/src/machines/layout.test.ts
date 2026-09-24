@@ -19,13 +19,26 @@ describe("layout machine (async)", () => {
     expect(machine.store.get()).toBe(initial);
   });
 
-  it("after dispose (or the lifetime's end) an intent changes nothing; dispose twice is harmless", () => {
+  it("after dispose an intent changes nothing; dispose twice is harmless", () => {
+    const initial = createDefaultLayoutPort("fx").initial;
+    const machine = createLayoutMachine(
+      initial,
+      undefined,
+      new AbortController().signal,
+    );
+
+    machine.dispose();
+    machine.dispose();
+    machine.intents.maximize("fx-rates");
+    expect(machine.store.get().maximized).toBe(null);
+  });
+
+  it("the lifetime's end disposes it: an intent changes nothing", () => {
     const lifetime = new AbortController();
     const initial = createDefaultLayoutPort("fx").initial;
     const machine = createLayoutMachine(initial, undefined, lifetime.signal);
 
     lifetime.abort();
-    machine.dispose();
     machine.intents.maximize("fx-rates");
     expect(machine.store.get().maximized).toBe(null);
   });

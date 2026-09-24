@@ -7,7 +7,7 @@ import {
   of,
   Subject,
 } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type AnimationIntent,
@@ -109,11 +109,15 @@ describe("composeWithBase — core seams", () => {
 
     try {
       app.presenters.jarvis.intents.send("maximize the rates");
-      await wait(DRIVE_STAGGER_MS + 100);
-
-      expect(
-        (await firstValueFrom(app.presenters.layoutFor("fx").state$)).maximized,
-      ).toBe("fx-rates");
+      await vi.waitFor(
+        async () => {
+          expect(
+            (await firstValueFrom(app.presenters.layoutFor("fx").state$))
+              .maximized,
+          ).toBe("fx-rates");
+        },
+        { timeout: DRIVE_STAGGER_MS * 10 },
+      );
       expect(
         (await firstValueFrom(base.presenters.layoutFor("fx").state$))
           .maximized,
@@ -158,7 +162,14 @@ describe("composeWithBase — core seams", () => {
 
     try {
       app.presenters.jarvis.intents.send("dock a panel");
-      await wait(DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+      await vi.waitFor(
+        () => {
+          expect(writes).toHaveLength(1);
+        },
+        { timeout: (DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS) * 10 },
+      );
+      // A second writer would land within the same window: give it one.
+      await wait(WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
 
       expect(
         await firstValueFrom(app.presenters.dockedPanelIdsFor("fx")),
