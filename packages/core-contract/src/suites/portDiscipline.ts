@@ -485,5 +485,23 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("jarvis.ask: none at construction; exactly one per sent turn", async () => {
+      const h = makeHarness();
+
+      try {
+        expect(h.driver.portCalls("jarvis.ask")).toBe(0);
+        h.app.presenters.jarvis.intents.send("hello");
+        await settle();
+        expect(h.driver.portCalls("jarvis.ask")).toBe(1);
+        h.driver.replyJarvis([{ type: "done" }]);
+        await settle();
+        h.app.presenters.jarvis.intents.send("again");
+        await settle();
+        expect(h.driver.portCalls("jarvis.ask")).toBe(2);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }
