@@ -52,6 +52,21 @@ export function describeJarvisPanelsContract(
       }
     });
 
+    it("only panel events spawn: a turn of text, tool and drive events adds nothing", async () => {
+      const h = makeHarness();
+
+      try {
+        await replyToTurn(h, [
+          { type: "delta", text: "thinking" },
+          { type: "toolEvent", tool: "get_price", status: "running" },
+          { type: "command", batch: { v: 1, commands: [] } },
+        ]);
+        expect(await panelIds(h)).toEqual([]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("a second event for the same id edits in place and keeps its docked flag", async () => {
       const h = makeHarness();
 

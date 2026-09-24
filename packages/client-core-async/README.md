@@ -110,8 +110,19 @@ member is held twice (`composition.seams.test.ts`).
 
 ## Parity
 
-As of slice 6, **58 of 74** members are native (the 74th, `layoutPresets`,
-arrived delegated with Dockview Phase 6b). Slice 5 added the nine admin
+As of slice 7's wave 1, **70 of 74** members are native (the 74th,
+`layoutPresets`, arrived delegated with Dockview Phase 6b; the four left are
+Jarvis's, wave 2). Wave 1 added the workspace — `layoutFor` /
+`machines.layout` (a Store per tab over the SHARED layout reducer),
+`jarvisPanels` (a Store folded by the shared panels folds, with one warm
+data topic per live panel over the shared frame steps), the dock bridges,
+`resetWorkspaceLayout`, `dockedPanelIdsFor`, `workspaceLayoutResets$`,
+`layoutPresets`, `dockLayoutStore` and `commands.reportDetachedPanels` — all
+wired through `@rtc/client-core`'s rxjs-free `createWorkspaceDock` /
+`createLayoutPresetsController` / `writeWorkspaceLayout`, and reached by
+the base's Jarvis driver through the `CoreSeams.workspace` factory (the
+base's own workspace stays idle; the preference has one writer, this core's
+debounce). Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as warm
 folds over `kernel/foldTopic.ts`, `topology` and `sessions` as warm
 mirrors, `throughput`, and the `incident` singleton, whose connection
