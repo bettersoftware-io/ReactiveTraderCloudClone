@@ -4,8 +4,6 @@ import {
   createApp as createRxjsApp,
   createMachineFactories as createRxjsMachineFactories,
   firstWatchlistSymbol,
-  type JarvisEvent,
-  type WorkspaceSeam,
 } from "@rtc/client-core";
 import type {
   App,
@@ -55,6 +53,7 @@ import {
   createJarvisPreferencesPresenter,
   createLoginWaitPreferencesPresenter,
 } from "#/presenters/groupedPreferences";
+import { createJarvisFamily } from "#/presenters/jarvisFamily";
 import { createOrdersBlotterPresenter } from "#/presenters/ordersBlotter";
 import {
   createAmbientStylePresenter,
@@ -91,10 +90,6 @@ import {
   createPositionsPresenter,
 } from "#/presenters/warmSingletons";
 import { createWatchlistPresenter } from "#/presenters/watchlist";
-import {
-  createNativeWorkspace,
-  type NativeWorkspace,
-} from "#/presenters/workspace";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, and the
  * app this core presents. `parity.test.ts` compares the two member by
@@ -121,9 +116,12 @@ type NativePresenters = Partial<Presenters> &
     | "currencyPairs"
     | "eqWorkspace"
     | "execution"
+    | "jarvisPreferences"
     | "ordersBlotter"
+    | "powerSaver"
     | "priceStream"
     | "rfqs"
+    | "themeSkinPreference"
     | "watchlist"
     | "workspaceNav"
   >;
@@ -267,10 +265,26 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
   // made through a NATIVE presenter would choreograph nothing, and each
   // port those readers share with a native member would be held twice.
   const native = nativePresenters(ports, lifetime.signal);
-  // Filled by the `workspace` seam factory below, inside `createRxjsApp` —
-  // an array, not a `let`, so the type does not narrow to `null` across the
-  // closure's assignment.
-  const builtWorkspaces: NativeWorkspace[] = [];
+  // The Jarvis family and its workspace, end to end: jarvis first, the
+  // workspace over its own events, then the driver, demo, narrator, history
+  // source and usage (slice 7 wave 2). The base app's copies stand down.
+  const family = createJarvisFamily(
+    {
+      ports,
+      workspaceNav: native.workspaceNav,
+      eqWorkspace: native.eqWorkspace,
+      watchlist$: native.watchlist.watchlist$,
+      themeSkinPreference: native.themeSkinPreference,
+      powerSaver: native.powerSaver,
+      jarvisPreferences: native.jarvisPreferences,
+      pairs$: native.currencyPairs.pairs$,
+      priceFor: (pair: CurrencyPair) => {
+        return native.priceStream.price$(pair);
+      },
+    },
+    lifetime.signal,
+  );
+
   const seams: CoreSeams = {
     eqWorkspace: native.eqWorkspace,
     equityFills$: native.ordersBlotter.fills$,
@@ -283,33 +297,22 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     rfqEvents$: native.rfqs.events$,
     connectionStatus$: native.connection.status$,
     workspaceNav: native.workspaceNav,
-    // The native workspace needs the base's (still delegated) Jarvis events
-    // and the base's Jarvis driver needs the native workspace: `createApp`
-    // calls this factory right after building `jarvis` (slice 7, wave 1).
-    workspace: (jarvisEvents$: Stream<JarvisEvent>): WorkspaceSeam => {
-      const workspace = createNativeWorkspace(
-        { ports, jarvisEvents$, workspaceNav: native.workspaceNav },
-        lifetime.signal,
-      );
-      builtWorkspaces.push(workspace);
-      return workspace.seam;
-    },
+    nativeJarvis: true,
   };
   const base = createRxjsApp(ports, seams);
-  const [nativeWorkspace] = builtWorkspaces;
-
-  if (nativeWorkspace === undefined) {
-    throw new Error("createApp never called the workspace seam");
-  }
 
   const app: App = {
     ...base,
     presenters: {
       ...base.presenters,
       ...native,
-      ...nativeWorkspace.presenters,
+      ...family.workspace.presenters,
+      jarvis: family.jarvis,
+      jarvisDriver: family.jarvisDriver,
+      jarvisDemo: family.jarvisDemo,
+      jarvisUsage: family.jarvisUsage,
     },
-    commands: createCommands(nativeWorkspace.reportDetachedPanels),
+    commands: createCommands(family.workspace.reportDetachedPanels),
     // General rule (see docs/architecture/22-pluggable-application-core.md
     // §22 "Teardown order"): an alternative core releases its own resources
     // first, then the base app it delegates to. Here that means aborting
@@ -317,6 +320,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     // relays may still be draining streams the base app owns. Idempotent: a
     // second abort is a no-op, and the base's dispose is its own concern.
     dispose: async () => {
+      family.jarvis.dispose();
       lifetime.abort();
       await base.dispose();
     },
