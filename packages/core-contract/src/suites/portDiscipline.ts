@@ -503,5 +503,39 @@ export function describePortDisciplineContract(
         await h.teardown();
       }
     });
+
+    it("jarvis: the app asks for availability once and registers ONE history source, and confirms nothing, however many cores compose it", async () => {
+      const h = makeHarness();
+
+      try {
+        await settle();
+        expect(h.driver.portCalls("jarvis.availability$")).toBe(1);
+        expect(h.driver.portCalls("jarvis.setHistorySource")).toBe(1);
+        expect(h.driver.portCalls("jarvis.confirm")).toBe(0);
+        expect(h.driver.jarvisHistory()).not.toBe(null);
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("jarvisUsage.usage$: two subscribers and two warm periods open the port exactly once", async () => {
+      const h = makeHarness();
+
+      try {
+        const usage$ = h.app.presenters.jarvisUsage.usage$;
+        const first = collect(usage$);
+        const second = collect(usage$);
+        await settle();
+        first.unsubscribe();
+        second.unsubscribe();
+        await settle();
+        const third = collect(usage$);
+        await settle();
+        third.unsubscribe();
+        expect(h.driver.portCalls("jarvisUsage.usage$")).toBe(1);
+      } finally {
+        await h.teardown();
+      }
+    });
   });
 }
