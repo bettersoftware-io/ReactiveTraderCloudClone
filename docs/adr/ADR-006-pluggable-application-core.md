@@ -872,7 +872,7 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   too: warm across the Admin-tab remount, emit-less completion → error
   banner, post-dispose `setValue` silent.
 
-**Decided in slice 6a — the shell** (2026-09-23):
+**Decided in slice 6 — the shell** (2026-09-23):
 
 - **Scope: the layout/dock family moved to slice 7.** Slice 6's row named
   `layoutFor` and the dock bridges; those eleven members (`layoutFor`,
@@ -880,7 +880,7 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   `dismissPanel`, `resetWorkspaceLayout`, `dockedPanelIdsFor`,
   `workspaceLayoutResets$`, `layoutPresets`, `commands.reportDetachedPanels`)
   port with `jarvisPanels`, which every dock bridge writes synchronously.
-  Slice 6a is `auth`, `bootGate`, `workspaceNav`, `animationDirector` and
+  Slice 6 is `auth`, `bootGate`, `workspaceNav`, `animationDirector` and
   `machines.boot` — 58/74 native in both cores.
 - **`CoreSeams.workspaceNav`**: the base's Jarvis driver (`switchTab`) and the
   dock bridges' active-tab mirror follow the native nav; the base keeps its

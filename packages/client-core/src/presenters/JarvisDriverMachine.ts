@@ -23,6 +23,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
+import { DRIVE_STAGGER_MS as DOMAIN_DRIVE_STAGGER_MS } from "@rtc/domain";
 import type { DriveCommandV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
@@ -118,7 +119,7 @@ export interface JarvisDriverDeps {
  * only. Collapses to 0 under power-saver `"freeze"` (read fresh per command
  * from `powerSaverLevel$`), per the motion-free guarantee
  * `docs/performance.md`/`docs/power-saver-mode.md` demand. */
-export const DRIVE_STAGGER_MS = 350;
+export const DRIVE_STAGGER_MS: number = DOMAIN_DRIVE_STAGGER_MS;
 
 const INITIAL_STATE: JarvisDriverState = { lastBatch: [] };
 

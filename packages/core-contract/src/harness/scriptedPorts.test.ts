@@ -43,6 +43,7 @@ import {
   EURUSD,
   MSFT,
 } from "#/harness/fixtures";
+import type { JarvisEvent } from "#/harness/jarvisTypes";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
 describe("scriptPorts port-call counting", () => {
@@ -737,16 +738,82 @@ describe("scriptPorts auth, session store and boot splash", () => {
   });
 });
 
-function createStoredSession(): StoredSession {
-  const [first] = ROSTER;
+describe("scriptPorts — Jarvis, the workspace preference and the two stores", () => {
+  it("queues asks FIFO; replyJarvis feeds the OLDEST and completes it on done", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const first: string[] = [];
+    let firstDone = false;
+    ports.jarvis.ask("one").subscribe({
+      next: (event: JarvisEvent) => {
+        first.push(event.type);
+      },
+      complete: () => {
+        firstDone = true;
+      },
+    });
+    ports.jarvis.ask("two").subscribe();
 
-  return {
-    token: "t",
-    user: first.user,
-    username: first.username,
-    exp: 2_000_000_000_000,
-  };
-}
+    expect(driver.pendingAsks()).toEqual(["one", "two"]);
+    expect(driver.portCalls("jarvis.ask")).toBe(2);
+
+    driver.replyJarvis([{ type: "delta", text: "hi" }]);
+    expect(first).toEqual(["delta"]);
+    expect(driver.pendingAsks()).toEqual(["one", "two"]);
+
+    driver.replyJarvis([{ type: "done" }]);
+    expect(first).toEqual(["delta", "done"]);
+    expect(firstDone).toBe(true);
+    expect(driver.pendingAsks()).toEqual(["two"]);
+  });
+
+  it("an error event also completes the turn", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    ports.jarvis.ask("one").subscribe();
+
+    driver.replyJarvis([{ type: "error", message: "boom" }]);
+
+    expect(driver.pendingAsks()).toEqual([]);
+  });
+
+  it("seeds the workspace preference and reads it back uncounted", () => {
+    const { ports, driver } = scriptPorts(createBasePorts(), {
+      workspaceLayout: "seeded",
+    });
+
+    expect(driver.storedWorkspaceLayout()).toBe("seeded");
+    ports.preferences.setWorkspaceLayout("written");
+    expect(driver.storedWorkspaceLayout()).toBe("written");
+    expect(driver.portCalls("workspaceLayout$")).toBe(0);
+  });
+
+  it("the dock store starts at its seed and shows writes; absent seed means no store", () => {
+    const { ports, driver } = scriptPorts(createBasePorts(), {
+      dockLayouts: { fx: "fx-blob" },
+    });
+
+    expect(ports.dockLayoutStore?.load("fx")).toBe("fx-blob");
+    ports.dockLayoutStore?.save("credit", "credit-blob");
+    ports.dockLayoutStore?.clear("fx");
+    expect(driver.dockLayout("credit")).toBe("credit-blob");
+    expect(driver.dockLayout("fx")).toBe(null);
+    expect(scriptPorts(createBasePorts()).ports.dockLayoutStore).toBe(
+      undefined,
+    );
+  });
+
+  it("the preset store starts at its seed; presetStoreDropsWrites keeps nothing", () => {
+    const kept = scriptPorts(createBasePorts(), { layoutPresets: {} });
+    kept.ports.layoutPresetStore?.save("fx", "list");
+    expect(kept.driver.presetList("fx")).toBe("list");
+
+    const dropped = scriptPorts(createBasePorts(), {
+      layoutPresets: { fx: "old" },
+      presetStoreDropsWrites: true,
+    });
+    dropped.ports.layoutPresetStore?.save("fx", "new");
+    expect(dropped.ports.layoutPresetStore?.load("fx")).toBe("old");
+  });
+});
 
 function createBasePorts(): AppPorts {
   return {
@@ -766,4 +833,15 @@ function createBasePorts(): AppPorts {
 
 interface Unsubscribable {
   unsubscribe(): void;
+}
+
+function createStoredSession(): StoredSession {
+  const [first] = ROSTER;
+
+  return {
+    token: "t",
+    user: first.user,
+    username: first.username,
+    exp: 2_000_000_000_000,
+  };
 }

@@ -1,3 +1,5 @@
+import { MAX_PANEL_INSTANCES as DOMAIN_MAX_PANEL_INSTANCES } from "@rtc/domain";
+
 import type { PanelId } from "./layoutPort";
 
 /** Global cap on dynamically opened panel instances (Phase 4) — mirrors the
@@ -6,7 +8,7 @@ import type { PanelId } from "./layoutPort";
  * `presenters/`) so both the layout machine and the workspace persistence
  * parser import the ONE definition — `presenters` already imports from
  * `layout`, never the reverse. */
-export const MAX_PANEL_INSTANCES = 4;
+export const MAX_PANEL_INSTANCES: number = DOMAIN_MAX_PANEL_INSTANCES;
 
 /** Builds the engine panelId for a dynamically opened instance — `id` doubles
  * as the panelId so every id-keyed subsystem (registry, blob, strips, pins)

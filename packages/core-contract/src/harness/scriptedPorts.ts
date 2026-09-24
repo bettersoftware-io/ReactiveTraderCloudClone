@@ -11,9 +11,13 @@ import {
 import type {
   AppPorts,
   ColorSchemeSource,
+  DockLayoutStore,
+  JarvisPort,
+  LayoutPresetStore,
   SessionStore,
   StoredSession,
   Stream,
+  WorkspaceTab,
 } from "@rtc/core-api";
 import type {
   AdminPort,
@@ -65,6 +69,7 @@ import type {
 } from "@rtc/domain";
 import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
+import type { JarvisEvent } from "#/harness/jarvisTypes";
 import { createPendingQueue } from "#/harness/pendingQueue";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
@@ -101,7 +106,8 @@ export type PortMethodName =
   | "eventLog.events$"
   | "sessions.sessions$"
   | "admin.getThroughput"
-  | "auth.login";
+  | "auth.login"
+  | "jarvis.ask";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -121,6 +127,18 @@ export interface HarnessSeed {
   /** `ports.bootSplash.shouldPlay()`. Absent: no `bootSplash` port at all
    * (the base's, if it has one, is passed through). */
   readonly bootSplash?: boolean;
+  /** The stored `workspaceLayout` preference before composition. Absent:
+   * whatever the base preferences port holds. */
+  readonly workspaceLayout?: string | null;
+  /** `ports.dockLayoutStore`'s blobs before composition. Absent: no
+   * `dockLayoutStore` port at all (each core builds its own fallback). */
+  readonly dockLayouts?: Partial<Record<WorkspaceTab, string>>;
+  /** `ports.layoutPresetStore`'s serialized lists before composition.
+   * Absent (with `presetStoreDropsWrites` also absent): no port. */
+  readonly layoutPresets?: Partial<Record<WorkspaceTab, string>>;
+  /** The preset store accepts every write and keeps none — blocked or full
+   * storage, the `storage-failed` save outcome. */
+  readonly presetStoreDropsWrites?: boolean;
 }
 
 /** One `auth.login(username, password)` the core has subscribed. */
@@ -340,6 +358,21 @@ export interface ScriptedDriver {
   /** The login-wait variant the preferences port holds now — read on the
    * UNCOUNTED base port, so reading it never moves `portCalls`. */
   storedLoginWaitVariant(): LoginWaitVariant;
+  /** The text of every `jarvis.ask` the core has subscribed and the driver
+   * has not finished replying to, oldest first. */
+  pendingAsks(): readonly string[];
+  /** Reply to the OLDEST pending ask with `events`, in order; a trailing
+   * `done`/`error` event also completes that turn. */
+  replyJarvis(events: readonly JarvisEvent[]): void;
+  /** The `workspaceLayout` preference now — read on the UNCOUNTED base
+   * port. */
+  storedWorkspaceLayout(): string | null;
+  /** The dock-layout blob `ports.dockLayoutStore` holds for `tab` (null
+   * when the harness supplied no store). */
+  dockLayout(tab: WorkspaceTab): string | null;
+  /** The serialized preset list `ports.layoutPresetStore` holds for `tab`
+   * (null when the harness supplied no store). */
+  presetList(tab: WorkspaceTab): string | null;
 }
 
 export interface ScriptedPorts {
@@ -392,6 +425,29 @@ export function scriptPorts(
   const throughputLoads = createPendingQueue<void, number>();
   const throughputWrites = createPendingQueue<number, void>();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
+  const asks = createPendingQueue<string, JarvisEvent>();
+
+  if (seed.workspaceLayout !== undefined) {
+    base.preferences.setWorkspaceLayout(seed.workspaceLayout);
+  }
+
+  const dockBlobs = new Map<string, string>(
+    Object.entries(seed.dockLayouts ?? {}),
+  );
+
+  const presetLists = new Map<string, string>(
+    Object.entries(seed.layoutPresets ?? {}),
+  );
+
+  const dockLayoutStore: DockLayoutStore | undefined =
+    seed.dockLayouts === undefined
+      ? base.dockLayoutStore
+      : createMapStore(dockBlobs, false);
+
+  const layoutPresetStore: LayoutPresetStore | undefined =
+    seed.layoutPresets === undefined && seed.presetStoreDropsWrites !== true
+      ? base.layoutPresetStore
+      : createMapStore(presetLists, seed.presetStoreDropsWrites === true);
   let stored: StoredSession | null = seed.session ?? null;
   const controlCallLog: ControlCall[] = [];
   const metricControls: readonly MetricControl[] = [0, 1, 2].map(
@@ -688,6 +744,20 @@ export function scriptPorts(
     "auth.",
   );
 
+  const jarvis = countCalls<JarvisPort>(
+    {
+      ask: (text: string): Observable<JarvisEvent> => {
+        return asks.open(text);
+      },
+      confirm: (): void => {
+        // Accepted and ignored: no suite settles a confirmation through the
+        // port — the turn's own events carry every outcome.
+      },
+    },
+    calls,
+    "jarvis.",
+  );
+
   const sessionStore: SessionStore = {
     read: () => {
       return stored;
@@ -715,6 +785,9 @@ export function scriptPorts(
       auth,
       sessionStore,
       bootSplash,
+      jarvis,
+      dockLayoutStore,
+      layoutPresetStore,
       preferences,
       connectionEvents,
       colorScheme,
@@ -890,6 +963,44 @@ export function scriptPorts(
       storedSession: () => {
         return stored;
       },
+      pendingAsks: asks.pending,
+      replyJarvis: (events: readonly JarvisEvent[]) => {
+        for (const event of events) {
+          asks.emit(event);
+        }
+
+        const last = events.at(-1);
+
+        if (last?.type === "done" || last?.type === "error") {
+          asks.complete();
+        }
+      },
+      storedWorkspaceLayout: () => {
+        const seen: (string | null)[] = [];
+        base.preferences
+          .workspaceLayout$()
+          .subscribe((value) => {
+            seen.push(value);
+          })
+          .unsubscribe();
+
+        // Absence must not read as a stored `null`.
+        if (seen.length === 0) {
+          throw new Error(
+            "storedWorkspaceLayout: the preferences port replayed nothing",
+          );
+        }
+
+        return seen[seen.length - 1];
+      },
+      dockLayout: (tab: WorkspaceTab) => {
+        return seed.dockLayouts === undefined
+          ? null
+          : (dockBlobs.get(tab) ?? null);
+      },
+      presetList: (tab: WorkspaceTab) => {
+        return presetLists.get(tab) ?? null;
+      },
       storedLoginWaitVariant: () => {
         let variant: LoginWaitVariant = DEFAULT_LOGIN_WAIT_VARIANT;
         base.preferences
@@ -945,6 +1056,29 @@ export function scriptPorts(
       throughputLoads.drain();
       throughputWrites.drain();
       logins.drain();
+      asks.drain();
+    },
+  };
+}
+
+/** A Map-backed store with the `DockLayoutStore`/`LayoutPresetStore` shape
+ * (this package cannot import client-core's in-memory ones). `dropWrites`
+ * accepts every `save` and keeps nothing. */
+function createMapStore(
+  entries: Map<string, string>,
+  dropWrites: boolean,
+): DockLayoutStore & LayoutPresetStore {
+  return {
+    load: (tab: string): string | null => {
+      return entries.get(tab) ?? null;
+    },
+    save: (tab: string, value: string): void => {
+      if (!dropWrites) {
+        entries.set(tab, value);
+      }
+    },
+    clear: (tab: string): void => {
+      entries.delete(tab);
     },
   };
 }

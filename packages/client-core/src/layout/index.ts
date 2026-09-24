@@ -14,12 +14,17 @@ export { DOCK_COLUMN_INITIAL_PX } from "#/layout/dockColumn";
 export * from "#/layout/layoutPort";
 export * from "#/layout/layoutPresetCodec";
 export * from "#/layout/layoutPresets";
+// The rxjs-free shared halves (pluggable-core slice 7): the sibling cores
+// import these rather than re-derive the rules.
+export * from "#/layout/layoutPresetsController";
+export * from "#/layout/layoutReducer";
 export * from "#/layout/maximizeBoundary";
 // The instance id/cap pair is public (both web clients' watchlist + Dockview
 // bridge read them); the namespace predicate stays internal to client-core's
 // own id-collision guard.
 export { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
 export * from "#/layout/visibleRoot";
+export * from "#/layout/workspaceDock";
 // The workspace-persistence pair is public for one reason: each web client's
 // ui-contract fixture (`tests/ui/contract/<framework>/viewModelFromWorld.ts`)
 // reproduces composition.ts's dock/undock/persist wiring over the neutral
@@ -27,4 +32,5 @@ export * from "#/layout/visibleRoot";
 // about the real round trip the rehydration spec exists to witness. Both
 // modules are otherwise consumed only by `composition.ts` itself.
 export * from "#/layout/workspaceLayoutPersistence";
+export * from "#/layout/workspaceLayoutWrite";
 export * from "#/layout/workspacePersistenceWriter";

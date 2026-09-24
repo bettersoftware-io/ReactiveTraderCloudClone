@@ -530,7 +530,7 @@ const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
   });
 });
 
-// Slice 6a: the shell. `workspaceNav` is an app-lifetime singleton (a child
+// Slice 6: the shell. `workspaceNav` is an app-lifetime singleton (a child
 // host); `bootGate` and `auth` read the ports; `animationDirector` is below,
 // with the presenters it listens to.
 const WorkspaceNavLive = presenterLayer(WorkspaceNavTag, (host) => {

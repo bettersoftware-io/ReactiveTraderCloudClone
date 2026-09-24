@@ -18,6 +18,12 @@ import { describeCreditRfqFilterPreferenceContract } from "#/suites/creditRfqFil
 import { describeCurrencyPairsContract } from "#/suites/currencyPairs";
 import { describeDealersContract } from "#/suites/dealers";
 import { describeDepthContract } from "#/suites/depth";
+import {
+  describeDismissPanelContract,
+  describeDockedPanelIdsForContract,
+  describeDockPanelContract,
+  describeUndockPanelContract,
+} from "#/suites/dock";
 import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
 import { describeEqDrawingsContract } from "#/suites/eqDrawings";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
@@ -27,8 +33,14 @@ import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
 import { describeIncidentContract } from "#/suites/incident";
 import { describeInstrumentsContract } from "#/suites/instruments";
+import { describeJarvisPanelsContract } from "#/suites/jarvisPanels";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
+import {
+  describeLayoutForContract,
+  describeMachinesLayoutContract,
+} from "#/suites/layout";
 import { describeLayoutEngineContract } from "#/suites/layoutEngine";
+import { describeLayoutPresetsContract } from "#/suites/layoutPresets";
 import { describeLoginWaitPreferencesContract } from "#/suites/loginWaitPreferences";
 import {
   describeErrorRateMetricContract,
@@ -43,6 +55,12 @@ import { describePowerSaverContract } from "#/suites/powerSaver";
 import { describePriceHistoryContract } from "#/suites/priceHistory";
 import { describePriceStreamContract } from "#/suites/priceStream";
 import { describeReconnectContract } from "#/suites/reconnect";
+import { describeReportDetachedPanelsContract } from "#/suites/reportDetachedPanels";
+import {
+  describeDockLayoutStoreContract,
+  describeResetWorkspaceLayoutContract,
+  describeWorkspaceLayoutResetsContract,
+} from "#/suites/reset";
 import { describeRfqCountdownContract } from "#/suites/rfqCountdown";
 import { describeRfqQuoteContract } from "#/suites/rfqQuote";
 import { describeRfqSubmissionContract } from "#/suites/rfqSubmission";
@@ -92,7 +110,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.ambientStyle": describeAmbientStyleContract,
   "presenters.chartSubstrate": describeChartSubstrateContract,
   "presenters.layoutEngine": describeLayoutEngineContract,
-  "presenters.dockLayoutStore": null,
+  "presenters.dockLayoutStore": describeDockLayoutStoreContract,
   "presenters.forceBootAnimation": describeForceBootAnimationContract,
   "presenters.powerSaver": describePowerSaverContract,
   "presenters.viewModePreference": describeViewModePreferenceContract,
@@ -115,7 +133,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.incident": describeIncidentContract,
   "presenters.eqWorkspace": describeEqWorkspaceContract,
   "presenters.workspaceNav": describeWorkspaceNavContract,
-  "presenters.layoutFor": null,
+  "presenters.layoutFor": describeLayoutForContract,
   "presenters.eqDrawings": describeEqDrawingsContract,
   "presenters.throughputMetric": describeThroughputMetricContract,
   "presenters.latencyMetric": describeLatencyMetricContract,
@@ -126,14 +144,14 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.sessionsKpi": describeSessionsKpiContract,
   "presenters.jarvis": null,
   "presenters.jarvisUsage": null,
-  "presenters.jarvisPanels": null,
-  "presenters.dockPanel": null,
-  "presenters.dockedPanelIdsFor": null,
-  "presenters.undockPanel": null,
-  "presenters.dismissPanel": null,
-  "presenters.resetWorkspaceLayout": null,
-  "presenters.workspaceLayoutResets$": null,
-  "presenters.layoutPresets": null,
+  "presenters.jarvisPanels": describeJarvisPanelsContract,
+  "presenters.dockPanel": describeDockPanelContract,
+  "presenters.dockedPanelIdsFor": describeDockedPanelIdsForContract,
+  "presenters.undockPanel": describeUndockPanelContract,
+  "presenters.dismissPanel": describeDismissPanelContract,
+  "presenters.resetWorkspaceLayout": describeResetWorkspaceLayoutContract,
+  "presenters.workspaceLayoutResets$": describeWorkspaceLayoutResetsContract,
+  "presenters.layoutPresets": describeLayoutPresetsContract,
   "presenters.jarvisDriver": null,
   "presenters.jarvisDemo": null,
   "machines.tileExecution": describeTileExecutionContract,
@@ -145,31 +163,19 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.rfqSubmission": describeRfqSubmissionContract,
   "machines.ticketSubmission": describeTicketSubmissionContract,
   "machines.rfqCountdown": describeRfqCountdownContract,
-  "machines.layout": null,
+  "machines.layout": describeMachinesLayoutContract,
   "machines.boot": describeBootContract,
   "machines.orderTicket": describeOrderTicketContract,
   "commands.reconnect": describeReconnectContract,
-  "commands.reportDetachedPanels": null,
+  "commands.reportDetachedPanels": describeReportDetachedPanelsContract,
 };
 
 /** Members whose suite is still to be written. Hand-maintained on purpose:
  * the drift test fails if this list and the `null`s above disagree, so a
  * member cannot silently lose its suite. Shrinks slice by slice. */
 export const PENDING_SUITES: readonly ContractMember[] = [
-  "presenters.dockLayoutStore",
-  "presenters.layoutFor",
   "presenters.jarvis",
   "presenters.jarvisUsage",
-  "presenters.jarvisPanels",
-  "presenters.dockPanel",
-  "presenters.dockedPanelIdsFor",
-  "presenters.undockPanel",
-  "presenters.dismissPanel",
-  "presenters.resetWorkspaceLayout",
-  "presenters.workspaceLayoutResets$",
-  "presenters.layoutPresets",
   "presenters.jarvisDriver",
   "presenters.jarvisDemo",
-  "machines.layout",
-  "commands.reportDetachedPanels",
 ];
