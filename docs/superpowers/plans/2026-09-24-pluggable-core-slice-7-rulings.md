@@ -62,3 +62,37 @@ Task 3. No conflict found between the plan's rulings and the tasks.
   - Uncontracted (ledgered, per plan ruling 6): the unsupported-sentinel
     panel path — the sentinel is minted by the adapters and unreachable
     from ports.
+- Full gauntlet: 33 gates, green after two fixes (7 auto-fixable ESLint
+  padding/newspaper-order errors; knip: `DriveBatch` made module-local).
+
+### PR A review (one read-only opus reviewer)
+
+No behaviour regression in the move out of `composition.ts` (checked line
+by line against 6499636af); the rxjs-free claim holds. All ten findings
+taken:
+1. Contract gap — a write keeps the stored entry of a tab the session never
+   opened: new case in `layout.ts` (its mutant — drop `...stored?.tabs` —
+   survived every suite before).
+2. "Bumps LAST" only half-checked: the reset's at-bump read now includes the
+   stored preference; a new `layoutPresets` case pins load/resetTab's
+   blob-then-bump order.
+3. The suites silently required a SYNCHRONOUS state fold. Ruling: that is a
+   contract point, now stated in `workspaceKit.ts`'s module doc — the
+   shared dock reads roster and layout state right after calling into them,
+   so a core must commit state synchronously; only delivery may be
+   scheduled (the Effect core commits via `runSync`) — cost if wrong: the
+   Effect port needs a different shared-dock shape.
+4. `layoutStateNow` hid a late-recording core behind the default tree: it
+   now throws. The RxJS core always records synchronously, so no mutant can
+   reach the throw from here — an untestable-by-RxJS guard, ledgered; the
+   sibling ports' unit tests exercise it.
+5. Seam branch (b) untested: new `composition.seams.test.ts` case seeds a
+   docked payload — the unseamed app restores it, the seamed app's own
+   panels stay empty.
+6. The boot restore moved below the layout maps (no TDZ if a restore ever
+   reaches `layoutFor`), still before the writer's panels subscription.
+7. `storedWorkspaceLayout()` throws when the port replays nothing.
+8–10. Vacuity guards: the post-reset case asserts h1's write landed; the
+   resize case asserts `initialPx` was set; the repeat dock checks the
+   roster too.
+Runners 306/306 ×3; client-core 3059/3059; mutation on the fixes 5/5.
