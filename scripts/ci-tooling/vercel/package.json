@@ -3,7 +3,7 @@
   "private": true,
   "description": "NOT a workspace package. Pins the Vercel CLI and its whole transitive tree under an npm lockfile (sha512 integrity) for the deploy workflows; installed by scripts/install-vercel.sh. OVERRIDES: the CLI exact-pins deps carrying known advisories (30 at 57.0.0, 29 at 59.23.1 \u2014 upstream has fixed none of them; measured 2026-09-19 that EVERY override below is still required at 59.23.1). Each lifts ONE vulnerable package to its patched line; `npm audit --package-lock-only` here must stay at 0. After any bump, re-test each override by deleting it and re-auditing, and drop the ones upstream has caught up on. History: held on 57.x from 2026-07-28 because 58.0.0 broke `vercel pull` under env-var project linking; unpinned to 59.x once a Deploy dispatch proved `pull` works again. Evidence: docs/adr/ADR-007-ci-security-tooling.md.",
   "dependencies": {
-    "vercel": "59.23.1"
+    "vercel": "59.26.0"
   },
   "overrides": {
     "tar": "^7.5.21",
