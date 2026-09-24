@@ -269,6 +269,35 @@ describe("createApp — core seams (strangler phase)", () => {
     rig.presenters.jarvis.dispose();
   });
 
+  it("with nativeJarvis a turn through the app's own jarvis spawns no panel and drives nothing — its folds read no events", async () => {
+    const spawning = createPorts({
+      jarvis: createSpawningJarvisPort("jarvis-1"),
+    });
+
+    const commanding = createPorts({
+      jarvis: createCommandingJarvisPort([
+        { kind: "switchTab", tab: "credit" },
+      ]),
+    });
+    const spawner = createApp(spawning, { nativeJarvis: true });
+    const driver = createApp(commanding, { nativeJarvis: true });
+
+    spawner.presenters.jarvis.intents.send("spawn a panel");
+    driver.presenters.jarvis.intents.send("go to credit");
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 50);
+    });
+
+    expect(
+      await firstValueFrom(spawner.presenters.jarvisPanels.panels$),
+    ).toEqual([]);
+    expect(
+      (await firstValueFrom(driver.presenters.jarvisDriver.state$)).lastBatch,
+    ).toEqual([]);
+    spawner.presenters.jarvis.dispose();
+    driver.presenters.jarvis.dispose();
+  });
+
   it("without nativeJarvis the same app DOES reach the wire — the stand-down check above is not vacuous", async () => {
     const rig = createStandDownRig({});
 

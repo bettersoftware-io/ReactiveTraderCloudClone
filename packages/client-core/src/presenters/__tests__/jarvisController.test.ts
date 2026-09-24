@@ -34,17 +34,25 @@ describe("createJarvisController — guards every core's timing relies on", () =
     expect(expiry(state)).toBe(state);
   });
 
-  it("an event with no turn in flight changes no entry", () => {
+  it("a stray event after a turn's done changes no entry — the finished turn is no longer the target", () => {
     const controller = createJarvisController();
+    const plan = controller.planTurn({ kind: "send", text: "hi" });
 
-    const patch = controller.eventPatch(
+    if (plan === null) {
+      throw new Error("expected an available controller to plan the turn");
+    }
+
+    const finished = controller.eventPatch(
+      { type: "done" },
+      undefined,
+    )(plan.start(JARVIS_INITIAL_STATE));
+
+    const stray = controller.eventPatch(
       { type: "delta", text: "x" },
       undefined,
     );
 
-    expect(patch(JARVIS_INITIAL_STATE).entries).toBe(
-      JARVIS_INITIAL_STATE.entries,
-    );
+    expect(stray(finished).entries).toBe(finished.entries);
   });
 });
 
