@@ -1,12 +1,15 @@
 import { Context, Effect, Layer } from "effect";
 
-import { firstWatchlistSymbol } from "@rtc/client-core";
+import { createAuthDeps, firstWatchlistSymbol } from "@rtc/client-core";
 import type {
   AmbientStylePresenter,
   AnalyticsPresenter,
   AnimatedBackgroundPresenter,
+  AnimationDirector,
   AppPorts,
+  AuthPresenter,
   BlotterPresenter,
+  BootGatePresenter,
   BootPreferencePresenter,
   CandleSeriesPresenter,
   ChartSubstratePresenter,
@@ -50,13 +53,17 @@ import type {
   TradeExecutionPresenter,
   ViewModePreferencePresenter,
   WatchlistPresenter,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
 } from "@rtc/core-api";
+import type { CurrencyPair } from "@rtc/domain";
 
 import { type EffectHost, pushIncidentEvent } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
 import { createIncidentMachine } from "#/machines/incident";
+import { createWorkspaceNavMachine } from "#/machines/workspaceNav";
 import {
   createEventLogPresenter,
   createMetricWindowPresenter,
@@ -94,6 +101,11 @@ import {
 } from "#/presenters/readPreferences";
 import { createRfqQuotePresenter } from "#/presenters/rfqQuote";
 import { createRfqsPresenter } from "#/presenters/rfqs";
+import {
+  createAnimationDirector,
+  createAuthPresenter,
+  createBootGatePresenter,
+} from "#/presenters/shell";
 import { createThemePreferencePresenter } from "#/presenters/themePreference";
 import { createThroughputPresenter } from "#/presenters/throughput";
 import {
@@ -248,6 +260,22 @@ const SessionsKpiTag = Context.GenericTag<SessionsKpiPresenter>(
   "@rtc/client-core-effect/sessionsKpi",
 );
 
+const WorkspaceNavTag = Context.GenericTag<
+  Machine<WorkspaceNavState, WorkspaceNavIntents>
+>("@rtc/client-core-effect/workspaceNav");
+
+const BootGateTag = Context.GenericTag<BootGatePresenter>(
+  "@rtc/client-core-effect/bootGate",
+);
+
+const AuthTag = Context.GenericTag<AuthPresenter>(
+  "@rtc/client-core-effect/auth",
+);
+
+const AnimationDirectorTag = Context.GenericTag<AnimationDirector>(
+  "@rtc/client-core-effect/animationDirector",
+);
+
 const IncidentTag = Context.GenericTag<Machine<IncidentState, IncidentIntents>>(
   "@rtc/client-core-effect/incident",
 );
@@ -296,7 +324,11 @@ export type NativeServices =
   | EventLogPresenter
   | SessionsPresenter
   | SessionsKpiPresenter
-  | Machine<IncidentState, IncidentIntents>;
+  | Machine<IncidentState, IncidentIntents>
+  | Machine<WorkspaceNavState, WorkspaceNavIntents>
+  | BootGatePresenter
+  | AuthPresenter
+  | AnimationDirector;
 
 // Presenters that need only the host and the ports.
 const ConnectionLive = presenterLayer(ConnectionTag, (host, ports) => {
@@ -498,6 +530,21 @@ const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
   });
 });
 
+// Slice 6a: the shell. `workspaceNav` is an app-lifetime singleton (a child
+// host); `bootGate` and `auth` read the ports; `animationDirector` is below,
+// with the presenters it listens to.
+const WorkspaceNavLive = presenterLayer(WorkspaceNavTag, (host) => {
+  return createWorkspaceNavMachine(host);
+});
+
+const BootGateLive = presenterLayer(BootGateTag, (host, ports) => {
+  return createBootGatePresenter(host, ports.bootSplash?.shouldPlay() ?? true);
+});
+
+const AuthLive = presenterLayer(AuthTag, (host, ports) => {
+  return createAuthPresenter(host, createAuthDeps(ports));
+});
+
 // The one native machine that needs nothing but the host — `ports` is
 // deliberately unused.
 const EqDrawingsLive = presenterLayer(EqDrawingsTag, (host) => {
@@ -547,6 +594,39 @@ const EqWorkspaceLive: Layer.Layer<
     return createEqWorkspaceMachine(host, {
       initialSymbol: firstWatchlistSymbol(peek(watchlist.watchlist$, [])),
       watchlist$: watchlist.watchlist$,
+    });
+  }),
+);
+
+const AnimationDirectorLive: Layer.Layer<
+  AnimationDirector,
+  never,
+  | EffectHost
+  | CurrencyPairsPresenter
+  | PriceStreamPresenter
+  | ConnectionStatusPresenter
+  | TradeExecutionPresenter
+  | RfqsPresenter
+  | OrdersBlotterPresenter
+> = Layer.effect(
+  AnimationDirectorTag,
+  Effect.gen(function* buildAnimationDirector() {
+    const host = yield* HostTag;
+    const currencyPairs = yield* CurrencyPairsTag;
+    const priceStream = yield* PriceStreamTag;
+    const connection = yield* ConnectionTag;
+    const execution = yield* ExecutionTag;
+    const rfqs = yield* RfqsTag;
+    const ordersBlotter = yield* OrdersBlotterTag;
+    return createAnimationDirector(host, {
+      pairs$: currencyPairs.pairs$,
+      priceFor: (pair: CurrencyPair) => {
+        return priceStream.price$(pair);
+      },
+      connectionStatus$: connection.status$,
+      executions$: execution.executions$,
+      rfqEvents$: rfqs.events$,
+      equityFills$: ordersBlotter.fills$,
     });
   }),
 );
@@ -607,6 +687,9 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     SessionsLive,
     SessionsKpiLive,
     IncidentLive,
+    WorkspaceNavLive,
+    BootGateLive,
+    AuthLive,
   );
 
   const dependent = Layer.mergeAll(
@@ -614,7 +697,25 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
     PriceHistoryLive,
     EqWorkspaceLive,
   ).pipe(Layer.provide(Layer.merge(PowerSaverLive, WatchlistLive)));
-  return Layer.merge(independent, dependent).pipe(Layer.provideMerge(base));
+
+  // The director listens to six native presenters; each Live is memoised by
+  // reference within this build, so it hears the SAME instances the app
+  // hands out (the seam witness's once-per-port pricing count pins it).
+  const director = AnimationDirectorLive.pipe(
+    Layer.provide(
+      Layer.mergeAll(
+        CurrencyPairsLive,
+        ConnectionLive,
+        ExecutionLive,
+        RfqsLive,
+        OrdersBlotterLive,
+        PriceStreamLive.pipe(Layer.provide(PowerSaverLive)),
+      ),
+    ),
+  );
+  return Layer.mergeAll(independent, dependent, director).pipe(
+    Layer.provideMerge(base),
+  );
 }
 
 /** The native overlay's type: `Partial<Presenters>`, except for the
@@ -632,6 +733,7 @@ export type NativePresenters = Partial<Presenters> &
     | "priceStream"
     | "rfqs"
     | "watchlist"
+    | "workspaceNav"
   >;
 
 /** Resolve every tag into the `Presenters` overlay — the ONE `runSync`
@@ -683,4 +785,8 @@ export const nativePresentersEffect: Effect.Effect<
   sessions: SessionsTag,
   sessionsKpi: SessionsKpiTag,
   incident: IncidentTag,
+  workspaceNav: WorkspaceNavTag,
+  bootGate: BootGateTag,
+  auth: AuthTag,
+  animationDirector: AnimationDirectorTag,
 });

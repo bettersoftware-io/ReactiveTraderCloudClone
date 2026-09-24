@@ -299,4 +299,32 @@ describe("topicFromObservable", () => {
     lifetime.abort();
     expect(source.observed).toBe(false);
   });
+
+  it("once() removes its abort listener when the call settles, so an app-lifetime signal does not accumulate one per call", async () => {
+    const lifetime = new AbortController();
+    const added: unknown[] = [];
+    const removed: unknown[] = [];
+    const signal = lifetime.signal;
+    const add = signal.addEventListener.bind(signal);
+    const remove = signal.removeEventListener.bind(signal);
+    signal.addEventListener = ((
+      type: string,
+      listener: unknown,
+      options?: unknown,
+    ) => {
+      added.push(listener);
+      add(type, listener as EventListener, options as AddEventListenerOptions);
+    }) as typeof signal.addEventListener;
+    signal.removeEventListener = ((type: string, listener: unknown) => {
+      removed.push(listener);
+      remove(type, listener as EventListener);
+    }) as typeof signal.removeEventListener;
+    const reply = new Subject<number>();
+    const call = once(reply, signal);
+    reply.next(7);
+
+    expect(await call).toBe(7);
+    expect(added).toHaveLength(1);
+    expect(removed).toEqual(added);
+  });
 });

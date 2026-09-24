@@ -102,6 +102,7 @@ export function describeAuthContract(
           const auth = h.app.presenters.auth;
           const c = collect(auth.state$);
           auth.login(DEMO.username, "pw");
+          await clock.settle();
           expect(c.values.at(-1)).toEqual({
             ...SIGNED_OUT,
             status: "authenticating",
@@ -149,6 +150,7 @@ export function describeAuthContract(
           h.driver.resolveLogin({ ok: false, reason: "invalid" });
           await clock.settle();
           auth.login(DEMO.username, "wrong");
+          await clock.settle();
           expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
           c.unsubscribe();
         } finally {
@@ -162,7 +164,7 @@ export function describeAuthContract(
     // then the other one). The case pins the other treatment first — an
     // unpinned read would show the stored one — then the stored one.
     it("a pinned wait style is the treatment every attempt shows, and the cycle does not move while pinned", async () => {
-      await withFakeClock(async () => {
+      await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);
         const h = makeHarness();
 
@@ -171,10 +173,14 @@ export function describeAuthContract(
           const prefs = h.app.presenters.loginWaitPreferences;
           const c = collect(auth.state$);
           prefs.setStyle(NEXT_VARIANT);
+          await clock.settle();
           auth.login(DEMO.username, "pw");
+          await clock.settle();
           expect(c.values.at(-1)?.waitVariant).toBe(NEXT_VARIANT);
           prefs.setStyle(DEFAULT_LOGIN_WAIT_VARIANT);
+          await clock.settle();
           auth.login(DEMO.username, "pw");
+          await clock.settle();
           expect(c.values.at(-1)?.waitVariant).toBe(DEFAULT_LOGIN_WAIT_VARIANT);
           expect(h.driver.storedLoginWaitVariant()).toBe(
             DEFAULT_LOGIN_WAIT_VARIANT,
@@ -253,6 +259,7 @@ export function describeAuthContract(
           const c = collect(auth.state$);
           auth.lock();
           auth.unlock("wrong");
+          await clock.settle();
           expect(c.values.at(-1)).toMatchObject({
             locked: true,
             unlocking: true,

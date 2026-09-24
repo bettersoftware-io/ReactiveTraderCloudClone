@@ -153,7 +153,8 @@ describe("createMachineFactories — native wiring", () => {
     expect(machines.staleFlag).not.toBe(base.staleFlag);
     expect(machines.rfqTile).not.toBe(base.rfqTile);
     expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
-    expect(machines.boot).toBe(base.boot);
+    expect(machines.boot).not.toBe(base.boot);
+    expect(machines.layout).toBe(base.layout);
   });
 });
 

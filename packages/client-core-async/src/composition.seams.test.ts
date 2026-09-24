@@ -58,7 +58,27 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
-  it("a fill placed through the NATIVE ordersBlotter.place reaches the base's own animationDirector", async () => {
+  it("a Jarvis drive batch switching tab lands on the app's NATIVE workspaceNav, not the base's own", async () => {
+    const { app, base } = composeWithBase(
+      createPorts({ jarvis: createSwitchingJarvisPort("credit") }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("go to credit");
+      await settle();
+
+      const afterApp = await firstValueFrom(app.presenters.workspaceNav.state$);
+      const afterBase = await firstValueFrom(
+        base.presenters.workspaceNav.state$,
+      );
+      expect(afterApp.activeTab).toBe("credit");
+      expect(afterBase.activeTab).toBe("fx");
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("a fill placed through the NATIVE ordersBlotter.place reaches the app's animationDirector", async () => {
     const orders$ = new Subject<EquityOrder>();
     const orders: OrderPort = {
       place: (): Observable<EquityOrder> => {
@@ -96,7 +116,7 @@ describe("composeWithBase — core seams", () => {
     }
   });
 
-  it("an FX execution through the NATIVE execution presenter reaches the base's own animationDirector as a tile fill", async () => {
+  it("an FX execution through the NATIVE execution presenter reaches the app's animationDirector as a tile fill", async () => {
     const execution: ExecutionPort = {
       executeTrade: (): Observable<Trade> => {
         return of(createTrade());
@@ -354,6 +374,24 @@ function createSelectingJarvisPort(symbol: string): JarvisPort {
       return of<JarvisEvent>({
         type: "command",
         batch: { v: 1, commands: [{ kind: "eqSelect", symbol }] },
+      });
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
+}
+
+/** A JarvisPort whose ask() replies with one drive batch switching to
+ * `tab`. */
+function createSwitchingJarvisPort(
+  tab: "fx" | "credit" | "equities",
+): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return of<JarvisEvent>({
+        type: "command",
+        batch: { v: 1, commands: [{ kind: "switchTab", tab }] },
       });
     },
     confirm: (): void => {

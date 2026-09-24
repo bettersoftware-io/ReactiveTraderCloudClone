@@ -872,6 +872,45 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   too: warm across the Admin-tab remount, emit-less completion → error
   banner, post-dispose `setValue` silent.
 
+**Decided in slice 6a — the shell** (2026-09-23):
+
+- **Scope: the layout/dock family moved to slice 7.** Slice 6's row named
+  `layoutFor` and the dock bridges; those eleven members (`layoutFor`,
+  `machines.layout`, `dockLayoutStore`, `dockPanel`, `undockPanel`,
+  `dismissPanel`, `resetWorkspaceLayout`, `dockedPanelIdsFor`,
+  `workspaceLayoutResets$`, `layoutPresets`, `commands.reportDetachedPanels`)
+  port with `jarvisPanels`, which every dock bridge writes synchronously.
+  Slice 6a is `auth`, `bootGate`, `workspaceNav`, `animationDirector` and
+  `machines.boot` — 58/74 native in both cores.
+- **`CoreSeams.workspaceNav`**: the base's Jarvis driver (`switchTab`) and the
+  dock bridges' active-tab mirror follow the native nav; the base keeps its
+  own as `presenters.workspaceNav`, as `eqWorkspace` did in slice 4.
+- **`animationDirector` needs no seam** — nothing inside the base reads it;
+  the native one listens to the native members directly and the base's stays
+  cold (the once-per-port pricing witness holds).
+- **The auth wiring is shared, not copied:** `createAuthDeps(ports)` (the
+  login-delay wrapper and the wait-style pin/cycle, moved out of
+  `composition.ts`) and the pure `bootProgress` / `nextBootVariant` /
+  `nextLoginWaitVariant` / `describeAuthFailure` are exported from
+  `@rtc/client-core`; the boot cadence moved to `@rtc/domain`.
+- **A stream subscriber hears an intent's new state after a settle, not
+  synchronously.** The first suites asserted the RxJS core's synchronous
+  delivery for `bootGate` and `auth`; the Effect core follows a ref on a
+  fiber, as every Effect member already does, and the suites now settle
+  before reading a stream. `bootGate`'s `visible` getter stays synchronous in
+  every core.
+- **Recorded, uncontracted:** boot states after `dispose()` (RxJS keeps the
+  ramp live for an attached subscriber; both siblings stop it); a second
+  `skip()` re-emitting the finished state; a repeated identical connection
+  status flashing again (RxJS does); login outcomes landing after logout or
+  overlapping; the Effect director conflating a same-tick burst of intents for
+  a late joiner (it is a `sharedFold`, whose first subscriber hears every
+  write).
+- **Contracted after review:** a new `intentsFor` subscriber receives the
+  director's latest intent while the director is live — the RxJS
+  `shareReplay(1)`, which every core reproduces and a user sees as a tile
+  replaying a flash it mounted after.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
