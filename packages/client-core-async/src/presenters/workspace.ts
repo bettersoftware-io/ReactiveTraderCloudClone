@@ -335,8 +335,9 @@ interface PersistDebounce {
   kick(): void;
 }
 
-/** The writer's debounce: each kick restarts a `WORKSPACE_PERSIST_DEBOUNCE_MS`
- * sleep, and only an uninterrupted one writes. */
+/** The writer's debounce: each kick aborts the pending
+ * `WORKSPACE_PERSIST_DEBOUNCE_MS` sleep and starts a fresh one, so only an
+ * uninterrupted window writes. */
 function createPersistDebounce(
   write: () => void,
   lifetime: AbortSignal,
@@ -362,10 +363,10 @@ function createPersistDebounce(
       pending = window;
       sleep(WORKSPACE_PERSIST_DEBOUNCE_MS, window.signal).then(
         () => {
-          if (pending === window) {
-            pending = null;
-            write();
-          }
+          // A superseded window never gets here: the next kick aborted its
+          // sleep, which rejects.
+          pending = null;
+          write();
         },
         (error: unknown) => {
           if (!(error instanceof AbortError)) {
