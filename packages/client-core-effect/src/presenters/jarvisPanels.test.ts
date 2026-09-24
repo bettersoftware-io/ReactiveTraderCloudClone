@@ -241,6 +241,28 @@ describe("jarvisPanels (effect)", () => {
     expect(open).toBe(0);
   });
 
+  it("a panel whose data port FAILS fails its panelData$ subscribers, as the RxJS switchMap does", async () => {
+    const positions = new Subject<PositionUpdates>();
+    const { events$, presenter } = await createFixture({
+      analytics: positions,
+    });
+    events$.next(createPanelEvent("p"));
+    await tick();
+    const errors: unknown[] = [];
+    presenter.panelData$("p").subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    await tick();
+
+    const failure = new Error("port down");
+    positions.error(failure);
+    await tick();
+    await tick();
+    expect(errors).toHaveLength(1);
+  });
+
   it("the host scope's close stops the roster following its events", async () => {
     const { events$, presenter, host } = await createFixture();
     await Effect.runPromise(Scope.close(host.scope, Exit.void));

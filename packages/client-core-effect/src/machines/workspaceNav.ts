@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { Effect, Exit, Scope } from "effect";
 
 import type {
   Machine,
@@ -7,25 +7,22 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 
-import {
-  createChildHost,
-  type EffectHost,
-  refToWarmStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createChildHost, type EffectHost } from "#/bridge/out";
+import { createSyncRef } from "#/presenters/syncRef";
 
 /** The app's active workspace tab — a warm singleton over a
  * SubscriptionRef in a child of the app host's scope (so `app.dispose()`
  * ends it, as `eqWorkspace`). Switching to the tab already active changes
- * nothing (`setRefIfChanged`), the RxJS core's `distinctUntilChanged`. */
+ * nothing (an unchanged write is dropped), the RxJS core's
+ * `distinctUntilChanged`. A `SyncRef` (slice 7): a subscriber — the shared
+ * dock's `activeTab()` read included — sees a switch in the same tick, as in
+ * the RxJS core, not a fiber step later. */
 export function createWorkspaceNavMachine(
   parent: EffectHost,
 ): Machine<WorkspaceNavState, WorkspaceNavIntents> {
   const host = createChildHost(parent);
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<WorkspaceNavState>({ activeTab: "fx" }),
-  );
-  const warm = refToWarmStateStream(host, ref);
+  const ref = createSyncRef<WorkspaceNavState>(host, { activeTab: "fx" });
+  const warm = ref.warm();
   let disposed = false;
 
   /** Idempotent; reached from `dispose()` and from the scope's own close. */
@@ -50,11 +47,9 @@ export function createWorkspaceNavMachine(
           return;
         }
 
-        host.runtime.runSync(
-          setRefIfChanged(ref, (state) => {
-            return state.activeTab === tab ? state : { activeTab: tab };
-          }),
-        );
+        ref.set((state) => {
+          return state.activeTab === tab ? state : { activeTab: tab };
+        });
       },
     },
     dispose: () => {

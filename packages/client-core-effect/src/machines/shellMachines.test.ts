@@ -40,6 +40,19 @@ describe("createWorkspaceNavMachine (effect)", () => {
     sub.unsubscribe();
   });
 
+  it("a switch is visible to a subscriber joining in the SAME tick — no fiber step", () => {
+    const nav = createWorkspaceNavMachine(useHost());
+    nav.intents.switchTab("equities");
+    const seen: WorkspaceNavState[] = [];
+    nav.state$
+      .subscribe((s) => {
+        seen.push(s);
+      })
+      .unsubscribe();
+
+    expect(seen).toEqual([{ activeTab: "equities" }]);
+  });
+
   // Read from a FRESH subscriber's seed after the close: a subscriber made
   // before it follows the ref on a fiber the close interrupted.
   it("after the host scope closes, switchTab changes nothing", async () => {

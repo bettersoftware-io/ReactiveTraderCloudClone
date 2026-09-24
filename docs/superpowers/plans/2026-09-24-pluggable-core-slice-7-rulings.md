@@ -226,3 +226,16 @@ No Critical. Taken:
   tick as a `switchTab` sees the old tab — every current path settles or
   staggers first.
 
+## Wave 1 residuals (after #823)
+
+- FIXED — async `panelData$` after a data-port failure: the follow now
+  rejects, so its subscribers hear the error (RxJS `switchMap` semantics);
+  unit case RED on the old code. The Effect core already propagated it
+  (new unit case), but its keep-warm (`holdWarm`) re-reported the error as
+  unhandled — the holder now absorbs it, the real subscribers still hear it.
+- FIXED — the Effect `workspaceNav` (slice 6) moved onto `SyncRef`: a switch
+  is visible to a subscriber joining in the same tick, so the shared dock's
+  `activeTab()` can never read the old tab; unit case RED on the old code.
+- RECORDED (STATUS) — the ui-contract fixtures' duplicated dock wiring in
+  both web clients; deliberate, uncontracted differences as listed in ADR-006.
+
