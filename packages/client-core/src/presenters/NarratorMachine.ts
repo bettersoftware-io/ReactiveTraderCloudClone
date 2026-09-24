@@ -26,7 +26,13 @@ import {
   type PriceTick,
 } from "@rtc/domain";
 
-import { JARVIS_NARRATION_PREFIX } from "./JarvisMachine.js";
+import {
+  admitAnomaly,
+  formatNarrationPrompt,
+  isAdmittedGate,
+  NARRATOR_INITIAL_GATE,
+  type NarratorGateState,
+} from "./narratorGate";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -100,15 +106,6 @@ export interface NarratorDeps {
  * contract suites can read them (pluggable-core slice 7 wave 2). */
 export { MAX_NARRATIONS_PER_SESSION, NARRATION_COOLDOWN_MS };
 
-/** The pinned narration copy (T7 review ruling): the vol channel detects a
- * large single-tick MOVE against the window's own trailing σ, not a rise in
- * "volatility" as a separately-tracked quantity — the copy must say
- * "moved", never "volatility jumped". */
-function formatNarrationPrompt(event: AnomalyEvent): string {
-  const verb = event.kind === "spreadWidening" ? "spread widened" : "moved";
-  return `${JARVIS_NARRATION_PREFIX}${event.symbol} ${verb} ${event.sigma.toFixed(1)}σ over the last window.`;
-}
-
 /** Merges `pairs`' live tick streams (via the injected, shared `priceFor`)
  * into one — the MERGE counterpart of `composePanelStream.ts`'s
  * `fxTicksFrame$` (which `combineLatest`s instead: a panel wants the latest
@@ -125,58 +122,6 @@ function mergedTicks$(
       return priceFor(pair);
     }),
   );
-}
-
-/** The cooldown/session-cap fold's accumulator. `event`/`shouldNarrate`
- * describe the MOST RECENT anomaly this fold has seen — a fresh pair every
- * step, never stale from a prior one. `event` is `null` only in the fold's
- * seed, before any anomaly has arrived. */
-interface GateState {
-  readonly count: number;
-  readonly lastAt: number | null;
-  readonly event: AnomalyEvent | null;
-  readonly shouldNarrate: boolean;
-}
-
-const INITIAL_GATE: GateState = {
-  count: 0,
-  lastAt: null,
-  event: null,
-  shouldNarrate: false,
-};
-
-/** Decides whether `event` — a surviving anomaly (already past the
- * preference gate) arriving at virtual/wall time `now` — actually gets
- * narrated: dropped once `MAX_NARRATIONS_PER_SESSION` has been reached
- * (forever, no reset), dropped while still inside `NARRATION_COOLDOWN_MS` of
- * the last successful narration, else admitted (and the gate's own
- * `count`/`lastAt` advance). */
-function admitAnomaly(
-  state: GateState,
-  event: AnomalyEvent,
-  now: number,
-): GateState {
-  if (state.count >= MAX_NARRATIONS_PER_SESSION) {
-    return { ...state, event, shouldNarrate: false };
-  }
-
-  if (state.lastAt !== null && now - state.lastAt < NARRATION_COOLDOWN_MS) {
-    return { ...state, event, shouldNarrate: false };
-  }
-
-  return { count: state.count + 1, lastAt: now, event, shouldNarrate: true };
-}
-
-/** `GateState` narrowed to the fold steps that actually admitted an anomaly
- * — see `isAdmittedGate`'s doc. */
-type AdmittedGateState = GateState & { readonly event: AnomalyEvent };
-
-/** Narrows a fold step to the ones that actually admitted an anomaly —
- * `shouldNarrate: true` is only ever set alongside a fresh (non-null)
- * `event` in `admitAnomaly`'s final branch, so narrowing on the flag alone
- * is sound. */
-function isAdmittedGate(state: GateState): state is AdmittedGateState {
-  return state.shouldNarrate;
 }
 
 /**
@@ -256,9 +201,9 @@ export function createNarratorMachine(deps: NarratorDeps): NarratorHandle {
     map(([event]) => {
       return event;
     }),
-    scan((state: GateState, event): GateState => {
+    scan((state: NarratorGateState, event): NarratorGateState => {
       return admitAnomaly(state, event, scheduler.now());
-    }, INITIAL_GATE),
+    }, NARRATOR_INITIAL_GATE),
     filter(isAdmittedGate),
     map((state) => {
       return formatNarrationPrompt(state.event);
