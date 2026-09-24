@@ -947,8 +947,9 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   tick it was sent still spawns (the Effect relay subscribed lazily and lost
   it — the base's `jarvis.events$` is hot).
 - **Recorded, uncontracted:** the unsupported-sentinel panel path (the
-  sentinel is minted by the adapters); a sibling's pending persist write is
-  dropped on `app.dispose()` where the RxJS writer never unsubscribes; a
+  sentinel is minted by the adapters); a sibling's persist writer stops at
+  `app.dispose()` — a pending write is dropped and no later change writes —
+  where the RxJS writer never unsubscribes; a
   panel whose data port FAILED stays attached in the async core until the
   roster changes (RxJS propagates the error).
 

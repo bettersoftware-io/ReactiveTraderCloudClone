@@ -181,3 +181,37 @@ preset lists, teardown, and the composition's factory ordering. Taken:
 - Docs for the wave: ADR-006 "Decided in slice 7 — wave 1", §22 counts,
   spec receipt, STATUS (70/74 both; wave 2 next, needs its own plan),
   CLAUDE.md, both READMEs.
+- Gauntlet (33 gates) green; `VITE_CORE_IMPL=effect pnpm test:e2e` exit 0
+  (91 Playwright + 2×47 Gherkin), run before the review fixes below.
+
+### PR C review (one read-only opus reviewer)
+
+No Critical. Taken:
+- Important — the persist writer could write after `app.dispose()`: a fork
+  into the closed child scope still runs (effect 3.22.2 hands back an
+  already-closed child and runs the body). Now a `closed` flag makes `kick`
+  a no-op and re-checks before writing; the roster's kick and seam-id
+  listeners are released with the scope; anything created after the close
+  (a late `layoutFor(tab)`) is released at once (`track`). New seam case:
+  after dispose, a roster change writes nothing.
+- Important — no test proved a live panel holds its port ONCE and releases
+  it: new unit case counts subscriptions through two `panelData$` readers,
+  a dismissal, a spec edit and the scope's close. Mutants: dismissal
+  release, spec-edit release, `panelData$` reading the cached data — killed.
+- `SyncRef` listeners now hear `get()` (a re-entrant write can no longer
+  hand a later listener the older value); the interrupt/fork race of the
+  debounce is commented (one extra write of LIVE state, never a stale one).
+- CLAUDE.md's "74th, `layoutPresets`, joined delegated" clause; the ADR's
+  dispose wording.
+- Equivalent under mutation, kept as defence in depth: the scope-close
+  release loop over the panel cache (closing the host scope already ends
+  every panel's `sharedFold` period) and the kick-time `closed` check (the
+  kick listener is released and the write re-checks).
+- Ruling (finding 3, latent): a seam READ through a warm `SyncRef` stream or
+  the native nav's `state$` lags a synchronous change by one scheduler step
+  (it follows `ref.changes`). Unreachable today — the driver runs every
+  command behind a stagger timer — so recorded, not restructured; the
+  fix, if a same-tick case ever appears, is feeding `warm()` from the
+  listener path — cost if wrong: a "spawn and dock in one tick" drive would
+  report the wrong outcome.
+

@@ -208,7 +208,7 @@ describe("jarvisPanels (effect)", () => {
       open += 1;
       const inner = positions.subscribe(subscriber);
 
-      return () => {
+      return (): void => {
         open -= 1;
         inner.unsubscribe();
       };
