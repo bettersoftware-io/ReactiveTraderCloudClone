@@ -143,18 +143,18 @@ describe("createMachineFactories — native wiring", () => {
     }
   });
 
-  it("a ported factory is a NEW closure and an unported one is the base's own", () => {
+  it("every factory is a NEW closure — none is the base's own", () => {
     const { presenters } = createStubPresenters();
     const { base, machines } = composeMachinesWithBase(presenters);
 
-    // What `parity.test.ts` reads as native vs delegated, asserted here on
-    // the one composition where both halves are in hand.
+    // What `parity.test.ts` reads as native, asserted here on the one
+    // composition where both halves are in hand.
     expect(machines.notional).not.toBe(base.notional);
     expect(machines.staleFlag).not.toBe(base.staleFlag);
     expect(machines.rfqTile).not.toBe(base.rfqTile);
     expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
     expect(machines.boot).not.toBe(base.boot);
-    expect(machines.layout).toBe(base.layout);
+    expect(machines.layout).not.toBe(base.layout);
   });
 });
 

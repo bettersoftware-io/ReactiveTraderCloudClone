@@ -151,3 +151,78 @@ preset lists, teardown, and the composition's factory ordering. Taken:
   the roster changes (RxJS propagates the error) — documented in
   `followPanelData`; ports here do not error — cost if wrong: a frozen desk
   panel after a port failure.
+
+## Wave 1 · PR C (the Effect core)
+
+- Task 5: the twelve native — `presenters/syncRef.ts`, `machines/layout.ts`,
+  `presenters/jarvisPanels.ts`, `presenters/workspace.ts`; bridge gains
+  `holdWarm` and `emptyStream`. Contract runners 308/308 ×3; Effect unit
+  tests 568+; mutation 20/20 after two findings (below).
+  - Ruling: `SyncRef` — a `SubscriptionRef` committed with `runSync` plus
+    SYNCHRONOUS in-core listeners. `ref.changes` is delivered on a fiber, so
+    the shared dock's mirrors (recorded layout states, persist kicks, docked
+    membership) cannot hang off it without breaking the sync-fold contract;
+    subscribers still read the ref — cost if wrong: a second notification
+    path to keep in step (unit-tested).
+  - Ruling: the Effect workspace is built by the seam factory on a CHILD of
+    the app host, outside the Layer graph (its input — the base's Jarvis
+    events — exists only inside the base's `createApp`); the plan's "one Tag
+    + Layer per member" does not apply to wave 1 and the Layer count is
+    unchanged. Wave 2 moves it into the graph with `jarvis`.
+  - FOUND BY THE SEAM WITNESS: the panels relay first subscribed the base's
+    `jarvis.events$` lazily on a forked fiber; the stream is hot, so a turn
+    answered in the tick it was sent was lost. Fixed with the bridge's eager
+    `fromPortIn(scope)`; new contract case "a turn answered in the same tick
+    it was sent, straight after composition, still spawns its panel" (every
+    core passes; the lazy mutant is killed).
+  - Survivors taken: `SyncRef`'s unchanged-write drop (new `syncRef.test.ts`)
+    and the unknown panel's synchronous `null` seed (unit case reading it
+    without a tick, as the RxJS `of(null)`).
+- Docs for the wave: ADR-006 "Decided in slice 7 — wave 1", §22 counts,
+  spec receipt, STATUS (70/74 both; wave 2 next, needs its own plan),
+  CLAUDE.md, both READMEs.
+- Gauntlet (33 gates) green; `VITE_CORE_IMPL=effect pnpm test:e2e` exit 0
+  (91 Playwright + 2×47 Gherkin), run before the review fixes below.
+
+### PR C review (one read-only opus reviewer)
+
+No Critical. Taken:
+- Important — the persist writer could write after `app.dispose()`: a fork
+  into the closed child scope still runs (effect 3.22.2 hands back an
+  already-closed child and runs the body). Now a `closed` flag makes `kick`
+  a no-op and re-checks before writing; the roster's kick and seam-id
+  listeners are released with the scope; anything created after the close
+  (a late `layoutFor(tab)`) is released at once (`track`). New seam case:
+  after dispose, a roster change writes nothing.
+- Important — no test proved a live panel holds its port ONCE and releases
+  it: new unit case counts subscriptions through two `panelData$` readers,
+  a dismissal, a spec edit and the scope's close. Mutants: dismissal
+  release, spec-edit release, `panelData$` reading the cached data — killed.
+- `SyncRef` listeners now hear `get()` (a re-entrant write can no longer
+  hand a later listener the older value); the interrupt/fork race of the
+  debounce is commented (one extra write of LIVE state, never a stale one).
+- CLAUDE.md's "74th, `layoutPresets`, joined delegated" clause; the ADR's
+  dispose wording.
+- Equivalent under mutation, kept as defence in depth: the scope-close
+  release loop over the panel cache (closing the host scope already ends
+  every panel's `sharedFold` period) and the kick-time `closed` check (the
+  kick listener is released and the write re-checks).
+- Finding 3 (rated latent by the reviewer) WAS REACHABLE — CI's Solid +
+  Effect e2e ("a docked panel dragged onto Live Rates comes back in that
+  group after a reload") failed on it: `SyncRef.warm()` followed
+  `ref.changes`, so after a reload the restored docked panel reached the
+  UI's FIRST render one fiber step late; the Dockview bridge's orphan scrub
+  read the empty docked set and dropped the panel's dragged position (the
+  "reconcile against unloaded input" trap). Fix: `warm()` is fed from the
+  synchronous commit path (`bridge/out.ts` `listenToWarmStateStream`). New
+  unit case (a subscriber joining after a commit reads it at once) and a
+  new CONTRACT point in the restore case: at composition, before any
+  pause, `dockedPanels$` and `dockedPanelIdsFor` already list the restored
+  panel — both RED on the old wiring, GREEN now, green on all three cores.
+  Local e2e had passed: the race depends on render timing. Lesson: a
+  "latent, unreachable today" rating on a delivery-timing finding needs a
+  test, not a ledger line. Still recorded: the native `workspaceNav`
+  (slice 6) is a `refToWarmStateStream`, so `activeTab()` read in the same
+  tick as a `switchTab` sees the old tab — every current path settles or
+  staggers first.
+

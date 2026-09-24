@@ -52,6 +52,18 @@ export function describeJarvisPanelsContract(
       }
     });
 
+    it("a turn answered in the same tick it was sent, straight after composition, still spawns its panel", async () => {
+      const h = makeHarness();
+
+      try {
+        h.app.presenters.jarvis.intents.send("turn");
+        h.driver.replyJarvis([createPanelEvent("p1"), { type: "done" }]);
+        expect(await panelIds(h)).toEqual(["p1"]);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("only panel events spawn: a turn of text, tool and drive events adds nothing", async () => {
       const h = makeHarness();
 

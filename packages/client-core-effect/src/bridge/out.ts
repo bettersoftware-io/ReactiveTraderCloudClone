@@ -129,6 +129,51 @@ export function refToWarmStateStream<S>(
   };
 }
 
+/** A warm `StateStream` fed SYNCHRONOUSLY by an in-core listener — for
+ * state whose commits must reach a subscriber in the same tick (the
+ * workspace's `SyncRef`). `listen` replays the current value on attach, so
+ * the shared subscription starts from it; the keep-warm holds that one
+ * subscription for the singleton's life, and a late subscriber joins on the
+ * value the last commit delivered — never one a fiber has yet to deliver. */
+export function listenToWarmStateStream<S>(
+  listen: (listener: (value: S) => void) => () => void,
+  current: () => S,
+): WarmStateStream<S> {
+  const source = new Observable<S>((subscriber) => {
+    return listen((value) => {
+      subscriber.next(value);
+    });
+  });
+  const state$ = state(source, current());
+  const warm = state$.subscribe();
+
+  return {
+    state$,
+    release: () => {
+      warm.unsubscribe();
+    },
+  };
+}
+
+/** Hold a stream warm with a subscription of its own (the RxJS presenters'
+ * `data$.subscribe()` keep-warm) and hand back its release. The subscribe
+ * lives here because the bridge owns rxjs. */
+export function holdWarm<T>(stream: CoreStream<T>): () => void {
+  const subscription = stream.subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/** A stream that completes at once without a value — an unsupported desk
+ * panel's `data$` (the RxJS presenter's `EMPTY`). */
+export function emptyStream<T>(): CoreStream<T> {
+  return new Observable<T>((subscriber) => {
+    subscriber.complete();
+  });
+}
+
 /** `SubscriptionRef.set` that publishes only a changed value: a
  * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
  * machine's `state$` promises `distinctUntilChanged`. The same guard

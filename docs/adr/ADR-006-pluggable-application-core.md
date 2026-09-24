@@ -911,6 +911,52 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   `shareReplay(1)`, which every core reproduces and a user sees as a tile
   replaying a flash it mounted after.
 
+**Decided in slice 7 — wave 1, the workspace** (2026-09-24):
+
+- **Two waves, no "7a/7b".** Wave 1 = the eleven layout/dock members plus
+  `jarvisPanels` (70/74 native in both cores); wave 2 = `jarvis`,
+  `jarvisUsage`, `jarvisDriver`, `jarvisDemo` and the internal narrator.
+- **The workspace's synchronous rules are SHARED, not ported.** The dock /
+  undock / dismiss / reset bridges and their tab attribution
+  (`createWorkspaceDock`), the layout reducer, the panels folds, the
+  desk-panel frame steps, the workspace-layout write and the saved-layouts
+  controller left `createApp`'s closure for rxjs-free modules in
+  `@rtc/client-core` that every core imports; each core ports only the
+  streams around them (the docked membership, the reset counter, the persist
+  debounce, the panel data). Slice 8 moves them to `@rtc/core-logic` with
+  the other pure pieces.
+- **`CoreSeams.workspace` is a FACTORY.** The native workspace needs the
+  base's (still delegated) Jarvis events; the base's Jarvis driver needs the
+  native workspace. `createApp` calls the factory right after building
+  `jarvis`, drives the workspace it returns, and keeps its own idle: its
+  panels fold nothing (no port held twice), no docked panel is restored into
+  it, and it never creates the persistence writer — the `workspaceLayout`
+  preference has ONE writer. Wave 2 deletes the factory.
+- **Contract point: workspace STATE is a synchronous fold** — an intent has
+  committed by the time it returns; only delivery to a subscriber may be
+  scheduled. The shared dock reads the roster and the recorded layout
+  states right after calling into them, and `layoutStateNow` throws on a core
+  whose `layoutFor` records late. The Effect core commits through
+  `SubscriptionRef`s with `runSync` and feeds both its in-core mirrors and
+  its subscribers from that synchronous commit (`SyncRef`), never from
+  `ref.changes`. The contract adds the one delivery rule this makes
+  necessary: RESTORED state is readable at composition, before any pause —
+  a UI's first render must list a restored docked panel, or the Dockview
+  bridge scrubs its position (caught by CI's Solid + Effect e2e).
+- **The Effect workspace lives outside the Layer graph** (on a child of the
+  app host), because its input only exists inside the base's `createApp`.
+  The Layer count is unchanged.
+- **Contract cases a port found:** a turn of non-panel events spawns
+  nothing (an async mutant survived without it); a turn answered in the same
+  tick it was sent still spawns (the Effect relay subscribed lazily and lost
+  it — the base's `jarvis.events$` is hot).
+- **Recorded, uncontracted:** the unsupported-sentinel panel path (the
+  sentinel is minted by the adapters); a sibling's persist writer stops at
+  `app.dispose()` — a pending write is dropped and no later change writes —
+  where the RxJS writer never unsubscribes; a
+  panel whose data port FAILED stays attached in the async core until the
+  roster changes (RxJS propagates the error).
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

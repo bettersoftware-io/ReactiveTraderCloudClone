@@ -1,5 +1,13 @@
-import { concat, firstValueFrom, NEVER, Observable, of, Subject } from "rxjs";
-import { describe, expect, it } from "vitest";
+import {
+  concat,
+  firstValueFrom,
+  from,
+  NEVER,
+  Observable,
+  of,
+  Subject,
+} from "rxjs";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type AnimationIntent,
@@ -25,7 +33,13 @@ import type {
   PlaceOrderRequest,
   Trade,
 } from "@rtc/domain";
-import { AuthSimulator, Direction, PreferencesSimulator } from "@rtc/domain";
+import {
+  AuthSimulator,
+  Direction,
+  DRIVE_STAGGER_MS,
+  PreferencesSimulator,
+  WORKSPACE_PERSIST_DEBOUNCE_MS,
+} from "@rtc/domain";
 
 import { composeWithBase } from "#/composition";
 
@@ -78,6 +92,134 @@ describe("composeWithBase — core seams", () => {
     } finally {
       await app.dispose();
     }
+  });
+
+  it("a Jarvis layout drive lands on THIS core's layoutFor, not the base's own", async () => {
+    const { app, base } = composeWithBase(
+      createPorts({
+        jarvis: createTurnJarvisPort([
+          {
+            type: "command",
+            batch: {
+              v: 1,
+              commands: [
+                {
+                  kind: "layout",
+                  op: "maximize",
+                  tab: "fx",
+                  panelId: "fx-rates",
+                },
+              ],
+            },
+          },
+        ]),
+      }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("maximize the rates");
+      await vi.waitFor(
+        async () => {
+          expect(
+            (await firstValueFrom(app.presenters.layoutFor("fx").state$))
+              .maximized,
+          ).toBe("fx-rates");
+        },
+        { timeout: DRIVE_STAGGER_MS * 10 },
+      );
+      expect(
+        (await firstValueFrom(base.presenters.layoutFor("fx").state$))
+          .maximized,
+      ).toBe(null);
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("a Jarvis dock lands in THIS core's workspace, and the workspace preference has ONE writer", async () => {
+    const preferences = new PreferencesSimulator();
+    const writes: (string | null)[] = [];
+    const setWorkspaceLayout = preferences.setWorkspaceLayout.bind(preferences);
+
+    preferences.setWorkspaceLayout = (value: string | null): void => {
+      writes.push(value);
+      setWorkspaceLayout(value);
+    };
+
+    const { app, base } = composeWithBase(
+      createPorts({
+        preferences,
+        jarvis: createTurnJarvisPort([
+          {
+            type: "panel",
+            panelId: "j1",
+            spec: {
+              v: 1,
+              title: "P&L",
+              source: { kind: "analytics" },
+              transforms: [],
+              viz: { kind: "table" },
+            },
+          },
+          {
+            type: "command",
+            batch: { v: 1, commands: [{ kind: "dockPanel", panelId: "j1" }] },
+          },
+        ]),
+      }),
+    );
+
+    try {
+      app.presenters.jarvis.intents.send("dock a panel");
+      await vi.waitFor(
+        () => {
+          expect(writes).toHaveLength(1);
+        },
+        { timeout: (DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS) * 10 },
+      );
+      // A second writer would land within the same window: give it one.
+      await new Promise((resolve) => {
+        setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
+      });
+
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toContain("j1");
+      expect(
+        await firstValueFrom(app.presenters.dockedPanelIdsFor("fx")),
+      ).toEqual(["j1"]);
+      expect(
+        await firstValueFrom(base.presenters.dockedPanelIdsFor("fx")),
+      ).toEqual([]);
+    } finally {
+      await app.dispose();
+    }
+  });
+
+  it("after dispose() the workspace never writes the preference, whatever the roster does", async () => {
+    const preferences = new PreferencesSimulator();
+    const writes: (string | null)[] = [];
+    const setWorkspaceLayout = preferences.setWorkspaceLayout.bind(preferences);
+
+    preferences.setWorkspaceLayout = (value: string | null): void => {
+      writes.push(value);
+      setWorkspaceLayout(value);
+    };
+
+    const { app } = composeWithBase(createPorts({ preferences }));
+    await app.dispose();
+
+    app.presenters.jarvisPanels.restoreDockedPanel("late", {
+      v: 1,
+      title: "Late",
+      source: { kind: "analytics" },
+      transforms: [],
+      viz: { kind: "table" },
+    });
+    await new Promise((resolve) => {
+      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
+    });
+
+    expect(writes).toEqual([]);
   });
 
   it("the app's animation director hears a fill placed through the NATIVE ordersBlotter", async () => {
@@ -445,4 +587,16 @@ async function settle(): Promise<void> {
       setTimeout(resolve, 0);
     });
   }
+}
+
+/** A JarvisPort whose ask() replies with `events`, then completes. */
+function createTurnJarvisPort(events: readonly JarvisEvent[]): JarvisPort {
+  return {
+    ask: (): Observable<JarvisEvent> => {
+      return from(events);
+    },
+    confirm: (): void => {
+      // unused by these tests
+    },
+  };
 }
