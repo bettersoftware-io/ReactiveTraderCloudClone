@@ -1,9 +1,9 @@
-import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/client-core";
 import type {
   ThroughputMessage,
   ThroughputPresenter,
   ThroughputView,
 } from "@rtc/core-api";
+import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
   type AdminPort,
   DEFAULT_THROUGHPUT,

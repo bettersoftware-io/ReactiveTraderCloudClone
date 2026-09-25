@@ -1,14 +1,5 @@
 import { Effect, Fiber, Scope } from "effect";
 
-import {
-  advanceDemoPatch,
-  createDemoStepWatch,
-  demoBeatMs,
-  JARVIS_DEMO_INITIAL_STATE,
-  JARVIS_DEMO_STEPS,
-  type JarvisEvent,
-  lastEntryId,
-} from "@rtc/client-core";
 import type {
   JarvisDemoMachineHandle,
   JarvisDemoState,
@@ -16,7 +7,16 @@ import type {
   JarvisIntents,
   JarvisState,
 } from "@rtc/core-api";
+import {
+  advanceDemoPatch,
+  createDemoStepWatch,
+  demoBeatMs,
+  JARVIS_DEMO_INITIAL_STATE,
+  JARVIS_DEMO_STEPS,
+  lastEntryId,
+} from "@rtc/core-logic";
 import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createChildHost, type EffectHost } from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";

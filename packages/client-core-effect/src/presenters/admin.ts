@@ -1,6 +1,5 @@
 import { Option, Stream } from "effect";
 
-import { appendMetricSample, prependLogEvent } from "@rtc/client-core";
 import type {
   Stream as CoreStream,
   EventLogPresenter,
@@ -8,6 +7,7 @@ import type {
   SessionsKpiPresenter,
   SessionsPresenter,
 } from "@rtc/core-api";
+import { appendMetricSample, prependLogEvent } from "@rtc/core-logic";
 import type {
   EventLogPort,
   LogEvent,

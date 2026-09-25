@@ -1,9 +1,9 @@
-import { bootProgress, nextBootVariant } from "@rtc/client-core";
 import type {
   BootSequenceIntents,
   BootSequenceState,
   Machine,
 } from "@rtc/core-api";
+import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 
 import { storeToWarmStateStream } from "#/bridge/out";

@@ -1,6 +1,5 @@
 import { Context, Effect, Layer } from "effect";
 
-import { createAuthDeps, firstWatchlistSymbol } from "@rtc/client-core";
 import type {
   AmbientStylePresenter,
   AnalyticsPresenter,
@@ -56,8 +55,10 @@ import type {
   WorkspaceNavIntents,
   WorkspaceNavState,
 } from "@rtc/core-api";
+import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
 import type { CurrencyPair } from "@rtc/domain";
 
+import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { type EffectHost, pushIncidentEvent } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
@@ -542,7 +543,7 @@ const BootGateLive = presenterLayer(BootGateTag, (host, ports) => {
 });
 
 const AuthLive = presenterLayer(AuthTag, (host, ports) => {
-  return createAuthPresenter(host, createAuthDeps(ports));
+  return createAuthPresenter(host, createAuthDeps(ports, authDepsPrimitives));
 });
 
 // The one native machine that needs nothing but the host — `ports` is

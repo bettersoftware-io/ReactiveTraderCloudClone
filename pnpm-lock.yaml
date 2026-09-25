@@ -330,9 +330,15 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -364,9 +370,15 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)

@@ -1,9 +1,9 @@
+import type { ReadOnlyMachine, Stream } from "@rtc/core-api";
 import {
   createStaleFlagAcc,
   reduceStaleFlag,
   type StaleFlagEvent,
-} from "@rtc/client-core";
-import type { ReadOnlyMachine, Stream } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type { ConnectionStatus } from "@rtc/domain";
 
 import { relay } from "#/bridge/in";

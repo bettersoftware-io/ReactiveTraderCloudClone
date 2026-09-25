@@ -1,4 +1,3 @@
-import { appendMetricSample, prependLogEvent } from "@rtc/client-core";
 import type {
   EventLogPresenter,
   ServiceTopologyPresenter,
@@ -6,6 +5,7 @@ import type {
   SessionsPresenter,
   Stream,
 } from "@rtc/core-api";
+import { appendMetricSample, prependLogEvent } from "@rtc/core-logic";
 import type {
   EventLogPort,
   LogEvent,

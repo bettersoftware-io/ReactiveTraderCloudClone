@@ -1,10 +1,5 @@
 import { Cause, Effect, Option, Stream, SubscriptionRef } from "effect";
 
-import {
-  type AuthDeps,
-  describeAuthFailure,
-  nextLoginWaitVariant,
-} from "@rtc/client-core";
 import type {
   AnimationDirector,
   AnimationIntent,
@@ -15,6 +10,11 @@ import type {
   EquityFillSignal,
   ExecutionOutcome,
 } from "@rtc/core-api";
+import {
+  type AuthDeps,
+  describeAuthFailure,
+  nextLoginWaitVariant,
+} from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type ConnectionStatus,

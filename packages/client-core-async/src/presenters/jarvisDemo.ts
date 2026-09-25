@@ -1,12 +1,3 @@
-import {
-  advanceDemoPatch,
-  createDemoStepWatch,
-  demoBeatMs,
-  JARVIS_DEMO_INITIAL_STATE,
-  JARVIS_DEMO_STEPS,
-  type JarvisEvent,
-  lastEntryId,
-} from "@rtc/client-core";
 import type {
   JarvisDemoMachineHandle,
   JarvisDemoState,
@@ -15,7 +6,16 @@ import type {
   JarvisState,
   Stream,
 } from "@rtc/core-api";
+import {
+  advanceDemoPatch,
+  createDemoStepWatch,
+  demoBeatMs,
+  JARVIS_DEMO_INITIAL_STATE,
+  JARVIS_DEMO_STEPS,
+  lastEntryId,
+} from "@rtc/core-logic";
 import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream } from "#/bridge/out";

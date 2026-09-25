@@ -1,11 +1,5 @@
 import { Cause, Effect, Exit, Scope, Stream, SubscriptionRef } from "effect";
 
-import {
-  createEqWorkspaceState,
-  type EqWorkspaceEvent,
-  firstWatchlistSymbol,
-  reduceEqWorkspace,
-} from "@rtc/client-core";
 import type {
   Stream as CoreStream,
   EqChartType,
@@ -15,6 +9,12 @@ import type {
   EqWorkspaceState,
   Machine,
 } from "@rtc/core-api";
+import {
+  createEqWorkspaceState,
+  type EqWorkspaceEvent,
+  firstWatchlistSymbol,
+  reduceEqWorkspace,
+} from "@rtc/core-logic";
 import type { CandleTimeframe, EquityInstrument } from "@rtc/domain";
 
 import {

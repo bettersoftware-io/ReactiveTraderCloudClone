@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DriveCommandDeps, JarvisEvent } from "@rtc/client-core";
 import type { JarvisDriverState } from "@rtc/core-api";
+import type { DriveCommandDeps } from "@rtc/core-logic";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createDetachedHost, createHotStream } from "#/bridge/out";
 import { createJarvisDriver } from "#/presenters/jarvisDriver";

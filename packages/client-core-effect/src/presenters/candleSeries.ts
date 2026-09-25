@@ -1,10 +1,10 @@
 import { Effect, Option, Queue, Stream, SubscriptionRef } from "effect";
 
-import { stitchCandles } from "@rtc/client-core";
 import type {
   CandleSeriesPresenter,
   Stream as CoreStream,
 } from "@rtc/core-api";
+import { stitchCandles } from "@rtc/core-logic";
 import {
   CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,

@@ -1,8 +1,3 @@
-import {
-  type AuthDeps,
-  describeAuthFailure,
-  nextLoginWaitVariant,
-} from "@rtc/client-core";
 import type {
   AnimationDirector,
   AnimationIntent,
@@ -13,6 +8,11 @@ import type {
   ExecutionOutcome,
   Stream,
 } from "@rtc/core-api";
+import {
+  type AuthDeps,
+  describeAuthFailure,
+  nextLoginWaitVariant,
+} from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type ConnectionStatus,
