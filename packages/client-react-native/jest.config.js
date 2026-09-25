@@ -38,6 +38,9 @@ module.exports = {
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
+    // client-core re-exports it (pluggable-core slice 8) — its first runtime
+    // @rtc dependency jest has to follow out of client-core's dist.
+    "^@rtc/core-logic$": "<rootDir>/../core-logic/dist/index.js",
     "^@rtc/motion-core$": "<rootDir>/../motion-core/dist/index.js",
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",
     "^@rtc/devtools-core$": "<rootDir>/../devtools-core/dist/index.js",
