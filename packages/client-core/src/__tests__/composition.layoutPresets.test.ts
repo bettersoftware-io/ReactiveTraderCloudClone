@@ -6,6 +6,13 @@ import type {
   LayoutState,
   SaveLayoutPresetResult,
 } from "@rtc/core-api";
+import type { StoredLayoutPreset, WorkspaceTab } from "@rtc/core-logic";
+import {
+  createDefaultLayoutPort,
+  dockedLeafIds,
+  InMemoryLayoutPresetStore,
+  parseLayoutPresetList,
+} from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
@@ -13,17 +20,11 @@ import {
 } from "@rtc/domain";
 import type { PanelSpecV1 } from "@rtc/shared";
 
-import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import type { Presenters } from "#/composition";
 import { createApp } from "#/composition";
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import { dockedLeafIds } from "#/layout/dockColumn";
-import type { StoredLayoutPreset } from "#/layout/layoutPresetCodec";
-import { parseLayoutPresetList } from "#/layout/layoutPresetCodec";
 
 describe("composition — resetWorkspaceLayout leaves saved layouts alone", () => {
   it("leaves every tab's stored preset list byte-identical", () => {

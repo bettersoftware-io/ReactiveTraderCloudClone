@@ -7,21 +7,23 @@ import type {
   LayoutPresetsPresenter,
   Machine,
 } from "@rtc/core-api";
-
-import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
-import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore";
-import { createLayoutPresets } from "#/layout/createLayoutPresets";
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import { dockedLeafIds } from "#/layout/dockColumn";
-import type { LayoutState } from "#/layout/layoutPort";
-import type { StoredLayoutPreset } from "#/layout/layoutPresetCodec";
+import type {
+  LayoutState,
+  StoredLayoutPreset,
+  WorkspaceTab,
+} from "@rtc/core-logic";
 import {
+  createDefaultLayoutPort,
+  dockedLeafIds,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
   LAYOUT_PRESET_VERSION,
   MAX_LAYOUT_PRESETS,
   parseLayoutPresetList,
   UNREADABLE_LIST_ID,
-} from "#/layout/layoutPresetCodec";
+} from "@rtc/core-logic";
+
+import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import type { LayoutIntents } from "#/presenters/LayoutMachine";
 import { createLayoutMachine } from "#/presenters/LayoutMachine";
 

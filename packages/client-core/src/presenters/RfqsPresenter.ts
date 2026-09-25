@@ -21,6 +21,7 @@ import type {
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
+import type { Machine } from "@rtc/core-logic";
 import { shallowArrayEquals } from "@rtc/core-logic";
 import {
   type CreateRfqInput,
@@ -35,7 +36,6 @@ import {
   type WorkflowPort,
 } from "@rtc/domain";
 
-import type { Machine } from "./machine";
 import { warmReplay } from "./warmReplay.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported

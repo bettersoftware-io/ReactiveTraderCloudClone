@@ -33,6 +33,14 @@ import type {
   JarvisIntents,
 } from "@rtc/core-api";
 import {
+  advanceDemoPatch,
+  createDemoStepWatch,
+  demoBeatMs,
+  JARVIS_DEMO_INITIAL_STATE,
+  JARVIS_DEMO_STEPS,
+  lastEntryId,
+} from "@rtc/core-logic";
+import {
   DEMO_STEP_BEAT_MS,
   DEMO_STEP_TIMEOUT_MS,
   type PowerSaverLevel,
@@ -41,14 +49,6 @@ import {
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
 import type { JarvisState } from "./JarvisMachine";
-import {
-  advanceDemoPatch,
-  createDemoStepWatch,
-  demoBeatMs,
-  JARVIS_DEMO_INITIAL_STATE,
-  JARVIS_DEMO_STEPS,
-  lastEntryId,
-} from "./jarvisDemoScript";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
@@ -89,7 +89,7 @@ export interface JarvisDemoDeps {
 
 /** Moved to `./jarvisDemoScript` (pluggable-core slice 7 wave 2) —
  * re-exported so existing imports keep working. */
-export { guideCommand, JARVIS_DEMO_STEPS } from "./jarvisDemoScript";
+export { guideCommand, JARVIS_DEMO_STEPS } from "@rtc/core-logic";
 
 /** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
  * contract suites can read them (pluggable-core slice 7 wave 2). */

@@ -7,14 +7,21 @@ import type {
   IncidentKind,
   IncidentState,
 } from "@rtc/core-api";
+import type { Machine } from "@rtc/core-logic";
+import {
+  type IncidentEvent,
+  incidentConnectionEvent,
+  reduceIncident,
+} from "@rtc/core-logic";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
-
-import type { Machine } from "./machine";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
-export type { IncidentIntents, IncidentKind, IncidentState };
+// The pure fold lives in @rtc/core-logic (slice 8); re-exported for this
+// module's existing importers.
+export type { IncidentEvent, IncidentIntents, IncidentKind, IncidentState };
+export { incidentConnectionEvent, reduceIncident };
 
 export interface IncidentDeps {
   /** Control handles for the perturbable simulators (latency, errorRate, topology). */
@@ -24,46 +31,6 @@ export interface IncidentDeps {
 }
 
 const INITIAL: IncidentState = { active: [] };
-
-// latencySpike & serviceDown break the gateway; errorBurst is degraded-but-connected.
-const DISCONNECTING: ReadonlySet<IncidentKind> = new Set([
-  "latencySpike",
-  "serviceDown",
-]);
-
-/** One incident intent, as the pure fold sees it. */
-export type IncidentEvent =
-  | { readonly kind: "inject"; readonly incident: IncidentKind }
-  | { readonly kind: "clear" };
-
-/** The state transition for one incident intent. */
-export function reduceIncident(
-  state: IncidentState,
-  event: IncidentEvent,
-): IncidentState {
-  if (event.kind === "clear") {
-    return INITIAL;
-  }
-
-  return state.active.includes(event.incident)
-    ? state
-    : { active: [...state.active, event.incident] };
-}
-
-/** The connection event an incident intent pushes, if any — latencySpike and
- * serviceDown break the gateway; errorBurst is degraded-but-connected; a
- * clear always reconnects. */
-export function incidentConnectionEvent(
-  event: IncidentEvent,
-): ConnectionEvent | null {
-  if (event.kind === "clear") {
-    return { type: "gatewayConnected" };
-  }
-
-  return DISCONNECTING.has(event.incident)
-    ? { type: "gatewayDisconnected" }
-    : null;
-}
 
 export function createIncidentMachine(
   deps: IncidentDeps,

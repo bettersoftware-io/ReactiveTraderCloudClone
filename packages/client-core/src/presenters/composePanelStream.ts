@@ -2,17 +2,7 @@ import { combineLatest, type Observable, of, shareReplay } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
 import type { PanelData, PanelPoint, PanelTone } from "@rtc/core-api";
-import {
-  type AnalyticsPort,
-  AnalyticsUseCase,
-  type BlotterPort,
-  type PriceTick,
-  type PricingPort,
-  type ReferenceDataPort,
-  TradeBlotterUseCase,
-} from "@rtc/domain";
-import type { PanelSource, PanelSpecV1 } from "@rtc/shared";
-
+import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
   analyticsTableFrame,
   appendTickPoint,
@@ -23,21 +13,20 @@ import {
   renderPanelFrame,
   seriesFrame,
   unknownSourceFrame,
-} from "./panelFrames.js";
+} from "@rtc/core-logic";
+import {
+  type AnalyticsPort,
+  AnalyticsUseCase,
+  type BlotterPort,
+  type PriceTick,
+  type PricingPort,
+  TradeBlotterUseCase,
+} from "@rtc/domain";
+import type { PanelSource, PanelSpecV1 } from "@rtc/shared";
 
-export { MAX_POINTS_PER_SERIES } from "./panelFrames.js";
+export { MAX_POINTS_PER_SERIES } from "@rtc/core-logic";
 
-export type { PanelData, PanelPoint, PanelTone };
-
-/** The subset of domain ports a `PanelSpecV1`'s `source` can read from —
- * copied from `ScriptedJarvisEngine`'s `ScriptedJarvisDeps` (minus
- * `execution`/`instantReveal$`, which no panel source needs). */
-export interface PanelStreamDeps {
-  readonly referenceData: ReferenceDataPort;
-  readonly pricing: PricingPort;
-  readonly blotter: BlotterPort;
-  readonly analytics: AnalyticsPort;
-}
+export type { PanelData, PanelPoint, PanelStreamDeps, PanelTone };
 
 function accumulatePoints$(
   ticks$: Observable<PriceTick>,

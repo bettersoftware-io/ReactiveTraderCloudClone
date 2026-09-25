@@ -2,13 +2,12 @@ import { type Observable, shareReplay } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
 import type { EventLogPresenter as EventLogPresenterApi } from "@rtc/core-api";
+import { prependLogEvent } from "@rtc/core-logic";
 import {
   MAX_LOG_ROWS as DOMAIN_MAX_LOG_ROWS,
   type EventLogPort,
   type LogEvent,
 } from "@rtc/domain";
-
-import { prependLogEvent } from "./adminFolds.js";
 
 /** Maximum number of log rows retained in the rolling window (newest-first).
  * Kept for existing importers: re-exports the domain constant. */

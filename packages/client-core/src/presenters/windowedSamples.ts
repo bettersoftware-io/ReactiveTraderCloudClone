@@ -1,9 +1,9 @@
 import type { Observable } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
+import { appendMetricSample } from "@rtc/core-logic";
 import { METRIC_WINDOW, type MetricSample } from "@rtc/domain";
 
-import { appendMetricSample } from "./adminFolds.js";
 import { warmReplay } from "./warmReplay.js";
 
 /** Rolling window size — number of MetricSamples retained per chart series.

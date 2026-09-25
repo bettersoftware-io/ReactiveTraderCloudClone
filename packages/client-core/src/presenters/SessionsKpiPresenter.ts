@@ -2,9 +2,8 @@ import { type Observable, shareReplay } from "rxjs";
 import { map, scan, startWith } from "rxjs/operators";
 
 import type { SessionsKpiPresenter as SessionsKpiPresenterApi } from "@rtc/core-api";
+import { appendMetricSample } from "@rtc/core-logic";
 import type { MetricSample, SessionsPort } from "@rtc/domain";
-
-import { appendMetricSample } from "./adminFolds.js";
 
 /** Implements `SessionsKpiPresenter` (`@rtc/core-api`) — see the interface
  * for the contract. Maps each `SessionsPort.sessions$()` emission to a
