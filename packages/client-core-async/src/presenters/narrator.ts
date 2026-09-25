@@ -64,22 +64,25 @@ export function createNarrator(
     roster?.abort();
     const current = new AbortController();
     roster = current;
-    lifetime.addEventListener(
-      "abort",
-      () => {
-        current.abort();
-      },
-      { once: true },
-    );
 
     for (const pair of pairs) {
       void relay(deps.priceFor(pair), current.signal, foldTick).catch(() => {
-        // A failed price stream silences its pair, never the narrator (the
-        // RxJS narrator's catchError → EMPTY).
+        // A failed price stream silences only its own pair until the next
+        // roster. Deliberately kinder than the RxJS narrator, whose single
+        // `catchError(() => EMPTY)` around the merged detector ends ALL
+        // narration for the session (wave 2 PR B ruling).
       });
     }
   }
 
+  // One listener for the narrator's life ends whichever roster is current.
+  lifetime.addEventListener(
+    "abort",
+    () => {
+      roster?.abort();
+    },
+    { once: true },
+  );
   void relay(deps.preference$, lifetime, (next) => {
     preference = next;
   }).catch(reportAsync);

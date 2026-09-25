@@ -1,7 +1,9 @@
-import { NEVER, of } from "rxjs";
+import { NEVER, of, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import type { JarvisEvent } from "@rtc/client-core";
 import type { JarvisPort, JarvisState } from "@rtc/core-api";
+import { Direction, JARVIS_CONFIRM_TIMEOUT_MS } from "@rtc/domain";
 
 import { createJarvisMachine } from "#/presenters/jarvis";
 
@@ -27,6 +29,56 @@ describe("createJarvisMachine (async core)", () => {
     machine.intents.send("too late");
 
     expect(port.ask).not.toHaveBeenCalled();
+  });
+
+  it("aborting the lifetime alone tears down like dispose: a pending card's countdown never declines afterwards", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const confirm = vi.fn();
+      const lifetime = new AbortController();
+      const port: JarvisPort = {
+        ask: () => {
+          return of<JarvisEvent>(createConfirmRequest());
+        },
+        confirm,
+      };
+      const machine = createMachine(port, lifetime.signal);
+      machine.intents.send("buy");
+      await vi.advanceTimersByTimeAsync(0);
+      lifetime.abort();
+      await vi.advanceTimersByTimeAsync(JARVIS_CONFIRM_TIMEOUT_MS);
+
+      expect(confirm).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a port.ask that errors closes its turn as an error: the stub settles and the machine idles", async () => {
+    const port: JarvisPort = {
+      ask: () => {
+        return throwError(() => {
+          return new Error("socket gone");
+        });
+      },
+      confirm: () => {
+        // unused
+      },
+    };
+    const machine = createMachine(port);
+
+    machine.intents.send("hi");
+    await Promise.resolve();
+
+    const state = readState(machine.state$);
+    expect(state.phase).toBe("idle");
+    expect(state.entries.at(-1)).toMatchObject({
+      role: "jarvis",
+      text: "socket gone",
+      done: true,
+    });
+    machine.dispose();
   });
 
   it("a send before dispose asks once, with the effective brain", () => {
@@ -60,6 +112,7 @@ function createPort(): SpiedPort {
 
 function createMachine(
   port: JarvisPort,
+  lifetime: AbortSignal = new AbortController().signal,
 ): ReturnType<typeof createJarvisMachine> {
   return createJarvisMachine(
     {
@@ -71,7 +124,7 @@ function createMachine(
       preferredBrain$: of("claude-haiku-4-5" as const),
       effort$: of("medium" as const),
     },
-    new AbortController().signal,
+    lifetime,
   );
 }
 
@@ -90,4 +143,16 @@ function readState(
   }
 
   return latest;
+}
+
+function createConfirmRequest(): JarvisEvent {
+  return {
+    type: "confirmRequest",
+    confirmationId: "c-1",
+    symbol: "EURUSD",
+    direction: Direction.Buy,
+    notional: 1_000_000,
+    quotedPrice: 1.1,
+    ratePrecision: 5,
+  };
 }

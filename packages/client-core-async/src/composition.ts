@@ -258,12 +258,13 @@ function nativePresenters(
 
 export function composeWithBase(ports: AppPorts): ComposedApp {
   const lifetime = new AbortController();
-  // Native FIRST (see `CoreSeams`): every internal reader of the base app —
-  // its Jarvis driver, animation director, narrator and workspace seed — is
-  // pointed at this core's own members. Without that a drive batch would
-  // mutate a workspace the UI no longer renders, a fill or an FX execution
-  // made through a NATIVE presenter would choreograph nothing, and each
-  // port those readers share with a native member would be held twice.
+  // Native FIRST (see `CoreSeams`): the base app's remaining internal
+  // readers — its animation director and workspace seed — are pointed at
+  // this core's own members, and its whole Jarvis family (driver, demo,
+  // narrator, history source, workspace) stands down (`nativeJarvis`).
+  // Without that a fill or an FX execution made through a NATIVE presenter
+  // would choreograph nothing, and each port those readers share with a
+  // native member would be held twice.
   const native = nativePresenters(ports, lifetime.signal);
   // The Jarvis family and its workspace, end to end: jarvis first, the
   // workspace over its own events, then the driver, demo, narrator, history

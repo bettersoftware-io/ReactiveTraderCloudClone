@@ -26,6 +26,44 @@ describe("createNarrator (async core)", () => {
     expect(rig.narrations).toHaveLength(1);
   });
 
+  it("a new roster does not add another lifetime listener: repeated reference-data refreshes stay flat", () => {
+    const lifetime = new AbortController();
+    let lifetimeListeners = 0;
+    const add = lifetime.signal.addEventListener.bind(lifetime.signal);
+    lifetime.signal.addEventListener = ((
+      type: string,
+      listener: EventListener,
+      options?: AddEventListenerOptions,
+    ) => {
+      lifetimeListeners += 1;
+      add(type, listener, options);
+    }) as typeof lifetime.signal.addEventListener;
+    const pairs$ = new Subject<readonly CurrencyPair[]>();
+    createNarrator(
+      {
+        pairs$,
+        priceFor: () => {
+          return new Subject<PriceTick>();
+        },
+        narrate: () => {
+          // unused
+        },
+        preference$: of<JarvisNarratorPreference>("on"),
+        now: () => {
+          return 0;
+        },
+      },
+      lifetime.signal,
+    );
+    const afterConstruction = lifetimeListeners;
+
+    for (let refresh = 0; refresh < 3; refresh++) {
+      pairs$.next([createPair("EURUSD")]);
+    }
+
+    expect(lifetimeListeners).toBe(afterConstruction);
+  });
+
   it("one pair's failing price stream silences that pair, never the others", () => {
     const rig = createRig({ failing: "GBPUSD" });
 

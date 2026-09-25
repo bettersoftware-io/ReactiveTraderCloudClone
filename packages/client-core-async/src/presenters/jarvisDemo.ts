@@ -73,6 +73,12 @@ export function createJarvisDemo(
     step: JarvisDemoStep,
     signal: AbortSignal,
   ): Promise<StepOutcome> {
+    // A stop issued synchronously while this step was being set up (a
+    // listener reacting to the step's own state write) sends nothing.
+    if (signal.aborted) {
+      return Promise.reject(new AbortError());
+    }
+
     const stepAbort = new AbortController();
     signal.addEventListener(
       "abort",
@@ -126,7 +132,8 @@ export function createJarvisDemo(
     });
   }
 
-  async function runDemo(signal: AbortSignal): Promise<void> {
+  async function runDemo(run: AbortController): Promise<void> {
+    const { signal } = run;
     openOverlay();
     store.set((previous) => {
       return { ...previous, running: true };
@@ -148,6 +155,17 @@ export function createJarvisDemo(
       await sleep(demoBeatMs(deps.powerSaverLevel()), signal);
     }
 
+    if (signal.aborted) {
+      throw new AbortError();
+    }
+
+    // Free the slot BEFORE the idle write: a listener that restarts the
+    // demo the moment it reads `running: false` must be let in, as the
+    // RxJS `exhaustMap`'s synchronously-completed inner lets it in.
+    if (active === run) {
+      active = null;
+    }
+
     openOverlay();
     store.set(JARVIS_DEMO_INITIAL_STATE);
   }
@@ -160,7 +178,7 @@ export function createJarvisDemo(
     const run = new AbortController();
     active = run;
     void spawn(() => {
-      return runDemo(run.signal);
+      return runDemo(run);
     }, reportAsync).finally(() => {
       if (active === run) {
         active = null;

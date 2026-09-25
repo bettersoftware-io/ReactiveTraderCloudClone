@@ -119,11 +119,15 @@ export function createJarvisMachine(
 
   function foldEvent(event: JarvisEvent, origin: "narrator" | undefined): void {
     apply(controller.eventPatch(event, origin));
-    events.publish(event);
 
+    // The countdown starts BEFORE outside subscribers hear the card, as the
+    // RxJS machine's own countdown (subscribed first) does — an outside
+    // subscriber that resolves the card on the spot then ends it.
     if (event.type === "confirmRequest") {
       startCountdown(event.confirmationId);
     }
+
+    events.publish(event);
   }
 
   async function drainTurns(): Promise<void> {
@@ -148,7 +152,18 @@ export function createJarvisMachine(
           (event: JarvisEvent) => {
             foldEvent(event, plan.origin);
           },
-        ).catch(reportAsync);
+        ).catch((error: unknown) => {
+          // The turn ends as an error the user sees — the stub settles and
+          // the machine idles — rather than hanging "speaking" (the WS
+          // adapter already turns its own failures into error events).
+          foldEvent(
+            {
+              type: "error",
+              message: error instanceof Error ? error.message : String(error),
+            },
+            plan.origin,
+          );
+        });
       }
     } finally {
       draining = false;
@@ -198,6 +213,19 @@ export function createJarvisMachine(
   });
   const warm = storeToWarmStateStream(store);
 
+  // One teardown for both ends of the machine's life: `dispose()` and the
+  // app `lifetime` aborting reach it alike.
+  signal.addEventListener(
+    "abort",
+    () => {
+      countdown.dispose();
+      queue.length = 0;
+      releaseEvents();
+      warm.release();
+    },
+    { once: true },
+  );
+
   return {
     state$: warm.state$,
     events$: topicToStream(events),
@@ -241,10 +269,6 @@ export function createJarvisMachine(
     },
     dispose: () => {
       own.abort();
-      countdown.dispose();
-      queue.length = 0;
-      releaseEvents();
-      warm.release();
     },
   };
 }
