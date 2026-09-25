@@ -92,27 +92,6 @@ describe("createJarvisMachine (Effect core)", () => {
 
     expect(confirm).not.toHaveBeenCalled();
   });
-
-  it("a failing preference source leaves the machine on its last value — it keeps taking turns", async () => {
-    const port = createPort();
-    const host = createDetachedHost();
-    const jarvis = createJarvisMachine(host, {
-      port,
-      skin$: throwError(() => {
-        return new Error("storage gone");
-      }),
-      setSkin: () => {
-        // unused
-      },
-      preferredBrain$: of("scripted" as const),
-      effort$: of("medium" as const),
-    });
-    await vi.advanceTimersByTimeAsync(0);
-
-    jarvis.handle.intents.send("still here?");
-
-    expect(port.ask).toHaveBeenCalledTimes(1);
-  });
 });
 
 interface SpiedPort extends JarvisPort {

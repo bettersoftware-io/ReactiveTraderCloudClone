@@ -169,7 +169,10 @@ export function createJarvisMachine(
    * end starts the next turn. Each turn is planned when it starts, i.e.
    * when dequeued. */
   function startNextTurn(): void {
-    while (!closed) {
+    // No closed check here: after the scope closes, the only way back in is
+    // the turn fiber's completion, which the close interrupts; `send` is
+    // guarded in `enqueueTurn`.
+    for (;;) {
       const request = pendingTurns.shift();
 
       if (request === undefined) {
