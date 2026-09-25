@@ -132,7 +132,7 @@ export function createJarvisMachine(
     try {
       for (
         let request = queue.shift();
-        request !== undefined && !signal.aborted;
+        request !== undefined;
         request = queue.shift()
       ) {
         const plan = controller.planTurn(request);
