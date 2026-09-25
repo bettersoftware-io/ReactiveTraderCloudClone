@@ -99,8 +99,10 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
       ),
       Stream.runForEach((tick: PriceTick) => {
         return Clock.currentTimeMillis.pipe(
-          Effect.map((now) => {
-            foldTick(tick, now);
+          Effect.andThen((now: number) => {
+            return Effect.sync(() => {
+              foldTick(tick, now);
+            });
           }),
         );
       }),
