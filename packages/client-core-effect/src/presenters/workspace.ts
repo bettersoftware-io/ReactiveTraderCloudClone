@@ -4,12 +4,12 @@ import {
   createDefaultLayoutPort,
   createLayoutPresetsController,
   createWorkspaceDock,
+  type DriveCommandDeps,
   InMemoryDockLayoutStore,
   InMemoryLayoutPresetStore,
   type JarvisEvent,
   type PanelStreamDeps,
   type PresetSummaryChannel,
-  type WorkspaceSeam,
   writeWorkspaceLayout,
 } from "@rtc/client-core";
 import type {
@@ -61,17 +61,30 @@ interface NativeWorkspacePresenters {
   readonly layoutPresets: LayoutPresetsPresenter;
 }
 
+/** What the Jarvis driver reaches in this workspace, read and written
+ * synchronously (`DriveCommandDeps`, client-core). */
+type WorkspaceDriveDeps = Pick<
+  DriveCommandDeps,
+  | "layout"
+  | "dockPanel"
+  | "undockPanel"
+  | "dismissPanel"
+  | "livePanelIds"
+  | "dockedPanelIds"
+  | "detachedPanelIds"
+>;
+
 export interface NativeWorkspace {
   readonly presenters: NativeWorkspacePresenters;
-  /** What the base app's Jarvis driver drives (`CoreSeams.workspace`). */
-  readonly seam: WorkspaceSeam;
+  /** What this core's own Jarvis driver drives. */
+  readonly drive: WorkspaceDriveDeps;
   /** `AppCommands.reportDetachedPanels`. */
   reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
 }
 
 export interface NativeWorkspaceDeps {
   readonly ports: AppPorts;
-  /** The Jarvis turns' events (the base app's, while `jarvis` delegates). */
+  /** The Jarvis turns' events — this core's own `jarvis.events$`. */
   readonly jarvisEvents$: CoreStream<JarvisEvent>;
   /** This core's own active-tab machine — docking attributes to it. */
   readonly workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
@@ -88,10 +101,9 @@ export interface NativeWorkspaceDeps {
  * app's `dispose()`) interrupts the relays and the pending write, and
  * releases every keep-warm.
  *
- * Built outside the Layer graph, unlike every other native member: its
- * input — the base app's Jarvis events — only exists inside the base's
- * `createApp`, which calls the `CoreSeams.workspace` factory that builds
- * this (slice 7 ruling 3). Wave 2 moves it into the graph with `jarvis`. */
+ * Built outside the Layer graph, with the rest of the Jarvis family
+ * (`presenters/jarvisFamily.ts`), over this core's own `jarvis.events$`
+ * (slice 7 wave 2; wave 1's `CoreSeams.workspace` factory is deleted). */
 export function createNativeWorkspace(
   parent: EffectHost,
   deps: NativeWorkspaceDeps,
@@ -298,29 +310,22 @@ export function createNativeWorkspace(
     createRefSummaryChannel(host, track),
   );
 
-  const livePanelIds = createSyncRef<readonly string[]>(host, []);
-  const dockedPanelIds = createSyncRef<readonly string[]>(host, []);
-  const unlistenSeamIds = panelsMachine.ref.listen((state) => {
-    livePanelIds.set(() => {
-      return state.panels.map((panel) => {
+  function livePanelIdsNow(): readonly string[] {
+    return panelsMachine.ref.get().panels.map((panel) => {
+      return panel.panelId;
+    });
+  }
+
+  function dockedPanelIdsNow(): readonly string[] {
+    return panelsMachine.ref
+      .get()
+      .panels.filter((panel) => {
+        return panel.docked;
+      })
+      .map((panel) => {
         return panel.panelId;
       });
-    });
-    dockedPanelIds.set(() => {
-      return state.panels
-        .filter((panel) => {
-          return panel.docked;
-        })
-        .map((panel) => {
-          return panel.panelId;
-        });
-    });
-  });
-  track(unlistenSeamIds);
-  const livePanelIds$ = livePanelIds.warm();
-  const dockedPanelIds$ = dockedPanelIds.warm();
-  track(livePanelIds$.release);
-  track(dockedPanelIds$.release);
+  }
 
   host.runtime.runSync(
     Scope.addFinalizer(
@@ -348,13 +353,13 @@ export function createNativeWorkspace(
       workspaceLayoutResets$: resets$.state$,
       layoutPresets,
     },
-    seam: {
-      layoutFor,
+    drive: {
+      layout: layoutFor,
       dockPanel: dock.dockPanel,
       undockPanel: dock.undockPanel,
       dismissPanel: dock.dismissPanel,
-      livePanelIds$: livePanelIds$.state$,
-      dockedPanelIds$: dockedPanelIds$.state$,
+      livePanelIds: livePanelIdsNow,
+      dockedPanelIds: dockedPanelIdsNow,
       detachedPanelIds: dock.detachedPanelIds,
     },
     reportDetachedPanels: dock.reportDetachedPanels,

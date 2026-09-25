@@ -6,8 +6,8 @@ import { pushReconnectIntent } from "#/bridge/out";
  * lands on the RxJS core's `reconnect$` seam (see `pushReconnectIntent`) —
  * native in provenance, shared in transport until slice 8.
  * `reportDetachedPanels` writes this core's NATIVE workspace registry
- * (slice 7, wave 1): the base's Jarvis driver reads that same registry
- * through `CoreSeams.workspace`'s `detachedPanelIds`. */
+ * (slice 7): this core's own Jarvis driver reads that same registry
+ * through the workspace's `drive.detachedPanelIds`. */
 export function createCommands(
   reportDetachedPanels: (
     tab: WorkspaceTab,

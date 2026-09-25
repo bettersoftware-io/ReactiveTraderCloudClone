@@ -119,8 +119,8 @@ topic), `jarvisDriver` (a batch queue over the shared `applyDriveCommand`,
 `driveStaggerMs` on a timer), `jarvisDemo` (an exhaust-style run over the
 shared `createDemoStepWatch`), `jarvisUsage` (retained, `null` first) and
 the internal narrator (one session-wide `createAnomalyDetector`); the
-workspace is built over this core's OWN `jarvis.events$`, so the wave-1
-`CoreSeams.workspace` factory is unused here. Wave 1 added the workspace —
+workspace is built over this core's OWN `jarvis.events$`, and wave 1's
+`CoreSeams.workspace` factory is deleted. Wave 1 added the workspace —
 `layoutFor` / `machines.layout` (a Store per tab over the SHARED layout
 reducer), `jarvisPanels` (a Store folded by the shared panels folds, with
 one warm data topic per live panel over the shared frame steps), the dock

@@ -260,12 +260,21 @@ core would be RxJS with extra steps.
 
 ## Parity
 
-As of slice 7's wave 1, seventy of 74 members are **native** (the 74th,
-`layoutPresets`, arrived delegated with Dockview Phase 6b; the four left
-are Jarvis's, wave 2). Wave 1 added the workspace — built by the
-`CoreSeams.workspace` factory on a child of the app host, outside the Layer
-graph (its input, the base's Jarvis events, only exists inside the base's
-`createApp`): per-tab layout machines and the panels roster as `SyncRef`s
+As of slice 7's wave 2, **all 74** members are **native** — nothing
+delegates to the RxJS core any more (the delegation itself goes in slice
+8). Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
+outside the Layer graph on child hosts of the app host: `jarvis` (a
+`SyncRef` over client-core's shared `createJarvisController`; an idle `send`
+subscribes its `ask` in the same tick, a fiber folds the replies; a forked
+countdown fiber; `events$` a synchronous bridge `createHotStream`),
+`jarvisDriver` (a `Queue` + consumer fiber, `Effect.sleep` stagger),
+`jarvisDemo` (a run fiber; each step an `Effect.async` settled by the shared
+`createDemoStepWatch` over synchronous state/event listeners, raced by
+`Effect.timeoutTo`), `jarvisUsage` (lazily opened, retained) and the
+internal narrator (a switched `Stream.flatMap` over scoped per-pair
+streams). The base app stands down through `CoreSeams.nativeJarvis`; wave
+1's `CoreSeams.workspace` factory is deleted. Wave 1 added the workspace —
+now built by the family over this core's own `jarvis.events$`: per-tab layout machines and the panels roster as `SyncRef`s
 (`SubscriptionRef`s committed with `runSync`, whose in-core mirrors hear a
 change synchronously — the workspace's sync-fold contract), each live
 panel's data as a `sharedFold` over the shared frame steps

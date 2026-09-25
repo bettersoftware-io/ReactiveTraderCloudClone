@@ -18,10 +18,12 @@ import { incident$, reconnect$ } from "@rtc/client-core";
 import {
   createChildHost,
   createDetachedHost,
+  createHotStream,
   type EffectHost,
   type FoldUpdate,
   type FromPort,
   fromPortIn,
+  listenToStateStream,
   pushIncidentEvent,
   pushReconnectIntent,
   refToStateStream,
@@ -32,6 +34,96 @@ import {
   sharedFold,
   streamToStream,
 } from "#/bridge/out";
+
+describe("bridge/out createHotStream", () => {
+  it("delivers each publish synchronously to every current subscriber, replays nothing to a late one, and drops an unsubscribed one", () => {
+    const hot = createHotStream<number>();
+    const early: number[] = [];
+    const late: number[] = [];
+    const sub = hot.stream$.subscribe((value: number) => {
+      early.push(value);
+    });
+
+    hot.publish(1);
+    hot.stream$.subscribe((value: number) => {
+      late.push(value);
+    });
+    hot.publish(2);
+    sub.unsubscribe();
+    hot.publish(3);
+
+    expect(early).toEqual([1, 2]);
+    expect(late).toEqual([2, 3]);
+  });
+});
+
+describe("bridge/out createHotStream listen + listenToStateStream", () => {
+  it("listen() reaches a plain listener synchronously, in publish order, until it is released", () => {
+    const hot = createHotStream<string>();
+    const seen: string[] = [];
+    const release = hot.listen((value: string) => {
+      seen.push(value);
+    });
+
+    hot.publish("a");
+    release();
+    hot.publish("b");
+
+    expect(seen).toEqual(["a"]);
+  });
+
+  it("a listener that throws is reported and skipped: later listeners and later publishes still arrive, as with an RxJS Subject", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const hot = createHotStream<number>();
+      const seen: number[] = [];
+      hot.listen(() => {
+        throw new Error("bad listener");
+      });
+      hot.listen((value: number) => {
+        seen.push(value);
+      });
+
+      hot.publish(1);
+      hot.publish(2);
+
+      expect(seen).toEqual([1, 2]);
+      await expect(vi.runAllTimersAsync()).rejects.toThrow("bad listener");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("listenToStateStream() calls listen only on its first subscriber, and replays the current value", () => {
+    let listens = 0;
+    let current = 1;
+    const state$ = listenToStateStream(
+      (listener: (value: number) => void) => {
+        listens += 1;
+        listener(current);
+
+        return (): void => {
+          // released with the last subscriber
+        };
+      },
+      () => {
+        return current;
+      },
+    );
+
+    expect(listens).toBe(0);
+
+    current = 2;
+    const seen: number[] = [];
+    state$.subscribe((value: number) => {
+      seen.push(value);
+    });
+
+    expect(listens).toBe(1);
+    expect(seen.at(-1)).toBe(2);
+  });
+});
 
 describe("bridge/out", () => {
   afterEach(async () => {

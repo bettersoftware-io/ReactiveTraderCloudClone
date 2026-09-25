@@ -69,3 +69,23 @@ Copied from the git-ignored SDD ledger so it survives the worktree.
   - PR B's two runs did the same. PR B's CI then caught three Biome findings, `useExplicitType` and `noUnusedImports`.
   - With the exit code captured correctly (`e=$?` straight after the gate), the re-run also found a knip finding: an exported `WorkspaceDriveDeps` type.
   - All four are fixed, and the corrected run passes 33/33.
+
+## PR C — the Effect core, and the factory's deletion
+
+- Ruling: the family is built outside the Layer graph on child hosts of the app host, as wave 1's workspace was. The Layer count is unchanged (plan Step 1 said one Tag and Layer per member). Cost if wrong: a later move into the graph.
+- Ruling: `events$` and the driver's `outcomes$` are a new synchronous bridge `createHotStream`, not a `PubSub` read through `streamToStream`. The latter attaches each reader on a fiber, so a same-tick value is lost: wave 1's lesson.
+- Ruling: the turn queue is not an Effect `Queue` with a consumer fiber. An idle `send` plans its turn, applies the start and subscribes the `ask` in the same tick (`fromPortIn` on a per-turn child scope), and a fiber folds the replies. A contract case ("a turn answered in the same tick … still spawns its panel") failed with the `Queue` design.
+- Ruling: the demo and the driver hear Jarvis through synchronous listeners (`SyncRef.listen`, `HotStream.listen`). Two fiber-read streams give no cross-stream ordering, and the step watcher needs to see the turn's pair before its `done`.
+- Mutation: 23/27 killed after one fix; the send-after-dispose guard is now single, as in async. One test was vacuous (a failing preference source cannot stop the other fibers) and was deleted. Three survivors are ledgered as equivalent or defence:
+  - `closed = true` in `dispose` duplicates the scope finalizer;
+  - approve's `endCountdown`, because the expiry and tick patches are pending-guarded;
+  - `runStep`'s `run.stopped` check, because the self-interrupt lands first.
+- The factory is deleted from client-core: `CoreSeams.workspace`, `WorkspaceSeam` and the `nativeWorkspace` branches. The base's idle-workspace rule now keys on `nativeJarvis` alone. The seams tests that exercised the factory were removed, because the `nativeJarvis` witnesses cover the same ground; the restore test was re-pointed at `nativeJarvis`.
+- e2e on the Effect core: 91 Playwright tests ×2 and 47 Gherkin scenarios ×2, all green.
+- Review: no Critical findings. One Important and five Minors, all fixed:
+  - I1: each demo step that settled normally left its two listeners on Jarvis for the app's life, because `Effect.async` runs its canceler only on interruption. Every settle now releases through one function; a listener-count test went RED to GREEN.
+  - M1: driver outcomes reach the transcript through a synchronous `listenOutcomes`; order-test RED to GREEN.
+  - M2: preference and availability relays are synchronous through a bridge `listenToStream`; test RED to GREEN.
+  - M3: a synchronous `ask` throw closes its turn as an error, a defect in a turn is reported and the queue moves on, and `createHotStream` isolates a throwing listener; two tests RED to GREEN.
+  - M4: stale factory references in comments and READMEs fixed.
+  - M5: a throwing `narrate` is reported and narration carries on (test RED to GREEN); a failed usage port is reported.

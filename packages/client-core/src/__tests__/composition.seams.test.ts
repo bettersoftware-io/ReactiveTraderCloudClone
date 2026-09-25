@@ -12,7 +12,6 @@ import {
   ConnectionEventsSimulator,
   ConnectionStatus,
   type CurrencyPair,
-  DRIVE_STAGGER_MS,
   type EquityInstrument,
   ExecutionStatus,
   type MarketDataPort,
@@ -26,12 +25,10 @@ import type { DriveBatchV1, JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisPort } from "#/adapters/jarvisPort";
 import { type AppPorts, createSimulatorPorts } from "#/adapters/portFactory";
-import { type CoreSeams, createApp, type WorkspaceSeam } from "#/composition";
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
+import { type CoreSeams, createApp } from "#/composition";
 import type { AnimationIntent } from "#/presenters/AnimationDirector";
 import {
   createEqWorkspaceMachine,
-  createLayoutMachine,
   createWorkspaceNavMachine,
 } from "#/presenters/index";
 
@@ -133,72 +130,7 @@ describe("createApp — core seams (strangler phase)", () => {
     presenters.jarvis.dispose();
   });
 
-  it("a supplied workspace factory gets the app's Jarvis events, and the driver drives the workspace it returns", async () => {
-    const received: JarvisEvent[] = [];
-    const seam = createFakeWorkspaceSeam();
-    const { presenters } = createApp(
-      createPorts({
-        jarvis: createCommandingJarvisPort([
-          { kind: "layout", op: "maximize", tab: "fx", panelId: "fx-rates" },
-          { kind: "dockPanel", panelId: "jarvis-1" },
-        ]),
-      }),
-      {
-        workspace: (jarvisEvents$: Observable<JarvisEvent>): WorkspaceSeam => {
-          jarvisEvents$.subscribe((event) => {
-            received.push(event);
-          });
-          return seam.workspace;
-        },
-      },
-    );
-
-    presenters.jarvis.intents.send("arrange my desk");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 2 * DRIVE_STAGGER_MS + 100);
-    });
-
-    expect(
-      received.some((event) => {
-        return event.type === "command";
-      }),
-    ).toBe(true);
-    expect(
-      (await firstValueFrom(seam.workspace.layoutFor("fx").state$)).maximized,
-    ).toBe("fx-rates");
-    expect(seam.docked).toEqual(["jarvis-1"]);
-    expect(
-      (await firstValueFrom(presenters.layoutFor("fx").state$)).maximized,
-    ).toBeNull();
-    presenters.jarvis.dispose();
-  });
-
-  it("with a workspace seam the app's own workspace stays idle: no panels folded, no workspace write", async () => {
-    const seam = createFakeWorkspaceSeam();
-    const ports = createPorts({
-      jarvis: createSpawningJarvisPort("jarvis-1"),
-    });
-
-    const { presenters } = createApp(ports, {
-      workspace: () => {
-        return seam.workspace;
-      },
-    });
-
-    presenters.jarvis.intents.send("spawn a panel");
-    presenters.layoutFor("fx").intents.maximize("fx-rates");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
-
-    expect(await firstValueFrom(presenters.jarvisPanels.panels$)).toEqual([]);
-    expect(await firstValueFrom(ports.preferences.workspaceLayout$())).toBe(
-      null,
-    );
-    presenters.jarvis.dispose();
-  });
-
-  it("with a workspace seam the app's own panels restore nothing from a stored docked payload", async () => {
+  it("with nativeJarvis the app's own panels restore nothing from a stored docked payload", async () => {
     const seedPorts = createPorts({
       jarvis: createSpawningJarvisPort("jarvis-1"),
     });
@@ -228,18 +160,15 @@ describe("createApp — core seams (strangler phase)", () => {
       ),
     ).toEqual(["jarvis-1"]);
 
-    const seam = createFakeWorkspaceSeam();
     const seamed = createApp(createPorts({ preferences }), {
-      workspace: () => {
-        return seam.workspace;
-      },
+      nativeJarvis: true,
     });
     expect(
       await firstValueFrom(seamed.presenters.jarvisPanels.panels$),
     ).toEqual([]);
   });
 
-  it("with no workspace seam the same layout change IS written — the idle check above is not vacuous", async () => {
+  it("with no nativeJarvis seam a layout change IS written — the stand-down write checks are not vacuous", async () => {
     const ports = createPorts({});
     const { presenters } = createApp(ports);
 
@@ -633,41 +562,6 @@ function createCommandingJarvisPort(
     },
     confirm: (): void => {
       // unused by these tests
-    },
-  };
-}
-
-interface FakeWorkspaceSeam {
-  readonly workspace: WorkspaceSeam;
-  readonly docked: string[];
-}
-
-/** A stand-in native workspace: one real `fx` layout machine, a dock that
- * records its calls, and a roster that knows exactly `jarvis-1`. */
-function createFakeWorkspaceSeam(): FakeWorkspaceSeam {
-  const layout = createLayoutMachine(createDefaultLayoutPort("fx"));
-  const docked: string[] = [];
-  return {
-    docked,
-    workspace: {
-      layoutFor: () => {
-        return layout;
-      },
-      dockPanel: (panelId: string) => {
-        docked.push(panelId);
-        return true;
-      },
-      undockPanel: () => {
-        // unused by these tests
-      },
-      dismissPanel: () => {
-        // unused by these tests
-      },
-      livePanelIds$: of(["jarvis-1"]),
-      dockedPanelIds$: of([]),
-      detachedPanelIds: () => {
-        return [];
-      },
     },
   };
 }

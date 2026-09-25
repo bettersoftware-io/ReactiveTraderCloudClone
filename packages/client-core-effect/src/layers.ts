@@ -729,9 +729,12 @@ export type NativePresenters = Partial<Presenters> &
     | "currencyPairs"
     | "eqWorkspace"
     | "execution"
+    | "jarvisPreferences"
     | "ordersBlotter"
+    | "powerSaver"
     | "priceStream"
     | "rfqs"
+    | "themeSkinPreference"
     | "watchlist"
     | "workspaceNav"
   >;
