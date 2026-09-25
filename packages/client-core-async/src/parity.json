@@ -49,8 +49,8 @@
     "eventLog": "native",
     "sessions": "native",
     "sessionsKpi": "native",
-    "jarvis": "delegated",
-    "jarvisUsage": "delegated",
+    "jarvis": "native",
+    "jarvisUsage": "native",
     "jarvisPanels": "native",
     "dockPanel": "native",
     "dockedPanelIdsFor": "native",
@@ -59,8 +59,8 @@
     "resetWorkspaceLayout": "native",
     "workspaceLayoutResets$": "native",
     "layoutPresets": "native",
-    "jarvisDriver": "delegated",
-    "jarvisDemo": "delegated"
+    "jarvisDriver": "native",
+    "jarvisDemo": "native"
   },
   "machines": {
     "tileExecution": "native",

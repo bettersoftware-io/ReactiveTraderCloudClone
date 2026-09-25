@@ -2,12 +2,12 @@ import {
   createDefaultLayoutPort,
   createLayoutPresetsController,
   createWorkspaceDock,
+  type DriveCommandDeps,
   InMemoryDockLayoutStore,
   InMemoryLayoutPresetStore,
   type JarvisEvent,
   type PanelStreamDeps,
   type PresetSummaryChannel,
-  type WorkspaceSeam,
   writeWorkspaceLayout,
 } from "@rtc/client-core";
 import type {
@@ -56,17 +56,30 @@ interface NativeWorkspacePresenters {
   readonly layoutPresets: LayoutPresetsPresenter;
 }
 
+/** What the Jarvis driver reaches in this workspace, read and written
+ * synchronously (`DriveCommandDeps`, client-core). */
+type WorkspaceDriveDeps = Pick<
+  DriveCommandDeps,
+  | "layout"
+  | "dockPanel"
+  | "undockPanel"
+  | "dismissPanel"
+  | "livePanelIds"
+  | "dockedPanelIds"
+  | "detachedPanelIds"
+>;
+
 export interface NativeWorkspace {
   readonly presenters: NativeWorkspacePresenters;
-  /** What the base app's Jarvis driver drives (`CoreSeams.workspace`). */
-  readonly seam: WorkspaceSeam;
+  /** What this core's own Jarvis driver drives. */
+  readonly drive: WorkspaceDriveDeps;
   /** `AppCommands.reportDetachedPanels`. */
   reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
 }
 
 export interface NativeWorkspaceDeps {
   readonly ports: AppPorts;
-  /** The Jarvis turns' events (the base app's, while `jarvis` delegates). */
+  /** The Jarvis turns' events — this core's own `jarvis.events$`. */
   readonly jarvisEvents$: Stream<JarvisEvent>;
   /** This core's own active-tab machine — docking attributes to it. */
   readonly workspaceNav: Machine<WorkspaceNavState, WorkspaceNavIntents>;
@@ -271,33 +284,27 @@ export function createNativeWorkspace(
     createStoreSummaryChannel(lifetime),
   );
 
-  const livePanelIds = createStore<readonly string[]>([]);
-  const dockedPanelIds = createStore<readonly string[]>([]);
-  panelsMachine.store.subscribe((state) => {
-    livePanelIds.set(
-      state.panels.map((panel) => {
+  function livePanelIdsNow(): readonly string[] {
+    return panelsMachine.store.get().panels.map((panel) => {
+      return panel.panelId;
+    });
+  }
+
+  function dockedPanelIdsNow(): readonly string[] {
+    return panelsMachine.store
+      .get()
+      .panels.filter((panel) => {
+        return panel.docked;
+      })
+      .map((panel) => {
         return panel.panelId;
-      }),
-    );
-    dockedPanelIds.set(
-      state.panels
-        .filter((panel) => {
-          return panel.docked;
-        })
-        .map((panel) => {
-          return panel.panelId;
-        }),
-    );
-  });
-  const livePanelIds$ = storeToWarmStateStream(livePanelIds);
-  const dockedPanelIds$ = storeToWarmStateStream(dockedPanelIds);
+      });
+  }
 
   lifetime.addEventListener(
     "abort",
     () => {
       resets$.release();
-      livePanelIds$.release();
-      dockedPanelIds$.release();
     },
     { once: true },
   );
@@ -315,13 +322,13 @@ export function createNativeWorkspace(
       workspaceLayoutResets$: resets$.state$,
       layoutPresets,
     },
-    seam: {
-      layoutFor,
+    drive: {
+      layout: layoutFor,
       dockPanel: dock.dockPanel,
       undockPanel: dock.undockPanel,
       dismissPanel: dock.dismissPanel,
-      livePanelIds$: livePanelIds$.state$,
-      dockedPanelIds$: dockedPanelIds$.state$,
+      livePanelIds: livePanelIdsNow,
+      dockedPanelIds: dockedPanelIdsNow,
       detachedPanelIds: dock.detachedPanelIds,
     },
     reportDetachedPanels: dock.reportDetachedPanels,

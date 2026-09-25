@@ -49,3 +49,23 @@ Copied from the git-ignored SDD ledger so it survives the worktree.
 - The confirming step's decline is pinned at `DEMO_STEP_BEAT_MS − 1`; the narration copy is pinned exactly (a regex over the format).
 - Harness seed `jarvisAvailabilityPending` + contract case "a send before the first availability reply runs on the preferred brain".
 - Mutation 7/7; runners 368/368 ×3.
+
+## PR B — the async core
+
+- Ruling: the native files were written before their unit tests. The PR A contract suites, already proven on RxJS, were the spec, and native RED was proven by mutation against the native files. Unit tests were added for async-only paths, driven by coverage gaps and review. Cost if wrong: none beyond the order.
+- Ruling: the Jarvis family is composed in `composeWithBase` (`presenters/jarvisFamily.ts`), not inside `nativePresenters` as plan Step 3 said. It must follow `nativePresenters`, whose members it reads. Equivalent.
+- Ruling: `NativeWorkspace.seam` became `drive`, synchronous readers typed from `DriveCommandDeps`. The async core no longer passes the `CoreSeams.workspace` factory; PR C deletes it.
+- Ruling: a `port.ask` that errors closes its turn as an `error` event, and the machine continues. The RxJS machine would die on it; that is kinder behaviour the contract cannot see. The same holds for a failing `availability$` (logged, the machine keeps running).
+- Ruling (review Minor 3): a failing price stream silences only its own pair until the next roster. The RxJS narrator's single `catchError` ends all narration. Kept, and documented in `narrator.ts`. Cost if wrong: one more narration source than RxJS after a feed failure.
+- Ruling (review Minor 6): the countdown now starts before outside subscribers hear the card, matching RxJS. No test can observe the old order: the expiry and tick patches are pending-guarded (PR A Important 4). Cost if wrong: none.
+- Ruling (review Minor 9): a throwing command cannot stall later batches. `applyDriveCommand` is total, topic delivery and Store listeners isolate throwers, and state listeners are rxjs subscribers. A catch would be unreachable code. Cost if wrong: queued batches wait for the next `command` event.
+- Mutation:
+  - native files: 22/22, after one fix (a double guard on send-after-dispose; one mechanism kept);
+  - review Minors: 7/7.
+- Contract: 368 + 3 unit files. e2e on the async core: 91 Playwright tests ×2 and 47 Gherkin scenarios ×2, all green.
+- Review: no Critical or Important findings. Ten Minors, all addressed: 1, 2, 4, 5, 7 and 8 fixed test-first; 3, 6 and 9 ruled above; 10 fixed (the comment and README).
+- **Correction: my own gauntlet runner was vacuous.** After PR A's first run, the loop recorded `exit=$?` inside `echo "$(printf …) exit=$?"`. The command substitution resets `$?` to 0, so every gate read as passing:
+  - PR A's second and third runs reported 33/33 without real exit codes. PR A was still gated honestly: CI passed on its final head before merge.
+  - PR B's two runs did the same. PR B's CI then caught three Biome findings, `useExplicitType` and `noUnusedImports`.
+  - With the exit code captured correctly (`e=$?` straight after the gate), the re-run also found a knip finding: an exported `WorkspaceDriveDeps` type.
+  - All four are fixed, and the corrected run passes 33/33.

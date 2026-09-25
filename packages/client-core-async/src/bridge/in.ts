@@ -188,20 +188,28 @@ export function relay<T>(
       return;
     }
 
+    // The abort listener leaves with the relay however it ends, so a
+    // long-lived signal does not keep one per finished relay.
+    function releaseOnAbort(): void {
+      subscription.unsubscribe();
+      resolve();
+    }
+
     const subscription = source.subscribe({
       next,
-      error: reject,
-      complete: resolve,
-    });
-
-    signal.addEventListener(
-      "abort",
-      () => {
-        subscription.unsubscribe();
+      error: (error: unknown) => {
+        signal.removeEventListener("abort", releaseOnAbort);
+        reject(error);
+      },
+      complete: () => {
+        signal.removeEventListener("abort", releaseOnAbort);
         resolve();
       },
-      { once: true },
-    );
+    });
+
+    if (!subscription.closed) {
+      signal.addEventListener("abort", releaseOnAbort, { once: true });
+    }
   });
 }
 
