@@ -34,6 +34,8 @@
       "@rtc/client-core-effect/*": ["packages/client-core-effect/src/*"],
       "@rtc/core-api": ["packages/core-api/src/index.ts"],
       "@rtc/core-api/*": ["packages/core-api/src/*"],
+      "@rtc/core-logic": ["packages/core-logic/src/index.ts"],
+      "@rtc/core-logic/*": ["packages/core-logic/src/*"],
       "@rtc/core-contract": ["packages/core-contract/src/index.ts"],
       "@rtc/core-contract/*": ["packages/core-contract/src/*"],
       "@rtc/react-bindings": ["packages/react-bindings/src/index.ts"],

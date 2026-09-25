@@ -1,7 +1,9 @@
 import type { IncidentKind, IncidentState } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
 
-const INITIAL: IncidentState = { active: [] };
+/** The incident machine's seed, and what a `clear` returns — ONE object, so a
+ * clear on pristine state re-emits the seed itself rather than an equal copy. */
+export const INCIDENT_INITIAL_STATE: IncidentState = { active: [] };
 
 // latencySpike & serviceDown break the gateway; errorBurst is degraded-but-connected.
 const DISCONNECTING: ReadonlySet<IncidentKind> = new Set([
@@ -20,7 +22,7 @@ export function reduceIncident(
   event: IncidentEvent,
 ): IncidentState {
   if (event.kind === "clear") {
-    return INITIAL;
+    return INCIDENT_INITIAL_STATE;
   }
 
   return state.active.includes(event.incident)

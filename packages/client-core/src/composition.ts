@@ -221,8 +221,9 @@ export function firstWatchlistSymbol$(
   );
 }
 
-/** Moved to `./presenters/jarvisController` (pluggable-core slice 7 wave
- * 2) with the rest of the history rules — re-exported for existing imports. */
+/** Moved to `@rtc/core-logic`'s `presenters/jarvisController` (pluggable-core
+ * slice 7 wave 2, then slice 8) with the rest of the history rules —
+ * re-exported for existing imports. */
 export {
   historyEntriesExcludingInFlightTurn,
   LAYOUT_PANEL_IDS,

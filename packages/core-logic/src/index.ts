@@ -4,8 +4,12 @@ export * from "#/adapters/InMemoryDockLayoutStore";
 export * from "#/adapters/InMemoryLayoutPresetStore";
 export * from "#/adapters/layoutPresetStore";
 export * from "#/layout/defaultLayoutPort";
-// Consumed by client-core's layout tests; before slice 8 they reached it by
-// relative path inside one package.
+// The design-width constant is public because the Dockview bridges
+// (client-react, client-solid) need the SAME 360px pin a seeded rail's
+// `initialPx` uses, for a Jarvis panel opened at runtime via
+// `DockEngine.addDynamicPanel`. The two leaf helpers are public only because
+// client-core's layout tests use them across the package boundary (slice 8);
+// the remove/other helpers stay internal to the layout rules.
 export {
   DOCK_COLUMN_INITIAL_PX,
   dockedLeafIds,
@@ -15,8 +19,15 @@ export * from "#/layout/layoutPort";
 export * from "#/layout/layoutPresetCodec";
 export * from "#/layout/layoutPresetsController";
 export * from "#/layout/layoutReducer";
+// The instance id/cap pair is public (both web clients' watchlist + Dockview
+// bridge read them); the namespace predicate stays internal to the layout
+// rules' own id-collision guard.
 export { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
 export * from "#/layout/workspaceDock";
+// Public for the ui-contract fixtures: each web client's
+// `viewModelFromWorld.ts` reproduces composition.ts's dock/undock/persist
+// wiring over the neutral World, and a fixture that re-implemented
+// serialization would prove nothing about the real round trip.
 export * from "#/layout/workspaceLayoutPersistence";
 export * from "#/layout/workspaceLayoutWrite";
 export * from "#/presenters/adminFolds";

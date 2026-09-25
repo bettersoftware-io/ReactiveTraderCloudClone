@@ -9,6 +9,7 @@ import type {
 } from "@rtc/core-api";
 import type { Machine } from "@rtc/core-logic";
 import {
+  INCIDENT_INITIAL_STATE,
   type IncidentEvent,
   incidentConnectionEvent,
   reduceIncident,
@@ -29,8 +30,6 @@ export interface IncidentDeps {
   /** Sink into the existing connectionEvents merge (composition wires this). */
   readonly pushConnectionEvent: (ev: ConnectionEvent) => void;
 }
-
-const INITIAL: IncidentState = { active: [] };
 
 export function createIncidentMachine(
   deps: IncidentDeps,
@@ -74,9 +73,12 @@ export function createIncidentMachine(
   );
 
   const stream$ = merge(injectEvent$, clearEvent$).pipe(
-    scan(reduceIncident, INITIAL),
+    scan(reduceIncident, INCIDENT_INITIAL_STATE),
   );
-  const state$: StateObservable<IncidentState> = state(stream$, INITIAL);
+  const state$: StateObservable<IncidentState> = state(
+    stream$,
+    INCIDENT_INITIAL_STATE,
+  );
 
   // Keep state$ warm so it carries its default before useMachine first renders.
   const warm = state$.subscribe();

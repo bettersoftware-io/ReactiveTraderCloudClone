@@ -28,3 +28,25 @@ file is its durable record, and each PR appends its own section.
 - e2e: 91 + 91 Playwright tests and 47 Cucumber scenarios on each of rxjs, async and effect.
 - Mutation-check: 7/7 KILLED.
 - RN tests: 627/627.
+
+### PR A review (one independent reviewer) — every finding fixed in-PR
+
+- **I1. dependency-cruiser could not see any `@rtc/core-logic` edge.** `tsconfig.depcruise.json` had no path pair for it. So `client-core-stays-inner`, `alt-cores-stay-inner` and `no-circular` never evaluated an edge into the package, and passed green on nothing. The fix has three parts:
+  - The path pair is added. The cruiser now reports `@rtc/core-logic=>packages/core-logic/src/index.ts`.
+  - `core-logic` joins both allowlists.
+  - The purity rule splits in two. `core-logic-stays-pure` covers runtime rxjs only. The new `core-logic-stays-inner` is an ALLOWLIST (itself, `core-api`, `domain`, `shared`), which answers the reviewer's M6 as well.
+  - Probes: a `@rtc/client-core` import is red on `core-logic-stays-inner`, an rxjs value import is red on `core-logic-stays-pure`, and a clean tree is green. This is the third "absence read as a clean reading" instance in this PR, after ruling 2 and the vacuous index test in M7.
+- **I2. The alternative cores' `readNow` was not the RxJS core's.** Their bridges' `peek` returns `undefined` where `readPreferenceNow` falls back, and it rethrows where `readPreferenceNow` falls back and reports. Each bridge now carries a verbatim copy of `readPreferenceNow`, so the two are equivalent by construction. New tests cover an `of(undefined)` source and an erroring source. Both went RED against `peek`, then GREEN.
+- **M1.** The debug-deploy vite alias maps in both clients gain `@rtc/core-logic` → src.
+- **M2 and M3.** Stale comments are fixed:
+  - the barrel comments moved with their statements, and the `dockColumn` note now states that two leaf helpers are public;
+  - the `LAYOUT_PANEL_IDS` location;
+  - `createAuthDeps(ports, authDepsPrimitives)` in both `shell.ts` docs;
+  - the example paths in `scripts/mutation-check.mjs`, `tests/browser/scenarios/layout.ts`, ADR-002 and `candleSeries.test.ts`.
+- **M4.** The delay test now changes the supplier between two logins, so a wrapper that read the delay once at wrap time is killed.
+- **M5.** There is ONE `INCIDENT_INITIAL_STATE` again, exported from `incidentFold`. A machine-level test pins that a `clear` on pristine state re-emits the seed object itself. `publicApi.test.ts` gains that one name.
+- **M7.** `core-logic`'s `length > 0` index test is replaced by an export-name snapshot.
+
+**Also found by CI's first run on #829.** `client-core`'s vitest had no `include`, so it ran every test a second time from its compiled copy in `dist/`. `dist/publicApi.test.js` then compared itself against an untracked `dist/__snapshots__` file. Locally that file was stale; on the fresh checkout it was missing, and `--ci` failed "Tests (unit)". The fix is `exclude: [...configDefaults.exclude, "dist/**"]`. `client-core`'s own run goes from 2999 tests to 1385: the difference is the `dist/` duplicates plus stale compiled copies of the tests that moved.
+
+**Mutation-check for the review fixes:** 6/6 KILLED. The mutants were: `readNow` returning what it saw, instead of the fallback (×2 cores); the delay read once at wrap time (×2); the machine seeded with a separate object; and `core-logic` dropping an export.

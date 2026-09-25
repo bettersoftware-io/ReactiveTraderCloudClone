@@ -64,7 +64,7 @@ const SIGNED_OUT: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
-/** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports)`
+/** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports, authDepsPrimitives)`
  * — the RxJS `AuthPresenter`'s transitions over a Store. The session is
  * resumed at construction from the store (an entry that has not expired
  * signs in; anything else clears it). Each login or unlock is one
