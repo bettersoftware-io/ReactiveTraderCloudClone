@@ -58,7 +58,7 @@ interface NativeWorkspacePresenters {
 
 /** What the Jarvis driver reaches in this workspace, read and written
  * synchronously (`DriveCommandDeps`, client-core). */
-export type WorkspaceDriveDeps = Pick<
+type WorkspaceDriveDeps = Pick<
   DriveCommandDeps,
   | "layout"
   | "dockPanel"

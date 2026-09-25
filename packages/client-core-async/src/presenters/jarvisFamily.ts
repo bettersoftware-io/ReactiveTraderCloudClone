@@ -19,8 +19,10 @@ import type {
 import type {
   CurrencyPair,
   EquityInstrument,
+  JarvisSkin,
   PowerSaverLevel,
   Price,
+  ThemeSkin,
 } from "@rtc/domain";
 
 import { peek, relay } from "#/bridge/in";
@@ -76,7 +78,7 @@ export function createJarvisFamily(
     {
       port: ports.jarvis,
       skin$: ports.preferences.jarvisSkin$(),
-      setSkin: (skin) => {
+      setSkin: (skin: JarvisSkin) => {
         ports.preferences.setJarvisSkin(skin);
       },
       availability$: ports.jarvis.availability$?.(),
@@ -112,10 +114,10 @@ export function createJarvisFamily(
         eqWorkspaceState: () => {
           return peekCurrentState(deps.eqWorkspace.state$);
         },
-        setThemeSkin: (skin) => {
+        setThemeSkin: (skin: ThemeSkin) => {
           deps.themeSkinPreference.setSkin(skin);
         },
-        setPowerSaver: (level) => {
+        setPowerSaver: (level: PowerSaverLevel) => {
           deps.powerSaver.setLevel(level);
         },
         knownLayoutPanelIds: (tab: WorkspaceTab) => {

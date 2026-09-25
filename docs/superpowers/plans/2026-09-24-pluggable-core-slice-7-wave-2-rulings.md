@@ -64,3 +64,8 @@ Copied from the git-ignored SDD ledger so it survives the worktree.
   - review Minors: 7/7.
 - Contract: 368 + 3 unit files. e2e on the async core: 91 Playwright tests ×2 and 47 Gherkin scenarios ×2, all green.
 - Review: no Critical or Important findings. Ten Minors, all addressed: 1, 2, 4, 5, 7 and 8 fixed test-first; 3, 6 and 9 ruled above; 10 fixed (the comment and README).
+- **Correction: my own gauntlet runner was vacuous.** After PR A's first run, the loop recorded `exit=$?` inside `echo "$(printf …) exit=$?"`. The command substitution resets `$?` to 0, so every gate read as passing:
+  - PR A's second and third runs reported 33/33 without real exit codes. PR A was still gated honestly: CI passed on its final head before merge.
+  - PR B's two runs did the same. PR B's CI then caught three Biome findings, `useExplicitType` and `noUnusedImports`.
+  - With the exit code captured correctly (`e=$?` straight after the gate), the re-run also found a knip finding: an exported `WorkspaceDriveDeps` type.
+  - All four are fixed, and the corrected run passes 33/33.
