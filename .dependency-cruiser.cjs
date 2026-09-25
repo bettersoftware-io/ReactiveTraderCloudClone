@@ -279,6 +279,21 @@ module.exports = {
       to: { path: "node_modules/(react|react-dom|react-native|solid-js)/" },
     },
     {
+      name: "core-logic-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/core-logic is shared by all three application cores: a runtime rxjs import here would put RxJS inside the alternative cores, and an import of a core, binding, client or tool package would invert the graph. Runtime deps: @rtc/domain and @rtc/shared (+ @rtc/core-api for types).",
+      from: { path: "^packages/core-logic/src", pathNot: "\\.test\\.ts$" },
+      to: {
+        // `(^|node_modules/)`: under pnpm's strict install an rxjs import from
+        // this package does not RESOLVE (rxjs is not its dependency), and the
+        // cruiser records it under its bare name — a `node_modules/` pattern
+        // alone passed a probe `import { map } from "rxjs"` green.
+        path: "(^|node_modules/)(rxjs|@rx-state)(/|$)|^packages/(client-|react-|solid-|server|devtools|ui-contract|core-contract|agent-tools|ws-effects|motion-core|boot-splash|layout-dockview)",
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
       name: "bridge-owns-rxjs",
       severity: "error",
       comment:

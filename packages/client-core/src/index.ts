@@ -1,3 +1,7 @@
+// The shared rxjs-free rules (pluggable-core slice 8), re-exported so every
+// existing `import … from "@rtc/client-core"` keeps working.
+export * from "@rtc/core-logic";
+
 export * from "#/adapters/authDeps";
 export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/dockLayoutStore";
