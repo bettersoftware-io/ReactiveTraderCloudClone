@@ -49,9 +49,9 @@ describe("createJarvisDriver (Effect core)", () => {
 });
 
 function createCommandDeps(): DriveCommandDeps {
-  const none = (): readonly string[] => {
+  function createNoIds(): readonly string[] {
     return [];
-  };
+  }
 
   return {
     switchTab: vi.fn(),
@@ -73,10 +73,10 @@ function createCommandDeps(): DriveCommandDeps {
       return true;
     },
     undockPanel: vi.fn(),
-    knownLayoutPanelIds: none,
-    detachedPanelIds: none,
-    livePanelIds: none,
-    dockedPanelIds: none,
+    knownLayoutPanelIds: createNoIds,
+    detachedPanelIds: createNoIds,
+    livePanelIds: createNoIds,
+    dockedPanelIds: createNoIds,
     knownSymbols: () => {
       return undefined;
     },

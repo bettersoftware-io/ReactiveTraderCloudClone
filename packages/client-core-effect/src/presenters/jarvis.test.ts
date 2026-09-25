@@ -94,6 +94,7 @@ describe("createJarvisMachine (Effect core)", () => {
     const ask = vi.fn<JarvisPort["ask"]>(() => {
       throw new Error("adapter bug");
     });
+
     const { jarvis } = createRig({
       ask,
       confirm: () => {
