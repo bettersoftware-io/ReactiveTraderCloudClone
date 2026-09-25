@@ -1,12 +1,5 @@
 import { Effect, Fiber, Scope } from "effect";
 
-import type {
-  JarvisDemoMachineHandle,
-  JarvisDemoState,
-  JarvisDemoStep,
-  JarvisIntents,
-  JarvisState,
-} from "@rtc/core-api";
 import {
   advanceDemoPatch,
   createDemoStepWatch,
@@ -16,6 +9,13 @@ import {
   type JarvisEvent,
   lastEntryId,
 } from "@rtc/client-core";
+import type {
+  JarvisDemoMachineHandle,
+  JarvisDemoState,
+  JarvisDemoStep,
+  JarvisIntents,
+  JarvisState,
+} from "@rtc/core-api";
 import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
 
 import { createChildHost, type EffectHost } from "#/bridge/out";
@@ -70,7 +70,10 @@ export function createJarvisDemo(
   /** One step's turn to its own done or error. The watcher listens BEFORE
    * the send; a confirming step declines its card one beat after it
    * appears; no settle within `DEMO_STEP_TIMEOUT_MS` counts as an error. */
-  function runStep(step: JarvisDemoStep, run: DemoRun): Effect.Effect<StepOutcome> {
+  function runStep(
+    step: JarvisDemoStep,
+    run: DemoRun,
+  ): Effect.Effect<StepOutcome> {
     return Effect.async<StepOutcome>((resume) => {
       if (run.stopped) {
         resume(Effect.interrupt);
@@ -85,6 +88,7 @@ export function createJarvisDemo(
       const unlistenState = deps.listenState((state: JarvisState) => {
         watch.observeState(state);
       });
+
       const unlistenEvents = deps.listenEvents((event: JarvisEvent) => {
         const signalled = watch.observeEvent(event);
 

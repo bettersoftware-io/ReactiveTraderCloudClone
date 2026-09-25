@@ -1,12 +1,12 @@
 import { Clock, Effect, Stream } from "effect";
 
-import type { Stream as CoreStream } from "@rtc/core-api";
 import {
   admitAnomaly,
   formatNarrationPrompt,
   NARRATOR_INITIAL_GATE,
   type NarratorGateState,
 } from "@rtc/client-core";
+import type { Stream as CoreStream } from "@rtc/core-api";
 import {
   type AnomalyDetectorConfig,
   type CurrencyPair,

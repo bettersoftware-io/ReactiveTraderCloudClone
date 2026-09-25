@@ -86,6 +86,7 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
       return presenters.priceStream.price$(pair);
     },
   });
+
   const base = createRxjsApp(ports, {
     eqWorkspace: presenters.eqWorkspace,
     equityFills$: presenters.ordersBlotter.fills$,

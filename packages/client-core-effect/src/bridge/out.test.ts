@@ -79,6 +79,7 @@ describe("bridge/out createHotStream listen + listenToStateStream", () => {
       (listener: (value: number) => void) => {
         listens += 1;
         listener(current);
+
         return () => {
           // released with the last subscriber
         };

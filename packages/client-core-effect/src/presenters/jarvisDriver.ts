@@ -1,19 +1,23 @@
 import { Effect, Queue, Scope } from "effect";
 
-import type {
-  JarvisDriverMachineHandle,
-  JarvisDriverState,
-  DriveOutcome,
-} from "@rtc/core-api";
 import {
   applyDriveCommand,
   type DriveCommandDeps,
   driveStaggerMs,
   type JarvisEvent,
 } from "@rtc/client-core";
+import type {
+  DriveOutcome,
+  JarvisDriverMachineHandle,
+  JarvisDriverState,
+} from "@rtc/core-api";
 import type { PowerSaverLevel } from "@rtc/domain";
 
-import { createChildHost, createHotStream, type EffectHost } from "#/bridge/out";
+import {
+  createChildHost,
+  createHotStream,
+  type EffectHost,
+} from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
 export interface JarvisDriverDeps {

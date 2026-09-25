@@ -3,11 +3,7 @@ import type { ObservedValueOf } from "rxjs";
 
 import type { JarvisUsagePort, JarvisUsagePresenter } from "@rtc/core-api";
 
-import {
-  type EffectHost,
-  fromPortIn,
-  listenToStateStream,
-} from "#/bridge/out";
+import { type EffectHost, fromPortIn, listenToStateStream } from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
 /** What `usage$` carries: a snapshot, or `null` before the first. */
@@ -48,12 +44,9 @@ export function createJarvisUsagePresenter(
   }
 
   return {
-    usage$: listenToStateStream(
-      (listener: (value: UsageSnapshot) => void) => {
-        openPortOnce();
-        return ref.listen(listener);
-      },
-      ref.get,
-    ),
+    usage$: listenToStateStream((listener: (value: UsageSnapshot) => void) => {
+      openPortOnce();
+      return ref.listen(listener);
+    }, ref.get),
   };
 }

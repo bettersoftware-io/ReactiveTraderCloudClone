@@ -1,20 +1,5 @@
-import {
-  Effect,
-  ExecutionStrategy,
-  Exit,
-  Fiber,
-  Scope,
-  Stream,
-} from "effect";
+import { Effect, ExecutionStrategy, Exit, Fiber, Scope, Stream } from "effect";
 
-import type {
-  DriveOutcome,
-  JarvisAvailability,
-  JarvisMachineHandle,
-  JarvisPort,
-  JarvisState,
-  Stream as CoreStream,
-} from "@rtc/core-api";
 import {
   approvePatch,
   closePatch,
@@ -31,6 +16,14 @@ import {
   skinPatch,
   togglePatch,
 } from "@rtc/client-core";
+import type {
+  Stream as CoreStream,
+  DriveOutcome,
+  JarvisAvailability,
+  JarvisMachineHandle,
+  JarvisPort,
+  JarvisState,
+} from "@rtc/core-api";
 import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
@@ -195,6 +188,7 @@ export function createJarvisMachine(
       const turnScope = host.runtime.runSync(
         Scope.fork(host.scope, ExecutionStrategy.sequential),
       );
+
       const replies = fromPortIn(turnScope)(
         deps.port.ask(plan.wireText, plan.options),
       );

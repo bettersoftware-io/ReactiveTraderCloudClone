@@ -1,7 +1,9 @@
 import { Effect, Stream } from "effect";
 
+import { LAYOUT_PANEL_IDS } from "@rtc/client-core";
 import type {
   AppPorts,
+  Stream as CoreStream,
   EqWorkspaceIntents,
   EqWorkspaceState,
   JarvisDemoMachineHandle,
@@ -11,13 +13,11 @@ import type {
   JarvisUsagePresenter,
   Machine,
   PowerSaverPresenter,
-  Stream as CoreStream,
   ThemeSkinPreferencePresenter,
   WorkspaceNavIntents,
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
-import { LAYOUT_PANEL_IDS } from "@rtc/client-core";
 import type {
   CurrencyPair,
   EquityInstrument,
@@ -29,7 +29,10 @@ import type {
 
 import { type EffectHost, fromPortIn } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
-import { createJarvisMachine, wireJarvisHistorySource } from "#/presenters/jarvis";
+import {
+  createJarvisMachine,
+  wireJarvisHistorySource,
+} from "#/presenters/jarvis";
 import { createJarvisDemo } from "#/presenters/jarvisDemo";
 import { createJarvisDriver } from "#/presenters/jarvisDriver";
 import { createJarvisUsagePresenter } from "#/presenters/jarvisUsage";
@@ -84,6 +87,7 @@ export function createJarvisFamily(
     preferredBrain$: ports.preferences.jarvisBrain$(),
     effort$: ports.preferences.jarvisEffort$(),
   });
+
   const workspace = createNativeWorkspace(host, {
     ports,
     jarvisEvents$: jarvis.handle.events$,
