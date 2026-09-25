@@ -129,6 +129,22 @@ export function refToWarmStateStream<S>(
   };
 }
 
+/** A state stream over a synchronous `listen` — NOT held warm: `listen`
+ * runs on the first subscriber only (a lazily opened source, e.g. a port the
+ * app should reach only once someone reads it), and the current value
+ * replays to each subscriber. */
+export function listenToStateStream<S>(
+  listen: (listener: (value: S) => void) => () => void,
+  current: () => S,
+): StateStream<S> {
+  const source = new Observable<S>((subscriber) => {
+    return listen((value) => {
+      subscriber.next(value);
+    });
+  });
+  return state(source, current());
+}
+
 /** A warm `StateStream` fed SYNCHRONOUSLY by an in-core listener — for
  * state whose commits must reach a subscriber in the same tick (the
  * workspace's `SyncRef`). `listen` replays the current value on attach, so
@@ -169,6 +185,46 @@ export function holdWarm<T>(stream: CoreStream<T>): () => void {
 
   return () => {
     subscription.unsubscribe();
+  };
+}
+
+/** A hot stream with no replay — what an RxJS `Subject` is to its readers:
+ * `publish` reaches every CURRENT subscriber synchronously, in order, and a
+ * late subscriber sees only what comes after. Synchronous on purpose: a
+ * `PubSub` read through `streamToStream` attaches each reader on a fiber, so
+ * a value published in the same tick a reader subscribes would be lost
+ * (slice 7 wave 1's lost-turn bug). */
+export interface HotStream<T> {
+  readonly stream$: CoreStream<T>;
+  publish(value: T): void;
+  /** A plain synchronous listener — for a reader that must see two sources
+   * in exact order (the Jarvis demo's step watcher); returns its release. */
+  listen(listener: (value: T) => void): () => void;
+}
+
+export function createHotStream<T>(): HotStream<T> {
+  const listeners = new Set<(value: T) => void>();
+
+  function listen(listener: (value: T) => void): () => void {
+    listeners.add(listener);
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }
+
+  return {
+    stream$: new Observable<T>((subscriber) => {
+      return listen((value: T) => {
+        subscriber.next(value);
+      });
+    }),
+    listen,
+    publish: (value: T) => {
+      for (const listener of [...listeners]) {
+        listener(value);
+      }
+    },
   };
 }
 

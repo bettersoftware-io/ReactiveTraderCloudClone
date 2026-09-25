@@ -39,7 +39,6 @@ import type {
   Price,
   ThemeSkin,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import { createAuthDeps } from "#/adapters/authDeps";
 import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
@@ -311,16 +310,6 @@ export interface CoreSeams extends Partial<AnimationDirectorDeps> {
   readonly eqWorkspace?: Machine<EqWorkspaceState, EqWorkspaceIntents>;
   readonly watchlist$?: Observable<readonly EquityInstrument[]>;
   readonly workspaceNav?: Machine<WorkspaceNavState, WorkspaceNavIntents>;
-  /** A FACTORY, unlike every other seam (pluggable-core slice 7): a sibling
-   * core's native workspace needs this app's Jarvis events (`jarvis` is
-   * still delegated), while this app's Jarvis driver needs the native
-   * workspace. `createApp` breaks the cycle by calling this once, right
-   * after building `jarvis`, with the guarded `jarvis.events$` its own folds
-   * read; the driver then drives the returned workspace, and this app's own
-   * workspace stays idle (see `nativeWorkspace` in `createApp`). */
-  readonly workspace?: (
-    jarvisEvents$: Observable<JarvisEvent>,
-  ) => WorkspaceSeam;
   /** "A sibling core owns the Jarvis family and its workspace"
    * (pluggable-core slice 7 wave 2, ruling 5). This app still builds every
    * member — the parity drift test needs its own instances — but none of
@@ -330,21 +319,6 @@ export interface CoreSeams extends Partial<AnimationDirectorDeps> {
    * would ask a second time per anomaly); the panels, driver and demo fold
    * nothing; and its workspace restores nothing and writes nothing. */
   readonly nativeJarvis?: true;
-}
-
-/** What a sibling core's native workspace hands back through
- * `CoreSeams.workspace` — exactly the members the base's Jarvis driver
- * reads. */
-export interface WorkspaceSeam {
-  readonly layoutFor: (
-    tab: WorkspaceTab,
-  ) => Machine<LayoutState, LayoutIntents>;
-  readonly dockPanel: (panelId: string) => boolean;
-  readonly undockPanel: (panelId: string) => void;
-  readonly dismissPanel: (panelId: string) => void;
-  readonly livePanelIds$: Observable<readonly string[]>;
-  readonly dockedPanelIds$: Observable<readonly string[]>;
-  readonly detachedPanelIds: (tab: WorkspaceTab) => readonly string[];
 }
 
 export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
@@ -442,29 +416,20 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     }),
   );
 
-  // A sibling core's native workspace (`CoreSeams.workspace`), built from
-  // this app's own Jarvis events — see `CoreSeams.workspace`'s doc. When
-  // there is one, this app's own workspace stays IDLE: its panels machine
-  // folds nothing (so its presenter opens no port streams), no docked panel
-  // is restored into it, and it never creates the persistence writer — the
-  // `workspaceLayout` preference has exactly one writer, the native core's.
-  const nativeWorkspace = seams.workspace?.(jarvisEvents$);
   // Every internal fold over this app's Jarvis events, or nothing at all
-  // when a sibling core owns the family (`CoreSeams.nativeJarvis`).
+  // when a sibling core owns the family (`CoreSeams.nativeJarvis`): then its
+  // panels machine folds nothing (so its presenter opens no port streams),
+  // no docked panel is restored, and no persistence writer is built — the
+  // `workspaceLayout` preference has exactly one writer, the native core's.
   const foldedJarvisEvents$ = seams.nativeJarvis ? EMPTY : jarvisEvents$;
-  // This app's own workspace stays idle — no restore, no writer — when a
-  // sibling core owns it, either way.
-  const workspaceIsNative =
-    nativeWorkspace !== undefined || seams.nativeJarvis === true;
+  const workspaceIsNative = seams.nativeJarvis === true;
 
   // Hoisted out of the `JarvisPanelsPresenter` construction below (where it
   // used to be an inline argument) because the workspace-persistence wiring
   // needs the MACHINE's own state, not the presenter's VM rows: the writer
   // has to persist each docked panel's `PanelSpecV1`, and `JarvisPanelVm`
   // deliberately carries an interpreted `data$` instead of the raw spec.
-  const jarvisPanelsMachine = createJarvisPanelsMachine(
-    nativeWorkspace ? EMPTY : foldedJarvisEvents$,
-  );
+  const jarvisPanelsMachine = createJarvisPanelsMachine(foldedJarvisEvents$);
 
   const jarvisPanels = new JarvisPanelsPresenter(jarvisPanelsMachine, {
     referenceData: ports.referenceData,
@@ -763,7 +728,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   const jarvisDriverDeps: JarvisDriverDeps = {
     events$: foldedJarvisEvents$,
     workspaceNav: activeNav,
-    layout: nativeWorkspace?.layoutFor ?? layoutFor,
+    layout: layoutFor,
     eqWorkspace: seams.eqWorkspace ?? eqWorkspace,
     setThemeSkin: (skin: ThemeSkin): void => {
       themeSkinPreference.setSkin(skin);
@@ -771,12 +736,11 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     setPowerSaver: (level: PowerSaverLevel): void => {
       powerSaver.setLevel(level);
     },
-    dismissPanel: nativeWorkspace?.dismissPanel ?? workspaceDock.dismissPanel,
+    dismissPanel: workspaceDock.dismissPanel,
     knownLayoutPanelIds: (tab: WorkspaceTab): readonly string[] => {
       return LAYOUT_PANEL_IDS[tab];
     },
-    detachedPanelIds:
-      nativeWorkspace?.detachedPanelIds ?? workspaceDock.detachedPanelIds,
+    detachedPanelIds: workspaceDock.detachedPanelIds,
     knownSymbols$: watchlist$.pipe(
       map((list) => {
         return list.map((instrument) => {
@@ -788,32 +752,28 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     /** Every live desk-panel id, floating or docked — the membership check a
      * driven `dockPanel` command needs (unlike `dismissPanel`, docking an
      * unknown id is worth reporting as skipped). */
-    livePanelIds$:
-      nativeWorkspace?.livePanelIds$ ??
-      jarvisPanelsMachine.state$.pipe(
-        map((panelsState) => {
-          return panelsState.panels.map((panel) => {
-            return panel.panelId;
-          });
-        }),
-      ),
+    livePanelIds$: jarvisPanelsMachine.state$.pipe(
+      map((panelsState) => {
+        return panelsState.panels.map((panel) => {
+          return panel.panelId;
+        });
+      }),
+    ),
     /** The docked subset of `livePanelIds$` — a driven `undockPanel`'s own
      * membership check, and what tells a redundant dock apart from a real one. */
-    dockedPanelIds$:
-      nativeWorkspace?.dockedPanelIds$ ??
-      jarvisPanelsMachine.state$.pipe(
-        map((panelsState) => {
-          return panelsState.panels
-            .filter((panel) => {
-              return panel.docked;
-            })
-            .map((panel) => {
-              return panel.panelId;
-            });
-        }),
-      ),
-    dockPanel: nativeWorkspace?.dockPanel ?? workspaceDock.dockPanel,
-    undockPanel: nativeWorkspace?.undockPanel ?? workspaceDock.undockPanel,
+    dockedPanelIds$: jarvisPanelsMachine.state$.pipe(
+      map((panelsState) => {
+        return panelsState.panels
+          .filter((panel) => {
+            return panel.docked;
+          })
+          .map((panel) => {
+            return panel.panelId;
+          });
+      }),
+    ),
+    dockPanel: workspaceDock.dockPanel,
+    undockPanel: workspaceDock.undockPanel,
   };
 
   const jarvisDriver = createJarvisDriverMachine(jarvisDriverDeps);

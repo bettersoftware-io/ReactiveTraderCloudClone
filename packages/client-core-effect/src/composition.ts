@@ -3,14 +3,11 @@ import { Effect, Exit, ManagedRuntime, Scope } from "effect";
 import {
   createApp as createRxjsApp,
   createMachineFactories as createRxjsMachineFactories,
-  type JarvisEvent,
-  type WorkspaceSeam,
 } from "@rtc/client-core";
 import type {
   App,
   AppPorts,
   CoreFactory,
-  Stream as CoreStream,
   MachineFactories,
   Presenters,
   RfqCountdownSeed,
@@ -34,10 +31,7 @@ import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
-import {
-  createNativeWorkspace,
-  type NativeWorkspace,
-} from "#/presenters/workspace";
+import { createJarvisFamily } from "#/presenters/jarvisFamily";
 import { HostTag } from "#/services";
 
 /** What `composeWithBase` hands back: the RxJS app it delegated to, the app
@@ -68,16 +62,30 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     Effect.all({ host: HostTag, presenters: nativePresentersEffect }),
   );
 
-  // Native FIRST (see `CoreSeams`): every internal reader of the base app —
-  // its Jarvis driver, animation director, narrator and workspace seed — is
-  // pointed at this core's own members. Without that a drive batch would
-  // mutate a workspace the UI no longer renders, a fill or an FX execution
-  // made through a NATIVE presenter would choreograph nothing, and each
-  // port those readers share with a native member would be held twice.
-  // Filled by the `workspace` seam factory below, inside `createRxjsApp`:
-  // the native workspace needs the base's (still delegated) Jarvis events,
-  // and the base's Jarvis driver needs the native workspace (slice 7).
-  const builtWorkspaces: NativeWorkspace[] = [];
+  // Native FIRST (see `CoreSeams`): the base app's remaining internal
+  // readers — its animation director and workspace seed — are pointed at
+  // this core's own members, and its whole Jarvis family (driver, demo,
+  // narrator, history source, workspace) stands down (`nativeJarvis`).
+  // Without that a fill or an FX execution made through a NATIVE presenter
+  // would choreograph nothing, and each port those readers share with a
+  // native member would be held twice.
+  //
+  // The Jarvis family and its workspace, end to end on child hosts of this
+  // app's host (slice 7 wave 2): jarvis first, the workspace over its own
+  // events, then the driver, demo, narrator, history source and usage.
+  const family = createJarvisFamily(host, {
+    ports,
+    workspaceNav: presenters.workspaceNav,
+    eqWorkspace: presenters.eqWorkspace,
+    watchlist$: presenters.watchlist.watchlist$,
+    themeSkinPreference: presenters.themeSkinPreference,
+    powerSaver: presenters.powerSaver,
+    jarvisPreferences: presenters.jarvisPreferences,
+    pairs$: presenters.currencyPairs.pairs$,
+    priceFor: (pair: CurrencyPair) => {
+      return presenters.priceStream.price$(pair);
+    },
+  });
   const base = createRxjsApp(ports, {
     eqWorkspace: presenters.eqWorkspace,
     equityFills$: presenters.ordersBlotter.fills$,
@@ -90,30 +98,21 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     rfqEvents$: presenters.rfqs.events$,
     connectionStatus$: presenters.connection.status$,
     workspaceNav: presenters.workspaceNav,
-    workspace: (jarvisEvents$: CoreStream<JarvisEvent>): WorkspaceSeam => {
-      const workspace = createNativeWorkspace(host, {
-        ports,
-        jarvisEvents$,
-        workspaceNav: presenters.workspaceNav,
-      });
-      builtWorkspaces.push(workspace);
-      return workspace.seam;
-    },
+    nativeJarvis: true,
   });
-  const [nativeWorkspace] = builtWorkspaces;
-
-  if (nativeWorkspace === undefined) {
-    throw new Error("createApp never called the workspace seam");
-  }
 
   const app: App = {
     ...base,
     presenters: {
       ...base.presenters,
       ...presenters,
-      ...nativeWorkspace.presenters,
+      ...family.workspace.presenters,
+      jarvis: family.jarvis,
+      jarvisDriver: family.jarvisDriver,
+      jarvisDemo: family.jarvisDemo,
+      jarvisUsage: family.jarvisUsage,
     },
-    commands: createCommands(nativeWorkspace.reportDetachedPanels),
+    commands: createCommands(family.workspace.reportDetachedPanels),
     // General rule (see docs/architecture/22-pluggable-application-core.md
     // §22 "Teardown order"): an alternative core releases its own resources
     // first, then the base app, then (for Effect) the runtime. THIS core's
