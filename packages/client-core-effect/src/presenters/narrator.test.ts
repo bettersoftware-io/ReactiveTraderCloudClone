@@ -37,6 +37,17 @@ describe("createNarrator (Effect core)", () => {
     expect(rig.narrations).toHaveLength(1);
   });
 
+  it("a narrate() that throws is reported, and the narrator keeps narrating later anomalies", async () => {
+    const rig = createRig({ narrateThrowsFirst: true });
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(rig.pushAnomaly("EURUSD")).rejects.toThrow("jarvis gone");
+    await vi.advanceTimersByTimeAsync(NARRATION_COOLDOWN_MS);
+    await rig.pushAnomaly("EURUSD");
+
+    expect(rig.narrations).toHaveLength(1);
+  });
+
   it("one pair's failing price stream silences that pair, never the others", async () => {
     const rig = createRig({ failing: "GBPUSD" });
     await vi.advanceTimersByTimeAsync(0);
@@ -56,12 +67,15 @@ interface Rig {
 
 interface RigOptions {
   readonly failing?: string;
+  /** The first `narrate()` throws — a broken jarvis on the other side. */
+  readonly narrateThrowsFirst?: boolean;
 }
 
 function createRig(options: RigOptions = {}): Rig {
   const prices = new Map<string, Subject<PriceTick>>();
   const preference$ = new BehaviorSubject<JarvisNarratorPreference>("on");
   const narrations: string[] = [];
+  let threw = false;
   createNarrator(createDetachedHost(), {
     pairs$: of([createPair("EURUSD"), createPair("GBPUSD")]),
     priceFor: (pair: CurrencyPair) => {
@@ -76,6 +90,11 @@ function createRig(options: RigOptions = {}): Rig {
       return subject;
     },
     narrate: (prompt: string) => {
+      if (options.narrateThrowsFirst === true && !threw) {
+        threw = true;
+        throw new Error("jarvis gone");
+      }
+
       narrations.push(prompt);
     },
     preference$,

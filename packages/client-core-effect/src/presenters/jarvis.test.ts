@@ -1,10 +1,15 @@
 import { Effect, Exit, Scope } from "effect";
-import { NEVER, of, throwError } from "rxjs";
+import { BehaviorSubject, NEVER, of, throwError } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { JarvisEvent } from "@rtc/client-core";
 import type { JarvisPort, JarvisState } from "@rtc/core-api";
-import { Direction, JARVIS_CONFIRM_TIMEOUT_MS } from "@rtc/domain";
+import {
+  Direction,
+  JARVIS_CONFIRM_TIMEOUT_MS,
+  type JarvisBrain,
+  type JarvisEffort,
+} from "@rtc/domain";
 
 import { createDetachedHost, type EffectHost } from "#/bridge/out";
 import { createJarvisMachine, type NativeJarvis } from "#/presenters/jarvis";
@@ -50,6 +55,59 @@ describe("createJarvisMachine (Effect core)", () => {
     expect(port.ask).toHaveBeenCalledWith("hi", {
       brain: "scripted",
       effort: "medium",
+    });
+  });
+
+  it("a preference change reaches the very next send in the same tick: skin, brain and effort are relayed synchronously, as in the RxJS and async cores", () => {
+    const port = createPort();
+    const brain$ = new BehaviorSubject<JarvisBrain>("scripted");
+    const effort$ = new BehaviorSubject<JarvisEffort>("medium");
+    const host = createDetachedHost();
+    const jarvis = createJarvisMachine(host, {
+      port,
+      skin$: of("singularity" as const),
+      setSkin: () => {
+        // unused
+      },
+      availability$: of({
+        available: true,
+        brains: ["scripted", "claude-haiku-4-5"] as const,
+        defaultBrain: "scripted" as const,
+        gate: null,
+      }),
+      preferredBrain$: brain$,
+      effort$,
+    });
+
+    brain$.next("claude-haiku-4-5");
+    effort$.next("high");
+    jarvis.handle.intents.send("now");
+
+    expect(port.ask).toHaveBeenCalledWith("now", {
+      brain: "claude-haiku-4-5",
+      effort: "high",
+    });
+    expect(jarvis.stateNow().skin).toBe("singularity");
+  });
+
+  it("a port.ask that THROWS synchronously closes its turn as an error, and the next send still asks — the queue never wedges", () => {
+    const ask = vi.fn<JarvisPort["ask"]>(() => {
+      throw new Error("adapter bug");
+    });
+    const { jarvis } = createRig({
+      ask,
+      confirm: () => {
+        // unused
+      },
+    });
+
+    jarvis.handle.intents.send("first");
+    jarvis.handle.intents.send("second");
+
+    expect(ask).toHaveBeenCalledTimes(2);
+    expect(jarvis.stateNow().entries.at(-1)).toMatchObject({
+      text: "adapter bug",
+      done: true,
     });
   });
 

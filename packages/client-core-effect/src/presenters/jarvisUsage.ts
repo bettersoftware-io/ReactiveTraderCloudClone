@@ -3,7 +3,12 @@ import type { ObservedValueOf } from "rxjs";
 
 import type { JarvisUsagePort, JarvisUsagePresenter } from "@rtc/core-api";
 
-import { type EffectHost, fromPortIn, listenToStateStream } from "#/bridge/out";
+import {
+  type EffectHost,
+  fromPortIn,
+  listenToStateStream,
+  reportOutOfBand,
+} from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
 /** What `usage$` carries: a snapshot, or `null` before the first. */
@@ -36,6 +41,13 @@ export function createJarvisUsagePresenter(
             ref.set(() => {
               return snapshot;
             });
+          });
+        }),
+        // A failed usage port leaves the last snapshot showing and is
+        // reported, never silently lost.
+        Effect.catchAllCause((cause) => {
+          return Effect.sync(() => {
+            reportOutOfBand(cause);
           });
         }),
       ),

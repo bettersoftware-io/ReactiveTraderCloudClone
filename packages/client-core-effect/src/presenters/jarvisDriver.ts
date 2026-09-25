@@ -45,10 +45,17 @@ type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
  * at each batch's start; `outcomes$` is a synchronous hot stream in
  * application order.
  */
+/** The driver, plus the synchronous outcome listener its family folds the
+ * transcript through. */
+export interface NativeJarvisDriver {
+  readonly handle: JarvisDriverMachineHandle;
+  listenOutcomes(listener: (outcome: DriveOutcome) => void): () => void;
+}
+
 export function createJarvisDriver(
   parent: EffectHost,
   deps: JarvisDriverDeps,
-): JarvisDriverMachineHandle {
+): NativeJarvisDriver {
   const host = createChildHost(parent);
   const ref = createSyncRef<JarvisDriverState>(host, { lastBatch: [] });
   const outcomes = createHotStream<DriveOutcome>();
@@ -106,5 +113,8 @@ export function createJarvisDriver(
     ),
   );
 
-  return { state$: warm.state$, outcomes$: outcomes.stream$ };
+  return {
+    handle: { state$: warm.state$, outcomes$: outcomes.stream$ },
+    listenOutcomes: outcomes.listen,
+  };
 }

@@ -101,10 +101,9 @@ export interface NativeWorkspaceDeps {
  * app's `dispose()`) interrupts the relays and the pending write, and
  * releases every keep-warm.
  *
- * Built outside the Layer graph, unlike every other native member: its
- * input — the base app's Jarvis events — only exists inside the base's
- * `createApp`, which calls the `CoreSeams.workspace` factory that builds
- * this (slice 7 ruling 3). Wave 2 moves it into the graph with `jarvis`. */
+ * Built outside the Layer graph, with the rest of the Jarvis family
+ * (`presenters/jarvisFamily.ts`), over this core's own `jarvis.events$`
+ * (slice 7 wave 2; wave 1's `CoreSeams.workspace` factory is deleted). */
 export function createNativeWorkspace(
   parent: EffectHost,
   deps: NativeWorkspaceDeps,

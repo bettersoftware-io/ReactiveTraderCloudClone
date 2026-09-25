@@ -1,5 +1,3 @@
-import { Effect, Stream } from "effect";
-
 import { LAYOUT_PANEL_IDS } from "@rtc/client-core";
 import type {
   AppPorts,
@@ -27,7 +25,7 @@ import type {
   ThemeSkin,
 } from "@rtc/domain";
 
-import { type EffectHost, fromPortIn } from "#/bridge/out";
+import type { EffectHost } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import {
   createJarvisMachine,
@@ -126,16 +124,11 @@ export function createJarvisFamily(
       },
     },
   });
-  host.runtime.runFork(
-    fromPortIn(host.scope)(jarvisDriver.outcomes$).pipe(
-      Stream.runForEach((outcome) => {
-        return Effect.sync(() => {
-          jarvis.handle.intents.recordDriveOutcome(outcome);
-        });
-      }),
-    ),
-    { scope: host.scope },
-  );
+  // Synchronously, in the same commit as the driver's own — as the RxJS and
+  // async cores record them.
+  jarvisDriver.listenOutcomes((outcome) => {
+    jarvis.handle.intents.recordDriveOutcome(outcome);
+  });
   const jarvisDemo = createJarvisDemo(host, {
     jarvisStateNow: jarvis.stateNow,
     listenState: jarvis.listenState,
@@ -156,7 +149,7 @@ export function createJarvisFamily(
 
   return {
     jarvis: jarvis.handle,
-    jarvisDriver,
+    jarvisDriver: jarvisDriver.handle,
     jarvisDemo,
     jarvisUsage: createJarvisUsagePresenter(host, ports.jarvisUsage),
     workspace,

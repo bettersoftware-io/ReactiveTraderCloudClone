@@ -85,6 +85,21 @@ export function createJarvisDemo(
         lastEntryId(deps.jarvisStateNow().entries),
       );
       let decline: Fiber.RuntimeFiber<void> | null = null;
+
+      // Every way the step ends releases the same things. `Effect.async`
+      // runs its returned canceler on interruption ONLY — a step that
+      // settles normally must release here, or its listeners stay attached
+      // to jarvis for the app's life.
+      function release(): void {
+        unlistenState();
+        unlistenEvents();
+
+        if (decline !== null) {
+          Effect.runFork(Fiber.interrupt(decline));
+          decline = null;
+        }
+      }
+
       const unlistenState = deps.listenState((state: JarvisState) => {
         watch.observeState(state);
       });
@@ -107,19 +122,13 @@ export function createJarvisDemo(
         }
 
         if (signalled !== null) {
+          release();
           resume(Effect.succeed(signalled));
         }
       });
       deps.jarvis.sendScripted(step.command);
 
-      return Effect.sync(() => {
-        unlistenState();
-        unlistenEvents();
-
-        if (decline !== null) {
-          Effect.runFork(Fiber.interrupt(decline));
-        }
-      });
+      return Effect.sync(release);
     }).pipe(
       Effect.timeoutTo({
         duration: DEMO_STEP_TIMEOUT_MS,

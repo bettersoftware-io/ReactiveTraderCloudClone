@@ -957,6 +957,48 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   used to stay attached in the async core; after the wave both siblings
   propagate the error to `panelData$` subscribers, as RxJS does.)
 
+**Decided in slice 7 — wave 2, Jarvis** (2026-09-25):
+
+- **All 74 members are native in both alternative cores.** Wave 2 added
+  `jarvis`, `jarvisUsage`, `jarvisDriver`, `jarvisDemo` and the internal
+  narrator; `PENDING_SUITES` is empty. Slice 8 deletes the delegation.
+- **Jarvis's rules are SHARED, like the workspace's.** The transcript
+  patches and session scalars (`createJarvisController`: entry ids, the
+  in-flight turn, availability, brain, effort, the confirmation ticks), the
+  drive-command interpreter (`applyDriveCommand`, `driveStaggerMs`), the
+  demo's script and per-step settle watcher (`createDemoStepWatch`) and the
+  narrator's cooldown/cap gate live in rxjs-free `@rtc/client-core`
+  modules; `@rtc/domain` gained the pure anomaly step
+  (`createAnomalyDetector`) and the Jarvis constants the suites assert.
+  Each core ports only the timing: the turn queue, the countdown, the
+  stagger, the beats and the step timeout.
+- **A patch is applied exactly once.** Several have effects at apply time
+  (the port's `confirm`, an entry id); the countdown's expiry declines only
+  while its own card is still pending, so a core that cancels its timer
+  asynchronously can never decline a trade just approved.
+- **The WS-only extras are optional `JarvisPort` members** (`availability$`,
+  `setHistorySource`), replacing `instanceof WsJarvisAdapter`, so every
+  core — and the contract harness — reaches them the same way.
+- **`CoreSeams.nativeJarvis` replaces the `workspace` factory.** Each sibling
+  builds its whole Jarvis family and a workspace over its OWN
+  `jarvis.events$`; the base app still builds every member (the parity
+  drift test needs them) but stands down: no availability request, no
+  history source, no narrator, folds that read nothing, a workspace that
+  restores and writes nothing. The factory and `WorkspaceSeam` are deleted.
+- **A hot event stream is delivered synchronously.** The Effect core's
+  `events$`/`outcomes$` are a bridge `createHotStream`, and an idle `send`
+  subscribes its `ask` in the same tick: a reader attached on a fiber — or a
+  turn queue drained by one — loses a same-tick reply (a contract case
+  caught the second in the Effect port).
+- **Port discipline counts subscriptions, not just calls:** on the real WS
+  adapter each `availability$` or `usage$` subscription is a server request.
+- **Recorded divergences, kinder than RxJS and uncontracted:** a failed
+  `port.ask` closes its turn as an error (RxJS would kill the machine); a
+  failing price feed silences only its own pair until the next roster (RxJS
+  stops all narration).
+- **Fixed on the way:** a driven dock the workspace refuses (an id colliding
+  with a workspace panel) is reported `refused`, not `applied`.
+
 ## Follow-ups
 
 1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):

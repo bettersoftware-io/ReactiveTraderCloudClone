@@ -364,7 +364,7 @@ A member's entry is either a `Suite` function (`describeXContract`) or
 `null` while its suite is still pending — and every `null` entry must also
 appear in the hand-maintained `PENDING_SUITES` array, which
 `registry.test.ts` checks by drift: the two lists disagree and the test
-fails. As of slice 7's wave 1, seventy members have real suites — slice 1a's
+fails. As of slice 7's wave 2, all seventy-four members have real suites — slice 1a's
 six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 `currencyPairs`, `blotter`, `analytics`, `execution`; `staleFlag`,
 `analyticsStaleFlag`, `rowHighlight`, `notional`, `tileExecution`), slice
@@ -378,10 +378,11 @@ six, slice 1b's eleven, slice 2's eleven (`priceStream`, `priceHistory`,
 7 wave 1's twelve (the workspace: `layoutFor`, `machines.layout`,
 `dockLayoutStore`, `dockPanel`, `undockPanel`, `dismissPanel`,
 `resetWorkspaceLayout`, `dockedPanelIdsFor`, `workspaceLayoutResets$`,
-`layoutPresets`, `commands.reportDetachedPanels`, `jarvisPanels`) — and 4
-are pending, Jarvis's (37 at slice 3's merge, 38 once Dockview Phase 6b's
-`layoutPresets` joined, 30 after slice 4, 21 after slice 5, 16 after slice
-6). Each
+`layoutPresets`, `commands.reportDetachedPanels`, `jarvisPanels`) and wave
+2's four (`jarvis`, `jarvisUsage`, `jarvisDriver`, `jarvisDemo`, the narrator
+contracted through `jarvis`) — and none is pending (37 at slice 3's merge,
+38 once Dockview Phase 6b's `layoutPresets` joined, 30 after slice 4, 21
+after slice 5, 16 after slice 6, 4 after slice 7's wave 1). Each
 suite subscribes to the member's
 `Stream`/`StateStream`, drives a scripted `AppPorts` harness (`scriptPorts`
 — Subject-backed streams for the connection, the colour scheme, the FX,
@@ -421,8 +422,8 @@ Each alternative core ships a committed `parity.json` —
 inequality** against the RxJS core's own instances: a `"delegated"` member
 must literally *be* the RxJS instance (same object), and a `"native"` member
 must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 5 both
-alternative cores list seventy members `"native"` (`connection`, all
+`commands` — and the drift test walks all three. As of slice 7's wave 2
+both alternative cores list all seventy-four members `"native"` (`connection`, all
 fifteen preference presenters, `commands.reconnect`, the six FX
 pricing/blotter presenters and the five FX machines, the four credit
 presenters and the four RFQ machines — `rfqCountdown` having joined
@@ -430,9 +431,11 @@ presenters and the four RFQ machines — `rfqCountdown` having joined
 presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two equities workspace singletons (`eqWorkspace`,
 `eqDrawings`) and the machine `orderTicket`, slice 5's nine admin members,
-slice 6's five shell members, and slice 7 wave 1's twelve workspace
-members — every machine factory is now native) and everything else
-`"delegated"`. Slice 5 landed one core at a
+slice 6's five shell members, slice 7 wave 1's twelve workspace
+members and wave 2's four Jarvis members) and nothing `"delegated"`. Each
+sibling builds its Jarvis family and workspace itself; the base app stands
+down through `CoreSeams.nativeJarvis` (wave 1's `CoreSeams.workspace`
+factory is deleted). Slice 5 landed one core at a
 time — async first, Effect the same day — so for a few hours the two
 manifests disagreed, which the tooling reports and nothing forbids. The
 manifest says so explicitly rather than leaving it

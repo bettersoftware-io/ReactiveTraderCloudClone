@@ -220,11 +220,34 @@ export function createHotStream<T>(): HotStream<T> {
       });
     }),
     listen,
+    // A listener that throws is reported and skipped, as an RxJS Subject
+    // reports a throwing subscriber: the others, and later values, still
+    // arrive.
     publish: (value: T) => {
       for (const listener of [...listeners]) {
-        listener(value);
+        try {
+          listener(value);
+        } catch (error) {
+          reportOutOfBand(Cause.die(error));
+        }
       }
     },
+  };
+}
+
+/** Hear a core stream synchronously, as an RxJS subscriber does — for a
+ * machine whose state must follow a source in the same tick its value
+ * arrives (Jarvis's preferences and availability). A source failure is
+ * handed to `onError` and ends the listening; returns the release. */
+export function listenToStream<T>(
+  source: CoreStream<T>,
+  listener: (value: T) => void,
+  onError: (error: unknown) => void,
+): () => void {
+  const subscription = source.subscribe({ next: listener, error: onError });
+
+  return () => {
+    subscription.unsubscribe();
   };
 }
 

@@ -1,4 +1,12 @@
-import { Effect, ExecutionStrategy, Exit, Fiber, Scope, Stream } from "effect";
+import {
+  Cause,
+  Effect,
+  ExecutionStrategy,
+  Exit,
+  Fiber,
+  Scope,
+  Stream,
+} from "effect";
 
 import {
   approvePatch,
@@ -36,6 +44,8 @@ import {
   createHotStream,
   type EffectHost,
   fromPortIn,
+  listenToStream,
+  reportOutOfBand,
 } from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
@@ -85,7 +95,6 @@ export function createJarvisMachine(
   deps: JarvisMachineDeps,
 ): NativeJarvis {
   const host = createChildHost(parent);
-  const fromPort = fromPortIn(host.scope);
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const controller = createJarvisController();
   const ref = createSyncRef<JarvisState>(host, JARVIS_INITIAL_STATE);
@@ -192,9 +201,25 @@ export function createJarvisMachine(
         Scope.fork(host.scope, ExecutionStrategy.sequential),
       );
 
-      const replies = fromPortIn(turnScope)(
-        deps.port.ask(plan.wireText, plan.options),
-      );
+      let asked: CoreStream<JarvisEvent>;
+
+      try {
+        asked = deps.port.ask(plan.wireText, plan.options);
+      } catch (error) {
+        // An adapter that throws instead of failing its stream: the turn
+        // closes as an error and the queue moves on, never wedging.
+        host.runtime.runSync(Scope.close(turnScope, Exit.void));
+        foldEvent(
+          {
+            type: "error",
+            message: error instanceof Error ? error.message : String(error),
+          },
+          plan.origin,
+        );
+        continue;
+      }
+
+      const replies = fromPortIn(turnScope)(asked);
       host.runtime.runFork(
         replies.pipe(
           Stream.runForEach((event: JarvisEvent) => {
@@ -215,6 +240,13 @@ export function createJarvisMachine(
                 },
                 plan.origin,
               );
+            });
+          }),
+          // A defect (a throw inside a fold) is reported, and the queue still
+          // moves on — `catchAll` above catches failures only.
+          Effect.catchAllCause((cause) => {
+            return Effect.sync(() => {
+              reportOutOfBand(cause);
             });
           }),
           Effect.ensuring(Scope.close(turnScope, Exit.void)),
@@ -242,22 +274,18 @@ export function createJarvisMachine(
     }
   }
 
+  const releases: (() => void)[] = [];
+
+  function reportError(error: unknown): void {
+    reportOutOfBand(Cause.fail(error));
+  }
+
+  // Synchronous, as the RxJS and async machines apply them: a preference
+  // changed in one tick reaches a `send` made in that same tick. A failed
+  // source leaves the machine on its last value and is reported, never
+  // taking the machine down.
   function relayInto<T>(source: CoreStream<T>, fold: (value: T) => void): void {
-    host.runtime.runFork(
-      fromPort(source).pipe(
-        Stream.runForEach((value: T) => {
-          return Effect.sync(() => {
-            fold(value);
-          });
-        }),
-        Effect.catchAll(() => {
-          // A failed preference or availability source leaves the machine
-          // on its last value; it never takes the machine down.
-          return Effect.void;
-        }),
-      ),
-      { scope: host.scope },
-    );
+    releases.push(listenToStream(source, fold, reportError));
   }
 
   relayInto(deps.effort$, (effort) => {
@@ -286,6 +314,11 @@ export function createJarvisMachine(
       Effect.sync(() => {
         closed = true;
         countdown = null;
+
+        for (const release of releases.splice(0)) {
+          release();
+        }
+
         warm.release();
       }),
     ),

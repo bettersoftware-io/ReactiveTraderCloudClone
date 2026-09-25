@@ -12,6 +12,31 @@ import { createJarvisDemo } from "#/presenters/jarvisDemo";
 // The Effect demo's own re-entrancy — a listener that stops or restarts the
 // demo synchronously, in reaction to a state it just wrote (RxJS makes both
 // safe by construction: takeUntil / exhaustMap's synchronous inner end).
+describe("createJarvisDemo (Effect core) — step watchers are released", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a step that settles normally releases its state and event listeners — only the running step's pair stays attached", async () => {
+    const rig = createRig();
+
+    rig.demo.intents.startDemo();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(rig.liveListeners()).toBe(2);
+
+    rig.replyToLatest({ type: "done" });
+    await vi.advanceTimersByTimeAsync(DEMO_STEP_BEAT_MS);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(rig.asks).toHaveLength(2);
+    expect(rig.liveListeners()).toBe(2);
+  });
+});
+
 describe("createJarvisDemo (Effect core) — re-entrant stop and start", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -62,6 +87,8 @@ interface Rig {
   readonly demo: ReturnType<typeof createJarvisDemo>;
   readonly asks: Subject<JarvisEvent>[];
   replyToLatest(event: JarvisEvent): void;
+  /** The demo's listeners currently attached to jarvis, state + events. */
+  liveListeners(): number;
 }
 
 function createRig(): Rig {
@@ -87,10 +114,26 @@ function createRig(): Rig {
     effort$: of("medium" as const),
   });
 
+  let live = 0;
+
+  function counted<T>(
+    listen: (listener: (value: T) => void) => () => void,
+  ): (listener: (value: T) => void) => () => void {
+    return (listener: (value: T) => void) => {
+      live += 1;
+      const release = listen(listener);
+
+      return () => {
+        live -= 1;
+        release();
+      };
+    };
+  }
+
   const demo = createJarvisDemo(host, {
     jarvisStateNow: jarvis.stateNow,
-    listenState: jarvis.listenState,
-    listenEvents: jarvis.listenEvents,
+    listenState: counted(jarvis.listenState),
+    listenEvents: counted(jarvis.listenEvents),
     jarvis: jarvis.handle.intents,
     powerSaverLevel: () => {
       return "off";
@@ -99,6 +142,9 @@ function createRig(): Rig {
   return {
     demo,
     asks,
+    liveListeners: () => {
+      return live;
+    },
     replyToLatest: (event: JarvisEvent) => {
       const reply = asks.at(-1);
       reply?.next(event);

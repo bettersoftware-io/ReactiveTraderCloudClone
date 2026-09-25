@@ -72,6 +72,29 @@ describe("bridge/out createHotStream listen + listenToStateStream", () => {
     expect(seen).toEqual(["a"]);
   });
 
+  it("a listener that throws is reported and skipped: later listeners and later publishes still arrive, as with an RxJS Subject", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const hot = createHotStream<number>();
+      const seen: number[] = [];
+      hot.listen(() => {
+        throw new Error("bad listener");
+      });
+      hot.listen((value: number) => {
+        seen.push(value);
+      });
+
+      hot.publish(1);
+      hot.publish(2);
+
+      expect(seen).toEqual([1, 2]);
+      await expect(vi.runAllTimersAsync()).rejects.toThrow("bad listener");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("listenToStateStream() calls listen only on its first subscriber, and replays the current value", () => {
     let listens = 0;
     let current = 1;

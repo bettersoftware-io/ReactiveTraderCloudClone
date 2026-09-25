@@ -1,4 +1,4 @@
-import { Clock, Effect, Stream } from "effect";
+import { Cause, Clock, Effect, Stream } from "effect";
 
 import {
   admitAnomaly,
@@ -19,6 +19,7 @@ import {
   createChildHost,
   type EffectHost,
   fromPortIn,
+  reportOutOfBand,
   scopedPortStream,
 } from "#/bridge/out";
 
@@ -60,7 +61,13 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
       gate = admitAnomaly(gate, anomaly, now);
 
       if (gate.shouldNarrate) {
-        deps.narrate(formatNarrationPrompt(anomaly));
+        // A narrate that throws is reported, and narration carries on — as
+        // an RxJS subscriber's throw is reported without ending the stream.
+        try {
+          deps.narrate(formatNarrationPrompt(anomaly));
+        } catch (error) {
+          reportOutOfBand(Cause.die(error));
+        }
       }
     }
   }
