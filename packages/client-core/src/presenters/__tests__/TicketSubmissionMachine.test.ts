@@ -1,4 +1,4 @@
-import { type Observable, of } from "rxjs";
+import { NEVER, type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
@@ -9,7 +9,10 @@ import { RfqsPresenter, type TicketSubmissionState } from "../RfqsPresenter";
 describe("RfqsPresenter.createTicketSubmission", () => {
   it("starts not-submitted (synchronous default)", () => {
     const rec: Recorder = { quote: [], pass: [] };
-    const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
+    const machine = new RfqsPresenter(
+      port(rec),
+      NEVER,
+    ).createTicketSubmission();
     let current: TicketSubmissionState | undefined;
     const sub = machine.state$.subscribe((s) => {
       current = s;
@@ -23,7 +26,10 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const rec: Recorder = { quote: [], pass: [] };
-      const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
+      const machine = new RfqsPresenter(
+        port(rec),
+        NEVER,
+      ).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
       const sub = machine.state$.subscribe((s) => {
         return states.push(s);
@@ -43,7 +49,10 @@ describe("RfqsPresenter.createTicketSubmission", () => {
     const ts = scheduler();
     ts.run(({ flush }) => {
       const rec: Recorder = { quote: [], pass: [] };
-      const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
+      const machine = new RfqsPresenter(
+        port(rec),
+        NEVER,
+      ).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
       const sub = machine.state$.subscribe((s) => {
         return states.push(s);
@@ -67,6 +76,7 @@ describe("RfqsPresenter.createTicketSubmission", () => {
       // must remain not-submitted rather than latching submitted:true.
       const machine = new RfqsPresenter(
         port(rec, cold("10ms #")),
+        NEVER,
       ).createTicketSubmission();
       const states: TicketSubmissionState[] = [];
       const sub = machine.state$.subscribe((s) => {
@@ -85,7 +95,10 @@ describe("RfqsPresenter.createTicketSubmission", () => {
 
   it("dispose tears down without emitting after teardown", () => {
     const rec: Recorder = { quote: [], pass: [] };
-    const machine = new RfqsPresenter(port(rec)).createTicketSubmission();
+    const machine = new RfqsPresenter(
+      port(rec),
+      NEVER,
+    ).createTicketSubmission();
     const states: TicketSubmissionState[] = [];
     const sub = machine.state$.subscribe((s) => {
       return states.push(s);

@@ -77,7 +77,12 @@ export class RfqsPresenter implements RfqsPresenterApi {
     Observable<readonly Quote[]>
   >();
 
-  constructor(private readonly workflow: WorkflowPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases both held `workflow.events()` subscriptions — see `warmReplay`. */
+  constructor(
+    private readonly workflow: WorkflowPort,
+    disposed$: Observable<unknown>,
+  ) {
     // state$ holds the workflow WS subscription that rfqs$/allQuotes$/
     // quotesForRfq$ all derive from → warm across tab remounts (singleton per
     // connection), so those derived streams re-read its buffer on remount
@@ -92,7 +97,7 @@ export class RfqsPresenter implements RfqsPresenterApi {
       },
     })
       .execute()
-      .pipe(warmReplay());
+      .pipe(warmReplay(disposed$));
     this.rfqs$ = this.state$.pipe(
       map((s) => {
         return Array.from(s.rfqs.values());
@@ -109,7 +114,7 @@ export class RfqsPresenter implements RfqsPresenterApi {
     );
     // Second, independent subscription (raw events for animation signals) →
     // also warm, so it isn't re-subscribed on remount.
-    this.events$ = events.pipe(warmReplay());
+    this.events$ = events.pipe(warmReplay(disposed$));
   }
 
   quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {

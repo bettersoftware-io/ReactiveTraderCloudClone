@@ -1,55 +1,23 @@
 import { Effect, Stream } from "effect";
-import { BehaviorSubject, NEVER, Observable } from "rxjs";
+import { NEVER, Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import type { AppPorts, StoredSession } from "@rtc/core-api";
-import {
-  countEveryPortStream,
-  createTally,
-  EURUSD,
-  scriptPorts,
-} from "@rtc/core-contract";
+import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
   type CurrencyPair,
   PreferencesSimulator,
-  ROSTER,
 } from "@rtc/domain";
 
 import { streamToStream } from "#/bridge/out";
 import { type ComposedApp, composeApp } from "#/composition";
 
+// What every core promises of `dispose()` — no port stream stays subscribed,
+// the transport gate is released, a second call resolves — is the
+// `@rtc/core-contract` `dispose` suite, run by `coreContract.test.ts`. This
+// file keeps what only this core's mechanism can show.
 describe("composition teardown", () => {
-  it("releases every port subscription it holds on dispose, with no base app behind it", async () => {
-    const counted = createCountingSimulatorPorts();
-    const { app } = composeApp(counted.ports);
-    const sub = app.presenters.priceStream.price$(EURUSD).subscribe(() => {});
-    sub.unsubscribe();
-    // A positive witness first: composition holds SOME port stream open,
-    // so a zero after dispose() is a release, not a counter nobody fed.
-    expect(counted.liveSubscriptions()).toBeGreaterThan(0);
-    await app.dispose();
-    expect(counted.liveSubscriptions()).toBe(0);
-  });
-
-  it("dispose() releases the transport gate: a later sign-out does not disconnect", async () => {
-    const { ports, driver, teardown } = scriptPorts(createPorts(), {
-      transport: true,
-      session: createStoredSession(),
-    });
-    const { app } = composeApp(ports);
-
-    try {
-      expect(driver.transportCalls()).toEqual(["connect"]);
-      await app.dispose();
-      app.presenters.auth.logout();
-      expect(driver.transportCalls()).toEqual(["connect"]);
-    } finally {
-      teardown();
-    }
-  });
-
   it("dispose() interrupts stream fibers forked into the app's scope", async () => {
     const { app, host } = composeApp(createPorts());
     let interrupted = false;
@@ -70,12 +38,6 @@ describe("composition teardown", () => {
     await app.dispose();
     await tick();
     expect(interrupted).toBe(true);
-  });
-
-  it("dispose() resolves when called twice", async () => {
-    const { app } = composeApp(createPorts());
-    await expect(app.dispose()).resolves.toBeUndefined();
-    await expect(app.dispose()).resolves.toBeUndefined();
   });
 
   it("dispose() closes the host scope: a retained singleton's port is released", async () => {
@@ -172,46 +134,4 @@ function tick(): Promise<unknown> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
-}
-
-function createStoredSession(): StoredSession {
-  const [first] = ROSTER;
-
-  return {
-    token: "t",
-    user: first.user,
-    username: first.username,
-    exp: Date.now() + 3_600_000,
-  };
-}
-
-interface CountingPorts {
-  ports: AppPorts;
-  /** Subscriptions currently open on ANY stream ANY port method returned. */
-  liveSubscriptions(): number;
-}
-
-/** The simulator ports (plus a colour-scheme source, so the optional port is
- * counted too) with every stream a port method returns counted into one
- * tally. */
-function createCountingSimulatorPorts(): CountingPorts {
-  const tally = createTally();
-  const ports = countEveryPortStream(
-    {
-      ...createPorts(),
-      colorScheme: {
-        prefersDark$: () => {
-          return new BehaviorSubject(false);
-        },
-      },
-    },
-    tally,
-  );
-
-  return {
-    ports,
-    liveSubscriptions: () => {
-      return tally.live;
-    },
-  };
 }

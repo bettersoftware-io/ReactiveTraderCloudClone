@@ -81,6 +81,7 @@ import type {
   JarvisUsagePayload,
 } from "#/harness/jarvisTypes";
 import { createPendingQueue } from "#/harness/pendingQueue";
+import { countEveryPortStream, createTally } from "#/harness/portTally";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
  * stream methods of `PreferencesPort`, plus the app-lifetime methods the
@@ -166,6 +167,10 @@ export interface HarnessSeed {
    * Absent: the base's, which for every runner is none — the simulator
    * branch has no socket to gate. */
   readonly transport?: boolean;
+  /** Count every subscription to every stream any port method returns (see
+   * `driver.livePortSubscriptions()`) — the dispose witness's instrument.
+   * Opt-in, so no other suite runs behind the extra Proxy layer. */
+  readonly countPortStreams?: boolean;
 }
 
 /** One call the core made on the scripted `ports.transport`. */
@@ -425,6 +430,10 @@ export interface ScriptedDriver {
   /** Subscriptions to anything `jarvisUsage.usage$()` returned — each one a
    * wire subscribe on the real adapter. */
   jarvisUsageSubscriptions(): number;
+  /** Subscriptions open NOW on any stream any port method returned
+   * (`HarnessSeed.countPortStreams`). Throws without the seed: an
+   * uncounted harness must not read as "nothing held". */
+  livePortSubscriptions(): number;
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
@@ -927,40 +936,46 @@ export function scriptPorts(
           },
         };
 
+  const scripted: AppPorts = {
+    ...base,
+    auth,
+    sessionStore,
+    bootSplash,
+    jarvis,
+    jarvisUsage,
+    narratorConfig: seed.narratorConfig ?? base.narratorConfig,
+    transport,
+    dockLayoutStore,
+    layoutPresetStore,
+    preferences,
+    connectionEvents,
+    connectionIntents,
+    colorScheme,
+    pricing,
+    referenceData,
+    blotter,
+    analytics,
+    execution,
+    workflow,
+    dealers,
+    instruments,
+    marketData,
+    orders,
+    positions,
+    telemetry,
+    serviceHealth,
+    eventLog,
+    sessions,
+    admin,
+    metricControls,
+  };
+  const portTally = createTally();
+
   return {
-    ports: {
-      ...base,
-      auth,
-      sessionStore,
-      bootSplash,
-      jarvis,
-      jarvisUsage,
-      narratorConfig: seed.narratorConfig ?? base.narratorConfig,
-      transport,
-      dockLayoutStore,
-      layoutPresetStore,
-      preferences,
-      connectionEvents,
-      connectionIntents,
-      colorScheme,
-      pricing,
-      referenceData,
-      blotter,
-      analytics,
-      execution,
-      workflow,
-      dealers,
-      instruments,
-      marketData,
-      orders,
-      positions,
-      telemetry,
-      serviceHealth,
-      eventLog,
-      sessions,
-      admin,
-      metricControls,
-    },
+    ports:
+      seed.countPortStreams === true
+        ? countEveryPortStream(scripted, portTally)
+        : scripted,
     driver: {
       emitConnection: (event: ConnectionEvent) => {
         connection$.next(event);
@@ -1153,6 +1168,15 @@ export function scriptPorts(
       },
       jarvisUsageSubscriptions: () => {
         return usageSubscriptions;
+      },
+      livePortSubscriptions: () => {
+        if (seed.countPortStreams !== true) {
+          throw new Error(
+            "livePortSubscriptions: seed the harness with countPortStreams",
+          );
+        }
+
+        return portTally.live;
       },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];

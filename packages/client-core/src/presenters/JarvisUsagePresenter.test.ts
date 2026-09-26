@@ -1,4 +1,4 @@
-import { type Observable, Subject } from "rxjs";
+import { NEVER, type Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { JarvisUsageSnapshot } from "@rtc/shared";
@@ -26,6 +26,7 @@ describe("JarvisUsagePresenter", () => {
     const source$ = new Subject<JarvisUsageSnapshot>();
     const presenter = new JarvisUsagePresenter(
       new FakeJarvisUsagePort(source$),
+      NEVER,
     );
 
     let seen: JarvisUsageSnapshot | null | undefined;
@@ -41,6 +42,7 @@ describe("JarvisUsagePresenter", () => {
     const source$ = new Subject<JarvisUsageSnapshot>();
     const presenter = new JarvisUsagePresenter(
       new FakeJarvisUsagePort(source$),
+      NEVER,
     );
 
     const seen: Array<JarvisUsageSnapshot | null> = [];
@@ -57,7 +59,7 @@ describe("JarvisUsagePresenter", () => {
   it("replays the latest snapshot to a subscriber that arrives after an update, without a fresh port.usage$() call", () => {
     const source$ = new Subject<JarvisUsageSnapshot>();
     const port = new FakeJarvisUsagePort(source$);
-    const presenter = new JarvisUsagePresenter(port);
+    const presenter = new JarvisUsagePresenter(port, NEVER);
 
     const keepWarm = presenter.usage$.subscribe();
     source$.next(SNAPSHOT);
@@ -78,7 +80,7 @@ describe("JarvisUsagePresenter", () => {
   it("a subscribe/unsubscribe cycle (tab switch away + back) does not re-invoke port.usage$()", () => {
     const source$ = new Subject<JarvisUsageSnapshot>();
     const port = new FakeJarvisUsagePort(source$);
-    const presenter = new JarvisUsagePresenter(port);
+    const presenter = new JarvisUsagePresenter(port, NEVER);
 
     presenter.usage$.subscribe().unsubscribe();
     presenter.usage$.subscribe().unsubscribe();

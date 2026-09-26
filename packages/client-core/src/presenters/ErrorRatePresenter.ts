@@ -11,7 +11,9 @@ import { windowedSamples } from "./windowedSamples";
 export class ErrorRatePresenter implements ErrorRatePresenterApi {
   readonly samples$: Observable<readonly MetricSample[]>;
 
-  constructor(port: TelemetryPort) {
-    this.samples$ = windowedSamples(port.errorRate$());
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: TelemetryPort, disposed$: Observable<unknown>) {
+    this.samples$ = windowedSamples(port.errorRate$(), disposed$);
   }
 }

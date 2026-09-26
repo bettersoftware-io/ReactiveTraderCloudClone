@@ -12,9 +12,11 @@ import { warmReplay } from "./warmReplay.js";
 export class InstrumentsPresenter implements InstrumentsPresenterApi {
   readonly list$: Observable<readonly Instrument[]>;
 
-  constructor(instruments: InstrumentPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(instruments: InstrumentPort, disposed$: Observable<unknown>) {
     this.list$ = new InstrumentsUseCase(instruments)
       .execute()
-      .pipe(warmReplay());
+      .pipe(warmReplay(disposed$));
   }
 }

@@ -1,4 +1,11 @@
-import { firstValueFrom, lastValueFrom, of, Subject, toArray } from "rxjs";
+import {
+  firstValueFrom,
+  lastValueFrom,
+  NEVER,
+  of,
+  Subject,
+  toArray,
+} from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -22,7 +29,7 @@ describe("RfqsPresenter", () => {
       { type: "rfqCreated", payload: rfq(2) },
       { type: "endOfStateOfTheWorld" },
     ];
-    const presenter = new RfqsPresenter(port(events));
+    const presenter = new RfqsPresenter(port(events), NEVER);
     const last = await firstValueFrom(presenter.rfqs$.pipe(toArray()));
     expect(
       last.at(-1)?.map((r) => {
@@ -38,7 +45,7 @@ describe("RfqsPresenter", () => {
       { type: "quoteCreated", payload: quote(11, 2) },
       { type: "quoteCreated", payload: quote(12, 1) },
     ];
-    const presenter = new RfqsPresenter(port(events));
+    const presenter = new RfqsPresenter(port(events), NEVER);
     const last = await firstValueFrom(
       presenter.quotesForRfq$(1).pipe(toArray()),
     );
@@ -61,7 +68,7 @@ describe("RfqsPresenter", () => {
         return of(42);
       },
     };
-    const presenter = new RfqsPresenter(wp);
+    const presenter = new RfqsPresenter(wp, NEVER);
     expect(
       await firstValueFrom(
         presenter.createRfq({
@@ -77,7 +84,7 @@ describe("RfqsPresenter", () => {
   });
 
   it("acceptQuote / cancelRfq / passQuote return Observable<void>", async () => {
-    const presenter = new RfqsPresenter(port([]));
+    const presenter = new RfqsPresenter(port([]), NEVER);
     expect(await firstValueFrom(presenter.acceptQuote(1))).toBeUndefined();
     expect(await firstValueFrom(presenter.cancelRfq(1))).toBeUndefined();
     expect(await firstValueFrom(presenter.passQuote(1))).toBeUndefined();
@@ -92,7 +99,7 @@ describe("RfqsPresenter", () => {
         return of(undefined);
       },
     };
-    const presenter = new RfqsPresenter(wp);
+    const presenter = new RfqsPresenter(wp, NEVER);
     expect(
       await firstValueFrom(presenter.quoteRfq({ quoteId: 99, price: 101.5 })),
     ).toBeUndefined();
@@ -105,7 +112,7 @@ describe("RfqsPresenter", () => {
       { type: "quoteCreated", payload: quote(10, 1) },
       { type: "quoteCreated", payload: quote(11, 2) },
     ];
-    const presenter = new RfqsPresenter(port(events));
+    const presenter = new RfqsPresenter(port(events), NEVER);
     const map = await lastValueFrom(presenter.allQuotes$);
     expect([...map.keys()].sort()).toEqual([10, 11]);
     expect(map.get(10)?.rfqId).toBe(1);
@@ -118,7 +125,7 @@ describe("RfqsPresenter", () => {
       { type: "endOfStateOfTheWorld" },
       { type: "rfqCreated", payload: rfq(2) },
     ];
-    const presenter = new RfqsPresenter(port(events));
+    const presenter = new RfqsPresenter(port(events), NEVER);
     const emissions = await firstValueFrom(presenter.rfqs$.pipe(toArray()));
     const lengths = emissions.map((e) => {
       return e.length;
@@ -137,7 +144,7 @@ describe("RfqsPresenter", () => {
       { type: "quoteCreated", payload: quote(20, 5) },
       { type: "quoteQuoted", payload: quote(20, 5) },
     ];
-    const presenter = new RfqsPresenter(port(events));
+    const presenter = new RfqsPresenter(port(events), NEVER);
     const emissions = await firstValueFrom(
       presenter.quotesForRfq$(5).pipe(toArray()),
     );
@@ -149,7 +156,7 @@ describe("RfqsPresenter", () => {
   });
 
   it("quotesForRfq$ returns the same Observable instance on repeat calls (cache)", () => {
-    const presenter = new RfqsPresenter(port([]));
+    const presenter = new RfqsPresenter(port([]), NEVER);
     const first = presenter.quotesForRfq$(7);
     const second = presenter.quotesForRfq$(7);
     expect(second).toBe(first);
@@ -165,7 +172,7 @@ describe("RfqsPresenter", () => {
       },
     };
 
-    const presenter = new RfqsPresenter(wp);
+    const presenter = new RfqsPresenter(wp, NEVER);
     const seen: string[] = [];
 
     presenter.events$.subscribe((e) => {

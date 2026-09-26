@@ -1,4 +1,4 @@
-import { firstValueFrom, of } from "rxjs";
+import { firstValueFrom, NEVER, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { Dealer, DealerPort } from "@rtc/domain";
@@ -13,7 +13,7 @@ describe("DealersPresenter", () => {
         return of(dealers);
       },
     };
-    expect(await firstValueFrom(new DealersPresenter(port).list$)).toBe(
+    expect(await firstValueFrom(new DealersPresenter(port, NEVER).list$)).toBe(
       dealers,
     );
   });

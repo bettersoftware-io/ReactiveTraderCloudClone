@@ -1,5 +1,6 @@
 import type { MakeHarness } from "#/harness/harness";
 import { CONTRACT_SUITES, type ContractMember } from "#/registry";
+import { describeDisposeContract } from "#/suites/dispose";
 import { describePortDisciplineContract } from "#/suites/portDiscipline";
 import { describeTransportGateContract } from "#/suites/transportGate";
 
@@ -56,6 +57,7 @@ export {
   type ContractMember,
   PENDING_SUITES,
 } from "#/registry";
+export { describeDisposeContract } from "#/suites/dispose";
 export { describePortDisciplineContract } from "#/suites/portDiscipline";
 export { describeTransportGateContract } from "#/suites/transportGate";
 
@@ -79,4 +81,5 @@ export function describeCoreContract(
 
   describePortDisciplineContract(label, makeHarness);
   describeTransportGateContract(label, makeHarness);
+  describeDisposeContract(label, makeHarness);
 }

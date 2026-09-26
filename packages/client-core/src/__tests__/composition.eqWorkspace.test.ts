@@ -1,4 +1,4 @@
-import { firstValueFrom, Subject } from "rxjs";
+import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { EquityInstrument, MarketDataPort } from "@rtc/domain";
@@ -14,6 +14,7 @@ describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", 
     const source$ = new Subject<readonly EquityInstrument[]>();
     const watchlist = new WatchlistPresenter(
       createAsyncMarketDataPort(source$),
+      NEVER,
     );
 
     const resolved = firstValueFrom(
@@ -36,6 +37,7 @@ describe("composition — firstWatchlistSymbol$ (C2 async watchlist recovery)", 
     const source$ = new Subject<readonly EquityInstrument[]>();
     const watchlist = new WatchlistPresenter(
       createAsyncMarketDataPort(source$),
+      NEVER,
     );
 
     const resolved = firstValueFrom(
@@ -53,6 +55,7 @@ describe("composition — EqWorkspaceMachine wired to an async watchlist port (C
     const source$ = new Subject<readonly EquityInstrument[]>();
     const watchlist = new WatchlistPresenter(
       createAsyncMarketDataPort(source$),
+      NEVER,
     );
 
     // Mirrors composition.ts's createApp wiring exactly: initialSymbol from the

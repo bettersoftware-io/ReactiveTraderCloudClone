@@ -2,7 +2,7 @@
 //   pnpm --filter @rtc/client-core test -- SessionsKpiPresenter  → FAIL (module missing)
 // GREEN: SessionsKpiPresenter created → all cases pass.
 
-import { firstValueFrom, Subject } from "rxjs";
+import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricSample, SessionInfo, SessionsPort } from "@rtc/domain";
@@ -20,7 +20,7 @@ describe("SessionsKpiPresenter", () => {
   });
 
   it("emits an empty series before any sessions arrive", async () => {
-    const presenter = new SessionsKpiPresenter(createFakePort());
+    const presenter = new SessionsKpiPresenter(createFakePort(), NEVER);
     const first = await firstValueFrom(presenter.countSeries$);
     expect(first).toEqual([]);
   });
@@ -28,7 +28,7 @@ describe("SessionsKpiPresenter", () => {
   it("maps each sessions emission to a MetricSample of the session count", () => {
     vi.setSystemTime(1_000);
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(createFakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject), NEVER);
 
     const emitted: (readonly MetricSample[])[] = [];
     const sub = presenter.countSeries$.subscribe((s) => {
@@ -50,7 +50,7 @@ describe("SessionsKpiPresenter", () => {
 
   it(`caps at WINDOW (${WINDOW}) and drops the oldest samples`, () => {
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(createFakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject), NEVER);
 
     let last: readonly MetricSample[] = [];
     const sub = presenter.countSeries$.subscribe((s) => {
@@ -76,7 +76,7 @@ describe("SessionsKpiPresenter", () => {
   it("survives unsubscribe/resubscribe (tab remount) without losing accumulated samples", () => {
     vi.setSystemTime(1);
     const subject = new Subject<readonly SessionInfo[]>();
-    const presenter = new SessionsKpiPresenter(createFakePort(subject));
+    const presenter = new SessionsKpiPresenter(createFakePort(subject), NEVER);
 
     const sub1 = presenter.countSeries$.subscribe(() => {});
     subject.next([session("a")]);
@@ -115,7 +115,7 @@ describe("SessionsKpiPresenter", () => {
         return subject;
       },
     };
-    const presenter = new SessionsKpiPresenter(port);
+    const presenter = new SessionsKpiPresenter(port, NEVER);
 
     const a: (readonly MetricSample[])[] = [];
     const b: (readonly MetricSample[])[] = [];

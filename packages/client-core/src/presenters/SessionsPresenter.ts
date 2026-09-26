@@ -12,7 +12,9 @@ import { warmReplay } from "./warmReplay.js";
 export class SessionsPresenter implements SessionsPresenterApi {
   readonly sessions$: Observable<readonly SessionInfo[]>;
 
-  constructor(port: SessionsPort) {
-    this.sessions$ = port.sessions$().pipe(warmReplay());
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: SessionsPort, disposed$: Observable<unknown>) {
+    this.sessions$ = port.sessions$().pipe(warmReplay(disposed$));
   }
 }
