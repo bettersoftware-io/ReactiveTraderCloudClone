@@ -43,7 +43,15 @@ import {
 
 import { composeWithBase } from "#/composition";
 
-describe("composeWithBase — core seams", () => {
+// Real timers throughout (the Jarvis reply's typed-reveal pacing, the drive
+// stagger, the persistence debounce), so a CI runner's scheduling delay lands
+// here in full: the dock case alone waits DRIVE_STAGGER_MS +
+// WORKSPACE_PERSIST_DEBOUNCE_MS, then a further debounce, and its own waitFor
+// budget is 8.5 s — more than vitest's 5 s default could ever let it use.
+// Measured 2026-09-26: this file takes ~3 s locally under the full suite,
+// 9.9 s on main's CI and 12.9-14.3 s on #829's, where two cases hit 5 s.
+// The file is strangler scaffolding that slice 8 PR C deletes.
+describe("composeWithBase — core seams", { timeout: 15_000 }, () => {
   it("a Jarvis drive batch selecting a symbol lands on the app's NATIVE eqWorkspace, not the base's own", async () => {
     const { app, base } = composeWithBase(
       createPorts({ jarvis: createSelectingJarvisPort("MSFT") }),
