@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Machine, Presenters } from "@rtc/core-api";
 import type { CurrencyPair } from "@rtc/domain";
 
-import { composeMachinesWithBase, createMachineFactories } from "#/composition";
+import { createMachineFactories } from "#/composition";
 
 // `createMachineFactories` is a WIRING TABLE: each thunk pairs a machine with
 // the presenter members that feed it, and every entry looks plausible, so a
@@ -141,20 +141,6 @@ describe("createMachineFactories — native wiring", () => {
     } finally {
       vi.restoreAllMocks();
     }
-  });
-
-  it("every factory is a NEW closure — none is the base's own", () => {
-    const { presenters } = createStubPresenters();
-    const { base, machines } = composeMachinesWithBase(presenters);
-
-    // What `parity.test.ts` reads as native, asserted here on the one
-    // composition where both halves are in hand.
-    expect(machines.notional).not.toBe(base.notional);
-    expect(machines.staleFlag).not.toBe(base.staleFlag);
-    expect(machines.rfqTile).not.toBe(base.rfqTile);
-    expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
-    expect(machines.boot).not.toBe(base.boot);
-    expect(machines.layout).not.toBe(base.layout);
   });
 });
 

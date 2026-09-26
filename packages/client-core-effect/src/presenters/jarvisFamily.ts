@@ -67,8 +67,7 @@ export interface JarvisFamily {
  * own child host of `host`, in the RxJS composition's order: `jarvis`, the
  * workspace over its OWN `events$`, the driver — whose outcomes fold back
  * into the transcript — the demo, the narrator, the history source and the
- * usage presenter. The base app stands down (`CoreSeams.nativeJarvis`);
- * closing `host`'s scope ends the whole family.
+ * usage presenter. Closing `host`'s scope ends the whole family.
  */
 export function createJarvisFamily(
   host: EffectHost,

@@ -130,7 +130,13 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `devtools-app-protocol-only` | `^packages/devtools-app/src` | `devtools-app\|devtools-core` | `@rtc/devtools-app` understands only the wire protocol — `devtools-core` is its sole `@rtc/*` dependency |
 | `devtools-relay-standalone` | `^packages/devtools-relay/src` | nothing (`pathNot ^packages/devtools-relay/`) | The ws-only relay holds no protocol knowledge — no `@rtc/*` package |
 | `devtools-extension-is-a-leaf` | `^packages/devtools-extension/src` | `devtools-extension\|devtools-core\|devtools-app` | The MV3 extension is a leaf consumer of the devtools pair only |
-| `client-core-stays-inner` | `^packages/client-core/src` | `client-core\|domain\|shared` | The shared application core reaches only inward — never bindings, a view leaf, a client, or the server |
+| `core-api-stays-inner` | `^packages/core-api/src` | `core-api\|domain\|shared` | The types-only application-core contract (ADR-006) sits just inside `domain`/`shared` |
+| `core-logic-stays-inner` | `^packages/core-logic/src` | `core-logic\|core-api\|domain\|shared` | The rules all three application cores share reach only inward (slice 8) |
+| `core-logic-stays-pure` | `^packages/core-logic/src` (tests excepted) | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed; pattern `(^\|node_modules/)` because an unresolvable bare import is recorded unprefixed) | A runtime rxjs import here would put RxJS inside the alternative cores |
+| `client-core-stays-inner` | `^packages/client-core/src` | `client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The RxJS application core reaches only inward — never bindings, a view leaf, a client, or the server (`core-contract` in its runner test only: `client-core-src-uses-core-contract-only-in-tests`) |
+| `alt-cores-stay-inner` | `^packages/client-core-(async\|effect)/src` | itself (`$1`, not its sibling) `\|client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The alternative cores reach only inward; `client-core` and `core-contract` only from tests (`alt-cores-no-client-core-at-runtime`, `alt-cores-use-core-contract-only-in-tests`) |
+| `alt-cores-no-client-core-at-runtime` | `^packages/client-core-(async\|effect)/src` (tests excepted) | — (rejects `^packages/client-core/`) | Since slice 8 an alternative core composes from `core-logic` and its own members only; `client-core` is a devDependency for test adapters |
+| `bridge-owns-rxjs` | `^packages/client-core-(async\|effect)/src` except `bridge/` and tests | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed) | An alternative core that reaches for an operator is RxJS with extra steps (grep gate 43 is the belt to these braces) |
 | `client-core-framework-free` | `^packages/client-core/src` | — (rejects `react`/`react-dom`/`react-native`) | `client-core` stays framework-free by contract despite UI-facing consumers |
 | `react-bindings-no-apps` | `^packages/react-bindings/src` | `react-bindings\|client-core\|domain` | The React↔RxJS bridge depends only inward, never on an app or the server |
 | `solid-bindings-no-apps` | `^packages/solid-bindings/src` | `solid-bindings\|client-core\|domain` | The Solid↔RxJS bridge depends only inward, never on an app or the server |
@@ -151,12 +157,13 @@ allowlist is matched against the **bare package path** (e.g. `^packages/server/`
 so importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** every one of the twenty workspace packages is either the
+**Full coverage:** every one of the twenty-five workspace packages is either the
 `from` of a package-boundary rule or reachable only inward. The pure leaves
 (`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
 `devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
 bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
-`client-core`) allow a small inward set; the clients are guarded against each
+`client-core`, `core-api`, `core-logic`, `core-contract`, the two
+alternative cores) allow a small inward set; the clients are guarded against each
 other and the server. Two backstops complement these rules: `no-circular`, and
 pnpm strict mode (a package cannot even resolve an **undeclared** `@rtc/*`
 import). The allowlist rules add the layer pnpm-strict can't — a **declared

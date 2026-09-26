@@ -12,8 +12,6 @@ export { createCommands } from "#/commands";
 export {
   ASYNC_CORE_BRAND,
   asyncCore,
-  composeMachinesWithBase,
-  composeWithBase,
   createApp,
   createMachineFactories,
 } from "#/composition";

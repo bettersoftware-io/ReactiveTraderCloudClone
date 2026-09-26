@@ -1,25 +1,23 @@
+import { BehaviorSubject, NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
   createSimulatorPorts,
   InMemorySessionStore,
-  reconnect$,
 } from "@rtc/client-core";
-import type { StoredSession } from "@rtc/core-api";
-import { scriptPorts } from "@rtc/core-contract";
+import type { App, StoredSession } from "@rtc/core-api";
+import {
+  countEveryPortStream,
+  createTally,
+  EURUSD,
+  scriptPorts,
+} from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator, ROSTER } from "@rtc/domain";
 
-import { composeWithBase } from "#/composition";
+import { createApp } from "#/composition";
 
-describe("composeWithBase — app lifetime", () => {
-  // `currencyPairs` and `analytics` are deliberately NOT asserted here: the
-  // RxJS BASE app this core still composes over subscribes both eagerly at
-  // construction (the narrator machine and the AnimationDirector read
-  // `pairs$` and `position$`), so the scripted port stays observed after
-  // `app.dispose()` for a reason that has nothing to do with this core. The
-  // release of those two is witnessed directly, without the base in the
-  // way, in `src/presenters/warmSingletons.test.ts`.
+describe("createApp — app lifetime", () => {
   it("blotter.trades$ holds its port subscription across zero subscribers and is released by dispose()", async () => {
     const { app, driver, teardown } = createComposed();
 
@@ -40,7 +38,7 @@ describe("composeWithBase — app lifetime", () => {
       transport: true,
       session: createStoredSession(),
     });
-    const { app } = composeWithBase(ports);
+    const app = createApp(ports);
 
     try {
       expect(driver.transportCalls()).toEqual(["connect"]);
@@ -50,6 +48,18 @@ describe("composeWithBase — app lifetime", () => {
     } finally {
       teardown();
     }
+  });
+
+  it("releases every port subscription it holds on dispose, with no base app behind it", async () => {
+    const counted = createCountingSimulatorPorts();
+    const app = createApp(counted.ports);
+    const sub = app.presenters.priceStream.price$(EURUSD).subscribe(() => {});
+    sub.unsubscribe();
+    // A positive witness first: composition holds SOME port stream open,
+    // so a zero after dispose() is a release, not a counter nobody fed.
+    expect(counted.liveSubscriptions()).toBeGreaterThan(0);
+    await app.dispose();
+    expect(counted.liveSubscriptions()).toBe(0);
   });
 
   it("dispose() twice is safe", async () => {
@@ -65,7 +75,7 @@ describe("composeWithBase — app lifetime", () => {
 
   function createComposed(): Composed {
     const { ports, driver, teardown } = scriptPorts(createBasePorts());
-    return { app: composeWithBase(ports).app, driver, teardown };
+    return { app: createApp(ports), driver, teardown };
   }
 });
 
@@ -78,14 +88,14 @@ function createBasePorts(): AppPorts {
     }),
     connectionEvents: {
       events: () => {
-        return reconnect$;
+        return NEVER;
       },
     },
   };
 }
 
 type Composed = {
-  app: ReturnType<typeof composeWithBase>["app"];
+  app: App;
   driver: ReturnType<typeof scriptPorts>["driver"];
   teardown: () => void;
 };
@@ -98,5 +108,36 @@ function createStoredSession(): StoredSession {
     user: first.user,
     username: first.username,
     exp: Date.now() + 3_600_000,
+  };
+}
+
+interface CountingPorts {
+  ports: AppPorts;
+  /** Subscriptions currently open on ANY stream ANY port method returned. */
+  liveSubscriptions(): number;
+}
+
+/** The simulator ports (plus a colour-scheme source, so the optional port is
+ * counted too) with every stream a port method returns counted into one
+ * tally. */
+function createCountingSimulatorPorts(): CountingPorts {
+  const tally = createTally();
+  const ports = countEveryPortStream(
+    {
+      ...createBasePorts(),
+      colorScheme: {
+        prefersDark$: () => {
+          return new BehaviorSubject(false);
+        },
+      },
+    },
+    tally,
+  );
+
+  return {
+    ports,
+    liveSubscriptions: () => {
+      return tally.live;
+    },
   };
 }

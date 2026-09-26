@@ -1,14 +1,15 @@
 import { Effect, Stream } from "effect";
-import { Observable } from "rxjs";
+import { BehaviorSubject, NEVER, Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import type { AppPorts, StoredSession } from "@rtc/core-api";
 import {
-  createSimulatorPorts,
-  InMemorySessionStore,
-  reconnect$,
-} from "@rtc/client-core";
-import type { StoredSession } from "@rtc/core-api";
-import { scriptPorts } from "@rtc/core-contract";
+  countEveryPortStream,
+  createTally,
+  EURUSD,
+  scriptPorts,
+} from "@rtc/core-contract";
 import {
   AuthSimulator,
   type CurrencyPair,
@@ -17,15 +18,27 @@ import {
 } from "@rtc/domain";
 
 import { streamToStream } from "#/bridge/out";
-import { type ComposedApp, composeWithBase } from "#/composition";
+import { type ComposedApp, composeApp } from "#/composition";
 
 describe("composition teardown", () => {
+  it("releases every port subscription it holds on dispose, with no base app behind it", async () => {
+    const counted = createCountingSimulatorPorts();
+    const { app } = composeApp(counted.ports);
+    const sub = app.presenters.priceStream.price$(EURUSD).subscribe(() => {});
+    sub.unsubscribe();
+    // A positive witness first: composition holds SOME port stream open,
+    // so a zero after dispose() is a release, not a counter nobody fed.
+    expect(counted.liveSubscriptions()).toBeGreaterThan(0);
+    await app.dispose();
+    expect(counted.liveSubscriptions()).toBe(0);
+  });
+
   it("dispose() releases the transport gate: a later sign-out does not disconnect", async () => {
     const { ports, driver, teardown } = scriptPorts(createPorts(), {
       transport: true,
       session: createStoredSession(),
     });
-    const { app } = composeWithBase(ports);
+    const { app } = composeApp(ports);
 
     try {
       expect(driver.transportCalls()).toEqual(["connect"]);
@@ -38,7 +51,7 @@ describe("composition teardown", () => {
   });
 
   it("dispose() interrupts stream fibers forked into the app's scope", async () => {
-    const { app, host } = composeWithBase(createPorts());
+    const { app, host } = composeApp(createPorts());
     let interrupted = false;
     const never = Stream.fromEffect(
       Effect.never.pipe(
@@ -60,17 +73,16 @@ describe("composition teardown", () => {
   });
 
   it("dispose() resolves when called twice", async () => {
-    const { app } = composeWithBase(createPorts());
+    const { app } = composeApp(createPorts());
     await expect(app.dispose()).resolves.toBeUndefined();
     await expect(app.dispose()).resolves.toBeUndefined();
   });
 
   it("dispose() closes the host scope: a retained singleton's port is released", async () => {
     // Counted rather than probed with `observed`: the count is the whole
-    // witness. The base `NarratorMachine` reads THIS core's `pairs$` through
-    // `CoreSeams` from construction, so the retained singleton holds the
-    // port from composition on — one subscription, and none from the RxJS
-    // base app (its own `currencyPairs` is built but has no reader).
+    // witness. This core's own `NarratorMachine` (in the Jarvis family)
+    // reads `pairs$` from construction, so the retained singleton holds the
+    // port from composition on — one subscription.
     let subscribers = 0;
     const roster = new Observable<readonly CurrencyPair[]>(() => {
       subscribers += 1;
@@ -80,7 +92,7 @@ describe("composition teardown", () => {
       };
     });
 
-    const { app } = composeWithBase({
+    const { app } = composeApp({
       ...createPorts(),
       referenceData: {
         getCurrencyPairs: () => {
@@ -104,7 +116,7 @@ describe("composition teardown", () => {
   });
 
   it("an intent on a workspace singleton after dispose() is a silent no-op (ruling 13)", async () => {
-    const { app } = composeWithBase(createPorts());
+    const { app } = composeApp(createPorts());
     await app.dispose();
     await tick();
 
@@ -130,18 +142,18 @@ describe("composition teardown", () => {
     await tick();
   });
 
-  it("ONE runSync: composeWithBase builds the whole Layer graph without an async boundary", async () => {
+  it("ONE runSync: composeApp builds the whole Layer graph without an async boundary", async () => {
     // An async Layer build would surface here as `runSync` throwing
     // `AsyncFiberException` — the witness that the graph stays synchronous.
     let composed: ComposedApp | null = null;
     expect(() => {
-      composed = composeWithBase(createPorts());
+      composed = composeApp(createPorts());
     }).not.toThrow();
     await (composed as ComposedApp | null)?.app.dispose();
   });
 });
 
-function createPorts(): Parameters<typeof composeWithBase>[0] {
+function createPorts(): AppPorts {
   return {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator(),
@@ -150,7 +162,7 @@ function createPorts(): Parameters<typeof composeWithBase>[0] {
     }),
     connectionEvents: {
       events: () => {
-        return reconnect$;
+        return NEVER;
       },
     },
   };
@@ -170,5 +182,36 @@ function createStoredSession(): StoredSession {
     user: first.user,
     username: first.username,
     exp: Date.now() + 3_600_000,
+  };
+}
+
+interface CountingPorts {
+  ports: AppPorts;
+  /** Subscriptions currently open on ANY stream ANY port method returned. */
+  liveSubscriptions(): number;
+}
+
+/** The simulator ports (plus a colour-scheme source, so the optional port is
+ * counted too) with every stream a port method returns counted into one
+ * tally. */
+function createCountingSimulatorPorts(): CountingPorts {
+  const tally = createTally();
+  const ports = countEveryPortStream(
+    {
+      ...createPorts(),
+      colorScheme: {
+        prefersDark$: () => {
+          return new BehaviorSubject(false);
+        },
+      },
+    },
+    tally,
+  );
+
+  return {
+    ports,
+    liveSubscriptions: () => {
+      return tally.live;
+    },
   };
 }

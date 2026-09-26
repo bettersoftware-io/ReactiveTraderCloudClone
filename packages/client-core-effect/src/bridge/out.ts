@@ -35,7 +35,7 @@ export interface EffectRunner {
  * runner to run them with, and the scope every forked stream fiber is
  * attached to. `runFork` produces ROOT fibers — disposing a `ManagedRuntime`
  * does NOT interrupt them — so the scope is what makes the app able to end
- * them, and `composeWithBase` owns both. */
+ * them, and `composeApp` owns both. */
 export interface EffectHost {
   readonly runtime: EffectRunner;
   readonly scope: Scope.CloseableScope;

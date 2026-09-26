@@ -67,7 +67,7 @@ export interface JarvisFamily {
  * order: `jarvis`, then the workspace over its OWN `events$` (the wave-1
  * factory seam is no longer needed), then the driver — whose outcomes fold
  * back into the transcript — the demo, the narrator, the history source and
- * the usage presenter. The base app stands down (`CoreSeams.nativeJarvis`).
+ * the usage presenter.
  */
 export function createJarvisFamily(
   deps: JarvisFamilyDeps,

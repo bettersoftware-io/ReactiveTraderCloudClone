@@ -7,9 +7,8 @@ import { type EffectHost, listenToStream, reportOutOfBand } from "#/bridge/out";
 /** Open `transport` when `authState$` becomes authenticated and close it when
  * it stops being so — once per edge, the first state included (a signed-out
  * start calls `disconnect()`, idempotent on a socket that never opened). The
- * twin of the RxJS core's `gateTransportOnAuth`, over THIS core's own `auth`:
- * the base app's gate watches the base's `auth`, which a native login never
- * reaches. Held until `host`'s scope closes. No `transport` (the simulator
+ * twin of the RxJS core's `gateTransportOnAuth`, over THIS core's own `auth`.
+ * Held until `host`'s scope closes. No `transport` (the simulator
  * branch) leaves nothing to gate. */
 export function gateTransportOnAuth(
   host: EffectHost,

@@ -2,6 +2,7 @@ import { concat, NEVER, type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
+  countEveryPortStream,
   countInto,
   countSubscriptions,
   createTally,
@@ -117,4 +118,57 @@ class PrototypePort {
   name(): string {
     return this?.label === "a field" ? "proto" : "unbound";
   }
+}
+
+describe("countEveryPortStream", () => {
+  it("counts a live subscription to any port method's stream — prototype methods included — until it is released", () => {
+    const tally = createTally();
+    const ports = countEveryPortStream(
+      {
+        feed: createPrototypeFeed(),
+        plain: {
+          events: () => {
+            return NEVER;
+          },
+        },
+      },
+      tally,
+    );
+    const a = ports.feed.stream().subscribe();
+    const b = ports.plain.events().subscribe();
+    expect(tally.live).toBe(2);
+    a.unsubscribe();
+    b.unsubscribe();
+    expect(tally.live).toBe(0);
+  });
+
+  it("passes non-stream results, non-object members and arrays through untouched", () => {
+    const tally = createTally();
+    const controls = [1, 2];
+    const ports = countEveryPortStream(
+      { feed: createPrototypeFeed(), controls, flag: true },
+      tally,
+    );
+    expect(ports.feed.value()).toBe(42);
+    expect(ports.controls).toBe(controls);
+    expect(ports.flag).toBe(true);
+    expect(tally.live).toBe(0);
+  });
+});
+
+/** A port whose methods live on its prototype, as the simulators' do. */
+function createPrototypeFeed(): PrototypeFeed {
+  return Object.create({
+    stream: (): Observable<number> => {
+      return concat(of(1), NEVER);
+    },
+    value: (): number => {
+      return 42;
+    },
+  }) as PrototypeFeed;
+}
+
+interface PrototypeFeed {
+  stream(): Observable<number>;
+  value(): number;
 }

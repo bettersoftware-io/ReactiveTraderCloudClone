@@ -33,6 +33,7 @@ export {
   type PendingQueue,
 } from "#/harness/pendingQueue";
 export {
+  countEveryPortStream,
   countInto,
   countSubscriptions,
   createTally,

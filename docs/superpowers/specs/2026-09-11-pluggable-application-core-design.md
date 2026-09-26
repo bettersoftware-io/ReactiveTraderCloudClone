@@ -364,13 +364,28 @@ Slice 3 shipped 2026-09-20 (plan: [`../plans/2026-09-20-pluggable-core-slice-3.m
 Slice 4 shipped 2026-09-21 (plan: [`../plans/2026-09-21-pluggable-core-slice-4.md`](../plans/2026-09-21-pluggable-core-slice-4.md)) — suites as PR A, the run slot as PR R, ports as PR B; 44/74 native in both alternative cores; `createApp` gained core seams so the base Jarvis driver reaches the native equities workspace.
 Slice 5 shipped 2026-09-23 (plan: [`../plans/2026-09-22-pluggable-core-slice-5.md`](../plans/2026-09-22-pluggable-core-slice-5.md)) — suites as PR A (#814), then the ports one core at a time (async #817, Effect after it); 53/74 native in both alternative cores.
 Slice 6 (shell) shipped 2026-09-23 (plan: [`../plans/2026-09-23-pluggable-core-slice-6.md`](../plans/2026-09-23-pluggable-core-slice-6.md)) — `auth`, `bootGate`, `workspaceNav`, `animationDirector` and `boot`; 58/74 native in both. The row's layout/dock family (`layoutFor`, the dock bridges and their kin — eleven members) moved to slice 7: every dock bridge writes `jarvisPanels` synchronously.
-Slice 7 wave 1 (the workspace) shipped 2026-09-24 (plan: [`../plans/2026-09-24-pluggable-core-slice-7.md`](../plans/2026-09-24-pluggable-core-slice-7.md)) — suites + the shared workspace controllers + `CoreSeams.workspace` (#821), the async port (#822), the Effect port after it; 70/74 native in both. Wave 2 (Jarvis) shipped 2026-09-25 (plan: [`../plans/2026-09-24-pluggable-core-slice-7-wave-2.md`](../plans/2026-09-24-pluggable-core-slice-7-wave-2.md)) — the shared Jarvis controllers + suites + `CoreSeams.nativeJarvis` (#826), the async port (#827), the Effect port with the `workspace` factory's deletion after it; **74/74 native in both**. Slice 8 (closing) is next.
+Slice 7 wave 1 (the workspace) shipped 2026-09-24 (plan: [`../plans/2026-09-24-pluggable-core-slice-7.md`](../plans/2026-09-24-pluggable-core-slice-7.md)) — suites + the shared workspace controllers + `CoreSeams.workspace` (#821), the async port (#822), the Effect port after it; 70/74 native in both. Wave 2 (Jarvis) shipped 2026-09-25 (plan: [`../plans/2026-09-24-pluggable-core-slice-7-wave-2.md`](../plans/2026-09-24-pluggable-core-slice-7-wave-2.md)) — the shared Jarvis controllers + suites + `CoreSeams.nativeJarvis` (#826), the async port (#827), the Effect port with the `workspace` factory's deletion after it; **74/74 native in both**.
 
 ### Slice 8 — closing
 
 Delegation removed; `client-core` runtime dependency dropped from both
 alternative cores; shared pure reducers moved to `@rtc/core-logic`;
 dep-cruiser rules tightened.
+
+**Shipped 2026-09-26** (plan: [`../plans/2026-09-25-pluggable-core-slice-8.md`](../plans/2026-09-25-pluggable-core-slice-8.md);
+rulings: [`../plans/2026-09-25-pluggable-core-slice-8-rulings.md`](../plans/2026-09-25-pluggable-core-slice-8-rulings.md)),
+closing the workstream in three PRs. **A (#829):** `@rtc/core-logic` —
+the shared folds, controllers and `createAuthDeps` — with
+`core-logic-stays-pure`/`-inner`. **B (#832):** `AppPorts.connectionIntents`
+replaced the alternative cores' imports of `client-core`'s module Subjects,
+and the new `transportGate` suite measured, then fixed, the one latent
+bug the strangler hid (neither alternative core opened the socket on a
+native sign-in). **C:** delegation, `CoreSeams`, both parity manifests and
+`pnpm core:parity` deleted; exact native presenter maps make the typecheck
+the completeness witness; `portDiscipline` pins absolute counts;
+`alt-cores-no-client-core-at-runtime`; bundle isolation in every direction.
+Side PRs on the way: #830 (timer-driven waits on fake timers) and #831 (the
+package-wiring gate in `check:scripts`).
 
 ### Regime
 
@@ -380,6 +395,7 @@ covering tests only, one gauntlet per slice, mid and final reviews
 
 ## Parity manifest
 
+*(Strangler phase only — deleted in slice 8, once every member was native.)*
 `parity.json` per alternative core: `{ presenters: { member: "native" |
 "delegated" }, machines: { … } }`. A test asserts the manifest matches reality
 by reference inequality against the RxJS core's instances. `pnpm core:parity`
@@ -407,7 +423,10 @@ prints both manifests as one table for PR descriptions and STATUS.md.
    bundle-size check for Effect).
 4. The ui-contract "integration mode" (real `createViewModel` + simulators).
 5. Splitting the shared adapters out of `client-core` into their own package
-   once slice 8 removes the delegation dependency.
+   (slice 8 removed the delegation dependency; the alternative cores still
+   take `createSimulatorPorts` from `client-core` as a devDependency).
+6. Pairing `connectionEvents` with `connectionIntents` structurally, so a
+   port builder cannot supply one without merging the other.
 
 ## Risks
 

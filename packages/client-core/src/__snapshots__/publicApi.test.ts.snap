@@ -73,6 +73,7 @@ exports[`@rtc/client-core public runtime API > is unchanged by the core-logic ex
   "PriceHistoryPresenter",
   "PriceStreamPresenter",
   "READY_TILE_EXECUTION",
+  "RXJS_CORE_BRAND",
   "RfqQuotePresenter",
   "RfqsPresenter",
   "STARTED_TILE_EXECUTION",

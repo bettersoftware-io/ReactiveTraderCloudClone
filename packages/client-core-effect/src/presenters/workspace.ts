@@ -103,7 +103,7 @@ export interface NativeWorkspaceDeps {
  *
  * Built outside the Layer graph, with the rest of the Jarvis family
  * (`presenters/jarvisFamily.ts`), over this core's own `jarvis.events$`
- * (slice 7 wave 2; wave 1's `CoreSeams.workspace` factory is deleted). */
+ * (slice 7 wave 2). */
 export function createNativeWorkspace(
   parent: EffectHost,
   deps: NativeWorkspaceDeps,
