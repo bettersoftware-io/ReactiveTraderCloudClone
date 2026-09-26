@@ -50,3 +50,13 @@ file is its durable record, and each PR appends its own section.
 **Also found by CI's first run on #829.** `client-core`'s vitest had no `include`, so it ran every test a second time from its compiled copy in `dist/`. `dist/publicApi.test.js` then compared itself against an untracked `dist/__snapshots__` file. Locally that file was stale; on the fresh checkout it was missing, and `--ci` failed "Tests (unit)". The fix is `exclude: [...configDefaults.exclude, "dist/**"]`. `client-core`'s own run goes from 2999 tests to 1385: the difference is the `dist/` duplicates plus stale compiled copies of the tests that moved.
 
 **Mutation-check for the review fixes:** 6/6 KILLED. The mutants were: `readNow` returning what it saw, instead of the fallback (×2 cores); the delay read once at wrap time (×2); the machine seeded with a separate object; and `core-logic` dropping an export.
+
+### PR A CI — the seams files move to fake timers
+
+- **What CI showed.** Each alternative core's `composition.seams.test.ts` ran on real timers. On CI they took 9.9 s on `main` and 12.9–14.3 s on #829, against ~3 s locally. They failed three runs running. Two runs timed out at vitest's 5 s default: the dock case's own `waitFor` budget of 8.5 s could never fit inside it. A third run, with the timeout raised to 15 s, failed its assertion instead: `expected 'AAPL' to be 'MSFT'`. A real 50 ms `waitForDrive` had elapsed before the drive landed.
+- **Why the file's own comment was wrong.** Real timers were never necessary. `Effect.sleep` follows vitest's fake timers, which `bridge/clock.test.ts` measured in slice 5. The Jarvis driver, demo and narrator suites already ran on them. The dock case's port is a synchronous `from(events)`, not the scripted brain. The user caught this by asking "are we not using fake timers?"
+- **The fix.** Both files install fake timers in `beforeEach`, and every wait is an explicit `vi.advanceTimersByTimeAsync`. The 15 s timeout commit is superseded. Test time per file went from 1.6 s to 0.66 s (async) and from 2.9 s to 1.0 s (Effect), 3/3 green each.
+- **Proof the conversion kept the tests' power:**
+  - A mutant where the native driver never applies a command is KILLED, on fake timers and on the real-timer original alike.
+  - Two further mutants SURVIVE, on real and fake timers alike, so the gap predates the conversion: the base app not standing down (`nativeJarvis: false`), and `dispose()` skipping its teardown.
+  - **Ruling:** those two gaps are not fixed here. These files are strangler scaffolding that PR C deletes, and PR C's Tasks 6 and 7 add the real dispose witness, a live-subscription count of zero after `dispose()`. *Cost if wrong:* none past PR C.

@@ -7,7 +7,7 @@ import {
   of,
   Subject,
 } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type AnimationIntent,
@@ -43,15 +43,21 @@ import {
 
 import { composeWithBase } from "#/composition";
 
-// Real timers throughout (the Jarvis reply's typed-reveal pacing, the drive
-// stagger, the persistence debounce), so a CI runner's scheduling delay lands
-// here in full: the dock case alone waits DRIVE_STAGGER_MS +
-// WORKSPACE_PERSIST_DEBOUNCE_MS, then a further debounce, and its own waitFor
-// budget is 8.5 s — more than vitest's 5 s default could ever let it use.
-// Measured 2026-09-26: this file takes ~3 s locally under the full suite,
-// 9.9 s on main's CI and 12.9-14.3 s on #829's, where two cases hit 5 s.
-// The file is strangler scaffolding that slice 8 PR C deletes.
-describe("composeWithBase — core seams", { timeout: 15_000 }, () => {
+describe("composeWithBase — core seams", () => {
+  // Fake timers, installed before each composition: every wait below is an
+  // explicit advance of virtual time, so a loaded CI runner cannot stretch a
+  // drive stagger or a persistence debounce past an assertion (on real timers
+  // this file ran ~3 s locally, 9.9-14.3 s on CI, and timed out or read a
+  // not-yet-landed drive there). Effect.sleep follows them too
+  // (bridge/clock.test.ts in the Effect core).
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("a Jarvis drive batch selecting a symbol lands on the app's NATIVE eqWorkspace, not the base's own", async () => {
     const { app, base } = composeWithBase(
       createPorts({ jarvis: createSelectingJarvisPort("MSFT") }),
@@ -514,10 +520,8 @@ function createSwitchingJarvisPort(
   };
 }
 
-function settle(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 50);
-  });
+async function settle(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(50);
 }
 
 /** A JarvisPort whose ask() replies with `events`, then completes. */
@@ -532,8 +536,6 @@ function createTurnJarvisPort(events: readonly JarvisEvent[]): JarvisPort {
   };
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+async function wait(ms: number): Promise<void> {
+  await vi.advanceTimersByTimeAsync(ms);
 }

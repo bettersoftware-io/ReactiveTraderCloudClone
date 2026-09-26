@@ -7,7 +7,7 @@ import {
   of,
   Subject,
 } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type AnimationIntent,
@@ -51,15 +51,21 @@ import { composeWithBase } from "#/composition";
 // native member would be held twice — all invisible to the per-member
 // contract, which only ever looks at one app's presenters.
 
-// Real timers throughout (the Jarvis reply's typed-reveal pacing, the drive
-// stagger, the persistence debounce), so a CI runner's scheduling delay lands
-// here in full: the dock case alone waits DRIVE_STAGGER_MS +
-// WORKSPACE_PERSIST_DEBOUNCE_MS, then a further debounce, and its own waitFor
-// budget is 8.5 s — more than vitest's 5 s default could ever let it use.
-// Measured 2026-09-26: this file takes ~3 s locally under the full suite,
-// 9.9 s on main's CI and 12.9-14.3 s on #829's, where two cases hit 5 s.
-// The file is strangler scaffolding that slice 8 PR C deletes.
-describe("composeWithBase — core seams", { timeout: 15_000 }, () => {
+describe("composeWithBase — core seams", () => {
+  // Fake timers, installed before each composition: every wait below is an
+  // explicit advance of virtual time, so a loaded CI runner cannot stretch a
+  // drive stagger or a persistence debounce past an assertion (on real timers
+  // this file ran ~3 s locally, 9.9-14.3 s on CI, and timed out or read a
+  // not-yet-landed drive there). Effect.sleep follows them too
+  // (bridge/clock.test.ts in the Effect core).
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("a Jarvis drive batch mutates THIS core's eqWorkspace, and the base's own stays where it was", async () => {
     const composed = composeWithBase(
       createPorts({ jarvis: createSelectingJarvisPort("MSFT") }),
@@ -186,9 +192,7 @@ describe("composeWithBase — core seams", { timeout: 15_000 }, () => {
         { timeout: (DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS) * 10 },
       );
       // A second writer would land within the same window: give it one.
-      await new Promise((resolve) => {
-        setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
-      });
+      await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
 
       expect(writes).toHaveLength(1);
       expect(writes[0]).toContain("j1");
@@ -223,9 +227,7 @@ describe("composeWithBase — core seams", { timeout: 15_000 }, () => {
       transforms: [],
       viz: { kind: "table" },
     });
-    await new Promise((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
 
     expect(writes).toEqual([]);
   });
@@ -562,13 +564,10 @@ function createPorts(overrides: Partial<AppPorts>): AppPorts {
   };
 }
 
-/** The Jarvis machine's reply pipeline runs on real timers (the scripted
- * brain's typed-reveal pacing), so this waits on the wall clock rather
- * than a scheduler turn. */
-function waitForDrive(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, 50);
-  });
+/** Lets a Jarvis reply's drive batch land: its first command runs unstaggered,
+ * so 50 ms of virtual time covers it. */
+async function waitForDrive(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(50);
 }
 
 /** A JarvisPort whose ask() replies with one drive batch switching to
@@ -591,9 +590,7 @@ function createSwitchingJarvisPort(
 
 async function settle(): Promise<void> {
   for (let turn = 0; turn < 2; turn += 1) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 0);
-    });
+    await vi.advanceTimersByTimeAsync(0);
   }
 }
 
