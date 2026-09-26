@@ -15,19 +15,34 @@
 //    module" (34 suites, #829). Required for every @rtc package in the RN
 //    client's transitive runtime `dependencies`.
 //
+// 3. Both web clients' debug-build alias maps (vite.config.ts, active under
+//    RTC_SOURCEMAPS=1). A package missing there is bundled from dist, and the
+//    debuggable deploy's sourcemaps stop at compiled .js (boot-splash sat
+//    unmapped that way). A subpath the client's production src imports
+//    (`@rtc/boot-splash/styles/…`) also needs that export subpath's key,
+//    listed BEFORE its bare key: Vite matches alias
+//    keys in order at `/` boundaries, so a bare key alone rewrites
+//    `@rtc/x/styles/…` to `…/src/index.ts/styles/…` (ENOTDIR — the 2026-08-12
+//    deploy). Required for every @rtc package in each web client's transitive
+//    runtime `dependencies`.
+//
 // Unconditional, no allowlist: a gap is fixed by adding the entry. Zero
 // dependencies (Node built-ins only). Chained from `pnpm check:scripts`.
 // Workspaces come from pnpm-workspace.yaml, so the `tests` workspace counts:
 // dependency-cruiser scans it (`check:deps` runs over `packages tests`), and
 // it is the ONLY dependent of @rtc/client-react and @rtc/server.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
 import { listWorkspaceDirs, readManifest, repoRoot } from "./workspaces.mjs";
 
 const RN_CLIENT = "@rtc/client-react-native";
+const WEB_CLIENTS = [
+  { name: "@rtc/client-react", dir: "client-react" },
+  { name: "@rtc/client-solid", dir: "client-solid" },
+];
 const DEPENDENCY_FIELDS = [
   "dependencies",
   "devDependencies",
@@ -174,6 +189,96 @@ for (const name of runtimeClosure(manifests, RN_CLIENT)) {
   }
 }
 
+// The @rtc subpath specifiers a client's PRODUCTION src imports (`from "…"` or
+// a bare side-effect `import "…"`, e.g. CSS). Tests are excluded: the debug
+// build never bundles them, so their subpath imports (a domain port contract,
+// a shared wire fixture) cannot hit the alias trap.
+function productionSubpathImports(clientDir) {
+  const specifiers = new Set();
+  const pending = [join(repoRoot, "packages", clientDir, "src")];
+
+  while (pending.length > 0) {
+    const dir = pending.pop();
+
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (entry.name !== "__tests__") {
+          pending.push(path);
+        }
+      } else if (
+        /\.(ts|tsx)$/.test(entry.name) &&
+        !/\.(test|spec)\.tsx?$/.test(entry.name)
+      ) {
+        const text = readFileSync(path, "utf8");
+
+        for (const match of text.matchAll(
+          /(?:from|import)\s+"(@rtc\/[a-z-]+\/[^"]+)"/g,
+        )) {
+          specifiers.add(match[1]);
+        }
+      }
+    }
+  }
+
+  return [...specifiers];
+}
+
+// 3. The web clients' debug-build alias maps. vite.config.ts is TypeScript, so
+// it is read as text — with comments stripped first, so a commented-out entry
+// cannot satisfy the check.
+for (const client of WEB_CLIENTS) {
+  const configRel = `packages/${client.dir}/vite.config.ts`;
+  const config = stripJsonComments(
+    readFileSync(join(repoRoot, configRel), "utf8"),
+  );
+
+  for (const name of runtimeClosure(manifests, client.name)) {
+    const bareAt = config.indexOf(`"${name}": pkgSrc(`);
+
+    if (bareAt === -1) {
+      problems.push(
+        `${configRel} debug alias map is missing "${name}": pkgSrc(…) — ${name} is in ${client.name}'s runtime dependency tree, so a debuggable (RTC_SOURCEMAPS=1) build bundles it from dist and its sourcemaps stop at compiled .js`,
+      );
+      continue;
+    }
+
+    const exportSubpaths = Object.keys(manifests.get(name).exports ?? {})
+      .filter((key) => {
+        return key !== "." && key.startsWith("./");
+      })
+      .map((key) => {
+        return key.slice(2).replace(/\/\*$/, "");
+      });
+    const importedSubpaths = new Set(
+      productionSubpathImports(client.dir)
+        .filter((specifier) => {
+          return specifier.startsWith(`${name}/`);
+        })
+        .map((specifier) => {
+          const rest = specifier.slice(name.length + 1);
+
+          return (
+            exportSubpaths.find((subpath) => {
+              return rest === subpath || rest.startsWith(`${subpath}/`);
+            }) ?? rest
+          );
+        }),
+    );
+
+    for (const subpath of importedSubpaths) {
+      const subpathAt = config.indexOf(`"${name}/${subpath}":`);
+
+      if (subpathAt === -1 || subpathAt > bareAt) {
+        problems.push(
+          `${configRel} debug alias map needs "${name}/${subpath}" listed BEFORE "${name}" — ${client.name}'s src imports that subpath, and Vite matches alias keys in order at "/" boundaries, so the bare key alone rewrites "${name}/${subpath}/…" to ".../src/index.ts/${subpath}/…" (ENOTDIR, the 2026-08-12 deploy)`,
+        );
+      }
+    }
+  }
+}
+
 if (problems.length > 0) {
   console.error("✖ Package wiring gate:\n");
   for (const problem of problems) {
@@ -187,5 +292,6 @@ if (problems.length > 0) {
 
 console.log(
   `✓ Package wiring gate: all ${dependedOn.size} depended-on workspace packages have a tsconfig.depcruise.json path pair, ` +
-    `and the RN client's jest maps every @rtc package in its runtime dependency tree.`,
+    `the RN client's jest maps every @rtc package in its runtime dependency tree, ` +
+    `and both web clients' debug alias maps cover theirs (subpath keys first).`,
 );
