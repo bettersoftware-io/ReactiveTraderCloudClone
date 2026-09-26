@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
@@ -73,11 +74,11 @@ function portsWith(preferences: PreferencesSimulator): AppPorts {
       auth: new AuthSimulator({ demo: PASSWORD }),
       sessionStore: new InMemorySessionStore(),
     }),
-    connectionEvents: {
+    ...createFakeConnectionPorts({
       events: () => {
         return NEVER;
       },
-    },
+    }),
   };
 }
 

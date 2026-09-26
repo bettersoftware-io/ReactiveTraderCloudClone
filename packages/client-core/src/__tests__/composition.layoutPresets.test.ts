@@ -20,6 +20,7 @@ import {
 } from "@rtc/domain";
 import type { PanelSpecV1 } from "@rtc/shared";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
@@ -181,7 +182,7 @@ function bootApp(
       sessionStore: new InMemorySessionStore(),
     }),
     jarvis,
-    connectionEvents: new ConnectionEventsSimulator(),
+    ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     layoutPresetStore,
   });
 

@@ -1058,9 +1058,13 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 3. `effect` 4.0 once it leaves release-candidate status.
 4. React Native on the alternative cores (`EXPO_PUBLIC_CORE_IMPL`, plus a
    Hermes bundle-size check for the Effect core — RN stays RxJS-only for now).
-5. Pair `connectionEvents` with `connectionIntents` structurally (a helper
-   that hands a port builder the intents port with the stream it must merge),
-   so a builder cannot supply one without merging the other.
+5. ~~Pair `connectionEvents` with `connectionIntents` structurally~~ — done:
+   `@rtc/core-api`'s `TransportPorts` now omits both members together, so a
+   port factory can no longer typecheck while supplying one without the
+   other. `@rtc/client-core`'s `pairConnectionPorts(events$)` is the only
+   producer of the pair in that package — instance-scoped per call, returned
+   as the matching `{ connectionEvents, connectionIntents }` fragment
+   (`packages/client-core/src/adapters/connectionIntents.ts`).
 6. ~~The RxJS core's `dispose()` is still a knowing no-op~~ — done
    2026-09-26: a `held` subscription bag, owned-machine disposal (Jarvis's
    cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`

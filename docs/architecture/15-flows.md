@@ -64,7 +64,7 @@ flowchart TB
     subgraph core["@rtc/client-core"]
         direction LR
         pres["ConnectionStatusPresenter<br/>status$"]:::core
-        cmd["commands.reconnect()<br/>reconnect$.next (composition.ts)"]:::core
+        cmd["commands.reconnect()<br/>ports.connectionIntents.reconnect() (composition.ts)"]:::core
         routeFn["routeIdleLifecycle()<br/>closeForIdle / reopen"]:::core
     end
     subgraph domain["@rtc/domain"]
@@ -89,8 +89,8 @@ flowchart TB
 
 1. **Reconnect click** (idle-disconnected only): `ConnectionOverlay.tsx` calls `reconnect` from `useReconnect()`.
 2. `useReconnect` resolves to `commands.reconnect` in `packages/client-core/src/composition.ts`.
-3. `commands.reconnect()` pushes `{ type: "reconnect" }` onto the module-level `reconnect$` Subject (`composition.ts`).
-4. `reconnect$` is merged into the `ConnectionEventsPort.events()` stream at the composition root (`buildBrowserPorts.ts`); the merged stream is piped through `routeIdleLifecycle()` (`composition.ts`), whose `tap` calls `ws.reopen()` on `WsAdapter` for a `reconnect` event (and `ws.closeForIdle()` for `idleTimeout`) — the one place a connection event has a *side effect* on the transport, not just a state transition.
+3. `commands.reconnect()` calls `ports.connectionIntents.reconnect()` (`composition.ts`), which pushes `{ type: "reconnect" }` onto a reconnect Subject private to this app instance — built, along with `connectionIntents` itself, by `@rtc/client-core`'s `pairConnectionPorts(events$)` at the composition root (`buildBrowserPorts.ts`); `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND `connectionIntents` together (ADR-006 Follow-up 5), so the platform port-builder supplies both from that one call.
+4. The reconnect intent is already merged into `connectionEvents` — that merge is what `pairConnectionPorts` returned in step 3 — so the ws-real branch's `ConnectionEventsPort.events()` just pipes that merged stream through `routeIdleLifecycle()` (`composition.ts`), whose `tap` calls `ws.reopen()` on `WsAdapter` for a `reconnect` event (and `ws.closeForIdle()` for `idleTimeout`) — the one place a connection event has a *side effect* on the transport, not just a state transition.
 5. Whichever adapter produced the event — `WsConnectionEventsAdapter` wrapping `WsAdapter`'s `onopen`/`onclose` handlers in Mode B, `BrowserConnectionEventsAdapter`'s idle timer and `online`/`offline` listeners (always active, both modes), or `ConnectionEventsSimulator` in Mode A — reaches `ConnectionStatusUseCase.execute()` (`packages/domain/src/usecases/ConnectionStatusUseCase.ts`) via the `ConnectionEventsPort`.
 6. The use case `scan`s every event through the pure function `nextConnectionStatus()` (`packages/domain/src/connection/connectionStatus.ts`), producing the next `ConnectionStatus`.
 7. `ConnectionStatusPresenter.status$` (`packages/client-core/src/presenters/ConnectionStatusPresenter.ts`) multicasts it with `shareReplay({ bufferSize: 1, refCount: true })`.
