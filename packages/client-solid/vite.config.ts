@@ -122,7 +122,7 @@ function pkgSrc(name: string): string {
 // adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
 // otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
 // @rtc/layout-dockview also has a `./styles/*` subpath export (mirrors
-// @rtc/boot-splash), and its bare specifier IS mapped below (the debug build
+// @rtc/boot-splash), and — like boot-splash — its bare specifier IS mapped below (the debug build
 // needs its source). Vite's string alias keys match at `/` boundaries, so the
 // bare entry alone would rewrite `@rtc/layout-dockview/styles/dockview-hud.css`
 // to `.../src/index.ts/styles/...` (ENOTDIR — broke the 2026-08-12 deploy).
@@ -136,6 +136,16 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "src",
         "styles",
       ),
+      // Same subpath shape as layout-dockview above: `./styles/*` CSS Modules,
+      // so its `/styles` key must precede the bare one.
+      "@rtc/boot-splash/styles": resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "boot-splash",
+        "src",
+        "styles",
+      ),
+      "@rtc/boot-splash": pkgSrc("boot-splash"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core": pkgSrc("client-core"),
