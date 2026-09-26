@@ -12,9 +12,14 @@ import { warmReplay } from "./warmReplay.js";
 export class CurrencyPairsPresenter implements CurrencyPairsPresenterApi {
   readonly pairs$: Observable<readonly CurrencyPair[]>;
 
-  constructor(referenceData: ReferenceDataPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(
+    referenceData: ReferenceDataPort,
+    disposed$: Observable<unknown>,
+  ) {
     this.pairs$ = new CurrencyPairsUseCase(referenceData)
       .execute()
-      .pipe(warmReplay());
+      .pipe(warmReplay(disposed$));
   }
 }

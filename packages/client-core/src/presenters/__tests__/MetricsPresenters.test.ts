@@ -2,7 +2,7 @@
 //   pnpm --filter @rtc/client-react test -- MetricsPresenters  → FAIL (module missing)
 // GREEN: MetricsPresenters created → all cases pass.
 
-import { firstValueFrom, Subject } from "rxjs";
+import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { MetricSample, TelemetryPort } from "@rtc/domain";
@@ -14,14 +14,17 @@ import { WINDOW } from "../windowedSamples";
 
 describe("ThroughputMetricPresenter", () => {
   it("emits an empty list before any samples arrive", async () => {
-    const presenter = new ThroughputMetricPresenter(createFakePort());
+    const presenter = new ThroughputMetricPresenter(createFakePort(), NEVER);
     const first = await firstValueFrom(presenter.samples$);
     expect(first).toEqual([]);
   });
 
   it("keeps its rolling window warm across a refCount cycle (survives the Admin tab remount)", () => {
     const subject = new Subject<MetricSample>();
-    const presenter = new ThroughputMetricPresenter(createFakePort(subject));
+    const presenter = new ThroughputMetricPresenter(
+      createFakePort(subject),
+      NEVER,
+    );
 
     const first = presenter.samples$.subscribe();
     subject.next(sample(1, 10));
@@ -43,7 +46,10 @@ describe("ThroughputMetricPresenter", () => {
 
   it("accumulates samples oldest-first", () => {
     const subject = new Subject<MetricSample>();
-    const presenter = new ThroughputMetricPresenter(createFakePort(subject));
+    const presenter = new ThroughputMetricPresenter(
+      createFakePort(subject),
+      NEVER,
+    );
 
     const emitted: (readonly MetricSample[])[] = [];
     const sub = presenter.samples$.subscribe((s) => {
@@ -61,7 +67,10 @@ describe("ThroughputMetricPresenter", () => {
 
   it(`caps at WINDOW (${WINDOW}) and drops the oldest samples`, () => {
     const subject = new Subject<MetricSample>();
-    const presenter = new ThroughputMetricPresenter(createFakePort(subject));
+    const presenter = new ThroughputMetricPresenter(
+      createFakePort(subject),
+      NEVER,
+    );
 
     let last: readonly MetricSample[] = [];
     const sub = presenter.samples$.subscribe((s) => {
@@ -84,14 +93,17 @@ describe("ThroughputMetricPresenter", () => {
 
 describe("LatencyPresenter", () => {
   it("emits an empty list before any samples arrive", async () => {
-    const presenter = new LatencyPresenter(createFakePort());
+    const presenter = new LatencyPresenter(createFakePort(), NEVER);
     const first = await firstValueFrom(presenter.samples$);
     expect(first).toEqual([]);
   });
 
   it(`caps at WINDOW and drops the oldest samples`, () => {
     const subject = new Subject<MetricSample>();
-    const presenter = new LatencyPresenter(createFakePort(undefined, subject));
+    const presenter = new LatencyPresenter(
+      createFakePort(undefined, subject),
+      NEVER,
+    );
 
     let last: readonly MetricSample[] = [];
     const sub = presenter.samples$.subscribe((s) => {
@@ -112,7 +124,7 @@ describe("LatencyPresenter", () => {
 
 describe("ErrorRatePresenter", () => {
   it("emits an empty list before any samples arrive", async () => {
-    const presenter = new ErrorRatePresenter(createFakePort());
+    const presenter = new ErrorRatePresenter(createFakePort(), NEVER);
     const first = await firstValueFrom(presenter.samples$);
     expect(first).toEqual([]);
   });
@@ -121,6 +133,7 @@ describe("ErrorRatePresenter", () => {
     const subject = new Subject<MetricSample>();
     const presenter = new ErrorRatePresenter(
       createFakePort(undefined, undefined, subject),
+      NEVER,
     );
 
     const emitted: (readonly MetricSample[])[] = [];

@@ -2,7 +2,7 @@
 //   pnpm --filter @rtc/client-react test -- SessionsPresenter  → FAIL (module missing)
 // GREEN: SessionsPresenter created → all cases pass.
 
-import { firstValueFrom, of, Subject } from "rxjs";
+import { firstValueFrom, NEVER, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { SessionInfo, SessionsPort } from "@rtc/domain";
@@ -17,7 +17,7 @@ describe("SessionsPresenter", () => {
         return of(sessions);
       },
     };
-    const presenter = new SessionsPresenter(port);
+    const presenter = new SessionsPresenter(port, NEVER);
 
     const first = await firstValueFrom(presenter.sessions$);
     expect(first).toBe(sessions); // same reference — no transformation
@@ -32,7 +32,7 @@ describe("SessionsPresenter", () => {
         return subject;
       },
     };
-    const presenter = new SessionsPresenter(port);
+    const presenter = new SessionsPresenter(port, NEVER);
 
     const a: (readonly SessionInfo[])[] = [];
     const b: (readonly SessionInfo[])[] = [];
@@ -62,7 +62,7 @@ describe("SessionsPresenter", () => {
         return subject;
       },
     };
-    const presenter = new SessionsPresenter(port);
+    const presenter = new SessionsPresenter(port, NEVER);
 
     // First subscriber keeps refCount > 0 while second subscribes.
     const firstSub = presenter.sessions$.subscribe();

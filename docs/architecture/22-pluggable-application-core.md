@@ -181,11 +181,23 @@ explicitly (residual sweep, 2026-09-19):
    path). That isolation covers a CONSUMER's `next`: an operator built on a
    primitive (`mapTopic`, an Effect `Stream` combinator) turns its own
    projection error into a stream failure instead, as rxjs operators do.
-3. **After `dispose()`, a still-attached subscriber hears nothing.** The RxJS
-   core's `dispose()` is a knowing no-op today (its follow-up is a
-   `Subscription` bag), so an interrupt-only Effect cause is deliberately
-   silent too; completion-on-dispose becomes the contract when that bag
-   lands.
+3. **After `dispose()`, the app holds no port subscription once its
+   consumers have let go.** That is the contract (the `dispose` suite, all
+   three cores): after a session, including a Jarvis turn still in flight,
+   and after the session's own consumers unsubscribe, `dispose()` leaves
+   zero live port subscriptions. What a subscriber STILL attached at dispose
+   hears is not contracted. In the RxJS core (ADR-006 Follow-up 6) only the
+   `warmReplay` singletons and the machines `createApp` owns end — their
+   subscribers complete; an interrupt-only Effect cause is deliberately
+   silent. Every refcounted stream, per-key or singleton, keeps delivering
+   to a subscriber still attached in the RxJS core — `price$`, `quote$`,
+   `depth$`, but also `connection.status$`, the preference presenters,
+   `execution.executions$`, `ordersBlotter.fills$`, `throughput.state$` and
+   `auth.state$` (whose subject is never completed) — and that subscription
+   stays the consumer's to release. Subscribing after `dispose()` to a
+   refcounted presenter, or calling a machine factory, re-opens its ports:
+   uncontracted, and no production code does it (no shell calls
+   `app.dispose()`).
 4. **Every port method is called once, at construction** — including
    `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
    A stream re-subscribes the captured Observable on every warm period; a
@@ -317,9 +329,10 @@ their drift tests, and `pnpm core:parity`. What replaced it is structural:
 each core's `App.presenters: Presenters` and `MachineFactories` are built
 from its own members only (typecheck is the completeness witness — the
 native presenter map is `Omit<Presenters, …family keys>`, not `Partial`),
-and each alternative core's `dispose()` is now witnessed to release every
-port subscription it holds (the RxJS core's is still a knowing no-op, item 3
-above). The instrument behind that witness, and behind the
+and every core's `dispose()` is witnessed to release every port
+subscription it holds — the cross-member `dispose` contract suite, which the
+RxJS core joined when its `dispose()` stopped being a no-op (ADR-006
+Follow-up 6). The instrument behind that witness, and behind the
 seam witnesses before it, is `@rtc/core-contract`'s `countSubscriptions` /
 `countInto` / `createTally` (`harness/portTally.ts`): a Proxy that counts
 LIVE subscriptions to a port's streams.
@@ -341,7 +354,12 @@ aborts its lifetime signal; the Effect core closes its host scope, then
 disposes the runtime (whose Layer scope is the host scope's parent, so
 either step alone would end every fiber — both are kept). A subscriber arriving after
 `dispose()` is not a shipped path: the async retained topic would restart
-its producer, the Effect fold stays silent, the RxJS core never tore down.
+its producer, the Effect fold stays silent, and an RxJS `warmReplay`
+singleton completes at once (its `disposed$` is a `ReplaySubject`, so a
+late subscriber never re-opens the port). The RxJS core releases its own
+`held` subscriptions first, then stops a Jarvis demo run, then disposes the
+machines it owns (Jarvis's own `dispose` cuts a turn whose ask is still in
+flight), then fires `disposed$`.
 
 ## The contract tier
 
@@ -349,9 +367,10 @@ its producer, the Effect fold stays silent, the RxJS core never tore down.
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
 and per `AppCommands` member (74 members: 60 presenters, 12 machines, 2
-commands). Two cross-member suites sit beside the registry, witnessing
-properties of the whole composition: `portDiscipline` and (slice 8)
-`transportGate`. Adding a member to `Presenters` or `MachineFactories` without
+commands). Three cross-member suites sit beside the registry, witnessing
+properties of the whole composition: `portDiscipline`, (slice 8)
+`transportGate`, and `dispose` (ADR-006 Follow-up 6: after a signed-in
+session, no port stream stays subscribed). Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 

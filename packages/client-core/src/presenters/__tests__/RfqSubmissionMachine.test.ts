@@ -1,4 +1,4 @@
-import { type Observable, of } from "rxjs";
+import { NEVER, type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +16,10 @@ describe("RfqsPresenter.createSubmission", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
       // create-RFQ resolves 10ms after submit with rfqId 555.
-      const presenter = new RfqsPresenter(port(cold("10ms (a|)", { a: 555 })));
+      const presenter = new RfqsPresenter(
+        port(cold("10ms (a|)", { a: 555 })),
+        NEVER,
+      );
       const machine = presenter.createSubmission();
 
       const states: RfqSubmissionState[] = [];
@@ -65,7 +68,10 @@ describe("RfqsPresenter.createSubmission", () => {
   it("supports a second submit round-trip after the redirect returns to editing", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
-      const presenter = new RfqsPresenter(port(cold("10ms (a|)", { a: 555 })));
+      const presenter = new RfqsPresenter(
+        port(cold("10ms (a|)", { a: 555 })),
+        NEVER,
+      );
       const machine = presenter.createSubmission();
 
       const states: RfqSubmissionState[] = [];
@@ -108,7 +114,10 @@ describe("RfqsPresenter.createSubmission", () => {
   it("cancels the pending redirect when disposed before the delay fires", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
-      const presenter = new RfqsPresenter(port(cold("10ms (a|)", { a: 777 })));
+      const presenter = new RfqsPresenter(
+        port(cold("10ms (a|)", { a: 777 })),
+        NEVER,
+      );
       const machine = presenter.createSubmission();
 
       const redirects: number[] = [];
@@ -131,7 +140,7 @@ describe("RfqsPresenter.createSubmission", () => {
   it("returns to editing when create-RFQ errors (no confirmation, no redirect)", () => {
     const ts = scheduler();
     ts.run(({ cold, flush }) => {
-      const presenter = new RfqsPresenter(port(cold("10ms #")));
+      const presenter = new RfqsPresenter(port(cold("10ms #")), NEVER);
       const machine = presenter.createSubmission();
 
       const states: RfqSubmissionState[] = [];

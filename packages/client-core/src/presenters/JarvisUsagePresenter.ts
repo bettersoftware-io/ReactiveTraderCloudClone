@@ -18,9 +18,11 @@ import { warmReplay } from "./warmReplay.js";
 export class JarvisUsagePresenter implements JarvisUsagePresenterApi {
   readonly usage$: Observable<AdminJarvisUsagePayload | null>;
 
-  constructor(port: JarvisUsagePort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: JarvisUsagePort, disposed$: Observable<unknown>) {
     this.usage$ = defer(() => {
       return port.usage$();
-    }).pipe(startWith(null), warmReplay());
+    }).pipe(startWith(null), warmReplay(disposed$));
   }
 }

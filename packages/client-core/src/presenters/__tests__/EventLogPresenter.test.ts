@@ -2,7 +2,7 @@
 //   pnpm --filter @rtc/client-react test -- EventLogPresenter  → FAIL (module missing)
 // GREEN: EventLogPresenter created → all cases pass.
 
-import { firstValueFrom, Subject } from "rxjs";
+import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { EventLogPort, LogEvent } from "@rtc/domain";
@@ -16,7 +16,7 @@ describe("EventLogPresenter", () => {
         return new Subject<LogEvent>();
       },
     };
-    const presenter = new EventLogPresenter(port);
+    const presenter = new EventLogPresenter(port, NEVER);
 
     const first = await firstValueFrom(presenter.events$);
     expect(first).toEqual([]);
@@ -29,7 +29,7 @@ describe("EventLogPresenter", () => {
         return subject;
       },
     };
-    const presenter = new EventLogPresenter(port);
+    const presenter = new EventLogPresenter(port, NEVER);
 
     const emitted: (readonly LogEvent[])[] = [];
     const sub = presenter.events$.subscribe((events) => {
@@ -62,7 +62,7 @@ describe("EventLogPresenter", () => {
         return subject;
       },
     };
-    const presenter = new EventLogPresenter(port);
+    const presenter = new EventLogPresenter(port, NEVER);
 
     let last: readonly LogEvent[] = [];
     const sub = presenter.events$.subscribe((events) => {
@@ -91,7 +91,7 @@ describe("EventLogPresenter", () => {
         return subject;
       },
     };
-    const presenter = new EventLogPresenter(port);
+    const presenter = new EventLogPresenter(port, NEVER);
 
     const a: (readonly LogEvent[])[] = [];
     const b: (readonly LogEvent[])[] = [];
@@ -125,7 +125,7 @@ describe("EventLogPresenter", () => {
         return subject;
       },
     };
-    const presenter = new EventLogPresenter(port);
+    const presenter = new EventLogPresenter(port, NEVER);
 
     const sub1 = presenter.events$.subscribe(() => {});
     subject.next(createEvent(1));

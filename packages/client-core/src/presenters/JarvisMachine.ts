@@ -160,6 +160,10 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
   const approve$ = new Subject<void>();
   const decline$ = new Subject<void>();
   const driveOutcome$ = new Subject<DriveOutcome>();
+  // Fired by dispose(): completing `turn$` alone does not end a turn whose
+  // `port.ask()` is still in flight (concatMap keeps its active inner), and
+  // share() stays connected for as long as any fold over `events$` holds it.
+  const release$ = new Subject<void>();
 
   // Turns run sequentially: concatMap only advances to the next queued
   // request once the previous turn's port.ask() observable has completed —
@@ -186,6 +190,7 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
         ),
       );
     }),
+    takeUntil(release$),
     share(),
   );
 
@@ -348,7 +353,10 @@ export function createJarvisMachine(deps: JarvisDeps): JarvisMachineHandle {
       // Complete the source Subjects first so the merged stream — and the
       // react-rxjs state$ derived from it — completes, then release the warm
       // subscription that was keeping state$ alive, and the side-channel
-      // effort$ subscription alongside it.
+      // effort$ subscription alongside it. `release$` first: it cuts a turn
+      // whose ask is still in flight, releasing that port subscription.
+      release$.next();
+      release$.complete();
       turn$.complete();
       open$.complete();
       close$.complete();

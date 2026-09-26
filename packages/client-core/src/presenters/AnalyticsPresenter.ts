@@ -12,9 +12,11 @@ import { warmReplay } from "./warmReplay.js";
 export class AnalyticsPresenter implements AnalyticsPresenterApi {
   readonly position$: Observable<PositionUpdates>;
 
-  constructor(analytics: AnalyticsPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(analytics: AnalyticsPort, disposed$: Observable<unknown>) {
     this.position$ = new AnalyticsUseCase(analytics)
       .execute()
-      .pipe(warmReplay());
+      .pipe(warmReplay(disposed$));
   }
 }

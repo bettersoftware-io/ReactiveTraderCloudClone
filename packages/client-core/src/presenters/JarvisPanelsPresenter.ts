@@ -137,6 +137,10 @@ export class JarvisPanelsPresenter implements JarvisPanelsPresenterApi {
    * the leaf is already in the tree the persisted payload seeded. */
   readonly restoreDockedPanel: (panelId: string, spec: PanelSpecV1) => void;
 
+  /** The presenter's own keep-warm subscription on the machine's state —
+   * held so `dispose()` can release it. */
+  private readonly sync: Subscription;
+
   constructor(machine: JarvisPanelsMachineHandle, deps: PanelStreamDeps) {
     this.dismissPanel = machine.dismissPanel;
     this.restoreDockedPanel = machine.restoreDockedPanel;
@@ -170,9 +174,23 @@ export class JarvisPanelsPresenter implements JarvisPanelsPresenterApi {
     // streams flow (and get released on dismiss/eviction/edit) whether or
     // not any UI component is currently mounted to read them. See the class
     // doc above for the full teardown contract.
-    machine.state$.subscribe((s) => {
+    this.sync = machine.state$.subscribe((s) => {
       this.syncCache(s.panels, deps);
     });
+  }
+
+  /** Ends the presenter's session: stops following the machine and releases
+   * every live panel's warm hold — and with it each panel's port streams.
+   * Composition-only (`app.dispose()`); not part of the `@rtc/core-api`
+   * interface, since no UI consumer owns this singleton's lifetime. */
+  dispose(): void {
+    this.sync.unsubscribe();
+
+    for (const entry of this.cache.values()) {
+      entry.warm.unsubscribe();
+    }
+
+    this.cache.clear();
   }
 
   /** Live-resolved data for one desk panel, keyed by `panelId` — the

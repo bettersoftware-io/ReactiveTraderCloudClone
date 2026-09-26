@@ -8,7 +8,11 @@ import { warmReplay } from "./warmReplay.js";
 export class DealersPresenter implements DealersPresenterApi {
   readonly list$: Observable<readonly Dealer[]>;
 
-  constructor(dealers: DealerPort) {
-    this.list$ = new DealersUseCase(dealers).execute().pipe(warmReplay());
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(dealers: DealerPort, disposed$: Observable<unknown>) {
+    this.list$ = new DealersUseCase(dealers)
+      .execute()
+      .pipe(warmReplay(disposed$));
   }
 }

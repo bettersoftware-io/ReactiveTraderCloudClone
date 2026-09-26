@@ -1,4 +1,4 @@
-import { firstValueFrom, of, Subject } from "rxjs";
+import { firstValueFrom, NEVER, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -23,7 +23,7 @@ describe("BlotterPresenter", () => {
         return of(trades);
       },
     };
-    const presenter = new BlotterPresenter(port);
+    const presenter = new BlotterPresenter(port, NEVER);
     expect(await firstValueFrom(presenter.trades$)).toBe(trades);
   });
 
@@ -34,7 +34,7 @@ describe("BlotterPresenter", () => {
         return subject;
       },
     };
-    const presenter = new BlotterPresenter(port);
+    const presenter = new BlotterPresenter(port, NEVER);
 
     const emitted: ReadonlySet<number>[] = [];
     const sub = presenter.newTradeIds$.subscribe((ids) => {
@@ -59,7 +59,7 @@ describe("BlotterPresenter", () => {
           return subject;
         },
       };
-      const presenter = new BlotterPresenter(port);
+      const presenter = new BlotterPresenter(port, NEVER);
 
       const emitted: (readonly ActivityEntry[])[] = [];
       const sub = presenter.activity$.subscribe((entries) => {
@@ -84,7 +84,7 @@ describe("BlotterPresenter", () => {
           return subject;
         },
       };
-      const presenter = new BlotterPresenter(port);
+      const presenter = new BlotterPresenter(port, NEVER);
 
       const emitted: (readonly ActivityEntry[])[] = [];
       const sub = presenter.activity$.subscribe((entries) => {
@@ -110,7 +110,7 @@ describe("BlotterPresenter", () => {
           return subject;
         },
       };
-      const presenter = new BlotterPresenter(port);
+      const presenter = new BlotterPresenter(port, NEVER);
 
       const emitted: (readonly ActivityEntry[])[] = [];
       const sub = presenter.activity$.subscribe((entries) => {
@@ -144,7 +144,7 @@ describe("BlotterPresenter", () => {
           return subject;
         },
       };
-      const presenter = new BlotterPresenter(port);
+      const presenter = new BlotterPresenter(port, NEVER);
 
       let last: readonly ActivityEntry[] = [];
       const sub = presenter.activity$.subscribe((entries) => {
@@ -188,7 +188,7 @@ describe("BlotterPresenter", () => {
           return subject;
         },
       };
-      const presenter = new BlotterPresenter(port);
+      const presenter = new BlotterPresenter(port, NEVER);
 
       const firstRun: (readonly ActivityEntry[])[] = [];
       const sub1 = presenter.activity$.subscribe((entries) => {

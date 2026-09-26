@@ -1,4 +1,4 @@
-import { firstValueFrom, of } from "rxjs";
+import { firstValueFrom, NEVER, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { Instrument, InstrumentPort } from "@rtc/domain";
@@ -13,8 +13,8 @@ describe("InstrumentsPresenter", () => {
         return of(instruments);
       },
     };
-    expect(await firstValueFrom(new InstrumentsPresenter(port).list$)).toBe(
-      instruments,
-    );
+    expect(
+      await firstValueFrom(new InstrumentsPresenter(port, NEVER).list$),
+    ).toBe(instruments);
   });
 });

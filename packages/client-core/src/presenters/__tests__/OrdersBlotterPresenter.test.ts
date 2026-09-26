@@ -1,4 +1,4 @@
-import { concat, map, of, tap, timer } from "rxjs";
+import { concat, map, NEVER, of, tap, timer } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
@@ -46,7 +46,7 @@ describe("OrdersBlotterPresenter — fills$", () => {
       },
     };
 
-    const presenter = new OrdersBlotterPresenter(fakePort);
+    const presenter = new OrdersBlotterPresenter(fakePort, NEVER);
 
     const fillsSeen: EquityFillSignal[] = [];
     const sub = presenter.fills$.subscribe((f) => {
@@ -91,7 +91,7 @@ describe("OrdersBlotterPresenter — fills$", () => {
       },
     };
 
-    const presenter = new OrdersBlotterPresenter(fakePort);
+    const presenter = new OrdersBlotterPresenter(fakePort, NEVER);
 
     const fillsSeen: EquityFillSignal[] = [];
     const sub = presenter.fills$.subscribe((f) => {
@@ -159,7 +159,7 @@ describe("OrdersBlotterPresenter — orders$ live updates", () => {
       },
     };
 
-    const presenter = new OrdersBlotterPresenter(fakePort);
+    const presenter = new OrdersBlotterPresenter(fakePort, NEVER);
 
     const seenStatuses: string[] = [];
     const ordersSub = presenter.orders$.subscribe((orders) => {

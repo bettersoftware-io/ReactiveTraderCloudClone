@@ -1,4 +1,9 @@
-import { type MonoTypeOperatorFunction, shareReplay } from "rxjs";
+import {
+  type MonoTypeOperatorFunction,
+  type Observable,
+  shareReplay,
+  takeUntil,
+} from "rxjs";
 
 /**
  * `shareReplay` for an app-level singleton stream that must stay warm for the
@@ -17,7 +22,22 @@ import { type MonoTypeOperatorFunction, shareReplay } from "rxjs";
  * Use ONLY for app-level singletons (one stream per connection). Per-symbol
  * streams (pricing, eqQuotes, depth) MUST release when their symbol is
  * deselected — they are refcounted on the server via `keyedStream` instead.
+ *
+ * "Warm for the whole session" ends at `app.dispose()`: `disposed$` — the
+ * composition root's disposal signal — completes the source side, which
+ * releases the one held subscription (and, through it, the port). Required,
+ * not defaulted, so no singleton can be made warm without saying what ends
+ * its lifetime. A REPLAYING signal is expected (the composition root's is a
+ * `ReplaySubject(1)`), so a first subscriber that only arrives after dispose
+ * completes at once instead of re-opening the port.
  */
-export function warmReplay<T>(): MonoTypeOperatorFunction<T> {
-  return shareReplay<T>({ bufferSize: 1, refCount: false });
+export function warmReplay<T>(
+  disposed$: Observable<unknown>,
+): MonoTypeOperatorFunction<T> {
+  return (source: Observable<T>): Observable<T> => {
+    return source.pipe(
+      takeUntil(disposed$),
+      shareReplay<T>({ bufferSize: 1, refCount: false }),
+    );
+  };
 }

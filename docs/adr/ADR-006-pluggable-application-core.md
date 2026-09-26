@@ -1061,9 +1061,14 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 5. Pair `connectionEvents` with `connectionIntents` structurally (a helper
    that hands a port builder the intents port with the stream it must merge),
    so a builder cannot supply one without merging the other.
-6. The RxJS core's `dispose()` is still a knowing no-op (its follow-up is a
-   `Subscription` bag); completion-on-dispose becomes the contract when it
-   lands.
+6. ~~The RxJS core's `dispose()` is still a knowing no-op~~ — done
+   2026-09-26: a `held` subscription bag, owned-machine disposal (Jarvis's
+   cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`
+   singleton ends on. The contract, witnessed for all three cores by the
+   `@rtc/core-contract` `dispose` suite, is that the app holds no port
+   subscription once its consumers have let go; what a still-attached
+   subscriber hears — including a refcounted stream still delivering — stays
+   uncontracted (§22's envelope rule 3).
 
 ## See also
 
