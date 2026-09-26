@@ -1,7 +1,7 @@
 import { setDriver } from "@ui-contract/harness/activeDriver";
 import { setLayoutPresetStoreLookup } from "@ui-contract/harness/layoutPresetStore";
 import { cleanupMounted } from "@ui-contract/mount";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 
 import { reactDriver } from "./render";
 import { layoutPresetStoreFor } from "./viewModelFromWorld";
@@ -26,6 +26,20 @@ class ResizeObserverStub {
 }
 
 (globalThis as Record<string, unknown>).ResizeObserver = ResizeObserverStub;
+
+// @testing-library/react's asyncWrapper (the wrapper round every user-event
+// call) ends by draining a `setTimeout(0)`, and advances it only when it
+// detects JEST's fake timers — a `jest` global plus a faked `setTimeout`.
+// vitest's fake `setTimeout` already carries the `clock` RTL checks for; only
+// the global is missing, so under `vi.useFakeTimers()` that drain never fires
+// and every interaction hangs (Solid's testing library has no such wrapper).
+// The shim forwards the one call RTL makes. Under real timers `setTimeout`
+// has no `clock`, RTL's check stays false, and nothing here runs.
+(globalThis as Record<string, unknown>).jest = {
+  advanceTimersByTime: (ms: number): void => {
+    vi.advanceTimersByTime(ms);
+  },
+};
 
 setDriver(reactDriver);
 // The preset store behind this World's ViewModel, for the ONE contract case

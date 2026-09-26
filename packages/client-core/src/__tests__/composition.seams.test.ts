@@ -1,5 +1,5 @@
 import { firstValueFrom, from, NEVER, Observable, of, Subject } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   EquityFillSignal,
@@ -33,6 +33,18 @@ import {
 } from "#/presenters/index";
 
 describe("createApp — core seams (strangler phase)", () => {
+  // Fake timers, installed before each composition: every wait below is an
+  // explicit advance of virtual time, so a loaded CI runner cannot stretch a
+  // drive or a persistence debounce past an assertion (the alternative cores'
+  // twin files timed out and read a not-yet-landed drive on CI that way).
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("a supplied eqWorkspace is the one a Jarvis drive batch mutates; the app's own stays where it was", async () => {
     const seam = createEqWorkspaceMachine({ initialSymbol: "AAPL" });
     const { presenters } = createApp(
@@ -42,9 +54,7 @@ describe("createApp — core seams (strangler phase)", () => {
     const before = await firstValueFrom(presenters.eqWorkspace.state$);
 
     presenters.jarvis.intents.send("select MSFT");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     expect((await firstValueFrom(seam.state$)).sel).toBe("MSFT");
     expect((await firstValueFrom(presenters.eqWorkspace.state$)).sel).toBe(
@@ -60,9 +70,7 @@ describe("createApp — core seams (strangler phase)", () => {
     );
 
     presenters.jarvis.intents.send("select MSFT");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     expect((await firstValueFrom(presenters.eqWorkspace.state$)).sel).toBe(
       "MSFT",
@@ -78,9 +86,7 @@ describe("createApp — core seams (strangler phase)", () => {
     );
 
     presenters.jarvis.intents.send("go to credit");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     expect((await firstValueFrom(seam.state$)).activeTab).toBe("credit");
     expect(
@@ -98,9 +104,7 @@ describe("createApp — core seams (strangler phase)", () => {
     );
     seam.intents.switchTab("credit");
     presenters.jarvis.intents.send("spawn a panel");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     presenters.dockPanel("jarvis-1");
 
@@ -120,9 +124,7 @@ describe("createApp — core seams (strangler phase)", () => {
     );
 
     presenters.jarvis.intents.send("go to credit");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     expect(
       (await firstValueFrom(presenters.workspaceNav.state$)).activeTab,
@@ -136,13 +138,9 @@ describe("createApp — core seams (strangler phase)", () => {
     });
     const seedApp = createApp(seedPorts);
     seedApp.presenters.jarvis.intents.send("spawn a panel");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
     seedApp.presenters.dockPanel("jarvis-1");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
     const stored = await firstValueFrom(
       seedPorts.preferences.workspaceLayout$(),
     );
@@ -173,9 +171,7 @@ describe("createApp — core seams (strangler phase)", () => {
     const { presenters } = createApp(ports);
 
     presenters.layoutFor("fx").intents.maximize("fx-rates");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
 
     expect(await firstValueFrom(ports.preferences.workspaceLayout$())).not.toBe(
       null,
@@ -187,9 +183,7 @@ describe("createApp — core seams (strangler phase)", () => {
 
     rig.pushAnomaly();
     rig.presenters.layoutFor("fx").intents.maximize("fx-rates");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
 
     expect(rig.calls).toEqual({
       ask: 0,
@@ -218,9 +212,7 @@ describe("createApp — core seams (strangler phase)", () => {
 
     spawner.presenters.jarvis.intents.send("spawn a panel");
     driver.presenters.jarvis.intents.send("go to credit");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     expect(
       await firstValueFrom(spawner.presenters.jarvisPanels.panels$),
@@ -237,9 +229,7 @@ describe("createApp — core seams (strangler phase)", () => {
 
     rig.pushAnomaly();
     rig.presenters.layoutFor("fx").intents.maximize("fx-rates");
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
 
     rig.presenters.jarvisUsage.usage$.subscribe().unsubscribe();
 
@@ -368,9 +358,7 @@ describe("createApp — core seams (strangler phase)", () => {
       .subscribe((intent) => {
         ticks.push(intent);
       });
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 50);
-    });
+    await vi.advanceTimersByTimeAsync(50);
 
     prices$.next(createPrice("EURUSD", 1.1));
     prices$.next(createPrice("EURUSD", 1.2));
