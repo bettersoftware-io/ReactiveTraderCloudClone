@@ -17,7 +17,8 @@
   // a main-entry one — no subpath escape hatch). A generic `@rtc/*` wildcard
   // can't do this: `*` is greedy over slashes, so it can't distinguish the main
   // entry from a subpath. New packages need a line pair here (same as they need
-  // a dependency-cruiser rule and a knip entry).
+  // a dependency-cruiser rule and a knip entry) — enforced for every depended-on
+  // workspace package by scripts/check-package-wiring.mjs (`pnpm check:scripts`).
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
