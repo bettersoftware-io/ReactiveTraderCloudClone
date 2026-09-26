@@ -7,7 +7,6 @@ export {
   type FoldUpdate,
   type FromPort,
   fromPortIn,
-  pushReconnectIntent,
   refToStateStream,
   refToWarmStateStream,
   reportOutOfBand,

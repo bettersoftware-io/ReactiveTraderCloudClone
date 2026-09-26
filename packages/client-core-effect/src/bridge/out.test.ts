@@ -13,8 +13,6 @@ import {
 import { BehaviorSubject, Subject, type Subscription } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { incident$, reconnect$ } from "@rtc/client-core";
-
 import {
   createChildHost,
   createDetachedHost,
@@ -24,8 +22,6 @@ import {
   type FromPort,
   fromPortIn,
   listenToStateStream,
-  pushIncidentEvent,
-  pushReconnectIntent,
   refToStateStream,
   refToWarmStateStream,
   reportOutOfBand,
@@ -846,26 +842,6 @@ describe("bridge/out", () => {
     // never dispatches a subscriber `error()` either.
     expect(errored).toBe(false);
     await host.runtime.dispose();
-  });
-
-  it("pushReconnectIntent() lands a 'reconnect' event on the RxJS core's reconnect$ seam", () => {
-    const seen: unknown[] = [];
-    const sub = reconnect$.subscribe((e) => {
-      seen.push(e);
-    });
-    pushReconnectIntent();
-    expect(seen).toEqual([{ type: "reconnect" }]);
-    sub.unsubscribe();
-  });
-
-  it("pushIncidentEvent() lands the event on the RxJS core's incident$ seam", () => {
-    const seen: unknown[] = [];
-    const sub = incident$.subscribe((e) => {
-      seen.push(e);
-    });
-    pushIncidentEvent({ type: "gatewayDisconnected" });
-    expect(seen).toEqual([{ type: "gatewayDisconnected" }]);
-    sub.unsubscribe();
   });
 
   it("refToStateStream runs onSubscribe on each zero-to-one subscriber transition, not per subscriber", async () => {

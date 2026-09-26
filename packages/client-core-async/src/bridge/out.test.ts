@@ -1,13 +1,9 @@
 import { Subject } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { incident$, reconnect$ } from "@rtc/client-core";
-
 import {
   portCallToStream,
   promiseToStream,
-  pushIncidentEvent,
-  pushReconnectIntent,
   storeToStateStream,
   storeToWarmStateStream,
   topicToStream,
@@ -92,26 +88,6 @@ describe("bridge/out", () => {
     });
     expect(first).toEqual([5]);
     expect(second).toEqual([7]);
-    sub.unsubscribe();
-  });
-
-  it("pushReconnectIntent() lands a 'reconnect' event on the RxJS core's reconnect$ seam", () => {
-    const seen: unknown[] = [];
-    const sub = reconnect$.subscribe((e) => {
-      seen.push(e);
-    });
-    pushReconnectIntent();
-    expect(seen).toEqual([{ type: "reconnect" }]);
-    sub.unsubscribe();
-  });
-
-  it("pushIncidentEvent() lands the event on the RxJS core's incident$ seam", () => {
-    const seen: unknown[] = [];
-    const sub = incident$.subscribe((e) => {
-      seen.push(e);
-    });
-    pushIncidentEvent({ type: "gatewayDisconnected" });
-    expect(seen).toEqual([{ type: "gatewayDisconnected" }]);
     sub.unsubscribe();
   });
 

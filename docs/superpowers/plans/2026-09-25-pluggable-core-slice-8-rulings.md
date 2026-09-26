@@ -60,3 +60,40 @@ file is its durable record, and each PR appends its own section.
   - A mutant where the native driver never applies a command is KILLED, on fake timers and on the real-timer original alike.
   - Two further mutants SURVIVE, on real and fake timers alike, so the gap predates the conversion: the base app not standing down (`nativeJarvis: false`), and `dispose()` skipping its teardown.
   - **Ruling:** those two gaps are not fixed here. These files are strangler scaffolding that PR C deletes, and PR C's Tasks 6 and 7 add the real dispose witness, a live-subscription count of zero after `dispose()`. *Cost if wrong:* none past PR C.
+
+## PR B — `connectionIntents` and the native transport gate (Tasks 4–5)
+
+### Task 4 — `AppPorts.connectionIntents`
+
+- **Both port factories supply the port.** `TransportPorts` still omits only `connectionEvents`, and `createSimulatorPorts` and `createWsRealPorts` both return `connectionIntents: connectionIntentsPort`. The plan named the simulator factory only. Making `connectionIntents` required broke about 40 builders and tests that spread a factory and replace only `connectionEvents`; every one of them now inherits the port. *Cost if wrong* (corrected after review): typecheck proves the port is PRESENT, not that the builder MERGES what it carries. A builder that spreads a factory and swaps in its own `connectionEvents` still compiles while dropping every reconnect and incident event. Every production builder merges both Subjects, so nothing is lost today. About 25 test builders do not, but none of them exercises reconnect or incident, and that behaviour predates this PR. The structural fix pairs the two: `TransportPorts` omits both, and a helper hands the builder the port with the stream it must merge. It is left to PR C, where the base app and the Subjects' last reader go.
+- **The Subjects moved.** `reconnect$`, `incident$` and `connectionIntentsPort` now live in `client-core/src/adapters/connectionIntents.ts`, so `portFactory` never imports `composition`. `publicApi` gains exactly one name, `connectionIntentsPort`. *Cost if wrong:* none.
+- **The harness owns the merge.** `scriptPorts` takes `Omit<AppPorts, "connectionIntents">` and supplies a recording port that feeds the stream the core observes (`driver.connectionIntentCalls()`). The three runners' base `connectionEvents` is `NEVER`, and none of them imports a module Subject. *Cost if wrong:* none; see the mutants below.
+- **The presenter tier's incident scenario runs the real path.** `tests/presenter/scenarios/_buildApp.ts` used a `state$`→Subject bridge, with a hand-mirrored `DISCONNECTING_KINDS`, because the machine pushed into a module-level `incident$`. It now supplies an instance-scoped `connectionIntents`, so the scenario observes the real machine's event, and `bridgeSub` is gone from its two consumers. Presenter vitest ran 22/22 and cucumber 21/21. *Cost if wrong:* three extra test files in scope.
+- **Mutation:** 7/7 KILLED. The mutants were `commands.reconnect` pushing nothing (×3 cores), the incident event never leaving (×3 cores), and the harness `reconnect()` pushing nothing.
+
+### Task 5 — `transportGate`
+
+- **The reference disconnects once on a signed-out start.** The RxJS gate's `distinctUntilChanged` passes the first `false`, so a composition with no session calls `disconnect()` once. The plan's case 1 expected `[]`. The contract pins the reference, `["disconnect"]`, which is idempotent on a socket that never opened. *Cost if wrong:* a spurious close call becomes contracted behaviour.
+- **Measured before the fix:** both alternative cores FAILED the sign-in case, logging only `["disconnect"]`. The only gate was the stood-down base app's, and it watches the base's `auth`, which a native login never reaches. The resumed case passed only because the base resumes from the same store. RxJS passed 4/4. This is the latent bug the plan predicted.
+- **The fix.** Each alternative core gates on its own `auth` from `bridge/transportGate.ts`, released with its lifetime (async `AbortSignal`, Effect host scope). It hands the base `{ ...ports, transport: undefined }`, so exactly one gate exists until PR C deletes the base. `app.ports` is restored to the real ports, because `app` spreads `base`.
+- **Seeds and verbs.** The resumed case reuses `HarnessSeed.session`; no `resumedSession` flag was added. Case 5 uses lock then unlock, because the auth suite shows lock keeps `status: "authenticated"`.
+- **Beyond the plan.** Two bridge unit tests per core cover the gate's release, which the contract cannot witness: the RxJS core's `dispose()` is a knowing no-op. The suite also asserts `app.ports.transport` is defined.
+- **Mutation:** 10/10 KILLED, per core: no edge guard, connect turned into disconnect, the base keeping the transport (two gates), the gate never released, and `app.ports` left as the base's.
+
+### PR B gate
+
+- Full gauntlet: 33/33 gates exit 0. e2e on rxjs, async and effect: each passed 91+91 Playwright and 47/47 Cucumber.
+- The simulator-mode e2e never supplies a transport, so it cannot see the gate. A manual WS smoke (`VITE_CORE_IMPL=… pnpm dev:react:fs`, demo account) is the witness:
+  - **async:** no socket before sign-in; one server `connect` on sign-in; prices ticking.
+  - **effect:** a resumed session connected once at load. After clearing storage and reloading, one `disconnect` and no socket while signed out. A fresh sign-in made one `connect` (`total=2`), and prices ticked.
+
+### PR B review (one independent reviewer): no Critical or Important findings; all five Minors addressed in-PR
+
+- **M1.** Both alternative cores' READMEs still named the deleted `pushIncidentEvent`. They now describe `ports.connectionIntents.injectIncident` and the native transport gate. ADR-006's dated records are left as history.
+- **M2.** Nothing tested whether the composition-level gate is released. Each core's `composition.dispose.test.ts` now signs in, disposes, logs out, and expects no further transport call.
+  - The async mutant (the gate on a lifetime that never aborts) is KILLED.
+  - **Ruling:** the Effect twin (the gate on a scope that never closes) SURVIVES, and I accept that. A probe shows the Effect core's native `auth` is inert after `dispose()`: `logout()` emits nothing, so a gate left on the wrong scope can never reach the transport. The survivor is equivalent in behaviour, and what remains is one dormant subscription. The release mechanism itself is pinned by `bridge/transportGate.test.ts`. *Cost if wrong:* a leaked subscription per disposed Effect app. HMR and StrictMode dispose the app, so it matters only if auth ever becomes live after dispose.
+- **M3.** The Task 4 ruling overstated what typecheck proves. Corrected above; the structural pairing is deferred to PR C.
+- **M4.** The async gate now routes an `auth` stream error out of band, matching its Effect twin.
+- **M5.** The `app.ports` check is now an identity witness. A call through `app.ports.transport` must land in the scripted log.
+- **Mutation after fixes:** the 10 Task 5 mutants are 10/10 KILLED again, and the composition-release mutants are 1 KILLED, 1 equivalent (ruled above).

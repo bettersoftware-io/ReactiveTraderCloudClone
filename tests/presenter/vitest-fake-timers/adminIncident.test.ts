@@ -33,7 +33,6 @@ describe("@presenter Feature: Admin incident injection breaks the live connectio
 
   afterEach(() => {
     statusSub.unsubscribe();
-    w.ctx.bridgeSub.unsubscribe();
     w.ctx.app.presenters.incident.dispose();
     vi.useRealTimers();
   });

@@ -1,10 +1,11 @@
 // tests/presenter/scenarios/_buildApp.ts
 
-import { merge, Subject, type Subscription } from "rxjs";
+import { merge, Subject } from "rxjs";
 
 import {
   type App,
   type AppPorts,
+  type ConnectionIntentsPort,
   createApp,
   createSimulatorPorts,
   InMemorySessionStore,
@@ -38,6 +39,7 @@ export function buildPresenterApp(): PresenterCtx {
         return merge(gateway.events(), connectionEvents$.asObservable());
       },
     },
+    connectionIntents: createConnectionIntents(connectionEvents$),
   };
   return { app: createApp(ports), connectionEvents$ };
 }
@@ -45,36 +47,20 @@ export function buildPresenterApp(): PresenterCtx {
 /** What buildIncidentPresenterApp returns. */
 export interface IncidentPresenterCtx {
   app: App;
-  /**
-   * Must be unsubscribed in the After/afterEach hook — it is the reactive
-   * bridge that translates IncidentMachine state transitions into
-   * myIncident$ emissions.
-   */
-  bridgeSub: Subscription;
 }
 
 /**
- * Builds a simulator-ports app whose connection events include a reactive
- * bridge driven by IncidentMachine.state$.
- *
- * Problem: composition.ts wires IncidentMachine → a module-level incident$
- * Subject in @rtc/client-core. This helper builds an instance-scoped bridge
- * instead of reusing that singleton, and avoids buildBrowserPorts() (the
- * browser composition), which accesses import.meta.env (Vite-only) and throws
- * in Node.js/tsx.
- *
- * Solution: build a custom connectionEvents port with myIncident$, then
- * subscribe to app.presenters.incident.state$ and re-emit the equivalent
- * connection event whenever a disconnecting incident is injected or cleared.
- * The bridge fires synchronously, so status$ is already DISCONNECTED by the
- * time inject() returns — identical timing to the production path.
+ * Builds a simulator-ports app whose admin incident injections reach its own
+ * connection presenter — the production path: `presenters.incident` pushes
+ * each connection event through `ports.connectionIntents`, which this
+ * builder merges into `connectionEvents`, as a client's port builder does.
+ * Instance-scoped (no module-level Subject is shared between scenarios), and
+ * free of `buildBrowserPorts()`, which reads `import.meta.env` (Vite-only)
+ * and throws in Node.js/tsx. The push is synchronous, so `status$` is already
+ * DISCONNECTED by the time `inject()` returns.
  */
 export function buildIncidentPresenterApp(): IncidentPresenterCtx {
-  // The IncidentMachine uses these kinds to push gatewayDisconnected.
-  // Mirror the set from IncidentMachine.ts — string-valued, no const-enum.
-  const DISCONNECTING_KINDS = new Set<string>(["latencySpike", "serviceDown"]);
-
-  const myIncident$ = new Subject<ConnectionEvent>();
+  const intents$ = new Subject<ConnectionEvent>();
   const gateway = new ConnectionEventsSimulator();
 
   const ports: AppPorts = {
@@ -85,32 +71,26 @@ export function buildIncidentPresenterApp(): IncidentPresenterCtx {
     }),
     connectionEvents: {
       events: () => {
-        return merge(gateway.events(), myIncident$.asObservable());
+        return merge(gateway.events(), intents$.asObservable());
       },
     },
+    connectionIntents: createConnectionIntents(intents$),
   };
 
-  const app = createApp(ports);
+  return { app: createApp(ports) };
+}
 
-  // Reactive bridge: IncidentMachine state$ → myIncident$
-  let prevActive: readonly string[] = [];
-  const bridgeSub: Subscription = app.presenters.incident.state$.subscribe(
-    (state) => {
-      const current = state.active as readonly string[];
-
-      for (const kind of current) {
-        if (!prevActive.includes(kind) && DISCONNECTING_KINDS.has(kind)) {
-          myIncident$.next({ type: "gatewayDisconnected" });
-        }
-      }
-
-      if (current.length === 0 && prevActive.length > 0) {
-        myIncident$.next({ type: "gatewayConnected" });
-      }
-
-      prevActive = current;
+/** A `ConnectionIntentsPort` that pushes into `sink` — the Subject the
+ * builder's `connectionEvents` merges. */
+function createConnectionIntents(
+  sink: Subject<ConnectionEvent>,
+): ConnectionIntentsPort {
+  return {
+    reconnect: () => {
+      sink.next({ type: "reconnect" });
     },
-  );
-
-  return { app, bridgeSub };
+    injectIncident: (event: ConnectionEvent) => {
+      sink.next(event);
+    },
+  };
 }

@@ -1,3 +1,4 @@
+import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -8,6 +9,7 @@ import type {
 import {
   AuthSimulator,
   type Candle,
+  type ConnectionEvent,
   type CreateRfqRequest,
   type CurrencyPair,
   type Dealer,
@@ -941,6 +943,45 @@ describe("scriptPorts — Jarvis turns, confirmations, availability, history and
   });
 });
 
+describe("scriptPorts — connectionIntents", () => {
+  it("delivers one reconnect event per reconnect() on the merged stream", () => {
+    const { ports, driver, teardown } = scriptPorts(
+      createBasePortsWithLiveConnection(),
+    );
+    const seen: ConnectionEvent[] = [];
+    const sub = driver.connectionEvents$().subscribe((e) => {
+      seen.push(e);
+    });
+    ports.connectionIntents.reconnect();
+    expect(seen).toEqual([{ type: "reconnect" }]);
+    expect(driver.connectionIntentCalls()).toEqual({
+      reconnect: 1,
+      injectIncident: 0,
+    });
+    sub.unsubscribe();
+    teardown();
+  });
+
+  it("delivers an injected incident event verbatim, once", () => {
+    const { ports, driver, teardown } = scriptPorts(
+      createBasePortsWithLiveConnection(),
+    );
+    const seen: ConnectionEvent[] = [];
+    const sub = driver.connectionEvents$().subscribe((e) => {
+      seen.push(e);
+    });
+    const event: ConnectionEvent = { type: "gatewayDisconnected" };
+    ports.connectionIntents.injectIncident(event);
+    expect(seen).toEqual([event]);
+    expect(driver.connectionIntentCalls()).toEqual({
+      reconnect: 0,
+      injectIncident: 1,
+    });
+    sub.unsubscribe();
+    teardown();
+  });
+});
+
 function createAvailability(available: boolean): JarvisAvailability {
   return {
     available,
@@ -968,6 +1009,19 @@ function createBasePorts(): AppPorts {
       },
     },
   } as unknown as AppPorts;
+}
+
+/** `createBasePorts` with a real (silent) connection-event source, for the
+ * cases that subscribe to the merged stream. */
+function createBasePortsWithLiveConnection(): AppPorts {
+  return {
+    ...createBasePorts(),
+    connectionEvents: {
+      events: () => {
+        return NEVER;
+      },
+    },
+  };
 }
 
 interface Unsubscribable {

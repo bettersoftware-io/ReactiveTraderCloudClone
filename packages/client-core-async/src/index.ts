@@ -2,7 +2,6 @@ export { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
 export {
   portCallToStream,
   promiseToStream,
-  pushReconnectIntent,
   storeToStateStream,
   storeToWarmStateStream,
   topicToStream,

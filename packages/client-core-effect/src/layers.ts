@@ -56,10 +56,10 @@ import type {
   WorkspaceNavState,
 } from "@rtc/core-api";
 import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
-import type { CurrencyPair } from "@rtc/domain";
+import type { ConnectionEvent, CurrencyPair } from "@rtc/domain";
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
-import { type EffectHost, pushIncidentEvent } from "#/bridge/out";
+import type { EffectHost } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
@@ -484,8 +484,8 @@ const PositionsLive = presenterLayer(PositionsTag, (host, ports) => {
 
 // Slice 5: the admin nine. The metric windows, eventLog and sessionsKpi are
 // retained folds, topology and sessions retained mirrors; incident is an
-// app-lifetime singleton whose connection events reach the RxJS core's
-// `incident$` seam.
+// app-lifetime singleton whose connection events go out through
+// `ports.connectionIntents.injectIncident`.
 const ThroughputLive = presenterLayer(ThroughputTag, (host, ports) => {
   return createThroughputPresenter(host, ports.admin);
 });
@@ -527,7 +527,9 @@ const SessionsKpiLive = presenterLayer(SessionsKpiTag, (host, ports) => {
 const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
   return createIncidentMachine(host, {
     controls: ports.metricControls,
-    pushConnectionEvent: pushIncidentEvent,
+    pushConnectionEvent: (event: ConnectionEvent): void => {
+      ports.connectionIntents.injectIncident(event);
+    },
   });
 });
 
@@ -726,6 +728,7 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
 export type NativePresenters = Partial<Presenters> &
   Pick<
     Presenters,
+    | "auth"
     | "connection"
     | "currencyPairs"
     | "eqWorkspace"

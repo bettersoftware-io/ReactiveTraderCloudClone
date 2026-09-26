@@ -7,14 +7,12 @@
 // suites, a different `createApp`/`createMachineFactories` pair and a
 // different label.
 
-import { merge } from "rxjs";
+import { NEVER } from "rxjs";
 
 import {
   type AppPorts,
   createSimulatorPorts,
   InMemorySessionStore,
-  incident$,
-  reconnect$,
 } from "@rtc/client-core";
 import {
   type CoreHarness,
@@ -27,21 +25,19 @@ import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 import { createApp, createMachineFactories } from "#/composition";
 
 function createEffectHarness(seed?: HarnessSeed): CoreHarness {
-  const base: AppPorts = {
+  const base: Omit<AppPorts, "connectionIntents"> = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
       auth: new AuthSimulator({ demo: "pw" }),
       sessionStore: new InMemorySessionStore(),
     }),
-    // Mirrors the RxJS runner: the user-initiated reconnect intent is a
-    // module-level Subject the browser port factories merge into
-    // connectionEvents, and the incident machine's connection-event sink,
-    // which the browser port factories merge the same way, so the harness
-    // merges both too — otherwise `commands.reconnect()` and
-    // `presenters.incident`'s intents would be unobservable.
+    // No connection source of its own: `scriptPorts` supplies
+    // `connectionIntents` and merges what the core pushes through it
+    // (`commands.reconnect()`, `presenters.incident`'s intents) into the
+    // stream the core observes, as a client's port builder does.
     connectionEvents: {
       events: () => {
-        return merge(reconnect$, incident$);
+        return NEVER;
       },
     },
   };

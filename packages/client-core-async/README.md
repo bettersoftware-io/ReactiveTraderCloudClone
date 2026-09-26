@@ -133,9 +133,11 @@ debounce. Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as warm
 folds over `kernel/foldTopic.ts`, `topology` and `sessions` as warm
 mirrors, `throughput`, and the `incident` singleton, whose connection
-events reach the RxJS core's `incident$` seam through `pushIncidentEvent`.
+events go out through `ports.connectionIntents.injectIncident` (slice 8).
 Slice 6 added five shell members: `workspaceNav`, `bootGate` and `auth`
-over Stores (`auth` over the shared `createAuthDeps`), the `boot` ramp, and
+over Stores (`auth` over the shared `createAuthDeps`; since slice 8 this core
+also gates `ports.transport` on it, in `bridge/transportGate.ts`, and hands
+the base app none), the `boot` ramp, and
 `animationDirector` — one refCounted topic over the native members' streams
 that re-keys its per-pair tick relays on each roster. Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,

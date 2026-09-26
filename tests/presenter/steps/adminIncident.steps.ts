@@ -1,9 +1,9 @@
 // tests/presenter/steps/adminIncident.steps.ts
 //
 // Drives the IncidentMachine → ConnectionStatusPresenter coupling via the
-// real in-process app.  buildIncidentPresenterApp() wires a reactive bridge so
-// that inject() / clear() drive the custom connectionEvents port without
-// requiring import.meta.env (Vite-only).
+// real in-process app. buildIncidentPresenterApp() merges the app's own
+// connectionIntents into its connectionEvents port, so inject() / clear()
+// reach the connection presenter without import.meta.env (Vite-only).
 //
 // NOTE: ConnectionStatus is a `const enum` in @rtc/domain source. With
 // verbatimModuleSyntax + isolatedModules, ambient const enums cannot be
@@ -38,7 +38,6 @@ After(function cleanupIncidentAppAfter(this: PresenterWorld) {
 
   if (ctx) {
     ctx.statusSub.unsubscribe();
-    ctx.bridgeSub.unsubscribe();
     ctx.app.presenters.incident.dispose();
     incidentMap.delete(this);
   }
