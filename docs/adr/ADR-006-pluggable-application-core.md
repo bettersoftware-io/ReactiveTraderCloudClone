@@ -263,9 +263,10 @@ predictable from the design alone):
   A rule for all three cores, contracted by `portDiscipline`. Witnessed as
   CONSTANCY, not an absolute count: a strangler core's `composeWithBase`
   constructs the RxJS base app's presenter (one port call) and then the
-  native overlay (one more), so an absolute "once" holds only for the RxJS
-  core until slice 8 removes delegation; the suite asserts the count after
+  native overlay (one more), so an absolute "once" held only for the RxJS
+  core until slice 8 removed delegation; the suite asserted the count after
   construction never changes across warm periods or synchronous reads.
+  *(Superseded in slice 8: `portDiscipline` now pins the absolute count.)*
 - **`peek` throws.** A port that errors on subscribe fails the read at its
   site.
 - **`client-core` class docs carry implementation notes only**; the
@@ -1037,8 +1038,10 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 - **`portDiscipline` is absolute:** one construction-time call per reading
   member. It caught the RxJS `RfqsPresenter` calling `workflow.events()`
   twice; it now calls once and subscribes twice (identical wire traffic).
-- **Bundle isolation in every direction:** `RXJS_CORE_BRAND` joins the
-  markers, so an async or Effect build must not carry the RxJS core.
+- **Bundle isolation in every direction:** `RXJS_CORE_BRAND`, stamped by
+  the RxJS `createApp` on every `App`, joins the markers, so an async or
+  Effect build must not carry the RxJS composition root (the port factories
+  and adapters still ship from `client-core` in every build).
 - **A gap the strangler hid closed on its own:** the auth suite's
   expired-session store-clear could not fail against a sibling while the base
   resumed from the same store; with the base gone it kills that mutant in

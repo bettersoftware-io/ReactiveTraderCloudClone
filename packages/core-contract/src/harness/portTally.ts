@@ -65,6 +65,55 @@ export function countInto<T>(
   });
 }
 
+/** `ports` with every Observable any port method returns counted into
+ * `tally` — whoever subscribes (a member, or anything composed behind it)
+ * shows up in `tally.live`. The dispose witness's instrument: after
+ * `app.dispose()`, `tally.live` must be 0. A Proxy per port, so prototype
+ * methods (the simulators') are wrapped too; non-object members and arrays
+ * (`metricControls`) pass through. Streams reached through a getter or a
+ * nested object are NOT counted — every `AppPorts` stream is a method. */
+export function countEveryPortStream<P extends object>(
+  ports: P,
+  tally: SubscriptionTally,
+): P {
+  return Object.fromEntries(
+    Object.entries(ports).map(([name, port]) => {
+      return [name, countEveryStream(port, tally)];
+    }),
+  ) as P;
+}
+
+function countEveryStream(port: unknown, tally: SubscriptionTally): unknown {
+  if (typeof port !== "object" || port === null || Array.isArray(port)) {
+    return port;
+  }
+
+  return new Proxy(port, {
+    get: (target: object, property: string | symbol): unknown => {
+      const member: unknown = Reflect.get(target, property, target);
+
+      if (typeof member !== "function") {
+        return member;
+      }
+
+      return (...args: unknown[]): unknown => {
+        const result: unknown = Reflect.apply(member, target, args);
+
+        return isObservable(result) ? countInto(result, tally) : result;
+      };
+    },
+  });
+}
+
+function isObservable(value: unknown): value is Observable<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "subscribe" in value &&
+    typeof value.subscribe === "function"
+  );
+}
+
 function passThrough<T>(source: Observable<T>): Observable<T> {
   return source;
 }

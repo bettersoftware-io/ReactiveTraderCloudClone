@@ -121,7 +121,7 @@ file is its durable record, and each PR appends its own section.
   - Mutants KILLED: a member built twice (×2) and the double call restored.
 - **Ruling:** `composition.seams.test.ts` in client-core is deleted whole. Its four no-seam "controls" test behaviours the contract suites already pin against the RxJS core: `jarvisDriver`, layout persistence, the narrator, and availability and history.
 - **The runtime-dependency rule.** `alt-cores-no-client-core-at-runtime` fails a probe runtime import with the rule named, and passes once the probe is removed.
-- **Bundle brand in every direction.** `RXJS_CORE_BRAND` lives on `rxjsCore`. `check:core-bundle` passed on its first run, because `selectCore`'s fold already drops `rxjsCore`. A mutant that keeps the RxJS core reachable in the async build is KILLED. The marker is therefore a hard gate, not report-only.
+- **Bundle brand in every direction.** `RXJS_CORE_BRAND` first lived on `rxjsCore`; the review moved it into `createApp` (see "PR C review"). `check:core-bundle` passed on its first run, because `selectCore`'s fold already drops `rxjsCore`. A mutant that keeps the RxJS core reachable in the async build is KILLED. The marker is therefore a hard gate, not report-only.
 - **Found:** with the base gone, the auth suite's expired-session store-clear now kills a sibling mutant in both cores. This closes slice-6 ledger A-5, and the suite's caveat comment is removed.
 
 ### Task 9 — docs
@@ -136,3 +136,26 @@ file is its durable record, and each PR appends its own section.
 - WS smoke (`dev:react:fs`, demo account, storage cleared first):
   - **async:** 0 sockets while signed out, one `connect` on sign-in, prices ticking, `data-core-impl=async`.
   - **effect:** the same, with `data-core-impl=effect`.
+
+### PR C review (one independent reviewer): no Critical findings; both Importants and every Minor addressed in-PR
+
+The reviewer confirmed:
+
+- **Nothing was lost by removing the base.** Its only remaining side effects (its `auth` resume, its `incident` machine, its eager folds) were already native.
+- **The unwrapped `CoreSeams` branches are semantically intact.**
+- **Every `WorkflowPort.events()` in the repo is lazy,** so the `RfqsPresenter` change is equivalent.
+
+Findings:
+
+- **I1.** §22 claimed "every core's `dispose()`" is witnessed, but the RxJS core's `dispose()` is a knowing no-op. It now says "each alternative core's".
+- **I2.** The brand sat on the `rxjsCore` factory, so it proved only that the factory was unreachable. The plan said "reference it from `createApp`", and the deviation had no ruling.
+  - `createApp` now stamps a non-enumerable `brand` on every `App`, so the literal ships exactly when the RxJS composition root does.
+  - The docs now say what the marker proves: the absence of that composition root. `client-core`'s port factories and adapters still ship in every build, because the package is not `sideEffects: false`.
+  - Mutants KILLED: `createApp` left reachable in the async build, and the stamp removed.
+- **M1 and M6.** The dispose witnesses now count an optional port too: a `colorScheme` source. The shared module-level `reconnect$` gave way to a local `NEVER`.
+- **M2.** The counting helper is shared: `countEveryPortStream` lives in `@rtc/core-contract`'s `portTally.ts`, with two tests.
+- **M3.** Async `dispose()` now aborts its lifetime in a `finally`, like its Effect twin.
+  - **Ruling:** there is no test for the throwing-dispose path, because a native Jarvis presenter cannot be made to throw from outside. A mutant removing the abort inside the `finally` is KILLED by the dispose witness. *Cost if wrong:* a throwing Jarvis dispose, which exists nowhere today.
+- **M4.** **Ruling:** the 14-key `Omit` list stays duplicated across the two cores. It cannot drift silently: an omitted key the family does not supply is a compile error on `App.presenters: Presenters`, and a supplied key that is not omitted is merely overridden by the spread. *Cost if wrong:* a list edit in two places.
+- **M5.** ADR-006's slice-1 "called once" bullet is marked superseded in slice 8.
+- **Mutation after the fixes:** 4/4 KILLED.

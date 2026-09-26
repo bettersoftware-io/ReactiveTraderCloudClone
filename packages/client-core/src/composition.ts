@@ -270,6 +270,12 @@ function wireJarvisHistorySource(
   };
 }
 
+/** Survives minification as a literal: `createApp` stamps it on every `App`
+ * it returns, so the literal ships exactly when this composition root does,
+ * and `check:core-bundle` greps for it to prove a build that selected another
+ * core carries none of it — the twin of `ASYNC_CORE_BRAND`. */
+export const RXJS_CORE_BRAND = "@rtc/client-core:brand";
+
 export function createApp(ports: AppPorts): App {
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
@@ -884,7 +890,8 @@ export function createApp(ports: AppPorts): App {
     },
     reportDetachedPanels: workspaceDock.reportDetachedPanels,
   };
-  return {
+
+  const app: App = {
     presenters,
     ports,
     commands,
@@ -897,6 +904,10 @@ export function createApp(ports: AppPorts): App {
       // collected across `createApp` and unsubscribed here.
     },
   };
+  // Non-enumerable, so no spread or key walk (devtools, a test's `toEqual`)
+  // ever sees it; a real runtime write, so no minifier drops the literal.
+  Object.defineProperty(app, "brand", { value: RXJS_CORE_BRAND });
+  return app;
 }
 
 /**
@@ -1015,21 +1026,6 @@ export function createMachineFactories(
   };
 }
 
-/** Survives minification as a literal; `check:core-bundle` greps for it to
- * prove a build that selected another core shipped none of this one — the
- * twin of `ASYNC_CORE_BRAND`. */
-export const RXJS_CORE_BRAND = "@rtc/client-core:brand";
-
-/** A `CoreFactory` carrying the grep-able brand literal above. */
-interface BrandedCoreFactory extends CoreFactory {
-  readonly brand: string;
-}
-
 /** The RxJS core as a `CoreFactory` — what `selectCore` returns for
- * `VITE_CORE_IMPL=rxjs` (the default). It carries the brand above, so the
- * literal ships exactly when this factory does. */
-export const rxjsCore: BrandedCoreFactory = {
-  brand: RXJS_CORE_BRAND,
-  createApp,
-  createMachineFactories,
-};
+ * `VITE_CORE_IMPL=rxjs` (the default). */
+export const rxjsCore: CoreFactory = { createApp, createMachineFactories };

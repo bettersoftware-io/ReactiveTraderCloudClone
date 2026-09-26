@@ -1,18 +1,16 @@
-import type { Observable } from "rxjs";
+import { BehaviorSubject, NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
   createSimulatorPorts,
   InMemorySessionStore,
-  reconnect$,
 } from "@rtc/client-core";
 import type { App, StoredSession } from "@rtc/core-api";
 import {
-  countInto,
+  countEveryPortStream,
   createTally,
   EURUSD,
-  type SubscriptionTally,
   scriptPorts,
 } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator, ROSTER } from "@rtc/domain";
@@ -90,7 +88,7 @@ function createBasePorts(): AppPorts {
     }),
     connectionEvents: {
       events: () => {
-        return reconnect$;
+        return NEVER;
       },
     },
   };
@@ -119,17 +117,22 @@ interface CountingPorts {
   liveSubscriptions(): number;
 }
 
-/** The simulator ports with every stream a port method returns counted into
- * one tally — whoever subscribes (a native member, or anything composed
- * behind it) shows up in `liveSubscriptions()`. */
+/** The simulator ports (plus a colour-scheme source, so the optional port is
+ * counted too) with every stream a port method returns counted into one
+ * tally. */
 function createCountingSimulatorPorts(): CountingPorts {
   const tally = createTally();
-  const base = createBasePorts();
-  const ports = Object.fromEntries(
-    Object.entries(base).map(([name, port]) => {
-      return [name, countEveryStream(port, tally)];
-    }),
-  ) as unknown as AppPorts;
+  const ports = countEveryPortStream(
+    {
+      ...createBasePorts(),
+      colorScheme: {
+        prefersDark$: () => {
+          return new BehaviorSubject(false);
+        },
+      },
+    },
+    tally,
+  );
 
   return {
     ports,
@@ -137,38 +140,4 @@ function createCountingSimulatorPorts(): CountingPorts {
       return tally.live;
     },
   };
-}
-
-/** `port` with each method's Observable result counted into `tally`. A
- * Proxy, so prototype methods (the simulators') are wrapped too; non-object
- * members (and arrays such as `metricControls`) pass through. */
-function countEveryStream(port: unknown, tally: SubscriptionTally): unknown {
-  if (typeof port !== "object" || port === null || Array.isArray(port)) {
-    return port;
-  }
-
-  return new Proxy(port, {
-    get: (target: object, property: string | symbol): unknown => {
-      const member: unknown = Reflect.get(target, property, target);
-
-      if (typeof member !== "function") {
-        return member;
-      }
-
-      return (...args: unknown[]): unknown => {
-        const result: unknown = Reflect.apply(member, target, args);
-
-        return isStream(result) ? countInto(result, tally) : result;
-      };
-    },
-  });
-}
-
-function isStream(value: unknown): value is Observable<unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "subscribe" in value &&
-    typeof value.subscribe === "function"
-  );
 }

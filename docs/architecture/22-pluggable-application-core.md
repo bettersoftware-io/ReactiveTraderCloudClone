@@ -317,8 +317,9 @@ their drift tests, and `pnpm core:parity`. What replaced it is structural:
 each core's `App.presenters: Presenters` and `MachineFactories` are built
 from its own members only (typecheck is the completeness witness — the
 native presenter map is `Omit<Presenters, …family keys>`, not `Partial`),
-and every core's `dispose()` is now witnessed to release every port
-subscription it holds. The instrument behind that witness, and behind the
+and each alternative core's `dispose()` is now witnessed to release every
+port subscription it holds (the RxJS core's is still a knowing no-op, item 3
+above). The instrument behind that witness, and behind the
 seam witnesses before it, is `@rtc/core-contract`'s `countSubscriptions` /
 `countInto` / `createTally` (`harness/portTally.ts`): a Proxy that counts
 LIVE subscriptions to a port's streams.
@@ -412,12 +413,18 @@ later native port is judged against a fixed target rather than a moving one.
 
 `pnpm check:core-bundle` builds each web client once per core value and
 asserts that each build carries its own core's marker and no other's — in
-every direction since slice 8: the RxJS core's brand (`RXJS_CORE_BRAND`, on
-`rxjsCore`), `@rtc/client-core-async`'s brand, and `effect/Fiber` — printing
+every direction since slice 8: the RxJS core's brand (`RXJS_CORE_BRAND`,
+stamped by its `createApp` on every `App`, so it ships exactly when the RxJS
+composition root does), `@rtc/client-core-async`'s brand, and
+`effect/Fiber` — printing
 gzipped sizes
 per core for visibility. It is the same class of guarantee as the deploy
 workflow's grep guard, run locally and per-core rather than once against the
-production build only.
+production build only. What the RxJS marker proves is the absence of that
+core's composition root; `@rtc/client-core` itself is not `sideEffects:
+false` and still ships its port factories and adapters in every build (the
+clients take `createSimulatorPorts` and `WsAdapter` from it), so a stray UI
+import of one presenter class would not trip it.
 
 ## See also
 

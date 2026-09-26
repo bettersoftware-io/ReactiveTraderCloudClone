@@ -284,10 +284,14 @@ export function createApp(ports: AppPorts): App {
     ),
     // Idempotent: a second abort is a no-op. The Jarvis presenter is
     // disposed first — its in-flight turn may still be draining a relay
-    // `lifetime` owns.
+    // `lifetime` owns — and the abort sits in a `finally`, so a throwing
+    // dispose cannot leave every port held.
     dispose: async () => {
-      family.jarvis.dispose();
-      lifetime.abort();
+      try {
+        family.jarvis.dispose();
+      } finally {
+        lifetime.abort();
+      }
     },
   };
 }
