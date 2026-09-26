@@ -17,23 +17,31 @@
 //
 // Unconditional, no allowlist: a gap is fixed by adding the entry. Zero
 // dependencies (Node built-ins only). Chained from `pnpm check:scripts`.
+// Workspaces come from pnpm-workspace.yaml, so the `tests` workspace counts:
+// dependency-cruiser scans it (`check:deps` runs over `packages tests`), and
+// it is the ONLY dependent of @rtc/client-react and @rtc/server.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join } from "node:path";
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+import { listWorkspaceDirs, readManifest, repoRoot } from "./workspaces.mjs";
+
 const RN_CLIENT = "@rtc/client-react-native";
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "peerDependencies",
+  "optionalDependencies",
+];
 
 function readManifests() {
-  const packagesDir = join(repoRoot, "packages");
   const manifests = new Map();
 
-  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
-    const manifestPath = join(packagesDir, entry.name, "package.json");
+  for (const dir of listWorkspaceDirs()) {
+    const manifest = readManifest(dir);
 
-    if (entry.isDirectory() && existsSync(manifestPath)) {
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (manifest?.name) {
       manifests.set(manifest.name, manifest);
     }
   }
@@ -53,18 +61,61 @@ function workspaceDepsOf(manifest, fields) {
   });
 }
 
-// tsconfig.depcruise.json is JSONC. Its comments are whole-line `//` and its
-// strings never contain `//`, so dropping comment lines is enough to parse it.
+// JSONC → JSON: drops `//` line comments and `/* */` block comments wherever
+// they sit (whole-line or trailing), leaving string contents untouched — a
+// path string may legitimately contain `//` or `/*`.
+function stripJsonComments(text) {
+  let out = "";
+  let index = 0;
+
+  while (index < text.length) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"') {
+      const start = index;
+      index += 1;
+
+      while (index < text.length && text[index] !== '"') {
+        index += text[index] === "\\" ? 2 : 1;
+      }
+
+      index += 1;
+      out += text.slice(start, index);
+    } else if (char === "/" && next === "/") {
+      while (index < text.length && text[index] !== "\n") {
+        index += 1;
+      }
+    } else if (char === "/" && next === "*") {
+      const end = text.indexOf("*/", index + 2);
+      index = end === -1 ? text.length : end + 2;
+    } else {
+      out += char;
+      index += 1;
+    }
+  }
+
+  return out;
+}
+
 function readDepcruisePaths() {
   const raw = readFileSync(join(repoRoot, "tsconfig.depcruise.json"), "utf8");
-  const json = raw
-    .split("\n")
-    .filter((line) => {
-      return !line.trim().startsWith("//");
-    })
-    .join("\n");
 
-  return JSON.parse(json).compilerOptions?.paths ?? {};
+  return JSON.parse(stripJsonComments(raw)).compilerOptions?.paths ?? {};
+}
+
+// The REAL mapper keys, from the loaded config — a text search would be
+// satisfied by a commented-out entry. jest.config.js is plain CommonJS.
+function readRnJestMapperKeys() {
+  const configPath = join(
+    repoRoot,
+    "packages",
+    "client-react-native",
+    "jest.config.js",
+  );
+  const config = createRequire(import.meta.url)(configPath);
+
+  return new Set(Object.keys(config.moduleNameMapper ?? {}));
 }
 
 function runtimeClosure(manifests, root) {
@@ -79,7 +130,12 @@ function runtimeClosure(manifests, root) {
     }
 
     seen.add(name);
-    queue.push(...workspaceDepsOf(manifests.get(name), ["dependencies"]));
+    queue.push(
+      ...workspaceDepsOf(manifests.get(name), [
+        "dependencies",
+        "optionalDependencies",
+      ]),
+    );
   }
 
   seen.delete(root);
@@ -93,11 +149,7 @@ const problems = [];
 const depcruisePaths = readDepcruisePaths();
 const dependedOn = new Set(
   [...manifests.values()].flatMap((manifest) => {
-    return workspaceDepsOf(manifest, [
-      "dependencies",
-      "devDependencies",
-      "peerDependencies",
-    ]);
+    return workspaceDepsOf(manifest, DEPENDENCY_FIELDS);
   }),
 );
 
@@ -112,13 +164,10 @@ for (const name of [...dependedOn].sort()) {
 }
 
 // 2. The RN client's jest moduleNameMapper.
-const jestConfig = readFileSync(
-  join(repoRoot, "packages", "client-react-native", "jest.config.js"),
-  "utf8",
-);
+const mapperKeys = readRnJestMapperKeys();
 
 for (const name of runtimeClosure(manifests, RN_CLIENT)) {
-  if (!jestConfig.includes(`"^${name}$"`)) {
+  if (!mapperKeys.has(`^${name}$`)) {
     problems.push(
       `packages/client-react-native/jest.config.js moduleNameMapper is missing "^${name}$" — ${name} is in ${RN_CLIENT}'s runtime dependency tree, so a dependency's re-export of it fails every RN suite with "Cannot find module"`,
     );
