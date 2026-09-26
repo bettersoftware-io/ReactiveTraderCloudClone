@@ -78,7 +78,6 @@ import type {
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
-import { connectionIntentsPort } from "./connectionIntents";
 import type { IWsAdapter } from "./IWsAdapter";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
@@ -89,8 +88,11 @@ import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
  * Task 2, `AppPorts`/`TransportPorts` in Task 5 — re-exported here so every
  * existing `import … from "@rtc/client-core"` keeps working unchanged. Only
  * `TransportPorts` is also used locally by the port factories below; the
- * rest are re-exported for callers (`ConnectionIntentsPort`, slice 8, for
- * the port builders that supply `connectionIntentsPort`'s alternatives). */
+ * rest are re-exported for callers. `TransportPorts` omits BOTH
+ * `connectionEvents` and `connectionIntents` (ADR-006 Follow-up 5) —
+ * neither factory below supplies either; a builder gets both together from
+ * `pairConnectionPorts` (`./connectionIntents`), spread alongside a
+ * factory's own spread. */
 export type {
   AppPorts,
   AuthGatedTransport,
@@ -183,7 +185,6 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     serviceHealth: topology,
     eventLog,
     sessions: new SessionSimulator(5),
-    connectionIntents: connectionIntentsPort,
     metricControls: [latency, errorRate, topology, eventLog],
     auth: deps.auth,
     sessionStore: deps.sessionStore,
@@ -1159,7 +1160,6 @@ export function createWsRealPorts(
     preferences: deps.preferences,
     jarvis: new WsJarvisAdapter(ws),
     jarvisUsage: new WsJarvisUsageAdapter(ws),
-    connectionIntents: connectionIntentsPort,
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

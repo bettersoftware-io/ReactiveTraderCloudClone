@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { incident$, reconnect$, WsAdapter } from "@rtc/client-core";
+import { WsAdapter } from "@rtc/client-core";
 
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
@@ -90,8 +90,10 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     // The `tap` that side-effects the transport only runs while something is
     // subscribed, so this is the whole point of the subscription above: it is
     // how idleTimeout actually reaches closeForIdle() in the running app.
-    incident$.next({ type: "idleTimeout" });
-    reconnect$.next({ type: "reconnect" });
+    // Routed through the port, not a module-level Subject: `connectionIntents`
+    // is paired with THIS `ports` instance's own `connectionEvents`.
+    ports.connectionIntents.injectIncident({ type: "idleTimeout" });
+    ports.connectionIntents.reconnect();
 
     expect(closeForIdle).toHaveBeenCalledTimes(1);
     expect(reopen).toHaveBeenCalledTimes(1);

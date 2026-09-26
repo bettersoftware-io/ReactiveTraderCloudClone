@@ -341,8 +341,14 @@ LIVE subscriptions to a port's streams.
 (`reconnect()`, `injectIncident(event)`) carries the pushes into the
 connection-event stream that originate inside the app — the Reconnect
 button and the admin incident machine — so no core imports a module-level
-Subject; the client supplies it (both port factories return
-`connectionIntentsPort`) beside the `connectionEvents` that merges it.
+Subject. `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND
+`connectionIntents` together (ADR-006 Follow-up 5), so a port factory can no
+longer typecheck while supplying one without the other. `@rtc/client-core`'s
+`pairConnectionPorts(events$)` is the only producer of the pair in that
+package: it builds an instance-scoped reconnect/incident Subject pair per
+call and hands the client back `connectionEvents` (the merge) alongside
+`connectionIntents` (the port that feeds it) — two pairs from two calls
+never leak into each other, unlike the module-level Subjects this replaced.
 `ports.transport` is gated on each core's OWN `auth` (the `transportGate`
 contract suite: open on the authenticated edge, close on the reverse, once
 per edge, the first state included). Before slice 8 the alternative cores

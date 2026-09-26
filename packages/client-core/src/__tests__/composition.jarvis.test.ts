@@ -13,6 +13,7 @@ import {
 } from "@rtc/domain";
 import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisAvailability, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
@@ -27,7 +28,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     const state = await firstValueFrom(presenters.jarvis.state$);
@@ -46,7 +47,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     presenters.jarvis.intents.setSkin("reactor");
@@ -76,7 +77,7 @@ describe("composition — jarvis wiring", () => {
     const { presenters } = createApp({
       ...sim,
       jarvis,
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     const state = await firstValueFrom(presenters.jarvis.state$);
@@ -93,7 +94,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
       // A JarvisPort whose ask() throws synchronously — concatMap turns that
       // into a synchronous error on JarvisMachine's shared turnItems$, which
       // both presenters.jarvis.state$ AND presenters.jarvis.events$ derive
@@ -167,7 +168,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
       jarvis: createLayoutDrivingJarvisPort(),
     });
 
@@ -199,7 +200,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
       jarvis: createLayoutDrivingJarvisPort(),
     });
 
@@ -239,7 +240,7 @@ describe("composition — jarvis wiring", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
       jarvis: createCollidingDockJarvisPort(),
     });
 
@@ -278,7 +279,7 @@ describe("composition — jarvis wiring", () => {
           auth: new AuthSimulator({}),
           sessionStore: new InMemorySessionStore(),
         }),
-        connectionEvents: new ConnectionEventsSimulator(),
+        ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
         jarvis: createMixedOutcomeDrivingJarvisPort(),
       });
 

@@ -6,6 +6,7 @@ import {
   PreferencesSimulator,
 } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
@@ -18,7 +19,7 @@ describe("layout machine factory", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
     const machines = createMachineFactories(presenters);
     const m = machines.layout("fx");

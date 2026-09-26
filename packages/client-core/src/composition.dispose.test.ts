@@ -23,6 +23,7 @@ import {
   WORKSPACE_PERSIST_DEBOUNCE_MS,
 } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
@@ -177,11 +178,11 @@ function createBasePorts(): Parameters<typeof scriptPorts>[0] {
       auth: new AuthSimulator({ demo: "pw" }),
       sessionStore: new InMemorySessionStore(),
     }),
-    connectionEvents: {
+    ...createFakeConnectionPorts({
       events: () => {
         return NEVER;
       },
-    },
+    }),
   };
 }
 

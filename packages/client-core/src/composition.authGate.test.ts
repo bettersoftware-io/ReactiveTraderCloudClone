@@ -14,6 +14,7 @@ import {
   PreferencesSimulator,
 } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
@@ -99,11 +100,11 @@ function portsWith(
       auth: new AuthSimulator({ demo: PASSWORD }),
       sessionStore,
     }),
-    connectionEvents: {
+    ...createFakeConnectionPorts({
       events: () => {
         return NEVER;
       },
-    },
+    }),
     transport,
   };
 }

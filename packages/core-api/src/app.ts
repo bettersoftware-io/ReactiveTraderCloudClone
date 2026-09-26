@@ -180,7 +180,16 @@ export interface ConnectionIntentsPort {
   injectIncident(event: ConnectionEvent): void;
 }
 
-export type TransportPorts = Omit<AppPorts, "connectionEvents">;
+/** Omits BOTH `connectionEvents` and `connectionIntents` — the platform
+ * layer builds this pair together (`@rtc/client-core`'s `pairConnectionPorts`
+ * is the one place that does), never one without the other. A port factory
+ * that assembled `connectionEvents` itself while forgetting `connectionIntents`
+ * (or the reverse) would otherwise typecheck with a dead port — this is the
+ * structural fix for that (ADR-006 Follow-up 5). */
+export type TransportPorts = Omit<
+  AppPorts,
+  "connectionEvents" | "connectionIntents"
+>;
 
 export interface Presenters {
   priceStream: PriceStreamPresenter;

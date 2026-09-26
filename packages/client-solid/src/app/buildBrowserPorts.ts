@@ -6,8 +6,7 @@ import {
   createSimulatorPorts,
   createWsRealPorts,
   HttpAuthAdapter,
-  incident$,
-  reconnect$,
+  pairConnectionPorts,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
@@ -130,20 +129,24 @@ export function buildBrowserPorts(): AppPorts {
       devtoolsHub,
     );
     const gateway = new WsConnectionEventsAdapter(ws);
+    // Pairs THIS composition's own reconnect/incident intents with the
+    // gateway + browser lifecycle events. `@rtc/core-api`'s `TransportPorts`
+    // omits `connectionEvents` AND `connectionIntents` together (ADR-006
+    // Follow-up 5), so `connectionIntents` below MUST be `paired`'s own —
+    // supplying it apart from the events it feeds is a type error, not just
+    // a runtime footgun.
+    const paired = pairConnectionPorts(
+      merge(gateway.events(), browser.events()),
+    );
+
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
-        // Merge gateway events, browser lifecycle events, and user-initiated
-        // reconnect intents. The tap side-effects the transport:
+        // The tap side-effects the transport:
         //   idleTimeout → closeForIdle()
         //   reconnect   → reopen()       (sole recovery; button-only)
         //   userActivity → no-op here    (resets countdown in BrowserAdapter)
         // Provenance: original services/connection.ts:74-96.
-        return merge(
-          gateway.events(),
-          browser.events(),
-          reconnect$,
-          incident$,
-        ).pipe(
+        return paired.connectionEvents.events().pipe(
           tap((e) => {
             return routeIdleLifecycle(e, ws);
           }),
@@ -153,6 +156,7 @@ export function buildBrowserPorts(): AppPorts {
     return {
       ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
       connectionEvents,
+      connectionIntents: paired.connectionIntents,
       colorScheme,
       dockLayoutStore,
       layoutPresetStore,
@@ -167,15 +171,18 @@ export function buildBrowserPorts(): AppPorts {
   // client-react's buildBrowserPorts. Unset/malformed → no accepted credentials.
   const auth = new AuthSimulator(parseDevAuth(import.meta.env.VITE_DEV_AUTH));
   const gateway = new ConnectionEventsSimulator();
-  const connectionEvents: ConnectionEventsPort = {
-    events: () => {
-      // Simulator branch: idle closes are faithfully no-ops (no real socket).
-      // Recovery from idle is via the Reconnect button, which pushes reconnect$
-      // → the real reconnect intent (IDLE_DISCONNECTED → CONNECTING) followed by
-      // a simulated gatewayConnected (CONNECTING → CONNECTED). browserOnline also
-      // recovers (unchanged). userActivity no longer auto-resumes (item 1).
-      // Provenance: original services/connection.ts:43-50.
-      return merge(
+  return {
+    ...createSimulatorPorts({ preferences, auth, sessionStore }),
+    // Paired with THIS composition's own reconnect/incident intents, same as
+    // the ws-real branch above, but rendering `reconnect()` as
+    // "intent-then-connected": idle closes are faithfully no-ops (no real
+    // socket), so recovery via the Reconnect button must synthesize the
+    // `gatewayConnected` a real gateway would otherwise report itself
+    // (IDLE_DISCONNECTED → CONNECTING → CONNECTED). browserOnline also
+    // recovers (unchanged). userActivity no longer auto-resumes (item 1).
+    // Provenance: original services/connection.ts:43-50.
+    ...pairConnectionPorts(
+      merge(
         gateway.events(),
         browser.events().pipe(
           mergeMap((e) => {
@@ -184,21 +191,9 @@ export function buildBrowserPorts(): AppPorts {
               : of(e);
           }),
         ),
-        reconnect$.pipe(
-          mergeMap(() => {
-            return of(
-              { type: "reconnect" as const },
-              { type: "gatewayConnected" as const },
-            );
-          }),
-        ),
-        incident$,
-      );
-    },
-  };
-  return {
-    ...createSimulatorPorts({ preferences, auth, sessionStore }),
-    connectionEvents,
+      ),
+      { reconnectRendering: "intent-then-connected" },
+    ),
     colorScheme,
     dockLayoutStore,
     layoutPresetStore,

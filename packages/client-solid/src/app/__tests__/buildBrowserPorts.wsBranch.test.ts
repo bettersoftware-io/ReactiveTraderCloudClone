@@ -74,6 +74,29 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     sub.unsubscribe();
   });
 
+  it("routes idle-lifecycle events from the merged stream to the transport", () => {
+    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+
+    const ports = buildBrowserPorts();
+    const closeForIdle = vi.spyOn(ports.transport as WsAdapter, "closeForIdle");
+    const reopen = vi.spyOn(ports.transport as WsAdapter, "reopen");
+
+    const sub = ports.connectionEvents.events().subscribe();
+
+    // The `tap` that side-effects the transport only runs while something is
+    // subscribed, so this is the whole point of the subscription above: it is
+    // how idleTimeout actually reaches closeForIdle() in the running app.
+    // Routed through the port, not a module-level Subject: `connectionIntents`
+    // is paired with THIS `ports` instance's own `connectionEvents`.
+    ports.connectionIntents.injectIncident({ type: "idleTimeout" });
+    ports.connectionIntents.reconnect();
+
+    expect(closeForIdle).toHaveBeenCalledTimes(1);
+    expect(reopen).toHaveBeenCalledTimes(1);
+
+    sub.unsubscribe();
+  });
+
   it("treats an empty VITE_SERVER_URL as simulator mode", () => {
     // The `:sim` dev scripts set the var to the empty string rather than
     // unsetting it, so empty MUST fall through to the simulator branch.
