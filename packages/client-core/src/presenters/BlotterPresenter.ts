@@ -5,19 +5,19 @@ import type {
   BlotterPresenter as BlotterPresenterApi,
 } from "@rtc/core-api";
 import {
+  type ActivityScan,
+  createActivityScan,
+  createNewTradeScan,
+  reduceActivity,
+  reduceNewTrades,
+} from "@rtc/core-logic";
+import {
   ACTIVITY_FEED_CAP,
   type BlotterPort,
   type Trade,
   TradeBlotterUseCase,
 } from "@rtc/domain";
 
-import {
-  type ActivityScan,
-  createActivityScan,
-  createNewTradeScan,
-  reduceActivity,
-  reduceNewTrades,
-} from "./blotterFolds.js";
 import { warmReplay } from "./warmReplay.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported

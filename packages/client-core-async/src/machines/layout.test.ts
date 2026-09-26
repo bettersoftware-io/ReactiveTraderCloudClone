@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createDefaultLayoutPort } from "@rtc/client-core";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 
 import { createLayoutMachine } from "#/machines/layout";
 

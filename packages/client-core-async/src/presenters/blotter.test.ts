@@ -1,8 +1,8 @@
 import { Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { formatClockTime } from "@rtc/client-core";
 import type { ActivityEntry } from "@rtc/core-api";
+import { formatClockTime } from "@rtc/core-logic";
 import {
   type BlotterPort,
   DEFAULT_TRADER_NAME,

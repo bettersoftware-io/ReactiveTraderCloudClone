@@ -1,9 +1,9 @@
 import { of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisEvent } from "@rtc/client-core";
 import type { JarvisDemoState, JarvisPort } from "@rtc/core-api";
 import { DEMO_STEP_BEAT_MS } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createDetachedHost } from "#/bridge/out";
 import { createJarvisMachine } from "#/presenters/jarvis";

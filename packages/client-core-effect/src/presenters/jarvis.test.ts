@@ -2,7 +2,6 @@ import { Effect, Exit, Scope } from "effect";
 import { BehaviorSubject, NEVER, of, throwError } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisEvent } from "@rtc/client-core";
 import type { JarvisPort, JarvisState } from "@rtc/core-api";
 import {
   Direction,
@@ -10,6 +9,7 @@ import {
   type JarvisBrain,
   type JarvisEffort,
 } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createDetachedHost, type EffectHost } from "#/bridge/out";
 import { createJarvisMachine, type NativeJarvis } from "#/presenters/jarvis";

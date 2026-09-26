@@ -1,13 +1,13 @@
 import { Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { AuthDeps } from "@rtc/client-core";
 import type {
   AnimationIntent,
   EquityFillSignal,
   ExecutionOutcome,
   StoredSession,
 } from "@rtc/core-api";
+import type { AuthDeps } from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type ConnectionStatus,

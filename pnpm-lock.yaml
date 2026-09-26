@@ -290,6 +290,9 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
@@ -327,9 +330,15 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -361,9 +370,15 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -865,6 +880,25 @@ importers:
       rxjs:
         specifier: ^7.8
         version: 7.8.2
+    devDependencies:
+      tsc-alias:
+        specifier: 1.9.5
+        version: 1.9.5
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.11(@types/node@26.5.1)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@30.0.1)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+
+  packages/core-logic:
+    dependencies:
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
+      '@rtc/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       tsc-alias:
         specifier: 1.9.5

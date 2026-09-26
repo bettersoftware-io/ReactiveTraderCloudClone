@@ -7,14 +7,7 @@ import type {
   OrderTicketIntents,
   OrderTicketState,
 } from "@rtc/core-api";
-import type {
-  EquityOrder,
-  OrderSide,
-  OrderType,
-  PlaceOrderRequest,
-} from "@rtc/domain";
-
-import type { Machine } from "./machine";
+import type { Machine } from "@rtc/core-logic";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
@@ -25,7 +18,13 @@ import {
   reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
-} from "./orderTicketFold";
+} from "@rtc/core-logic";
+import type {
+  EquityOrder,
+  OrderSide,
+  OrderType,
+  PlaceOrderRequest,
+} from "@rtc/domain";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

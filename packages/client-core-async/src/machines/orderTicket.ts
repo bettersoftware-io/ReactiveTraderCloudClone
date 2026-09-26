@@ -1,3 +1,10 @@
+import type {
+  Machine,
+  OrderTicketForm,
+  OrderTicketIntents,
+  OrderTicketState,
+  Stream,
+} from "@rtc/core-api";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
@@ -8,14 +15,7 @@ import {
   reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
-} from "@rtc/client-core";
-import type {
-  Machine,
-  OrderTicketForm,
-  OrderTicketIntents,
-  OrderTicketState,
-  Stream,
-} from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type {
   EquityOrder,
   OrderSide,

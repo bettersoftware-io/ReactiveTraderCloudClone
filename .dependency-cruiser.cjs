@@ -229,7 +229,7 @@ module.exports = {
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(client-core|core-api|core-contract|domain|shared)/",
+          "^packages/(client-core|core-api|core-contract|core-logic|domain|shared)/",
       },
     },
     {
@@ -263,12 +263,12 @@ module.exports = {
       name: "alt-cores-stay-inner",
       severity: "error",
       comment:
-        "The alternative application cores may import only THEMSELVES, core-api, client-core (strangler delegation + shared pure reducers), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
+        "The alternative application cores may import only THEMSELVES, core-api, core-logic (the shared rxjs-free rules), client-core (strangler delegation, until slice 8 PR C), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
       from: { path: "^packages/(client-core-(?:async|effect))/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/($1|client-core|core-api|core-contract|domain|shared)/",
+          "^packages/($1|client-core|core-api|core-contract|core-logic|domain|shared)/",
       },
     },
     {
@@ -277,6 +277,32 @@ module.exports = {
       comment: "Alternative cores are framework-free like client-core.",
       from: { path: "^packages/client-core-(async|effect)/src" },
       to: { path: "node_modules/(react|react-dom|react-native|solid-js)/" },
+    },
+    {
+      name: "core-logic-stays-pure",
+      severity: "error",
+      comment:
+        "@rtc/core-logic is shared by all three application cores: a runtime rxjs import here would put RxJS inside the alternative cores. Type-only imports are allowed (dependencyTypesNot excludes them).",
+      from: { path: "^packages/core-logic/src", pathNot: "\\.test\\.ts$" },
+      to: {
+        // `(^|node_modules/)`: under pnpm's strict install an rxjs import from
+        // this package does not RESOLVE (rxjs is not its dependency), and the
+        // cruiser records it under its bare name — a `node_modules/` pattern
+        // alone passed a probe `import { map } from "rxjs"` green.
+        path: "(^|node_modules/)(rxjs|@rx-state)(/|$)",
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
+      name: "core-logic-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/core-logic may import only itself, core-api (types), domain and shared — an allowlist, so a package added later is forbidden by default. An edge to client-core in particular would be a cycle (client-core re-exports core-logic).",
+      from: { path: "^packages/core-logic/src" },
+      to: {
+        path: "^packages/",
+        pathNot: "^packages/(core-logic|core-api|domain|shared)/",
+      },
     },
     {
       name: "bridge-owns-rxjs",

@@ -1,14 +1,13 @@
-export * from "#/adapters/authDeps";
+// The shared rxjs-free rules (pluggable-core slice 8), re-exported so every
+// existing `import … from "@rtc/client-core"` keeps working.
+export * from "@rtc/core-logic";
+
 export * from "#/adapters/delayedAuthPort";
-export * from "#/adapters/dockLayoutStore";
 export * from "#/adapters/HttpAuthAdapter";
-export * from "#/adapters/InMemoryDockLayoutStore";
-export * from "#/adapters/InMemoryLayoutPresetStore";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/jarvisPort";
 export * from "#/adapters/jarvisUsagePort";
-export * from "#/adapters/layoutPresetStore";
 export * from "#/adapters/portFactory";
 export * from "#/adapters/ScriptedJarvisAdapter";
 export * from "#/adapters/sessionStore";

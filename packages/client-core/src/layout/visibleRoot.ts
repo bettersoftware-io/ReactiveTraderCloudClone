@@ -1,4 +1,4 @@
-import type { LayoutNode, PanelId } from "#/layout/layoutPort";
+import type { LayoutNode, PanelId } from "@rtc/core-logic";
 
 /** The layout tree with every `closed` leaf pruned — the pure projection
  * BOTH engines render close/reopen through (the in-house engine renders this

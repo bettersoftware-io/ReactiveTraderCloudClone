@@ -1,6 +1,7 @@
 import { EMPTY, Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { PanelStreamDeps } from "@rtc/core-logic";
 import type {
   AnalyticsPort,
   BlotterPort,
@@ -12,7 +13,7 @@ import type { PanelSpecV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
-import type { PanelData, PanelStreamDeps } from "./composePanelStream.js";
+import type { PanelData } from "./composePanelStream.js";
 import {
   createJarvisPanelsMachine,
   MAX_LIVE_PANELS,

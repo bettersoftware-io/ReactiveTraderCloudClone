@@ -1,10 +1,10 @@
+import type { Stream } from "@rtc/core-api";
 import {
   admitAnomaly,
   formatNarrationPrompt,
   NARRATOR_INITIAL_GATE,
   type NarratorGateState,
-} from "@rtc/client-core";
-import type { Stream } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import {
   type AnomalyDetectorConfig,
   type CurrencyPair,

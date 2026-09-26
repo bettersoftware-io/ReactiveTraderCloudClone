@@ -7,6 +7,7 @@ import type {
   AuthViewState,
   LoginWaitCycle,
 } from "@rtc/core-api";
+import { describeAuthFailure, nextLoginWaitVariant } from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type AuthPort,
@@ -16,7 +17,6 @@ import {
 } from "@rtc/domain";
 
 import type { SessionStore, StoredSession } from "../adapters/sessionStore.js";
-import { describeAuthFailure, nextLoginWaitVariant } from "./shellFolds";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

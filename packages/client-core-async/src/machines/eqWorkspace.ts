@@ -1,9 +1,3 @@
-import {
-  createEqWorkspaceState,
-  type EqWorkspaceEvent,
-  firstWatchlistSymbol,
-  reduceEqWorkspace,
-} from "@rtc/client-core";
 import type {
   EqChartType,
   EqIndicatorId,
@@ -13,6 +7,12 @@ import type {
   Machine,
   Stream,
 } from "@rtc/core-api";
+import {
+  createEqWorkspaceState,
+  type EqWorkspaceEvent,
+  firstWatchlistSymbol,
+  reduceEqWorkspace,
+} from "@rtc/core-logic";
 import type { CandleTimeframe, EquityInstrument } from "@rtc/domain";
 
 import { relay } from "#/bridge/in";

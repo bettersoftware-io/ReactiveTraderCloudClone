@@ -1,7 +1,7 @@
 import { Effect, Exit, Scope } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createDefaultLayoutPort } from "@rtc/client-core";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 
 import { createDetachedHost, type EffectHost } from "#/bridge/out";
 import { createLayoutMachine } from "#/machines/layout";

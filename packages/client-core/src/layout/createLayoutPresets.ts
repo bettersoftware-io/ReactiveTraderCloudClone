@@ -6,12 +6,11 @@ import type {
   Stream,
   WorkspaceTab,
 } from "@rtc/core-api";
-
 import {
   createLayoutPresetsController,
   type LayoutPresetsDeps,
   type PresetSummaryChannel,
-} from "#/layout/layoutPresetsController";
+} from "@rtc/core-logic";
 
 export type { LayoutPresetsDeps };
 

@@ -1,4 +1,3 @@
-import { createShallowArrayMemo } from "@rtc/client-core";
 import type {
   Machine,
   RfqSubmissionIntents,
@@ -8,6 +7,7 @@ import type {
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
+import { createShallowArrayMemo } from "@rtc/core-logic";
 import {
   type CreateRfqInput,
   CreateRfqUseCase,

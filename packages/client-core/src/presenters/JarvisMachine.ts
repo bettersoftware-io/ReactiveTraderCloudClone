@@ -29,18 +29,6 @@ import type {
   JarvisState,
 } from "@rtc/core-api";
 import {
-  JARVIS_CONFIRM_TIMEOUT_MS,
-  JARVIS_GREETING,
-  JARVIS_NARRATION_PREFIX,
-  type JarvisBrain,
-  type JarvisEffort,
-  type JarvisSkin,
-} from "@rtc/domain";
-
-import type { JarvisAvailability, JarvisEvent } from "#/adapters/jarvisPort";
-
-import type { DriveOutcome } from "./JarvisDriverMachine";
-import {
   approvePatch,
   closePatch,
   confirmTotalTicks,
@@ -53,7 +41,19 @@ import {
   openPatch,
   skinPatch,
   togglePatch,
-} from "./jarvisController";
+} from "@rtc/core-logic";
+import {
+  JARVIS_CONFIRM_TIMEOUT_MS,
+  JARVIS_GREETING,
+  JARVIS_NARRATION_PREFIX,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisSkin,
+} from "@rtc/domain";
+
+import type { JarvisAvailability, JarvisEvent } from "#/adapters/jarvisPort";
+
+import type { DriveOutcome } from "./JarvisDriverMachine";
 
 /** Moved to `./jarvisController` (pluggable-core slice 7 wave 2) —
  * re-exported so existing imports keep working. */
@@ -61,7 +61,7 @@ export {
   formatBrainHint,
   formatGateHint,
   formatGateResetTime,
-} from "./jarvisController";
+} from "@rtc/core-logic";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

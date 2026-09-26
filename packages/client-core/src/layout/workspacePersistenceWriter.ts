@@ -4,17 +4,16 @@
 import type { Observable, SchedulerLike, Subscription } from "rxjs";
 import { debounceTime } from "rxjs/operators";
 
-import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
-
 import {
   type WorkspaceLayoutWriteDeps,
   writeWorkspaceLayout,
-} from "./workspaceLayoutWrite";
+} from "@rtc/core-logic";
+import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 export {
   type DockedPanelPlacement,
   resetUnwritablePayloadWarning,
-} from "./workspaceLayoutWrite";
+} from "@rtc/core-logic";
 
 export interface WorkspacePersistenceWriterDeps
   extends WorkspaceLayoutWriteDeps {

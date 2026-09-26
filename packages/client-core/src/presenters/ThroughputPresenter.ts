@@ -14,14 +14,13 @@ import type {
   ThroughputPresenter as ThroughputPresenterApi,
   ThroughputView,
 } from "@rtc/core-api";
+import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
   type AdminPort,
   DEFAULT_THROUGHPUT,
   THROUGHPUT_DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
-
-import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "./adminFolds.js";
 
 /** UI cadence constants relocated out of the old useThroughput React hook —
  *  now sourced from `@rtc/domain` (pluggable-core slice 5). Kept for

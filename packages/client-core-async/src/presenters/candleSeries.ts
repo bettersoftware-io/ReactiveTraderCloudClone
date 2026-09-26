@@ -1,5 +1,5 @@
-import { stitchCandles } from "@rtc/client-core";
 import type { CandleSeriesPresenter, StateStream, Stream } from "@rtc/core-api";
+import { stitchCandles } from "@rtc/core-logic";
 import {
   CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,
