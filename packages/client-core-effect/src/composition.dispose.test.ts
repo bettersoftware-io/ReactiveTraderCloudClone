@@ -7,16 +7,36 @@ import {
   InMemorySessionStore,
   reconnect$,
 } from "@rtc/client-core";
+import type { StoredSession } from "@rtc/core-api";
+import { scriptPorts } from "@rtc/core-contract";
 import {
   AuthSimulator,
   type CurrencyPair,
   PreferencesSimulator,
+  ROSTER,
 } from "@rtc/domain";
 
 import { streamToStream } from "#/bridge/out";
 import { type ComposedApp, composeWithBase } from "#/composition";
 
 describe("composition teardown", () => {
+  it("dispose() releases the transport gate: a later sign-out does not disconnect", async () => {
+    const { ports, driver, teardown } = scriptPorts(createPorts(), {
+      transport: true,
+      session: createStoredSession(),
+    });
+    const { app } = composeWithBase(ports);
+
+    try {
+      expect(driver.transportCalls()).toEqual(["connect"]);
+      await app.dispose();
+      app.presenters.auth.logout();
+      expect(driver.transportCalls()).toEqual(["connect"]);
+    } finally {
+      teardown();
+    }
+  });
+
   it("dispose() interrupts stream fibers forked into the app's scope", async () => {
     const { app, host } = composeWithBase(createPorts());
     let interrupted = false;
@@ -140,4 +160,15 @@ function tick(): Promise<unknown> {
   return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
+}
+
+function createStoredSession(): StoredSession {
+  const [first] = ROSTER;
+
+  return {
+    token: "t",
+    user: first.user,
+    username: first.username,
+    exp: Date.now() + 3_600_000,
+  };
 }

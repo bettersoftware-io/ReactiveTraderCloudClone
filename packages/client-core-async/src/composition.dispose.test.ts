@@ -6,8 +6,9 @@ import {
   InMemorySessionStore,
   reconnect$,
 } from "@rtc/client-core";
+import type { StoredSession } from "@rtc/core-api";
 import { scriptPorts } from "@rtc/core-contract";
-import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
+import { AuthSimulator, PreferencesSimulator, ROSTER } from "@rtc/domain";
 
 import { composeWithBase } from "#/composition";
 
@@ -34,6 +35,23 @@ describe("composeWithBase — app lifetime", () => {
     }
   });
 
+  it("dispose() releases the transport gate: a later sign-out does not disconnect", async () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts(), {
+      transport: true,
+      session: createStoredSession(),
+    });
+    const { app } = composeWithBase(ports);
+
+    try {
+      expect(driver.transportCalls()).toEqual(["connect"]);
+      await app.dispose();
+      app.presenters.auth.logout();
+      expect(driver.transportCalls()).toEqual(["connect"]);
+    } finally {
+      teardown();
+    }
+  });
+
   it("dispose() twice is safe", async () => {
     const { app, teardown } = createComposed();
 
@@ -46,25 +64,39 @@ describe("composeWithBase — app lifetime", () => {
   });
 
   function createComposed(): Composed {
-    const base: AppPorts = {
-      ...createSimulatorPorts({
-        preferences: new PreferencesSimulator({}),
-        auth: new AuthSimulator({ demo: "pw" }),
-        sessionStore: new InMemorySessionStore(),
-      }),
-      connectionEvents: {
-        events: () => {
-          return reconnect$;
-        },
-      },
-    };
-    const { ports, driver, teardown } = scriptPorts(base);
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
     return { app: composeWithBase(ports).app, driver, teardown };
   }
 });
+
+function createBasePorts(): AppPorts {
+  return {
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator({}),
+      auth: new AuthSimulator({ demo: "pw" }),
+      sessionStore: new InMemorySessionStore(),
+    }),
+    connectionEvents: {
+      events: () => {
+        return reconnect$;
+      },
+    },
+  };
+}
 
 type Composed = {
   app: ReturnType<typeof composeWithBase>["app"];
   driver: ReturnType<typeof scriptPorts>["driver"];
   teardown: () => void;
 };
+
+function createStoredSession(): StoredSession {
+  const [first] = ROSTER;
+
+  return {
+    token: "t",
+    user: first.user,
+    username: first.username,
+    exp: Date.now() + 3_600_000,
+  };
+}

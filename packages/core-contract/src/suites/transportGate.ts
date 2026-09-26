@@ -32,8 +32,10 @@ export function describeTransportGateContract(
           await clock.settle();
           expect(h.driver.transportCalls()).toEqual(["disconnect"]);
           // The app still exposes the transport it was given, whatever it
-          // hands anything it composes internally.
-          expect(h.app.ports.transport).toBeDefined();
+          // hands anything it composes internally: a call through
+          // `app.ports` lands in the scripted log.
+          h.app.ports.transport?.connect();
+          expect(h.driver.transportCalls()).toEqual(["disconnect", "connect"]);
         } finally {
           await h.teardown();
         }

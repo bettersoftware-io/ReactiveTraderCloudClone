@@ -286,9 +286,12 @@ panel's data as a `sharedFold` over the shared frame steps
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
 `sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
 `throughput` (a `SubscriptionRef`, a debounce fiber and `createRunSlot`), and
-the `incident` singleton, whose connection events reach the RxJS core's
-`incident$` seam through `pushIncidentEvent`. Slice 6 added five shell
-members: `workspaceNav`, `bootGate` and `auth` over `SubscriptionRef`s,
+the `incident` singleton, whose connection events go out through
+`ports.connectionIntents.injectIncident` (slice 8). Slice 6 added five shell
+members: `workspaceNav`, `bootGate` and `auth` over `SubscriptionRef`s
+(since slice 8 this core also gates `ports.transport` on its `auth`, in
+`bridge/transportGate.ts`, released with the host scope, and hands the base
+app none),
 the `boot` ramp as a fiber of `Effect.sleep` steps, and `animationDirector`
 — a refCounted `sharedFold` over a merged Effect `Stream` whose per-pair
 prices are `scopedPortStream`s, so a roster switch releases them. Slice 4 added eight: the five

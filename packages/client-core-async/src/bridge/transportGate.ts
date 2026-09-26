@@ -17,20 +17,29 @@ export function gateTransportOnAuth(
   }
 
   let wasAuthenticated: boolean | undefined;
-  const subscription = authState$.subscribe((state) => {
-    const isAuthenticated = state.status === "authenticated";
+  const subscription = authState$.subscribe({
+    next: (state: AuthViewState) => {
+      const isAuthenticated = state.status === "authenticated";
 
-    if (isAuthenticated === wasAuthenticated) {
-      return;
-    }
+      if (isAuthenticated === wasAuthenticated) {
+        return;
+      }
 
-    wasAuthenticated = isAuthenticated;
+      wasAuthenticated = isAuthenticated;
 
-    if (isAuthenticated) {
-      transport.connect();
-    } else {
-      transport.disconnect();
-    }
+      if (isAuthenticated) {
+        transport.connect();
+      } else {
+        transport.disconnect();
+      }
+    },
+    // A failing `auth` stream is a bug, not a state: surface it out of band,
+    // as the Effect twin and the RxJS reference (unhandled) both do.
+    error: (error: unknown) => {
+      setTimeout(() => {
+        throw error;
+      }, 0);
+    },
   });
   lifetime.addEventListener(
     "abort",
