@@ -413,7 +413,10 @@ Two traps when a UI test goes fake:
 - **@testing-library/react** drains every interaction with a `setTimeout(0)`
   it only advances when it detects *Jest's* fake timers. The React contract
   setup (`client-react/tests/ui/contract/react/setup.ts`) supplies the one
-  `jest.advanceTimersByTime` call RTL makes. And React commits a timer's state
+  `jest.advanceTimersByTime` call RTL makes — also for the co-located
+  `src/ui/**` unit tests `test:ui:contract:coverage` runs with that same
+  setup, but not under plain `pnpm test`, so a co-located fake-timer test must
+  not rely on the drain either way. And React commits a timer's state
   change on a `MessageChannel` task, so wrap each advance in the harness's
   `flushAsync` (the React driver's `act`) before asserting on the DOM.
 

@@ -35,6 +35,11 @@ class ResizeObserverStub {
 // and every interaction hangs (Solid's testing library has no such wrapper).
 // The shim forwards the one call RTL makes. Under real timers `setTimeout`
 // has no `clock`, RTL's check stays false, and nothing here runs.
+// Reach: this file is also a setupFile of `test:ui:contract:coverage`, which
+// runs the co-located `src/ui/**` unit tests as well — so a co-located test
+// that installs fake timers gets RTL's auto-drain under that config and NOT
+// under plain `pnpm test` (none does today). Such a test should not depend on
+// the drain either way.
 (globalThis as Record<string, unknown>).jest = {
   advanceTimersByTime: (ms: number): void => {
     vi.advanceTimersByTime(ms);
