@@ -302,7 +302,7 @@ function getLayoutFor(
     // merely OPENING a tab is not a change worth persisting (composition's
     // own reasoning, reproduced).
     machine.state$.pipe(skip(1)).subscribe(() => {
-      getDockKick$(world).next();
+      getPersistKick$(world).next();
     });
   }
 
@@ -323,11 +323,13 @@ const panelsMachines = new WeakMap<World, JarvisPanelsMachineHandle>();
 
 const EMPTY_JARVIS_PANELS_STATE: JarvisPanelsState = { panels: [] };
 
-/** `WorkspaceDockPanels.current`'s NON-forcing read — mirrors the OLD
- * `dockedPlacementsFor`'s doc: a kick from a layout machine alone (no Jarvis
- * touched yet) must not build the panels machine as a side effect. Reads
- * straight off `panelsMachines`, not the full bridge — available the instant
- * `getJarvisPanelsBridge` registers its machine, even mid-construction. */
+/** `WorkspaceDockPanels.current`'s NON-forcing read: a kick from a layout
+ * machine alone (no Jarvis touched yet) must not build the panels machine as
+ * a side effect — the invariant `createWorkspaceDock`'s `dockedPlacements`
+ * (the writer's read) and `resetWorkspaceLayout` (its `deps.panels.current()`
+ * loop) both rely on. Reads straight off `panelsMachines`, not the full
+ * bridge — available the instant `getJarvisPanelsBridge` registers its
+ * machine, even mid-construction. */
 function panelsSnapshot(world: World): readonly PanelInstance[] {
   const machine = panelsMachines.get(world);
   return machine
@@ -361,20 +363,45 @@ function getDockLayoutStore(world: World): DockLayoutStore {
   return store;
 }
 
-const dockKicks = new WeakMap<World, Subject<void>>();
+const dockedPanelTabsKicks = new WeakMap<World, Subject<void>>();
 
-/** One kick per change worth persisting AND per docked-tab-attribution
- * change — mirrors `composition.ts`'s `persistKick$`/`dockedPanelTabsKick$`
- * pair collapsed onto ONE Subject: every call site that would bump either one
- * bumps this instead. Harmless: the writer's `debounceMs: 0` coalesces a
- * synchronous burst, and `useDockedPanelIdsFor`'s cached snapshot dedupes a
- * redundant recompute. */
-function getDockKick$(world: World): Subject<void> {
-  let kick = dockKicks.get(world);
+/** Bumped after EVERY change to which tab a docked panel belongs to (the
+ * dock's `onDockedMembershipChange`) — mirrors `composition.ts`'s own
+ * `dockedPanelTabsKick$`: `jarvisPanelsMachine` flips a panel's `docked` flag
+ * SYNCHRONOUSLY inside the dock bridge, before that same call goes on to
+ * attribute the panel to a tab, so a bare `panelsMachine.state$` subscriber
+ * would compute membership against an attribution that hasn't been written
+ * yet on the very emission that matters — this is what makes the attributed
+ * membership visible. Deliberately a SEPARATE Subject from `persistKick$`
+ * below: a reset with nothing ever docked and no tab ever opened still calls
+ * `onDockedMembershipChange()` once, and that must not, on its own, wake the
+ * persistence writer (composition.ts never wires `dockedPanelTabsKick$` to
+ * the writer either). */
+function getDockedPanelTabsKick$(world: World): Subject<void> {
+  let kick = dockedPanelTabsKicks.get(world);
 
   if (!kick) {
     kick = new Subject<void>();
-    dockKicks.set(world, kick);
+    dockedPanelTabsKicks.set(world, kick);
+  }
+
+  return kick;
+}
+
+const persistKicks = new WeakMap<World, Subject<void>>();
+
+/** One kick per change worth persisting — mirrors `composition.ts`'s own
+ * `persistKick$`: fed by each layout machine's `skip(1)` subscription
+ * (`getLayoutFor`) and the panels-roster `skip(1)` subscription
+ * (`getJarvisPanelsBridge`), and consumed only by the debounced writer below.
+ * Kept separate from `getDockedPanelTabsKick$` above for the same reason
+ * composition.ts keeps `persistKick$` and `dockedPanelTabsKick$` apart. */
+function getPersistKick$(world: World): Subject<void> {
+  let kick = persistKicks.get(world);
+
+  if (!kick) {
+    kick = new Subject<void>();
+    persistKicks.set(world, kick);
   }
 
   return kick;
@@ -432,7 +459,7 @@ function getWorkspaceDock(world: World): WorkspaceDock {
     },
     dockLayoutStore: getDockLayoutStore(world),
     onDockedMembershipChange: () => {
-      getDockKick$(world).next();
+      getDockedPanelTabsKick$(world).next();
     },
     onResetsBump: () => {
       world.workspaceLayoutResets.next(
@@ -462,7 +489,7 @@ function getWorkspaceDock(world: World): WorkspaceDock {
   // (`workspacePersistenceWriter.test.ts`, virtual time). Zero still
   // schedules on a macrotask, so a spec awaits one tick before reading.
   createWorkspacePersistenceWriter({
-    kick$: getDockKick$(world),
+    kick$: getPersistKick$(world),
     readStoredLayout: () => {
       return world.workspaceLayout.getValue();
     },
@@ -532,9 +559,9 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
 
 /** Subscribes a React component to `workspaceDock.dockedPanelIdsNow(tab)` —
  * recomputed on every `panels$` emission (the `docked` flag itself) AND every
- * dock kick (the tab-attribution write, which lands out-of-band from
- * `panels$` — see `createWorkspaceDock`'s module doc for why the two can't be
- * collapsed into one signal).
+ * `dockedPanelTabsKick$` tick (the tab-attribution write, which lands
+ * out-of-band from `panels$` — see composition.ts's own `dockedPanelTabsKick$`
+ * doc for why the two can't be collapsed into one signal).
  *
  * TRAP: `useSyncExternalStore`'s `getSnapshot` MUST be referentially stable
  * when nothing has actually changed — React compares snapshots with
@@ -555,16 +582,29 @@ function useDockedPanelIdsFor(
 
   return useSyncExternalStore(
     (onChange) => {
-      const sub = merge(bridge.panels$, getDockKick$(world)).subscribe(
-        onChange,
-      );
+      const sub = merge(
+        bridge.panels$,
+        getDockedPanelTabsKick$(world),
+      ).subscribe(onChange);
 
       return () => {
         return sub.unsubscribe();
       };
     },
     () => {
-      const next = dock.dockedPanelIdsNow(tab);
+      // Sorted: `panelsState.panels`' own order reflects spawn/dock
+      // sequencing, which is incidental to this stream's membership
+      // contract — sorting stabilizes the emitted array's identity for
+      // downstream element-wise-equals consumers (both clients' bridge
+      // props), mirroring `composition.ts`'s own `dockedPanelIdsFor`
+      // (`workspaceDock.dockedIdsIn(tab, panelsState.panels).sort()`).
+      // `getLayoutPresets`'s own `dockedPanelIdsNow` dep stays UNSORTED —
+      // composition passes `workspaceDock.dockedPanelIdsNow` there
+      // unchanged. The sort happens HERE, before the cached-snapshot
+      // identity compare below — sorting after that compare would defeat
+      // it (two dock orders producing the same sorted array must read as
+      // unchanged).
+      const next = [...dock.dockedPanelIdsNow(tab)].sort();
 
       if (!sameIds(next, cache.current)) {
         cache.current = next;
@@ -965,9 +1005,9 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
   getWorkspaceDock(world);
 
   // Session-lifetime mirror of the raw fold (composition's own
-  // `jarvisPanelsMachine.state$` writer subscription), feeding the shared
-  // dock kick. `map` + `distinctUntilChanged` on the panels ARRAY, not the
-  // state object: every intent produces a fresh state object even when its
+  // `jarvisPanelsMachine.state$` writer subscription), feeding the persist
+  // kick. `map` + `distinctUntilChanged` on the panels ARRAY, not the state
+  // object: every intent produces a fresh state object even when its
   // reducer was a no-op, so subscribing to `state$` directly would persist
   // on a REJECTED dock of an unknown id. Established AFTER the dock is
   // forced above (not before), so THAT call's own boot restoration is not
@@ -983,7 +1023,7 @@ function getJarvisPanelsBridge(world: World): JarvisPanelsBridge {
       skip(1),
     )
     .subscribe(() => {
-      getDockKick$(world).next();
+      getPersistKick$(world).next();
     });
 
   const panels$ = new BehaviorSubject<readonly JarvisPanelVm[]>([]);

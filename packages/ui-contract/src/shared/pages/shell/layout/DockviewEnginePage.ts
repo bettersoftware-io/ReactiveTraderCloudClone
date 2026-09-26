@@ -186,6 +186,21 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
     });
   }
 
+  /** The per-tab docked set the bridge received (`Presenters.dockedPanelIdsFor`
+   * via `useDockedPanelIds`), as ids in PROP order — unlike `data-floating`,
+   * this is a plain React/Solid prop, not dockview's own microtask-deferred
+   * layout-change notification, so no `waitFor` variant is needed: a read
+   * right after the dock action already sees the settled value. The real
+   * presenter SORTS this array (`composition.ts`'s `dockedPanelIdsFor`
+   * doc), so two panels docked out of sequence still read back
+   * alphabetically — this is the witness that proves it reaches the DOM,
+   * not just the presenter's own unit test. */
+  dockedIds(): readonly string[] {
+    const raw = this.engineEl().getAttribute("data-docked") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
+  }
+
   /** The accessible name of `panelId`'s float/dock toggle — `Float <title>`
    * while docked, `Dock <title>` while floating — or null when the head
    * renders no such control. Read from the SAME button the user clicks, so it

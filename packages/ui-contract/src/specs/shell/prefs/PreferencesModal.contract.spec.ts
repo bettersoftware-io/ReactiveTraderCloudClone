@@ -578,6 +578,33 @@ describe("PreferencesModal — reset workspace layout", () => {
       createDefaultLayoutPort("fx").initial,
     );
   });
+
+  it("resetting a workspace with no layout tab ever opened and nothing docked leaves the stored preference null", async () => {
+    // No `mountWith(world, AppShell)` — deliberately: `getLayoutFor` is lazy,
+    // so a World whose only mounted component is PreferencesModal never
+    // creates a single layout machine and never touches the Jarvis panels
+    // machine either. `createWorkspaceDock`'s `resetWorkspaceLayout` still
+    // runs its full body against a World in exactly this state (empty
+    // `latestLayoutStates`, `deps.panels.current()` == []) and calls
+    // `onDockedMembershipChange()` unconditionally as its second-to-last
+    // step — proving that call alone must never wake the persistence writer.
+    // A fixture that collapsed `dockedPanelTabsKick$`/`persistKick$` onto one
+    // Subject fails this: the writer would fire off that single kick and
+    // write a serialized-but-empty payload over the `null` `clearStoredLayout`
+    // just set, even though nothing was ever created, docked, or persisted.
+    const world = createWorld();
+    const prefs = mountWith(world, PreferencesModal, {
+      open: true,
+      onClose: () => {},
+    });
+
+    expect(world.workspaceLayout.getValue()).toBeNull();
+
+    await prefs.resetWorkspaceLayout();
+    await flushWorkspacePersistence();
+
+    expect(world.workspaceLayout.getValue()).toBeNull();
+  });
 });
 
 /** The panel the reset scenario pins — an `analytics`-sourced table, the
