@@ -75,6 +75,7 @@ export function createIncidentMachine(
   const stream$ = merge(injectEvent$, clearEvent$).pipe(
     scan(reduceIncident, INCIDENT_INITIAL_STATE),
   );
+
   const state$: StateObservable<IncidentState> = state(
     stream$,
     INCIDENT_INITIAL_STATE,
