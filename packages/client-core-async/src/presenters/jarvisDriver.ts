@@ -1,16 +1,16 @@
-import {
-  applyDriveCommand,
-  type DriveCommandDeps,
-  driveStaggerMs,
-  type JarvisEvent,
-} from "@rtc/client-core";
 import type {
   DriveOutcome,
   JarvisDriverMachineHandle,
   JarvisDriverState,
   Stream,
 } from "@rtc/core-api";
+import {
+  applyDriveCommand,
+  type DriveCommandDeps,
+  driveStaggerMs,
+} from "@rtc/core-logic";
 import type { PowerSaverLevel } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";

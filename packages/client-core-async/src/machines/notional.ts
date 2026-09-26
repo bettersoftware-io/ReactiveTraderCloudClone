@@ -1,8 +1,8 @@
+import type { Machine, NotionalIntents, NotionalView } from "@rtc/core-api";
 import {
   createInitialNotionalView,
   reduceNotionalInput,
-} from "@rtc/client-core";
-import type { Machine, NotionalIntents, NotionalView } from "@rtc/core-api";
+} from "@rtc/core-logic";
 
 import { storeToStateStream } from "#/bridge/out";
 import { createStore } from "#/kernel/store";

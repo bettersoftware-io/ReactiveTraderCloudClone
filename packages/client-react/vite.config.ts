@@ -140,6 +140,7 @@ const rtcSourceAlias: Record<string, string> = debugBuild
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core": pkgSrc("client-core"),
       "@rtc/core-api": pkgSrc("core-api"),
+      "@rtc/core-logic": pkgSrc("core-logic"),
       "@rtc/domain": pkgSrc("domain"),
       "@rtc/shared": pkgSrc("shared"),
       "@rtc/motion-core": pkgSrc("motion-core"),

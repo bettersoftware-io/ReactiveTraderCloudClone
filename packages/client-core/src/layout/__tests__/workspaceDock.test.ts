@@ -7,15 +7,15 @@ import type {
   PanelInstance,
   WorkspaceTab,
 } from "@rtc/core-api";
+import {
+  createDefaultLayoutPort,
+  createWorkspaceDock,
+  InMemoryDockLayoutStore,
+  instanceIdFor,
+  type WorkspaceDock,
+} from "@rtc/core-logic";
 import { MAX_DOCKED_PANELS } from "@rtc/domain";
 
-import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import { instanceIdFor } from "#/layout/panelInstances";
-import {
-  createWorkspaceDock,
-  type WorkspaceDock,
-} from "#/layout/workspaceDock";
 import { createLayoutMachine } from "#/presenters/LayoutMachine";
 
 // `dockPanel`'s return value is how the Jarvis driver tells an accepted

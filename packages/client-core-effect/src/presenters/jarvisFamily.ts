@@ -1,4 +1,3 @@
-import { LAYOUT_PANEL_IDS } from "@rtc/client-core";
 import type {
   AppPorts,
   Stream as CoreStream,
@@ -16,6 +15,7 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
+import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
 import type {
   CurrencyPair,
   EquityInstrument,

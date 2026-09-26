@@ -89,6 +89,18 @@ describe("IncidentMachine", () => {
     expect(pushed).toContainEqual({ type: "gatewayDisconnected" });
     m.dispose();
   });
+
+  it("a clear on pristine state re-emits the machine's own seed, not a copy", async () => {
+    const m = createIncidentMachine({
+      controls: [createFakeControl()],
+      pushConnectionEvent: () => {},
+    });
+    const seed = await firstValueFrom(m.state$);
+
+    m.intents.clear();
+
+    expect(await firstValueFrom(m.state$)).toBe(seed);
+  });
 });
 
 describe("reduceIncident", () => {

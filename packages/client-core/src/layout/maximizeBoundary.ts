@@ -1,4 +1,4 @@
-import type { LayoutNode, PanelId, PanelSpec } from "./layoutPort";
+import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-logic";
 
 /** The path (child indices from the root) of the split that BOUNDS a
  * maximize: everything inside the boundary subtree yields to the maximized

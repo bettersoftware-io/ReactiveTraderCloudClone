@@ -1,9 +1,19 @@
-import { coverageConfigDefaults, defineConfig } from "vitest/config";
+import {
+  configDefaults,
+  coverageConfigDefaults,
+  defineConfig,
+} from "vitest/config";
 
 export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    // `tsc --build` compiles src's tests into dist/ too, and without this the
+    // run picked them up there as well: every test ran twice, and a snapshot
+    // test's dist copy (publicApi.test.js, slice 8) compared against an
+    // untracked dist/__snapshots__ file — stale locally, absent on a fresh CI
+    // checkout, where `--ci` refuses to write it.
+    exclude: [...configDefaults.exclude, "dist/**"],
     coverage: {
       // `src/adapters/__tests__/` holds test SCAFFOLDING — FakeWsAdapter and
       // awaitPendingRpc — not production code. Left in the denominator they

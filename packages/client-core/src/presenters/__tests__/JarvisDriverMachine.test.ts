@@ -2,15 +2,12 @@ import { BehaviorSubject, defer, NEVER, of, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
+import type { LayoutNode } from "@rtc/core-logic";
+import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/core-logic";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
 import type { DriveCommandV1 } from "@rtc/shared";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
-import {
-  createDefaultLayoutPort,
-  type WorkspaceTab,
-} from "#/layout/defaultLayoutPort";
-import type { LayoutNode } from "#/layout/layoutPort";
 
 import { createEqWorkspaceMachine } from "../EqWorkspaceMachine";
 import {

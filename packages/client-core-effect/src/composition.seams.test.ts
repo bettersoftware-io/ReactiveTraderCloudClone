@@ -7,7 +7,7 @@ import {
   of,
   Subject,
 } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type AnimationIntent,
@@ -52,6 +52,20 @@ import { composeWithBase } from "#/composition";
 // contract, which only ever looks at one app's presenters.
 
 describe("composeWithBase — core seams", () => {
+  // Fake timers, installed before each composition: every wait below is an
+  // explicit advance of virtual time, so a loaded CI runner cannot stretch a
+  // drive stagger or a persistence debounce past an assertion (on real timers
+  // this file ran ~3 s locally, 9.9-14.3 s on CI, and timed out or read a
+  // not-yet-landed drive there). Effect.sleep follows them too
+  // (bridge/clock.test.ts in the Effect core).
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("a Jarvis drive batch mutates THIS core's eqWorkspace, and the base's own stays where it was", async () => {
     const composed = composeWithBase(
       createPorts({ jarvis: createSelectingJarvisPort("MSFT") }),
@@ -178,9 +192,7 @@ describe("composeWithBase — core seams", () => {
         { timeout: (DRIVE_STAGGER_MS + WORKSPACE_PERSIST_DEBOUNCE_MS) * 10 },
       );
       // A second writer would land within the same window: give it one.
-      await new Promise((resolve) => {
-        setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
-      });
+      await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 100);
 
       expect(writes).toHaveLength(1);
       expect(writes[0]).toContain("j1");
@@ -215,9 +227,7 @@ describe("composeWithBase — core seams", () => {
       transforms: [],
       viz: { kind: "table" },
     });
-    await new Promise((resolve) => {
-      setTimeout(resolve, WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
-    });
+    await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS + 150);
 
     expect(writes).toEqual([]);
   });
@@ -554,13 +564,10 @@ function createPorts(overrides: Partial<AppPorts>): AppPorts {
   };
 }
 
-/** The Jarvis machine's reply pipeline runs on real timers (the scripted
- * brain's typed-reveal pacing), so this waits on the wall clock rather
- * than a scheduler turn. */
-function waitForDrive(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, 50);
-  });
+/** Lets a Jarvis reply's drive batch land: its first command runs unstaggered,
+ * so 50 ms of virtual time covers it. */
+async function waitForDrive(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(50);
 }
 
 /** A JarvisPort whose ask() replies with one drive batch switching to
@@ -583,9 +590,7 @@ function createSwitchingJarvisPort(
 
 async function settle(): Promise<void> {
   for (let turn = 0; turn < 2; turn += 1) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 0);
-    });
+    await vi.advanceTimersByTimeAsync(0);
   }
 }
 

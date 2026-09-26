@@ -1,3 +1,12 @@
+import type {
+  JarvisPanelsPresenter,
+  JarvisPanelsState,
+  JarvisPanelVm,
+  PanelData,
+  PanelInstance,
+  PanelPoint,
+  Stream,
+} from "@rtc/core-api";
 import {
   analyticsTableFrame,
   appendTickPoint,
@@ -8,7 +17,6 @@ import {
   type Frame,
   historySeries,
   isPanelEvent,
-  type JarvisEvent,
   type NamedSeries,
   type PanelStreamDeps,
   renderPanelFrame,
@@ -16,17 +24,9 @@ import {
   seriesFrame,
   undockPanelInState,
   unknownSourceFrame,
-} from "@rtc/client-core";
-import type {
-  JarvisPanelsPresenter,
-  JarvisPanelsState,
-  JarvisPanelVm,
-  PanelData,
-  PanelInstance,
-  PanelPoint,
-  Stream,
-} from "@rtc/core-api";
+} from "@rtc/core-logic";
 import { AnalyticsUseCase, TradeBlotterUseCase } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import {

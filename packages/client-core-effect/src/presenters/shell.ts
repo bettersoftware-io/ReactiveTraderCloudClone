@@ -1,10 +1,5 @@
 import { Cause, Effect, Option, Stream, SubscriptionRef } from "effect";
 
-import {
-  type AuthDeps,
-  describeAuthFailure,
-  nextLoginWaitVariant,
-} from "@rtc/client-core";
 import type {
   AnimationDirector,
   AnimationIntent,
@@ -15,6 +10,11 @@ import type {
   EquityFillSignal,
   ExecutionOutcome,
 } from "@rtc/core-api";
+import {
+  type AuthDeps,
+  describeAuthFailure,
+  nextLoginWaitVariant,
+} from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type ConnectionStatus,
@@ -81,7 +81,7 @@ const SIGNED_OUT: AuthViewState = {
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
-/** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports)`
+/** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports, authDepsPrimitives)`
  * — the RxJS `AuthPresenter`'s transitions over a SubscriptionRef. The
  * session is resumed at construction from the store; each login or unlock is
  * one `auth.login` call, run as a fiber in a child of the app host's scope,

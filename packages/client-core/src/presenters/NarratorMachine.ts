@@ -16,6 +16,13 @@ import {
 
 import type { NarratorHandle } from "@rtc/core-api";
 import {
+  admitAnomaly,
+  formatNarrationPrompt,
+  isAdmittedGate,
+  NARRATOR_INITIAL_GATE,
+  type NarratorGateState,
+} from "@rtc/core-logic";
+import {
   type AnomalyDetectorConfig,
   type AnomalyEvent,
   type CurrencyPair,
@@ -25,14 +32,6 @@ import {
   NARRATION_COOLDOWN_MS,
   type PriceTick,
 } from "@rtc/domain";
-
-import {
-  admitAnomaly,
-  formatNarrationPrompt,
-  isAdmittedGate,
-  NARRATOR_INITIAL_GATE,
-  type NarratorGateState,
-} from "./narratorGate";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

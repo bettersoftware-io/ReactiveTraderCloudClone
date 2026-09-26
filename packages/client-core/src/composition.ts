@@ -28,6 +28,20 @@ import type {
   WorkspaceNavIntents,
   WorkspaceNavState,
 } from "@rtc/core-api";
+import type { LayoutState } from "@rtc/core-logic";
+import {
+  createAuthDeps,
+  createDefaultLayoutPort,
+  createWorkspaceDock,
+  firstWatchlistSymbol,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
+  LAYOUT_PANEL_IDS,
+  type Machine,
+  type MachineFactories,
+  modelFacingHistory,
+  type WorkspaceTab,
+} from "@rtc/core-logic";
 import type {
   BootVariant,
   ConnectionEvent,
@@ -40,19 +54,11 @@ import type {
   ThemeSkin,
 } from "@rtc/domain";
 
-import { createAuthDeps } from "#/adapters/authDeps";
-import { InMemoryDockLayoutStore } from "#/adapters/InMemoryDockLayoutStore";
-import { InMemoryLayoutPresetStore } from "#/adapters/InMemoryLayoutPresetStore";
+import { withLoginDelay } from "#/adapters/delayedAuthPort";
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { readPreferenceNow } from "#/adapters/readPreferenceNow";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
-import {
-  createDefaultLayoutPort,
-  type WorkspaceTab,
-} from "#/layout/defaultLayoutPort";
-import type { LayoutState } from "#/layout/layoutPort";
-import { createWorkspaceDock, LAYOUT_PANEL_IDS } from "#/layout/workspaceDock";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
 import {
   AmbientStylePresenter,
@@ -94,7 +100,6 @@ import {
   ErrorRatePresenter,
   EventLogPresenter,
   ForceBootAnimationPresenter,
-  firstWatchlistSymbol,
   InstrumentsPresenter,
   type JarvisDriverDeps,
   type JarvisEntry,
@@ -105,8 +110,6 @@ import {
   LayoutEnginePresenter,
   type LayoutIntents,
   LoginWaitPreferencesPresenter,
-  type Machine,
-  type MachineFactories,
   OrdersBlotterPresenter,
   type PanelInstance,
   PositionsPresenter,
@@ -126,7 +129,6 @@ import {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
-import { modelFacingHistory } from "#/presenters/jarvisController";
 
 /** The reconnect-intent event emitted from the Reconnect button. */
 interface ReconnectIntent {
@@ -219,13 +221,14 @@ export function firstWatchlistSymbol$(
   );
 }
 
+/** Moved to `@rtc/core-logic`'s `presenters/jarvisController` (pluggable-core
+ * slice 7 wave 2, then slice 8) with the rest of the history rules —
+ * re-exported for existing imports. */
 export {
+  historyEntriesExcludingInFlightTurn,
   LAYOUT_PANEL_IDS,
   STATIC_WORKSPACE_PANEL_IDS,
-} from "#/layout/workspaceDock";
-/** Moved to `./presenters/jarvisController` (pluggable-core slice 7 wave
- * 2) with the rest of the history rules — re-exported for existing imports. */
-export { historyEntriesExcludingInFlightTurn } from "#/presenters/jarvisController";
+} from "@rtc/core-logic";
 
 /**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
@@ -460,7 +463,10 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
   // core supplies one (`CoreSeams.workspaceNav`); `presenters.workspaceNav`
   // stays this app's own instance, the `eqWorkspace` precedent.
   const activeNav = seams.workspaceNav ?? workspaceNav;
-  const authDeps = createAuthDeps(ports);
+  const authDeps = createAuthDeps(ports, {
+    readNow: readPreferenceNow,
+    delayAuth: withLoginDelay,
+  });
 
   // Session-lifetime mirror of the active tab, for the same synchronous-read
   // reason as `latestPanels` above: `dockPanelIntoWorkspace` has to know

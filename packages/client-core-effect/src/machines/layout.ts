@@ -1,14 +1,14 @@
-import {
-  createLayoutReducer,
-  type LayoutEvent,
-  layoutStaticIds,
-} from "@rtc/client-core";
 import type {
   LayoutIntents,
   LayoutState,
   Machine,
   PanelId,
 } from "@rtc/core-api";
+import {
+  createLayoutReducer,
+  type LayoutEvent,
+  layoutStaticIds,
+} from "@rtc/core-logic";
 
 import type { EffectHost } from "#/bridge/out";
 import { createSyncRef, type SyncRef } from "#/presenters/syncRef";

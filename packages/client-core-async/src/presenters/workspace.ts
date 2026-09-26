@@ -1,15 +1,3 @@
-import {
-  createDefaultLayoutPort,
-  createLayoutPresetsController,
-  createWorkspaceDock,
-  type DriveCommandDeps,
-  InMemoryDockLayoutStore,
-  InMemoryLayoutPresetStore,
-  type JarvisEvent,
-  type PanelStreamDeps,
-  type PresetSummaryChannel,
-  writeWorkspaceLayout,
-} from "@rtc/client-core";
 import type {
   AppPorts,
   DockLayoutStore,
@@ -25,7 +13,19 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
+import {
+  createDefaultLayoutPort,
+  createLayoutPresetsController,
+  createWorkspaceDock,
+  type DriveCommandDeps,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
+  type PanelStreamDeps,
+  type PresetSummaryChannel,
+  writeWorkspaceLayout,
+} from "@rtc/core-logic";
 import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { peek, relay } from "#/bridge/in";
 import { storeToWarmStateStream, type WarmStateStream } from "#/bridge/out";

@@ -1,17 +1,5 @@
 import { Effect, Fiber, Scope } from "effect";
 
-import {
-  createDefaultLayoutPort,
-  createLayoutPresetsController,
-  createWorkspaceDock,
-  type DriveCommandDeps,
-  InMemoryDockLayoutStore,
-  InMemoryLayoutPresetStore,
-  type JarvisEvent,
-  type PanelStreamDeps,
-  type PresetSummaryChannel,
-  writeWorkspaceLayout,
-} from "@rtc/client-core";
 import type {
   AppPorts,
   Stream as CoreStream,
@@ -27,7 +15,19 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
+import {
+  createDefaultLayoutPort,
+  createLayoutPresetsController,
+  createWorkspaceDock,
+  type DriveCommandDeps,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
+  type PanelStreamDeps,
+  type PresetSummaryChannel,
+  writeWorkspaceLayout,
+} from "@rtc/core-logic";
 import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import {
   createChildHost,

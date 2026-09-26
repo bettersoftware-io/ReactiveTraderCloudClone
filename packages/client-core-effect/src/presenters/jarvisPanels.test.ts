@@ -2,13 +2,13 @@ import { Effect, Exit, Scope } from "effect";
 import { NEVER, Observable, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { PanelData, PanelInstance } from "@rtc/core-api";
 import {
-  type JarvisEvent,
   type PanelStreamDeps,
   UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/client-core";
-import type { PanelData, PanelInstance } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type { PositionUpdates, PriceTick, Trade } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { createDetachedHost, type EffectHost } from "#/bridge/out";
 import {

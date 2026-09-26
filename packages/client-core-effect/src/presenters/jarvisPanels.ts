@@ -1,5 +1,14 @@
 import { Effect, Option, Stream } from "effect";
 
+import type {
+  Stream as CoreStream,
+  JarvisPanelsPresenter,
+  JarvisPanelsState,
+  JarvisPanelVm,
+  PanelData,
+  PanelInstance,
+  PanelPoint,
+} from "@rtc/core-api";
 import {
   analyticsTableFrame,
   appendTickPoint,
@@ -10,7 +19,6 @@ import {
   type Frame,
   historySeries,
   isPanelEvent,
-  type JarvisEvent,
   type NamedSeries,
   type PanelStreamDeps,
   renderPanelFrame,
@@ -18,17 +26,9 @@ import {
   seriesFrame,
   undockPanelInState,
   unknownSourceFrame,
-} from "@rtc/client-core";
-import type {
-  Stream as CoreStream,
-  JarvisPanelsPresenter,
-  JarvisPanelsState,
-  JarvisPanelVm,
-  PanelData,
-  PanelInstance,
-  PanelPoint,
-} from "@rtc/core-api";
+} from "@rtc/core-logic";
 import { AnalyticsUseCase, TradeBlotterUseCase } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import {
   type EffectHost,

@@ -1,12 +1,12 @@
 import { Option, Stream } from "effect";
 
+import type { ActivityEntry, BlotterPresenter } from "@rtc/core-api";
 import {
   createActivityScan,
   createNewTradeScan,
   reduceActivity,
   reduceNewTrades,
-} from "@rtc/client-core";
-import type { ActivityEntry, BlotterPresenter } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import { type BlotterPort, TradeBlotterUseCase } from "@rtc/domain";
 
 import {

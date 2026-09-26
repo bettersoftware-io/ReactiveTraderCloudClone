@@ -1,16 +1,16 @@
 import { Effect, Exit, Scope, SubscriptionRef } from "effect";
 
-import {
-  type IncidentEvent,
-  incidentConnectionEvent,
-  reduceIncident,
-} from "@rtc/client-core";
 import type {
   IncidentIntents,
   IncidentKind,
   IncidentState,
   Machine,
 } from "@rtc/core-api";
+import {
+  type IncidentEvent,
+  incidentConnectionEvent,
+  reduceIncident,
+} from "@rtc/core-logic";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
 import {

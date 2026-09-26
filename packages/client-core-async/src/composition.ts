@@ -1,9 +1,7 @@
 import {
   type CoreSeams,
-  createAuthDeps,
   createApp as createRxjsApp,
   createMachineFactories as createRxjsMachineFactories,
-  firstWatchlistSymbol,
 } from "@rtc/client-core";
 import type {
   App,
@@ -14,6 +12,7 @@ import type {
   RfqCountdownSeed,
   WorkspaceTab,
 } from "@rtc/core-api";
+import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
 import type {
   BootVariant,
   CurrencyPair,
@@ -21,6 +20,7 @@ import type {
   PlaceOrderRequest,
 } from "@rtc/domain";
 
+import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { peek } from "#/bridge/in";
 import { pushIncidentEvent } from "#/bridge/out";
 import { createCommands } from "#/commands";
@@ -217,7 +217,10 @@ function nativePresenters(
     eqDrawings: createEqDrawingsMachine(lifetime),
     workspaceNav: createWorkspaceNavMachine(lifetime),
     bootGate: createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true),
-    auth: createAuthPresenter(createAuthDeps(ports), lifetime),
+    auth: createAuthPresenter(
+      createAuthDeps(ports, authDepsPrimitives),
+      lifetime,
+    ),
     animationDirector: createAnimationDirector({
       pairs$: currencyPairs.pairs$,
       priceFor: (pair: CurrencyPair) => {

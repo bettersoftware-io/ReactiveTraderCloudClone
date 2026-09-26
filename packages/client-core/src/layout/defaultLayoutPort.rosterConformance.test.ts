@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { PANEL_SPECS } from "@rtc/core-logic";
 import { DESK_PANEL_ROSTER } from "@rtc/shared";
 
 import { LAYOUT_PANEL_IDS } from "../composition.js";
-import { PANEL_SPECS } from "./defaultLayoutPort.js";
 
 describe("DESK_PANEL_ROSTER ↔ defaultLayoutPort conformance", () => {
   it("roster ids per tab equal the default-tree ids (order included)", () => {

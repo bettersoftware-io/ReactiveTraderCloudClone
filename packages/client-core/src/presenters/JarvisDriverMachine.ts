@@ -22,17 +22,17 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/core-api";
+import {
+  applyDriveCommand,
+  type DriveCommandDeps,
+  driveStaggerMs,
+} from "@rtc/core-logic";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
 import { DRIVE_STAGGER_MS as DOMAIN_DRIVE_STAGGER_MS } from "@rtc/domain";
 
 import type { JarvisEvent } from "#/adapters/jarvisPort";
 
 import type { EqWorkspaceState } from "./EqWorkspaceMachine";
-import {
-  applyDriveCommand,
-  type DriveCommandDeps,
-  driveStaggerMs,
-} from "./jarvisDriveCommands";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

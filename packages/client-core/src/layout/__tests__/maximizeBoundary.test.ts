@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createDefaultLayoutPort, PANEL_SPECS } from "../defaultLayoutPort";
-import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
+import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-logic";
+import { createDefaultLayoutPort, PANEL_SPECS } from "@rtc/core-logic";
+
 import { maximizeBoundaryPath, nodeAtPath } from "../maximizeBoundary";
 
 describe("maximizeBoundaryPath", () => {

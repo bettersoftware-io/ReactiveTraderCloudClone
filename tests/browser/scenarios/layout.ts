@@ -24,14 +24,14 @@ const MIN_FRACTION_DELTA = 0.02;
 const ENGINE_SWITCH_TIMEOUT_MS = 3_000;
 
 // PANEL_SPECS' fx-blotter panel id
-// (packages/client-core/src/layout/defaultLayoutPort.ts) — the dockview
+// (packages/core-logic/src/layout/defaultLayoutPort.ts) — the dockview
 // tab is located by the panel's own head-slot mount inside it
 // (`TESTIDS.layout.dockTab`), not by a label: the tab shows the panel's
 // header, which for the blotter is its "FX Blotter" / "Activity" sub-tabs.
 const BLOTTER_PANEL_ID = "fx-blotter";
 
 // FX_ROOT's left-hand column stacks fx-rates (0.66) over fx-blotter (0.34)
-// (packages/client-core/src/layout/defaultLayoutPort.ts) — fx-rates is the
+// (packages/core-logic/src/layout/defaultLayoutPort.ts) — fx-rates is the
 // column sibling that should grow once fx-blotter floats out of it.
 const RATES_PANEL_ID = "fx-rates";
 

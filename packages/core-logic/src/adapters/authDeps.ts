@@ -1,4 +1,9 @@
-import type { AppPorts, LoginWaitCycle, SessionStore } from "@rtc/core-api";
+import type {
+  AppPorts,
+  LoginWaitCycle,
+  SessionStore,
+  Stream,
+} from "@rtc/core-api";
 import {
   type AuthPort,
   DEFAULT_LOGIN_WAIT_DELAY,
@@ -9,14 +14,21 @@ import {
   type LoginWaitVariant,
 } from "@rtc/domain";
 
-import { withLoginDelay } from "#/adapters/delayedAuthPort";
-import { readPreferenceNow } from "#/adapters/readPreferenceNow";
-
 /** What an `auth` presenter is built from, in every core. */
 export interface AuthDeps {
   readonly auth: AuthPort;
   readonly store: SessionStore;
   readonly cycle: LoginWaitCycle;
+}
+
+/** The two stream operations the auth wiring needs, supplied by each core
+ * from the place it keeps its stream code (the RxJS core's adapters, an
+ * alternative core's `bridge/`), so this rule stays rxjs-free. */
+export interface AuthDepsPrimitives {
+  /** A replay-current preference stream's value now, or `fallback`. */
+  readNow<T>(source: Stream<T>, fallback: T): T;
+  /** `auth`, with each outcome held back by `delayMs()` (read per attempt). */
+  delayAuth(auth: AuthPort, delayMs: () => number): AuthPort;
 }
 
 /** The composition-level auth wiring, shared by all three cores so the
@@ -35,20 +47,23 @@ export interface AuthDeps {
  * leaves the cycle pointer untouched while pinned, so switching back to
  * "auto" resumes where the user left off instead of somewhere they never
  * chose. */
-export function createAuthDeps(ports: AppPorts): AuthDeps {
+export function createAuthDeps(
+  ports: AppPorts,
+  primitives: AuthDepsPrimitives,
+): AuthDeps {
   const { preferences } = ports;
 
   function pinnedStyle(): LoginWaitStyle {
-    return readPreferenceNow(
+    return primitives.readNow(
       preferences.loginWaitStyle$(),
       DEFAULT_LOGIN_WAIT_STYLE,
     );
   }
 
   return {
-    auth: withLoginDelay(ports.auth, () => {
+    auth: primitives.delayAuth(ports.auth, () => {
       return LOGIN_WAIT_DELAY_MS[
-        readPreferenceNow(
+        primitives.readNow(
           preferences.loginWaitDelay$(),
           DEFAULT_LOGIN_WAIT_DELAY,
         )
@@ -63,7 +78,7 @@ export function createAuthDeps(ports: AppPorts): AuthDeps {
           return style;
         }
 
-        return readPreferenceNow(
+        return primitives.readNow(
           preferences.loginWaitVariant$(),
           DEFAULT_LOGIN_WAIT_VARIANT,
         );

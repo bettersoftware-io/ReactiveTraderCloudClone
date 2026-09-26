@@ -1,19 +1,3 @@
-import {
-  approvePatch,
-  closePatch,
-  confirmTotalTicks,
-  createJarvisController,
-  declinePatch,
-  JARVIS_INITIAL_STATE,
-  JARVIS_SIM_AVAILABILITY,
-  type JarvisEvent,
-  type JarvisPatch,
-  type JarvisTurnRequest,
-  modelFacingHistory,
-  openPatch,
-  skinPatch,
-  togglePatch,
-} from "@rtc/client-core";
 import type {
   DriveOutcome,
   JarvisAvailability,
@@ -23,11 +7,27 @@ import type {
   Stream,
 } from "@rtc/core-api";
 import {
+  approvePatch,
+  closePatch,
+  confirmTotalTicks,
+  createJarvisController,
+  declinePatch,
+  JARVIS_INITIAL_STATE,
+  JARVIS_SIM_AVAILABILITY,
+  type JarvisPatch,
+  type JarvisTurnRequest,
+  modelFacingHistory,
+  openPatch,
+  skinPatch,
+  togglePatch,
+} from "@rtc/core-logic";
+import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";
