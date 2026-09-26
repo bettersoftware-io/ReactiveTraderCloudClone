@@ -22,8 +22,8 @@ const DEMO: RosterEntry = ROSTER[0];
  * app wired keeps reacting to its own presenters. A property of the whole
  * composition, so it is not keyed by member. The first case runs a realistic
  * session first — sign in through `presenters.auth`, a Jarvis turn that
- * spawns a live price panel and docks it, then one warm period on every
- * port-backed presenter stream a mounted workspace reads — so what dispose
+ * spawns a live price panel and docks it, then one warm period on 39
+ * port-backed presenter streams a mounted workspace reads — so what dispose
  * must release is whatever that session left the app holding, not only what
  * composition alone opens. */
 export function describeDisposeContract(
@@ -86,6 +86,50 @@ export function describeDisposeContract(
       });
     });
 
+    it("a Jarvis turn still in flight at dispose() releases its ask", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness({ countPortStreams: true });
+
+        try {
+          h.app.presenters.jarvis.intents.send("still thinking");
+          await clock.settle();
+          // A positive witness first: the ask is open and unanswered.
+          expect(h.driver.pendingAsks()).toEqual(["still thinking"]);
+          expect(h.driver.livePortSubscriptions()).toBeGreaterThan(0);
+          await h.app.dispose();
+          await clock.settle();
+          expect(h.driver.livePortSubscriptions()).toBe(0);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a resumed session's transport gate is released by dispose(): a later sign-out does not disconnect", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({
+          transport: true,
+          session: {
+            token: "stored",
+            user: DEMO.user,
+            username: DEMO.username,
+            exp: NOW + 60_000,
+          },
+        });
+
+        try {
+          expect(h.driver.transportCalls()).toEqual(["connect"]);
+          await h.app.dispose();
+          h.app.presenters.auth.logout();
+          await clock.settle();
+          expect(h.driver.transportCalls()).toEqual(["connect"]);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("dispose() resolves when called twice", async () => {
       const h = makeHarness();
 
@@ -110,8 +154,9 @@ async function signIn(
   await settle();
 }
 
-/** One stream per port-backed presenter a mounted workspace reads — every
- * port the composition can be made to subscribe. */
+/** 39 port-backed presenter streams a mounted workspace reads — a broad
+ * sample of what the composition can be made to subscribe, not a proof that
+ * it covers every port. */
 function everySessionStream(app: App): readonly Stream<unknown>[] {
   const p = app.presenters;
 

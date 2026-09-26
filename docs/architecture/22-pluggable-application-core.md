@@ -181,16 +181,23 @@ explicitly (residual sweep, 2026-09-19):
    path). That isolation covers a CONSUMER's `next`: an operator built on a
    primitive (`mapTopic`, an Effect `Stream` combinator) turns its own
    projection error into a stream failure instead, as rxjs operators do.
-3. **After `dispose()`, a still-attached subscriber hears no further
-   value from anything the app holds.** Whether it also hears `complete` is
-   NOT contracted: the RxJS core's `dispose()` (ADR-006 Follow-up 6) ends its
-   `warmReplay` singletons through `takeUntil(disposed$)`, so their
-   subscribers complete, while an interrupt-only Effect cause is
-   deliberately silent. What the app releases is what it holds: a
-   refcounted per-key stream (`price$`, `quote$`, `depth$`) a consumer still
-   holds at dispose stays that consumer's to release in the RxJS core — the
-   `dispose` contract suite counts live port subscriptions after the
-   session's own consumers have unsubscribed.
+3. **After `dispose()`, the app holds no port subscription once its
+   consumers have let go.** That is the contract (the `dispose` suite, all
+   three cores): after a session, including a Jarvis turn still in flight,
+   and after the session's own consumers unsubscribe, `dispose()` leaves
+   zero live port subscriptions. What a subscriber STILL attached at dispose
+   hears is not contracted. In the RxJS core (ADR-006 Follow-up 6) only the
+   `warmReplay` singletons and the machines `createApp` owns end — their
+   subscribers complete; an interrupt-only Effect cause is deliberately
+   silent. Every refcounted stream, per-key or singleton, keeps delivering
+   to a subscriber still attached in the RxJS core — `price$`, `quote$`,
+   `depth$`, but also `connection.status$`, the preference presenters,
+   `execution.executions$`, `ordersBlotter.fills$`, `throughput.state$` and
+   `auth.state$` (whose subject is never completed) — and that subscription
+   stays the consumer's to release. Subscribing after `dispose()` to a
+   refcounted presenter, or calling a machine factory, re-opens its ports:
+   uncontracted, and no production code does it (no shell calls
+   `app.dispose()`).
 4. **Every port method is called once, at construction** — including
    `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
    A stream re-subscribes the captured Observable on every warm period; a
@@ -350,8 +357,9 @@ either step alone would end every fiber — both are kept). A subscriber arrivin
 its producer, the Effect fold stays silent, and an RxJS `warmReplay`
 singleton completes at once (its `disposed$` is a `ReplaySubject`, so a
 late subscriber never re-opens the port). The RxJS core releases its own
-`held` subscriptions first, then disposes the machines it owns, then fires
-`disposed$`.
+`held` subscriptions first, then stops a Jarvis demo run, then disposes the
+machines it owns (Jarvis's own `dispose` cuts a turn whose ask is still in
+flight), then fires `disposed$`.
 
 ## The contract tier
 

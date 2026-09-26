@@ -13,7 +13,7 @@
 import { NEVER, Observable } from "rxjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { StoredSession } from "@rtc/core-api";
+import type { JarvisDemoState, StoredSession } from "@rtc/core-api";
 import { collect, scriptPorts } from "@rtc/core-contract";
 import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
 import {
@@ -90,6 +90,34 @@ describe("createApp().dispose — what the composition owns", () => {
   });
 });
 
+describe("createApp().dispose — the Jarvis demo run", () => {
+  it("a demo run in progress at dispose leaves no timer behind", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { ports, teardown } = scriptPorts(createBasePorts());
+      const app = createApp(ports);
+
+      try {
+        app.presenters.jarvisDemo.intents.startDemo();
+        await vi.advanceTimersByTimeAsync(0);
+        // A positive witness first: the run is live and its step watchdog is
+        // armed.
+        expect(readDemoRunning(app.presenters.jarvisDemo.state$)).toBe(true);
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+
+        await app.dispose();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        teardown();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("createApp().dispose — the debounced workspace writer", () => {
   it("a layout write still pending at dispose never lands", async () => {
     vi.useFakeTimers();
@@ -119,6 +147,18 @@ describe("createApp().dispose — the debounced workspace writer", () => {
     }
   });
 });
+
+/** The demo's `running` flag now, read through a fresh subscriber. */
+function readDemoRunning(state$: Observable<JarvisDemoState>): boolean {
+  let running = false;
+  state$
+    .subscribe((state) => {
+      running = state.running;
+    })
+    .unsubscribe();
+
+  return running;
+}
 
 /** Live subscriptions per owned stream, keys sorted for a stable
  * `toEqual`. */

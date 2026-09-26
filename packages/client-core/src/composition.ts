@@ -926,14 +926,17 @@ export function createApp(ports: AppPorts): App {
       // the subscriptions it holds itself (`held` — the state mirrors, the
       // workspace-persistence kicks and debounced writer, the driver→chat
       // outcome feed, the auth→transport gate), then the machines it owns
-      // (Jarvis — whose wrapped `dispose` also drops the history-source
-      // mirror — the narrator, the panels presenter's per-panel port holds,
+      // (the Jarvis demo run is stopped first — its step watchdog timer dies
+      // with it, and it may still decline a pending card on a live Jarvis —
+      // then Jarvis, whose `dispose` cuts an in-flight turn's ask and whose
+      // wrapped `dispose` also drops the history-source mirror, the narrator, the panels presenter's per-panel port holds,
       // every per-tab layout machine, the workspace singletons), and last
       // `disposed$`, which completes every `warmReplay` singleton and so
       // releases the port subscriptions they hold. Idempotent: each step is
       // safe to repeat. The `contract` tier's `dispose` suite witnesses that
       // no port stream stays subscribed afterwards.
       held.unsubscribe();
+      jarvisDemo.intents.stopDemo();
       jarvis.dispose();
       narrator.stop();
       jarvisPanels.dispose();
