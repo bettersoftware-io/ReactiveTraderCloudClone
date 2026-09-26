@@ -12,7 +12,6 @@ src/services.ts      the AppPorts and EffectHost services (Context.GenericTag) +
 src/layers.ts        one Tag/Layer pair per native presenter, and buildAppLayer
 src/composition.ts   the CoreFactory (`effectCore`), owner of the runtime + scope
 src/machines/        the native machines — each its own detached host
-src/parity.json      which members are native vs delegated
 ```
 
 **The Layer graph** (slice 2). Every native presenter is a *service*: a
@@ -21,8 +20,8 @@ src/parity.json      which members are native vs delegated
 scope owner — it captures the runtime the Layer is built under
 (`Effect.runtime`) and forks a **closeable child** of the Layer's own scope,
 so `app.dispose()` can end it explicitly and `runtime.dispose()` ends it
-anyway if nobody did. `composeWithBase` then makes exactly **one**
-`runSync`, resolving the host and the whole `Presenters` overlay together;
+anyway if nobody did. `composeApp` then makes exactly **one**
+`runSync`, resolving the host and every native presenter together;
 an async Layer build would surface there as an `AsyncFiberException`, which
 is what `composition.dispose.test.ts` pins.
 
@@ -241,15 +240,14 @@ seeds and a later one never re-seeds. `orderTicket` is a per-mount DETACHED
 host on `createRunSlot`, with `scopedPortStream(deps.place)` inside the run
 so a superseding submit's interrupt withdraws the order in flight.
 
-**Native-first composition.** `composeWithBase` now mints the runtime and
-resolves the native overlay BEFORE building the RxJS base, and hands the
-base `CoreSeams` — `eqWorkspace`, `equityFills$`, `watchlist$`, `pairs$`,
-`priceFor`, `executions$`, `rfqEvents$`, `connectionStatus$`, all pointing
-at this core's own instances. Without that seam a Jarvis drive batch would
-mutate a workspace the UI no longer renders, a ticket fill or FX execution
-made through a native presenter would choreograph nothing, and every port
-the base's internal readers share with a native member would be held twice
-(`composition.seams.test.ts`). `WatchlistLive` joins `PowerSaverLive` as a
+**Composition (slice 8).** `composeApp` mints the runtime, resolves the
+native presenters in its one `runSync`, builds the Jarvis family and its
+workspace on child hosts, and gates `ports.transport` on this core's own
+`auth` — nothing is composed beside an RxJS base app any more.
+`dispose()` closes the host scope, then disposes the runtime, releasing
+every port subscription the app holds (`composition.dispose.test.ts`); the
+native presenter map is typed `Omit<Presenters, …family keys>`, so the
+typecheck proves the two halves cover `Presenters`. `WatchlistLive` joins `PowerSaverLive` as a
 Layer that is both merged into the app and provided to a dependent
 (`EqWorkspaceLive`), memoised by reference so it is built once —
 `layers.test.ts` counts `marketData.watchlist()` calls as the witness.
@@ -258,13 +256,12 @@ Both a dependency-cruiser rule (`bridge-owns-rxjs`) and grep gate 43 keep
 every other file in `src/` free of runtime rxjs imports — otherwise this
 core would be RxJS with extra steps.
 
-## Parity
+## Members
 
-As of slice 7's wave 2, **all 74** members are **native** — nothing
-delegates to the RxJS core any more (the delegation itself goes in slice
-8). Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
+**All 74** members are **native** (slice 7's wave 2), and since slice 8
+`@rtc/client-core` is a devDependency for test adapters only. Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
 outside the Layer graph on child hosts of the app host: `jarvis` (a
-`SyncRef` over client-core's shared `createJarvisController`; an idle `send`
+`SyncRef` over core-logic's shared `createJarvisController`; an idle `send`
 subscribes its `ask` in the same tick, a fiber folds the replies; a forked
 countdown fiber; `events$` a synchronous bridge `createHotStream`),
 `jarvisDriver` (a `Queue` + consumer fiber, `Effect.sleep` stagger),
@@ -272,15 +269,14 @@ countdown fiber; `events$` a synchronous bridge `createHotStream`),
 `createDemoStepWatch` over synchronous state/event listeners, raced by
 `Effect.timeoutTo`), `jarvisUsage` (lazily opened, retained) and the
 internal narrator (a switched `Stream.flatMap` over scoped per-pair
-streams). The base app stands down through `CoreSeams.nativeJarvis`; wave
-1's `CoreSeams.workspace` factory is deleted. Wave 1 added the workspace —
+streams). Wave 1 added the workspace —
 now built by the family over this core's own `jarvis.events$`: per-tab layout machines and the panels roster as `SyncRef`s
 (`SubscriptionRef`s committed with `runSync`, whose in-core mirrors hear a
 change synchronously — the workspace's sync-fold contract), each live
 panel's data as a `sharedFold` over the shared frame steps
 (`Stream.zipLatestAll` for multi-symbol sources), `panelData$` as a
 `sharedFold` that switches with the roster, and the persist debounce as an
-`Effect.sleep` fiber — all over `@rtc/client-core`'s shared
+`Effect.sleep` fiber — all over `@rtc/core-logic`'s shared
 `createWorkspaceDock` / `createLayoutPresetsController` /
 `writeWorkspaceLayout`. Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
@@ -290,8 +286,7 @@ the `incident` singleton, whose connection events go out through
 `ports.connectionIntents.injectIncident` (slice 8). Slice 6 added five shell
 members: `workspaceNav`, `bootGate` and `auth` over `SubscriptionRef`s
 (since slice 8 this core also gates `ports.transport` on its `auth`, in
-`bridge/transportGate.ts`, released with the host scope, and hands the base
-app none),
+`bridge/transportGate.ts`, released with the host scope),
 the `boot` ramp as a fiber of `Effect.sleep` steps, and `animationDirector`
 — a refCounted `sharedFold` over a merged Effect `Stream` whose per-pair
 prices are `scopedPortStream`s, so a roster switch releases them. Slice 4 added eight: the five
@@ -311,10 +306,7 @@ preference presenter (`themePreference`, `themeSkinPreference`,
 `eqWatchlistSortPreference`, `eqBlotterViewPreference`, `bootPreference`,
 `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`,
 `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
-`commands.reconnect`. Everything else still **delegates** to
-`@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
-app, mints a `ManagedRuntime` over `buildAppLayer(ports)`, and overlays what
-this core implements. The native idiom for a replay-current stream is `sharedFold` (a
+`commands.reconnect`. The native idiom for a replay-current stream is `sharedFold` (a
 `SubscriptionRef` seeded synchronously on every first subscribe, driven by a
 producer fiber in a per-warm-period child scope) — `Stream.share` cannot be
 the envelope, since it replays to a new subscriber on a fiber rather than in
@@ -328,9 +320,7 @@ files group by API shape: `preferences.ts` (one stream plus setters,
 including the two boolean toggles), `groupedPreferences.ts` (several
 independent streams under one member), `readPreferences.ts`. One documented
 difference from the RxJS core: a `SubscriptionRef` fold conflates
-`Object.is`-equal consecutive states. `src/parity.json` records the split
-and `src/parity.test.ts` proves manifest and reality agree by reference —
-for presenters, machines and commands alike.
+`Object.is`-equal consecutive states.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set
 against this core under the label `effect`.

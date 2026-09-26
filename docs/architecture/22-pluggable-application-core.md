@@ -17,6 +17,7 @@ behind this design; this chapter documents what shipped.
 ```mermaid
 flowchart TB
   CoreAPI["@rtc/core-api<br/>(types only)"]
+  CoreLogic["@rtc/core-logic<br/>(shared rxjs-free rules)"]
   RxjsCore["@rtc/client-core<br/>(RxJS)"]
   AsyncCore["@rtc/client-core-async"]
   EffectCore["@rtc/client-core-effect"]
@@ -26,9 +27,10 @@ flowchart TB
   ClientReact["@rtc/client-react"]
   ClientSolid["@rtc/client-solid"]
 
-  CoreAPI --> RxjsCore
-  CoreAPI --> AsyncCore
-  CoreAPI --> EffectCore
+  CoreAPI --> CoreLogic
+  CoreLogic --> RxjsCore
+  CoreLogic --> AsyncCore
+  CoreLogic --> EffectCore
   CoreAPI --> CoreContract
   CoreContract -. witnesses .-> RxjsCore
   CoreContract -. witnesses .-> AsyncCore
@@ -58,6 +60,21 @@ sibling packages implementing the same `CoreFactory` contract on
 `async`/`await` + `AsyncIterable` and Effect-TS respectively. `@rtc/core-contract`
 is dev-only — a devDependency of all three cores, never imported from any
 `src` — and is the behavioural witness that all three agree.
+
+`@rtc/core-logic` (slice 8) holds the rules all three cores share and that
+need no stream library: the pure folds (`blotterFolds`, `staleFlagFold`,
+`incidentFold`, the admin and RFQ folds), the view derivations, the shared
+workspace and Jarvis controllers (`createWorkspaceDock`,
+`createJarvisController`, `applyDriveCommand`, …) and `createAuthDeps`. Its
+runtime dependencies are `domain` and `shared` only, and it takes
+`core-api` for types. Two dependency-cruiser rules keep it that way:
+`core-logic-stays-pure` (no runtime `rxjs`/`@rx-state`) and
+`core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exports it
+whole, so no existing import changed. Each alternative core composes from
+`core-logic`, `core-api`, `domain`, `shared` and its own members only;
+`@rtc/client-core` is a devDependency there, for test adapters
+(`createSimulatorPorts`), and `alt-cores-no-client-core-at-runtime` forbids
+it from any non-test file.
 
 The bindings (`react-bindings`, `solid-bindings`) are unaffected by which
 core is active: they consume `Presenters` / `MachineFactories` /
@@ -175,10 +192,12 @@ explicitly (residual sweep, 2026-09-19):
    synchronous read (`cycle()`, `current()`) reads through a fresh
    subscription of it and throws the port's synchronous error at the read
    site. The `portDiscipline` contract suite counts the calls through a
-   Proxy in every runner — the contract witnesses that the count after
-   construction never changes (a strangler core constructs the base
-   presenter too, so its absolute count is 2 until slice 8 removes
-   delegation).
+   Proxy in every runner and pins the ABSOLUTE count — one call per member
+   that reads the port (two for `sessions.sessions$`, which `sessions` and
+   `sessionsKpi` each read) — then that it never changes. Slice 8 tightened
+   it from constancy once no core built a second copy of any member; the
+   absolute count caught the RxJS `RfqsPresenter` calling
+   `workflow.events()` twice (now once, subscribed twice).
 
 ## Warm singletons, conflation and machines
 
@@ -189,8 +208,8 @@ core; slice 3 added the credit shapes to the same list:
   `blotter.activity$`, `analytics.position$`): the RxJS `warmReplay()`
   (`shareReplay({ refCount: false })`) keeps the port subscribed for the
   session. The async core's `Topic` takes `retainUntil: AbortSignal` — the
-  app mints it in `composeWithBase` and aborts it in `dispose()` before the
-  base app is disposed; the Effect core's `SharedFold` takes `retain: true`
+  app mints it in `createApp` and aborts it in `dispose()`; the Effect
+  core's `SharedFold` takes `retain: true`
   — the last unsubscribe does not end the period, the host scope does.
   Subscribers attached when the app is disposed hear nothing more.
 - **Conflation** (`priceStream`, `priceHistory` under `powerSaver.isCalm$`):
@@ -225,8 +244,8 @@ core; slice 3 added the credit shapes to the same list:
   now composes as services: `services.ts` (`AppPortsTag`, `HostTag`,
   `HostLive`, `presenterLayer`), `layers.ts` (one `GenericTag` + one `Live`
   layer per native presenter, `buildAppLayer(ports)`), and a
-  `composeWithBase` that is `ManagedRuntime.make` + one `runSync`. The pure
-  folds the FX members run are `@rtc/client-core` exports in all three cores
+  `composeApp` that is `ManagedRuntime.make` + one `runSync`. The pure
+  folds the FX members run are `@rtc/core-logic` exports in all three cores
   (`blotterFolds`, `staleFlagFold`, `notionalView`, `tileExecutionState`);
   their timing constants live in `@rtc/domain`.
 - **Commands, folds and countdowns** (slice 3, credit — `rfqs`, `dealers`,
@@ -281,72 +300,45 @@ core; slice 3 added the credit shapes to the same list:
   supersedes its own query with `Stream.flatMap(…, { switch: true })`
   inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
   two singletons warm through `refToWarmStateStream`, and grows the Layer
-  graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). Both siblings
-  pass `createApp`'s `CoreSeams` argument so the base app's internal
-  readers follow the native members instead of an unreachable RxJS-only
-  instance of each (see "Core seams" below). A
+  graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). A
   `Scope.addFinalizer` on each Effect singleton's child scope marks it
   disposed and releases its keep-warm, so `app.dispose()` and the
   machine's own `dispose()` converge — what the async twin's `lifetime`
   abort listener does.
 
-**Strangler seam.** A base-side consumer of a member that goes native would
-keep reading the base instance until its own slice — the RxJS
-`AnimationDirector`, `NarratorMachine`, `JarvisDriverMachine` and the base
-`eqWorkspace`'s seed all capture base streams at construction. `CoreSeams`
-(next paragraph) redirects every one of those DATA reads; the base's own
-preference presenters (the narrator's `preference$`, the driver's
-`setThemeSkin`) still read the preferences port beside the native ones,
-port-backed and idempotent, so nothing is stale and nothing ticks twice.
-Slice 8 ends the seam.
+**The strangler, and its end (slices 0–8).** Until slice 8 each
+alternative core composed beside a stood-down RxJS base app: members were
+ported one slice at a time, the rest delegated to the base, and a
+`CoreSeams` argument to the RxJS `createApp` pointed the base's internal
+readers (`AnimationDirector`, `NarratorMachine`, `JarvisDriverMachine`, the
+workspace seed) at the native members so nothing was held twice. Slice 8
+deleted all of it: `composeWithBase`, `CoreSeams`, the parity manifests and
+their drift tests, and `pnpm core:parity`. What replaced it is structural:
+each core's `App.presenters: Presenters` and `MachineFactories` are built
+from its own members only (typecheck is the completeness witness — the
+native presenter map is `Omit<Presenters, …family keys>`, not `Partial`),
+and every core's `dispose()` is now witnessed to release every port
+subscription it holds. The instrument behind that witness, and behind the
+seam witnesses before it, is `@rtc/core-contract`'s `countSubscriptions` /
+`countInto` / `createTally` (`harness/portTally.ts`): a Proxy that counts
+LIVE subscriptions to a port's streams.
 
-**Core seams (slice 4, completed 2026-09-22).** `createApp(ports, seams = {})`
-gives a sibling a way to redirect the base app's INTERNAL reads without
-waiting for that consumer's own slice. `CoreSeams` is
-`Partial<AnimationDirectorDeps>` — `pairs$`, `priceFor`,
-`connectionStatus$`, `executions$`, `rfqEvents$`, `equityFills$` — plus
-`eqWorkspace?` and `watchlist$?`; each internal reader takes
-`seams.x ?? own`:
+**Two app-level ports (slice 8).** `AppPorts.connectionIntents`
+(`reconnect()`, `injectIncident(event)`) carries the pushes into the
+connection-event stream that originate inside the app — the Reconnect
+button and the admin incident machine — so no core imports a module-level
+Subject; the client supplies it (both port factories return
+`connectionIntentsPort`) beside the `connectionEvents` that merges it.
+`ports.transport` is gated on each core's OWN `auth` (the `transportGate`
+contract suite: open on the authenticated edge, close on the reverse, once
+per edge, the first state included). Before slice 8 the alternative cores
+never opened the socket on a native sign-in — the only gate was the base
+app's, watching the base's `auth`.
 
-| reader (base app) | reads through the seam |
-|---|---|
-| `JarvisDriverMachine` | `eqWorkspace`, `knownSymbols$` ← `watchlist$` |
-| base `eqWorkspace` seed | `watchlist$` (the composition-time peek and `seed$`) |
-| `AnimationDirector` | all six of its sources |
-| `NarratorMachine` | `pairs$`, `priceFor` |
-
-Without it, under an alternative core: a Jarvis drive batch mutates a
-workspace the UI no longer renders; a fill or FX execution made through a
-NATIVE presenter never reaches the director (its `executions$` is a
-Subject only the base `execute()` feeds); and every port those readers
-share with a native member is held twice — for the simulator's pricing, a
-doubled tick rate. (`workflow.events()` was the sharpest case: the base
-`rfqs.events$` is `warmReplay()`, so one `intentsFor` consumer would have
-held a second credit stream for the whole session.) What the seam deliberately does NOT do: the base app
-still builds and exposes its own instance of every member (so the parity
-drift test's reference-inequality assertion — a `"native"` member must not
-literally be the RxJS instance — stays meaningful), and it never feeds a
-base presenter's private Subject from a native call, which would make the
-native member RxJS with extra steps. It redirects the READER. Witnesses:
-`client-core/src/__tests__/composition.seams.test.ts` (each seam drives its
-intent; with `pairs$`/`priceFor`/`watchlist$` supplied the base opens none
-of those three ports) and each sibling's `composition.seams.test.ts` (an
-FX execution through the native `execution` reaches the director; the
-watchlist, the pairs and a pair's prices each carry ONE live subscription).
-The instrument behind those counts is `@rtc/core-contract`'s
-`countSubscriptions` / `countInto` / `createTally` (`harness/portTally.ts`):
-a Proxy over a port that counts LIVE subscriptions to one method's streams
-— live, not opened, because the Effect `mirrorPort` peeks a port before
-following it; and only on a never-completing source, so a witness reshapes
-`of(…)` to `concat(…, NEVER)`. Later slices' seam witnesses import it
-rather than copying it.
-Strangler-phase scaffolding, deleted along with delegation in slice 8.
-
-**Teardown order.** An alternative core releases its own resources first —
-the async lifetime signal, the Effect host scope — then disposes the base
-app, then (Effect) the runtime. The Effect composition today runs base →
-scope → runtime; both orders are safe while the RxJS `dispose()` is a
-no-op, and slice 8 removes the base. A subscriber arriving after
+**Teardown order.** The async core disposes its Jarvis presenter, then
+aborts its lifetime signal; the Effect core closes its host scope, then
+disposes the runtime (whose Layer scope is the host scope's parent, so
+either step alone would end every fiber — both are kept). A subscriber arriving after
 `dispose()` is not a shipped path: the async retained topic would restart
 its producer, the Effect fold stays silent, the RxJS core never tore down.
 
@@ -356,7 +348,9 @@ its producer, the Effect fold stays silent, the RxJS core never tore down.
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
 and per `AppCommands` member (74 members: 60 presenters, 12 machines, 2
-commands). Adding a member to `Presenters` or `MachineFactories` without
+commands). Two cross-member suites sit beside the registry, witnessing
+properties of the whole composition: `portDiscipline` and (slice 8)
+`transportGate`. Adding a member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 
@@ -414,46 +408,13 @@ the RxJS core before either alternative core ports that member natively —
 the contract is proven against the reference implementation first, so a
 later native port is judged against a fixed target rather than a moving one.
 
-## The parity manifest
-
-Each alternative core ships a committed `parity.json` —
-`{ presenters: { member: "native" | "delegated" }, machines: { … } }` — and a
-`parity.test.ts` that asserts the manifest matches reality by **reference
-inequality** against the RxJS core's own instances: a `"delegated"` member
-must literally *be* the RxJS instance (same object), and a `"native"` member
-must not be. The manifest has three sections — `presenters`, `machines`,
-`commands` — and the drift test walks all three. As of slice 7's wave 2
-both alternative cores list all seventy-four members `"native"` (`connection`, all
-fifteen preference presenters, `commands.reconnect`, the six FX
-pricing/blotter presenters and the five FX machines, the four credit
-presenters and the four RFQ machines — `rfqCountdown` having joined
-`MachineFactories` in slice 3 — and slice 4's eight: the five equities
-presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
-`positions`), the two equities workspace singletons (`eqWorkspace`,
-`eqDrawings`) and the machine `orderTicket`, slice 5's nine admin members,
-slice 6's five shell members, slice 7 wave 1's twelve workspace
-members and wave 2's four Jarvis members) and nothing `"delegated"`. Each
-sibling builds its Jarvis family and workspace itself; the base app stands
-down through `CoreSeams.nativeJarvis` (wave 1's `CoreSeams.workspace`
-factory is deleted). Slice 5 landed one core at a
-time — async first, Effect the same day — so for a few hours the two
-manifests disagreed, which the tooling reports and nothing forbids. The
-manifest says so explicitly rather than leaving it
-implied. `pnpm core:parity` prints both manifests as one table, for a PR
-description or `docs/STATUS.md`.
-
-The contract tier proves *behaviour*: a delegated member's suite passes
-trivially, because the object it drives is the RxJS instance. The parity
-manifest proves *provenance*: which members that trivial pass is actually
-telling you something about. Neither substitutes for the other — a
-contract-only report can't distinguish "still delegated" from "ported and
-correct," and a manifest-only report has no behavioural teeth at all.
-
 ## Bundle isolation
 
 `pnpm check:core-bundle` builds each web client once per core value and
-asserts the `rxjs` build contains no marker of either alternative core
-(`effect/Fiber`, `@rtc/client-core-async`'s brand), printing gzipped sizes
+asserts that each build carries its own core's marker and no other's — in
+every direction since slice 8: the RxJS core's brand (`RXJS_CORE_BRAND`, on
+`rxjsCore`), `@rtc/client-core-async`'s brand, and `effect/Fiber` — printing
+gzipped sizes
 per core for visibility. It is the same class of guarantee as the deploy
 workflow's grep guard, run locally and per-core rather than once against the
 production build only.
