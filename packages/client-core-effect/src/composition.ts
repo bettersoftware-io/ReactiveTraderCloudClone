@@ -21,6 +21,7 @@ import type {
 } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
+import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
 import { createBootMachine } from "#/machines/boot";
@@ -87,23 +88,31 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     },
   });
 
-  const base = createRxjsApp(ports, {
-    eqWorkspace: presenters.eqWorkspace,
-    equityFills$: presenters.ordersBlotter.fills$,
-    watchlist$: presenters.watchlist.watchlist$,
-    pairs$: presenters.currencyPairs.pairs$,
-    priceFor: (pair: CurrencyPair) => {
-      return presenters.priceStream.price$(pair);
+  // The base gets no transport: this core gates it on its OWN `auth` (the
+  // base's gate would watch the base's `auth`, which a native login never
+  // reaches), so exactly one gate exists.
+  const base = createRxjsApp(
+    { ...ports, transport: undefined },
+    {
+      eqWorkspace: presenters.eqWorkspace,
+      equityFills$: presenters.ordersBlotter.fills$,
+      watchlist$: presenters.watchlist.watchlist$,
+      pairs$: presenters.currencyPairs.pairs$,
+      priceFor: (pair: CurrencyPair) => {
+        return presenters.priceStream.price$(pair);
+      },
+      executions$: presenters.execution.executions$,
+      rfqEvents$: presenters.rfqs.events$,
+      connectionStatus$: presenters.connection.status$,
+      workspaceNav: presenters.workspaceNav,
+      nativeJarvis: true,
     },
-    executions$: presenters.execution.executions$,
-    rfqEvents$: presenters.rfqs.events$,
-    connectionStatus$: presenters.connection.status$,
-    workspaceNav: presenters.workspaceNav,
-    nativeJarvis: true,
-  });
+  );
+  gateTransportOnAuth(host, ports.transport, presenters.auth.state$);
 
   const app: App = {
     ...base,
+    ports,
     presenters: {
       ...base.presenters,
       ...presenters,

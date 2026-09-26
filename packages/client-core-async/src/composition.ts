@@ -23,6 +23,7 @@ import type {
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { peek } from "#/bridge/in";
+import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { createBootMachine } from "#/machines/boot";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
@@ -111,6 +112,7 @@ export interface ComposedMachines {
 type NativePresenters = Partial<Presenters> &
   Pick<
     Presenters,
+    | "auth"
     | "connection"
     | "currencyPairs"
     | "eqWorkspace"
@@ -304,10 +306,15 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
     workspaceNav: native.workspaceNav,
     nativeJarvis: true,
   };
-  const base = createRxjsApp(ports, seams);
+  // The base gets no transport: this core gates it on its OWN `auth` (the
+  // base's gate would watch the base's `auth`, which a native login never
+  // reaches), so exactly one gate exists.
+  const base = createRxjsApp({ ...ports, transport: undefined }, seams);
+  gateTransportOnAuth(ports.transport, native.auth.state$, lifetime.signal);
 
   const app: App = {
     ...base,
+    ports,
     presenters: {
       ...base.presenters,
       ...native,

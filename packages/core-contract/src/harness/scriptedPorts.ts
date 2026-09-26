@@ -10,6 +10,7 @@ import {
 
 import type {
   AppPorts,
+  AuthGatedTransport,
   ColorSchemeSource,
   ConnectionIntentsPort,
   DockLayoutStore,
@@ -161,7 +162,14 @@ export interface HarnessSeed {
   readonly jarvisAvailabilityPending?: boolean;
   /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
   readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
+  /** Supply a recording `ports.transport` (see `driver.transportCalls()`).
+   * Absent: the base's, which for every runner is none — the simulator
+   * branch has no socket to gate. */
+  readonly transport?: boolean;
 }
+
+/** One call the core made on the scripted `ports.transport`. */
+type TransportCall = "connect" | "disconnect";
 
 /** One `auth.login(username, password)` the core has subscribed. */
 interface LoginCall {
@@ -246,6 +254,9 @@ export interface ScriptedDriver {
   connectionEvents$(): Stream<ConnectionEvent>;
   /** How many times the core has called each `connectionIntents` method. */
   connectionIntentCalls(): ConnectionIntentCalls;
+  /** Every call the core has made on the scripted transport, in order
+   * (`HarnessSeed.transport`; always `[]` without it). */
+  transportCalls(): readonly TransportCall[];
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
   /** How many times the core has invoked this port method since the harness
@@ -894,6 +905,18 @@ export function scriptPorts(
       stored = null;
     },
   };
+  const transportLog: TransportCall[] = [];
+  const transport: AuthGatedTransport | undefined =
+    seed.transport === true
+      ? {
+          connect: () => {
+            transportLog.push("connect");
+          },
+          disconnect: () => {
+            transportLog.push("disconnect");
+          },
+        }
+      : base.transport;
   const bootSplashSeed = seed.bootSplash;
   const bootSplash =
     bootSplashSeed === undefined
@@ -913,6 +936,7 @@ export function scriptPorts(
       jarvis,
       jarvisUsage,
       narratorConfig: seed.narratorConfig ?? base.narratorConfig,
+      transport,
       dockLayoutStore,
       layoutPresetStore,
       preferences,
@@ -949,6 +973,9 @@ export function scriptPorts(
       },
       connectionIntentCalls: () => {
         return { ...intentCalls };
+      },
+      transportCalls: () => {
+        return [...transportLog];
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);

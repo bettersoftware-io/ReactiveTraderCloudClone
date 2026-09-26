@@ -728,6 +728,7 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
 export type NativePresenters = Partial<Presenters> &
   Pick<
     Presenters,
+    | "auth"
     | "connection"
     | "currencyPairs"
     | "eqWorkspace"
