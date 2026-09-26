@@ -282,6 +282,16 @@ mutant behind for the next run to read as real). A SURVIVED row is a finding
 about the test. See `docs/architecture/09-test-strategy.md` §"Proving a test
 can fail".
 
+**A test waiting for a timer-driven outcome runs on fake timers**
+(`vi.useFakeTimers()` before composition, `vi.advanceTimersByTimeAsync` by the
+exact interval, plus a positive witness that the step ran) — never a real
+`setTimeout` sleep, and never a raised timeout. Both cores follow fake timers
+(RxJS schedules through `setTimeout`; `Effect.sleep` advances under them).
+The one safe real wait is a single earlier-deadline timer; anything behind a
+chain of async hops races on a loaded CI runner (#829 went red three times
+that way). Rule, safe shapes and the user-event / React-Testing-Library traps:
+`docs/architecture/09-test-strategy.md` §"Waiting on time".
+
 A fixture factory is named **`create*`** — never a bare noun, nor `make*` /
 `build*` / `fake*` / `stub*` (`rtc/name-fixture-factories`, specs only;
 `createFake*` / `createStub*` keep the xUnit test-double vocabulary). A bare

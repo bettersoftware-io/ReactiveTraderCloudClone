@@ -4,7 +4,7 @@ import {
   of,
   config as rxjsConfig,
 } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   AuthSimulator,
@@ -264,37 +264,49 @@ describe("composition — jarvis wiring", () => {
   });
 
   it("a command batch through createApp yields 'drive: <kind>' transcript entries for APPLIED commands only", async () => {
-    const { presenters } = createApp({
-      ...createSimulatorPorts({
-        preferences: new PreferencesSimulator(),
-        auth: new AuthSimulator({}),
-        sessionStore: new InMemorySessionStore(),
-      }),
-      connectionEvents: new ConnectionEventsSimulator(),
-      jarvis: createMixedOutcomeDrivingJarvisPort(),
-    });
+    // Fake timers, installed before composition: the second command is
+    // staggered DRIVE_STAGGER_MS behind the first, and on real timers a slow
+    // runner could read the transcript before it had run — the absence of its
+    // entry would then prove nothing. The driver's lastBatch below is the
+    // positive witness that it DID run (and was skipped).
+    vi.useFakeTimers();
 
-    presenters.jarvis.intents.send("switch to equities and select ZZZZZZ");
-
-    // Two commands in the batch: the first (applied) fires immediately, the
-    // second (skipped — unknown symbol) is staggered DRIVE_STAGGER_MS later
-    // — still a REAL (non-virtual) scheduler at this composition level.
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, DRIVE_STAGGER_MS + 100);
-    });
-
-    const state = await firstValueFrom(presenters.jarvis.state$);
-    const driveEntryTexts = state.entries
-      .filter((entry) => {
-        return entry.text.startsWith("drive: ");
-      })
-      .map((entry) => {
-        return entry.text;
+    try {
+      const { presenters } = createApp({
+        ...createSimulatorPorts({
+          preferences: new PreferencesSimulator(),
+          auth: new AuthSimulator({}),
+          sessionStore: new InMemorySessionStore(),
+        }),
+        connectionEvents: new ConnectionEventsSimulator(),
+        jarvis: createMixedOutcomeDrivingJarvisPort(),
       });
 
-    expect(driveEntryTexts).toEqual(["drive: switchTab"]);
+      presenters.jarvis.intents.send("switch to equities and select ZZZZZZ");
+      await vi.advanceTimersByTimeAsync(DRIVE_STAGGER_MS);
 
-    presenters.jarvis.dispose();
+      const driver = await firstValueFrom(presenters.jarvisDriver.state$);
+      expect(
+        driver.lastBatch.map((outcome) => {
+          return outcome.status;
+        }),
+      ).toEqual(["applied", "skipped"]);
+
+      const state = await firstValueFrom(presenters.jarvis.state$);
+      const driveEntryTexts = state.entries
+        .filter((entry) => {
+          return entry.text.startsWith("drive: ");
+        })
+        .map((entry) => {
+          return entry.text;
+        });
+
+      expect(driveEntryTexts).toEqual(["drive: switchTab"]);
+
+      presenters.jarvis.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

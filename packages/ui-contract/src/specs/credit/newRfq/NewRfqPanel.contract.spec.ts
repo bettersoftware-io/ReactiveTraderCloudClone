@@ -8,6 +8,7 @@ import {
   type Dealer,
   Direction,
   type Instrument,
+  RFQ_REDIRECT_DELAY_MS,
 } from "@rtc/domain";
 
 afterEach(() => {
@@ -132,12 +133,11 @@ describe("NewRfqPanel", () => {
   });
 
   it("returns to an empty editing state after the confirmation interval, and a second submission round-trips", async () => {
-    // Real timers throughout: racing the fake's setTimeout(REDIRECT_DELAY_MS)
-    // against userEvent's own internal real-timer waits (see wait.js in
-    // @testing-library/user-event) under vi.useFakeTimers() deadlocks, so
-    // this spec drives the actual 1500ms redirect delay in real time
-    // instead — the marble-precise timing is already pinned by the
-    // client-core unit test (RfqSubmissionMachine.test.ts).
+    // Fake timers, installed before mount: the page's user-event instance
+    // advances the fake clock for its own keystroke waits (NewRfqPanelPage),
+    // so the redirect is an exact advance of RFQ_REDIRECT_DELAY_MS rather
+    // than a 1.6s real sleep that a loaded runner could overrun.
+    vi.useFakeTimers();
     const panel = ready();
 
     await panel.chooseInstrument(2);
@@ -147,12 +147,18 @@ describe("NewRfqPanel", () => {
     await panel.send();
     expect(panel.isConfirmed()).toBe(true);
 
-    // REDIRECT_DELAY_MS (1500ms) — the same delay the real
-    // RfqsPresenter.createSubmission timer uses before returning to editing.
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1600);
+    // Still confirmed one tick short of the redirect: the reset below is the
+    // timer's doing, not an artefact of when the spec happened to look.
+    // Each advance runs inside the driver's async flush (React's `act`), so
+    // whatever the timer changed is committed before the assertion reads it.
+    await panel.flushAsync(async () => {
+      await vi.advanceTimersByTimeAsync(RFQ_REDIRECT_DELAY_MS - 1);
     });
+    expect(panel.isConfirmed()).toBe(true);
 
+    await panel.flushAsync(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
     expect(panel.isConfirmed()).toBe(false);
     expect(panel.instrumentLabel()).toContain("Select instrument");
     expect(panel.isDirectionActive(Direction.Buy)).toBe(true);
@@ -172,7 +178,7 @@ describe("NewRfqPanel", () => {
       quantity: 3,
       direction: Direction.Buy,
     });
-  }, 10_000);
+  });
 
   it("resets every field via CLEAR", async () => {
     const panel = ready();
