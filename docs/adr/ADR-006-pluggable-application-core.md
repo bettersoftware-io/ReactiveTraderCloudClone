@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted 2026-09-12; slice 0 shipped in this PR.
+Accepted 2026-09-12; slice 0 shipped in this PR. Implemented in full
+2026-09-26: slice 8 closed the workstream (see "Decided in slice 8 —
+closing" below).
 
 ## Context
 
@@ -76,6 +78,10 @@ to the core's own paradigm (a `Store`/`Topic` pair for async-await,
 `Stream`/`SubscriptionRef` for Effect).
 
 ## Decision 4 — strangler with a parity manifest
+
+> **Superseded in slice 8** (2026-09-26): with every member native in both
+> alternative cores, the delegation, the manifests and their drift tests
+> were deleted. See "Decided in slice 8 — closing".
 
 Both alternative cores ship at slice 0 with **every** member delegating to
 the RxJS `App` (`{ ...createRxjsApp(ports), ...nativePresenters() }`, the
@@ -999,13 +1005,49 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 - **Fixed on the way:** a driven dock the workspace refuses (an id colliding
   with a workspace panel) is reported `refused`, not `applied`.
 
+**Decided in slice 8 — closing** (2026-09-26; PRs #829, #832 and PR C):
+
+- **`@rtc/core-logic` holds the shared rxjs-free rules** (PR A, #829): the
+  pure folds, view derivations, the workspace and Jarvis controllers and
+  `createAuthDeps` moved out of `client-core` (which re-exports them
+  whole). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
+  and `core-logic-stays-inner` pin it. `createAuthDeps` takes its two
+  rxjs-bound primitives (`readNow`, `delayAuth`) as an argument, so each
+  core supplies its own.
+- **`AppPorts.connectionIntents`** (PR B, #832) replaces the alternative
+  cores' imports of `client-core`'s module-level `reconnect$`/`incident$`:
+  a core pushes the Reconnect button's intent and the incident machine's
+  events through its ports; the client merges them. Typecheck proves the
+  port is present, not that a builder merges it — the structural pairing is
+  a follow-up.
+- **The transport is gated on each core's own `auth`** (PR B). The new
+  `transportGate` contract suite measured the bug the strangler hid: both
+  alternative cores never opened the socket on a native sign-in, because the
+  only gate watched the stood-down base's `auth`. The contract pins the
+  RxJS reference exactly, including its one `disconnect()` on a signed-out
+  start.
+- **Delegation is gone** (PR C): `composeWithBase`, `CoreSeams`, both
+  `parity.json` manifests and drift tests, `pnpm core:parity`. Each
+  alternative core's native presenter map is typed exact
+  (`Omit<Presenters, family keys>`), so the typecheck is the completeness
+  witness, and `@rtc/client-core` is a devDependency there
+  (`alt-cores-no-client-core-at-runtime`). A new dispose case per core
+  proves `dispose()` releases every port subscription — it was RED with the
+  base behind it (three held).
+- **`portDiscipline` is absolute:** one construction-time call per reading
+  member. It caught the RxJS `RfqsPresenter` calling `workflow.events()`
+  twice; it now calls once and subscribes twice (identical wire traffic).
+- **Bundle isolation in every direction:** `RXJS_CORE_BRAND` joins the
+  markers, so an async or Effect build must not carry the RxJS core.
+- **A gap the strangler hid closed on its own:** the auth suite's
+  expired-session store-clear could not fail against a sibling while the base
+  resumed from the same store; with the base gone it kills that mutant in
+  both cores.
+
 ## Follow-ups
 
-1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
-   1a connection + theme, 1b remaining preferences, 2 FX pricing + blotter, 3
-   credit, 4 equities, 5 admin, 6 shell, 7 jarvis, 8 closing (delegation
-   removed, `client-core` runtime dependency dropped from both alternative
-   cores, shared pure reducers relocated to `@rtc/core-logic`).
+1. ~~Slices 1a through 8~~ — all shipped; slice 8 closed the workstream
+   2026-09-26 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)).
 2. The web-standard `Observable` envelope (Decision 2): alias flip, bridge
    edits, a polyfill until Firefox/Safari ship it; the bindings would need to
    own an `AbortController` per subscription since `subscribe()` no longer
@@ -1013,6 +1055,12 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 3. `effect` 4.0 once it leaves release-candidate status.
 4. React Native on the alternative cores (`EXPO_PUBLIC_CORE_IMPL`, plus a
    Hermes bundle-size check for the Effect core — RN stays RxJS-only for now).
+5. Pair `connectionEvents` with `connectionIntents` structurally (a helper
+   that hands a port builder the intents port with the stream it must merge),
+   so a builder cannot supply one without merging the other.
+6. The RxJS core's `dispose()` is still a knowing no-op (its follow-up is a
+   `Subscription` bag); completion-on-dispose becomes the contract when it
+   lands.
 
 ## See also
 

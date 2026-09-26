@@ -22,8 +22,7 @@ export { peek, peekCurrent } from "#/bridge/peek";
 export { rpc } from "#/bridge/rpc";
 export { createCommands } from "#/commands";
 export {
-  composeMachinesWithBase,
-  composeWithBase,
+  composeApp,
   createApp,
   createMachineFactories,
   effectCore,

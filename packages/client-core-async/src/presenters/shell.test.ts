@@ -41,8 +41,8 @@ describe("createBootGatePresenter (async)", () => {
 });
 
 describe("createAuthPresenter (async)", () => {
-  // The contract suite cannot prove this for a sibling (slice-6 ledger A-5):
-  // the base app it delegates to resumes from — and clears — the same store.
+  // Also contracted (the auth suite's expired-session case); pinned here at
+  // the presenter, without composition.
   it("a stored session that has expired is cleared at resume", () => {
     const rig = createAuthRig(createSession(1_000));
     createAuthPresenter(rig.deps, new AbortController().signal, () => {

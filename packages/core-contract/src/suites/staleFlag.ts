@@ -42,9 +42,9 @@ export function describeStaleFlagContract(
         const c = collect(m.state$);
         // Driven as two separate settled steps, not one synchronous burst:
         // the connection transition and the price tick can arrive through
-        // ports with different delivery latency (a native core's connection
-        // fold is fiber-scheduled, a delegated price stream is synchronous
-        // RxJS), so settling between them fixes their relative order instead
+        // ports with different delivery latency (one core's connection fold
+        // is fiber-scheduled while its price stream is synchronous), so
+        // settling between them fixes their relative order instead
         // of leaving it to whichever port happens to settle first.
         h.driver.emitConnection({ type: "gatewayConnected" });
         await settle();

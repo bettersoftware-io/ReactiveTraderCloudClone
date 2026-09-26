@@ -97,3 +97,42 @@ file is its durable record, and each PR appends its own section.
 - **M4.** The async gate now routes an `auth` stream error out of band, matching its Effect twin.
 - **M5.** The `app.ports` check is now an identity witness. A call through `app.ports.transport` must land in the scripted log.
 - **Mutation after fixes:** the 10 Task 5 mutants are 10/10 KILLED again, and the composition-release mutants are 1 KILLED, 1 equivalent (ruled above).
+
+## PR C — delegation removed (Tasks 6–9)
+
+### Tasks 6 and 7 — each alternative core stands alone
+
+- **Measured first.** A new dispose case counts the live subscriptions on every port stream through a Proxy over the simulator ports. It was RED in both cores before the change: 3 subscriptions survived `app.dispose()`, all held by the base app. It is GREEN after the change.
+- **Mutation:**
+  - Async: a `dispose()` that never aborts its lifetime is KILLED.
+  - Effect: a `dispose()` that releases neither the host scope nor the runtime is KILLED.
+  - **Ruling:** removing only one of the two Effect calls SURVIVES, and those are equivalent mutants. The runtime's Layer scope is the host scope's parent, so either call alone interrupts every fiber. Both calls are kept. *Cost if wrong:* none.
+- **Exact presenter maps.** `NativePresenters` is now `Omit<Presenters, …the 14 family/workspace keys>`, not `Partial & Pick`, because a `Partial` spread cannot prove completeness. The typecheck is now the witness that each core covers `Presenters`.
+- **Ruling:** the Effect `composeWithBase` became `composeApp → { app, host }` rather than being deleted. The existing fiber-interruption teardown test needs the host. *Cost if wrong:* one extra export.
+- **Ruling:** the machine-factory "none is the base's" cases are deleted. With no base, the `MachineFactories` return type is the witness.
+- **Lockfile.** `pnpm-lock.yaml` is committed: moving `@rtc/client-core` to `devDependencies` is a genuine importer change.
+
+### Task 8 — `CoreSeams` deleted; the gates tightened
+
+- **`portDiscipline` is absolute.**
+  - Async and effect pass at exactly 1 call per member. `sessions$` is 2, because two members read it.
+  - The RxJS reference FAILED `rfqs`: `RfqsPresenter`'s state fold and its raw events each called `workflow.events()`.
+  - **Ruling:** fix the reference rather than loosen the case. The presenter now calls the port once and subscribes twice. Wire traffic is identical, because a port stream subscribes on subscribe, not on call. `WorkflowEventStreamUseCase` now takes `Pick<WorkflowPort, "events">`.
+  - Mutants KILLED: a member built twice (×2) and the double call restored.
+- **Ruling:** `composition.seams.test.ts` in client-core is deleted whole. Its four no-seam "controls" test behaviours the contract suites already pin against the RxJS core: `jarvisDriver`, layout persistence, the narrator, and availability and history.
+- **The runtime-dependency rule.** `alt-cores-no-client-core-at-runtime` fails a probe runtime import with the rule named, and passes once the probe is removed.
+- **Bundle brand in every direction.** `RXJS_CORE_BRAND` lives on `rxjsCore`. `check:core-bundle` passed on its first run, because `selectCore`'s fold already drops `rxjsCore`. A mutant that keeps the RxJS core reachable in the async build is KILLED. The marker is therefore a hard gate, not report-only.
+- **Found:** with the base gone, the auth suite's expired-session store-clear now kills a sibling mutant in both cores. This closes slice-6 ledger A-5, and the suite's caveat comment is removed.
+
+### Task 9 — docs
+
+- **Updated:** ADR-006 ("Decided in slice 8 — closing"; Decision 4 superseded; Follow-ups 5 and 6), §22, §6, `dependency-cruiser.md`, the spec's receipt, STATUS, CLAUDE.md, both alternative-core READMEs, and `architecture.md`'s TOC.
+- **Stale since slice 0:** §6 and `dependency-cruiser.md` never showed the core family, and now do.
+- **Four named follow-ups** stay in STATUS: the ui-contract fixtures' duplicated dock wiring (not taken up by this plan); the structural `connectionEvents`/`connectionIntents` pairing; the RxJS no-op `dispose()`; and the deferred-by-design envelope, `effect` 4.0 and React Native.
+
+### PR C gate
+
+- Full gauntlet: 33/33 gates exit 0. e2e on rxjs, async and effect: each passed 91+91 Playwright and 47/47 Cucumber.
+- WS smoke (`dev:react:fs`, demo account, storage cleared first):
+  - **async:** 0 sockets while signed out, one `connect` on sign-in, prices ticking, `data-core-impl=async`.
+  - **effect:** the same, with `data-core-impl=effect`.

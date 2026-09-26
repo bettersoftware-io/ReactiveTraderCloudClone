@@ -10,16 +10,11 @@ import { settle } from "#/harness/settle";
  * synchronous read (`cycle()`, `current()`) reads through a fresh
  * SUBSCRIPTION of the Observable captured at construction, never through a
  * fresh CALL of the port method; a stream re-subscribes the same Observable
- * on every warm period. So the count after construction is the BASELINE, and
- * the property this suite witnesses is that the count does not change across
- * warm periods or synchronous reads — constancy, not a fixed absolute value.
- * The absolute baseline itself differs by core: 1 for the RxJS core, but 2
- * for a delegating (strangler) core — `composeWithBase` builds the whole
- * RxJS base app first (every presenter calls its port method once there
- * too) before overlaying the native presenters (once more). Asserting the
- * absolute count is 1 everywhere is a slice-8 tightening, once delegation to
- * the RxJS base is fully removed. This suite is not keyed by member: it
- * witnesses a property of the whole composition. */
+ * on every warm period. So each case pins the absolute construction-time
+ * count — one call per member that reads the port (slice 8: no core builds
+ * a second copy of any member any more) — and then that the count does not
+ * change across warm periods or synchronous reads. This suite is not keyed
+ * by member: it witnesses a property of the whole composition. */
 export function describePortDisciplineContract(
   label: string,
   makeHarness: MakeHarness,
@@ -28,9 +23,10 @@ export function describePortDisciplineContract(
     it("themePreference: cycle() twice and two warm periods of mode$ do not call themeMode$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("themeMode$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.themePreference;
@@ -51,9 +47,10 @@ export function describePortDisciplineContract(
     it("themePreference: two warm periods of mode$ do not call colorScheme.prefersDark$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("colorScheme.prefersDark$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.themePreference;
@@ -72,9 +69,10 @@ export function describePortDisciplineContract(
     it("eqWatchlistSortPreference: cycle() twice does not call eqWatchlistSort$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("eqWatchlistSort$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.eqWatchlistSortPreference;
@@ -90,9 +88,10 @@ export function describePortDisciplineContract(
     it("bootPreference: current() twice does not call bootVariant$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("bootVariant$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.bootPreference;
@@ -107,9 +106,10 @@ export function describePortDisciplineContract(
     it("connection: two warm periods of status$ do not call connectionEvents.events() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("connectionEvents.events");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.connection;
@@ -128,9 +128,10 @@ export function describePortDisciplineContract(
     it("currencyPairs: subscribe, unsubscribe, subscribe again does not call referenceData.getCurrencyPairs() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("referenceData.getCurrencyPairs");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.currencyPairs;
@@ -151,9 +152,10 @@ export function describePortDisciplineContract(
     it("blotter: subscribe, unsubscribe, subscribe again does not call blotter.getTradeStream() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("blotter.getTradeStream");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.blotter;
@@ -172,9 +174,10 @@ export function describePortDisciplineContract(
     it("analytics: subscribe, unsubscribe, subscribe again does not call analytics.getAnalytics() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("analytics.getAnalytics");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.analytics;
@@ -193,9 +196,10 @@ export function describePortDisciplineContract(
     it("rfqs: two warm periods of rfqs$ and of events$ do not call workflow.events() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("workflow.events");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.rfqs;
@@ -220,9 +224,10 @@ export function describePortDisciplineContract(
     it("dealers: subscribe, unsubscribe, subscribe again does not call dealers.getDealers() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("dealers.getDealers");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.dealers;
@@ -241,9 +246,10 @@ export function describePortDisciplineContract(
     it("instruments: subscribe, unsubscribe, subscribe again does not call instruments.getInstruments() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("instruments.getInstruments");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.instruments;
@@ -262,9 +268,10 @@ export function describePortDisciplineContract(
     it("watchlist: subscribe, unsubscribe, subscribe again does not call marketData.watchlist() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("marketData.watchlist");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.watchlist;
@@ -283,9 +290,10 @@ export function describePortDisciplineContract(
     it("positions: subscribe, unsubscribe, subscribe again does not call positions.positions() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("positions.positions");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.positions;
@@ -304,9 +312,10 @@ export function describePortDisciplineContract(
     it("throughputMetric: two warm periods of samples$ do not call telemetry.throughput$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("telemetry.throughput$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.throughputMetric;
@@ -325,9 +334,10 @@ export function describePortDisciplineContract(
     it("latencyMetric: two warm periods of samples$ do not call telemetry.latency$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("telemetry.latency$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.latencyMetric;
@@ -346,9 +356,10 @@ export function describePortDisciplineContract(
     it("errorRateMetric: two warm periods of samples$ do not call telemetry.errorRate$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("telemetry.errorRate$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.errorRateMetric;
@@ -367,9 +378,10 @@ export function describePortDisciplineContract(
     it("topology: two warm periods of topology$ do not call serviceHealth.topology$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("serviceHealth.topology$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.topology;
@@ -388,9 +400,10 @@ export function describePortDisciplineContract(
     it("eventLog: two warm periods of events$ do not call eventLog.events$() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("eventLog.events$");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.eventLog;
@@ -411,10 +424,10 @@ export function describePortDisciplineContract(
       const before = h.driver.portCalls("sessions.sessions$");
       // A zero baseline would mean the counted wrapper was bypassed or the
       // presenter was never constructed — the absence has to be visible.
-      // Not necessarily 1: `sessionsKpi` also calls `sessions.sessions$()`
-      // once at construction (ruling 9) — the rule this suite witnesses is
-      // constancy across warm periods, not an absolute count.
-      expect(before).toBeGreaterThan(0);
+      // Two, not one: `sessions` and `sessionsKpi` each call
+      // `sessions.sessions$()` once at construction (ruling 9). A third would
+      // mean a member built twice.
+      expect(before).toBe(2);
 
       try {
         const p = h.app.presenters.sessions;
@@ -439,9 +452,10 @@ export function describePortDisciplineContract(
     it("throughput: two warm periods of state$ do not call admin.getThroughput() again", async () => {
       const h = makeHarness();
       const before = h.driver.portCalls("admin.getThroughput");
-      // A zero baseline would mean the counted wrapper was bypassed or the
-      // presenter was never constructed — the absence has to be visible.
-      expect(before).toBeGreaterThan(0);
+      // Exactly one construction-time call: zero would mean the counted
+      // wrapper was bypassed or the presenter never built; two, a member
+      // built twice.
+      expect(before).toBe(1);
 
       try {
         const p = h.app.presenters.throughput;

@@ -9,8 +9,7 @@ equivalent to the others by the `@rtc/core-contract` behavioural tier.
 ```
 src/kernel/    Store, Topic, spawn, sleep, AbortError — zero deps, no rxjs
 src/bridge/    in.ts / out.ts — the ONLY files that import rxjs values
-src/composition.ts   the CoreFactory (`asyncCore`)
-src/parity.json      which members are native vs delegated
+src/composition.ts   the CoreFactory (`asyncCore`) — this core's own members only
 ```
 
 ### Kernel
@@ -67,7 +66,7 @@ unsubscribing aborts `once`'s signal, which withdraws the request
 `rfqQuote.requestQuote`). A DERIVED roster stream is `deriveDistinct` (a
 refCounted, replay-1 topic that publishes only when the projection's result
 changes by reference) over the retained `RfqStreamState` fold; paired with
-`createShallowArrayMemo` — imported from `@rtc/client-core`, not
+`createShallowArrayMemo` — imported from `@rtc/core-logic`, not
 re-implemented — that is exactly the RxJS core's
 `distinctUntilChanged(shallowArrayEquals)` on `rfqs$`/`quotesForRfq$`, and
 paired with a bare field read it is the reference check on `allQuotes$`.
@@ -98,35 +97,34 @@ to the construction-time default. `ordersBlotter`'s `orders$` combines a
 retained (`retainUntil: lifetime`) `Topic` with `portCallToStream` (the
 lifecycle twin of `promiseToStream`: a per-call port stream, every value
 tapped through `onValue` before the subscriber, releases the port on
-unsubscribe) for `place()`. Composition is **native-first**:
-`composeWithBase` builds this core's native presenters before the RxJS
-base app, then hands their streams to `createRxjsApp` as `CoreSeams` —
-`eqWorkspace`, `equityFills$`, `watchlist$`, `pairs$`, `priceFor`,
-`executions$`, `rfqEvents$`, `connectionStatus$`, `workspaceNav` — so the
-base's `AnimationDirector` and workspace seed observe what the UI actually
-renders, not a second, unreachable RxJS instance of each, and no port they
-share with a native member is held twice; `nativeJarvis: true` stands the
-base's whole Jarvis family down (`composition.seams.test.ts`).
+unsubscribe) for `place()`. Composition (slice 8) is this core's own
+members only: `createApp` builds the native presenters, then the Jarvis
+family and its workspace over them, and gates `ports.transport` on its own
+`auth`; `dispose()` disposes the Jarvis presenter and aborts the lifetime,
+releasing every port subscription the app holds
+(`composition.dispose.test.ts`). The native presenter map is typed
+`Omit<Presenters, …family keys>`, so the typecheck proves the two halves
+cover `Presenters`.
 
-## Parity
+## Members
 
-As of slice 7's wave 2, **all 74** members are native — nothing delegates
-to the RxJS core any more (the delegation itself goes in slice 8). Wave 2
+**All 74** members are native (slice 7's wave 2), and since slice 8 nothing
+is composed beside an RxJS base app — `@rtc/client-core` is a
+devDependency for test adapters only. Wave 2
 added the Jarvis family (`presenters/jarvisFamily.ts`): `jarvis` (a Store
-over client-core's shared `createJarvisController`, one serial turn queue
+over core-logic's shared `createJarvisController`, one serial turn queue
 planned at dequeue, a run-slot confirmation countdown, a hot `events$`
 topic), `jarvisDriver` (a batch queue over the shared `applyDriveCommand`,
 `driveStaggerMs` on a timer), `jarvisDemo` (an exhaust-style run over the
 shared `createDemoStepWatch`), `jarvisUsage` (retained, `null` first) and
 the internal narrator (one session-wide `createAnomalyDetector`); the
-workspace is built over this core's OWN `jarvis.events$`, and wave 1's
-`CoreSeams.workspace` factory is deleted. Wave 1 added the workspace —
+workspace is built over this core's OWN `jarvis.events$`. Wave 1 added the workspace —
 `layoutFor` / `machines.layout` (a Store per tab over the SHARED layout
 reducer), `jarvisPanels` (a Store folded by the shared panels folds, with
 one warm data topic per live panel over the shared frame steps), the dock
 bridges, `resetWorkspaceLayout`, `dockedPanelIdsFor`,
 `workspaceLayoutResets$`, `layoutPresets`, `dockLayoutStore` and
-`commands.reportDetachedPanels` — all wired through `@rtc/client-core`'s
+`commands.reportDetachedPanels` — all wired through `@rtc/core-logic`'s
 rxjs-free `createWorkspaceDock` / `createLayoutPresetsController` /
 `writeWorkspaceLayout`; the preference has one writer, this core's
 debounce. Slice 5 added the nine admin
@@ -136,8 +134,8 @@ mirrors, `throughput`, and the `incident` singleton, whose connection
 events go out through `ports.connectionIntents.injectIncident` (slice 8).
 Slice 6 added five shell members: `workspaceNav`, `bootGate` and `auth`
 over Stores (`auth` over the shared `createAuthDeps`; since slice 8 this core
-also gates `ports.transport` on it, in `bridge/transportGate.ts`, and hands
-the base app none), the `boot` ramp, and
+also gates `ports.transport` on it, in `bridge/transportGate.ts`), the
+`boot` ramp, and
 `animationDirector` — one refCounted topic over the native members' streams
 that re-keys its per-pair tick relays on each roster. Slice 1a/1b brought
 `connection`, every preference presenter (`themePreference`,
@@ -158,10 +156,7 @@ the presenters `watchlist`, `candleSeries`, `depth`, `ordersBlotter` and
 `positions` are retained singletons), the machines `eqWorkspace` (seeded
 from `watchlist$` via `firstWatchlistSymbol`), `eqDrawings` and
 `orderTicket` (its `place` dep reaches `ordersBlotter.place`, wired
-together in `composition.ts`'s `nativeMachines`). Everything else still
-**delegates** to
-`@rtc/client-core` (the strangler seam): `composeWithBase` builds the RxJS
-app and overlays what this core implements. The native idiom for a
+together in `composition.ts`'s `nativeMachines`). The native idiom for a
 replay-current stream is `topicFromObservable` (a port as a replay-1,
 refCounted `Topic` whose producer is one synchronous `relay`), `mapTopic`
 for a projection of it, a hand-written `createTopic` producer where two
@@ -172,9 +167,6 @@ read of the stored value (`cycle()`, `current()` —
 presenter files group by API shape: `preferences.ts` (one stream plus
 setters, including the two boolean toggles), `groupedPreferences.ts`
 (several independent streams under one member), `readPreferences.ts`.
-`src/parity.json` is the committed record of the split and
-`src/parity.test.ts` proves manifest and reality agree by reference
-identity — for presenters, machines and commands alike.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set
 against this core under the label `async`.

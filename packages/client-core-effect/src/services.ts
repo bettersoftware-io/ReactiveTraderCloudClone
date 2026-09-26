@@ -22,7 +22,7 @@ export const HostTag = Context.GenericTag<EffectHost>(
 /** The host as a scoped Layer: the runtime is the one the Layer is built
  * under (`Effect.runtime`), and the scope is a closeable CHILD of the Layer's
  * own scope — closeable so `app.dispose()` can end it explicitly (the
- * order §22 documents: base app, then the scope, then the runtime), a child
+ * order §22 documents: the scope, then the runtime), a child
  * so `runtime.dispose()` ends it anyway if nobody did. Every fold period is
  * forked from it. */
 export const HostLive: Layer.Layer<EffectHost> = Layer.scoped(
