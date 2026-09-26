@@ -3,6 +3,7 @@ import { defer, map, Observable, of } from "rxjs";
 import type {
   AppPorts,
   AuthGatedTransport,
+  ConnectionIntentsPort,
   TransportPorts,
 } from "@rtc/core-api";
 import {
@@ -77,6 +78,7 @@ import type {
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
+import { connectionIntentsPort } from "./connectionIntents";
 import type { IWsAdapter } from "./IWsAdapter";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import type { SessionStore } from "./sessionStore.js";
@@ -85,10 +87,16 @@ import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
 
 /** Moved to `@rtc/core-api` — `AuthGatedTransport` in pluggable-core-slice-0
  * Task 2, `AppPorts`/`TransportPorts` in Task 5 — re-exported here so every
- * existing `import … from "@rtc/client-core"` keeps working unchanged. Of the
- * three, only `TransportPorts` is also used locally by the port factories
- * below; `AppPorts` and `AuthGatedTransport` are re-exported for callers. */
-export type { AppPorts, AuthGatedTransport, TransportPorts };
+ * existing `import … from "@rtc/client-core"` keeps working unchanged. Only
+ * `TransportPorts` is also used locally by the port factories below; the
+ * rest are re-exported for callers (`ConnectionIntentsPort`, slice 8, for
+ * the port builders that supply `connectionIntentsPort`'s alternatives). */
+export type {
+  AppPorts,
+  AuthGatedTransport,
+  ConnectionIntentsPort,
+  TransportPorts,
+};
 
 /** Dependencies injected by the platform layer into both simulator and WS-real port factories. */
 export interface PortFactoryDeps {
@@ -175,6 +183,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
     serviceHealth: topology,
     eventLog,
     sessions: new SessionSimulator(5),
+    connectionIntents: connectionIntentsPort,
     metricControls: [latency, errorRate, topology, eventLog],
     auth: deps.auth,
     sessionStore: deps.sessionStore,
@@ -1150,6 +1159,7 @@ export function createWsRealPorts(
     preferences: deps.preferences,
     jarvis: new WsJarvisAdapter(ws),
     jarvisUsage: new WsJarvisUsageAdapter(ws),
+    connectionIntents: connectionIntentsPort,
     marketData: createMarketDataPort(ws),
     orders: createOrderPort(ws),
     positions: createPositionPort(ws),

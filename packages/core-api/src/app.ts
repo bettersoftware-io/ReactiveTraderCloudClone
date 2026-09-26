@@ -4,6 +4,7 @@ import type {
   AnomalyDetectorConfig,
   AuthPort,
   BlotterPort,
+  ConnectionEvent,
   ConnectionEventsPort,
   DealerPort,
   EventLogPort,
@@ -118,6 +119,11 @@ export interface AppPorts {
    * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
   connectionEvents: ConnectionEventsPort;
+  /** The pushes into `connectionEvents` that originate INSIDE the app — the
+   * Reconnect button (`commands.reconnect`) and the admin console's incident
+   * injection. Supplied by the client beside `connectionEvents`, which merges
+   * what it carries, so a core never imports a module-level Subject. */
+  connectionIntents: ConnectionIntentsPort;
   marketData: MarketDataPort;
   orders: OrderPort;
   positions: PositionPort;
@@ -164,6 +170,14 @@ export interface AppPorts {
    * (`?narratorThresholds=test`, `import.meta.env.DEV`-gated) here; nothing
    * else in the app sets it. */
   narratorConfig?: Partial<AnomalyDetectorConfig>;
+}
+
+/** The user's and the admin console's pushes into the connection-event
+ * stream. The client builds it and merges what it carries into
+ * `connectionEvents`, so a core never imports a module-level Subject. */
+export interface ConnectionIntentsPort {
+  reconnect(): void;
+  injectIncident(event: ConnectionEvent): void;
 }
 
 export type TransportPorts = Omit<AppPorts, "connectionEvents">;
@@ -352,7 +366,7 @@ export interface Presenters {
 }
 
 export interface AppCommands {
-  /** Push a user-initiated reconnect intent (wired to reconnect$ in composition). */
+  /** Push a user-initiated reconnect intent (through `ports.connectionIntents`). */
   reconnect(): void;
   /** The Dockview bridge's WHOLE-SET report of the panels in `tab` that
    * currently live OUTSIDE the grid (floating or popped out into a window) —

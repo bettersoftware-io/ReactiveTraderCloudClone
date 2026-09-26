@@ -2,6 +2,7 @@
 // existing `import … from "@rtc/client-core"` keeps working.
 export * from "@rtc/core-logic";
 
+export * from "#/adapters/connectionIntents";
 export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemorySessionStore";

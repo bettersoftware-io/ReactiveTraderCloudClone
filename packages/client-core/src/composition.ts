@@ -130,11 +130,6 @@ import {
   WatchlistPresenter,
 } from "#/presenters/index";
 
-/** The reconnect-intent event emitted from the Reconnect button. */
-interface ReconnectIntent {
-  type: "reconnect";
-}
-
 /** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
  * directly testable (idleTeardown.test.ts).
  * - idleTimeout  → closeForIdle() (suppresses auto-reconnect)
@@ -157,23 +152,6 @@ export function routeIdleLifecycle(
  * here so every existing `import … from "@rtc/client-core"` keeps working
  * unchanged. */
 export type { App, AppCommands, AppPorts, CoreFactory, Presenters };
-
-/**
- * Phase-0 shared seam — owned by the neutral core.
- * User-initiated reconnect intent Subject. Owned in composition so both the
- * real-WS and simulator branches can merge it, and the hook factory can push
- * into it via AppCommands.reconnect().
- * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
- */
-export const reconnect$ = new Subject<ReconnectIntent>();
-
-/**
- * Phase-0 shared seam — owned by the neutral core.
- * Incident-machine connection-event sink. Plain Subject — a live sink for
- * inject() calls. Owned at module level alongside reconnect$.
- * `buildBrowserPorts` (client-react) imports and merges these into connectionEvents.
- */
-export const incident$ = new Subject<ConnectionEvent>();
 
 /** One-shot synchronous peek at the watchlist's first symbol, used only to
  * seed EqWorkspaceMachine's initial tab/selection at composition time. The
@@ -927,7 +905,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
     incident: createIncidentMachine({
       controls: ports.metricControls,
       pushConnectionEvent: (ev: ConnectionEvent) => {
-        return incident$.next(ev);
+        ports.connectionIntents.injectIncident(ev);
       },
     }),
     eqWorkspace,
@@ -963,7 +941,7 @@ export function createApp(ports: AppPorts, seams: CoreSeams = {}): App {
 
   const commands: AppCommands = {
     reconnect: () => {
-      reconnect$.next({ type: "reconnect" });
+      ports.connectionIntents.reconnect();
     },
     reportDetachedPanels: workspaceDock.reportDetachedPanels,
   };

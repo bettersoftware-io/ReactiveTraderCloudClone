@@ -11,6 +11,7 @@ import {
 import type {
   AppPorts,
   ColorSchemeSource,
+  ConnectionIntentsPort,
   DockLayoutStore,
   JarvisAskOptions,
   JarvisAvailability,
@@ -225,6 +226,12 @@ function countCalls<P extends object>(
   });
 }
 
+/** `driver.connectionIntentCalls()`: calls per `connectionIntents` method. */
+interface ConnectionIntentCalls {
+  reconnect: number;
+  injectIncident: number;
+}
+
 export interface ScriptedDriver {
   /** Push one connection event into the stream the core observes. */
   emitConnection(event: ConnectionEvent): void;
@@ -233,9 +240,12 @@ export interface ScriptedDriver {
    * than folding into a status value. Terminal, like the Subject it drives:
    * a later `emitConnection`/`failConnection` is a no-op after this. */
   failConnection(error: unknown): void;
-  /** The merged connection-event stream the core sees — includes whatever
-   * the runner's base port carries (e.g. the RxJS core's `reconnect$`). */
+  /** The merged connection-event stream the core sees: the runner's base
+   * port, `emitConnection`, and whatever the core pushes through
+   * `ports.connectionIntents` — the harness owns that merge, as a client does. */
   connectionEvents$(): Stream<ConnectionEvent>;
+  /** How many times the core has called each `connectionIntents` method. */
+  connectionIntentCalls(): ConnectionIntentCalls;
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
   /** How many times the core has invoked this port method since the harness
@@ -445,10 +455,11 @@ export interface ScriptedPorts {
  * events, the colour scheme, the five FX ports, the three credit ports plus
  * `pricing.getRfqQuote`, and the three equities ports deterministically. The
  * FX and credit ports are REPLACED, not merged: the base simulators tick on
- * real, random timers a suite cannot assert against. Everything else in
- * `base` is passed through untouched — the runner decides what backs it. */
+ * real, random timers a suite cannot assert against. `connectionIntents`
+ * is the harness's own (it owns the connection-event merge). Everything else
+ * in `base` is passed through untouched — the runner decides what backs it. */
 export function scriptPorts(
-  base: AppPorts,
+  base: Omit<AppPorts, "connectionIntents">,
   seed: HarnessSeed = {},
 ): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
@@ -549,13 +560,28 @@ export function scriptPorts(
   // Built ONCE, and handed to both the core (through `connectionEvents`) and
   // the suites (through `driver.connectionEvents$()`), so the two can never
   // observe different merge instances. Rebuilding it per call would be
-  // observationally equivalent only while every runner's base port is hot
-  // (client-core's `reconnect$` is a bare Subject); against a base port that
+  // observationally equivalent only while every runner's base port is hot;
+  // against a base port that
   // returns a cold per-subscribe stream, the reconnect suite would go green
   // on a stream the core never saw. The consequence — `base.connectionEvents
   // .events()` is called once here rather than once per subscription — is the
   // intended semantics: one shared stream.
   const events$ = merge(base.connectionEvents.events(), connection$);
+
+  // The core's own pushes (the Reconnect button, admin incident injection)
+  // land on the same Subject `emitConnection` drives — the harness owns the
+  // merge a client's `buildBrowserPorts` performs.
+  const intentCalls = { reconnect: 0, injectIncident: 0 };
+  const connectionIntents: ConnectionIntentsPort = {
+    reconnect: () => {
+      intentCalls.reconnect += 1;
+      connection$.next({ type: "reconnect" });
+    },
+    injectIncident: (event: ConnectionEvent) => {
+      intentCalls.injectIncident += 1;
+      connection$.next(event);
+    },
+  };
 
   // The ports the harness supplies itself are outside `countCalls`' Proxy,
   // so they count their own calls — on invocation, exactly as the wrapper
@@ -891,6 +917,7 @@ export function scriptPorts(
       layoutPresetStore,
       preferences,
       connectionEvents,
+      connectionIntents,
       colorScheme,
       pricing,
       referenceData,
@@ -919,6 +946,9 @@ export function scriptPorts(
       },
       connectionEvents$: () => {
         return events$;
+      },
+      connectionIntentCalls: () => {
+        return { ...intentCalls };
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);

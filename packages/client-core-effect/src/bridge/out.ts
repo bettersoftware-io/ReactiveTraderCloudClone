@@ -14,9 +14,7 @@ import {
 } from "effect";
 import { filter, map, Observable, type Subscriber } from "rxjs";
 
-import { incident$, reconnect$ } from "@rtc/client-core";
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
-import type { ConnectionEvent } from "@rtc/domain";
 
 import { fromObservable } from "#/bridge/in";
 
@@ -677,23 +675,4 @@ export function sharedFold<S>(
       }
     };
   });
-}
-
-/** Push the user's reconnect intent into the RxJS core's module-level
- * `reconnect$`. Both web clients' `buildBrowserPorts` merge that Subject into
- * `connectionEvents` for EVERY core, so a native `commands.reconnect` has to
- * speak to it or be unobservable in the browser. It is a Subject, which is
- * why the call lives in the bridge; slice 8 moves the seam out of
- * `@rtc/client-core`. */
-export function pushReconnectIntent(): void {
-  reconnect$.next({ type: "reconnect" });
-}
-
-/** Push an admin incident's connection event into the RxJS core's
- * module-level `incident$` — the twin of `pushReconnectIntent`: both web
- * clients merge that Subject into `connectionEvents` for EVERY core, so a
- * native `presenters.incident` must speak to it or its gateway drop is
- * invisible. Slice 8 moves the seam into the core. */
-export function pushIncidentEvent(event: ConnectionEvent): void {
-  incident$.next(event);
 }

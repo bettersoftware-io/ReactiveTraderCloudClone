@@ -117,6 +117,7 @@ exports[`@rtc/client-core public runtime API > is unchanged by the core-logic ex
   "closePatch",
   "composePanelStream",
   "confirmTotalTicks",
+  "connectionIntentsPort",
   "createActivityScan",
   "createApp",
   "createAuthDeps",

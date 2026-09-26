@@ -15,6 +15,7 @@ import type {
 import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
 import type {
   BootVariant,
+  ConnectionEvent,
   CurrencyPair,
   ExecuteTradeInput,
   PlaceOrderRequest,
@@ -22,7 +23,6 @@ import type {
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 import { peek } from "#/bridge/in";
-import { pushIncidentEvent } from "#/bridge/out";
 import { createCommands } from "#/commands";
 import { createBootMachine } from "#/machines/boot";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
@@ -137,8 +137,8 @@ type NativePresenters = Partial<Presenters> &
  * `positions` retained — and the two workspace singletons; slice 5: the
  * admin nine — the three metric windows, `eventLog` and `sessionsKpi` as
  * warm folds, `topology` and `sessions` as warm mirrors, `throughput`, and
- * the `incident` singleton, whose connection events still land on the RxJS
- * core's `incident$` seam (`pushIncidentEvent`). Everything else
+ * the `incident` singleton, whose connection events go out through
+ * `ports.connectionIntents.injectIncident`. Everything else
  * still delegates to the RxJS core. `parity.json` is the committed record
  * of the same fact and `parity.test.ts` proves the two agree by
  * reference. */
@@ -251,7 +251,9 @@ function nativePresenters(
     incident: createIncidentMachine(
       {
         controls: ports.metricControls,
-        pushConnectionEvent: pushIncidentEvent,
+        pushConnectionEvent: (event: ConnectionEvent): void => {
+          ports.connectionIntents.injectIncident(event);
+        },
       },
       lifetime,
     ),
@@ -315,7 +317,10 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
       jarvisDemo: family.jarvisDemo,
       jarvisUsage: family.jarvisUsage,
     },
-    commands: createCommands(family.workspace.reportDetachedPanels),
+    commands: createCommands(
+      ports.connectionIntents,
+      family.workspace.reportDetachedPanels,
+    ),
     // General rule (see docs/architecture/22-pluggable-application-core.md
     // §22 "Teardown order"): an alternative core releases its own resources
     // first, then the base app it delegates to. Here that means aborting

@@ -113,7 +113,10 @@ export function composeWithBase(ports: AppPorts): ComposedApp {
       jarvisDemo: family.jarvisDemo,
       jarvisUsage: family.jarvisUsage,
     },
-    commands: createCommands(family.workspace.reportDetachedPanels),
+    commands: createCommands(
+      ports.connectionIntents,
+      family.workspace.reportDetachedPanels,
+    ),
     // General rule (see docs/architecture/22-pluggable-application-core.md
     // §22 "Teardown order"): an alternative core releases its own resources
     // first, then the base app, then (for Effect) the runtime. THIS core's
