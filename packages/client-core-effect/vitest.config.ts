@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.test.ts", "src/parity.json"],
+      exclude: ["src/**/*.test.ts"],
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
       // Same bar as the other ≥95% gated packages (ci.yml). Branches at 85

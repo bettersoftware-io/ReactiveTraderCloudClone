@@ -364,9 +364,6 @@ importers:
 
   packages/client-core-effect:
     dependencies:
-      '@rtc/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -389,6 +386,9 @@ importers:
         specifier: ^7.8
         version: 7.8.2
     devDependencies:
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@rtc/core-contract':
         specifier: workspace:*
         version: link:../core-contract

@@ -721,27 +721,26 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
   );
 }
 
-/** The native overlay's type: `Partial<Presenters>`, except for the
- * members whose streams `composeWithBase` must hand the RxJS base as
- * `CoreSeams` — those are typed present, so a seam needs no non-null
- * assertion. */
-export type NativePresenters = Partial<Presenters> &
-  Pick<
-    Presenters,
-    | "auth"
-    | "connection"
-    | "currencyPairs"
-    | "eqWorkspace"
-    | "execution"
-    | "jarvisPreferences"
-    | "ordersBlotter"
-    | "powerSaver"
-    | "priceStream"
-    | "rfqs"
-    | "themeSkinPreference"
-    | "watchlist"
-    | "workspaceNav"
-  >;
+/** What the Layer graph resolves: every member but the ones the Jarvis
+ * family and its workspace supply (`createJarvisFamily`). Exact, not
+ * `Partial`, so the typecheck proves the two halves cover `Presenters`. */
+export type NativePresenters = Omit<
+  Presenters,
+  | "dismissPanel"
+  | "dockedPanelIdsFor"
+  | "dockLayoutStore"
+  | "dockPanel"
+  | "jarvis"
+  | "jarvisDemo"
+  | "jarvisDriver"
+  | "jarvisPanels"
+  | "jarvisUsage"
+  | "layoutFor"
+  | "layoutPresets"
+  | "resetWorkspaceLayout"
+  | "undockPanel"
+  | "workspaceLayoutResets$"
+>;
 
 /** Resolve every tag into the `Presenters` overlay — the ONE `runSync`
  * `composeWithBase` makes. */
