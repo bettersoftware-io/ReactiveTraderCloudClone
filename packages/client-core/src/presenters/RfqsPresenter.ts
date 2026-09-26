@@ -64,11 +64,12 @@ export class RfqsPresenter implements RfqsPresenterApi {
 
   readonly allQuotes$: Observable<ReadonlyMap<number, Quote>>;
 
-  /** Raw RfqEvent stream — a second subscription to workflow.events() for the
-   * AnimationDirector (expiry/fill intents). The start-of-world snapshot
-   * contains only rfqCreated/quoteCreated, so no spurious animation intents
-   * fire on connect. WorkflowEventStreamUseCase.state$ is the sole consumer
-   * of the FIRST subscription (kept to avoid a knip dead-export). */
+  /** Raw RfqEvent stream — a second subscription to the one
+   * `workflow.events()` Observable, for the AnimationDirector (expiry/fill
+   * intents). The start-of-world snapshot contains only
+   * rfqCreated/quoteCreated, so no spurious animation intents fire on
+   * connect. WorkflowEventStreamUseCase's state fold is the other
+   * subscriber. */
   readonly events$: Observable<RfqEvent>;
 
   private readonly quotesByRfqCache = new Map<
@@ -81,7 +82,15 @@ export class RfqsPresenter implements RfqsPresenterApi {
     // quotesForRfq$ all derive from → warm across tab remounts (singleton per
     // connection), so those derived streams re-read its buffer on remount
     // without re-subscribing the wire.
-    this.state$ = new WorkflowEventStreamUseCase(workflow)
+    // The port is CALLED once (portDiscipline); its Observable is
+    // subscribed twice, below — the same wire traffic as two calls, since a
+    // port stream subscribes on subscribe, not on call.
+    const events = workflow.events();
+    this.state$ = new WorkflowEventStreamUseCase({
+      events: () => {
+        return events;
+      },
+    })
       .execute()
       .pipe(warmReplay());
     this.rfqs$ = this.state$.pipe(
@@ -98,9 +107,9 @@ export class RfqsPresenter implements RfqsPresenterApi {
       distinctUntilChanged(),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
-    // Second, independent workflow subscription (raw events for animation
-    // signals) → also warm, so it isn't re-subscribed on remount.
-    this.events$ = workflow.events().pipe(warmReplay());
+    // Second, independent subscription (raw events for animation signals) →
+    // also warm, so it isn't re-subscribed on remount.
+    this.events$ = events.pipe(warmReplay());
   }
 
   quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {

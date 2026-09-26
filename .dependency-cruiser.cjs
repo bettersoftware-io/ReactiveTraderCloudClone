@@ -263,13 +263,24 @@ module.exports = {
       name: "alt-cores-stay-inner",
       severity: "error",
       comment:
-        "The alternative application cores may import only THEMSELVES, core-api, core-logic (the shared rxjs-free rules), client-core (strangler delegation, until slice 8 PR C), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
+        "The alternative application cores may import only THEMSELVES, core-api, core-logic (the shared rxjs-free rules), client-core (test adapters only — `alt-cores-no-client-core-at-runtime` below keeps it out of production code), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
       from: { path: "^packages/(client-core-(?:async|effect))/src" },
       to: {
         path: "^packages/",
         pathNot:
           "^packages/($1|client-core|core-api|core-contract|core-logic|domain|shared)/",
       },
+    },
+    {
+      name: "alt-cores-no-client-core-at-runtime",
+      severity: "error",
+      comment:
+        "Slice 8: an alternative core composes from @rtc/core-logic and its own members only. @rtc/client-core is a devDependency for test adapters (createSimulatorPorts), never a runtime import.",
+      from: {
+        path: "^packages/client-core-(async|effect)/src",
+        pathNot: "\\.test\\.ts$",
+      },
+      to: { path: "^packages/client-core/" },
     },
     {
       name: "alt-cores-framework-free",

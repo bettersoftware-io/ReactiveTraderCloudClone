@@ -85,10 +85,9 @@ describe("composition teardown", () => {
 
   it("dispose() closes the host scope: a retained singleton's port is released", async () => {
     // Counted rather than probed with `observed`: the count is the whole
-    // witness. The base `NarratorMachine` reads THIS core's `pairs$` through
-    // `CoreSeams` from construction, so the retained singleton holds the
-    // port from composition on — one subscription, and none from the RxJS
-    // base app (its own `currencyPairs` is built but has no reader).
+    // witness. This core's own `NarratorMachine` (in the Jarvis family)
+    // reads `pairs$` from construction, so the retained singleton holds the
+    // port from composition on — one subscription.
     let subscribers = 0;
     const roster = new Observable<readonly CurrencyPair[]>(() => {
       subscribers += 1;
@@ -148,7 +147,7 @@ describe("composition teardown", () => {
     await tick();
   });
 
-  it("ONE runSync: composeWithBase builds the whole Layer graph without an async boundary", async () => {
+  it("ONE runSync: composeApp builds the whole Layer graph without an async boundary", async () => {
     // An async Layer build would surface here as `runSync` throwing
     // `AsyncFiberException` — the witness that the graph stays synchronous.
     let composed: ComposedApp | null = null;

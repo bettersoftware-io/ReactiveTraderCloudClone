@@ -13,8 +13,8 @@ import { warmReplay } from "./warmReplay.js";
  * `ADMIN_JARVIS_USAGE` push lagging behind mount, and the one shared
  * subscription survives the Admin tab's `key={activeTab}` remount without
  * re-sending the wire subscribe. The port is reached only on the first
- * subscription (`defer`), so an app whose usage presenter nobody reads — the
- * base app under `CoreSeams.nativeJarvis` — never touches it. */
+ * subscription (`defer`), so an app whose usage presenter nobody reads never
+ * touches it. */
 export class JarvisUsagePresenter implements JarvisUsagePresenterApi {
   readonly usage$: Observable<AdminJarvisUsagePayload | null>;
 

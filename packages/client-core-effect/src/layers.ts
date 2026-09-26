@@ -636,7 +636,7 @@ const AnimationDirectorLive: Layer.Layer<
 
 /** What the app layer hands out: every native presenter, plus the two
  * services they were built from. The base is `provideMerge`d rather than
- * `provide`d because `composeWithBase` needs `HostTag` out of the same
+ * `provide`d because `composeApp` needs `HostTag` out of the same
  * build — the host scope is what `app.dispose()` closes, and a `provide`
  * would satisfy the presenters' requirement while hiding the very service
  * the teardown owns. */
@@ -742,8 +742,8 @@ export type NativePresenters = Omit<
   | "workspaceLayoutResets$"
 >;
 
-/** Resolve every tag into the `Presenters` overlay — the ONE `runSync`
- * `composeWithBase` makes. */
+/** Resolve every tag into the native presenters — the ONE `runSync`
+ * `composeApp` makes. */
 export const nativePresentersEffect: Effect.Effect<
   NativePresenters,
   never,

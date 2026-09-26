@@ -48,7 +48,9 @@ export function reduceRfqEvent(
 }
 
 export class WorkflowEventStreamUseCase {
-  constructor(private readonly workflow: WorkflowPort) {}
+  /** Reads only `events()` — narrowed so a caller can hand it an event
+   * stream it already obtained, without calling the port twice. */
+  constructor(private readonly workflow: Pick<WorkflowPort, "events">) {}
 
   execute(): Observable<RfqStreamState> {
     return this.workflow

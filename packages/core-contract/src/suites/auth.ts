@@ -73,10 +73,6 @@ export function describeAuthContract(
       });
     });
 
-    // The store-cleared half cannot fail against a SIBLING core today: the
-    // base app it delegates to builds its own auth at composition and
-    // resumes — and clears — from the same store (slice-6 ledger A-5). The
-    // siblings' own unit tests pin their clear.
     it("a session expiring exactly now is expired: signed out, and the store cleared", async () => {
       await withFakeClock(async () => {
         vi.setSystemTime(NOW);

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Builds each web client once per application core into a temp dir and
-// asserts a build that selected core X shipped no other core's runtime.
+// asserts a build that selected core X shipped no other core's runtime — in
+// every direction, the RxJS core included (slice 8: an alternative core no
+// longer composes over it, so its builds must not carry it).
 // Report-only for size; a hard gate for leakage.
 //
 // Precondition: the alternative-core packages must already be built —
@@ -26,10 +28,12 @@ import { gzipSync } from "node:zlib";
 const CLIENTS = ["@rtc/client-react", "@rtc/client-solid"];
 const CORES = ["rxjs", "async", "effect"];
 const MARKERS = {
+  rxjs: "@rtc/client-core:brand",
   effect: "effect/Fiber",
   async: "@rtc/client-core-async:brand",
 };
 const PACKAGE_DIRS = {
+  rxjs: "client-core",
   effect: "client-core-effect",
   async: "client-core-async",
 };
