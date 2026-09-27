@@ -263,6 +263,17 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     await this.selectSegment("layoutEngine", engine);
   }
 
+  /** True when the "Application core" row is rendered at all — false when
+   * the host offers no core selection (`useCoreSelection()` returned null),
+   * in which case the row is absent entirely rather than rendered empty.
+   * Checked by the row's own label text (not a per-option button testid): a
+   * PrefSegment given zero options still renders its label with an empty
+   * `.seg` strip, so a button-testid witness would miss a mutant that keeps
+   * rendering the row shell while emptying its options. */
+  coreImplRowPresent(): boolean {
+    return within(this.root).queryByText("Application core") !== null;
+  }
+
   /** The "Application core" segment's option values, in render order —
    * `useCoreSelection().options` mapped straight onto PrefSegment. Empty
    * when the host offers no selection (`useCoreSelection()` returned null),

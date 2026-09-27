@@ -544,6 +544,15 @@ describe("PreferencesModal", () => {
     await page.selectCoreImpl("rxjs");
     expect(page.coreImplSelects()).toEqual([]);
   });
+
+  it("hides the Application core row when the host offers no core selection", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: null,
+    });
+    expect(page.coreImplRowPresent()).toBe(false);
+    expect(page.coreImplOptions()).toEqual([]);
+  });
 });
 
 /**

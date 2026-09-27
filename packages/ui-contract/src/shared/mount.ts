@@ -111,8 +111,11 @@ export interface MountOptions<P> {
    * independently of DEFAULT_LAYOUT_ENGINE, now "dockview" — see
    * `harness/world.ts`'s `layoutEngine` seed for why). */
   layoutEngine?: LayoutEngine;
-  /** Seeds `useCoreSelection().current` (World.coreImpl); defaults to "rxjs". */
-  coreImpl?: CoreImpl;
+  /** Seeds `useCoreSelection().current` (World.coreImpl); defaults to "rxjs".
+   * An explicit `null` seeds "the host offers no core selection at all" —
+   * `useCoreSelection()` returns null and the Application core row is
+   * absent. */
+  coreImpl?: CoreImpl | null;
 }
 
 const mounted: MountedRoot[] = [];

@@ -635,8 +635,10 @@ export interface World {
   push(patch: Partial<HookValues>): void;
   /** Reactive application-core selection backing useCoreSelection (drives
    * PreferencesModal's "Application core" segment). Defaults to "rxjs",
-   * matching the real shell's precedence-chain default. */
-  readonly coreImpl: BehaviorSubject<CoreImpl>;
+   * matching the real shell's precedence-chain default; `null` means the
+   * host offers no core selection at all (useCoreSelection() returns null),
+   * so the row is absent entirely. */
+  readonly coreImpl: BehaviorSubject<CoreImpl | null>;
 }
 
 export function createWorld(
@@ -685,9 +687,12 @@ export function createWorld(
   workspaceLayoutSeed?: string | null,
   /** Seeds `World.layoutPresetsSeed` (Phase 6b Task 6); defaults to `{}`. */
   layoutPresetsSeed?: Readonly<Partial<Record<WorkspaceTab, string>>>,
-  /** Seeds `World.coreImpl` (Task 5 of the runtime-core-switch spec); defaults
-   * to "rxjs", matching the real shell's precedence-chain default. */
-  coreImplSeed?: CoreImpl,
+  /** Seeds `World.coreImpl` (Task 5 of the runtime-core-switch spec).
+   * `undefined` (the default) seeds "rxjs"; an explicit `null` seeds "no
+   * selection offered" (`useCoreSelection()` returns null, row absent) —
+   * distinct from `undefined` on purpose, so a spec can ask for the null
+   * case without also having to spell out "rxjs" everywhere else. */
+  coreImplSeed?: CoreImpl | null,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -883,7 +888,9 @@ export function createWorld(
     layoutEngineSeed ?? "inhouse",
   );
 
-  const coreImpl = new BehaviorSubject<CoreImpl>(coreImplSeed ?? "rxjs");
+  const coreImpl = new BehaviorSubject<CoreImpl | null>(
+    coreImplSeed === undefined ? "rxjs" : coreImplSeed,
+  );
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each

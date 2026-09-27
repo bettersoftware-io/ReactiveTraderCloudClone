@@ -1848,8 +1848,14 @@ export function reactViewModel(world: World): ViewModel {
       };
     },
     useCoreSelection: () => {
+      const current = world.coreImpl.getValue();
+
+      if (current === null) {
+        return null;
+      }
+
       return {
-        current: world.coreImpl.getValue(),
+        current,
         options: CORE_OPTIONS_FOR_TESTS,
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
