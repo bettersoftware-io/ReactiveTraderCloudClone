@@ -2,7 +2,7 @@
 
 **An experiment in running a *lit software factory*: can clean architecture,
 simplicity, modularity and hard engineering discipline let AI agents build and
-keep evolving a real, non-trivial product — while the humans review specs,
+keep evolving a real, non-trivial product — while one human reviews specs,
 tests and behaviour instead of every line of code?**
 
 The product the factory built is a real-time, multi-asset trading desk — FX,
@@ -47,7 +47,7 @@ In a **dark** factory, code ships that no human has read, verified only by
 other machines. A **lit** factory runs the same pipeline *"with the lights
 left on where judgment lives."*
 
-This repo is an attempt at the lit version, by two people on spare-time
+This repo is an attempt at the lit version — by one developer, on spare-time
 evenings, on a product big enough to hurt. The bet is that the decisive
 ingredient isn't a smarter model but **engineering discipline**: the
 article's own bottleneck is verification, not generation, and verification
@@ -59,7 +59,7 @@ boundaries and dependency injection.
 | **The loop** — an agent gathering context, acting, checking | Claude Code implements from a written spec and plan, each change in its own git worktree, several sessions in parallel on one repo |
 | **The harness** — tools, memory and gates around the loop | A blocking gauntlet on every PR: typecheck, type-aware lint, dependency-cruiser layering rules, 40+ architectural gates, contract suites for both web UIs and every application core, ≥95 % coverage gates, e2e — plus pixel goldens after merge. Memory lives in specs, ADRs, [`STATUS.md`](docs/STATUS.md) and a chaptered [architecture atlas](docs/architecture.md), never in anyone's head |
 | **Back pressure** — autonomy reaches only as far as verification does | *Fight non-determinism with determinism.* Agents merge green PRs without a human reading the diff, because the gates check what a reviewer would — and more, and never tire |
-| **Lights on where judgment lives** | Humans own the specs, the tests, the architecture and the product: use the app, judge behaviour, file findings. Rendering changes arrive as golden PNGs in the diff; deploys stay a human decision |
+| **Lights on where judgment lives** | The human owns the specs, the tests, the architecture and the product: using the app, judging behaviour, filing findings. Rendering changes arrive as golden PNGs in the diff; deploys stay a human decision |
 
 What made it work was four practices reinforcing each other:
 
@@ -73,7 +73,7 @@ What made it work was four practices reinforcing each other:
   derived from the implementation just ratify its mistakes — is why tests here
   assert the spec.
 - **Redundant verification** — the same behaviour checked several independent
-  ways, so the test suite becomes the artifact the humans actually review.
+  ways, so the test suite becomes the artifact the human actually reviews.
 - **AI-assisted development** — the agents write the code; the structure
   above is what makes that safe.
 
