@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 import type { LoginScreenPO } from "../contracts/LoginScreen";
 import { TESTIDS } from "../contracts/testids";
+import { awaitAppMount } from "./appMount";
 
 /**
  * Playwright impl of {@link LoginScreenPO}. Constructed with the PRIMARY app
@@ -75,6 +76,12 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     if (boot !== undefined) {
       throw new Error(`the app failed to boot: ${boot}`);
     }
+
+    // No module-init throw — now wait for the app to actually MOUNT: the
+    // async/Effect cores load through a dynamic import(), so `load` can fire
+    // on a still-empty #root (see appMount.ts). The navigation has
+    // already happened, so this only waits.
+    await awaitAppMount(page, this.pageErrors);
   }
 
   async waitVisible(timeoutMs: number): Promise<void> {

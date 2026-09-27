@@ -8,31 +8,41 @@ import {
 
 import { TESTIDS } from "../contracts/testids";
 import type { WorkspacePO } from "../contracts/Workspace";
+import { navigateAndAwaitMount } from "./appMount";
 
 export class PlaywrightWorkspace implements WorkspacePO {
   constructor(private readonly page: Page) {}
 
+  /** `page.goto(url)`, then wait until the app has mounted — see
+   * `navigateAndAwaitMount` (a bare `goto` can return on an empty `#root`
+   * while an async/Effect core's chunk is still loading). */
+  private async gotoMounted(url: string): Promise<void> {
+    await navigateAndAwaitMount(this.page, () => {
+      return this.page.goto(url);
+    });
+  }
+
   async open(): Promise<void> {
-    await this.page.goto("/");
+    await this.gotoMounted("/");
   }
 
   async openFx(): Promise<void> {
-    await this.page.goto("/");
+    await this.gotoMounted("/");
     await this.page.getByTestId(TESTIDS.shell.tab("fx")).click();
   }
 
   async openCredit(): Promise<void> {
-    await this.page.goto("/");
+    await this.gotoMounted("/");
     await this.page.getByTestId(TESTIDS.shell.tab("credit")).click();
   }
 
   async openAdmin(): Promise<void> {
-    await this.page.goto("/");
+    await this.gotoMounted("/");
     await this.page.getByTestId(TESTIDS.shell.tab("admin")).click();
   }
 
   async openEquities(): Promise<void> {
-    await this.page.goto("/");
+    await this.gotoMounted("/");
     await this.page.getByTestId(TESTIDS.shell.tab("equities")).click();
   }
 
@@ -49,11 +59,11 @@ export class PlaywrightWorkspace implements WorkspacePO {
       key: JARVIS_NARRATOR_STORAGE_KEY,
       value: JARVIS_NARRATOR_ON_VALUE,
     });
-    await this.page.goto("/?narratorThresholds=test");
+    await this.gotoMounted("/?narratorThresholds=test");
   }
 
   async openWithCoreImpl(impl: string): Promise<void> {
-    await this.page.goto(`/?core=${impl}`);
+    await this.gotoMounted(`/?core=${impl}`);
   }
 
   async waitUrlHasNoCoreParam(timeoutMs: number): Promise<void> {
@@ -88,7 +98,9 @@ export class PlaywrightWorkspace implements WorkspacePO {
   }
 
   async reload(): Promise<void> {
-    await this.page.reload();
+    await navigateAndAwaitMount(this.page, () => {
+      return this.page.reload();
+    });
   }
 
   async setOffline(offline: boolean): Promise<void> {

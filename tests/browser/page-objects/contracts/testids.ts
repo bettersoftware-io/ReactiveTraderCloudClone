@@ -391,5 +391,9 @@ export const TESTIDS = {
    */
   boot: {
     sequence: "boot-sequence",
+    /** The plain-DOM boot-error screen's "Load the default core" button
+     * (`bootApp.ts`'s `renderBootError`) — present only when the chosen
+     * application core failed to load. */
+    coreReset: "boot-core-reset",
   },
 } as const;
