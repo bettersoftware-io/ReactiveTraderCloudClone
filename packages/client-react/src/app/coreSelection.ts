@@ -6,8 +6,12 @@ import type {
   CoreSelection,
 } from "@rtc/core-api";
 
-/** Every application core a page can boot. */
-export const CORE_IMPLS: readonly CoreImpl[] = ["rxjs", "async", "effect"];
+/** Every application core a page can boot. Not exported — nothing outside
+ * this module reads it (knip); the parallel `CORE_IMPLS` in
+ * `tests/scripts/lib/coreImpl.ts` and `@rtc/ui-contract`'s
+ * `PreferencesModalPage.ts` are deliberate, independent duplicates (see
+ * their own doc comments), not consumers of this one. */
+const CORE_IMPLS: readonly CoreImpl[] = ["rxjs", "async", "effect"];
 
 /** The `localStorage` key the chosen core is persisted under. */
 export const CORE_CHOICE_KEY = "rtc.coreImpl";
@@ -42,8 +46,17 @@ export interface CoreChoiceInputs {
   readonly buildDefault: string | undefined;
 }
 
+/** Which precedence-chain step decided the booted core — surfaced so the
+ * boot log (`[core] booted ${impl} from ${source}`) can say WHY, not just
+ * WHAT: `"url"` (`?core=`, this load only), `"stored"` (a persisted
+ * Preferences choice), `"build"` (`VITE_CORE_IMPL`), or `"fallback"` (no
+ * input at all — the hardcoded `"rxjs"`). */
+export type CoreChoiceSource = "url" | "stored" | "build" | "fallback";
+
 export interface CoreChoice {
   readonly impl: CoreImpl;
+  /** Which precedence step decided `impl` — see `CoreChoiceSource`. */
+  readonly source: CoreChoiceSource;
   /** Human-readable warnings for an ignored/cleared invalid value — log these, never throw them. */
   readonly warnings: readonly string[];
   /** True when the stored value was invalid and should be cleared via `clearCoreChoice`. */
@@ -56,7 +69,8 @@ export interface CoreChoice {
  * (`VITE_CORE_IMPL`) > `"rxjs"`. An unknown `?core=` or stored value is
  * ignored/cleared with a warning and falls through to the next step; an
  * unknown build default is a developer error and throws — today's
- * `selectCore` fail-closed behaviour, unchanged in substance.
+ * `selectCore` fail-closed behaviour, unchanged in substance. `source`
+ * records which step won, for the boot log.
  */
 export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
   const warnings: string[] = [];
@@ -64,7 +78,7 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
 
   if (inputs.url !== null) {
     if (isCoreImpl(inputs.url)) {
-      return { impl: inputs.url, warnings, clearStored };
+      return { impl: inputs.url, source: "url", warnings, clearStored };
     }
 
     warnings.push(
@@ -74,7 +88,7 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
 
   if (inputs.stored !== null) {
     if (isCoreImpl(inputs.stored)) {
-      return { impl: inputs.stored, warnings, clearStored };
+      return { impl: inputs.stored, source: "stored", warnings, clearStored };
     }
 
     warnings.push(
@@ -86,7 +100,7 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
   const build = inputs.buildDefault || undefined;
 
   if (build === undefined) {
-    return { impl: "rxjs", warnings, clearStored };
+    return { impl: "rxjs", source: "fallback", warnings, clearStored };
   }
 
   if (!isCoreImpl(build)) {
@@ -95,7 +109,7 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
     );
   }
 
-  return { impl: build, warnings, clearStored };
+  return { impl: build, source: "build", warnings, clearStored };
 }
 
 /**
@@ -115,21 +129,38 @@ export async function loadCore(impl: CoreImpl): Promise<CoreFactory> {
   return rxjsCore;
 }
 
-/** Reads the persisted core choice; unreadable storage (denied, absent) reads as null, never throws. */
+/** Formats a caught storage exception into one log line — shared by every
+ * storage accessor below so a denial/quota/private-browsing failure reads
+ * the same wherever it's logged. */
+function describeStorageFailure(action: string, error: unknown): string {
+  const reason = error instanceof Error ? error.message : String(error);
+  return `${action}: ${reason}`;
+}
+
+/** Reads the persisted core choice; unreadable storage (denied, absent)
+ * reads as null rather than throwing. A caught exception (not mere absence)
+ * is reported via `warn` when given — non-fatal, but diagnosable. */
 export function readStoredChoice(
   storage: Pick<Storage, "getItem"> | undefined,
+  warn?: (message: string) => void,
 ): string | null {
   try {
     return storage?.getItem(CORE_CHOICE_KEY) ?? null;
-  } catch {
+  } catch (error) {
+    warn?.(
+      describeStorageFailure("failed to read the stored core choice", error),
+    );
     return null;
   }
 }
 
-/** Persists the core choice; reports a failed write (quota, denied, absent storage) rather than throwing. */
+/** Persists the core choice; reports a failed write (quota, denied, absent
+ * storage) rather than throwing. A caught exception is reported via `warn`
+ * when given — failure to persist is non-fatal, but diagnosable. */
 export function saveCoreChoice(
   storage: Pick<Storage, "setItem"> | undefined,
   impl: CoreImpl,
+  warn?: (message: string) => void,
 ): boolean {
   try {
     if (storage === undefined) {
@@ -138,19 +169,26 @@ export function saveCoreChoice(
 
     storage.setItem(CORE_CHOICE_KEY, impl);
     return true;
-  } catch {
+  } catch (error) {
+    warn?.(
+      describeStorageFailure(`failed to persist core choice "${impl}"`, error),
+    );
     return false;
   }
 }
 
-/** Clears the persisted core choice; unreadable storage holds nothing to clear. */
+/** Clears the persisted core choice; unreadable storage holds nothing to
+ * clear. A caught exception is reported via `warn` when given. */
 export function clearCoreChoice(
   storage: Pick<Storage, "removeItem"> | undefined,
+  warn?: (message: string) => void,
 ): void {
   try {
     storage?.removeItem(CORE_CHOICE_KEY);
-  } catch {
-    // Unreadable storage holds nothing to clear.
+  } catch (error) {
+    warn?.(
+      describeStorageFailure("failed to clear the stored core choice", error),
+    );
   }
 }
 
@@ -171,6 +209,22 @@ export function urlWithoutCoreParam(href: string): string {
   return url.toString();
 }
 
+/**
+ * The href the boot-error screen's "Load the default core" action reloads
+ * onto: `href` with `?core=rxjs` forced — not merely `?core=` stripped.
+ * Stripping alone would fall through to the next precedence step (the
+ * stored choice, then the build default `VITE_CORE_IMPL`), which can be the
+ * very core whose chunk just failed to load (e.g. a stale `dev:*:effect`
+ * dist) — landing right back on the same failure and looping. RxJS can't
+ * fail this way (it's statically imported into the entry bundle, never a
+ * lazy chunk), so forcing it here guarantees the reset actually resets.
+ */
+export function defaultCoreResetHref(href: string): string {
+  const url = new URL(href);
+  url.searchParams.set(CORE_PARAM, "rxjs");
+  return url.toString();
+}
+
 /** `window.localStorage`, or `undefined` when it throws (private-browsing
  * denial, disabled storage) rather than propagating the exception up
  * through boot. */
@@ -187,6 +241,9 @@ export interface CoreSelectionDeps {
   readonly storage: Storage | undefined;
   readonly href: () => string;
   readonly navigate: (href: string) => void;
+  /** Logs a caught storage failure when `select`'s save fails (non-fatal —
+   * `select` still carries the choice via `?core=` for this load). */
+  readonly warn?: (message: string) => void;
 }
 
 /**
@@ -209,7 +266,7 @@ export function createCoreSelection(deps: CoreSelectionDeps): CoreSelection {
 
       const clean = urlWithoutCoreParam(deps.href());
 
-      if (saveCoreChoice(deps.storage, impl)) {
+      if (saveCoreChoice(deps.storage, impl, deps.warn)) {
         deps.navigate(clean);
         return;
       }

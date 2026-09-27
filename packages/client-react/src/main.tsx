@@ -20,13 +20,18 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { AppRoot } from "./AppRoot";
-import { bootCore, renderBootError } from "./app/bootApp";
+import {
+  bootCore,
+  formatBootedMessage,
+  renderBootError,
+  runBoot,
+} from "./app/bootApp";
 import {
   clearCoreChoice,
   createCoreSelection,
+  defaultCoreResetHref,
   loadCore,
   safeLocalStorage,
-  urlWithoutCoreParam,
 } from "./app/coreSelection";
 import { App } from "./ui/App";
 
@@ -40,20 +45,28 @@ if (!rootEl) {
 
 const storage = safeLocalStorage();
 
-bootCore({
-  href: location.href,
-  storage,
-  buildDefault: import.meta.env.VITE_CORE_IMPL,
-  warn: (message: string): void => {
-    console.warn(`[core] ${message}`);
-  },
-  load: loadCore,
-}).then(
-  ({ impl, core }) => {
+/** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
+ * value, or a storage read/write/clear failure) so it's diagnosable from the
+ * console rather than silently swallowed. */
+function warnCore(message: string): void {
+  console.warn(`[core] ${message}`);
+}
+
+runBoot(
+  bootCore({
+    href: location.href,
+    storage,
+    buildDefault: import.meta.env.VITE_CORE_IMPL,
+    warn: warnCore,
+    load: loadCore,
+  }),
+  ({ impl, core, source }) => {
     document.documentElement.dataset.coreImpl = impl;
+    console.info(formatBootedMessage(impl, source));
     const coreSelection = createCoreSelection({
       current: impl,
       storage,
+      warn: warnCore,
       href: () => {
         return location.href;
       },
@@ -72,8 +85,8 @@ bootCore({
   },
   (error: unknown) => {
     renderBootError(rootEl, error, () => {
-      clearCoreChoice(storage);
-      location.assign(urlWithoutCoreParam(location.href));
+      clearCoreChoice(storage, warnCore);
+      location.assign(defaultCoreResetHref(location.href));
     });
   },
 );

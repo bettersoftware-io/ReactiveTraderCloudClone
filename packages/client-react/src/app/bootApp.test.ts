@@ -4,12 +4,17 @@ import type { CoreFactory } from "@rtc/core-api";
 
 import { bootErrorPage } from "#tests/ui/pages/BootErrorPage";
 
-import type { BootEnv } from "./bootApp";
-import { bootCore, renderBootError } from "./bootApp";
+import type { BootEnv, BootResult } from "./bootApp";
+import {
+  bootCore,
+  formatBootedMessage,
+  renderBootError,
+  runBoot,
+} from "./bootApp";
 import { CORE_CHOICE_KEY } from "./coreSelection";
 
 describe("bootCore", () => {
-  it("boots the URL's core and publishes nothing itself", async () => {
+  it("boots the URL's core, sourced from url, and publishes nothing itself", async () => {
     delete document.documentElement.dataset.coreImpl;
     const load = vi.fn(async () => {
       return createFakeCore();
@@ -20,18 +25,36 @@ describe("bootCore", () => {
     );
 
     expect(result.impl).toBe("effect");
+    expect(result.source).toBe("url");
     expect(load).toHaveBeenCalledWith("effect");
     expect(document.documentElement.dataset.coreImpl).toBeUndefined();
   });
 
-  it("clears an unknown stored choice and warns", async () => {
+  it("clears an unknown stored choice and warns, falling back to source fallback", async () => {
     const storage = createMemoryStorage({ [CORE_CHOICE_KEY]: "gone" });
     const warn = vi.fn();
     const result = await bootCore(createEnv({ storage, warn }));
 
     expect(result.impl).toBe("rxjs");
+    expect(result.source).toBe("fallback");
     expect(storage.getItem(CORE_CHOICE_KEY)).toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('"gone"'));
+  });
+
+  it("warns when the stored-choice READ itself fails (a storage exception, not an unknown value)", async () => {
+    const storage: Storage = {
+      ...createMemoryStorage(),
+      getItem: () => {
+        throw new Error("denied");
+      },
+    };
+    const warn = vi.fn();
+
+    await bootCore(createEnv({ storage, warn }));
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("failed to read the stored core choice"),
+    );
   });
 
   it("rejects when the core chunk fails to load (no silent fallback)", async () => {
@@ -65,6 +88,54 @@ describe("renderBootError", () => {
   });
 });
 
+describe("formatBootedMessage", () => {
+  it.each(["url", "stored", "build", "fallback"] as const)(
+    "names the impl and the %s source",
+    (source) => {
+      expect(formatBootedMessage("effect", source)).toBe(
+        `[core] booted effect from ${source}`,
+      );
+    },
+  );
+});
+
+describe("runBoot", () => {
+  it("calls onBooted with the resolved result", async () => {
+    const onBooted = vi.fn();
+    const onError = vi.fn();
+    const result = createFakeResult();
+
+    await runBoot(Promise.resolve(result), onBooted, onError);
+
+    expect(onBooted).toHaveBeenCalledWith(result);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("routes a rejected boot promise to onError", async () => {
+    const onBooted = vi.fn();
+    const onError = vi.fn();
+    const error = new Error("chunk 404");
+
+    await runBoot(Promise.reject(error), onBooted, onError);
+
+    expect(onBooted).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(error);
+  });
+
+  it("routes a throw INSIDE onBooted to onError too (e.g. render blowing up)", async () => {
+    const error = new Error("render blew up");
+    const onBooted = vi.fn(() => {
+      throw error;
+    });
+    const onError = vi.fn();
+
+    await runBoot(Promise.resolve(createFakeResult()), onBooted, onError);
+
+    expect(onBooted).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(error);
+  });
+});
+
 function createEnv(overrides: Partial<BootEnv> = {}): BootEnv {
   return {
     href: "https://x.test/",
@@ -83,6 +154,10 @@ function createFakeCore(): CoreFactory {
     createApp: vi.fn(),
     createMachineFactories: vi.fn(),
   } as unknown as CoreFactory;
+}
+
+function createFakeResult(): BootResult {
+  return { impl: "rxjs", source: "fallback", core: createFakeCore() };
 }
 
 function createMemoryStorage(seed: Record<string, string> = {}): Storage {
