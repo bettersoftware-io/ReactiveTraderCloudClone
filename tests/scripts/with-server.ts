@@ -6,6 +6,11 @@ import {
   SHARED_DEV_SERVER_ENV,
   startDevServer,
 } from "./devServer";
+import { adoptCoreImpl } from "./lib/coreImpl";
+
+// Standalone browser runs (e.g. test:browser:playwright) enter here without
+// run-all.ts; resolve the core the same way before the dev server starts.
+adoptCoreImpl(process.env);
 
 const [cmd, ...args] = process.argv.slice(2);
 

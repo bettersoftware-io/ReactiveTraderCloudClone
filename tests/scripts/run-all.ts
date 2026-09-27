@@ -16,6 +16,14 @@
  */
 import { spawn } from "node:child_process";
 
+import { adoptCoreImpl } from "./lib/coreImpl";
+
+// Resolve the run's application core once (RTC_CORE_IMPL, else
+// VITE_CORE_IMPL, else rxjs) so every suite this spawns inherits it — see
+// lib/coreImpl.ts.
+adoptCoreImpl(process.env);
+console.log(`[run-all] application core: ${process.env.RTC_CORE_IMPL}`);
+
 interface Suite {
   /** pnpm script name in tests/package.json. */
   readonly script: string;

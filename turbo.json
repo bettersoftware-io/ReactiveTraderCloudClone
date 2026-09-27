@@ -56,6 +56,7 @@
       "cache": false,
       "passThroughEnv": [
         "RTC_E2E_MAX_PARALLEL",
+        "VITE_CORE_IMPL",
         "RTC_E2E_SKIP_GHERKIN_BROWSER",
         "PLAYWRIGHT_BROWSERS_PATH"
       ]
