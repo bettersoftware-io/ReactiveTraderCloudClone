@@ -1,12 +1,13 @@
 import { BroadcastChannelDuplex, DevtoolsHub } from "@rtc/devtools-core";
 
-/** App-side devtools hub. Module-level singleton (same precedent as the
- * reconnect$/incident$ seams): infrastructure whose lifetime is the page.
- * Dormant until an inspector handshakes on the rtc-devtools channel; costs
- * nothing per-emission until then. BroadcastChannel is same-origin — the
- * inspector must be served from this origin (/devtools route or dev
- * middleware). Guarded so jsdom/StrictMode double-mounts and non-browser
- * environments never throw. */
+/** App-side devtools hub. Module-level singleton (unlike the connection-
+ * intents pair — `pairConnectionPorts` — which is instance-scoped per app
+ * composition): infrastructure whose lifetime is the page, not a single App
+ * instance. Dormant until an inspector handshakes on the rtc-devtools
+ * channel; costs nothing per-emission until then. BroadcastChannel is
+ * same-origin — the inspector must be served from this origin (/devtools
+ * route or dev middleware). Guarded so jsdom/StrictMode double-mounts and
+ * non-browser environments never throw. */
 // `import.meta.env?.DEV` tells the inspector whether this is a dev build so the
 // panel shows the intent-injection affordance only when it will work: true on
 // the Vite dev server, false in a production build. The `?.` guard keeps

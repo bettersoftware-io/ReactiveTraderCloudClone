@@ -6,6 +6,7 @@ import {
   PreferencesSimulator,
 } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
@@ -18,11 +19,11 @@ describe("layout machine factory", () => {
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
     const machines = createMachineFactories(presenters);
     const m = machines.layout("fx");
-    let seen: import("#/layout/layoutPort").LayoutState | undefined;
+    let seen: import("@rtc/core-logic").LayoutState | undefined;
     const sub = m.state$.subscribe((s) => {
       seen = s;
     });
@@ -41,7 +42,7 @@ describe("layout machine factory", () => {
     expect(seen.root.dir).toBe("row");
     m.intents.maximize("fx-rates");
     const after = (() => {
-      let s2: import("#/layout/layoutPort").LayoutState | undefined;
+      let s2: import("@rtc/core-logic").LayoutState | undefined;
       const sub2 = m.state$.subscribe((s) => {
         s2 = s;
       });

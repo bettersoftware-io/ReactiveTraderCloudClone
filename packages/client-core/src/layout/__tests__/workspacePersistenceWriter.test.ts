@@ -1,17 +1,20 @@
 import { Subject, VirtualTimeScheduler } from "rxjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { PanelSpecV1 } from "@rtc/shared";
-
-import type { WorkspaceTab } from "../defaultLayoutPort";
-import { createDefaultLayoutPort } from "../defaultLayoutPort";
-import { dockedLeafIds, insertDockedLeaf } from "../dockColumn";
-import type { LayoutState } from "../layoutPort";
-import type { WorkspaceLayoutV1 } from "../workspaceLayoutPersistence";
+import type {
+  LayoutState,
+  WorkspaceLayoutV1,
+  WorkspaceTab,
+} from "@rtc/core-logic";
 import {
+  createDefaultLayoutPort,
+  dockedLeafIds,
+  insertDockedLeaf,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
-} from "../workspaceLayoutPersistence";
+} from "@rtc/core-logic";
+import type { PanelSpecV1 } from "@rtc/shared";
+
 import type { DockedPanelPlacement } from "../workspacePersistenceWriter";
 import {
   createWorkspacePersistenceWriter,

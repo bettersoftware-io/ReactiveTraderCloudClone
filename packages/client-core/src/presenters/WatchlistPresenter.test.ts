@@ -1,4 +1,4 @@
-import { firstValueFrom, of, Subject, take } from "rxjs";
+import { firstValueFrom, NEVER, of, Subject, take } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -15,7 +15,7 @@ describe("WatchlistPresenter", () => {
   it("emits the watchlist instruments", async () => {
     const instruments = [instrument("AAPL"), instrument("MSFT")];
     const port = createPort(instruments, quote);
-    const presenter = new WatchlistPresenter(port);
+    const presenter = new WatchlistPresenter(port, NEVER);
     const result = await firstValueFrom(presenter.watchlist$.pipe(take(1)));
     expect(result).toHaveLength(2);
     expect(result[0].symbol).toBe("AAPL");
@@ -23,7 +23,7 @@ describe("WatchlistPresenter", () => {
 
   it("returns the same Observable reference for quote$ on the same symbol (cached)", () => {
     const port = createPort([instrument("AAPL")], quote);
-    const presenter = new WatchlistPresenter(port);
+    const presenter = new WatchlistPresenter(port, NEVER);
     const first = presenter.quote$("AAPL");
     const second = presenter.quote$("AAPL");
     expect(first).toBe(second);
@@ -31,7 +31,7 @@ describe("WatchlistPresenter", () => {
 
   it("returns different Observable references for different symbols", () => {
     const port = createPort([instrument("AAPL"), instrument("MSFT")], quote);
-    const presenter = new WatchlistPresenter(port);
+    const presenter = new WatchlistPresenter(port, NEVER);
     const aapl = presenter.quote$("AAPL");
     const msft = presenter.quote$("MSFT");
     expect(aapl).not.toBe(msft);
@@ -41,7 +41,7 @@ describe("WatchlistPresenter", () => {
     const port = createPort([instrument("AAPL")], (s) => {
       return quote(s);
     });
-    const presenter = new WatchlistPresenter(port);
+    const presenter = new WatchlistPresenter(port, NEVER);
     const result = await firstValueFrom(presenter.quote$("AAPL").pipe(take(1)));
     expect(result.symbol).toBe("AAPL");
   });

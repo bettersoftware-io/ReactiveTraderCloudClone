@@ -2,9 +2,8 @@ import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
 import { distinctUntilChanged, map, startWith } from "rxjs/operators";
 
+import type { ReadOnlyMachine } from "@rtc/core-logic";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
-
-import type { ReadOnlyMachine } from "./machine";
 
 /** How long a newly-arrived blotter row stays highlighted, relocated verbatim
  * from the old BlotterRow `setTimeout(…, 3000)`. Now the domain's

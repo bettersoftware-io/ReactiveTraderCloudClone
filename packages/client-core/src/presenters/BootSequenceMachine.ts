@@ -3,15 +3,14 @@ import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
 import type { BootSequenceIntents, BootSequenceState } from "@rtc/core-api";
+import type { Machine } from "@rtc/core-logic";
+import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import {
   BOOT_TICK_MS,
   BOOT_VARIANTS,
   type BootVariant,
   BOOT_DURATION_MS as DOMAIN_BOOT_DURATION_MS,
 } from "@rtc/domain";
-
-import type { Machine } from "./machine";
-import { bootProgress, nextBootVariant } from "./shellFolds";
 
 export type { BootVariant };
 // Cycle order lives in domain (PROTO _startBoot v3 list: core → laser →

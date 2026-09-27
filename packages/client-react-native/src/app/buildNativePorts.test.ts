@@ -1,9 +1,14 @@
 import { filter, firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
-import { createApp, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createApp,
+  InMemorySessionStore,
+  type WsAdapter,
+} from "@rtc/client-core";
 import {
   type AuthOutcome,
+  type ConnectionEvent,
   ConnectionStatus,
   findRosterUser,
 } from "@rtc/domain";
@@ -40,6 +45,56 @@ test("simulator branch reaches CONNECTED (ConnectionEventsSimulator wired)", asy
     ),
   );
   expect(connected).toBe(ConnectionStatus.CONNECTED);
+});
+
+test("simulator branch's connectionIntents.reconnect() resumes via a synthesized gatewayConnected", () => {
+  // Pins the pairConnectionPorts wiring for the simulator branch specifically:
+  // it has no real socket to report recovery, so `connectionIntents` must
+  // reach the SAME `reconnects` the merge in `buildNativePorts` synthesizes
+  // `gatewayConnected` from, or the Reconnect command is a no-op offline.
+  //
+  // Counted rather than `toContainEqual`: ConnectionEventsSimulator ALSO
+  // emits a one-shot gatewayConnected synchronously on subscribe (see
+  // "…reaches CONNECTED" above), so a mere presence check would pass even
+  // against a `connectionIntents` wired to nothing.
+  const { ports } = buildNativePorts({ simulator: true });
+  const seen: ConnectionEvent[] = [];
+
+  function gatewayConnectedCount(): number {
+    return seen.filter((e) => {
+      return e.type === "gatewayConnected";
+    }).length;
+  }
+
+  const sub = ports.connectionEvents.events().subscribe((e) => {
+    seen.push(e);
+  });
+
+  expect(gatewayConnectedCount()).toBe(1);
+
+  ports.connectionIntents.reconnect();
+
+  expect(gatewayConnectedCount()).toBe(2);
+
+  sub.unsubscribe();
+});
+
+test("simulator branch's connectionIntents.injectIncident() reaches connectionEvents", () => {
+  // The "connected-only" reconnect rendering (see the test above) is a
+  // per-branch OPTION to pairConnectionPorts; incident injection is never
+  // optioned — it always merges in unmodified — but nothing else in this
+  // file exercised it for the simulator branch specifically before now.
+  const { ports } = buildNativePorts({ simulator: true });
+  const seen: ConnectionEvent[] = [];
+  const sub = ports.connectionEvents.events().subscribe((e) => {
+    seen.push(e);
+  });
+
+  ports.connectionIntents.injectIncident({ type: "idleTimeout" });
+
+  expect(seen).toContainEqual({ type: "idleTimeout" });
+
+  sub.unsubscribe();
 });
 
 test("simulator branch dispose is a no-op function (no socket to close)", () => {
@@ -172,6 +227,47 @@ describe("real-WS branch gates the socket on authentication", () => {
     expect(MockWebSocket.instances).toBe(1);
     expect(MockWebSocket.lastUrl).toContain("access=seeded-token");
 
+    composition.dispose();
+  });
+
+  it("routes idle-lifecycle events from ports.connectionIntents to the transport", () => {
+    // Pins the pairConnectionPorts wiring: `connectionIntents` and
+    // `connectionEvents` must come from the SAME pair, or a Reconnect command
+    // (and the admin incident injection) push into a stream nothing observes,
+    // and the transport is never told to reopen/close for idle.
+    const entry = findRosterUser("demo");
+
+    if (!entry) {
+      throw new Error("roster is missing the demo account");
+    }
+
+    const store = new InMemorySessionStore();
+    store.write({
+      username: "demo",
+      token: "seeded-token",
+      user: entry.user,
+      exp: Date.now() + 60_000,
+    });
+
+    const composition = buildNativePorts({ sessionStore: store });
+    createApp(composition.ports);
+    const closeForIdle = vi.spyOn(
+      composition.ports.transport as WsAdapter,
+      "closeForIdle",
+    );
+    const reopen = vi.spyOn(composition.ports.transport as WsAdapter, "reopen");
+
+    const sub = composition.ports.connectionEvents.events().subscribe();
+
+    composition.ports.connectionIntents.injectIncident({
+      type: "idleTimeout",
+    });
+    composition.ports.connectionIntents.reconnect();
+
+    expect(closeForIdle).toHaveBeenCalledTimes(1);
+    expect(reopen).toHaveBeenCalledTimes(1);
+
+    sub.unsubscribe();
     composition.dispose();
   });
 });

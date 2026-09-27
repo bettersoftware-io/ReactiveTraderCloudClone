@@ -30,14 +30,19 @@ export class OrdersBlotterPresenter implements OrdersBlotterPresenterApi {
 
   readonly orders$: Observable<readonly EquityOrder[]>;
 
-  constructor(private readonly orderPort: OrderPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases the held `refresh` fold — see `warmReplay`. */
+  constructor(
+    private readonly orderPort: OrderPort,
+    disposed$: Observable<unknown>,
+  ) {
     // Singleton (one order book per connection) → warm across tab remounts.
     this.orders$ = this.refresh.pipe(
       startWith(undefined),
       switchMap(() => {
         return this.orderPort.orders();
       }),
-      warmReplay(),
+      warmReplay(disposed$),
     );
   }
 

@@ -300,6 +300,35 @@ describe("topicFromObservable", () => {
     expect(source.observed).toBe(false);
   });
 
+  it("relay() removes its abort listener when the source completes or errors, so an app-lifetime signal does not accumulate one per relay (the Jarvis turn queue relays one ask per turn)", async () => {
+    const { signal, added, removed } = createTrackedSignal();
+    const completing = new Subject<number>();
+    const failing = new Subject<number>();
+    const completed = relay(completing, signal, () => {
+      // unused
+    });
+
+    const failed = relay(failing, signal, () => {
+      // unused
+    }).catch(() => {
+      // expected
+    });
+    completing.complete();
+    failing.error(new Error("x"));
+    await completed;
+    await failed;
+    await relay(of(1), signal, () => {
+      // a source that completes synchronously never registers one
+    });
+
+    expect(added).toHaveLength(2);
+    expect(
+      added.every((listener) => {
+        return removed.includes(listener);
+      }),
+    ).toBe(true);
+  });
+
   it("once() removes its abort listener when the call settles, so an app-lifetime signal does not accumulate one per call", async () => {
     const lifetime = new AbortController();
     const added: unknown[] = [];
@@ -328,3 +357,33 @@ describe("topicFromObservable", () => {
     expect(removed).toEqual(added);
   });
 });
+
+interface TrackedSignal {
+  readonly signal: AbortSignal;
+  readonly added: unknown[];
+  readonly removed: unknown[];
+}
+
+/** An abort signal that records every listener added to and removed from
+ * it. */
+function createTrackedSignal(): TrackedSignal {
+  const lifetime = new AbortController();
+  const added: unknown[] = [];
+  const removed: unknown[] = [];
+  const signal = lifetime.signal;
+  const add = signal.addEventListener.bind(signal);
+  const remove = signal.removeEventListener.bind(signal);
+  signal.addEventListener = ((
+    type: string,
+    listener: unknown,
+    options?: unknown,
+  ) => {
+    added.push(listener);
+    add(type, listener as EventListener, options as AddEventListenerOptions);
+  }) as typeof signal.addEventListener;
+  signal.removeEventListener = ((type: string, listener: unknown) => {
+    removed.push(listener);
+    remove(type, listener as EventListener);
+  }) as typeof signal.removeEventListener;
+  return { signal, added, removed };
+}

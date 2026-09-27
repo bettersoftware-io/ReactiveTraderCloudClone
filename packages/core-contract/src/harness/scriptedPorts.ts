@@ -10,9 +10,14 @@ import {
 
 import type {
   AppPorts,
+  AuthGatedTransport,
   ColorSchemeSource,
+  ConnectionIntentsPort,
   DockLayoutStore,
+  JarvisAskOptions,
+  JarvisAvailability,
   JarvisPort,
+  JarvisUsagePort,
   LayoutPresetStore,
   SessionStore,
   StoredSession,
@@ -22,6 +27,7 @@ import type {
 import type {
   AdminPort,
   AnalyticsPort,
+  AnomalyDetectorConfig,
   AuthOutcome,
   AuthPort,
   BlotterPort,
@@ -69,8 +75,13 @@ import type {
 } from "@rtc/domain";
 import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
-import type { JarvisEvent } from "#/harness/jarvisTypes";
+import type {
+  JarvisEvent,
+  JarvisHistoryEntry,
+  JarvisUsagePayload,
+} from "#/harness/jarvisTypes";
 import { createPendingQueue } from "#/harness/pendingQueue";
+import { countEveryPortStream, createTally } from "#/harness/portTally";
 
 /** A port method name the discipline suite can count — the `$`-suffixed
  * stream methods of `PreferencesPort`, plus the app-lifetime methods the
@@ -107,7 +118,11 @@ export type PortMethodName =
   | "sessions.sessions$"
   | "admin.getThroughput"
   | "auth.login"
-  | "jarvis.ask";
+  | "jarvis.ask"
+  | "jarvis.confirm"
+  | "jarvis.availability$"
+  | "jarvis.setHistorySource"
+  | "jarvisUsage.usage$";
 
 /** What `pricing.getRfqQuote` was asked for. */
 export interface RfqQuoteRequest {
@@ -139,7 +154,27 @@ export interface HarnessSeed {
   /** The preset store accepts every write and keeps none — blocked or full
    * storage, the `storage-failed` save outcome. */
   readonly presetStoreDropsWrites?: boolean;
+  /** What `jarvis.availability$()` replays first. Absent: the simulator's
+   * always-available, scripted-only value. */
+  readonly jarvisAvailability?: JarvisAvailability;
+  /** `jarvis.availability$()` replays NOTHING until the first
+   * `pushJarvisAvailability` — the WS adapter before the server's first
+   * availability reply. */
+  readonly jarvisAvailabilityPending?: boolean;
+  /** `ports.narratorConfig` — the detector thresholds. Absent: the base's. */
+  readonly narratorConfig?: Partial<AnomalyDetectorConfig>;
+  /** Supply a recording `ports.transport` (see `driver.transportCalls()`).
+   * Absent: the base's, which for every runner is none — the simulator
+   * branch has no socket to gate. */
+  readonly transport?: boolean;
+  /** Count every subscription to every stream any port method returns (see
+   * `driver.livePortSubscriptions()`) — the dispose witness's instrument.
+   * Opt-in, so no other suite runs behind the extra Proxy layer. */
+  readonly countPortStreams?: boolean;
 }
+
+/** One call the core made on the scripted `ports.transport`. */
+type TransportCall = "connect" | "disconnect";
 
 /** One `auth.login(username, password)` the core has subscribed. */
 interface LoginCall {
@@ -204,6 +239,12 @@ function countCalls<P extends object>(
   });
 }
 
+/** `driver.connectionIntentCalls()`: calls per `connectionIntents` method. */
+interface ConnectionIntentCalls {
+  reconnect: number;
+  injectIncident: number;
+}
+
 export interface ScriptedDriver {
   /** Push one connection event into the stream the core observes. */
   emitConnection(event: ConnectionEvent): void;
@@ -212,9 +253,15 @@ export interface ScriptedDriver {
    * than folding into a status value. Terminal, like the Subject it drives:
    * a later `emitConnection`/`failConnection` is a no-op after this. */
   failConnection(error: unknown): void;
-  /** The merged connection-event stream the core sees — includes whatever
-   * the runner's base port carries (e.g. the RxJS core's `reconnect$`). */
+  /** The merged connection-event stream the core sees: the runner's base
+   * port, `emitConnection`, and whatever the core pushes through
+   * `ports.connectionIntents` — the harness owns that merge, as a client does. */
   connectionEvents$(): Stream<ConnectionEvent>;
+  /** How many times the core has called each `connectionIntents` method. */
+  connectionIntentCalls(): ConnectionIntentCalls;
+  /** Every call the core has made on the scripted transport, in order
+   * (`HarnessSeed.transport`; always `[]` without it). */
+  transportCalls(): readonly TransportCall[];
   /** Flip the OS colour scheme the theme presenter resolves "system" against. */
   setPrefersDark(on: boolean): void;
   /** How many times the core has invoked this port method since the harness
@@ -364,6 +411,29 @@ export interface ScriptedDriver {
   /** Reply to the OLDEST pending ask with `events`, in order; a trailing
    * `done`/`error` event also completes that turn. */
   replyJarvis(events: readonly JarvisEvent[]): void;
+  /** Every `jarvis.ask` ever subscribed, in order — its text and options —
+   * including the ones already replied to. */
+  askLog(): readonly JarvisAskRecord[];
+  /** Every `jarvis.confirm` call, in order. */
+  confirmations(): readonly JarvisConfirmRecord[];
+  /** Push the next `jarvis.availability$()` value. */
+  pushJarvisAvailability(availability: JarvisAvailability): void;
+  /** What the core's registered history source returns NOW, or `null`
+   * when no core has called `jarvis.setHistorySource`. */
+  jarvisHistory(): readonly JarvisHistoryEntry[] | null;
+  /** Push the next `jarvisUsage.usage$()` snapshot. */
+  pushJarvisUsage(payload: JarvisUsagePayload): void;
+  /** Subscriptions to anything `jarvis.availability$()` returned. On the
+   * real WS adapter EACH one is a fresh server request, so this — not the
+   * call count — is what "asked once" means. */
+  jarvisAvailabilitySubscriptions(): number;
+  /** Subscriptions to anything `jarvisUsage.usage$()` returned — each one a
+   * wire subscribe on the real adapter. */
+  jarvisUsageSubscriptions(): number;
+  /** Subscriptions open NOW on any stream any port method returned
+   * (`HarnessSeed.countPortStreams`). Throws without the seed: an
+   * uncounted harness must not read as "nothing held". */
+  livePortSubscriptions(): number;
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
@@ -375,6 +445,26 @@ export interface ScriptedDriver {
   presetList(tab: WorkspaceTab): string | null;
 }
 
+/** One `jarvis.ask` the core made. */
+interface JarvisAskRecord {
+  readonly text: string;
+  readonly options: JarvisAskOptions | undefined;
+}
+
+/** One `jarvis.confirm` the core made. */
+interface JarvisConfirmRecord {
+  readonly id: string;
+  readonly approved: boolean;
+}
+
+/** The simulator's availability: always on, the scripted brain only. */
+const SIM_JARVIS_AVAILABILITY: JarvisAvailability = {
+  available: true,
+  brains: ["scripted"],
+  defaultBrain: "scripted",
+  gate: null,
+};
+
 export interface ScriptedPorts {
   ports: AppPorts;
   driver: ScriptedDriver;
@@ -385,10 +475,11 @@ export interface ScriptedPorts {
  * events, the colour scheme, the five FX ports, the three credit ports plus
  * `pricing.getRfqQuote`, and the three equities ports deterministically. The
  * FX and credit ports are REPLACED, not merged: the base simulators tick on
- * real, random timers a suite cannot assert against. Everything else in
- * `base` is passed through untouched — the runner decides what backs it. */
+ * real, random timers a suite cannot assert against. `connectionIntents`
+ * is the harness's own (it owns the connection-event merge). Everything else
+ * in `base` is passed through untouched — the runner decides what backs it. */
 export function scriptPorts(
-  base: AppPorts,
+  base: Omit<AppPorts, "connectionIntents">,
   seed: HarnessSeed = {},
 ): ScriptedPorts {
   const connection$ = new Subject<ConnectionEvent>();
@@ -426,6 +517,18 @@ export function scriptPorts(
   const throughputWrites = createPendingQueue<number, void>();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
   const asks = createPendingQueue<string, JarvisEvent>();
+  const askLog: JarvisAskRecord[] = [];
+  const confirmations: JarvisConfirmRecord[] = [];
+  const availability$ = new ReplaySubject<JarvisAvailability>(1);
+
+  if (seed.jarvisAvailabilityPending !== true) {
+    availability$.next(seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY);
+  }
+
+  const usage$ = new Subject<JarvisUsagePayload>();
+  let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
+  let availabilitySubscriptions = 0;
+  let usageSubscriptions = 0;
 
   if (seed.workspaceLayout !== undefined) {
     base.preferences.setWorkspaceLayout(seed.workspaceLayout);
@@ -477,13 +580,28 @@ export function scriptPorts(
   // Built ONCE, and handed to both the core (through `connectionEvents`) and
   // the suites (through `driver.connectionEvents$()`), so the two can never
   // observe different merge instances. Rebuilding it per call would be
-  // observationally equivalent only while every runner's base port is hot
-  // (client-core's `reconnect$` is a bare Subject); against a base port that
+  // observationally equivalent only while every runner's base port is hot;
+  // against a base port that
   // returns a cold per-subscribe stream, the reconnect suite would go green
   // on a stream the core never saw. The consequence — `base.connectionEvents
   // .events()` is called once here rather than once per subscription — is the
   // intended semantics: one shared stream.
   const events$ = merge(base.connectionEvents.events(), connection$);
+
+  // The core's own pushes (the Reconnect button, admin incident injection)
+  // land on the same Subject `emitConnection` drives — the harness owns the
+  // merge a client's `buildBrowserPorts` performs.
+  const intentCalls = { reconnect: 0, injectIncident: 0 };
+  const connectionIntents: ConnectionIntentsPort = {
+    reconnect: () => {
+      intentCalls.reconnect += 1;
+      connection$.next({ type: "reconnect" });
+    },
+    injectIncident: (event: ConnectionEvent) => {
+      intentCalls.injectIncident += 1;
+      connection$.next(event);
+    },
+  };
 
   // The ports the harness supplies itself are outside `countCalls`' Proxy,
   // so they count their own calls — on invocation, exactly as the wrapper
@@ -746,16 +864,43 @@ export function scriptPorts(
 
   const jarvis = countCalls<JarvisPort>(
     {
-      ask: (text: string): Observable<JarvisEvent> => {
-        return asks.open(text);
+      ask: (
+        text: string,
+        options?: JarvisAskOptions,
+      ): Observable<JarvisEvent> => {
+        return defer(() => {
+          askLog.push({ text, options });
+          return asks.open(text);
+        });
       },
-      confirm: (): void => {
-        // Accepted and ignored: no suite settles a confirmation through the
-        // port — the turn's own events carry every outcome.
+      confirm: (confirmationId: string, approved: boolean): void => {
+        confirmations.push({ id: confirmationId, approved });
+      },
+      availability$: (): Observable<JarvisAvailability> => {
+        return defer(() => {
+          availabilitySubscriptions += 1;
+          return availability$;
+        });
+      },
+      setHistorySource: (source: () => readonly JarvisHistoryEntry[]) => {
+        historySource = source;
       },
     },
     calls,
     "jarvis.",
+  );
+
+  const jarvisUsage = countCalls<JarvisUsagePort>(
+    {
+      usage$: (): Observable<JarvisUsagePayload> => {
+        return defer(() => {
+          usageSubscriptions += 1;
+          return usage$;
+        });
+      },
+    },
+    calls,
+    "jarvisUsage.",
   );
 
   const sessionStore: SessionStore = {
@@ -769,6 +914,18 @@ export function scriptPorts(
       stored = null;
     },
   };
+  const transportLog: TransportCall[] = [];
+  const transport: AuthGatedTransport | undefined =
+    seed.transport === true
+      ? {
+          connect: () => {
+            transportLog.push("connect");
+          },
+          disconnect: () => {
+            transportLog.push("disconnect");
+          },
+        }
+      : base.transport;
   const bootSplashSeed = seed.bootSplash;
   const bootSplash =
     bootSplashSeed === undefined
@@ -779,36 +936,46 @@ export function scriptPorts(
           },
         };
 
+  const scripted: AppPorts = {
+    ...base,
+    auth,
+    sessionStore,
+    bootSplash,
+    jarvis,
+    jarvisUsage,
+    narratorConfig: seed.narratorConfig ?? base.narratorConfig,
+    transport,
+    dockLayoutStore,
+    layoutPresetStore,
+    preferences,
+    connectionEvents,
+    connectionIntents,
+    colorScheme,
+    pricing,
+    referenceData,
+    blotter,
+    analytics,
+    execution,
+    workflow,
+    dealers,
+    instruments,
+    marketData,
+    orders,
+    positions,
+    telemetry,
+    serviceHealth,
+    eventLog,
+    sessions,
+    admin,
+    metricControls,
+  };
+  const portTally = createTally();
+
   return {
-    ports: {
-      ...base,
-      auth,
-      sessionStore,
-      bootSplash,
-      jarvis,
-      dockLayoutStore,
-      layoutPresetStore,
-      preferences,
-      connectionEvents,
-      colorScheme,
-      pricing,
-      referenceData,
-      blotter,
-      analytics,
-      execution,
-      workflow,
-      dealers,
-      instruments,
-      marketData,
-      orders,
-      positions,
-      telemetry,
-      serviceHealth,
-      eventLog,
-      sessions,
-      admin,
-      metricControls,
-    },
+    ports:
+      seed.countPortStreams === true
+        ? countEveryPortStream(scripted, portTally)
+        : scripted,
     driver: {
       emitConnection: (event: ConnectionEvent) => {
         connection$.next(event);
@@ -818,6 +985,12 @@ export function scriptPorts(
       },
       connectionEvents$: () => {
         return events$;
+      },
+      connectionIntentCalls: () => {
+        return { ...intentCalls };
+      },
+      transportCalls: () => {
+        return [...transportLog];
       },
       setPrefersDark: (on: boolean) => {
         prefersDark$.next(on);
@@ -975,6 +1148,36 @@ export function scriptPorts(
           asks.complete();
         }
       },
+      askLog: () => {
+        return [...askLog];
+      },
+      confirmations: () => {
+        return [...confirmations];
+      },
+      pushJarvisAvailability: (availability: JarvisAvailability) => {
+        availability$.next(availability);
+      },
+      jarvisHistory: () => {
+        return historySource === null ? null : historySource();
+      },
+      pushJarvisUsage: (payload: JarvisUsagePayload) => {
+        usage$.next(payload);
+      },
+      jarvisAvailabilitySubscriptions: () => {
+        return availabilitySubscriptions;
+      },
+      jarvisUsageSubscriptions: () => {
+        return usageSubscriptions;
+      },
+      livePortSubscriptions: () => {
+        if (seed.countPortStreams !== true) {
+          throw new Error(
+            "livePortSubscriptions: seed the harness with countPortStreams",
+          );
+        }
+
+        return portTally.live;
+      },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];
         base.preferences
@@ -1057,6 +1260,8 @@ export function scriptPorts(
       throughputWrites.drain();
       logins.drain();
       asks.drain();
+      availability$.complete();
+      usage$.complete();
     },
   };
 }

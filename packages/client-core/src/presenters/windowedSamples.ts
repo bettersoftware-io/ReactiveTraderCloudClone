@@ -1,9 +1,9 @@
 import type { Observable } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
+import { appendMetricSample } from "@rtc/core-logic";
 import { METRIC_WINDOW, type MetricSample } from "@rtc/domain";
 
-import { appendMetricSample } from "./adminFolds.js";
 import { warmReplay } from "./warmReplay.js";
 
 /** Rolling window size — number of MetricSamples retained per chart series.
@@ -12,6 +12,7 @@ export const WINDOW: number = METRIC_WINDOW;
 
 export function windowedSamples(
   source$: Observable<MetricSample>,
+  disposed$: Observable<unknown>,
 ): Observable<readonly MetricSample[]> {
   return source$.pipe(
     scan(appendMetricSample, [] as readonly MetricSample[]),
@@ -19,6 +20,6 @@ export function windowedSamples(
     // Warm across the Admin tab's key={activeTab} remount so the rolling chart
     // window survives a tab switch instead of resetting to the seed. Matches
     // EventLogPresenter / SessionsKpiPresenter, which already keep warm.
-    warmReplay(),
+    warmReplay(disposed$),
   );
 }

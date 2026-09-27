@@ -2,14 +2,13 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, type Observable } from "rxjs";
 import { distinctUntilChanged, map, scan, startWith } from "rxjs/operators";
 
-import type { ConnectionStatus } from "@rtc/domain";
-
-import type { ReadOnlyMachine } from "./machine";
+import type { ReadOnlyMachine } from "@rtc/core-logic";
 import {
   createStaleFlagAcc,
   reduceStaleFlag,
   type StaleFlagEvent,
-} from "./staleFlagFold.js";
+} from "@rtc/core-logic";
+import type { ConnectionStatus } from "@rtc/domain";
 
 /** Generic stale-detection derived flag, relocated out of the old
  * useStaleDetection React hook. It has NO intents — it's a pure read-only

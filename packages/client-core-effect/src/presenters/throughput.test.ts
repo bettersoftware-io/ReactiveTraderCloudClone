@@ -2,8 +2,8 @@ import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 import { Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/client-core";
 import type { ThroughputPresenter, ThroughputView } from "@rtc/core-api";
+import { THROUGHPUT_SET_ERROR, throughputSetMessage } from "@rtc/core-logic";
 import {
   type AdminPort,
   DEFAULT_THROUGHPUT,

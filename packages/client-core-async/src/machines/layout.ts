@@ -1,10 +1,10 @@
-import { createLayoutReducer, layoutStaticIds } from "@rtc/client-core";
 import type {
   LayoutIntents,
   LayoutState,
   Machine,
   PanelId,
 } from "@rtc/core-api";
+import { createLayoutReducer, layoutStaticIds } from "@rtc/core-logic";
 
 import { storeToWarmStateStream } from "#/bridge/out";
 import { createStore, type Store } from "#/kernel/store";

@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import { merge, mergeMap, of, tap } from "rxjs";
+import { tap } from "rxjs";
 
 import {
   type AppPorts,
@@ -7,8 +7,7 @@ import {
   createWsRealPorts,
   HttpAuthAdapter,
   InMemorySessionStore,
-  incident$,
-  reconnect$,
+  pairConnectionPorts,
   routeIdleLifecycle,
   type SessionStore,
   WsAdapter,
@@ -94,13 +93,18 @@ export function buildNativePorts(
       { autoConnect: false },
     );
     const gateway = new WsConnectionEventsAdapter(ws);
+    // Pairs THIS composition's own reconnect/incident intents with the
+    // gateway events. `@rtc/core-api`'s `TransportPorts` omits
+    // `connectionEvents` AND `connectionIntents` together (ADR-006
+    // Follow-up 5), so `connectionIntents` below MUST be `paired`'s own —
+    // supplying it apart from the events it feeds is a type error.
+    const paired = pairConnectionPorts(gateway.events());
     const connectionEvents: ConnectionEventsPort = {
       events: () => {
-        // Merge gateway events with user-initiated reconnect intents and
-        // incident injections. The tap side-effects the transport:
+        // The tap side-effects the transport:
         //   idleTimeout → closeForIdle()
         //   reconnect   → reopen()   (sole recovery; button-only)
-        return merge(gateway.events(), reconnect$, incident$).pipe(
+        return paired.connectionEvents.events().pipe(
           tap((e) => {
             return routeIdleLifecycle(e, ws);
           }),
@@ -111,6 +115,7 @@ export function buildNativePorts(
       ports: {
         ...createWsRealPorts(ws, { preferences, auth, sessionStore }),
         connectionEvents,
+        connectionIntents: paired.connectionIntents,
         colorScheme,
         bootSplash: { shouldPlay: shouldPlayBootSplash },
         transport: ws,
@@ -122,27 +127,18 @@ export function buildNativePorts(
   }
 
   const gateway = new ConnectionEventsSimulator();
-  const connectionEvents: ConnectionEventsPort = {
-    events: () => {
-      // Simulator branch: the ConnectionEventsSimulator emits gatewayConnected
-      // so the connection presenter advances past CONNECTING. reconnect$ resumes
-      // the state machine after an idle close (a no-op with no real socket).
-      return merge(
-        gateway.events(),
-        reconnect$.pipe(
-          mergeMap(() => {
-            return of({ type: "gatewayConnected" as const });
-          }),
-        ),
-        incident$,
-      );
-    },
-  };
   const auth = new AuthSimulator(DEV_CREDENTIALS);
   return {
     ports: {
       ...createSimulatorPorts({ preferences, auth, sessionStore }),
-      connectionEvents,
+      // Rendered "connected-only" — unlike the web simulator branches, the
+      // RN simulator's reconnect handling has never passed the raw intent
+      // through, only the synthesized `gatewayConnected` that resumes the
+      // state machine after an idle close (a no-op with no real socket);
+      // kept exactly as it already behaved (see `ReconnectRendering`'s doc).
+      ...pairConnectionPorts(gateway.events(), {
+        reconnectRendering: "connected-only",
+      }),
       colorScheme,
       bootSplash: { shouldPlay: shouldPlayBootSplash },
     },

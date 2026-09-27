@@ -1,5 +1,11 @@
 import { Duration, Effect, SubscriptionRef } from "effect";
 
+import type {
+  Machine,
+  Stream,
+  TileExecutionIntents,
+  TileExecutionState,
+} from "@rtc/core-api";
 import {
   finishedTileExecution,
   isTerminalTileExecution,
@@ -8,13 +14,7 @@ import {
   TIMED_OUT_TILE_EXECUTION,
   TIMEOUT_TILE_EXECUTION,
   TOO_LONG_TILE_EXECUTION,
-} from "@rtc/client-core";
-import type {
-  Machine,
-  Stream,
-  TileExecutionIntents,
-  TileExecutionState,
-} from "@rtc/core-api";
+} from "@rtc/core-logic";
 import {
   CONFIRMATION_DISMISS_MS,
   type CurrencyPair,

@@ -392,6 +392,46 @@ describe("createJarvisMachine", () => {
     expect(states.at(-1)?.pendingConfirmation).toBeNull();
   });
 
+  it("port.confirm is looked up on every call, not captured at construction: a confirm swapped in afterwards is the one called", () => {
+    const confirmEvent: JarvisEvent = {
+      type: "confirmRequest",
+      confirmationId: "c1",
+      symbol: "EURUSD",
+      direction: Direction.Buy,
+      notional: 1_000_000,
+      quotedPrice: 1.0925,
+      ratePrecision: 5,
+    };
+    const later: Array<[string, boolean]> = [];
+    run(
+      (ts) => {
+        const port = createFakePort(ts, "a", { a: confirmEvent });
+        const deps: JarvisDeps = {
+          port,
+          skin$: of<JarvisSkin>(DEFAULT_JARVIS_SKIN),
+          setSkin: () => {},
+          confirmTimeoutMs: 3000,
+          ...createBaseBrainDeps(),
+        };
+        return deps;
+      },
+      ({ machine, ts, deps }) => {
+        deps.port.confirm = (id: string, approved: boolean): void => {
+          later.push([id, approved]);
+        };
+
+        ts.schedule(() => {
+          machine.intents.send("buy 1m EURUSD");
+        }, 1);
+        ts.schedule(() => {
+          machine.intents.approveConfirmation();
+        }, 500);
+      },
+    );
+
+    expect(later).toEqual([["c1", true]]);
+  });
+
   it("declineConfirmation resolves via port.confirm(false) and clears", () => {
     const confirmEvent: JarvisEvent = {
       type: "confirmRequest",
@@ -2593,6 +2633,7 @@ function createFakePort(
 interface RunCtx {
   machine: ReturnType<typeof createJarvisMachine>;
   ts: TestScheduler;
+  deps: JarvisDeps;
 }
 
 /** Collect every emission of a machine's state$ as it runs, marble-driven. */
@@ -2603,11 +2644,12 @@ function run(
   const states: JarvisState[] = [];
   const ts = scheduler();
   ts.run(({ flush }) => {
-    const machine = createJarvisMachine(buildDeps(ts));
+    const deps = buildDeps(ts);
+    const machine = createJarvisMachine(deps);
     const sub = machine.state$.subscribe((s) => {
       states.push(s);
     });
-    drive({ machine, ts });
+    drive({ machine, ts, deps });
     flush();
     sub.unsubscribe();
     machine.dispose();

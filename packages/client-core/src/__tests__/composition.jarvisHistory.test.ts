@@ -35,6 +35,7 @@ import {
 import { CLIENT_MSG, type JarvisHistoryEntry, SERVER_MSG } from "@rtc/shared";
 
 import { FakeWsAdapter } from "#/adapters/__tests__/FakeWsAdapter";
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import {
   createSimulatorPorts,
@@ -48,7 +49,7 @@ describe("composition — jarvis history-source wiring", () => {
   it("simulator mode composes without error (ScriptedJarvisAdapter has no setHistorySource)", () => {
     const { presenters } = createApp({
       ...createSimulatorPorts(createDeps()),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     expect(() => {
@@ -62,11 +63,11 @@ describe("composition — jarvis history-source wiring", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
       ...createWsRealPorts(ws, createDeps()),
-      connectionEvents: {
+      ...createFakeConnectionPorts({
         events: () => {
           return ws.connectionEvents();
         },
-      },
+      }),
     });
 
     presenters.jarvis.intents.send("first");
@@ -82,11 +83,11 @@ describe("composition — jarvis history-source wiring", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
       ...createWsRealPorts(ws, createDeps()),
-      connectionEvents: {
+      ...createFakeConnectionPorts({
         events: () => {
           return ws.connectionEvents();
         },
-      },
+      }),
     });
 
     presenters.jarvis.intents.send("first");
@@ -122,11 +123,11 @@ describe("composition — jarvis history-source wiring", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
       ...createWsRealPorts(ws, createDeps()),
-      connectionEvents: {
+      ...createFakeConnectionPorts({
         events: () => {
           return ws.connectionEvents();
         },
-      },
+      }),
     });
 
     presenters.jarvis.intents.send("first");
@@ -175,6 +176,29 @@ describe("composition — jarvis history-source wiring", () => {
     presenters.jarvis.dispose();
   });
 
+  it("wires ANY jarvis port that offers setHistorySource, not only a WsJarvisAdapter (the alternative cores' and the contract harness's ports)", () => {
+    const sim = createSimulatorPorts(createDeps());
+    const sources: (() => readonly JarvisHistoryEntry[])[] = [];
+    const jarvis = {
+      ask: sim.jarvis.ask.bind(sim.jarvis),
+      confirm: sim.jarvis.confirm.bind(sim.jarvis),
+      setHistorySource: (source: () => readonly JarvisHistoryEntry[]) => {
+        sources.push(source);
+      },
+    };
+
+    const { presenters } = createApp({
+      ...sim,
+      jarvis,
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
+    });
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0]?.()).toEqual([{ role: "jarvis", text: JARVIS_GREETING }]);
+
+    presenters.jarvis.dispose();
+  });
+
   it("dispose() also unsubscribes the history source's state$ subscription (WS-real mode)", () => {
     // Without this, `wireJarvisHistorySource`'s subscription permanently pins
     // `state$`'s refCount above zero even after `dispose()` unsubscribes the
@@ -185,11 +209,11 @@ describe("composition — jarvis history-source wiring", () => {
     const ws = new FakeWsAdapter();
     const { presenters } = createApp({
       ...createWsRealPorts(ws, createDeps()),
-      connectionEvents: {
+      ...createFakeConnectionPorts({
         events: () => {
           return ws.connectionEvents();
         },
-      },
+      }),
     });
 
     expect(presenters.jarvis.state$.getRefCount()).toBeGreaterThan(0);

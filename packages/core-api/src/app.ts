@@ -4,6 +4,7 @@ import type {
   AnomalyDetectorConfig,
   AuthPort,
   BlotterPort,
+  ConnectionEvent,
   ConnectionEventsPort,
   DealerPort,
   EventLogPort,
@@ -118,6 +119,11 @@ export interface AppPorts {
    * mode streams `SERVER_MSG.ADMIN_JARVIS_USAGE` (`WsJarvisUsageAdapter`). */
   jarvisUsage: JarvisUsagePort;
   connectionEvents: ConnectionEventsPort;
+  /** The pushes into `connectionEvents` that originate INSIDE the app — the
+   * Reconnect button (`commands.reconnect`) and the admin console's incident
+   * injection. Supplied by the client beside `connectionEvents`, which merges
+   * what it carries, so a core never imports a module-level Subject. */
+  connectionIntents: ConnectionIntentsPort;
   marketData: MarketDataPort;
   orders: OrderPort;
   positions: PositionPort;
@@ -166,7 +172,24 @@ export interface AppPorts {
   narratorConfig?: Partial<AnomalyDetectorConfig>;
 }
 
-export type TransportPorts = Omit<AppPorts, "connectionEvents">;
+/** The user's and the admin console's pushes into the connection-event
+ * stream. The client builds it and merges what it carries into
+ * `connectionEvents`, so a core never imports a module-level Subject. */
+export interface ConnectionIntentsPort {
+  reconnect(): void;
+  injectIncident(event: ConnectionEvent): void;
+}
+
+/** Omits BOTH `connectionEvents` and `connectionIntents` — the platform
+ * layer builds this pair together (`@rtc/client-core`'s `pairConnectionPorts`
+ * is the one place that does), never one without the other. A port factory
+ * that assembled `connectionEvents` itself while forgetting `connectionIntents`
+ * (or the reverse) would otherwise typecheck with a dead port — this is the
+ * structural fix for that (ADR-006 Follow-up 5). */
+export type TransportPorts = Omit<
+  AppPorts,
+  "connectionEvents" | "connectionIntents"
+>;
 
 export interface Presenters {
   priceStream: PriceStreamPresenter;
@@ -352,7 +375,7 @@ export interface Presenters {
 }
 
 export interface AppCommands {
-  /** Push a user-initiated reconnect intent (wired to reconnect$ in composition). */
+  /** Push a user-initiated reconnect intent (through `ports.connectionIntents`). */
   reconnect(): void;
   /** The Dockview bridge's WHOLE-SET report of the panels in `tab` that
    * currently live OUTSIDE the grid (floating or popped out into a window) —

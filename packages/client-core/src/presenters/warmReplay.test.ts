@@ -1,4 +1,4 @@
-import { Observable, Subject } from "rxjs";
+import { NEVER, Observable, ReplaySubject, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { AuthSimulator, type PreferencesPort } from "@rtc/domain";
@@ -21,7 +21,7 @@ describe("warmReplay", () => {
       return (): void => {
         s.unsubscribe();
       };
-    }).pipe(warmReplay());
+    }).pipe(warmReplay(NEVER));
 
     warm$.subscribe().unsubscribe(); // mount + unmount
     warm$.subscribe().unsubscribe(); // remount + unmount
@@ -33,9 +33,27 @@ describe("warmReplay", () => {
     expect(inner.observed).toBe(true);
   });
 
+  it("disposed$ releases the held source, and a first subscriber after it never opens the source", () => {
+    const disposed$ = new ReplaySubject<void>(1);
+    const heldInner = new Subject<number>();
+    const held$ = heldInner.pipe(warmReplay(disposed$));
+    const lateInner = new Subject<number>();
+    const late$ = lateInner.pipe(warmReplay(disposed$));
+
+    held$.subscribe().unsubscribe();
+    // Warm across zero subscribers — until the app's lifetime ends.
+    expect(heldInner.observed).toBe(true);
+    disposed$.next();
+    disposed$.complete();
+    expect(heldInner.observed).toBe(false);
+
+    late$.subscribe();
+    expect(lateInner.observed).toBe(false);
+  });
+
   it("replays the latest value to a subscriber that arrives after an update", () => {
     const inner = new Subject<number>();
-    const warm$ = inner.pipe(warmReplay());
+    const warm$ = inner.pipe(warmReplay(NEVER));
 
     const keepWarm = warm$.subscribe();
     inner.next(41);
@@ -57,7 +75,7 @@ describe("warmReplay", () => {
       auth: new AuthSimulator({}),
       sessionStore: new InMemorySessionStore(),
     });
-    const presenter = new CurrencyPairsPresenter(ports.referenceData);
+    const presenter = new CurrencyPairsPresenter(ports.referenceData, NEVER);
 
     presenter.pairs$.subscribe().unsubscribe(); // tab switch away + back
     presenter.pairs$.subscribe().unsubscribe();

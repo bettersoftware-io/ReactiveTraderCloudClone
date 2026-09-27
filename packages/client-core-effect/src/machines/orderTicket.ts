@@ -1,5 +1,12 @@
 import { Effect, Stream, SubscriptionRef } from "effect";
 
+import type {
+  Stream as CoreStream,
+  Machine,
+  OrderTicketForm,
+  OrderTicketIntents,
+  OrderTicketState,
+} from "@rtc/core-api";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
@@ -11,14 +18,7 @@ import {
   reduceOrderTicketForm,
   toPlaceOrderRequest,
   validateOrderTicket,
-} from "@rtc/client-core";
-import type {
-  Stream as CoreStream,
-  Machine,
-  OrderTicketForm,
-  OrderTicketIntents,
-  OrderTicketState,
-} from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type {
   EquityOrder,
   OrderSide,

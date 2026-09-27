@@ -10,14 +10,13 @@ import type {
   EqWorkspaceState,
   EqYScale,
 } from "@rtc/core-api";
-import type { CandleTimeframe } from "@rtc/domain";
-
+import type { Machine } from "@rtc/core-logic";
 import {
   createEqWorkspaceState,
   type EqWorkspaceEvent,
   reduceEqWorkspace,
-} from "./eqWorkspaceFold";
-import type { Machine } from "./machine";
+} from "@rtc/core-logic";
+import type { CandleTimeframe } from "@rtc/domain";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

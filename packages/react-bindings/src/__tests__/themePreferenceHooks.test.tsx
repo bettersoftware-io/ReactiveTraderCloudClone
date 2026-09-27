@@ -111,6 +111,10 @@ function createHooks(): ViewModel {
         sessionStore: new InMemorySessionStore(),
       }),
       connectionEvents: new ConnectionEventsSimulator(),
+      // This test never exercises reconnect/incident — inert is enough to
+      // satisfy AppPorts now that TransportPorts omits both connectionEvents
+      // and connectionIntents together (ADR-006 Follow-up 5).
+      connectionIntents: { reconnect: () => {}, injectIncident: () => {} },
     };
   }
 }

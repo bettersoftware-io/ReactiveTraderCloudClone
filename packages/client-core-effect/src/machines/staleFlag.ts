@@ -1,12 +1,12 @@
 import { Cause, Effect, Exit, Scope, Stream, SubscriptionRef } from "effect";
 
+import type { Stream as CoreStream, ReadOnlyMachine } from "@rtc/core-api";
 import {
   createStaleFlagAcc,
   reduceStaleFlag,
   type StaleFlagAcc,
   type StaleFlagEvent,
-} from "@rtc/client-core";
-import type { Stream as CoreStream, ReadOnlyMachine } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type { ConnectionStatus } from "@rtc/domain";
 
 import {

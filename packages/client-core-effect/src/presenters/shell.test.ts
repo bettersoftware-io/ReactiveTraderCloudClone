@@ -2,7 +2,6 @@ import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 import { Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { AuthDeps } from "@rtc/client-core";
 import type {
   AnimationIntent,
   AuthViewState,
@@ -10,6 +9,7 @@ import type {
   ExecutionOutcome,
   StoredSession,
 } from "@rtc/core-api";
+import type { AuthDeps } from "@rtc/core-logic";
 import {
   type AuthOutcome,
   type ConnectionStatus,

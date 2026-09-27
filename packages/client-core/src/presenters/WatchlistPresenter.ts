@@ -14,9 +14,14 @@ export class WatchlistPresenter implements WatchlistPresenterApi {
 
   readonly watchlist$: Observable<readonly EquityInstrument[]>;
 
-  constructor(private readonly marketData: MarketDataPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(
+    private readonly marketData: MarketDataPort,
+    disposed$: Observable<unknown>,
+  ) {
     // Singleton (one watchlist per connection) → warm across tab remounts.
-    this.watchlist$ = this.marketData.watchlist().pipe(warmReplay());
+    this.watchlist$ = this.marketData.watchlist().pipe(warmReplay(disposed$));
   }
 
   quote$(symbol: string): Observable<EquityQuote> {

@@ -924,6 +924,7 @@ export function DockviewLayoutEngine({
       data-closed={closed.join(" ")}
       data-popped={popped.join(" ")}
       data-floating={floating.join(" ")}
+      data-docked={docked.join(" ")}
       data-instances={instanceIds.join(" ")}
       className={styles.engine}
     >

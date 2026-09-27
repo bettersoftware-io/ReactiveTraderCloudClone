@@ -8,7 +8,7 @@
 // and the factories under test. A second or third core gets a file exactly
 // like this one and nothing else changes.
 
-import { merge } from "rxjs";
+import { NEVER } from "rxjs";
 
 import {
   type CoreHarness,
@@ -21,29 +21,22 @@ import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import {
-  createApp,
-  createMachineFactories,
-  incident$,
-  reconnect$,
-} from "#/composition";
+import { createApp, createMachineFactories } from "#/composition";
 
 function createRxjsHarness(seed?: HarnessSeed): CoreHarness {
-  const base: AppPorts = {
+  const base: Omit<AppPorts, "connectionIntents"> = {
     ...createSimulatorPorts({
       preferences: new PreferencesSimulator({}),
       auth: new AuthSimulator({ demo: "pw" }),
       sessionStore: new InMemorySessionStore(),
     }),
-    // The RxJS core's user-initiated reconnect intent is a module-level
-    // Subject that the browser port factories merge into connectionEvents,
-    // and the incident machine's connection-event sink, which the browser
-    // port factories merge the same way; the harness mirrors that merge so
-    // `commands.reconnect()` and `presenters.incident`'s intents are
-    // observable.
+    // No connection source of its own: `scriptPorts` supplies
+    // `connectionIntents` and merges what the core pushes through it
+    // (`commands.reconnect()`, `presenters.incident`'s intents) into the
+    // stream the core observes, as a client's port builder does.
     connectionEvents: {
       events: () => {
-        return merge(reconnect$, incident$);
+        return NEVER;
       },
     },
   };

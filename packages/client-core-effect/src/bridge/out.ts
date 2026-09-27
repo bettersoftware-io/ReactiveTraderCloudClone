@@ -14,9 +14,7 @@ import {
 } from "effect";
 import { filter, map, Observable, type Subscriber } from "rxjs";
 
-import { incident$, reconnect$ } from "@rtc/client-core";
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
-import type { ConnectionEvent } from "@rtc/domain";
 
 import { fromObservable } from "#/bridge/in";
 
@@ -37,7 +35,7 @@ export interface EffectRunner {
  * runner to run them with, and the scope every forked stream fiber is
  * attached to. `runFork` produces ROOT fibers — disposing a `ManagedRuntime`
  * does NOT interrupt them — so the scope is what makes the app able to end
- * them, and `composeWithBase` owns both. */
+ * them, and `composeApp` owns both. */
 export interface EffectHost {
   readonly runtime: EffectRunner;
   readonly scope: Scope.CloseableScope;
@@ -127,6 +125,136 @@ export function refToWarmStateStream<S>(
       warm.unsubscribe();
     },
   };
+}
+
+/** A state stream over a synchronous `listen` — NOT held warm: `listen`
+ * runs on the first subscriber only (a lazily opened source, e.g. a port the
+ * app should reach only once someone reads it), and the current value
+ * replays to each subscriber. */
+export function listenToStateStream<S>(
+  listen: (listener: (value: S) => void) => () => void,
+  current: () => S,
+): StateStream<S> {
+  const source = new Observable<S>((subscriber) => {
+    return listen((value) => {
+      subscriber.next(value);
+    });
+  });
+  return state(source, current());
+}
+
+/** A warm `StateStream` fed SYNCHRONOUSLY by an in-core listener — for
+ * state whose commits must reach a subscriber in the same tick (the
+ * workspace's `SyncRef`). `listen` replays the current value on attach, so
+ * the shared subscription starts from it; the keep-warm holds that one
+ * subscription for the singleton's life, and a late subscriber joins on the
+ * value the last commit delivered — never one a fiber has yet to deliver. */
+export function listenToWarmStateStream<S>(
+  listen: (listener: (value: S) => void) => () => void,
+  current: () => S,
+): WarmStateStream<S> {
+  const source = new Observable<S>((subscriber) => {
+    return listen((value) => {
+      subscriber.next(value);
+    });
+  });
+  const state$ = state(source, current());
+  const warm = state$.subscribe();
+
+  return {
+    state$,
+    release: () => {
+      warm.unsubscribe();
+    },
+  };
+}
+
+/** Hold a stream warm with a subscription of its own (the RxJS presenters'
+ * `data$.subscribe()` keep-warm) and hand back its release. The subscribe
+ * lives here because the bridge owns rxjs. */
+export function holdWarm<T>(stream: CoreStream<T>): () => void {
+  // The keep-warm swallows a failure: the stream's REAL subscribers hear it,
+  // and an unhandled copy from this silent holder would only be noise.
+  const subscription = stream.subscribe({
+    error: () => {
+      // deliberately empty — see above
+    },
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/** A hot stream with no replay — what an RxJS `Subject` is to its readers:
+ * `publish` reaches every CURRENT subscriber synchronously, in order, and a
+ * late subscriber sees only what comes after. Synchronous on purpose: a
+ * `PubSub` read through `streamToStream` attaches each reader on a fiber, so
+ * a value published in the same tick a reader subscribes would be lost
+ * (slice 7 wave 1's lost-turn bug). */
+export interface HotStream<T> {
+  readonly stream$: CoreStream<T>;
+  publish(value: T): void;
+  /** A plain synchronous listener — for a reader that must see two sources
+   * in exact order (the Jarvis demo's step watcher); returns its release. */
+  listen(listener: (value: T) => void): () => void;
+}
+
+export function createHotStream<T>(): HotStream<T> {
+  const listeners = new Set<(value: T) => void>();
+
+  function listen(listener: (value: T) => void): () => void {
+    listeners.add(listener);
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }
+
+  return {
+    stream$: new Observable<T>((subscriber) => {
+      return listen((value: T) => {
+        subscriber.next(value);
+      });
+    }),
+    listen,
+    // A listener that throws is reported and skipped, as an RxJS Subject
+    // reports a throwing subscriber: the others, and later values, still
+    // arrive.
+    publish: (value: T) => {
+      for (const listener of [...listeners]) {
+        try {
+          listener(value);
+        } catch (error) {
+          reportOutOfBand(Cause.die(error));
+        }
+      }
+    },
+  };
+}
+
+/** Hear a core stream synchronously, as an RxJS subscriber does — for a
+ * machine whose state must follow a source in the same tick its value
+ * arrives (Jarvis's preferences and availability). A source failure is
+ * handed to `onError` and ends the listening; returns the release. */
+export function listenToStream<T>(
+  source: CoreStream<T>,
+  listener: (value: T) => void,
+  onError: (error: unknown) => void,
+): () => void {
+  const subscription = source.subscribe({ next: listener, error: onError });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/** A stream that completes at once without a value — an unsupported desk
+ * panel's `data$` (the RxJS presenter's `EMPTY`). */
+export function emptyStream<T>(): CoreStream<T> {
+  return new Observable<T>((subscriber) => {
+    subscriber.complete();
+  });
 }
 
 /** `SubscriptionRef.set` that publishes only a changed value: a
@@ -547,23 +675,4 @@ export function sharedFold<S>(
       }
     };
   });
-}
-
-/** Push the user's reconnect intent into the RxJS core's module-level
- * `reconnect$`. Both web clients' `buildBrowserPorts` merge that Subject into
- * `connectionEvents` for EVERY core, so a native `commands.reconnect` has to
- * speak to it or be unobservable in the browser. It is a Subject, which is
- * why the call lives in the bridge; slice 8 moves the seam out of
- * `@rtc/client-core`. */
-export function pushReconnectIntent(): void {
-  reconnect$.next({ type: "reconnect" });
-}
-
-/** Push an admin incident's connection event into the RxJS core's
- * module-level `incident$` — the twin of `pushReconnectIntent`: both web
- * clients merge that Subject into `connectionEvents` for EVERY core, so a
- * native `presenters.incident` must speak to it or its gateway drop is
- * invisible. Slice 8 moves the seam into the core. */
-export function pushIncidentEvent(event: ConnectionEvent): void {
-  incident$.next(event);
 }

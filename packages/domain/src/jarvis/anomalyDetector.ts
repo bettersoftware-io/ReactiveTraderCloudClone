@@ -1,5 +1,5 @@
 import { defer, from, type Observable } from "rxjs";
-import { mergeMap, scan } from "rxjs/operators";
+import { mergeMap } from "rxjs/operators";
 
 import type { PriceTick } from "../fx/price.js";
 
@@ -161,6 +161,99 @@ function evaluateCrossing(
   return { above, sigma: !wasAbove && above ? z : undefined };
 }
 
+/** The detector as a synchronous, stateful step: feed it each tick in
+ * order and it returns the anomalies that tick crosses (usually none). The
+ * per-symbol windows live in the returned closure, so each call of this
+ * factory starts cold. `detectAnomalies` is the RxJS shell over it; the
+ * alternative application cores call it directly (pluggable-core slice 7
+ * wave 2 — they may not use an rxjs operator outside their bridge). */
+export function createAnomalyDetector(
+  config: Partial<AnomalyDetectorConfig> = {},
+): (tick: PriceTick) => readonly AnomalyEvent[] {
+  const cfg: AnomalyDetectorConfig = { ...DEFAULT_ANOMALY_CONFIG, ...config };
+  const windows = new Map<string, SymbolWindow>();
+
+  return (tick: PriceTick): readonly AnomalyEvent[] => {
+    const events: AnomalyEvent[] = [];
+    const window = windows.get(tick.symbol) ?? createSymbolWindow();
+    windows.set(tick.symbol, window);
+
+    window.tickCount += 1;
+
+    const spread = tick.ask - tick.bid;
+
+    let ret: number | undefined;
+
+    if (window.prevMid !== undefined && window.prevMid !== 0) {
+      ret = (tick.mid - window.prevMid) / window.prevMid;
+    }
+
+    window.prevMid = tick.mid;
+
+    // Evaluate against the TRAILING window — spread/ret are pushed in
+    // further down, after evaluation, so a value is never judged
+    // against a window that already contains itself (FIX 2 / honest σ).
+    if (window.tickCount >= cfg.minWindowFill) {
+      const spreadResult = evaluateCrossing(
+        window.spreadAbove,
+        spread,
+        window.spreads,
+        cfg.spreadSigma,
+        // spread = ask - bid is computed directly from bid/ask, both
+        // ~tick.mid in magnitude — that's the operand scale ULP noise
+        // in `spread` is inherited from.
+        tick.mid,
+        (value, mean, std) => {
+          return (value - mean) / std;
+        },
+      );
+      window.spreadAbove = spreadResult.above;
+
+      if (spreadResult.sigma !== undefined) {
+        events.push({
+          kind: "spreadWidening",
+          symbol: tick.symbol,
+          sigma: spreadResult.sigma,
+        });
+      }
+
+      if (ret !== undefined) {
+        const volResult = evaluateCrossing(
+          window.volAbove,
+          ret,
+          window.returns,
+          cfg.volSigma,
+          // ret = (mid - prevMid) / prevMid is already normalized to a
+          // dimensionless ratio: its own ULP-noise floor is
+          // ~ULP(mid)/prevMid ≈ Number.EPSILON regardless of the price
+          // level, so 1 (not tick.mid) is the right operand scale here.
+          1,
+          (value, _mean, std) => {
+            return Math.abs(value) / std;
+          },
+        );
+        window.volAbove = volResult.above;
+
+        if (volResult.sigma !== undefined) {
+          events.push({
+            kind: "volSpike",
+            symbol: tick.symbol,
+            sigma: volResult.sigma,
+          });
+        }
+      }
+    }
+
+    pushCapped(window.spreads, spread, cfg.windowSize);
+
+    if (ret !== undefined) {
+      pushCapped(window.returns, ret, cfg.windowSize);
+    }
+
+    return events;
+  };
+}
+
 /**
  * Pure, scan-based edge-triggered anomaly detector over a `PriceTick`
  * stream — the deterministic trigger source for the proactive narrator.
@@ -222,93 +315,12 @@ export function detectAnomalies(
   ticks$: Observable<PriceTick>,
   config: Partial<AnomalyDetectorConfig> = {},
 ): Observable<AnomalyEvent> {
-  const cfg: AnomalyDetectorConfig = { ...DEFAULT_ANOMALY_CONFIG, ...config };
-
   return defer(() => {
-    const windows = new Map<string, SymbolWindow>();
+    const step = createAnomalyDetector(config);
 
     return ticks$.pipe(
-      scan<PriceTick, AnomalyEvent[]>((_previousEvents, tick) => {
-        const events: AnomalyEvent[] = [];
-        const window = windows.get(tick.symbol) ?? createSymbolWindow();
-        windows.set(tick.symbol, window);
-
-        window.tickCount += 1;
-
-        const spread = tick.ask - tick.bid;
-
-        let ret: number | undefined;
-
-        if (window.prevMid !== undefined && window.prevMid !== 0) {
-          ret = (tick.mid - window.prevMid) / window.prevMid;
-        }
-
-        window.prevMid = tick.mid;
-
-        // Evaluate against the TRAILING window — spread/ret are pushed in
-        // further down, after evaluation, so a value is never judged
-        // against a window that already contains itself (FIX 2 / honest σ).
-        if (window.tickCount >= cfg.minWindowFill) {
-          const spreadResult = evaluateCrossing(
-            window.spreadAbove,
-            spread,
-            window.spreads,
-            cfg.spreadSigma,
-            // spread = ask - bid is computed directly from bid/ask, both
-            // ~tick.mid in magnitude — that's the operand scale ULP noise
-            // in `spread` is inherited from.
-            tick.mid,
-            (value, mean, std) => {
-              return (value - mean) / std;
-            },
-          );
-          window.spreadAbove = spreadResult.above;
-
-          if (spreadResult.sigma !== undefined) {
-            events.push({
-              kind: "spreadWidening",
-              symbol: tick.symbol,
-              sigma: spreadResult.sigma,
-            });
-          }
-
-          if (ret !== undefined) {
-            const volResult = evaluateCrossing(
-              window.volAbove,
-              ret,
-              window.returns,
-              cfg.volSigma,
-              // ret = (mid - prevMid) / prevMid is already normalized to a
-              // dimensionless ratio: its own ULP-noise floor is
-              // ~ULP(mid)/prevMid ≈ Number.EPSILON regardless of the price
-              // level, so 1 (not tick.mid) is the right operand scale here.
-              1,
-              (value, _mean, std) => {
-                return Math.abs(value) / std;
-              },
-            );
-            window.volAbove = volResult.above;
-
-            if (volResult.sigma !== undefined) {
-              events.push({
-                kind: "volSpike",
-                symbol: tick.symbol,
-                sigma: volResult.sigma,
-              });
-            }
-          }
-        }
-
-        pushCapped(window.spreads, spread, cfg.windowSize);
-
-        if (ret !== undefined) {
-          pushCapped(window.returns, ret, cfg.windowSize);
-        }
-
-        return events;
-      }, []),
-      mergeMap((events) => {
-        return from(events);
+      mergeMap((tick) => {
+        return from(step(tick));
       }),
     );
   });

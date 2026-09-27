@@ -123,6 +123,5 @@ This document is split into one file per section under
     - [Selection: build-time, not runtime](architecture/22-pluggable-application-core.md#selection-build-time-not-runtime)
     - [Three timing guarantees](architecture/22-pluggable-application-core.md#three-timing-guarantees)
     - [The contract tier](architecture/22-pluggable-application-core.md#the-contract-tier)
-    - [The parity manifest](architecture/22-pluggable-application-core.md#the-parity-manifest)
     - [Bundle isolation](architecture/22-pluggable-application-core.md#bundle-isolation)
     - [See also](architecture/22-pluggable-application-core.md#see-also)

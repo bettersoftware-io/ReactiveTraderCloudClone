@@ -12,7 +12,9 @@ import { warmReplay } from "./warmReplay.js";
 export class ServiceTopologyPresenter implements ServiceTopologyPresenterApi {
   readonly topology$: Observable<ServiceTopology>;
 
-  constructor(port: ServiceHealthPort) {
-    this.topology$ = port.topology$().pipe(warmReplay());
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: ServiceHealthPort, disposed$: Observable<unknown>) {
+    this.topology$ = port.topology$().pipe(warmReplay(disposed$));
   }
 }

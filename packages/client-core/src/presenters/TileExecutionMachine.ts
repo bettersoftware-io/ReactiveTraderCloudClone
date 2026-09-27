@@ -10,6 +10,16 @@ import {
 } from "rxjs/operators";
 
 import type { TileExecutionIntents, TileExecutionState } from "@rtc/core-api";
+import type { Machine } from "@rtc/core-logic";
+import {
+  finishedTileExecution,
+  isTerminalTileExecution,
+  READY_TILE_EXECUTION,
+  STARTED_TILE_EXECUTION,
+  TIMED_OUT_TILE_EXECUTION,
+  TIMEOUT_TILE_EXECUTION,
+  TOO_LONG_TILE_EXECUTION,
+} from "@rtc/core-logic";
 import {
   CONFIRMATION_DISMISS_MS,
   type CurrencyPair,
@@ -20,17 +30,6 @@ import {
   type Price,
   TOO_LONG_THRESHOLD_MS,
 } from "@rtc/domain";
-
-import type { Machine } from "./machine";
-import {
-  finishedTileExecution,
-  isTerminalTileExecution,
-  READY_TILE_EXECUTION,
-  STARTED_TILE_EXECUTION,
-  TIMED_OUT_TILE_EXECUTION,
-  TIMEOUT_TILE_EXECUTION,
-  TOO_LONG_TILE_EXECUTION,
-} from "./tileExecutionState.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

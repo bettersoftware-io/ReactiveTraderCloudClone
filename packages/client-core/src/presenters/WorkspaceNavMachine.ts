@@ -3,10 +3,7 @@ import { Subject } from "rxjs";
 import { distinctUntilChanged, scan } from "rxjs/operators";
 
 import type { WorkspaceNavIntents, WorkspaceNavState } from "@rtc/core-api";
-
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
-
-import type { Machine } from "./machine";
+import type { Machine, WorkspaceTab } from "@rtc/core-logic";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

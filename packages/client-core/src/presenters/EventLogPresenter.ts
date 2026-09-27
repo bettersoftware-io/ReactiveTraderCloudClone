@@ -1,14 +1,15 @@
-import { type Observable, shareReplay } from "rxjs";
+import type { Observable } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
 import type { EventLogPresenter as EventLogPresenterApi } from "@rtc/core-api";
+import { prependLogEvent } from "@rtc/core-logic";
 import {
   MAX_LOG_ROWS as DOMAIN_MAX_LOG_ROWS,
   type EventLogPort,
   type LogEvent,
 } from "@rtc/domain";
 
-import { prependLogEvent } from "./adminFolds.js";
+import { warmReplay } from "./warmReplay.js";
 
 /** Maximum number of log rows retained in the rolling window (newest-first).
  * Kept for existing importers: re-exports the domain constant. */
@@ -17,8 +18,8 @@ export const MAX_LOG_ROWS: number = DOMAIN_MAX_LOG_ROWS;
 /** Implements `EventLogPresenter` (`@rtc/core-api`) — see the interface for
  * the contract. Accumulates `EventLogPort.events$()` via `scan`.
  *
- * Mirrored shape: one stream, shared/ref-counted via shareReplay(1) — except
- * `refCount` is `false`, not the usual `true` (see BlotterPresenter.activity$
+ * Mirrored shape: one stream, shared via `warmReplay` — `shareReplay(1)` with
+ * `refCount: false`, not the usual `true` (see BlotterPresenter.activity$
  * for the fuller writeup of this pattern). `LiveEventLog` (Admin tab) is
  * this stream's only consumer, and `App.tsx` remounts a tab's whole subtree
  * on switch (`<WorkspaceEngine key={activeTab}>`), which unsubscribes it.
@@ -28,18 +29,20 @@ export const MAX_LOG_ROWS: number = DOMAIN_MAX_LOG_ROWS;
  * its one subscription into the underlying port) alive for this
  * presenter's lifetime instead, which is safe because `EventLogPresenter`
  * is a composition-root singleton (packages/client-core/src/composition.ts),
- * not a per-mount instance.
+ * not a per-mount instance — and that lifetime ends at `app.dispose()`.
  */
 export class EventLogPresenter implements EventLogPresenterApi {
   readonly events$: Observable<readonly LogEvent[]>;
 
-  constructor(port: EventLogPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: EventLogPort, disposed$: Observable<unknown>) {
     this.events$ = port
       .events$()
       .pipe(
         scan(prependLogEvent, [] as readonly LogEvent[]),
         startWith([] as readonly LogEvent[]),
-        shareReplay({ bufferSize: 1, refCount: false }),
+        warmReplay(disposed$),
       );
   }
 }

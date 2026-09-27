@@ -1,10 +1,11 @@
-import { type Observable, shareReplay } from "rxjs";
+import type { Observable } from "rxjs";
 import { map, scan, startWith } from "rxjs/operators";
 
 import type { SessionsKpiPresenter as SessionsKpiPresenterApi } from "@rtc/core-api";
+import { appendMetricSample } from "@rtc/core-logic";
 import type { MetricSample, SessionsPort } from "@rtc/domain";
 
-import { appendMetricSample } from "./adminFolds.js";
+import { warmReplay } from "./warmReplay.js";
 
 /** Implements `SessionsKpiPresenter` (`@rtc/core-api`) — see the interface
  * for the contract. Maps each `SessionsPort.sessions$()` emission to a
@@ -12,8 +13,8 @@ import { appendMetricSample } from "./adminFolds.js";
  * and accumulates via the same shape `windowedSamples` gives the other
  * three KPI streams.
  *
- * Diverges from `windowedSamples` in one respect: `refCount: false`, not
- * `true`. This mirrors `EventLogPresenter`'s remount-survival fix (see its
+ * Held warm with `warmReplay` (`refCount: false`), like `windowedSamples`.
+ * This mirrors `EventLogPresenter`'s remount-survival fix (see its
  * doc comment for the fuller writeup) — the KPI row is the sole consumer,
  * and `App.tsx` remounts a tab's whole subtree on switch
  * (`<WorkspaceEngine key={activeTab}>`), which unsubscribes it. With
@@ -22,19 +23,22 @@ import { appendMetricSample } from "./adminFolds.js";
  * `refCount: false` keeps the accumulator (and its one subscription into
  * `SessionsPort`) alive for this presenter's lifetime instead, which is
  * safe because `SessionsKpiPresenter` is a composition-root singleton
- * (packages/client-core/src/composition.ts), not a per-mount instance.
+ * (packages/client-core/src/composition.ts), not a per-mount instance — and
+ * that lifetime ends at `app.dispose()` (`warmReplay`'s `disposed$`).
  */
 export class SessionsKpiPresenter implements SessionsKpiPresenterApi {
   readonly countSeries$: Observable<readonly MetricSample[]>;
 
-  constructor(port: SessionsPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases this singleton's port subscription — see `warmReplay`. */
+  constructor(port: SessionsPort, disposed$: Observable<unknown>) {
     this.countSeries$ = port.sessions$().pipe(
       map((sessions) => {
         return { t: Date.now(), value: sessions.length };
       }),
       scan(appendMetricSample, [] as readonly MetricSample[]),
       startWith([] as readonly MetricSample[]),
-      shareReplay({ bufferSize: 1, refCount: false }),
+      warmReplay(disposed$),
     );
   }
 }

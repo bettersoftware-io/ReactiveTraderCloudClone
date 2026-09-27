@@ -33,8 +33,12 @@ import { describeExecutionContract } from "#/suites/execution";
 import { describeForceBootAnimationContract } from "#/suites/forceBootAnimation";
 import { describeIncidentContract } from "#/suites/incident";
 import { describeInstrumentsContract } from "#/suites/instruments";
+import { describeJarvisContract } from "#/suites/jarvis";
+import { describeJarvisDemoContract } from "#/suites/jarvisDemo";
+import { describeJarvisDriverContract } from "#/suites/jarvisDriver";
 import { describeJarvisPanelsContract } from "#/suites/jarvisPanels";
 import { describeJarvisPreferencesContract } from "#/suites/jarvisPreferences";
+import { describeJarvisUsageContract } from "#/suites/jarvisUsage";
 import {
   describeLayoutForContract,
   describeMachinesLayoutContract,
@@ -142,8 +146,8 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.eventLog": describeEventLogContract,
   "presenters.sessions": describeSessionsContract,
   "presenters.sessionsKpi": describeSessionsKpiContract,
-  "presenters.jarvis": null,
-  "presenters.jarvisUsage": null,
+  "presenters.jarvis": describeJarvisContract,
+  "presenters.jarvisUsage": describeJarvisUsageContract,
   "presenters.jarvisPanels": describeJarvisPanelsContract,
   "presenters.dockPanel": describeDockPanelContract,
   "presenters.dockedPanelIdsFor": describeDockedPanelIdsForContract,
@@ -152,8 +156,8 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.resetWorkspaceLayout": describeResetWorkspaceLayoutContract,
   "presenters.workspaceLayoutResets$": describeWorkspaceLayoutResetsContract,
   "presenters.layoutPresets": describeLayoutPresetsContract,
-  "presenters.jarvisDriver": null,
-  "presenters.jarvisDemo": null,
+  "presenters.jarvisDriver": describeJarvisDriverContract,
+  "presenters.jarvisDemo": describeJarvisDemoContract,
   "machines.tileExecution": describeTileExecutionContract,
   "machines.rfqTile": describeRfqTileContract,
   "machines.staleFlag": describeStaleFlagContract,
@@ -172,10 +176,6 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
 
 /** Members whose suite is still to be written. Hand-maintained on purpose:
  * the drift test fails if this list and the `null`s above disagree, so a
- * member cannot silently lose its suite. Shrinks slice by slice. */
-export const PENDING_SUITES: readonly ContractMember[] = [
-  "presenters.jarvis",
-  "presenters.jarvisUsage",
-  "presenters.jarvisDriver",
-  "presenters.jarvisDemo",
-];
+ * member cannot silently lose its suite. Empty since slice 7's wave 2: every
+ * member has its suite. */
+export const PENDING_SUITES: readonly ContractMember[] = [];

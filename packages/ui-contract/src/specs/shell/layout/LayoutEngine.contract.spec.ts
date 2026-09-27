@@ -470,16 +470,16 @@ describe("InhouseLayoutEngine docked desk panels", () => {
 
 /**
  * The identical dock scenario as the block above, but with `world.layoutEngine`
- * flipped to `"dockview"` first — proving the fakes' per-tab docked derivation
- * (`dockedPanelIdsFor` / `merge(bridge.panels$, dock.kick$)` in
- * `viewModelFromWorld.ts`, both clients) runs under the REAL
- * `DockviewLayoutEngine` too, not only the in-house engine the block above
- * exercises (Task 7, carried from Task 4's review — that derivation was
- * otherwise unexecuted by any spec). `App.tsx`'s `WorkspaceEngine` threads
- * `useDockedPanelIds`/`useWorkspaceLayoutResets` into WHICHEVER engine
- * `useLayoutEngine()` selects, so the SAME `app` (and the same dock route
- * through `app.overlay`/`app.panels`) is read through `app.dockviewLayout`
- * instead of `app.layout` here.
+ * flipped to `"dockview"` first — proving the fixtures' per-tab docked
+ * derivation (`WorkspaceDock.dockedPanelIdsNow`, read through
+ * `useDockedPanelIdsFor`/`dockedPanelIds$` in `viewModelFromWorld.ts`, both
+ * clients) runs under the REAL `DockviewLayoutEngine` too, not only the
+ * in-house engine the block above exercises (Task 7, carried from Task 4's
+ * review — that derivation was otherwise unexecuted by any spec). `App.tsx`'s
+ * `WorkspaceEngine` threads `useDockedPanelIds`/`useWorkspaceLayoutResets`
+ * into WHICHEVER engine `useLayoutEngine()` selects, so the SAME `app` (and
+ * the same dock route through `app.overlay`/`app.panels`) is read through
+ * `app.dockviewLayout` instead of `app.layout` here.
  */
 describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => {
   it("a docked panel mounts as a dockview group with a live body, under the real per-tab docked derivation", async () => {
@@ -508,6 +508,31 @@ describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => 
     // head registry reaches this bridge exactly as it reaches the in-house
     // engine, unlike DockviewEngine.contract.spec.ts's own stub registry.
     expect(app.dockviewLayout.insideDockTab("jarvis-panel-undock")).toBe(true);
+  });
+
+  it("docks two panels out of alphabetical order; the per-tab docked witness reports them SORTED", async () => {
+    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    world.layoutEngine.next("dockview");
+    const app = mountWith(world, AppShell);
+
+    await app.overlay.pressHotkey();
+    await app.overlay.send("show me two panels");
+    app.overlay.emitEvents([
+      { type: "panel", panelId: "panel-b", spec: DESK_POSITIONS_SPEC },
+      { type: "panel", panelId: "panel-a", spec: DESK_POSITIONS_SPEC },
+      { type: "done" },
+    ]);
+    // Docked in REVERSE alphabetical order — "panel-b" before "panel-a".
+    await app.panels.dockPanel("panel-b");
+    await app.panels.dockPanel("panel-a");
+
+    // `Presenters.dockedPanelIdsFor` sorts (`composition.ts`'s own doc:
+    // "downstream element-wise-equals consumers must not see... an unsorted
+    // reorder"), so the witness reads alphabetically regardless of dock
+    // sequence — proving the fixture's `useDockedPanelIdsFor`/
+    // `dockedPanelIds$` restores that sort rather than handing back raw dock
+    // order.
+    expect(app.dockviewLayout.dockedIds()).toEqual(["panel-a", "panel-b"]);
   });
 });
 

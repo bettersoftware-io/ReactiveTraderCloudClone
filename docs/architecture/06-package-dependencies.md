@@ -2,7 +2,7 @@
 
 ## 6. Package Dependencies
 
-Twenty workspace packages plus the `tests` package. Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
+Twenty-five workspace packages plus the `tests` package (`@rtc/core-contract`, a devDependency of the three cores only, draws no arrow). Every arrow is a real `dependencies` entry; dependencies flow **inward only** (toward `domain`).
 
 ```mermaid
 graph TB
@@ -17,7 +17,13 @@ graph TB
         sb["@rtc/solid-bindings\ncreateViewModel · useMachine\n@rx-state/core → signal"]
     end
 
-    core["@rtc/client-core\nApplication Core\npresenters · machines · ports wiring\nRxJS + @rx-state/core, zero framework"]
+    subgraph cores["Application cores (pluggable -- one per build, selectCore)"]
+        core["@rtc/client-core\nRxJS core (default)\npresenters · machines · port factories\nRxJS + @rx-state/core, zero framework"]
+        acore["@rtc/client-core-async\nasync/await + AsyncIterable core"]
+        ecore["@rtc/client-core-effect\nEffect-TS core"]
+        logic["@rtc/core-logic\nshared rxjs-free rules\nfolds · controllers · createAuthDeps"]
+        api["@rtc/core-api\ntypes-only contract"]
+    end
 
     subgraph backend["Server side"]
         server["@rtc/server\nNode.js + ws\n24 declarative effects + JARVIS_*\n@anthropic-ai/sdk confined to src/agent"]
@@ -69,6 +75,23 @@ graph TB
     sb --> domain
     core --> domain
     core --> shared
+    core --> logic
+    core --> api
+    acore --> logic
+    acore --> api
+    acore --> domain
+    acore --> shared
+    ecore --> logic
+    ecore --> api
+    ecore --> domain
+    ecore --> shared
+    logic --> domain
+    logic --> shared
+    logic --> api
+    webc --> acore
+    webc --> ecore
+    solidc --> acore
+    solidc --> ecore
     server --> domain
     server --> shared
     server --> wse
@@ -86,8 +109,8 @@ graph TB
 
     %% Invisible rank constraints -- stack the lanes vertically:
     %% core → Server side → Inner circles → DevTools (horizontal space is scarce, vertical scroll is free)
-    core ~~~ server
-    core ~~~ wse
+    api ~~~ server
+    api ~~~ wse
     shared ~~~ dtcore
     domain ~~~ dtext
     domain ~~~ dtrelay
@@ -96,6 +119,10 @@ graph TB
     style domain fill:#4CAF50,color:#fff
     style shared fill:#2196F3,color:#fff
     style core fill:#00897B,color:#fff
+    style acore fill:#00897B,color:#fff
+    style ecore fill:#00897B,color:#fff
+    style logic fill:#26A69A,color:#fff
+    style api fill:#26A69A,color:#fff
     style rb fill:#FF9800,color:#fff
     style webc fill:#FB8C00,color:#fff
     style rnc fill:#8E24AA,color:#fff
@@ -120,6 +147,7 @@ graph TB
 - `@rtc/domain` has **`rxjs` as its single runtime dependency** -- the explicit architectural exception, used as the boundary stream type. No other runtime deps are permitted (pnpm strict mode). `@rtc/ws-effects` follows the same rxjs-only constraint.
 - `@rtc/shared` depends on `domain`, `rxjs`, and, narrowly, `motion-core`: `src/jarvis/ScriptedJarvisEngine.ts` (the transport-neutral scripted Jarvis brain, shared by the sim-mode client adapter and the server's ScriptedAgentLoop) uses `speechChunks`/`SPEECH_CHUNK_INTERVAL_MS` typed-reveal chunk math to pace Jarvis replies -- the dependency-cruiser allowlist (`shared-no-apps`) was widened accordingly.
 - `@rtc/client-core` depends on `domain` + `shared` (+ `rxjs`, `@rx-state/core`) and on **no framework** -- no React, no DOM types, no React Native. `ScriptedJarvisAdapter` is now a thin subclass shim over `@rtc/shared`'s `ScriptedJarvisEngine`, so client-core no longer imports `motion-core` directly.
+- **The application core is pluggable** ([§22](22-pluggable-application-core.md), ADR-006): `@rtc/core-api` (types only, grep gate 42) is the contract all three cores implement; `@rtc/core-logic` holds the rules they share that need no stream library (runtime deps `domain` + `shared` only -- `core-logic-stays-pure`, `core-logic-stays-inner`). `@rtc/client-core-async` and `@rtc/client-core-effect` compose from `core-logic`, `core-api`, `domain`, `shared` and their own members only: `rxjs` is a value import only inside each one's `bridge/` (`bridge-owns-rxjs`), and `@rtc/client-core` is a devDependency for test adapters, never a runtime import (`alt-cores-no-client-core-at-runtime`, since slice 8). Both web clients depend on all three and `selectCore` keeps exactly one per build (`pnpm check:core-bundle`); React Native stays on the RxJS core.
 - `@rtc/react-bindings` is the only package allowed to depend on both React and the core's streams.
 - Clients (`client-react`, `client-react-native`) depend on `core` + `react-bindings` + `domain`; `client-solid` depends on `core` + `solid-bindings` + `domain` the same way. **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
@@ -133,9 +161,9 @@ graph TB
 - `@rtc/devtools-extension` (the MV3 Chrome DevTools extension -- a third `Duplex` transport that attaches the inspector to any running app, including the deployed build) is itself a **leaf consumer** of the devtools pair: it may import only `devtools-core` (transport/protocol/store) and `devtools-app` (the `InspectorApp`), never a client/server/domain package (dependency-cruiser `devtools-extension-is-a-leaf`). It is the **only** workspace package that imports `devtools-app` as source (its own Vite build transpiles it); nothing else imports `devtools-app`, and nothing depends on `devtools-extension`.
 - `@rtc/devtools-relay` is a standalone dev-machine WebSocket relay (bridging the browser inspector to the React Native client over `ws://localhost:8790`) that imports **no `@rtc/*` package at all** -- its only runtime dependency is `ws` (dependency-cruiser `devtools-relay-standalone`), making it structurally disconnected from every arrow in this graph. `WsRelayDuplex` (in `devtools-core`) is the RN/cross-machine transport that talks to it over the wire -- a runtime protocol pairing, not a package dependency, so it draws no edge here. `client-react-native` applies the same three composition-root decorators under `__DEV__` only to reach it.
 
-**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` | `boot-splash` | `layout-dockview` | `devtools-core` | `devtools-relay` → `shared` | `agent-tools` → `client-core` → `react-bindings` | `solid-bindings` | `ui-contract` | `devtools-app` → `client-react` | `client-react-native` | `client-solid` | `server` | `devtools-extension` (prototype builds independently).
+**Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` | `boot-splash` | `layout-dockview` | `devtools-core` | `devtools-relay` → `shared` | `agent-tools` → `core-api` → `core-logic` → `client-core` | `client-core-async` | `client-core-effect` → `react-bindings` | `solid-bindings` | `ui-contract` | `devtools-app` → `client-react` | `client-react-native` | `client-solid` | `server` | `devtools-extension` (prototype builds independently).
 
-> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `agent-tools-stays-inner`, `no-anthropic-sdk-in-inner-packages`, `motion-core-stays-pure`, `boot-splash-stays-pure`, `layout-dockview-stays-pure`, `dockview-only-in-layout-dockview`, `devtools-core-stays-pure`, `devtools-core-no-node-builtins`, `devtools-app-protocol-only`, `devtools-extension-is-a-leaf`, `devtools-relay-standalone`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`, config at `.dependency-cruiser.cjs`): `no-circular`, `domain-stays-pure`, `domain-no-node-builtins`, `shared-no-apps`, `client-not-server`, `server-not-client`, `ws-effects-stays-pure`, `agent-tools-stays-inner`, `no-anthropic-sdk-in-inner-packages`, `motion-core-stays-pure`, `boot-splash-stays-pure`, `layout-dockview-stays-pure`, `dockview-only-in-layout-dockview`, `devtools-core-stays-pure`, `devtools-core-no-node-builtins`, `devtools-app-protocol-only`, `devtools-extension-is-a-leaf`, `devtools-relay-standalone`, `bridge-owns-rxjs`, `alt-cores-stay-inner`, `alt-cores-no-client-core-at-runtime`, `core-logic-stays-pure`, `core-logic-stays-inner`. See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
 > **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 

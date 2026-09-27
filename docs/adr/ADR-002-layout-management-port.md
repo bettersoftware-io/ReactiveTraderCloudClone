@@ -49,7 +49,7 @@ instead). What's there now, per
 [architecture.md §17.2](../architecture/17-web-client-up-close.md#172-the-layout-system)
 and [§10.11](../architecture/10-key-design-decisions.md#1011-continuous-ui-without-fighting-the-framework):
 
-- **The data** — `LayoutState`/`LayoutNode` (`packages/client-core/src/layout/layoutPort.ts`):
+- **The data** — `LayoutState`/`LayoutNode` (`packages/core-logic/src/layout/layoutPort.ts`):
   a tree of splits and panel-id leaves, app-vocabulary only (no engine types).
 - **The machine** — `createLayoutMachine`
   (`packages/client-core/src/presenters/LayoutMachine.ts`), one framework-free
@@ -271,7 +271,7 @@ exactly what shipped in the 2026-08-11 GenUI L3 round, without a `LayoutPort`:
   workspacePersistenceWriter.ts`, registering each tab's `LayoutMachine`
   `state$` as it is created, so a never-opened tab never forces eager
   creation) and read back by a parser
-  (`packages/client-core/src/layout/workspaceLayoutPersistence.ts`) that
+  (`packages/core-logic/src/layout/workspaceLayoutPersistence.ts`) that
   reconciles the tree against the docked-panel list, enforces
   `MAX_DOCKED_PANELS` (4, global) and a depth bound, and falls back to
   defaults on anything corrupt, truncated, or version-mismatched.

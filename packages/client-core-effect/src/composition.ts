@@ -1,9 +1,5 @@
 import { Effect, Exit, ManagedRuntime, Scope } from "effect";
 
-import {
-  createApp as createRxjsApp,
-  createMachineFactories as createRxjsMachineFactories,
-} from "@rtc/client-core";
 import type {
   App,
   AppPorts,
@@ -11,6 +7,7 @@ import type {
   MachineFactories,
   Presenters,
   RfqCountdownSeed,
+  WorkspaceTab,
 } from "@rtc/core-api";
 import type {
   BootVariant,
@@ -20,6 +17,7 @@ import type {
 } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
+import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
 import { createBootMachine } from "#/machines/boot";
@@ -30,96 +28,85 @@ import { createRfqTileMachine } from "#/machines/rfqTile";
 import { createRowHighlightMachine } from "#/machines/rowHighlight";
 import { createStaleFlagMachine } from "#/machines/staleFlag";
 import { createTileExecutionMachine } from "#/machines/tileExecution";
+import { createJarvisFamily } from "#/presenters/jarvisFamily";
 import { HostTag } from "#/services";
 
-/** What `composeWithBase` hands back: the RxJS app it delegated to, the app
- * this core presents, and the Effect host the app owns — exposed so the
- * teardown guarantee is observable from a test rather than taken on trust.
- * `parity.test.ts` compares the two apps member by member. */
+/** What `composeApp` hands back: the app, and the Effect host it owns —
+ * exposed so the teardown guarantee is observable from a test rather than
+ * taken on trust. */
 export interface ComposedApp {
-  base: App;
   app: App;
   host: EffectHost;
-}
-
-/** The machine-factory twin of `ComposedApp`. */
-export interface ComposedMachines {
-  base: MachineFactories;
-  machines: MachineFactories;
 }
 
 /** The app is a `ManagedRuntime` over the native Layer graph (`layers.ts`):
  * every native presenter is a service, `AppPorts` enters as
  * `Layer.succeed`, the host is a scoped Layer, and ONE `runSync` resolves
- * the `Presenters` overlay — slice 2's Tag/Layer composition (ADR-006).
- * Everything not in the graph still delegates to the RxJS core;
- * `parity.json` records which is which and `parity.test.ts` proves it. */
-export function composeWithBase(ports: AppPorts): ComposedApp {
+ * the native presenters (slice 2's Tag/Layer composition, ADR-006). The
+ * Jarvis family and its workspace are built on child hosts of this app's
+ * host (slice 7 wave 2): jarvis first, the workspace over its own events,
+ * then the driver, demo, narrator, history source and usage. `App.presenters:
+ * Presenters` makes the typecheck the completeness witness — every member
+ * is this core's. The transport is gated on this core's own `auth`. */
+export function composeApp(ports: AppPorts): ComposedApp {
   const runtime = ManagedRuntime.make(buildAppLayer(ports));
   const { host, presenters } = runtime.runSync(
     Effect.all({ host: HostTag, presenters: nativePresentersEffect }),
   );
 
-  // Native FIRST (see `CoreSeams`): every internal reader of the base app —
-  // its Jarvis driver, animation director, narrator and workspace seed — is
-  // pointed at this core's own members. Without that a drive batch would
-  // mutate a workspace the UI no longer renders, a fill or an FX execution
-  // made through a NATIVE presenter would choreograph nothing, and each
-  // port those readers share with a native member would be held twice.
-  const base = createRxjsApp(ports, {
+  const family = createJarvisFamily(host, {
+    ports,
+    workspaceNav: presenters.workspaceNav,
     eqWorkspace: presenters.eqWorkspace,
-    equityFills$: presenters.ordersBlotter.fills$,
     watchlist$: presenters.watchlist.watchlist$,
+    themeSkinPreference: presenters.themeSkinPreference,
+    powerSaver: presenters.powerSaver,
+    jarvisPreferences: presenters.jarvisPreferences,
     pairs$: presenters.currencyPairs.pairs$,
     priceFor: (pair: CurrencyPair) => {
       return presenters.priceStream.price$(pair);
     },
-    executions$: presenters.execution.executions$,
-    rfqEvents$: presenters.rfqs.events$,
-    connectionStatus$: presenters.connection.status$,
-    workspaceNav: presenters.workspaceNav,
   });
+  gateTransportOnAuth(host, ports.transport, presenters.auth.state$);
 
   const app: App = {
-    ...base,
-    presenters: { ...base.presenters, ...presenters },
-    commands: createCommands(base.commands),
-    // General rule (see docs/architecture/22-pluggable-application-core.md
-    // §22 "Teardown order"): an alternative core releases its own resources
-    // first, then the base app, then (for Effect) the runtime. THIS core's
-    // order differs from that rule — `base.dispose()` runs first, then the
-    // host scope interrupts whatever fibers remain (every fold period and
-    // retained singleton is forked from it), and only then is the runtime
-    // disposed, closing the Layer scope the host's is a child of (a no-op
-    // by then). That reversed order is equally safe today because the RxJS
-    // core's `dispose()` is a knowing no-op for the members this core has
-    // ported natively, so it never races the host's own teardown; slice 8
-    // removes the base delegation entirely, at which point this ordering
-    // question disappears. Every step is in a `finally` so one rejection
-    // cannot skip the rest; each is idempotent, so calling `dispose()`
-    // twice is safe.
+    ports,
+    presenters: {
+      ...presenters,
+      ...family.workspace.presenters,
+      jarvis: family.jarvis,
+      jarvisDriver: family.jarvisDriver,
+      jarvisDemo: family.jarvisDemo,
+      jarvisUsage: family.jarvisUsage,
+    },
+    commands: createCommands(
+      ports.connectionIntents,
+      family.workspace.reportDetachedPanels,
+    ),
+    // The host scope first — it interrupts every fiber still running (each
+    // fold period, retained singleton and the Jarvis family's child hosts
+    // are forked from it) — then the runtime, closing the Layer scope the
+    // host's is a child of (a no-op by then). The runtime dispose sits in a
+    // `finally` so a failed scope close cannot skip it; both are idempotent,
+    // so calling `dispose()` twice is safe.
     dispose: async () => {
       try {
-        await base.dispose();
+        await Effect.runPromise(Scope.close(host.scope, Exit.void));
       } finally {
-        try {
-          await Effect.runPromise(Scope.close(host.scope, Exit.void));
-        } finally {
-          await runtime.dispose();
-        }
+        await runtime.dispose();
       }
     },
   };
-  return { base, app, host };
+  return { app, host };
 }
 
 export function createApp(ports: AppPorts): App {
-  return composeWithBase(ports).app;
+  return composeApp(ports).app;
 }
 
-/** Native machine factories, closing over the SAME merged `presenters` the
- * RxJS builder gets. Each machine owns a detached host (slice 2 ruling 8). */
-function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
+/** This core's machine factories, closing over the `presenters` they are
+ * given. Each machine owns a detached host (slice 2 ruling 8). */
+function nativeMachines(presenters: Presenters): MachineFactories {
   return {
     tileExecution: (pair: CurrencyPair) => {
       return createTileExecutionMachine(pair, {
@@ -171,6 +158,9 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
         onDone,
       });
     },
+    layout: (tab: WorkspaceTab) => {
+      return presenters.layoutFor(tab);
+    },
     orderTicket: (defaultSymbol: string) => {
       return createOrderTicketMachine({
         place: (req: PlaceOrderRequest) => {
@@ -182,17 +172,10 @@ function nativeMachines(presenters: Presenters): Partial<MachineFactories> {
   };
 }
 
-export function composeMachinesWithBase(
-  presenters: Presenters,
-): ComposedMachines {
-  const base = createRxjsMachineFactories(presenters);
-  return { base, machines: { ...base, ...nativeMachines(presenters) } };
-}
-
 export function createMachineFactories(
   presenters: Presenters,
 ): MachineFactories {
-  return composeMachinesWithBase(presenters).machines;
+  return nativeMachines(presenters);
 }
 
 export const effectCore: CoreFactory = { createApp, createMachineFactories };

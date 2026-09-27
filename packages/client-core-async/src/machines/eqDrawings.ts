@@ -1,8 +1,3 @@
-import {
-  type EqDrawingsEvent,
-  INITIAL_EQ_DRAWINGS_STATE,
-  reduceEqDrawings,
-} from "@rtc/client-core";
 import type {
   EqDrawing,
   EqDrawingsIntents,
@@ -10,6 +5,11 @@ import type {
   EqDrawTool,
   Machine,
 } from "@rtc/core-api";
+import {
+  type EqDrawingsEvent,
+  INITIAL_EQ_DRAWINGS_STATE,
+  reduceEqDrawings,
+} from "@rtc/core-logic";
 
 import { storeToWarmStateStream } from "#/bridge/out";
 import { createStore } from "#/kernel/store";

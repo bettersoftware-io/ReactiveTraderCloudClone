@@ -1,13 +1,13 @@
 import { NEVER, type Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { PanelData, PanelInstance } from "@rtc/core-api";
 import {
-  type JarvisEvent,
   type PanelStreamDeps,
   UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/client-core";
-import type { PanelData, PanelInstance } from "@rtc/core-api";
+} from "@rtc/core-logic";
 import type { PositionUpdates, PriceTick, Trade } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import {
   createJarvisPanelsMachine,
@@ -161,6 +161,27 @@ describe("jarvisPanels (async)", () => {
     expect(latest(presenter.panels$)[0].data$).toBe(first);
     events$.next(createPanelEvent("p", createAnalyticsSpec("B")));
     expect(latest(presenter.panels$)[0].data$).not.toBe(first);
+  });
+
+  it("a panel whose data port FAILS fails its panelData$ subscribers, as the RxJS switchMap does", () => {
+    const positions = new Subject<PositionUpdates>();
+    const { events$, presenter } = createFixture({ analytics: positions });
+    events$.next(createPanelEvent("p"));
+    const errors: unknown[] = [];
+    presenter.panelData$("p").subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+
+    const failure = new Error("port down");
+    positions.error(failure);
+
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    }).then(() => {
+      expect(errors).toEqual([failure]);
+    });
   });
 
   it("the lifetime's end stops the roster following its events", () => {

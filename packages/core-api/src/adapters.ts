@@ -8,6 +8,7 @@ import type {
   AdminJarvisUsagePayload,
   JarvisAvailabilityGate,
   JarvisEvent,
+  JarvisHistoryEntry,
 } from "@rtc/shared";
 
 import type { Stream } from "#/stream";
@@ -96,6 +97,15 @@ export interface JarvisPort {
   ask(text: string, options?: JarvisAskOptions): Stream<JarvisEvent>;
   /** Resolve a pending confirmRequest (approve or decline). */
   confirm(confirmationId: string, approved: boolean): void;
+  /** Live backend availability. Offered by the WS adapter only; a port
+   * without it is always available with the scripted brain alone. Cold:
+   * each subscription asks the server again, so exactly one core may
+   * subscribe (pluggable-core slice 7 wave 2, ruling 4). */
+  availability$?(): Stream<JarvisAvailability>;
+  /** Late-binds the chat-history replay source every later `ask` sends.
+   * Offered by the WS adapter only; a single slot, so exactly one core may
+   * call it. */
+  setHistorySource?(source: () => readonly JarvisHistoryEntry[]): void;
 }
 
 /** Live availability of the Jarvis backend: whether a brain is reachable at

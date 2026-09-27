@@ -4,17 +4,16 @@
 import type { Observable, SchedulerLike, Subscription } from "rxjs";
 import { debounceTime } from "rxjs/operators";
 
-import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
-
 import {
   type WorkspaceLayoutWriteDeps,
   writeWorkspaceLayout,
-} from "./workspaceLayoutWrite";
+} from "@rtc/core-logic";
+import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 export {
   type DockedPanelPlacement,
   resetUnwritablePayloadWarning,
-} from "./workspaceLayoutWrite";
+} from "@rtc/core-logic";
 
 export interface WorkspacePersistenceWriterDeps
   extends WorkspaceLayoutWriteDeps {
@@ -28,9 +27,8 @@ export interface WorkspacePersistenceWriterDeps
 
 /**
  * Subscribes the debounced writer to `kick$`. Session-lifetime, like every
- * other composition-root subscription: the returned `Subscription` is handed
- * back for a hypothetical future teardown path, and is not unsubscribed by
- * composition today (same doctrine as `jarvisPanels`/`jarvisDriver`).
+ * other composition-root subscription: composition holds the returned
+ * `Subscription` and releases it in `app.dispose()`.
  */
 export function createWorkspacePersistenceWriter(
   deps: WorkspacePersistenceWriterDeps,

@@ -475,10 +475,10 @@ export interface World {
   readonly layoutPresetsSeed: Readonly<Partial<Record<WorkspaceTab, string>>>;
   /** Bumps once per workspace-layout reset — the fake-World form of
    * `Presenters.workspaceLayoutResets$`. Each framework's
-   * `viewModelFromWorld` driver's `resetWorkspaceLayoutFor` nexts this at
-   * the end of the reset (mirrors `composition.ts`'s
-   * `workspaceLayoutResets$`), and `useWorkspaceLayoutResets` reads it
-   * straight through. Starts 0. */
+   * `viewModelFromWorld` driver's `getWorkspaceDock(world)` wires this as the
+   * shared `createWorkspaceDock`'s `onResetsBump`, nexted at the end of the
+   * reset (mirrors `composition.ts`'s `workspaceLayoutResets$`), and
+   * `useWorkspaceLayoutResets` reads it straight through. Starts 0. */
   readonly workspaceLayoutResets: BehaviorSubject<number>;
   /** Reactive animated-background preference backing useAnimatedBackground. */
   readonly animatedBackground: BehaviorSubject<boolean>;

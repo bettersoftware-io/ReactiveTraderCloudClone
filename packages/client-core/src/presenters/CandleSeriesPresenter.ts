@@ -10,6 +10,7 @@ import {
 } from "rxjs";
 
 import type { CandleSeriesPresenter as CandleSeriesPresenterApi } from "@rtc/core-api";
+import { stitchCandles } from "@rtc/core-logic";
 import {
   CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,
@@ -17,8 +18,6 @@ import {
   type CandleTimeframe,
   type MarketDataPort,
 } from "@rtc/domain";
-
-import { stitchCandles } from "./candleStitch";
 
 const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
 

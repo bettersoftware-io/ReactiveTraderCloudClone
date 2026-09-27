@@ -1,6 +1,5 @@
 import { Effect, Option, Stream } from "effect";
 
-import { createShallowArrayMemo } from "@rtc/client-core";
 import type {
   Stream as CoreStream,
   Machine,
@@ -10,6 +9,7 @@ import type {
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
+import { createShallowArrayMemo } from "@rtc/core-logic";
 import {
   type CreateRfqInput,
   CreateRfqUseCase,

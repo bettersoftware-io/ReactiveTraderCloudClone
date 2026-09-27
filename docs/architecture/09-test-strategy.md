@@ -373,6 +373,56 @@ Two rules that make the table mean something:
   strengthen the test until it kills the mutant, or record why that behaviour
   is deliberately uncontracted.
 
+### Waiting on time — fake timers, and the one safe real wait
+
+**A test that waits for a timer-driven outcome runs on fake timers**
+(`vi.useFakeTimers()` before composition, then `vi.advanceTimersByTimeAsync`).
+Both application cores follow them: RxJS schedules through `setTimeout` /
+`setInterval`, and `Effect.sleep` advances under them
+(`client-core-effect/src/bridge/clock.test.ts`). A comment claiming a
+composition-level test "still runs on a REAL scheduler" was wrong in every
+place it appeared.
+
+A real-time wait (`await new Promise((r) => setTimeout(r, N))`) is safe in
+exactly one shape: what it waits for is a **single timer**, armed before the
+wait or within the same microtasks, with an **earlier deadline**. The timer
+queue fires in deadline order however slow the runner is, so the outcome is
+decided by order, not by the clock — `createDockEngine.test.ts`'s debounce
+waits are this shape. It **races** when the outcome sits behind a chain of
+async hops, each arming its timer AFTER the wait's own: a Jarvis reply
+pipeline before a drive stagger, scheduler hops before a persistence debounce,
+React's `MessageChannel` commit after a redirect timer. On a loaded CI runner
+the wait wins. Measured 2026-09-26 (#829 and the fake-timer PR): the
+alternative cores' `composition.seams.test.ts` took ~3 s locally and
+9.9–14.3 s on CI, timed out at 5 s twice, and — given a longer timeout — read a
+drive that had not landed (`expected 'AAPL' to be 'MSFT'`). A wait for an
+ABSENCE in the racing shape is worse: it passes vacuously.
+
+Not affected: a `setTimeout(r, 0)` **yield** (ordering, not duration — the
+`settle()` convention of the core runners); `vi.waitFor` / retry-loop
+**condition polling** (the right tool for DOM work such as Dockview, whose
+`requestAnimationFrame` / `ResizeObserver` fake timers would disturb); and a
+real-browser Playwright test that measures wall-clock motion
+(`freeze.spec.ts`).
+
+Two traps when a UI test goes fake:
+
+- **user-event** waits on its own timers between keystrokes; give it
+  `userEvent.setup({ advanceTimers })`, guarded by `vi.isFakeTimers()` in a
+  page object that real-timer specs share (`NewRfqPanelPage`).
+- **@testing-library/react** drains every interaction with a `setTimeout(0)`
+  it only advances when it detects *Jest's* fake timers. The React contract
+  setup (`client-react/tests/ui/contract/react/setup.ts`) supplies the one
+  `jest.advanceTimersByTime` call RTL makes — also for the co-located
+  `src/ui/**` unit tests `test:ui:contract:coverage` runs with that same
+  setup, but not under plain `pnpm test`, so a co-located fake-timer test must
+  not rely on the drain either way. And React commits a timer's state
+  change on a `MessageChannel` task, so wrap each advance in the harness's
+  `flushAsync` (the React driver's `act`) before asserting on the DOM.
+
+A converted test still has to fail when the code is wrong: mutation-check it
+on fake timers exactly as on real ones.
+
 ### 9.9 React Native testing
 
 The RN package runs a **dual runner** (`vitest run && jest`):

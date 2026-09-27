@@ -7,7 +7,6 @@ export {
   type FoldUpdate,
   type FromPort,
   fromPortIn,
-  pushReconnectIntent,
   refToStateStream,
   refToWarmStateStream,
   reportOutOfBand,
@@ -23,8 +22,7 @@ export { peek, peekCurrent } from "#/bridge/peek";
 export { rpc } from "#/bridge/rpc";
 export { createCommands } from "#/commands";
 export {
-  composeMachinesWithBase,
-  composeWithBase,
+  composeApp,
   createApp,
   createMachineFactories,
   effectCore,

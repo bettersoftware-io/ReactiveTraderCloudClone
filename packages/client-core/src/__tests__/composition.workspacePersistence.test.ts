@@ -1,6 +1,20 @@
 import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type {
+  LayoutState,
+  PersistedTabLayout,
+  WorkspaceLayoutV1,
+  WorkspaceTab,
+} from "@rtc/core-logic";
+import {
+  createDefaultLayoutPort,
+  dockedLeafIds,
+  insertDockedLeaf,
+  instanceIdFor,
+  parseWorkspaceLayout,
+  serializeWorkspaceLayout,
+} from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
@@ -8,24 +22,12 @@ import {
 } from "@rtc/domain";
 import type { PanelSpecV1 } from "@rtc/shared";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import type { Presenters } from "#/composition";
 import { createApp } from "#/composition";
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import { dockedLeafIds, insertDockedLeaf } from "#/layout/dockColumn";
-import type { LayoutState } from "#/layout/layoutPort";
-import { instanceIdFor } from "#/layout/panelInstances";
-import type {
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
-} from "#/layout/workspaceLayoutPersistence";
-import {
-  parseWorkspaceLayout,
-  serializeWorkspaceLayout,
-} from "#/layout/workspaceLayoutPersistence";
 
 describe("composition — workspace-layout rehydration", () => {
   it("seeds layoutFor from the persisted tree", async () => {
@@ -629,7 +631,7 @@ function bootApp(seed: string | null): BootedApp {
       sessionStore: new InMemorySessionStore(),
     }),
     jarvis,
-    connectionEvents: new ConnectionEventsSimulator(),
+    ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
   });
   return {
     presenters,

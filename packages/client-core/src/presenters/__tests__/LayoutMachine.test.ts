@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import type { LayoutNode, LayoutPort, LayoutState } from "#/layout/layoutPort";
-import { instanceIdFor } from "#/layout/panelInstances";
+import type { LayoutNode, LayoutPort, LayoutState } from "@rtc/core-logic";
 import {
+  createDefaultLayoutPort,
+  instanceIdFor,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
   type WorkspaceLayoutV1,
-} from "#/layout/workspaceLayoutPersistence";
+} from "@rtc/core-logic";
 
 import { createLayoutMachine } from "../LayoutMachine";
 

@@ -7,6 +7,7 @@ import {
   PreferencesSimulator,
 } from "@rtc/domain";
 
+import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
@@ -31,7 +32,7 @@ describe("composition — layoutFor singleton dispose is structurally inert", ()
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     const first = presenters.layoutFor("equities");
@@ -64,7 +65,7 @@ describe("composition — layoutFor singleton dispose is structurally inert", ()
         auth: new AuthSimulator({}),
         sessionStore: new InMemorySessionStore(),
       }),
-      connectionEvents: new ConnectionEventsSimulator(),
+      ...createFakeConnectionPorts(new ConnectionEventsSimulator()),
     });
 
     const equities = presenters.layoutFor("equities");

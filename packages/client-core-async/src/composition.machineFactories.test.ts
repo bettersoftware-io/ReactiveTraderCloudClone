@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Presenters } from "@rtc/core-api";
 import type { CurrencyPair } from "@rtc/domain";
 
-import { composeMachinesWithBase } from "#/composition";
+import { createMachineFactories } from "#/composition";
 
 // `nativeMachines` is a WIRING TABLE: every entry looks plausible, so a
 // mis-wire is invisible — `staleFlag` and `analyticsStaleFlag` differ ONLY
@@ -25,7 +25,7 @@ describe("nativeMachines — wiring", () => {
   it("staleFlag watches the PRICE stream for its pair", () => {
     const { presenters, spies } = createStubPresenters();
 
-    composeMachinesWithBase(presenters).machines.staleFlag(PAIR).dispose();
+    createMachineFactories(presenters).staleFlag(PAIR).dispose();
 
     expect(spies.price$).toHaveBeenCalledWith(PAIR);
   });
@@ -33,7 +33,7 @@ describe("nativeMachines — wiring", () => {
   it("analyticsStaleFlag watches ANALYTICS, not the price stream", () => {
     const { presenters, spies } = createStubPresenters();
 
-    composeMachinesWithBase(presenters).machines.analyticsStaleFlag().dispose();
+    createMachineFactories(presenters).analyticsStaleFlag().dispose();
 
     // The discriminator: these two factories are otherwise identical, so a
     // copy-paste from staleFlag would fail here.
@@ -43,8 +43,7 @@ describe("nativeMachines — wiring", () => {
   it("tileExecution reaches execution.execute lazily — not at construction", () => {
     const { presenters, spies } = createStubPresenters();
 
-    const machine =
-      composeMachinesWithBase(presenters).machines.tileExecution(PAIR);
+    const machine = createMachineFactories(presenters).tileExecution(PAIR);
 
     expect(spies.execute).not.toHaveBeenCalled();
     machine.dispose();
@@ -53,7 +52,7 @@ describe("nativeMachines — wiring", () => {
   it("rfqTile reaches rfqQuote.requestQuote lazily — not at construction", () => {
     const { presenters, spies } = createStubPresenters();
 
-    const machine = composeMachinesWithBase(presenters).machines.rfqTile(PAIR);
+    const machine = createMachineFactories(presenters).rfqTile(PAIR);
 
     expect(spies.requestQuote).not.toHaveBeenCalled();
     machine.intents.requestQuote();
@@ -63,7 +62,7 @@ describe("nativeMachines — wiring", () => {
 
   it("rfqSubmission and ticketSubmission reach for DIFFERENT rfqs members", () => {
     const { presenters, spies } = createStubPresenters();
-    const { machines } = composeMachinesWithBase(presenters);
+    const machines = createMachineFactories(presenters);
 
     machines.rfqSubmission();
 
@@ -89,9 +88,7 @@ describe("nativeMachines — wiring", () => {
     try {
       const { presenters } = createStubPresenters();
 
-      const countdown = composeMachinesWithBase(
-        presenters,
-      ).machines.rfqCountdown({
+      const countdown = createMachineFactories(presenters).rfqCountdown({
         creationTimestamp: Date.now(),
         totalMs: 1_000,
       });
@@ -109,24 +106,10 @@ describe("nativeMachines — wiring", () => {
     }
   });
 
-  it("every machine factory is native — none is the base's", () => {
-    const { presenters } = createStubPresenters();
-    const { base, machines } = composeMachinesWithBase(presenters);
-
-    expect(machines.rowHighlight).not.toBe(base.rowHighlight);
-    expect(machines.notional).not.toBe(base.notional);
-    expect(machines.rfqTile).not.toBe(base.rfqTile);
-    expect(machines.rfqCountdown).not.toBe(base.rfqCountdown);
-    expect(machines.orderTicket).not.toBe(base.orderTicket);
-    expect(machines.boot).not.toBe(base.boot);
-    expect(machines.layout).not.toBe(base.layout);
-  });
-
   it("orderTicket reaches ordersBlotter.place lazily — not at construction, then with the submitted request", () => {
     const { presenters, spies } = createStubPresenters();
 
-    const machine =
-      composeMachinesWithBase(presenters).machines.orderTicket("AAPL");
+    const machine = createMachineFactories(presenters).orderTicket("AAPL");
 
     expect(spies.place).not.toHaveBeenCalled();
     machine.intents.setQty(1);

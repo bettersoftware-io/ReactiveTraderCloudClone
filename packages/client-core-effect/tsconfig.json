@@ -12,7 +12,9 @@
   "references": [
     { "path": "../client-core" },
     { "path": "../core-api" },
+    { "path": "../core-logic" },
     { "path": "../core-contract" },
-    { "path": "../domain" }
+    { "path": "../domain" },
+    { "path": "../shared" }
   ]
 }

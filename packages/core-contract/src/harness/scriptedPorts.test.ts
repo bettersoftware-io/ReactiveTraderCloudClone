@@ -1,9 +1,15 @@
+import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { AppPorts, StoredSession } from "@rtc/core-api";
+import type {
+  AppPorts,
+  JarvisAvailability,
+  StoredSession,
+} from "@rtc/core-api";
 import {
   AuthSimulator,
   type Candle,
+  type ConnectionEvent,
   type CreateRfqRequest,
   type CurrencyPair,
   type Dealer,
@@ -43,7 +49,7 @@ import {
   EURUSD,
   MSFT,
 } from "#/harness/fixtures";
-import type { JarvisEvent } from "#/harness/jarvisTypes";
+import type { JarvisEvent, JarvisUsagePayload } from "#/harness/jarvisTypes";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
 describe("scriptPorts port-call counting", () => {
@@ -815,6 +821,180 @@ describe("scriptPorts — Jarvis, the workspace preference and the two stores", 
   });
 });
 
+describe("scriptPorts — Jarvis turns, confirmations, availability, history and usage", () => {
+  it("askLog records every ask's text and options, and keeps it after the reply", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    ports.jarvis.ask("one", { brain: "scripted", effort: "low" }).subscribe();
+    ports.jarvis.ask("two").subscribe();
+
+    driver.replyJarvis([{ type: "done" }]);
+
+    expect(driver.askLog()).toEqual([
+      { text: "one", options: { brain: "scripted", effort: "low" } },
+      { text: "two", options: undefined },
+    ]);
+  });
+
+  it("confirmations records every confirm call in order, counted", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    ports.jarvis.confirm("c-1", false);
+    ports.jarvis.confirm("c-2", true);
+
+    expect(driver.confirmations()).toEqual([
+      { id: "c-1", approved: false },
+      { id: "c-2", approved: true },
+    ]);
+    expect(driver.portCalls("jarvis.confirm")).toBe(2);
+  });
+
+  it("availability$ replays the seed, then each push; unseeded it replays the scripted-only default", () => {
+    const seeded = scriptPorts(createBasePorts(), {
+      jarvisAvailability: createAvailability(false),
+    });
+    const seen: boolean[] = [];
+    seeded.ports.jarvis.availability$?.().subscribe((value) => {
+      seen.push(value.available);
+    });
+    seeded.driver.pushJarvisAvailability(createAvailability(true));
+
+    expect(seen).toEqual([false, true]);
+    expect(seeded.driver.portCalls("jarvis.availability$")).toBe(1);
+
+    const unseeded = scriptPorts(createBasePorts());
+    const defaults: unknown[] = [];
+    unseeded.ports.jarvis.availability$?.().subscribe((value) => {
+      defaults.push(value);
+    });
+
+    expect(defaults).toEqual([
+      {
+        available: true,
+        brains: ["scripted"],
+        defaultBrain: "scripted",
+        gate: null,
+      },
+    ]);
+  });
+
+  it("jarvisAvailabilityPending holds availability$ silent until the first push", () => {
+    const { ports, driver } = scriptPorts(createBasePorts(), {
+      jarvisAvailabilityPending: true,
+    });
+    const seen: boolean[] = [];
+    ports.jarvis.availability$?.().subscribe((value) => {
+      seen.push(value.available);
+    });
+
+    expect(seen).toEqual([]);
+
+    driver.pushJarvisAvailability(createAvailability(false));
+
+    expect(seen).toEqual([false]);
+  });
+
+  it("jarvisHistory is null until a source is set, then reads that source LIVE", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+
+    expect(driver.jarvisHistory()).toBe(null);
+
+    let text = "first";
+    ports.jarvis.setHistorySource?.(() => {
+      return [{ role: "user", text }];
+    });
+    text = "second";
+
+    expect(driver.jarvisHistory()).toEqual([{ role: "user", text: "second" }]);
+    expect(driver.portCalls("jarvis.setHistorySource")).toBe(1);
+  });
+
+  it("jarvisUsage.usage$ follows pushJarvisUsage, counted", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const seen: unknown[] = [];
+    ports.jarvisUsage.usage$().subscribe((payload) => {
+      seen.push(payload);
+    });
+    const payload = createUsagePayload();
+    driver.pushJarvisUsage(payload);
+
+    expect(seen).toEqual([payload]);
+    expect(driver.portCalls("jarvisUsage.usage$")).toBe(1);
+  });
+
+  it("counts SUBSCRIPTIONS to availability$ and usage$, not just calls: one call subscribed twice counts two", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    const availability$ = ports.jarvis.availability$?.();
+    const usage$ = ports.jarvisUsage.usage$();
+
+    availability$?.subscribe().unsubscribe();
+    availability$?.subscribe().unsubscribe();
+    usage$.subscribe().unsubscribe();
+
+    expect(driver.portCalls("jarvis.availability$")).toBe(1);
+    expect(driver.jarvisAvailabilitySubscriptions()).toBe(2);
+    expect(driver.jarvisUsageSubscriptions()).toBe(1);
+  });
+
+  it("the narratorConfig seed reaches ports.narratorConfig", () => {
+    const { ports } = scriptPorts(createBasePorts(), {
+      narratorConfig: { windowSize: 8 },
+    });
+
+    expect(ports.narratorConfig).toEqual({ windowSize: 8 });
+  });
+});
+
+describe("scriptPorts — connectionIntents", () => {
+  it("delivers one reconnect event per reconnect() on the merged stream", () => {
+    const { ports, driver, teardown } = scriptPorts(
+      createBasePortsWithLiveConnection(),
+    );
+    const seen: ConnectionEvent[] = [];
+    const sub = driver.connectionEvents$().subscribe((e) => {
+      seen.push(e);
+    });
+    ports.connectionIntents.reconnect();
+    expect(seen).toEqual([{ type: "reconnect" }]);
+    expect(driver.connectionIntentCalls()).toEqual({
+      reconnect: 1,
+      injectIncident: 0,
+    });
+    sub.unsubscribe();
+    teardown();
+  });
+
+  it("delivers an injected incident event verbatim, once", () => {
+    const { ports, driver, teardown } = scriptPorts(
+      createBasePortsWithLiveConnection(),
+    );
+    const seen: ConnectionEvent[] = [];
+    const sub = driver.connectionEvents$().subscribe((e) => {
+      seen.push(e);
+    });
+    const event: ConnectionEvent = { type: "gatewayDisconnected" };
+    ports.connectionIntents.injectIncident(event);
+    expect(seen).toEqual([event]);
+    expect(driver.connectionIntentCalls()).toEqual({
+      reconnect: 0,
+      injectIncident: 1,
+    });
+    sub.unsubscribe();
+    teardown();
+  });
+});
+
+function createAvailability(available: boolean): JarvisAvailability {
+  return {
+    available,
+    brains: ["scripted"],
+    defaultBrain: "scripted",
+    gate: null,
+  };
+}
+
+function createUsagePayload(): JarvisUsagePayload {
+  return { windowStartMs: 1, windowEndMs: 2, currentWindow: [], sinceBoot: [] };
+}
+
 function createBasePorts(): AppPorts {
   return {
     preferences: new PreferencesSimulator(),
@@ -829,6 +1009,19 @@ function createBasePorts(): AppPorts {
       },
     },
   } as unknown as AppPorts;
+}
+
+/** `createBasePorts` with a real (silent) connection-event source, for the
+ * cases that subscribe to the merged stream. */
+function createBasePortsWithLiveConnection(): AppPorts {
+  return {
+    ...createBasePorts(),
+    connectionEvents: {
+      events: () => {
+        return NEVER;
+      },
+    },
+  };
 }
 
 interface Unsubscribable {

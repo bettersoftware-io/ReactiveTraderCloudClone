@@ -1,6 +1,7 @@
 import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
+import { vi } from "vitest";
 
 import type { CreateRfqInput, Direction } from "@rtc/domain";
 
@@ -9,7 +10,17 @@ export interface NewRfqPanelProps {
 }
 
 export class NewRfqPanelPage extends MountedComponent<NewRfqPanelProps> {
-  private readonly user: UserEvent = userEvent.setup();
+  // user-event waits on its own timers between keystrokes; `advanceTimers`
+  // moves the fake clock for those waits when a spec has installed fake
+  // timers (the redirect spec does), and is a no-op on real ones — without
+  // it the two deadlock.
+  private readonly user: UserEvent = userEvent.setup({
+    advanceTimers: (ms: number): void => {
+      if (vi.isFakeTimers()) {
+        vi.advanceTimersByTime(ms);
+      }
+    },
+  });
 
   /** Click the "You Buy"/"You Sell" segmented direction button. */
   async chooseDirection(dir: Direction): Promise<void> {

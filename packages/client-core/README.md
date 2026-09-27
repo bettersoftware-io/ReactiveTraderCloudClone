@@ -55,13 +55,17 @@ import {
   buildWsUrl,
   createSimulatorPorts,
   createWsRealPorts,
-  incident$,
-  reconnect$,
+  pairConnectionPorts,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
 } from "@rtc/client-core";
 ```
+
+`pairConnectionPorts(events$)` builds the `connectionEvents`/`connectionIntents`
+pair together — `@rtc/core-api`'s `TransportPorts` omits both, so
+`createSimulatorPorts`/`createWsRealPorts` supply neither, and a builder gets
+them both from one call (`src/adapters/connectionIntents.ts`).
 
 ## See also
 

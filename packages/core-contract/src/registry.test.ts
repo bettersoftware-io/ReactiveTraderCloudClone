@@ -94,6 +94,22 @@ describe("core-contract registry", () => {
     }
   });
 
+  it("slice 7 members have suites, and none is pending", () => {
+    for (const member of [
+      "presenters.jarvis",
+      "presenters.jarvisUsage",
+      "presenters.jarvisDriver",
+      "presenters.jarvisDemo",
+      "presenters.jarvisPanels",
+      "presenters.layoutPresets",
+      "machines.layout",
+    ] as const) {
+      expect(CONTRACT_SUITES[member]).not.toBeNull();
+    }
+
+    expect(PENDING_SUITES).toEqual([]);
+  });
+
   it("slice 5 members have suites", () => {
     for (const member of [
       "presenters.throughput",

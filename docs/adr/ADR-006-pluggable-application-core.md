@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted 2026-09-12; slice 0 shipped in this PR.
+Accepted 2026-09-12; slice 0 shipped in this PR. Implemented in full
+2026-09-26: slice 8 closed the workstream (see "Decided in slice 8 —
+closing" below).
 
 ## Context
 
@@ -76,6 +78,10 @@ to the core's own paradigm (a `Store`/`Topic` pair for async-await,
 `Stream`/`SubscriptionRef` for Effect).
 
 ## Decision 4 — strangler with a parity manifest
+
+> **Superseded in slice 8** (2026-09-26): with every member native in both
+> alternative cores, the delegation, the manifests and their drift tests
+> were deleted. See "Decided in slice 8 — closing".
 
 Both alternative cores ship at slice 0 with **every** member delegating to
 the RxJS `App` (`{ ...createRxjsApp(ports), ...nativePresenters() }`, the
@@ -257,9 +263,10 @@ predictable from the design alone):
   A rule for all three cores, contracted by `portDiscipline`. Witnessed as
   CONSTANCY, not an absolute count: a strangler core's `composeWithBase`
   constructs the RxJS base app's presenter (one port call) and then the
-  native overlay (one more), so an absolute "once" holds only for the RxJS
-  core until slice 8 removes delegation; the suite asserts the count after
+  native overlay (one more), so an absolute "once" held only for the RxJS
+  core until slice 8 removed delegation; the suite asserted the count after
   construction never changes across warm periods or synchronous reads.
+  *(Superseded in slice 8: `portDiscipline` now pins the absolute count.)*
 - **`peek` throws.** A port that errors on subscribe fails the read at its
   site.
 - **`client-core` class docs carry implementation notes only**; the
@@ -911,13 +918,139 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   `shareReplay(1)`, which every core reproduces and a user sees as a tile
   replaying a flash it mounted after.
 
+**Decided in slice 7 — wave 1, the workspace** (2026-09-24):
+
+- **Two waves, no "7a/7b".** Wave 1 = the eleven layout/dock members plus
+  `jarvisPanels` (70/74 native in both cores); wave 2 = `jarvis`,
+  `jarvisUsage`, `jarvisDriver`, `jarvisDemo` and the internal narrator.
+- **The workspace's synchronous rules are SHARED, not ported.** The dock /
+  undock / dismiss / reset bridges and their tab attribution
+  (`createWorkspaceDock`), the layout reducer, the panels folds, the
+  desk-panel frame steps, the workspace-layout write and the saved-layouts
+  controller left `createApp`'s closure for rxjs-free modules in
+  `@rtc/client-core` that every core imports; each core ports only the
+  streams around them (the docked membership, the reset counter, the persist
+  debounce, the panel data). Slice 8 moves them to `@rtc/core-logic` with
+  the other pure pieces.
+- **`CoreSeams.workspace` is a FACTORY.** The native workspace needs the
+  base's (still delegated) Jarvis events; the base's Jarvis driver needs the
+  native workspace. `createApp` calls the factory right after building
+  `jarvis`, drives the workspace it returns, and keeps its own idle: its
+  panels fold nothing (no port held twice), no docked panel is restored into
+  it, and it never creates the persistence writer — the `workspaceLayout`
+  preference has ONE writer. Wave 2 deletes the factory.
+- **Contract point: workspace STATE is a synchronous fold** — an intent has
+  committed by the time it returns; only delivery to a subscriber may be
+  scheduled. The shared dock reads the roster and the recorded layout
+  states right after calling into them, and `layoutStateNow` throws on a core
+  whose `layoutFor` records late. The Effect core commits through
+  `SubscriptionRef`s with `runSync` and feeds both its in-core mirrors and
+  its subscribers from that synchronous commit (`SyncRef`), never from
+  `ref.changes`. The contract adds the one delivery rule this makes
+  necessary: RESTORED state is readable at composition, before any pause —
+  a UI's first render must list a restored docked panel, or the Dockview
+  bridge scrubs its position (caught by CI's Solid + Effect e2e).
+- **The Effect workspace lives outside the Layer graph** (on a child of the
+  app host), because its input only exists inside the base's `createApp`.
+  The Layer count is unchanged.
+- **Contract cases a port found:** a turn of non-panel events spawns
+  nothing (an async mutant survived without it); a turn answered in the same
+  tick it was sent still spawns (the Effect relay subscribed lazily and lost
+  it — the base's `jarvis.events$` is hot).
+- **Recorded, uncontracted:** the unsupported-sentinel panel path (the
+  sentinel is minted by the adapters); a sibling's persist writer stops at
+  `app.dispose()` — a pending write is dropped and no later change writes —
+  where the RxJS writer never unsubscribes. (A panel whose data port FAILED
+  used to stay attached in the async core; after the wave both siblings
+  propagate the error to `panelData$` subscribers, as RxJS does.)
+
+**Decided in slice 7 — wave 2, Jarvis** (2026-09-25):
+
+- **All 74 members are native in both alternative cores.** Wave 2 added
+  `jarvis`, `jarvisUsage`, `jarvisDriver`, `jarvisDemo` and the internal
+  narrator; `PENDING_SUITES` is empty. Slice 8 deletes the delegation.
+- **Jarvis's rules are SHARED, like the workspace's.** The transcript
+  patches and session scalars (`createJarvisController`: entry ids, the
+  in-flight turn, availability, brain, effort, the confirmation ticks), the
+  drive-command interpreter (`applyDriveCommand`, `driveStaggerMs`), the
+  demo's script and per-step settle watcher (`createDemoStepWatch`) and the
+  narrator's cooldown/cap gate live in rxjs-free `@rtc/client-core`
+  modules; `@rtc/domain` gained the pure anomaly step
+  (`createAnomalyDetector`) and the Jarvis constants the suites assert.
+  Each core ports only the timing: the turn queue, the countdown, the
+  stagger, the beats and the step timeout.
+- **A patch is applied exactly once.** Several have effects at apply time
+  (the port's `confirm`, an entry id); the countdown's expiry declines only
+  while its own card is still pending, so a core that cancels its timer
+  asynchronously can never decline a trade just approved.
+- **The WS-only extras are optional `JarvisPort` members** (`availability$`,
+  `setHistorySource`), replacing `instanceof WsJarvisAdapter`, so every
+  core — and the contract harness — reaches them the same way.
+- **`CoreSeams.nativeJarvis` replaces the `workspace` factory.** Each sibling
+  builds its whole Jarvis family and a workspace over its OWN
+  `jarvis.events$`; the base app still builds every member (the parity
+  drift test needs them) but stands down: no availability request, no
+  history source, no narrator, folds that read nothing, a workspace that
+  restores and writes nothing. The factory and `WorkspaceSeam` are deleted.
+- **A hot event stream is delivered synchronously.** The Effect core's
+  `events$`/`outcomes$` are a bridge `createHotStream`, and an idle `send`
+  subscribes its `ask` in the same tick: a reader attached on a fiber — or a
+  turn queue drained by one — loses a same-tick reply (a contract case
+  caught the second in the Effect port).
+- **Port discipline counts subscriptions, not just calls:** on the real WS
+  adapter each `availability$` or `usage$` subscription is a server request.
+- **Recorded divergences, kinder than RxJS and uncontracted:** a failed
+  `port.ask` closes its turn as an error (RxJS would kill the machine); a
+  failing price feed silences only its own pair until the next roster (RxJS
+  stops all narration).
+- **Fixed on the way:** a driven dock the workspace refuses (an id colliding
+  with a workspace panel) is reported `refused`, not `applied`.
+
+**Decided in slice 8 — closing** (2026-09-26; PRs #829, #832 and PR C):
+
+- **`@rtc/core-logic` holds the shared rxjs-free rules** (PR A, #829): the
+  pure folds, view derivations, the workspace and Jarvis controllers and
+  `createAuthDeps` moved out of `client-core` (which re-exports them
+  whole). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
+  and `core-logic-stays-inner` pin it. `createAuthDeps` takes its two
+  rxjs-bound primitives (`readNow`, `delayAuth`) as an argument, so each
+  core supplies its own.
+- **`AppPorts.connectionIntents`** (PR B, #832) replaces the alternative
+  cores' imports of `client-core`'s module-level `reconnect$`/`incident$`:
+  a core pushes the Reconnect button's intent and the incident machine's
+  events through its ports; the client merges them. Typecheck proves the
+  port is present, not that a builder merges it — the structural pairing is
+  a follow-up.
+- **The transport is gated on each core's own `auth`** (PR B). The new
+  `transportGate` contract suite measured the bug the strangler hid: both
+  alternative cores never opened the socket on a native sign-in, because the
+  only gate watched the stood-down base's `auth`. The contract pins the
+  RxJS reference exactly, including its one `disconnect()` on a signed-out
+  start.
+- **Delegation is gone** (PR C): `composeWithBase`, `CoreSeams`, both
+  `parity.json` manifests and drift tests, `pnpm core:parity`. Each
+  alternative core's native presenter map is typed exact
+  (`Omit<Presenters, family keys>`), so the typecheck is the completeness
+  witness, and `@rtc/client-core` is a devDependency there
+  (`alt-cores-no-client-core-at-runtime`). A new dispose case per core
+  proves `dispose()` releases every port subscription — it was RED with the
+  base behind it (three held).
+- **`portDiscipline` is absolute:** one construction-time call per reading
+  member. It caught the RxJS `RfqsPresenter` calling `workflow.events()`
+  twice; it now calls once and subscribes twice (identical wire traffic).
+- **Bundle isolation in every direction:** `RXJS_CORE_BRAND`, stamped by
+  the RxJS `createApp` on every `App`, joins the markers, so an async or
+  Effect build must not carry the RxJS composition root (the port factories
+  and adapters still ship from `client-core` in every build).
+- **A gap the strangler hid closed on its own:** the auth suite's
+  expired-session store-clear could not fail against a sibling while the base
+  resumed from the same store; with the base gone it kills that mutant in
+  both cores.
+
 ## Follow-ups
 
-1. Slices 1a through 8 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)):
-   1a connection + theme, 1b remaining preferences, 2 FX pricing + blotter, 3
-   credit, 4 equities, 5 admin, 6 shell, 7 jarvis, 8 closing (delegation
-   removed, `client-core` runtime dependency dropped from both alternative
-   cores, shared pure reducers relocated to `@rtc/core-logic`).
+1. ~~Slices 1a through 8~~ — all shipped; slice 8 closed the workstream
+   2026-09-26 (see the [design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md#delivery)).
 2. The web-standard `Observable` envelope (Decision 2): alias flip, bridge
    edits, a polyfill until Firefox/Safari ship it; the bindings would need to
    own an `AbortController` per subscription since `subscribe()` no longer
@@ -925,6 +1058,21 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 3. `effect` 4.0 once it leaves release-candidate status.
 4. React Native on the alternative cores (`EXPO_PUBLIC_CORE_IMPL`, plus a
    Hermes bundle-size check for the Effect core — RN stays RxJS-only for now).
+5. ~~Pair `connectionEvents` with `connectionIntents` structurally~~ — done:
+   `@rtc/core-api`'s `TransportPorts` now omits both members together, so a
+   port factory can no longer typecheck while supplying one without the
+   other. `@rtc/client-core`'s `pairConnectionPorts(events$)` is the only
+   producer of the pair in that package — instance-scoped per call, returned
+   as the matching `{ connectionEvents, connectionIntents }` fragment
+   (`packages/client-core/src/adapters/connectionIntents.ts`).
+6. ~~The RxJS core's `dispose()` is still a knowing no-op~~ — done
+   2026-09-26: a `held` subscription bag, owned-machine disposal (Jarvis's
+   cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`
+   singleton ends on. The contract, witnessed for all three cores by the
+   `@rtc/core-contract` `dispose` suite, is that the app holds no port
+   subscription once its consumers have let go; what a still-attached
+   subscriber hears — including a refcounted stream still delivering — stays
+   uncontracted (§22's envelope rule 3).
 
 ## See also
 

@@ -1,24 +1,22 @@
+import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
   createSimulatorPorts,
   InMemorySessionStore,
-  reconnect$,
 } from "@rtc/client-core";
+import type { App } from "@rtc/core-api";
 import { scriptPorts } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { composeWithBase } from "#/composition";
+import { createApp } from "#/composition";
 
-describe("composeWithBase — app lifetime", () => {
-  // `currencyPairs` and `analytics` are deliberately NOT asserted here: the
-  // RxJS BASE app this core still composes over subscribes both eagerly at
-  // construction (the narrator machine and the AnimationDirector read
-  // `pairs$` and `position$`), so the scripted port stays observed after
-  // `app.dispose()` for a reason that has nothing to do with this core. The
-  // release of those two is witnessed directly, without the base in the
-  // way, in `src/presenters/warmSingletons.test.ts`.
+// What every core promises of `dispose()` — no port stream stays subscribed,
+// the transport gate is released, a second call resolves — is the
+// `@rtc/core-contract` `dispose` suite, run by `coreContract.test.ts`. This
+// file keeps what only this core's mechanism can show.
+describe("createApp — app lifetime", () => {
   it("blotter.trades$ holds its port subscription across zero subscribers and is released by dispose()", async () => {
     const { app, driver, teardown } = createComposed();
 
@@ -34,37 +32,36 @@ describe("composeWithBase — app lifetime", () => {
     }
   });
 
-  it("dispose() twice is safe", async () => {
-    const { app, teardown } = createComposed();
-
-    try {
-      await app.dispose();
-      await app.dispose();
-    } finally {
-      teardown();
-    }
-  });
-
   function createComposed(): Composed {
-    const base: AppPorts = {
-      ...createSimulatorPorts({
-        preferences: new PreferencesSimulator({}),
-        auth: new AuthSimulator({ demo: "pw" }),
-        sessionStore: new InMemorySessionStore(),
-      }),
-      connectionEvents: {
-        events: () => {
-          return reconnect$;
-        },
-      },
-    };
-    const { ports, driver, teardown } = scriptPorts(base);
-    return { app: composeWithBase(ports).app, driver, teardown };
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    return { app: createApp(ports), driver, teardown };
   }
 });
 
+function createBasePorts(): AppPorts {
+  return {
+    ...createSimulatorPorts({
+      preferences: new PreferencesSimulator({}),
+      auth: new AuthSimulator({ demo: "pw" }),
+      sessionStore: new InMemorySessionStore(),
+    }),
+    connectionEvents: {
+      events: () => {
+        return NEVER;
+      },
+    },
+    // This suite never exercises reconnect/incident — inert is enough to
+    // satisfy AppPorts now that TransportPorts omits both connectionEvents
+    // and connectionIntents together (ADR-006 Follow-up 5).
+    connectionIntents: {
+      reconnect: () => {},
+      injectIncident: () => {},
+    },
+  };
+}
+
 type Composed = {
-  app: ReturnType<typeof composeWithBase>["app"];
+  app: App;
   driver: ReturnType<typeof scriptPorts>["driver"];
   teardown: () => void;
 };

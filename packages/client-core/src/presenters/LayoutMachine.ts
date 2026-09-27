@@ -3,15 +3,17 @@ import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
 import type { LayoutIntents, LayoutMachineOptions } from "@rtc/core-api";
-
-import type { LayoutPort, LayoutState, PanelId } from "#/layout/layoutPort";
+import type {
+  LayoutPort,
+  LayoutState,
+  Machine,
+  PanelId,
+} from "@rtc/core-logic";
 import {
   createLayoutReducer,
   type LayoutEvent,
   layoutStaticIds,
-} from "#/layout/layoutReducer";
-
-import type { Machine } from "./machine";
+} from "@rtc/core-logic";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
  * here so every existing `import … from "@rtc/client-core"` keeps working

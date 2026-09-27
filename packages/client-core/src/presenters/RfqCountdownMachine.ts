@@ -3,9 +3,8 @@ import { timer } from "rxjs";
 import { map, takeWhile } from "rxjs/operators";
 
 import type { RfqCountdownSeed } from "@rtc/core-api";
+import type { ReadOnlyMachine } from "@rtc/core-logic";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
-
-import type { ReadOnlyMachine } from "./machine";
 
 /** Re-exported from `@rtc/core-api` (same convention as `RfqTileMachine`'s
  * `RfqState`) so the bindings keep importing every machine type from

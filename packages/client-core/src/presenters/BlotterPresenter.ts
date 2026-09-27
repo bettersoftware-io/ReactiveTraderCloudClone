@@ -5,19 +5,19 @@ import type {
   BlotterPresenter as BlotterPresenterApi,
 } from "@rtc/core-api";
 import {
+  type ActivityScan,
+  createActivityScan,
+  createNewTradeScan,
+  reduceActivity,
+  reduceNewTrades,
+} from "@rtc/core-logic";
+import {
   ACTIVITY_FEED_CAP,
   type BlotterPort,
   type Trade,
   TradeBlotterUseCase,
 } from "@rtc/domain";
 
-import {
-  type ActivityScan,
-  createActivityScan,
-  createNewTradeScan,
-  reduceActivity,
-  reduceNewTrades,
-} from "./blotterFolds.js";
 import { warmReplay } from "./warmReplay.js";
 
 /** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
@@ -76,13 +76,16 @@ export class BlotterPresenter implements BlotterPresenterApi {
    * intentional, bounded, singleton-scoped cost, not an unbounded leak. */
   readonly activity$: Observable<readonly ActivityEntry[]>;
 
-  constructor(blotter: BlotterPort) {
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases the blotter port — `activity$` and `newTradeIds$`
+   * derive from `trades$`, so they complete with it — see `warmReplay`. */
+  constructor(blotter: BlotterPort, disposed$: Observable<unknown>) {
     // Singleton (one blotter per connection) → warm across tab remounts, so
     // the blotter table keeps its rows and doesn't re-subscribe. activity$
     // below already relies on trades$ staying alive (see its comment).
     this.trades$ = new TradeBlotterUseCase(blotter)
       .execute()
-      .pipe(warmReplay());
+      .pipe(warmReplay(disposed$));
 
     this.newTradeIds$ = this.trades$.pipe(
       scan(reduceNewTrades, createNewTradeScan()),

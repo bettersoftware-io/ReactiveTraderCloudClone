@@ -19,10 +19,10 @@
 //   [
 //     {
 //       "name": "window truncation keeps the NEWEST samples",
-//       "file": "packages/client-core/src/presenters/adminFolds.ts",
+//       "file": "packages/core-logic/src/presenters/adminFolds.ts",
 //       "find": ".slice(-METRIC_WINDOW)",
 //       "replace": ".slice(0, METRIC_WINDOW)",
-//       "test": "pnpm --filter @rtc/client-core test adminFolds"
+//       "test": "pnpm --filter @rtc/core-logic test adminFolds"
 //     }
 //   ]
 //

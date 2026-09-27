@@ -1,4 +1,4 @@
-import { firstValueFrom, of } from "rxjs";
+import { firstValueFrom, NEVER, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { AnalyticsPort, PositionUpdates } from "@rtc/domain";
@@ -13,7 +13,7 @@ describe("AnalyticsPresenter", () => {
         return of(updates);
       },
     };
-    const presenter = new AnalyticsPresenter(port);
+    const presenter = new AnalyticsPresenter(port, NEVER);
     expect(await firstValueFrom(presenter.position$)).toBe(updates);
   });
 });

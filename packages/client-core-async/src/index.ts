@@ -2,7 +2,6 @@ export { iterate, once, peek, relay, topicFromObservable } from "#/bridge/in";
 export {
   portCallToStream,
   promiseToStream,
-  pushReconnectIntent,
   storeToStateStream,
   storeToWarmStateStream,
   topicToStream,
@@ -13,8 +12,6 @@ export { createCommands } from "#/commands";
 export {
   ASYNC_CORE_BRAND,
   asyncCore,
-  composeMachinesWithBase,
-  composeWithBase,
   createApp,
   createMachineFactories,
 } from "#/composition";

@@ -1,11 +1,11 @@
 import { Effect, ManagedRuntime } from "effect";
+import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
   createSimulatorPorts,
   InMemorySessionStore,
-  reconnect$,
 } from "@rtc/client-core";
 import {
   AuthSimulator,
@@ -143,8 +143,17 @@ function createPorts(preferences: PreferencesPort): AppPorts {
     }),
     connectionEvents: {
       events: () => {
-        return reconnect$;
+        // Any Observable<ConnectionEvent> will do — this suite never emits
+        // one, only asserts the build's shape/counting.
+        return NEVER;
       },
+    },
+    // Same reasoning as connectionEvents above — inert is enough to satisfy
+    // AppPorts now that TransportPorts omits both members together
+    // (ADR-006 Follow-up 5).
+    connectionIntents: {
+      reconnect: () => {},
+      injectIncident: () => {},
     },
   };
 }

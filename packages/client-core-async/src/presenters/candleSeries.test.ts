@@ -286,7 +286,7 @@ const STEP_MS = 100;
 const BASE_T0: Candle = createCandle(T0);
 const BASE_T0_PLUS_STEP: Candle = createCandle(T0 + STEP_MS);
 // Strictly before BASE_T0 — the contiguity guard `stitchCandles` applies
-// (`packages/client-core/src/presenters/candleStitch.ts`) keeps it.
+// (`packages/core-logic/src/presenters/candleStitch.ts`) keeps it.
 const STALE_CANDLE: Candle = createCandle(T0 - STEP_MS);
 // A FULL page (length === CANDLE_HISTORY_PAGE), all strictly before
 // BASE_T0, oldest first — long enough that `page.length < CANDLE_HISTORY_PAGE`

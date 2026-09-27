@@ -673,13 +673,17 @@ const GATES: Gate[] = [
     // detection misses a mixed import. A brace import without `type` is what a
     // value import looks like under `verbatimModuleSyntax`; the runner uses
     // `grep -rE`, which has no lookahead, so the pattern matches that form
-    // directly. Both alternative cores are listed; grep errors (status 2) on a
-    // missing directory, so every path here must name a package that exists.
-    name: "43. Alternative cores import rxjs/@rx-state as types only outside bridge/ (bridge-owns-rxjs)",
+    // directly. Both alternative cores are listed, and `@rtc/core-logic` — the
+    // shared rules all three cores compose over, which has no `bridge/` and so
+    // no exemption (dependency-cruiser `core-logic-stays-pure`); grep errors
+    // (status 2) on a missing directory, so every path here must name a
+    // package that exists.
+    name: "43. Alternative cores (outside bridge/) and @rtc/core-logic import rxjs/@rx-state as types only (bridge-owns-rxjs, core-logic-stays-pure)",
     pattern: '^import \\{[^}]*\\} from "(rxjs|rxjs/operators|@rx-state/core)"',
     paths: [
       "../packages/client-core-async/src/",
       "../packages/client-core-effect/src/",
+      "../packages/core-logic/src/",
     ],
     excludes: ["/bridge/", ".test."],
   },

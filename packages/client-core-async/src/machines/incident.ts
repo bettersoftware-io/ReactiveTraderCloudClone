@@ -1,14 +1,14 @@
-import {
-  type IncidentEvent,
-  incidentConnectionEvent,
-  reduceIncident,
-} from "@rtc/client-core";
 import type {
   IncidentIntents,
   IncidentKind,
   IncidentState,
   Machine,
 } from "@rtc/core-api";
+import {
+  type IncidentEvent,
+  incidentConnectionEvent,
+  reduceIncident,
+} from "@rtc/core-logic";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
 import { storeToWarmStateStream } from "#/bridge/out";
@@ -17,8 +17,8 @@ import { createStore } from "#/kernel/store";
 export interface IncidentDeps {
   /** The perturbable simulators' controls, in `metricControls` order. */
   readonly controls: readonly MetricControl[];
-  /** Where an intent's connection event goes (the composition wires the
-   * RxJS core's `incident$` seam through `pushIncidentEvent`). */
+  /** Where an intent's connection event goes (the composition wires
+   * `ports.connectionIntents.injectIncident`). */
   readonly pushConnectionEvent: (event: ConnectionEvent) => void;
 }
 

@@ -1,6 +1,5 @@
 import { Context, Effect, Layer } from "effect";
 
-import { createAuthDeps, firstWatchlistSymbol } from "@rtc/client-core";
 import type {
   AmbientStylePresenter,
   AnalyticsPresenter,
@@ -56,9 +55,11 @@ import type {
   WorkspaceNavIntents,
   WorkspaceNavState,
 } from "@rtc/core-api";
-import type { CurrencyPair } from "@rtc/domain";
+import { createAuthDeps, firstWatchlistSymbol } from "@rtc/core-logic";
+import type { ConnectionEvent, CurrencyPair } from "@rtc/domain";
 
-import { type EffectHost, pushIncidentEvent } from "#/bridge/out";
+import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
+import type { EffectHost } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
@@ -483,8 +484,8 @@ const PositionsLive = presenterLayer(PositionsTag, (host, ports) => {
 
 // Slice 5: the admin nine. The metric windows, eventLog and sessionsKpi are
 // retained folds, topology and sessions retained mirrors; incident is an
-// app-lifetime singleton whose connection events reach the RxJS core's
-// `incident$` seam.
+// app-lifetime singleton whose connection events go out through
+// `ports.connectionIntents.injectIncident`.
 const ThroughputLive = presenterLayer(ThroughputTag, (host, ports) => {
   return createThroughputPresenter(host, ports.admin);
 });
@@ -526,7 +527,9 @@ const SessionsKpiLive = presenterLayer(SessionsKpiTag, (host, ports) => {
 const IncidentLive = presenterLayer(IncidentTag, (host, ports) => {
   return createIncidentMachine(host, {
     controls: ports.metricControls,
-    pushConnectionEvent: pushIncidentEvent,
+    pushConnectionEvent: (event: ConnectionEvent): void => {
+      ports.connectionIntents.injectIncident(event);
+    },
   });
 });
 
@@ -542,7 +545,7 @@ const BootGateLive = presenterLayer(BootGateTag, (host, ports) => {
 });
 
 const AuthLive = presenterLayer(AuthTag, (host, ports) => {
-  return createAuthPresenter(host, createAuthDeps(ports));
+  return createAuthPresenter(host, createAuthDeps(ports, authDepsPrimitives));
 });
 
 // The one native machine that needs nothing but the host — `ports` is
@@ -633,7 +636,7 @@ const AnimationDirectorLive: Layer.Layer<
 
 /** What the app layer hands out: every native presenter, plus the two
  * services they were built from. The base is `provideMerge`d rather than
- * `provide`d because `composeWithBase` needs `HostTag` out of the same
+ * `provide`d because `composeApp` needs `HostTag` out of the same
  * build — the host scope is what `app.dispose()` closes, and a `provide`
  * would satisfy the presenters' requirement while hiding the very service
  * the teardown owns. */
@@ -718,26 +721,29 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
   );
 }
 
-/** The native overlay's type: `Partial<Presenters>`, except for the
- * members whose streams `composeWithBase` must hand the RxJS base as
- * `CoreSeams` — those are typed present, so a seam needs no non-null
- * assertion. */
-export type NativePresenters = Partial<Presenters> &
-  Pick<
-    Presenters,
-    | "connection"
-    | "currencyPairs"
-    | "eqWorkspace"
-    | "execution"
-    | "ordersBlotter"
-    | "priceStream"
-    | "rfqs"
-    | "watchlist"
-    | "workspaceNav"
-  >;
+/** What the Layer graph resolves: every member but the ones the Jarvis
+ * family and its workspace supply (`createJarvisFamily`). Exact, not
+ * `Partial`, so the typecheck proves the two halves cover `Presenters`. */
+export type NativePresenters = Omit<
+  Presenters,
+  | "dismissPanel"
+  | "dockedPanelIdsFor"
+  | "dockLayoutStore"
+  | "dockPanel"
+  | "jarvis"
+  | "jarvisDemo"
+  | "jarvisDriver"
+  | "jarvisPanels"
+  | "jarvisUsage"
+  | "layoutFor"
+  | "layoutPresets"
+  | "resetWorkspaceLayout"
+  | "undockPanel"
+  | "workspaceLayoutResets$"
+>;
 
-/** Resolve every tag into the `Presenters` overlay — the ONE `runSync`
- * `composeWithBase` makes. */
+/** Resolve every tag into the native presenters — the ONE `runSync`
+ * `composeApp` makes. */
 export const nativePresentersEffect: Effect.Effect<
   NativePresenters,
   never,
