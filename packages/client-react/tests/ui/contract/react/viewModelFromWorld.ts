@@ -1843,5 +1843,10 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    // Stub for Task 2 (bindings expose useCoreSelection()) — no World source
+    // backs it yet; Task 5 replaces this with a real world-driven selection.
+    useCoreSelection: () => {
+      return null;
+    },
   };
 }

@@ -224,10 +224,12 @@ const LIVE_SOURCE_PATTERN =
  * (also `InertSlice`, same reason), then `useLayoutPresets` and
  * `useRegisterLayoutSnapshot` (→ 76) for the saved-layouts controller's
  * per-tab View menu LAYOUTS section (Phase 6b Task 6 — also `InertSlice`, RN
- * has no saved layouts either). The compiler found every one of
+ * has no saved layouts either), then `useCoreSelection` (→ 77) for the
+ * runtime application-core switch (also `InertSlice` — RN has no core-switch
+ * UI). The compiler found every one of
  * these on the next catch-up merge, because `buildFakeViewModel` is typed
  * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
  * the one member without a `use` prefix, which a hand-written census had
  * missed while reporting a confident 67 of 67.
  */
-const VIEW_MODEL_MEMBER_COUNT = 76;
+const VIEW_MODEL_MEMBER_COUNT = 77;

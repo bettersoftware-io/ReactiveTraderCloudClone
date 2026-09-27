@@ -778,6 +778,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         stopDemo: noop,
       };
     },
+    // Core-switch UI has no visual scenario yet — static screenshots never
+    // read this, so null (no host-supplied selection) is correct. Not
+    // Accessor-wrapped like the streams above: the real hook returns a
+    // plain constant (see `ViewModel.useCoreSelection`'s own doc).
+    useCoreSelection: () => {
+      return null;
+    },
   };
 }
 

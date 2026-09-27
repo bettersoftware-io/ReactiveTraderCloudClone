@@ -697,6 +697,11 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
       return { state, startDemo: noop, stopDemo: noop };
     },
+    // Core-switch UI has no visual scenario yet — static screenshots never
+    // read this, so null (no host-supplied selection) is correct.
+    useCoreSelection: () => {
+      return null;
+    },
   };
 }
 

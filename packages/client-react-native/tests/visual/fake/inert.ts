@@ -56,7 +56,7 @@ type WorkspaceNavResult = { state: WorkspaceNavState } & WorkspaceNavIntents;
 type ThroughputResult = ThroughputView & { setValue: (value: number) => void };
 
 /**
- * The 18 `ViewModel` hooks no React Native surface reads today (see
+ * The 19 `ViewModel` hooks no React Native surface reads today (see
  * `sliceTypes.ts`'s `InertSlice` doc). Every value below is the emptiest
  * thing its own type admits — no fixtures, no fabricated data — because the
  * only job this slice does is let `buildFakeViewModel` (the composed
@@ -70,6 +70,12 @@ type ThroughputResult = ThroughputView & { setValue: (value: number) => void };
  */
 export const inertSlice: InertSlice = {
   useAnimationIntents: (_target: string) => {
+    return null;
+  },
+  // Runtime core switch (web-only shell feature): RN has no core-switch UI,
+  // so this always reports "no selection offered" — mirrors the real
+  // createViewModel's own default when its host supplies no shell.
+  useCoreSelection: () => {
     return null;
   },
   useEventLog: () => {
