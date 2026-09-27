@@ -27,11 +27,13 @@
 //   (software-mansion/react-native-reanimated#10377, merged 2026-09-08): for
 //   a fixed list of native-module-dependent files, resolve the web variant.
 //   That resolver is not in any published 4.6.x, so its list is replicated
-//   here verbatim. DROP CONDITION: once the installed reanimated ships
-//   `jest/resolver.js`, delete `REANIMATED_WEB_ONLY_IN_JEST` and chain
-//   `require("react-native-reanimated/jest/resolver")` in its place (it
-//   chains the worklets resolver itself, so the worklets branch below goes
-//   too).
+//   here verbatim. reanimated 4.7.0 now publishes `jest/resolver.js`, but
+//   it is NOT a drop-in under pnpm (measured 2026-09-27: 61/116 suites
+//   fail): it and worklets' resolver match `basedir.includes("react-native-
+//   worklets")`, which fires on reanimated's own `.pnpm` folder name (it
+//   encodes the worklets peer) — the substring trap described below. DROP
+//   CONDITION: both upstream resolvers match a path segment, as ours do.
+//   See docs/STATUS.md "Drop the replicated reanimated jest resolver".
 //
 // Chain the extension filtering of both into the options the RN preset
 // resolver receives, so all three behaviors apply.
