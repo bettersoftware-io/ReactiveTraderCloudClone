@@ -10,7 +10,7 @@ implementations** (RxJS, async/await, Effect-TS), all held to the same
 behavioural contract. Inspired by
 [Adaptive's ReactiveTraderCloud](https://github.com/AdaptiveConsulting/ReactiveTraderCloud).
 
-![Reactive Trader web client — FX workspace on the Holo HUD 3D skin](docs/readme/web-fx.jpg)
+![Reactive Trader web client — the FX workspace streaming live prices on the Holo HUD 3D skin, with a just-executed trade confirmation](docs/readme/web-fx.jpg)
 
 ## Live demo
 
@@ -25,10 +25,10 @@ sharing one application core and one test contract, and asserted against the
 **same pixel goldens** — the only difference is the UI framework underneath.
 Both stream live from the same server.
 
-> The deployed demo is behind a per-user login (there is no public password).
-> To try it with zero setup, run it locally in simulator mode — see
-> [Quick start](#quick-start) — and sign in with the committed demo accounts.
-> Deploys are on demand, so the live sites can trail `main` slightly.
+> The deployed demo is login-gated. To try it with zero setup, run it locally
+> in simulator mode — see [Quick start](#quick-start) — and sign in with the
+> committed demo accounts. Deploys are on demand, so the live sites can trail
+> `main` slightly.
 
 ## Screenshots
 
@@ -36,21 +36,34 @@ Both stream live from the same server.
 
 | | |
 |---|---|
-| ![Equities: candlestick chart, order ticket, watchlist and orders blotter](docs/readme/web-equities.jpg) | ![Credit: RFQ builder, live dealer quotes with countdown, and credit blotter](docs/readme/web-credit.jpg) |
-| **Equities** — candles with indicators, order ticket, watchlist, orders blotter | **Credit** — multi-dealer RFQs with live quotes, countdown and accept |
-| ![J.A.R.V.I.S. — the AI desk assistant answering a price question](docs/readme/web-jarvis.jpg) | ![The same equities workspace in the Classic light skin](docs/readme/web-equities-classic-light.jpg) |
-| **J.A.R.V.I.S.** — an AI assistant that quotes, briefs and trades on the desk | **Skins** — five skins (Classic, Terminal, Holo HUD, and two 3D variants), each light or dark |
+| ![Equities: three candlestick chart panels with SMA, EMA and RSI, order ticket, watchlist and filled orders](docs/readme/web-equities-multichart.jpg) | ![Credit: three live RFQs with competing dealer quotes, countdowns and accept buttons](docs/readme/web-credit-rfqs.jpg) |
+| **Equities** — any number of chart panels, indicators, order ticket, live watchlist | **Credit** — multi-dealer RFQs racing their countdowns, best quote starred |
+| ![Admin: throughput, P99 latency, error rate, latency histogram, service health, live events, topology and incident injection](docs/readme/web-admin.jpg) | ![Dockview workspace: a Jarvis panel docked as a new column and the Positions panel floating over the grid](docs/readme/web-dockview.jpg) |
+| **Admin** — live observability, plus incident injection to watch the system degrade | **Dockable workspace** — dock, tab, float, pop out, maximize and collapse any panel |
+| ![J.A.R.V.I.S. conversation ending in a confirm-gated EURUSD trade awaiting approval](docs/readme/web-jarvis-confirm.jpg) | ![The workspace after Jarvis rearranged it: maximized chart, collapsed side rails and a floating GBP volatility panel](docs/readme/web-jarvis-drives-layout.jpg) |
+| **J.A.R.V.I.S.** — quotes, briefs, charts on request; trades only after you approve | **…and drives the app** — the same intents the UI emits, so it can re-lay-out your workspace |
+| ![The FX workspace on the Terminal 3D skin](docs/readme/web-fx-terminal3d.jpg) | ![The equities workspace on the Classic light skin](docs/readme/web-equities-classic-light.jpg) |
+| **Terminal 3D** skin | **Classic** skin, light mode — six skins in all, each light or dark |
 
-### Mobile (iOS, React Native / Expo)
+### Mobile (iOS — React Native / Expo)
 
 | Rates | Equities | Credit | Analytics |
 |:---:|:---:|:---:|:---:|
-| ![Mobile FX rate tiles](docs/readme/mobile-rates.jpg) | ![Mobile equities market ranking with sparklines](docs/readme/mobile-equities.jpg) | ![Mobile credit RFQ with dealer quotes](docs/readme/mobile-credit.jpg) | ![Mobile P&L, pair P&L and net exposure](docs/readme/mobile-analytics.jpg) |
+| ![Mobile FX rate tiles](docs/readme/mobile-rates.jpg) | ![Mobile equities trade screen: chart, order ticket and positions](docs/readme/mobile-equities-trade.jpg) | ![Mobile credit RFQ with competing dealer quotes](docs/readme/mobile-credit.jpg) | ![Mobile P&L, pair P&L and net exposure](docs/readme/mobile-analytics.jpg) |
 
-Every screenshot above is a committed **visual-regression golden** from the test
-suite, not a hand-staged marketing shot — the web ones from
-`packages/ui-contract/goldens/`, the mobile ones from
-`packages/client-react-native/tests/visual/`.
+**Terminal 3D skin** — the same screens, one preference away:
+
+| Rates | Equities | Credit | Analytics |
+|:---:|:---:|:---:|:---:|
+| ![Mobile rates on the Terminal 3D skin](docs/readme/mobile-t3d-rates.jpg) | ![Mobile equities trade on the Terminal 3D skin](docs/readme/mobile-t3d-equities.jpg) | ![Mobile credit RFQs on the Terminal 3D skin](docs/readme/mobile-t3d-credit.jpg) | ![Mobile analytics on the Terminal 3D skin](docs/readme/mobile-t3d-analytics.jpg) |
+
+| Boot — docking cam | Boot — holo projector | Boot — schematic core | Appearance |
+|:---:|:---:|:---:|:---:|
+| ![Boot scene: docking camera with target lock](docs/readme/mobile-boot-docking.jpg) | ![Boot scene: volumetric hologram depth field](docs/readme/mobile-boot-hologram.jpg) | ![Boot scene: 3D schematic core linking subsystems](docs/readme/mobile-boot-core.jpg) | ![Appearance sheet: six skins, ambient background, power saver](docs/readme/mobile-appearance.jpg) |
+
+Web shots are the running React client in simulator mode; mobile shots are the
+iOS visual-regression harness (`packages/client-react-native/tests/visual/`) —
+the committed goldens, plus the same scenarios re-rendered on Terminal 3D.
 
 ## What's inside
 
@@ -61,16 +74,17 @@ suite, not a hand-staged marketing shot — the web ones from
 - **Credit** — request-for-quote workflow: build an RFQ, collect competing
   dealer quotes against a countdown, accept the best; plus a sell-side view.
 - **Equities** — interactive candlestick charts (indicators, comparisons,
-  drawing tools), order ticket, watchlist, depth, orders and positions.
+  drawing tools) in as many panels as you like, order ticket, watchlist,
+  depth, orders and positions.
 - **Admin** — an observability console: throughput, latency, service topology,
   sessions, live events, and incident injection to watch the system degrade.
 - **J.A.R.V.I.S.** — an AI assistant backed by Claude (or a deterministic
-  scripted brain offline) that can quote, brief, lay out your workspace and
-  execute confirm-gated trades through a typed tool registry — also exposed to
-  external agents over an **MCP** endpoint.
-- **Dockable workspace** — drag, tab, float, maximize and collapse panels;
-  save layout presets.
-- **A HUD you can tune** — five skins × light/dark, animated 3D boot scenes, and
+  scripted brain offline) that can quote, brief, chart, lay out your workspace
+  and execute confirm-gated trades through a typed tool registry — also
+  exposed to external agents over an **MCP** endpoint.
+- **Dockable workspace** — dock, tab, float, pop out, maximize and collapse
+  panels; save layout presets.
+- **A HUD you can tune** — six skins × light/dark, animated 3D boot scenes, and
   a power-saver mode down to a fully motion-free *freeze*.
 - **Custom DevTools** — a Redux-DevTools-style inspector for the non-Redux state
   layer (presenters, state machines, wire traffic), in-app at `/devtools/` or as
@@ -93,39 +107,101 @@ suite, not a hand-staged marketing shot — the web ones from
 >   safe: tight contracts, fast feedback, and verification that doesn't depend
 >   on a human reading every line.
 
-What that buys, concretely:
+## What clean architecture bought us
 
-- **Swap the UI framework** — `@rtc/client-solid` is a full port of the React
-  client that passes the *same* behavioural specs, e2e suites and pixel goldens.
-- **Swap the application core** — the RxJS core, an async/await +
-  AsyncIterable core and an Effect-TS core implement one types-only contract
-  (`@rtc/core-api`) and pass one contract suite; pick one with `VITE_CORE_IMPL`
-  ([ADR-006](docs/adr/ADR-006-pluggable-application-core.md)).
-- **Swap the data source** — every client runs against an in-process simulator,
-  a local server or the deployed one, chosen at composition time.
-- **Enforce the architecture, don't just describe it** — dependency-cruiser
-  rules, pnpm strict mode and grep gates fail CI on any layering violation.
+The claim of clean architecture is that the things you are most likely to
+change — the UI framework, the state library, where the data comes from — sit
+at the edge, behind interfaces the inner layers own. Here that claim was
+**tested for real, more than once**:
+
+- **A second UI framework without a second app.** The SolidJS client was
+  written against the *same* application core and passes the *same*
+  behavioural specs, the same e2e suites and the same pixel goldens as the
+  React client. The core, the domain and the tests did not fork; only the
+  "dumb" view layer and a thin bindings package are Solid-specific.
+- **A second — and third — application core.** Every presenter and state
+  machine (74 members) was re-implemented on async/await + AsyncIterable and
+  again on Effect-TS, slice by slice, while the app kept shipping. All three
+  implement one types-only contract and pass one behavioural contract suite;
+  the React and Solid UIs run on any of them, selected by one build variable,
+  without knowing which.
+- **The server is optional.** The domain ships simulators behind the same
+  ports the WebSocket adapter implements, so every client runs fully offline —
+  which is also what lets the whole e2e matrix run in parallel with no backend.
+- **An AI agent got the app for free.** J.A.R.V.I.S. drives the workspace by
+  emitting the *same* intents the UI does into the *same* state machines, so
+  what the agent can do is exactly what the machine boundary exposes — no
+  second API to build or keep in sync.
+- **Tooling bolts on at the composition root.** The DevTools inspector wraps
+  presenters, machine factories and the socket adapter with decorators where
+  the app is assembled — no feature code knows it is being observed.
+
+### The layers
+
+Every arrow points inward. The domain knows nothing about the application
+core; the core knows nothing about React, Solid, React Native or the network.
+
+```mermaid
+flowchart TB
+  subgraph fw["Frameworks & drivers — replaceable"]
+    ui["UI<br/>React · SolidJS · React Native"]
+    io["I/O adapters<br/>WebSocket · browser storage · native storage"]
+  end
+  subgraph adapters["Interface adapters"]
+    vm["ViewModel bindings<br/>react-bindings · solid-bindings"]
+    ports["Port implementations<br/>WsAdapter · simulators · storage adapters"]
+  end
+  subgraph app["Application core — one contract, three implementations"]
+    core["Presenters + state machines<br/>RxJS · async/await · Effect-TS"]
+  end
+  subgraph dom["Domain — depends on nothing but RxJS"]
+    domain["Entities · use cases · port interfaces"]
+  end
+  ui --> vm --> core
+  io --> ports --> core
+  core --> domain
+  ports -. implements .-> domain
+```
+
+### One contract, many combinations
+
+Because each seam is an interface, the pieces compose freely — any client, on
+any core, against any data source — and a single contract suite holds every
+core to the same behaviour.
+
+```mermaid
+flowchart TB
+  subgraph clients["Clients — dumb views behind a ViewModel seam"]
+    direction LR
+    react["React"] ~~~ solid["SolidJS"] ~~~ rn["React Native"]
+  end
+  contract{{"@rtc/core-api — types-only contract"}}
+  subgraph cores["Application cores — pick one per build"]
+    direction LR
+    rx["RxJS"] ~~~ asyncCore["async/await"] ~~~ effectCore["Effect-TS"]
+  end
+  suite[["@rtc/core-contract — one behavioural suite for every core"]]
+  subgraph sources["Data sources — behind AppPorts"]
+    direction LR
+    sim["In-process simulators"] ~~~ local["Local server"] ~~~ remote["Deployed server"]
+  end
+  clients -- "consume" --> contract
+  contract -- "implemented by" --> cores
+  suite -. "verifies" .-> cores
+  cores -- "talk to" --> sources
+```
+
+The rules are enforced, not just drawn: dependency-cruiser fails CI on any
+import that points outward, pnpm strict mode keeps the domain's only runtime
+dependency RxJS, and grep gates catch what types cannot (for example, an
+"alternative core" reaching for an RxJS operator outside its bridge).
 
 ## Architecture at a glance
 
 A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 25
-packages. Dependencies flow **inward only**:
-
-```mermaid
-flowchart TB
-  clients["Clients<br/>client-react · client-solid · client-react-native"]
-  bindings["Bindings<br/>react-bindings · solid-bindings"]
-  core["Application core — one contract (core-api), three implementations<br/>client-core (RxJS) · client-core-async · client-core-effect"]
-  inner["Domain and shared<br/>domain (rxjs only) · shared · core-logic"]
-  server["server<br/>WebSocket + ws-effects · Jarvis agent · /mcp"]
-  clients --> bindings --> core --> inner
-  server --> inner
-```
-
-The clients and the server never import each other; the domain's only runtime
-dependency is RxJS; the alternative cores never depend on the RxJS core at
-runtime. Any framework (React, RxJS, Vite, Vitest…) is meant to be replaceable
-by changing only its own package.
+packages. The clients and the server never import each other; the alternative
+cores never depend on the RxJS core at runtime. Any framework (React, RxJS,
+Vite, Vitest…) is meant to be replaceable by changing only its own package.
 
 <details>
 <summary>All 25 packages</summary>
