@@ -99,7 +99,7 @@ flowchart TD
   fallback["<b>rxjs</b>"]
   fail["throws — a developer error, fail-closed"]
   resolved["resolveCoreChoice(…): CoreImpl"]
-  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>rxjs → the already-imported rxjsCore<br/>async / effect → import(…), each its own lazy chunk,<br/>fetched only once chosen"]
+  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>rxjs → the already-imported rxjsCore<br/>async / effect → import(#quot;@rtc/client-core-async#quot;) /<br/>import(#quot;@rtc/client-core-effect#quot;), each its own lazy chunk,<br/>fetched only once chosen"]
   boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx renders #lt;AppRoot core={core} …#gt;"]
 
   url -- "valid" --> resolved

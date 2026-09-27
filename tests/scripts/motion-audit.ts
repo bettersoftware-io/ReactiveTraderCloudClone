@@ -163,9 +163,9 @@ function parseArgs(argv: readonly string[]): AuditArgs {
     const value = argv[i + 1];
 
     if (arg === "--") {
-      // pnpm forwards the `run script -- --flag` separator verbatim, so the
-      // documented forwarding recipe delivers a literal "--" ahead of the
-      // real flags.
+      // pnpm forwards the `run script -- --flag` separator verbatim. Through
+      // with-server it is already dropped (lib/forwardedArgs.ts); this skip
+      // covers running the script directly.
     } else if (arg === "--url" && value !== undefined) {
       url = value;
       i += 1;
