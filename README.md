@@ -45,6 +45,13 @@ Both stream live from the same server.
 | ![The FX workspace on the Terminal 3D skin](docs/readme/web-fx-terminal3d.jpg) | ![The equities workspace on the Classic light skin](docs/readme/web-equities-classic-light.jpg) |
 | **Terminal 3D** skin | **Classic** skin, light mode — six skins in all, each light or dark |
 
+**Boot sequence** — one of eight animated canvas scenes plays on each launch, cycling launch to launch:
+
+| | |
+|---|---|
+| ![Web boot scene: docking camera closing on target](docs/readme/web-boot-docking.jpg) | ![Web boot scene: volumetric hologram resolving](docs/readme/web-boot-hologram.jpg) |
+| ![Web boot scene: the workspace assembling in exploded 3D layers](docs/readme/web-boot-layers.jpg) | ![Web boot scene: topographic market terrain with labelled peaks](docs/readme/web-boot-topo.jpg) |
+
 ### Mobile (iOS — React Native / Expo)
 
 | Rates | Equities | Credit | Analytics |
