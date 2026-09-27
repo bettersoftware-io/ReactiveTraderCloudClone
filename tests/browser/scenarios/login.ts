@@ -73,6 +73,19 @@ export async function expectAppShellVisible(ctx: TestContext): Promise<void> {
   await login(ctx).waitAppShell(10_000);
 }
 
+/** Finds a captured page error mentioning `VITE_CORE_IMPL` — the fail-closed
+ *  message `coreSelection.ts`'s `resolveCoreChoice` throws synchronously at
+ *  boot on an unrecognized build default — or `undefined` when boot
+ *  succeeded. Shared by any scenario that waits on the booted core, so a real
+ *  boot failure surfaces as ITS message instead of an opaque locator timeout
+ *  (`coreSwitch.ts`'s `expectBootedCoreImpl` reuses this rather than
+ *  duplicating the scan). */
+export function findBootFailure(ctx: TestContext): string | undefined {
+  return ctx.pageErrors.find((message) => {
+    return message.includes("VITE_CORE_IMPL");
+  });
+}
+
 /** Assert the app booted on the core this run selected — `RTC_CORE_IMPL`
  *  (default `rxjs`; an explicitly EMPTY value collapses to `rxjs`, as
  *  `devServer.ts` → vite's `|| "rxjs"` does), forwarded to the dev server as
@@ -87,9 +100,7 @@ export async function expectSelectedCoreImpl(ctx: TestContext): Promise<void> {
   try {
     await login(ctx).waitCoreImpl(expected, 5_000);
   } catch (error) {
-    const boot = ctx.pageErrors.find((message) => {
-      return message.includes("VITE_CORE_IMPL");
-    });
+    const boot = findBootFailure(ctx);
 
     if (boot !== undefined) {
       throw new Error(`the app failed to boot: ${boot}`, { cause: error });
