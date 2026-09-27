@@ -25,6 +25,7 @@ export {
   composeApp,
   createApp,
   createMachineFactories,
+  EFFECT_CORE_BRAND,
   effectCore,
 } from "#/composition";
 export {

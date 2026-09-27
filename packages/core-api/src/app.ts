@@ -403,3 +403,21 @@ export interface CoreFactory {
   createApp(ports: AppPorts): App;
   createMachineFactories(presenters: Presenters): MachineFactories;
 }
+
+/** Which application core a page can boot: the RxJS default (`client-core`)
+ * or one of its two siblings (`client-core-async`, `client-core-effect`). */
+export type CoreImpl = "rxjs" | "async" | "effect";
+
+export interface CoreOption {
+  readonly impl: CoreImpl;
+  readonly label: string;
+  readonly description: string;
+}
+
+/** App-shell value: which application core this page booted, and how to
+ * switch. Not served by a core — the choice is made before any core exists. */
+export interface CoreSelection {
+  readonly current: CoreImpl;
+  readonly options: readonly CoreOption[];
+  select(impl: CoreImpl): void;
+}
