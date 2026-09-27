@@ -39,7 +39,7 @@ import {
   statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
@@ -143,6 +143,15 @@ function buildClient(client, outDir) {
   );
 }
 
+/** A readable label for the summary table's `client` column when `--dir`
+ * points at a directory directly (no known per-client name to use) — the
+ * directory's own basename (e.g. `.vercel/output/static` → `static`), or a
+ * literal fallback for a path with no usable basename (`/`, `.`, ``). */
+function readableDirLabel(dir) {
+  const base = basename(dir);
+  return base && base !== "." ? base : "static output";
+}
+
 /**
  * `--dir` targets to check. `.vercel/output/static` in deploy.yml is already
  * scoped to the ONE client that job built — `index.html` sits directly at
@@ -156,7 +165,7 @@ function buildClient(client, outDir) {
  */
 function resolveDirTargets(baseDir) {
   if (existsSync(join(baseDir, "index.html"))) {
-    return [{ pkg: baseDir, dir: baseDir }];
+    return [{ pkg: readableDirLabel(baseDir), dir: baseDir }];
   }
 
   const nested = CLIENTS.map((client) => {
@@ -165,7 +174,9 @@ function resolveDirTargets(baseDir) {
     return existsSync(join(target.dir, "index.html"));
   });
 
-  return nested.length > 0 ? nested : [{ pkg: baseDir, dir: baseDir }];
+  return nested.length > 0
+    ? nested
+    : [{ pkg: readableDirLabel(baseDir), dir: baseDir }];
 }
 
 let failed = false;

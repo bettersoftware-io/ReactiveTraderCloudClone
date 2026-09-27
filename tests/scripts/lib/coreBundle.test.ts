@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classify, eagerFiles } from "./coreBundle";
+import { classify, EFFECT_RUNTIME_MARKER, eagerFiles } from "./coreBundle";
 
 describe("eagerFiles", () => {
   it("collects the entry module script plus every modulepreload hint", () => {
@@ -40,6 +40,13 @@ describe("eagerFiles", () => {
       '<html><head><script src="/assets/a.js" type="module"></script></head></html>';
 
     expect(eagerFiles(html)).toEqual(["/assets/a.js"]);
+  });
+
+  it("does not read a decoy data-src attribute as the real src", () => {
+    const html =
+      '<html><head><script type="module" data-src="/assets/decoy.js"></script></head></html>';
+
+    expect(eagerFiles(html)).toEqual([]);
   });
 });
 
@@ -128,6 +135,105 @@ describe("classify", () => {
         expect.stringContaining(
           "/assets/mixed.js contains more than one core's marker",
         ),
+      ]),
+    );
+  });
+
+  it("fails when no lazy chunk carries the async marker at all", () => {
+    const files = new Map([
+      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/effect.js", EFFECT_MARKER],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "expected exactly one lazy chunk carrying the async marker, found 0",
+        ),
+      ]),
+    );
+  });
+
+  it("fails when no lazy chunk carries the effect marker at all", () => {
+    const files = new Map([
+      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/async.js", ASYNC_MARKER],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "expected exactly one lazy chunk carrying the effect marker, found 0",
+        ),
+      ]),
+    );
+  });
+
+  it("fails when the Effect library's runtime marker leaks into an eager file without the effect brand", () => {
+    const files = new Map([
+      ["/assets/index.js", `${RXJS_MARKER} ${EFFECT_RUNTIME_MARKER}`],
+      ["/assets/async.js", ASYNC_MARKER],
+      ["/assets/effect.js", EFFECT_MARKER],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(EFFECT_RUNTIME_MARKER),
+        expect.stringContaining("/assets/index.js"),
+      ]),
+    );
+  });
+
+  it("does not flag the Effect runtime marker sitting in the lazy effect chunk", () => {
+    const files = new Map([
+      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/async.js", ASYNC_MARKER],
+      ["/assets/effect.js", `${EFFECT_MARKER} ${EFFECT_RUNTIME_MARKER}`],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual([]);
+  });
+
+  it("treats a statically-imported chunk as eager even without a modulepreload hint", () => {
+    const files = new Map([
+      [
+        "/assets/index.js",
+        `${RXJS_MARKER} import"./vendor.js";import("./lazy-dynamic.js");`,
+      ],
+      ["/assets/vendor.js", ASYNC_MARKER],
+      ["/assets/lazy-dynamic.js", EFFECT_MARKER],
+    ]);
+    // Only the entry is in the HTML-derived eager set (no modulepreload for
+    // either chunk it references).
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    // The STATICALLY imported chunk is folded into the eager closure...
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "async marker found in eager file /assets/vendor.js",
+        ),
+      ]),
+    );
+    // ...but the DYNAMICALLY imported chunk must not be — that is what keeps
+    // it lazy in the first place.
+    expect(result.failures).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("effect marker found in eager file"),
       ]),
     );
   });
