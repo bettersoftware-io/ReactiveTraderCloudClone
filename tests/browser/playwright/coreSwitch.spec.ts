@@ -20,6 +20,7 @@
 // stored value would be indistinguishable from "that's just the build
 // default" in the async job. `pickDistinctCores` derives all three from
 // whatever this run's build default actually is.
+import { reloadPage } from "../scenarios/common";
 import * as coreSwitch from "../scenarios/coreSwitch";
 import { test } from "./_context";
 
@@ -44,7 +45,7 @@ test.describe("Application core switch", () => {
     // The stored choice survives a plain reload (no `?core=` present) — and,
     // since `stored !== buildDefault`, this can only be true if the stored
     // choice was actually read back, not the build default.
-    await ctx.po.workspace.reload();
+    await reloadPage(ctx);
     await coreSwitch.expectBootedCoreImpl(ctx, stored, 10_000);
 
     // `?core=` still outranks the stored choice (using the build default as

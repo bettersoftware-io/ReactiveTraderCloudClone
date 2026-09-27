@@ -130,11 +130,12 @@ loaded, which is what the e2e booted-core assertions read.
 
 The choice is not a core preference (a core's presenters don't exist yet
 when it must be known), so it lives in this pre-boot `src/app` module, not
-behind the ViewModel. `AppRoot` instead builds a `CoreSelection` value
-(`{ current, options, select(impl) }`, `select` = save + reload with
-`?core=` stripped so a page opened as `?core=effect` doesn't reload straight
-back onto Effect) and hands it to the bindings' `createViewModel` as an
-app-shell value, exposed to the UI as `useCoreSelection(): CoreSelection |
+behind the ViewModel. `main.tsx` instead builds a `CoreSelection` value via
+`createCoreSelection` (`{ current, options, select(impl) }`, `select` = save
++ reload with `?core=` stripped so a page opened as `?core=effect` doesn't
+reload straight back onto Effect) and passes it to `AppRoot`, which forwards
+it to the bindings' `createViewModel` as an app-shell value, exposed to the
+UI as `useCoreSelection(): CoreSelection |
 null` — `null` when the host offers no selection at all (React Native passes
 none and stays RxJS-only). Both web clients render a Preferences →
 "Application core" row from it, hidden entirely when the hook returns

@@ -206,6 +206,35 @@ describe("classify", () => {
     expect(result.failures).toEqual([]);
   });
 
+  it('recognizes a minified static import with no space after `from` (e.g. `from"./x.js"`)', () => {
+    const files = new Map([
+      [
+        "/assets/index.js",
+        `${RXJS_MARKER} import a from"./vendor.js";import("./lazy-dynamic.js");`,
+      ],
+      ["/assets/vendor.js", ASYNC_MARKER],
+      ["/assets/lazy-dynamic.js", EFFECT_MARKER],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    // The minified STATIC import is folded into the eager closure...
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "async marker found in eager file /assets/vendor.js",
+        ),
+      ]),
+    );
+    // ...but the dynamic import call stays lazy, same as the spaced form.
+    expect(result.failures).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("effect marker found in eager file"),
+      ]),
+    );
+  });
+
   it("treats a statically-imported chunk as eager even without a modulepreload hint", () => {
     const files = new Map([
       [

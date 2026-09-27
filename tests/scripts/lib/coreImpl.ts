@@ -8,9 +8,9 @@
 // happened, 2026-09-27). The entry points therefore resolve both once and
 // write the answer back as RTC_CORE_IMPL for everything downstream.
 
-const CORE_IMPLS = ["rxjs", "async", "effect"] as const;
+export const CORE_IMPLS = ["rxjs", "async", "effect"] as const;
 
-type CoreImpl = (typeof CORE_IMPLS)[number];
+export type CoreImpl = (typeof CORE_IMPLS)[number];
 
 /** The core the run targets: RTC_CORE_IMPL, else VITE_CORE_IMPL, else rxjs.
  * Throws when both are set and disagree, or when the name is unknown. */

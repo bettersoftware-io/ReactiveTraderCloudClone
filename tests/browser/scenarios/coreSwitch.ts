@@ -1,12 +1,11 @@
+import {
+  CORE_IMPLS,
+  type CoreImpl as CoreImplName,
+} from "#/scripts/lib/coreImpl";
+
 import type { PrefsCoreImpl } from "../page-objects/contracts/Preferences";
 import type { TestContext } from "../testContext";
 import { findBootFailure } from "./login";
-
-/** Every application core a page can boot — mirrors `CORE_IMPLS` in each
- *  client's own `coreSelection.ts`. */
-const CORE_IMPLS = ["rxjs", "async", "effect"] as const;
-
-type CoreImplName = (typeof CORE_IMPLS)[number];
 
 export interface DistinctCores {
   /** The `?core=` value for the journey's very first load. */
