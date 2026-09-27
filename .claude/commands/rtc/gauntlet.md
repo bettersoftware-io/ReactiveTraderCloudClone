@@ -86,14 +86,17 @@ pnpm --filter @rtc/client-core-async test:coverage          # Alternative-core c
 pnpm --filter @rtc/client-core-effect test:coverage         # Alternative-core coverage gates (effect) — ≥95%, branches ≥85%
 pnpm build
 pnpm check:devtools-dist                                    # REQUIRES the build above
-pnpm check:core-bundle                                      # Core bundle isolation (one application core per build) — REQUIRES the build above, ~1 min
+pnpm check:core-bundle                                      # Core bundle isolation (alternative cores only in their own lazy chunks) — REQUIRES the build above, ~1 min
 ```
 
 `check:devtools-dist` asserts `packages/client-react/dist/devtools/index.html`
 exists, so it can only run after `pnpm build` — never hoist it into the fast tier.
-`check:core-bundle` likewise requires the build above: it rebuilds each web
-client once per application core and asserts the `rxjs` build carries no
-`async`/`effect` marker. The alt-core contract runners themselves
+`check:core-bundle` likewise requires the build above: it builds each web
+client ONCE and asserts the eager set (both pages' entry scripts +
+modulepreload hints) carries only the rxjs marker while the async and effect
+cores each sit in exactly one lazy chunk — the runtime core switch ships all
+three cores per build, so no build is ever a single-core build anymore. The
+alt-core contract runners themselves
 (`composition.coreContract.test.ts`, each core's own `coreContract.test.ts`)
 are already covered by the plain `pnpm test` above — only their ≥95%
 coverage gate needs a dedicated line, mirroring the devtools coverage gates.

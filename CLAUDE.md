@@ -45,7 +45,7 @@ pnpm dev:ios:fs          # Full stack: start the WS server + the RN app together
 pnpm dev:devtools     # @rtc/devtools-app — the standalone inspector SPA (Vite), served same-origin at /devtools/
 pnpm dev:devtools:ext # @rtc/devtools-extension — watch-build the unpacked MV3 bundle → packages/devtools-extension/dist (load via chrome://extensions → Load unpacked → RTC panel)
 pnpm dev:devtools:relay # @rtc/devtools-relay — the standalone dev-machine WebSocket relay (ws://localhost:8790) bridging the browser inspector to the React Native client; open the panel at /devtools/?relay=ws://localhost:8790
-pnpm check:core-bundle # Builds each web client once per application core, asserts the rxjs build carries no foreign-core marker, prints gzip sizes
+pnpm check:core-bundle # Builds each web client once, asserts the eager set carries only the rxjs core and each alternative core sits in exactly one lazy chunk, prints gzip sizes
 pnpm clean       # Remove dist/ in all packages
 ```
 
