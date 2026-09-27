@@ -699,6 +699,19 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkDockThemeClassStillCouplesToBridges,
   },
+  {
+    // Since pnpm 12.6.0 a `pnpm exec`/`pnpm run` wrapper around a Playwright
+    // webServer orphans the server at teardown (it survives the process-group
+    // kill, reparented to PID 1) and the runner hangs forever after "N passed"
+    // — main's visual.yml hung for hours that way (#841). Launch the package's
+    // own node_modules/.bin shim instead; it `exec`s node, so the kill lands.
+    name: "46. Visual-tier Playwright webServers launch their server without a pnpm wrapper",
+    pattern: '^\\s*"pnpm (exec|run|--filter)',
+    paths: [
+      "../packages/client-react/tests/ui/visual/playwright/playwright.config.ts",
+      "../packages/client-solid/tests/ui/visual/playwright/playwright.config.ts",
+    ],
+  },
 ];
 
 let failed = 0;
