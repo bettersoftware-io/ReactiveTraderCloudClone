@@ -6,11 +6,10 @@ import base from "./vitest.config";
 // Reuses the base jsdom/react config; the `src/app` positional in the script
 // scopes which tests RUN, coverage.include scopes the DENOMINATOR. The test
 // HTML report is redirected to reports/app so it doesn't clobber reports/unit.
-export default mergeConfig(
+const config = mergeConfig(
   base,
   defineConfig({
     test: {
-      outputFile: { html: "reports/app/report/index.html" },
       coverage: {
         provider: "v8",
         // Count every src/app file so untested presenters/adapters surface at 0%.
@@ -35,3 +34,15 @@ export default mergeConfig(
     },
   }),
 );
+
+// Replaced after the merge, not declared above: mergeConfig CONCATENATES
+// arrays, so re-declaring `reporters` would run the base's html reporter
+// (writing reports/unit) alongside this one. Since vitest 5 the html
+// reporter's location is its own `outputDir` option; `outputFile.html` is
+// ignored.
+config.test = {
+  ...config.test,
+  reporters: ["default", ["html", { outputDir: "reports/app/report" }]],
+};
+
+export default config;

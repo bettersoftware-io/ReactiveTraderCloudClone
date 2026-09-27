@@ -347,3 +347,13 @@ packageExtensions:
     dependencies:
       "@babel/generator": "7.29.7"
       "@babel/traverse": "7.29.7"
+
+# vitest-browser-solid@1.0.1 (latest; upstream dormant since 2025-10-31) peers
+# on vitest `^4.0.0` only. Its whole runtime is ~60 lines over two vitest/browser
+# APIs — `utils.getElementLocatorSelectors` and `utils.debug` — both still
+# exported unchanged by @vitest/browser@5, so it runs on vitest 5 as published.
+# Upstream PR advancedtw/vitest-browser-solid#6 (open since 2026-09-06) widens
+# the peer to `^4.0.0 || ^5.0.0`; delete this block once a release carries it.
+peerDependencyRules:
+  allowedVersions:
+    "vitest-browser-solid>vitest": "^5.0.0"

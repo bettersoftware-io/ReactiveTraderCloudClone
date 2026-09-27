@@ -104,8 +104,12 @@ for (const [name, scenario] of Object.entries(scenarios)) {
       }
 
       if (action.waitForText) {
+        // Substring match, as Playwright's getByText does for the golden tier
+        // reading this same scenarioActions entry: vitest 5 flipped
+        // `browser.locators.exact` to true, and several waitForText values
+        // are a fragment of a longer label ("▶ RUN FULL DEMO · HANDS-FREE").
         await expect
-          .element(screen.getByText(action.waitForText))
+          .element(screen.getByText(action.waitForText, { exact: false }))
           .toBeVisible();
       }
 

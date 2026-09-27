@@ -70,18 +70,18 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
-    "@vitest/browser": "4.1.11",
-    "@vitest/browser-playwright": "4.1.11",
-    "@vitest/coverage-istanbul": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/browser": "5.0.2",
+    "@vitest/browser-playwright": "5.0.2",
+    "@vitest/coverage-istanbul": "^5.0.2",
+    "@vitest/coverage-v8": "^5.0.2",
+    "@vitest/ui": "^5.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.60.0",
     "tsc-alias": "1.9.5",
     "tsx": "^4",
     "vite": "^8",
-    "vitest": "^4.1.10",
-    "vitest-browser-react": "^2.2.0"
+    "vitest": "^5.0.2",
+    "vitest-browser-react": "^2.3.0"
   }
 }

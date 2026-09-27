@@ -5,8 +5,7 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.ts"],
     passWithNoTests: true,
-    reporters: ["default", "html"],
-    outputFile: { html: "reports/unit/report/index.html" },
+    reporters: ["default", ["html", { outputDir: "reports/unit/report" }]],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
