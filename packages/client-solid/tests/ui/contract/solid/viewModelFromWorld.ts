@@ -1,5 +1,9 @@
 import { state } from "@rx-state/core";
-import type { JarvisWorld, World } from "@ui-contract/harness/world";
+import {
+  CORE_OPTIONS_FOR_TESTS,
+  type JarvisWorld,
+  type World,
+} from "@ui-contract/harness/world";
 import {
   BehaviorSubject,
   combineLatest,
@@ -65,7 +69,7 @@ import {
   InMemoryLayoutPresetStore,
   JarvisPanelsPresenter,
 } from "@rtc/client-core";
-import type { RfqCountdownSeed } from "@rtc/core-api";
+import type { CoreImpl, RfqCountdownSeed } from "@rtc/core-api";
 import type {
   AmbientStyle,
   Candle,
@@ -1791,10 +1795,16 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
-    // Stub for Task 2 (bindings expose useCoreSelection()) — no World source
-    // backs it yet; Task 5 replaces this with a real world-driven selection.
     useCoreSelection: () => {
-      return null;
+      return {
+        current: world.coreImpl.getValue(),
+        options: CORE_OPTIONS_FOR_TESTS,
+        select: (impl: CoreImpl) => {
+          if (impl !== world.coreImpl.getValue()) {
+            world.commands.coreSelects.push(impl);
+          }
+        },
+      };
     },
   };
 }

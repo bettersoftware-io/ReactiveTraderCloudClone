@@ -25,6 +25,7 @@ import {
   type EqWorkspaceIntents,
   type Machine,
 } from "@rtc/client-core";
+import type { CoreImpl, CoreOption } from "@rtc/core-api";
 import {
   type AmbientStyle,
   type Candle,
@@ -110,6 +111,29 @@ const DEFAULTS: HookValues = {
   useInstruments: [],
   useDealers: [],
 };
+
+/** The three application cores a `CoreSelection.options` list offers, mirrored
+ * from each client's own `src/app/coreSelection.ts` `CORE_OPTIONS` (same
+ * impls/labels/descriptions) — duplicated rather than imported because this
+ * framework-neutral harness cannot depend on a concrete client's `src/app`
+ * (`ui-contract-stays-neutral`). */
+export const CORE_OPTIONS_FOR_TESTS: readonly CoreOption[] = [
+  {
+    impl: "rxjs",
+    label: "RxJS",
+    description: "Observables and operators — the default core.",
+  },
+  {
+    impl: "async",
+    label: "async/await",
+    description: "Plain async/await and AsyncIterable, no stream library.",
+  },
+  {
+    impl: "effect",
+    label: "Effect-TS",
+    description: "Effect's fibers, layers and streams.",
+  },
+];
 
 /**
  * Seed values for the PARAMETRIC query hooks. Each is keyed by the same
@@ -337,6 +361,10 @@ export interface CommandLog {
   /** Each narrator preference written through
    * useJarvisPreferences().setNarrator, in order. */
   jarvisNarratorSets: JarvisNarratorPreference[];
+  /** Each core impl asked for through useCoreSelection().select(), in order —
+   * only when it differs from the current core (mirrors the real
+   * createCoreSelection no-op rule for re-selecting the active core). */
+  coreSelects: CoreImpl[];
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -605,6 +633,10 @@ export interface World {
   readonly commands: CommandLog;
   /** Push new values for one or more NULLARY hooks (drives re-renders). */
   push(patch: Partial<HookValues>): void;
+  /** Reactive application-core selection backing useCoreSelection (drives
+   * PreferencesModal's "Application core" segment). Defaults to "rxjs",
+   * matching the real shell's precedence-chain default. */
+  readonly coreImpl: BehaviorSubject<CoreImpl>;
 }
 
 export function createWorld(
@@ -653,6 +685,9 @@ export function createWorld(
   workspaceLayoutSeed?: string | null,
   /** Seeds `World.layoutPresetsSeed` (Phase 6b Task 6); defaults to `{}`. */
   layoutPresetsSeed?: Readonly<Partial<Record<WorkspaceTab, string>>>,
+  /** Seeds `World.coreImpl` (Task 5 of the runtime-core-switch spec); defaults
+   * to "rxjs", matching the real shell's precedence-chain default. */
+  coreImplSeed?: CoreImpl,
 ): World {
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
@@ -847,6 +882,8 @@ export function createWorld(
   const layoutEngine = new BehaviorSubject<LayoutEngine>(
     layoutEngineSeed ?? "inhouse",
   );
+
+  const coreImpl = new BehaviorSubject<CoreImpl>(coreImplSeed ?? "rxjs");
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each
@@ -1046,6 +1083,7 @@ export function createWorld(
     jarvisBrainSets: [],
     jarvisEffortSets: [],
     jarvisNarratorSets: [],
+    coreSelects: [],
   };
 
   return {
@@ -1060,6 +1098,7 @@ export function createWorld(
     ambientStyle,
     chartSubstrate,
     layoutEngine,
+    coreImpl,
     jarvisSkin,
     jarvis,
     panelStreamDeps,

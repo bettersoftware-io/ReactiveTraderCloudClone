@@ -219,6 +219,12 @@ export const TESTIDS = {
     layoutEngineSegment: (value: "inhouse" | "dockview") => {
       return `pref-segment-layoutEngine-${value}`;
     },
+    /** The Application core segment row's three options (PrefSegment.tsx
+     * composes `${testid}-${option.value}`, testid=
+     * "pref-segment-coreImpl"). */
+    coreImplSegment: (value: "rxjs" | "async" | "effect") => {
+      return `pref-segment-coreImpl-${value}`;
+    },
   },
   /**
    * The app-head "View" dropdown (Phase 3 close/reopen) and its LAYOUTS

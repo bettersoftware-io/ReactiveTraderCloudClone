@@ -2,6 +2,7 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
+import type { CoreImpl } from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -19,6 +20,10 @@ export interface PreferencesModalProps {
 }
 
 const POWER_SAVER_LEVELS = ["off", "calm", "freeze"] as const;
+
+/** The three application cores the "Application core" segment can offer, in
+ * render order — mirrors `CORE_OPTIONS_FOR_TESTS`'s impl order. */
+const CORE_IMPLS: readonly CoreImpl[] = ["rxjs", "async", "effect"];
 
 /**
  * Page object for PreferencesModal. SIX rows are REAL controls: the
@@ -256,6 +261,45 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
    * writing through the useLayoutEngine seam. */
   async selectLayoutEngine(engine: LayoutEngine): Promise<void> {
     await this.selectSegment("layoutEngine", engine);
+  }
+
+  /** The "Application core" segment's option values, in render order —
+   * `useCoreSelection().options` mapped straight onto PrefSegment. Empty
+   * when the host offers no selection (`useCoreSelection()` returned null),
+   * so the row is absent entirely rather than rendered with zero options. */
+  coreImplOptions(): CoreImpl[] {
+    return [
+      ...this.root.querySelectorAll('[data-testid^="pref-segment-coreImpl-"]'),
+    ].map((el) => {
+      const testid = el.getAttribute("data-testid") ?? "";
+      return testid.slice("pref-segment-coreImpl-".length) as CoreImpl;
+    });
+  }
+
+  /** The "Application core" segment's currently-active impl, or `null` when
+   * the row isn't rendered at all. */
+  coreImplSelected(): CoreImpl | null {
+    const active = CORE_IMPLS.find((impl) => {
+      return (
+        within(this.root)
+          .queryByTestId(`pref-segment-coreImpl-${impl}`)
+          ?.getAttribute("data-on") === "true"
+      );
+    });
+    return active ?? null;
+  }
+
+  /** Select an application-core option through the REAL "Application core"
+   * segment, writing through the useCoreSelection().select seam. */
+  async selectCoreImpl(impl: CoreImpl): Promise<void> {
+    await this.selectSegment("coreImpl", impl);
+  }
+
+  /** Each core impl asked for through useCoreSelection().select, in order —
+   * mirrors the real no-op rule: selecting the already-active core writes
+   * nothing here. */
+  coreImplSelects(): CoreImpl[] {
+    return this.commandLog().coreSelects;
   }
 
   /** True when the given Jarvis brain option is disabled (native `disabled`

@@ -8,6 +8,7 @@ import type {
   JarvisEvent,
   ThroughputView,
 } from "@rtc/client-core";
+import type { CoreImpl } from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -110,6 +111,8 @@ export interface MountOptions<P> {
    * independently of DEFAULT_LAYOUT_ENGINE, now "dockview" — see
    * `harness/world.ts`'s `layoutEngine` seed for why). */
   layoutEngine?: LayoutEngine;
+  /** Seeds `useCoreSelection().current` (World.coreImpl); defaults to "rxjs". */
+  coreImpl?: CoreImpl;
 }
 
 const mounted: MountedRoot[] = [];
@@ -289,6 +292,8 @@ export function mount<P, Page extends MountedComponent<P>>(
     opts.chartSubstrate,
     opts.layoutEngine,
     opts.workspaceLayout,
+    undefined,
+    opts.coreImpl,
   );
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

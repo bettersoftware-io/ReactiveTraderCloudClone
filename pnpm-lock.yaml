@@ -1298,6 +1298,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain

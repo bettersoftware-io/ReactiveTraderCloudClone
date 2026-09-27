@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from "react";
 
 import { formatBrainHint, formatGateHint } from "@rtc/client-core";
+import type { CoreImpl } from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -46,11 +47,13 @@ import styles from "./PreferencesContent.module.css";
  * again since; treat the counts above as a snapshot, not an invariant to
  * re-defend on every future row.
  *
- * TWELVE rows are wired to real ports — Animated background
+ * THIRTEEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
- * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Always play boot
- * animation (`useForceBootAnimation`), the two login-wait rows
+ * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Application core
+ * (`useCoreSelection`; the row is absent entirely when the host offers no
+ * selection — see that hook's own doc), Always play boot animation
+ * (`useForceBootAnimation`), the two login-wait rows
  * (`useLoginWaitPreferences`), the three Jarvis rows (`useJarvisPreferences`
  * for the stored brain/effort/narrator, `useJarvis` read-only for which
  * brains the server is currently offering), and Reset workspace layout
@@ -71,7 +74,10 @@ export function PreferencesContent(): ReactElement {
     useJarvis,
     useJarvisPreferences,
     useWorkspaceReset,
+    useCoreSelection,
   } = useViewModel();
+
+  const coreSelection = useCoreSelection();
 
   const resetWorkspaceLayout = useWorkspaceReset();
 
@@ -178,6 +184,10 @@ export function PreferencesContent(): ReactElement {
     setLayoutEngine(value as LayoutEngine);
   }
 
+  function switchCore(value: string): void {
+    coreSelection?.select(value as CoreImpl);
+  }
+
   function changeLoginWaitStyle(value: string): void {
     setLoginWaitStyle(value as LoginWaitStyle);
   }
@@ -252,6 +262,18 @@ export function PreferencesContent(): ReactElement {
           onChange={changeLayoutEngine}
           testid="pref-segment-layoutEngine"
         />
+        {coreSelection !== null ? (
+          <PrefSegment
+            label="Application core"
+            description="Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page."
+            options={coreSelection.options.map((option) => {
+              return { value: option.impl, label: option.label };
+            })}
+            value={coreSelection.current}
+            onChange={switchCore}
+            testid="pref-segment-coreImpl"
+          />
+        ) : null}
         <ToggleGroup
           defs={MOTION_TOGGLES}
           values={toggles}
