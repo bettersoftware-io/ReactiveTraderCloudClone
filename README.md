@@ -29,21 +29,47 @@ monorepo. Dependencies flow **inward only**:
 
 ```
 packages/
-  domain/    @rtc/domain   Pure TS. Entities, use cases, port interfaces,
-                           simulators. Only runtime dependency: rxjs.
-  shared/    @rtc/shared   DTOs and wire-format contracts. Depends on domain.
-  client-react/  @rtc/client-react   React + RxJS + Vite web app. Depends on domain + shared.
-  motion-core/  @rtc/motion-core   Framework-free view-layer motion math (FLIP deltas, rank-glide coalescing, easing/duration constants). Depends on nothing.
-  ws-effects/  @rtc/ws-effects   Small declarative RxJS effects framework (rxjs-only). Depends on nothing but rxjs.
-  server/    @rtc/server   Native WebSocket + @rtc/ws-effects backend. Depends on domain + shared + ws-effects.
-  mobile/    @rtc/mobile   React Native client (planned). Depends on domain + shared.
+  # Inner layers — framework-free
+  domain/              @rtc/domain              Entities, use cases, port interfaces, simulators. Only runtime dep: rxjs.
+  shared/              @rtc/shared              DTOs, wire protocol, the scripted Jarvis brain. Depends on domain.
+  ws-effects/          @rtc/ws-effects          Small declarative RxJS effects framework. rxjs only.
+  motion-core/         @rtc/motion-core         View-layer motion math (FLIP, easing). No dependencies at all.
+  agent-tools/         @rtc/agent-tools         The Jarvis desk-tool registry (JSON Schema + handlers). Depends on domain.
+
+  # Application core — pluggable, three implementations of one contract
+  core-api/            @rtc/core-api            Types-only contract every core implements.
+  core-logic/          @rtc/core-logic          Rules the three cores share that need no stream library.
+  client-core/         @rtc/client-core         The RxJS core (the default): presenters, state machines, adapters.
+  client-core-async/   @rtc/client-core-async   Alternative core on async/await + AsyncIterable.
+  client-core-effect/  @rtc/client-core-effect  Alternative core on Effect-TS.
+  core-contract/       @rtc/core-contract       Dev-only behavioural suites all three cores must pass.
+
+  # Clients and their bindings
+  react-bindings/      @rtc/react-bindings      React <-> RxJS bridge (createViewModel, useMachine).
+  solid-bindings/      @rtc/solid-bindings      Solid <-> RxJS bridge.
+  client-react/        @rtc/client-react        Web client: React 19 + Vite.
+  client-solid/        @rtc/client-solid        Web client: SolidJS port at full parity.
+  client-react-native/ @rtc/client-react-native Mobile client: Expo / React Native.
+  client-prototype/    @rtc/client-prototype    Readable React port of the v2 design prototype. Isolated.
+  boot-splash/         @rtc/boot-splash         Canvas boot/splash engine shared by both web clients.
+  layout-dockview/     @rtc/layout-dockview     Dockview wrapper behind the layout-engine preference.
+  ui-contract/         @rtc/ui-contract         Framework-neutral UI test contract + visual goldens.
+
+  # Server and tooling
+  server/              @rtc/server              Native WebSocket + ws-effects backend, plus the /mcp endpoint.
+  devtools-core/       @rtc/devtools-core       Devtools event protocol + hub. rxjs only.
+  devtools-app/        @rtc/devtools-app        Inspector SPA, served at /devtools/.
+  devtools-extension/  @rtc/devtools-extension  MV3 Chrome DevTools extension around the inspector.
+  devtools-relay/      @rtc/devtools-relay      Dev-machine WebSocket relay for the React Native inspector.
 ```
 
-**The rule:** `domain` knows nothing of `shared`; `shared` knows nothing of the
-apps; `client`, `server`, and `mobile` never depend on each other. Any
-framework (React, RxJS, ws-effects, Vite, Vitest) is meant to be replaceable by
-changing only its own package. pnpm strict mode enforces the single-dependency
-constraint on the domain at install time.
+**The rule:** dependencies point inward. `domain` knows nothing of `shared`;
+the clients and the server never depend on each other; the alternative cores
+never depend on `@rtc/client-core` at runtime. Any framework (React, RxJS,
+ws-effects, Vite, Vitest) is meant to be replaceable by changing only its own
+package. pnpm strict mode enforces the single-dependency constraint on the
+domain at install time, and dependency-cruiser enforces the layering in CI.
+[`CLAUDE.md`](CLAUDE.md) has the full per-package description.
 
 For the full picture, see:
 
@@ -108,6 +134,35 @@ work out of the box. See [`docs/authentication.md`](docs/authentication.md) for
 the roster and how credentials are wired. (If `pnpm dev` renders a blank page
 after a dependency change, clear the stale Vite cache:
 `rm -rf packages/client-react/node_modules/.vite`.)
+
+### Choosing an application core
+
+The web clients can run on any of three interchangeable application cores. The
+choice is made at build time by the `VITE_CORE_IMPL` environment variable:
+
+| `VITE_CORE_IMPL`  | Core                                                    |
+|-------------------|---------------------------------------------------------|
+| unset or `rxjs`   | `@rtc/client-core` — RxJS, the default and what ships   |
+| `async`           | `@rtc/client-core-async` — async/await + AsyncIterable  |
+| `effect`          | `@rtc/client-core-effect` — Effect-TS                   |
+
+```bash
+pnpm dev:react:async                            # shortcuts, simulator mode
+pnpm dev:react:effect                           # (dev:solid:async / dev:solid:effect too)
+VITE_CORE_IMPL=effect pnpm dev:react:fs         # composes with any mode
+VITE_CORE_IMPL=async  pnpm test:e2e             # run e2e against that core
+```
+
+- **Restart to switch.** Vite inlines the value into the bundle, so changing
+  core means restarting the dev server or rebuilding — a page reload is not
+  enough. An unknown value fails loudly instead of falling back to RxJS.
+- **One core per build.** The unselected cores are dead-code-eliminated;
+  `pnpm check:core-bundle` proves it in CI. Production leaves the variable
+  unset, so it ships the RxJS core.
+- **Web only.** The React Native client always runs the RxJS core.
+
+How it works and why: [§22 Pluggable application core](docs/architecture/22-pluggable-application-core.md)
+and [ADR-006](docs/adr/ADR-006-pluggable-application-core.md).
 
 ## Checks & tests
 
