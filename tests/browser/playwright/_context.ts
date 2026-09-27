@@ -7,6 +7,10 @@ import {
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
 } from "../authSeed";
+import {
+  FIRST_DOCK_RENDER_ARM_KEY,
+  installFirstDockRenderRecorder,
+} from "../firstDockRenderRecorder";
 import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
 import type { TestContext } from "../testContext";
 import { Scratchpad } from "../testContext";
@@ -45,6 +49,12 @@ export const test = base.extend<TestFixtures>({
     await context.addInitScript(seedLocalStorageItem, {
       key: JARVIS_NARRATOR_STORAGE_KEY,
       value: JARVIS_NARRATOR_OFF_VALUE,
+    });
+    // Inert until a scenario arms it (PlaywrightLayout.recordFirstDockRender);
+    // registered here, not just before the reload it observes, so no
+    // registration races the navigation (see firstDockRenderRecorder.ts).
+    await context.addInitScript(installFirstDockRenderRecorder, {
+      armKey: FIRST_DOCK_RENDER_ARM_KEY,
     });
     await use(context);
   },

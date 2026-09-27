@@ -434,8 +434,12 @@ module.exports = {
     // a node_modules package that resolves through its own `dist/` (solid-js,
     // rxjs, the MCP SDK, …) was blind before this anchor — react-clients-stay-
     // solid-free (targeting node_modules/solid-js/) among them.
+    // `reports/` is git-ignored test output (tests/reports/ plus each
+    // package's coverage tiers): a failing e2e run leaves Playwright's
+    // bundled trace viewer there, whose minified chunks import each other in
+    // a cycle, so `check:deps` went red locally after any failed e2e run.
     exclude: {
-      path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo)",
+      path: "(\\.cache|^packages/[^/]+/dist/|/__screenshots__/|\\.turbo|^(tests|packages/[^/]+)/reports/)",
     },
     enhancedResolveOptions: {
       exportsFields: ["exports"],
