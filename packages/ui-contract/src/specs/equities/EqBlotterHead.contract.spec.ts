@@ -51,18 +51,12 @@ describe("EqBlotterHead — tabs + live count", () => {
 
 describe("EqBlotterHead + EqBlotterPanel — shared preference", () => {
   it("the head's tab click re-renders the panel's active table on the SAME world", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { orders: [order("eq-1"), order("eq-2")], positions: POSITIONS },
-    );
+    const world = createWorld({
+      equities: {
+        orders: [order("eq-1"), order("eq-2")],
+        positions: POSITIONS,
+      },
+    });
     const head = mountWith(world, EqBlotterHead, {});
     const panel = mountWith(world, EqBlotterPanel, {});
 

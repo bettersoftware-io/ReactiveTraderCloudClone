@@ -188,21 +188,7 @@ describe("JarvisPanelLayer", () => {
     // Element.animate (see WatchlistPanel.contract.spec.ts's own fake-WAAPI
     // describe block for the alternative this deliberately avoids — out of
     // scope here, since the animation itself isn't this layer's own concern).
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "freeze",
-    );
+    const world = createWorld({ powerSaverLevel: "freeze" });
     const overlay = mountWith(world, JarvisOverlay);
     const layer = mountWith(world, JarvisPanelLayer);
 

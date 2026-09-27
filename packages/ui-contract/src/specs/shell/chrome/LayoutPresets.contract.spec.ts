@@ -369,7 +369,7 @@ describe("View menu LAYOUTS section (in-house engine)", () => {
   });
 
   it("Default puts the tab's own layout back, reopening a closed panel", async () => {
-    const app = mountWith(createWorld({}), AppShell);
+    const app = mountWith(createWorld(), AppShell);
 
     await app.viewMenu.toggle();
     await app.viewMenu.toggleRow("fx-analytics");
@@ -391,39 +391,14 @@ function createDockviewWorld(presetsSeed = ""): World {
   return world;
 }
 
-/** `createWorld` with a seeded fx layout-preset list — the 25th positional
- * parameter, reached past every earlier seed (see `harness/world.ts`;
- * `mount()`'s `MountOptions` stops at the 24th, so this seed needs
+/** `createWorld` with a seeded fx layout-preset list (`WorldSeeds.layoutPresets`
+ * — `mount()`'s `MountOptions` has no equivalent option, so this seed needs
  * `createWorld` + `mountWith`). An empty string seeds nothing: the store keeps
  * a per-tab record only for the tabs present in the seed object. */
 function createWorldWithPresets(presetsSeed: string): World {
-  return createWorld(
-    {},
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    presetsSeed === "" ? {} : { fx: presetsSeed },
-  );
+  return createWorld({
+    layoutPresets: presetsSeed === "" ? {} : { fx: presetsSeed },
+  });
 }
 
 /** `names` as one tab's stored list, ids `p0`…`pN` — written through the REAL

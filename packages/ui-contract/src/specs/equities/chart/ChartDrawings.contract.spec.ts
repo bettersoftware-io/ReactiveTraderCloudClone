@@ -635,22 +635,13 @@ interface PillWorkspace {
  * react to the same World. Two instruments (not one) so the symbol-isolation
  * case has somewhere to switch to. */
 function mountPillWorkspace(): PillWorkspace {
-  const world = createWorld(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
+  const world = createWorld({
+    equities: {
       watchlist: INSTRUMENTS,
       candles: { AAPL: CANDLES, MSFT: CANDLES },
       quotes: { AAPL: quote("AAPL"), MSFT: quote("MSFT") },
     },
-  );
+  });
   const head = mountWith(world, EqChartHead, {});
   const panel = mountWith(world, ChartPanel, {});
 

@@ -64,18 +64,7 @@ describe("EqChartHead", () => {
     // Programmatically open a second tab (mirrors a watchlist-row click,
     // which lives outside EqChartHead) through the shared World's REAL
     // eqWorkspace machine instance.
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS },
-    );
+    const world = createWorld({ equities: { watchlist: INSTRUMENTS } });
     const head = mountWith(world, EqChartHead, {});
 
     head.selectInstrument("MSFT");

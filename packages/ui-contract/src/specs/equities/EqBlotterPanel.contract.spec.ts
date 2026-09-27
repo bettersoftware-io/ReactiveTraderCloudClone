@@ -48,18 +48,9 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
   });
 
   it("flags the newly appeared createOrder after a push, and moves the flag when another appears", () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { orders: [createOrder({ id: "eq-1" })] },
-    );
+    const world = createWorld({
+      equities: { orders: [createOrder({ id: "eq-1" })] },
+    });
     const panel = mountWith(world, EqBlotterPanel, {});
 
     expect(panel.isNewOrder("eq-1")).toBe(false);
@@ -83,18 +74,9 @@ describe("EqBlotterPanel — data-new flash (id-set diff)", () => {
   });
 
   it("a status-only update on the same ids is not treated as a new createOrder", () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { orders: [createOrder({ id: "eq-1", status: "new" })] },
-    );
+    const world = createWorld({
+      equities: { orders: [createOrder({ id: "eq-1", status: "new" })] },
+    });
     const panel = mountWith(world, EqBlotterPanel, {});
 
     panel.setEquityOrders([createOrder({ id: "eq-1", status: "filled" })]);

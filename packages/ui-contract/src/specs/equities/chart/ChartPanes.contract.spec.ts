@@ -195,22 +195,13 @@ interface PillWorkspace {
  * IncidentControls.contract.spec.ts established for two components that
  * must react to the same World. */
 function mountPillWorkspace(): PillWorkspace {
-  const world = createWorld(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
+  const world = createWorld({
+    equities: {
       watchlist: INSTRUMENTS,
       candles: { AAPL: CANDLES },
       quotes: { AAPL: createQuote() },
     },
-  );
+  });
   const head = mountWith(world, EqChartHead, {});
   const panel = mountWith(world, ChartPanel, {});
 

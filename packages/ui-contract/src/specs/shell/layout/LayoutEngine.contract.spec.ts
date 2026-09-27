@@ -313,7 +313,7 @@ describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
   });
 
   it("View menu: unchecking a panel closes it, rechecking reopens it in place", async () => {
-    const world = createWorld({});
+    const world = createWorld();
     const app = mountWith(world, AppShell);
 
     await app.viewMenu.toggle();
@@ -338,7 +338,7 @@ describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
   });
 
   it("View menu: the last visible panel's row is disabled — the menu reflects the reducer's floor", async () => {
-    const world = createWorld({});
+    const world = createWorld();
     const app = mountWith(world, AppShell);
 
     await app.viewMenu.toggle();
@@ -356,7 +356,7 @@ describe("InhouseLayoutEngine closed panels (View-menu close, layer-2)", () => {
   });
 
   it("View menu: docked desk panels are not listed (they have undock/dismiss already)", async () => {
-    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const world = createWorld({ initial: { useAnalytics: ANALYTICS_SEED } });
     const app = mountWith(world, AppShell);
 
     await app.overlay.pressHotkey();
@@ -381,7 +381,7 @@ describe("InhouseLayoutEngine docked desk panels", () => {
   });
 
   it("renders a docked panel as a leaf — head controls AND a live body — beside the tab's untouched static panels", async () => {
-    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const world = createWorld({ initial: { useAnalytics: ANALYTICS_SEED } });
     const app = mountWith(world, AppShell);
 
     await app.overlay.pressHotkey();
@@ -416,7 +416,7 @@ describe("InhouseLayoutEngine docked desk panels", () => {
   });
 
   it("a FRESH world seeded with the persisted payload boots with the panel already docked", async () => {
-    const first = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const first = createWorld({ initial: { useAnalytics: ANALYTICS_SEED } });
     const firstApp = mountWith(first, AppShell);
 
     await firstApp.overlay.pressHotkey();
@@ -483,7 +483,7 @@ describe("InhouseLayoutEngine docked desk panels", () => {
  */
 describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => {
   it("a docked panel mounts as a dockview group with a live body, under the real per-tab docked derivation", async () => {
-    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const world = createWorld({ initial: { useAnalytics: ANALYTICS_SEED } });
     world.layoutEngine.next("dockview");
     const app = mountWith(world, AppShell);
 
@@ -511,7 +511,7 @@ describe("DockviewLayoutEngine docked desk panels (world-driven parity)", () => 
   });
 
   it("docks two panels out of alphabetical order; the per-tab docked witness reports them SORTED", async () => {
-    const world = createWorld({ useAnalytics: ANALYTICS_SEED });
+    const world = createWorld({ initial: { useAnalytics: ANALYTICS_SEED } });
     world.layoutEngine.next("dockview");
     const app = mountWith(world, AppShell);
 
@@ -672,43 +672,17 @@ const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   viz: { kind: "table" },
 };
 
-/** `createWorld` with a seeded `workspaceLayoutV1` string — the 24th
- * positional parameter, reached past every earlier seed (see
- * `harness/world.ts`; `mount()`'s `MountOptions.workspaceLayout` is the same
- * seed for the single-mount case, but these scenarios need the World object
- * itself to read the persisted string back off). `hooks` is the FIRST
- * positional (nullary hook seeds), so a rehydrated World can carry the desk
- * data its restored panel's body renders from. */
+/** `createWorld` with a seeded `workspaceLayoutV1` string
+ * (`WorldSeeds.workspaceLayout` — `mount()`'s `MountOptions.workspaceLayout`
+ * is the same seed for the single-mount case, but these scenarios need the
+ * World object itself to read the persisted string back off). `hooks` seeds
+ * the nullary hooks, so a rehydrated World can carry the desk data its
+ * restored panel's body renders from. */
 function createWorldSeededWith(
   seed: string | null,
   hooks: Partial<HookValues> = {},
 ): World {
-  return createWorld(
-    hooks,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    seed,
-  );
+  return createWorld({ initial: hooks, workspaceLayout: seed });
 }
 
 /** One macrotask — the whole window of the contract fixture's workspace
@@ -722,21 +696,10 @@ function flushWorkspacePersistence(): Promise<void> {
   });
 }
 
-/** `createWorld` with an equities seed — the 10th positional parameter
- * (see `harness/world.ts`), every earlier seed left to its default. */
+/** `createWorld` with an equities seed (`WorldSeeds.equities`), every
+ * earlier seed left to its default. */
 function createWorldWithEquities(equities: EquitiesSeed): World {
-  return createWorld(
-    {},
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    equities,
-  );
+  return createWorld({ equities });
 }
 
 function equityQuote(

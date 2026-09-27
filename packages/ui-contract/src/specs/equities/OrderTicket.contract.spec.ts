@@ -104,18 +104,7 @@ describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", 
   // submit places an AAPL order" because the machine's form.symbol was
   // frozen at the mount-time selection.
   it("re-syncs the traded symbol when the workspace selection changes after mount, and submits the NEW symbol", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { initialSymbol: "AAPL" },
-    );
+    const world = createWorld({ equities: { initialSymbol: "AAPL" } });
     const ticket = mountWith(world, OrderTicket, {});
 
     expect(ticket.submitLabel()).toMatch(/buy aapl/i);
@@ -135,18 +124,7 @@ describe("OrderTicket — symbol defaults to the shared eqWorkspace selection", 
   });
 
   it("does not retarget an in-flight order when the selection changes mid-submission", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { initialSymbol: "AAPL" },
-    );
+    const world = createWorld({ equities: { initialSymbol: "AAPL" } });
     const ticket = mountWith(world, OrderTicket, {});
 
     await ticket.setQty(100);

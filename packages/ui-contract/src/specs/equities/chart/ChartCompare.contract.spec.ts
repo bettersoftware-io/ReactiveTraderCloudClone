@@ -330,22 +330,13 @@ function mountPillWorkspace(
     TSLA: COMPARE_CANDLES,
   },
 ): PillWorkspace {
-  const world = createWorld(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    {
+  const world = createWorld({
+    equities: {
       watchlist: INSTRUMENTS,
       candles,
       quotes: { AAPL: createQuote() },
     },
-  );
+  });
   const head = mountWith(world, EqChartHead, {});
   const panel = mountWith(world, ChartPanel, {});
 
