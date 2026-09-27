@@ -52,7 +52,9 @@ function warnCore(message: string): void {
   console.warn(`[core] ${message}`);
 }
 
-runBoot(
+// Fire-and-forget by design: runBoot routes every rejection (core load or
+// render) to renderBootError, so there is nothing left to handle here.
+void runBoot(
   bootCore({
     href: location.href,
     storage,

@@ -69,8 +69,10 @@ describe("bootCore", () => {
   });
 
   it("throws synchronously on an invalid build default (developer error, not a boot-error screen)", () => {
+    // Returned (not awaited): the assertion is that the CALL throws before
+    // any promise exists; returning it keeps it from floating.
     expect(() => {
-      bootCore(createEnv({ buildDefault: "bogus" }));
+      return bootCore(createEnv({ buildDefault: "bogus" }));
     }).toThrow(/VITE_CORE_IMPL/);
   });
 });
