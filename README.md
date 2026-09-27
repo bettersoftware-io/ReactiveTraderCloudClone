@@ -1,14 +1,21 @@
 # Reactive Trader — Clone
 
-**A real-time, multi-asset trading desk — FX, credit RFQs and equities — rebuilt
-from scratch as a showcase of clean architecture, spec-driven development and
-AI-assisted engineering.**
+**An experiment in running a *lit software factory*: can clean architecture,
+simplicity, modularity and hard engineering discipline let AI agents build and
+keep evolving a real, non-trivial product — while the humans review specs,
+tests and behaviour instead of every line of code?**
 
+The product the factory built is a real-time, multi-asset trading desk — FX,
+credit RFQs and equities — inspired by
+[Adaptive's ReactiveTraderCloud](https://github.com/AdaptiveConsulting/ReactiveTraderCloud).
 One framework-free application core drives **three clients** — React, SolidJS
 and React Native — and that core itself comes in **three interchangeable
 implementations** (RxJS, async/await, Effect-TS), all held to the same
-behavioural contract. Inspired by
-[Adaptive's ReactiveTraderCloud](https://github.com/AdaptiveConsulting/ReactiveTraderCloud).
+behavioural contract. None of it was written by hand.
+
+**Read the story:** [the software-factory experiment](#the-experiment-a-lit-software-factory) ·
+case study [Part I — the discipline](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-14/Clean-Architecture-case-study.html) ·
+[Part II — living with it](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-21/Clean-Architecture-case-study-part-II.html)
 
 ![Reactive Trader web client — the FX workspace streaming live prices on the Holo HUD 3D skin, with a just-executed trade confirmation](docs/readme/web-fx.jpg)
 
@@ -29,6 +36,60 @@ Both stream live from the same server.
 > in simulator mode — see [Quick start](#quick-start) — and sign in with the
 > committed demo accounts. Deploys are on demand, so the live sites can trail
 > `main` slightly.
+
+## The experiment: a lit software factory
+
+Addy Osmani describes a
+[software factory](https://addyosmani.com/blog/software-factories/) as *"many
+harnessed loops running at once, fed by a queue of work and drained through a
+review gate into production, with humans owning the whole thing from above."*
+In a **dark** factory, code ships that no human has read, verified only by
+other machines. A **lit** factory runs the same pipeline *"with the lights
+left on where judgment lives."*
+
+This repo is an attempt at the lit version, by two people on spare-time
+evenings, on a product big enough to hurt. The bet is that the decisive
+ingredient isn't a smarter model but **engineering discipline**: the
+article's own bottleneck is verification, not generation, and verification
+needs exactly what clean architecture supplies — types, test seams, component
+boundaries and dependency injection.
+
+| Factory part | How it looks here |
+|---|---|
+| **The loop** — an agent gathering context, acting, checking | Claude Code implements from a written spec and plan, each change in its own git worktree, several sessions in parallel on one repo |
+| **The harness** — tools, memory and gates around the loop | A blocking gauntlet on every PR: typecheck, type-aware lint, dependency-cruiser layering rules, 40+ architectural gates, contract suites for both web UIs and every application core, ≥95 % coverage gates, e2e — plus pixel goldens after merge. Memory lives in specs, ADRs, [`STATUS.md`](docs/STATUS.md) and a chaptered [architecture atlas](docs/architecture.md), never in anyone's head |
+| **Back pressure** — autonomy reaches only as far as verification does | *Fight non-determinism with determinism.* Agents merge green PRs without a human reading the diff, because the gates check what a reviewer would — and more, and never tire |
+| **Lights on where judgment lives** | Humans own the specs, the tests, the architecture and the product: use the app, judge behaviour, file findings. Rendering changes arrive as golden PNGs in the diff; deploys stay a human decision |
+
+What made it work was four practices reinforcing each other:
+
+- **Clean architecture** — strict dependency inversion, ports & adapters, a
+  pure domain that depends on nothing but RxJS, a "dumb" UI. It keeps every
+  change small and local, so an agent's loop stays short and a human can read
+  the diff when they choose to.
+- **Spec-driven development** — behaviour is written down first; the
+  implementation is built to satisfy it. The project began as exactly that
+  experiment: regenerate a real app from specs alone. Its lesson — tests
+  derived from the implementation just ratify its mistakes — is why tests here
+  assert the spec.
+- **Redundant verification** — the same behaviour checked several independent
+  ways, so the test suite becomes the artifact the humans actually review.
+- **AI-assisted development** — the agents write the code; the structure
+  above is what makes that safe.
+
+The outcome, in the words of the second talk: the work moved up a layer.
+Features land in days and bugs die in hours, and unplanned features — six boot
+scenes, a power-saver mode, an AI assistant — dropped in with zero
+refactoring. The two case-study decks tell the whole story, with the real code
+and diagrams:
+
+- **[Part I — a clean-architecture case study, and the things it unlocked](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-14/Clean-Architecture-case-study.html)**
+  — the origin experiment, the compiled dependency rule, verification as the
+  backbone, and the payoffs: a second platform, a framework regeneration, an AI
+  that trades.
+- **[Part II — living with a clean architecture](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-21/Clean-Architecture-case-study-part-II.html)**
+  — the day-to-day: boring code on purpose, review by machine, understanding by
+  map, and the speed that falls out.
 
 ## Screenshots
 
@@ -71,6 +132,9 @@ Both stream live from the same server.
 Web shots are the running React client in simulator mode; mobile shots are the
 iOS visual-regression harness (`packages/client-react-native/tests/visual/`) —
 the committed goldens, plus the same scenarios re-rendered on Terminal 3D.
+Two showcase pages go deeper on mobile:
+[the app beside its design prototype, screen by screen](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/rn-prototype-fidelity-comparison.html),
+and [every iOS golden before and after the harness moved to a static fake](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/rn-visual-goldens-static-fake.html).
 
 ## What's inside
 
@@ -97,23 +161,6 @@ the committed goldens, plus the same scenarios re-rendered on Terminal 3D.
   layer (presenters, state machines, wire traffic), in-app at `/devtools/` or as
   a Chrome extension that attaches to any running build, including production.
 
-**The engineering**
-
-> This is a concept project, not a product. Its purpose is to demonstrate — end
-> to end, on a non-trivial domain — how four practices reinforce each other:
->
-> - **Clean architecture** — strict dependency inversion, ports & adapters, a
->   pure domain core that depends on nothing but RxJS.
-> - **Spec-driven development** — behaviour is captured as executable
->   specifications first; the implementation is built to satisfy them.
-> - **Redundant verification** — the same behaviour is checked by independent
->   test runners, a shared UI contract, pixel goldens and 40+ architectural
->   gates, so the test suite itself becomes an artifact you can trust.
-> - **AI-assisted development** — the codebase was built in close collaboration
->   with an AI coding agent, and the structure above is exactly what makes that
->   safe: tight contracts, fast feedback, and verification that doesn't depend
->   on a human reading every line.
-
 ## What clean architecture bought us
 
 The claim of clean architecture is that the things you are most likely to
@@ -126,6 +173,8 @@ at the edge, behind interfaces the inner layers own. Here that claim was
   behavioural specs, the same e2e suites and the same pixel goldens as the
   React client. The core, the domain and the tests did not fork; only the
   "dumb" view layer and a thin bindings package are Solid-specific.
+  How one suite tests two frameworks, animated:
+  [one suite, two frameworks](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/cross-framework-testing.html).
 - **A second — and third — application core.** Every presenter and state
   machine (74 members) was re-implemented on async/await + AsyncIterable and
   again on Effect-TS, slice by slice, while the app kept shipping. All three
@@ -139,6 +188,8 @@ at the edge, behind interfaces the inner layers own. Here that claim was
   emitting the *same* intents the UI does into the *same* state machines, so
   what the agent can do is exactly what the machine boundary exposes — no
   second API to build or keep in sync.
+  The receipts, capability by capability:
+  [the machine boundary is the agent's reach](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/machine-boundary-agent-reach.html).
 - **Tooling bolts on at the composition root.** The DevTools inspector wraps
   presenters, machine factories and the socket adapter with decorators where
   the app is assembled — no feature code knows it is being observed.
@@ -301,6 +352,13 @@ Solid, a behavioural contract every application core must pass, and 40+
 architectural gates. See the [development guide](docs/development.md#checks--tests)
 and [§9 Test strategy](docs/architecture/09-test-strategy.md).
 
+In factory terms this suite *is* the review gate — it is what lets an agent's
+green PR merge without a human reading the diff. Two showcases show it at work:
+[one suite, two frameworks](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/cross-framework-testing.html) (the same
+contract, visual and e2e suites passing on React and Solid) and
+[the iOS goldens contact sheet](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/rn-visual-goldens-static-fake.html)
+(21 device screenshots, with the measured drift that justified re-pinning them).
+
 ## Documentation
 
 - [`docs/README.md`](docs/README.md) — **documentation map**: every doc grouped by purpose. Start here.
@@ -310,3 +368,13 @@ and [§9 Test strategy](docs/architecture/09-test-strategy.md).
 - [`docs/STATUS.md`](docs/STATUS.md) — the pending-work backlog; [`docs/IDEAS.md`](docs/IDEAS.md) is the icebox upstream of it.
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — how the Vercel + Fly.io demo is deployed.
 - [Project site](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/) — presentations and the coverage report.
+
+**Talks and showcases** — self-contained pages generated during the work,
+animated where a picture can't show the behaviour:
+
+- [Case study, Part I](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-14/Clean-Architecture-case-study.html) — the discipline, the verification, and what it unlocked.
+- [Case study, Part II](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/presentations/2026-07-21/Clean-Architecture-case-study-part-II.html) — the day-to-day payoff: review by machine, understanding by map, speed.
+- [One suite, two frameworks](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/cross-framework-testing.html) — how the React and Solid clients share one contract, visual and e2e suite.
+- [The machine boundary is the agent's reach](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/machine-boundary-agent-reach.html) — why Jarvis can drive exactly what the state machines expose, and nothing else.
+- [iOS visual goldens](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/rn-visual-goldens-static-fake.html) — every React Native golden, before and after the harness moved to a static fake.
+- [React Native vs the design prototype](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/rn-prototype-fidelity-comparison.html) — the mobile app beside its design, screen by screen, with a verdict per surface.
