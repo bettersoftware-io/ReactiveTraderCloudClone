@@ -306,6 +306,17 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     await this.selectSegment("coreImpl", impl);
   }
 
+  /** The "Application core" row's rendered description text — the fixed
+   * sentence plus the CURRENT core's own one-liner (Task 3 of the
+   * runtime-core-switch follow-up) — or `null` when the row isn't rendered
+   * at all. Found via the label's next sibling rather than a CSS-module
+   * class name (framework-neutral; `PrefSegment` renders the label and the
+   * (optional) description as adjacent children of the same wrapper). */
+  coreImplDescription(): string | null {
+    const label = within(this.root).queryByText("Application core");
+    return label?.nextElementSibling?.textContent ?? null;
+  }
+
   /** Each core impl asked for through useCoreSelection().select, in order —
    * mirrors the real no-op rule: selecting the already-active core writes
    * nothing here. */

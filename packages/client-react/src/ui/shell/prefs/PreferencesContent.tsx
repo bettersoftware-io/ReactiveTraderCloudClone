@@ -1,7 +1,7 @@
 import { type ReactElement, useState } from "react";
 
 import { formatBrainHint, formatGateHint } from "@rtc/client-core";
-import type { CoreImpl } from "@rtc/core-api";
+import type { CoreImpl, CoreSelection } from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -265,7 +265,7 @@ export function PreferencesContent(): ReactElement {
         {coreSelection !== null ? (
           <PrefSegment
             label="Application core"
-            description="Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page."
+            description={formatCoreSelectionDescription(coreSelection)}
             options={coreSelection.options.map((option) => {
               return { value: option.impl, label: option.label };
             })}
@@ -382,6 +382,32 @@ export function PreferencesContent(): ReactElement {
       </div>
     </div>
   );
+}
+
+const CORE_SELECTION_DESCRIPTION =
+  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page.";
+
+/**
+ * The "Application core" row's description: the fixed sentence above plus
+ * the CURRENT core's own one-liner (runtime-core-switch follow-up, Task 3)
+ * — so the row always explains both what the setting does and what's
+ * active right now. `null` (no selection offered) falls back to the fixed
+ * sentence alone; the row itself is absent entirely in that case anyway.
+ */
+function formatCoreSelectionDescription(
+  coreSelection: CoreSelection | null,
+): string {
+  if (coreSelection === null) {
+    return CORE_SELECTION_DESCRIPTION;
+  }
+
+  const current = coreSelection.options.find((option) => {
+    return option.impl === coreSelection.current;
+  });
+
+  return current === undefined
+    ? CORE_SELECTION_DESCRIPTION
+    : `${CORE_SELECTION_DESCRIPTION} ${current.description}`;
 }
 
 /** A run of cosmetic PrefToggle rows driven by one defs catalogue — the state

@@ -1,4 +1,5 @@
 import { AppShell, PreferencesModal } from "@ui-contract/components";
+import { CORE_OPTIONS_FOR_TESTS } from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -552,6 +553,36 @@ describe("PreferencesModal", () => {
     });
     expect(page.coreImplRowPresent()).toBe(false);
     expect(page.coreImplOptions()).toEqual([]);
+  });
+
+  it("shows the CURRENT core's own description alongside the fixed sentence", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "async",
+    });
+    expect(page.coreImplDescription()).toContain(
+      CORE_OPTIONS_FOR_TESTS.find((option) => {
+        return option.impl === "async";
+      })?.description,
+    );
+  });
+
+  it("switches the shown description when the current core differs", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "effect",
+    });
+
+    const effectDescription = CORE_OPTIONS_FOR_TESTS.find((option) => {
+      return option.impl === "effect";
+    })?.description;
+
+    const asyncDescription = CORE_OPTIONS_FOR_TESTS.find((option) => {
+      return option.impl === "async";
+    })?.description;
+
+    expect(page.coreImplDescription()).toContain(effectDescription);
+    expect(page.coreImplDescription()).not.toContain(asyncDescription);
   });
 });
 
