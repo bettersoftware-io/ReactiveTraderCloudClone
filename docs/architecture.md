@@ -120,7 +120,7 @@ This document is split into one file per section under
     - [Reading map](architecture/21-cross-framework-testing.md#reading-map)
 22. [Pluggable Application Core](architecture/22-pluggable-application-core.md)
     - [Packages](architecture/22-pluggable-application-core.md#packages)
-    - [Selection: build-time, not runtime](architecture/22-pluggable-application-core.md#selection-build-time-not-runtime)
+    - [Selection: at load time](architecture/22-pluggable-application-core.md#selection-at-load-time)
     - [Three timing guarantees](architecture/22-pluggable-application-core.md#three-timing-guarantees)
     - [The contract tier](architecture/22-pluggable-application-core.md#the-contract-tier)
     - [Bundle isolation](architecture/22-pluggable-application-core.md#bundle-isolation)

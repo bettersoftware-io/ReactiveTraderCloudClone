@@ -115,6 +115,60 @@ exercise a real `createApp`, are extended instead — run once per core
 (`RTC_CORE_IMPL`), the strongest signal a delegating core is currently
 capable of producing since none of its own members are native yet.
 
+## Decision 6: Load-time core selection (supersedes build-time-only selection)
+
+**2026-09-27.** Slice 8 (2026-09-26) made each core stand alone, but
+selection was still resolved once, at build time, from the literal
+`import.meta.env.VITE_CORE_IMPL` — "one core per build" (Decision 4/5's
+Consequences, below). A follow-on design
+([spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md))
+replaced that with selection **at load time**, so a deployed build can be
+switched between all three cores without a rebuild.
+
+- **`src/app/coreSelection.ts` replaces `selectCore.ts`** in both web
+  clients. `resolveCoreChoice` is a pure precedence chain: `?core=` (this
+  load only, never persisted — a shareable link that doesn't change the
+  visitor's saved choice) → the stored choice (`localStorage["rtc.coreImpl"]`)
+  → the build default (`VITE_CORE_IMPL`, still the knob every `dev:*` script
+  and the e2e harness set) → `"rxjs"`. An unknown `?core=` or stored value is
+  ignored/cleared with a console warning and falls through; an unknown build
+  default still throws synchronously — a developer error, unchanged in
+  substance from today's fail-closed `selectCore`.
+- **RxJS stays the only statically-imported core** (`loadCore` resolves it
+  from the already-imported `rxjsCore`); `async` and `effect` are resolved
+  through `import("@rtc/client-core-async")` / `import("@rtc/client-core-effect")`,
+  which the bundler splits into their own lazy chunks fetched only once
+  chosen. `bootCore` (`src/app/bootApp.ts`) runs this resolve-then-load
+  sequence before `main.tsx` renders anything; a rejected chunk load renders
+  a plain boot-error screen with a "Load the default core" action (clears the
+  stored choice, reloads without `?core=`) — never a silent fallback to
+  RxJS. `<html data-core-impl>` publishes whichever core actually loaded.
+- **The choice is exposed to the UI as an app-shell value, not a core
+  concern.** `AppRoot` builds a `CoreSelection` (`{ current, options, select
+  }`) and passes it into the bindings' `createViewModel`; `select` saves the
+  choice and reloads with `?core=` stripped (so a page opened as
+  `?core=effect` doesn't reload straight back onto Effect, since the URL
+  outranks storage). `@rtc/react-bindings` and `@rtc/solid-bindings` expose
+  it as `useCoreSelection(): CoreSelection | null` — `null` when the host
+  offers none (React Native passes none; it stays RxJS-only). Both clients
+  gained a Preferences → "Application core" row, rendered only when
+  `useCoreSelection()` is non-null.
+- **`check:core-bundle` is redefined** from "one build per core, each free
+  of the others' marker" to "one build; the eager set (both pages' entry
+  scripts plus every `modulepreload` hint, closed over static imports)
+  carries the `RXJS_CORE_BRAND` and neither alternative's brand; exactly one
+  lazy chunk carries `ASYNC_CORE_BRAND`, exactly one carries
+  `EFFECT_CORE_BRAND`; no eager file carries the Effect runtime's own
+  `effect/Fiber` marker (catching the composition root staying lazy while
+  the library it constructs leaks into a shared eager chunk); no single file
+  carries two cores' markers." `--dir` runs it against an already-built
+  output directory rather than building; `deploy.yml`'s "Guard — alternative
+  cores ship only as lazy chunks" step calls it that way over
+  `.vercel/output/static`.
+- **Out of scope, recorded as follow-ups below:** a hot swap without a page
+  reload, and "approach B" (all three cores lazy, none privileged in the
+  entry bundle).
+
 ## Consequences
 
 - Four new packages join the graph: `@rtc/core-api` (types-only, innermost
@@ -122,14 +176,17 @@ capable of producing since none of its own members are native yet.
   `core-api` + `domain` + `rxjs` only — **never** `client-core`, to avoid a
   build-order cycle with the RxJS core's own contract runner living inside
   `client-core`), `@rtc/client-core-async`, `@rtc/client-core-effect`.
-- Each web client gains one `src/app/selectCore.ts`, and `AppRoot` now
-  imports its `CoreFactory` pair from there instead of `@rtc/client-core`
+- Each web client gains one `src/app/coreSelection.ts` (originally
+  `selectCore.ts`, replaced by Decision 6 below), and `AppRoot` takes its
+  `CoreFactory` as a prop from `bootCore`'s result rather than importing one
   directly.
-- Production stays pinned to the RxJS core: `VITE_CORE_IMPL` unset resolves
-  to `rxjs`, and the deploy workflow's bundle guard fails the build if
-  `effect/Fiber` appears in the shipped static output. `pnpm
-  check:core-bundle` gives the same guarantee locally, per core, with gzip
-  sizes for visibility.
+- **Superseded by Decision 6:** production no longer pins one core per
+  build. Every build ships all three — RxJS eager, async/Effect lazy — and
+  `VITE_CORE_IMPL` unset now resolves only the *default choice* a visitor
+  lands on, not what gets bundled. The deploy workflow's guard, and `pnpm
+  check:core-bundle` locally, assert the eager/lazy split described in
+  Decision 6 rather than "no foreign core in this one build"; gzip sizes per
+  core chunk are still reported for visibility.
 - `effect` is pinned `^3.22.2` (published 2026-09-09; 4.0 was a release
   candidate, not stable, at design time — a named follow-up).
   `@effect/vitest` is **not** used: its peer range is `vitest ^3.2` and the
@@ -1073,10 +1130,21 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    subscription once its consumers have let go; what a still-attached
    subscriber hears — including a refcounted stream still delivering — stays
    uncontracted (§22's envelope rule 3).
+7. **Hot swap without a page reload** (Decision 6) — `app.dispose()` (real in
+   all three cores since #834) plus a remount onto the newly loaded core in
+   place, as a showcase of the architecture's resilience rather than a
+   save-and-reload. Needs the page-lifetime singletons (the devtools hub,
+   the transport, other module-level state) to tolerate a second
+   composition within one page life.
+8. **Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
+   subpath export for the RxJS composition root, so the entry bundle
+   privileges none of the three; deferred because Approach A (RxJS eager,
+   the other two lazy) costs the default visitor's load nothing.
 
 ## See also
 
 - [Pluggable application core design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md)
+- [Load-time core selection design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md) (Decision 6)
 - [Slice 0 implementation plan](../superpowers/plans/2026-09-12-pluggable-core-slice-0.md)
 - [§22 Pluggable Application Core](../architecture/22-pluggable-application-core.md)
 - [§10.1 RxJS `Observable<T>` as the boundary stream type](../architecture/10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)
