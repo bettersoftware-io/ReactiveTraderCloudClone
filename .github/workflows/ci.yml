@@ -159,6 +159,9 @@ jobs:
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
 
+      - name: E2E harness tooling unit tests
+        run: pnpm --filter @rtc/tests test:report
+
       # The cucumber teardown policy decides whether a green run is allowed to go
       # red. Its interesting branch only fires when a shutdown overruns its
       # budget — a condition no run can summon on demand — so it is gated here

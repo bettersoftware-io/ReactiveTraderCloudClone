@@ -160,10 +160,11 @@ pnpm test:e2e:async                             # e2e against that core (also te
   `pnpm check:core-bundle` proves it in CI. Production leaves the variable
   unset, so it ships the RxJS core.
 - **Web only.** The React Native client always runs the RxJS core.
-- **e2e uses `RTC_CORE_IMPL`, not `VITE_CORE_IMPL`.** The e2e harness starts
-  its own dev servers and sets their `VITE_CORE_IMPL` from `RTC_CORE_IMPL`
-  (`tests/scripts/devServer.ts`), so `VITE_CORE_IMPL=async pnpm test:e2e`
-  silently runs the RxJS core. Use `pnpm test:e2e:async` / `test:e2e:effect`.
+- **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
+  (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm
+  test:e2e` works too. Set both to different cores and the run refuses to
+  start, and it logs `[run-all] application core: …` so you can see which one
+  ran (`tests/scripts/lib/coreImpl.ts`).
 
 How it works and why: [§22 Pluggable application core](docs/architecture/22-pluggable-application-core.md)
 and [ADR-006](docs/adr/ADR-006-pluggable-application-core.md).
