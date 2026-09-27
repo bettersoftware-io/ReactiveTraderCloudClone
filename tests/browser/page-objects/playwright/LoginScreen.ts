@@ -16,19 +16,15 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
   private loginPage: Page | undefined;
 
   /** Uncaught page errors on whichever page `open()` most recently created —
-   * fed by the `pageerror` listener registered there.
-   *
-   * TODO(runtime-core-switch #4): this comment described `selectCore.ts`'s
-   * fail-closed `VITE_CORE_IMPL` throw as a synchronous module-init crash
-   * (an uncaught exception before any route rendered), which `pageerror`
-   * caught. That file is gone; `coreSelection.ts`'s `resolveCoreChoice` now
-   * throws inside `bootApp.ts`'s async `bootCore`, whose rejection
-   * `main.tsx` catches via `.then(..., onError)` and renders through
-   * `renderBootError` as ordinary DOM content — no uncaught exception, so no
-   * `pageerror` fires for this case any more. `findBootError`/`waitCoreImpl`
-   * below need a DOM-content check instead of (or alongside) this
-   * `pageErrors` scan for the invalid-build-default scenario; left as-is
-   * pending that fix. */
+   * fed by the `pageerror` listener registered there. `coreSelection.ts`'s
+   * `resolveCoreChoice` fail-closed `VITE_CORE_IMPL` throw fires
+   * synchronously out of `bootApp.ts`'s (deliberately non-`async`) `bootCore`
+   * at module init, before ANY route (including LoginScreen itself) renders
+   * — an uncaught exception, exactly like `selectCore.ts`'s throw before it
+   * — so a captured message here is what actually happened when a
+   * subsequent wait times out. (A rejected chunk *load* is the other, DOM-
+   * rendered failure mode — see `renderBootError` — and does not reach
+   * `pageerror` at all; this scan is only ever for the build-default case.) */
   private pageErrors: string[] = [];
 
   constructor(private readonly appPage: Page) {}
@@ -43,8 +39,7 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
   /** A captured page error that mentions VITE_CORE_IMPL — the fail-closed
    *  message from `coreSelection.ts`'s `resolveCoreChoice` — or undefined if
-   *  boot succeeded. See the TODO on {@link pageErrors}: since #4, this
-   *  specific throw no longer reaches `pageerror` (see there). */
+   *  boot succeeded. */
   private findBootError(): string | undefined {
     return this.pageErrors.find((message) => {
       return message.includes("VITE_CORE_IMPL");

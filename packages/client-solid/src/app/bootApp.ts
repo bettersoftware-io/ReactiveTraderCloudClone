@@ -27,10 +27,18 @@ export interface BootResult {
  * Resolves which core to boot (`?core=` > stored choice > build default >
  * `"rxjs"`), clears an invalid stored value, logs any warnings, then loads
  * the chosen core. Publishes nothing itself — the caller (`main.tsx`) owns
- * `<html data-core-impl>` and the render. Rejects when `load` rejects (e.g.
- * a failed chunk fetch); there is no silent fallback to a different core.
+ * `<html data-core-impl>` and the render.
+ *
+ * Deliberately NOT an `async function`: resolving the choice is synchronous,
+ * so an invalid `buildDefault` (`VITE_CORE_IMPL`) — a developer error, not a
+ * runtime failure — throws synchronously out of this call, exactly as it did
+ * before this module existed (an uncaught module-init error). Only `load`'s
+ * promise (e.g. a failed chunk fetch) is asynchronous, and only ITS
+ * rejection propagates as this function's rejection — the boot-error screen
+ * (`renderBootError`) is for that case alone, never for a bad build default.
+ * There is no silent fallback to a different core either way.
  */
-export async function bootCore(env: BootEnv): Promise<BootResult> {
+export function bootCore(env: BootEnv): Promise<BootResult> {
   const url = new URL(env.href).searchParams.get(CORE_PARAM);
   const choice = resolveCoreChoice({
     url,
@@ -46,7 +54,9 @@ export async function bootCore(env: BootEnv): Promise<BootResult> {
     clearCoreChoice(env.storage);
   }
 
-  return { impl: choice.impl, core: await env.load(choice.impl) };
+  return env.load(choice.impl).then((core) => {
+    return { impl: choice.impl, core };
+  });
 }
 
 /**

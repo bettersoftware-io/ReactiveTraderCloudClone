@@ -10,6 +10,7 @@ import { CORE_CHOICE_KEY } from "./coreSelection";
 
 describe("bootCore", () => {
   it("boots the URL's core and publishes nothing itself", async () => {
+    delete document.documentElement.dataset.coreImpl;
     const load = vi.fn(async () => {
       return createFakeCore();
     });
@@ -20,6 +21,7 @@ describe("bootCore", () => {
 
     expect(result.impl).toBe("effect");
     expect(load).toHaveBeenCalledWith("effect");
+    expect(document.documentElement.dataset.coreImpl).toBeUndefined();
   });
 
   it("clears an unknown stored choice and warns", async () => {
@@ -42,10 +44,16 @@ describe("bootCore", () => {
     ).rejects.toThrow("chunk 404");
     expect(load).toHaveBeenCalledTimes(1);
   });
+
+  it("throws synchronously on an invalid build default (developer error, not a boot-error screen)", () => {
+    expect(() => {
+      bootCore(createEnv({ buildDefault: "bogus" }));
+    }).toThrow(/VITE_CORE_IMPL/);
+  });
 });
 
 describe("renderBootError", () => {
-  it("renders a boot error whose action resets to the default core", async () => {
+  it("renders a boot error whose action resets to the default core", () => {
     const root = document.createElement("div");
     const reset = vi.fn();
 

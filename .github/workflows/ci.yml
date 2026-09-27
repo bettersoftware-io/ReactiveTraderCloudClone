@@ -204,8 +204,11 @@ jobs:
       # which writes that path regardless of --outDir.
       # Builds each web client once per application core (rxjs/async/effect)
       # into a temp dir and asserts a build that selected core X shipped no
-      # other core's runtime — proves the choice made in src/app/coreSelection.ts
-      # actually lets rolldown tree-shake the unselected cores out.
+      # other core's runtime. src/app/coreSelection.ts's loadCore now resolves
+      # async/effect via dynamic import (rolldown splits each into its own
+      # lazy chunk rather than tree-shaking it out entirely), so this check's
+      # own rules are being redefined to match — see the runtime-core-switch
+      # design doc.
       - name: Core bundle isolation (one application core per build)
         run: pnpm check:core-bundle
 
