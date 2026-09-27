@@ -150,7 +150,7 @@ choice is made at build time by the `VITE_CORE_IMPL` environment variable:
 pnpm dev:react:async                            # shortcuts, simulator mode
 pnpm dev:react:effect                           # (dev:solid:async / dev:solid:effect too)
 VITE_CORE_IMPL=effect pnpm dev:react:fs         # composes with any mode
-VITE_CORE_IMPL=async  pnpm test:e2e             # run e2e against that core
+pnpm test:e2e:async                             # e2e against that core (also test:e2e:effect)
 ```
 
 - **Restart to switch.** Vite inlines the value into the bundle, so changing
@@ -160,6 +160,10 @@ VITE_CORE_IMPL=async  pnpm test:e2e             # run e2e against that core
   `pnpm check:core-bundle` proves it in CI. Production leaves the variable
   unset, so it ships the RxJS core.
 - **Web only.** The React Native client always runs the RxJS core.
+- **e2e uses `RTC_CORE_IMPL`, not `VITE_CORE_IMPL`.** The e2e harness starts
+  its own dev servers and sets their `VITE_CORE_IMPL` from `RTC_CORE_IMPL`
+  (`tests/scripts/devServer.ts`), so `VITE_CORE_IMPL=async pnpm test:e2e`
+  silently runs the RxJS core. Use `pnpm test:e2e:async` / `test:e2e:effect`.
 
 How it works and why: [§22 Pluggable application core](docs/architecture/22-pluggable-application-core.md)
 and [ADR-006](docs/adr/ADR-006-pluggable-application-core.md).
