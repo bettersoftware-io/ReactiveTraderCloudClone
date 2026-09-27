@@ -1,6 +1,8 @@
+import { rxjsCore } from "@rtc/client-core";
+import type { CoreFactory } from "@rtc/core-api";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CoreSelectionDeps } from "./coreSelection";
+import type { CoreImporters, CoreSelectionDeps } from "./coreSelection";
 import {
   CORE_CHOICE_KEY,
   clearCoreChoice,
@@ -104,24 +106,46 @@ describe("resolveCoreChoice", () => {
 });
 
 describe("loadCore", () => {
-  it.each(["rxjs", "async", "effect"] as const)(
-    "loads the %s core",
-    async (impl) => {
-      const core = await loadCore(impl);
+  // Fake importers only: a real dynamic import() of a whole alternative core
+  // under vitest takes seconds on a loaded runner. The real imports are
+  // witnessed by the e2e runs (test:e2e:async / :effect boot on them) and by
+  // `pnpm check:core-bundle` (each sits in exactly one lazy chunk).
+  it("returns the statically imported RxJS core without calling an importer", async () => {
+    const importers = createFakeImporters();
 
-      expect(typeof core.createApp).toBe("function");
-      expect(typeof core.createMachineFactories).toBe("function");
-    },
-  );
+    const core = await loadCore("rxjs", importers);
 
-  it("loads distinct factories per core", async () => {
-    const [a, b, c] = await Promise.all([
-      loadCore("rxjs"),
-      loadCore("async"),
-      loadCore("effect"),
-    ]);
+    expect(core).toBe(rxjsCore);
+    expect(importers.async).not.toHaveBeenCalled();
+    expect(importers.effect).not.toHaveBeenCalled();
+  });
 
-    expect(new Set([a, b, c]).size).toBe(3);
+  it("loads the async core through the async importer alone", async () => {
+    const importers = createFakeImporters();
+
+    const core = await loadCore("async", importers);
+
+    expect(core).toBe(FAKE_ASYNC_CORE);
+    expect(importers.async).toHaveBeenCalledOnce();
+    expect(importers.effect).not.toHaveBeenCalled();
+  });
+
+  it("loads the Effect core through the effect importer alone", async () => {
+    const importers = createFakeImporters();
+
+    const core = await loadCore("effect", importers);
+
+    expect(core).toBe(FAKE_EFFECT_CORE);
+    expect(importers.effect).toHaveBeenCalledOnce();
+    expect(importers.async).not.toHaveBeenCalled();
+  });
+
+  it("rejects with the importer's own error when a chunk fails to load", async () => {
+    const failure = new Error("Failed to fetch dynamically imported module");
+    const importers = createFakeImporters();
+    importers.effect.mockRejectedValueOnce(failure);
+
+    await expect(loadCore("effect", importers)).rejects.toBe(failure);
   });
 });
 
@@ -343,4 +367,20 @@ function createDeps(saveWorks = true): CreateDepsResult {
       navigate,
     },
   };
+}
+
+/** Stand-ins for the two lazily imported cores — only their identity is
+ * asserted, so an empty cast object is enough. */
+const FAKE_ASYNC_CORE = {} as CoreFactory;
+const FAKE_EFFECT_CORE = {} as CoreFactory;
+
+function createFakeImporters() {
+  return {
+    async: vi.fn(() => {
+      return Promise.resolve({ asyncCore: FAKE_ASYNC_CORE });
+    }),
+    effect: vi.fn(() => {
+      return Promise.resolve({ effectCore: FAKE_EFFECT_CORE });
+    }),
+  } satisfies CoreImporters;
 }

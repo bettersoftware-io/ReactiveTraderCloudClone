@@ -112,18 +112,52 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
   return { impl: build, source: "build", warnings, clearStored };
 }
 
+/** How each lazily loaded core's module is fetched — injectable so the
+ * selection in `loadCore` is unit-testable without really importing a whole
+ * core (seconds under vitest on a loaded runner). */
+export interface CoreImporters {
+  readonly async: () => Promise<AsyncCoreModule>;
+  readonly effect: () => Promise<EffectCoreModule>;
+}
+
+/** The slice of `@rtc/client-core-async`'s module `loadCore` reads. */
+interface AsyncCoreModule {
+  readonly asyncCore: CoreFactory;
+}
+
+/** The slice of `@rtc/client-core-effect`'s module `loadCore` reads. */
+interface EffectCoreModule {
+  readonly effectCore: CoreFactory;
+}
+
+/** The real importers. Each `import()` specifier must stay a string literal
+ * here: that is what lets the bundler split each alternative core into its
+ * own lazy chunk (`pnpm check:core-bundle` witnesses it). */
+const DEFAULT_CORE_IMPORTERS: CoreImporters = {
+  async: () => {
+    return import("@rtc/client-core-async");
+  },
+  effect: () => {
+    return import("@rtc/client-core-effect");
+  },
+};
+
 /**
  * Resolves the `CoreFactory` for `impl`. RxJS is statically imported (its
  * adapters are in the entry bundle anyway); async and Effect are dynamic
  * imports the bundler splits into their own chunks, fetched only once chosen.
+ * A failed chunk fetch rejects with the importer's own error.
  */
-export async function loadCore(impl: CoreImpl): Promise<CoreFactory> {
+export async function loadCore(
+  impl: CoreImpl,
+  importers: CoreImporters = DEFAULT_CORE_IMPORTERS,
+): Promise<CoreFactory> {
   if (impl === "async") {
-    return (await import("@rtc/client-core-async")).asyncCore;
+    return (await importers.async()).asyncCore;
   }
 
   if (impl === "effect") {
-    return (await import("@rtc/client-core-effect")).effectCore;
+    return (await importers.effect()).effectCore;
   }
 
   return rxjsCore;
