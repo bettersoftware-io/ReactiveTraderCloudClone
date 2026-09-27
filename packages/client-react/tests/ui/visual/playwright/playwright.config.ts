@@ -143,8 +143,14 @@ export default defineConfig({
     // that `reuseExistingServer` then adopted. That workaround is what the
     // next setting closes, so the command has to work on its own.
     cwd: PACKAGE_DIR,
+    // The package's own `node_modules/.bin/vite` shim, NOT `pnpm exec vite`:
+    // the shim `exec`s node, so Playwright's teardown kill reaches vite itself.
+    // Under pnpm 12.6.0 (#805) the `pnpm exec` wrapper died on that kill while
+    // vite survived, reparented to PID 1 — and the runner waited on it
+    // forever after "N passed" (main's visual.yml hung for hours, measured
+    // 2026-09-27). Relative to `cwd`, so it still works from any launch dir.
     command:
-      "pnpm exec vite --config tests/ui/visual/playwright/host/vite.config.ts",
+      "node_modules/.bin/vite --config tests/ui/visual/playwright/host/vite.config.ts",
     url: `http://127.0.0.1:${PORT}`,
     // Never adopt a server this run did not start. This was `!process.env.CI`,
     // which silently reused whatever already listened on the port — a vite
