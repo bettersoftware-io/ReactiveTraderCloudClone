@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 import {
   JARVIS_NARRATOR_ON_VALUE,
@@ -50,6 +50,27 @@ export class PlaywrightWorkspace implements WorkspacePO {
       value: JARVIS_NARRATOR_ON_VALUE,
     });
     await this.page.goto("/?narratorThresholds=test");
+  }
+
+  async openWithCoreImpl(impl: string): Promise<void> {
+    await this.page.goto(`/?core=${impl}`);
+  }
+
+  async waitUrlHasNoCoreParam(timeoutMs: number): Promise<void> {
+    await this.page.waitForURL(
+      (url) => {
+        return !url.searchParams.has("core");
+      },
+      { timeout: timeoutMs },
+    );
+  }
+
+  async waitCoreImpl(expected: string, timeoutMs: number): Promise<void> {
+    await expect(this.page.locator("html")).toHaveAttribute(
+      "data-core-impl",
+      expected,
+      { timeout: timeoutMs },
+    );
   }
 
   async clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void> {

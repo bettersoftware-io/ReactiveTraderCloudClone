@@ -3,6 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import type {
   PreferencesPO,
   PrefsChartSubstrate,
+  PrefsCoreImpl,
   PrefsLayoutEngine,
 } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
@@ -31,6 +32,10 @@ export class PlaywrightPreferences implements PreferencesPO {
     await this.page
       .getByTestId(TESTIDS.prefs.layoutEngineSegment(value))
       .click();
+  }
+
+  async selectCoreImpl(value: PrefsCoreImpl): Promise<void> {
+    await this.page.getByTestId(TESTIDS.prefs.coreImplSegment(value)).click();
   }
 
   async close(): Promise<void> {
