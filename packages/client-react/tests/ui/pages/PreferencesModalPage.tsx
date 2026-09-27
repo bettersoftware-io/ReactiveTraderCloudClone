@@ -111,6 +111,13 @@ export function preferencesModalPage(): PreferencesModalPage {
         useWorkspaceReset: () => {
           return vi.fn();
         },
+        // Not exercised here (the shared ui-contract tier covers the
+        // Application core row) — but the modal destructures it, so a fake
+        // that omits it fails to render at all. null mirrors a host that
+        // offers no core selection (e.g. before Task 5 wired the shell).
+        useCoreSelection: () => {
+          return null;
+        },
       } as unknown as ViewModel;
 
       render(

@@ -4,6 +4,7 @@ import { seedLocalStorageItem } from "#/browser/authSeed";
 
 import type { BootOpenOptions, BootPO } from "../contracts/Boot";
 import { TESTIDS } from "../contracts/testids";
+import { navigateAndAwaitMount } from "./appMount";
 
 /**
  * The preference's localStorage key, mirrored verbatim from
@@ -33,7 +34,9 @@ export class PlaywrightBoot implements BootPO {
     // ?splash forces shouldPlayBootSplash() ON even though Playwright sets
     // navigator.webdriver (bootSplashGate.ts's force-on override) — without
     // it, BootGate never mounts BootSequence at all under automation.
-    await this.page.goto("/?splash");
+    await navigateAndAwaitMount(this.page, () => {
+      return this.page.goto("/?splash");
+    });
   }
 
   async waitForceAnimAttr(

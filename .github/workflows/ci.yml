@@ -199,14 +199,19 @@ jobs:
       - name: Prod /devtools/ bundle check
         run: pnpm check:devtools-dist
 
-      # MUST run AFTER "Prod /devtools/ bundle check": the six client builds
-      # below clobber dist/devtools via the devtoolsPanel plugin's closeBundle,
+      # MUST run AFTER "Prod /devtools/ bundle check": the client builds below
+      # clobber dist/devtools via the devtoolsPanel plugin's closeBundle,
       # which writes that path regardless of --outDir.
-      # Builds each web client once per application core (rxjs/async/effect)
-      # into a temp dir and asserts a build that selected core X shipped no
-      # other core's runtime — proves selectCore.ts's literal comparison
-      # actually lets rolldown tree-shake the unselected cores out.
-      - name: Core bundle isolation (one application core per build)
+      # Since the runtime core switch, a web client ships ONE production build
+      # that boots the RxJS core eagerly (statically imported — it stays in
+      # the entry bundle regardless) and loads async/Effect as lazy chunks
+      # src/app/coreSelection.ts's `loadCore` fetches only once a visitor
+      # picks one (rolldown splits each `import()` into its own chunk). This
+      # builds each web client once and asserts the eager set (both pages'
+      # entry scripts + modulepreload hints) carries only the rxjs marker,
+      # while each alternative core sits in exactly one lazy chunk — see
+      # scripts/check-core-bundle.mjs and the runtime-core-switch design doc.
+      - name: Core bundle isolation (alternative cores only in their own lazy chunks)
         run: pnpm check:core-bundle
 
       # This step used to tolerate ONE failure signature: worklets' Babel plugin
@@ -303,7 +308,7 @@ jobs:
           retention-days: 7
 
   # Same e2e suite, run again against the two non-default application cores
-  # (VITE_CORE_IMPL: async | effect — see packages/client-*/src/app/selectCore.ts).
+  # (VITE_CORE_IMPL: async | effect — see packages/client-*/src/app/coreSelection.ts).
   # A sibling job, not a rename of `e2e` above: the `main` ruleset's required
   # checks reference that job's name, and renaming it would silently drop the
   # required check.

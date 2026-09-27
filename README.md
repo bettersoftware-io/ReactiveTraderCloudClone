@@ -234,7 +234,7 @@ flowchart TB
     react["React"] ~~~ solid["SolidJS"] ~~~ rn["React Native"]
   end
   contract{{"@rtc/core-api — types-only contract"}}
-  subgraph cores["Application cores — pick one per build"]
+  subgraph cores["Application cores — switch at load time"]
     direction LR
     rx["RxJS"] ~~~ asyncCore["async/await"] ~~~ effectCore["Effect-TS"]
   end
@@ -335,6 +335,11 @@ pnpm dev:devtools       # the state inspector
 Every client has the same four data-source modes — `:sim`, `:ws:local`,
 `:ws:remote`, `:fs`. The [development guide](docs/development.md) covers them
 all, plus choosing an application core, the test stack and deploying.
+
+The core is switchable at load time in any build, the deployed one included:
+add `?core=async` or `?core=effect` to the URL, or pick one in Preferences →
+**Application core** (saved, then the page reloads). The async and Effect
+cores are lazy chunks, so the default RxJS load costs nothing extra.
 
 ## Tests & verification
 

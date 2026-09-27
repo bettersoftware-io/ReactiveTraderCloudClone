@@ -6,6 +6,7 @@ import {
   formatGateHint,
   type JarvisState,
 } from "@rtc/client-core";
+import type { CoreImpl, CoreSelection } from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -51,11 +52,13 @@ import styles from "./PreferencesContent.module.css";
  * again since; treat the counts above as a snapshot, not an invariant to
  * re-defend on every future row.
  *
- * TWELVE rows are wired to real ports — Animated background
+ * THIRTEEN rows are wired to real ports — Animated background
  * (`useAnimatedBackground`), Power saver (`usePowerSaver`, a 3-state
  * Off/Calm/Freeze segment), Ambient style (`useAmbientStyle`), Chart renderer
- * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Always play boot
- * animation (`useForceBootAnimation`), the two login-wait rows
+ * (`useChartSubstrate`), Layout engine (`useLayoutEngine`), Application core
+ * (`useCoreSelection`; the row is absent entirely when the host offers no
+ * selection — see that hook's own doc), Always play boot animation
+ * (`useForceBootAnimation`), the two login-wait rows
  * (`useLoginWaitPreferences`), the three Jarvis rows (`useJarvisPreferences`
  * for the stored brain/effort/narrator, `useJarvis` read-only for which
  * brains the server is currently offering), and Reset workspace layout
@@ -76,9 +79,11 @@ export function PreferencesContent(): JSX.Element {
     useJarvis,
     useJarvisPreferences,
     useWorkspaceReset,
+    useCoreSelection,
   } = useViewModel();
 
   const resetWorkspaceLayout = useWorkspaceReset();
+  const coreSelection = useCoreSelection();
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
@@ -197,6 +202,10 @@ export function PreferencesContent(): JSX.Element {
     setLayoutEngine(value as LayoutEngine);
   }
 
+  function switchCore(value: string): void {
+    coreSelection?.select(value as CoreImpl);
+  }
+
   function changeLoginWaitStyle(value: string): void {
     setLoginWaitStyle(value as LoginWaitStyle);
   }
@@ -271,6 +280,18 @@ export function PreferencesContent(): JSX.Element {
           onChange={changeLayoutEngine}
           testid="pref-segment-layoutEngine"
         />
+        <Show when={coreSelection !== null}>
+          <PrefSegment
+            label="Application core"
+            description={formatCoreSelectionDescription(coreSelection)}
+            options={(coreSelection?.options ?? []).map((option) => {
+              return { value: option.impl, label: option.label };
+            })}
+            value={coreSelection?.current ?? ""}
+            onChange={switchCore}
+            testid="pref-segment-coreImpl"
+          />
+        </Show>
         <ToggleGroup
           defs={MOTION_TOGGLES}
           values={toggles}
@@ -379,6 +400,32 @@ export function PreferencesContent(): JSX.Element {
       </div>
     </div>
   );
+}
+
+const CORE_SELECTION_DESCRIPTION =
+  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page.";
+
+/**
+ * The "Application core" row's description: the fixed sentence above plus
+ * the CURRENT core's own one-liner (runtime-core-switch follow-up, Task 3)
+ * — so the row always explains both what the setting does and what's
+ * active right now. `null` (no selection offered) falls back to the fixed
+ * sentence alone; the row itself is absent entirely in that case anyway.
+ */
+function formatCoreSelectionDescription(
+  coreSelection: CoreSelection | null,
+): string {
+  if (coreSelection === null) {
+    return CORE_SELECTION_DESCRIPTION;
+  }
+
+  const current = coreSelection.options.find((option) => {
+    return option.impl === coreSelection.current;
+  });
+
+  return current === undefined
+    ? CORE_SELECTION_DESCRIPTION
+    : `${CORE_SELECTION_DESCRIPTION} ${current.description}`;
 }
 
 /** A run of cosmetic PrefToggle rows driven by one defs catalogue — the state

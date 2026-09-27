@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@rtc/client-core": "workspace:*",
+    "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "rxjs": "^7.8",

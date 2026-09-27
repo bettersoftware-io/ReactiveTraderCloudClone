@@ -1076,6 +1076,6 @@ export function createMachineFactories(
   };
 }
 
-/** The RxJS core as a `CoreFactory` — what `selectCore` returns for
- * `VITE_CORE_IMPL=rxjs` (the default). */
+/** The RxJS core as a `CoreFactory` — what `coreSelection.ts`'s `loadCore`
+ * resolves to for the `"rxjs"` impl (the default). */
 export const rxjsCore: CoreFactory = { createApp, createMachineFactories };

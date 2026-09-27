@@ -1,5 +1,7 @@
 import type { JSX, ParentProps } from "solid-js";
+import { untrack } from "solid-js";
 
+import type { CoreFactory, CoreSelection } from "@rtc/core-api";
 import {
   instrumentMachineFactories,
   instrumentPresenters,
@@ -9,7 +11,6 @@ import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
-import { activeCore } from "#/app/selectCore";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { PowerSaverRoot } from "#/ui/shell/power/PowerSaverRoot";
@@ -32,8 +33,17 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
  * BootGate so the splash still plays over the login screen; it renders
  * LoginScreen until useAuth() reports "authenticated", then renders the app
  * (children). */
-export function AppRoot(props: ParentProps): JSX.Element {
-  const { presenters, commands } = activeCore.createApp(buildBrowserPorts());
+export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
+  // `core`/`coreSelection` never change after mount (the boot sequence in
+  // main.tsx resolves both before the first render and a switch reloads the
+  // whole page rather than re-valuing this component), so this snapshot —
+  // read once via `untrack`, exactly like `ViewModelProvider`'s `props.value`
+  // — is correct, not just a StrictMode-safe shortcut.
+  const { core, coreSelection } = untrack(() => {
+    return { core: props.core, coreSelection: props.coreSelection };
+  });
+
+  const { presenters, commands } = core.createApp(buildBrowserPorts());
   const instrumented = instrumentPresenters(
     presenters,
     PRESENTER_MANIFEST,
@@ -43,10 +53,11 @@ export function AppRoot(props: ParentProps): JSX.Element {
   const viewModel = createViewModel(
     instrumented,
     instrumentMachineFactories(
-      activeCore.createMachineFactories(instrumented),
+      core.createMachineFactories(instrumented),
       devtoolsHub,
     ),
     commands,
+    { coreSelection },
   );
 
   return (
@@ -59,4 +70,9 @@ export function AppRoot(props: ParentProps): JSX.Element {
       </ThemeProvider>
     </ViewModelProvider>
   );
+}
+
+interface AppRootProps {
+  core: CoreFactory;
+  coreSelection: CoreSelection;
 }

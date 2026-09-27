@@ -1,4 +1,5 @@
 import { AppShell, PreferencesModal } from "@ui-contract/components";
+import { CORE_OPTIONS_FOR_TESTS } from "@ui-contract/harness/world";
 import {
   cleanupMounted,
   createWorld,
@@ -119,11 +120,16 @@ describe("PreferencesModal", () => {
     // balance". Its 2 rows are carved out of the comparison below so this
     // guard still catches real drift in the ORIGINAL catalogue, rather than
     // needing a permanently wider tolerance for one intentional exception.
+    //
+    // The Application core row (Task 5 of the runtime-core-switch spec) is a
+    // second such deliberate, unrebalanced append — into column 1's MOTION,
+    // right after Layout engine — so its 1 row is carved out the same way.
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },
     });
     const JARVIS_ROW_COUNT = 2; // pref-segment-jarvisBrain, pref-segment-jarvisEffort
-    const left = page.rowCountInColumn(0);
+    const CORE_ROW_COUNT = 1; // pref-segment-coreImpl
+    const left = page.rowCountInColumn(0) - CORE_ROW_COUNT;
     const right = page.rowCountInColumn(1) - JARVIS_ROW_COUNT;
 
     expect(left).toBeGreaterThan(0);
@@ -511,6 +517,72 @@ describe("PreferencesModal", () => {
     });
     expect(page.segmentActive("jarvisNarrator", "off")).toBe(true);
     expect(page.segmentActive("jarvisNarrator", "on")).toBe(false);
+  });
+
+  it("offers the three application cores with the current one selected", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "async",
+    });
+    expect(page.coreImplOptions()).toEqual(["rxjs", "async", "effect"]);
+    expect(page.coreImplSelected()).toBe("async");
+  });
+
+  it("selecting another core asks the shell to switch", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "rxjs",
+    });
+    await page.selectCoreImpl("effect");
+    expect(page.coreImplSelects()).toEqual(["effect"]);
+  });
+
+  it("selecting the current core does not switch", async () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "rxjs",
+    });
+    await page.selectCoreImpl("rxjs");
+    expect(page.coreImplSelects()).toEqual([]);
+  });
+
+  it("hides the Application core row when the host offers no core selection", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: null,
+    });
+    expect(page.coreImplRowPresent()).toBe(false);
+    expect(page.coreImplOptions()).toEqual([]);
+  });
+
+  it("shows the CURRENT core's own description alongside the fixed sentence", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "async",
+    });
+    expect(page.coreImplDescription()).toContain(
+      CORE_OPTIONS_FOR_TESTS.find((option) => {
+        return option.impl === "async";
+      })?.description,
+    );
+  });
+
+  it("switches the shown description when the current core differs", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+      coreImpl: "effect",
+    });
+
+    const effectDescription = CORE_OPTIONS_FOR_TESTS.find((option) => {
+      return option.impl === "effect";
+    })?.description;
+
+    const asyncDescription = CORE_OPTIONS_FOR_TESTS.find((option) => {
+      return option.impl === "async";
+    })?.description;
+
+    expect(page.coreImplDescription()).toContain(effectDescription);
+    expect(page.coreImplDescription()).not.toContain(asyncDescription);
   });
 });
 

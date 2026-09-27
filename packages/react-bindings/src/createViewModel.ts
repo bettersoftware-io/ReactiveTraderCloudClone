@@ -52,6 +52,7 @@ import type {
   WorkspaceNavState,
   WorkspaceTab,
 } from "@rtc/client-core";
+import type { CoreSelection } from "@rtc/core-api";
 import {
   type AmbientStyle,
   type Candle,
@@ -331,6 +332,14 @@ export interface UseLayoutPresetsResult {
   resetTab: () => void;
 }
 
+/** App-shell values a host passes through `createViewModel`'s optional 4th
+ * arg — things owned by the shell that boots the core, not by the core
+ * itself. Currently just the runtime core switch; RN and older callers omit
+ * this entirely. */
+export interface ViewModelShell {
+  readonly coreSelection?: CoreSelection;
+}
+
 export interface ViewModel {
   // Streams
   usePrice: (pair: CurrencyPair) => Price | null;
@@ -569,13 +578,18 @@ export interface ViewModel {
   useSessionCountSeries: () => readonly MetricSample[];
   /** Shared incident-machine state + inject/clear intents. */
   useIncident: () => UseIncidentResult;
+  /** The app-shell core switch (web only); null when the host offers none. */
+  useCoreSelection: () => CoreSelection | null;
 }
 
 export function createViewModel(
   presenters: Presenters,
   machines: MachineFactories,
   commands: AppCommands,
+  shell?: ViewModelShell,
 ): ViewModel {
+  const coreSelection = shell?.coreSelection ?? null;
+
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
   }, null);
@@ -1506,6 +1520,9 @@ export function createViewModel(
         inject: injectIncident,
         clear: clearIncident,
       };
+    },
+    useCoreSelection: () => {
+      return coreSelection;
     },
   };
 }

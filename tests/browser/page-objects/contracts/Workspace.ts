@@ -12,6 +12,28 @@ export interface WorkspacePO {
    * natural ~14 min expected interval.
    */
   openWithNarratorThresholds(): Promise<void>;
+  /**
+   * Navigate to "/?core=<impl>" — the load-time `?core=` override
+   * (`coreSelection.ts`'s `resolveCoreChoice`, highest-precedence, this load
+   * only). `impl` is a raw string (not the `CoreImpl` union) so callers can
+   * also exercise an unrecognized value (e.g. "bogus" — ignored, falls
+   * through to the stored choice).
+   */
+  openWithCoreImpl(impl: string): Promise<void>;
+  /**
+   * Waits until the current URL no longer carries `?core=` — the real page
+   * navigation `createCoreSelection().select()` performs once a choice is
+   * persisted (see `coreSelection.ts`'s `select`, `main.tsx`'s
+   * `navigate: (href) => location.assign(href)`).
+   */
+  waitUrlHasNoCoreParam(timeoutMs: number): Promise<void>;
+  /** Wait until the document root's `data-core-impl` reads exactly `expected`
+   *  — the application core the app actually booted on (set by `main.tsx`
+   *  once `bootApp.ts`'s `bootCore` resolves). Unlike
+   *  `LoginScreenPO.waitCoreImpl` (a second, unauthenticated context/page,
+   *  Playwright-only), this reads the SAME page every other `WorkspacePO`
+   *  method drives. */
+  waitCoreImpl(expected: string, timeoutMs: number): Promise<void>;
   clickTab(tab: "fx" | "credit" | "admin" | "equities"): Promise<void>;
   /** Snapshot: is the given tab's nav button currently marked active
    *  (`data-active`, NavTab.tsx). */

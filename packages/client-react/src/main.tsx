@@ -20,6 +20,19 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { AppRoot } from "./AppRoot";
+import {
+  bootCore,
+  formatBootedMessage,
+  renderBootError,
+  runBoot,
+} from "./app/bootApp";
+import {
+  clearCoreChoice,
+  createCoreSelection,
+  defaultCoreResetHref,
+  loadCore,
+  safeLocalStorage,
+} from "./app/coreSelection";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -30,10 +43,52 @@ if (!rootEl) {
   throw new Error("Root element #root not found in DOM");
 }
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <AppRoot>
-      <App />
-    </AppRoot>
-  </StrictMode>,
+const storage = safeLocalStorage();
+
+/** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
+ * value, or a storage read/write/clear failure) so it's diagnosable from the
+ * console rather than silently swallowed. */
+function warnCore(message: string): void {
+  console.warn(`[core] ${message}`);
+}
+
+// Fire-and-forget by design: runBoot routes every rejection (core load or
+// render) to renderBootError, so there is nothing left to handle here.
+void runBoot(
+  bootCore({
+    href: location.href,
+    storage,
+    buildDefault: import.meta.env.VITE_CORE_IMPL,
+    warn: warnCore,
+    load: loadCore,
+  }),
+  ({ impl, core, source }) => {
+    document.documentElement.dataset.coreImpl = impl;
+    console.info(formatBootedMessage(impl, source));
+    const coreSelection = createCoreSelection({
+      current: impl,
+      storage,
+      warn: warnCore,
+      href: () => {
+        return location.href;
+      },
+      navigate: (href: string): void => {
+        location.assign(href);
+      },
+    });
+
+    createRoot(rootEl).render(
+      <StrictMode>
+        <AppRoot core={core} coreSelection={coreSelection}>
+          <App />
+        </AppRoot>
+      </StrictMode>,
+    );
+  },
+  (error: unknown) => {
+    renderBootError(rootEl, error, () => {
+      clearCoreChoice(storage, warnCore);
+      location.assign(defaultCoreResetHref(location.href));
+    });
+  },
 );

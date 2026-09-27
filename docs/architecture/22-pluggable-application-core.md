@@ -39,10 +39,10 @@ flowchart TB
   RxjsCore --> SolidBindings
   ReactBindings --> ClientReact
   SolidBindings --> ClientSolid
-  AsyncCore -. selectCore .-> ClientReact
-  EffectCore -. selectCore .-> ClientReact
-  AsyncCore -. selectCore .-> ClientSolid
-  EffectCore -. selectCore .-> ClientSolid
+  AsyncCore -. "loadCore · lazy import()" .-> ClientReact
+  EffectCore -. "loadCore · lazy import()" .-> ClientReact
+  AsyncCore -. "loadCore · lazy import()" .-> ClientSolid
+  EffectCore -. "loadCore · lazy import()" .-> ClientSolid
 ```
 
 `@rtc/core-api` is types-only (grep gate 42 enforces no runtime export) and
@@ -81,43 +81,77 @@ core is active: they consume `Presenters` / `MachineFactories` /
 `AppCommands` by shape, from `@rtc/core-api`, not by importing `@rtc/client-core`'s
 concrete classes directly.
 
-## Selection: build-time, not runtime
+## Selection: at load time
 
-Each web client's `src/app/selectCore.ts` picks one `CoreFactory` at module
-init, from an environment variable read exactly once:
+**Since 2026-09-27** ([ADR-006 Decision 6](../adr/ADR-006-pluggable-application-core.md#decision-6-load-time-core-selection-supersedes-build-time-only-selection),
+[design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md)),
+the core is chosen at load time, not baked into the build: one production
+build ships all three cores — RxJS eager, async and Effect as lazy chunks —
+and a visitor (or the deployed demo itself) can switch between them without a
+rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
+`selectCore.ts`) resolves the choice through a pure precedence chain:
 
 ```
-VITE_CORE_IMPL (rxjs | async | effect, default rxjs)
+?core= URL parameter          — this LOAD only; never written to storage,
+        │                        so a shared link doesn't change the
+        │                        visitor's saved choice
+        ▼ (absent, or unknown → ignored + console warning)
+localStorage["rtc.coreImpl"]  — the stored choice, saved by the
+        │                        Preferences row's select()
+        ▼ (absent, or unknown → cleared + console warning)
+VITE_CORE_IMPL                — the build DEFAULT (still the knob every
+        │                        dev:*/e2e script sets), no longer what
+        │                        gets bundled
+        ▼ (unset → "rxjs"; an unknown value THROWS — a developer error,
+        ▼          fail-closed, unchanged in substance from the old
+        ▼          build-time selectCore)
+resolveCoreChoice(...): CoreImpl
         │
         ▼
-resolveCoreImpl(raw)        — fail-closed: an unrecognised value throws at boot
-        │
+loadCore(impl): Promise<CoreFactory>   — rxjs resolves the already-imported
+        │                                rxjsCore; async/effect resolve
+        │                                through import("@rtc/client-core-async")
+        │                                / import("@rtc/client-core-effect"),
+        │                                which the bundler splits into their
+        │                                own lazy chunks, fetched only once
+        │                                chosen
         ▼
-activeCore: CoreFactory     — a static comparison against
-                               import.meta.env.VITE_CORE_IMPL, literal
-        │
-        ▼
-AppRoot                     — createApp(ports) / createMachineFactories(presenters)
+bootCore (src/app/bootApp.ts) → main.tsx renders <AppRoot core={core} …>
 ```
 
-The comparison in `activeCore` is written directly against
-`import.meta.env.VITE_CORE_IMPL`, never against a local variable holding that
-value first. Vite's own `import.meta.env` replacement leaves the value as
-whatever string the process ran with, which rolldown cannot fold a branch on;
-each client's `vite.config.ts` additionally re-inlines the same expression
-via a `define` entry (`JSON.stringify(process.env.VITE_CORE_IMPL || "rxjs")`),
-so rolldown sees a compile-time literal at the comparison site and drops the
-two dead branches — along with the unselected core packages, which declare
-`sideEffects: false`. A version that read the env var into a local first and
-branched on that local did **not** fold when this was built; `pnpm
-check:core-bundle` (below) is the guard that would have caught it.
+`bootCore` runs resolve-then-load before anything renders (the page shows
+only the static `index.html` background until then — one small chunk
+request on the async/Effect paths, zero on the default RxJS path). A
+rejected chunk load — the only asynchronous failure in this sequence — never
+falls back to RxJS silently: `renderBootError` shows a plain-DOM message plus
+a "Load the default core" button that clears the stored choice and reloads
+without `?core=`. `<html data-core-impl>` publishes whichever core actually
+loaded, which is what the e2e booted-core assertions read.
+
+The choice is not a core preference (a core's presenters don't exist yet
+when it must be known), so it lives in this pre-boot `src/app` module, not
+behind the ViewModel. `main.tsx` instead builds a `CoreSelection` value via
+`createCoreSelection` (`{ current, options, select(impl) }`, `select` = save
++ reload with `?core=` stripped so a page opened as `?core=effect` doesn't
+reload straight back onto Effect) and passes it to `AppRoot`, which forwards
+it to the bindings' `createViewModel` as an app-shell value, exposed to the
+UI as `useCoreSelection(): CoreSelection |
+null` — `null` when the host offers no selection at all (React Native passes
+none and stays RxJS-only). Both web clients render a Preferences →
+"Application core" row from it, hidden entirely when the hook returns
+`null`.
 
 `turbo.json` declares `VITE_CORE_IMPL` on the `dev` and `build` tasks' `env`
 lists (turbo's strict env mode silently strips undeclared vars) and
-`RTC_CORE_IMPL` on `globalPassThroughEnv` for the e2e harness. Production
-never sets `VITE_CORE_IMPL`, so it always resolves to `rxjs`; `deploy.yml`'s
-"Guard — production ships the RxJS core only" step greps the built static
-output for `effect/Fiber` and fails the deploy if it is present.
+`RTC_CORE_IMPL` on `globalPassThroughEnv` for the e2e harness, which resolves
+both once and forwards the answer as `RTC_CORE_IMPL` (`tests/scripts/lib/coreImpl.ts`)
+so a run's build default and its own knob can't silently disagree. Production
+sets neither, so the default visitor's choice still resolves to `rxjs` with
+no extra fetch — but, unlike before 2026-09-27, the same deployed build lets
+that visitor pick `async` or `effect` from `?core=` or Preferences.
+`pnpm check:core-bundle` and `deploy.yml`'s "Guard — alternative cores ship
+only as lazy chunks" step assert the eager/lazy split this depends on — see
+[Bundle isolation](#bundle-isolation) below.
 
 ## Three timing guarantees
 
@@ -436,25 +470,42 @@ later native port is judged against a fixed target rather than a moving one.
 
 ## Bundle isolation
 
-`pnpm check:core-bundle` builds each web client once per core value and
-asserts that each build carries its own core's marker and no other's — in
-every direction since slice 8: the RxJS core's brand (`RXJS_CORE_BRAND`,
-stamped by its `createApp` on every `App`, so it ships exactly when the RxJS
-composition root does), `@rtc/client-core-async`'s brand, and
-`effect/Fiber` — printing
-gzipped sizes
-per core for visibility. It is the same class of guarantee as the deploy
-workflow's grep guard, run locally and per-core rather than once against the
-production build only. What the RxJS marker proves is the absence of that
-core's composition root; `@rtc/client-core` itself is not `sideEffects:
-false` and still ships its port factories and adapters in every build (the
-clients take `createSimulatorPorts` and `WsAdapter` from it), so a stray UI
-import of one presenter class would not trip it.
+**Since the load-time switch (2026-09-27), `pnpm check:core-bundle` builds
+each web client ONCE** (`VITE_CORE_IMPL` unset — the build default choice,
+not what gets bundled) and asserts the one build is runtime-switchable
+between all three cores (`tests/scripts/lib/coreBundle.ts`'s `classify`):
+
+1. the **eager set** — both pages' (`index.html`, `popout.html`) entry
+   `<script type="module">` plus every `<link rel="modulepreload">` hint,
+   closed over each file's own static ES imports (a dynamic `import()` is
+   deliberately excluded — deferring the fetch is what makes a chunk lazy) —
+   carries `RXJS_CORE_BRAND` (stamped by the RxJS `createApp` on every
+   `App`) and neither `@rtc/client-core-async`'s nor
+   `@rtc/client-core-effect`'s brand;
+2. exactly one non-eager (lazy) chunk carries the async brand, exactly one
+   the Effect brand;
+3. no single file carries two different cores' brands (a core reaching for
+   another's composition root instead of its own);
+4. no eager file carries `effect/Fiber` — the Effect *library's* own
+   distinctive marker, checked independently of whichever chunk happens to
+   carry its brand, so the composition root staying lazy can't hide the
+   runtime itself leaking into a shared eager chunk.
+
+Gzip sizes per core chunk are still printed for visibility. `--dir <dir>`
+skips the build and checks an existing output directory directly —
+`deploy.yml`'s "Guard — alternative cores ship only as lazy chunks" step
+uses it over `.vercel/output/static`, which that job already scoped to the
+one client it built. What the RxJS marker's presence in the eager set proves
+is that the RxJS composition root is there; `@rtc/client-core` itself is not
+`sideEffects: false` and still ships its port factories and adapters in
+every build (the clients take `createSimulatorPorts` and `WsAdapter` from
+it), so a stray UI import of one presenter class would not trip it.
 
 ## See also
 
 - [ADR-006 — Pluggable application core](../adr/ADR-006-pluggable-application-core.md)
 - [Pluggable application core design spec](../superpowers/specs/2026-09-11-pluggable-application-core-design.md)
+- [Load-time core selection design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md)
 - [§8 Replaceability Matrix](08-replaceability-matrix.md)
 - [§10.1 RxJS `Observable<T>` as the boundary stream type](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)
 - [§21 One Test Suite, Two Frameworks](21-cross-framework-testing.md)

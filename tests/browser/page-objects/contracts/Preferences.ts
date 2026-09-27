@@ -15,6 +15,14 @@ export type PrefsChartSubstrate = "dom" | "canvas";
 export type PrefsLayoutEngine = "inhouse" | "dockview";
 
 /**
+ * The three application cores the Application core segment row toggles
+ * (PreferencesContent.tsx's `coreSelection.options` / `switchCore`) — mirrors
+ * `CoreImpl` from `@rtc/core-api` as a local literal union, like this
+ * directory's other POs' own unions above.
+ */
+export type PrefsCoreImpl = "rxjs" | "async" | "effect";
+
+/**
  * The Preferences catalogue modal (PreferencesModal.tsx), reached via the
  * account menu's ⚙ Preferences row (AccountMenu.tsx) — the repo's FIRST e2e
  * page-object surface driving this modal. Only the one row the
@@ -33,6 +41,11 @@ export interface PreferencesPO {
   /** Clicks the Layout engine segment row's In-house/Dockview option
    * (PrefSegment.tsx composes `pref-segment-layoutEngine-<value>`). */
   selectLayoutEngine(value: PrefsLayoutEngine): Promise<void>;
+  /** Clicks the Application core segment row's RxJS/async/Effect option
+   * (PrefSegment.tsx composes `pref-segment-coreImpl-<value>`). Triggers a
+   * real page navigation when it changes the current core (see
+   * `createCoreSelection().select`). */
+  selectCoreImpl(value: PrefsCoreImpl): Promise<void>;
   /** Dismisses the modal via its footer DONE button. */
   close(): Promise<void>;
   waitModalHidden(timeoutMs: number): Promise<void>;

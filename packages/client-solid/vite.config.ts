@@ -161,13 +161,16 @@ const rtcSourceAlias: Record<string, string> = debugBuild
   : {};
 
 export default defineConfig({
-  // VITE_CORE_IMPL selects the application core (see src/app/selectCore.ts).
-  // Vite's built-in import.meta.env replacement leaves the value as whatever
-  // string ran the process — rolldown can't fold a branch on that alone, so
-  // `define` re-inlines it as a JSON string literal that selectCore.ts's
-  // comparisons see directly, letting rolldown constant-fold the two dead
-  // branches (and drop the unselected core packages, which declare
-  // `sideEffects: false`) out of the bundle. Unset → "rxjs".
+  // VITE_CORE_IMPL sets this build's DEFAULT application core (see
+  // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
+  // the stored choice above this build default, itself above "rxjs"). All
+  // three cores ship in every build; RxJS is statically
+  // imported into the entry chunk while async/effect are dynamic imports
+  // `loadCore` fetches lazily once chosen, so this no longer selects what
+  // gets bundled (see `pnpm check:core-bundle`). Vite's built-in
+  // import.meta.env replacement leaves the value as whatever string ran the
+  // process, so `define` re-inlines it as a JSON string literal `bootApp.ts`
+  // reads through `import.meta.env.VITE_CORE_IMPL`. Unset → "rxjs".
   define: {
     "import.meta.env.VITE_CORE_IMPL": JSON.stringify(
       process.env.VITE_CORE_IMPL || "rxjs",

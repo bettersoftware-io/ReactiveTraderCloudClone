@@ -8,6 +8,10 @@
     "paths": { "#/*": ["./src/*"] },
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "references": [{ "path": "../client-core" }, { "path": "../domain" }],
+  "references": [
+    { "path": "../client-core" },
+    { "path": "../core-api" },
+    { "path": "../domain" }
+  ],
   "include": ["src"]
 }

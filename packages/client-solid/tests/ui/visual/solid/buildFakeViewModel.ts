@@ -86,11 +86,14 @@ import {
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
+import type { CoreSelection } from "@rtc/core-api";
 import type { ViewModel } from "@rtc/solid-bindings";
 import {
   type MaybeAccessor,
   readMaybeAccessor,
 } from "@rtc/solid-bindings/toSignal";
+
+import { CORE_OPTIONS } from "#/app/coreSelection";
 
 function noop(): void {}
 
@@ -777,6 +780,14 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         startDemo: noop,
         stopDemo: noop,
       };
+    },
+    // Preferences' "Application core" row (Task 5): a static "RxJS selected"
+    // selection so the row renders pixel-identically to a real build's
+    // default — no scenario ever clicks it, so select() is inert. Not
+    // Accessor-wrapped like the streams above: the real hook returns a
+    // plain constant (see `ViewModel.useCoreSelection`'s own doc).
+    useCoreSelection: (): CoreSelection => {
+      return { current: "rxjs", options: CORE_OPTIONS, select: noop };
     },
   };
 }

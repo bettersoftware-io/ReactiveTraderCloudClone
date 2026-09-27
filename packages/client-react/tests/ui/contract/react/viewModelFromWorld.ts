@@ -1,4 +1,8 @@
-import type { JarvisWorld, World } from "@ui-contract/harness/world";
+import {
+  CORE_OPTIONS_FOR_TESTS,
+  type JarvisWorld,
+  type World,
+} from "@ui-contract/harness/world";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import {
   BehaviorSubject,
@@ -63,7 +67,7 @@ import {
   JarvisPanelsPresenter,
   type WorkspaceTab,
 } from "@rtc/client-core";
-import type { RfqCountdownSeed } from "@rtc/core-api";
+import type { CoreImpl, RfqCountdownSeed } from "@rtc/core-api";
 import type {
   AmbientStyle,
   Candle,
@@ -1840,6 +1844,23 @@ export function reactViewModel(world: World): ViewModel {
         },
         clear: () => {
           world.clearIncident();
+        },
+      };
+    },
+    useCoreSelection: () => {
+      const current = world.coreImpl.getValue();
+
+      if (current === null) {
+        return null;
+      }
+
+      return {
+        current,
+        options: CORE_OPTIONS_FOR_TESTS,
+        select: (impl: CoreImpl) => {
+          if (impl !== world.coreImpl.getValue()) {
+            world.commands.coreSelects.push(impl);
+          }
         },
       };
     },

@@ -178,4 +178,18 @@ export function createMachineFactories(
   return nativeMachines(presenters);
 }
 
-export const effectCore: CoreFactory = { createApp, createMachineFactories };
+/** Survives minification as a literal; `check:core-bundle` greps for it to
+ * prove a build that did not select this core did not ship it. */
+export const EFFECT_CORE_BRAND = "@rtc/client-core-effect:brand";
+
+/** A `CoreFactory` that also carries the grep-able brand literal above, so
+ * `check:core-bundle` has something to look for. */
+export interface BrandedCoreFactory extends CoreFactory {
+  readonly brand: string;
+}
+
+export const effectCore: BrandedCoreFactory = {
+  brand: EFFECT_CORE_BRAND,
+  createApp,
+  createMachineFactories,
+};

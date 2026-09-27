@@ -62,12 +62,14 @@ after a dependency change, clear the stale Vite cache:
 
 ### Choosing an application core
 
-The web clients can run on any of three interchangeable application cores. The
-choice is made at build time by the `VITE_CORE_IMPL` environment variable:
+The web clients can run on any of three interchangeable application cores,
+and — since 2026-09-27 — switching between them no longer needs a rebuild:
+every build ships all three (RxJS eager, the other two as lazy chunks), and
+the choice is resolved at **load time**:
 
 | `VITE_CORE_IMPL`  | Core                                                    |
 |-------------------|---------------------------------------------------------|
-| unset or `rxjs`   | `@rtc/client-core` — RxJS, the default and what ships   |
+| unset or `rxjs`   | `@rtc/client-core` — RxJS, the default                  |
 | `async`           | `@rtc/client-core-async` — async/await + AsyncIterable  |
 | `effect`          | `@rtc/client-core-effect` — Effect-TS                   |
 
@@ -76,14 +78,27 @@ pnpm dev:react:async                            # shortcuts, simulator mode
 pnpm dev:react:effect                           # (dev:solid:async / dev:solid:effect too)
 VITE_CORE_IMPL=effect pnpm dev:react:fs         # composes with any mode
 pnpm test:e2e:async                             # e2e against that core (also test:e2e:effect)
+# VITE_CORE_IMPL only sets the BUILD DEFAULT a fresh visitor lands on — a stored Preferences
+# choice or a `?core=` URL parameter outranks it; the console line `[core] booted <impl> from
+# <url|stored|build|fallback>` says which won and why.
 ```
 
-- **Restart to switch.** Vite inlines the value into the bundle, so changing
-  core means restarting the dev server or rebuilding — a page reload is not
-  enough. An unknown value fails loudly instead of falling back to RxJS.
-- **One core per build.** The unselected cores are dead-code-eliminated;
-  `pnpm check:core-bundle` proves it in CI. Production leaves the variable
-  unset, so it ships the RxJS core.
+- **Switch at load time — no rebuild, on any deployed build.** Precedence:
+  a `?core=async`/`?core=effect`/`?core=rxjs` URL parameter (this load only,
+  never saved) beats the persisted choice, which beats `VITE_CORE_IMPL` (now
+  just the **build default** a fresh visitor lands on), which beats `rxjs`.
+  Preferences → **Application core** lets a signed-in visitor pick one; it
+  saves the choice and reloads (a real navigation, not an SPA transition),
+  and the choice survives later plain reloads. An unknown `?core=` or stored
+  value is ignored/cleared with a console warning and falls through; an
+  unknown `VITE_CORE_IMPL` still fails loudly, never falling back to RxJS
+  silently. Every successful boot logs which core won and why: `[core]
+  booted <impl> from <url|stored|build|fallback>`.
+- **Alternative cores load lazily.** RxJS stays in the entry bundle (the UI
+  reaches into it directly regardless); `async` and `effect` are fetched as
+  their own chunk only once chosen. `pnpm check:core-bundle` proves the split
+  in CI — the eager set carries only the RxJS core's marker, and each
+  alternative core sits in exactly one lazy chunk.
 - **Web only.** The React Native client always runs the RxJS core.
 - **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
   (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm
@@ -92,7 +107,8 @@ pnpm test:e2e:async                             # e2e against that core (also te
   ran (`tests/scripts/lib/coreImpl.ts`).
 
 How it works and why: [§22 Pluggable application core](architecture/22-pluggable-application-core.md)
-and [ADR-006](adr/ADR-006-pluggable-application-core.md).
+and [ADR-006](adr/ADR-006-pluggable-application-core.md) (see Decision 6
+for the load-time switch specifically).
 
 ## Checks & tests
 

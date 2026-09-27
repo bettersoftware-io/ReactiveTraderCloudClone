@@ -139,6 +139,7 @@ export type AnalyticsSlice = Pick<
 export type InertSlice = Pick<
   ViewModel,
   | "useAnimationIntents"
+  | "useCoreSelection"
   | "useDockedPanelIds"
   | "useDockLayoutStore"
   | "useEventLog"

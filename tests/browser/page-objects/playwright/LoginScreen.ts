@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 import type { LoginScreenPO } from "../contracts/LoginScreen";
 import { TESTIDS } from "../contracts/testids";
+import { awaitAppMount } from "./appMount";
 
 /**
  * Playwright impl of {@link LoginScreenPO}. Constructed with the PRIMARY app
@@ -16,10 +17,15 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
   private loginPage: Page | undefined;
 
   /** Uncaught page errors on whichever page `open()` most recently created —
-   * fed by the `pageerror` listener registered there. `selectCore.ts`'s
-   * fail-closed `VITE_CORE_IMPL` throw fires at module init, before ANY
-   * route (including LoginScreen itself) renders, so a captured message here
-   * is what actually happened when a subsequent wait times out. */
+   * fed by the `pageerror` listener registered there. `coreSelection.ts`'s
+   * `resolveCoreChoice` fail-closed `VITE_CORE_IMPL` throw fires
+   * synchronously out of `bootApp.ts`'s (deliberately non-`async`) `bootCore`
+   * at module init, before ANY route (including LoginScreen itself) renders
+   * — an uncaught exception, exactly like `selectCore.ts`'s throw before it
+   * — so a captured message here is what actually happened when a
+   * subsequent wait times out. (A rejected chunk *load* is the other, DOM-
+   * rendered failure mode — see `renderBootError` — and does not reach
+   * `pageerror` at all; this scan is only ever for the build-default case.) */
   private pageErrors: string[] = [];
 
   constructor(private readonly appPage: Page) {}
@@ -33,7 +39,8 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
   }
 
   /** A captured page error that mentions VITE_CORE_IMPL — the fail-closed
-   *  message from `selectCore.ts` — or undefined if boot succeeded. */
+   *  message from `coreSelection.ts`'s `resolveCoreChoice` — or undefined if
+   *  boot succeeded. */
   private findBootError(): string | undefined {
     return this.pageErrors.find((message) => {
       return message.includes("VITE_CORE_IMPL");
@@ -69,6 +76,12 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     if (boot !== undefined) {
       throw new Error(`the app failed to boot: ${boot}`);
     }
+
+    // No module-init throw — now wait for the app to actually MOUNT: the
+    // async/Effect cores load through a dynamic import(), so `load` can fire
+    // on a still-empty #root (see appMount.ts). The navigation has
+    // already happened, so this only waits.
+    await awaitAppMount(page, this.pageErrors);
   }
 
   async waitVisible(timeoutMs: number): Promise<void> {

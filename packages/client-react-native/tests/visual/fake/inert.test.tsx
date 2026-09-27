@@ -3,9 +3,10 @@ import { describe, expect, it } from "@jest/globals";
 import { inertSlice } from "./inert";
 
 describe("inertSlice", () => {
-  it("has exactly the 24 hooks InertSlice names — no more, no fewer", () => {
+  it("has exactly the 25 hooks InertSlice names — no more, no fewer", () => {
     const expectedKeys = [
       "useAnimationIntents",
+      "useCoreSelection",
       "useDockedPanelIds",
       "useDockLayoutStore",
       "useEventLog",
