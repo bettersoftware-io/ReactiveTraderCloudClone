@@ -1,6 +1,7 @@
+import { describe, expect, it, type Mock, vi } from "vitest";
+
 import { rxjsCore } from "@rtc/client-core";
 import type { CoreFactory } from "@rtc/core-api";
-import { describe, expect, it, vi } from "vitest";
 
 import type { CoreImporters, CoreSelectionDeps } from "./coreSelection";
 import {
@@ -374,7 +375,13 @@ function createDeps(saveWorks = true): CreateDepsResult {
 const FAKE_ASYNC_CORE = {} as CoreFactory;
 const FAKE_EFFECT_CORE = {} as CoreFactory;
 
-function createFakeImporters() {
+/** `CoreImporters` whose members are spies, so a case can assert which one ran. */
+interface FakeImporters extends CoreImporters {
+  readonly async: Mock<CoreImporters["async"]>;
+  readonly effect: Mock<CoreImporters["effect"]>;
+}
+
+function createFakeImporters(): FakeImporters {
   return {
     async: vi.fn(() => {
       return Promise.resolve({ asyncCore: FAKE_ASYNC_CORE });
@@ -382,5 +389,5 @@ function createFakeImporters() {
     effect: vi.fn(() => {
       return Promise.resolve({ effectCore: FAKE_EFFECT_CORE });
     }),
-  } satisfies CoreImporters;
+  };
 }
