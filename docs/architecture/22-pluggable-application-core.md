@@ -39,10 +39,10 @@ flowchart TB
   RxjsCore --> SolidBindings
   ReactBindings --> ClientReact
   SolidBindings --> ClientSolid
-  AsyncCore -. selectCore .-> ClientReact
-  EffectCore -. selectCore .-> ClientReact
-  AsyncCore -. selectCore .-> ClientSolid
-  EffectCore -. selectCore .-> ClientSolid
+  AsyncCore -. "loadCore · lazy import()" .-> ClientReact
+  EffectCore -. "loadCore · lazy import()" .-> ClientReact
+  AsyncCore -. "loadCore · lazy import()" .-> ClientSolid
+  EffectCore -. "loadCore · lazy import()" .-> ClientSolid
 ```
 
 `@rtc/core-api` is types-only (grep gate 42 enforces no runtime export) and
