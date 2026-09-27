@@ -3,6 +3,10 @@
 Everything under `docs/` (plus a few root-level companions), grouped by purpose.
 Start here when you're not sure where something lives.
 
+New to the repo? The [root README](../README.md) is the overview (live demos,
+screenshots, quick start); [`development.md`](development.md) is the hands-on
+guide to running, testing and deploying every client.
+
 ## Planning & tracking — how work moves
 
 Ideas flow through a small pipeline; each document owns one stage:

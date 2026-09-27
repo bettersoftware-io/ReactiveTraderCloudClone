@@ -1,31 +1,217 @@
-# ReactiveTraderCloudClone
+# Reactive Trader — Clone
 
-A from-scratch reimagining of [Adaptive's ReactiveTraderCloud](https://github.com/AdaptiveConsulting/ReactiveTraderCloud) — a real-time FX trading platform with live pricing, trade execution, and analytics.
+**A real-time, multi-asset trading desk — FX, credit RFQs and equities — rebuilt
+from scratch as a showcase of clean architecture, spec-driven development and
+AI-assisted engineering.**
 
-> **This is a concept project, not a product.** Its purpose is not to ship a
-> trading platform but to demonstrate — end to end, on a non-trivial domain —
-> how four practices reinforce each other:
+One framework-free application core drives **three clients** — React, SolidJS
+and React Native — and that core itself comes in **three interchangeable
+implementations** (RxJS, async/await, Effect-TS), all held to the same
+behavioural contract. Inspired by
+[Adaptive's ReactiveTraderCloud](https://github.com/AdaptiveConsulting/ReactiveTraderCloud).
+
+![Reactive Trader web client — the FX workspace streaming live prices on the Holo HUD 3D skin, with a just-executed trade confirmation](docs/readme/web-fx.jpg)
+
+## Live demo
+
+| Client | URL | Stack |
+|---|---|---|
+| **Web — React** | **<https://rtc-clone-react.vercel.app>** | React 19 + Vite |
+| **Web — SolidJS** | **<https://rtc-clone-solid.vercel.app>** | SolidJS + Vite — same UI, same pixel goldens |
+| Backend | `wss://rtc-clone-server.fly.dev` ([health](https://rtc-clone-server.fly.dev/health)) | Node WebSocket server on Fly.io (London) |
+
+Open the React and Solid builds side by side: they are the **same product**,
+sharing one application core and one test contract, and asserted against the
+**same pixel goldens** — the only difference is the UI framework underneath.
+Both stream live from the same server.
+
+> The deployed demo is login-gated. To try it with zero setup, run it locally
+> in simulator mode — see [Quick start](#quick-start) — and sign in with the
+> committed demo accounts. Deploys are on demand, so the live sites can trail
+> `main` slightly.
+
+## Screenshots
+
+### Web
+
+| | |
+|---|---|
+| ![Equities: three candlestick chart panels with SMA, EMA and RSI, order ticket, watchlist and filled orders](docs/readme/web-equities-multichart.jpg) | ![Credit: three live RFQs with competing dealer quotes, countdowns and accept buttons](docs/readme/web-credit-rfqs.jpg) |
+| **Equities** — any number of chart panels, indicators, order ticket, live watchlist | **Credit** — multi-dealer RFQs racing their countdowns, best quote starred |
+| ![Admin: throughput, P99 latency, error rate, latency histogram, service health, live events, topology and incident injection](docs/readme/web-admin.jpg) | ![Dockview workspace: a Jarvis panel docked as a new column and the Positions panel floating over the grid](docs/readme/web-dockview.jpg) |
+| **Admin** — live observability, plus incident injection to watch the system degrade | **Dockable workspace** — dock, tab, float, pop out, maximize and collapse any panel |
+| ![J.A.R.V.I.S. conversation ending in a confirm-gated EURUSD trade awaiting approval](docs/readme/web-jarvis-confirm.jpg) | ![The workspace after Jarvis rearranged it: maximized chart, collapsed side rails and a floating GBP volatility panel](docs/readme/web-jarvis-drives-layout.jpg) |
+| **J.A.R.V.I.S.** — quotes, briefs, charts on request; trades only after you approve | **…and drives the app** — the same intents the UI emits, so it can re-lay-out your workspace |
+| ![The FX workspace on the Terminal 3D skin](docs/readme/web-fx-terminal3d.jpg) | ![The equities workspace on the Classic light skin](docs/readme/web-equities-classic-light.jpg) |
+| **Terminal 3D** skin | **Classic** skin, light mode — six skins in all, each light or dark |
+
+**Boot sequence** — one of eight animated canvas scenes plays on each launch, cycling launch to launch:
+
+| | |
+|---|---|
+| ![Web boot scene: docking camera closing on target](docs/readme/web-boot-docking.jpg) | ![Web boot scene: volumetric hologram resolving](docs/readme/web-boot-hologram.jpg) |
+| ![Web boot scene: the workspace assembling in exploded 3D layers](docs/readme/web-boot-layers.jpg) | ![Web boot scene: topographic market terrain with labelled peaks](docs/readme/web-boot-topo.jpg) |
+
+### Mobile (iOS — React Native / Expo)
+
+| Rates | Equities | Credit | Analytics |
+|:---:|:---:|:---:|:---:|
+| ![Mobile FX rate tiles](docs/readme/mobile-rates.jpg) | ![Mobile equities trade screen: chart, order ticket and positions](docs/readme/mobile-equities-trade.jpg) | ![Mobile credit RFQ with competing dealer quotes](docs/readme/mobile-credit.jpg) | ![Mobile P&L, pair P&L and net exposure](docs/readme/mobile-analytics.jpg) |
+
+**Terminal 3D skin** — the same screens, one preference away:
+
+| Rates | Equities | Credit | Analytics |
+|:---:|:---:|:---:|:---:|
+| ![Mobile rates on the Terminal 3D skin](docs/readme/mobile-t3d-rates.jpg) | ![Mobile equities trade on the Terminal 3D skin](docs/readme/mobile-t3d-equities.jpg) | ![Mobile credit RFQs on the Terminal 3D skin](docs/readme/mobile-t3d-credit.jpg) | ![Mobile analytics on the Terminal 3D skin](docs/readme/mobile-t3d-analytics.jpg) |
+
+| Boot — docking cam | Boot — holo projector | Boot — schematic core | Appearance |
+|:---:|:---:|:---:|:---:|
+| ![Boot scene: docking camera with target lock](docs/readme/mobile-boot-docking.jpg) | ![Boot scene: volumetric hologram depth field](docs/readme/mobile-boot-hologram.jpg) | ![Boot scene: 3D schematic core linking subsystems](docs/readme/mobile-boot-core.jpg) | ![Appearance sheet: six skins, ambient background, power saver](docs/readme/mobile-appearance.jpg) |
+
+Web shots are the running React client in simulator mode; mobile shots are the
+iOS visual-regression harness (`packages/client-react-native/tests/visual/`) —
+the committed goldens, plus the same scenarios re-rendered on Terminal 3D.
+
+## What's inside
+
+**The product**
+
+- **FX** — streaming price tiles and a watchlist, one-click execution, a live
+  blotter, P&L and position analytics.
+- **Credit** — request-for-quote workflow: build an RFQ, collect competing
+  dealer quotes against a countdown, accept the best; plus a sell-side view.
+- **Equities** — interactive candlestick charts (indicators, comparisons,
+  drawing tools) in as many panels as you like, order ticket, watchlist,
+  depth, orders and positions.
+- **Admin** — an observability console: throughput, latency, service topology,
+  sessions, live events, and incident injection to watch the system degrade.
+- **J.A.R.V.I.S.** — an AI assistant backed by Claude (or a deterministic
+  scripted brain offline) that can quote, brief, chart, lay out your workspace
+  and execute confirm-gated trades through a typed tool registry — also
+  exposed to external agents over an **MCP** endpoint.
+- **Dockable workspace** — dock, tab, float, pop out, maximize and collapse
+  panels; save layout presets.
+- **A HUD you can tune** — six skins × light/dark, animated 3D boot scenes, and
+  a power-saver mode down to a fully motion-free *freeze*.
+- **Custom DevTools** — a Redux-DevTools-style inspector for the non-Redux state
+  layer (presenters, state machines, wire traffic), in-app at `/devtools/` or as
+  a Chrome extension that attaches to any running build, including production.
+
+**The engineering**
+
+> This is a concept project, not a product. Its purpose is to demonstrate — end
+> to end, on a non-trivial domain — how four practices reinforce each other:
 >
 > - **Clean architecture** — strict dependency inversion, ports & adapters, a
 >   pure domain core that depends on nothing but RxJS.
 > - **Spec-driven development** — behaviour is captured as executable
 >   specifications first; the implementation is built to satisfy them.
-> - **Robust, redundant verification** — the *same* behaviour is checked by
->   **five independent test runners** plus a set of architectural "gates", so
->   the test suite itself becomes a comparison artifact you can trust.
-> - **AI-assisted development** — the entire codebase was built in close
->   collaboration with an AI coding agent, and the structure above is precisely
->   what makes that collaboration safe and productive: tight contracts, fast
->   feedback, and verification that doesn't rely on a human reading every line.
->
-> The interesting result is the *combination* — clean boundaries make specs easy
-> to write, specs make verification meaningful, and meaningful verification is
-> what lets an AI agent move quickly without breaking things.
+> - **Redundant verification** — the same behaviour is checked by independent
+>   test runners, a shared UI contract, pixel goldens and 40+ architectural
+>   gates, so the test suite itself becomes an artifact you can trust.
+> - **AI-assisted development** — the codebase was built in close collaboration
+>   with an AI coding agent, and the structure above is exactly what makes that
+>   safe: tight contracts, fast feedback, and verification that doesn't depend
+>   on a human reading every line.
+
+## What clean architecture bought us
+
+The claim of clean architecture is that the things you are most likely to
+change — the UI framework, the state library, where the data comes from — sit
+at the edge, behind interfaces the inner layers own. Here that claim was
+**tested for real, more than once**:
+
+- **A second UI framework without a second app.** The SolidJS client was
+  written against the *same* application core and passes the *same*
+  behavioural specs, the same e2e suites and the same pixel goldens as the
+  React client. The core, the domain and the tests did not fork; only the
+  "dumb" view layer and a thin bindings package are Solid-specific.
+- **A second — and third — application core.** Every presenter and state
+  machine (74 members) was re-implemented on async/await + AsyncIterable and
+  again on Effect-TS, slice by slice, while the app kept shipping. All three
+  implement one types-only contract and pass one behavioural contract suite;
+  the React and Solid UIs run on any of them, selected by one build variable,
+  without knowing which.
+- **The server is optional.** The domain ships simulators behind the same
+  ports the WebSocket adapter implements, so every client runs fully offline —
+  which is also what lets the whole e2e matrix run in parallel with no backend.
+- **An AI agent got the app for free.** J.A.R.V.I.S. drives the workspace by
+  emitting the *same* intents the UI does into the *same* state machines, so
+  what the agent can do is exactly what the machine boundary exposes — no
+  second API to build or keep in sync.
+- **Tooling bolts on at the composition root.** The DevTools inspector wraps
+  presenters, machine factories and the socket adapter with decorators where
+  the app is assembled — no feature code knows it is being observed.
+
+### The layers
+
+Every arrow points inward. The domain knows nothing about the application
+core; the core knows nothing about React, Solid, React Native or the network.
+
+```mermaid
+flowchart TB
+  subgraph fw["Frameworks & drivers — replaceable"]
+    ui["UI<br/>React · SolidJS · React Native"]
+    io["I/O adapters<br/>WebSocket · browser storage · native storage"]
+  end
+  subgraph adapters["Interface adapters"]
+    vm["ViewModel bindings<br/>react-bindings · solid-bindings"]
+    ports["Port implementations<br/>WsAdapter · simulators · storage adapters"]
+  end
+  subgraph app["Application core — one contract, three implementations"]
+    core["Presenters + state machines<br/>RxJS · async/await · Effect-TS"]
+  end
+  subgraph dom["Domain — depends on nothing but RxJS"]
+    domain["Entities · use cases · port interfaces"]
+  end
+  ui --> vm --> core
+  io --> ports --> core
+  core --> domain
+  ports -. implements .-> domain
+```
+
+### One contract, many combinations
+
+Because each seam is an interface, the pieces compose freely — any client, on
+any core, against any data source — and a single contract suite holds every
+core to the same behaviour.
+
+```mermaid
+flowchart TB
+  subgraph clients["Clients — dumb views behind a ViewModel seam"]
+    direction LR
+    react["React"] ~~~ solid["SolidJS"] ~~~ rn["React Native"]
+  end
+  contract{{"@rtc/core-api — types-only contract"}}
+  subgraph cores["Application cores — pick one per build"]
+    direction LR
+    rx["RxJS"] ~~~ asyncCore["async/await"] ~~~ effectCore["Effect-TS"]
+  end
+  suite[["@rtc/core-contract — one behavioural suite for every core"]]
+  subgraph sources["Data sources — behind AppPorts"]
+    direction LR
+    sim["In-process simulators"] ~~~ local["Local server"] ~~~ remote["Deployed server"]
+  end
+  clients -- "consume" --> contract
+  contract -- "implemented by" --> cores
+  suite -. "verifies" .-> cores
+  cores -- "talk to" --> sources
+```
+
+The rules are enforced, not just drawn: dependency-cruiser fails CI on any
+import that points outward, pnpm strict mode keeps the domain's only runtime
+dependency RxJS, and grep gates catch what types cannot (for example, an
+"alternative core" reaching for an RxJS operator outside its bridge).
 
 ## Architecture at a glance
 
-The repo is a [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/)
-monorepo. Dependencies flow **inward only**:
+A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 25
+packages. The clients and the server never import each other; the alternative
+cores never depend on the RxJS core at runtime. Any framework (React, RxJS,
+Vite, Vitest…) is meant to be replaceable by changing only its own package.
+
+<details>
+<summary>All 25 packages</summary>
 
 ```
 packages/
@@ -63,392 +249,64 @@ packages/
   devtools-relay/      @rtc/devtools-relay      Dev-machine WebSocket relay for the React Native inspector.
 ```
 
-**The rule:** dependencies point inward. `domain` knows nothing of `shared`;
-the clients and the server never depend on each other; the alternative cores
-never depend on `@rtc/client-core` at runtime. Any framework (React, RxJS,
-ws-effects, Vite, Vitest) is meant to be replaceable by changing only its own
-package. pnpm strict mode enforces the single-dependency constraint on the
-domain at install time, and dependency-cruiser enforces the layering in CI.
-[`CLAUDE.md`](CLAUDE.md) has the full per-package description.
+[`CLAUDE.md`](CLAUDE.md) has the full per-package description and dependency rules.
 
-For the full picture, see:
+</details>
 
-- [`docs/README.md`](docs/README.md) — **documentation map**: every doc grouped by purpose, and how work flows from ideas to shipped. Start here.
-- [`docs/architecture.md`](docs/architecture.md) — layers, ports, data flow, sequence diagrams.
-- [`docs/implementation-plan.md`](docs/implementation-plan.md) — the phased plan the build followed.
-- [`docs/STATUS.md`](docs/STATUS.md) — cross-workstream **pending-work backlog** (what's not done yet); [`docs/IDEAS.md`](docs/IDEAS.md) is the upstream icebox of not-yet-planned ideas.
-- [`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) — authoritative status of each phase, including the current test topology.
-- [`docs/superpowers/`](docs/superpowers/) — the per-phase specs and plans, including the design of the multi-runner verification stack (phases 5a–5e).
-- [`docs/claude-sandbox.md`](docs/claude-sandbox.md) — running this repo from macOS WebStorm + the Linux claude-sandbox container at once: volume-isolating `node_modules`/`dist` so both work without interfering, and fixing WebStorm module resolution.
+## Quick start
 
-## Prerequisites
-
-- **Node.js** 26 — what every CI workflow and the server image run
-- **pnpm** 12 — the exact version is pinned by `packageManager` in the root
-  `package.json`. Any globally installed pnpm ≥ 9.7 switches to the pinned
-  version on its own; alternatively let
-  [Corepack](https://nodejs.org/api/corepack.html) (≥ 0.35, what CI uses)
-  provide it:
-
-  ```bash
-  npm install -g corepack@0.35.0
-  corepack enable
-  ```
-
-## Install
+Requires **Node.js 26** and **pnpm 12** (pinned via `packageManager`; see the
+[development guide](docs/development.md#prerequisites) for Corepack setup).
 
 ```bash
 git clone https://github.com/bettersoftware-io/ReactiveTraderCloudClone.git
 cd ReactiveTraderCloudClone
 pnpm install
+pnpm build
+pnpm dev            # React web client, simulator mode → http://localhost:5173
 ```
 
-> If you ever hit `Cannot find module @rollup/rollup-darwin-arm64` (a known
-> pnpm optional-dependency quirk), re-run `pnpm install` — it's an install-time
-> environment issue, not a code defect.
+Sign in as `astark`, `nromanoff`, `tchalla` or `demo` — password `mcdc2026`
+(committed demo-only accounts, see [`docs/authentication.md`](docs/authentication.md)).
+No backend needed: with no server URL set, the client runs against in-process
+domain simulators.
 
-## Build
+More ways to run it:
 
 ```bash
-pnpm build       # Topological build: domain → shared → client + server
+pnpm dev:solid          # the SolidJS client instead          → http://localhost:5473
+pnpm dev:react:fs       # full stack: WebSocket server + React client
+pnpm dev:react:effect   # React client on the Effect-TS core (also :async, and dev:solid:*)
+pnpm dev:ios            # React Native client on the iOS simulator
+pnpm dev:devtools       # the state inspector
 ```
 
-## Run
+Every client has the same four data-source modes — `:sim`, `:ws:local`,
+`:ws:remote`, `:fs`. The [development guide](docs/development.md) covers them
+all, plus choosing an application core, the test stack and deploying.
+
+## Tests & verification
 
 ```bash
-pnpm dev                          # @rtc/client-react, simulator mode — alias of dev:react, zero setup, no backend (Vite, http://localhost:5173)
-pnpm dev:react:fs                 # full stack: WS server + @rtc/client-react wired to it (ws://localhost:4000)
-pnpm --filter @rtc/server dev     # backend only (native WebSocket + @rtc/ws-effects, tsx watch)
+pnpm typecheck       # tsc across every package
+pnpm test            # unit + contract tests (Vitest) across every package
+pnpm test:e2e        # architectural gates, then every e2e suite in parallel
+pnpm test:ui:visual  # pixel-golden visual regression
 ```
 
-The client is served by Vite (default `http://localhost:5173`). The composition
-root selects live WebSocket adapters or in-process simulators based on the
-`VITE_SERVER_URL` environment variable — with it unset, the client runs fully
-against domain simulators, **no backend required**. Point it at a running
-backend by setting `VITE_SERVER_URL` before starting the client.
-
-**Sign in** at the login screen as any demo account — `astark`, `nromanoff`,
-`tchalla`, or `demo` — password `mcdc2026`. These are committed demo credentials
-(this is a demo app); the full-stack `dev:*:fs` scripts and the simulator both
-work out of the box. See [`docs/authentication.md`](docs/authentication.md) for
-the roster and how credentials are wired. (If `pnpm dev` renders a blank page
-after a dependency change, clear the stale Vite cache:
-`rm -rf packages/client-react/node_modules/.vite`.)
-
-### Choosing an application core
-
-The web clients can run on any of three interchangeable application cores. The
-choice is made at build time by the `VITE_CORE_IMPL` environment variable:
-
-| `VITE_CORE_IMPL`  | Core                                                    |
-|-------------------|---------------------------------------------------------|
-| unset or `rxjs`   | `@rtc/client-core` — RxJS, the default and what ships   |
-| `async`           | `@rtc/client-core-async` — async/await + AsyncIterable  |
-| `effect`          | `@rtc/client-core-effect` — Effect-TS                   |
-
-```bash
-pnpm dev:react:async                            # shortcuts, simulator mode
-pnpm dev:react:effect                           # (dev:solid:async / dev:solid:effect too)
-VITE_CORE_IMPL=effect pnpm dev:react:fs         # composes with any mode
-pnpm test:e2e:async                             # e2e against that core (also test:e2e:effect)
-```
-
-- **Restart to switch.** Vite inlines the value into the bundle, so changing
-  core means restarting the dev server or rebuilding — a page reload is not
-  enough. An unknown value fails loudly instead of falling back to RxJS.
-- **One core per build.** The unselected cores are dead-code-eliminated;
-  `pnpm check:core-bundle` proves it in CI. Production leaves the variable
-  unset, so it ships the RxJS core.
-- **Web only.** The React Native client always runs the RxJS core.
-- **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
-  (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm
-  test:e2e` works too. Set both to different cores and the run refuses to
-  start, and it logs `[run-all] application core: …` so you can see which one
-  ran (`tests/scripts/lib/coreImpl.ts`).
-
-How it works and why: [§22 Pluggable application core](docs/architecture/22-pluggable-application-core.md)
-and [ADR-006](docs/adr/ADR-006-pluggable-application-core.md).
-
-## Checks & tests
-
-Everything below is wired through Turborepo, so runs are cached and incremental.
-
-```bash
-pnpm typecheck                    # tsc --noEmit across every package
-pnpm test                         # unit tests (Vitest) across every package
-pnpm test:e2e                     # gates, then all 7 suites in parallel (5 runners + 2 smokes; the CI gate skips the 2 parked Gherkin peers)
-pnpm test:ui:visual               # UI visual regression screenshots (the playwright tier)
-pnpm --filter @rtc/tests gates    # architectural "grep gates" only
-```
-
-Reports land under each package's own `reports/` tree — gitignored, and wiped by
-`pnpm clean`. There are two kinds, both keyed off the script name:
-
-- **Test results** (HTML) — every test script writes one, mirroring its name:
-  `test:<a>:<b>` ⇒ `<package>/reports/<a>/<b>/report/index.html` (bare `test` ⇒
-  `reports/unit/report/`). Browser suites also drop failure traces/screenshots in
-  the `artifacts/` sibling. Sole exception: `test:fullstack:node` is terminal-only.
-- **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
-  `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
-  `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
-  `@rtc/client-react test:ui:contract:coverage`, a CI-enforced ≥95% gate. The
-  `@rtc/client-react test:ui:visual:vitest-browser:react:coverage` report is a
-  **gap-finder**: uncovered `src/ui` branches are visual states with no golden
-  snapshot (inventory: `packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`).
-
-Where each package writes:
-
-| Package | Test-result reports | Coverage reports |
-|---|---|---|
-| `@rtc/domain` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
-| `@rtc/server` | `reports/unit/report/` | `reports/unit/coverage/` (`test:coverage`) |
-| `@rtc/shared` | `reports/unit/report/` | — (package has no tests) |
-| `@rtc/client-react` | `reports/{unit,app,ui/contract}/report/`, `reports/ui/visual/<runner>/react/report/` | `reports/{app,ui/contract,ui/visual}/coverage/` |
-| `@rtc/tests` (e2e) | `reports/{presenter,browser,fullstack}/<suite>/report/` | — (cross-process; not measured) |
-
-Per-package detail: [`packages/client-react/README.md`](packages/client-react/README.md)
-(every client script ↔ report dir) and [`tests/README.md`](tests/README.md) (the
-e2e suite matrix).
-
-`pnpm test` runs each package's bare `test`; in `@rtc/client-react` that's the
-**union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
-adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
-sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
-
-`pnpm test:e2e` is the full behavioural suite: it runs the gates first, then
-launches all seven suites — the five runners and the two full-stack smokes (see
-below) — **in parallel**, buffering each suite's output and printing a pass/fail
-summary at the end (non-zero exit if any fails). Wall-clock time is the slowest
-single suite, not the sum. To run the entire verification stack in one go:
-
-```bash
-pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e
-```
-
-> The architectural gates live in the `@rtc/tests` package, so run them with
-> `pnpm --filter @rtc/tests gates` (or `pnpm gates` from inside `tests/`).
-
-### Caching: why `pnpm test` can return instantly
-
-`build`, `typecheck`, and `test` are **cached** Turborepo tasks. Turbo hashes
-each task's inputs (source files, workspace deps, declared env vars); on a hash
-hit it replays the stored logs instead of re-running — that's the instant
-`>>> FULL TURBO` / `cache hit, replaying logs` output. An instant pass means
-the inputs genuinely didn't change, so the result would be the same.
-
-To force a real run anyway (a flaky test, something turbo doesn't hash, or you
-just want to watch it run):
-
-```bash
-pnpm test --force                                       # ignore the cache, run fresh
-TURBO_FORCE=true pnpm test                              # same, via env var
-pnpm exec turbo run test --filter @rtc/client-react --force   # one package only
-```
-
-Two tasks are deliberately **never cached** (`cache: false` in `turbo.json`):
-`test:e2e` and `test:ui:visual`. They exercise real browsers and servers, and a
-cached "pass" replaying old logs has masked real failures here before.
-
-Two non-solutions to know about:
-
-- `pnpm clean` does **not** force a fresh run — it removes `dist/`, but turbo
-  restores it straight from cache on the next run. `--force` is the tool.
-- `pnpm --filter <pkg> <script>` bypasses turbo entirely (always fresh), but it
-  also skips the task graph, so workspace deps are **not** auto-built — on a
-  fresh checkout run `pnpm build` first.
-
-A cached `pnpm test` replay also restores `reports/unit/` from cache (declared
-turbo outputs) — `--force` regenerates them.
-
-### Visual tests (a third tier — neither e2e nor integration)
-
-`pnpm test:ui:visual` is a separate tier that screenshots
-`@rtc/client-react` UI components and pages rendered against **injected fake data**.
-It mounts only `src/ui/**` behind the `ViewModelProvider` seam — no presenters, no
-domain use cases, no server, no live streams, no timers — so it tests *rendering
-only*, the exact layer the SolidJS port replaced. The fixtures, scenario
-manifest, and golden PNGs live in a React-free `@rtc/ui-contract`'s
-`src/visual/` core (a separate package, consumed as a devDependency) so the
-same baselines gate that reimplementation — `@rtc/client-solid`'s visual tier
-asserts against these goldens directly, owning none of its own.
-
-```bash
-pnpm test:ui:visual                                              # the playwright tier vs committed goldens
-pnpm --filter @rtc/client-react test:ui:visual:playwright:react:ui      # interactive
-# Regenerate goldens — inspect before committing:
-pnpm --filter @rtc/client-react test:ui:visual:playwright:react:update
-# Coverage-only instrument (renders every scenario, pixel assert compiled out):
-pnpm --filter @rtc/client-react test:ui:visual:vitest-browser:react:coverage
-```
-
-See `packages/client-react/tests/ui/visual/README.md` for the layout and the SolidJS port's
-execution record (`@rtc/client-solid` runs the same tier, assert-only against these goldens).
-
-### Do I need to start the servers first?
-
-No — every step boots whatever it needs and tears it down afterwards, so
-`pnpm test:e2e` works from a cold checkout with nothing running.
-
-- The **five runners** test the client against **in-process domain simulators**
-  (`VITE_SERVER_URL` unset) — no backend at all. Each browser runner starts its
-  **own** Vite frontend: on a dedicated port during `pnpm test:e2e` (`:3001`–
-  `:3004`, so the four run concurrently), or on `http://127.0.0.1:3000` by
-  default when run standalone (override with `RTC_DEV_PORT`). The presenter
-  peer doesn't even need a browser.
-- The **two full-stack smokes** are the only steps that involve the real
-  backend, and each starts its own server (and, for the browser smoke, its own
-  client) on dedicated ports.
-
-> **The target port must be free.** A browser runner refuses to reuse a server
-> it didn't start: if something is already on its port it fails immediately
-> rather than running the tests against an unknown server (a leftover dev server,
-> or a hand-started dev server such as `dev:react:fs` in WS-real mode) — which otherwise
-> causes confusing, misattributed failures. `pnpm test:e2e` sidesteps contention
-> by giving each browser suite its own port (`:3001`–`:3004`); a standalone
-> runner uses `:3000` unless you set `RTC_DEV_PORT`. Within the Cucumber+Playwright
-> suite, its parallel workers reuse the one server their runner started (signalled
-> via `RTC_DEV_SERVER_SHARED`) rather than each binding the port. To free a port,
-> run `pnpm --filter @rtc/tests port:free` (or
-> `RTC_DEV_PORT=3002 pnpm --filter @rtc/tests port:free` for a specific one) — a
-> cross-platform helper that probes for `lsof`, `ss`, or `fuser` (whichever your
-> machine has; macOS ships `lsof`, our linuxkit/CI images often ship only `ss`)
-> and kills the listener.
-
-### Scope: what the five runners do *not* cover
-
-The five-runner suite is end-to-end *within the client* (UI → presenters →
-RxJS → adapters → **domain simulators**) — it is deliberately **not** full-stack.
-It never starts `@rtc/server`, so the server's WebSocket translation layer is
-covered separately by two layers:
-
-- **Server protocol tests** (`packages/server/src/ws/wsHandler.test.ts`, run by
-  `pnpm test`) — drive the real handler through a fake socket and assert it
-  routes client frames to domain calls and emits the correct `@rtc/shared` wire
-  shapes (subscribe routing, state-of-the-world markers, ack/nack, teardown).
-- **Full-stack smokes** (`tests/fullstack/`, run by `pnpm test:e2e`) — boot the
-  real server and drive the real client against it. The **node** smoke connects
-  the client's `WsAdapter` over a real socket (subscribe→tick, execute→ack); the
-  **browser** smoke points a Vite-built client at the server via `VITE_SERVER_URL`
-  and asserts live prices render in the DOM.
-
-### Running individual test runners
-
-All runners are scripts in the `@rtc/tests` package; run any one in isolation
-with a filter (each browser runner starts its own frontend on `:3000` by default
-— must be free; override with `RTC_DEV_PORT` — see the port note above):
-
-```bash
-# Browser peers (drive the real UI against simulators)
-pnpm --filter @rtc/tests test:browser:playwright            # native Playwright
-pnpm --filter @rtc/tests test:browser:playwright-cucumber   # Cucumber + Playwright
-
-# Presenter peer (pure Node, no browser/server)
-pnpm --filter @rtc/tests test:presenter:vitest-fake-timers             # plain vitest it() blocks, virtual time
-
-# Full-stack smokes (real server + real client)
-pnpm --filter @rtc/tests test:fullstack:node     # real socket, no browser
-pnpm --filter @rtc/tests test:fullstack:browser  # real browser via VITE_SERVER_URL
-
-# Watch any browser suite live (:headed) — dev tools, not part of test:e2e
-pnpm --filter @rtc/tests test:browser:playwright:headed          # Playwright --headed (runs once)
-pnpm --filter @rtc/tests test:browser:playwright:ui              # Playwright UI mode (sidebar, watch, time-travel)
-pnpm --filter @rtc/tests test:browser:playwright-cucumber:headed # headed Chromium + slowMo
-pnpm --filter @rtc/tests test:fullstack:browser:headed           # full stack, --headed
-```
-
-See tests/README.md for the full suite matrix and naming convention.
-
-### What "verification" means here
-
-This is where the project earns its keep. The same user-facing behaviour is
-exercised by **five independent runners** so they can be compared head-to-head:
-
-- **Four browser peers** drive the real UI — Cucumber+Playwright and native
-  Playwright, each run once against the React client and once against the
-  Solid client.
-- **One presenter peer** (`vitest-fake-timers`) drives the RxJS presenter layer
-  in pure Node against domain simulators, with plain `describe`/`it()` blocks
-  and no Gherkin loader. It was the winner of a bake-off against three other
-  runner/time-model peers — a real-timer Gherkin oracle and two virtual-time
-  peers (one Gherkin, one plain) — retired 2026-07-20 once the plain-vitest
-  peer proved fastest (1s local / 2.5s CI) with zero Gherkin-loader deps; see
-  `tests/STRATEGY.md` for the verdict.
-
-All five run against in-process simulators; on top of them the **two full-stack
-smokes** (above) exercise the real backend end to end. `pnpm test:e2e` runs the
-gates, then all seven suites in parallel, exiting non-zero if any fails. The **25 architectural gates** (`pnpm gates`, also run first by
-`test:e2e`) assert structural invariants that types alone can't — e.g. the
-dependency rule, layering boundaries, and parity between the spec scenarios and
-the tests that implement them. See
-[`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) for the current map and
-the phase 5a–5e specs under [`docs/superpowers/`](docs/superpowers/) for the
-design rationale.
-
-## Working in a single package
-
-Every command above is a Turborepo task; you can scope any of them to one
-package with a filter:
-
-```bash
-pnpm --filter @rtc/domain test
-pnpm --filter @rtc/client-react dev
-```
-
-## Deploy
-
-A public, login-gated demo can be deployed to **Vercel** (the web clients) +
-**Fly.io** (the WebSocket server, London `lhr`). **Deploys are on-demand only —
-nothing auto-deploys on a push or merge, on any branch** (Vercel's Git
-integration is disabled via `"git": { "deploymentEnabled": false }` in each
-client's `vercel.<client>.json`). There is exactly **one official way** to deploy
-each app: its GitHub Actions workflow, triggered manually.
-
-### Main app (clients + server)
-
-**Actions tab → "Deploy" → Run workflow** (or `gh workflow run deploy.yml`).
-One workflow deploys any subset of three independent targets — tick the
-checkboxes:
-
-- **`deploy_react`** → `@rtc/client-react` → Vercel (`rtc-clone-react.vercel.app`)
-- **`deploy_solid`** → `@rtc/client-solid` → Vercel (`rtc-clone-solid.vercel.app`)
-- **`deploy_server`** → `@rtc/server` → Fly.io (`rtc-clone-server.fly.dev`)
-
-Both web clients connect to the **same** shared Fly WS server (its URL is a
-build-time constant baked into each client), so a client build never waits on
-the server — and the server, redeployed far less often, has its own opt-in
-checkbox (default off). Each ticked target is smoke-checked (server `/health`
-→ 200; each client → 200 on its canonical alias). Tick **`include_sourcemaps`**
-to ship a debuggable build of the ticked client(s) — external `.map` files, so a
-profiled deploy shows real component names in the flamechart.
-
-Reproduce the old combined client+server deploy with
-`gh workflow run deploy.yml -f deploy_react=true -f deploy_server=true`.
-
-See [`docs/DEPLOY.md`](docs/DEPLOY.md) for one-time setup (accounts, secrets,
-the shared password/token) and how the gating works.
-
-### Design prototypes
-
-The hand-authored Claude Design mockups (web + mobile) and the readable React
-port deploy separately from the main app, each to its own Vercel project, on
-demand, behind a shared password:
-
-- **Claude Design Prototype (web + mobile)** — the hand-authored standalone HTML
-  mockups under `docs/design/web/<version>/standalone/` and
-  `docs/design/mobile/<version>/standalone/`. **Actions tab → "Deploy Claude
-  Design Prototype" → Run workflow** — pick a **target** (`web` or `mobile`);
-  leave the path blank for that target's default (web v4 / mobile v1) or set it
-  to a specific version. Or `gh workflow run deploy-cd-proto.yml -f target=mobile`.
-  → `rtc-clone-web-cd-proto.vercel.app` / `rtc-clone-mobile-cd-proto.vercel.app`.
-  See [`deploy/cd-proto/README.md`](deploy/cd-proto/README.md).
-- **Prototype (React port)** — the readable `@rtc/client-prototype` React port.
-  **Actions tab → "Deploy Prototype" → Run workflow** (no inputs). Or
-  `gh workflow run deploy-proto.yml`. → `rtc-clone-proto.vercel.app`. See
-  [`deploy/proto/README.md`](deploy/proto/README.md).
-
-## Status
-
-All planned phases are complete; the platform builds, typechecks, and passes the
-full five-runner suite, the two full-stack smokes, and all gates. See
-[`docs/superpowers/STATUS.md`](docs/superpowers/STATUS.md) for the authoritative
-per-phase breakdown.
+The same user-facing behaviour is exercised by browser runners against **both**
+web clients, a pure-Node presenter runner, full-stack smokes against the real
+server, a framework-neutral UI contract, pixel goldens shared by React and
+Solid, a behavioural contract every application core must pass, and 40+
+architectural gates. See the [development guide](docs/development.md#checks--tests)
+and [§9 Test strategy](docs/architecture/09-test-strategy.md).
+
+## Documentation
+
+- [`docs/README.md`](docs/README.md) — **documentation map**: every doc grouped by purpose. Start here.
+- [`docs/development.md`](docs/development.md) — running, testing and deploying, in full.
+- [`docs/architecture.md`](docs/architecture.md) — layers, ports, data flow, sequence diagrams.
+- [`docs/adr/`](docs/adr/) — architecture decision records.
+- [`docs/STATUS.md`](docs/STATUS.md) — the pending-work backlog; [`docs/IDEAS.md`](docs/IDEAS.md) is the icebox upstream of it.
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — how the Vercel + Fly.io demo is deployed.
+- [Project site](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/) — presentations and the coverage report.
