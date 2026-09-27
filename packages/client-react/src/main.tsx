@@ -20,6 +20,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { AppRoot } from "./AppRoot";
+import { bootCore, renderBootError } from "./app/bootApp";
+import {
+  clearCoreChoice,
+  createCoreSelection,
+  loadCore,
+  safeLocalStorage,
+  urlWithoutCoreParam,
+} from "./app/coreSelection";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -30,10 +38,42 @@ if (!rootEl) {
   throw new Error("Root element #root not found in DOM");
 }
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <AppRoot>
-      <App />
-    </AppRoot>
-  </StrictMode>,
+const storage = safeLocalStorage();
+
+bootCore({
+  href: location.href,
+  storage,
+  buildDefault: import.meta.env.VITE_CORE_IMPL,
+  warn: (message: string): void => {
+    console.warn(`[core] ${message}`);
+  },
+  load: loadCore,
+}).then(
+  ({ impl, core }) => {
+    document.documentElement.dataset.coreImpl = impl;
+    const coreSelection = createCoreSelection({
+      current: impl,
+      storage,
+      href: () => {
+        return location.href;
+      },
+      navigate: (href: string): void => {
+        location.assign(href);
+      },
+    });
+
+    createRoot(rootEl).render(
+      <StrictMode>
+        <AppRoot core={core} coreSelection={coreSelection}>
+          <App />
+        </AppRoot>
+      </StrictMode>,
+    );
+  },
+  (error: unknown) => {
+    renderBootError(rootEl, error, () => {
+      clearCoreChoice(storage);
+      location.assign(urlWithoutCoreParam(location.href));
+    });
+  },
 );

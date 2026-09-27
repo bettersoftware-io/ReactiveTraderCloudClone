@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
+import type { CoreFactory, CoreSelection } from "@rtc/core-api";
 import {
   instrumentMachineFactories,
   instrumentPresenters,
@@ -13,7 +14,6 @@ import {
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
-import { activeCore } from "#/app/selectCore";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
@@ -33,11 +33,15 @@ import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
  * surface impurity, which would construct — and discard — a second App with its
  * own presenters and transport wiring. A ref cell is shared across both
  * invocations of the mount, so `createApp()` runs exactly once. */
-export function AppRoot({ children }: AppRootProps): ReactElement {
+export function AppRoot({
+  core,
+  coreSelection,
+  children,
+}: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
 
   if (viewModelRef.current === null) {
-    const { presenters, commands } = activeCore.createApp(buildBrowserPorts());
+    const { presenters, commands } = core.createApp(buildBrowserPorts());
     const instrumented = instrumentPresenters(
       presenters,
       PRESENTER_MANIFEST,
@@ -46,10 +50,11 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
     viewModelRef.current = createViewModel(
       instrumented,
       instrumentMachineFactories(
-        activeCore.createMachineFactories(instrumented),
+        core.createMachineFactories(instrumented),
         devtoolsHub,
       ),
       commands,
+      { coreSelection },
     );
   }
 
@@ -72,5 +77,7 @@ export function AppRoot({ children }: AppRootProps): ReactElement {
 }
 
 interface AppRootProps {
+  core: CoreFactory;
+  coreSelection: CoreSelection;
   children: ReactNode;
 }

@@ -26,6 +26,14 @@ import "solid-devtools";
 import { render } from "solid-js/web";
 
 import { AppRoot } from "./AppRoot";
+import { bootCore, renderBootError } from "./app/bootApp";
+import {
+  clearCoreChoice,
+  createCoreSelection,
+  loadCore,
+  safeLocalStorage,
+  urlWithoutCoreParam,
+} from "./app/coreSelection";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -36,10 +44,42 @@ if (!rootEl) {
   throw new Error("Root element #root not found in DOM");
 }
 
-render(() => {
-  return (
-    <AppRoot>
-      <App />
-    </AppRoot>
-  );
-}, rootEl);
+const storage = safeLocalStorage();
+
+bootCore({
+  href: location.href,
+  storage,
+  buildDefault: import.meta.env.VITE_CORE_IMPL,
+  warn: (message: string): void => {
+    console.warn(`[core] ${message}`);
+  },
+  load: loadCore,
+}).then(
+  ({ impl, core }) => {
+    document.documentElement.dataset.coreImpl = impl;
+    const coreSelection = createCoreSelection({
+      current: impl,
+      storage,
+      href: () => {
+        return location.href;
+      },
+      navigate: (href: string): void => {
+        location.assign(href);
+      },
+    });
+
+    render(() => {
+      return (
+        <AppRoot core={core} coreSelection={coreSelection}>
+          <App />
+        </AppRoot>
+      );
+    }, rootEl);
+  },
+  (error: unknown) => {
+    renderBootError(rootEl, error, () => {
+      clearCoreChoice(storage);
+      location.assign(urlWithoutCoreParam(location.href));
+    });
+  },
+);

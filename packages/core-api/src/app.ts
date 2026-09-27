@@ -398,7 +398,7 @@ export interface App {
   dispose(): Promise<void>;
 }
 
-/** The whole plug: what a client's `selectCore` returns. */
+/** The whole plug: what a client's `coreSelection.ts` `loadCore` resolves to. */
 export interface CoreFactory {
   createApp(ports: AppPorts): App;
   createMachineFactories(presenters: Presenters): MachineFactories;

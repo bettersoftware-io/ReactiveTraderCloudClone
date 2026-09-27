@@ -171,6 +171,17 @@ export function urlWithoutCoreParam(href: string): string {
   return url.toString();
 }
 
+/** `window.localStorage`, or `undefined` when it throws (private-browsing
+ * denial, disabled storage) rather than propagating the exception up
+ * through boot. */
+export function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface CoreSelectionDeps {
   readonly current: CoreImpl;
   readonly storage: Storage | undefined;

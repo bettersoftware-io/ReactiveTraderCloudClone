@@ -6,8 +6,21 @@ import {
   waitFor,
 } from "@solidjs/testing-library";
 
+import { rxjsCore } from "@rtc/client-core";
+import type { CoreSelection } from "@rtc/core-api";
+
 import { AppRoot } from "#/AppRoot";
 import { App } from "#/ui/App";
+
+/** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
+ * so there is no runtime switch to exercise here — `Preferences.contract.spec.ts`
+ * (via the shared ui-contract fixture) is what drives the real "Application
+ * core" row. */
+const coreSelection: CoreSelection = {
+  current: "rxjs",
+  options: [],
+  select: (): void => {},
+};
 
 interface WaitForOptions {
   timeout: number;
@@ -47,7 +60,7 @@ export function appPage(): AppPage {
     mount(): void {
       render(() => {
         return (
-          <AppRoot>
+          <AppRoot core={rxjsCore} coreSelection={coreSelection}>
             <App />
           </AppRoot>
         );

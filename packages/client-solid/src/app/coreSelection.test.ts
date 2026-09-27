@@ -7,6 +7,7 @@ import {
   loadCore,
   readStoredChoice,
   resolveCoreChoice,
+  safeLocalStorage,
   saveCoreChoice,
   urlWithoutCoreParam,
 } from "./coreSelection";
@@ -128,6 +129,12 @@ describe("storage", () => {
 
     expect(saveCoreChoice({ setItem }, "effect")).toBe(true);
     expect(setItem).toHaveBeenCalledWith(CORE_CHOICE_KEY, "effect");
+  });
+});
+
+describe("safeLocalStorage", () => {
+  it("returns window.localStorage", () => {
+    expect(safeLocalStorage()).toBe(window.localStorage);
   });
 });
 
