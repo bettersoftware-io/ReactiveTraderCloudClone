@@ -91,32 +91,27 @@ and a visitor (or the deployed demo itself) can switch between them without a
 rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 `selectCore.ts`) resolves the choice through a pure precedence chain:
 
-```
-?core= URL parameter          — this LOAD only; never written to storage,
-        │                        so a shared link doesn't change the
-        │                        visitor's saved choice
-        ▼ (absent, or unknown → ignored + console warning)
-localStorage["rtc.coreImpl"]  — the stored choice, saved by the
-        │                        Preferences row's select()
-        ▼ (absent, or unknown → cleared + console warning)
-VITE_CORE_IMPL                — the build DEFAULT (still the knob every
-        │                        dev:*/e2e script sets), no longer what
-        │                        gets bundled
-        ▼ (unset → "rxjs"; an unknown value THROWS — a developer error,
-        ▼          fail-closed, unchanged in substance from the old
-        ▼          build-time selectCore)
-resolveCoreChoice(...): CoreImpl
-        │
-        ▼
-loadCore(impl): Promise<CoreFactory>   — rxjs resolves the already-imported
-        │                                rxjsCore; async/effect resolve
-        │                                through import("@rtc/client-core-async")
-        │                                / import("@rtc/client-core-effect"),
-        │                                which the bundler splits into their
-        │                                own lazy chunks, fetched only once
-        │                                chosen
-        ▼
-bootCore (src/app/bootApp.ts) → main.tsx renders <AppRoot core={core} …>
+```mermaid
+flowchart TD
+  url["<b>?core=</b> URL parameter<br/>this load only — never written to storage,<br/>so a shared link keeps the visitor's saved choice"]
+  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the Preferences row's select()"]
+  build["<b>VITE_CORE_IMPL</b><br/>the build DEFAULT — the knob every dev:* / e2e<br/>script sets, no longer what gets bundled"]
+  fallback["<b>rxjs</b>"]
+  fail["throws — a developer error, fail-closed"]
+  resolved["resolveCoreChoice(…): CoreImpl"]
+  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>rxjs → the already-imported rxjsCore<br/>async / effect → import(#quot;@rtc/client-core-async#quot;) /<br/>import(#quot;@rtc/client-core-effect#quot;), each its own lazy chunk,<br/>fetched only once chosen"]
+  boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx renders #lt;AppRoot core={core} …#gt;"]
+
+  url -- "valid" --> resolved
+  url -- "absent, or unknown<br/>(ignored + console warning)" --> stored
+  stored -- "valid" --> resolved
+  stored -- "absent, or unknown<br/>(cleared + console warning)" --> build
+  build -- "valid" --> resolved
+  build -- "unset" --> fallback
+  build -- "unknown value" --> fail
+  fallback --> resolved
+  resolved --> load
+  load --> boot
 ```
 
 `bootCore` runs resolve-then-load before anything renders (the page shows

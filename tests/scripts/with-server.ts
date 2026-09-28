@@ -7,12 +7,13 @@ import {
   startDevServer,
 } from "./devServer";
 import { adoptCoreImpl } from "./lib/coreImpl";
+import { dropArgSeparator } from "./lib/forwardedArgs";
 
 // Standalone browser runs (e.g. test:browser:playwright) enter here without
 // run-all.ts; resolve the core the same way before the dev server starts.
 adoptCoreImpl(process.env);
 
-const [cmd, ...args] = process.argv.slice(2);
+const [cmd, ...args] = dropArgSeparator(process.argv.slice(2));
 
 if (!cmd) {
   console.error("usage: with-server <cmd> [args...]");

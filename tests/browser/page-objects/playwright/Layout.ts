@@ -1,5 +1,11 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import {
+  FIRST_DOCK_RENDER_ARM_KEY,
+  type FirstDockRenderArm,
+  type FirstDockRenderWindow,
+} from "#/browser/firstDockRenderRecorder";
+
 import type {
   FirstDockRender,
   FloatBox,
@@ -92,17 +98,10 @@ interface DockLayoutLeafData {
   readonly views?: readonly string[];
 }
 
-/** The page global `recordFirstDockRender`'s init script writes its
- * snapshot to (read back by `firstDockRender`). Type-only: the init script
- * ships as source text, and this annotation is erased from it. */
 /** A viewport point to press at. */
 interface GripPoint {
   readonly x: number;
   readonly y: number;
-}
-
-interface FirstDockRenderWindow {
-  __rtcFirstDockRender?: unknown;
 }
 
 /** What one dock-tab drag gesture can be shown to have done to the page —
@@ -1074,59 +1073,38 @@ export class PlaywrightLayout implements LayoutPO {
   }
 
   async recordFirstDockRender(panelId: string): Promise<void> {
-    // `addInitScript` runs in every document this page loads from here on,
-    // before any app script — so the observer is watching when the dock's
-    // first render lands. It snapshots ONCE per document, in the microtask
-    // right after the render that first mounts `panelId`'s head controls:
-    // everything that render committed is in the DOM, and nothing a LATER
-    // layout change publishes (a container settle, a resize, a drag) can
-    // have reached it yet. A polled wait cannot make that distinction — it
-    // reads true the moment any later change repairs the state, which is
-    // exactly how a restored float's missing publish once hid behind a
-    // passing `waitDockFloating`.
-    await this.page.addInitScript(
-      ({ engineRoot, float, collapse, maximize }) => {
-        // Self-contained: Playwright ships only this function's source.
-        const win = window as unknown as FirstDockRenderWindow;
-        const observer = new MutationObserver(() => {
-          const control = document.querySelector(
-            `[data-testid="${engineRoot}"][data-engine="dockview"] [data-testid="${float}"]`,
-          );
+    // Arms the recorder the runner installed at context creation
+    // (installFirstDockRenderRecorder): sessionStorage survives the reload
+    // that follows, and the next document consumes the arm at its start.
+    const arm: FirstDockRenderArm = {
+      engineRoot: TESTIDS.layout.engineRoot,
+      float: TESTIDS.layout.floatControl(panelId),
+      collapse: TESTIDS.layout.collapseControl(panelId),
+      maximize: TESTIDS.layout.maximizeControl(panelId),
+    };
 
-          if (control === null || win.__rtcFirstDockRender !== undefined) {
-            return;
-          }
-
-          const root = control.closest(`[data-testid="${engineRoot}"]`);
-          const raw = root?.getAttribute("data-floating") ?? "";
-
-          win.__rtcFirstDockRender = {
-            floating: raw === "" ? [] : raw.split(" "),
-            floatControlLabel: control.getAttribute("aria-label"),
-            hasCollapseControl:
-              document.querySelector(`[data-testid="${collapse}"]`) !== null,
-            hasMaximizeControl:
-              document.querySelector(`[data-testid="${maximize}"]`) !== null,
-          };
-          observer.disconnect();
-        });
-
-        observer.observe(document, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-        });
+    await this.page.evaluate(
+      ({ armKey, value }) => {
+        window.sessionStorage.setItem(armKey, value);
       },
-      {
-        engineRoot: TESTIDS.layout.engineRoot,
-        float: TESTIDS.layout.floatControl(panelId),
-        collapse: TESTIDS.layout.collapseControl(panelId),
-        maximize: TESTIDS.layout.maximizeControl(panelId),
-      },
+      { armKey: FIRST_DOCK_RENDER_ARM_KEY, value: JSON.stringify(arm) },
     );
   }
 
   async firstDockRender(timeoutMs: number): Promise<FirstDockRender> {
+    const armed = await this.page.evaluate(() => {
+      return (
+        (window as unknown as FirstDockRenderWindow)
+          .__rtcFirstDockRenderArmed === true
+      );
+    });
+
+    if (!armed) {
+      throw new Error(
+        "firstDockRender: no armed recorder in this document — either the runner did not install installFirstDockRenderRecorder on its context, or recordFirstDockRender was not called before this load",
+      );
+    }
+
     const handle = await this.page.waitForFunction(
       () => {
         return (window as unknown as FirstDockRenderWindow)
