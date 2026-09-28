@@ -41,8 +41,9 @@ had moved on. Each row was re-verified against `main` at `1d0f315c4`:
 ### 3.1 The shape: mirror FX exactly
 
 FX sparklines are **not** seeded. `PriceHistoryUseCase` folds live
-`getPriceUpdates` ticks into a window that starts empty;
-`PricingPort.getPriceHistory` exists but no presenter reads it.
+`getPriceUpdates` ticks into a window that starts empty.
+`PricingPort.getPriceHistory` exists, but only Jarvis reads it (the
+`get_price_history` tool and `jarvisPanels`); the sparkline presenter does not.
 `PriceHistoryPresenter` owns one window per symbol so a remounted tile resumes
 its accumulated line instead of blanking.
 
@@ -128,11 +129,20 @@ construction-time subscription.
 - `MoversBoard` stops calling `useCandles(row.symbol)` for the sparkline and
   uses `useEquityPriceHistory(row.symbol)` instead. If candles have no other
   reader in that component, the call is removed rather than left unused.
-- `MoversRow` and `RowSparkline` take `readonly EquityQuote[]` in place of
-  `readonly Candle[]` and plot `last`. `MoversRow`'s doc comment, which says
-  "there being no equities tick-history", is corrected.
-- The RN hook is added wherever RN's view model maps presenters to hooks,
-  following `usePriceHistory`.
+- `MoversBoardRow` maps the history to its `last` prices, and `MoversRow` and
+  `RowSparkline` take `prices: readonly number[]` in place of
+  `candles: readonly Candle[]` — the leaf stays plain props (so
+  compiler-memoizable) and no longer needs to know what a series is made of.
+  The doc comments that say "there being no equities tick-history" are
+  corrected.
+- The hook `useEquityPriceHistory` is added to `@rtc/react-bindings`'
+  `createViewModel`, next to `usePriceHistory`. Because `ViewModel` is a
+  closed type, `client-react`'s two **test** fakes gain the member too; no
+  web UI file changes. `@rtc/solid-bindings` is not changed (no consumer).
+- All three clients' devtools presenter manifests gain
+  `equityPriceHistory: { methods: ["history$"] }` —
+  `check:manifest-drift` requires the web and RN manifests to match, so this
+  one devtools line is the only web-app source change.
 - The RN `markets` visual goldens are re-captured **once**, because the line
   genuinely changes shape. The visual harness feeds a fixed, literal window
   through the fake view model (never the live simulator), so the golden stays
@@ -140,8 +150,10 @@ construction-time subscription.
 
 ### 3.6 What does not change
 
-- `@rtc/client-react`, `@rtc/client-solid`, and their goldens. They receive the
-  new member through the shared view-model construction but never call it.
+- Any web UI component, and every web golden. The web clients receive the new
+  member through the shared view-model construction but never call it; their
+  only edits are the devtools manifest line and `client-react`'s two test
+  fakes (§3.5).
 - `@rtc/server`, `@rtc/shared`, the wire protocol, and `MarketDataPort`.
 - The M2, M3 and M7 rulings.
 
