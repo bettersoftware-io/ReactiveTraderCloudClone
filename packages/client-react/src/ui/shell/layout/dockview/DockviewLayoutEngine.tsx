@@ -343,6 +343,9 @@ export function DockviewLayoutEngine({
         maximizeScope: (id: string): DockMaximizeScope => {
           return specsRef.current[id as PanelId]?.maximizeScope ?? "root";
         },
+        fixedWidth: (id: string): number | undefined => {
+          return specsRef.current[id as PanelId]?.fixedWidthPx;
+        },
         mount: mountInto("body"),
         mountTab: mountInto("tab"),
         mountActions: mountInto("actions"),
@@ -583,6 +586,9 @@ export function DockviewLayoutEngine({
           // dock.
           maximizeScope: (id: string): DockMaximizeScope => {
             return specsRef.current[id as PanelId]?.maximizeScope ?? "root";
+          },
+          fixedWidth: (id: string): number | undefined => {
+            return specsRef.current[id as PanelId]?.fixedWidthPx;
           },
           mount: mountInto("body"),
           mountTab: mountInto("tab"),
