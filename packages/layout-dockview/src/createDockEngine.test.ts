@@ -1953,6 +1953,141 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
 });
 
+describe("width locks (PanelSpec.fixedWidthPx)", () => {
+  it("holds every locked group at its card width plus the gap", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    expect(widthClampOf("fx-rates")[0]).toBeLessThan(367);
+    engine.dispose();
+  });
+
+  it("does not release on a sash drag in the declaring split", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine(opts);
+
+    dragSash(opts.container, ".dv-horizontal");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("supersedes the seed's design pin: none is persisted", () => {
+    const seen = trackLayout();
+    persistArranged({ ...createLockedRailBase(), ...seen.options });
+
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("collapse → expand returns to the lock, not the pre-collapse width", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-positions");
+    engine.expandPanel("fx-analytics");
+    engine.expandPanel("fx-positions");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("nothing absorbs: the locked rail fills the dock, and re-locks when an absorber returns", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(lastDockviewApi().getPanel("fx-analytics")?.group.api.width).toBe(
+      1440,
+    );
+
+    engine.reopenPanel("fx-rates");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("restores the lock from a blob that holds no pin sidecar at all", () => {
+    const first = createDockEngine(createLockedRailBase());
+    const blob = first.snapshotLayout();
+    first.dispose();
+
+    const engine = createDockEngine({ ...createLockedRailBase(), blob });
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("clamps the new group a locked tab is dragged into — a drag reaches no intent", async () => {
+    const engine = createDockEngine(createLockedRailBase());
+    const analytics = lastDockviewApi().getPanel("fx-analytics");
+    const positions = lastDockviewApi().getPanel("fx-positions");
+
+    if (analytics === undefined || positions === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    // The drop operation IS moveTo. A lone panel moves WITH its group (and
+    // its clamp), so stack the rail first: dragging one tab out of a stack
+    // builds a fresh, unconstrained group at the right edge, and only the
+    // layout-change settle ever sees it.
+    positions.api.moveTo({ group: analytics.group, position: "center" });
+    await nextMacrotask();
+    analytics.api.moveTo({ group: positions.group, position: "right" });
+    await nextMacrotask();
+
+    expect(analytics.group).not.toBe(positions.group);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("nothing absorbs beside a pinned dynamic panel: lock and pin yield together, and re-lock together", () => {
+    // Ruling P1's setting: design pins ARE present here, so the lock settles
+    // on settlePinAbsorption's pin paths, not its no-pins shortcut. A pinned
+    // panel absorbs nothing, so closing both statics starves the grid.
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 300 }],
+    });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(
+      (lastDockviewApi().getPanel("fx-analytics")?.group.api.width ?? 0) +
+        (lastDockviewApi().getPanel("panel-dyn-1")?.group.api.width ?? 0),
+    ).toBe(1440);
+
+    engine.reopenPanel("fx-rates");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  function createLockedRailBase(): DockEngineOptions {
+    const opts = createRailBase();
+
+    return {
+      ...opts,
+      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return id === "fx-analytics" || id === "fx-positions"
+            ? 360
+            : undefined;
+        },
+      },
+    };
+  }
+});
+
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   // The blob serialises the layout AS RENDERED — a collapsed panel's group is
   // in it at the bar size. Reloading such a blob restores the tiny group (at

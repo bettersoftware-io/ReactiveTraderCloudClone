@@ -88,6 +88,13 @@ export interface DockPanelHooks {
   /** How far `panelId`'s maximize reaches — see {@link DockMaximizeScope}.
    * Absent → `"root"`. */
   maximizeScope?(panelId: string): DockMaximizeScope;
+  /** The panel's locked WIDTH in visible card px (gutter excluded), or
+   * undefined when it is freely resizable — the in-house
+   * `PanelSpec.fixedWidthPx`. A group holding a locked panel is held at
+   * min = max on the width axis for as long as it lives in the grid or
+   * floats (see settleWidthLocks), and drops that would mix widths are
+   * refused. Absent → nothing is locked. */
+  fixedWidth?(panelId: string): number | undefined;
 }
 
 /** The in-house `PanelSpec.maximizeScope`: `"root"` (the default) strips
@@ -339,6 +346,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   const width = opts.container.clientWidth || 1200;
   const height = opts.container.clientHeight || 800;
+  // The dock's real size as last settled — what a forced layout lays out at
+  // (see settlePinAbsorption). Declared here, not beside the resize observer
+  // that updates it, because construction settles locks and pins before
+  // that observer exists.
+  let trackedWidth = width;
+  let trackedHeight = height;
 
   // dockview-core needs an explicit, real-dimensioned layout() call before
   // fromJSON restores a tree: absent one, its internal grid is still at its
@@ -603,6 +616,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // debounceMs (audit S2). The returned list is the persistence filter's
     // concern; here only the release side effect matters.
     intactDesignPins();
+    // Locks too: a user drag or float that formed a new locked group reaches
+    // no intent, so this is where its clamp lands.
+    settleWidthLocks();
 
     if (timer !== null) {
       clearTimeout(timer);
@@ -1217,6 +1233,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   function applyDesignPins(pins: readonly DockDesignPin[]): void {
     for (const pin of pins) {
+      // Ruling R10: a width pin over panels that are all width-LOCKED is
+      // superseded by the lock — skipped whole, so it is never clamped,
+      // persisted, or released by a sash drag.
+      if (
+        pin.axis === "width" &&
+        pin.panelIds.every((panelId) => {
+          return lockOfPanel(panelId) !== undefined;
+        })
+      ) {
+        continue;
+      }
+
       if (!panelsExactlyFill(pin.panelIds, groupOf)) {
         continue;
       }
@@ -1569,7 +1597,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
     return gridGroups(api).some((group) => {
       return group.panels.some((panel) => {
-        return !pinned.has(panel.id) && !records.has(panel.id);
+        return (
+          !pinned.has(panel.id) &&
+          !records.has(panel.id) &&
+          lockOfPanel(panel.id) === undefined
+        );
       });
     });
   }
@@ -1593,33 +1625,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * that finds an absorber. Releasing outright is what a sash drag does, and
    * that stays the only way to lose a pin for good. */
   function settlePinAbsorption(): void {
-    if (designPins.length === 0 && unabsorbedPins.length === 0) {
-      return;
-    }
+    // Locks settle first: they share the absorber test, and a lock that
+    // changed owes the same forced layout a pin change does (Ruling P1) —
+    // hence ONE exit below, gated on either, so no path can skip it.
+    const locksChanged = settleWidthLocks();
+    const pinsChanged = settlePinClamps();
 
-    const absorbs = someGroupAbsorbs([...designPins, ...unabsorbedPins]);
-
-    if (absorbs && unabsorbedPins.length > 0) {
-      for (const record of unabsorbedPins) {
-        clampPinMembers(record);
-      }
-
-      designPins = [...designPins, ...unabsorbedPins];
-      unabsorbedPins = [];
-    } else if (!absorbs && designPins.length > 0) {
-      let patchedStrips = false;
-
-      for (const record of designPins) {
-        patchedStrips = releasePinMembers(record) || patchedStrips;
-      }
-
-      unabsorbedPins = [...unabsorbedPins, ...designPins];
-      designPins = [];
-
-      if (patchedStrips) {
-        settleStrips();
-      }
-    } else {
+    if (!locksChanged && !pinsChanged) {
       return;
     }
 
@@ -1632,6 +1644,47 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // the current one, which `DockviewComponent.layout` de-dupes away. Hence
     // forceResize: the distribution, not the dimensions, is what changed.
     api.layout(trackedWidth, trackedHeight, true);
+  }
+
+  /** settlePinAbsorption's pin half: suspends every live pin when nothing
+   * absorbs, re-clamps every suspended one when something does. True when
+   * any pin moved between the two lists — the caller owes a forced layout. */
+  function settlePinClamps(): boolean {
+    if (designPins.length === 0 && unabsorbedPins.length === 0) {
+      return false;
+    }
+
+    const absorbs = someGroupAbsorbs([...designPins, ...unabsorbedPins]);
+
+    if (absorbs && unabsorbedPins.length > 0) {
+      for (const record of unabsorbedPins) {
+        clampPinMembers(record);
+      }
+
+      designPins = [...designPins, ...unabsorbedPins];
+      unabsorbedPins = [];
+
+      return true;
+    }
+
+    if (!absorbs && designPins.length > 0) {
+      let patchedStrips = false;
+
+      for (const record of designPins) {
+        patchedStrips = releasePinMembers(record) || patchedStrips;
+      }
+
+      unabsorbedPins = [...unabsorbedPins, ...designPins];
+      designPins = [];
+
+      if (patchedStrips) {
+        settleStrips();
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   /** The pins worth persisting: drops (and releases) any whose groups no
@@ -1704,6 +1757,87 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     pendingSashSplit = null;
     window.removeEventListener("pointermove", unpinOnDragMove, true);
     window.removeEventListener("pointerup", disarmSashUnpin, true);
+  }
+
+  // ——— Width locks (PanelSpec.fixedWidthPx) ———
+  // A lock is a PANEL property, not a tree slot's: whichever group holds a
+  // locked panel is clamped min = max on the width axis, and dockview's own
+  // updateSashEnablement then disables any sash with no movable side.
+  // Unlike a design pin it is never released by a drag; it yields only to a
+  // strip (the strip machinery owns the group's constraints while it is a
+  // bar, and its expand restores the captured lock) and, like a pin, to a
+  // dock with nothing left to absorb the spare width (settlePinAbsorption).
+  // The groups' pre-lock width constraints, by group element — what a
+  // yield puts back.
+  const widthLockBaselines = new Map<Element, readonly [number, number]>();
+  let widthLocksYielded = false;
+
+  function lockOfPanel(panelId: string): number | undefined {
+    return opts.panels.fixedWidth?.(panelId);
+  }
+
+  function lockOfGroup(group: SizableGroup): number | undefined {
+    for (const panel of group.panels) {
+      const px = lockOfPanel(panel.id);
+
+      if (px !== undefined) {
+        return px;
+      }
+    }
+
+    return undefined;
+  }
+
+  /** Clamps every locked grid or floating group at its lock, or — when no
+   * grid group is left to absorb the spare width — puts every locked group
+   * back to its baseline so the locked panels fill. Popped-out groups are
+   * skipped (an OS window cannot be pinned — Ruling R7), and so are strips.
+   * True when any constraint changed, so the caller owes a forced layout. */
+  function settleWidthLocks(): boolean {
+    const yielding = !someGroupAbsorbs([...designPins, ...unabsorbedPins]);
+    let changed = yielding !== widthLocksYielded;
+    widthLocksYielded = yielding;
+
+    for (const group of groupsAnywhere(api)) {
+      const px = lockOfGroup(group);
+
+      if (
+        px === undefined ||
+        group.api.location?.type === "popout" ||
+        holdsStrippedPanel(group)
+      ) {
+        continue;
+      }
+
+      const axis = axisOf(group, "vertical");
+      const model = px + GROUP_GAP_PX;
+
+      if (!widthLockBaselines.has(group.element)) {
+        widthLockBaselines.set(group.element, [axis.minimum(), axis.maximum()]);
+      }
+
+      if (yielding && isInGrid(group)) {
+        const [minimum, maximum] = widthLockBaselines.get(group.element) ?? [
+          axis.minimum(),
+          axis.maximum(),
+        ];
+
+        if (axis.minimum() !== minimum || axis.maximum() !== maximum) {
+          axis.constrain(minimum, maximum);
+          axis.set(axis.size());
+          changed = true;
+        }
+
+        continue;
+      }
+
+      if (axis.minimum() !== model || axis.maximum() !== model) {
+        clampTo(axis, model);
+        changed = true;
+      }
+    }
+
+    return changed;
   }
 
   /** Opens `panel` as a brand-new group at the grid's right edge — never
@@ -2398,6 +2532,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   applyDesignPins(restored.pins);
+  settlePinAbsorption();
   reconcileDynamicPanels();
   applyTitles(api, opts.panels); // reconciled-in panels get titles too
 
@@ -3098,9 +3233,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // api.layout first makes callback ORDER irrelevant — if dockview already
   // laid out, it is a no-op (dockview skips equal dimensions); if not,
   // dockview's own later call is.
-  let trackedWidth = width;
-  let trackedHeight = height;
-
   function reapplyExactLayoutOnResize(): void {
     const nextWidth = opts.container.clientWidth;
     const nextHeight = opts.container.clientHeight;
