@@ -106,6 +106,8 @@ pnpm test:e2e:async                             # e2e against that core (also te
   start, and it logs `[run-all] application core: …` so you can see which one
   ran (`tests/scripts/lib/coreImpl.ts`).
 
+New to the three cores? Start with the guided tour,
+[§23 Application cores, explained](architecture/23-application-cores-explained.md).
 How it works and why: [§22 Pluggable application core](architecture/22-pluggable-application-core.md)
 and [ADR-006](adr/ADR-006-pluggable-application-core.md) (see Decision 6
 for the load-time switch specifically).
