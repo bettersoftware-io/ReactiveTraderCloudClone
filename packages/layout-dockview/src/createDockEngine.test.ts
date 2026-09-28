@@ -1,7 +1,10 @@
 import {
   createDockview,
   type DockviewApi,
+  type DockviewGroupDropLocation,
+  type DockviewWillShowOverlayLocationEvent,
   Orientation,
+  type Position,
   type SerializedDockview,
 } from "dockview";
 import {
@@ -2070,6 +2073,110 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     engine.dispose();
   });
 
+  describe("refuses drops that would mix widths (Ruling R5)", () => {
+    it.each([
+      // dragged, kind, position, onto, edge, refused
+      ["fx-analytics", "content", "center", "fx-rates", false, true],
+      ["fx-analytics", "content", "left", "fx-rates", false, false],
+      // A tab or header drop joins the group whatever side of a tab it lands.
+      ["fx-analytics", "tab", "left", "fx-rates", false, true],
+      ["fx-analytics", "header_space", "center", "fx-rates", false, true],
+      ["fx-rates", "content", "center", "fx-positions", false, true],
+      ["fx-positions", "content", "top", "fx-analytics", false, false],
+      ["fx-analytics", "edge", "top", undefined, false, true],
+      ["fx-analytics", "edge", "left", undefined, false, false],
+      // An `edge` cell inside a group docks against the whole layout.
+      ["fx-positions", "content", "top", "fx-analytics", true, true],
+    ] as const)(
+      "%s → %s %s of %s (edge cell %s): refused %s",
+      (dragged, kind, position, onto, edge, refused) => {
+        const engine = createDockEngine(createLockedRailBase());
+        const overlay = createOverlayEvent({
+          kind,
+          position,
+          edge,
+          panelId: dragged,
+          groupId: groupIdOf(dragged),
+          onto,
+        });
+
+        showOverlay(overlay.event);
+
+        expect(overlay.prevented()).toBe(refused);
+        engine.dispose();
+      },
+    );
+
+    it("reads a whole-group drag's lock from its group", () => {
+      const engine = createDockEngine(createLockedRailBase());
+      const overlay = createOverlayEvent({
+        kind: "content",
+        position: "center",
+        edge: false,
+        panelId: null,
+        groupId: groupIdOf("fx-analytics"),
+        onto: "fx-rates",
+      });
+
+      showOverlay(overlay.event);
+
+      expect(overlay.prevented()).toBe(true);
+      engine.dispose();
+    });
+
+    function showOverlay(event: DockviewWillShowOverlayLocationEvent): void {
+      (
+        capturedDockview.showOverlay as (
+          e: DockviewWillShowOverlayLocationEvent,
+        ) => void
+      )(event);
+    }
+
+    function groupIdOf(panelId: string): string {
+      const group = lastDockviewApi().getPanel(panelId)?.group;
+
+      if (group === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return group.id;
+    }
+
+    /** The event dockview raises as a drag enters a drop zone — only the
+     * fields the engine reads — and whether the engine vetoed it. */
+    function createOverlayEvent(spec: OverlaySpec): OverlayProbe {
+      let prevented = false;
+      const group =
+        spec.onto === undefined
+          ? undefined
+          : lastDockviewApi().getPanel(spec.onto)?.group;
+
+      const event = {
+        kind: spec.kind,
+        position: spec.position,
+        edge: spec.edge,
+        group,
+        getData: () => {
+          return {
+            viewId: lastDockviewApi().id,
+            groupId: spec.groupId,
+            panelId: spec.panelId,
+          };
+        },
+        preventDefault: () => {
+          prevented = true;
+        },
+      } as unknown as DockviewWillShowOverlayLocationEvent;
+
+      return {
+        event,
+        prevented: () => {
+          return prevented;
+        },
+      };
+    }
+  });
+
   function createLockedRailBase(): DockEngineOptions {
     const opts = createRailBase();
 
@@ -3961,7 +4068,11 @@ describe("dynamic-panel reconciliation at construction", () => {
 });
 
 const capturedDockview = vi.hoisted(() => {
-  return { api: null as unknown, options: null as unknown };
+  return {
+    api: null as unknown,
+    options: null as unknown,
+    showOverlay: null as unknown,
+  };
 });
 
 // Passthrough capture of the engine's dockview api: behaviour is untouched,
@@ -5495,6 +5606,63 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
         expect(lastDockviewApi().getPanel("fx-analytics")?.group).toBe(
           lastDockviewApi().getPanel("fx-rates")?.group,
         );
+        restore();
+        engine.dispose();
+      });
+
+      // Ruling R5 covers the wrapper's own drag-to-dock: a locked float
+      // may not join (or stack in) an unlocked group, and a refused spot
+      // reads exactly as no target — no preview, no dock on release.
+      it("refuses to join a locked float into an unlocked group (R5)", async () => {
+        const container = sizedContainer(1440, 900);
+        const floats: string[][] = [];
+        const probe = probeHeads(container);
+        const engine = createDockEngine({
+          ...probe,
+          panels: {
+            ...probe.panels,
+            fixedWidth: (id: string): number | undefined => {
+              return id === "fx-analytics" ? 360 : undefined;
+            },
+          },
+          onFloatsChange: (panelIds: readonly string[]): void => {
+            floats.push([...panelIds]);
+          },
+        });
+        const restore = moveAnalyticsOverRates(container, engine);
+        const groups = engine.groupCount();
+
+        pointerAt("pointermove", 200, 150, true);
+
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+
+        pointerAt("pointerup", 200, 150, true);
+        await nextMacrotask();
+
+        expect(engine.groupCount()).toBe(groups);
+        expect(locationOf("fx-analytics")).toBe("floating");
+        expect(floats.at(-1)).toEqual(["fx-analytics"]);
+        restore();
+        engine.dispose();
+      });
+
+      it("still docks a locked float beside an unlocked group (R5)", () => {
+        const container = sizedContainer(1440, 900);
+        const probe = probeHeads(container);
+        const engine = createDockEngine({
+          ...probe,
+          panels: {
+            ...probe.panels,
+            fixedWidth: (id: string): number | undefined => {
+              return id === "fx-analytics" ? 360 : undefined;
+            },
+          },
+        });
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointerup", 20, 150, true);
+
+        expect(locationOf("fx-analytics")).toBe("grid");
         restore();
         engine.dispose();
       });
@@ -7270,6 +7438,21 @@ interface FloatedHead {
   readonly pressesOnVoid: () => number;
 }
 
+interface OverlaySpec {
+  readonly kind: DockviewGroupDropLocation;
+  readonly position: Position;
+  readonly edge: boolean;
+  readonly panelId: string | null;
+  readonly groupId: string;
+  readonly onto: string | undefined;
+}
+
+/** A fake overlay event and whether the engine vetoed it. */
+interface OverlayProbe {
+  readonly event: DockviewWillShowOverlayLocationEvent;
+  readonly prevented: () => boolean;
+}
+
 interface PopoutUrlCarrier {
   readonly popoutUrl?: string;
 }
@@ -7286,6 +7469,19 @@ vi.mock("dockview", async (importOriginal) => {
       const api = actual.createDockview(...args);
       capturedDockview.api = api;
       capturedDockview.options = args[1];
+      // Records the engine's overlay listener (still subscribing it), so a
+      // test can hand it the event a drag over a drop zone would raise —
+      // jsdom has no DragEvent to raise it for real.
+      const willShowOverlay = api.onWillShowOverlay;
+      Object.defineProperty(api, "onWillShowOverlay", {
+        value: (
+          listener: Parameters<typeof willShowOverlay>[0],
+        ): ReturnType<typeof willShowOverlay> => {
+          capturedDockview.showOverlay = listener;
+
+          return willShowOverlay(listener);
+        },
+      });
 
       return api;
     },

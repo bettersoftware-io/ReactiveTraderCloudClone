@@ -3,6 +3,7 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewTheme,
+  type DockviewWillShowOverlayLocationEvent,
   directionToPosition,
   type FloatingGroupOptions,
   type SerializedDockview,
@@ -16,6 +17,7 @@ import {
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
+import { type DockDropTarget, refusesDockDrop } from "#/dockDropRules";
 import { gridGroups, groupsAnywhere, isInGrid } from "#/dockGroups";
 import {
   convertSeed,
@@ -92,8 +94,9 @@ export interface DockPanelHooks {
    * undefined when it is freely resizable — the in-house
    * `PanelSpec.fixedWidthPx`. A group holding a locked panel is held at
    * min = max on the width axis for as long as it lives in the grid or
-   * floats (see settleWidthLocks), and drops that would mix widths are
-   * refused. Absent → nothing is locked. */
+   * floats (see settleWidthLocks), and a drag may not drop it where it
+   * would mix widths or lock a stretching column or row (see
+   * refusesDockDrop). Absent → nothing is locked. */
   fixedWidth?(panelId: string): number | undefined;
 }
 
@@ -629,6 +632,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       serializeLayout();
     }, debounceMs);
   });
+
+  const overlaySub = api.onWillShowOverlay(refuseLockBreakingDrop);
 
   /** Lands a save still waiting out the debounce, now. A reload tears the
    * page down without unmounting anything — dispose's flush never runs — so
@@ -1776,7 +1781,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return opts.panels.fixedWidth?.(panelId);
   }
 
-  function lockOfGroup(group: SizableGroup): number | undefined {
+  function lockOfGroup(
+    group: Pick<SizableGroup, "panels">,
+  ): number | undefined {
     for (const panel of group.panels) {
       const px = lockOfPanel(panel.id);
 
@@ -1786,6 +1793,51 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     return undefined;
+  }
+
+  /** Refuses (hides the overlay of, and so cancels) any drop Ruling R5
+   * forbids. A whole-group drag carries no panelId — its lock is its
+   * group's. A tab or header drop joins the group whichever side of a tab
+   * it lands on, so it is judged as a centre drop. Two signals mean the
+   * drop docks against the whole layout: the root drop target's `edge`
+   * kind, and an `edge` cell a position resolver marks inside a group's
+   * content (dockview routes that drop to `dockToLayoutEdge` too). */
+  function refuseLockBreakingDrop(
+    event: DockviewWillShowOverlayLocationEvent,
+  ): void {
+    const position =
+      event.kind === "tab" || event.kind === "header_space"
+        ? "center"
+        : event.position;
+
+    const target: DockDropTarget =
+      event.kind === "edge" || event.edge || event.group === undefined
+        ? { kind: "layout-edge", position }
+        : { kind: "group", position, lock: lockOfGroup(event.group) };
+
+    if (refusesDockDrop(draggedLockOf(event), target)) {
+      event.preventDefault();
+    }
+  }
+
+  /** The lock of what an overlay event's drag carries: its panel's, or —
+   * for a whole-group drag, which names no panel — its group's. */
+  function draggedLockOf(
+    event: DockviewWillShowOverlayLocationEvent,
+  ): number | undefined {
+    const data = event.getData();
+
+    if (data === undefined) {
+      return undefined;
+    }
+
+    if (data.panelId !== null) {
+      return lockOfPanel(data.panelId);
+    }
+
+    const group = api.getGroup(data.groupId);
+
+    return group === undefined ? undefined : lockOfGroup(group);
   }
 
   /** Clamps every locked grid or floating group at its lock, or — when no
@@ -2747,7 +2799,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** Where a release at (`x`, `y`) would dock the moving float: the grid
    * group under the pointer (looking THROUGH the float itself, which is
    * under the pointer too) and the side of it the pointer is nearest, or its
-   * centre (join as a tab). Null over no grid group. */
+   * centre (join as a tab). Null over no grid group, and where Ruling R5
+   * refuses the drop — a spot that would mix widths is no target at all. */
   function floatDockTargetAt(x: number, y: number): FloatDockTarget | null {
     const moving = floatBeingMoved;
     const hits = opts.container.ownerDocument.elementsFromPoint?.(x, y) ?? [];
@@ -2763,8 +2816,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (group !== undefined && group !== moving && isInGrid(group)) {
         const rect = group.element.getBoundingClientRect();
+        const position = dockPositionIn(rect, x, y);
+        const draggedLock =
+          moving === undefined ? undefined : lockOfGroup(moving);
 
-        return { group, position: dockPositionIn(rect, x, y), rect };
+        const refused = refusesDockDrop(draggedLock, {
+          kind: "group",
+          position,
+          lock: lockOfGroup(group),
+        });
+
+        return refused ? null : { group, position, rect };
       }
     }
 
@@ -3812,6 +3874,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     dispose: () => {
       ownerWindow?.removeEventListener("pagehide", flushPendingSave);
       changeSub.dispose();
+      overlaySub.dispose();
       popoutAddSub.dispose();
       popoutRemoveSub.dispose();
       openerRootObserver.disconnect();
