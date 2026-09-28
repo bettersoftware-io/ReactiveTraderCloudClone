@@ -107,6 +107,33 @@ describe("floating groups (Phase 6a) — skin-proof surface painting", () => {
       /\.dockview-theme-rtc \.dv-resize-handle-(top|bottom|left|right):hover/,
     );
   });
+
+  // Ruling R6: a width-locked float keeps its width, so every handle that
+  // moves a vertical edge is hidden; the top and bottom edges still resize.
+  it("hides a width-locked float's width handles, and only those", () => {
+    const rule = css.match(
+      /((?:\.rtc-dock-float-fixed-width > \.dv-resize-handle-[a-z]+,?\s*)+)\{([^}]*)\}/,
+    );
+
+    const hidden = [
+      ...(rule?.[1] ?? "").matchAll(/dv-resize-handle-([a-z]+)/g),
+    ].map((match) => {
+      return match[1];
+    });
+
+    expect(rule?.[2]).toMatch(/^\s*display:\s*none;/m);
+    expect(hidden.sort()).toEqual([
+      "bottomleft",
+      "bottomright",
+      "left",
+      "right",
+      "topleft",
+      "topright",
+    ]);
+    expect(css).not.toMatch(
+      /\.rtc-dock-float-fixed-width > \.dv-resize-handle-(top|bottom)[,\s{]/,
+    );
+  });
 });
 
 describe("stacked tabs (Phase 2)", () => {

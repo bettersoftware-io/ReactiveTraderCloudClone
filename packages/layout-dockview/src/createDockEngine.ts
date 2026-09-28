@@ -634,6 +634,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   });
 
   const overlaySub = api.onWillShowOverlay(refuseLockBreakingDrop);
+  // A destroyed group's lock baseline goes with it. dockview fires this only
+  // for a group it disposes — a group moved to a float or a pop-out is
+  // removed from the grid with `skipDispose` and keeps its entry.
+  const removeGroupSub = api.onDidRemoveGroup(forgetWidthLockBaseline);
 
   /** Lands a save still waiting out the debounce, now. A reload tears the
    * page down without unmounting anything — dispose's flush never runs — so
@@ -1795,6 +1799,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return undefined;
   }
 
+  function forgetWidthLockBaseline(group: SizableGroup): void {
+    widthLockBaselines.delete(group.element);
+  }
+
   /** Refuses (hides the overlay of, and so cancels) any drop Ruling R5
    * forbids. A whole-group drag carries no panelId — its lock is its
    * group's. A tab or header drop joins the group whichever side of a tab
@@ -1865,7 +1873,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const model = px + GROUP_GAP_PX;
 
       if (!widthLockBaselines.has(group.element)) {
-        widthLockBaselines.set(group.element, [axis.minimum(), axis.maximum()]);
+        widthLockBaselines.set(
+          group.element,
+          prePinWidthOf(group) ?? [axis.minimum(), axis.maximum()],
+        );
       }
 
       if (yielding && isInGrid(group)) {
@@ -1890,6 +1901,42 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     return changed;
+  }
+
+  /** The width constraints a design pin recorded for `group` before it
+   * clamped it, when a width pin (live, starved or float-suspended) holds
+   * one of its panels — else undefined. A lock's baseline is taken from
+   * here first: a pin mixing locked and unlocked panels is applied (Ruling
+   * R10 skips only all-locked pins) before the lock first settles, so the
+   * group's CURRENT constraints are the pin's clamp, and a yield that put
+   * those back would hold the locked panel at the pin's width instead of
+   * letting it fill. */
+  function prePinWidthOf(
+    group: SizableGroup,
+  ): readonly [number, number] | undefined {
+    const records = [
+      ...designPins,
+      ...unabsorbedPins,
+      ...[...floatSuspendedPins.values()].flat(),
+    ];
+
+    for (const record of records) {
+      if (record.pin.axis !== "width") {
+        continue;
+      }
+
+      const member = record.members.find((candidate) => {
+        return group.panels.some((panel) => {
+          return panel.id === candidate.panelId;
+        });
+      });
+
+      if (member !== undefined) {
+        return [member.previousMinimum, member.previousMaximum];
+      }
+    }
+
+    return undefined;
   }
 
   /** Opens `panel` as a brand-new group at the grid's right edge — never
@@ -3253,8 +3300,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
+    // Ruling R6: a locked float keeps its width — its group stays clamped
+    // (settleWidthLocks includes floating groups) and its overlay's width
+    // handles are hidden; height handles stay. A docked-home group's
+    // overlay is disposed with the float, so the class goes with it.
+    for (const group of groupsAnywhere(api)) {
+      const overlay = group.element.closest(".dv-resize-container");
+
+      overlay?.classList.toggle(
+        "rtc-dock-float-fixed-width",
+        group.api.location?.type === "floating" &&
+          lockOfGroup(group) !== undefined,
+      );
+    }
+
+    // The lock settles through settlePinAbsorption, not a bare
+    // settleWidthLocks: a lock change owes a forced layout (Ruling P1), and
+    // a bare call would record the change and leave the layout unforced —
+    // the next settlePinAbsorption then sees nothing changed and skips it
+    // too (measured: a starved rail stayed at 367 in a 1440 dock). A no-op
+    // when the gate above already settled.
+    settlePinAbsorption();
+
     // Outside the gate: a panel popped out OF a float returns to the grid
-    // without the floating set changing at all.
+    // without the floating set changing at all. Last, as the doc says.
     restoreFloatHomeSizes();
   }
 
@@ -3787,6 +3856,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return false;
       }
 
+      // Ruling R6: a locked panel floats at exactly its locked width.
+      const lock = lockOfGroup(panel.group);
+
       // R5 (pin suspension) and Ruling 10 (absorption) run inside this call,
       // from settleFloatTransitions when dockview closes the float mutation —
       // the same path the shift-drag gesture takes, so the two cannot drift.
@@ -3798,6 +3870,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           groupsAnywhere(api).filter((group) => {
             return group.api.location.type === "floating";
           }).length,
+          lock === undefined ? undefined : lock + GROUP_GAP_PX,
         ),
       );
 
@@ -3875,6 +3948,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       ownerWindow?.removeEventListener("pagehide", flushPendingSave);
       changeSub.dispose();
       overlaySub.dispose();
+      removeGroupSub.dispose();
       popoutAddSub.dispose();
       popoutRemoveSub.dispose();
       openerRootObserver.disconnect();
@@ -3950,19 +4024,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
  * Clamped so it lands fully inside `container` — "a float cannot be dragged
  * out of reach" (Phase 6 design §3.3) applies to where it OPENS, not only to
  * where a drag can carry it afterwards (that ongoing clamp is the
- * component-level `floatingGroupBounds` option). */
+ * component-level `floatingGroupBounds` option).
+ *
+ * A width-locked group (`lockedModelWidth`, its lock plus the gap) opens at
+ * exactly that width, capped only by the dock — no floor, no share cap
+ * (Ruling R6): its group is clamped min = max, so any other width would
+ * leave a void inside the box. */
 function floatingBoundsFor(
   group: SizableGroup,
   container: HTMLElement,
   openFloats: number,
+  lockedModelWidth: number | undefined,
 ): FloatingGroupOptions {
   const groupRect = group.element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const width = Math.round(
-    Math.min(
-      groupRect.width,
-      Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
-    ),
+    lockedModelWidth === undefined
+      ? Math.min(
+          groupRect.width,
+          Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
+        )
+      : Math.min(lockedModelWidth, containerRect.width),
   );
 
   const height = Math.round(

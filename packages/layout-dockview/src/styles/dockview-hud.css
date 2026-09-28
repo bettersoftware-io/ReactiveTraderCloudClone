@@ -268,6 +268,19 @@
   background: var(--border-strong, #475569);
 }
 
+/* Ruling R6: a floating width-locked panel keeps its width — only its
+   height handles stay. The engine toggles the class on the float's box
+   (dockview 8.3.1's `Overlay` appends one `dv-resize-handle-${direction}`
+   child per edge and corner). */
+.rtc-dock-float-fixed-width > .dv-resize-handle-left,
+.rtc-dock-float-fixed-width > .dv-resize-handle-right,
+.rtc-dock-float-fixed-width > .dv-resize-handle-topleft,
+.rtc-dock-float-fixed-width > .dv-resize-handle-topright,
+.rtc-dock-float-fixed-width > .dv-resize-handle-bottomleft,
+.rtc-dock-float-fixed-width > .dv-resize-handle-bottomright {
+  display: none;
+}
+
 /* dockview's scroll wrapper around the tab strip is a plain block; make it
  * (and the strip inside) span the bar so the stretch reaches the tab. */
 .dockview-theme-rtc .dv-tabs-and-actions-container .dv-scrollable {

@@ -2073,6 +2073,95 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     engine.dispose();
   });
 
+  it("floats a locked panel at exactly its locked width, width handles hidden", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine(opts);
+
+    expect(engine.floatPanel("fx-analytics")).toBe(true);
+
+    const group = lastDockviewApi().getPanel("fx-analytics")?.group;
+    const overlay = group?.element.closest(".dv-resize-container");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(overlay?.classList.contains("rtc-dock-float-fixed-width")).toBe(
+      true,
+    );
+    engine.dispose();
+  });
+
+  it("opens a locked float's box at its lock plus the gap — no 420 floor, no half-dock share", () => {
+    // The same rect model as the cascade test: every group reads 900×600,
+    // the dock 1440×900 — an unlocked float here opens 720 wide.
+    const container = sizedContainer(1440, 900);
+    const rects = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function rectFor(this: HTMLElement) {
+        if (this.classList.contains("dv-resize-container")) {
+          return new DOMRect(
+            Number.parseFloat(this.style.left) || 0,
+            Number.parseFloat(this.style.top) || 0,
+            Number.parseFloat(this.style.width) || 0,
+            Number.parseFloat(this.style.height) || 0,
+          );
+        }
+
+        const sized = this.classList.contains("dv-groupview")
+          ? [900, 600]
+          : [1440, 900];
+
+        return new DOMRect(0, 0, sized[0], sized[1]);
+      });
+    const engine = createDockEngine({ ...createLockedRailBase(), container });
+
+    engine.floatPanel("fx-analytics");
+
+    const box = container.querySelector<HTMLElement>(".dv-resize-container");
+
+    expect(box?.style.width).toBe("367px");
+    rects.mockRestore();
+    engine.dispose();
+  });
+
+  it("docks back home still locked, and the class goes with the float", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    engine.floatPanel("fx-analytics");
+    engine.dockPanel("fx-analytics");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(document.querySelector(".rtc-dock-float-fixed-width")).toBeNull();
+    engine.dispose();
+  });
+
+  it("yields to the pre-pin width, not a mixed design pin's clamp, once that pin is gone", async () => {
+    // A width pin over a locked AND an unlocked panel is not superseded
+    // (Ruling R10 skips only all-locked pins), so it clamps the locked
+    // group at construction — before the lock's first settle sees it.
+    const opts = createLockedRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return id === "fx-analytics" ? 360 : undefined;
+        },
+      },
+    });
+
+    // Closing the unlocked member dissolves the pin; closing the rest
+    // leaves nothing to absorb, so the lock yields and analytics fills.
+    engine.closePanel("fx-positions");
+    await nextMacrotask();
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(lastDockviewApi().getPanel("fx-analytics")?.group.api.width).toBe(
+      1440,
+    );
+    engine.dispose();
+  });
+
   describe("refuses drops that would mix widths (Ruling R5)", () => {
     it.each([
       // dragged, kind, position, onto, edge, refused
