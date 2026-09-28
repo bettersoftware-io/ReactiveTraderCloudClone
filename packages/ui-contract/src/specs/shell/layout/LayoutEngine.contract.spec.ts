@@ -46,10 +46,12 @@ describe("InhouseLayoutEngine", () => {
     expect(page.resizeHandleExists("1", 0)).toBe(true);
   });
 
-  it("shows a resize handle between the left column and the right rail", () => {
+  it("shows NO resize handle between the left column and the width-locked right rail", () => {
     const page = mount(LayoutEngine, {});
     // root path is [] → pathKey ""
-    expect(page.resizeHandleExists("", 0)).toBe(true);
+    expect(page.resizeHandleExists("", 0)).toBe(false);
+    expect(page.isLockedCell("", 1)).toBe(true);
+    expect(page.isLockedCell("", 0)).toBe(false);
   });
 
   it("renders split handles as siblings between cells, not inside them", () => {
@@ -60,6 +62,27 @@ describe("InhouseLayoutEngine", () => {
     expect(handle.previousElementSibling?.getAttribute("data-testid")).toBe(
       "cell-1-0",
     );
+  });
+
+  it("keeps the rail-internal height handle — only the width is locked", () => {
+    const page = mount(LayoutEngine, {});
+    expect(page.resizeHandleExists("1", 0)).toBe(true);
+  });
+
+  it("a collapsed locked panel yields to its strip, and expands back locked", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-analytics");
+    page.collapse("fx-positions");
+    expect(page.isLockedCell("", 1)).toBe(false);
+    page.expand("fx-analytics");
+    expect(page.isLockedCell("", 1)).toBe(true);
+  });
+
+  it("the rail fills the row when nothing else is left to absorb it", () => {
+    const page = mount(LayoutEngine, {});
+    page.collapse("fx-rates");
+    page.collapse("fx-blotter");
+    expect(page.isLockedCell("", 1)).toBe(false);
   });
 
   it("shows the maximize glyph, swapping to the restore glyph once maximized, with matching aria-labels", () => {
@@ -202,10 +225,10 @@ describe("InhouseLayoutEngine", () => {
       expect(page.isStripCell("0", 1)).toBe(false);
     });
 
-    it("keeps the main column|rail handle and the rates/blotter handle; only the rail-internal handle disappears", () => {
+    it("a rail maximize keeps the rates/blotter handle; the rail-internal handle disappears and the locked rail has none", () => {
       const page = mount(LayoutEngine, {});
       page.maximize("fx-analytics");
-      expect(page.resizeHandleExists("", 0)).toBe(true);
+      expect(page.resizeHandleExists("", 0)).toBe(false);
       expect(page.resizeHandleExists("0", 0)).toBe(true);
       expect(page.resizeHandleExists("1", 0)).toBe(false);
     });
@@ -238,7 +261,9 @@ describe("InhouseLayoutEngine", () => {
       expect(page.stripOrientation("fx-analytics")).toBe("horizontal");
       expect(page.isStrip("fx-rates")).toBe(false);
       expect(page.isStrip("fx-blotter")).toBe(false);
-      expect(page.resizeHandleExists("", 0)).toBe(true);
+      // Same width-locked rail as the analytics case above — the root handle
+      // stays suppressed regardless of which rail panel is maximized.
+      expect(page.resizeHandleExists("", 0)).toBe(false);
     });
   });
 
