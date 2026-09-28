@@ -485,8 +485,8 @@ export interface World {
    * re-mounting on the same World: every machine that would have to be rebuilt
    * is cached in a `WeakMap<World, …>` in the per-framework driver and
    * survives `cleanupMounted()` intact. A genuine reload is a SECOND
-   * `createWorld(…, workspaceLayoutSeed)` seeded with the string read back off
-   * the first World — see `createWorld`'s `workspaceLayoutSeed` parameter. */
+   * `createWorld({ workspaceLayout })` seeded with the string read back off
+   * the first World — see `WorldSeeds.workspaceLayout`. */
   readonly workspaceLayout: BehaviorSubject<string | null>;
   /** Raw serialized layout-preset-list strings (Phase 6b Task 6), one per
    * tab, exactly as `LayoutPresetStore` stores them — read ONCE by each
@@ -641,59 +641,96 @@ export interface World {
   readonly coreImpl: BehaviorSubject<CoreImpl | null>;
 }
 
-export function createWorld(
-  initial: Partial<HookValues> = {},
-  results: CommandResults = {},
-  parametric: ParametricSeed = {},
-  throughputSeed: Partial<ThroughputView> = {},
-  themeModeSeed?: ThemeModePreference,
-  viewModeSeed?: ViewMode,
-  themeSkinSeed?: ThemeSkin,
-  animatedBackgroundSeed?: boolean,
-  authSeed: Partial<AuthViewState> = {},
-  equitiesSeed: EquitiesSeed = {},
-  adminSeed: AdminSeed = {},
-  creditRfqFilterSeed?: CreditRfqFilter,
-  powerSaverLevelSeed?: PowerSaverLevel,
-  ambientStyleSeed?: AmbientStyle,
-  forceBootAnimationSeed?: boolean,
-  loginWaitStyleSeed?: LoginWaitStyle,
-  loginWaitDelaySeed?: LoginWaitDelay,
+/**
+ * Seed values accepted by {@link createWorld}, one field per independently
+ * seedable slice of `World` state. Replaces the ~26 positional parameters
+ * `createWorld` used to take — every field here is optional, and a caller
+ * only spells out the slices it actually seeds.
+ */
+export interface WorldSeeds {
+  initial?: Partial<HookValues>;
+  results?: CommandResults;
+  parametric?: ParametricSeed;
+  throughput?: Partial<ThroughputView>;
+  themeMode?: ThemeModePreference;
+  viewMode?: ViewMode;
+  themeSkin?: ThemeSkin;
+  animatedBackground?: boolean;
+  auth?: Partial<AuthViewState>;
+  equities?: EquitiesSeed;
+  admin?: AdminSeed;
+  creditRfqFilter?: CreditRfqFilter;
+  powerSaverLevel?: PowerSaverLevel;
+  ambientStyle?: AmbientStyle;
+  forceBootAnimation?: boolean;
+  loginWaitStyle?: LoginWaitStyle;
+  loginWaitDelay?: LoginWaitDelay;
   /** Seeds `World.jarvisAvailability` (Task 10 of Phase 3 — now the
    * structured `JarvisAvailability`, not a plain boolean); defaults to every
    * brain offered (available: true, brains: JARVIS_BRAINS, defaultBrain:
    * DEFAULT_JARVIS_BRAIN), matching the real machine's INITIAL. */
-  jarvisAvailabilitySeed?: JarvisAvailability,
+  jarvisAvailability?: JarvisAvailability;
   /** Seeds `World.jarvisBrain` (Task 10 of Phase 3); defaults to
    * DEFAULT_JARVIS_BRAIN. */
-  jarvisBrainSeed?: JarvisBrain,
+  jarvisBrain?: JarvisBrain;
   /** Seeds `World.jarvisEffort` (Task 10 of Phase 3); defaults to
    * DEFAULT_JARVIS_EFFORT. */
-  jarvisEffortSeed?: JarvisEffort,
+  jarvisEffort?: JarvisEffort;
   /** Seeds `World.jarvisNarrator` (P5); defaults to DEFAULT_JARVIS_NARRATOR. */
-  jarvisNarratorSeed?: JarvisNarratorPreference,
+  jarvisNarrator?: JarvisNarratorPreference;
   /** Seeds `World.chartSubstrate`; defaults to DEFAULT_CHART_SUBSTRATE ("dom"). */
-  chartSubstrateSeed?: ChartSubstrate,
+  chartSubstrate?: ChartSubstrate;
   /** Seeds `World.layoutEngine`; defaults to the literal "inhouse" (pinned
    * independently of DEFAULT_LAYOUT_ENGINE, now "dockview" — see the harness
    * body for why). */
-  layoutEngineSeed?: LayoutEngine,
+  layoutEngine?: LayoutEngine;
   /** Seeds `World.workspaceLayout` (GenUI L3) — the serialized
    * `workspaceLayoutV1` string a previous session would have stored.
    * Defaults to `null` (a fresh install: default trees, nothing docked). A
    * corrupt/unparseable string is a normal value here, not a test error: the
    * fixture's `parseWorkspaceLayout` is fail-closed, so the World simply
    * boots on defaults. */
-  workspaceLayoutSeed?: string | null,
+  workspaceLayout?: string | null;
   /** Seeds `World.layoutPresetsSeed` (Phase 6b Task 6); defaults to `{}`. */
-  layoutPresetsSeed?: Readonly<Partial<Record<WorkspaceTab, string>>>,
+  layoutPresets?: Readonly<Partial<Record<WorkspaceTab, string>>>;
   /** Seeds `World.coreImpl` (Task 5 of the runtime-core-switch spec).
    * `undefined` (the default) seeds "rxjs"; an explicit `null` seeds "no
    * selection offered" (`useCoreSelection()` returns null, row absent) —
    * distinct from `undefined` on purpose, so a spec can ask for the null
    * case without also having to spell out "rxjs" everywhere else. */
-  coreImplSeed?: CoreImpl | null,
-): World {
+  coreImpl?: CoreImpl | null;
+}
+
+export function createWorld(seeds: WorldSeeds = {}): World {
+  const {
+    initial = {},
+    results = {},
+    parametric = {},
+    throughput: throughputSeed = {},
+    themeMode: themeModeSeed,
+    viewMode: viewModeSeed,
+    themeSkin: themeSkinSeed,
+    animatedBackground: animatedBackgroundSeed,
+    auth: authSeed = {},
+    equities: equitiesSeed = {},
+    admin: adminSeed = {},
+    creditRfqFilter: creditRfqFilterSeed,
+    powerSaverLevel: powerSaverLevelSeed,
+    ambientStyle: ambientStyleSeed,
+    forceBootAnimation: forceBootAnimationSeed,
+    loginWaitStyle: loginWaitStyleSeed,
+    loginWaitDelay: loginWaitDelaySeed,
+    jarvisAvailability: jarvisAvailabilitySeed,
+    jarvisBrain: jarvisBrainSeed,
+    jarvisEffort: jarvisEffortSeed,
+    jarvisNarrator: jarvisNarratorSeed,
+    chartSubstrate: chartSubstrateSeed,
+    layoutEngine: layoutEngineSeed,
+    workspaceLayout: workspaceLayoutSeed,
+    layoutPresets: layoutPresetsSeed,
+    coreImpl: coreImplSeed,
+  } = seeds;
+
   const merged: HookValues = { ...DEFAULTS, ...initial };
   const sources = {} as {
     [K in keyof HookValues]: BehaviorSubject<HookValues[K]>;

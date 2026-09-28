@@ -62,18 +62,12 @@ describe("WatchlistPanel — rows", () => {
   it("re-runs the rank-glide layout pass for a single-row watchlist without crashing", () => {
     // With exactly one row, the glide's row-height measurement takes its
     // fallback (fewer than two nodes to measure a gap between).
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: [INSTRUMENTS[0] as EquityInstrument], quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: {
+        watchlist: [INSTRUMENTS[0] as EquityInstrument],
+        quotes: QUOTES,
+      },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
 
     expect(panel.rows()).toEqual(["AAPL"]);
@@ -86,18 +80,9 @@ describe("WatchlistPanel — rows", () => {
 
 describe("WatchlistPanel — tick pulse", () => {
   it("renders no pulse before the first tick, then one on the next quote change", () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
 
     // The seeded quote is the FIRST tick this row observes — no prior value
@@ -112,18 +97,9 @@ describe("WatchlistPanel — tick pulse", () => {
   });
 
   it("re-reporting the same last/changePct is a no-op for the panel's sort inputs", () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
 
     panel.setEquityQuote("AAPL", quote("AAPL", 235, 3.2));
@@ -138,18 +114,13 @@ describe("WatchlistPanel — tick pulse", () => {
 
 describe("WatchlistPanel — row select hits the shared eqWorkspace machine", () => {
   it("clicking a row selects it in the REAL eqWorkspace machine, observed by a second independent mount", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES, initialSymbol: "AAPL" },
-    );
+    const world = createWorld({
+      equities: {
+        watchlist: INSTRUMENTS,
+        quotes: QUOTES,
+        initialSymbol: "AAPL",
+      },
+    });
     // Two independent mounts sharing one World's REAL eqWorkspace machine —
     // proves the click drives the shared singleton, not local component state
     // (mirrors the EqWorkspaceMachine cross-component-sharing proof).
@@ -186,18 +157,9 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
   });
 
   it("a second rapid reorder while the first is still gliding is buffered, then applied once settled", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
 
     // Mount itself settles a "reorder": rows start in raw watchlist order
@@ -227,18 +189,9 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
   });
 
   it("skips a committed symbol that's been removed from the watchlist while its glide was still in flight", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
     await settleGlide(panel);
     expect(panel.rows()).toEqual(["MSFT", "AAPL", "TSLA"]);
@@ -305,18 +258,9 @@ describe("WatchlistPanel — I4 coalesced reorders (fake WAAPI)", () => {
 
 describe("WatchlistPanel + EqWatchlistHead — sort cycle order + persistence", () => {
   it("cycling the head's ⇅ chip re-sorts the SAME shared watchlist rows", async () => {
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { watchlist: INSTRUMENTS, quotes: QUOTES },
-    );
+    const world = createWorld({
+      equities: { watchlist: INSTRUMENTS, quotes: QUOTES },
+    });
     const panel = mountWith(world, WatchlistPanel, {});
     const head = mountWith(world, EqWatchlistHead, {});
 
@@ -507,35 +451,9 @@ describe("WatchlistPanel — open-chart instance affordance (Phase 4 Task 5, doc
 });
 
 /** A World seeded with the dockview layout engine — the open-chart
- * affordance's gate. `createWorld`'s positional signature has no named
- * options, so every seed between `equitiesSeed` and `layoutEngineSeed` is
- * passed through as `undefined` (their own defaults). */
+ * affordance's gate. */
 function dockviewWorld(equities: EquitiesSeed): World {
-  return createWorld(
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    equities,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    undefined,
-    "dockview",
-  );
+  return createWorld({ equities, layoutEngine: "dockview" });
 }
 
 function quote(symbol: string, last: number, changePct: number): EquityQuote {

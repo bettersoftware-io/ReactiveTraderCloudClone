@@ -314,29 +314,17 @@ describe("JarvisOverlay", () => {
   });
 
   it("the global hotkey is a no-op while the Jarvis backend reports unavailable", async () => {
-    // Same positional-seed run as JarvisOrb.contract.spec.ts's unavailable
-    // scenario — the 18th seed (jarvisAvailabilitySeed, the structured
-    // JarvisAvailability since Task 10) set to `available: false`.
-    const world = createWorld(
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      { available: false, brains: [], defaultBrain: "scripted", gate: null },
-    );
+    // Same seed as JarvisOrb.contract.spec.ts's unavailable scenario —
+    // `jarvisAvailability` (the structured JarvisAvailability since Task 10)
+    // set to `available: false`.
+    const world = createWorld({
+      jarvisAvailability: {
+        available: false,
+        brains: [],
+        defaultBrain: "scripted",
+        gate: null,
+      },
+    });
     const overlay = mountWith(world, JarvisOverlay);
 
     expect(overlay.isOpen()).toBe(false);
