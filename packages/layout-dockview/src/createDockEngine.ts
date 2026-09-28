@@ -1939,6 +1939,60 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return undefined;
   }
 
+  /** Ruling R6, per float BOX: a box whose every group is locked (at one
+   * width) is sized to that lock and has its width handles hidden; height
+   * handles stay. Judged per box, not per group — a float is a nested
+   * gridview that can hold several groups (a locked panel dropped beside an
+   * unlocked one, R5), and a per-group toggle on the shared box let
+   * iteration order decide. Sized here, not only in floatPanel, because
+   * dockview's own shift-drag gesture floats a group into a 300px default
+   * box. A docked-home group's box is disposed with the float, so the class
+   * goes with it. */
+  function fitLockedFloatBoxes(): void {
+    const boxes = new Map<HTMLElement, SizableGroup[]>();
+
+    for (const group of groupsAnywhere(api)) {
+      const box =
+        group.api.location?.type === "floating"
+          ? group.element.closest<HTMLElement>(".dv-resize-container")
+          : null;
+
+      if (box !== null) {
+        boxes.set(box, [...(boxes.get(box) ?? []), group]);
+      }
+    }
+
+    for (const [box, members] of boxes) {
+      const lock = lockOfGroup(members[0] ?? { panels: [] });
+      const locked =
+        lock !== undefined &&
+        members.every((member) => {
+          return lockOfGroup(member) === lock;
+        });
+
+      box.classList.toggle("rtc-dock-float-fixed-width", locked);
+
+      if (!locked) {
+        continue;
+      }
+
+      const width = lockedFloatWidth(
+        lock + GROUP_GAP_PX,
+        opts.container.getBoundingClientRect().width,
+      );
+
+      if (box.style.width !== `${width}px`) {
+        // A floating group's size change is what dockview turns into its
+        // box's bounds (FloatingGroupService: group.onDidChange →
+        // overlay.setBounds); only the box's anchor group is listened to,
+        // so every member is told.
+        for (const member of members) {
+          member.api.setSize({ width });
+        }
+      }
+    }
+  }
+
   /** Opens `panel` as a brand-new group at the grid's right edge — never
    * stacked into an existing one. A pinned panel is held at its design width
    * exactly like a seeded rail; an `unpinned` one has its split shared by
@@ -3300,20 +3354,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
-    // Ruling R6: a locked float keeps its width — its group stays clamped
-    // (settleWidthLocks includes floating groups) and its overlay's width
-    // handles are hidden; height handles stay. A docked-home group's
-    // overlay is disposed with the float, so the class goes with it.
-    for (const group of groupsAnywhere(api)) {
-      const overlay = group.element.closest(".dv-resize-container");
-
-      overlay?.classList.toggle(
-        "rtc-dock-float-fixed-width",
-        group.api.location?.type === "floating" &&
-          lockOfGroup(group) !== undefined,
-      );
-    }
-
     // The lock settles through settlePinAbsorption, not a bare
     // settleWidthLocks: a lock change owes a forced layout (Ruling P1), and
     // a bare call would record the change and leave the layout unforced —
@@ -3321,6 +3361,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // too (measured: a starved rail stayed at 367 in a 1440 dock). A no-op
     // when the gate above already settled.
     settlePinAbsorption();
+    fitLockedFloatBoxes();
 
     // Outside the gate: a panel popped out OF a float returns to the grid
     // without the floating set changing at all. Last, as the doc says.
@@ -4044,7 +4085,7 @@ function floatingBoundsFor(
           groupRect.width,
           Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
         )
-      : Math.min(lockedModelWidth, containerRect.width),
+      : lockedFloatWidth(lockedModelWidth, containerRect.width),
   );
 
   const height = Math.round(
@@ -4070,6 +4111,13 @@ function floatingBoundsFor(
     width,
     height,
   };
+}
+
+/** A locked float's box width: its model width, capped by the dock — but an
+ * unmeasured (0-wide) dock caps nothing, where a 0-wide box would be
+ * unusable. */
+function lockedFloatWidth(modelWidth: number, dockWidth: number): number {
+  return dockWidth > 0 ? Math.min(modelWidth, dockWidth) : modelWidth;
 }
 
 /** A popped-out float's share of the dock, per axis, at most. */

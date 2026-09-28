@@ -2080,9 +2080,11 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     expect(engine.floatPanel("fx-analytics")).toBe(true);
 
     const group = lastDockviewApi().getPanel("fx-analytics")?.group;
-    const overlay = group?.element.closest(".dv-resize-container");
+    const overlay = group?.element.closest<HTMLElement>(".dv-resize-container");
 
     expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    // jsdom measures this dock 0 wide: an unmeasured dock caps nothing.
+    expect(overlay?.style.width).toBe("367px");
     expect(overlay?.classList.contains("rtc-dock-float-fixed-width")).toBe(
       true,
     );
@@ -2118,6 +2120,8 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     const box = container.querySelector<HTMLElement>(".dv-resize-container");
 
     expect(box?.style.width).toBe("367px");
+    // Centred at the lock's width, not at an unlocked float's 720.
+    expect(box?.style.left).toBe("537px");
     rects.mockRestore();
     engine.dispose();
   });
@@ -2161,6 +2165,47 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     );
     engine.dispose();
   });
+
+  // dockview lists groups in creation order, so each case makes the group
+  // that joins the float a FRESH one (a tab dragged out of a stack): the
+  // locked group comes first in one case and last in the other, and a
+  // per-group toggle on the shared box would pass exactly one of them.
+  it.each([
+    // order, floated, joiner, the joiner's stack host
+    ["locked first", "fx-analytics", "fx-blotter", "fx-rates"],
+    ["unlocked first", "fx-rates", "fx-positions", "fx-analytics"],
+  ] as const)(
+    "keeps a mixed float's width handles (%s) — judged per box, not per group",
+    async (_order, floated, joiner, host) => {
+      const engine = createDockEngine(createLockedRailBase());
+      const api = lastDockviewApi();
+
+      api.getPanel(joiner)?.api.moveTo({
+        group: api.getPanel(host)?.group,
+        position: "center",
+      });
+      await nextMacrotask();
+      engine.floatPanel(floated);
+      // A panel dropped beside a floating group splits the float's own
+      // gridview: two groups, one box (the drop R5 allows for a locked
+      // panel beside an unlocked group).
+      api.getPanel(joiner)?.api.moveTo({
+        group: api.getPanel(floated)?.group,
+        position: "right",
+      });
+      await nextMacrotask();
+
+      const box = api
+        .getPanel(floated)
+        ?.group.element.closest(".dv-resize-container");
+
+      expect(
+        api.getPanel(joiner)?.group.element.closest(".dv-resize-container"),
+      ).toBe(box);
+      expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(false);
+      engine.dispose();
+    },
+  );
 
   describe("refuses drops that would mix widths (Ruling R5)", () => {
     it.each([
@@ -2265,23 +2310,6 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
       };
     }
   });
-
-  function createLockedRailBase(): DockEngineOptions {
-    const opts = createRailBase();
-
-    return {
-      ...opts,
-      seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
-      panels: {
-        ...opts.panels,
-        fixedWidth: (id: string): number | undefined => {
-          return id === "fx-analytics" || id === "fx-positions"
-            ? 360
-            : undefined;
-        },
-      },
-    };
-  }
 });
 
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
@@ -5011,6 +5039,24 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // Ruling R6 holds for dockview's OWN float gesture too, which opens its
+  // box at a 300px default and never passes through floatPanel.
+  it("sizes a locked group's shift-drag float box to its lock plus the gap (R6, gesture)", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createLockedRailBase(), container });
+
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    const box = lastDockviewApi()
+      .getPanel("fx-analytics")
+      ?.group.element.closest<HTMLElement>(".dv-resize-container");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(box?.style.width).toBe("367px");
+    expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
+    engine.dispose();
+  });
+
   // R4 — the gesture half of R3's refusal. Cancelled at the POINTERDOWN, in
   // the capture phase: dockview floats from that event directly (bailing
   // only when it is already defaultPrevented), so `onWillDragGroup` — which
@@ -7178,6 +7224,23 @@ function createPinnedRailBase(): DockEngineOptions {
   const opts = createRailBase();
 
   return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+}
+
+/** RAIL_LIKE with the analytics/positions rail width-LOCKED at 360
+ * (PanelSpec.fixedWidthPx) — its seed pin is superseded (Ruling R10). */
+function createLockedRailBase(): DockEngineOptions {
+  const opts = createRailBase();
+
+  return {
+    ...opts,
+    seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    panels: {
+      ...opts.panels,
+      fixedWidth: (id: string): number | undefined => {
+        return id === "fx-analytics" || id === "fx-positions" ? 360 : undefined;
+      },
+    },
+  };
 }
 
 function railScope(panelId: string): DockMaximizeScope {
