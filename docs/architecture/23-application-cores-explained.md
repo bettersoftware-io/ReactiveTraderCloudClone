@@ -196,7 +196,7 @@ all 74 are implemented natively in all three cores.
 | "Only the latest run counts" | `switchMap` | `createRunSlot` (`kernel/`) | `createRunSlot` (`machines/`) |
 | Wiring the app together | `new` in `createApp` | plain function calls in `createApp` | `Layer` graph run by a `ManagedRuntime` |
 | Session lifetime | `held` subscriptions + `disposed$` | one `AbortController` (`lifetime`) | the host `Scope` |
-| Own primitives live in | — | `src/kernel/` | `src/bridge/out.ts` |
+| Own primitives live in | — | `src/kernel/` | `src/bridge/out.ts` (streams, state), `src/machines/runSlot.ts` |
 | Bundle | loaded up front | separate file, loaded when chosen | separate file, loaded when chosen |
 
 ## The shared rulebook
@@ -208,15 +208,18 @@ import them.
 
 ```mermaid
 flowchart TD
-  logic["<b>@rtc/core-logic</b><br/>pure rules — no stream library<br/>reduceStaleFlag · blotterFolds · reduceRfqEvent<br/>createWorkspaceDock · createJarvisController"]
+  logic["<b>@rtc/core-logic</b><br/>pure rules — no stream library<br/>reduceStaleFlag · blotterFolds · reduceOrderTicket<br/>createWorkspaceDock · createJarvisController"]
   rx["<b>RxJS shell</b><br/>scan(reduceStaleFlag, seed)"]
   as["<b>async shell</b><br/>acc = reduceStaleFlag(acc, event)<br/>store.set(acc.stale)"]
-  ef["<b>Effect shell</b><br/>Stream.runFoldEffect(events, seed,<br/>reduceStaleFlag)"]
+  ef["<b>Effect shell</b><br/>Stream.runFoldEffect(events, seed, step)<br/>step calls reduceStaleFlag,<br/>then writes the ref"]
 
   logic --> rx
   logic --> as
   logic --> ef
 ```
+
+Some rules sit one ring further in, in `@rtc/domain`, and are shared the same
+way: `nextConnectionStatus` and `reduceRfqEvent` are two.
 
 So each core contributes only the **shell**: how events arrive, how state is
 held, how work is cancelled. The rule itself exists once. A bug in a rule is
