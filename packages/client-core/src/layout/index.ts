@@ -5,6 +5,7 @@
 // ones. Otherwise consumed only by `composition.ts`.
 export * from "#/layout/createLayoutPresets";
 export * from "#/layout/layoutPresets";
+export * from "#/layout/lockedWidth";
 export * from "#/layout/maximizeBoundary";
 export * from "#/layout/visibleRoot";
 // The persistence writer is public for the ui-contract fixtures
