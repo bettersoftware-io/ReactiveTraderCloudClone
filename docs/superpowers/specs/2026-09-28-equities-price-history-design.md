@@ -1,7 +1,7 @@
 # Equities price history (M4) + closing the prototype ↔ data-model ledger
 
 **Date:** 2026-09-28
-**Status:** Approved 2026-09-28.
+**Status:** Approved 2026-09-28; implemented on this branch.
 **Origin:** the Phase 5 design's
 [§8.1 mismatch ledger](2026-07-25-rn-mobile-v1-rehaul-phase-5-design.md#81-prototype--data-model-mismatches),
 re-raised from another session as "six remaining mismatches — change the model
