@@ -4074,6 +4074,141 @@ describe("dynamic-panel reconciliation at construction", () => {
     second.dispose();
   });
 
+  // The anchor walk finds the nearest live SIBLING of the panel's leaf, but
+  // a re-add can only name a PANEL — and dockview inserts beside that
+  // panel's GROUP. When the sibling was a whole column (the FX rail), the
+  // panel came back nested inside it, beside the column's first group
+  // rather than beside the column. Measured in a browser on the FX tab: a
+  // docked Jarvis panel returned inside the analytics/positions rail on
+  // every reload, and once the rail was width-locked (fixedWidthPx) the
+  // lock held analytics at 360 in that nested row and squeezed the Jarvis
+  // panel to its 93px minimum.
+  it("returns a late-listed right-edge panel to the right edge, not into the column beside it", async () => {
+    const seen = trackLayout();
+    const firstOpts = createRailBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    expect(rootLeafViews(lastDockviewApi()).at(-1)).toEqual(["panel-dyn-1"]);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createRailBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    }); // no dynamicPanels — the docked set has not arrived yet
+
+    second.addDynamicPanel(DYN);
+
+    expect(rootLeafViews(lastDockviewApi()).at(-1)).toEqual(["panel-dyn-1"]);
+    second.dispose();
+  });
+
+  // Panels leaving together do not stand between one of them and the edge:
+  // both docked panels go back to the right edge, neither into the rail.
+  it("returns two late-listed right-edge panels to the right edge", async () => {
+    const seen = trackLayout();
+    const firstOpts = createRailBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN, DYN_2],
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createRailBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+    second.addDynamicPanel(DYN_2);
+
+    expect(rootLeafViews(lastDockviewApi()).slice(-2)).toEqual([
+      ["panel-dyn-1"],
+      ["panel-dyn-2"],
+    ]);
+    second.dispose();
+  });
+
+  // The edge rule is for the EDGE only: a panel with a STAYING panel between
+  // it and the edge keeps the anchor walk, and so its place in the middle.
+  it("returns a late-listed panel with a staying panel beyond it to the middle", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN, DYN_2],
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    const docked = [null, ["fx-analytics"], ["panel-dyn-1"], ["panel-dyn-2"]];
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+      dynamicPanels: [DYN_2], // the second is known; the first arrives late
+    });
+
+    second.addDynamicPanel(DYN);
+
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    second.dispose();
+  });
+
+  it("keeps a late-listed panel's dragged width beside a width-locked rail", async () => {
+    const seen = trackLayout();
+    const firstOpts = {
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    };
+
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    // The sash between the rail and the docked panel: the root row's, which
+    // declares the docked panel's pin (the rail's is superseded, R10).
+    dragSash(firstOpts.container, ".dv-horizontal");
+    lastDockviewApi()
+      .getPanel("panel-dyn-1")
+      ?.group.api.setSize({ width: RESIZED + GROUP_GAP_PX });
+    await waitForSize(seen, "panel-dyn-1", RESIZED);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const secondOpts = {
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    };
+
+    const second = createDockEngine({
+      ...secondOpts,
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+    touchContainer(secondOpts.container);
+    await waitForSize(reloaded, "panel-dyn-1", RESIZED);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    second.dispose();
+  });
+
   it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
     const seen = trackLayout();
     const first = createDockEngine({
@@ -4227,6 +4362,7 @@ describe("dynamic-panel reconciliation at construction", () => {
   });
 
   const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
   /** A width no design pin or seed share would produce on its own, so a
    * panel found at it can only have come from the blob. */
   const RESIZED = 520;
@@ -7836,6 +7972,22 @@ const DISAGREEING_COLUMN_BESIDE_RAIL = {
 const attachedContainers: HTMLElement[] = [];
 
 const STRIP = 32;
+
+/** The views of each LEAF that is a direct child of the grid's root, in
+ * order — a branch child reads as `null`. What says a panel sits at the
+ * root row's edge rather than nested inside a column there. */
+function rootLeafViews(
+  api: DockviewApi,
+): readonly (readonly string[] | null)[] {
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  const children = (api.toJSON().grid.root.data ?? []) as any[];
+
+  return children.map((child) => {
+    return child.type === "leaf"
+      ? ((child.data?.views ?? []) as string[])
+      : null;
+  });
+}
 
 /** A panel's position in the grid's LEAF ORDER, reading dockview's own
  * serialized tree — the jsdom-safe stand-in for "which column is it in",

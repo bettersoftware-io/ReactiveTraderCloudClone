@@ -2125,10 +2125,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       position:
         parked === null || parked.where === "float"
           ? { direction: "right" }
-          : {
-              referencePanel: parked.anchorPanelId,
-              direction: parked.direction,
-            },
+          : parked.anchorPanelId === null
+            ? { direction: parked.direction }
+            : {
+                referencePanel: parked.anchorPanelId,
+                direction: parked.direction,
+              },
       ...sizeForInsert(panel, parked),
     });
 
@@ -2221,8 +2223,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return null;
     }
 
-    // Only a GRID placement names another panel; a float box stands alone.
+    // Only a GRID placement can name another panel; a float box and a
+    // layout-edge slot stand alone.
     return parked.where === "float" ||
+      parked.anchorPanelId === null ||
       api.getPanel(parked.anchorPanelId) !== undefined
       ? parked
       : null;
@@ -2274,11 +2278,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       };
     }
 
-    const anchor = gridAnchorFor(serialized, panelId, (candidateId) => {
+    function isStaying(candidateId: string): boolean {
       return (
         !leaving.has(candidateId) && api.getPanel(candidateId) !== undefined
       );
-    });
+    }
+
+    // A leaf on the root's own edge goes back to that edge, anchored to
+    // nothing. The anchor walk below cannot say "beside that column": it
+    // names a PANEL, and dockview inserts beside that panel's GROUP — so a
+    // right-edge panel next to the FX rail came back nested inside the rail
+    // column, where a width lock then squeezed it to its minimum.
+    const edge = rootEdgeOf(serialized, panelId, isStaying);
+    const anchor =
+      edge === null
+        ? gridAnchorFor(serialized, panelId, isStaying)
+        : { anchorPanelId: null, direction: edge };
 
     return anchor === null
       ? null
@@ -5338,7 +5353,9 @@ type DockParkedPlacement = DockParkedGrid | DockParkedFloat;
  * host group's business and `sizePx` is null. */
 interface DockParkedGrid {
   readonly where: "grid";
-  readonly anchorPanelId: string;
+  /** Null for a panel that sat on the root's own edge: it is re-added
+   * against the layout (dockview's absolute `direction`), beside no one. */
+  readonly anchorPanelId: string | null;
   readonly direction: SeedAnchor["direction"] | "within";
   readonly sizePx: number | null;
   /** Whether a design pin still held this panel when it was scrubbed. It
@@ -5442,6 +5459,51 @@ function floatBoxOf(
     if (views.includes(panelId)) {
       return entry.position;
     }
+  }
+
+  return null;
+}
+
+/** The root edge `panelId`'s own leaf sits on, when it is a DIRECT child of
+ * the root branch with no staying panel between it and that edge (panels
+ * leaving with it do not count — two docked panels at the right edge both go
+ * back to it, in re-add order). The direction is dockview's absolute one for
+ * the root's axis. Null for a panel nested deeper, or in the root's middle. */
+function rootEdgeOf(
+  serialized: SerializedDockview,
+  panelId: string,
+  isStaying: (candidateId: string) => boolean,
+): SeedAnchor["direction"] | null {
+  const root = serialized.grid.root;
+
+  if (root.type !== "branch") {
+    return null;
+  }
+
+  const children = root.data as readonly GridNode[];
+  const index = children.findIndex((child) => {
+    return (
+      child.type === "leaf" &&
+      ((child.data as LeafData).views ?? []).includes(panelId)
+    );
+  });
+
+  if (index < 0) {
+    return null;
+  }
+
+  function holdsNoStaying(child: GridNode): boolean {
+    return !panelIdsIn(child).some(isStaying);
+  }
+
+  const horizontal = serialized.grid.orientation !== "VERTICAL";
+
+  if (children.slice(index + 1).every(holdsNoStaying)) {
+    return horizontal ? "right" : "below";
+  }
+
+  if (children.slice(0, index).every(holdsNoStaying)) {
+    return horizontal ? "left" : "above";
   }
 
   return null;
