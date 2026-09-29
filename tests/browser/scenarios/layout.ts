@@ -34,6 +34,8 @@ const BLOTTER_PANEL_ID = "fx-blotter";
 // (packages/core-logic/src/layout/defaultLayoutPort.ts) — fx-rates is the
 // column sibling that should grow once fx-blotter floats out of it.
 const RATES_PANEL_ID = "fx-rates";
+// `dockGroupMates` reports each mate's `data-panel-title`, not its id.
+const RATES_PANEL_TITLE = "Live Rates";
 
 // The FX rates panel's own content carries no testid of its own; its
 // CurrencyFilter row (LiveRatesPanel.tsx) is always mounted (no view-mode
@@ -64,28 +66,27 @@ export async function expectSplitterDragResizes(
   );
 }
 
-// The FX rail's top panel (PANEL_SPECS' fx-analytics). The rail is seeded
-// with a 360px design pin, held as min=max group constraints.
+// The FX rail's top panel (PANEL_SPECS' fx-analytics). The rail is
+// width-locked at 360px (`PanelSpec.fixedWidthPx`), held as min=max group
+// constraints.
 const RAIL_PANEL_ID = "fx-analytics";
-// Dragging the rail's sash LEFT by this much must grow the rail by nearly as
-// much. The bar sits well above px noise but far below a full drag, so it
-// only distinguishes "moved" from "did not move at all".
+// Dragging the rail's sash LEFT by this much would grow an unlocked rail by
+// nearly as much; the locked rail must not move at all.
 const RAIL_DRAG_PX = -140;
-const MIN_RAIL_GROWTH_PX = 100;
+// Sub-pixel layout rounding only; a real resize is orders of magnitude more.
+const MAX_LOCKED_DRIFT_PX = 1;
 
 /**
- * Proves a user can resize the dockview rail by dragging its sash on a FRESH
- * boot — the engine constructed from the seed, with the rail's design pin
- * applied. The pin is min=max, which dockview reads as "this side cannot
- * move" and disables the sash; the engine releases it on the first move of a
- * sash drag. That release once loosened the rail's groups but left dockview's
- * cached branch limits at the pinned width, so the rail never moved, while
- * the same drag under the in-house engine moved it on the first try.
+ * Proves the dockview rail is width-locked: dragging its sash on a FRESH boot
+ * must not change its width. The rail's groups are min=max, which dockview
+ * reads as "this side cannot move" and disables the sash; a drag must never
+ * release that lock (an earlier design released it on the first move of a
+ * sash drag, so the rail could be resized).
  *
  * jsdom cannot see this — dockview's sash wiring (Resizable) does not run
  * there — so only a real browser drag is a witness.
  */
-export async function expectRailSashDragResizes(
+export async function expectRailSashDragKeepsRailWidth(
   ctx: TestContext,
 ): Promise<void> {
   const before = await ctx.po.layout.dockPanelWidth(RAIL_PANEL_ID);
@@ -93,8 +94,8 @@ export async function expectRailSashDragResizes(
   const after = await ctx.po.layout.dockPanelWidth(RAIL_PANEL_ID);
 
   assertTrue(
-    after - before > MIN_RAIL_GROWTH_PX,
-    `expected dragging the rail's sash ${RAIL_DRAG_PX}px to grow the rail by more than ${MIN_RAIL_GROWTH_PX}px (before=${before}, after=${after})`,
+    Math.abs(after - before) <= MAX_LOCKED_DRIFT_PX,
+    `expected the width-locked rail to keep its width through a ${RAIL_DRAG_PX}px sash drag (before=${before}, after=${after})`,
   );
 }
 
@@ -103,18 +104,12 @@ export async function expectRailSashDragResizes(
 const RAIL_REMAINING_PANEL_ID = "fx-positions";
 
 /**
- * Floats the rail's top panel — a member of the rail's design pin — and then
- * drags the sash its remaining partner now shares with the main column. A
- * float suspends the pin; this proves the suspension actually frees the
- * partner, and fails (before=360, after=360) if it does not release.
- *
- * Measured NOT to depend on the stale-branch fix that
- * {@link expectRailSashDragResizes} guards: with that fix removed this still
- * passes, because floating a member restructures the rail's grid node and so
- * rebuilds its cached limits anyway. It guards the float path's own release,
- * not the fresh-boot one. Dockview-engine only.
+ * Floats the rail's top panel and then drags the sash its remaining partner
+ * now shares with the main column. The partner is itself width-locked, so
+ * floating its neighbour must not free it: its width must not change.
+ * Dockview-engine only.
  */
-export async function expectRailSashDragResizesAfterFloatingRailMember(
+export async function expectRailPartnerStaysLockedAfterFloatingRailMember(
   ctx: TestContext,
 ): Promise<void> {
   await ctx.po.layout.floatPanel(RAIL_PANEL_ID);
@@ -128,8 +123,26 @@ export async function expectRailSashDragResizesAfterFloatingRailMember(
   const after = await ctx.po.layout.dockPanelWidth(RAIL_REMAINING_PANEL_ID);
 
   assertTrue(
-    after - before > MIN_RAIL_GROWTH_PX,
-    `expected dragging the rail's sash ${RAIL_DRAG_PX}px after floating ${RAIL_PANEL_ID} to grow ${RAIL_REMAINING_PANEL_ID} by more than ${MIN_RAIL_GROWTH_PX}px (before=${before}, after=${after})`,
+    Math.abs(after - before) <= MAX_LOCKED_DRIFT_PX,
+    `expected ${RAIL_REMAINING_PANEL_ID} to stay width-locked after floating ${RAIL_PANEL_ID} and a ${RAIL_DRAG_PX}px sash drag (before=${before}, after=${after})`,
+  );
+}
+
+/** Ruling R5, end to end: dragging the width-locked Analytics tab onto the
+ * Live Rates body centre would put a 360px lock into a stretching group —
+ * dockview must show no drop target and the drop must not happen. The
+ * group count staying at `groupsBefore` and Live Rates still standing
+ * alone are the two witnesses. */
+export async function dragLockedAnalyticsOntoRatesIsRefused(
+  ctx: TestContext,
+  groupsBefore: number,
+): Promise<void> {
+  await ctx.po.layout.dragDockTabOnto(RAIL_PANEL_ID, RATES_PANEL_DROP_TARGET);
+  await expectDockGroups(ctx, groupsBefore, 5);
+  assertEquals(
+    (await ctx.po.layout.dockGroupMates(RATES_PANEL_ID)).join(","),
+    RATES_PANEL_TITLE,
+    "Live Rates must still be alone in its group after a refused drop",
   );
 }
 
