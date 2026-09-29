@@ -1077,6 +1077,9 @@ export function reactViewModel(world: World): ViewModel {
     usePriceHistory: (symbol: string) => {
       return useSubject(world.historyFor(symbol));
     },
+    useEquityPriceHistory: () => {
+      return [];
+    },
     useQuotesForRfq: (rfqId: number) => {
       return useSubject(world.quotesForRfq(rfqId));
     },

@@ -3,7 +3,7 @@ import { cleanup, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import type { ViewStyle } from "react-native";
 
-import type { EquityInstrument } from "@rtc/domain";
+import type { EquityInstrument, EquityQuote } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { MoversBoard } from "#/ui/equities/markets/MoversBoard";
@@ -28,7 +28,10 @@ const QUOTES: Record<string, QuoteFixture> = {
   TSLA: { last: 248.67, changePct: 1.13 },
 };
 
-function vm(sort: "chg" | "sym" = "chg"): ViewModel {
+function vm(
+  sort: "chg" | "sym" = "chg",
+  history: Record<string, readonly number[]> = {},
+): ViewModel {
   return {
     useWatchlist: () => {
       return INSTRUMENTS;
@@ -42,11 +45,11 @@ function vm(sort: "chg" | "sym" = "chg"): ViewModel {
         ...QUOTES[symbol],
       };
     },
-    // MoversRow renders its own RowSparkline, which reads useCandles(symbol)
-    // — an empty series is a legitimate "no history yet" state, not a
-    // stub-out.
-    useCandles: () => {
-      return [];
+    // MoversRow renders its own RowSparkline, fed from the price history
+    // read one level up — an empty window is a legitimate "no quotes yet"
+    // state, not a stub-out.
+    useEquityPriceHistory: (symbol: string) => {
+      return createQuotes(symbol, history[symbol] ?? []);
     },
     useEqWatchlistSort: () => {
       return {
@@ -71,12 +74,14 @@ function boardTree(sort: "chg" | "sym"): ReactElement {
 export interface MoversBoardPage {
   mount(sort?: "chg" | "sym"): Promise<void>;
   mountEmpty(): Promise<void>;
+  mountWithHistory(history: Record<string, readonly number[]>): Promise<void>;
   // Re-sorts to "sym" and settles the resulting rank-glide tint. Internally
   // renders TWICE — see the method body for why one call from the spec isn't
   // enough.
   rerenderSortedBySym(): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
+  sparklineExists(symbol: string): boolean;
   ranksInOrder(): readonly TextChildren[];
   rankOf(symbol: string): TextChildren;
   glowBackgroundOf(symbol: string): ViewStyle["backgroundColor"];
@@ -93,6 +98,32 @@ export function moversBoardPage(): MoversBoardPage {
     async mount(sort: "chg" | "sym" = "chg"): Promise<void> {
       const result = await renderWithTheme(boardTree(sort));
       rerender = result.rerender;
+    },
+    // `useCandles` deliberately returns a NON-empty series for every symbol,
+    // so a board that still read candles would draw every sparkline.
+    async mountWithHistory(
+      history: Record<string, readonly number[]>,
+    ): Promise<void> {
+      const withHistory = {
+        ...vm("chg", history),
+        useCandles: () => {
+          return [1, 2, 3].map((close, i) => {
+            return {
+              time: i,
+              open: close,
+              high: close,
+              low: close,
+              close,
+              volume: 1,
+            };
+          });
+        },
+      } as unknown as ViewModel;
+      await renderWithTheme(
+        <ViewModelProvider viewModel={withHistory}>
+          <MoversBoard selectedSymbol={null} onSelect={(): void => {}} />
+        </ViewModelProvider>,
+      );
     },
     async mountEmpty(): Promise<void> {
       const empty = {
@@ -143,6 +174,9 @@ export function moversBoardPage(): MoversBoardPage {
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
+    sparklineExists(symbol: string): boolean {
+      return screen.queryByTestId(`eq-sparkline-${symbol}`) != null;
+    },
     ranksInOrder(): readonly TextChildren[] {
       return screen.getAllByTestId(/-rank$/).map((n) => {
         return n.props.children as TextChildren;
@@ -164,4 +198,13 @@ export function moversBoardPage(): MoversBoardPage {
       return screen.queryAllByTestId(/-glow$/).length;
     },
   };
+}
+
+function createQuotes(
+  symbol: string,
+  prices: readonly number[],
+): readonly EquityQuote[] {
+  return prices.map((last, i) => {
+    return { symbol, bid: last, ask: last, last, changePct: 0, timestamp: i };
+  });
 }

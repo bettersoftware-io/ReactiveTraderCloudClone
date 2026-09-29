@@ -7,6 +7,7 @@ import {
   DEFAULT_EQ_WATCHLIST_SORT,
   type DepthBook,
   type DepthLevel,
+  EQUITY_PRICE_HISTORY_SIZE,
   type EqBlotterView,
   type EquityInstrument,
   type EquityOrder,
@@ -187,6 +188,30 @@ const CANDLES: Readonly<Record<string, readonly Candle[]>> = Object.fromEntries(
 
 const EMPTY_CANDLES: readonly Candle[] = [];
 
+/** A full rolling window per symbol — the last 24 seeded candle closes, then
+ * the pinned quote — so the movers sparkline is deterministic and ends at
+ * the price its row prints. Built once at module load (identity-stable, like
+ * `QUOTES`). The live app starts this window EMPTY and fills it from quotes;
+ * a golden shows the steady state. */
+const PRICE_HISTORY: Readonly<Record<string, readonly EquityQuote[]>> =
+  Object.fromEntries(
+    WATCHLIST.map((inst) => {
+      const quote = QUOTES[inst.symbol] as EquityQuote;
+      const closes = (CANDLES[inst.symbol] ?? EMPTY_CANDLES)
+        .slice(-(EQUITY_PRICE_HISTORY_SIZE - 1))
+        .map((candle, i, all) => {
+          return {
+            ...quote,
+            last: candle.close,
+            timestamp: PINNED_NOW_MS - (all.length - i) * 500,
+          };
+        });
+      return [inst.symbol, [...closes, quote]];
+    }),
+  );
+
+const EMPTY_PRICE_HISTORY: readonly EquityQuote[] = [];
+
 /** `DepthLadder` slices each side to its top 8 levels — matches
  * `EquityMarketDataSimulator`'s own `DEPTH_LEVELS`. */
 const DEPTH_LEVEL_COUNT = 8;
@@ -353,6 +378,9 @@ export const equitiesSlice: EquitiesSlice = {
   },
   useEquityQuote: (symbol: string) => {
     return QUOTES[symbol] ?? null;
+  },
+  useEquityPriceHistory: (symbol: string) => {
+    return PRICE_HISTORY[symbol] ?? EMPTY_PRICE_HISTORY;
   },
   // The one member of `EquitiesSlice` that is not a `use*` hook — a bare
   // command paired with `useCandleBackfill`'s state, forwarding a near-edge

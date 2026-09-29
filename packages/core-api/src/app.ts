@@ -66,6 +66,7 @@ import type {
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
+  EquityPriceHistoryPresenter,
   EqWatchlistSortPreferencePresenter,
   ErrorRatePresenter,
   EventLogPresenter,
@@ -234,6 +235,8 @@ export interface Presenters {
   jarvisPreferences: JarvisPreferencesPresenter;
   watchlist: WatchlistPresenter;
   candleSeries: CandleSeriesPresenter;
+  /** Rolling window of live quotes per symbol (the RN movers sparkline). */
+  equityPriceHistory: EquityPriceHistoryPresenter;
   depth: DepthPresenter;
   ordersBlotter: OrdersBlotterPresenter;
   positions: PositionsPresenter;

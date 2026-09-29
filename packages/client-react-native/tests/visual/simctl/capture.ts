@@ -633,7 +633,19 @@ async function screenshot(udid: string, scenarioId: string): Promise<Buffer> {
     tmpdir(),
     `rtc-visual-simctl-${scenarioId.replace(/\//g, "_")}-${pid}.png`,
   );
-  await exec("xcrun", ["simctl", "io", udid, "screenshot", out]);
+  // Pin the device mask: Xcode 27 changed simctl's default mask policy, and
+  // the default no longer renders the Dynamic Island. Every committed golden
+  // carries the island rendered black, so an explicit flag keeps the capture
+  // environment-independent (measured 2026-09-29: island region 59% near-black
+  // under the default vs 99.8% with `--mask=black`).
+  await exec("xcrun", [
+    "simctl",
+    "io",
+    udid,
+    "screenshot",
+    "--mask=black",
+    out,
+  ]);
   const png = await readFile(out);
   await rm(out, { force: true });
   return png;

@@ -176,11 +176,11 @@ at the edge, behind interfaces the inner layers own. Here that claim was
   How one suite tests two frameworks, animated:
   [one suite, two frameworks](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/showcase/cross-framework-testing.html).
 - **A second — and third — application core.** Every presenter and state
-  machine (74 members) was re-implemented on async/await + AsyncIterable and
+  machine (75 members) was re-implemented on async/await + AsyncIterable and
   again on Effect-TS, slice by slice, while the app kept shipping. All three
   implement one types-only contract and pass one behavioural contract suite;
-  the React and Solid UIs run on any of them, selected by one build variable,
-  without knowing which.
+  the React and Solid UIs run on any of them, chosen at load time (`?core=` / Preferences,
+  with `VITE_CORE_IMPL` as the build default), without knowing which.
 - **The server is optional.** The domain ships simulators behind the same
   ports the WebSocket adapter implements, so every client runs fully offline —
   which is also what lets the whole e2e matrix run in parallel with no backend.

@@ -7,6 +7,7 @@ export {
 } from "./CreateRfqUseCase.js";
 export { CurrencyPairsUseCase } from "./CurrencyPairsUseCase.js";
 export { DealersUseCase } from "./DealersUseCase.js";
+export { EquityPriceHistoryUseCase } from "./EquityPriceHistoryUseCase.js";
 export type {
   ExecuteTradeInput,
   ExecuteTradeResult,

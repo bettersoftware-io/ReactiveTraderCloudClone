@@ -114,6 +114,7 @@ export type EquitiesSlice = Pick<
   | "useEqWatchlistSort"
   | "useEqWorkspace"
   | "useEquityOrders"
+  | "useEquityPriceHistory"
   | "useEquityPositions"
   | "useEquityQuote"
   | "useOrderTicket"

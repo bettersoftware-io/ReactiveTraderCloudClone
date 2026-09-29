@@ -76,6 +76,7 @@ export type {
 } from "./equities/order.js";
 export type { EquityPosition } from "./equities/position.js";
 export type { EquityQuote } from "./equities/quote.js";
+export { EQUITY_PRICE_HISTORY_SIZE } from "./equities/quote.js";
 export type { CandleTimeframe } from "./equities/timeframe.js";
 export {
   CANDLE_DEFAULT_VISIBLE,
@@ -316,6 +317,7 @@ export {
   CurrencyPairsUseCase,
   createEmptyRfqStreamState,
   DealersUseCase,
+  EquityPriceHistoryUseCase,
   ExecuteTradeUseCase,
   InstrumentsUseCase,
   PriceHistoryUseCase,

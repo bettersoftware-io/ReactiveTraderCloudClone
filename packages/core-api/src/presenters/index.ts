@@ -14,6 +14,7 @@ export type * from "#/presenters/currencyPairs";
 export type * from "#/presenters/dealers";
 export type * from "#/presenters/depth";
 export type * from "#/presenters/eqBlotterViewPreference";
+export type * from "#/presenters/equityPriceHistory";
 export type * from "#/presenters/eqWatchlistSortPreference";
 export type * from "#/presenters/errorRate";
 export type * from "#/presenters/eventLog";

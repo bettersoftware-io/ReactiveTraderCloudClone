@@ -43,6 +43,7 @@ import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
 import { createDepthPresenter } from "#/presenters/depth";
+import { createEquityPriceHistoryPresenter } from "#/presenters/equityPriceHistory";
 import { createTradeExecutionPresenter } from "#/presenters/execution";
 import {
   createJarvisPreferencesPresenter,
@@ -191,6 +192,10 @@ function nativePresenters(
     rfqQuote: createRfqQuotePresenter(ports.pricing),
     watchlist,
     candleSeries: createCandleSeriesPresenter(ports.marketData, lifetime),
+    equityPriceHistory: createEquityPriceHistoryPresenter(
+      ports.marketData,
+      powerSaver.isCalm$,
+    ),
     depth: createDepthPresenter(ports.marketData),
     ordersBlotter,
     positions: createPositionsPresenter(ports.positions, lifetime),
