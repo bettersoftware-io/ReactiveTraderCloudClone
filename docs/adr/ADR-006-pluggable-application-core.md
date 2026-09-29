@@ -65,6 +65,13 @@ is an alias flip plus bridge edits plus a polyfill until the other two
 engines ship it — not a rewrite, because every consumer already only sees
 the alias.
 
+*Re-read against the draft on 2026-09-28:* "no multicast primitive" is
+imprecise. Concurrent subscribers share one producer run (the subscribe
+callback runs for the first of them only), but nothing is replayed to a
+subscriber that arrives late and there is no current-value read. Browser
+support is unchanged. [§23](../architecture/23-application-cores-explained.md#the-future-the-web-standard-observable)
+lists what that means for the bridges and the bindings.
+
 ## Decision 3 — bridge-owns-rxjs
 
 Outside a core's own `bridge/` directory, `rxjs` and `@rx-state/core` are

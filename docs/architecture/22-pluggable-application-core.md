@@ -12,6 +12,10 @@ the original RxJS core by a dedicated contract tier.
 [ADR-006](../adr/ADR-006-pluggable-application-core.md) records the decisions
 behind this design; this chapter documents what shipped.
 
+**New to this?** Read [§23 Application Cores, Explained](23-application-cores-explained.md)
+first — the guided tour, with the vocabulary, the boundary translations and a
+worked example. This chapter is the precise reference behind it.
+
 ## Packages
 
 ```mermaid
@@ -504,3 +508,4 @@ it), so a stray UI import of one presenter class would not trip it.
 - [§8 Replaceability Matrix](08-replaceability-matrix.md)
 - [§10.1 RxJS `Observable<T>` as the boundary stream type](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)
 - [§21 One Test Suite, Two Frameworks](21-cross-framework-testing.md)
+- [§23 Application Cores, Explained](23-application-cores-explained.md) — the guided tour
