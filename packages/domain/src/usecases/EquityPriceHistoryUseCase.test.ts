@@ -45,6 +45,7 @@ describe("EquityPriceHistoryUseCase", () => {
     const first = new EquityPriceHistoryUseCase(
       createStubMarketData([createQuote(1), createQuote(2)]),
     );
+
     const second = new EquityPriceHistoryUseCase(
       createStubMarketData([createQuote(3)]),
     );
@@ -90,9 +91,9 @@ function createQuote(last: number): EquityQuote {
 }
 
 function createStubMarketData(quotes: readonly EquityQuote[]): MarketDataPort {
-  const never = (): Observable<never> => {
+  function never(): Observable<never> {
     return NEVER;
-  };
+  }
 
   return {
     watchlist: never,
