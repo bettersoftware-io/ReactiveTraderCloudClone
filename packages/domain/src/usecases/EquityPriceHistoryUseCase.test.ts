@@ -2,7 +2,10 @@ import { firstValueFrom, from, NEVER, type Observable } from "rxjs";
 import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
-import { EQUITY_PRICE_HISTORY_SIZE, type EquityQuote } from "../equities/quote.js";
+import {
+  EQUITY_PRICE_HISTORY_SIZE,
+  type EquityQuote,
+} from "../equities/quote.js";
 import type { MarketDataPort } from "../ports/marketDataPort.js";
 import { EquityPriceHistoryUseCase } from "./EquityPriceHistoryUseCase.js";
 

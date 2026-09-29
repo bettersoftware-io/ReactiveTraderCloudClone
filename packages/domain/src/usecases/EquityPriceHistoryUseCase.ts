@@ -1,7 +1,10 @@
 import { defer, type Observable } from "rxjs";
 import { map } from "rxjs/operators";
 
-import { EQUITY_PRICE_HISTORY_SIZE, type EquityQuote } from "../equities/quote.js";
+import {
+  EQUITY_PRICE_HISTORY_SIZE,
+  type EquityQuote,
+} from "../equities/quote.js";
 import type { MarketDataPort } from "../ports/marketDataPort.js";
 
 /** The equities twin of `PriceHistoryUseCase`: folds live quotes for one
