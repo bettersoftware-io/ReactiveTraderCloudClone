@@ -62,6 +62,7 @@ export { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 export { createConflatedTopic } from "#/presenters/conflatedTopic";
 export { createConnectionPresenter } from "#/presenters/connection";
 export { createDepthPresenter } from "#/presenters/depth";
+export { createEquityPriceHistoryPresenter } from "#/presenters/equityPriceHistory";
 export { createTradeExecutionPresenter } from "#/presenters/execution";
 export {
   createJarvisPreferencesPresenter,
