@@ -20,6 +20,7 @@ export * from "#/presenters/DealersPresenter";
 export * from "#/presenters/DepthPresenter";
 export * from "#/presenters/EqBlotterViewPreferencePresenter";
 export * from "#/presenters/EqDrawingsMachine";
+export * from "#/presenters/EquityPriceHistoryPresenter";
 export * from "#/presenters/EqWatchlistSortPreferencePresenter";
 export * from "#/presenters/EqWorkspaceMachine";
 export * from "#/presenters/ErrorRatePresenter";

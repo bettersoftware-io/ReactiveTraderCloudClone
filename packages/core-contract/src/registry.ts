@@ -26,6 +26,7 @@ import {
 } from "#/suites/dock";
 import { describeEqBlotterViewPreferenceContract } from "#/suites/eqBlotterViewPreference";
 import { describeEqDrawingsContract } from "#/suites/eqDrawings";
+import { describeEquityPriceHistoryContract } from "#/suites/equityPriceHistory";
 import { describeEqWatchlistSortPreferenceContract } from "#/suites/eqWatchlistSortPreference";
 import { describeEqWorkspaceContract } from "#/suites/eqWorkspace";
 import { describeEventLogContract } from "#/suites/eventLog";
@@ -131,6 +132,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "presenters.jarvisPreferences": describeJarvisPreferencesContract,
   "presenters.watchlist": describeWatchlistContract,
   "presenters.candleSeries": describeCandleSeriesContract,
+  "presenters.equityPriceHistory": describeEquityPriceHistoryContract,
   "presenters.depth": describeDepthContract,
   "presenters.ordersBlotter": describeOrdersBlotterContract,
   "presenters.positions": describePositionsContract,
