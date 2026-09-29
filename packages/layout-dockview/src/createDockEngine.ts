@@ -620,7 +620,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // concern; here only the release side effect matters.
     intactDesignPins();
     // Locks too: a user drag or float that formed a new locked group reaches
-    // no intent, so this is where its clamp lands.
+    // no intent, so this is where its clamp lands. Both clients' packages/
+    // client-{react,solid}/src/ui/shell/layout/dockview/__tests__/
+    // DockviewLayoutEngine.docked.test.tsx, case "locks the FX rail at 360 +
+    // gap from PANEL_SPECS.fixedWidthPx", rely on this running synchronously
+    // on every layout change: after a sash drag (which releases a design pin)
+    // the lock must still be clamped, seen as dockview's `.dv-disabled` sash
+    // class. Debouncing or skipping it breaks them.
     settleWidthLocks();
 
     if (timer !== null) {
@@ -1637,9 +1643,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Locks settle first: they share the absorber test, and a lock that
     // changed owes the same forced layout a pin change does (Ruling P1) —
     // hence ONE exit below, gated on either, so no path can skip it.
-    // The same two client bridge tests (see armSashUnpin) rely on this
-    // re-clamping on EVERY layout change, so a sash drag can never leave a
-    // lock released. Debouncing or skipping it breaks them.
     const locksChanged = settleWidthLocks();
     const pinsChanged = settlePinClamps();
 
