@@ -1637,6 +1637,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Locks settle first: they share the absorber test, and a lock that
     // changed owes the same forced layout a pin change does (Ruling P1) —
     // hence ONE exit below, gated on either, so no path can skip it.
+    // The same two client bridge tests (see armSashUnpin) rely on this
+    // re-clamping on EVERY layout change, so a sash drag can never leave a
+    // lock released. Debouncing or skipping it breaks them.
     const locksChanged = settleWidthLocks();
     const pinsChanged = settlePinClamps();
 
@@ -1737,6 +1740,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     );
   }
 
+  // Client bridge tests depend on this exact trigger (any pointerdown on a
+  // sash + any later pointermove, no minimum drag distance): packages/client-{react,solid}/src/ui/shell/layout/dockview/__tests__/DockviewLayoutEngine.docked.test.tsx,
+  // case "locks the FX rail at 360 + gap from PANEL_SPECS.fixedWidthPx". They
+  // drag a sash and rely on it releasing a design pin but never a width lock,
+  // read off dockview's `.dv-disabled` sash class. Change the trigger and
+  // those tests fail with no hint the cause is here.
   function armSashUnpin(event: Event): void {
     const target = event.target;
 
