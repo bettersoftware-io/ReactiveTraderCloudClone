@@ -36,6 +36,7 @@ export const PRESENTER_MANIFEST: PresenterManifest = {
   session: { props: ["state$"] },
   watchlist: { props: ["watchlist$"], methods: ["quote$"] },
   candleSeries: { methods: ["candles$"] },
+  equityPriceHistory: { methods: ["history$"] },
   depth: { methods: ["depth$"] },
   ordersBlotter: { props: ["orders$"] },
   positions: { props: ["positions$"] },

@@ -118,6 +118,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     usePriceHistory: (symbol: string) => {
       return data.priceHistory[symbol] ?? [];
     },
+    useEquityPriceHistory: () => {
+      return [];
+    },
     useTrades: () => {
       return data.trades;
     },
