@@ -81,6 +81,14 @@ const mockMotionEnabled = jest.fn<() => boolean>(() => {
   return true;
 });
 
+test("draws each row's sparkline from its price history, not its candles", async () => {
+  await page.mountWithHistory({ AAPL: [227.0, 227.1, 227.17] });
+  expect(page.sparklineExists("AAPL")).toBe(true);
+  expect(page.sparklineExists("TSLA")).toBe(false);
+});
+
+const page = moversBoardPage();
+
 jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
   return {
     useShellMotionEnabled: () => {
@@ -97,5 +105,3 @@ jest.mock("#/ui/shell/hud/useShellMotionEnabled", () => {
 // "unchanged" instead and leave the tint at its green seed — indistinguishable
 // from "never moved" if the witness color were `accentPositive` instead.
 const ACCENT_NEGATIVE = "#ff5d73";
-
-const page = moversBoardPage();

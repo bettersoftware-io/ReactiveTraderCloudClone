@@ -496,6 +496,9 @@ export interface ViewModel {
     symbol: string,
     timeframe?: CandleTimeframe,
   ) => readonly Candle[];
+  /** Rolling window of live quotes for a symbol (newest last, capped at
+   * EQUITY_PRICE_HISTORY_SIZE) — empty until the first quote arrives. */
+  useEquityPriceHistory: (symbol: string) => readonly EquityQuote[];
   /** Combined backfill flags (loadingOlder/historyExhausted) for a candle
    * series — a bound stream of CandleSeriesPresenter's loadingOlder$ +
    * historyExhausted$, defaulting to both false. */
@@ -894,6 +897,13 @@ export function createViewModel(
       return presenters.candleSeries.candles$(symbol, timeframe);
     },
     [] as readonly Candle[],
+  );
+
+  const [useEquityPriceHistory] = bind(
+    (symbol: string) => {
+      return presenters.equityPriceHistory.history$(symbol);
+    },
+    [] as readonly EquityQuote[],
   );
 
   const [useCandleBackfill] = bind(
@@ -1428,6 +1438,7 @@ export function createViewModel(
     useWatchlist,
     useEquityQuote,
     useCandles,
+    useEquityPriceHistory,
     useCandleBackfill,
     loadOlderCandles,
     useDepth,

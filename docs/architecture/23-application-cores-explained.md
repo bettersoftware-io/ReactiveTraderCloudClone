@@ -64,7 +64,7 @@ works, whatever is inside it.
 | **Presenter** | A long-lived object that offers streams (and sometimes commands) to the UI. | `priceStream.price$(pair)` |
 | **Machine** | A small state machine: current state, intent methods, `dispose()`. | `tileExecution`, `staleFlag` |
 | **Command** | An app-level action with no state of its own. | `commands.reconnect()` |
-| **Member** | One entry of the plug: a presenter, a machine factory or a command. There are 74. | — |
+| **Member** | One entry of the plug: a presenter, a machine factory or a command. There are 75. | — |
 | **Stream** | Many values over time. | price ticks |
 | **State stream** | A stream that always has a current value, readable at once. | a machine's `state$` |
 | **Envelope** | The type a stream is wrapped in when it crosses a boundary. Today: RxJS `Observable`. | `Stream<Price>` |
@@ -139,11 +139,11 @@ classDiagram
     +dispose() Promise
   }
   class Presenters {
-    60 members
+    61 members
     priceStream
     blotter
     auth
-    and 57 more
+    and 58 more
   }
   class AppCommands {
     2 members
@@ -178,8 +178,8 @@ classDiagram
 ```
 
 A core is any value of type `CoreFactory`. The three that exist are
-`rxjsCore`, `asyncCore` and `effectCore`. 60 + 12 + 2 = **74 members**, and
-all 74 are implemented natively in all three cores.
+`rxjsCore`, `asyncCore` and `effectCore`. 61 + 12 + 2 = **75 members**, and
+all 75 are implemented natively in all three cores.
 
 ## The three cores side by side
 
@@ -611,7 +611,7 @@ request.
 
 ```mermaid
 flowchart LR
-  c1["<b>Every core offers<br/>all 74 members</b>"] --> g1["TypeScript: each core's<br/>presenter map has an exact type"]
+  c1["<b>Every core offers<br/>all 75 members</b>"] --> g1["TypeScript: each core's<br/>presenter map has an exact type"]
   c2["<b>Every core behaves<br/>the same</b>"] --> g2["@rtc/core-contract: one suite<br/>per member, run on all three"]
   c3["<b>No RxJS hidden inside<br/>an alternative core</b>"] --> g3["dependency-cruiser bridge-owns-rxjs<br/>+ grep gate 43"]
   c4["<b>The plug is<br/>types only</b>"] --> g4["grep gate 42"]

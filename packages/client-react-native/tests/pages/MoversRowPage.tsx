@@ -1,18 +1,18 @@
 // packages/client-react-native/tests/pages/MoversRowPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
-import type { Candle } from "@rtc/domain";
+import type { EquityQuote } from "@rtc/domain";
 
 import { MoversRow } from "#/ui/equities/markets/MoversRow";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import type { RnTheme } from "#/ui/theme/tokens";
 
-// RowSparkline now takes `candles` as a plain prop (Task 3 lifted the
-// `useCandles` read up to MoversBoard's MoversBoardRow, so this leaf and
-// RowSparkline stay compiler-memoizable) — an empty series is enough: these
+// RowSparkline takes `history` as a plain prop (the price-history read lives
+// in MoversBoard's MoversBoardRow, so this leaf and RowSparkline stay
+// compiler-memoizable) — an empty window is enough: these
 // tests assert the row's own text/press behaviour, not the sparkline (that's
 // RowSparkline.test.tsx's job).
-const NO_CANDLES: readonly Candle[] = [];
+const NO_HISTORY: readonly EquityQuote[] = [];
 
 interface MoversRowFixture {
   symbol: string;
@@ -49,7 +49,7 @@ export function moversRowPage(): MoversRowPage {
           rank={rank}
           selected={false}
           onSelect={onSelect}
-          candles={NO_CANDLES}
+          history={NO_HISTORY}
         />,
         theme,
       );

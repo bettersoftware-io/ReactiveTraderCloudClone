@@ -28,6 +28,7 @@ exports[`@rtc/client-core public runtime API > is unchanged by the core-logic ex
   "DepthPresenter",
   "EqBlotterViewPreferencePresenter",
   "EqWatchlistSortPreferencePresenter",
+  "EquityPriceHistoryPresenter",
   "ErrorRatePresenter",
   "EventLogPresenter",
   "ForceBootAnimationPresenter",

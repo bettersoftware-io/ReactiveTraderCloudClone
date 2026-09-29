@@ -108,7 +108,7 @@ cover `Presenters`.
 
 ## Members
 
-**All 74** members are native (slice 7's wave 2), and since slice 8 nothing
+**All 75** members are native (74 as of slice 7's wave 2; `equityPriceHistory` added 2026-09-28), and since slice 8 nothing
 is composed beside an RxJS base app — `@rtc/client-core` is a
 devDependency for test adapters only. Wave 2
 added the Jarvis family (`presenters/jarvisFamily.ts`): `jarvis` (a Store

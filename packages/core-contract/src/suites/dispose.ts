@@ -154,7 +154,7 @@ async function signIn(
   await settle();
 }
 
-/** 39 port-backed presenter streams a mounted workspace reads — a broad
+/** 40 port-backed presenter streams a mounted workspace reads — a broad
  * sample of what the composition can be made to subscribe, not a proof that
  * it covers every port. */
 function everySessionStream(app: App): readonly Stream<unknown>[] {
@@ -176,6 +176,7 @@ function everySessionStream(app: App): readonly Stream<unknown>[] {
     p.watchlist.watchlist$,
     p.watchlist.quote$(MSFT.symbol),
     p.candleSeries.candles$(MSFT.symbol),
+    p.equityPriceHistory.history$(MSFT.symbol),
     p.depth.depth$(MSFT.symbol),
     p.ordersBlotter.orders$,
     p.ordersBlotter.fills$,

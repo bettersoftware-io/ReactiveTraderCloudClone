@@ -25,6 +25,9 @@ function vm(): ViewModel {
     useCandles: (): readonly Candle[] => {
       return [];
     },
+    useEquityPriceHistory: () => {
+      return [];
+    },
     useDepth: (): DepthBook | null => {
       return null;
     },

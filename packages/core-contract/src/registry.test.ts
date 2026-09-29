@@ -83,6 +83,7 @@ describe("core-contract registry", () => {
     for (const member of [
       "presenters.watchlist",
       "presenters.candleSeries",
+      "presenters.equityPriceHistory",
       "presenters.depth",
       "presenters.ordersBlotter",
       "presenters.positions",

@@ -93,6 +93,7 @@ import {
   DealersPresenter,
   DepthPresenter,
   EqBlotterViewPreferencePresenter,
+  EquityPriceHistoryPresenter,
   EqWatchlistSortPreferencePresenter,
   ErrorRatePresenter,
   EventLogPresenter,
@@ -877,6 +878,10 @@ export function createApp(ports: AppPorts): App {
     jarvisPreferences,
     watchlist,
     candleSeries: new CandleSeriesPresenter(ports.marketData),
+    equityPriceHistory: new EquityPriceHistoryPresenter(
+      ports.marketData,
+      powerSaver.isCalm$,
+    ),
     depth: new DepthPresenter(ports.marketData),
     ordersBlotter,
     positions: new PositionsPresenter(ports.positions, disposed$),
