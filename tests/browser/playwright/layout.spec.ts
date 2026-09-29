@@ -42,7 +42,7 @@ test.describe("Layout engine", () => {
     await layout.expectEngine(ctx, "inhouse");
   });
 
-  test("dockview: dragging the rail's sash resizes the rail on a fresh boot", async ({
+  test("dockview: the width-locked rail keeps its width through a sash drag on a fresh boot", async ({
     ctx,
   }) => {
     // Selected explicitly so the engine is CONSTRUCTED here from the seed —
@@ -52,17 +52,25 @@ test.describe("Layout engine", () => {
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
-    await layout.expectRailSashDragResizes(ctx);
+    await layout.expectRailSashDragKeepsRailWidth(ctx);
   });
 
-  test("dockview: after a pinned rail panel floats out, its partner's sash still resizes", async ({
+  test("dockview: after a locked rail panel floats out, its partner stays locked", async ({
     ctx,
   }) => {
     await layout.openPreferencesAndSelectLayoutEngine(ctx, "dockview");
     await layout.expectEngine(ctx, "dockview");
     await layout.expectDockGroups(ctx, 4, 5);
 
-    await layout.expectRailSashDragResizesAfterFloatingRailMember(ctx);
+    await layout.expectRailPartnerStaysLockedAfterFloatingRailMember(ctx);
+  });
+
+  test("dockview: a width-locked panel cannot be dropped into a stretching group", async ({
+    ctx,
+  }) => {
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+    await layout.dragLockedAnalyticsOntoRatesIsRefused(ctx, 4);
   });
 
   test("dockview edge-split drag rearranges and persists, and a collapsed panel rejects drops", async ({

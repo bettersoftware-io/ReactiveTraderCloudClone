@@ -77,6 +77,27 @@ export interface DockviewLayoutEngineDockedPage {
    * outgoing engine's last write would pass with the hazard simply absent.
    * Mirrors the react twin's identical method. */
   pressDockContainer(): void;
+  /** A minimal, real pointer sequence on the width-lock sash — the divider
+   * between fx's rates/blotter column and its analytics/positions rail, the
+   * only width-axis sash the "fx" seed produces. jsdom raises no genuine
+   * drag, but dockview's pin-release path fires on the gesture starting and
+   * ending, not on any travelled distance — see `widthLockDisabled`'s doc for
+   * why this is the wiring witness for Task 6's `fixedWidth` hook. Mirrors
+   * the react twin's identical method. */
+  dragWidthLockSash(): void;
+  /** Whether the width-lock sash (see `dragWidthLockSash`) currently carries
+   * dockview's own `.dv-disabled` class — the class `updateSashEnablement`
+   * sets on a sash with no movable side. `@rtc/layout-dockview` stays the
+   * only package allowed to import `dockview` (dependency-cruiser
+   * `dockview-only-in-layout-dockview`), so there is no page-object accessor
+   * for a group's live `minimumWidth`/`maximumWidth` — only this DOM class.
+   * fx-analytics/fx-positions' rail already reads disabled on the FIRST
+   * render regardless of the lock (it is ALSO seeded as a design pin — the
+   * "existing seed `initialPx` design widths"), and Ruling R1 says a pin,
+   * unlike a lock, is released on the first sash drag — so a case must call
+   * `dragWidthLockSash` before this is a meaningful witness, not read it
+   * bare. Mirrors the react twin's identical method. */
+  widthLockDisabled(): boolean;
   /** Runs `assertion` until it stops throwing (or `options.timeout` elapses)
    * — the spec supplies the assertion, this page owns the polling mechanic. */
   waitFor(assertion: () => void, options?: WaitForOptions): Promise<void>;
@@ -153,6 +174,16 @@ export function dockviewLayoutEngineDockedPage(): DockviewLayoutEngineDockedPage
         new Event("pointerdown", { bubbles: true }),
       );
     },
+    dragWidthLockSash(): void {
+      const sash = widthLockSash();
+
+      sash.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      window.dispatchEvent(new Event("pointermove"));
+      window.dispatchEvent(new Event("pointerup"));
+    },
+    widthLockDisabled(): boolean {
+      return widthLockSash().classList.contains("dv-disabled");
+    },
     waitFor(assertion: () => void, options?: WaitForOptions): Promise<void> {
       return waitFor(assertion, options);
     },
@@ -177,4 +208,19 @@ function dockContainer(): HTMLElement {
   }
 
   return container;
+}
+
+/** The sash between fx's rates/blotter column and its analytics/positions
+ * rail — the only width-axis sash the "fx" seed produces. See
+ * `widthLockDisabled`'s doc for why its `.dv-disabled` class, not a read
+ * constraint value, is the wiring witness. Mirrors the react twin's
+ * identical helper. */
+function widthLockSash(): Element {
+  const sash = document.querySelector(".dv-grid-view.dv-dockview .dv-sash");
+
+  if (sash === null) {
+    throw new Error("no width-lock sash in the mounted dock");
+  }
+
+  return sash;
 }

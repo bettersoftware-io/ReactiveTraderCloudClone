@@ -1,4 +1,4 @@
-/** A version-2 (gap-0, integer-model) Dockview blob of the fx seed with
+/** A current-version (gap-0, integer-model) Dockview blob of the fx seed with
  * `fx-analytics` FLOATED off its rail slot — the `shell/layout-dockview-
  * floating` scenario's deterministic seed, and the pixel witness for #763's
  * fix (a floating group over a translucent-panel skin was see-through until
@@ -38,7 +38,9 @@
  * `SerializedDockview`: the engine is confined to `@rtc/layout-dockview`
  * (dependency-cruiser `dockview-only-in-layout-dockview`), so a client may
  * not name its types. */
-const FLOATING_FX_LAYOUT = {
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
+
+const FLOATING_FX_LAYOUT: Record<string, unknown> = {
   grid: {
     root: {
       type: "branch",
@@ -116,7 +118,7 @@ const FLOATING_FX_LAYOUT = {
       position: { top: 3.5, left: 823, width: 364, height: 341 },
     },
   ],
-  rtcBlobVersion: 2,
+  rtcBlobVersion: DOCK_BLOB_VERSION,
   rtcDesignPins: [
     { panelIds: ["fx-analytics", "fx-positions"], px: 360, axis: "width" },
   ],

@@ -7,6 +7,7 @@ import {
   type LayoutPanelInstance,
   type PanelId,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";
@@ -354,6 +355,7 @@ function soloLeaf(groupId: string, panelId: string, size: number): object {
  * restore rather than a delete-then-re-add. */
 function createInstanceOnTheLeftBlob(instanceId: string): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",

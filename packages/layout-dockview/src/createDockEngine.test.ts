@@ -1,7 +1,10 @@
 import {
   createDockview,
   type DockviewApi,
+  type DockviewGroupDropLocation,
+  type DockviewWillShowOverlayLocationEvent,
   Orientation,
+  type Position,
   type SerializedDockview,
 } from "dockview";
 import {
@@ -29,6 +32,7 @@ import {
   loadBlobOrSeed,
   type RestoreTier,
 } from "#/createDockEngine";
+import { DOCK_BLOB_VERSION } from "#/dockBlob";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with a no-op stub. This one
@@ -1953,6 +1957,519 @@ describe("maximize over a design pin (R15a — the maximized panel fills)", () =
   const PINNED = [360 + GROUP_GAP_PX, 360 + GROUP_GAP_PX];
 });
 
+describe("width locks (PanelSpec.fixedWidthPx)", () => {
+  it("holds every locked group at its card width plus the gap", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    expect(widthClampOf("fx-rates")[0]).toBeLessThan(367);
+    engine.dispose();
+  });
+
+  it("does not release on a sash drag in the declaring split", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine(opts);
+
+    dragSash(opts.container, ".dv-horizontal");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("supersedes the seed's design pin: none is persisted", () => {
+    const seen = trackLayout();
+    persistArranged({ ...createLockedRailBase(), ...seen.options });
+
+    expect(seen.pins()).toEqual([]);
+  });
+
+  it("collapse → expand returns to the lock, not the pre-collapse width", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    engine.collapsePanel("fx-analytics");
+    engine.collapsePanel("fx-positions");
+    engine.expandPanel("fx-analytics");
+    engine.expandPanel("fx-positions");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("nothing absorbs: the locked rail fills the dock, and re-locks when an absorber returns", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(lastDockviewApi().getPanel("fx-analytics")?.group.api.width).toBe(
+      1440,
+    );
+
+    engine.reopenPanel("fx-rates");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("restores the lock from a blob that holds no pin sidecar at all", () => {
+    const first = createDockEngine(createLockedRailBase());
+    const blob = first.snapshotLayout();
+    first.dispose();
+
+    const engine = createDockEngine({ ...createLockedRailBase(), blob });
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("clamps the new group a locked tab is dragged into — a drag reaches no intent", async () => {
+    const engine = createDockEngine(createLockedRailBase());
+    const analytics = lastDockviewApi().getPanel("fx-analytics");
+    const positions = lastDockviewApi().getPanel("fx-positions");
+
+    if (analytics === undefined || positions === undefined) {
+      throw new Error("fixture panels missing");
+    }
+
+    // The drop operation IS moveTo. A lone panel moves WITH its group (and
+    // its clamp), so stack the rail first: dragging one tab out of a stack
+    // builds a fresh, unconstrained group at the right edge, and only the
+    // layout-change settle ever sees it.
+    positions.api.moveTo({ group: analytics.group, position: "center" });
+    await nextMacrotask();
+    analytics.api.moveTo({ group: positions.group, position: "right" });
+    await nextMacrotask();
+
+    expect(analytics.group).not.toBe(positions.group);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("nothing absorbs beside a pinned dynamic panel: lock and pin yield together, and re-lock together", () => {
+    // Ruling P1's setting: design pins ARE present here, so the lock settles
+    // on settlePinAbsorption's pin paths, not its no-pins shortcut. A pinned
+    // panel absorbs nothing, so closing both statics starves the grid.
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 300 }],
+    });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(
+      (lastDockviewApi().getPanel("fx-analytics")?.group.api.width ?? 0) +
+        (lastDockviewApi().getPanel("panel-dyn-1")?.group.api.width ?? 0),
+    ).toBe(1440);
+
+    engine.reopenPanel("fx-rates");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("floats a locked panel at exactly its locked width, width handles hidden", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine(opts);
+
+    expect(engine.floatPanel("fx-analytics")).toBe(true);
+
+    const group = lastDockviewApi().getPanel("fx-analytics")?.group;
+    const overlay = group?.element.closest<HTMLElement>(".dv-resize-container");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    // jsdom measures this dock 0 wide: an unmeasured dock caps nothing.
+    expect(overlay?.style.width).toBe("367px");
+    expect(overlay?.classList.contains("rtc-dock-float-fixed-width")).toBe(
+      true,
+    );
+    engine.dispose();
+  });
+
+  it("opens a locked float's box at its lock plus the gap — no 420 floor, no half-dock share", () => {
+    // The same rect model as the cascade test: every group reads 900×600,
+    // the dock 1440×900 — an unlocked float here opens 720 wide.
+    const container = sizedContainer(1440, 900);
+    const rects = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function rectFor(this: HTMLElement) {
+        if (this.classList.contains("dv-resize-container")) {
+          return new DOMRect(
+            Number.parseFloat(this.style.left) || 0,
+            Number.parseFloat(this.style.top) || 0,
+            Number.parseFloat(this.style.width) || 0,
+            Number.parseFloat(this.style.height) || 0,
+          );
+        }
+
+        const sized = this.classList.contains("dv-groupview")
+          ? [900, 600]
+          : [1440, 900];
+
+        return new DOMRect(0, 0, sized[0], sized[1]);
+      });
+    const engine = createDockEngine({ ...createLockedRailBase(), container });
+
+    engine.floatPanel("fx-analytics");
+
+    const box = container.querySelector<HTMLElement>(".dv-resize-container");
+
+    expect(box?.style.width).toBe("367px");
+    // Centred at the lock's width, not at an unlocked float's 720.
+    expect(box?.style.left).toBe("537px");
+    rects.mockRestore();
+    engine.dispose();
+  });
+
+  it("docks back home still locked, and the class goes with the float", () => {
+    const engine = createDockEngine(createLockedRailBase());
+
+    engine.floatPanel("fx-analytics");
+
+    // Positive control: the class was really there before the dock-home,
+    // so its absence afterwards is the box going, not a class never set.
+    expect(
+      document.querySelector(".rtc-dock-float-fixed-width"),
+    ).not.toBeNull();
+
+    engine.dockPanel("fx-analytics");
+
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(document.querySelector(".rtc-dock-float-fixed-width")).toBeNull();
+    engine.dispose();
+  });
+
+  it("a lock change the layout-change settle alone makes owes a forced layout (Ruling P1)", async () => {
+    // A lock can change with no structural mutation behind it to settle it
+    // (a pop-out's async bracket lets the group leave the grid before its
+    // mutation closes). Flipping the lock source and firing a plain layout
+    // change reaches only the onDidLayoutChange settle. A lock that YIELDS
+    // only loosens constraints, and dockview redistributes nothing on a
+    // constraint change — a grid a starved lock had already shrunk stays
+    // shrunk until a forced layout at the dock's own size — so the forced
+    // layout call itself is the witness.
+    let locked = false;
+    const opts = createRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return locked && (id === "fx-analytics" || id === "fx-positions")
+            ? 500
+            : undefined;
+        },
+      },
+    });
+    const api = lastDockviewApi();
+    const layout = vi.spyOn(api, "layout");
+
+    locked = true;
+    // A title change is a layout change dockview reports with no mutation.
+    api.getPanel("fx-rates")?.api.setTitle("RATES*");
+    await nextMacrotask();
+
+    expect(widthClampOf("fx-analytics")).toEqual([507, 507]);
+    expect(layout).toHaveBeenCalledWith(1440, 900, true);
+    engine.dispose();
+  });
+
+  it("restores a floating locked panel from a reload with its width handles still hidden (R6)", () => {
+    const first = createDockEngine(createLockedRailBase());
+    first.floatPanel("fx-analytics");
+    const blob = first.snapshotLayout();
+    first.dispose();
+
+    const engine = createDockEngine({ ...createLockedRailBase(), blob });
+    const box = lastDockviewApi()
+      .getPanel("fx-analytics")
+      ?.group.element.closest(".dv-resize-container");
+
+    expect(box).not.toBeNull();
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
+    engine.dispose();
+  });
+
+  // Ruling R5-amend. R5 lets a locked panel drop left/right of an unlocked
+  // group, on the premise that it starts its own column — false when the
+  // target's parent is a column: the drop nests row[locked, target] inside
+  // it, and once the target leaves the grid dockview flattens that row, so
+  // the locked group lands in the column beside a panel that must stretch.
+  it.each([
+    ["closed", "closePanel"],
+    ["floated", "floatPanel"],
+  ] as const)(
+    "a locked panel flattened into a column beside a free one (its neighbour %s) yields, and the dock stays full",
+    async (_how, removal) => {
+      const engine = createDockEngine({
+        ...createLockedRailBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const api = lastDockviewApi();
+
+      api.getPanel("fx-positions")?.api.moveTo({
+        group: api.getPanel("fx-blotter")?.group,
+        position: "left",
+      });
+      await nextMacrotask();
+      engine[removal]("fx-blotter");
+      await nextMacrotask();
+      api.layout(1440, 900, true);
+
+      expect(widthClampOf("fx-positions")[0]).toBeLessThan(367);
+      expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+      expect(
+        (api.getPanel("fx-rates")?.group.api.width ?? 0) +
+          (api.getPanel("fx-analytics")?.group.api.width ?? 0),
+      ).toBe(1440);
+      engine.dispose();
+    },
+  );
+
+  it("a free panel in a column a fully-locked row pins absorbs nothing: the locks yield and fill", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      seed: LOCKED_ROW_OVER_FREE,
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    api.layout(1440, 900, true);
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(
+      (api.getPanel("fx-analytics")?.group.api.width ?? 0) +
+        (api.getPanel("fx-positions")?.group.api.width ?? 0),
+    ).toBe(1440);
+    expect(api.getPanel("fx-rates")?.group.api.width).toBe(1440);
+    engine.dispose();
+  });
+
+  it("a column whose locks disagree is free, so it absorbs and a lone rail beside it stays locked", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      seed: DISAGREEING_COLUMN_BESIDE_RAIL,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return id === "eq-ticket" ? 290 : opts.panels.fixedWidth?.(id);
+        },
+      },
+    });
+
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(widthClampOf("eq-ticket")[0]).toBeLessThan(297);
+    engine.dispose();
+  });
+
+  it("a rail column flattened into a full-width column under a top-edge drop yields, and the dock stays full", async () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    // No target group: dockview docks the group on the whole layout's top
+    // edge — the drop R5 allows an unlocked panel.
+    api.getPanel("fx-rates")?.group.api.moveTo({ position: "top" });
+    await nextMacrotask();
+    engine.closePanel("fx-blotter");
+    await nextMacrotask();
+    api.layout(1440, 900, true);
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(widthClampOf("fx-positions")[0]).toBeLessThan(367);
+    expect(api.getPanel("fx-analytics")?.group.api.width).toBe(1440);
+    expect(api.getPanel("fx-rates")?.group.api.width).toBe(1440);
+    engine.dispose();
+  });
+
+  it("yields to the pre-pin width, not a mixed design pin's clamp, once that pin is gone", async () => {
+    // A width pin over a locked AND an unlocked panel is not superseded
+    // (Ruling R10 skips only all-locked pins), so it clamps the locked
+    // group at construction — before the lock's first settle sees it.
+    const opts = createLockedRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return id === "fx-analytics" ? 360 : undefined;
+        },
+      },
+    });
+
+    // Closing the unlocked member dissolves the pin; closing the rest
+    // leaves nothing to absorb, so the lock yields and analytics fills.
+    engine.closePanel("fx-positions");
+    await nextMacrotask();
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+
+    expect(lastDockviewApi().getPanel("fx-analytics")?.group.api.width).toBe(
+      1440,
+    );
+    engine.dispose();
+  });
+
+  // dockview lists groups in creation order, so each case makes the group
+  // that joins the float a FRESH one (a tab dragged out of a stack): the
+  // locked group comes first in one case and last in the other, and a
+  // per-group toggle on the shared box would pass exactly one of them.
+  it.each([
+    // order, floated, joiner, the joiner's stack host
+    ["locked first", "fx-analytics", "fx-blotter", "fx-rates"],
+    ["unlocked first", "fx-rates", "fx-positions", "fx-analytics"],
+  ] as const)(
+    "keeps a mixed float's width handles (%s) — judged per box, not per group",
+    async (_order, floated, joiner, host) => {
+      const engine = createDockEngine(createLockedRailBase());
+      const api = lastDockviewApi();
+
+      api.getPanel(joiner)?.api.moveTo({
+        group: api.getPanel(host)?.group,
+        position: "center",
+      });
+      await nextMacrotask();
+      engine.floatPanel(floated);
+      // A panel dropped beside a floating group splits the float's own
+      // gridview: two groups, one box (the drop R5 allows for a locked
+      // panel beside an unlocked group).
+      api.getPanel(joiner)?.api.moveTo({
+        group: api.getPanel(floated)?.group,
+        position: "right",
+      });
+      await nextMacrotask();
+
+      const box = api
+        .getPanel(floated)
+        ?.group.element.closest(".dv-resize-container");
+
+      expect(
+        api.getPanel(joiner)?.group.element.closest(".dv-resize-container"),
+      ).toBe(box);
+      expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(false);
+      engine.dispose();
+    },
+  );
+
+  describe("refuses drops that would mix widths (Ruling R5)", () => {
+    it.each([
+      // dragged, kind, position, onto, edge, refused
+      ["fx-analytics", "content", "center", "fx-rates", false, true],
+      ["fx-analytics", "content", "left", "fx-rates", false, false],
+      // A tab or header drop joins the group whatever side of a tab it lands.
+      ["fx-analytics", "tab", "left", "fx-rates", false, true],
+      ["fx-analytics", "header_space", "center", "fx-rates", false, true],
+      ["fx-rates", "content", "center", "fx-positions", false, true],
+      ["fx-positions", "content", "top", "fx-analytics", false, false],
+      ["fx-analytics", "edge", "top", undefined, false, true],
+      ["fx-analytics", "edge", "left", undefined, false, false],
+      // An `edge` cell inside a group docks against the whole layout.
+      ["fx-positions", "content", "top", "fx-analytics", true, true],
+    ] as const)(
+      "%s → %s %s of %s (edge cell %s): refused %s",
+      (dragged, kind, position, onto, edge, refused) => {
+        const engine = createDockEngine(createLockedRailBase());
+        const overlay = createOverlayEvent({
+          kind,
+          position,
+          edge,
+          panelId: dragged,
+          groupId: groupIdOf(dragged),
+          onto,
+        });
+
+        showOverlay(overlay.event);
+
+        expect(overlay.prevented()).toBe(refused);
+        engine.dispose();
+      },
+    );
+
+    it("reads a whole-group drag's lock from its group", () => {
+      const engine = createDockEngine(createLockedRailBase());
+      const overlay = createOverlayEvent({
+        kind: "content",
+        position: "center",
+        edge: false,
+        panelId: null,
+        groupId: groupIdOf("fx-analytics"),
+        onto: "fx-rates",
+      });
+
+      showOverlay(overlay.event);
+
+      expect(overlay.prevented()).toBe(true);
+      engine.dispose();
+    });
+
+    function showOverlay(event: DockviewWillShowOverlayLocationEvent): void {
+      (
+        capturedDockview.showOverlay as (
+          e: DockviewWillShowOverlayLocationEvent,
+        ) => void
+      )(event);
+    }
+
+    function groupIdOf(panelId: string): string {
+      const group = lastDockviewApi().getPanel(panelId)?.group;
+
+      if (group === undefined) {
+        throw new Error(`${panelId} is not in the dock`);
+      }
+
+      return group.id;
+    }
+
+    /** The event dockview raises as a drag enters a drop zone — only the
+     * fields the engine reads — and whether the engine vetoed it. */
+    function createOverlayEvent(spec: OverlaySpec): OverlayProbe {
+      let prevented = false;
+      const group =
+        spec.onto === undefined
+          ? undefined
+          : lastDockviewApi().getPanel(spec.onto)?.group;
+
+      const event = {
+        kind: spec.kind,
+        position: spec.position,
+        edge: spec.edge,
+        group,
+        getData: () => {
+          return {
+            viewId: lastDockviewApi().id,
+            groupId: spec.groupId,
+            panelId: spec.panelId,
+          };
+        },
+        preventDefault: () => {
+          prevented = true;
+        },
+      } as unknown as DockviewWillShowOverlayLocationEvent;
+
+      return {
+        event,
+        prevented: () => {
+          return prevented;
+        },
+      };
+    }
+  });
+});
+
 describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   // The blob serialises the layout AS RENDERED — a collapsed panel's group is
   // in it at the bar size. Reloading such a blob restores the tiny group (at
@@ -2143,12 +2660,12 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   });
 });
 
-describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
+describe("the gap-0 blob model (current rtcBlobVersion)", () => {
   it("stamps every save with the current blob version", () => {
     const seen = trackLayout();
     persistArranged({ ...createBase(), ...seen.options });
 
-    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
+    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(DOCK_BLOB_VERSION);
   });
 
   it("persists only integer model sizes through a full intent cycle", async () => {
@@ -2185,116 +2702,6 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
       expect(Number.isInteger(size)).toBe(true);
     }
   });
-
-  it("migrates a legacy gap-7 blob's grid and re-clamps its pin at the design width", () => {
-    // A gap-7-era save: every branch child at card + gap × (n − 1) / n
-    // (all branches here have 2 children → +3.5), grid dims from the old
-    // 10px-padded container — 7px smaller than today's per axis, so the
-    // migrated sums land exactly on the jsdom fallback extent (1200×800).
-    const legacy = {
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "branch",
-              size: 829.5,
-              data: [
-                legacyLeaf("fx-rates", 522.5),
-                legacyLeaf("fx-blotter", 270.5),
-              ],
-            },
-            legacyLeaf("fx-analytics", 363.5),
-          ],
-        },
-        width: 1193,
-        height: 793,
-        orientation: "HORIZONTAL",
-      },
-      panels: {
-        "fx-rates": legacyPanel("fx-rates"),
-        "fx-blotter": legacyPanel("fx-blotter"),
-        "fx-analytics": legacyPanel("fx-analytics"),
-      },
-      rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
-    };
-
-    const seen = trackLayout();
-    persistArranged({
-      ...createBase(),
-      ...seen.options,
-      blob: JSON.stringify(legacy),
-    });
-
-    // The pin's PUBLIC card px survives migration untouched and the clamp
-    // adds the gap — the rail reads its design width exactly, and the
-    // re-saved blob is stamped current.
-    expect(seen.sizeOf("fx-analytics")).toBe(360);
-    expect(seen.pins()).toEqual(legacy.rtcDesignPins);
-    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
-  });
-
-  it("migrates a legacy strip sidecar's card sizes so expand restores the card", async () => {
-    // The legacy grid holds fx-analytics AT its bar (old bar model:
-    // 32 + 3.5), and the sidecar remembers the pre-collapse size in the old
-    // rendered/card units (300). Migration lifts it to model units (+gap);
-    // the replayed collapse consumes it and expand must land the CARD.
-    const legacy = {
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "branch",
-              size: 1157.5,
-              data: [
-                legacyLeaf("fx-rates", 522.5),
-                legacyLeaf("fx-blotter", 270.5),
-              ],
-            },
-            legacyLeaf("fx-analytics", 35.5),
-          ],
-        },
-        width: 1193,
-        height: 793,
-        orientation: "HORIZONTAL",
-      },
-      panels: {
-        "fx-rates": legacyPanel("fx-rates"),
-        "fx-blotter": legacyPanel("fx-blotter"),
-        "fx-analytics": legacyPanel("fx-analytics"),
-      },
-      rtcStripGeometry: {
-        records: { "fx-analytics": { size: 300 } },
-        flips: [],
-      },
-    };
-
-    const reloaded = trackLayout();
-    const engine = createDockEngine({
-      ...createBase(),
-      ...reloaded.options,
-      blob: JSON.stringify(legacy),
-    });
-    engine.collapsePanel("fx-analytics");
-    await waitForSize(reloaded, "fx-analytics", STRIP);
-
-    engine.expandPanel("fx-analytics");
-    await waitForSizeWithin(reloaded, "fx-analytics", 300, 1);
-    engine.dispose();
-  });
-
-  function legacyLeaf(id: string, size: number): Record<string, unknown> {
-    return {
-      type: "leaf",
-      size,
-      data: { id: `g-${id}`, views: [id], activeView: id },
-    };
-  }
-
-  function legacyPanel(id: string): Record<string, string> {
-    return { id, contentComponent: "rtc-panel", title: id };
-  }
 });
 
 describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
@@ -3667,6 +4074,141 @@ describe("dynamic-panel reconciliation at construction", () => {
     second.dispose();
   });
 
+  // The anchor walk finds the nearest live SIBLING of the panel's leaf, but
+  // a re-add can only name a PANEL — and dockview inserts beside that
+  // panel's GROUP. When the sibling was a whole column (the FX rail), the
+  // panel came back nested inside it, beside the column's first group
+  // rather than beside the column. Measured in a browser on the FX tab: a
+  // docked Jarvis panel returned inside the analytics/positions rail on
+  // every reload, and once the rail was width-locked (fixedWidthPx) the
+  // lock held analytics at 360 in that nested row and squeezed the Jarvis
+  // panel to its 93px minimum.
+  it("returns a late-listed right-edge panel to the right edge, not into the column beside it", async () => {
+    const seen = trackLayout();
+    const firstOpts = createRailBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    expect(rootLeafViews(lastDockviewApi()).at(-1)).toEqual(["panel-dyn-1"]);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createRailBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    }); // no dynamicPanels — the docked set has not arrived yet
+
+    second.addDynamicPanel(DYN);
+
+    expect(rootLeafViews(lastDockviewApi()).at(-1)).toEqual(["panel-dyn-1"]);
+    second.dispose();
+  });
+
+  // Panels leaving together do not stand between one of them and the edge:
+  // both docked panels go back to the right edge, neither into the rail.
+  it("returns two late-listed right-edge panels to the right edge", async () => {
+    const seen = trackLayout();
+    const firstOpts = createRailBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN, DYN_2],
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createRailBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+    second.addDynamicPanel(DYN_2);
+
+    expect(rootLeafViews(lastDockviewApi()).slice(-2)).toEqual([
+      ["panel-dyn-1"],
+      ["panel-dyn-2"],
+    ]);
+    second.dispose();
+  });
+
+  // The edge rule is for the EDGE only: a panel with a STAYING panel between
+  // it and the edge keeps the anchor walk, and so its place in the middle.
+  it("returns a late-listed panel with a staying panel beyond it to the middle", async () => {
+    const seen = trackLayout();
+    const firstOpts = createBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN, DYN_2],
+    });
+    await waitForSize(seen, "panel-dyn-2", 360);
+    const docked = [null, ["fx-analytics"], ["panel-dyn-1"], ["panel-dyn-2"]];
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+      dynamicPanels: [DYN_2], // the second is known; the first arrives late
+    });
+
+    second.addDynamicPanel(DYN);
+
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    second.dispose();
+  });
+
+  it("keeps a late-listed panel's dragged width beside a width-locked rail", async () => {
+    const seen = trackLayout();
+    const firstOpts = {
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    };
+
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    // The sash between the rail and the docked panel: the root row's, which
+    // declares the docked panel's pin (the rail's is superseded, R10).
+    dragSash(firstOpts.container, ".dv-horizontal");
+    lastDockviewApi()
+      .getPanel("panel-dyn-1")
+      ?.group.api.setSize({ width: RESIZED + GROUP_GAP_PX });
+    await waitForSize(seen, "panel-dyn-1", RESIZED);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const reloaded = trackLayout();
+    const secondOpts = {
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    };
+
+    const second = createDockEngine({
+      ...secondOpts,
+      ...reloaded.options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+    touchContainer(secondOpts.container);
+    await waitForSize(reloaded, "panel-dyn-1", RESIZED);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    second.dispose();
+  });
+
   it("removes a blob's dynamic panel that layer 2 no longer lists (orphan rule)", async () => {
     const seen = trackLayout();
     const first = createDockEngine({
@@ -3820,13 +4362,18 @@ describe("dynamic-panel reconciliation at construction", () => {
   });
 
   const DYN = { id: "panel-dyn-1", initialPx: 360 } as const;
+  const DYN_2 = { id: "panel-dyn-2", initialPx: 360 } as const;
   /** A width no design pin or seed share would produce on its own, so a
    * panel found at it can only have come from the blob. */
   const RESIZED = 520;
 });
 
 const capturedDockview = vi.hoisted(() => {
-  return { api: null as unknown, options: null as unknown };
+  return {
+    api: null as unknown,
+    options: null as unknown,
+    showOverlay: null as unknown,
+  };
 });
 
 // Passthrough capture of the engine's dockview api: behaviour is untouched,
@@ -3949,7 +4496,7 @@ describe("stacked visual fixture (Phase 2)", () => {
       },
     },
     activeGroup: "group-1",
-    rtcBlobVersion: 2,
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     rtcDesignPins: [],
   };
 
@@ -4676,6 +5223,24 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     engine.dispose();
   });
 
+  // Ruling R6 holds for dockview's OWN float gesture too, which opens its
+  // box at a 300px default and never passes through floatPanel.
+  it("sizes a locked group's shift-drag float box to its lock plus the gap (R6, gesture)", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createLockedRailBase(), container });
+
+    shiftPointerDown(voidContainerOf("fx-analytics"));
+
+    const box = lastDockviewApi()
+      .getPanel("fx-analytics")
+      ?.group.element.closest<HTMLElement>(".dv-resize-container");
+
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(box?.style.width).toBe("367px");
+    expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
+    engine.dispose();
+  });
+
   // R4 — the gesture half of R3's refusal. Cancelled at the POINTERDOWN, in
   // the capture phase: dockview floats from that event directly (bailing
   // only when it is already defaultPrevented), so `onWillDragGroup` — which
@@ -5360,6 +5925,63 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
         expect(lastDockviewApi().getPanel("fx-analytics")?.group).toBe(
           lastDockviewApi().getPanel("fx-rates")?.group,
         );
+        restore();
+        engine.dispose();
+      });
+
+      // Ruling R5 covers the wrapper's own drag-to-dock: a locked float
+      // may not join (or stack in) an unlocked group, and a refused spot
+      // reads exactly as no target — no preview, no dock on release.
+      it("refuses to join a locked float into an unlocked group (R5)", async () => {
+        const container = sizedContainer(1440, 900);
+        const floats: string[][] = [];
+        const probe = probeHeads(container);
+        const engine = createDockEngine({
+          ...probe,
+          panels: {
+            ...probe.panels,
+            fixedWidth: (id: string): number | undefined => {
+              return id === "fx-analytics" ? 360 : undefined;
+            },
+          },
+          onFloatsChange: (panelIds: readonly string[]): void => {
+            floats.push([...panelIds]);
+          },
+        });
+        const restore = moveAnalyticsOverRates(container, engine);
+        const groups = engine.groupCount();
+
+        pointerAt("pointermove", 200, 150, true);
+
+        expect(container.querySelector(".rtc-dock-preview")).toBeNull();
+
+        pointerAt("pointerup", 200, 150, true);
+        await nextMacrotask();
+
+        expect(engine.groupCount()).toBe(groups);
+        expect(locationOf("fx-analytics")).toBe("floating");
+        expect(floats.at(-1)).toEqual(["fx-analytics"]);
+        restore();
+        engine.dispose();
+      });
+
+      it("still docks a locked float beside an unlocked group (R5)", () => {
+        const container = sizedContainer(1440, 900);
+        const probe = probeHeads(container);
+        const engine = createDockEngine({
+          ...probe,
+          panels: {
+            ...probe.panels,
+            fixedWidth: (id: string): number | undefined => {
+              return id === "fx-analytics" ? 360 : undefined;
+            },
+          },
+        });
+        const restore = moveAnalyticsOverRates(container, engine);
+
+        pointerAt("pointerup", 20, 150, true);
+
+        expect(locationOf("fx-analytics")).toBe("grid");
         restore();
         engine.dispose();
       });
@@ -6400,6 +7022,30 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
     api.dispose();
   });
 
+  it.each([
+    ["an unstamped (gap-7 era) blob", undefined],
+    ["a version-2 blob", 2],
+  ])("discards %s and restores the seed", (_label, version) => {
+    const first = createDockEngine(createRailBase());
+    const parsed = JSON.parse(first.snapshotLayout()) as Record<
+      string,
+      unknown
+    >;
+    first.dispose();
+    const stale = JSON.stringify({ ...parsed, rtcBlobVersion: version });
+
+    const api = createFreshDockviewApi(1200, 800);
+    const restored = loadBlobOrSeed(
+      api,
+      { ...createRailBase(), blob: stale },
+      1200,
+      800,
+    );
+
+    expect(restored.restoreTier).toBe("seed");
+    api.dispose();
+  });
+
   function createFreshDockviewApi(width: number, height: number): DockviewApi {
     const api = createDockview(sizedContainer(width, height), {
       createComponent: () => {
@@ -6697,6 +7343,7 @@ function createTwoTabGroupLayout(): unknown {
   }
 
   return {
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",
@@ -6786,6 +7433,23 @@ function createPinnedRailBase(): DockEngineOptions {
   const opts = createRailBase();
 
   return { ...opts, seed: { ...RAIL_LIKE, initialPx: [undefined, 360] } };
+}
+
+/** RAIL_LIKE with the analytics/positions rail width-LOCKED at 360
+ * (PanelSpec.fixedWidthPx) — its seed pin is superseded (Ruling R10). */
+function createLockedRailBase(): DockEngineOptions {
+  const opts = createRailBase();
+
+  return {
+    ...opts,
+    seed: { ...RAIL_LIKE, initialPx: [undefined, 360] },
+    panels: {
+      ...opts.panels,
+      fixedWidth: (id: string): number | undefined => {
+        return id === "fx-analytics" || id === "fx-positions" ? 360 : undefined;
+      },
+    },
+  };
 }
 
 function railScope(panelId: string): DockMaximizeScope {
@@ -7135,6 +7799,21 @@ interface FloatedHead {
   readonly pressesOnVoid: () => number;
 }
 
+interface OverlaySpec {
+  readonly kind: DockviewGroupDropLocation;
+  readonly position: Position;
+  readonly edge: boolean;
+  readonly panelId: string | null;
+  readonly groupId: string;
+  readonly onto: string | undefined;
+}
+
+/** A fake overlay event and whether the engine vetoed it. */
+interface OverlayProbe {
+  readonly event: DockviewWillShowOverlayLocationEvent;
+  readonly prevented: () => boolean;
+}
+
 interface PopoutUrlCarrier {
   readonly popoutUrl?: string;
 }
@@ -7151,6 +7830,19 @@ vi.mock("dockview", async (importOriginal) => {
       const api = actual.createDockview(...args);
       capturedDockview.api = api;
       capturedDockview.options = args[1];
+      // Records the engine's overlay listener (still subscribing it), so a
+      // test can hand it the event a drag over a drop zone would raise —
+      // jsdom has no DragEvent to raise it for real.
+      const willShowOverlay = api.onWillShowOverlay;
+      Object.defineProperty(api, "onWillShowOverlay", {
+        value: (
+          listener: Parameters<typeof willShowOverlay>[0],
+        ): ReturnType<typeof willShowOverlay> => {
+          capturedDockview.showOverlay = listener;
+
+          return willShowOverlay(listener);
+        },
+      });
 
       return api;
     },
@@ -7236,9 +7928,66 @@ const COLUMN_OF_THREE = {
   ],
 } as const;
 
+/** A fully-locked ROW over a free panel, in one column: the row fixes the
+ * column's width, so the free panel beneath it can absorb nothing. */
+const LOCKED_ROW_OVER_FREE = {
+  kind: "split",
+  dir: "column",
+  sizes: [0.5, 0.5],
+  children: [
+    {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-rates" },
+  ],
+} as const;
+
+/** A column whose two locked panels DISAGREE on the width, beside a lone
+ * locked panel: the column's locks cannot hold, so it is free — and
+ * absorbs. */
+const DISAGREEING_COLUMN_BESIDE_RAIL = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "eq-ticket" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-positions" },
+  ],
+} as const;
+
 const attachedContainers: HTMLElement[] = [];
 
 const STRIP = 32;
+
+/** The views of each LEAF that is a direct child of the grid's root, in
+ * order — a branch child reads as `null`. What says a panel sits at the
+ * root row's edge rather than nested inside a column there. */
+function rootLeafViews(
+  api: DockviewApi,
+): readonly (readonly string[] | null)[] {
+  // biome-ignore lint/suspicious/noExplicitAny: walking dockview's own JSON shape
+  const children = (api.toJSON().grid.root.data ?? []) as any[];
+
+  return children.map((child) => {
+    return child.type === "leaf"
+      ? ((child.data?.views ?? []) as string[])
+      : null;
+  });
+}
 
 /** A panel's position in the grid's LEAF ORDER, reading dockview's own
  * serialized tree — the jsdom-safe stand-in for "which column is it in",

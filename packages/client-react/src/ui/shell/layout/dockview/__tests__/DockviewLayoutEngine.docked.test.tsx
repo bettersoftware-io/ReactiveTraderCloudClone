@@ -4,6 +4,7 @@ import {
   type DockLayoutStore,
   InMemoryDockLayoutStore,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineDockedPage } from "#tests/ui/pages/DockviewLayoutEngineDockedPage";
@@ -405,6 +406,30 @@ describe("DockviewLayoutEngine docked prop", () => {
     // fx's 4 seed leaves — present immediately, from the ONE construction.
     expect(page.groupsAttr()).toBe("4");
   });
+
+  // Task 6: the bridge's `fixedWidth` hook threads `PANEL_SPECS.fixedWidthPx`
+  // into `createDockEngine`, at BOTH construction sites (the mount effect and
+  // the workspace-reset rebuild effect — see the component's REBUILD
+  // CONTRACT doc). See `widthLockDisabled`'s doc (on the page object) for why
+  // dragging the rail's width sash, then checking it stays `.dv-disabled`, is
+  // the wiring witness this test uses — checked once on the freshly mounted
+  // engine (the first `createDockEngine` call) and again after a
+  // `layoutResets` bump rebuilds it in place (the SECOND,
+  // independently-written call), so a hook missing from either site fails
+  // its own assertion.
+  it("locks the FX rail at 360 + gap from PANEL_SPECS.fixedWidthPx", () => {
+    const store = new InMemoryDockLayoutStore();
+
+    page.mount({ registry, store });
+
+    page.dragWidthLockSash();
+    expect(page.widthLockDisabled()).toBe(true);
+
+    page.rerender({ registry, store, layoutResets: 1 });
+
+    page.dragWidthLockSash();
+    expect(page.widthLockDisabled()).toBe(true);
+  });
 });
 
 interface DockviewPanelMeta {
@@ -425,6 +450,7 @@ function panelMeta(id: string): DockviewPanelMeta {
  * discriminator. */
 function createStackedRatesAndBlotterBlob(): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",
@@ -642,6 +668,6 @@ function createStackedFxBlob(): string {
       },
     },
     activeGroup: "group-1",
-    rtcBlobVersion: 2,
+    rtcBlobVersion: DOCK_BLOB_VERSION,
   });
 }

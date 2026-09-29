@@ -3,6 +3,7 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewTheme,
+  type DockviewWillShowOverlayLocationEvent,
   directionToPosition,
   type FloatingGroupOptions,
   type SerializedDockview,
@@ -10,12 +11,13 @@ import {
 
 import {
   DOCK_BLOB_VERSION,
-  migrateDockBlob,
+  isCurrentDockBlob,
   withoutDynamicNodes,
   withoutFloatingGroups,
   withoutLockMarks,
   withoutPopoutGroups,
 } from "#/dockBlob";
+import { type DockDropTarget, refusesDockDrop } from "#/dockDropRules";
 import { gridGroups, groupsAnywhere, isInGrid } from "#/dockGroups";
 import {
   convertSeed,
@@ -88,6 +90,14 @@ export interface DockPanelHooks {
   /** How far `panelId`'s maximize reaches — see {@link DockMaximizeScope}.
    * Absent → `"root"`. */
   maximizeScope?(panelId: string): DockMaximizeScope;
+  /** The panel's locked WIDTH in visible card px (gutter excluded), or
+   * undefined when it is freely resizable — the in-house
+   * `PanelSpec.fixedWidthPx`. A group holding a locked panel is held at
+   * min = max on the width axis for as long as it lives in the grid or
+   * floats (see settleWidthLocks), and a drag may not drop it where it
+   * would mix widths or lock a stretching column or row (see
+   * refusesDockDrop). Absent → nothing is locked. */
+  fixedWidth?(panelId: string): number | undefined;
 }
 
 /** The in-house `PanelSpec.maximizeScope`: `"root"` (the default) strips
@@ -339,6 +349,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   const width = opts.container.clientWidth || 1200;
   const height = opts.container.clientHeight || 800;
+  // The dock's real size as last settled — what a forced layout lays out at
+  // (see settlePinAbsorption). Declared here, not beside the resize observer
+  // that updates it, because construction settles locks and pins before
+  // that observer exists.
+  let trackedWidth = width;
+  let trackedHeight = height;
 
   // dockview-core needs an explicit, real-dimensioned layout() call before
   // fromJSON restores a tree: absent one, its internal grid is still at its
@@ -373,8 +389,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * below, changes nothing about the bytes this produces. */
   function buildLayoutBlob(): string {
     // With no theme gap, dockview's toJSON IS the model — no compensation.
-    // `rtcBlobVersion` marks the blob as gap-0 era; a blob without it is
-    // migrated on load (migrateDockBlob).
+    // `rtcBlobVersion` stamps the blob; a load discards any other version
+    // (isCurrentDockBlob).
     // `rtcDesignPins` rides along inside the blob (dockview's fromJSON
     // ignores unknown top-level keys) so a still-pinned rail stays pinned
     // across reloads, and a released one stays released — the in-house
@@ -604,6 +620,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // concern; here only the release side effect matters.
     intactDesignPins();
 
+    // Locks too: a user drag or float that formed a new locked group reaches
+    // no intent, so this is where its clamp lands. Both clients' packages/
+    // client-{react,solid}/src/ui/shell/layout/dockview/__tests__/
+    // DockviewLayoutEngine.docked.test.tsx, case "locks the FX rail at 360 +
+    // gap from PANEL_SPECS.fixedWidthPx", rely on this running on every fire
+    // of this handler (microtask-buffered): after a sash drag (which
+    // releases a design pin) the lock must still be clamped, seen as
+    // dockview's `.dv-disabled` sash class. Debouncing or skipping it
+    // breaks them. A lock change owes a forced layout here as on every
+    // other path (Ruling P1): this handler can run BEFORE the mutation's
+    // settle (a pop-out's async bracket lets the group leave the grid
+    // first), and that later settle would then see nothing changed.
+    if (settleWidthLocks()) {
+      api.layout(trackedWidth, trackedHeight, true);
+    }
+
     if (timer !== null) {
       clearTimeout(timer);
     }
@@ -613,6 +645,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       serializeLayout();
     }, debounceMs);
   });
+
+  const overlaySub = api.onWillShowOverlay(refuseLockBreakingDrop);
+  // A destroyed group's lock baseline goes with it. dockview fires this only
+  // for a group it disposes — a group moved to a float or a pop-out is
+  // removed from the grid with `skipDispose` and keeps its entry.
+  const removeGroupSub = api.onDidRemoveGroup(forgetWidthLockBaseline);
 
   /** Lands a save still waiting out the debounce, now. A reload tears the
    * page down without unmounting anything — dispose's flush never runs — so
@@ -909,8 +947,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         const axis = axisOf(member, along);
 
         // A member already at its size is left alone: re-setting it makes
-        // dockview redistribute for nothing (and a migrated legacy world
-        // can sit a fraction of a pixel off an integer model).
+        // dockview redistribute for nothing (and a restored world can sit
+        // a fraction of a pixel off an integer model).
         if (owned !== undefined && Math.abs(axis.size() - owned) > 0.5) {
           axis.set(owned);
         }
@@ -1217,6 +1255,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
   function applyDesignPins(pins: readonly DockDesignPin[]): void {
     for (const pin of pins) {
+      // Ruling R10: a width pin over panels that are all width-LOCKED is
+      // superseded by the lock — skipped whole, so it is never clamped,
+      // persisted, or released by a sash drag.
+      if (
+        pin.axis === "width" &&
+        pin.panelIds.every((panelId) => {
+          return lockOfPanel(panelId) !== undefined;
+        })
+      ) {
+        continue;
+      }
+
       if (!panelsExactlyFill(pin.panelIds, groupOf)) {
         continue;
       }
@@ -1557,7 +1607,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * starvation this function exists to detect, now invisible because a panel
    * in another window looked like it was helping. `publishPoppedPanels` reads
    * the same `location.type`; the `?? "grid"` keeps a group whose location
-   * dockview does not report treated as present, which is the safe default. */
+   * dockview does not report treated as present, which is the safe default.
+   *
+   * A width lock takes a group out only where it actually holds (Ruling
+   * R5-amend, see {@link agreedLockOf}): a locked group yielding to a mixed
+   * column is free again, and an unlocked group in a column some held lock
+   * pins to its width absorbs nothing, however free it looks. */
   function someGroupAbsorbs(held: readonly DesignPinRecord[]): boolean {
     const pinned = new Set<string>();
 
@@ -1568,9 +1623,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     return gridGroups(api).some((group) => {
-      return group.panels.some((panel) => {
-        return !pinned.has(panel.id) && !records.has(panel.id);
-      });
+      return (
+        agreedLockOf(group) === undefined &&
+        !sitsInLockPinnedColumn(group) &&
+        group.panels.some((panel) => {
+          return !pinned.has(panel.id) && !records.has(panel.id);
+        })
+      );
     });
   }
 
@@ -1593,33 +1652,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * that finds an absorber. Releasing outright is what a sash drag does, and
    * that stays the only way to lose a pin for good. */
   function settlePinAbsorption(): void {
-    if (designPins.length === 0 && unabsorbedPins.length === 0) {
-      return;
-    }
+    // Locks settle first: they share the absorber test, and a lock that
+    // changed owes the same forced layout a pin change does (Ruling P1) —
+    // hence ONE exit below, gated on either, so no path can skip it.
+    const locksChanged = settleWidthLocks();
+    const pinsChanged = settlePinClamps();
 
-    const absorbs = someGroupAbsorbs([...designPins, ...unabsorbedPins]);
-
-    if (absorbs && unabsorbedPins.length > 0) {
-      for (const record of unabsorbedPins) {
-        clampPinMembers(record);
-      }
-
-      designPins = [...designPins, ...unabsorbedPins];
-      unabsorbedPins = [];
-    } else if (!absorbs && designPins.length > 0) {
-      let patchedStrips = false;
-
-      for (const record of designPins) {
-        patchedStrips = releasePinMembers(record) || patchedStrips;
-      }
-
-      unabsorbedPins = [...unabsorbedPins, ...designPins];
-      designPins = [];
-
-      if (patchedStrips) {
-        settleStrips();
-      }
-    } else {
+    if (!locksChanged && !pinsChanged) {
       return;
     }
 
@@ -1632,6 +1671,47 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // the current one, which `DockviewComponent.layout` de-dupes away. Hence
     // forceResize: the distribution, not the dimensions, is what changed.
     api.layout(trackedWidth, trackedHeight, true);
+  }
+
+  /** settlePinAbsorption's pin half: suspends every live pin when nothing
+   * absorbs, re-clamps every suspended one when something does. True when
+   * any pin moved between the two lists — the caller owes a forced layout. */
+  function settlePinClamps(): boolean {
+    if (designPins.length === 0 && unabsorbedPins.length === 0) {
+      return false;
+    }
+
+    const absorbs = someGroupAbsorbs([...designPins, ...unabsorbedPins]);
+
+    if (absorbs && unabsorbedPins.length > 0) {
+      for (const record of unabsorbedPins) {
+        clampPinMembers(record);
+      }
+
+      designPins = [...designPins, ...unabsorbedPins];
+      unabsorbedPins = [];
+
+      return true;
+    }
+
+    if (!absorbs && designPins.length > 0) {
+      let patchedStrips = false;
+
+      for (const record of designPins) {
+        patchedStrips = releasePinMembers(record) || patchedStrips;
+      }
+
+      unabsorbedPins = [...unabsorbedPins, ...designPins];
+      designPins = [];
+
+      if (patchedStrips) {
+        settleStrips();
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   /** The pins worth persisting: drops (and releases) any whose groups no
@@ -1675,6 +1755,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     );
   }
 
+  // Client bridge tests depend on this exact trigger (any pointerdown on a
+  // sash + any later pointermove, no minimum drag distance): packages/client-{react,solid}/src/ui/shell/layout/dockview/__tests__/DockviewLayoutEngine.docked.test.tsx,
+  // case "locks the FX rail at 360 + gap from PANEL_SPECS.fixedWidthPx". They
+  // drag a sash and rely on it releasing a design pin but never a width lock,
+  // read off dockview's `.dv-disabled` sash class. Change the trigger and
+  // those tests fail with no hint the cause is here.
   function armSashUnpin(event: Event): void {
     const target = event.target;
 
@@ -1704,6 +1790,306 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     pendingSashSplit = null;
     window.removeEventListener("pointermove", unpinOnDragMove, true);
     window.removeEventListener("pointerup", disarmSashUnpin, true);
+  }
+
+  // ——— Width locks (PanelSpec.fixedWidthPx) ———
+  // A lock is a PANEL property, not a tree slot's: whichever group holds a
+  // locked panel is clamped min = max on the width axis, and dockview's own
+  // updateSashEnablement then disables any sash with no movable side.
+  // Unlike a design pin it is never released by a drag; it yields only to a
+  // strip (the strip machinery owns the group's constraints while it is a
+  // bar, and its expand restores the captured lock) and, like a pin, to a
+  // dock with nothing left to absorb the spare width (settlePinAbsorption).
+  // The groups' pre-lock width constraints, by group element — what a
+  // yield puts back.
+  const widthLockBaselines = new Map<Element, readonly [number, number]>();
+  let widthLocksYielded = false;
+
+  function lockOfPanel(panelId: string): number | undefined {
+    return opts.panels.fixedWidth?.(panelId);
+  }
+
+  function lockOfGroup(
+    group: Pick<SizableGroup, "panels">,
+  ): number | undefined {
+    for (const panel of group.panels) {
+      const px = lockOfPanel(panel.id);
+
+      if (px !== undefined) {
+        return px;
+      }
+    }
+
+    return undefined;
+  }
+
+  /** The lock grid `group` is actually held at — Ruling R5-amend: its own
+   * lock only when EVERY grid group in its vertical run agrees on it, else
+   * undefined. The run is the column branch up to the nearest row ancestor
+   * (just the group itself when its parent is a row): everything in it
+   * shares one width, so one free panel there would have to stretch with
+   * the lock. No drop rule can guarantee this — a drop R5 allows (a locked
+   * panel beside a free one inside a column, or a free one on the layout's
+   * top edge) is later FLATTENED into such a column when a neighbour closes
+   * or floats — so it is judged here, at settle time. The in-house engine's
+   * `lockedWidthPx` gives the same answer per row child. */
+  function agreedLockOf(group: SizableGroup): number | undefined {
+    const px = lockOfGroup(group);
+
+    if (px === undefined) {
+      return undefined;
+    }
+
+    const run = verticalRunOf(group.element);
+
+    return gridGroups(api).every((member) => {
+      return !run.contains(member.element) || lockOfGroup(member) === px;
+    })
+      ? px
+      : undefined;
+  }
+
+  /** True when `group` sits in a column (at any depth) that a held lock
+   * pins to one width — see {@link isWidthFixed}. Such a group cannot take
+   * the dock's spare width, so it is no absorber. */
+  function sitsInLockPinnedColumn(group: SizableGroup): boolean {
+    let split = group.element.closest(SPLIT_SELECTOR);
+
+    while (split !== null) {
+      if (
+        split.classList.contains("dv-vertical") &&
+        childViewsOf(split).some(isWidthFixed)
+      ) {
+        return true;
+      }
+
+      split = split.parentElement?.closest(SPLIT_SELECTOR) ?? null;
+    }
+
+    return false;
+  }
+
+  /** Whether grid child `view`'s width is fixed by held locks: a leaf when
+   * its lock holds (and it is not a strip, whose constraints the strip
+   * machinery owns); a row when every child is fixed; a column when any
+   * child is, since a column's children share its width. */
+  function isWidthFixed(view: Element): boolean {
+    const leaf = gridGroups(api).find((group) => {
+      return group.element.closest(VIEW_SELECTOR) === view;
+    });
+
+    if (leaf !== undefined) {
+      return agreedLockOf(leaf) !== undefined && !holdsStrippedPanel(leaf);
+    }
+
+    const split = view.querySelector(SPLIT_SELECTOR);
+
+    if (split === null) {
+      return false;
+    }
+
+    const children = childViewsOf(split);
+
+    return split.classList.contains("dv-horizontal")
+      ? children.length > 0 && children.every(isWidthFixed)
+      : children.some(isWidthFixed);
+  }
+
+  function forgetWidthLockBaseline(group: SizableGroup): void {
+    widthLockBaselines.delete(group.element);
+  }
+
+  /** Refuses (hides the overlay of, and so cancels) any drop Ruling R5
+   * forbids. A whole-group drag carries no panelId — its lock is its
+   * group's. A tab or header drop joins the group whichever side of a tab
+   * it lands on, so it is judged as a centre drop. Two signals mean the
+   * drop docks against the whole layout: the root drop target's `edge`
+   * kind, and an `edge` cell a position resolver marks inside a group's
+   * content (dockview routes that drop to `dockToLayoutEdge` too). */
+  function refuseLockBreakingDrop(
+    event: DockviewWillShowOverlayLocationEvent,
+  ): void {
+    const position =
+      event.kind === "tab" || event.kind === "header_space"
+        ? "center"
+        : event.position;
+
+    const target: DockDropTarget =
+      event.kind === "edge" || event.edge || event.group === undefined
+        ? { kind: "layout-edge", position }
+        : { kind: "group", position, lock: lockOfGroup(event.group) };
+
+    if (refusesDockDrop(draggedLockOf(event), target)) {
+      event.preventDefault();
+    }
+  }
+
+  /** The lock of what an overlay event's drag carries: its panel's, or —
+   * for a whole-group drag, which names no panel — its group's. */
+  function draggedLockOf(
+    event: DockviewWillShowOverlayLocationEvent,
+  ): number | undefined {
+    const data = event.getData();
+
+    if (data === undefined) {
+      return undefined;
+    }
+
+    if (data.panelId !== null) {
+      return lockOfPanel(data.panelId);
+    }
+
+    const group = api.getGroup(data.groupId);
+
+    return group === undefined ? undefined : lockOfGroup(group);
+  }
+
+  /** Clamps every locked grid or floating group at its lock, or — when no
+   * grid group is left to absorb the spare width — puts every locked group
+   * back to its baseline so the locked panels fill. A grid group whose
+   * vertical run disagrees on the lock (Ruling R5-amend, see
+   * {@link agreedLockOf}) goes back to its baseline too. Popped-out groups
+   * are skipped (an OS window cannot be pinned — Ruling R7), and so are
+   * strips. True when any constraint changed, so the caller owes a forced
+   * layout. */
+  function settleWidthLocks(): boolean {
+    const yielding = !someGroupAbsorbs([...designPins, ...unabsorbedPins]);
+    let changed = yielding !== widthLocksYielded;
+    widthLocksYielded = yielding;
+
+    for (const group of groupsAnywhere(api)) {
+      const px = lockOfGroup(group);
+
+      if (
+        px === undefined ||
+        group.api.location?.type === "popout" ||
+        holdsStrippedPanel(group)
+      ) {
+        continue;
+      }
+
+      const axis = axisOf(group, "vertical");
+      const model = px + GROUP_GAP_PX;
+
+      if (!widthLockBaselines.has(group.element)) {
+        widthLockBaselines.set(
+          group.element,
+          prePinWidthOf(group) ?? [axis.minimum(), axis.maximum()],
+        );
+      }
+
+      if (isInGrid(group) && (yielding || agreedLockOf(group) === undefined)) {
+        const [minimum, maximum] = widthLockBaselines.get(group.element) ?? [
+          axis.minimum(),
+          axis.maximum(),
+        ];
+
+        if (axis.minimum() !== minimum || axis.maximum() !== maximum) {
+          axis.constrain(minimum, maximum);
+          axis.set(axis.size());
+          changed = true;
+        }
+
+        continue;
+      }
+
+      if (axis.minimum() !== model || axis.maximum() !== model) {
+        clampTo(axis, model);
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
+  /** The width constraints a design pin recorded for `group` before it
+   * clamped it, when a width pin (live, starved or float-suspended) holds
+   * one of its panels — else undefined. A lock's baseline is taken from
+   * here first: a pin mixing locked and unlocked panels is applied (Ruling
+   * R10 skips only all-locked pins) before the lock first settles, so the
+   * group's CURRENT constraints are the pin's clamp, and a yield that put
+   * those back would hold the locked panel at the pin's width instead of
+   * letting it fill. */
+  function prePinWidthOf(
+    group: SizableGroup,
+  ): readonly [number, number] | undefined {
+    const records = [
+      ...designPins,
+      ...unabsorbedPins,
+      ...[...floatSuspendedPins.values()].flat(),
+    ];
+
+    for (const record of records) {
+      if (record.pin.axis !== "width") {
+        continue;
+      }
+
+      const member = record.members.find((candidate) => {
+        return group.panels.some((panel) => {
+          return panel.id === candidate.panelId;
+        });
+      });
+
+      if (member !== undefined) {
+        return [member.previousMinimum, member.previousMaximum];
+      }
+    }
+
+    return undefined;
+  }
+
+  /** Ruling R6, per float BOX: a box whose every group is locked (at one
+   * width) is sized to that lock and has its width handles hidden; height
+   * handles stay. Judged per box, not per group — a float is a nested
+   * gridview that can hold several groups (a locked panel dropped beside an
+   * unlocked one, R5), and a per-group toggle on the shared box let
+   * iteration order decide. Sized here, not only in floatPanel, because
+   * dockview's own shift-drag gesture floats a group into a 300px default
+   * box. A docked-home group's box is disposed with the float, so the class
+   * goes with it. */
+  function fitLockedFloatBoxes(): void {
+    const boxes = new Map<HTMLElement, SizableGroup[]>();
+
+    for (const group of groupsAnywhere(api)) {
+      const box =
+        group.api.location?.type === "floating"
+          ? group.element.closest<HTMLElement>(".dv-resize-container")
+          : null;
+
+      if (box !== null) {
+        boxes.set(box, [...(boxes.get(box) ?? []), group]);
+      }
+    }
+
+    for (const [box, members] of boxes) {
+      const lock = lockOfGroup(members[0] ?? { panels: [] });
+      const locked =
+        lock !== undefined &&
+        members.every((member) => {
+          return lockOfGroup(member) === lock;
+        });
+
+      box.classList.toggle("rtc-dock-float-fixed-width", locked);
+
+      if (!locked) {
+        continue;
+      }
+
+      const width = lockedFloatWidth(
+        lock + GROUP_GAP_PX,
+        opts.container.getBoundingClientRect().width,
+      );
+
+      if (box.style.width !== `${width}px`) {
+        // A floating group's size change is what dockview turns into its
+        // box's bounds (FloatingGroupService: group.onDidChange →
+        // overlay.setBounds); only the box's anchor group is listened to,
+        // so every member is told.
+        for (const member of members) {
+          member.api.setSize({ width });
+        }
+      }
+    }
   }
 
   /** Opens `panel` as a brand-new group at the grid's right edge — never
@@ -1739,10 +2125,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       position:
         parked === null || parked.where === "float"
           ? { direction: "right" }
-          : {
-              referencePanel: parked.anchorPanelId,
-              direction: parked.direction,
-            },
+          : parked.anchorPanelId === null
+            ? { direction: parked.direction }
+            : {
+                referencePanel: parked.anchorPanelId,
+                direction: parked.direction,
+              },
       ...sizeForInsert(panel, parked),
     });
 
@@ -1835,8 +2223,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return null;
     }
 
-    // Only a GRID placement names another panel; a float box stands alone.
+    // Only a GRID placement can name another panel; a float box and a
+    // layout-edge slot stand alone.
     return parked.where === "float" ||
+      parked.anchorPanelId === null ||
       api.getPanel(parked.anchorPanelId) !== undefined
       ? parked
       : null;
@@ -1888,11 +2278,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       };
     }
 
-    const anchor = gridAnchorFor(serialized, panelId, (candidateId) => {
+    function isStaying(candidateId: string): boolean {
       return (
         !leaving.has(candidateId) && api.getPanel(candidateId) !== undefined
       );
-    });
+    }
+
+    // A leaf on the root's own edge goes back to that edge, anchored to
+    // nothing. The anchor walk below cannot say "beside that column": it
+    // names a PANEL, and dockview inserts beside that panel's GROUP — so a
+    // right-edge panel next to the FX rail came back nested inside the rail
+    // column, where a width lock then squeezed it to its minimum.
+    const edge = rootEdgeOf(serialized, panelId, isStaying);
+    const anchor =
+      edge === null
+        ? gridAnchorFor(serialized, panelId, isStaying)
+        : { anchorPanelId: null, direction: edge };
 
     return anchor === null
       ? null
@@ -2398,6 +2799,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   applyDesignPins(restored.pins);
+  settlePinAbsorption();
+  // A float the blob restored is R6's too, and settleFloatTransitions —
+  // the only other caller — subscribes to mutations only after
+  // loadBlobOrSeed ran, so without this a reloaded locked float keeps its
+  // clamp but gets its width handles back.
+  fitLockedFloatBoxes();
   reconcileDynamicPanels();
   applyTitles(api, opts.panels); // reconciled-in panels get titles too
 
@@ -2612,7 +3019,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** Where a release at (`x`, `y`) would dock the moving float: the grid
    * group under the pointer (looking THROUGH the float itself, which is
    * under the pointer too) and the side of it the pointer is nearest, or its
-   * centre (join as a tab). Null over no grid group. */
+   * centre (join as a tab). Null over no grid group, and where Ruling R5
+   * refuses the drop — a spot that would mix widths is no target at all. */
   function floatDockTargetAt(x: number, y: number): FloatDockTarget | null {
     const moving = floatBeingMoved;
     const hits = opts.container.ownerDocument.elementsFromPoint?.(x, y) ?? [];
@@ -2628,8 +3036,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
 
       if (group !== undefined && group !== moving && isInGrid(group)) {
         const rect = group.element.getBoundingClientRect();
+        const position = dockPositionIn(rect, x, y);
+        const draggedLock =
+          moving === undefined ? undefined : lockOfGroup(moving);
 
-        return { group, position: dockPositionIn(rect, x, y), rect };
+        const refused = refusesDockDrop(draggedLock, {
+          kind: "group",
+          position,
+          lock: lockOfGroup(group),
+        });
+
+        return refused ? null : { group, position, rect };
       }
     }
 
@@ -3056,8 +3473,17 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
     }
 
+    // The lock settles through settlePinAbsorption, not a bare
+    // settleWidthLocks: a lock change owes a forced layout (Ruling P1), and
+    // a bare call would record the change and leave the layout unforced —
+    // the next settlePinAbsorption then sees nothing changed and skips it
+    // too (measured: a starved rail stayed at 367 in a 1440 dock). A no-op
+    // when the gate above already settled.
+    settlePinAbsorption();
+    fitLockedFloatBoxes();
+
     // Outside the gate: a panel popped out OF a float returns to the grid
-    // without the floating set changing at all.
+    // without the floating set changing at all. Last, as the doc says.
     restoreFloatHomeSizes();
   }
 
@@ -3098,9 +3524,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // api.layout first makes callback ORDER irrelevant — if dockview already
   // laid out, it is a no-op (dockview skips equal dimensions); if not,
   // dockview's own later call is.
-  let trackedWidth = width;
-  let trackedHeight = height;
-
   function reapplyExactLayoutOnResize(): void {
     const nextWidth = opts.container.clientWidth;
     const nextHeight = opts.container.clientHeight;
@@ -3593,6 +4016,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return false;
       }
 
+      // Ruling R6: a locked panel floats at exactly its locked width.
+      const lock = lockOfGroup(panel.group);
+
       // R5 (pin suspension) and Ruling 10 (absorption) run inside this call,
       // from settleFloatTransitions when dockview closes the float mutation —
       // the same path the shift-drag gesture takes, so the two cannot drift.
@@ -3604,6 +4030,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           groupsAnywhere(api).filter((group) => {
             return group.api.location.type === "floating";
           }).length,
+          lock === undefined ? undefined : lock + GROUP_GAP_PX,
         ),
       );
 
@@ -3680,6 +4107,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     dispose: () => {
       ownerWindow?.removeEventListener("pagehide", flushPendingSave);
       changeSub.dispose();
+      overlaySub.dispose();
+      removeGroupSub.dispose();
       popoutAddSub.dispose();
       popoutRemoveSub.dispose();
       openerRootObserver.disconnect();
@@ -3755,19 +4184,27 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
  * Clamped so it lands fully inside `container` — "a float cannot be dragged
  * out of reach" (Phase 6 design §3.3) applies to where it OPENS, not only to
  * where a drag can carry it afterwards (that ongoing clamp is the
- * component-level `floatingGroupBounds` option). */
+ * component-level `floatingGroupBounds` option).
+ *
+ * A width-locked group (`lockedModelWidth`, its lock plus the gap) opens at
+ * exactly that width, capped only by the dock — no floor, no share cap
+ * (Ruling R6): its group is clamped min = max, so any other width would
+ * leave a void inside the box. */
 function floatingBoundsFor(
   group: SizableGroup,
   container: HTMLElement,
   openFloats: number,
+  lockedModelWidth: number | undefined,
 ): FloatingGroupOptions {
   const groupRect = group.element.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const width = Math.round(
-    Math.min(
-      groupRect.width,
-      Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
-    ),
+    lockedModelWidth === undefined
+      ? Math.min(
+          groupRect.width,
+          Math.max(FLOAT_MIN_WIDTH_PX, containerRect.width * FLOAT_MAX_SHARE),
+        )
+      : lockedFloatWidth(lockedModelWidth, containerRect.width),
   );
 
   const height = Math.round(
@@ -3793,6 +4230,13 @@ function floatingBoundsFor(
     width,
     height,
   };
+}
+
+/** A locked float's box width: its model width, capped by the dock — but an
+ * unmeasured (0-wide) dock caps nothing, where a 0-wide box would be
+ * unusable. */
+function lockedFloatWidth(modelWidth: number, dockWidth: number): number {
+  return dockWidth > 0 ? Math.min(modelWidth, dockWidth) : modelWidth;
 }
 
 /** A popped-out float's share of the dock, per axis, at most. */
@@ -4067,6 +4511,18 @@ function intactPinOwnerSplit(
   });
 
   return shared ? owner : null;
+}
+
+/** The element spanning a grid group's VERTICAL RUN — everything that
+ * shares its width: the group itself when its parent split is a row (or it
+ * is a lone root group), else that parent column, whose parent is a row or
+ * the root (dockview alternates orientations). */
+function verticalRunOf(element: Element): Element {
+  const split = element.closest(SPLIT_SELECTOR);
+
+  return split === null || split.classList.contains("dv-horizontal")
+    ? element
+    : split;
 }
 
 /** The split that DECLARED a pin on `axis`, walking up from the pinned
@@ -4524,23 +4980,24 @@ function resetDerivedLocks(api: DockviewApi): void {
  * (see {@link RestoreTier}'s doc comment for the labelling rule this
  * implies). Exported so the tier a given blob actually lands on is a real,
  * reachable assertion rather than a private read. Returns the design pins
- * to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
- * without the field gets none — that layout may be user-shaped already),
- * or the freshly converted seed's — plus the blob's strip-geometry seeds. */
+ * to apply — the blob's own surviving `rtcDesignPins` (the engine always
+ * writes the field; older blobs never reach here — they are discarded
+ * before the ladder runs), or the freshly converted seed's — plus the blob's strip-geometry seeds. */
 export function loadBlobOrSeed(
   api: DockviewApi,
   opts: DockEngineOptions,
   width: number,
   height: number,
 ): RestoredLayout {
-  if (opts.blob !== null) {
+  // Any blob not stamped with the current version is treated as absent and
+  // the seed restores (plan 2026-09-28, R9).
+  const blob = isCurrentDockBlob(opts.blob) ? opts.blob : null;
+
+  if (blob !== null) {
     try {
-      // A gap-7-era blob (no rtcBlobVersion) is lifted into the gap-0 model
-      // first — grid sizes and strip-sidecar sizes change units; see
-      // migrateDockBlob. dockview's fromJSON reads only the fields it
-      // knows, so the pin, strip-geometry and floating-group sidecars ride
-      // through untouched.
-      const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
+      // dockview's fromJSON reads only the fields it knows, so the pin,
+      // strip-geometry and floating-group sidecars ride through untouched.
+      const parsed: unknown = JSON.parse(blob);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
       resetDerivedLocks(api);
 
@@ -4560,27 +5017,25 @@ export function loadBlobOrSeed(
       //
       // `floatless` is computed ONCE here and handed down to the
       // dynamic-node scrub too, rather than each rung re-deriving from
-      // `opts.blob` — that is the difference between a cumulative ladder
+      // `blob` — that is the difference between a cumulative ladder
       // and a non-cumulative one: without it, a blob damaged in BOTH ways
       // would have its dynamic-leaf retry re-parse the STILL-broken
       // `floatingGroups` entry, throw again, and fall all the way to the
       // seed, reseeding the user's whole desk over a float that was never
-      // the dynamic scrub's problem to fix. `null` means `opts.blob` itself
-      // was not even parseable JSON, in which case nothing below can help
-      // either.
+      // the dynamic scrub's problem to fix. `blob` is guaranteed to
+      // parse by now, so `null` is only reachable if `withoutFloatingGroups`
+      // throws on it, in which case nothing below can help either.
       let floatless: string | null;
 
       try {
-        floatless = JSON.stringify(
-          withoutFloatingGroups(JSON.parse(opts.blob)),
-        );
+        floatless = JSON.stringify(withoutFloatingGroups(JSON.parse(blob)));
       } catch {
         floatless = null;
       }
 
       if (floatless !== null) {
         try {
-          const parsed = migrateDockBlob(JSON.parse(floatless), GROUP_GAP_PX);
+          const parsed: unknown = JSON.parse(floatless);
           api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
           resetDerivedLocks(api);
 
@@ -4597,7 +5052,7 @@ export function loadBlobOrSeed(
           // identical failure caught above. One dynamic (Jarvis-docked)
           // panel's node can go unrestorable on its own without the rest of
           // the arrangement being at fault; retry once with every
-          // non-static leaf scrubbed out of `floatless` — NOT `opts.blob` —
+          // non-static leaf scrubbed out of `floatless` — NOT `blob` —
           // so a float already known to be unrestorable does not resurrect
           // itself on this retry and fail it too. A static-only blob (or
           // one this can't safely operate on) hands back `null` and falls
@@ -4609,10 +5064,7 @@ export function loadBlobOrSeed(
 
           if (scrubbed !== null) {
             try {
-              const parsed = migrateDockBlob(
-                JSON.parse(scrubbed),
-                GROUP_GAP_PX,
-              );
+              const parsed: unknown = JSON.parse(scrubbed);
               api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
               resetDerivedLocks(api);
 
@@ -4901,7 +5353,9 @@ type DockParkedPlacement = DockParkedGrid | DockParkedFloat;
  * host group's business and `sizePx` is null. */
 interface DockParkedGrid {
   readonly where: "grid";
-  readonly anchorPanelId: string;
+  /** Null for a panel that sat on the root's own edge: it is re-added
+   * against the layout (dockview's absolute `direction`), beside no one. */
+  readonly anchorPanelId: string | null;
   readonly direction: SeedAnchor["direction"] | "within";
   readonly sizePx: number | null;
   /** Whether a design pin still held this panel when it was scrubbed. It
@@ -5005,6 +5459,51 @@ function floatBoxOf(
     if (views.includes(panelId)) {
       return entry.position;
     }
+  }
+
+  return null;
+}
+
+/** The root edge `panelId`'s own leaf sits on, when it is a DIRECT child of
+ * the root branch with no staying panel between it and that edge (panels
+ * leaving with it do not count — two docked panels at the right edge both go
+ * back to it, in re-add order). The direction is dockview's absolute one for
+ * the root's axis. Null for a panel nested deeper, or in the root's middle. */
+function rootEdgeOf(
+  serialized: SerializedDockview,
+  panelId: string,
+  isStaying: (candidateId: string) => boolean,
+): SeedAnchor["direction"] | null {
+  const root = serialized.grid.root;
+
+  if (root.type !== "branch") {
+    return null;
+  }
+
+  const children = root.data as readonly GridNode[];
+  const index = children.findIndex((child) => {
+    return (
+      child.type === "leaf" &&
+      ((child.data as LeafData).views ?? []).includes(panelId)
+    );
+  });
+
+  if (index < 0) {
+    return null;
+  }
+
+  function holdsNoStaying(child: GridNode): boolean {
+    return !panelIdsIn(child).some(isStaying);
+  }
+
+  const horizontal = serialized.grid.orientation !== "VERTICAL";
+
+  if (children.slice(index + 1).every(holdsNoStaying)) {
+    return horizontal ? "right" : "below";
+  }
+
+  if (children.slice(0, index).every(holdsNoStaying)) {
+    return horizontal ? "left" : "above";
   }
 
   return null;

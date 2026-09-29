@@ -20,8 +20,14 @@ describe("InhouseLayoutEngine", () => {
     expect(page.text("analytics-body")).toBe("ANALYTICS");
   });
 
+  // A dedicated unlocked-panel fixture, not the shared fx-rates/fx-analytics
+  // `state`/`registry` below: fx-analytics carries a real PANEL_SPECS
+  // fixedWidthPx lock (Task 1/2), so a bare two-child row split of it beside
+  // an unlocked sibling now correctly renders NO handle between them — this
+  // test's purpose is the GENERIC two-child-split handle mechanic, so it
+  // uses two ids absent from PANEL_SPECS instead.
   it("renders one drag handle between two split children", () => {
-    page.mount(state, registry);
+    page.mount(unlockedSplitState, unlockedSplitRegistry);
     expect(page.exists("handle--0")).toBe(true);
   });
 
@@ -38,16 +44,16 @@ describe("InhouseLayoutEngine", () => {
   it("renders every panel un-stripped when maximized/collapsed name an id with no leaf in the tree", () => {
     page.mount(
       {
-        ...state,
+        ...unlockedSplitState,
         maximized: "eq-chart:AAPL",
         collapsed: ["eq-chart:AAPL"],
       },
-      registry,
+      unlockedSplitRegistry,
     );
-    expect(page.stripFlag("panel-fx-rates")).toBe(false);
-    expect(page.stripFlag("panel-fx-analytics")).toBe(false);
-    expect(page.text("rates-body")).toBe("RATES");
-    expect(page.text("analytics-body")).toBe("ANALYTICS");
+    expect(page.stripFlag("panel-left")).toBe(false);
+    expect(page.stripFlag("panel-right")).toBe(false);
+    expect(page.text("left-body")).toBe("LEFT");
+    expect(page.text("right-body")).toBe("RIGHT");
     expect(page.exists("handle--0")).toBe(true);
   });
 
@@ -60,7 +66,7 @@ describe("InhouseLayoutEngine", () => {
 
   it("drives a row-split resize drag (pointerdown→move) and calls onResize with two new fractions", () => {
     const onResize = vi.fn();
-    page.mount(state, registry, { onResize });
+    page.mount(unlockedSplitState, unlockedSplitRegistry, { onResize });
     page.pointerDown("handle--0", { pointerId: 1, clientX: 60, clientY: 0 });
     page.pointerMove("handle--0", { clientX: 90, clientY: 0 });
     expect(onResize).toHaveBeenCalled();
@@ -399,11 +405,13 @@ describe("InhouseLayoutEngine", () => {
       expect(page.stripFlag("panel-eq-chart")).toBe(false);
     });
 
-    it("keeps the rail's 290px initialPx design width and the main handle; only the rail-internal handle disappears", () => {
+    it("keeps the rail's 290px initialPx design width and its internal height handle disappears; the width-locked rail has no main handle", () => {
       page.mount({ ...eqState, maximized: "eq-ticket" }, eqRegistry);
       expect(page.initialCellFlag("cell--1")).toBe(true);
       expect(page.stripCellFlag("cell--1")).toBe(false);
-      expect(page.exists("handle--0")).toBe(true);
+      // eq-ticket/eq-watchlist are both width-locked (290px) — no handle
+      // between the main column and the rail, with or without the maximize.
+      expect(page.exists("handle--0")).toBe(false);
       expect(page.exists("handle-0-0")).toBe(true);
       expect(page.exists("handle-1-0")).toBe(false);
     });
@@ -520,8 +528,8 @@ describe("InhouseLayoutEngine", () => {
     });
 
     it("a resize drag driven off a live state signal keeps updating --split-size on the SAME cell element across ticks", () => {
-      const [layoutState, setLayoutState] = createSignal(state);
-      page.mountLive(layoutState, registry, {
+      const [layoutState, setLayoutState] = createSignal(unlockedSplitState);
+      page.mountLive(layoutState, unlockedSplitRegistry, {
         onResize: (
           _path: readonly number[],
           sizes: readonly number[],
@@ -535,7 +543,7 @@ describe("InhouseLayoutEngine", () => {
         },
       });
 
-      const cellBefore = page.cellSnapshotOfPanel("panel-fx-rates");
+      const cellBefore = page.cellSnapshotOfPanel("panel-left");
       page.pointerDown("handle--0", { pointerId: 5, clientX: 60, clientY: 0 });
       page.pointerMove("handle--0", { clientX: 90, clientY: 0 });
       page.pointerUp("handle--0", { pointerId: 5, clientX: 90, clientY: 0 });
@@ -543,7 +551,7 @@ describe("InhouseLayoutEngine", () => {
       // The cell (and the panel inside it) survived the state-driven
       // re-render mid-drag — same element, not a fresh mount — and its
       // --split-size custom property reflects the new fraction.
-      const cellAfter = page.cellSnapshotOfPanel("panel-fx-rates");
+      const cellAfter = page.cellSnapshotOfPanel("panel-left");
       expect(page.cellUnchanged(cellBefore, cellAfter)).toBe(true);
       expect(cellAfter.splitSize).not.toBe("0.6");
     });
@@ -574,5 +582,35 @@ const registry: PanelRegistry = {
   },
   "fx-analytics": () => {
     return <div data-testid="analytics-body">ANALYTICS</div>;
+  },
+};
+
+/** A two-child row split of panel ids absent from PANEL_SPECS — unlike
+ * `state`/`registry` above (whose "fx-analytics" leaf carries a real
+ * PANEL_SPECS fixedWidthPx rail lock as of Task 1/2), so the generic
+ * split-mechanics tests above (handle presence, resize drag) exercise plain
+ * unlocked-panel behavior rather than the rail's suppressed handle. */
+const unlockedSplitState: LayoutState = {
+  root: {
+    kind: "split",
+    dir: "row",
+    sizes: [0.6, 0.4],
+    children: [
+      { kind: "panel", panelId: "left" },
+      { kind: "panel", panelId: "right" },
+    ],
+  },
+  maximized: null,
+  collapsed: [],
+  closed: [],
+  instances: [],
+};
+
+const unlockedSplitRegistry: PanelRegistry = {
+  left: () => {
+    return <div data-testid="left-body">LEFT</div>;
+  },
+  right: () => {
+    return <div data-testid="right-body">RIGHT</div>;
   },
 };

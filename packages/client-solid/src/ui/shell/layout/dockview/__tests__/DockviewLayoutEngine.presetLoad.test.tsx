@@ -471,6 +471,7 @@ function createEngineWrittenBlob(driverBlob: string | null): string {
  * the bridge is the engine's own serialisation of the result. */
 function createStackedRatesAndBlotterDriverJson(): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",

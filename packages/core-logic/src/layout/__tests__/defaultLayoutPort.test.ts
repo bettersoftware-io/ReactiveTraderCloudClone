@@ -23,6 +23,7 @@ describe("createDefaultLayoutPort", () => {
       id: "fx-positions",
       title: "Positions",
       maximizeScope: "nearest-column",
+      fixedWidthPx: 360,
     });
 
     // root: a 0.73/0.27 row split — [tiles+blotter column | right rail].
@@ -99,6 +100,7 @@ describe("createDefaultLayoutPort", () => {
       id: "credit-new-rfq",
       title: "New RFQ",
       maximizable: false,
+      fixedWidthPx: 330,
     });
     expect(PANEL_SPECS["credit-rfqs"]).toEqual({
       id: "credit-rfqs",
@@ -275,6 +277,50 @@ describe("staticPanelIdsFor", () => {
   });
 });
 
+describe("width-locked panels", () => {
+  it("locks exactly the five rail panels, at their design widths", () => {
+    const locked = Object.values(PANEL_SPECS)
+      .filter((spec) => {
+        return spec.fixedWidthPx !== undefined;
+      })
+      .map((spec) => {
+        return [spec.id, spec.fixedWidthPx];
+      });
+
+    expect(Object.fromEntries(locked)).toEqual({
+      "fx-analytics": 360,
+      "fx-positions": 360,
+      "credit-new-rfq": 330,
+      "eq-ticket": 290,
+      "eq-watchlist": 290,
+    });
+  });
+
+  it.each(["fx", "credit", "equities"] as const)(
+    "the %s seed's initialPx for the locked child equals its panels' lock",
+    (tab) => {
+      const root = createDefaultLayoutPort(tab).initial.root;
+
+      if (root.kind !== "split") {
+        throw new Error(`${tab} seed root is not a split`);
+      }
+
+      const lockedIndex = root.children.findIndex((child) => {
+        return panelIdsUnder(child).every((id) => {
+          return PANEL_SPECS[id]?.fixedWidthPx !== undefined;
+        });
+      });
+      const lockedChild = root.children[lockedIndex];
+
+      expect(lockedChild).toBeDefined();
+      expect(root.initialPx?.[lockedIndex]).toBe(
+        PANEL_SPECS[panelIdsUnder(lockedChild as LayoutNode)[0] ?? ""]
+          ?.fixedWidthPx,
+      );
+    },
+  );
+});
+
 function panelIds(node: LayoutNode): string[] {
   return node.kind === "panel"
     ? [node.panelId]
@@ -323,4 +369,10 @@ function collectHandleFlags(
   }
 
   return flags;
+}
+
+function panelIdsUnder(node: LayoutNode): readonly string[] {
+  return node.kind === "panel"
+    ? [node.panelId]
+    : node.children.flatMap(panelIdsUnder);
 }

@@ -4,6 +4,7 @@ import {
   type LayoutIntents,
   type LayoutNode,
   type LayoutState,
+  lockedWidthPx,
   maximizeBoundaryPath,
   nodeAtPath,
   PANEL_SPECS,
@@ -400,6 +401,30 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
     );
   }
 
+  // Width locks (PanelSpec.fixedWidthPx) apply only along a ROW split's
+  // axis — a column split divides height, which stays resizable. A lock
+  // yields when no sibling is left to absorb the row's spare width (every
+  // other child is itself locked or a strip): the rail then fills instead
+  // of leaving a void — the dockview engine's settlePinAbsorption rule,
+  // applied per row.
+  function locks(): readonly (number | undefined)[] {
+    return props.node.children.map((child) => {
+      return props.node.dir === "row"
+        ? lockedWidthPx(child, props.specs)
+        : undefined;
+    });
+  }
+
+  function rowAbsorbs(): boolean {
+    const currentLocks = locks();
+    return props.node.children.some((child, i) => {
+      return (
+        currentLocks[i] === undefined &&
+        !isStripSubtree(child, props.state, props.strippedByMaximize)
+      );
+    });
+  }
+
   return (
     <div
       ref={splitRef}
@@ -461,11 +486,21 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
             );
           }
 
+          function childLocked(): number | undefined {
+            return rowAbsorbs() && !childIsStripCell() && !insideBoundary()
+              ? locks()[i]
+              : undefined;
+          }
+
+          function nextLocked(): number | undefined {
+            return rowAbsorbs() ? locks()[i + 1] : undefined;
+          }
+
           function childInitial(): number | undefined {
             return childFixed() === undefined &&
               !insideBoundary() &&
               !childIsStripCell()
-              ? props.node.initialPx?.[i]
+              ? (childLocked() ?? props.node.initialPx?.[i])
               : undefined;
           }
 
@@ -505,6 +540,8 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
               !nextChildPinned() &&
               childFixed() === undefined &&
               nextFixed() === undefined &&
+              childLocked() === undefined &&
+              nextLocked() === undefined &&
               !childIsStripCell() &&
               !nextIsStripCell()
             );
@@ -546,6 +583,9 @@ function SplitNode(props: SplitNodeProps): JSX.Element {
                 data-fixed-cell={childFixed() !== undefined ? "true" : "false"}
                 data-initial-cell={
                   childInitial() !== undefined ? "true" : "false"
+                }
+                data-locked-cell={
+                  childLocked() !== undefined ? "true" : "false"
                 }
                 data-strip-cell={childIsStripCell() ? "true" : "false"}
                 data-strip-fill={stripFill() ? "true" : "false"}

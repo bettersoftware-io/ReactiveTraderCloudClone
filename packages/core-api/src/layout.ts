@@ -23,6 +23,15 @@ export interface PanelSpec {
    * untouched. Render-time policy only — LayoutState.maximized stays a bare
    * PanelId and the machine is unchanged; see maximizeBoundaryPath. */
   readonly maximizeScope?: "root" | "nearest-column";
+  /** Locks the panel's WIDTH at this many visible card px (the in-house
+   * 7px gutter excluded) wherever it docks — no engine renders a width
+   * handle for it, and the Dockview engine holds its group at min = max
+   * and refuses drops that would share a group or a column with a panel
+   * of another width. Height stays resizable. Yields to a strip (collapse,
+   * or a sibling's root maximize) and, when no other panel is left to
+   * absorb the dock's spare width, to filling the dock. Absent → freely
+   * resizable. Additive to the §5 contract, like `maximizeScope`. */
+  readonly fixedWidthPx?: number;
 }
 export type SplitDir = "row" | "column";
 export type LayoutNode =

@@ -10,6 +10,7 @@ import {
   type LayoutIntents,
   type LayoutNode,
   type LayoutState,
+  lockedWidthPx,
   maximizeBoundaryPath,
   nodeAtPath,
   PANEL_SPECS,
@@ -398,6 +399,23 @@ function SplitNode({
     onResize,
   };
 
+  // Width locks (PanelSpec.fixedWidthPx) apply only along a ROW split's
+  // axis — a column split divides height, which stays resizable. A lock
+  // yields when no sibling is left to absorb the row's spare width
+  // (every other child is itself locked or a strip): the rail then fills
+  // instead of leaving a void — the dockview engine's settlePinAbsorption
+  // rule, applied per row.
+  const locks = node.children.map((child) => {
+    return node.dir === "row" ? lockedWidthPx(child, specs) : undefined;
+  });
+
+  const rowAbsorbs = node.children.some((child, i) => {
+    return (
+      locks[i] === undefined &&
+      !isStripSubtree(child, state, strippedByMaximize)
+    );
+  });
+
   return (
     <div
       ref={splitRef}
@@ -436,9 +454,15 @@ function SplitNode({
           boundaryPath !== null &&
           isStrictPathPrefix(boundaryPath, [...path, i]);
 
+        const childLocked =
+          rowAbsorbs && !childIsStripCell && !insideBoundary
+            ? locks[i]
+            : undefined;
+        const nextLocked = rowAbsorbs ? locks[i + 1] : undefined;
+
         const childInitial =
           childFixed === undefined && !insideBoundary && !childIsStripCell
-            ? node.initialPx?.[i]
+            ? (childLocked ?? node.initialPx?.[i])
             : undefined;
 
         const nextIsStripCell =
@@ -463,6 +487,8 @@ function SplitNode({
           !nextChildPinned &&
           childFixed === undefined &&
           nextFixed === undefined &&
+          childLocked === undefined &&
+          nextLocked === undefined &&
           !childIsStripCell &&
           !nextIsStripCell;
 
@@ -475,6 +501,7 @@ function SplitNode({
               data-pinned-cell={childPinned ? "true" : "false"}
               data-fixed-cell={childFixed !== undefined ? "true" : "false"}
               data-initial-cell={childInitial !== undefined ? "true" : "false"}
+              data-locked-cell={childLocked !== undefined ? "true" : "false"}
               data-strip-cell={childIsStripCell ? "true" : "false"}
               data-strip-fill={stripFill ? "true" : "false"}
               style={

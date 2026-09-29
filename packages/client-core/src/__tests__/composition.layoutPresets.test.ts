@@ -11,6 +11,7 @@ import {
   createDefaultLayoutPort,
   dockedLeafIds,
   InMemoryLayoutPresetStore,
+  LAYOUT_PRESET_VERSION,
   parseLayoutPresetList,
 } from "@rtc/core-logic";
 import {
@@ -266,7 +267,7 @@ function idOf(result: SaveLayoutPresetResult): string {
 
 function createStoredPreset(tab: WorkspaceTab): StoredLayoutPreset {
   return {
-    v: 1,
+    v: LAYOUT_PRESET_VERSION,
     id: "p1",
     name: "Wide",
     savedAt: SAVED_AT,

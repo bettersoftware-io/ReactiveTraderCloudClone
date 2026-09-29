@@ -6,6 +6,7 @@ import {
   InMemoryDockLayoutStore,
   type PanelId,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineDockedPage } from "#tests/ui/pages/DockviewLayoutEngineDockedPage";
@@ -445,6 +446,37 @@ describe("DockviewLayoutEngine docked prop", () => {
       expect(page.stripMarked("fx-analytics")).toBe(false);
     });
   });
+
+  // Task 6: mirrors the react twin's identically-named case (see its doc for
+  // the full rationale). The bridge's `fixedWidth` hook threads
+  // `PANEL_SPECS.fixedWidthPx` into `createDockEngine`'s single construction
+  // site. See `widthLockDisabled`'s doc (on the page object) for why dragging
+  // the rail's width sash, then checking it stays `.dv-disabled`, is the
+  // wiring witness this test uses.
+  it("locks the FX rail at 360 + gap from PANEL_SPECS.fixedWidthPx", () => {
+    page.mount({
+      tab: "fx",
+      registry,
+      store: new InMemoryDockLayoutStore(),
+      maximized: null,
+      collapsed: () => {
+        return [];
+      },
+      closed: () => {
+        return [];
+      },
+      docked: () => {
+        return [];
+      },
+      layoutResets: () => {
+        return 0;
+      },
+    });
+
+    page.dragWidthLockSash();
+
+    expect(page.widthLockDisabled()).toBe(true);
+  });
 });
 
 interface DockviewPanelMeta {
@@ -465,6 +497,7 @@ function panelMeta(id: string): DockviewPanelMeta {
  * discriminator. Mirrors the react twin's identical helper. */
 function createStackedRatesAndBlotterBlob(): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",
@@ -664,6 +697,6 @@ function createStackedFxBlob(): string {
       },
     },
     activeGroup: "group-1",
-    rtcBlobVersion: 2,
+    rtcBlobVersion: DOCK_BLOB_VERSION,
   });
 }

@@ -303,6 +303,9 @@ export function DockviewLayoutEngine(
         maximizeScope: (id: string): DockMaximizeScope => {
           return specs()[id as PanelId]?.maximizeScope ?? "root";
         },
+        fixedWidth: (id: string): number | undefined => {
+          return specs()[id as PanelId]?.fixedWidthPx;
+        },
         mount: mountInto("body"),
         mountTab: mountInto("tab"),
         mountActions: mountInto("actions"),

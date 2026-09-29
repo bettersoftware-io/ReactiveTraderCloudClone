@@ -652,7 +652,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   record patched instead so expand cannot resurrect the released clamp.
   Live pins persist as an `rtcDesignPins` sidecar inside the blob (dockview's
   `fromJSON` ignores unknown keys), so a still-pinned rail stays pinned
-  across reloads and a released one stays released; a legacy blob without
+  across reloads and a released one stays released; a blob without
   the sidecar gets no pins (that layout may be user-shaped already), and a
   pin whose panels no longer fill their groups exactly (a tab dragged in or
   out) dissolves with its constraints released rather than clamping a
@@ -720,10 +720,9 @@ as a two-branch conditional, would be guessing at the shape a third engine
   restores, and `toJSON` round-trips (dockview serialises exactly what it
   renders when the margin is 0 — verified in `dockBlob.test.ts`, three
   cycles byte-stable with no compensation). Blobs are version-stamped
-  (`rtcBlobVersion: 2`); a legacy gap-7 blob is migrated on load
-  (`migrateDockBlob`: each branch child `+gap/n`, strip-sidecar sizes
-  `+gap`, pins untouched), and its per-branch sums then land exactly on the
-  new, 7px-larger container. The #667 budget entries are removed (the
+  (`rtcBlobVersion: 2` when this shipped; the gap-7 lift `migrateDockBlob` it
+  introduced is gone — pre-v3 blobs are now discarded and the seed
+  restores, see "Width locks" below). The #667 budget entries are removed (the
   `Scenario.maxDiffPixels` mechanism stays); every `*-dockview` golden
   re-pins with cards moving up to ±3.5px onto the in-house integers —
   engine parity's edge class should collapse to genuine paint differences.
@@ -1025,6 +1024,72 @@ triggering any dock rebuild (including the long-shipped "Reset workspace
 layout") crashed dockview-core and unmounted the engine. **This completes
 the Dockview-native features workstream**: phases 1 through 6b have all
 shipped.
+
+## Width locks (2026-09-28)
+
+`PanelSpec.fixedWidthPx` locks a panel's width in both layout engines: FX
+Analytics and Positions 360, Credit New RFQ 330, Equities Order Ticket and
+Watchlist 290 (visible card px, the 7px gutter excluded). Only the width is
+locked; height dividers and the column maximize keep working. The full plan
+and the ten design rulings (R1-R10) are in
+[the fixed-width-rails plan](../superpowers/plans/2026-09-28-fixed-width-rails.md).
+
+- **Per panel (R1, R2).** The lock derives from the spec, never from a tree
+  slot; the seeds keep their `initialPx` values, pinned equal by a unit test.
+- **What a lock yields to (R3, R4).** A collapsed panel, or one stripped by a
+  sibling's root-scope maximize, becomes its 32px bar; expanding restores the
+  locked width. When no absorbing panel is left in the dock (every other panel
+  closed, stripped or pinned) the locks give way and fill it, as a design pin
+  already does; the lock returns with the first absorber. The in-house engine
+  follows the same rule per row split, and simply renders no width handle.
+- **Dockview drop rules (R5).** A group's lock is the lock of its panels and
+  groups never mix locks. A drop is refused when: a centre or tab drop mixes
+  locks; the target group is locked and the drop is not a top, bottom or centre
+  drop by a same-lock panel; a locked panel would make an unlocked column
+  locked by a top or bottom drop; or a locked panel is dropped on the top or
+  bottom edge of the whole layout (a full-width row would lock the dock). Left
+  and right drops beside an unlocked group, and left and right layout-edge
+  drops, create their own column and are allowed. Tab and header drops are
+  judged as centre drops; a drop counts as a layout-edge drop when
+  `event.kind === "edge"`, when `event.edge` is truthy (an edge cell inside a
+  group), or when the event names no target group (`event.group ===
+  undefined`). The wrapper's drag-to-dock for floats follows the same rule.
+- **Column agreement, at settle time (R5-amend, 2026-09-29).** *Amends R5.*
+  R5's premise that a left or right drop "creates its own column" is false
+  when the target's parent is a column: the drop nests a row inside it, and
+  when the target later closes or floats, dockview flattens that row and the
+  locked group lands in the column beside a panel that must stretch (a
+  layout-edge top drop by an unlocked panel, followed by closes, flattens the
+  same way). No drop rule can stop a later removal, so the engine judges it
+  when locks settle: a grid group's lock holds only when every group in its
+  vertical run (the column branch up to the nearest row ancestor) shares that
+  lock; otherwise the group yields to its baseline width. An unlocked group in
+  a column that a holding lock pins to one width does not count as an
+  absorber for R4, and a locked group that yields this way does. This is the
+  in-house `lockedWidthPx` rule (all panels under a row child must agree), so
+  both engines give the same answer for the same arrangement. The R5 drop
+  rules stay as the first line of defence.
+- **Floats (R6).** A floating locked panel opens at exactly its locked width,
+  and dockview's own shift-drag floats are sized to it too. The group keeps
+  `min = max` width, and its left, right and corner resize handles are hidden
+  (CSS class `rtc-dock-float-fixed-width`) only when every group in the float
+  box is locked at one width; the top and bottom handles stay.
+- **Pop-out is the one exception (R7).** A popped-out panel lives in an OS
+  window and no web page can stop a user resizing it. Pop-out is kept and the
+  exception documented, not silently removed.
+- **Dividers beside a locked rail (R8).** At the grid edge dockview disables
+  the divider itself (the client bridge tests witness this through the
+  `.dv-disabled` sash class). When another column lies beyond the rail (a docked
+  Jarvis column, say) that divider stays draggable and moves the columns on
+  either side; the rail keeps its width.
+- **Stored layouts are discarded (R9).** `DOCK_BLOB_VERSION` is 3: a blob not
+  stamped 3 restores the seed and the gap-7 lift `migrateDockBlob` is deleted.
+  `LAYOUT_PRESET_VERSION` is 2, so old presets show as the existing
+  *unreadable* row instead of silently loading as Default. Layer-2 workspace
+  state, docked Jarvis panels included, is kept.
+- **Design pins give way (R10).** A pin whose panels are all locked on the
+  width axis is skipped at apply time; the pin machinery keeps handling docked
+  Jarvis panels and pinned dynamic panels.
 
 ## References
 

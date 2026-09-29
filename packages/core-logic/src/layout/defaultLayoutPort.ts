@@ -13,9 +13,13 @@ export type { WorkspaceTab };
 /** Static panel descriptors. `pinned: true` (unused by any default tree today)
  * marks a panel the engine renders in a fixed bottom strip, kept out of any
  * resizable split's sizes so a drag never touches it — the machinery stays
- * for a future panel that genuinely needs to opt out of resizing. Every
- * current default tree is fully user-resizable instead (Task 2). Ids are
- * stable — the PanelRegistry (Task 5) maps them to module roots. */
+ * for a future panel that genuinely needs to opt out of resizing; no default
+ * tree uses it. The five rail panels (FX analytics/positions, Credit New
+ * RFQ, Equities ticket/watchlist) are instead width-locked via
+ * `fixedWidthPx`, at the same px values their seed's `initialPx` already
+ * allocates them — the lock is per-panel-spec, not per-tree-slot, so it holds
+ * wherever the panel docks. Ids are stable — the PanelRegistry (Task 5) maps
+ * them to module roots. */
 export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
   "fx-rates": { id: "fx-rates", title: "Live Rates" },
   // The rail panels (FX analytics/positions, Equities ticket/watchlist)
@@ -25,11 +29,13 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     id: "fx-analytics",
     title: "Analytics",
     maximizeScope: "nearest-column",
+    fixedWidthPx: 360,
   },
   "fx-positions": {
     id: "fx-positions",
     title: "Positions",
     maximizeScope: "nearest-column",
+    fixedWidthPx: 360,
   },
   "fx-blotter": { id: "fx-blotter", title: "Blotter" },
   // The New RFQ entry form never fills the dock itself (maximizable: false —
@@ -39,6 +45,7 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     id: "credit-new-rfq",
     title: "New RFQ",
     maximizable: false,
+    fixedWidthPx: 330,
   },
   "credit-rfqs": { id: "credit-rfqs", title: "RFQs" },
   "credit-blotter": { id: "credit-blotter", title: "Credit Blotter" },
@@ -53,11 +60,13 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
     id: "eq-ticket",
     title: "Order Ticket",
     maximizeScope: "nearest-column",
+    fixedWidthPx: 290,
   },
   "eq-watchlist": {
     id: "eq-watchlist",
     title: "Watchlist",
     maximizeScope: "nearest-column",
+    fixedWidthPx: 290,
   },
   // Registered so the panel registries can resolve them, but not placed in
   // EQUITIES_ROOT below — both survive outside the default dock, mounted
@@ -70,9 +79,9 @@ export const PANEL_SPECS: Readonly<Record<PanelId, PanelSpec>> = {
  * (analytics over positions) beside a left column where the blotter sits
  * under the tiles ONLY — it does not span the rail's width. Ratios are the
  * prototype defaults: main split 0.73/0.27, tiles/blotter 0.66/0.34,
- * analytics/positions 0.5/0.5. The rail opens at the prototype's 360px
- * design width (initialPx — still draggable; the first drag converts the
- * split to plain fractions). */
+ * analytics/positions 0.5/0.5. `initialPx` is the first-layout allocation for
+ * the rail (the prototype's 360px design width); the width LOCK itself comes
+ * from the rail panels' `fixedWidthPx`, not from this seed value. */
 const FX_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",
@@ -100,8 +109,9 @@ const FX_ROOT: LayoutNode = {
   ],
 };
 
-// The New RFQ rail opens at the prototype's 330px design width (initialPx —
-// still draggable; the first drag converts the split to plain fractions).
+// initialPx is the first-layout allocation for the New RFQ rail (the
+// prototype's 330px design width); the width lock comes from the panel's
+// fixedWidthPx, not from this seed value.
 const CREDIT_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",
@@ -123,8 +133,9 @@ const CREDIT_ROOT: LayoutNode = {
 
 const ADMIN_ROOT: LayoutNode = { kind: "panel", panelId: "admin-dashboard" };
 
-// The ticket/watchlist rail opens at the prototype's 290px design width
-// (initialPx — still draggable; the first drag converts to plain fractions).
+// initialPx is the first-layout allocation for the ticket/watchlist rail (the
+// prototype's 290px design width); the width lock comes from the panels'
+// fixedWidthPx, not from this seed value.
 const EQUITIES_ROOT: LayoutNode = {
   kind: "split",
   dir: "row",

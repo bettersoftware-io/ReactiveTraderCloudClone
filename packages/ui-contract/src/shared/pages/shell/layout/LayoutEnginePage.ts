@@ -260,6 +260,17 @@ export class LayoutEnginePage extends MountedComponent<LayoutEngineProps> {
     );
   }
 
+  /** True when the cell renders width-locked (`PanelSpec.fixedWidthPx`, every
+   * panel under it agreeing on the same width) — px-fixed with NO resize
+   * handle, unlike `isInitialCell`'s initialPx (which keeps the handle). */
+  isLockedCell(pathKey: string, index: number): boolean {
+    return (
+      within(this.root)
+        .getByTestId(`cell-${pathKey}-${index}`)
+        .getAttribute("data-locked-cell") === "true"
+    );
+  }
+
   /** True when this strip cell's strips run perpendicular to the owning
    * split's axis (inherited orientation) and it therefore shares the split's
    * main-axis space instead of hugging — vertical strips stacking down (and

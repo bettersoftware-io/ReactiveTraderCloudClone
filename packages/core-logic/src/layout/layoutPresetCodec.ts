@@ -56,13 +56,16 @@ import {
   serializeWorkspaceLayout,
 } from "./workspaceLayoutPersistence";
 
-export const LAYOUT_PRESET_VERSION = 1;
+/** Bumped 1 → 2 for the width locks (plan 2026-09-28, R9): a v1 preset's blob
+ * predates them, so it is shown as the unreadable (deletable) row rather than
+ * loading a stale layout — or silently loading Default. */
+export const LAYOUT_PRESET_VERSION = 2;
 export const MAX_LAYOUT_PRESETS: number = DOMAIN_MAX_LAYOUT_PRESETS;
 export const MAX_LAYOUT_PRESET_NAME_LENGTH = 40;
 export const DEFAULT_LAYOUT_PRESET_NAME = "Default";
 export const UNREADABLE_LIST_ID = "unreadable-list";
 
-/** A readable, version-1 record. `layout` is layer 2 WITHOUT docked Jarvis
+/** A readable, current-version record. `layout` is layer 2 WITHOUT docked Jarvis
  * panels (ruling P2 — `docked` is always []); `blob` is the Dockview
  * engine's `snapshotLayout()` string. */
 export interface StoredLayoutPreset {

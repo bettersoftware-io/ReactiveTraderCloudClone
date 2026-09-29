@@ -101,8 +101,31 @@ describe("parseLayoutPresetList", () => {
     ]);
   });
 
-  it("an unknown version is unreadable", () => {
+  it("a version-1 preset (pre width-lock) is the unreadable row, not a readable one", () => {
+    const preset = { ...createReadablePreset("fx"), v: 1 };
+
+    const parsed = parseLayoutPresetList("fx", JSON.stringify([preset]));
+
+    expect(parsed.entries).toEqual([
+      {
+        readable: false,
+        id: preset.id,
+        name: preset.name,
+        raw: asStoredJson(preset),
+      },
+    ]);
+  });
+
+  it("a version-2 preset is readable", () => {
     const preset = { ...createReadablePreset("fx"), v: 2 };
+
+    const parsed = parseLayoutPresetList("fx", JSON.stringify([preset]));
+
+    expect(parsed.entries).toEqual([{ readable: true, preset }]);
+  });
+
+  it("an unknown version is unreadable", () => {
+    const preset = { ...createReadablePreset("fx"), v: 999 };
 
     const parsed = parseLayoutPresetList("fx", JSON.stringify([preset]));
 
