@@ -19,7 +19,7 @@ function vm(): ViewModel {
     useEquityQuote: () => {
       return null;
     },
-    useCandles: () => {
+    useEquityPriceHistory: () => {
       return [];
     },
     useEqWatchlistSort: () => {
