@@ -129,12 +129,14 @@ construction-time subscription.
 - `MoversBoard` stops calling `useCandles(row.symbol)` for the sparkline and
   uses `useEquityPriceHistory(row.symbol)` instead. If candles have no other
   reader in that component, the call is removed rather than left unused.
-- `MoversBoardRow` maps the history to its `last` prices, and `MoversRow` and
-  `RowSparkline` take `prices: readonly number[]` in place of
-  `candles: readonly Candle[]` — the leaf stays plain props (so
-  compiler-memoizable) and no longer needs to know what a series is made of.
-  The doc comments that say "there being no equities tick-history" are
-  corrected.
+- `MoversRow` and `RowSparkline` take `history: readonly EquityQuote[]` in
+  place of `candles: readonly Candle[]`, and `RowSparkline` plots `last`.
+  `MoversBoardRow` passes the hook's value down **unchanged**: it bails out of
+  the React Compiler (it reads the ViewModel seam), so projecting there would
+  hand the leaf a new array every render and rebuild every row's Skia path on
+  every quote tick. The projection stays in the compiled leaf, memoized on the
+  identity-stable `history`. The doc comments that say "there being no
+  equities tick-history" are corrected.
 - The hook `useEquityPriceHistory` is added to `@rtc/react-bindings`'
   `createViewModel`, next to `usePriceHistory`. Because `ViewModel` is a
   closed type, `client-react`'s two **test** fakes gain the member too; no

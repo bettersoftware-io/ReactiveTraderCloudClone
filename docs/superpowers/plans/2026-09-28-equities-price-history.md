@@ -1031,7 +1031,7 @@ git commit -m "feat(bindings): useEquityPriceHistory; list equityPriceHistory in
 
 **Interfaces:**
 - Consumes: `ViewModel.useEquityPriceHistory` (Task 5).
-- Produces: `RowSparklineProps.prices: readonly number[]` and `MoversRowProps.prices: readonly number[]` (replacing `candles: readonly Candle[]` on both).
+- Produces: `RowSparklineProps.history: readonly EquityQuote[]` and `MoversRowProps.history: readonly EquityQuote[]` (replacing `candles: readonly Candle[]` on both). The array is passed down **unchanged** from the hook — see the ruling in Step 4.
 
 - [ ] **Step 1: Rewrite the sparkline test against prices**
 
@@ -1064,7 +1064,7 @@ test("renders nothing for a symbol that has had no quote yet", async () => {
 const page = rowSparklinePage();
 ```
 
-and `RowSparklinePage.tsx`'s `mount` to take `prices: readonly number[]` and render `<RowSparkline symbol={symbol} positive prices={prices} />` (drop the `Candle` import).
+and `RowSparklinePage.tsx`'s `mount` to take `prices: readonly number[]`, turn them into quotes with a `createQuotes(symbol, prices)` factory in the page object (`{ symbol, bid: p, ask: p, last: p, changePct: 0, timestamp: i }`), and render `<RowSparkline symbol={symbol} positive history={createQuotes(symbol, prices)} />` (drop the `Candle` import).
 
 Add to `MoversBoard.test.tsx` (use the page object's existing helpers; add a `sparklineExists(symbol)` helper to `MoversBoardPage` if it lacks one, via `screen.queryByTestId(\`eq-sparkline-${symbol}\`) != null`):
 
@@ -1081,52 +1081,57 @@ where `MoversBoardPage.mountWithHistory(history: Record<string, readonly number[
 - [ ] **Step 2: Run the RN tests to verify they fail**
 
 Run: `pnpm --filter @rtc/client-react-native exec jest src/ui/equities/markets`
-Expected: FAIL — `RowSparkline` has no `prices` prop; `useEquityPriceHistory` is not read by the board.
+Expected: FAIL — `RowSparkline` has no `history` prop; `useEquityPriceHistory` is not read by the board.
 
 - [ ] **Step 3: Change `RowSparkline`**
 
-Replace the `Candle` import and props with plain prices, and project them directly:
+Replace the `Candle` import with `EquityQuote` and project each quote's `last` — inside this component, the same place the candle closes were projected:
 
 ```tsx
 export function RowSparkline({
   symbol,
   positive,
-  prices,
+  history,
 }: RowSparklineProps): JSX.Element | null {
   const theme = useTheme();
-  const svgPath = buildRowSparkPath(prices);
+
+  const svgPath = buildRowSparkPath(
+    history.map((quote) => {
+      return quote.last;
+    }),
+  );
 ```
 
 ```tsx
 export interface RowSparklineProps {
   symbol: string;
   positive: boolean;
-  /** Oldest first — the row's rolling window of last prices. */
-  prices: readonly number[];
+  /** Oldest first — the symbol's rolling window of live quotes. */
+  history: readonly EquityQuote[];
 }
 ```
 
-Rewrite the doc comment's sentences about candles: the series is now "the symbol's rolling window of live last prices (`useEquityPriceHistory`, read one level up by `MoversBoardRow`)", the redraw happens "when `prices` changes", and it renders nothing "below two prices". Keep the compiler-memoization rationale (the prop is still plain, and `MoversBoardRow` still owns the seam read).
+Rewrite the doc comment's sentences about candles: the series is now "the symbol's rolling window of live last prices (`useEquityPriceHistory`, read one level up by `MoversBoardRow`)", keyed on `history` rather than `candles` in the compiler-memoization sentence, the redraw happens "when `history` changes", and it renders nothing "below two quotes". Keep the rest of the compiler-memoization rationale.
 
 If `buildRowSparkPath`'s parameter is typed `number[]`, widen it to `readonly number[]` — it must not mutate its input.
 
 - [ ] **Step 4: Change `MoversRow` and `MoversBoard`**
 
-`MoversRow`: replace the `candles` prop with `prices: readonly number[]`, pass `prices={prices}` to `RowSparkline`, drop the `Candle` import, and replace the doc comment's "`candles` arrives as a prop … there being no equities tick-history stream to pull one from" with "`prices` arrives as a prop (read off the ViewModel seam one level up, by `MoversBoard`'s `MoversBoardRow`) and is handed straight to `RowSparkline`".
+`MoversRow`: replace the `candles` prop with `history: readonly EquityQuote[]`, pass `history={history}` to `RowSparkline`, swap the `Candle` import for `EquityQuote`, and replace the doc comment's "`candles` arrives as a prop … there being no equities tick-history stream to pull one from" with "`history` arrives as a prop (read off the ViewModel seam one level up, by `MoversBoard`'s `MoversBoardRow`) and is handed straight to `RowSparkline`".
 
 `MoversBoard`'s `MoversBoardRow`:
 
 ```tsx
   const { useEquityQuote, useEquityPriceHistory } = useViewModel();
   const quote = useEquityQuote(row.symbol);
-  const prices = useEquityPriceHistory(row.symbol).map((q) => {
-    return q.last;
-  });
+  const history = useEquityPriceHistory(row.symbol);
 ```
 
-and pass `prices={prices}` in both `<MoversRow …>` sites. (`useCandles` had no other reader in this component; it is removed, not left unused.)
+and pass `history={history}` in both `<MoversRow …>` sites. (`useCandles` had no other reader in this component; it is removed, not left unused.)
 
-Update `MoversRowPage.tsx`: `NO_CANDLES` → `const NO_PRICES: readonly number[] = [];` and `prices={NO_PRICES}`, rewording its comment accordingly. In `MoversBoardPage.tsx`, `MarketsViewPage.tsx` and `EquitiesScreenPage.tsx`, add
+**Ruling (controller, 2026-09-29): do NOT map to prices here.** `MoversBoardRow` bails out of the React Compiler (it reads the ViewModel seam), so a `.map(...)` here would hand `RowSparkline` a fresh array on every render and rebuild every row's Skia path on every quote tick of any symbol. The hook's value is identity-stable between emissions; pass it down unchanged and let the compiled leaf (`RowSparkline`) do the projection, memoized on `history`.
+
+Update `MoversRowPage.tsx`: `NO_CANDLES` → `const NO_HISTORY: readonly EquityQuote[] = [];` and `history={NO_HISTORY}`, rewording its comment accordingly. In `MoversBoardPage.tsx`, `MarketsViewPage.tsx` and `EquitiesScreenPage.tsx`, add
 
 ```ts
     useEquityPriceHistory: () => {
