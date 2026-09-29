@@ -1,4 +1,4 @@
-/** A version-2 (gap-0, integer-model) Dockview blob of the fx seed with
+/** A current-version (gap-0, integer-model) Dockview blob of the fx seed with
  * `fx-rates` and `fx-analytics` CENTRE-STACKED in one group (rates active,
  * analytics as the inactive chip) — the `shell/layout-dockview-stacked`
  * scenario's deterministic seed. Captured from a real jsdom
@@ -16,7 +16,9 @@
  * object is deliberately NOT typed as dockview's `SerializedDockview`: the
  * engine is confined to `@rtc/layout-dockview` (dependency-cruiser
  * `dockview-only-in-layout-dockview`), so a client may not name its types. */
-const STACKED_FX_LAYOUT = {
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
+
+const STACKED_FX_LAYOUT: Record<string, unknown> = {
   grid: {
     root: {
       type: "branch",
@@ -84,7 +86,7 @@ const STACKED_FX_LAYOUT = {
     },
   },
   activeGroup: "group-1",
-  rtcBlobVersion: 2,
+  rtcBlobVersion: DOCK_BLOB_VERSION,
   rtcDesignPins: [],
 };
 

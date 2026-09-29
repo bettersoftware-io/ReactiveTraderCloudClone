@@ -32,6 +32,7 @@ import {
   loadBlobOrSeed,
   type RestoreTier,
 } from "#/createDockEngine";
+import { DOCK_BLOB_VERSION } from "#/dockBlob";
 
 // jsdom (as of the pinned Node/jsdom combo here) has no ResizeObserver;
 // dockview-core's own unit tests run under jsdom with a no-op stub. This one
@@ -2502,12 +2503,12 @@ describe("reload with strips (the blob's rtcStripGeometry sidecar)", () => {
   });
 });
 
-describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
+describe("the gap-0 blob model (current rtcBlobVersion)", () => {
   it("stamps every save with the current blob version", () => {
     const seen = trackLayout();
     persistArranged({ ...createBase(), ...seen.options });
 
-    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
+    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(DOCK_BLOB_VERSION);
   });
 
   it("persists only integer model sizes through a full intent cycle", async () => {
@@ -2544,116 +2545,6 @@ describe("the gap-0 blob model (rtcBlobVersion 2)", () => {
       expect(Number.isInteger(size)).toBe(true);
     }
   });
-
-  it("migrates a legacy gap-7 blob's grid and re-clamps its pin at the design width", () => {
-    // A gap-7-era save: every branch child at card + gap × (n − 1) / n
-    // (all branches here have 2 children → +3.5), grid dims from the old
-    // 10px-padded container — 7px smaller than today's per axis, so the
-    // migrated sums land exactly on the jsdom fallback extent (1200×800).
-    const legacy = {
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "branch",
-              size: 829.5,
-              data: [
-                legacyLeaf("fx-rates", 522.5),
-                legacyLeaf("fx-blotter", 270.5),
-              ],
-            },
-            legacyLeaf("fx-analytics", 363.5),
-          ],
-        },
-        width: 1193,
-        height: 793,
-        orientation: "HORIZONTAL",
-      },
-      panels: {
-        "fx-rates": legacyPanel("fx-rates"),
-        "fx-blotter": legacyPanel("fx-blotter"),
-        "fx-analytics": legacyPanel("fx-analytics"),
-      },
-      rtcDesignPins: [{ panelIds: ["fx-analytics"], px: 360, axis: "width" }],
-    };
-
-    const seen = trackLayout();
-    persistArranged({
-      ...createBase(),
-      ...seen.options,
-      blob: JSON.stringify(legacy),
-    });
-
-    // The pin's PUBLIC card px survives migration untouched and the clamp
-    // adds the gap — the rail reads its design width exactly, and the
-    // re-saved blob is stamped current.
-    expect(seen.sizeOf("fx-analytics")).toBe(360);
-    expect(seen.pins()).toEqual(legacy.rtcDesignPins);
-    expect(JSON.parse(seen.blob()).rtcBlobVersion).toBe(2);
-  });
-
-  it("migrates a legacy strip sidecar's card sizes so expand restores the card", async () => {
-    // The legacy grid holds fx-analytics AT its bar (old bar model:
-    // 32 + 3.5), and the sidecar remembers the pre-collapse size in the old
-    // rendered/card units (300). Migration lifts it to model units (+gap);
-    // the replayed collapse consumes it and expand must land the CARD.
-    const legacy = {
-      grid: {
-        root: {
-          type: "branch",
-          data: [
-            {
-              type: "branch",
-              size: 1157.5,
-              data: [
-                legacyLeaf("fx-rates", 522.5),
-                legacyLeaf("fx-blotter", 270.5),
-              ],
-            },
-            legacyLeaf("fx-analytics", 35.5),
-          ],
-        },
-        width: 1193,
-        height: 793,
-        orientation: "HORIZONTAL",
-      },
-      panels: {
-        "fx-rates": legacyPanel("fx-rates"),
-        "fx-blotter": legacyPanel("fx-blotter"),
-        "fx-analytics": legacyPanel("fx-analytics"),
-      },
-      rtcStripGeometry: {
-        records: { "fx-analytics": { size: 300 } },
-        flips: [],
-      },
-    };
-
-    const reloaded = trackLayout();
-    const engine = createDockEngine({
-      ...createBase(),
-      ...reloaded.options,
-      blob: JSON.stringify(legacy),
-    });
-    engine.collapsePanel("fx-analytics");
-    await waitForSize(reloaded, "fx-analytics", STRIP);
-
-    engine.expandPanel("fx-analytics");
-    await waitForSizeWithin(reloaded, "fx-analytics", 300, 1);
-    engine.dispose();
-  });
-
-  function legacyLeaf(id: string, size: number): Record<string, unknown> {
-    return {
-      type: "leaf",
-      size,
-      data: { id: `g-${id}`, views: [id], activeView: id },
-    };
-  }
-
-  function legacyPanel(id: string): Record<string, string> {
-    return { id, contentComponent: "rtc-panel", title: id };
-  }
 });
 
 describe("dynamic panels (Jarvis docking — GenUI × Dockview)", () => {
@@ -4312,7 +4203,7 @@ describe("stacked visual fixture (Phase 2)", () => {
       },
     },
     activeGroup: "group-1",
-    rtcBlobVersion: 2,
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     rtcDesignPins: [],
   };
 
@@ -6838,6 +6729,30 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
     api.dispose();
   });
 
+  it.each([
+    ["an unstamped (gap-7 era) blob", undefined],
+    ["a version-2 blob", 2],
+  ])("discards %s and restores the seed", (_label, version) => {
+    const first = createDockEngine(createRailBase());
+    const parsed = JSON.parse(first.snapshotLayout()) as Record<
+      string,
+      unknown
+    >;
+    first.dispose();
+    const stale = JSON.stringify({ ...parsed, rtcBlobVersion: version });
+
+    const api = createFreshDockviewApi(1200, 800);
+    const restored = loadBlobOrSeed(
+      api,
+      { ...createRailBase(), blob: stale },
+      1200,
+      800,
+    );
+
+    expect(restored.restoreTier).toBe("seed");
+    api.dispose();
+  });
+
   function createFreshDockviewApi(width: number, height: number): DockviewApi {
     const api = createDockview(sizedContainer(width, height), {
       createComponent: () => {
@@ -7135,6 +7050,7 @@ function createTwoTabGroupLayout(): unknown {
   }
 
   return {
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",

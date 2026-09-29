@@ -6,6 +6,7 @@ import {
   InMemoryDockLayoutStore,
   type PanelId,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineDockedPage } from "#tests/ui/pages/DockviewLayoutEngineDockedPage";
@@ -496,6 +497,7 @@ function panelMeta(id: string): DockviewPanelMeta {
  * discriminator. Mirrors the react twin's identical helper. */
 function createStackedRatesAndBlotterBlob(): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",
@@ -695,6 +697,6 @@ function createStackedFxBlob(): string {
       },
     },
     activeGroup: "group-1",
-    rtcBlobVersion: 2,
+    rtcBlobVersion: DOCK_BLOB_VERSION,
   });
 }

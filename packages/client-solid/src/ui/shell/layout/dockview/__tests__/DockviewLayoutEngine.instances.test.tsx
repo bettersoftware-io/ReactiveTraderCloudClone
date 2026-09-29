@@ -8,6 +8,7 @@ import {
   type LayoutPanelInstance,
   type PanelId,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import {
   type PanelRegistry,
@@ -477,6 +478,7 @@ function soloLeaf(groupId: string, panelId: string, size: number): object {
  * edge) can never produce. Mirrors the react twin's identical helper. */
 function createInstanceOnTheLeftBlob(instanceId: string): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",

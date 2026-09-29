@@ -7,6 +7,7 @@ import {
   type PanelId,
   type WorkspaceTab,
 } from "@rtc/client-core";
+import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";
@@ -231,6 +232,7 @@ function createRecordingStore(): RecordingDockLayoutStore {
  * which is what makes the stack a structural witness. */
 function createStackedRatesAndBlotterBlob(): string {
   return JSON.stringify({
+    rtcBlobVersion: DOCK_BLOB_VERSION,
     grid: {
       root: {
         type: "branch",

@@ -11,7 +11,7 @@ import {
 
 import {
   DOCK_BLOB_VERSION,
-  migrateDockBlob,
+  isCurrentDockBlob,
   withoutDynamicNodes,
   withoutFloatingGroups,
   withoutLockMarks,
@@ -389,8 +389,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * below, changes nothing about the bytes this produces. */
   function buildLayoutBlob(): string {
     // With no theme gap, dockview's toJSON IS the model — no compensation.
-    // `rtcBlobVersion` marks the blob as gap-0 era; a blob without it is
-    // migrated on load (migrateDockBlob).
+    // `rtcBlobVersion` stamps the blob; a load discards any other version
+    // (isCurrentDockBlob).
     // `rtcDesignPins` rides along inside the blob (dockview's fromJSON
     // ignores unknown top-level keys) so a still-pinned rail stays pinned
     // across reloads, and a released one stays released — the in-house
@@ -4871,14 +4871,15 @@ export function loadBlobOrSeed(
   width: number,
   height: number,
 ): RestoredLayout {
-  if (opts.blob !== null) {
+  // Any blob not stamped with the current version is treated as absent and
+  // the seed restores (plan 2026-09-28, R9).
+  const blob = isCurrentDockBlob(opts.blob) ? opts.blob : null;
+
+  if (blob !== null) {
     try {
-      // A gap-7-era blob (no rtcBlobVersion) is lifted into the gap-0 model
-      // first — grid sizes and strip-sidecar sizes change units; see
-      // migrateDockBlob. dockview's fromJSON reads only the fields it
-      // knows, so the pin, strip-geometry and floating-group sidecars ride
-      // through untouched.
-      const parsed = migrateDockBlob(JSON.parse(opts.blob), GROUP_GAP_PX);
+      // dockview's fromJSON reads only the fields it knows, so the pin,
+      // strip-geometry and floating-group sidecars ride through untouched.
+      const parsed: unknown = JSON.parse(blob);
       api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
       resetDerivedLocks(api);
 
@@ -4898,27 +4899,25 @@ export function loadBlobOrSeed(
       //
       // `floatless` is computed ONCE here and handed down to the
       // dynamic-node scrub too, rather than each rung re-deriving from
-      // `opts.blob` — that is the difference between a cumulative ladder
+      // `blob` — that is the difference between a cumulative ladder
       // and a non-cumulative one: without it, a blob damaged in BOTH ways
       // would have its dynamic-leaf retry re-parse the STILL-broken
       // `floatingGroups` entry, throw again, and fall all the way to the
       // seed, reseeding the user's whole desk over a float that was never
-      // the dynamic scrub's problem to fix. `null` means `opts.blob` itself
+      // the dynamic scrub's problem to fix. `null` means `blob` itself
       // was not even parseable JSON, in which case nothing below can help
       // either.
       let floatless: string | null;
 
       try {
-        floatless = JSON.stringify(
-          withoutFloatingGroups(JSON.parse(opts.blob)),
-        );
+        floatless = JSON.stringify(withoutFloatingGroups(JSON.parse(blob)));
       } catch {
         floatless = null;
       }
 
       if (floatless !== null) {
         try {
-          const parsed = migrateDockBlob(JSON.parse(floatless), GROUP_GAP_PX);
+          const parsed: unknown = JSON.parse(floatless);
           api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
           resetDerivedLocks(api);
 
@@ -4935,7 +4934,7 @@ export function loadBlobOrSeed(
           // identical failure caught above. One dynamic (Jarvis-docked)
           // panel's node can go unrestorable on its own without the rest of
           // the arrangement being at fault; retry once with every
-          // non-static leaf scrubbed out of `floatless` — NOT `opts.blob` —
+          // non-static leaf scrubbed out of `floatless` — NOT `blob` —
           // so a float already known to be unrestorable does not resurrect
           // itself on this retry and fail it too. A static-only blob (or
           // one this can't safely operate on) hands back `null` and falls
@@ -4947,10 +4946,7 @@ export function loadBlobOrSeed(
 
           if (scrubbed !== null) {
             try {
-              const parsed = migrateDockBlob(
-                JSON.parse(scrubbed),
-                GROUP_GAP_PX,
-              );
+              const parsed: unknown = JSON.parse(scrubbed);
               api.fromJSON(parsed as Parameters<DockviewApi["fromJSON"]>[0]);
               resetDerivedLocks(api);
 
