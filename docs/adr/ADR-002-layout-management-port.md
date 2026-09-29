@@ -652,7 +652,7 @@ as a two-branch conditional, would be guessing at the shape a third engine
   record patched instead so expand cannot resurrect the released clamp.
   Live pins persist as an `rtcDesignPins` sidecar inside the blob (dockview's
   `fromJSON` ignores unknown keys), so a still-pinned rail stays pinned
-  across reloads and a released one stays released; a legacy blob without
+  across reloads and a released one stays released; a blob without
   the sidecar gets no pins (that layout may be user-shaped already), and a
   pin whose panels no longer fill their groups exactly (a tab dragged in or
   out) dissolves with its constraints released rather than clamping a
@@ -1050,9 +1050,25 @@ and the ten design rulings (R1-R10) are in
   bottom edge of the whole layout (a full-width row would lock the dock). Left
   and right drops beside an unlocked group, and left and right layout-edge
   drops, create their own column and are allowed. Tab and header drops are
-  judged as centre drops; a layout-edge drop is `event.kind === "edge"` or
-  `event.edge === true`. The wrapper's drag-to-dock for floats follows the same
-  rule.
+  judged as centre drops; a drop counts as a layout-edge drop when
+  `event.kind === "edge"`, when `event.edge` is truthy (an edge cell inside a
+  group), or when the event names no target group (`event.group ===
+  undefined`). The wrapper's drag-to-dock for floats follows the same rule.
+- **Column agreement, at settle time (R5-amend, 2026-09-29).** *Amends R5.*
+  R5's premise that a left or right drop "creates its own column" is false
+  when the target's parent is a column: the drop nests a row inside it, and
+  when the target later closes or floats, dockview flattens that row and the
+  locked group lands in the column beside a panel that must stretch (a
+  layout-edge top drop by an unlocked panel, followed by closes, flattens the
+  same way). No drop rule can stop a later removal, so the engine judges it
+  when locks settle: a grid group's lock holds only when every group in its
+  vertical run (the column branch up to the nearest row ancestor) shares that
+  lock; otherwise the group yields to its baseline width. An unlocked group in
+  a column that a holding lock pins to one width does not count as an
+  absorber for R4, and a locked group that yields this way does. This is the
+  in-house `lockedWidthPx` rule (all panels under a row child must agree), so
+  both engines give the same answer for the same arrangement. The R5 drop
+  rules stay as the first line of defence.
 - **Floats (R6).** A floating locked panel opens at exactly its locked width,
   and dockview's own shift-drag floats are sized to it too. The group keeps
   `min = max` width, and its left, right and corner resize handles are hidden

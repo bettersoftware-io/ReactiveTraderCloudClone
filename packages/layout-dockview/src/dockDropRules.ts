@@ -16,7 +16,13 @@ export type DockDropTarget =
  * or above/below a group locked at the SAME width, and nothing else; a
  * free panel may go anywhere except onto a locked group. A top/bottom drop
  * on the whole layout's edge makes a full-width row, which a lock would
- * pin the entire dock to — refused for a locked panel. */
+ * pin the entire dock to — refused for a locked panel.
+ *
+ * These rules are the first line of defence only: a drop they allow can
+ * later be flattened by dockview into a column beside a free group, when
+ * a neighbour closes or floats. The engine's settle-side column-agreement
+ * rule (Ruling R5-amend, `agreedLockOf` in createDockEngine.ts) is what
+ * keeps the invariant. */
 export function refusesDockDrop(
   draggedLock: number | undefined,
   target: DockDropTarget,

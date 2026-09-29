@@ -2131,10 +2131,167 @@ describe("width locks (PanelSpec.fixedWidthPx)", () => {
     const engine = createDockEngine(createLockedRailBase());
 
     engine.floatPanel("fx-analytics");
+
+    // Positive control: the class was really there before the dock-home,
+    // so its absence afterwards is the box going, not a class never set.
+    expect(
+      document.querySelector(".rtc-dock-float-fixed-width"),
+    ).not.toBeNull();
+
     engine.dockPanel("fx-analytics");
 
     expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
     expect(document.querySelector(".rtc-dock-float-fixed-width")).toBeNull();
+    engine.dispose();
+  });
+
+  it("a lock change the layout-change settle alone makes owes a forced layout (Ruling P1)", async () => {
+    // A lock can change with no structural mutation behind it to settle it
+    // (a pop-out's async bracket lets the group leave the grid before its
+    // mutation closes). Flipping the lock source and firing a plain layout
+    // change reaches only the onDidLayoutChange settle. A lock that YIELDS
+    // only loosens constraints, and dockview redistributes nothing on a
+    // constraint change — a grid a starved lock had already shrunk stays
+    // shrunk until a forced layout at the dock's own size — so the forced
+    // layout call itself is the witness.
+    let locked = false;
+    const opts = createRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return locked && (id === "fx-analytics" || id === "fx-positions")
+            ? 500
+            : undefined;
+        },
+      },
+    });
+    const api = lastDockviewApi();
+    const layout = vi.spyOn(api, "layout");
+
+    locked = true;
+    // A title change is a layout change dockview reports with no mutation.
+    api.getPanel("fx-rates")?.api.setTitle("RATES*");
+    await nextMacrotask();
+
+    expect(widthClampOf("fx-analytics")).toEqual([507, 507]);
+    expect(layout).toHaveBeenCalledWith(1440, 900, true);
+    engine.dispose();
+  });
+
+  it("restores a floating locked panel from a reload with its width handles still hidden (R6)", () => {
+    const first = createDockEngine(createLockedRailBase());
+    first.floatPanel("fx-analytics");
+    const blob = first.snapshotLayout();
+    first.dispose();
+
+    const engine = createDockEngine({ ...createLockedRailBase(), blob });
+    const box = lastDockviewApi()
+      .getPanel("fx-analytics")
+      ?.group.element.closest(".dv-resize-container");
+
+    expect(box).not.toBeNull();
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(box?.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
+    engine.dispose();
+  });
+
+  // Ruling R5-amend. R5 lets a locked panel drop left/right of an unlocked
+  // group, on the premise that it starts its own column — false when the
+  // target's parent is a column: the drop nests row[locked, target] inside
+  // it, and once the target leaves the grid dockview flattens that row, so
+  // the locked group lands in the column beside a panel that must stretch.
+  it.each([
+    ["closed", "closePanel"],
+    ["floated", "floatPanel"],
+  ] as const)(
+    "a locked panel flattened into a column beside a free one (its neighbour %s) yields, and the dock stays full",
+    async (_how, removal) => {
+      const engine = createDockEngine({
+        ...createLockedRailBase(),
+        container: sizedContainer(1440, 900),
+      });
+      const api = lastDockviewApi();
+
+      api.getPanel("fx-positions")?.api.moveTo({
+        group: api.getPanel("fx-blotter")?.group,
+        position: "left",
+      });
+      await nextMacrotask();
+      engine[removal]("fx-blotter");
+      await nextMacrotask();
+      api.layout(1440, 900, true);
+
+      expect(widthClampOf("fx-positions")[0]).toBeLessThan(367);
+      expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+      expect(
+        (api.getPanel("fx-rates")?.group.api.width ?? 0) +
+          (api.getPanel("fx-analytics")?.group.api.width ?? 0),
+      ).toBe(1440);
+      engine.dispose();
+    },
+  );
+
+  it("a free panel in a column a fully-locked row pins absorbs nothing: the locks yield and fill", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      seed: LOCKED_ROW_OVER_FREE,
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    api.layout(1440, 900, true);
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(
+      (api.getPanel("fx-analytics")?.group.api.width ?? 0) +
+        (api.getPanel("fx-positions")?.group.api.width ?? 0),
+    ).toBe(1440);
+    expect(api.getPanel("fx-rates")?.group.api.width).toBe(1440);
+    engine.dispose();
+  });
+
+  it("a column whose locks disagree is free, so it absorbs and a lone rail beside it stays locked", () => {
+    const opts = createLockedRailBase();
+    const engine = createDockEngine({
+      ...opts,
+      seed: DISAGREEING_COLUMN_BESIDE_RAIL,
+      container: sizedContainer(1440, 900),
+      panels: {
+        ...opts.panels,
+        fixedWidth: (id: string): number | undefined => {
+          return id === "eq-ticket" ? 290 : opts.panels.fixedWidth?.(id);
+        },
+      },
+    });
+
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(widthClampOf("eq-ticket")[0]).toBeLessThan(297);
+    engine.dispose();
+  });
+
+  it("a rail column flattened into a full-width column under a top-edge drop yields, and the dock stays full", async () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    // No target group: dockview docks the group on the whole layout's top
+    // edge — the drop R5 allows an unlocked panel.
+    api.getPanel("fx-rates")?.group.api.moveTo({ position: "top" });
+    await nextMacrotask();
+    engine.closePanel("fx-blotter");
+    await nextMacrotask();
+    api.layout(1440, 900, true);
+
+    expect(widthClampOf("fx-analytics")[0]).toBeLessThan(367);
+    expect(widthClampOf("fx-positions")[0]).toBeLessThan(367);
+    expect(api.getPanel("fx-analytics")?.group.api.width).toBe(1440);
+    expect(api.getPanel("fx-rates")?.group.api.width).toBe(1440);
     engine.dispose();
   });
 
@@ -7632,6 +7789,47 @@ const COLUMN_OF_THREE = {
       ],
     },
     { kind: "panel", panelId: "fx-analytics" },
+  ],
+} as const;
+
+/** A fully-locked ROW over a free panel, in one column: the row fixes the
+ * column's width, so the free panel beneath it can absorb nothing. */
+const LOCKED_ROW_OVER_FREE = {
+  kind: "split",
+  dir: "column",
+  sizes: [0.5, 0.5],
+  children: [
+    {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "fx-positions" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-rates" },
+  ],
+} as const;
+
+/** A column whose two locked panels DISAGREE on the width, beside a lone
+ * locked panel: the column's locks cannot hold, so it is free — and
+ * absorbs. */
+const DISAGREEING_COLUMN_BESIDE_RAIL = {
+  kind: "split",
+  dir: "row",
+  sizes: [0.75, 0.25],
+  children: [
+    {
+      kind: "split",
+      dir: "column",
+      sizes: [0.5, 0.5],
+      children: [
+        { kind: "panel", panelId: "fx-analytics" },
+        { kind: "panel", panelId: "eq-ticket" },
+      ],
+    },
+    { kind: "panel", panelId: "fx-positions" },
   ],
 } as const;
 
