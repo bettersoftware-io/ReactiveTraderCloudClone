@@ -8,7 +8,11 @@
  *
  * Version 3 adds nothing to the format. It exists to DISCARD every earlier
  * layout when width locks shipped (plan 2026-09-28, R9): a blob not stamped
- * 3 — including the unstamped gap-7 era — restores the seed. */
+ * 3 — including the unstamped gap-7 era — restores the seed.
+ *
+ * A bump must also bump `LAYOUT_PRESET_VERSION` (core-logic
+ * `layoutPresetCodec.ts`): otherwise every saved preset silently reseeds
+ * while reporting success. */
 export const DOCK_BLOB_VERSION = 3;
 
 /** A parsed blob that MAY carry the version stamp, unverified. */
@@ -32,13 +36,12 @@ interface UnverifiedGrid {
 /** A parsed blob's grid, loosely. */
 interface UnverifiedBlob {
   readonly grid?: unknown;
-  readonly rtcStripGeometry?: unknown;
 }
 
 /** True only for a blob stamped with the CURRENT version. Anything older —
  * including the unstamped gap-7 era — is discarded whole and the seed
- * restores (plan 2026-09-28, Ruling R9); an unparseable string is left to
- * the ladder's own seed fallback. */
+ * restores (plan 2026-09-28, Ruling R9); an unparseable string is not
+ * current either, so it is discarded the same way. */
 export function isCurrentDockBlob(blob: string | null): blob is string {
   if (blob === null) {
     return false;

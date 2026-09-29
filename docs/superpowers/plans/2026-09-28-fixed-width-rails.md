@@ -40,7 +40,7 @@
   - the drop is on the top or bottom edge of the whole layout with a locked panel (a full-width row would lock the entire dock).
 
   Left and right drops of a locked panel beside an unlocked group, and left and right edge drops on the whole layout, are allowed: they create their own column. The same rule covers the wrapper's own drag-to-dock for floats (`floatDockTargetAt` / `dockFloatOnRelease`).
-- **R6 — Floats keep the width.** A floating locked panel opens at exactly its locked width. Its left, right, and corner resize handles are hidden, and its top and bottom handles stay. The group keeps its `min = max` width while floating, so the content can't stretch. This is the reverse of how design pins lift for floats; it matches the user's "non-resizable everywhere".
+- **R6 — Floats keep the width** (the class shipped as `rtc-dock-float-fixed-width`; stylelint allows only `rtc-dock-*` in `dockview-hud.css`). A floating locked panel opens at exactly its locked width. Its left, right, and corner resize handles are hidden, and its top and bottom handles stay. The group keeps its `min = max` width while floating, so the content can't stretch. This is the reverse of how design pins lift for floats; it matches the user's "non-resizable everywhere".
 - **R7 — Pop-out is the one exception.** A popped-out panel lives in an OS browser window, and no web page can stop a user resizing that window. Pop-out is kept, and the exception is documented. It is not silently removed.
 - **R8 — The dividers beside a locked rail.** When a locked rail is at the edge of the grid, Dockview disables its divider on its own. When another column sits beyond the rail (for example a docked Jarvis column to the right of the Equities rail), the divider between the rail and that column stays draggable. Dragging it moves the columns on either side and the rail keeps its width. The rail itself never changes width, which is what the requirement is about. In the in-house engine the handle is simply not rendered.
 - **R9 — Discarding stored layouts.** Bump `DOCK_BLOB_VERSION` from 2 to 3. `loadBlobOrSeed` treats any blob not stamped 3 as absent and restores the seed. The gap-7 lift (`migrateDockBlob`) becomes unreachable and is deleted along with its tests. Bump `LAYOUT_PRESET_VERSION` from 1 to 2, so old presets appear as the existing *unreadable* row, which can be deleted. They don't silently load as Default, which would be the "absence reported as a clean reading" failure. Layer-2 state (`workspaceLayoutPersistence`, which includes docked Jarvis panels) is **kept**: the locks derive from the spec, so nothing stored there can defeat them.
@@ -886,7 +886,7 @@ git commit -m "feat(layout-dockview): refuse drops that would mix a locked panel
 
 **Interfaces:**
 - Consumes: `lockOfGroup`, `settleWidthLocks` (Task 3)
-- Produces: the CSS class `rtc-float-fixed-width` on a floating group's `.dv-resize-container` while that group is locked
+- Produces: the CSS class `rtc-float-fixed-width` (shipped as `rtc-dock-float-fixed-width`) on a floating group's `.dv-resize-container` while that group is locked
 
 - [ ] **Step 1: Write the failing tests.** Add to the Task 3 describe block, reusing `createLockedRailBase`:
 

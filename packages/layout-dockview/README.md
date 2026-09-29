@@ -88,9 +88,9 @@ inset, while a view's MODEL size is always its visible card + 7, a
 constant. Model equals render: `toSerializedDockview(…, { gap })` allocates
 in card space and lifts each child by one gap, the engine sets and reads
 the same integers everywhere, and `toJSON()` round-trips byte-stable with
-no compensation. A legacy gap-7 blob (no version stamp) is lifted on load
-by `migrateDockBlob` — each branch child `+gap/n`, strip-sidecar sizes
-`+gap`, pins untouched (they persist the public card px in both eras).
+no compensation. A blob not stamped with the current version (v3: the gap-7 era and
+the v2 blobs alike) is discarded whole on load and the seed restores (width
+locks, plan 2026-09-28, R9).
 
 Design widths to know: the in-house engine renders an `initialPx`/`fixedPx`
 cell at `flex: 0 0 <px>` — it HOLDS its design width (FX rail 360, credit

@@ -941,8 +941,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         const axis = axisOf(member, along);
 
         // A member already at its size is left alone: re-setting it makes
-        // dockview redistribute for nothing (and a migrated legacy world
-        // can sit a fraction of a pixel off an integer model).
+        // dockview redistribute for nothing (and a restored world can sit
+        // a fraction of a pixel off an integer model).
         if (owned !== undefined && Math.abs(axis.size() - owned) > 0.5) {
           axis.set(owned);
         }
@@ -4862,8 +4862,9 @@ function resetDerivedLocks(api: DockviewApi): void {
  * (see {@link RestoreTier}'s doc comment for the labelling rule this
  * implies). Exported so the tier a given blob actually lands on is a real,
  * reachable assertion rather than a private read. Returns the design pins
- * to apply — the blob's own surviving `rtcDesignPins` (a legacy blob
- * without the field gets none — that layout may be user-shaped already),
+ * to apply — the blob's own surviving `rtcDesignPins` (a
+ * current-version blob always carries the field; older blobs never reach
+ * here — they are discarded before the ladder runs),
  * or the freshly converted seed's — plus the blob's strip-geometry seeds. */
 export function loadBlobOrSeed(
   api: DockviewApi,
@@ -4904,9 +4905,9 @@ export function loadBlobOrSeed(
       // would have its dynamic-leaf retry re-parse the STILL-broken
       // `floatingGroups` entry, throw again, and fall all the way to the
       // seed, reseeding the user's whole desk over a float that was never
-      // the dynamic scrub's problem to fix. `null` means `blob` itself
-      // was not even parseable JSON, in which case nothing below can help
-      // either.
+      // the dynamic scrub's problem to fix. `blob` is guaranteed to
+      // parse by now, so `null` is only reachable if `withoutFloatingGroups`
+      // throws on it, in which case nothing below can help either.
       let floatless: string | null;
 
       try {
