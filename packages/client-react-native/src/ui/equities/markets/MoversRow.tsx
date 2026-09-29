@@ -21,13 +21,13 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
 
 /** One ranked row of the movers board: a zero-padded rank index, the symbol
- * over the company name, an inline close-price sparkline, the last price,
+ * over the company name, an inline last-price sparkline, the last price,
  * and a tinted signed-percentage pill. Ported from the design's mover row
  * (dc.html ~L339): rank | symbol + name | sparkline | price + pct pill.
- * `MoverRow` itself carries no close series — `history` arrives as a prop
+ * `MoverRow` itself carries no price series — `history` arrives as a prop
  * (read off the ViewModel seam one level up, by `MoversBoard`'s
  * `MoversBoardRow`, which already bails on the seam for `useEquityQuote`) and
- * is handed straight to `RowSparkline`. The board (a later task) supplies `rank` and owns
+ * is handed straight to `RowSparkline`. The board supplies `rank` and owns
  * sort order; this component only renders one row of it.
  *
  * `last`/`changePct` arrive together and are both null until the first quote

@@ -23,26 +23,26 @@ describe("createEquityPriceHistoryPresenter", () => {
   it("memoises per symbol and a never-mounted symbol seeds None", () => {
     const { port } = createPort();
     const p = createEquityPriceHistoryPresenter(useHost(), port, calm(false));
-    expect(p.history$("EURUSD")).toBe(p.history$("EURUSD"));
-    expect(p.history$("EURUSD")).not.toBe(p.history$("GBPUSD"));
-    const seen = collect(p.history$("GBPUSD"));
+    expect(p.history$("MSFT")).toBe(p.history$("MSFT"));
+    expect(p.history$("MSFT")).not.toBe(p.history$("AAPL"));
+    const seen = collect(p.history$("AAPL"));
     expect(seen).toEqual([]);
   });
 
   it("a Some seed: the retained window is delivered synchronously on resubscribe, and the port is released in between", async () => {
     const { port, push, observed } = createPort();
     const p = createEquityPriceHistoryPresenter(useHost(), port, calm(false));
-    const stream = p.history$("EURUSD");
+    const stream = p.history$("MSFT");
     const first = stream.subscribe(() => {});
-    push(createTick("EURUSD", 1));
-    push(createTick("EURUSD", 2));
+    push(createTick("MSFT", 1));
+    push(createTick("MSFT", 2));
     await tick();
     first.unsubscribe();
     await tick();
-    expect(observed("EURUSD")).toBe(false);
+    expect(observed("MSFT")).toBe(false);
     const again = collect(stream);
     expect(lasts(again[0] ?? [])).toEqual([1, 2]);
-    push(createTick("EURUSD", 3));
+    push(createTick("MSFT", 3));
     await tick();
     expect(lasts(again.at(-1) ?? [])).toEqual([1, 2, 3]);
   });
