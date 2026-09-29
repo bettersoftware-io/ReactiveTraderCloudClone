@@ -623,10 +623,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // no intent, so this is where its clamp lands. Both clients' packages/
     // client-{react,solid}/src/ui/shell/layout/dockview/__tests__/
     // DockviewLayoutEngine.docked.test.tsx, case "locks the FX rail at 360 +
-    // gap from PANEL_SPECS.fixedWidthPx", rely on this running synchronously
-    // on every layout change: after a sash drag (which releases a design pin)
-    // the lock must still be clamped, seen as dockview's `.dv-disabled` sash
-    // class. Debouncing or skipping it breaks them.
+    // gap from PANEL_SPECS.fixedWidthPx", rely on this running on every fire
+    // of this handler (microtask-buffered): after a sash drag (which
+    // releases a design pin) the lock must still be clamped, seen as
+    // dockview's `.dv-disabled` sash class. Debouncing or skipping it
+    // breaks them.
     settleWidthLocks();
 
     if (timer !== null) {
