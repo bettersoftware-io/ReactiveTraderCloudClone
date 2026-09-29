@@ -20,6 +20,7 @@ import type {
   EqBlotterViewPreferencePresenter,
   EqDrawingsIntents,
   EqDrawingsState,
+  EquityPriceHistoryPresenter,
   EqWatchlistSortPreferencePresenter,
   EqWorkspaceIntents,
   EqWorkspaceState,
@@ -76,6 +77,7 @@ import { createBlotterPresenter } from "#/presenters/blotter";
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 import { createConnectionPresenter } from "#/presenters/connection";
 import { createDepthPresenter } from "#/presenters/depth";
+import { createEquityPriceHistoryPresenter } from "#/presenters/equityPriceHistory";
 import { createTradeExecutionPresenter } from "#/presenters/execution";
 import {
   createJarvisPreferencesPresenter,
@@ -181,6 +183,10 @@ export const ForceBootAnimationTag =
 export const PriceStreamTag = Context.GenericTag<PriceStreamPresenter>(
   "@rtc/client-core-effect/priceStream",
 );
+export const EquityPriceHistoryTag =
+  Context.GenericTag<EquityPriceHistoryPresenter>(
+    "@rtc/client-core-effect/equityPriceHistory",
+  );
 export const PriceHistoryTag = Context.GenericTag<PriceHistoryPresenter>(
   "@rtc/client-core-effect/priceHistory",
 );
@@ -302,6 +308,7 @@ export type NativeServices =
   | ForceBootAnimationPresenter
   | PriceStreamPresenter
   | PriceHistoryPresenter
+  | EquityPriceHistoryPresenter
   | CurrencyPairsPresenter
   | BlotterPresenter
   | AnalyticsPresenter
@@ -554,9 +561,9 @@ const EqDrawingsLive = presenterLayer(EqDrawingsTag, (host) => {
   return createEqDrawingsMachine(host);
 });
 
-// The two presenters that depend on ANOTHER native presenter — the reason
-// this slice introduces the Layer graph: `priceStream` and `priceHistory`
-// gate their conflation on `powerSaver.isCalm$`.
+// The three presenters that depend on ANOTHER native presenter — the reason
+// this slice introduces the Layer graph: `priceStream`, `priceHistory` and
+// `equityPriceHistory` gate their conflation on `powerSaver.isCalm$`.
 const PriceStreamLive: Layer.Layer<
   PriceStreamPresenter,
   never,
@@ -582,6 +589,24 @@ const PriceHistoryLive: Layer.Layer<
     const ports = yield* AppPortsTag;
     const powerSaver = yield* PowerSaverTag;
     return createPriceHistoryPresenter(host, ports.pricing, powerSaver.isCalm$);
+  }),
+);
+
+const EquityPriceHistoryLive: Layer.Layer<
+  EquityPriceHistoryPresenter,
+  never,
+  EffectHost | AppPorts | PowerSaverPresenter
+> = Layer.effect(
+  EquityPriceHistoryTag,
+  Effect.gen(function* buildEquityPriceHistory() {
+    const host = yield* HostTag;
+    const ports = yield* AppPortsTag;
+    const powerSaver = yield* PowerSaverTag;
+    return createEquityPriceHistoryPresenter(
+      host,
+      ports.marketData,
+      powerSaver.isCalm$,
+    );
   }),
 );
 
@@ -698,6 +723,7 @@ export function buildAppLayer(ports: AppPorts): Layer.Layer<AppLayerServices> {
   const dependent = Layer.mergeAll(
     PriceStreamLive,
     PriceHistoryLive,
+    EquityPriceHistoryLive,
     EqWorkspaceLive,
   ).pipe(Layer.provide(Layer.merge(PowerSaverLive, WatchlistLive)));
 
@@ -777,6 +803,7 @@ export const nativePresentersEffect: Effect.Effect<
   rfqQuote: RfqQuoteTag,
   watchlist: WatchlistTag,
   candleSeries: CandleSeriesTag,
+  equityPriceHistory: EquityPriceHistoryTag,
   depth: DepthTag,
   ordersBlotter: OrdersBlotterTag,
   positions: PositionsTag,

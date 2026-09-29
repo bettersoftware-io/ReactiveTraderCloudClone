@@ -45,6 +45,7 @@ export {
   DepthTag,
   EqBlotterViewPreferenceTag,
   EqDrawingsTag,
+  EquityPriceHistoryTag,
   EqWatchlistSortPreferenceTag,
   EqWorkspaceTag,
   ExecutionTag,
@@ -103,6 +104,7 @@ export { createCandleSeriesPresenter } from "#/presenters/candleSeries";
 export { conflatedFold } from "#/presenters/conflatedFold";
 export { createConnectionPresenter } from "#/presenters/connection";
 export { createDepthPresenter } from "#/presenters/depth";
+export { createEquityPriceHistoryPresenter } from "#/presenters/equityPriceHistory";
 export { createTradeExecutionPresenter } from "#/presenters/execution";
 export {
   createJarvisPreferencesPresenter,
