@@ -2,7 +2,7 @@
 
 ## 16. Trailheads
 
-Five task recipes, each a starting point ("trailhead") for a change that touches more than one file. Every route below was walked against the working tree — file paths and the file:line evidence are in the task report, not repeated here — so treat each numbered file as a real stop, not a guess. Each recipe ends with a change-impact checklist: what to re-run, which grep gates apply, whether visual goldens move, and which inventory tables need a new row.
+Eight task recipes, each a starting point ("trailhead") for a change that touches more than one file. Every route below was walked against the working tree — file paths and the file:line evidence are in the task report, not repeated here — so treat each numbered file as a real stop, not a guess. Each recipe ends with a change-impact checklist: what to re-run, which grep gates apply, whether visual goldens move, and which inventory tables need a new row.
 
 ### 1. Add a currency pair
 
@@ -16,7 +16,7 @@ Five task recipes, each a starting point ("trailhead") for a change that touches
 
 - Tests to update: `ReferenceDataSimulator.test.ts` and (if you touched step 3) `AnalyticsSimulator.test.ts` both hardcode `toHaveLength(9)` for the pair/position count — bump to the new count. (`DealerSimulator.test.ts`'s `toHaveLength(9)` is Credit dealers, not FX pairs — do not touch it.)
 - `LiveRatesHead.contract.spec.ts` reads `KNOWN_CURRENCY_PAIRS.length` dynamically — no edit, just rerun.
-- Grep gates: none of the 29 gates touch domain data files directly — skip.
+- Grep gates: none of the gates in `tests/scripts/grep-gates.ts` (42 active, numbered to 46) touch domain data files directly — skip.
 - Visual goldens: **yes** — any panel rendering the pair list (watchlist row count, blotter filters) diffs. Regenerate both committed sets (CI-canonical `react/` + local `react-local/<arch>`) across the `playwright` tier.
 - UI contract coverage: rerun `test:ui:contract:coverage`; a new pair adds no new component so the percentage shouldn't move — just confirm still green.
 - Inventory: none. Currency pairs are data, not modules — §13's exhaustive listings cover ports/simulators/effects folders, not data-table rows inside a file.
@@ -66,7 +66,7 @@ Worked example: `SUBSCRIBE_POSITIONS` / `POSITIONS` (a bulk stream message, the 
 **Change-impact checklist**
 
 - Tests: `messages.test.ts`, the new/updated effect test, and the `portFactory` adapter test for the consuming port.
-- Grep gates: none of the 33 active gates name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` if the message is reachable end to end.
+- Grep gates: none of the 42 active gates in `tests/scripts/grep-gates.ts` name the protocol layer directly; the closest thing to a wire-format gate is the fullstack e2e smokes in the `tests` workspace — rerun `pnpm test:e2e` if the message is reachable end to end.
 - Visual goldens: only if the message feeds a UI panel already rendering data (then follow recipe 4's checklist too).
 - Inventory (exhaustive per Global Constraints): `packages/server/src/effects/` is an inventory folder — if you added an effect, §13's exhaustive effects listing must gain a row.
 - README: `packages/shared/README.md` (wire protocol is its SoT) and, if you added an effect, `packages/server/README.md`.
@@ -92,7 +92,7 @@ Worked example: `PositionsPanel` (web) / the equities `PositionsBlotter` (RN) �
 - Grep gates 26–29 apply to every new file under `client-react/src/ui/**`: no `rxjs`/`@react-rxjs`/`@rx-state` import, no `localStorage`, no `fetch`/`import.meta.env`, no `setTimeout`/`setInterval` — all business/timer/transport/storage logic stays behind the ViewModel seam. If the panel gets an RN counterpart (step 9), gates 30–33 apply the identical rules to `client-react-native/src/ui/**`: no `rxjs`/`@react-rxjs`/`@rx-state`, no `localStorage`/`AsyncStorage`, no `fetch`/`expo-constants`/env reads, no `setTimeout`/`setInterval`.
 - Visual goldens: **always**, for any new or changed component in the registry — regenerate **both** committed sets (CI-canonical `react/` + local `react-local/<arch>`) for the `playwright` tier via its `:update` script.
 - UI contract coverage: the ≥95% gate is CI-only but runnable locally — always run `test:ui:contract:coverage` before merging a new panel.
-- Behavioural/e2e: if the panel is reachable in the default layout, the ten-suite e2e tier may need a new or extended `.feature` scenario plus step definitions.
+- Behavioural/e2e: if the panel is reachable in the default layout, the e2e tier (the suites `tests/scripts/run-all.ts` runs) may need a new or extended `.feature` scenario plus step definitions.
 - Inventory: §13.3 (L2 module maps) is prose-described, not exhaustive, but should gain a mention of the new panel's role; `packages/client-react/README.md` folder map.
 
 ### 5. Add a package
@@ -115,5 +115,58 @@ Worked example: `PositionsPanel` (web) / the equities `PositionsBlotter` (RN) �
 - Single-dep constraint: if the package sits in the domain/ws-effects lineage, it inherits the `rxjs`-only runtime-dependency rule — pnpm strict mode enforces it at install time, not this checklist.
 - Inventory: §13.2 (L1 package line map) gains a row for every package; write `packages/<name>/README.md` from the template in the Global Constraints (identity card, folder map, where to start reading, how it's used, see also).
 - CI: no matrix to extend — `ci.yml` has no per-package job list; every gate above is either a repo-wide glob or a `turbo run` that already covers the new package once step 1 is done.
+
+### 6. Add a member to all three application cores
+
+A new presenter, machine factory or command is not a `client-core` change any more: it is a change to the contract all three cores implement ([§22](22-pluggable-application-core.md#22-pluggable-application-core)). The step order, and why skipping one fails loudly, is the diagram in [§23 "Adding a member"](23-application-cores-explained.md#adding-a-member); the files behind each step:
+
+**Route**
+
+1. `packages/core-api/src/app.ts` (a presenter or command: the `Presenters` / `AppCommands` interfaces) or `packages/core-api/src/machine.ts` (a machine: `MachineFactories`), plus the member's own interface under `packages/core-api/src/presenters/` or `machines/`. Types only — gate 42 fails on any runtime export.
+2. *(if there is a pure rule)* `packages/core-logic/src/` — the fold or view derivation, written once and imported by all three cores.
+3. The contract suite — recipe 7.
+4. `packages/client-core/src/presenters/<Name>Presenter.ts` + its wiring in `createApp` (`packages/client-core/src/composition.ts`) — the RxJS core first, suite green.
+5. `packages/client-core-async/src/presenters/` (or `machines/`) + `packages/client-core-async/src/composition.ts` — the async core, suite green.
+6. `packages/client-core-effect/src/presenters/` (or `machines/`) + `packages/client-core-effect/src/composition.ts` (and `layers.ts` if the member is a `Layer`) — the Effect core, suite green.
+7. Both bindings — `packages/react-bindings/src/createViewModel.ts` and `packages/solid-bindings/src/createViewModel.ts` (recipe 8).
+
+**Change-impact checklist**
+
+- Typecheck is the completeness witness: each core's presenter map is typed exact, so step 1 without steps 4–6 does not compile.
+- Grep gate 43 (and dependency-cruiser `bridge-owns-rxjs`): in the two alternative cores, `rxjs` / `@rx-state/core` may be imported only as types outside `bridge/` — reach for the core's own primitives (`kernel/` in async, `bridge/out.ts` in Effect), not an operator.
+- `pnpm check:core-bundle` if the member pulls a new dependency into a core — the alternative cores must stay in their lazy chunks.
+- Inventory: none per member; `docs/architecture/22-pluggable-application-core.md` states the member total, so bump it.
+
+### 7. Add a core-contract suite
+
+**Route**
+
+1. `packages/core-contract/src/suites/<member>.ts` — export a `describe<Name>Contract` suite that subscribes to the member and drives the scripted ports (`describePositionsContract` in `suites/positions.ts` is a short model).
+2. `packages/core-contract/src/registry.ts` — import it and set the member's key in `CONTRACT_SUITES` (e.g. `"presenters.positions": describePositionsContract`). The record is exhaustive over `Presenters` / `MachineFactories` / `AppCommands`, so a new member with no entry is a compile error; an entry left `null` must also be listed in `PENDING_SUITES`, which `registry.test.ts` checks for drift.
+3. *(if the member reads a port the harness cannot yet drive)* `packages/core-contract/src/harness/scriptedPorts.ts` — add the Subject-backed port and an intent-named driver method; one-shot calls go through `createPendingQueue` (`harness/pendingQueue.ts`).
+4. Nothing to add per core: each core's runner (`packages/client-core/src/composition.coreContract.test.ts`, `src/coreContract.test.ts` in each alternative core) calls `describeCoreContract`, which walks the whole registry.
+
+**Change-impact checklist**
+
+- Run each core's `test` — the suite must be green on the RxJS core before either alternative core ports the member ([§22's ordering rule](22-pluggable-application-core.md#the-contract-tier)).
+- Timer-driven members run under the harness's `withFakeClock` (`harness/clock.ts`), never a real sleep.
+- Dependency-cruiser `core-contract-stays-neutral`: the package may import only `core-api`, `domain` (+ `rxjs`) — never a core.
+
+### 8. Expose a member in the Solid bindings
+
+Every ViewModel member exists twice — once per bindings package — and the two interfaces must stay in step for the shared `@rtc/ui-contract` specs to mount against both clients.
+
+**Route**
+
+1. `packages/solid-bindings/src/createViewModel.ts` — add the member to the `ViewModel` interface (the Solid twin of react-bindings' interface of the same name) and wire it: a shared stream through `toSignal` / `toKeyedSignal` (`src/toSignal.ts`), a per-mount machine through `useMachine` (`src/useMachine.ts`, disposed with `onCleanup`), a command as a plain function.
+2. `packages/react-bindings/src/createViewModel.ts` — the React twin, if it is not already there.
+3. `packages/client-solid/tests/ui/contract/solid/viewModelFromWorld.ts` and `packages/client-solid/tests/ui/visual/solid/buildFakeViewModel.ts` — the two test harnesses implement the same interface, so both need the member (and their React counterparts under `packages/client-react/tests/ui/`).
+4. `packages/client-solid/src/ui/**` — the consuming component, reading the member through `useViewModel()`.
+
+**Change-impact checklist**
+
+- Grep gates 34–37 apply to every file under `client-solid/src/ui/**`: no `rxjs` / `@rx-state` import, no `localStorage`, no `fetch` / `import.meta.env`, no timers — the signal arrives already bridged.
+- Dependency-cruiser `solid-stays-react-free`: nothing in `solid-bindings` or `client-solid` may import React.
+- Rerun both clients' `ui:contract` tiers — the same spec must pass on each.
 
 ---
