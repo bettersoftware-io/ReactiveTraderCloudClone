@@ -362,9 +362,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` still returns nothing) -- use cases are client-orchestration; the server drives simulators directly, and where Jarvis *does* need them it reaches them through `@rtc/agent-tools`, not directly. It is the **only** package allowed to import `@anthropic-ai/sdk` (dependency-cruiser `no-anthropic-sdk-in-inner-packages`, an allowlist over `packages/server/`), and the SDK stays confined to `src/agent/`; `@modelcontextprotocol/sdk` gets the same treatment, confined to `src/mcp/` (`no-mcp-sdk-outside-server`). |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
 
-#### `tests` (the 17th card -- not a package, the behavioural-insurance layer)
-
-*The heading's "17th" is historical: the map now has one card per package (25) and this one last.*
+#### `tests` (the last card -- not a package, the behavioural-insurance layer)
 
 | | |
 |---|---|
