@@ -25,7 +25,7 @@ file is the *how*.
 ```mermaid
 flowchart TB
     ROOT["README.md · docs/architecture/09-test-strategy.md<br/>the test strategy"]
-    VIS["tests/ui/visual/README.md<br/>the visual tier: layout, 3 runners, ADR"]
+    VIS["tests/ui/visual/README.md<br/>the visual tier: layout, the one playwright runner, ADR"]
     HERE["UPDATING-GOLDENS.md<br/>▶ you are here — the update runbook"]
     ROOT --> VIS --> HERE
 ```
@@ -46,7 +46,7 @@ flowchart TB
 
 | Set | What it is | Gates? | Rendered where | Baseline when |
 |---|---|---|---|---|
-| **`__screenshots__/react/`** | The canonical **x86** baseline. The cross-framework contract `@rtc/client-solid` also asserts against. | ✅ **`visual.yml` on push to `main`** | pinned Playwright container (`v1.61.0-noble`) | `CI=1` |
+| **`__screenshots__/react/`** | The canonical **x86** baseline. The cross-framework contract `@rtc/client-solid` also asserts against. | ✅ **`visual.yml` on push to `main`** | pinned Playwright container (`v1.63.0-noble`) | `CI=1` |
 | **`__screenshots__/react-local/<arch>/`** | Your machine's **native** pixels (`darwin-arm64`, `linux-arm64`). Powers the instant local loop. | ❌ never — feedback only | your machine, no Docker | `CI` unset |
 
 Both live under `packages/ui-contract/goldens/<tier>/__screenshots__/` — a
@@ -302,8 +302,8 @@ sequenceDiagram
 | [`ADR-001-visual-diff-tooling.md`](./ADR-001-visual-diff-tooling.md) | why two sets exist; the collapse that was reverted; the 2026-07-20 tier-retirement Outcome |
 | [`.github/workflows/visual.yml`](../../../../../.github/workflows/visual.yml) | the gate — checks `react/` on push to `main` |
 
-Container image is pinned to `mcr.microsoft.com/playwright:v1.61.0-noble`;
-tolerance is `maxDiffPixelRatio: 0.06`; sole tier: `playwright`
+Container image is pinned to `mcr.microsoft.com/playwright:v1.63.0-noble`;
+tolerance is `maxDiffPixelRatio: 0.005` + `maxDiffPixels: 100` (react and solid alike); sole tier: `playwright`
 (`playwright-ct` and `vitest-browser`'s assert role retired 2026-07-20 — see
 ADR-001). Keep the image tag identical across
 `ci.yml`, `visual.yml`, `update-visual-goldens.yml`, and

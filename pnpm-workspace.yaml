@@ -50,7 +50,13 @@ overrides:
   # vulnerable range so consumers already on a safe version (incl. the 2.x
   # line, patched separately as 2.1.2) are never forced off their choice.
   # 1.1.17 ships the corrected per-major fix for GHSA-mh99-v99m-4gvg.
-  "brace-expansion@<1.1.17": ^1.1.17
+  # 2026-09-30: floor raised 1.1.17 → 1.1.21 (and 5.0.9 → 5.0.12 below) for
+  # three follow-up advisories: HIGH GHSA-6j4f-fj2g-mc7p (parseCommaParts
+  # recursion, <1.1.19 / <5.0.10), HIGH GHSA-qhr7-859c-m2p7 (nested brace
+  # groups, <1.1.20 / <5.0.11) and MODERATE GHSA-q2hr-2g5m-vwhr (<1.1.21 /
+  # <5.0.12). 1.1.21 and 5.0.12 published 2026-09-14 — outside the
+  # minimumReleaseAge cooldown. The 2.x line is not in their ranges.
+  "brace-expansion@<1.1.21": ^1.1.21
   # The SAME DoS advisory (GHSA-mh99-v99m-4gvg) also lands on the newer 5.x
   # line: brace-expansion@5.0.7 arrives transitively via @gorhom/bottom-sheet
   # (the RN trade-ticket sheet). Keyed to the whole 5.x major (not the exact
@@ -62,7 +68,7 @@ overrides:
   # CVE-2026-14257 mitigation; vulnerable >=4.0.0 <5.0.9 — no 4.x resolves
   # here, so lifting 5.x closes it). 5.0.9 published 2026-07-30 — outside the
   # minimumReleaseAge cooldown.
-  "brace-expansion@5": ^5.0.9
+  "brace-expansion@5": ^5.0.12
   # Same advisory, 2.x line: force it to the maintenance-v2 patch 2.1.3 (the
   # advisory's corrected per-major fix; 2.1.2 remained vulnerable). minimatch@10 asks ^2.0.1, so a
   # 2.1.x patch bump is safe. Scoped to major 2 so 1.x / 5.x are untouched.

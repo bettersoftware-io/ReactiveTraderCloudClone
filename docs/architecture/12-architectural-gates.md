@@ -2,7 +2,7 @@
 
 ## 12. Architectural Gates
 
-`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (36 active gates, numbered up to 40, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
+`tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (42 active gates, numbered up to 46, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
 | Gate | Rule |
 |------|------|
@@ -45,6 +45,11 @@
 | 39 | No `localStorage` in `devtools-app/src` (the inspector holds no persistence; state lives in InspectorStore) |
 | 40 | No `fetch(` / `new WebSocket` in `devtools-app/src` (transport is the injected Duplex) |
 | 41 | No `.test` / `.spec` / `.page` / `.stories` files inside `client-react-native/app/` — expo-router's route context bundles every source file there and its parser strips all extensions, so `_layout.test.tsx` becomes a second `_layout` and the route tree throws at boot; the layout specs live in `src/app/` and reach the routes via `#app/*` |
+| 42 | `@rtc/core-api` exports no runtime value — only `export type` forms pass (the types-only contract) |
+| 43 | The alternative cores (outside `bridge/`) and `@rtc/core-logic` import `rxjs` / `@rx-state/core` as types only (`bridge-owns-rxjs`, `core-logic-stays-pure`) |
+| 44 | Pixel specs wait out dockview's tab-strip resize flash before capturing (custom check) |
+| 45 | Both engine bridges keep the `dockview-theme-rtc` class (`DOCK_THEME_CLASS`) on their container — the settle wait keys on it (custom check) |
+| 46 | The visual-tier Playwright webServers launch their server without a `pnpm` wrapper, which orphans it at teardown |
 
 Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
 

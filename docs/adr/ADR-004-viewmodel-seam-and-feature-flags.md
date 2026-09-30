@@ -1,8 +1,9 @@
 # ADR-004: The ViewModel seam (renaming the UI DI boundary) and feature-flag layering
 
 **Status:** Two decisions, two states.
-- **Decision 1 — rename the DI seam to `ViewModel`:** Accepted; implementation planned
-  (`docs/superpowers/plans/2026-06-30-viewmodel-seam-rename.md`).
+- **Decision 1 — rename the DI seam to `ViewModel`:** Accepted and implemented
+  (shipped 2026-07-07; see the update below; the original plan is
+  `docs/superpowers/plans/2026-06-30-viewmodel-seam-rename.md`).
 - **Decision 2 — feature-flag layering:** Accepted as architecture; **no code yet**
   (Proposed). Recorded here so the boundary is settled before the first flag is added.
 
@@ -11,7 +12,8 @@
 > (`createViewModel`, `useViewModel`, `ViewModelProvider`, `ViewModelContext`,
 > `useMachine`), rather than a `src/ui/viewModel/` directory inside `client-react`.
 > The `Presenters` input type moved with the application-core extraction to
-> `packages/client-core/src/composition.ts`. Path references below are the ADR's
+> `packages/client-core/src/composition.ts` and, since the pluggable-core work
+> (ADR-006), now lives in the types-only `@rtc/core-api` package. Path references below are the ADR's
 > point-in-time record; the live description is
 > [architecture.md §3.6](../architecture/03-uml-class-diagrams.md#36-the-viewmodel-seam).
 

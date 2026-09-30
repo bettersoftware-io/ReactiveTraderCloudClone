@@ -1,5 +1,7 @@
 # Clean Architecture Alignment — Status
 
+> **Historical (2026-09-30):** This is the June 2026 clean-architecture phase log, frozen at its last update; the live pending-work backlog is [`docs/STATUS.md`](../STATUS.md).
+
 Tracks the multi-phase refactor that brings this codebase into alignment with `docs/architecture.md`. Read this first when resuming work after a break.
 
 **Last updated:** 2026-06-18 (Dumb-UI rxjs-machines workstream complete; coverage + security housekeeping)
