@@ -4,7 +4,7 @@
 
 Twenty-five workspace packages plus the `tests` package. Every solid arrow is a real `dependencies` entry (verified against each `package.json`); a dashed arrow is a `devDependencies` entry, drawn only where it carries architectural meaning. Dependencies flow **inward only** (toward `domain`). One diagram of all 26 would be unreadable at column width, so the graph is drawn in four slices; a package that appears in two slices is the same node.
 
-**Slice 1 -- the clients and what they import.** The three alternative-core boxes are expanded in slice 2.
+**Slice 1 -- the clients and what they import.** The core boxes (`client-core`, the two alternative cores, `core-api`) are expanded in slice 2.
 
 ```mermaid
 graph TB
@@ -69,7 +69,7 @@ graph TB
     style domain fill:#4CAF50,color:#fff
 ```
 
-**Slice 2 -- the application cores and the inner circles.** `@rtc/core-contract` (the behavioural equivalence tier) and `@rtc/ui-contract` (the UI test contract) are test-only: every core takes `core-contract` as a devDependency, both web clients take `ui-contract` as one, and neither ever appears in a `src/` import.
+**Slice 2 -- the application cores and the inner circles.** `@rtc/core-contract` (the behavioural equivalence tier) and `@rtc/ui-contract` (the UI test contract) are test-only: every core takes `core-contract` as a devDependency, both web clients take `ui-contract` as one, and each is imported only from test files (the per-core runner, e.g. `client-core/src/composition.coreContract.test.ts`, lives beside the source; `client-core-src-uses-core-contract-only-in-tests` / `alt-cores-use-core-contract-only-in-tests` keep it there).
 
 ```mermaid
 graph TB

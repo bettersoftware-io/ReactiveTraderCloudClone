@@ -327,7 +327,7 @@ classDiagram
     ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
 
-> **WS-real port adapters are factory functions, not classes.** The `<<factory>>` boxes above (`createPricingPort`, `createExecutionPort`, ...) are the real-mode port implementations: plain functions in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `IWsAdapter` and assembled by `createWsRealPorts`. The only adapter *classes* in `client-core/src/adapters/` are `WsAdapter` itself, `HttpAuthAdapter`, `WsConnectionEventsAdapter`, the two Jarvis adapters (`WsJarvisAdapter`, `WsJarvisUsageAdapter`, plus the sim-mode `ScriptedJarvisAdapter`) and `InMemorySessionStore`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
+> **WS-real port adapters are factory functions, not classes.** The `<<factory>>` boxes above (`createPricingPort`, `createExecutionPort`, ...) are the real-mode port implementations: plain functions in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `IWsAdapter` and assembled by `createWsRealPorts`. The only adapter *classes* in `client-core/src/adapters/` are `WsAdapter` itself, `HttpAuthAdapter`, `WsConnectionEventsAdapter`, the Jarvis adapters (`WsJarvisAdapter`, `WsJarvisUsageAdapter`, plus the sim-mode `ScriptedJarvisAdapter`) and `InMemorySessionStore`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
 **Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
 
@@ -512,7 +512,7 @@ execute(pair: CurrencyPair): Observable<Price> {
 
 ### 3.5 Presenters, Machines & State Streams
 
-Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. In the default (RxJS) core they live in `packages/client-core/src/presenters/`, across FX, Credit, Equities, Admin/telemetry, and shell concerns; the full member list -- 61 presenters, 12 machine factories and 2 commands -- is the `Presenters` / `MachineFactories` / `AppCommands` interfaces in `@rtc/core-api` (`packages/core-api/src/app.ts`, `machine.ts`), which the two alternative cores implement too ([§22](22-pluggable-application-core.md#22-pluggable-application-core)).
+Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. In the default (RxJS) core they live in `packages/client-core/src/presenters/`, across FX, Credit, Equities, Admin/telemetry, and shell concerns; the full member list is the `Presenters` / `MachineFactories` / `AppCommands` interfaces in `@rtc/core-api` (`packages/core-api/src/app.ts`, `machine.ts`), which the two alternative cores implement too ([§22](22-pluggable-application-core.md#22-pluggable-application-core)).
 
 Alongside plain stream presenters, the core defines **state machines** -- the framework-neutral `Machine<TState, TIntents>` type (`{ state$, intents, dispose }`, declared in `packages/core-api/src/machine.ts` so all three cores share it). Machines model per-component-instance lifecycles: `TileExecutionMachine`, `NotionalMachine`, `OrderTicketMachine`, `RfqCountdownMachine`, `BootSequenceMachine`, `LayoutMachine`, `IncidentMachine`, and friends. Their `state$` is a `StateObservable` from **`@rx-state/core`** -- the rxjs-only, framework-neutral half of react-rxjs -- which is what lets shareable, defaulted observable state live in the core while React (via `@react-rxjs/core` in the bindings) consumes it downstream. The split matters: `@rx-state/core` in `client-core`, `@react-rxjs/core` only in `react-bindings`.
 
@@ -603,8 +603,8 @@ flowchart TB
     end
 
     subgraph consumers["Consumers of the SAME contract"]
-        webUI["Web components (~52 files)"]
-        rnUI["RN screens (~55 files)"]
+        webUI["Web components<br/>(client-react src/ui)"]
+        rnUI["RN screens<br/>(client-react-native src/ui)"]
         fakeVm["buildFakeViewModel<br/>(visual-test harness, per client's tests/)"]
         worldVm["viewModelFromWorld<br/>(UI-contract-test harness, per client's tests/)"]
     end
@@ -621,7 +621,7 @@ flowchart TB
     VMtype -.implemented by.-> worldVm
 ```
 
-`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `core.createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s ~52+ components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
+`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `core.createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s own `src/ui` components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
 
 How the pieces divide the work inside `createViewModel`:
 

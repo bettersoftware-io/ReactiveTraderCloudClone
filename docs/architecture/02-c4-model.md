@@ -102,7 +102,7 @@ flowchart TB
 
 #### 2.2.1 Test and tooling containers
 
-Six more packages ship no production code into a client bundle; they test or inspect the containers above. They are drawn apart so the main diagram stays readable.
+Six more packages test or inspect the containers above. Five of them ship no production code into a client bundle; `@rtc/devtools-core` ships only its composition-root decorators and hub, which stay dormant until an inspector attaches. They are drawn apart so the main diagram stays readable.
 
 ```mermaid
 flowchart TB
@@ -173,7 +173,7 @@ flowchart TB
 
     subgraph coreLayer["@rtc/client-core — vanilla TS + RxJS"]
         composition["<b>createApp / createMachineFactories</b><br/>wires ports → presenters → commands"]:::core
-        presenters["<b>Presenters & State Machines</b><br/>61 presenters + 12 machine factories + 2 commands:<br/>price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
+        presenters["<b>Presenters & State Machines</b><br/>every core-api member (Presenters · MachineFactories · AppCommands):<br/>price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
         portFactory["<b>portFactory</b><br/>createSimulatorPorts / createWsRealPorts"]:::core
         wsAdapter["<b>WsAdapter</b><br/>send · rpc w/ correlation IDs · reconnect"]:::core
         composition --> presenters
@@ -200,7 +200,7 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
-**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (~850 LOC) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
+**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (see `wc -l` over its non-test `src/` files) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
 
 #### 2.3.1 The shape of the simplicity
 
@@ -413,9 +413,9 @@ flowchart TB
         fxCredit["<b>Credit effects</b><br/>instruments$ · dealers$ · workflow$ · createRfq$ ·<br/>cancelRfq$ · quote$ · pass$ · accept$"]:::server
         fxAdmin["<b>Admin effects</b><br/>getThroughput$ · setThroughput$ · jarvisUsage$"]:::server
         fxEq["<b>Equities effects</b><br/>watchlist$ · eqQuotes$ · depth$ · orders$ · positions$ ·<br/>getCandles$ · getCandleHistory$ · placeOrder$ (+ ORDER_LIFECYCLE) · cancelOrder$"]:::server
-        fxJarvis["<b>Jarvis effects</b><br/>JARVIS_* · availability + one chat session per connection<br/>(scripted or Anthropic, per JarvisBrain preference)"]:::server
+        fxJarvis["<b>Jarvis effects</b><br/>JARVIS_* · availability + up to two lazy sessions per connection<br/>(scripted and Anthropic; each turn routed by JarvisBrain preference)"]:::server
         agent["<b>Agent loops</b> · src/agent<br/>ScriptedAgentLoop · AnthropicAgentLoop<br/>(@anthropic-ai/sdk confined here)"]:::server
-        svcContainer["<b>createServices</b><br/>ServiceContainer, 15 members: FX + credit + equities simulators<br/>+ ThroughputService · UsageMeter · JarvisGateService"]:::server
+        svcContainer["<b>createServices</b><br/>ServiceContainer: FX + credit + equities simulators<br/>+ ThroughputService · UsageMeter · JarvisGateService"]:::server
         http --> toSocket
         fxFx ~~~ fxCredit ~~~ fxAdmin ~~~ fxEq
         fxEq ~~~ fxJarvis

@@ -54,6 +54,7 @@ flowchart TB
     core --> domain
     core --> shared
     api --> domain
+    api --> shared
     core -. "live mode: WS JSON" .-> srv
     core -. "sim mode: in-process" .-> domain
     srv --> wse
@@ -61,6 +62,10 @@ flowchart TB
     srv --> domain
     srv --> shared
     agt --> domain
+
+    %% stack the three app buildings vertically (edge-less subgraphs would tile side by side)
+    WebApp ~~~ MobileApp
+    MobileApp ~~~ SolidApp
 
     classDef ui fill:#1f6feb,stroke:#79c0ff,color:#ffffff
     classDef bridge fill:#8957e5,stroke:#d2a8ff,color:#ffffff
@@ -310,7 +315,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Depends on** | `@rtc/devtools-core`, `react`, `react-dom` (`packages/devtools-app/package.json` `dependencies`) |
 | **Consumed by** | `devtools-extension`, the one package that imports its source (the `InspectorApp`, transpiled by the extension's own Vite build); `client-react` and `client-solid` take only a `devDependency` build-order/dist-path edge to it (§6), never importing its source |
-| **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what let the Chrome-extension shell (`@rtc/devtools-extension`) be a thin wrapper around the same app ([§20.8](20-devtools.md#208-future-extensions)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
+| **Non-obvious** | Never imports `@rtc/client-core` or `@rtc/domain` -- it understands only the protocol types from `devtools-core` (dependency-cruiser's `devtools-app-protocol-only` rule, [§6](06-package-dependencies.md#6-package-dependencies)), which is what let the Chrome-extension shell (`@rtc/devtools-extension`, card below) be a thin wrapper around the same app ([§20](20-devtools.md#20-rtc-devtools)). Its own dev server (port 5280) has no same-origin hub to pair with and always renders "disconnected" by design -- the real inspector is served at `/devtools/` from the app's own origin. |
 | **README** | [`packages/devtools-app/README.md`](../../packages/devtools-app/README.md) |
 
 #### `@rtc/devtools-extension`
@@ -357,7 +362,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Non-obvious** | Never imports `@rtc/client-core` (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) -- server and clients share only `domain`/`shared`, enforced as a hard boundary by dependency-cruiser's `client-not-server`/`server-not-client` rules ([§6](06-package-dependencies.md#6-package-dependencies)). It also skips `domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` still returns nothing) -- use cases are client-orchestration; the server drives simulators directly, and where Jarvis *does* need them it reaches them through `@rtc/agent-tools`, not directly. It is the **only** package allowed to import `@anthropic-ai/sdk` (dependency-cruiser `no-anthropic-sdk-in-inner-packages`, an allowlist over `packages/server/`), and the SDK stays confined to `src/agent/`; `@modelcontextprotocol/sdk` gets the same treatment, confined to `src/mcp/` (`no-mcp-sdk-outside-server`). |
 | **README** | [`packages/server/README.md`](../../packages/server/README.md) |
 
-#### `tests` (the last card -- not a package, the behavioural-insurance layer)
+#### `tests` (the 17th card -- not a package, the behavioural-insurance layer)
+
+*The heading's "17th" is historical: the map now has one card per package (25) and this one last.*
 
 | | |
 |---|---|
@@ -549,6 +556,13 @@ src/
 ├── shared/components.ts, shared/mount.ts          the render-target seam each client's swap-trio implements
 └── visual/     scenarios.ts · scenarioActions.ts · fixtures.ts · appData.ts · goldenPath.ts · freezeClock.ts
                  — the manifest + interaction table + fixture data both clients' visual tiers loop over
+```
+
+`@rtc/agent-tools` (flat -- no subfolders):
+```
+src/
+├── jarvisToolDefinition.ts   the tool shape: name · description · JSON Schema inputSchema · run()
+└── buildJarvisTools.ts        the seven desk tools over injected domain ports
 ```
 
 `@rtc/ws-effects` (flat -- no subfolders):
