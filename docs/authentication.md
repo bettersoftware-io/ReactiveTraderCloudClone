@@ -102,11 +102,11 @@ sequenceDiagram
    empty — a deploy can never silently serve unsigned/unverifiable tokens.
 7. **The client stores the session.** On a `{ ok: true, token, user }`
    outcome, `AuthPresenter.commitLoginOutcome` writes
-   `{ token, user, username, exp: now() + SESSION_TTL_MS }` to the injected
+   `{ token, user, username, exp }` to the injected
    `SessionStore` (`packages/client-core/src/adapters/sessionStore.ts`) —
-   `SESSION_TTL_MS` is a client-side 8-hour constant
-   (`AuthPresenter.ts:19`, independent of the server's own `AUTH_TTL_MS`) — and
-   flips state to `"authenticated"`.
+   `exp` is the expiry the `AuthPort` reported (the server's real token expiry,
+   or the simulator's `now() + ttlMs`), persisted verbatim rather than
+   recomputed from a client-side TTL — and flips state to `"authenticated"`.
 8. **The WebSocket connects with the token.** `WsAdapter` reads
    `sessionStore.read()?.token` fresh on every (re)connect and appends it as
    `?access=<token>` to the WS URL (both `buildBrowserPorts.ts` and
@@ -224,7 +224,7 @@ Every user of the deployed app authenticates live against the Fly server's own
   `EXPO_PUBLIC_DEV_AUTH` — a JSON `username -> password` object, parsed by
   `nativeAuthConfig.ts`'s `parseDevAuth` into `DEV_CREDENTIALS`. If that
   variable is unset, empty, or malformed, it falls back to a built-in map of
-  all four roster usernames at a shared password `"demo"`
+  all four roster usernames at the shared password `"mcdc2026"`
   (`FALLBACK_DEV_CREDENTIALS`, `nativeAuthConfig.ts:19-24`) — so the offline
   simulator always has a working login with zero env configured. This never
   reaches a deployed server; it is simulator/local-only.

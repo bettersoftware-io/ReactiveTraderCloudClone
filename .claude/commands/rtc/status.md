@@ -34,7 +34,7 @@ calls, which is cheaper than the failure mode branching caused.
 
 ## What to render
 
-**Never inline `docs/STATUS.md`.** It is ~59k and single entries run to
+**Never inline `docs/STATUS.md`.** It is ~170k and single entries run to
 thousands of words. The skeleton above is the whole point — work from it, and
 `Read` only the specific entry a follow-up question is actually about.
 
@@ -50,7 +50,7 @@ Structure the report as:
 3. **Last CI conclusion on `main`.** If the most recent completed run is a
    failure, that is the headline — say so first, above everything else.
 4. **Backlog**, summarized from the skeleton: counts per section, then name the
-   handful of entries that look most actionable. Do not list all ~37.
+   handful of entries that look most actionable. Do not list all ~65.
 
 Keep the whole thing readable on a phone. Terse beats complete.
 

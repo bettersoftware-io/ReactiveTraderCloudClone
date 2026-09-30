@@ -6,12 +6,12 @@ Accepted (2026-07-12).
 
 ## Context
 
-The dumb-UI rule (grep-gates 26–33) bans `rxjs`/`localStorage`/`fetch`/timers in
+The dumb-UI rule (grep-gates 26–37, one set per client `src/ui`) bans `rxjs`/`localStorage`/`fetch`/timers in
 `src/ui`, and the 2026-06-16 dumb-UI migration relocated business logic into
 RxJS machines behind the ViewModel. But those are *negative* rules; there is no
 positive decision tree telling an author which home a given piece of
 UI-adjacent logic belongs in. The recurring question — "shouldn't this complex
-hook (e.g. `useFlipGrid`) be an RxJS presenter so the future Solid client can
+hook (e.g. `useFlipGrid`) be an RxJS presenter so the Solid client (since shipped) can
 reuse it?" — has a precise answer that was undocumented.
 
 Core insight: **"shared, component-free logic" ≠ "RxJS."** RxJS machines earn
@@ -83,8 +83,8 @@ granularities.
 ## Consequences
 
 - `@rtc/motion-core` is the DOM-free home for shared view-layer math; the React
-  hooks and the future Solid directives import identical functions.
-- The grep-gates (26–33) remain the negative cross-check: reaching for
+  hooks and the Solid directives import identical functions.
+- The grep-gates (26–37) remain the negative cross-check: reaching for
   rxjs/localStorage/fetch/timers in `src/ui` means the logic is category ①.
 
 ## See also

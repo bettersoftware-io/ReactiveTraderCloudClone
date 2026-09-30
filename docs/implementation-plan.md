@@ -2,7 +2,8 @@
 
 > **Historical document — the original phased build plan.** Kept as a record of how
 > the system was built. Package placements predate the `@rtc/client-core` /
-> `@rtc/react-bindings` extraction, the React Native client, and `@rtc/ws-effects`
+> `@rtc/react-bindings` extraction, the React Native client, and the move to
+> a native `ws` server built on `@rtc/ws-effects`
 > (e.g. "presenters/adapters in `client-react/src/app`" is no longer where that code
 > lives). For the current structure, [architecture.md](./architecture.md) is
 > authoritative.

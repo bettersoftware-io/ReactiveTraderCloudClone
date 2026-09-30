@@ -87,7 +87,7 @@ remove the worktree.
 ## When not to write
 
 - The finding is already in the repo — an edit beats a new file, and a
-  fragmenting corpus is the main failure mode at 298 files.
+  fragmenting corpus is the main failure mode at ~430 files.
 - It is pending work → that is `STATUS.md` via its skill, not a new doc.
 - It is true only of this conversation. Docs are read months later by someone
   with no context; if it does not survive that, skip it.

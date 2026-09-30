@@ -4,7 +4,9 @@
 > Phase 2 (the `JARVIS_*` WS wire + the server's scripted agent loop) SHIPPED —
 > PR #440, 2026-07-31. Phase 3 (`@rtc/agent-tools` + the real Anthropic
 > tool-runner loop) SHIPPED — 2026-08-01. Phase 4 (the MCP endpoint at `/mcp`)
-> SHIPPED — 2026-08-01. Next is P5+: the roadmap in §10 of the parent spec.**
+> SHIPPED — 2026-08-01. P5 (app-driving + the narrator, §18.17) has since
+> shipped too, so P1–P5 are all shipped; the remaining backlog lives in
+> [`docs/STATUS.md`](../STATUS.md).**
 > The authoritative decision records are the phase-1 spec
 > at
 > [`docs/superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md`](../superpowers/specs/2026-07-26-jarvis-phase-1-scripted-surface-design.md)
@@ -975,7 +977,7 @@ witness is that `AnthropicAgentLoop`'s default factory assigns
 **no cast** — if the SDK changes shape under us, that assignment stops compiling.
 
 What a fake cannot witness is whether the real API agrees with our reading of it.
-That is `scripts/jarvis-live-smoke.ts` (`pnpm jarvis:smoke:live`) — manual,
+That is `tests/scripts/jarvis-live-smoke.ts` (`pnpm jarvis:smoke:live`) — manual,
 key-gated, refusing to run without `ANTHROPIC_API_KEY`, dependency-free (it
 hand-mirrors the wire vocabulary so it needs no build), and never run by CI because
 every turn is a real metered call. It boots the real server on a scratch port, logs
@@ -1734,7 +1736,7 @@ dismiss) all drive this canned path, never a real model.
 
 Per the design spec's explicit scope line, this round is L1–L2 only:
 
-- **L3 — docking/persistence.** Pinning a panel into the workspace layout,
+- **L3 — docking/persistence (shipped since this round).** Pinning a panel into the workspace layout,
   persisting its spec across sessions. Needs the (separately deferred)
   layout-management port; today's panels are ephemeral by design.
 - **L4 — dashboards, linked interactions.** Multi-panel layouts, shared
