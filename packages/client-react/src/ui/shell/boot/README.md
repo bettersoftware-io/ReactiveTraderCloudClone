@@ -21,7 +21,7 @@ This file is only about **editing the draw code without breaking it**.
 | File | Lives in | Kind | Tested? |
 |------|----------|------|---------|
 | `BootGate.tsx`, `BootSequence.tsx` | here (`client-react`) | React shell + the rAF loop | yes — `BootSequence.test.tsx` + the UI contract |
-| `bootCanvas.ts` | `packages/boot-splash/src/` | shared helpers + the `laser` & `docking` draws | **no** |
+| `bootCanvas.ts` | `packages/boot-splash/src/` | shared helpers + the `laser` & `docking` draws | only the pure maths (`hexToRgba`, `ease`, `BOOT_DURATION_MS`, in `bootCanvas.test.ts`); the draws: **no** |
 | `variants/boot{Core,Hologram,Geo,Layers,Jarvis,Topo}.ts` | `packages/boot-splash/src/variants/` | the six 3D scene draws | **no** |
 | `bootSplashGate.ts` | `packages/boot-splash/src/` | reduced-motion/webdriver gate | yes — `bootSplashGate.test.ts` |
 | `BootGate.module.css`, `BootSequence.module.css` | `packages/boot-splash/src/styles/` | styles | via visual goldens |

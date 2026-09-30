@@ -16,7 +16,7 @@ A small declarative RxJS effects framework for dispatching WebSocket messages --
 | Path | What lives here |
 |---|---|
 | `src/types.ts` | The `WsEffect<Ctx>` primitive, plus `Inbound`/`Outbound`/`Socket` — the whole public vocabulary |
-| `src/stream.ts`, `src/rpc.ts` | Sugar built on the primitive: 1→N subscription fan-out, and correlated request/ack/nack |
+| `src/stream.ts`, `src/rpc.ts`, `src/keyedStream.ts` | Sugar built on the primitive: 1→N subscription fan-out, correlated request/ack/nack, and `keyedStream` — refcounted, keyed subscriptions that coalesce frames sharing a key |
 | `src/combineEffects.ts` | Merges many effects over one shared inbound stream, isolating each from the others' errors |
 | `src/createWsListener.ts` | Wires a `Socket` to a combined effect: pipes `in$` through it, sends `out$` to the socket, tears down on `closed$` |
 | `src/operators.ts` | Two leaf helpers (`matchType`, `out`) that `stream`/`rpc` build on |
@@ -30,16 +30,21 @@ A small declarative RxJS effects framework for dispatching WebSocket messages --
 
 ## How it's used
 
-`@rtc/server` composes 24 effects (`fx`/`credit`/`equities`/`admin.effects.ts`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the entire dispatch layer is five lines in `packages/server/src/index.ts`:
+`@rtc/server` composes its effects (`fx`/`credit`/`equities`/`admin`/`jarvis` `.effects.ts`, assembled by `buildEffects`) into one via `combineEffects`, then wires it to every incoming connection via `createWsListener` -- the dispatch layer itself is a few lines in `packages/server/src/index.ts`:
 
 ```ts
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
-import { allEffects } from "./effects/index.js";
+import { buildEffects } from "./effects/index.js";
+import { createJarvisLoops } from "./agent/agentLoop.js";
 import { createServices } from "./services/serviceContainer.js";
 
 const services = createServices();
-const listen = createWsListener(combineEffects(...allEffects), services);
+const jarvisLoops = createJarvisLoops(process.env, services, buildAnthropicLoop);
+const listen = createWsListener(
+  combineEffects(...buildEffects(jarvisLoops)),
+  services,
+);
 ```
 
 A single effect, built from the `rpc` sugar (`packages/server/src/effects/admin.effects.ts`):
