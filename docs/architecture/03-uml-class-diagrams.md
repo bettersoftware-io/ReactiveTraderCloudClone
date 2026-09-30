@@ -224,8 +224,9 @@ classDiagram
         +getRfqQuote(symbol, pipsPosition)
     }
 
-    class WsRealPricingAdapter {
-        -WsAdapter ws
+    class createPricingPort {
+        <<factory · portFactory.ts>>
+        closes over IWsAdapter ws
         +getPriceUpdates(symbol)
         +getPriceHistory(symbol)
     }
@@ -235,8 +236,9 @@ classDiagram
         +onTrade(listener) void
     }
 
-    class WsRealExecutionAdapter {
-        -WsAdapter ws
+    class createExecutionPort {
+        <<factory · portFactory.ts>>
+        closes over IWsAdapter ws
         +executeTrade(request)
     }
 
@@ -245,13 +247,13 @@ classDiagram
     }
 
     PricingPort <|.. PricingSimulator : implements
-    PricingPort <|.. WsRealPricingAdapter : implements
+    PricingPort <|.. createPricingPort : returns an impl
     ExecutionPort <|.. ExecutionSimulator : implements
-    ExecutionPort <|.. WsRealExecutionAdapter : implements
+    ExecutionPort <|.. createExecutionPort : returns an impl
     BlotterPort <|.. TradeStoreSimulator : implements
 ```
 
-*B — the reference-data catalog (each also has a WsReal factory, elided for brevity):*
+*B — the reference-data catalog (each also has a WS-real factory in `portFactory.ts`, elided for brevity):*
 
 ```mermaid
 classDiagram
@@ -325,7 +327,7 @@ classDiagram
     ConnectionEventsPort <|.. BrowserConnectionEventsAdapter : implements
 ```
 
-> **`WsReal*` adapters are factory functions, not classes.** The boxes above (`WsRealPricingAdapter`, `WsRealExecutionAdapter`, ...) are drawn as classes for diagram symmetry, but the real-mode port implementations are produced by factory functions (`createPricingPort`, `createExecutionPort`, ...) in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `WsAdapter`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
+> **WS-real port adapters are factory functions, not classes.** The `<<factory>>` boxes above (`createPricingPort`, `createExecutionPort`, ...) are the real-mode port implementations: plain functions in `packages/client-core/src/adapters/portFactory.ts`, each closing over a shared `IWsAdapter` and assembled by `createWsRealPorts`. The only adapter *classes* in `client-core/src/adapters/` are `WsAdapter` itself, `HttpAuthAdapter`, `WsConnectionEventsAdapter`, the Jarvis adapters (`WsJarvisAdapter`, `WsJarvisUsageAdapter`, plus the sim-mode `ScriptedJarvisAdapter`) and `InMemorySessionStore`. The eight classic transport ports plus `ConnectionEventsPort` (which has no contract-test layer — see [§9.6](09-test-strategy.md#96-port-contract-test-layer)) are shown above; the port surface has since grown the families below.
 
 **Newer port families** (added by the Equities, HUD, and Admin/telemetry workstreams; same dependency-inversion rules), again in two readable groups.
 
@@ -353,7 +355,8 @@ classDiagram
         +positions() Observable~EquityPosition[]~
     }
 
-    class WsRealEquitiesAdapters {
+    class EquitiesPortFactories {
+        <<factories · portFactory.ts>>
         createMarketDataPort(ws)
         createOrderPort(ws)
         createPositionPort(ws)
@@ -364,9 +367,9 @@ classDiagram
         EquityPositionSimulator
     }
 
-    MarketDataPort <|.. WsRealEquitiesAdapters : implements
-    OrderPort <|.. WsRealEquitiesAdapters : implements
-    PositionPort <|.. WsRealEquitiesAdapters : implements
+    MarketDataPort <|.. EquitiesPortFactories : return impls
+    OrderPort <|.. EquitiesPortFactories : return impls
+    PositionPort <|.. EquitiesPortFactories : return impls
     MarketDataPort <|.. EquitySimulators : implements
     OrderPort <|.. EquitySimulators : implements
     PositionPort <|.. EquitySimulators : implements
@@ -396,8 +399,8 @@ classDiagram
 
     class LocalStoragePreferencesAdapter {
         web · sync local storage
-        (own impl per client:
-        client-react + client-solid)
+        own impl per client
+        client-react + client-solid
     }
     class AsyncStoragePreferencesAdapter {
         mobile · RN AsyncStorage
@@ -416,7 +419,7 @@ The telemetry family (`telemetry`, `serviceHealth`, `eventLog`, `sessions`) is s
 
 Both factories (`createSimulatorPorts`, `createWsRealPorts`) live in `@rtc/client-core` and are shared; only each client's own ~100-line switch file is per-client.
 
-**Gateway-events adapter pair.** `ConnectionEventsPort` is supplied by one of two transport-specific adapters chosen at the composition root: `WsConnectionEventsAdapter` (wraps `IWsAdapter.connectionEvents()` so `WsAdapter`'s `onopen`/`onclose` lifecycle reaches the state machine) in WS-real mode, or `ConnectionEventsSimulator` (one-shot `of(gatewayConnected)`) in simulator mode. Either choice is then merged with `BrowserConnectionEventsAdapter` (the source of `browserOnline`/`browserOffline`/`idleTimeout`/`userActivity`) via a plain `merge(...)` in `composition.ts`.
+**Gateway-events adapter pair.** `ConnectionEventsPort` is supplied by one of two transport-specific adapters chosen at the composition root: `WsConnectionEventsAdapter` (wraps `IWsAdapter.connectionEvents()` so `WsAdapter`'s `onopen`/`onclose` lifecycle reaches the state machine) in WS-real mode, or `ConnectionEventsSimulator` (one-shot `of(gatewayConnected)`) in simulator mode. Either choice is then merged with `BrowserConnectionEventsAdapter` (the source of `browserOnline`/`browserOffline`/`idleTimeout`/`userActivity`) via a plain `merge(...)` in each web client's `buildBrowserPorts.ts`, which hands the merged stream to `client-core`'s `pairConnectionPorts`.
 
 In simulator mode the composition root additionally pipes browser events through a `mergeMap` that synthesizes a `gatewayConnected` event after every `browserOnline`. This compensates for the fact that `ConnectionEventsSimulator.events()` is one-shot — without it the state machine would stay at `CONNECTING` permanently after a browser offline/online cycle (no real gateway exists in simulator mode to re-emit on reconnect). WS-real mode is unaffected: `WsAdapter` naturally emits a fresh `gatewayConnected` on each reconnect's `onopen`.
 
@@ -509,9 +512,9 @@ execute(pair: CurrencyPair): Observable<Price> {
 
 ### 3.5 Presenters, Machines & State Streams
 
-Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. They all live in `packages/client-core/src/presenters/` -- roughly 40 presenters and machines across FX, Credit, Equities, Admin/telemetry, and shell concerns.
+Presenters are the client-side glue between use cases (which already emit `Observable<T>`) and the UI (which consumes hooks). The presenter layer is where multicasting and UI-shaping happen -- `share`/`shareReplay` so the underlying port subscription is started once per symbol, `combineLatest` to fan in derived state, `scan` for accumulators that the UI snapshots. In the default (RxJS) core they live in `packages/client-core/src/presenters/`, across FX, Credit, Equities, Admin/telemetry, and shell concerns; the full member list is the `Presenters` / `MachineFactories` / `AppCommands` interfaces in `@rtc/core-api` (`packages/core-api/src/app.ts`, `machine.ts`), which the two alternative cores implement too ([§22](22-pluggable-application-core.md#22-pluggable-application-core)).
 
-Alongside plain stream presenters, the core defines **state machines** -- the framework-neutral `Machine<TState, TIntents>` type (`{ state$, intents, dispose }` in `presenters/machine.ts`). Machines model per-component-instance lifecycles: `TileExecutionMachine`, `NotionalMachine`, `OrderTicketMachine`, `RfqCountdownMachine`, `BootSequenceMachine`, `LayoutMachine`, `IncidentMachine`, and friends. Their `state$` is a `StateObservable` from **`@rx-state/core`** -- the rxjs-only, framework-neutral half of react-rxjs -- which is what lets shareable, defaulted observable state live in the core while React (via `@react-rxjs/core` in the bindings) consumes it downstream. The split matters: `@rx-state/core` in `client-core`, `@react-rxjs/core` only in `react-bindings`.
+Alongside plain stream presenters, the core defines **state machines** -- the framework-neutral `Machine<TState, TIntents>` type (`{ state$, intents, dispose }`, declared in `packages/core-api/src/machine.ts` so all three cores share it). Machines model per-component-instance lifecycles: `TileExecutionMachine`, `NotionalMachine`, `OrderTicketMachine`, `RfqCountdownMachine`, `BootSequenceMachine`, `LayoutMachine`, `IncidentMachine`, and friends. Their `state$` is a `StateObservable` from **`@rx-state/core`** -- the rxjs-only, framework-neutral half of react-rxjs -- which is what lets shareable, defaulted observable state live in the core while React (via `@react-rxjs/core` in the bindings) consumes it downstream. The split matters: `@rx-state/core` in `client-core`, `@react-rxjs/core` only in `react-bindings`.
 
 RxJS appears in three layers: **port signatures** (`@rtc/domain` ports), **use cases** (`@rtc/domain` use cases), and **presenters/machines** (`@rtc/client-core`). It does **not** appear in:
 - UI components or hook call sites in either client (use the ViewModel hooks; never import `rxjs` -- gate 26)
@@ -595,15 +598,15 @@ flowchart TB
     end
 
     subgraph roots["Composition roots (one per client)"]
-        webRoot["client-react AppRoot.tsx<br/>createApp(buildBrowserPorts())"]
+        webRoot["client-react AppRoot.tsx<br/>core.createApp(buildBrowserPorts())"]
         rnRoot["client-react-native AppRoot.tsx<br/>createApp(buildNativePorts())"]
     end
 
     subgraph consumers["Consumers of the SAME contract"]
-        webUI["Web components (~52 files)"]
-        rnUI["RN screens (~55 files)"]
-        fakeVm["buildFakeViewModel<br/>(visual-test harness)"]
-        worldVm["viewModelFromWorld<br/>(UI-contract-test harness)"]
+        webUI["Web components<br/>(client-react src/ui)"]
+        rnUI["RN screens<br/>(client-react-native src/ui)"]
+        fakeVm["buildFakeViewModel<br/>(visual-test harness, per client's tests/)"]
+        worldVm["viewModelFromWorld<br/>(UI-contract-test harness, per client's tests/)"]
     end
 
     webRoot --> factory
@@ -618,7 +621,7 @@ flowchart TB
     VMtype -.implemented by.-> worldVm
 ```
 
-`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s ~52+ components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
+`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `core.createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s own `src/ui` components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
 
 How the pieces divide the work inside `createViewModel`:
 
@@ -631,7 +634,7 @@ How the pieces divide the work inside `createViewModel`:
 Three properties make this a real seam rather than a service locator:
 
 1. **Constructed once, before the tree.** Each client's `AppRoot` builds ports → `createApp` → `createViewModel` in a lazy `useRef` (surviving StrictMode double-invoke) and supplies it via `ViewModelProvider`. No per-render injection, no re-wiring on re-render.
-2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests). `@rtc/client-solid` implements the same member list over Solid signals, via `@rtc/solid-bindings`.
+2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests -- each client keeps its own pair under `tests/ui/`, next to the swap-trio that mounts the shared `@rtc/ui-contract` specs; the RN client has its own `buildFakeViewModel` under `tests/visual/`). `@rtc/client-solid` implements the same member list over Solid signals, via `@rtc/solid-bindings`.
 3. **Nothing else crosses.** Injecting JSX or components through the ViewModel is forbidden (it would have broken the SolidJS port, per ADR-004); the UI cannot reach presenters, ports, or Observables directly (gates 26--29).
 
 ---

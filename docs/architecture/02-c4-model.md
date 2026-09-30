@@ -34,7 +34,7 @@ C4Context
     UpdateRelStyle(rtc, oms, $textColor="#6e7fa3", $lineColor="#6e7fa3")
 ```
 
-> **Diagram theming note.** GitHub serves one SVG to readers on both light and dark themes, and Mermaid's default C4 palette (pale fills, faint gray arrows) is nearly invisible on the dark one. All §2 diagrams therefore use self-contained colors that contrast on both backgrounds, with one consistent scheme: **blue = UI**, **purple = bindings bridge**, **green = application core / the system**, **amber = server & effects framework**, **slate = domain & shared contracts**, **gray = actors/external**, **slate-gray = standalone pure-utility leaves** (`@rtc/motion-core`).
+> **Diagram theming note.** GitHub serves one SVG to readers on both light and dark themes, and Mermaid's default C4 palette (pale fills, faint gray arrows) is nearly invisible on the dark one. All §2 diagrams therefore use self-contained colors that contrast on both backgrounds, with one consistent scheme: **blue = UI**, **purple = bindings bridge**, **green = application core / the system**, **amber = server & effects framework**, **slate = domain & shared contracts**, **gray = actors/external**, **slate-gray = standalone leaves** (`@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`).
 
 ### 2.2 Container Diagram
 
@@ -45,18 +45,21 @@ flowchart TB
     trader(["Trader — FX / Credit / Equities"]):::actor
 
     subgraph rtc["Reactive Trader Cloud"]
-        direction TB
         webClient["<b>Web Client</b><br/>@rtc/client-react · React 19 + Vite + CSS Modules<br/>dumb UI + browser adapters · deployed to Vercel"]:::ui
         rnClient["<b>Mobile Client</b><br/>@rtc/client-react-native · Expo SDK 57 / RN 0.86<br/>dumb UI + native adapters · EAS internal"]:::ui
         solidClient["<b>Solid Web Client</b><br/>@rtc/client-solid · SolidJS + Vite + CSS Modules<br/>dumb UI + browser adapters · full parity w/ Web Client"]:::ui
         bindings["<b>React Bindings</b><br/>@rtc/react-bindings · react-rxjs<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
         solidBindings["<b>Solid Bindings</b><br/>@rtc/solid-bindings · @rx-state/core → signal<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
-        core["<b>Application Core</b><br/>@rtc/client-core · TS + RxJS + @rx-state/core<br/>composition root · presenters · machines · port factories"]:::core
-        server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>thin app of 24 effects · deployed to Fly.io"]:::server
+        core["<b>Application Cores ×3</b><br/>@rtc/client-core (RxJS, default, eager) ·<br/>@rtc/client-core-async · @rtc/client-core-effect (lazy)<br/>composition root · presenters · machines · port factories"]:::core
+        coreApi["<b>Core Contract</b><br/>@rtc/core-api · types only<br/>Presenters · MachineFactories · AppCommands · CoreFactory"]:::domain
+        coreLogic["<b>Shared Core Rules</b><br/>@rtc/core-logic · no stream library<br/>pure folds · view derivations · workspace + Jarvis controllers"]:::core
+        server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>effects assembled by buildEffects(loops) · /login · /mcp<br/>Anthropic agent loop · deployed to Fly.io"]:::server
         wsEffects["<b>WS Effects Framework</b><br/>@rtc/ws-effects · rxjs only<br/>WsEffect · stream()/rpc() · combineEffects"]:::server
+        agentTools["<b>Jarvis Desk Tools</b><br/>@rtc/agent-tools · domain + rxjs only<br/>seven tools as JSON Schema + run()"]:::server
         domain["<b>Domain Library</b><br/>@rtc/domain · pure TS + rxjs<br/>entities · use cases · ports · simulators"]:::domain
         shared["<b>Shared Contracts</b><br/>@rtc/shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
         motionCore["<b>Motion Core</b><br/>@rtc/motion-core · pure TS, zero deps<br/>FLIP deltas · rank-glide coalescing · easing"]:::leaf
+        viewLeaves["<b>Web View Leaves</b><br/>@rtc/boot-splash (canvas boot scenes) ·<br/>@rtc/layout-dockview (Dockview wrapper, default layout engine)"]:::leaf
     end
 
     trader -->|"HTTPS / Browser"| webClient
@@ -67,14 +70,23 @@ flowchart TB
     solidClient -->|"renders through ViewModel"| solidBindings
     webClient -->|"view-layer motion math"| motionCore
     solidClient -->|"view-layer motion math"| motionCore
+    webClient -->|"boot scenes · dock engine"| viewLeaves
+    solidClient -->|"boot scenes · dock engine"| viewLeaves
+    webClient -->|"loads one CoreFactory"| core
+    solidClient -->|"loads one CoreFactory"| core
     bindings -->|"binds presenters & machines"| core
     solidBindings -->|"binds presenters & machines"| core
+    core -->|"implements"| coreApi
+    core --> coreLogic
+    coreLogic --> coreApi
     core --> domain
     core --> shared
     core -. WebSocket JSON .-> server
     server -->|"composes effects"| wsEffects
+    server -->|"Jarvis tools · /mcp"| agentTools
     server -->|"hosts simulators"| domain
     server --> shared
+    agentTools --> domain
     shared --> domain
 
     classDef actor  fill:#30363d,stroke:#8b949e,color:#ffffff
@@ -88,6 +100,45 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
+#### 2.2.1 Test and tooling containers
+
+Six more packages test or inspect the containers above. Five of them ship no production code into a client bundle; `@rtc/devtools-core` ships only its composition-root decorators and hub, which stay dormant until an inspector attaches. They are drawn apart so the main diagram stays readable.
+
+```mermaid
+flowchart TB
+    dev(["Developer"]):::actor
+
+    subgraph tooling["Test and tooling containers"]
+        uiContract["<b>UI Contract</b><br/>@rtc/ui-contract · devDependency of both web clients<br/>shared contract specs · visual scenario matrix · goldens"]:::leaf
+        coreContract["<b>Core Contract Tier</b><br/>@rtc/core-contract · devDependency of all three cores<br/>one suite per member · scripted AppPorts harness"]:::leaf
+        devtoolsCore["<b>Devtools Core</b><br/>@rtc/devtools-core · rxjs only<br/>protocol · DevtoolsHub · instrument* decorators"]:::leaf
+        devtoolsApp["<b>Devtools Inspector</b><br/>@rtc/devtools-app · React SPA<br/>served same-origin at /devtools/"]:::leaf
+        devtoolsExt["<b>Devtools Extension</b><br/>@rtc/devtools-extension · MV3 Chrome panel<br/>mounts the same InspectorApp"]:::leaf
+        devtoolsRelay["<b>Devtools Relay</b><br/>@rtc/devtools-relay · ws only<br/>browser inspector ↔ React Native app"]:::leaf
+    end
+
+    clients["<b>Clients</b> (§2.2)"]:::ui
+    cores["<b>Application Cores ×3</b> (§2.2)"]:::core
+
+    dev --> devtoolsApp
+    dev --> devtoolsExt
+    uiContract -->|"specs mount against"| clients
+    coreContract -->|"witnesses"| cores
+    clients -->|"instrumented by"| devtoolsCore
+    devtoolsApp --> devtoolsCore
+    devtoolsExt --> devtoolsApp
+    devtoolsRelay -. "relays frames (RN)" .-> devtoolsApp
+
+    classDef actor  fill:#30363d,stroke:#8b949e,color:#ffffff
+    classDef ui     fill:#1f6feb,stroke:#79c0ff,color:#ffffff
+    classDef core   fill:#238636,stroke:#56d364,color:#ffffff
+    classDef leaf   fill:#607d8b,stroke:#8b949e,color:#ffffff
+    style tooling fill:transparent,stroke:#6e7681
+    linkStyle default stroke:#6e7fa3,stroke-width:1.5px
+```
+
+Full detail: [§21](21-cross-framework-testing.md) (UI contract), [§22](22-pluggable-application-core.md#the-contract-tier) (core contract), [§20](20-devtools.md#20-rtc-devtools) (devtools).
+
 Two further packages exist **outside** the production dependency graph, as design-comprehension artifacts (see [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port) for how they relate to the fidelity workstream):
 
 | Package | What it is | Runtime deps |
@@ -98,18 +149,17 @@ Two further packages exist **outside** the production dependency graph, as desig
 
 ### 2.3 Component Diagram -- Web Client
 
-The web client is now three packages deep. The **Application Core** (`@rtc/client-core`) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
+The web client is now three packages deep. The **Application Core** (`@rtc/client-core`, the default of the three interchangeable cores -- [§22](22-pluggable-application-core.md#22-pluggable-application-core)) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
 
 ```mermaid
 flowchart TB
     subgraph uiLayer["@rtc/client-react — React, dumb"]
-        direction TB
         app["<b>App Shell</b><br/>workspace layout engine · header ·<br/>boot gate · lock screen · ambient background"]:::ui
         fxTiles["<b>FX</b><br/>tiles · blotter ·<br/>analytics · positions"]:::ui
         creditRfq["<b>Credit RFQ</b><br/>form · RFQ tiles ·<br/>sell-side panel"]:::ui
         equities["<b>Equities Dock</b><br/>watchlist · candles · depth ·<br/>ticket · blotters"]:::ui
         admin["<b>Admin / Telemetry</b><br/>KPIs · throughput · latency ·<br/>topology · event log"]:::ui
-        appRoot["<b>AppRoot</b><br/>createApp(buildBrowserPorts()) + createViewModel<br/>once per mount (StrictMode-safe)"]:::ui
+        appRoot["<b>AppRoot</b><br/>core.createApp(buildBrowserPorts()) + createViewModel<br/>once per mount (StrictMode-safe)"]:::ui
         browserAdapters["<b>Browser Platform Adapters</b><br/>buildBrowserPorts (VITE_SERVER_URL switch) ·<br/>LocalStorage prefs · matchMedia color scheme"]:::ui
         app --> fxTiles
         app --> creditRfq
@@ -122,9 +172,8 @@ flowchart TB
     end
 
     subgraph coreLayer["@rtc/client-core — vanilla TS + RxJS"]
-        direction TB
         composition["<b>createApp / createMachineFactories</b><br/>wires ports → presenters → commands"]:::core
-        presenters["<b>Presenters & State Machines</b><br/>~40: price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
+        presenters["<b>Presenters & State Machines</b><br/>every core-api member (Presenters · MachineFactories · AppCommands):<br/>price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
         portFactory["<b>portFactory</b><br/>createSimulatorPorts / createWsRealPorts"]:::core
         wsAdapter["<b>WsAdapter</b><br/>send · rpc w/ correlation IDs · reconnect"]:::core
         composition --> presenters
@@ -151,7 +200,7 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
-**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (~850 LOC) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
+**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (see `wc -l` over its non-test `src/` files) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
 
 #### 2.3.1 The shape of the simplicity
 
@@ -342,33 +391,38 @@ The Admin/telemetry workspace is web-only today; the RN app exposes five trading
 
 ### 2.5 Component Diagram -- WebSocket Server
 
-The imperative `wsHandler.ts` switch is **gone**. The server is now a thin app composed of 24 declarative effects on top of `@rtc/ws-effects`. The entire connection wiring is four lines:
+The imperative `wsHandler.ts` switch is **gone**. The server is now a thin app of declarative effects on top of `@rtc/ws-effects`, assembled by `buildEffects(loops)` (`packages/server/src/effects/index.ts`: `allEffects` -- FX, Credit, Admin, Equities and the admin Jarvis-usage effect -- plus the `JARVIS_*` effects). The entire connection wiring, trimmed from `packages/server/src/index.ts`:
 
 ```typescript
 const services = createServices();
-const listen = createWsListener(combineEffects(...allEffects), services);
+const jarvisLoops = createJarvisLoops(process.env, services, buildAnthropicLoop);
+const listen = createWsListener(combineEffects(...buildEffects(jarvisLoops)), services);
 wss.on("connection", (ws) => listen(toSocket(ws)));
 ```
+
+Around that wiring the same `node:http` server answers `GET /health`, `POST /login` (`src/http/`, issuing tokens from `AuthService` in `src/auth/`), and `/mcp` (`src/mcp/`, the agent-tools registry over MCP Streamable HTTP); the WS upgrade is admitted only with a valid token.
 
 ```mermaid
 flowchart TB
     client["<b>Clients</b><br/>Web + React Native"]:::actor
 
     subgraph srv["@rtc/server — thin app"]
-        direction TB
-        http["<b>HTTP Server</b> · node:http<br/>GET /health · WS upgrade with token auth"]:::server
+        http["<b>HTTP Server</b> · node:http<br/>GET /health · POST /login · /mcp ·<br/>WS upgrade with token auth (src/auth)"]:::server
         toSocket["<b>toSocket</b><br/>ws.WebSocket → Socket (messages$, send, closed$)"]:::server
-        fxFx["<b>FX effects (6)</b><br/>referenceData$ · pricing$ · blotter$ ·<br/>analytics$ · executeTrade$ · getPriceHistory$"]:::server
-        fxCredit["<b>Credit effects (8)</b><br/>instruments$ · dealers$ · workflow$ · createRfq$ ·<br/>cancelRfq$ · quote$ · pass$ · accept$"]:::server
-        fxAdmin["<b>Admin effects (2)</b><br/>getThroughput$ · setThroughput$"]:::server
-        fxEq["<b>Equities effects (8)</b><br/>watchlist$ · eqQuotes$ · depth$ · orders$ · positions$ ·<br/>getCandles$ · placeOrder$ (+ ORDER_LIFECYCLE) · cancelOrder$"]:::server
-        svcContainer["<b>createServices</b><br/>all 12 services: FX + credit + equities simulators<br/>+ ThroughputService"]:::server
+        fxFx["<b>FX effects</b><br/>referenceData$ · pricing$ · blotter$ ·<br/>analytics$ · executeTrade$ · getPriceHistory$"]:::server
+        fxCredit["<b>Credit effects</b><br/>instruments$ · dealers$ · workflow$ · createRfq$ ·<br/>cancelRfq$ · quote$ · pass$ · accept$"]:::server
+        fxAdmin["<b>Admin effects</b><br/>getThroughput$ · setThroughput$ · jarvisUsage$"]:::server
+        fxEq["<b>Equities effects</b><br/>watchlist$ · eqQuotes$ · depth$ · orders$ · positions$ ·<br/>getCandles$ · getCandleHistory$ · placeOrder$ (+ ORDER_LIFECYCLE) · cancelOrder$"]:::server
+        fxJarvis["<b>Jarvis effects</b><br/>JARVIS_* · availability + up to two lazy sessions per connection<br/>(scripted and Anthropic; each turn routed by JarvisBrain preference)"]:::server
+        agent["<b>Agent loops</b> · src/agent<br/>ScriptedAgentLoop · AnthropicAgentLoop<br/>(@anthropic-ai/sdk confined here)"]:::server
+        svcContainer["<b>createServices</b><br/>ServiceContainer: FX + credit + equities simulators<br/>+ ThroughputService · UsageMeter · JarvisGateService"]:::server
         http --> toSocket
         fxFx ~~~ fxCredit ~~~ fxAdmin ~~~ fxEq
+        fxEq ~~~ fxJarvis
+        fxJarvis --> agent
     end
 
     subgraph fw["@rtc/ws-effects — framework, rxjs-only"]
-        direction TB
         combine["<b>combineEffects + createWsListener</b><br/>merge all effects over one shared inbound stream ·<br/>catchError → EMPTY per effect · teardown on closed$"]:::server
         sugar["<b>stream() / rpc()</b><br/>subscription fan-out · correlated ack/nack ·<br/>per-message error isolation"]:::server
         effectType["<b>WsEffect primitive</b><br/>(in$, ctx) => out$ — pure stream transform, marble-tested"]:::server
@@ -376,7 +430,6 @@ flowchart TB
     end
 
     subgraph simulators["Domain Simulators — @rtc/domain, in-memory port impls"]
-        direction TB
         pricingSim["<b>Pricing / RefData / Execution / TradeStore / Analytics</b><br/>random-walk pricing · execution with delays/rejections · blotter · PnL"]:::domain
         rfqSim["<b>Credit RFQ + Instrument + Dealer</b><br/>RFQ lifecycle · dealer simulation · quote state machine"]:::domain
         eqSim["<b>EquityMarketData / EquityOrder / EquityPosition</b><br/>watchlist · quotes · candles · depth · order lifecycle → fills"]:::domain
@@ -386,7 +439,7 @@ flowchart TB
     client -->|"WS upgrade (?access= token)"| http
     toSocket -->|"Socket per connection"| combine
     combine -->|"merges"| fxFx
-    fxFx & fxCredit & fxAdmin & fxEq -.->|"built with"| sugar
+    fxFx & fxCredit & fxAdmin & fxEq & fxJarvis -.->|"built with"| sugar
     fxFx & fxEq -->|"ctx"| svcContainer
     svcContainer -->|"creates"| pricingSim
     svcContainer -->|"creates"| rfqSim
