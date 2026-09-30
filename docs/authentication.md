@@ -95,7 +95,7 @@ sequenceDiagram
    token via `signToken(username, secret, ttlMs, now)`
    (`packages/server/src/auth/token.ts:16-25`) — an HMAC-SHA256 over a
    base64url-encoded `{ u: username, exp: now + ttlMs }` payload, TTL default
-   **8 hours** (`AUTH_TTL_MS`, `packages/server/src/index.ts:18`).
+   **8 hours** (`AUTH_TTL_MS` in `packages/server/src/index.ts`).
 6. **Fail-fast on misconfiguration.** `AuthService`'s constructor throws
    `"AUTH_SECRET must be set when AUTH_USERS is configured"`
    (`AuthService.ts:45-47`) if `AUTH_USERS` has entries but `AUTH_SECRET` is

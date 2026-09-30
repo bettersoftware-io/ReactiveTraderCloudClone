@@ -1737,8 +1737,10 @@ dismiss) all drive this canned path, never a real model.
 Per the design spec's explicit scope line, this round is L1–L2 only:
 
 - **L3 — docking/persistence (shipped since this round).** Pinning a panel into the workspace layout,
-  persisting its spec across sessions. Needs the (separately deferred)
-  layout-management port; today's panels are ephemeral by design.
+  persisting its spec across sessions. At the time of this round the
+  layout-management port was still deferred and panels were ephemeral by
+  design; both have since landed (`jarvisPanels` docks into the workspace and
+  its specs persist with the layout).
 - **L4 — dashboards, linked interactions.** Multi-panel layouts, shared
   crosshair/time axis, click-through app-driving. None of the plumbing this
   round built (one spec → one independent stream) assumes a second panel
