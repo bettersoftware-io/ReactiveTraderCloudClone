@@ -71,7 +71,7 @@ This is what makes "swap an adapter" a low-cost operation: the contract is encod
 
 | Layer | Stack |
 |---|---|
-| Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 11 (Playwright) |
+| Behaviour specs (`.feature`) | Gherkin · Cucumber-JS 13 (Playwright) |
 | Step definitions | One tree, `tests/browser/steps/*.steps.ts` |
 | Native Playwright specs (`.spec.ts`) | `tests/browser/playwright/*.spec.ts` — bind scenarios via `@playwright/test` `test()` bodies; no Gherkin |
 | Scenarios layer (shared) | `tests/browser/scenarios/*.ts` — async fns taking `(ctx: TestContext, args)`; driver-free; used by Cucumber+Playwright and native Playwright (both clients) |
@@ -171,7 +171,7 @@ separate runners.
 
 ### 9.8 UI contract tier
 
-`packages/client-react/tests/ui/contract/` is the second framework-swap pillar: **sociable RTL tests** where framework-neutral specs (`specs/**/*.contract.spec.ts`, per domain) drive framework-neutral page objects (`shared/pages/`), and only the thin `react/` directory (component registry, render adapter, `viewModelFromWorld`) knows React exists. CI enforces **≥95%** statement/branch/function/line coverage on this tier (`test:ui:contract:coverage`) — the strongest single gate in the repo, because it measures how much of the UI the swap-portable suite actually pins down.
+`packages/ui-contract/src/{specs,shared}` is the second framework-swap pillar: **sociable RTL tests** where framework-neutral specs (`specs/**/*.contract.spec.ts`, per domain) drive framework-neutral page objects (`shared/pages/`), and only each client's thin runner directory (`packages/client-react/tests/ui/contract/react/` — component registry, render adapter, `viewModelFromWorld` — and its `client-solid` twin) knows a UI framework exists. CI enforces **≥95%** statement/branch/function/line coverage on this tier (`test:ui:contract:coverage`) — the strongest single gate in the repo, because it measures how much of the UI the swap-portable suite actually pins down.
 
 The `UiContractDriver` seam that lets the same specs run against `client-solid`'s Solid render target instead of React's is [§21 Mechanism 1 — the contract swap-trio](21-cross-framework-testing.md#mechanism-1--the-contract-swap-trio).
 
@@ -427,7 +427,7 @@ on fake timers exactly as on real ones.
 
 The RN package runs a **dual runner** (`vitest run && jest`):
 - **vitest** (node) for pure logic: chart geometry (`buildChart`, `buildCandles`, `bubbleLayout`), port selection (`buildNativePorts`), theme tokens, the AsyncStorage adapter.
-- **jest-expo + RNTL 14** for ~50 colocated component tests (`*.test.tsx`), mapping `@rtc/*` to built `dist/`.
+- **jest-expo + RNTL 14** for the colocated component tests (`*.test.tsx`), mapping `@rtc/*` to built `dist/`.
 
 **Why jest and not vitest for the `.tsx` half.** Decided by a pre-registered
 fail-fast spike (2026-07-01, [walking-skeleton plan Task 2](../superpowers/plans/2026-07-01-phase2-walking-skeleton.md)):
@@ -452,11 +452,11 @@ RN)**. Coverage for the two halves is measured separately and is not
 comparable — see
 [`README-COVERAGE.md`](../../packages/client-react-native/README-COVERAGE.md).
 
-CI additionally runs an **Expo export smoke** (Metro bundling of the real app) to catch monorepo-resolution breakage that jest never exercises. Two gaps are known and deliberate: no RN e2e yet (Maestro is the deferred plan) and no RN visual goldens — jsdom/jest cannot see paint, so whole-branch review + the live simulator remain the net for RN paint bugs.
+CI additionally runs an **Expo export smoke** (Metro bundling of the real app) to catch monorepo-resolution breakage that jest never exercises. jsdom/jest cannot see paint, so RN paint bugs are caught by a separate, Mac-local simulator tier: `packages/client-react-native/tests/visual/` holds committed RN visual goldens (`__screenshots__/`), captured by two runners — `simctl/` (`pnpm --filter @rtc/client-react-native test:rn:visual:simctl`) and `maestro/` (`test:rn:visual:maestro`, generated Maestro flows), each with an `:update` variant — plus a `reach/` coverage instrument (`test:rn:visual:reach`). It is deliberately not a PR gate and is not in `ci.yml`; see that folder's `README.md`.
 
 ### 9.10 The CI gauntlet
 
-The blocking gauntlet is two **parallel** jobs in `.github/workflows/ci.yml`, triggered on PRs and pushes to `main`. The ~15-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~29 min when the two clients ran serially in one job, ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), as a **matrix of two per-client jobs on separate runners** — one browser stack per runner, the isolation the ±1px stable-frame lesson needs — feeding a fan-in report/gate job. Branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
+The blocking gauntlet is three **parallel** jobs in `.github/workflows/ci.yml` (`checks`, `e2e`, `e2e-alt-cores`), triggered on PRs and pushes to `main`. The ~15-min visual-diff job (react + solid, the sole `playwright` tier each — see `visual.yml`; ~29 min when the two clients ran serially in one job, ~52 min before the 2026-07-20 tier retirement in §9.7) is **not** among them: it runs post-merge only, in its own `.github/workflows/visual.yml` (triggered on push to `main` — i.e. right after a PR merges — plus manual `workflow_dispatch`), as a **matrix of two per-client jobs on separate runners** — one browser stack per runner, the isolation the ±1px stable-frame lesson needs — feeding a fan-in report/gate job. Branch pushes are never blocked while the UI is still churning. A red post-merge visual run is the signal to inspect the diff and either fix the regression or regenerate the goldens (via `update-visual-goldens.yml`). To restore it as a PR gate once the UI stabilises, move the job back into `ci.yml` **and** re-add `visual diffs` to `main`'s required status checks — both halves, or you get a gate that runs-but-doesn't-block or blocks-but-doesn't-run.
 
 The e2e job runs `RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e` — 5 of the 7
 `run-all.ts` suites (native Playwright react + solid, the presenter peer, both
@@ -466,11 +466,14 @@ parked off the gate, not deleted: native Playwright is the browser SOT
 parked pair every Monday so the Gherkin tree can't silently rot while it's
 off the PR gate.
 
+The third job, `e2e-alt-cores`, is a matrix over `core: [async, effect]` that runs the same gated suite (`RTC_E2E_SKIP_GHERKIN_BROWSER=1 pnpm test:e2e`) with `RTC_CORE_IMPL` set to each alternative application core, so the browser, presenter and fullstack suites also prove the async and Effect-TS cores end to end. Locally the equivalents are `pnpm test:e2e:async` and `pnpm test:e2e:effect`.
+
 ```mermaid
 flowchart TD
     trigger["PR / push to main"]
     trigger --> checks
     trigger --> e2e
+    trigger --> alt
     subgraph checks["ci.yml · Job 1 — checks"]
         direction TB
         c1["Biome ci · ESLint AST + custom rules (RuleTester)"]
@@ -483,8 +486,12 @@ flowchart TD
     subgraph e2e["ci.yml · Job 2 — e2e (5 of 7 suites)"]
         e1["native Playwright browser peers (react + solid)<br/>+ presenter peer + fullstack smokes"]
     end
+    subgraph alt["ci.yml · Job 3 — e2e-alt-cores (matrix: async, effect)"]
+        a1["same 5 suites with RTC_CORE_IMPL=async / effect"]
+    end
     checks ~~~ postmerge
     e2e ~~~ postmerge
+    alt ~~~ postmerge
     postmerge["push to main (post-merge)"]
     postmerge --> visual
     subgraph visual["visual.yml — visual diffs (non-blocking, post-merge)"]

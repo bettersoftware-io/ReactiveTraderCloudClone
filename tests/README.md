@@ -35,6 +35,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | script | what it runs | server | report (under `reports/`) | gate status |
 |---|---|---|---|---|
 | `test:e2e` | gates, then all 7 suites below in parallel via `scripts/run-all.ts` (5 with `RTC_E2E_SKIP_GHERKIN_BROWSER=1`, which the CI PR gate sets) | per-suite | — (each suite writes its own) | — |
+| `test:e2e:async` / `test:e2e:effect` (root `package.json`) | `test:e2e` with `RTC_CORE_IMPL=async` / `effect` — the same suites against the async/await or Effect-TS application core (CI's `e2e-alt-cores` job runs both) | per-suite | — | gating (CI) |
 | `test:browser:playwright` | native `@playwright/test` specs, `browser/playwright/` | dev server | `browser/playwright/` | gating |
 | `test:browser:playwright:headed` | ↑ in a visible browser (`playwright test --headed`, one window at a time) | dev server | `browser/playwright/` | dev tool |
 | `test:browser:playwright:ui` | ↑ in Playwright UI mode (`playwright test --ui`: test-tree sidebar, watch mode, time-travel/trace) | dev server | — (interactive) | dev tool |
@@ -58,6 +59,8 @@ so the `.feature`/step tree can't silently rot while it's off the gate.
 Native Playwright (react + solid) is the gating browser SOT — see
 `STRATEGY.md` §7.1 for the full verdict and its honest caveat (new browser
 behaviour lands native-first; the Gherkin tree may lag it while parked).
+
+`RTC_CORE_IMPL` (`rxjs` default, `async`, `effect`) is forwarded by `scripts/devServer.ts` as `VITE_CORE_IMPL`, so every dev-server-backed suite boots the chosen application core; `run-all.ts` logs which one it resolved.
 
 The two `:solid` rows are not a separate suite family — they run the *same*
 config, specs, steps, and page objects as their React counterparts, only
