@@ -48,9 +48,9 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) | gating |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` | gating |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` | dev tool |
-| `test:hooks` | unit tests for the cucumber-js hooks/world/teardown policy (`browser/playwright-cucumber/__tests__`), plain vitest | none | — | CI `checks` ("Cucumber hooks unit tests") |
+| `test:hooks` | unit tests for the cucumber-js hooks' teardown policy (`browser/playwright-cucumber/__tests__`), plain vitest | none | — | CI `checks` ("Cucumber hooks unit tests") |
 | `test:pages` | unit tests for the gh-pages tooling (`scripts/pages/`: index, visual report, publish) | none | — | CI `checks` ("Pages tooling unit tests") |
-| `test:report` | unit tests for `scripts/lib/` (core-bundle and core-impl helpers used by the e2e runner and `check:core-bundle`) | none | — | CI `checks` ("E2E harness tooling unit tests") |
+| `test:report` | unit tests for the e2e harness helpers in `scripts/lib/` (core bundle/impl detection, coverage, render, test-results, engine pairs, forwarded args) | none | — | CI `checks` ("E2E harness tooling unit tests") |
 | `gates` | the grep/custom architecture gates (see `scripts/grep-gates.ts` for the current list) | none | — | — |
 | `port:free` | frees the dev-server port (`RTC_DEV_PORT`, default 3000) | — | — | — |
 
