@@ -9,7 +9,7 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 |---|---|
 | **Ring** | ④ Frameworks & Drivers -- an instrumentation framework, structurally analogous to `@rtc/ws-effects` (`docs/architecture/06-package-dependencies.md` §6) |
 | **Runtime deps** | `rxjs` only -- the same single permitted exception as `@rtc/domain`/`@rtc/ws-effects`, enforced by pnpm strict mode at install time |
-| **Consumed by** | `@rtc/devtools-app` (the inspector SPA) and `@rtc/client-react` (the composition-root decorators + the app-side hub singleton) |
+| **Consumed by** | `@rtc/devtools-app` (the inspector SPA), `@rtc/devtools-extension` (the MV3 DevTools panel), and the three clients `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native` (the composition-root decorators + the app-side hub singleton; RN attaches under `__DEV__` only) |
 | **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core`'s concrete types -- that is the whole point of a composition-root decorator. |
 
 ## Folder map
@@ -22,8 +22,11 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 | `src/serialize.ts` | The one serializer: depth/array/string caps + tagged `ReadonlyMap`/`ReadonlySet` encodings |
 | `src/DevtoolsHub.ts` | The collector: stream/machine registry, dormancy (`goLive`/`goDormant`), ~30 Hz coalescing flush, 10k-event ring buffer |
 | `src/transport.ts`, `src/channel.ts` | The `DevtoolsTransport` port + the symmetric `Duplex<TSend, TRecv>` shape both sides implement |
-| `src/BroadcastChannelDuplex.ts` | The v1 same-origin transport adapter (channel name `rtc-devtools`) |
+| `src/BroadcastChannelDuplex.ts` | The same-origin transport adapter (channel name `rtc-devtools`) |
+| `src/WsRelayDuplex.ts` | The cross-machine transport: a reconnecting WebSocket `Duplex` that pairs with `@rtc/devtools-relay` (how the React Native client reaches the browser inspector) |
 | `src/instrument/` | The three composition-root decorators: `instrumentPresenters`, `instrumentMachineFactories`, `instrumentWsAdapter` |
+| `src/diff.ts` | `diffSerialized` -- the structural diff of two serializer outputs behind the inspector's Diff pane |
+| `src/Recorder.ts`, `src/LiveHistory.ts`, `src/recording.ts`, `src/projectSnapshot.ts` | Panel-side history: the flight `Recorder`, the rolling `LiveHistory` window, the `Recording` (de)serialization, and `projectSnapshot` (state back to a seed snapshot) |
 | `src/InspectorClient.ts`, `src/InspectorStore.ts` | Panel-side: drives the hello/ping/bye handshake and rebuilds `InspectorState` from a snapshot + ordered batches -- consumed by `@rtc/devtools-app`, not the instrumented app |
 
 ## Where to start reading
@@ -36,8 +39,8 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 ## How it's used
 
 `@rtc/client-react`'s composition root applies all three decorators before the
-result reaches `createViewModel` (`packages/client-react/src/AppRoot.tsx`,
-`packages/client-react/src/app/buildBrowserPorts.ts`):
+result reaches `createViewModel` (`AppRoot` in `packages/client-react/src/AppRoot.tsx`,
+`buildBrowserPorts` in `packages/client-react/src/app/buildBrowserPorts.ts`):
 
 ```ts
 // packages/client-react/src/app/buildBrowserPorts.ts
@@ -47,7 +50,7 @@ const ws = instrumentWsAdapter(
 );
 
 // packages/client-react/src/AppRoot.tsx
-const { presenters, commands } = createApp(buildBrowserPorts());
+const { presenters, commands } = core.createApp(buildBrowserPorts());
 const instrumented = instrumentPresenters(
   presenters,
   PRESENTER_MANIFEST,
@@ -56,7 +59,7 @@ const instrumented = instrumentPresenters(
 viewModelRef.current = createViewModel(
   instrumented,
   instrumentMachineFactories(
-    createMachineFactories(instrumented),
+    core.createMachineFactories(instrumented),
     devtoolsHub,
   ),
   commands,

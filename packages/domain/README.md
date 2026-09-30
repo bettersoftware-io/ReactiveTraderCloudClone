@@ -6,12 +6,12 @@ Entities, use cases, port interfaces, and simulators — pure TypeScript, the in
 |---|---|
 | **Ring** | ①② Entities & Use Cases — the yolk (`docs/architecture/01-overview.md` §1.3.1). `src/simulators/` is the one exception: it's ring ③ (gateways) even though it lives in this package — production port implementations, not test doubles. |
 | **Runtime deps** | `rxjs` only — the single permitted exception, enforced by pnpm strict mode (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/shared`, `@rtc/client-core`, `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native`, `@rtc/server`, and the `tests` workspace — every client and server package plus the behavioural test suite; `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
+| **Consumed by** | `@rtc/shared`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/core-contract`, the three application cores (`@rtc/client-core`, `@rtc/client-core-async`, `@rtc/client-core-effect`), both bindings packages, `@rtc/ui-contract`, `@rtc/agent-tools`, the clients (`@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`), `@rtc/server`, and the `tests` workspace (`grep -l '"@rtc/domain"' packages/*/package.json`); `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
 | **Must never import** | `@rtc/shared`, `@rtc/client-react`, or `@rtc/server` (dependency-cruiser rule `domain-stays-pure`, `.dependency-cruiser.cjs`); any Node built-in outside test files (`domain-no-node-builtins` — the package must run in any JS environment, browser or RN). Gate 23 additionally bans `src/ports/__contracts__/` describers from importing `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` (`docs/architecture/12-architectural-gates.md`). |
 
 ## Folder map
 
-Seven entity slices, one per business/cross-cutting concern, plus the two ring-crossing folders:
+Entity slices, one per business/cross-cutting concern, plus the ring-crossing folders:
 
 | Path | What lives here |
 |---|---|
@@ -21,20 +21,25 @@ Seven entity slices, one per business/cross-cutting concern, plus the two ring-c
 | `src/analytics/` | Position aggregation & PnL formatting — `aggregatePositionsByCurrency`, `netExposureByCurrency`, `formatPnlValue`/`formatScale` |
 | `src/connection/` | Connection-status state machine — `ConnectionStatus`, `nextConnectionStatus`, `mapGatewayStatus` |
 | `src/preferences/` | User preference types & defaults — theme mode/skin, view mode, boot variant, blotter/watchlist view state |
+| `src/auth/` | Auth entities — the public demo `ROSTER` (`roster.ts`), `SessionUser`, `DEFAULT_AUTH_TTL_MS` |
+| `src/boot/` | `bootCadence.ts` — the boot splash's `BOOT_DURATION_MS` / `BOOT_TICK_MS`, here so `@rtc/core-contract` can assert them |
+| `src/jarvis/` | Jarvis domain rules — the `JarvisBrain` roster, copy/caps/cadences (`jarvisConstants.ts`) and the pricing `anomalyDetector` |
+| `src/workspace/` | `workspaceLimits.ts` — the workspace's panel caps and cadences |
 | `src/telemetry/` | Admin/ops entities — `LogEvent`, `MetricSample`, `SessionInfo`, `ServiceTopology`, the `mulberry32` PRNG |
 | `src/ports/` | Port interfaces — the dependency-inverted boundaries every adapter (simulator or `WsAdapter`-backed) implements. Inventory below. |
-| `src/usecases/` | Application orchestration — the 12 use cases that sit between presenters and ports. Inventory below. |
+| `src/usecases/` | Application orchestration — the use cases that sit between presenters and ports (`src/usecases/index.ts`). |
 | `src/simulators/` | Production in-memory port implementations, used in both simulator mode (in-process) and live mode (hosted on `@rtc/server` behind `@rtc/ws-effects`). Inventory below. |
 | `src/__testUtils__/` | Shared test helpers (golden-file loader, `defined()` assertion) — not shipped as part of the public API surface |
 
 ### `src/ports/` inventory
 
-Every interface, its declaring file, and the shape it commits adapters to. All 18 are `.ts` files exporting one interface each (`workflowPort.ts` and `orderPort.ts` also export request-shape types alongside the port).
+Every interface, its declaring file, and the shape it commits adapters to. All 19 are `.ts` files exporting one interface each (`workflowPort.ts` and `orderPort.ts` also export request-shape types alongside the port).
 
 | File | Port interface | Shape |
 |---|---|---|
 | `adminPort.ts` | `AdminPort` | `getThroughput()` / `setThroughput(value)` — admin-set throughput setpoint |
 | `analyticsPort.ts` | `AnalyticsPort` | `getAnalytics(currency)` → `PositionUpdates` |
+| `authPort.ts` | `AuthPort` (+ `AuthOutcome`) | `login(username, password)` → `AuthOutcome` — the credential exchange behind sign-in |
 | `blotterPort.ts` | `BlotterPort` | `getTradeStream()` → `readonly Trade[]` |
 | `connectionEventsPort.ts` | `ConnectionEventsPort` | `events()` → `ConnectionEvent` |
 | `dealerPort.ts` | `DealerPort` | `getDealers()` → `readonly Dealer[]` |
@@ -56,11 +61,12 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 ### `src/simulators/` inventory
 
-20 classes, each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind `@rtc/ws-effects` on `@rtc/server` in live mode), plus 5 shared helper modules. Production files only: most simulators also have `.test.ts` / `.contract.test.ts` / `__golden__/` peers in the same folder, deliberately omitted here.
+One class per port (plus the metric simulators), each a production `implements` of one port above (not a test double — these run in-process in simulator mode and are hosted behind `@rtc/ws-effects` on `@rtc/server` in live mode), plus shared helper modules. Production files only: most simulators also have `.test.ts` / `.contract.test.ts` / `__golden__/` peers in the same folder, deliberately omitted here.
 
 | File | Implements / role |
 |---|---|
 | `AnalyticsSimulator.ts` | `AnalyticsPort` — position/PnL updates from a hand-maintained `STATIC_POSITIONS` list |
+| `AuthSimulator.ts` | `AuthPort` — validates the public roster against injected dev-only credentials in simulator mode |
 | `ConnectionEventsSimulator.ts` | `ConnectionEventsPort` — emits one one-shot `gatewayConnected` event and completes (no real gateway to simulate) |
 | `CreditRfqSimulator.ts` | `WorkflowPort` — RFQ creation/quote/accept lifecycle |
 | `DealerSimulator.ts` | `DealerPort` — serves the `DEALERS_CATALOG` constant |
@@ -73,6 +79,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 | `InstrumentSimulator.ts` | `InstrumentPort` — serves the `INSTRUMENTS_CATALOG` constant |
 | `LatencySimulator.ts` | `MetricControl` — latency metric walk with perturbation support |
 | `PreferencesSimulator.ts` | `PreferencesPort` — in-memory preference store (mirrors the browser/native `PreferencesPort` adapters' shape) |
+| `pricingAnomalyEpisode.ts` | Helper — the rare, bounded spread-widening / volatility-burst episodes `PricingSimulator` layers onto its tick stream, so `detectAnomalies` can fire |
 | `PricingSimulator.ts` | `PricingPort` — FX price ticks, history, and RFQ quotes; seeds from `KNOWN_CURRENCY_PAIRS` |
 | `ReferenceDataSimulator.ts` | `ReferenceDataPort` — serves `KNOWN_CURRENCY_PAIRS` |
 | `ServiceTopologySimulator.ts` | `ServiceHealthPort`, `MetricControl` — service-topology graph with perturbable node health |
@@ -88,7 +95,7 @@ Every interface, its declaring file, and the shape it commits adapters to. All 1
 
 ## Where to start reading
 
-1. `src/index.ts` — the package's entire public surface in one file; grouped by slice (FX, Analytics, Connection, Credit, Equities, Ports, Preferences, Simulators, Telemetry, Use Cases)
+1. `src/index.ts` — the package's entire public surface in one file; grouped by slice (FX, Analytics, Auth, Boot, Connection, Credit, Equities, Jarvis, Ports, Preferences, Simulators, Telemetry, Use Cases, Workspace)
 2. `src/ports/connectionEventsPort.ts` and `src/usecases/ConnectionStatusUseCase.ts` — the smallest complete port→use-case pair; a good template before reading a bigger one
 3. `src/usecases/ExecuteTradeUseCase.ts` — a use case that actually enriches data (derives `spotRate` and `dealtCurrency`) rather than just forwarding to a port
 4. `src/simulators/index.ts` — the simulator barrel; skim it to see which port each simulator implements before opening individual files

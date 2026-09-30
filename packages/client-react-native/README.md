@@ -10,7 +10,7 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `rxjs` (`package.json` `dependencies`) |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
 | **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
 | **Must never import** | Gates 30–33 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) mechanically enforce this in `client-react-native/src/ui` — the RN counterpart of gates 26–29 on `client-react/src/ui`: no `rxjs`/`@react-rxjs`/`@rx-state` (30), no `localStorage`/`AsyncStorage` (31), no `fetch`/`expo-constants`/env reads (32), no `setTimeout`/`setInterval` (33). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
 
@@ -18,10 +18,12 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 
 | Path | What lives here |
 |---|---|
-| `app/` | Expo Router file-based routes (`_layout.tsx`, `index.tsx`, `blotter.tsx`, `analytics.tsx`, `credit.tsx`, `equities.tsx`) — the real entry point Metro bundles from (`package.json` `"main": "expo-router/entry"`) |
+| `app/` | Expo Router file-based routes (`_layout.tsx`, the `(app)/` group with `index.tsx`, `blotter.tsx`, `analytics.tsx`, `credit.tsx`, `equities.tsx`, and the `__visual/[...id].tsx` visual-harness route) — the real entry point Metro bundles from (`package.json` `"main": "expo-router/entry"`) |
 | `src/app/` | The composition root (`AppRoot.tsx`, `buildNativePorts.ts`) plus its native platform adapters (`adapters/`) — the RN analogue of `client-react/src/app` |
-| `src/app/adapters/` | `AsyncStoragePreferencesAdapter`, `AppearanceColorSchemeAdapter` — the two native-specific gateways this app supplies |
-| `src/ui/` | Dumb RN screens and components, grouped by trading domain (`credit/`, `equities/`, `analytics/`) plus shared chrome (`shell/`, `theme/`) |
+| `src/app/adapters/` | `AsyncStoragePreferencesAdapter`, `AsyncStorageSessionStore`, `AppearanceColorSchemeAdapter` — the native-specific gateways this app supplies |
+| `src/app/devtools/` | The RTC DevTools wiring (`nativeDevtoolsHub`, presenter manifest, relay URL), applied under `__DEV__` only |
+| `src/ui/` | Dumb RN screens and components, grouped by trading domain (`rates/`, `blotter/`, `credit/`, `equities/`, `analytics/`) plus shared chrome (`shell/`, `theme/`, `ambient/`) |
+| `tests/visual/` | The RN visual tier: simctl/Maestro drivers and committed RN goldens (see its [README](tests/visual/README.md)) |
 
 Note the two `app` directories are not the same thing: package-root `app/` is
 Expo Router's route tree, while `src/app/` is the composition root and
@@ -328,11 +330,13 @@ web client uses:
 
 ```tsx
   if (ref.current === null) {
-    const { ports, dispose } = buildNativePorts({ simulator });
+    const { ports, dispose } = buildNativePorts({ simulator, ... });
     const { presenters, commands } = createApp(ports);
+    const devtools = createNativeDevtools();     // __DEV__ only
+    const inputs = buildViewModelInputs(presenters, devtools);
     const viewModel = createViewModel(
-      presenters,
-      createMachineFactories(presenters),
+      inputs.presenters,
+      inputs.factories,
       commands,
     );
     ref.current = { viewModel, dispose };
