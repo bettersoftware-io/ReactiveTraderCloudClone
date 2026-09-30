@@ -84,7 +84,14 @@ if (update) {
 // and unmodified: they round-trip byte-identically and show up as no git diff.
 // Only the matched scenarios are actually re-rendered. So the copy-back below
 // can stay a plain whole-tree copy — it never drops an unmatched golden.
-const flag = update ? "--update-snapshots" : "";
+//
+// `=all`, never the bare flag: bare `--update-snapshots` is Playwright's
+// `changed` mode, which rewrites a golden only when the comparison FAILS — so a
+// deliberate "refresh this scenario" whose drift sits inside the tolerance
+// silently keeps the old PNG and reports success. `all` rewrites every matched
+// scenario, the same mode the CI path (`test:ui:visual:playwright:react:update`)
+// has pinned since the PR #410 finding.
+const flag = update ? "--update-snapshots=all" : "";
 const inner = [
   "set -e",
   "mkdir -p /build && cd /build",
