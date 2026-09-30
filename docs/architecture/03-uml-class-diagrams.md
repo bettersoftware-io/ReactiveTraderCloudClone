@@ -399,8 +399,8 @@ classDiagram
 
     class LocalStoragePreferencesAdapter {
         web · sync local storage
-        (own impl per client:
-        client-react + client-solid)
+        own impl per client
+        client-react + client-solid
     }
     class AsyncStoragePreferencesAdapter {
         mobile · RN AsyncStorage
