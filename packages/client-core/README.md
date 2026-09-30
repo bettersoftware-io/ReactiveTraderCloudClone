@@ -2,23 +2,27 @@
 
 The framework-free application core: the composition root, presenters and
 state machines, `WsAdapter` + `portFactory`. Built once by `createApp`, it is
-shared verbatim by every client (web React, RN/Expo, and a future SolidJS
-port).
+shared verbatim by every client (web React, RN/Expo, and web Solid). It is the
+RxJS core -- the default one of three implementations of the `@rtc/core-api`
+contract (the others are `@rtc/client-core-async` and `@rtc/client-core-effect`);
+see [§22](../../docs/architecture/22-pluggable-application-core.md) and the
+guided tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters — presenters, gateways, ViewModel wiring (`docs/architecture/01-overview.md` §1.3.1) |
-| **Runtime deps** | `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` (`packages/client-core/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/react-bindings`, `@rtc/client-react`, `@rtc/client-react-native` |
-| **Must never import** | React, DOM types, or React Native — despite being consumed by three UI-facing packages. Enforced by two dependency-cruiser pair rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-core-stays-inner` blocks any import of `react-bindings` / `client-react` / `client-react-native` / `client-prototype` / `server`, and `client-core-framework-free` blocks a direct import of `react` / `react-dom` / `react-native` themselves. The same boundary is also enforced structurally: `package.json` lists no `react`/`react-dom`/`react-native` dependency, so pnpm's strict install would fail to resolve a stray import — the same single-dependency discipline `@rtc/domain` and `@rtc/ws-effects` use for `rxjs`. |
+| **Runtime deps** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` (`packages/client-core/package.json` `dependencies`) |
+| **Consumed by** | `@rtc/react-bindings`, `@rtc/solid-bindings`, `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`, `@rtc/ui-contract` (and, as a test-adapter devDependency only, the two sibling cores) |
+| **Must never import** | React, DOM types, or React Native — despite being consumed by three UI-facing clients. Enforced by two dependency-cruiser pair rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-core-stays-inner` blocks any import of `react-bindings` / `client-react` / `client-react-native` / `client-prototype` / `server`, and `client-core-framework-free` blocks a direct import of `react` / `react-dom` / `react-native` themselves. The same boundary is also enforced structurally: `package.json` lists no `react`/`react-dom`/`react-native` dependency, so pnpm's strict install would fail to resolve a stray import — the same single-dependency discipline `@rtc/domain` and `@rtc/ws-effects` use for `rxjs`. |
 
 ## Folder map
 
 | Path | What lives here |
 |---|---|
 | `src/composition.ts` | The composition root — `createApp(ports)` builds every presenter/machine from an `AppPorts` object; `createMachineFactories(presenters)` builds the per-mount `MachineFactories` the ViewModel seam injects. |
-| `src/presenters/` | ~40 presenters and state machines — the business logic layer. Presenters (`XPresenter.ts`) wrap a domain port/use case as an `Observable`-backed class; machines (`createXMachine.ts` factories, typed via `Machine<TState, TIntents>` in `machine.ts`) add intents + `dispose()` for per-mount UI state. |
+| `src/presenters/` | The presenters and state machines — the business logic layer. Presenters (`XPresenter.ts`) wrap a domain port/use case as an `Observable`-backed class; machines (`createXMachine.ts` factories, typed via `Machine<TState, TIntents>` from `@rtc/core-api`, `packages/core-api/src/machine.ts`) add intents + `dispose()` for per-mount UI state. |
 | `src/adapters/` | The real-transport gateways: `WsAdapter`/`IWsAdapter` (WebSocket transport), `WsConnectionEventsAdapter` (connection lifecycle), and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
+| `src/blotter/` | Pure blotter column-sort and filter-state helpers. |
 | `src/layout/` | The replaceable layout seam — `LayoutPort`/`LayoutState`/`LayoutNode` types and `createDefaultLayoutPort`, the in-house split-tree engine's data shape. Deliberately app-layer, not `@rtc/domain` — layout is presentation infrastructure, not business domain. |
 | `src/theme/` | `ColorSchemeSource`, the app-layer port over the OS `prefers-color-scheme` signal. |
 | `src/wsUrl.ts` | `buildWsUrl` — appends the `?access=` token query param a browser WebSocket can't pass as a header. |
@@ -29,23 +33,23 @@ port).
 1. `src/composition.ts` — `createApp(ports: AppPorts): App` is the framework-free heart of both clients: a plain function, no DI container, that turns one `AppPorts` object into `{ presenters, ports, commands }` (`docs/architecture/14-composition-and-wiring.md` §14.1).
 2. `src/adapters/portFactory.ts` — `AppPorts` (the interface every platform must satisfy) and its two production implementations, `createSimulatorPorts` and `createWsRealPorts`.
 3. `src/adapters/WsAdapter.ts` + `src/adapters/IWsAdapter.ts` — the real-transport gateway: connection lifecycle, message routing, RPC correlation, and the pre-open `sendQueue` that prevents dropped subscriptions.
-4. `src/presenters/machine.ts` — the `Machine<TState, TIntents>` / `MachineFactories` contracts every state machine and the React-bindings bridge agree on.
+4. `packages/core-api/src/machine.ts` — the `Machine<TState, TIntents>` contract (with `MachineFactories` alongside it in `@rtc/core-api`) every state machine and the bindings bridges agree on.
 
 ## How it's used
 
 `createApp` is called once per app mount, from the composition-root component
-(`packages/client-react/src/AppRoot.tsx:32-37`):
+(`AppRoot` in `packages/client-react/src/AppRoot.tsx`). The web clients pick
+the core at load time (`bootCore` in `packages/client-react/src/app/bootApp.ts`:
+`?core=` URL parameter, then the stored Preferences choice, then the
+`VITE_CORE_IMPL` build default, then `rxjs`), so `AppRoot` receives the chosen
+`CoreFactory` and calls `core.createApp` -- for this package, that is
+`createApp`:
 
 ```ts
-const { presenters, commands } = createApp(buildBrowserPorts());
-viewModelRef.current = createViewModel(
-  presenters,
-  createMachineFactories(presenters),
-  commands,
-);
+const { presenters, commands } = core.createApp(buildBrowserPorts());
 ```
 
-`buildBrowserPorts` (`packages/client-react/src/app/buildBrowserPorts.ts:1-13`)
+`buildBrowserPorts` (`packages/client-react/src/app/buildBrowserPorts.ts`)
 is the platform port-builder that assembles the `AppPorts` object `createApp`
 consumes, using this package's factories and adapters directly:
 

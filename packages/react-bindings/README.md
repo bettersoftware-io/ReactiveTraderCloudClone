@@ -5,7 +5,7 @@ The React↔RxJS bridge: the one package that knows both worlds, translating `@r
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters — ViewModel bridge (see `docs/architecture/01-overview.md` §1.3.1) |
-| **Runtime deps** | `@react-rxjs/core`, `@rtc/client-core`, `@rtc/domain`, `react`, `rxjs` — the only package in the repo permitted to depend on both React and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
+| **Runtime deps** | `@react-rxjs/core`, `@rtc/client-core`, `@rtc/core-api`, `@rtc/domain`, `react`, `rxjs` — the only package in the repo permitted to depend on both React and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
 | **Consumed by** | `client-react`, `client-react-native` (both shipping clients — see "How it's used" below) |
 | **Must never import** | `client-react`, `client-react-native`, `server` — the dependency direction is one-way (react-bindings sits below both clients in the build order). The flip side of this boundary is machine-enforced: gate 26 bans `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react/src/ui` outright, *except* through this bridge (`docs/architecture/12-architectural-gates.md`) |
 
@@ -65,7 +65,7 @@ The equivalent pattern repeats across both clients — `client-react/src/ui/**` 
 
 ### `useMachine`'s StrictMode-safe disposal
 
-`useMachine` (`src/useMachine.ts:37-63`) instantiates its `Machine` factory exactly once, in a lazy `useRef` (not `useState`/`useMemo`), so React 19 StrictMode's dev-only double-invoke of the render body can't construct two machines for one mount. Disposal is where the real hazard sits: StrictMode also runs the mount effect's cleanup → setup cycle synchronously within the commit (`setup → cleanup → setup`), and a machine that disposed eagerly in that cleanup would kill the very machine the immediate re-setup keeps using — leaving the surviving component holding a disposed machine (intents pushing into completed `Subject`s, `state$` never emitting again).
+`useMachine` (`src/useMachine.ts`) instantiates its `Machine` factory exactly once, in a lazy `useRef` (not `useState`/`useMemo`), so React 19 StrictMode's dev-only double-invoke of the render body can't construct two machines for one mount. Disposal is where the real hazard sits: StrictMode also runs the mount effect's cleanup → setup cycle synchronously within the commit (`setup → cleanup → setup`), and a machine that disposed eagerly in that cleanup would kill the very machine the immediate re-setup keeps using — leaving the surviving component holding a disposed machine (intents pushing into completed `Subject`s, `state$` never emitting again).
 
 The fix: cleanup doesn't dispose immediately. It flips a `keepAlive` ref to `false` and schedules the actual `machine.dispose()` in a `queueMicrotask`. The following `setup` (StrictMode's synchronous remount) flips `keepAlive` back to `true` first, so when the queued microtask runs it sees `keepAlive.current === true` and skips disposal — the machine survives. A genuine unmount has no following setup, so the microtask still sees `keepAlive.current === false` and disposes exactly once. This works because StrictMode's double-invoke is synchronous within the commit, so it always completes before the queued microtask fires.
 
