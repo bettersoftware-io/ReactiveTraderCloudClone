@@ -2134,6 +2134,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       ...sizeForInsert(panel, parked),
     });
 
+    if (parked?.where === "grid" && parked.rootSlot !== null) {
+      moveToRootSlot(panel.id, parked.rootSlot);
+    }
+
     if (panel.unpinned === true) {
       unpinnedDynamicPanels.set(panel.id, panel.initialPx);
     } else if (ownsItsGroup && keepsDesignPin(parked)) {
@@ -2232,6 +2236,23 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       : null;
   }
 
+  /** Moves `panelId`, just added at the root's edge, back to the slot it
+   * held among the root's children. dockview's public API can only insert
+   * beside a GROUP (nested inside that group's column when the group has
+   * one) or at the root's edge, so the move goes through its gridview's own
+   * `moveView` — the one internal this file reaches for, pinned with
+   * dockview itself (8.3.1). A missing gridview leaves the panel at the
+   * edge: still docked, still in the root, only out of order — and the
+   * middle-slot test fails on the version bump that removes it. */
+  function moveToRootSlot(panelId: string, slot: DockRootSlot): void {
+    const move = rootSlotIndexOf(api.toJSON(), panelId, slot.precedingPanelIds);
+    const gridview = (api as unknown as DockviewInternals).component?.gridview;
+
+    if (move !== null && move.from !== move.to && gridview !== undefined) {
+      gridview.moveView([], move.from, move.to);
+    }
+  }
+
   /** Where `panelId` sits RIGHT NOW, as the anchor a later re-add uses.
    * Read from the live arrangement immediately before the scrub removes it:
    * a group-mate (the user's tab stack) if it has one that is staying, else
@@ -2275,6 +2296,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         // that group — neither is this panel's to set.
         sizePx: null,
         pinned: false,
+        rootSlot: null,
       };
     }
 
@@ -2284,16 +2306,16 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       );
     }
 
-    // A leaf on the root's own edge goes back to that edge, anchored to
-    // nothing. The anchor walk below cannot say "beside that column": it
+    // A direct child of the root goes back to its slot in the root, anchored
+    // to nothing. The anchor walk below cannot say "beside that column": it
     // names a PANEL, and dockview inserts beside that panel's GROUP — so a
-    // right-edge panel next to the FX rail came back nested inside the rail
-    // column, where a width lock then squeezed it to its minimum.
-    const edge = rootEdgeOf(serialized, panelId, isStaying);
+    // panel next to the FX rail came back nested inside the rail column,
+    // where a width lock then squeezed it to its minimum.
+    const rootSlot = rootSlotOf(serialized, panelId);
     const anchor =
-      edge === null
+      rootSlot === null
         ? gridAnchorFor(serialized, panelId, isStaying)
-        : { anchorPanelId: null, direction: edge };
+        : { anchorPanelId: null, direction: rootSlot.edge };
 
     return anchor === null
       ? null
@@ -2305,6 +2327,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           pinned: designPins.some((record) => {
             return record.pin.panelIds.includes(panelId);
           }),
+          rootSlot,
         };
   }
 
@@ -2837,13 +2860,18 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }),
     );
 
+    // Every placement is read before the first removal, off the same tree:
+    // a root slot names the panels BEFORE it, and a co-leaving neighbour
+    // removed first would drop out of that list.
     for (const panelId of leaving) {
       const placement = placementOf(panelId, leaving);
 
       if (placement !== null) {
         parkedPlacements.set(panelId, placement);
       }
+    }
 
+    for (const panelId of leaving) {
       deleteDynamicPanel(panelId);
     }
 
@@ -3957,6 +3985,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         );
       });
 
+      // The seed sibling the anchor stands for may be a whole COLUMN of the
+      // root row (the FX rail): beside that column, not beside the anchor
+      // panel's group inside it — which is where dockview would put it, and
+      // where the rail's width lock then squeezed the reopened panel to its
+      // minimum beside a void.
+      const rootSlot =
+        anchor === null ? null : rootSlotBeside(api.toJSON(), anchor);
+
       glide(() => {
         api.addPanel({
           id: panelId,
@@ -3965,12 +4001,20 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
           ...(anchor === null
             ? {}
             : {
-                position: {
-                  referencePanel: anchor.anchorPanelId,
-                  direction: anchor.direction,
-                },
+                position:
+                  rootSlot === null
+                    ? {
+                        referencePanel: anchor.anchorPanelId,
+                        direction: anchor.direction,
+                      }
+                    : { direction: rootSlot.edge },
               }),
         });
+
+        if (rootSlot !== null) {
+          moveToRootSlot(panelId, rootSlot);
+        }
+
         settleStrips();
         settleStripFreeWorlds();
         // A reopened panel can absorb again — re-clamp any pin suspended
@@ -5353,16 +5397,36 @@ type DockParkedPlacement = DockParkedGrid | DockParkedFloat;
  * host group's business and `sizePx` is null. */
 interface DockParkedGrid {
   readonly where: "grid";
-  /** Null for a panel that sat on the root's own edge: it is re-added
-   * against the layout (dockview's absolute `direction`), beside no one. */
+  /** Null for a panel that was a direct child of the root: it is re-added
+   * against the layout (dockview's absolute `direction`), beside no one,
+   * then moved back to its slot there — see `rootSlot`. */
   readonly anchorPanelId: string | null;
   readonly direction: SeedAnchor["direction"] | "within";
+  /** Set exactly when `anchorPanelId` is null. */
+  readonly rootSlot: DockRootSlot | null;
   readonly sizePx: number | null;
   /** Whether a design pin still held this panel when it was scrubbed. It
    * does until the user drags the split's sash, which is also the moment
    * `sizePx` starts meaning something they chose — so the two are read
    * together: re-pin and the design width follows, or honour the size. */
   readonly pinned: boolean;
+}
+
+/** The slice of dockview's private component {@link moveToRootSlot}
+ * reaches: `DockviewApi.component` → `BaseGrid.gridview`, both declared
+ * private/protected in dockview-core 8.3.1's typings. */
+interface DockviewInternals {
+  readonly component?: {
+    readonly gridview?: {
+      moveView(parentLocation: number[], from: number, to: number): void;
+    };
+  };
+}
+
+/** See {@link rootSlotOf}. */
+interface DockRootSlot {
+  readonly edge: "right" | "below";
+  readonly precedingPanelIds: readonly string[];
 }
 
 /** A scrubbed panel that was FLOATING: the box dockview serialized for it,
@@ -5464,16 +5528,18 @@ function floatBoxOf(
   return null;
 }
 
-/** The root edge `panelId`'s own leaf sits on, when it is a DIRECT child of
- * the root branch with no staying panel between it and that edge (panels
- * leaving with it do not count — two docked panels at the right edge both go
- * back to it, in re-add order). The direction is dockview's absolute one for
- * the root's axis. Null for a panel nested deeper, or in the root's middle. */
-function rootEdgeOf(
+/** The slot `panelId`'s own leaf holds in the ROOT branch, when it is a
+ * direct child of it: the root's absolute edge along its axis (where the
+ * re-add first lands) and every panel in the root children before it (which
+ * {@link rootSlotIndexOf} counts to move it back). Recorded as the panels
+ * before it rather than an index or a bare edge, so a panel leaving with it
+ * that is re-added first, or never, cannot shift it: two co-leaving left-edge
+ * panels come back in their own order whichever is listed first. Null for a
+ * panel nested deeper, which the anchor walk places. */
+function rootSlotOf(
   serialized: SerializedDockview,
   panelId: string,
-  isStaying: (candidateId: string) => boolean,
-): SeedAnchor["direction"] | null {
+): DockRootSlot | null {
   const root = serialized.grid.root;
 
   if (root.type !== "branch") {
@@ -5488,25 +5554,100 @@ function rootEdgeOf(
     );
   });
 
-  if (index < 0) {
+  return index < 0 ? null : rootSlotAfter(serialized, children, index);
+}
+
+/** The root slot beside `anchor` when the anchor panel sits in a BRANCH
+ * child of the root and the direction runs along the root's own axis — the
+ * one case where dockview's panel-relative insert lands inside that branch
+ * instead of beside it. Null otherwise: a leaf child (or a direction across
+ * the root) is placed right by the plain anchor. */
+function rootSlotBeside(
+  serialized: SerializedDockview,
+  anchor: SeedAnchor,
+): DockRootSlot | null {
+  const root = serialized.grid.root;
+  const horizontal = serialized.grid.orientation !== "VERTICAL";
+  const alongRoot =
+    anchor.direction === "left" || anchor.direction === "right"
+      ? horizontal
+      : !horizontal;
+
+  if (root.type !== "branch" || !alongRoot) {
     return null;
   }
 
-  function holdsNoStaying(child: GridNode): boolean {
-    return !panelIdsIn(child).some(isStaying);
+  const children = root.data as readonly GridNode[];
+  const index = children.findIndex((child) => {
+    return panelIdsIn(child).includes(anchor.anchorPanelId);
+  });
+  const child = children[index];
+
+  if (child === undefined || child.type !== "branch") {
+    return null;
   }
 
-  const horizontal = serialized.grid.orientation !== "VERTICAL";
+  const after = anchor.direction === "right" || anchor.direction === "below";
 
-  if (children.slice(index + 1).every(holdsNoStaying)) {
-    return horizontal ? "right" : "below";
+  return rootSlotAfter(serialized, children, after ? index + 1 : index);
+}
+
+/** A root child's move, as gridview's `moveView` takes it. */
+interface RootSlotMove {
+  readonly from: number;
+  readonly to: number;
+}
+
+/** The {@link DockRootSlot} that follows the root's first `count` children. */
+function rootSlotAfter(
+  serialized: SerializedDockview,
+  children: readonly GridNode[],
+  count: number,
+): DockRootSlot {
+  return {
+    edge: serialized.grid.orientation === "VERTICAL" ? "below" : "right",
+    precedingPanelIds: children.slice(0, count).flatMap(panelIdsIn),
+  };
+}
+
+/** Where a panel re-added at its root edge belongs among the root's
+ * children now: after every child that holds a panel which preceded it when
+ * it was parked. `from` is its own (edge) index, excluded from the count.
+ * Null when the panel is not a direct root child — the root changed axis
+ * since, and the edge insert already wrapped it. */
+function rootSlotIndexOf(
+  serialized: SerializedDockview,
+  panelId: string,
+  precedingPanelIds: readonly string[],
+): RootSlotMove | null {
+  const root = serialized.grid.root;
+
+  if (root.type !== "branch") {
+    return null;
   }
 
-  if (children.slice(0, index).every(holdsNoStaying)) {
-    return horizontal ? "left" : "above";
+  const children = root.data as readonly GridNode[];
+  const from = children.findIndex((child) => {
+    return (
+      child.type === "leaf" &&
+      ((child.data as LeafData).views ?? []).includes(panelId)
+    );
+  });
+
+  if (from < 0) {
+    return null;
   }
 
-  return null;
+  const to = children.filter((child, index) => {
+    return (
+      index !== from &&
+      panelIdsIn(child).some((id) => {
+        return precedingPanelIds.includes(id);
+      })
+    );
+  }).length;
+
+  return { from, to };
 }
 
 /** {@link seedAnchorFor}'s rule applied to a LIVE arrangement: dockview's

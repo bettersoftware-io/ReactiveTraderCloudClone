@@ -4167,6 +4167,77 @@ describe("dynamic-panel reconciliation at construction", () => {
     second.dispose();
   });
 
+  // A panel BETWEEN two staying columns has no leaf to anchor beside at
+  // root depth: every panel it could name sits inside a column, and dockview
+  // inserts beside that panel's GROUP — nested inside the column. The re-add
+  // therefore restores the panel's slot in the root row itself.
+  it("returns a late-listed panel between two columns to its slot in the root row", async () => {
+    const seen = trackLayout();
+    const firstOpts = createMiddleSlotBase();
+    const first = createDockEngine({
+      ...firstOpts,
+      ...seen.options,
+      dynamicPanels: [DYN],
+    });
+    await waitForSize(seen, "panel-dyn-1", 360);
+    stackThenCloseHost(lastDockviewApi(), "panel-dyn-1", "fx-mid");
+    const docked = [null, ["panel-dyn-1"], null];
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    touchContainer(firstOpts.container);
+    first.dispose();
+
+    const second = createDockEngine({
+      ...createMiddleSlotBase(),
+      ...trackLayout().options,
+      blob: seen.blob(),
+    });
+
+    second.addDynamicPanel(DYN);
+
+    expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+    second.dispose();
+  });
+
+  // Co-leaving panels on one edge come back in their own order, whichever
+  // is listed first — each slot counts the columns before it, not a bare
+  // edge, so the second re-add cannot jump ahead of the first.
+  it.each([
+    ["in order", false],
+    ["in reverse", true],
+  ] as const)(
+    "returns two late-listed left-edge panels in their order, listed %s",
+    async (_order, reversed) => {
+      const seen = trackLayout();
+      const firstOpts = createRailBase();
+      const first = createDockEngine({
+        ...firstOpts,
+        ...seen.options,
+        dynamicPanels: [DYN, DYN_2],
+      });
+      await waitForSize(seen, "panel-dyn-2", 360);
+      const api = lastDockviewApi();
+      api.getPanel("panel-dyn-2")?.group.api.moveTo({ position: "left" });
+      api.getPanel("panel-dyn-1")?.group.api.moveTo({ position: "left" });
+      const docked = [["panel-dyn-1"], ["panel-dyn-2"], null, null];
+      expect(rootLeafViews(api)).toEqual(docked);
+      touchContainer(firstOpts.container);
+      first.dispose();
+
+      const second = createDockEngine({
+        ...createRailBase(),
+        ...trackLayout().options,
+        blob: seen.blob(),
+      });
+
+      for (const panel of reversed ? [DYN_2, DYN] : [DYN, DYN_2]) {
+        second.addDynamicPanel(panel);
+      }
+
+      expect(rootLeafViews(lastDockviewApi())).toEqual(docked);
+      second.dispose();
+    },
+  );
+
   it("keeps a late-listed panel's dragged width beside a width-locked rail", async () => {
     const seen = trackLayout();
     const firstOpts = {
@@ -4656,6 +4727,49 @@ describe("closing the last absorber releases a design pin (follow-up b)", () => 
     engine.reopenPanel("fx-blotter");
 
     expect(widthOf("fx-analytics")).toBe(367);
+    engine.dispose();
+  });
+
+  // The same sequence with a pinned dynamic panel docked beside the rail:
+  // measured in a browser, the reopened panel came back ~100px wide beside
+  // an empty region instead of taking the width both pins handed back.
+  it("hands a reopened absorber the width the re-clamped pins free, beside a docked dynamic panel", () => {
+    const engine = createDockEngine({
+      ...createPinnedRailBase(),
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 360 }],
+    });
+
+    engine.closePanel("fx-rates");
+    engine.closePanel("fx-blotter");
+    expect(dockWidth()).toBe(1200);
+
+    engine.reopenPanel("fx-rates");
+
+    expect(widthOf("fx-analytics")).toBe(367);
+    expect(widthOf("panel-dyn-1")).toBe(367);
+    expect(widthOf("fx-rates")).toBe(1200 - 367 - 367);
+    expect(dockWidth()).toBe(1200);
+    engine.dispose();
+  });
+
+  // The mirror case, a slot AFTER a column: the whole rail closed, then
+  // reopened — beside the main column, not inside it, and still before the
+  // docked panel that sat on the rail's far side.
+  it("reopens a closed rail beside the main column, not inside it", () => {
+    const engine = createDockEngine({
+      ...createPinnedRailBase(),
+      dynamicPanels: [{ id: "panel-dyn-1", initialPx: 360 }],
+    });
+
+    engine.closePanel("fx-analytics");
+    engine.closePanel("fx-positions");
+    engine.reopenPanel("fx-analytics");
+
+    expect(rootLeafViews(lastDockviewApi())).toEqual([
+      null,
+      ["fx-analytics"],
+      ["panel-dyn-1"],
+    ]);
     engine.dispose();
   });
 
@@ -8019,4 +8133,44 @@ function leafIndexOf(api: DockviewApi, panelId: string): number {
   }
 
   return index;
+}
+
+/** RAIL_LIKE with a third static leaf, `fx-mid`, between its two columns —
+ * the scaffold a test uses to put a dynamic panel in the MIDDLE of the root
+ * row (see {@link stackThenCloseHost}), a slot no public dockview drop
+ * reaches beside two columns. */
+function createMiddleSlotBase(): DockEngineOptions {
+  const opts = createRailBase();
+
+  return {
+    ...opts,
+    seed: {
+      kind: "split",
+      dir: "row",
+      sizes: [0.5, 0.25, 0.25],
+      children: [
+        RAIL_LIKE.children[0],
+        { kind: "panel", panelId: "fx-mid" },
+        RAIL_LIKE.children[1],
+      ],
+    },
+  };
+}
+
+/** Stacks `panelId` onto `hostId`'s group, then closes the host, so the
+ * panel inherits the host's slot in the grid. */
+function stackThenCloseHost(
+  api: DockviewApi,
+  panelId: string,
+  hostId: string,
+): void {
+  const panel = api.getPanel(panelId);
+  const host = api.getPanel(hostId);
+
+  if (panel === undefined || host === undefined) {
+    throw new Error("fixture panels missing");
+  }
+
+  panel.api.moveTo({ group: host.group, position: "center" });
+  api.removePanel(host);
 }
