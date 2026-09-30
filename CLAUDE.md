@@ -82,7 +82,7 @@ so every worktree and session gets them):
 
 | Command | What it does |
 |---|---|
-| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 21 fast gates (~50s, no build). `full` adds typecheck, unit tests, the six ≥95% coverage gates (four CI steps), type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` check (~8 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
+| `/rtc:gauntlet [full]` | Local mirror of CI's `checks` job. Bare = the 21 fast gates (~50s, no build). `full` adds typecheck, unit tests, the six ≥95% coverage gates (both UI contracts, devtools core + app, both alternative cores), type-aware ESLint, the lint-warnings ledger, build, and the post-build `/devtools/` and core-bundle checks (~9 min). `e2e` is excluded — it's a separate CI job; run `pnpm test:e2e` explicitly. |
 | `/rtc:status [live\|backlog]` | Live branch/PR/CI position plus a summary of `docs/STATUS.md` (never inlined — it is well over 100 KB). |
 | `/rtc:docs [keywords]` | Capture a session's findings into `docs/` — surveys the ~430-file corpus, routes by finding type (STATUS.md goes via its own skill), proposes placement, then ships a PR through merge. |
 | `/rtc:backfill-test-coverage [filter]` | Rank **per-file** coverage gaps from a fresh local run (`pnpm coverage:gaps`), propose a shortlist, then backfill tests. Exists because the ≥95% gate asserts an *aggregate* and cannot surface one weak file — `client-solid` sat at 99.35% while a file was at 56%. |

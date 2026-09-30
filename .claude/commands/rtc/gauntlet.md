@@ -10,20 +10,69 @@ Run the local gate gauntlet. Argument: `$ARGUMENTS` (empty → fast tier, `full`
 
 !`awk '/^  checks:/,/^  e2e:/' .github/workflows/ci.yml | grep -E "^\s+- name:" | sed 's/.*- name: //' | grep -viE "corepack|store path|cache the|install dependencies|checkout|setup-node"`
 
-**Before running anything**, account for every step in that list. Walk it top to
-bottom and name, for each step, the tier command that covers it — or `UNMAPPED`,
-or the explicit skip reason. Do not eyeball the two lists side by side and
-declare them equivalent: `check:prototype-shots` was a CI gate absent from both
-tiers for an unknown stretch, and each free-form comparison read as "looks
-right". Emit the mapping as a compact list, then run every `UNMAPPED` step
-anyway and report it loudly — a gauntlet that has silently stopped mirroring CI
-is worse than no gauntlet. This repo already runs four drift checks; this is the
-same idea applied to itself.
+**Before running anything**, diff that list against the **known-steps table**
+below — a mechanical name-by-name lookup, not a side-by-side impression. For
+every step in the list above, find its exact name in the table and note its
+tier. Then:
 
-Only two steps may be skipped locally, and only for the reasons given here:
-**Expo bundle smoke** (Metro monorepo resolution — belongs on a clean runner)
-and, in the fast tier, everything listed under **Full tier**. Anything else
-unmapped is drift, not a judgement call.
+- **Any step name NOT in the table is drift.** Say so loudly, at the top of
+  your report, naming the step (`NEW CI STEP, not in the gauntlet: <name>`),
+  find its command in `ci.yml`, run it anyway, and tell the user to add it to
+  the table and a tier in the same PR. Never rationalise a missing row as "covered
+  by something similar" — `check:prototype-shots` and `zizmor` each sat absent
+  from the gauntlet that way.
+- **Any table row whose step no longer appears in the list** is stale: say so
+  (CI dropped or renamed it), and check whether the renamed step is now a new
+  name.
+
+Emit the mapping as a compact list only when something is unmapped or stale;
+otherwise one line ("all N CI steps mapped").
+
+### Known-steps table
+
+| CI step (exact name) | Where it runs locally |
+|---|---|
+| Lint + format (Biome) | fast |
+| ESLint (AST rules) | fast |
+| Custom ESLint rule tests (RuleTester) | fast |
+| CSS lint (stylelint) | fast |
+| Workflow lint (actionlint) | fast |
+| Workflow security lint (zizmor) | fast |
+| Docs link check (files + anchors) | fast |
+| Presenter manifest drift (web ↔ React Native) | fast |
+| Prototype deviation corpus (manifest ↔ tree) | fast |
+| Playwright container image tag drift (single-source pin) | fast |
+| Version consistency (manypkg + syncpack) | fast |
+| Workspace script coverage (every package wired to the gates) | fast |
+| React package policies (compiler / memo-ban / react-hooks all explicit) | fast |
+| React Compiler coverage | fast |
+| Worklet capture safety (RN + motion-core) | fast |
+| Pages tooling unit tests | fast |
+| E2E harness tooling unit tests | fast |
+| Cucumber hooks unit tests | fast |
+| Dead code (knip) | fast |
+| Dependency graph (cycles + layering) | fast |
+| Architecture + supply-chain gates (grep gates + pnpm audit --prod) | fast |
+| Typecheck | full |
+| Tests (unit) | full |
+| Lint-warnings ledger drift (docs/lint-warnings.md) | full |
+| ESLint (type-aware rules) | full |
+| UI contract coverage gate (≥95%) | full |
+| UI contract coverage gate — solid (≥95%, branches ≥85%) | full |
+| Devtools coverage gates (core + app, ≥95%, branches ≥85%) | full |
+| Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%) | full |
+| Build | full |
+| Prod /devtools/ bundle check | full |
+| Core bundle isolation (alternative cores only in their own lazy chunks) | full |
+| Expo bundle smoke (Metro monorepo resolution) | CI-only — Metro monorepo resolution belongs on a clean runner |
+
+Setup steps (Enable Corepack, Resolve pnpm store path, Cache the pnpm store,
+Install dependencies, checkout, setup-node) are **infra** — the `!` block above
+already filters them out, so they never appear and never false-flag.
+
+Only one step may be skipped locally: **Expo bundle smoke**. The fast tier
+skips the `full` rows by design. Anything else unmapped is drift, not a
+judgement call.
 
 The list is scoped to the **`checks` job only**. An earlier version grepped the
 whole workflow and so flagged the three `e2e`-job steps (`Install Playwright
