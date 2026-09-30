@@ -8,12 +8,12 @@ closing" below).
 
 ## Context
 
-> **Intent.** This decision is made in a conceptual, experimental repository.
+> **Intent (added 2026-09-30).** This decision is made in a conceptual, experimental repository.
 > Three interchangeable application cores are not a recommendation for a
 > product; they are the instrument for exploring how far the application ring
 > can be made replaceable. The production-relevant reading of every decision
-> below is a *migration* of the reactive substrate (e.g. RxJS → Effect, or → the
-> web-standard `Observable`), in which the edge abstractions and the
+> below is a *migration* (e.g. RxJS → Effect inside the core, or the boundary
+> envelope moving from RxJS to the web-standard `Observable`), in which the edge abstractions and the
 > implementation differ only for the duration of the move and the indirection
 > is collapsed afterwards. See
 > [§23 "Why three cores?"](../architecture/23-application-cores-explained.md#why-three-cores-read-this-first).
