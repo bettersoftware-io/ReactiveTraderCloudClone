@@ -10,7 +10,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 
 ## What's here
 
-- `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (tolerance `0.06`).
+- `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
 - `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone17-26`).
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash tsx/esbuild).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
@@ -21,7 +21,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
   transitive `ajv@7`). See `BAKEOFF.md`.
 - `__screenshots__/ios-iphone17-26/{simctl,maestro}/` — committed goldens (one set per viable tier).
 
-**Scenarios** (provisional "prove-the-harness" fixtures — module goldens are pinned in their own rehaul phases, per spec §7):
+**Scenarios** — `scenarioIds.ts` is the authoritative list (it has grown well past the three original "prove-the-harness" fixtures below, which are kept as worked examples):
 
 | id | surface | skin×mode | why it's stable |
 |----|---------|-----------|-----------------|

@@ -9,8 +9,8 @@ protocol.
 |---|---|
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Runtime deps** | `@rtc/devtools-core`, `react`, `react-dom` (`package.json` `dependencies`) |
-| **Consumed by** | Nothing in-workspace as a source dependency -- `@rtc/client-react` takes only a `devDependency` build-order/dist-path edge to serve it at `/devtools/` (`docs/architecture/06-package-dependencies.md` §6) |
-| **Must never import** | `@rtc/client-core`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes a future Chrome-extension shell a thin wrapper around this same bundle (spec §9 / [§20.8](../../docs/architecture/20-devtools.md#208-future-extensions)). |
+| **Consumed by** | `@rtc/devtools-extension`, which imports `InspectorApp` as source (`src/index.ts`) and transpiles it in its own build; `@rtc/client-react` and `@rtc/client-solid` take only a `devDependency` build-order/dist-path edge to serve it at `/devtools/` (`docs/architecture/06-package-dependencies.md` §6) |
+| **Must never import** | `@rtc/client-core`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes the Chrome-extension shell (`@rtc/devtools-extension`) a thin wrapper around this same `InspectorApp` (spec §9 / [§20.8](../../docs/architecture/20-devtools.md#208-future-extensions)). |
 
 ## Folder map
 
@@ -21,6 +21,7 @@ protocol.
 | `src/main.tsx` | Entry point -- mounts `InspectorApp` |
 | `src/InspectorApp.tsx` | The shell: connection-status rail (badge + navigation tree), recording toolbar, and the scoped timeline/context split |
 | `src/inspectorSession.ts` | Constructs the transport (`BroadcastChannelDuplex`) + `InspectorClient` + `InspectorStore` from `devtools-core` and exposes them to React |
+| `src/relaySession.ts` | The same session over a `WsRelayDuplex` pointed at `@rtc/devtools-relay` (React Native inspection, opened with `?relay=`) |
 | `src/useInspectorState.ts` | Hook subscribing to the live `InspectorState` snapshot |
 | `src/nav/` | The navigation tree: `scope.ts` (the single selection + how it compiles into a filter), `buildNavTree` (its data), `NavTree` (the rail rows), `useNavigation` (selection + the wire probe's one-deep history) |
 | `src/timeline/` | `useTimeline` (selection/filter/pin state), `TimelinePane` (the row list), `ContextPane` (Event/State/Diff/Machine for the pinned moment), `MachineTab` (machine detail + intent injector) |
@@ -48,11 +49,11 @@ protocol.
 
 ## How it's served
 
-This package is never imported as source by anything else. Its *built*
-`dist/` is what matters: `@rtc/client-react`'s `vite.config.ts` (the
+For the same-origin path this package is never imported as source. Its *built*
+`dist/` is what matters: `@rtc/client-react`'s (and `@rtc/client-solid`'s) `vite.config.ts` (the
 `devtoolsPanel()` plugin) resolves this package's `dist/` and serves it at
 `/devtools/` via Vite middleware in dev, and copies it into
-`client-react/dist/devtools` at build time -- so `/devtools/` works
+`dist/devtools` at build time -- so `/devtools/` works
 identically in `pnpm dev` and against the deployed app. Same-origin is
 load-bearing: the transport is a same-origin `BroadcastChannel`, so a panel
 served from anywhere else (including this package's own standalone dev
