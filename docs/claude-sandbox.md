@@ -1,5 +1,7 @@
 # Dev environment: macOS WebStorm + Linux claude-sandbox container
 
+> **Historical (2026-09-30):** This described running the repo from macOS and a Docker claude-sandbox at once; the sandbox was retired in 2026, and its config (which lists only 10 of the 25 workspace packages) is not maintained.
+
 This repo is commonly worked on from **two places at once**:
 
 - **macOS / WebStorm** — editing, IntelliSense, git.

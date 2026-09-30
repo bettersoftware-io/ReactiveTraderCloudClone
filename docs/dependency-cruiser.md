@@ -33,7 +33,7 @@ graph TD
     proto["@rtc/client-prototype<br/>(design island — no @rtc/* deps)"]
     motion["@rtc/motion-core<br/>(view-layer motion math — zero deps)"]
     boot["@rtc/boot-splash<br/>(boot/splash canvas engine + gate — no @rtc/* deps)"]
-    dockv["@rtc/layout-dockview<br/>(Dockview wrapper — no @rtc/* deps, dockview@7.0.4 confined here)"]
+    dockv["@rtc/layout-dockview<br/>(Dockview wrapper — no @rtc/* deps, dockview@8.3.1 confined here)"]
 
     webc -->|allowed| rb
     webc -->|allowed| core
@@ -75,6 +75,9 @@ graph TD
     class proto,motion,boot,dockv isle;
 ```
 
+The diagram is a representative sample, not the full edge list — the authoritative
+graph is the `from`/`pathNot` allowlists in `.dependency-cruiser.cjs`.
+
 Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
 the edges the `forbidden` rules reject. `domain-stays-pure` forbids
 `domain → shared` (and by extension `domain → client/server`);
@@ -89,7 +92,7 @@ wrapper behind the `LayoutEngine` preference, [ADR-002](adr/ADR-002-layout-manag
 a zero-`@rtc/*`-dependency leaf the same way -- also DOM-touching, since
 `createDockEngine` mounts Dockview into a container element -- and a second
 rule, `dockview-only-in-layout-dockview`, confines its one runtime dependency
-(`dockview@7.0.4`) to this package so a client can never import it directly;
+(`dockview@8.3.1`) to this package so a client can never import it directly;
 the apps may reach inward but never reach across to each other.
 
 ## The forbidden rules
@@ -133,10 +136,14 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `core-api-stays-inner` | `^packages/core-api/src` | `core-api\|domain\|shared` | The types-only application-core contract (ADR-006) sits just inside `domain`/`shared` |
 | `core-logic-stays-inner` | `^packages/core-logic/src` | `core-logic\|core-api\|domain\|shared` | The rules all three application cores share reach only inward (slice 8) |
 | `core-logic-stays-pure` | `^packages/core-logic/src` (tests excepted) | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed; pattern `(^\|node_modules/)` because an unresolvable bare import is recorded unprefixed) | A runtime rxjs import here would put RxJS inside the alternative cores |
+| `core-contract-stays-neutral` | `^packages/core-contract/src` | `core-contract\|core-api\|domain` | The paradigm-neutral behavioural spec imports only `core-api` and `domain` — never a core (each core's runner supplies its own factory), a binding, or a client |
 | `client-core-stays-inner` | `^packages/client-core/src` | `client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The RxJS application core reaches only inward — never bindings, a view leaf, a client, or the server (`core-contract` in its runner test only: `client-core-src-uses-core-contract-only-in-tests`) |
 | `alt-cores-stay-inner` | `^packages/client-core-(async\|effect)/src` | itself (`$1`, not its sibling) `\|client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The alternative cores reach only inward; `client-core` and `core-contract` only from tests (`alt-cores-no-client-core-at-runtime`, `alt-cores-use-core-contract-only-in-tests`) |
 | `alt-cores-no-client-core-at-runtime` | `^packages/client-core-(async\|effect)/src` (tests excepted) | — (rejects `^packages/client-core/`) | Since slice 8 an alternative core composes from `core-logic` and its own members only; `client-core` is a devDependency for test adapters |
 | `bridge-owns-rxjs` | `^packages/client-core-(async\|effect)/src` except `bridge/` and tests | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed) | An alternative core that reaches for an operator is RxJS with extra steps (grep gate 43 is the belt to these braces) |
+| `alt-cores-framework-free` | `^packages/client-core-(async\|effect)/src` | — (rejects `node_modules/(react\|react-dom\|react-native\|solid-js)/`) | The alternative cores stay framework-free like `client-core` |
+| `effect-port-subscription-owned-by-the-bridge` | `^packages/client-core-effect/src` except `bridge/` and tests | — (rejects `bridge/in.ts`) | `fromObservable` subscribes a port eagerly, so it is reached only through a shared fold's period-scoped `fromPort`; presenters never import `bridge/in.ts` directly |
+| `effect-only-in-client-core-effect` | `^packages/` **except** `^packages/client-core-effect/` | — (rejects `effect`, bare specifier included) | The Effect runtime never leaks past its own package boundary — an alternative core is pluggable precisely because of that |
 | `client-core-framework-free` | `^packages/client-core/src` | — (rejects `react`/`react-dom`/`react-native`) | `client-core` stays framework-free by contract despite UI-facing consumers |
 | `react-bindings-no-apps` | `^packages/react-bindings/src` | `react-bindings\|client-core\|domain` | The React↔RxJS bridge depends only inward, never on an app or the server |
 | `solid-bindings-no-apps` | `^packages/solid-bindings/src` | `solid-bindings\|client-core\|domain` | The Solid↔RxJS bridge depends only inward, never on an app or the server |
@@ -185,9 +192,9 @@ options: {
 }
 ```
 
-> **Resolution matters as much as the rules.** Thirteen of the twenty
-> packages publish `"." : "./dist/…"` (the `tsc`-built inner libraries;
-> the apps and the few source-exporting packages don't). If the cruiser
+> **Resolution matters as much as the rules.** Most of the workspace
+> packages publish `"." : "./dist/…"` (the `tsc`-built inner libraries and
+> the server; the apps and the few source-exporting packages don't). If the cruiser
 > resolves an `@rtc/<pkg>`
 > import to `packages/<pkg>/dist/index.js`, the `exclude` pattern below drops
 > it from the graph — and in an unbuilt tree it resolves to a bare,

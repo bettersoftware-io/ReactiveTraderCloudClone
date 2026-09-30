@@ -48,6 +48,23 @@ throwaway `dev-local-secret` baked into the `dev:*` scripts, and the deployed
 value is a Fly secret set by hand. The `.env.example` templates still ship
 overridable placeholder values.
 
+## Other environment variables (server, build, Jarvis)
+
+Process/build-time variables that are not tied to one `.env*` file. Set them in
+the shell, a Fly secret, or the relevant script; each is read exactly where the
+last column says.
+
+| Var | Set where | Holds | Read by |
+|---|---|---|---|
+| `VITE_CORE_IMPL` | shell / `dev:*` scripts / deploy build | The **build default** application core (`rxjs` \| `async` \| `effect`). A `?core=` URL parameter or a stored Preferences choice outranks it (load-time selection); unset falls back to `rxjs`. Declared in `turbo.json` `build.env` so strict-mode Turbo does not strip it | `packages/client-react/src/main.tsx` → `coreSelection.ts` (and the Solid client's equivalents) |
+| `ANTHROPIC_API_KEY` | Fly secret / shell (never committed) | The key for the real Anthropic-backed Jarvis loop; with it unset (or `RTC_JARVIS_FAKE=1`) Jarvis runs the free scripted brain. See [`running-real-jarvis.md`](running-real-jarvis.md) | `packages/server/src/agent/agentLoop.ts`, `packages/server/src/index.ts` |
+| `RTC_JARVIS_FAKE` | shell / Fly | `1` forces the scripted (no-API) Jarvis loop even when a key is present | `packages/server/src/agent/agentLoop.ts` |
+| `RTC_JARVIS_BUDGET_USD` | shell / Fly | Real-Claude spend budget per usage window in USD (default `1`); `off` disables the gate | `parseJarvisGateConfig` (`packages/server/src/services/jarvisGate.ts`) |
+| `RTC_JARVIS_BUDGET_SOFT_RATIO` | shell / Fly | Fraction of the budget (0–1, default `0.8`) at which the soft gate engages | `parseJarvisGateConfig` |
+| `RTC_JARVIS_FORCE_GATE` | shell / Fly | `soft` or `hard` forces that gate level regardless of spend (for rehearsal/testing) | `parseJarvisGateConfig` |
+| `PORT` | shell / Fly | The server's listen port (default `4000`); for the Vite dev servers, the dev port (defaults `5173` React, `5473` Solid) | `packages/server/src/index.ts`; `packages/client-{react,solid}/vite.config.ts` |
+| `RTC_SOURCEMAPS` | Deploy workflow `include_sourcemaps` | `1` produces a debuggable client build: `@rtc/*` libs resolve from source and **inline** sourcemaps are emitted (a production build ships none) | `packages/client-{react,solid}/vite.config.ts` (`debugBuild`); declared in `turbo.json` `build.env` |
+
 ## The files, in detail
 
 ### `packages/client-react-native/.env.example` — the one tracked mobile template

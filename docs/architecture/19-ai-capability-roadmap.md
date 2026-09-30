@@ -1,7 +1,10 @@
 # 19. The AI Capability Roadmap
 
-> **Status: forward-looking.** Nothing in this section is built; slice 1 of the Jarvis
-> surface ([§18](18-jarvis-ai-agent-surface.md)) is itself pre-implementation. This
+> **Status: partly shipped.** Three items have landed since this section was written
+> (marked *Shipped* below): #1 generative UI (§18.16, panels L1–L3), #2 Jarvis drives
+> the app and #9 the proactive narrator (both §18.17, P5). The rest remains
+> forward-looking, and slice 1 of the Jarvis surface
+> ([§18](18-jarvis-ai-agent-surface.md)) has long since shipped (P1–P5). This
 > section exists so the ideas are designed against the architecture — not remembered
 > — and so each one names the **existing seam** it plugs into. That is the discipline
 > dividend of §18.1 stated as a product backlog: none of these require changes to
@@ -12,14 +15,14 @@ tool registry as their load-bearing primitive.
 
 ## 19.1 Tier 1 — jaw-droppers
 
-**1. Generative UI bound to live streams.** "Compare GBP crosses volatility over the
+**1. Generative UI bound to live streams.** *(Shipped — §18.16.)* "Compare GBP crosses volatility over the
 last hour" → Jarvis emits a *declarative panel spec* (chart type, symbols, transforms,
 thresholds); the client materializes a transient HUD panel wired to the **live tick
 streams** — it keeps updating after the LLM has left the conversation. Generated UI
 over real-time push data is the trick almost nobody has seen.
 *Seam:* a spec-interpreter machine + existing stream ports; the LLM only authors JSON.
 
-**2. Jarvis drives the app.** "Set up my morning workspace" → tabs switch, panels
+**2. Jarvis drives the app.** *(Shipped — §18.17.)* "Set up my morning workspace" → tabs switch, panels
 rearrange, the watchlist repopulates, tiles glow as it narrates. On a
 permanently-animated HUD, an app visibly operating itself reads as *alive* in a way no
 chatbox can.
@@ -64,7 +67,7 @@ the demo.
 
 ## 19.3 Tier 3 — atmosphere and stagecraft
 
-**9. Proactive narrator with deterministic triggers.** Cheap domain-side statistics
+**9. Proactive narrator with deterministic triggers.** *(Shipped — §18.17.)* Cheap domain-side statistics
 detect anomalies (spread 3σ, volatility spikes); the LLM is invoked only when a
 trigger fires, to narrate and hypothesize. Alive-feeling proactivity without a
 token-burning poll loop.
@@ -155,6 +158,10 @@ flowchart TD
 ```
 
 ## 19.5 Suggested phase progression
+
+The "Phase N" labels in this diagram are this roadmap's own grouping of capabilities;
+they are **not** the P1–P5 delivery phases of [§18](18-jarvis-ai-agent-surface.md)
+(P1 scripted surface, P2 wire, P3 real loop, P4 MCP, P5 app-driving + narrator).
 
 Phases are scoped so each ships a self-contained demo; arrows are enablement, not a
 strict schedule.

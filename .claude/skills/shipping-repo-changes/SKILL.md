@@ -80,6 +80,11 @@ Fold in without a second thought: the tests covering the change, the doc update 
 
 ### Push, PR, then loop on CI
 
+> **Batch these.** Push, PR create and merge are the outward steps that
+> prompt in auto mode. Run each as its own Bash call, never chained to
+> `git add`/`git commit`, and group them at the end of the work. See
+> [`planning-uninterrupted-work`](../planning-uninterrupted-work/SKILL.md).
+
 ```bash
 git push -u origin <branch>
 gh pr create --base main --head <branch> --title "<title>" --body "<body>"

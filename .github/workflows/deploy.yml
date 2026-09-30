@@ -14,8 +14,8 @@ name: Deploy
 # the server job. The server is deployed far less often than the clients, hence
 # its own opt-in checkbox (default off).
 #
-# include_sourcemaps ships a debuggable build of the ticked CLIENT(s) — external
-# .map files, so a profiled deploy shows real component names in the flamechart.
+# include_sourcemaps ships a debuggable build of the ticked CLIENT(s) — inline
+# sourcemaps, so a profiled deploy shows real component names in the flamechart.
 # It has no effect on the server job.
 on:
   workflow_dispatch:
@@ -33,7 +33,7 @@ on:
         type: boolean
         default: false
       include_sourcemaps:
-        description: "Ship debuggable client builds (external sourcemaps). React/Solid only."
+        description: "Ship debuggable client builds (inline sourcemaps). React/Solid only."
         type: boolean
         default: false
 

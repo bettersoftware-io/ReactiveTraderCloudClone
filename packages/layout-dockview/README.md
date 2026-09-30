@@ -178,7 +178,13 @@ structural pin check dissolve an affected pin), and `reopenPanel` re-adds
 it **at its seed home**: the anchor is the nearest surviving SEED sibling —
 proximity within the panel's own seed split first, then outward — with a
 right-edge fallback when nothing of the seed survives (exported pure
-`seedAnchorFor`). The bridges reconcile the whole seed set on every change
+`seedAnchorFor`). When that sibling is a whole COLUMN of the root row (the
+FX rail), the panel goes back beside the column, not beside the anchor
+panel's group inside it: dockview can only insert relative to a group, so
+the engine adds at the root's edge and moves the new group to its slot
+through gridview's `moveView` — the same root-slot move that returns a
+late-listed dynamic panel (one the construction scrub parked) to its place
+in the root row. The bridges reconcile the whole seed set on every change
 (close and reopen are both no-op-safe), so StrictMode rebuilds, tab
 switches and blobs saved while closed all converge with no bookkeeping.
 The last visible static panel of a tab cannot be closed — the reducer

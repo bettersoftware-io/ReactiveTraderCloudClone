@@ -1,9 +1,11 @@
 # Dev tooling roadmap & adoption tracker
 
-A backlog of linting / static-analysis tooling we've evaluated but **not yet
-adopted**. Each item records what it does, the gap it fills beyond Biome, the
-decision, and a status box to tick when adopted. Nothing here is implemented yet
-— this is a "pick it up later" tracker.
+> **Historical (2026-09-30):** This was written as a backlog of tooling not yet adopted; all nine items have since been decided (seven adopted, two rejected — see the Summary table), so it is now a decision record, not a backlog.
+
+A record of linting / static-analysis tooling we evaluated beyond Biome. Each
+item records what it does, the gap it fills, the decision, and its adoption
+status — see the Summary table for where each landed. It began life as a "pick
+it up later" tracker.
 
 Evaluated 2026-06-22. All empirical findings below were run against the actual
 repo (commands preserved so they're reproducible).
