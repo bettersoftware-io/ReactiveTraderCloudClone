@@ -7,7 +7,7 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/react-bindings`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 26). |
+| **Runtime deps** | `@rtc/client-core` (the default RxJS core) plus the two lazy-loaded alternative cores `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 26). |
 | **Consumed by** | The `tests` workspace only (`tests/package.json` lists `@rtc/client-react`; [§13.2](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)) — it is a shipping leaf app, not a library other packages import. |
 | **Must never import** | `rxjs` / `@react-rxjs` / `@rx-state` in `src/ui` (gate 26); `localStorage` in `src/ui` (gate 27); `fetch(` / `import.meta.env` in `src/ui` (gate 28); `setTimeout` / `setInterval` in `src/ui` (gate 29) — all four enforced by `tests/scripts/grep-gates.ts`, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -15,12 +15,13 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports, mounts `<AppRoot><App /></AppRoot>` into `#root` |
-| `src/AppRoot.tsx` | Composition root component — builds the app exactly once (lazy `useRef`, StrictMode-safe) and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
-| `src/bootSplashGate.ts` | One-shot boot-splash suppression decision (`navigator.webdriver` / `?nosplash`) |
+| `src/main.tsx` | Entry point: font imports, then `runBoot(bootCore(...))` -- resolves which application core to load (`?core=` URL parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build default, then `rxjs`) and mounts `<AppRoot core coreSelection><App /></AppRoot>` into `#root` |
+| `src/AppRoot.tsx` | Composition root component — builds the app exactly once from the chosen core (lazy `useRef`, StrictMode-safe), wraps it in devtools instrumentation, and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
 | `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, `localStorage`, `fetch`/`import.meta.env` |
-| `src/app/adapters/` | `BrowserConnectionEventsAdapter`, `LocalStoragePreferencesAdapter` |
+| `src/app/adapters/` | `BrowserConnectionEventsAdapter`, `LocalStoragePreferencesAdapter`, the `LocalStorage*` layout/session stores |
 | `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
+| `src/app/bootApp.ts`, `src/app/coreSelection.ts` | Load-time core selection: `bootCore` resolves and loads the chosen `CoreFactory` (the alternative cores are lazy chunks), `coreSelection.ts` holds the precedence rules and the stored-choice helpers |
+| `src/app/devtools/` | The app-side `devtoolsHub` singleton and the `PRESENTER_MANIFEST` the `@rtc/devtools-core` decorators walk |
 | `src/app/buildBrowserPorts.ts` | Assembles `AppPorts` for `createApp` — switches real WS vs. simulator ports on `VITE_SERVER_URL` |
 | `src/ui/` | Dumb React 19 UI (Ring ④) — every component reads data through `useViewModel()`; gates 26–29 keep it framework-swappable |
 | `src/ui/shell/` | Chrome, layout engine, boot sequence, theme, lock screen, connection overlay, status bar |
@@ -31,16 +32,16 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 | `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets |
 | `src/ui/admin/` | Admin dashboard — health KPIs, service topology, sessions, live event log |
 | `tests/setup/` | jsdom test-environment polyfills (e.g. `localStorage` shim for Node 26) |
-| `tests/ui/contract/` | UI contract tier — framework-neutral sociable RTL specs (own [README](tests/ui/contract/README.md)) |
-| `tests/ui/visual/` | Visual tier — 3 runners × pixel goldens (own [README](tests/ui/visual/README.md)) |
+| `tests/ui/contract/` | UI contract tier — the React runner for the framework-neutral sociable RTL specs, which live in `@rtc/ui-contract` (own [README](tests/ui/contract/README.md)) |
+| `tests/ui/visual/` | Visual tier — the React scenario host, the Playwright runner and the coverage instrument; the scenario matrix and the pixel goldens live in `@rtc/ui-contract` (own [README](tests/ui/visual/README.md)) |
 | `tests/ui/__golden__/` | Shared golden JSON fixtures loaded via `loadGolden.ts` |
 
 ## Where to start reading
 
 1. `src/main.tsx` — the entry point; shows exactly what gets mounted and in what order (fonts, `AppRoot`, `App`)
-2. `src/AppRoot.tsx` — the composition root; where `@rtc/client-core`'s `createApp`/`createMachineFactories` meet React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
+2. `src/AppRoot.tsx` — the composition root; where the chosen core's `createApp`/`createMachineFactories` meet React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
 3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring, the browser-specific half of composition
-4. `src/ui/App.tsx` — the dumb top-level UI tree: `AmbientBackground`, `HeaderChrome`, the per-tab `WorkspaceEngine`, `StatusBar`, `ConnectionOverlay`, `LockScreen`
+4. `src/ui/App.tsx` — the dumb top-level UI tree: `AmbientBackground`, `HeaderChrome`, the per-tab layout engine (`DockviewLayoutEngine` or `InhouseLayoutEngine`, by preference), `StatusBar`, `ConnectionOverlay`, `LockScreen`, `JarvisOverlay`, `JarvisPanelLayer`
 
 ## Dumb UI: the gate-enforced boundary
 
@@ -70,7 +71,7 @@ Every component that renders markup has a co-located `<Component>.module.css`
 (e.g. `src/ui/App.tsx` / `src/ui/App.module.css`) imported as
 `import styles from "./X.module.css"` and applied via `className={styles.x}`.
 Inline `style={{…}}` object literals are banned by an ESLint AST rule scoped
-to client `src` (`eslint.config.mjs:70-79`, the `no-restricted-syntax`
+to client `src` (the root `eslint.config.mjs`, the `no-restricted-syntax`
 `inlineStyleProp` selector) — the only escape hatch is a runtime-computed CSS
 custom property, opted out with an explicit
 `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The policy
@@ -82,24 +83,25 @@ the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-mu
 
 ## Where the app composes the core
 
-`src/app/` is where this package plugs the framework-free `@rtc/client-core`
-into the browser. `src/AppRoot.tsx` calls `createApp(buildBrowserPorts())` once
-(via a lazy `useRef`, StrictMode-safe) to get `{ presenters, commands }`, then
-`createViewModel(presenters, createMachineFactories(presenters), commands)`
-from `@rtc/react-bindings` to build the `ViewModel` the whole `src/ui` tree
+`src/app/` is where this package plugs the framework-free application core
+into the browser. `main.tsx` first resolves and loads the core (`bootCore`),
+then `src/AppRoot.tsx` calls `core.createApp(buildBrowserPorts())` once
+(via a lazy `useRef`, StrictMode-safe) to get `{ presenters, commands }`, wraps
+them in the devtools decorators, and uses `createViewModel` from
+`@rtc/react-bindings` to build the `ViewModel` the whole `src/ui` tree
 consumes through `useViewModel()`. `src/app/buildBrowserPorts.ts` builds the
 `AppPorts` that composition needs: real `WsAdapter`/`WsReal*` ports when
 `VITE_SERVER_URL` is set, in-process simulator ports otherwise, plus the
 browser-only adapters (`BrowserConnectionEventsAdapter`,
 `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`) and the
-one-shot boot-splash decision from `src/bootSplashGate.ts`. Full sequence:
+one-shot boot-splash decision (`shouldPlayBootSplash` from `@rtc/boot-splash`). Full sequence:
 [§14.3 Boot Sequences](../../docs/architecture/14-composition-and-wiring.md#143-boot-sequences).
 
 ## How it's used
 
 The only in-workspace consumer is the `tests` package, which imports the real
 `WsAdapter` for its Node-socket full-stack smoke test
-(`tests/fullstack/node-smoke.ts:17-18`):
+(`tests/fullstack/node-smoke.ts`):
 
 ```typescript
 import { createWsRealPorts } from "@rtc/client-core";
@@ -117,7 +119,7 @@ import { WsAdapter } from "@rtc/client-react";
 | `test:app:coverage` | **app-tier coverage** — report-only v8 coverage over `src/app` | `app/coverage/` |
 | `test:ui:contract` | **ui contract tier** — sociable RTL specs over `src/ui` | `ui/contract/` |
 | `test:ui:contract:coverage` | **≥95% coverage gate** — combined `src/ui` surface (contract specs + co-located unit tests) | `ui/contract/coverage/` |
-| `test` | **default** — Vitest (jsdom): union of app + ui-contract (72 files / 406 tests) | `unit/` |
+| `test` | **default** — Vitest (jsdom): the union of the app and ui-contract tiers (run it for the current file/test counts) | `unit/` |
 | `test:ui:visual` | **visual tier** — the sole surviving runner × every framework variant present | per-runner, below |
 | `test:ui:visual:react` | the visual runner, react only | per-runner, below |
 | `test:ui:visual:playwright:react[:update\|:ui]` | The CI-asserted tier — plain Playwright over a Vite host page | `ui/visual/playwright/react/` |
@@ -129,7 +131,7 @@ because the goldens + the framework-neutral fixtures in `@rtc/ui-contract`'s
 `src/visual/` (aliased here as `@ui-visual-shared`) are the portability contract
 for re-implementing this UI in another framework with pixel-parity.
 `@rtc/client-solid` is exactly that: its `:solid` runners assert against these
-same goldens (owned by this package — `client-solid` writes none of its own)
+same goldens (committed in `@rtc/ui-contract`'s `goldens/`, generated only from this package's renders — `client-solid` writes none of its own)
 and were discovered by `tests/ui/visual/run-all.ts` with no edit to that file.
 
 Caching: from the repo root, `pnpm test` runs through Turborepo and is
@@ -144,8 +146,8 @@ replay *restores* it — fresh reports need `--force` too.
 
 ## Test portfolio
 
-The default `pnpm test` runs the **union** of two co-resident tiers (72 files /
-406 tests, report under `reports/unit/`); each tier also has a focused runner:
+The default `pnpm test` runs the **union** of two co-resident tiers (report
+under `reports/unit/`); each tier also has a focused runner:
 
 **App tier (`pnpm test:app`)** — co-located `src/app/**/*.test.ts(x)`: presenter
 streams (`src/app/presenters/__tests__/`), WS adapters incl. real-gateway
@@ -153,7 +155,7 @@ contract tests (`src/app/adapters/`). No browser, no screenshots. Report under
 `reports/app/`.
 
 **UI contract tier (`pnpm test:ui:contract`)** — framework-neutral sociable
-React Testing Library specs over `src/ui` (`tests/ui/contract/`): they assert
+React Testing Library specs over `src/ui` (specs in `@rtc/ui-contract`, React runner in `tests/ui/contract/`): they assert
 text, roles, structure, recorded command inputs, and dynamic re-renders — the
 behavioural counterpart to the pixel-only visual tier, and the second
 framework-swap portability pillar. Reports under `reports/ui/contract/`.
@@ -175,7 +177,7 @@ no presenters. Two runners share one scenario manifest
 (`@rtc/ui-contract`'s `src/visual/scenarios.ts`, aliased here as
 `@ui-visual-shared/scenarios`): the CI-asserted `playwright/` tier and the
 coverage-only `vitest-browser/` instrument (pixel assert compiled out).
-Playwright's goldens are committed in TWO sets — `react/` (CI, x86) and
+Playwright's goldens (under `@rtc/ui-contract`'s `goldens/`) are committed in TWO sets — `react/` (CI, x86) and
 `react-local/<platform>-<arch>/` (fast local feedback). UI changes require
 regenerating BOTH sets. These are the goldens `@rtc/client-solid`'s visual
 tier asserts against (assert-only — it owns no golden set of its own).
