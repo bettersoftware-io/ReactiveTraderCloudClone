@@ -13,9 +13,25 @@ they come back. Ten prompts scattered through a two-hour task cost ten
 interruptions, and the work sits idle during each one. The goal is **at most
 one prompt boundary at each end of a unit of work**. Nothing in between.
 
-This skill is the planning half. The enforcing half is a PreToolUse hook
-(`split-outward-commands.py`) that refuses any Bash command which chains an
-outward step with other commands.
+This skill is the planning half. The enforcing half is the project's
+PreToolUse hook [`.claude/hooks/split-outward-commands.py`](../../hooks/split-outward-commands.py),
+registered in `.claude/settings.json`, which refuses any Bash command that
+chains an outward step with other commands.
+
+## The pre-approved forms (no prompt at all)
+
+`.claude/settings.json` allow-lists the routine outward steps, so a closing
+batch written in these exact forms runs unattended:
+
+| step | pre-approved form |
+|---|---|
+| push a worktree branch | `git push -u origin worktree-<name>` or `git push origin worktree-<name>`, **run from inside the worktree** (a `git -C <dir> push …` does not match the rule and prompts) |
+| open the PR | `gh pr create …` |
+| merge it | `gh pr merge …` |
+
+A force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`) always
+**asks** (the `ask` rules beat the allow rules), and so does pushing anything
+that isn't a `worktree-*` branch. Those need a person to look at them.
 
 ## Two rules
 
