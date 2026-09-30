@@ -134,6 +134,7 @@ This document is split into one file per section under
     - [Bundle isolation](architecture/22-pluggable-application-core.md#bundle-isolation)
     - [See also](architecture/22-pluggable-application-core.md#see-also)
 23. [Application Cores, Explained](architecture/23-application-cores-explained.md) *(guided tour of §22 — start here)*
+    - [Why three cores? Read this first](architecture/23-application-cores-explained.md#why-three-cores-read-this-first)
     - [The idea in one picture](architecture/23-application-cores-explained.md#the-idea-in-one-picture)
     - [Two boundaries, one envelope](architecture/23-application-cores-explained.md#two-boundaries-one-envelope)
     - [The plug: what a core must offer](architecture/23-application-cores-explained.md#the-plug-what-a-core-must-offer)

@@ -180,7 +180,11 @@ at the edge, behind interfaces the inner layers own. Here that claim was
   again on Effect-TS, slice by slice, while the app kept shipping. All three
   implement one types-only contract and pass one behavioural contract suite;
   the React and Solid UIs run on any of them, chosen at load time (`?core=` / Preferences,
-  with `VITE_CORE_IMPL` as the build default), without knowing which.
+  with `VITE_CORE_IMPL` as the build default), without knowing which. No
+  product needs three cores — this is the experiment's instrument; the
+  real-world shape is a *migration* of the reactive substrate, and
+  [§23 "Why three cores?"](docs/architecture/23-application-cores-explained.md#why-three-cores-read-this-first)
+  says which techniques transfer and how the indirection is collapsed at the end.
 - **The server is optional.** The domain ships simulators behind the same
   ports the WebSocket adapter implements, so every client runs fully offline —
   which is also what lets the whole e2e matrix run in parallel with no backend.

@@ -16,6 +16,61 @@ repeating them:
 | The exact behaviour every core must reproduce, edge cases included | [§22 Pluggable Application Core](22-pluggable-application-core.md) |
 | Why each decision was taken, and what was rejected | [ADR-006](../adr/ADR-006-pluggable-application-core.md) |
 
+## Why three cores? Read this first
+
+> **A fair objection.** No production application needs three
+> interchangeable application cores. Each extra core is a second
+> implementation of 75 members to keep correct, and the machinery that keeps
+> them honest — a types-only contract, a translation layer at each boundary,
+> a behavioural contract tier with construction-time counts, a bundle-isolation
+> gate — is indirection a product would never choose to carry. That objection
+> is correct.
+
+Two answers, and both matter.
+
+**1. This is a conceptual, experimental project.** The repository exists to
+find out what clean architecture makes possible when it is followed all the
+way down — first the UI ring ([§21](21-cross-framework-testing.md): two web
+frameworks over one core), then the application ring (this chapter: three
+cores under one UI). The three cores are the *instrument*, not the product.
+What was learned from building them is the deliverable, and the cost of
+keeping three alive is accepted here because comparing them side by side is
+the point of the experiment.
+
+**2. The real-world shape of this is a migration.** Products do have to move
+their reactive substrate — RxJS to Effect inside the core, a home-grown
+event bus to either, or the boundary envelope itself moving from RxJS to the
+web-standard `Observable` — and that move is slow,
+risky and hard to reverse when nothing was prepared for it. The techniques in
+this chapter are the ones a real migration needs, and each is proven here by
+code rather than argued:
+
+| A migration needs to… | What this repository shows |
+|---|---|
+| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the core as types only (via `@rtc/client-core`'s re-export of the `core-api` types) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
+| Know the new implementation behaves the same | `@rtc/core-contract`: one suite per member, absolute construction-time counts, the `transportGate` and `portDiscipline` cross-checks. |
+| Migrate only the stream layer, not the business rules | `@rtc/core-logic`: the pure folds and controllers moved out once and every core reuses them; only the *plumbing* is rewritten per core. |
+| Let old and new coexist during the cutover | `bridge/`: the one place the old library may be imported as a value; everywhere else it is types only, so the old library cannot spread beyond it at runtime (dependency-cruiser `bridge-owns-rxjs` and grep gate 43; see [What keeps it honest](#what-keeps-it-honest)). |
+| Canary and roll back | Load-time selection (`?core=`, Preferences): one build ships every core, the choice is made per browser at load, and moving back is a reload. A production canary would feed the same switch from a feature flag. |
+| Finish, and stop paying for the seam | See below. |
+
+**How this ends in a real project.** The edge abstractions and the
+implementation are allowed to differ *temporarily*, to ease the move. Once one
+core has won, the losing cores are deleted, and the rest of the indirection
+goes as far as the migration went. If the winner's stream type is adopted at
+the edges as well — the bindings, and the `@rtc/domain` ports and simulators,
+which are RxJS today
+([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type))
+— then `bridge/` is deleted and `Stream<T>` is replaced by the winner's own
+type. If the edges stay on RxJS, `bridge/` stays as the one gated adapter
+between them: a deliberate seam, not leftover scaffolding. Either way, the
+contract suite stays behind as the behavioural specification of the one core
+that remains. The techniques transfer; the permanent three-way split does not.
+
+Read the rest of the chapter with that in mind: everything below describes
+the instrument, and the table above says which parts of it a real migration
+keeps.
+
 ## The idea in one picture
 
 The **application core** is the layer between the screen and the outside

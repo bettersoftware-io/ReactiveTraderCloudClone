@@ -12,6 +12,12 @@ the original RxJS core by a dedicated contract tier.
 [ADR-006](../adr/ADR-006-pluggable-application-core.md) records the decisions
 behind this design; this chapter documents what shipped.
 
+**Why three cores at all?** No product needs three interchangeable cores; this
+is an experimental project, and the real-world shape of the design is a
+*migration* of the reactive substrate. [§23's opening](23-application-cores-explained.md#why-three-cores-read-this-first)
+says which of the techniques below transfer to that, and how the indirection
+is meant to be collapsed once one core wins.
+
 **New to this?** Read [§23 Application Cores, Explained](23-application-cores-explained.md)
 first — the guided tour, with the vocabulary, the boundary translations and a
 worked example. This chapter is the precise reference behind it.
