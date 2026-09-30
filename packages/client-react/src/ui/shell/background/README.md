@@ -9,11 +9,11 @@ made, how heavy it is, and how the style + on/off settings are stored.
 ## Is it all CSS? — Yes, entirely
 
 `AmbientBackground.tsx` is a small dumb component. It reads the
-`animatedBackground` / `powerSaver` / `ambientStyle` preferences and sets
+`animatedBackground` / power-saver (`isCalm`) / `ambientStyle` preferences and sets
 exactly one CSS custom property:
 
 ```tsx
-style={{ "--amb-play": enabled && !powerSaver ? "running" : "paused" }}
+style={{ "--amb-play": enabled && !isCalm ? "running" : "paused" }}
 ```
 
 Every layer's motion is a CSS `@keyframes` animation whose

@@ -5,7 +5,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 34). |
+| **Runtime deps** | `@rtc/client-core` (the default RxJS core) plus the two lazy-loaded alternative cores `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 34). |
 | **Consumed by** | Nothing in-workspace — like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) workspace dependency; its own suites (contract + the visual tier) run entirely in-package. |
 | **Must never import** | `rxjs` / `@rx-state` in `src/ui` (gate 34); `local storage` in `src/ui` (gate 35); `fetch(` / `import.meta.env` in `src/ui` (gate 36); `setTimeout` / `setInterval` in `src/ui` (gate 37) — the exact same four-gate shape as `client-react`'s 26–29, re-numbered for this package, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -13,12 +13,13 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, mounts `<AppRoot><App /></AppRoot>` |
-| `src/AppRoot.tsx` | Composition root component — builds the app exactly once and supplies `ViewModelProvider` + theme + `BootGate` |
-| `src/bootSplashGate.ts` | One-shot boot-splash suppression decision, ported from `client-react` |
+| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, then `runBoot(bootCore(...))` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`) -- mounting `<AppRoot core coreSelection><App /></AppRoot>` |
+| `src/AppRoot.tsx` | Composition root component — builds the app exactly once from the chosen core, wraps it in devtools instrumentation, and supplies `ViewModelProvider` + theme + `BootGate` |
 | `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, local storage, `fetch`/`import.meta.env` |
 | `src/app/adapters/` | `LocalStoragePreferencesAdapter`, `BrowserConnectionEventsAdapter` |
 | `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
+| `src/app/bootApp.ts`, `src/app/coreSelection.ts` | Load-time core selection, ported from `client-react` |
+| `src/app/devtools/` | The app-side `devtoolsHub` singleton and presenter manifest |
 | `src/app/buildBrowserPorts.ts` | Assembles `AppPorts` for `createApp` — the same `VITE_SERVER_URL` switch as `client-react`'s, byte-for-byte |
 | `src/ui/` | Dumb SolidJS UI (Ring ④) — every component reads data through `useViewModel()`; gates 34–37 keep it framework-swappable, same discipline `client-react`'s gates 26–29 enforce there |
 | `src/ui/fx/`, `src/ui/credit/`, `src/ui/equities/` | Per-domain panels, blotters, and tickets — same domain split as `client-react` |
@@ -32,7 +33,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 ## Where to start reading
 
 1. `src/main.tsx` — the entry point; same font manifest and mount order as `client-react`'s, Solid's `render()` in place of React's `createRoot(...).render()`.
-2. `src/AppRoot.tsx` — the composition root; where `@rtc/client-core`'s `createApp`/`createMachineFactories` meet Solid (no `useRef`/StrictMode concern here — Solid's setup runs once, by construction).
+2. `src/AppRoot.tsx` — the composition root; where the chosen core's `createApp`/`createMachineFactories` meet Solid (no `useRef`/StrictMode concern here — Solid's setup runs once, by construction).
 3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring; compare against `client-react`'s file of the same name to see how little changed.
 4. `src/ui/App.tsx` — the dumb top-level UI tree, structurally identical to `client-react`'s `App.tsx`.
 5. `tests/parity/cssParity.test.ts` — read this before touching any `.module.css` file in this package: it is the enforcement mechanism behind "ported verbatim."
@@ -41,8 +42,8 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 
 "Full parity" is not a claim in a document — it is three passing test suites, each asserting against `client-react`'s own artifacts rather than this package's:
 
-- **Contract parity** — the ~52+ components under `src/ui` are exercised by the *same* 104 shared `*.contract.spec.ts` files (872 tests) from `@rtc/ui-contract` that verify `client-react`. This package supplies only its half of the swap-trio (`tests/ui/contract/solid/`, registering a Solid `UiContractDriver`); the spec files themselves are an unmodified `devDependency` import.
-- **Visual parity** — the surviving `playwright` tier is **assert-only**: this package owns **no golden images of its own**. Its `snapshotDir` points at `packages/ui-contract/goldens/playwright/__screenshots__/`, so a passing run is a direct pixel match against goldens generated only from React's renders, across the full theme matrix (5 skins × dark/light). Passing `--update-snapshots` (or `-u` in any form) to this package's visual config throws — goldens are owned by `client-react`; regenerate them there. (A 2026-07-20 test-tooling bake-off retired this package's `playwright-ct` URL-navigation fallback and its `vitest-browser` tier — see [§9.7's Outcome](../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers) and [ADR-001's Outcome section](../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md).)
+- **Contract parity** — the components under `src/ui` are exercised by the *same* shared `*.contract.spec.ts` files from `@rtc/ui-contract` that verify `client-react`. This package supplies only its half of the swap-trio (`tests/ui/contract/solid/`, registering a Solid `UiContractDriver`); the spec files themselves are an unmodified `devDependency` import.
+- **Visual parity** — the surviving `playwright` assertion tier is **assert-only**: this package owns **no golden images of its own**. Its `snapshotDir` points at `packages/ui-contract/goldens/playwright/__screenshots__/`, so a passing run is a direct pixel match against goldens generated only from React's renders, across the full theme matrix (5 skins × dark/light). Passing `--update-snapshots` (or `-u` in any form) to this package's visual config throws — goldens are owned by `client-react`; regenerate them there. (A 2026-07-20 test-tooling bake-off retired this package's `playwright-ct` URL-navigation fallback and its `vitest-browser` assertion tier; `vitest-browser` survives only as the coverage instrument, `test:ui:visual:vitest-browser:solid:coverage` — see [§9.7's Outcome](../../docs/architecture/09-test-strategy.md#97-visual-golden-tiers) and [ADR-001's Outcome section](../client-react/tests/ui/visual/ADR-001-visual-diff-tooling.md).)
 - **Behavioural parity** — the shared Gherkin `.feature` suites run against this client the same way they run against `client-react`, through a Solid implementation of the same page-object interfaces.
 
 Full synthesis of how these three mechanisms share one source of truth, plus the live pass/fail scoreboard and what each tier has actually caught: [§21 Cross-Framework Testing](../../docs/architecture/21-cross-framework-testing.md).
@@ -71,6 +72,7 @@ pnpm dev:solid:fs        # full stack: starts the WS server + this client togeth
 | `test` | Vitest (jsdom): app-tier + co-located unit tests |
 | `test:ui:contract` | ui contract tier — the shared `@rtc/ui-contract` specs, driven through this package's Solid swap-trio |
 | `test:ui:contract:coverage` | coverage gate over the combined `src/ui` surface, same shape as `client-react`'s |
+| `test:ui:visual:vitest-browser:solid:coverage` | the visual-reach coverage instrument (istanbul over `src/ui` while every scenario renders; pixel assert compiled out) |
 | `test:ui:visual` / `test:ui:visual:solid` | the visual tier, assert-only against `client-react`'s goldens |
 | `test:ui:visual:playwright:solid[:ui]` | The CI-asserted tier — plain Playwright over a Vite host, reusing `client-react`'s `visual.spec.ts` verbatim |
 | `clean` / `clean:deep` | remove build/test artifacts (/ + node_modules) |
@@ -124,16 +126,17 @@ composition-root singleton per tab — re-keying would tear it down for every
 other reader). Their seeds are snapshots because the hook's *shape* says so, not
 because the seam is missing a feature.
 
-`grep -rn "untrack(" packages/client-solid/src | grep -v import` counts **15**
-hits: 14 real calls plus one in a comment. They fall into two groups:
+`grep -rn "untrack(" packages/client-solid/src | grep -v import` lists every
+site (the list grows as the port does, so this section names groups, not a
+total). They fall into two groups:
 
-- **Hook-seed (4 sites).** `Tile.tsx` (`seedPair` → `useStaleFlag` /
+- **Hook-seed.** `Tile.tsx` (`seedPair` → `useStaleFlag` /
   `useNotional` / `useTileExecution` / `useRfqTile`), `BlotterRow.tsx`
   (`useRowHighlight`), `RfqCard.tsx` (`useRfqCountdown`'s
   `creationTimestamp`), `App.tsx` (`useLayout`'s tab). Each names, in one line
   at the site, which hooks still need the seed and the invariant that keeps it
   correct.
-- **Deliberate, for a behavioural reason (10 sites).** A live read would make
+- **Deliberate, for a behavioural reason.** A live read would make
   things worse: `RfqCountdown`/`RfqCard` drive ONE mount-time CSS keyframe
   fast-forwarded by a negative delay, and a per-tick rewrite re-triggers it
   every tick; the blotter filter popovers (`DateFilter`/`SetFilter`/
