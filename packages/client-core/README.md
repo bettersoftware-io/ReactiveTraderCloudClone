@@ -12,7 +12,7 @@ guided tour in [§23](../../docs/architecture/23-application-cores-explained.md)
 |---|---|
 | **Ring** | ③ Interface Adapters — presenters, gateways, ViewModel wiring (`docs/architecture/01-overview.md` §1.3.1) |
 | **Runtime deps** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` (`packages/client-core/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/react-bindings`, `@rtc/solid-bindings`, `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native` (and, as a test-adapter devDependency only, the two sibling cores and `@rtc/ui-contract`) |
+| **Consumed by** | `@rtc/react-bindings`, `@rtc/solid-bindings`, `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`, `@rtc/ui-contract` (and, as a test-adapter devDependency only, the two sibling cores) |
 | **Must never import** | React, DOM types, or React Native — despite being consumed by three UI-facing clients. Enforced by two dependency-cruiser pair rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-core-stays-inner` blocks any import of `react-bindings` / `client-react` / `client-react-native` / `client-prototype` / `server`, and `client-core-framework-free` blocks a direct import of `react` / `react-dom` / `react-native` themselves. The same boundary is also enforced structurally: `package.json` lists no `react`/`react-dom`/`react-native` dependency, so pnpm's strict install would fail to resolve a stray import — the same single-dependency discipline `@rtc/domain` and `@rtc/ws-effects` use for `rxjs`. |
 
 ## Folder map
