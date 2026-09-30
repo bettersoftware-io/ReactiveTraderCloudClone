@@ -16,6 +16,56 @@ repeating them:
 | The exact behaviour every core must reproduce, edge cases included | [§22 Pluggable Application Core](22-pluggable-application-core.md) |
 | Why each decision was taken, and what was rejected | [ADR-006](../adr/ADR-006-pluggable-application-core.md) |
 
+## Why three cores? Read this first
+
+> **A fair objection.** No production application needs three
+> interchangeable application cores. Each extra core is a second
+> implementation of 75 members to keep correct, and the machinery that keeps
+> them honest — a types-only contract, a translation layer at each boundary,
+> a behavioural contract tier with construction-time counts, a bundle-isolation
+> gate — is indirection a product would never choose to carry. An architect
+> who reads this chapter and asks "why would anyone do this?" is asking the
+> right question.
+
+Two answers, and both matter.
+
+**1. This is a conceptual, experimental project.** The repository exists to
+find out what clean architecture makes possible when it is followed all the
+way down — first the UI ring ([§21](21-cross-framework-testing.md): two web
+frameworks over one core), then the application ring (this chapter: three
+cores under one UI). The three cores are the *instrument*, not the product.
+What was learned from building them is the deliverable, and the cost of
+keeping three alive is accepted here precisely because a product would not
+accept it.
+
+**2. The real-world shape of this is a migration.** Products do have to move
+their reactive substrate — RxJS to Effect, RxJS to the web-standard
+`Observable`, a home-grown event bus to either — and that move is slow,
+risky and hard to reverse when nothing was prepared for it. Every technique in
+this chapter is one a real migration needs, and each is proven here by code
+rather than argued:
+
+| A migration needs to… | What this repository shows |
+|---|---|
+| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the core as types only and name no alternative core; the switch happens above them. |
+| Know the new implementation behaves the same | `@rtc/core-contract`: one suite per member, absolute construction-time counts, the `transportGate` and `portDiscipline` cross-checks. |
+| Migrate only the stream layer, not the business rules | `@rtc/core-logic`: the pure folds and controllers moved out once and every core reuses them; only the *plumbing* is rewritten per core. |
+| Let old and new coexist during the cutover | `bridge/`: the one place the old library may be imported as a value; everywhere else it is types only, so the seam cannot leak (gate 43). |
+| Canary and roll back | Load-time selection (`?core=`, Preferences): one build ships both, one user at a time can be moved, and moving back is a reload. |
+| Finish, and stop paying for the seam | See below. |
+
+**How this ends in a real project.** The edge abstractions and the
+implementation are allowed to differ *temporarily*, to ease the move. Once one
+core has won, the indirection is collapsed, not kept: the edge types become the
+winner's own types (`Stream<T>` stops being an alias and simply *is* the
+winner's stream), `bridge/` and the losing core are deleted, and the contract
+suite stays behind as the behavioural specification of the one core that
+remains. The techniques transfer; the permanent three-way split does not.
+
+Read the rest of the chapter with that in mind: everything below describes
+the instrument. Where a design choice only makes sense for the experiment,
+the text says so.
+
 ## The idea in one picture
 
 The **application core** is the layer between the screen and the outside
