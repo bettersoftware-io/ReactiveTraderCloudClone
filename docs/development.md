@@ -134,7 +134,10 @@ Reports land under each package's own `reports/` tree — gitignored, and wiped 
 - **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
   `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
   `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
-  `@rtc/client-react test:ui:contract:coverage`, a CI-enforced ≥95% gate. The
+  six CI-enforced ≥95% gates (four steps in `ci.yml`): the `test:ui:contract:coverage`
+  of `@rtc/client-react` and `@rtc/client-solid`, and the `test:coverage` of
+  `@rtc/devtools-core`, `@rtc/devtools-app`, `@rtc/client-core-async` and
+  `@rtc/client-core-effect`. The
   `@rtc/client-react test:ui:visual:vitest-browser:react:coverage` report is a
   **gap-finder**: uncovered `src/ui` branches are visual states with no golden
   snapshot (inventory: `packages/client-react/tests/ui/visual/COVERAGE-GAPS.md`).
@@ -264,8 +267,9 @@ RxJS → adapters → **domain simulators**) — it is deliberately **not** full
 It never starts `@rtc/server`, so the server's WebSocket translation layer is
 covered separately by two layers:
 
-- **Server protocol tests** (`packages/server/src/ws/wsHandler.test.ts`, run by
-  `pnpm test`) — drive the real handler through a fake socket and assert it
+- **Server protocol tests** (`packages/server/src/effects/index.test.ts` and the per-domain
+  `*.effects.test.ts` files beside it, run by `pnpm test`) — drive the real
+  `@rtc/ws-effects` listener through a fake socket and assert it
   routes client frames to domain calls and emits the correct `@rtc/shared` wire
   shapes (subscribe routing, state-of-the-world markers, ack/nack, teardown).
 - **Full-stack smokes** (`tests/fullstack/`, run by `pnpm test:e2e`) — boot the
@@ -323,7 +327,7 @@ gates, then all seven suites in parallel, exiting non-zero if any fails. The **4
 `test:e2e`) assert structural invariants that types alone can't — e.g. the
 dependency rule, layering boundaries, and parity between the spec scenarios and
 the tests that implement them. See
-[`docs/superpowers/STATUS.md`](superpowers/STATUS.md) for the current map and
+[`docs/STATUS.md`](STATUS.md) for the current map and
 the phase 5a–5e specs under [`docs/superpowers/`](superpowers/) for the
 design rationale.
 
@@ -361,7 +365,7 @@ build-time constant baked into each client), so a client build never waits on
 the server — and the server, redeployed far less often, has its own opt-in
 checkbox (default off). Each ticked target is smoke-checked (server `/health`
 → 200; each client → 200 on its canonical alias). Tick **`include_sourcemaps`**
-to ship a debuggable build of the ticked client(s) — external `.map` files, so a
+to ship a debuggable build of the ticked client(s) — inline sourcemaps (production builds ship none), so a
 profiled deploy shows real component names in the flamechart.
 
 Reproduce the old combined client+server deploy with

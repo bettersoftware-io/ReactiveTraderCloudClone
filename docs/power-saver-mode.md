@@ -275,11 +275,12 @@ a permanently-animated full-viewport layer. Fix: the image sets
 - **No new low-power theme skin.** Every level composes with every skin.
 - **No server/protocol changes.** Both conflation and the Freeze gates are
   client-side, in the presenters and the UI shell.
-- **RN Freeze visuals are deferred.** React Native accepts and persists the
-  `PowerSaverLevel` enum (parity on the preference plumbing) but currently
-  renders Freeze the same as Calm — no CSS-catch-all equivalent, no RN-side
-  motion gating yet. Tracked in [STATUS.md](STATUS.md) and the
-  [RN mobile-v1 rehaul spec](superpowers/specs/2026-07-16-rn-mobile-v1-rehaul-design.md).
+- **RN Freeze is shipped, with native-shaped gating.** React Native persists
+  the `PowerSaverLevel` and reads it through `usePowerSaver()`; there is no
+  CSS-catch-all equivalent, so Freeze is honoured per motion source instead —
+  the boot scenes (`resolveBootMotionEnabled`: Freeze always wins), the trade
+  ticket's backdrop and execution ceremony, and the RFQ countdown ring all
+  render a correct static frame under Freeze.
 
 ## Future iterations
 

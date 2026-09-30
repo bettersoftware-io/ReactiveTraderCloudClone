@@ -54,6 +54,7 @@ This document is split into one file per section under
    - [Deployment Topology](architecture/07-communication-patterns.md#deployment-topology)
 8. [Replaceability Matrix](architecture/08-replaceability-matrix.md)
    - [The Multi-Client Proof & the SolidJS Port](architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)
+   - [The Custom-Hook Surface](architecture/08-replaceability-matrix.md#82-the-custom-hook-surface)
 9. [Test Strategy](architecture/09-test-strategy.md)
 10. [Key Design Decisions](architecture/10-key-design-decisions.md)
 11. [Key Files Reference](architecture/11-key-files-reference.md)
@@ -76,7 +77,10 @@ This document is split into one file per section under
     - [The Motion Toolbox](architecture/17-web-client-up-close.md#173-the-motion-toolbox)
     - [The Boot Splash](architecture/17-web-client-up-close.md#174-the-boot-splash)
     - [The Session Lock](architecture/17-web-client-up-close.md#175-the-session-lock)
-18. [The Jarvis AI Agent Surface](architecture/18-jarvis-ai-agent-surface.md) *(P1–P3 shipped; MCP is P4)*
+    - [The Equities Chart's Interaction Core](architecture/17-web-client-up-close.md#176-the-equities-charts-interaction-core)
+    - [The Renderer Seam (`ChartScene` → Substrate)](architecture/17-web-client-up-close.md#177-the-renderer-seam-chartscene--substrate)
+    - [The Canvas Substrate](architecture/17-web-client-up-close.md#178-the-canvas-substrate)
+18. [The Jarvis AI Agent Surface](architecture/18-jarvis-ai-agent-surface.md) *(P1–P5 shipped)*
     - [The Thesis: AI as the Third Client](architecture/18-jarvis-ai-agent-surface.md#181-the-thesis-ai-as-the-third-client)
     - [The Agent Surface at a Glance](architecture/18-jarvis-ai-agent-surface.md#182-the-agent-surface-at-a-glance)
     - [The Tool Registry](architecture/18-jarvis-ai-agent-surface.md#183-the-tool-registry-rtcagent-tools)
@@ -90,6 +94,10 @@ This document is split into one file per section under
     - [Phase 1 Shipped — the Receipt](architecture/18-jarvis-ai-agent-surface.md#1811-phase-1-shipped--the-receipt)
     - [Phase 2 Shipped — the Wire](architecture/18-jarvis-ai-agent-surface.md#1812-phase-2-shipped--the-wire)
     - [Phase 3 Shipped — the Real Loop](architecture/18-jarvis-ai-agent-surface.md#1813-phase-3-shipped--the-real-loop)
+    - [P4 — the MCP Endpoint (Second Transport)](architecture/18-jarvis-ai-agent-surface.md#1814-p4--the-mcp-endpoint-second-transport)
+    - [The Brain Picker + Usage Display Round](architecture/18-jarvis-ai-agent-surface.md#1815-the-brain-picker--usage-display-round--the-receipt)
+    - [The Generative-UI Surface (Round 1)](architecture/18-jarvis-ai-agent-surface.md#1816-the-generative-ui-surface-round-1)
+    - [App-Driving + the Proactive Narrator (P5)](architecture/18-jarvis-ai-agent-surface.md#1817-app-driving--the-proactive-narrator-p5)
 19. [The AI Capability Roadmap](architecture/19-ai-capability-roadmap.md) *(forward-looking)*
     - [Tier 1 — Jaw-Droppers](architecture/19-ai-capability-roadmap.md#191-tier-1--jaw-droppers)
     - [Tier 2 — Deep-Cut Engineering Wow](architecture/19-ai-capability-roadmap.md#192-tier-2--deep-cut-engineering-wow)

@@ -43,9 +43,9 @@ flowchart TD
 
 - [`architecture.md`](architecture.md) — the authoritative architecture reference
   (layers, ports, data flow, sequence diagrams).
-- [`architecture/`](architecture/) — the same reference split into 20 numbered
+- [`architecture/`](architecture/) — the same reference split into 23 numbered
   chapters (overview, C4, UML, sequences, package deps, replaceability matrix,
-  test strategy, devtools, …).
+  test strategy, devtools, Jarvis, the pluggable application core, …).
 - [`adr/`](adr/) — Architecture Decision Records (e.g.
   [ADR-005 UI-logic placement](adr/ADR-005-ui-logic-placement.md),
   [ADR-007 CI security tooling](adr/ADR-007-ci-security-tooling.md) — what
@@ -56,6 +56,20 @@ flowchart TD
   (`fast-check`) tests behind `Fuzzing`, and the Best Practices badge walkthrough.
 - [`performance.md`](performance.md) — **read before any CSS animation/transition
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
+- [`handler-naming.md`](handler-naming.md) — **read before naming a function or a
+  prop callback.** A name states its effect, never its trigger; slots stay `onX`.
+- [`power-saver-mode.md`](power-saver-mode.md) — the Calm / Freeze power-saver
+  levels and the motion audit behind them.
+- [`react-vs-solid-performance.md`](react-vs-solid-performance.md) — measured
+  runtime cost of the React and Solid clients (verdict: parity).
+- [`lint-warnings.md`](lint-warnings.md) — the generated lint-warnings ledger
+  (do not edit by hand; `pnpm sync:lint-warnings`).
+- [`rn-styling.md`](rn-styling.md) — the native equivalent of the web clients'
+  CSS-Modules styling rule.
+- [`rn-open-items.md`](rn-open-items.md) — every known gap and follow-up in the
+  React Native workstream, behind the STATUS.md backlog.
+- [`react-native-inspectors.md`](react-native-inspectors.md) — debugging and
+  inspection tools available for the RN client.
 - [`boot-splash-animations.md`](boot-splash-animations.md) — the boot-splash
   3D scenes, documented with diagrams.
 - [`rn-running-on-a-real-iphone.md`](rn-running-on-a-real-iphone.md) — installing
@@ -76,7 +90,10 @@ flowchart TD
 - [`presentations/`](presentations/) — slide decks (e.g. the Clean Architecture
   case-study deck).
 - [`research/`](research/) — dated research write-ups feeding design decisions
-  (layout landscape, SDD fidelity, feature-flag tooling).
+  (layout landscape, SDD fidelity, feature-flag tooling, RN boot scenes blank on
+  device, A2UI / GenUI standards).
+- [`showcase/`](showcase/) — self-contained HTML artifacts generated during working
+  sessions, kept as examples.
 - [`pages/`](pages/) — the GitHub Pages landing assets.
 
 ## Operations & tooling
@@ -87,6 +104,14 @@ flowchart TD
   login: the end-to-end flow, the four-user roster, and per-platform
   credential configuration (Fly, Vercel, RN, local dev).
 - [`env-files.md`](env-files.md) — environment-variable / `.env` conventions.
+- [`running-real-jarvis.md`](running-real-jarvis.md) — runbook for putting a real
+  `ANTHROPIC_API_KEY` behind Jarvis locally and on the deployed server, with the
+  bill-safety knobs.
+- [`test-bakeoff-outcome.md`](test-bakeoff-outcome.md) — the concluded test-tool
+  bake-off: what was evaluated and which tool won each category.
+- [`../tests/GHERKIN.md`](../tests/GHERKIN.md) and
+  [`../tests/STRATEGY.md`](../tests/STRATEGY.md) — the Gherkin e2e suites and the
+  test strategy behind them.
 - [`claude-sandbox.md`](claude-sandbox.md) — running the repo from macOS WebStorm
   and the Linux claude-sandbox container simultaneously.
 - [`dependency-cruiser.md`](dependency-cruiser.md) — the dependency-graph
