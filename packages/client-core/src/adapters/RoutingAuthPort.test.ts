@@ -1,4 +1,4 @@
-import { lastValueFrom, type Observable, of, toArray } from "rxjs";
+import { lastValueFrom, type Observable, of, throwError, toArray } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
@@ -25,27 +25,34 @@ describe("createRoutingAuthPort", () => {
     expect(harness.relaunch).not.toHaveBeenCalled();
   });
 
-  it("a live match on a sim page writes the session and the choice, relaunches, and emits nothing", async () => {
+  it("a live match on a sim page writes the session and the choice, relaunches, and never emits", () => {
     const harness = createHarness({
       composed: "sim",
       demo: createInvalidOutcome(),
       live: createOkOutcome("ada"),
     });
 
-    const outcomes = await collect(harness.port.login("ada", "hunter2"));
+    const observed = observe(harness.port.login("ada.typed", "hunter2"));
 
-    expect(outcomes).toEqual([]);
+    // Never emits AND never completes: the async/Effect cores await the first
+    // value and treat a completion without one as an error, so a pending
+    // observable is the only shape that is silent in all three cores.
+    expect(observed.emissions).toEqual([]);
+    expect(observed.completed).toBe(false);
+    expect(observed.errored).toBe(false);
     expect(harness.dataSourceStore.read()).toBe("live");
+    // The TYPED username is what the presenter later resumes/unlocks by —
+    // not the profile's display name the server returned.
     expect(harness.sessionStore.read()).toEqual({
       token: "tok-ada",
       user: createUser("ada"),
-      username: "ada",
+      username: "ada.typed",
       exp: 1_800_000_000,
     });
     expect(harness.relaunch).toHaveBeenCalledTimes(1);
   });
 
-  it("writes the session BEFORE relaunching", async () => {
+  it("writes the session BEFORE relaunching", () => {
     const sessionStore = new InMemorySessionStore();
     const seenAtRelaunch: string[] = [];
     const harness = createHarness({
@@ -58,7 +65,7 @@ describe("createRoutingAuthPort", () => {
       },
     });
 
-    await collect(harness.port.login("ada", "hunter2"));
+    observe(harness.port.login("ada", "hunter2"));
 
     // A relaunch that ran first would reload into a page with no session to resume.
     expect(seenAtRelaunch).toEqual(["ada"]);
@@ -78,15 +85,16 @@ describe("createRoutingAuthPort", () => {
     expect(harness.relaunch).not.toHaveBeenCalled();
   });
 
-  it("a demo match on a live page relaunches into sim (the post-logout path)", async () => {
+  it("a demo match on a live page relaunches into sim (the post-logout path)", () => {
     const harness = createHarness({
       composed: "live",
       demo: createOkOutcome("demo"),
     });
 
-    const outcomes = await collect(harness.port.login("demo", "mcdc2026"));
+    const observed = observe(harness.port.login("demo", "mcdc2026"));
 
-    expect(outcomes).toEqual([]);
+    expect(observed.emissions).toEqual([]);
+    expect(observed.completed).toBe(false);
     expect(harness.dataSourceStore.read()).toBe("sim");
     expect(harness.sessionStore.read()?.username).toBe("demo");
     expect(harness.relaunch).toHaveBeenCalledTimes(1);
@@ -115,9 +123,58 @@ describe("createRoutingAuthPort", () => {
     expect(unavailable.relaunch).not.toHaveBeenCalled();
   });
 
-  it("forwards the typed username and password to both ports unchanged", async () => {
+  it("a second login with the same credentials on a live page (the unlock path) emits and never relaunches", async () => {
+    const harness = createHarness({
+      composed: "live",
+      demo: createInvalidOutcome(),
+      live: createOkOutcome("ada"),
+    });
+
+    await collect(harness.port.login("ada", "hunter2"));
+    const unlock = await collect(harness.port.login("ada", "hunter2"));
+
+    expect(unlock).toEqual([createOkOutcome("ada")]);
+    expect(harness.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("an ERRORING demo leg reads as no local match and still reaches the server", async () => {
+    const harness = createHarness({
+      composed: "live",
+      demo: createInvalidOutcome(),
+      live: createOkOutcome("ada"),
+    });
+    harness.demo.login.mockImplementation((): Observable<AuthOutcome> => {
+      return throwError(() => {
+        return new Error("roster exploded");
+      });
+    });
+
+    const outcomes = await collect(harness.port.login("ada", "hunter2"));
+
+    expect(outcomes).toEqual([createOkOutcome("ada")]);
+    expect(harness.live.login).toHaveBeenCalledTimes(1);
+  });
+
+  it("an ERRORING live leg reads as the server being unavailable", async () => {
     const harness = createHarness({
       composed: "sim",
+      demo: createInvalidOutcome(),
+    });
+    harness.live.login.mockImplementation((): Observable<AuthOutcome> => {
+      return throwError(() => {
+        return new Error("network down");
+      });
+    });
+
+    const outcomes = await collect(harness.port.login("ada", "hunter2"));
+
+    expect(outcomes).toEqual([{ ok: false, reason: "unavailable" }]);
+    expect(harness.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("forwards the typed username and password to both ports unchanged", async () => {
+    const harness = createHarness({
+      composed: "live",
       demo: createInvalidOutcome(),
       live: createOkOutcome("ada"),
     });
@@ -154,6 +211,33 @@ interface Harness {
 
 function noop(): void {
   // The default relaunch: nothing to do in a unit test.
+}
+
+interface Observed {
+  readonly emissions: AuthOutcome[];
+  readonly completed: boolean;
+  readonly errored: boolean;
+}
+
+/** Synchronous observation for the never-emitting case: `lastValueFrom`
+ * would hang on a pending observable, so subscribe and read what happened. */
+function observe(source: Observable<AuthOutcome>): Observed {
+  const emissions: AuthOutcome[] = [];
+  let completed = false;
+  let errored = false;
+  const sub = source.subscribe({
+    next: (outcome) => {
+      emissions.push(outcome);
+    },
+    complete: () => {
+      completed = true;
+    },
+    error: () => {
+      errored = true;
+    },
+  });
+  sub.unsubscribe();
+  return { emissions, completed, errored };
 }
 
 function collect(source: Observable<AuthOutcome>): Promise<AuthOutcome[]> {

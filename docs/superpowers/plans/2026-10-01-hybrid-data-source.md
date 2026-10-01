@@ -585,7 +585,7 @@ type Authenticated = Extract<AuthOutcome, { ok: true }>;
  * Same-mode success: record the choice, emit the outcome — the presenter
  * writes the session and the app renders. Cross-mode success: write the
  * session ourselves (the presenter never sees this outcome), record the
- * choice, relaunch, and COMPLETE WITHOUT EMITTING — the login screen stays in
+ * choice, relaunch, and NEVER EMIT — the login screen stays in
  * its authenticating state for the milliseconds until the page unloads, and
  * the reloaded page resumes the stored session into the right composition
  * (spec §8.3). The session is written before `relaunch()` on purpose: a page

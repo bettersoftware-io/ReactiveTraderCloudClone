@@ -1,4 +1,4 @@
-import { EMPTY, type Observable, of, switchMap } from "rxjs";
+import { catchError, mergeMap, NEVER, type Observable, of } from "rxjs";
 
 import type { AuthOutcome, AuthPort } from "@rtc/domain";
 
@@ -25,6 +25,9 @@ interface AuthenticatedShape {
 
 type Authenticated = Extract<AuthOutcome, AuthenticatedShape>;
 
+const NO_LOCAL_MATCH: AuthOutcome = { ok: false, reason: "invalid" };
+const UNAVAILABLE: AuthOutcome = { ok: false, reason: "unavailable" };
+
 /**
  * The hybrid login (hardening spec §8). Demo credentials never leave the
  * browser: the server is only asked once the local roster has rejected them,
@@ -34,11 +37,23 @@ type Authenticated = Extract<AuthOutcome, AuthenticatedShape>;
  * Same-mode success: record the choice, emit the outcome — the presenter
  * writes the session and the app renders. Cross-mode success: write the
  * session ourselves (the presenter never sees this outcome), record the
- * choice, relaunch, and COMPLETE WITHOUT EMITTING — the login screen stays in
- * its authenticating state for the milliseconds until the page unloads, and
- * the reloaded page resumes the stored session into the right composition
- * (spec §8.3). The session is written before `relaunch()` on purpose: a page
- * that reloaded first would find nothing to resume.
+ * choice, relaunch, and NEVER EMIT — the login screen stays in its
+ * authenticating state for the milliseconds until the page unloads, and the
+ * reloaded page resumes the stored session into the right composition (spec
+ * §8.3). `NEVER`, not `EMPTY`: the async and Effect cores await the first
+ * value (`once` / `rpc`) and treat a completion WITHOUT one as an error they
+ * rethrow out of band, so an `EMPTY` here would surface an uncaught exception
+ * on every mode change in those two cores while the RxJS core stayed quiet —
+ * a behavioural difference between cores. A pending observable is torn down
+ * with the page (or the presenter's lifetime) and is silent in all three.
+ * The session is written before `relaunch()` on purpose: a page that
+ * reloaded first would find nothing to resume.
+ *
+ * Each leg is error-isolated: an ERRORING `demo` observable reads as "no local
+ * match" and falls through to the server; an erroring `live` one reads as the
+ * server being unavailable. Today neither errors (`AuthSimulator` is `of()`,
+ * `HttpAuthAdapter` catches to `unavailable`), so this is cheap insurance,
+ * not a path the tests saw fail in production.
  */
 export function createRoutingAuthPort(deps: RoutingAuthPortDeps): AuthPort {
   function settle(
@@ -60,22 +75,33 @@ export function createRoutingAuthPort(deps: RoutingAuthPortDeps): AuthPort {
     };
     deps.sessionStore.write(session);
     deps.relaunch();
-    return EMPTY;
+    return NEVER;
+  }
+
+  function askServer(
+    username: string,
+    password: string,
+  ): Observable<AuthOutcome> {
+    return deps.live.login(username, password).pipe(
+      catchError((): Observable<AuthOutcome> => {
+        return of(UNAVAILABLE);
+      }),
+      mergeMap((remote): Observable<AuthOutcome> => {
+        return remote.ok ? settle(username, "live", remote) : of(remote);
+      }),
+    );
   }
 
   return {
     login(username: string, password: string): Observable<AuthOutcome> {
       return deps.demo.login(username, password).pipe(
-        switchMap((local): Observable<AuthOutcome> => {
-          if (local.ok) {
-            return settle(username, "sim", local);
-          }
-
-          return deps.live.login(username, password).pipe(
-            switchMap((remote): Observable<AuthOutcome> => {
-              return remote.ok ? settle(username, "live", remote) : of(remote);
-            }),
-          );
+        catchError((): Observable<AuthOutcome> => {
+          return of(NO_LOCAL_MATCH);
+        }),
+        mergeMap((local): Observable<AuthOutcome> => {
+          return local.ok
+            ? settle(username, "sim", local)
+            : askServer(username, password);
         }),
       );
     },
