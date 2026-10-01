@@ -337,8 +337,10 @@ never by boot.
 3. **Registered login.** Local match fails; `/login` succeeds. The target is
    `live`, the page is composed `sim`, so the routing port **writes the
    session and the choice, calls `relaunch()` (a `location.reload()`), and
-   completes without emitting**. The login screen stays in its
-   "authenticating" state for the few milliseconds until the page unloads.
+   never emits** (a pending observable, not a completed one: the async and
+   Effect cores treat "completed without a value" as an error). The login
+   screen stays in its "authenticating" state for the few milliseconds until
+   the page unloads.
 4. **After the reload.** The client reads the stored choice, composes
    **live**, and `AuthPresenter.resume()` restores the session from storage,
    so no login screen is shown; the WebSocket opens with the stored token. The
