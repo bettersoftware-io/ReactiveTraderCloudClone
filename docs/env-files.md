@@ -22,8 +22,10 @@ rest are local-only or CLI-generated artifacts.
 | `packages/client-react-native/.env` | 🚫 git-ignored | you (copy of the template) | Expo at Metro start → mobile app |
 | `packages/client-react/.env.example` | ✅ tracked | hand-written template | humans — copy it to `.env.local` |
 | `packages/client-react/.env.development` | ✅ tracked | committed demo credentials (`VITE_DEV_AUTH`) | Vite in **dev only** → web app simulator login |
+| `packages/client-react/.env.production` | ✅ tracked | committed demo roster (`VITE_DEMO_AUTH`) | Vite in **production builds only** → the deployed web app's in-browser demo logins (hybrid, [`authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes)) |
 | `packages/client-react/.env.local` | 🚫 git-ignored | you (optional; not present by default) | Vite at dev/build → web app (overrides `.env.development`) |
 | `packages/client-solid/.env.development` | ✅ tracked | committed demo credentials (`VITE_DEV_AUTH`) — same value as client-react's | Vite in **dev only** → SolidJS web app simulator login |
+| `packages/client-solid/.env.production` | ✅ tracked | committed demo roster (`VITE_DEMO_AUTH`) — same value as client-react's | Vite in **production builds only** → the deployed SolidJS web app's in-browser demo logins (hybrid) |
 | `.env.local` (repo root) | 🚫 git-ignored | Vercel CLI (`vercel pull` / `vercel dev`) | Vercel CLI only — **not** app code |
 | `.vercel/.env.production.local` | 🚫 git-ignored | Vercel CLI (`vercel pull`) | `vercel build --prod` in the deploy pipeline |
 
@@ -39,6 +41,7 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | `AUTH_USERS` | Fly secret (deployed); the committed `dev:ws` / `dev:*:fs` scripts embed the demo roster for local full-stack | The credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) |
 | `AUTH_TTL_MS` | Fly secret (by hand, optional) | Session-token lifetime in ms (defaults to 8h) | `AuthService` |
 | `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` and `packages/client-solid/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via each client's own `buildBrowserPorts.ts`'s `parseDevAuth` — identical helper in both `client-react` and `client-solid` |
+| `VITE_DEMO_AUTH` | committed `packages/client-react/.env.production` and `packages/client-solid/.env.production` — **production builds only** (Vite never loads it in dev, so every `dev:*` and e2e flow is unaffected); declared in `turbo.json` `build.env` / `dev.env` so an explicit process-level override survives strict env mode | JSON `username -> password` — the committed demo roster at `mcdc2026`, inlined into the production bundle. With `VITE_SERVER_URL` set the build is **hybrid**: a login matching this roster is verified in the browser and runs the simulators, anything else is posted to the server's `/login`. Without `VITE_SERVER_URL` it is the simulator-only build's login roster | `resolveDataSource` / `createRoutingAuthPort` (`@rtc/client-core`) via each client's own `buildBrowserPorts.ts` |
 | `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
 
 The **demo login password is committed** (`mcdc2026`) — this is a demo app, and
@@ -147,8 +150,11 @@ deploy. Notable keys:
 - `TURBO_*`, `NX_DAEMON`, `VERCEL_*` — Turbo remote-cache config and Vercel
   system/git metadata injected by the platform; not something you set by hand.
 
-That's the only app-relevant key — there is no client-side password or token
-var anymore; login happens against the real server at runtime.
+That's the only app-relevant key Vercel supplies — there is no client-side
+secret or token var anymore. The demo roster a production build inlines
+(`VITE_DEMO_AUTH`) comes from the committed `packages/client-*/.env.production`,
+not from Vercel, and every non-demo login happens against the real server at
+runtime.
 
 Because this file is a pull of dashboard state, the way to **change** these
 values is in the Vercel dashboard (or `vercel env`), not by editing the file.
@@ -165,8 +171,10 @@ it, `src/app/buildBrowserPorts.ts` sees no `VITE_SERVER_URL` and takes the
 simulator branch — which is why `pnpm dev` shows simulated prices out of the
 box, with login handled by the in-process `AuthSimulator` seeded from
 `VITE_DEV_AUTH`. (In production `VITE_SERVER_URL` comes from Vercel, not this
-file; there is no client-side auth secret to set anywhere, local or
-production — login always happens live against the server.)
+file; there is no client-side auth *secret* to set anywhere, local or
+production — the only client-side credential is the public, committed demo
+roster in `.env.production`, and every non-demo login happens live against
+the server.)
 
 ## Related docs
 

@@ -4,7 +4,9 @@ Genuine per-user, server-side login for both clients. There is no shared
 secret anywhere in this system: each of the four roster operators signs in
 with their own username and password, and the deployed web (`@rtc/client-react`)
 and mobile (`@rtc/client-react-native`) clients both authenticate against the
-same Fly server. This replaced the old model — a single shared `SITE_PASSWORD`
+same Fly server (with one deliberate exception since the hybrid, §6: a login
+matching the committed demo roster is verified in the browser and runs the
+in-browser simulators, so it never reaches the server). This replaced the old model — a single shared `SITE_PASSWORD`
 wall in front of the whole app plus a static `VITE_WS_TOKEN` gating the
 WebSocket — which no longer exists anywhere in this repo.
 
@@ -265,10 +267,13 @@ parity here, not just visually and behaviourally.
 This is a **demo app**, so the demo *login* credentials are intentionally
 committed — the roster password (`mcdc2026` for `astark` / `nromanoff` /
 `tchalla` / `demo`) lives in `packages/client-react/.env.development` and
-`packages/client-solid/.env.development` (simulator, both web clients) and in
-the `dev:ws` / `dev:*:fs` scripts' `AUTH_USERS` (full-stack). They're
-throwaway and rotatable: change the password in those places (and the Fly
-`AUTH_USERS` secret) if it ever matters.
+`packages/client-solid/.env.development` (simulator, both web clients), in
+each web client's committed `.env.production` (`VITE_DEMO_AUTH`, the same JSON
+format — the roster a **production** build inlines so the deployed hybrid
+build can verify demo logins in the browser, §6), and in the `dev:ws` /
+`dev:*:fs` scripts' `AUTH_USERS` (full-stack). They're throwaway and
+rotatable: change the password in those places (and the Fly `AUTH_USERS`
+secret) if it ever matters.
 
 What still stays **out of version control** is the thing that actually protects
 the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and
@@ -279,3 +284,100 @@ token. The `.env.example` templates still ship placeholder values, and an
 untracked `.env.local` overrides the committed demo creds. See
 [`docs/env-files.md`](env-files.md) for the full inventory of every `.env*`
 file, and [`docs/DEPLOY.md`](DEPLOY.md) for the deploy-time setup walkthrough.
+
+## 6. Hybrid data source (one deployment, two modes)
+
+Since 2026-10-01 the deployed web build is **hybrid**: one deployment, and the
+**login decides the data source** (hardening spec §8, linked below).
+
+- Credentials that match the committed **demo roster** are verified in the
+  browser, and the app runs on the in-browser simulators with the scripted
+  Jarvis. Nothing is sent to any server.
+- Any other credentials are posted to the server's `/login`. On success the app
+  runs on the real WebSocket transport with real, metered AI.
+
+The criterion is **credential match** (username *and* password equal a demo
+entry), not username membership. A demo username with a non-demo password is a
+server login. That keeps every existing full-stack dev and e2e flow working,
+whose server roster is `demo:demo`, while the bundle's demo entry is
+`demo:mcdc2026`.
+
+### 6.1 Composition
+
+The client composes its ports once per page load, before the login screen
+(`AppRoot` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
+**at load**, from a stored choice, exactly as the load-time core switch does
+(ADR-006 Decision 6):
+
+| `VITE_SERVER_URL` | `VITE_DEMO_AUTH` | Composed | Behaviour |
+|---|---|---|---|
+| empty | any | **sim** | Today's simulator mode. The roster is `VITE_DEV_AUTH` ∪ `VITE_DEMO_AUTH`. This is also the Track A fallback build. |
+| set | empty | **live** | Today's WS-real mode, byte for byte. Every `dev:*:fs`, `dev:*:ws:*` and e2e flow lands here, because `.env.development` carries no `VITE_DEMO_AUTH`. |
+| set | set | **hybrid** | The stored choice (`localStorage["rtc.dataSource"]`, `"sim"` or `"live"`) decides. Absent choice: `live` when a stored session exists (a pre-hybrid live session), else `sim`. |
+
+`VITE_DEMO_AUTH` is committed in each web client's `.env.production`, so only a
+production build with a server URL is hybrid. The deploy workflow asserts the
+roster was inlined, next to its existing server-URL guard.
+
+In a hybrid page the `auth` port is a **routing port** (`createRoutingAuthPort`
+in `@rtc/client-core`): it tries the demo roster first (synchronously, in the
+browser), then the server. The demo roster never leaves the browser because the
+server attempt only runs after the local match has failed.
+
+### 6.2 Reload dynamics
+
+A reload happens **only on a mode change**, triggered by a successful login,
+never by boot.
+
+1. **Boot.** No stored choice, so the client composes **sim** and shows the
+   login screen.
+2. **Demo login.** Local match succeeds; the composed mode already matches.
+   The routing port writes the choice (`sim`) and emits the outcome. No
+   reload. The app renders at once.
+3. **Registered login.** Local match fails; `/login` succeeds. The target is
+   `live`, the page is composed `sim`, so the routing port **writes the
+   session and the choice, calls `relaunch()` (a `location.reload()`), and
+   completes without emitting**. The login screen stays in its
+   "authenticating" state for the few milliseconds until the page unloads.
+4. **After the reload.** The client reads the stored choice, composes
+   **live**, and `AuthPresenter.resume()` restores the session from storage,
+   so no login screen is shown; the WebSocket opens with the stored token. The
+   boot splash replays on this load (D8).
+5. **Next visit on that device.** Stored choice is `live`, so boot composes
+   live directly. No reload.
+6. **Logout.** Clears the session; the choice stays. The next login decides
+   afresh, so a demo login on a live-composed page relaunches back into sim
+   (step 3 mirrored).
+7. **Unlock (lock screen).** Re-authenticates with the same username. Same
+   credentials → same target → no reload.
+
+Two consequences to know about:
+
+- **The cinematic login wait is cut short on a mode change.** The wait
+  (`withLoginDelay`) wraps the routing port, so the relaunch fires when the
+  outcome is known, before the delay would have delivered it. A mode change
+  happens once per device, and the reload plays the splash, which takes the
+  wait's place.
+- **Why not swap ports without a reload.** Presenters subscribe to their ports
+  at construction, and the core contract suites assert construction-time port
+  counts (`portDiscipline`). Swapping implementations under running presenters
+  would break the equivalence guarantee across all three cores. A reload keeps
+  the one composition root honest.
+
+The console line `[data] composed <sim|live> from <reason>` says which rule
+won, mirroring `[core] booted …`.
+
+### 6.3 Where the pieces live
+
+- `resolveDataSource` and `createRoutingAuthPort` — `@rtc/client-core`
+  (framework-free; `location.reload()` is injected by each client as
+  `relaunch`).
+- The composition, the `VITE_DEMO_AUTH` parsing and the `rtc.dataSource`
+  store — each web client's `src/app/buildBrowserPorts.ts`
+  (`client-react`, `client-solid`, identical).
+- The committed roster for production builds — `packages/client-react/.env.production`
+  and `packages/client-solid/.env.production` (inventory in
+  [`docs/env-files.md`](env-files.md)); the deploy-time guard that the roster
+  was inlined — [`docs/DEPLOY.md`](DEPLOY.md).
+- The full design, invariants and what is deliberately not in this slice —
+  [hardening spec §8](superpowers/specs/2026-09-27-public-launch-hardening-design.md#8-hybrid-data-source-revision-2026-09-29-built-2026-10-01).
