@@ -3,8 +3,10 @@
 export * from "@rtc/core-logic";
 
 export * from "#/adapters/connectionIntents";
+export * from "#/adapters/dataSource";
 export * from "#/adapters/delayedAuthPort";
 export * from "#/adapters/HttpAuthAdapter";
+export * from "#/adapters/InMemoryDataSourceStore";
 export * from "#/adapters/InMemorySessionStore";
 export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/jarvisPort";
