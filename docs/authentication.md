@@ -213,8 +213,12 @@ VITE_SERVER_URL = wss://rtc-clone-server.fly.dev
 ```
 
 so the deployed client knows where to `POST /login` and open its WebSocket.
-Every user of the deployed app authenticates live against the Fly server's own
-`AUTH_USERS` — Vercel itself never sees or stores a credential.
+The second auth-adjacent value the deployed client carries, the demo roster
+(`VITE_DEMO_AUTH`), is not a Vercel variable at all: it is baked from the
+committed `.env.production`. Together they make the deployed build **hybrid**
+(§6): credentials matching the demo roster are verified in the browser and
+never reach any server; every other login authenticates live against the Fly
+server's own `AUTH_USERS`. Vercel itself never sees or stores a credential.
 
 ### React Native (`@rtc/client-react-native`)
 
