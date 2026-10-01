@@ -3,10 +3,13 @@ import { merge, mergeMap, of, tap } from "rxjs";
 import { shouldPlayBootSplash } from "@rtc/boot-splash";
 import {
   type AppPorts,
+  createRoutingAuthPort,
   createSimulatorPorts,
   createWsRealPorts,
+  formatDataSourceMessage,
   HttpAuthAdapter,
   pairConnectionPorts,
+  resolveDataSource,
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
@@ -15,12 +18,14 @@ import {
 import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {
   type AnomalyDetectorConfig,
+  type AuthPort,
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
+import { LocalStorageDataSourceStore } from "#/app/adapters/LocalStorageDataSourceStore";
 import { LocalStorageDockLayoutStore } from "#/app/adapters/LocalStorageDockLayoutStore";
 import { LocalStorageLayoutPresetStore } from "#/app/adapters/LocalStorageLayoutPresetStore";
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
@@ -29,10 +34,11 @@ import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 
 /**
- * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in
- * simulator mode) — tolerant of missing/malformed values, returning `{}`
- * rather than throwing so a bad/absent env var degrades to "no dev logins
- * work" instead of a boot crash. Never logs the raw value (it's credentials).
+ * Parses `VITE_DEV_AUTH` / `VITE_DEMO_AUTH` (a JSON object of username ->
+ * password, verified in the browser by an `AuthSimulator`) — tolerant of
+ * missing/malformed values, returning `{}` rather than throwing so a
+ * bad/absent env var degrades to "no local logins work" instead of a boot
+ * crash. Never logs the raw value (it's credentials).
  */
 function parseDevAuth(raw: string | undefined): Record<string, string> {
   if (raw === undefined) {
@@ -91,8 +97,21 @@ function devNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
     : undefined;
 }
 
-export function buildBrowserPorts(): AppPorts {
+export interface BuildBrowserPortsOptions {
+  /** Slot: how a mode-change login reloads the page (hardening spec §8.3
+   * step 3). Defaults to `location.reload()`; tests inject a spy. */
+  readonly relaunch?: () => void;
+}
+
+function reloadPage(): void {
+  location.reload();
+}
+
+export function buildBrowserPorts(
+  options: BuildBrowserPortsOptions = {},
+): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL;
+  const demoRoster = parseDevAuth(import.meta.env.VITE_DEMO_AUTH);
   const narratorConfig = devNarratorConfig();
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
@@ -102,6 +121,7 @@ export function buildBrowserPorts(): AppPorts {
   // login screen by seeding that same key (tests/browser/authSeed.ts). An
   // in-memory store would ignore that seed and strand every e2e on LoginScreen.
   const sessionStore = new LocalStorageSessionStore();
+  const dataSourceStore = new LocalStorageDataSourceStore();
   const colorScheme = new MediaQueryColorSchemeAdapter();
   const dockLayoutStore = new LocalStorageDockLayoutStore();
   const layoutPresetStore = new LocalStorageLayoutPresetStore();
@@ -109,8 +129,48 @@ export function buildBrowserPorts(): AppPorts {
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
-  if (url) {
-    const auth = new HttpAuthAdapter(wsUrlToHttpBase(url));
+  // Which port set this page composes (hardening spec §8.2): no server URL →
+  // sim; server URL without a demo roster → live (today's WS-real mode, byte
+  // for byte); both → hybrid, where the last login's stored choice decides.
+  const decision = resolveDataSource({
+    serverUrl: url,
+    hasDemoRoster: Object.keys(demoRoster).length > 0,
+    stored: dataSourceStore.read(),
+    hasStoredSession: sessionStore.read() !== null,
+  });
+  console.info(formatDataSourceMessage(decision));
+
+  // Simulator roster: the dev file's accounts (dev builds only — Vite loads
+  // .env.development in dev) plus the committed demo roster (.env.production),
+  // so a production simulator build has working demo logins too.
+  const simulatorAuth = new AuthSimulator({
+    ...parseDevAuth(import.meta.env.VITE_DEV_AUTH),
+    ...demoRoster,
+  });
+
+  /** The page's auth port (hardening spec §8). Non-hybrid pages keep today's
+   * single adapter; a hybrid page routes demo credentials locally and
+   * everything else to the server, relaunching when the login lands in the
+   * other mode. */
+  function buildAuth(live: AuthPort | null): AuthPort {
+    if (!decision.hybrid || live === null) {
+      return live ?? simulatorAuth;
+    }
+
+    return createRoutingAuthPort({
+      demo: new AuthSimulator(demoRoster),
+      live,
+      composed: decision.source,
+      sessionStore,
+      dataSourceStore,
+      relaunch: options.relaunch ?? reloadPage,
+    });
+  }
+
+  // `url` is already narrowed by `resolveDataSource` (no URL → never `live`),
+  // but TypeScript cannot see that, hence the `&& url` guards here and below.
+  if (decision.source === "live" && url) {
+    const auth = buildAuth(new HttpAuthAdapter(wsUrlToHttpBase(url)));
     // Wrap the transport in the devtools wire tap at construction so every
     // send/on/rpc is mirrored to the hub (dormant until an inspector attaches).
     // The simulator branch below has no adapter — its wire panel is simply empty.
@@ -169,7 +229,10 @@ export function buildBrowserPorts(): AppPorts {
   // Dev credentials come from VITE_DEV_AUTH (committed .env.development — the
   // demo roster; see packages/domain/src/auth/roster.ts), exactly as in
   // client-react's buildBrowserPorts. Unset/malformed → no accepted credentials.
-  const auth = new AuthSimulator(parseDevAuth(import.meta.env.VITE_DEV_AUTH));
+  // On a hybrid page the server is the second port behind the routing one.
+  const auth = buildAuth(
+    decision.hybrid && url ? new HttpAuthAdapter(wsUrlToHttpBase(url)) : null,
+  );
   const gateway = new ConnectionEventsSimulator();
   return {
     ...createSimulatorPorts({ preferences, auth, sessionStore }),
