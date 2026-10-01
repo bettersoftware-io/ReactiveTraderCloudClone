@@ -226,13 +226,13 @@ function observe(source: Observable<AuthOutcome>): Observed {
   let completed = false;
   let errored = false;
   const sub = source.subscribe({
-    next: (outcome) => {
+    next: (outcome: AuthOutcome): void => {
       emissions.push(outcome);
     },
-    complete: () => {
+    complete: (): void => {
       completed = true;
     },
-    error: () => {
+    error: (): void => {
       errored = true;
     },
   });
