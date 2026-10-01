@@ -4,8 +4,8 @@ import {
   type DataSourceDecision,
   formatDataSourceMessage,
   isDataSource,
-  resolveDataSource,
   type ResolveDataSourceInput,
+  resolveDataSource,
 } from "./dataSource";
 
 describe("resolveDataSource", () => {
@@ -84,7 +84,11 @@ describe("isDataSource", () => {
 describe("formatDataSourceMessage", () => {
   it("names the source, the reason and whether the page is hybrid", () => {
     expect(
-      formatDataSourceMessage({ source: "sim", hybrid: true, reason: "default" }),
+      formatDataSourceMessage({
+        source: "sim",
+        hybrid: true,
+        reason: "default",
+      }),
     ).toBe("[data] composed sim from default (hybrid)");
     expect(
       formatDataSourceMessage({

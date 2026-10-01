@@ -12,6 +12,7 @@ export * from "#/adapters/IWsAdapter";
 export * from "#/adapters/jarvisPort";
 export * from "#/adapters/jarvisUsagePort";
 export * from "#/adapters/portFactory";
+export * from "#/adapters/RoutingAuthPort";
 export * from "#/adapters/ScriptedJarvisAdapter";
 export * from "#/adapters/sessionStore";
 export * from "#/adapters/WsAdapter";
