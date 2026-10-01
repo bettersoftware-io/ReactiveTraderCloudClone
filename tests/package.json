@@ -26,6 +26,8 @@
     "test:e2e": "pnpm gates && tsx scripts/run-all.ts",
     "test:fullstack:browser": "tsx fullstack/browser-smoke.ts",
     "test:fullstack:browser:headed": "FULLSTACK_HEADED=1 tsx fullstack/browser-smoke.ts",
+    "test:fullstack:hybrid": "tsx fullstack/hybrid-smoke.ts",
+    "test:fullstack:hybrid:headed": "FULLSTACK_HEADED=1 tsx fullstack/hybrid-smoke.ts",
     "test:fullstack:node": "tsx fullstack/node-smoke.ts",
     "test:hooks": "vitest run browser/playwright-cucumber",
     "test:pages": "vitest run scripts/pages",
