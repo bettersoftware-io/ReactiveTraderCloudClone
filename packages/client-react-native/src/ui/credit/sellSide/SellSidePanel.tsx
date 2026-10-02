@@ -17,6 +17,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { formatNotional } from "#/ui/credit/formatNotional";
 import { SellSideTicket } from "#/ui/credit/sellSide/SellSideTicket";
 import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -169,9 +170,7 @@ function QuoteHistoryRow({
         <Text style={styles.historyInstrument}>
           {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
         </Text>
-        <Text style={styles.historyMeta}>
-          {rfq.quantity.toLocaleString("en-US")}
-        </Text>
+        <Text style={styles.historyMeta}>{formatNotional(rfq.quantity)}</Text>
       </View>
       <View style={styles.historyRight}>
         <Text style={styles.historyPrice}>{quotedPriceText(quote)}</Text>

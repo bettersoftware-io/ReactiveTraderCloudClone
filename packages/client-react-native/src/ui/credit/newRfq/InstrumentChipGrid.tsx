@@ -90,8 +90,12 @@ function makeStyles(t: RnTheme): InstrumentChipGridStyles {
   // dc.html:264 — `9.5px` mono, `padding: 10px 8px`, `radius 9`, 1px border,
   // left-aligned, in a `1fr 1fr` grid with a 7px gap.
   const chip: ViewStyle = {
-    // Two columns with a 7px gutter: each chip takes just under half.
-    width: "48%",
+    // dc.html:264 — `grid-template-columns:1fr 1fr; gap:7px`. `flexBasis`
+    // of 40% lets exactly two chips fit a row and `flexGrow` then stretches
+    // them to fill it, so the right column ends flush with the rows below.
+    // A fixed `48%` left it short of the edge by the unused remainder.
+    flexBasis: "40%",
+    flexGrow: 1,
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: 9,

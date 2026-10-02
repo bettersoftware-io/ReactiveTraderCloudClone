@@ -294,14 +294,19 @@ function makeStyles(t: RnTheme): NewRfqFormStyles {
 
   return StyleSheet.create({
     form: { flex: 1 },
-    broadcast: { gap: 10 },
+    // 4 on top of the content's 14 is the design's 18px above the CTA.
+    broadcast: { gap: 10, marginTop: 4 },
     broadcastNote: {
       ...labelStyle(t, 8.5, 1),
       textAlign: "center",
       color: t.textMuted,
     },
-    content: { padding: 16, gap: 16 },
-    field: { gap: 6 },
+    // dc.html:261-281 — the form's own `padding:12px`, flush with the nav
+    // above it; the three pickers sit 14px apart and the CTA 18px below the
+    // last (`margin-bottom:14px` ×2, then `18px`).
+    content: { padding: SPACING.md, gap: 14 },
+    // dc.html:263 — every label sits `margin-bottom:8px` above its control.
+    field: { gap: 8 },
     // dc.html:269 styles DIRECTION identically to INSTRUMENT and QUANTITY.
     // Those two labels live inside the chip components and already match; this
     // one was left on the old display-font style when its text was

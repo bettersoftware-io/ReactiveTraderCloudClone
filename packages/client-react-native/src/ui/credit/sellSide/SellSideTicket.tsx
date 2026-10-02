@@ -20,6 +20,7 @@ import {
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CtaGradient } from "#/ui/CtaGradient";
+import { formatNotional } from "#/ui/credit/formatNotional";
 import { PriceStepper } from "#/ui/credit/sellSide/PriceStepper";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -102,8 +103,7 @@ export function SellSideTicket({
         {instrument?.name ?? `Instrument #${rfq.instrumentId}`}
       </Text>
       <Text style={styles.clientLine}>
-        {clientSideLabel(rfq.direction)} ·{" "}
-        {rfq.quantity.toLocaleString("en-US")}
+        {clientSideLabel(rfq.direction)} · {formatNotional(rfq.quantity)}
       </Text>
 
       {open ? (

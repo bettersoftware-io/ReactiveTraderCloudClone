@@ -123,7 +123,7 @@ test("a client Buy asks the desk for an OFFER, a client Sell for a BID", async (
     },
   });
   expect(page.hasText("SUBMIT OFFER")).toBe(true);
-  expect(page.hasTextMatching(/CLIENT BUYS/)).toBe(true);
+  expect(page.hasTextMatching(/CLIENT BUYS · 10 USD/)).toBe(true);
 
   await page.mount({
     rfqs: [openRfq(5, Direction.Sell)],
@@ -132,7 +132,7 @@ test("a client Buy asks the desk for an OFFER, a client Sell for a BID", async (
     },
   });
   expect(page.hasText("SUBMIT BID")).toBe(true);
-  expect(page.hasTextMatching(/CLIENT SELLS/)).toBe(true);
+  expect(page.hasTextMatching(/CLIENT SELLS · 10 USD/)).toBe(true);
 });
 
 // Won/lost comes from real QuoteState, NOT a 2600ms resolve timer (§3.1).
