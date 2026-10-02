@@ -6,6 +6,32 @@ import { rpc } from "#/rpc.js";
 import type { Inbound } from "#/types.js";
 
 describe("rpc", () => {
+  it("nacks a handler that throws synchronously and still serves the next request", async () => {
+    let calls = 0;
+    const effect = rpc<unknown>("rpc.x", "rpc.x.response", () => {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error("malformed");
+      }
+
+      return of(42);
+    });
+
+    const in$ = of<Inbound>(
+      { type: "rpc.x", payload: {}, correlationId: "bad" },
+      { type: "rpc.x", payload: {}, correlationId: "ok" },
+    );
+    expect(await drain(effect(in$, undefined))).toEqual([
+      { type: "rpc.x.response", payload: { type: "nack" }, correlationId: "bad" },
+      {
+        type: "rpc.x.response",
+        payload: { type: "ack", payload: 42 },
+        correlationId: "ok",
+      },
+    ]);
+  });
+
   it("wraps a resolved observable value as an ack with the correlationId", async () => {
     const effect = rpc<unknown>("rpc.x", "rpc.x.response", () => {
       return of(7);

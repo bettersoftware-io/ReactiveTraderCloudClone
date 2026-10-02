@@ -1,5 +1,6 @@
 import {
   catchError,
+  defer,
   from,
   isObservable,
   map,
@@ -31,7 +32,8 @@ function toObservable(
  * Sugar for a request/response effect. Runs `handle` per matching inbound,
  * takes its first emission as the result, and replies with an ack (or nack on
  * error), threading the request's correlationId. Absorbs the try/ack/catch/nack
- * boilerplate.
+ * boilerplate. A handler that throws synchronously is nacked too, not just
+ * one whose observable/promise fails.
  *
  * Known simplification: if `handle`'s source completes without emitting, no
  * reply is sent (vs `firstValueFrom`, which would reject → nack). The server
@@ -49,7 +51,13 @@ export function rpc<Ctx>(
     return in$.pipe(
       matchType(inType),
       mergeMap((msg) => {
-        return toObservable(handle(msg.payload, ctx)).pipe(
+        // `defer` moves the `handle` call inside the inner stream: a handler
+        // that throws synchronously (a payload guard, say) then errors the
+        // inner and is nacked below, instead of erroring the outer stream and
+        // taking the whole effect down for the rest of the connection.
+        return defer(() => {
+          return toObservable(handle(msg.payload, ctx));
+        }).pipe(
           take(1),
           map((result) => {
             return out(
