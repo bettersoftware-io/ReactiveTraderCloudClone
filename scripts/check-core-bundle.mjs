@@ -2,17 +2,25 @@
 // Asserts a web client's production build is runtime-switchable between the
 // three application cores (docs/superpowers/specs/2026-09-27-runtime-core-
 // switch-design.md §4): ONE build, not one per core. src/app/coreSelection.ts's
-// `loadCore` imports the RxJS core statically (it stays in the entry bundle
-// regardless — the UI reaches into it directly) and the async/Effect cores
-// via `import()`, which the bundler splits into their own lazy chunks fetched
-// only once a visitor picks one. So the check is no longer "does the rxjs
-// build carry no foreign core" — it is:
+// `loadCore` reaches EVERY core — the RxJS default included, through the
+// `@rtc/client-core/core` subpath export (approach B, ADR-006 Decision 6,
+// 2026-10-02) — via `import()`, which the bundler splits into its own lazy
+// chunk fetched only once a visitor's choice resolves. So the check is no
+// longer "does the rxjs build carry no foreign core" — it is:
 //
 //   1. the EAGER set (both pages' entry scripts + modulepreload hints) carries
-//      the rxjs marker, and neither alternative core's marker;
-//   2. exactly one non-eager (lazy) chunk carries the async marker, exactly
-//      one the effect marker;
-//   3. no single file carries two different cores' markers.
+//      NO core's marker — the entry bundle privileges none of the three;
+//   2. exactly one non-eager (lazy) chunk carries each core's marker;
+//   3. no single file carries two different cores' markers;
+//   4. no eager file carries the Effect runtime's own `effect/Fiber` marker.
+//
+// What "the RxJS core" means here is its COMPOSITION ROOT (the file that
+// constructs the app — `createApp`, `createMachineFactories`, stamped with
+// RXJS_CORE_BRAND). `@rtc/client-core`'s presenters, machines and adapters are
+// still reached eagerly through the root index the UI imports from, so they
+// stay in the entry bundle regardless; the measured move is ~3 KB gzip per
+// client. Making THOSE lazy needs an explicit edge surface for the UI — see
+// ADR-006 Follow-ups.
 //
 // Two modes:
 //   node scripts/check-core-bundle.mjs              — builds each web client
@@ -211,7 +219,7 @@ console.table(allRows);
 
 if (!failed) {
   console.log(
-    "OK: the eager set carries only the rxjs core; async and effect each sit in exactly one lazy chunk.",
+    "OK: the eager set carries no application core; rxjs, async and effect each sit in exactly one lazy chunk.",
   );
 }
 

@@ -18,6 +18,7 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 import { useNewestOrderId } from "./useNewestOrderId";
 
@@ -158,10 +159,9 @@ function statusColorFor(theme: RnTheme, status: OrderStatus): string {
 }
 
 /** The prototype draws the pill border at 45% of its text colour
- * (`color-mix(... 45%, transparent)`); every skin's accent tokens are
- * six-digit hex, so the alpha byte can be appended directly. */
-function pillBorder(hexColor: string): string {
-  return `${hexColor}73`;
+ * (`color-mix(... 45%, transparent)`). */
+function pillBorder(color: string): string {
+  return withAlpha(color, 0.45);
 }
 
 /** Short, non-wrapping pill labels. `PARTIAL` is deliberate: the full

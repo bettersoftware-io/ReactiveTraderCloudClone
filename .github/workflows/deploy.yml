@@ -196,16 +196,16 @@ jobs:
           fi
           echo "OK: demo roster is present in the built client bundle (hybrid)."
 
-      # Since the runtime core switch, production ships ALL THREE cores — RxJS
-      # eager, async/Effect as lazy chunks a visitor only fetches once chosen
-      # (src/app/coreSelection.ts's `loadCore`) — so the old "no alternative
-      # core anywhere in the bundle" grep would now fail on every build. The
-      # guard this reuses instead proves the SHAPE stays runtime-switchable:
-      # the eager set (both pages' entry scripts + modulepreload hints) still
-      # carries only the rxjs marker, and each alternative core lives in
-      # exactly one lazy chunk. See scripts/check-core-bundle.mjs and
+      # Since the runtime core switch, production ships ALL THREE cores as
+      # lazy chunks a visitor only fetches once their choice resolves
+      # (src/app/coreSelection.ts's `loadCore`; the RxJS default too, since
+      # approach B) — so the old "no alternative core anywhere in the bundle"
+      # grep would now fail on every build. The guard this reuses instead
+      # proves the SHAPE stays runtime-switchable: the eager set (both pages'
+      # entry scripts + modulepreload hints) carries no core's marker, and
+      # each core lives in exactly one lazy chunk. See scripts/check-core-bundle.mjs and
       # docs/superpowers/specs/2026-09-27-runtime-core-switch-design.md §4.
-      - name: Guard — alternative cores ship only as lazy chunks
+      - name: Guard — every application core ships only as a lazy chunk
         run: node scripts/check-core-bundle.mjs --dir .vercel/output/static
 
       # When a debug build is requested, prove the sourcemaps actually landed —
@@ -306,7 +306,7 @@ jobs:
 
       # See the client-react job for why this reuses check-core-bundle rather
       # than grepping for an absent alternative core.
-      - name: Guard — alternative cores ship only as lazy chunks
+      - name: Guard — every application core ships only as a lazy chunk
         run: node scripts/check-core-bundle.mjs --dir .vercel/output/static
 
       # See the client-react job for why this greps for an INLINE sourcemap.

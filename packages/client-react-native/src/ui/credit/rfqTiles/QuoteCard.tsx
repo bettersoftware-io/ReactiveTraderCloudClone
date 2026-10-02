@@ -17,6 +17,7 @@ import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 /** One dealer's line inside an RFQ card. The prototype draws these as flat rows
  * separated by a hairline rather than nested cards (dc.html:241-250), with the
@@ -177,10 +178,8 @@ function makeStyles(t: RnTheme): QuoteCardStyles {
       borderTopWidth: 1,
       borderTopColor: t.borderSubtle,
     },
-    // dc.html:2148 — `color-mix(in oklab, acc 7%, transparent)`. Every skin's
-    // `accentPrimary` is a 6-digit hex, so the 7% is expressed as the `12`
-    // alpha byte (18/255 ≈ 7.1%) rather than a second token.
-    rowAccented: { backgroundColor: `${t.accentPrimary}12` },
+    // dc.html:2148 — `color-mix(in oklab, acc 7%, transparent)`.
+    rowAccented: { backgroundColor: withAlpha(t.accentPrimary, 0.07) },
     dealerName: {
       flex: 1,
       ...labelStyle(t, 9, 0.8),

@@ -17,6 +17,7 @@ import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 export function BuySellPads({
   pair,
@@ -157,9 +158,7 @@ interface PadStyles {
 // oklab, var(--neg|--pos) 55%|12%, transparent)`), SELL left-aligned and BUY
 // right-aligned, label 9px / 2px tracking / 600, price row bottom-aligned
 // 5px below (prefix 13px on a 2px baseline pad, pips 27px/700/line-height 1,
-// fractional 12px). Every skin's accents are six-digit hex, so the alpha
-// byte is appended directly — same local-tint precedent as `NewRfqForm`'s
-// `tint12`; a repo-wide `withAlpha` still does not exist.
+// fractional 12px).
 function makePadStyles(
   t: ReturnType<typeof useTheme>,
   accent: string,
@@ -173,8 +172,8 @@ function makePadStyles(
     paddingBottom: 12,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: `${accent}8C`,
-    backgroundColor: `${accent}1F`,
+    borderColor: withAlpha(accent, 0.55),
+    backgroundColor: withAlpha(accent, 0.12),
   };
 
   // dc.html:513 `style-active` — a press glows the pad in its own accent

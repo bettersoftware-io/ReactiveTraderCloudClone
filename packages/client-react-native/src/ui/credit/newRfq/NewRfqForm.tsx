@@ -21,6 +21,7 @@ import { SPACING } from "#/ui/theme/spacing";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 export function NewRfqForm({
   onCreated,
@@ -238,14 +239,9 @@ interface NewRfqFormStyles {
 }
 
 /** The prototype tints an active side toggle at 12% of its own colour
- * (`color-mix(in oklab, <c> 12%, transparent)`, dc.html:2195/2197); every
- * skin's `accentPositive`/`accentNegative` is six-digit hex, so the alpha
- * byte is appended directly. Same helper the equity ticket's side toggle
- * uses (`equities/trade/OrderTicket.tsx`) — deliberately duplicated rather
- * than shared, since a repo-wide `withAlpha` does not exist yet and
- * `PnlChart`'s local one parses channels for a different purpose. */
-function tint12(hexColor: string): string {
-  return `${hexColor}1F`;
+ * (`color-mix(in oklab, <c> 12%, transparent)`, dc.html:2195/2197). */
+function tint12(color: string): string {
+  return withAlpha(color, 0.12);
 }
 
 function makeStyles(t: RnTheme): NewRfqFormStyles {

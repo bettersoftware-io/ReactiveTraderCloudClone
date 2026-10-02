@@ -11,7 +11,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { IWsAdapter } from "#/adapters/IWsAdapter";
-import { routeIdleLifecycle } from "#/composition";
+import { routeIdleLifecycle } from "#/adapters/routeIdleLifecycle";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {
   it("idleTimeout event invokes closeForIdle() on the WsAdapter", () => {

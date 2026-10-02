@@ -37,6 +37,9 @@ module.exports = {
     "^#app/(.*)$": "<rootDir>/app/$1",
     "^@rtc/domain$": "<rootDir>/../domain/dist/index.js",
     "^@rtc/shared$": "<rootDir>/../shared/dist/index.js",
+    // The RxJS composition root's subpath export (approach B) — the RN
+    // client composes directly, so it imports `createApp` from here.
+    "^@rtc/client-core/core$": "<rootDir>/../client-core/dist/core.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
     // Types-only today (no runtime value, grep gate 42), but in the runtime
     // dependency tree — scripts/check-package-wiring.mjs maps every such package

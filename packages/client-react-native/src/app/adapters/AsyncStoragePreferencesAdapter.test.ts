@@ -130,9 +130,14 @@ test("hydrates a stored theme mode", async () => {
   expect(hydrated).toBe("light");
 });
 
+// The invalid-value cases below go through `hydrate()`, which resolves only
+// AFTER the store was read and every guard ran, so the first emission is the
+// guard's verdict. Constructing with `new` and reading at once would capture
+// the subject's pre-hydration default instead — the same value, whether the
+// guard rejected the stored one or never ran at all.
 test("ignores an invalid stored theme mode and keeps the default", async () => {
   store.set("rtc-theme", "not-a-real-mode");
-  const prefs = new AsyncStoragePreferencesAdapter();
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   const first = await firstValueFrom(prefs.themeMode$());
   expect(first).toBe("dark");
 });
@@ -176,7 +181,7 @@ test.each([...BOOT_VARIANTS])(
 
 test("falls back to the default boot variant when the stored value is unknown", async () => {
   store.set("rt-boot-variant", "not-a-real-variant");
-  const prefs = new AsyncStoragePreferencesAdapter();
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   const first = await firstValueFrom(prefs.bootVariant$());
   expect(first).toBe(DEFAULT_BOOT_VARIANT);
 });
@@ -379,7 +384,7 @@ test("setJarvisSkin writes through to AsyncStorage and emits", async () => {
 
 test("falls back to the default jarvisSkin when the stored value is unknown", async () => {
   store.set("rtc-jarvis-skin", "not-a-real-skin");
-  const prefs = new AsyncStoragePreferencesAdapter();
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   const first = await firstValueFrom(prefs.jarvisSkin$());
   expect(first).toBe("singularity");
 });
@@ -420,7 +425,7 @@ test("setJarvisBrain/setJarvisEffort write through to AsyncStorage and emit", as
 test("falls back to the default jarvisBrain and jarvisEffort when the stored values are unknown", async () => {
   store.set("rt-jarvis-brain", "not-a-real-brain");
   store.set("rt-jarvis-effort", "not-a-real-effort");
-  const prefs = new AsyncStoragePreferencesAdapter();
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   expect(await firstValueFrom(prefs.jarvisBrain$())).toBe(DEFAULT_JARVIS_BRAIN);
   expect(await firstValueFrom(prefs.jarvisEffort$())).toBe(
     DEFAULT_JARVIS_EFFORT,
@@ -460,7 +465,7 @@ test("setJarvisNarrator writes through to AsyncStorage and emits", async () => {
 
 test("falls back to the default jarvisNarrator when the stored value is unknown", async () => {
   store.set("rt-jarvis-narrator", "not-a-real-preference");
-  const prefs = new AsyncStoragePreferencesAdapter();
+  const prefs = await AsyncStoragePreferencesAdapter.hydrate();
   expect(await firstValueFrom(prefs.jarvisNarrator$())).toBe(
     DEFAULT_JARVIS_NARRATOR,
   );
