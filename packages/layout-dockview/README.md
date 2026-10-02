@@ -398,6 +398,70 @@ pre-emptively dropped.
   pin's record no longer fills its panels at restore, so the re-docked
   panel comes back unpinned.
 
+## Attached floats — magnets (2026-10-02)
+
+A float dragged within 14px of another float snaps flush to it (its top or
+left aligning too when within range), and released flush it **attaches**:
+the two become ONE floating window — dockview's own nested float layout
+(`floatingGroups[n].grid`), so moving, the inner sash and persistence are
+dockview's. Our part is `floatMagnets.ts` (pure geometry: `snapToSiblings`,
+`flushSideOf`, `attachedWindowFor`, `shouldAttachOnRelease`) wired into
+dockview's `transformFloatingGroupDrag` hook, `attachFloatOnRelease`, and
+`attachPanel` / `detachPanel` on the engine. NOT dockview's `smartGuides`
+option: the free core declares it but only the paid `dockview-enterprise`
+module implements it. Design and decided scope:
+[the spec](../../docs/superpowers/specs/2026-10-02-float-magnets-design.md).
+
+- **Attach rule:** a release attaches only from the drag's snap engagement —
+  the engine remembers the sibling edge the last frame snapped to and
+  attaches beside the member whose own edge the newcomer touches. A plain
+  head click (no move) never attaches, even on a float already sitting
+  flush.
+- **Clusters stay single-split in v1:** a lone float may attach to a cluster
+  along its split (e.g. right of a side-by-side pair), but a cross-axis
+  attach onto a cluster member (top/bottom onto a side-by-side cluster,
+  left/right onto a stacked one) is refused by `attachPanel`, and the cue
+  does not show for it.
+- **Move:** a plain press on ANY member's head moves the whole window
+  (`moveFloatFromHead` forwards to the window's anchor void container).
+- **Detach:** the head's ⇱ control (`detachPanel`), or an Option-press on a
+  member's head, which detaches and keeps dragging the member; attaching is
+  refused for the rest of that drag. Option also suspends snapping.
+  `attachPanel(panelId, targetPanelId, side)` is the public, programmatic
+  twin of `detachPanel` (what the jsdom tests drive; a gesture ends in it).
+- **Detach never orphans the window's anchor:** dockview 8.3.1 binds the
+  anchor group's `onDidChange → overlay.setBounds` at window creation and
+  never rebinds it (`setAnchorGroup` only swaps the reference), so popping
+  the anchor out would leave its resizes driving the window it left. When
+  the leaver IS the anchor, the engine moves the survivors out into a new
+  window (first via `addFloatingGroup` at the remainder box, the rest via
+  `moveTo` in layout order) and keeps the anchor in its original window;
+  `dockPanel`, `closePanel` and `deleteDynamicPanel` isolate an anchor
+  member the same way first (`isolateMember`). Geometry is the same either
+  way; only window identity differs.
+- **Sizing (spec §4.2/§4.3):** side by side each keeps its width, height =
+  the taller; stacked the free panel adopts a locked width, anchored at the
+  target's left. On leave the remainder keeps its top-left and loses the
+  removed extent (the edge moves when the FIRST member leaves). Cluster
+  snapshots for the close/dock-home shrink are taken in
+  `onWillMutateLayout` (always live), not at the end of settle.
+- **Measurement:** member rects are leaf-view rects (`closest(".dv-view")`),
+  not group rects — the card has 3.5px padding, which is why a locked
+  float's box is 367 = 360 + `GROUP_GAP_PX`.
+- **Width locks:** a side-by-side cluster is never box-locked (each locked
+  member keeps its own min = max); a stacked cluster with a locked member is
+  box-locked at that width for every member. Read from the model, not the
+  DOM — at construction the members all report the same rect. On restore a
+  locked member of a side-by-side cluster gets min = max constraints ONLY,
+  never `setSize`: `setSize` on the window's anchor resizes the whole window
+  through that same dockview listener (the reload squeeze). Lone and stacked
+  locked floats keep `setSize`.
+- **Cue:** `.rtc-dock-attach-preview`, a 2px accent line on the target's side
+  of the edge a release would attach on. The sash between attached members
+  is painted by the generic sash rule; there is no float-specific CSS.
+- **Not in v1:** a cluster attaching to another float (it only snaps), and
+  L-shaped clusters; see `docs/STATUS.md`.
+
 ## Saved layouts (Phase 6b)
 
 A preset is a named snapshot of a tab's whole visible arrangement —

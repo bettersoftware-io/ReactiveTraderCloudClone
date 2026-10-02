@@ -354,3 +354,17 @@ engine, both clients, tests, the golden regen dispatch, `README.md` of
 
 The spike branch `worktree-spike-float-magnets` is deleted once the
 implementation PR is open; nothing from it is cherry-picked.
+
+## Implementation notes (2026-10-02)
+
+Deviations ruled during implementation; the spec body above is unchanged. Detail: [layout-dockview README, "Attached floats — magnets"](../../../packages/layout-dockview/README.md#attached-floats--magnets-2026-10-02).
+
+- The engine exposes a public `attachPanel(panelId, targetPanelId, side)`, the programmatic twin of `detachPanel`.
+- The cue class is `rtc-dock-attach-preview` (stylelint permits only `rtc-dock-*` names).
+- A release attaches only from the drag's snap engagement; a plain click never attaches, even on a float already flush.
+- A cross-axis attach onto a cluster member is refused (no L-shaped clusters), and the cue does not show for it.
+- Detach, dock-home and close isolate a window's anchor member first: dockview 8.3.1 binds the anchor's `onDidChange → setBounds` once and never rebinds it.
+- Member geometry is measured on the leaf view (`closest(".dv-view")`), not the group.
+- Locked members of a side-by-side cluster get min = max constraints only, never `setSize` (it would resize the whole window through the anchor).
+- Cluster snapshots for the close/dock-home shrink are taken in `onWillMutateLayout`.
+- No float-sash CSS rule exists; the generic sash rule paints float seams.
