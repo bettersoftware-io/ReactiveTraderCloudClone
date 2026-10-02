@@ -132,6 +132,10 @@ export interface DockEngineOptions {
    * Unlike the popped set, floating IS persisted — a float is layer-3
    * arrangement, like a drag or a stack (see the Phase 6 design, §3.3). */
   readonly onFloatsChange?: (floatingPanelIds: readonly string[]) => void;
+  /** Every panel whose floating window holds MORE THAN ONE group — an
+   * attached cluster (spec 2026-10-02 float magnets) — sorted. Fires only
+   * on change; nothing at construction unless a restored blob holds one. */
+  readonly onAttachedChange?: (attachedPanelIds: readonly string[]) => void;
   /** The pop-out target page dockview opens in the child window (component
    * option; same-origin enforced by dockview). Defaults to dockview's own
    * `/popout.html`. The page ships empty — dockview appends its container
@@ -568,6 +572,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // dock-home), compared, and handed to the client whole.
   let lastPopped: readonly string[] = [];
   let lastFloating: readonly string[] = [];
+  let lastAttached: readonly string[] = [];
 
   function publishPoppedPanels(): void {
     const popped = groupsAnywhere(api)
@@ -610,9 +615,80 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  /** The floating window holding `panelId`, read from the MODEL
+   * (`api.toJSON()`), never the DOM: at construction the members are not
+   * laid out yet and all report the same rect. Null when not floating. */
+  function clusterOf(panelId: string): FloatCluster | null {
+    for (const entry of api.toJSON().floatingGroups ?? []) {
+      const memberIds =
+        entry.grid === undefined
+          ? (entry.data?.views ?? [])
+          : leafViewsOf(entry.grid.root);
+
+      if (memberIds.includes(panelId)) {
+        return {
+          memberIds: [...memberIds].sort(),
+          orientation:
+            entry.grid === undefined
+              ? null
+              : splitOrientationOf(entry.grid.root, entry.grid.orientation),
+          box: entry.position,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /** Every panel in a floating window with more than one group, sorted. */
+  function attachedPanelIds(): readonly string[] {
+    const ids = new Set<string>();
+
+    for (const entry of api.toJSON().floatingGroups ?? []) {
+      if (entry.grid !== undefined) {
+        const members = leafViewsOf(entry.grid.root);
+
+        if (members.length > 1) {
+          for (const id of members) {
+            ids.add(id);
+          }
+        }
+      }
+    }
+
+    return [...ids].sort();
+  }
+
+  function publishAttachedPanels(): void {
+    const attached = attachedPanelIds();
+
+    if (attached.join(" ") !== lastAttached.join(" ")) {
+      lastAttached = attached;
+      opts.onAttachedChange?.(attached);
+    }
+  }
+
+  /** dockview's floating window hosting `group` (matched by element, so the
+   * engine's narrowed group views work), or undefined when it is not
+   * floating or the internal reach is gone. */
+  function floatingWindowOf(
+    group: ElementHost,
+  ): FloatingWindowInternals | undefined {
+    const real = groupsAnywhere(api).find((candidate) => {
+      return candidate.element === group.element;
+    });
+
+    return real === undefined
+      ? undefined
+      : (
+          api as unknown as DockviewInternals
+        ).component?.getFloatingWindowForGroup?.(real);
+  }
+
   const changeSub = api.onDidLayoutChange(() => {
     publishPoppedPanels();
     publishFloatingPanels();
+    publishAttachedPanels();
     // Pins are validated on EVERY layout change, not just at save time: a
     // drop that dissolves a rail must release its min=max clamps NOW, or
     // the next resize distributes against a phantom pin for up to
@@ -682,7 +758,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // with the docked control set (Collapse/Maximize, no Dock). Same path as
   // every later transition: a restore with no float publishes nothing.
   // (Popouts need no twin: they are session-scoped and never restored.)
+  // A restored attached cluster is published the same way.
   publishFloatingPanels();
+  publishAttachedPanels();
 
   // Dockview's dock has NO collapse primitive. `setCollapsed`/`isCollapsed`
   // exist in dockview-core but only for EDGE groups (shell-docked sidebars),
@@ -2062,7 +2140,48 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     for (const [box, members] of boxes) {
+      const cluster = clusterOf(members[0]?.panels[0]?.id ?? "");
       const lock = lockOfGroup(members[0] ?? { panels: [] });
+
+      // A SIDE-BY-SIDE cluster is never box-locked: each locked member keeps
+      // its own min = max inside the window, and the free members take the
+      // rest. (The old whole-window rule squeezed a restored pair to one
+      // panel's width — the spike's reload bug.)
+      if (cluster?.orientation === "HORIZONTAL") {
+        box.classList.remove("rtc-dock-float-fixed-width");
+        continue;
+      }
+
+      // A STACKED cluster: every member takes one width — the first lock in
+      // layout order, else the anchor's width (spec §4.2 — a free panel
+      // adopts the lock; `stackedWidthFor` folded over the members, which
+      // reduces to exactly this); the box is width-locked only when some
+      // member is locked.
+      if (cluster?.orientation === "VERTICAL") {
+        const firstLock = members.map(lockOfGroup).find((candidate) => {
+          return candidate !== undefined;
+        });
+        const width = firstLock ?? members[0]?.api.width;
+        const locked = members.some((member) => {
+          return lockOfGroup(member) !== undefined;
+        });
+
+        box.classList.toggle("rtc-dock-float-fixed-width", locked);
+
+        if (locked && width !== undefined) {
+          const target = lockedFloatWidth(
+            width + GROUP_GAP_PX,
+            opts.container.getBoundingClientRect().width,
+          );
+
+          for (const member of members) {
+            member.api.setSize({ width: target });
+          }
+        }
+
+        continue;
+      }
+
       const locked =
         lock !== undefined &&
         members.every((member) => {
@@ -3513,6 +3632,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Outside the gate: a panel popped out OF a float returns to the grid
     // without the floating set changing at all. Last, as the doc says.
     restoreFloatHomeSizes();
+    // The attached set is published HERE too, synchronously as the mutation
+    // closes — an attach or a detach is read the moment the call returns,
+    // not a microtask later (onDidLayoutChange's publish then finds nothing
+    // changed).
+    publishAttachedPanels();
   }
 
   const mutateSub = api.onDidMutateLayout(settleFloatTransitions);
@@ -5412,15 +5536,112 @@ interface DockParkedGrid {
   readonly pinned: boolean;
 }
 
-/** The slice of dockview's private component {@link moveToRootSlot}
- * reaches: `DockviewApi.component` → `BaseGrid.gridview`, both declared
- * private/protected in dockview-core 8.3.1's typings. */
+/** The dockview internals this engine reaches past the public api. Each is
+ * re-verified on every dockview upgrade (8.3.1 pinned): a rename degrades to
+ * a documented fallback and reds the test that names it here.
+ * {@link moveToRootSlot} reaches `DockviewApi.component` →
+ * `BaseGrid.gridview`, both declared private/protected in dockview-core
+ * 8.3.1's typings. */
 interface DockviewInternals {
   readonly component?: {
     readonly gridview?: {
       moveView(parentLocation: number[], from: number, to: number): void;
     };
+    /** The floating window hosting `group`, matched by membership (a window
+     * holds a nested layout, not only its anchor group). Spec §2: the one
+     * reach the attach feature adds. Test: "restores a side-by-side cluster". */
+    getFloatingWindowForGroup?(
+      group: unknown,
+    ): FloatingWindowInternals | undefined;
   };
+}
+
+/** A floating window's full bounds, in dock-container px. */
+interface FloatingWindowBox {
+  readonly top: number;
+  readonly left: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Bounds a floating window can be repositioned to — any subset. */
+type FloatingWindowBounds = Partial<FloatingWindowBox>;
+
+/** Anything carrying a group's root element — a dockview group or the
+ * engine's narrowed view of one. */
+interface ElementHost {
+  readonly element: HTMLElement;
+}
+
+interface FloatingWindowInternals {
+  /** The window's anchor group — the one dockview wired the move drag to. */
+  readonly group: ElementHost;
+  position(bounds: FloatingWindowBounds): void;
+}
+
+/** The box dockview serialises for a floating window. */
+type DockFloatBox = NonNullable<
+  SerializedDockview["floatingGroups"]
+>[number]["position"];
+
+/** One floating window, read from the model. */
+interface FloatCluster {
+  readonly memberIds: readonly string[];
+  /** The window's own split: HORIZONTAL = side by side, VERTICAL = stacked,
+   * null = a single group (dockview's legacy `data` form). */
+  readonly orientation: FloatSplitOrientation | null;
+  readonly box: DockFloatBox;
+}
+
+/** A floating window's split direction, as dockview serialises it. */
+type FloatSplitOrientation = "HORIZONTAL" | "VERTICAL";
+
+/** A serialised gridview node, as far as {@link leafViewsOf} reads it. */
+interface SerializedGridNode {
+  readonly type: string;
+  readonly data: unknown;
+}
+
+/** A serialised gridview LEAF's data, as far as {@link leafViewsOf} reads it. */
+interface SerializedLeafData {
+  readonly views: readonly string[];
+}
+
+/** The panel ids of every leaf under a serialised gridview node, in order. */
+function leafViewsOf(node: SerializedGridNode): readonly string[] {
+  if (node.type === "leaf") {
+    return (node.data as SerializedLeafData).views;
+  }
+
+  return (node.data as readonly SerializedGridNode[]).flatMap(leafViewsOf);
+}
+
+/** The orientation of the first REAL split under `node` (a branch with more
+ * than one child), or null when there is none (a single group). dockview
+ * does not normalise a floating window's grid: a group moved to the
+ * `bottom` of a lone floating group serialises as a HORIZONTAL root holding
+ * ONE branch whose two leaves stack (measured, dockview-core 8.3.1) — so the
+ * root's own `orientation` alone would read a stacked pair as side by side.
+ * Each nesting level flips the orientation, as in any gridview. */
+function splitOrientationOf(
+  node: SerializedGridNode,
+  orientation: FloatSplitOrientation,
+): FloatSplitOrientation | null {
+  if (node.type === "leaf") {
+    return null;
+  }
+
+  const children = node.data as readonly SerializedGridNode[];
+  const [only] = children;
+
+  if (children.length === 1 && only !== undefined) {
+    return splitOrientationOf(
+      only,
+      orientation === "HORIZONTAL" ? "VERTICAL" : "HORIZONTAL",
+    );
+  }
+
+  return orientation;
 }
 
 /** See {@link rootSlotOf}. */

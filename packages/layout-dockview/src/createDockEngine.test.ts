@@ -2,6 +2,7 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewGroupDropLocation,
+  type DockviewGroupPanel,
   type DockviewWillShowOverlayLocationEvent,
   Orientation,
   type Position,
@@ -7173,6 +7174,122 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
   }
 });
 
+describe("attached floats — the cluster model and the width rule", () => {
+  // A cluster is dockview's own multi-group floating window. These tests
+  // build one through dockview's api (`moveTo` onto a floating group), not
+  // through a gesture: jsdom reports zero-size rects, so the sizing rules
+  // are proven on numbers in floatMagnets.test.ts and in the e2e run.
+  it("publishes the whole attached set on attach and on detach, not on an unrelated change", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    expect(reports).toEqual([]);
+
+    joinFloats(api, "fx-positions", "fx-analytics", "right");
+    expect(reports).toEqual([["fx-analytics", "fx-positions"]]);
+
+    engine.collapsePanel("fx-rates"); // unrelated: no new report
+    expect(reports).toHaveLength(1);
+
+    api.addFloatingGroup(groupOf(api, "fx-positions"), {
+      x: 900,
+      y: 500,
+      width: 367,
+      height: 300,
+    });
+    expect(reports).toEqual([["fx-analytics", "fx-positions"], []]);
+    engine.dispose();
+  });
+
+  // The restore bug the spike hit: both members are 360-locked, so the old
+  // rule box-locked the WHOLE window at one panel's width and the second
+  // panel was clipped away after a reload.
+  it("restores a side-by-side cluster of two locked panels without box-locking the window", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...createLockedRailBase(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    joinFloats(api, "fx-positions", "fx-analytics", "right");
+    touchContainer(container);
+    first.dispose();
+    expect(saved).toContain('"orientation":"HORIZONTAL"');
+
+    const second = createDockEngine({
+      ...createLockedRailBase(),
+      container,
+      blob: saved,
+    });
+    const box = floatBoxElementOf(lastDockviewApi(), "fx-analytics");
+
+    expect(floatMembersOf(lastDockviewApi(), "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(box.classList.contains("rtc-dock-float-fixed-width")).toBe(false);
+    // Each member keeps ITS OWN lock inside the cluster (min = max).
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    second.dispose();
+  });
+
+  it("box-locks a STACKED cluster when a member is locked, and gives every member the lock", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-blotter", 100, 500, 600, 200);
+    joinFloats(api, "fx-blotter", "fx-analytics", "bottom");
+
+    expect(
+      floatBoxElementOf(api, "fx-analytics").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(true);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("leaves a stacked cluster of two FREE panels unlocked", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-rates", 100, 100, 500, 300);
+    floatAt(api, "fx-blotter", 100, 500, 600, 200);
+    joinFloats(api, "fx-blotter", "fx-rates", "bottom");
+
+    expect(
+      floatBoxElementOf(api, "fx-rates").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(false);
+    engine.dispose();
+  });
+});
+
 /** Walks a parsed blob's grid for the leaf whose `views` names `panelId`,
  * loosely — a test-only mirror of {@link removeDynamicViews}'s own walk,
  * used to hand-corrupt exactly one leaf's group id without disturbing the
@@ -7297,6 +7414,75 @@ function widthClampOf(panelId: string): readonly [number, number] {
   }
 
   return [panel.group.minimumWidth, panel.group.maximumWidth];
+}
+
+/** dockview's own group object for `panelId` — what `addFloatingGroup` and
+ * `moveTo` want (the engine's `SizableGroup` is a narrowed view). */
+function groupOf(api: DockviewApi, panelId: string): DockviewGroupPanel {
+  const panel = api.getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return panel.group;
+}
+
+/** Floats `panelId` at an explicit box — bypassing `floatPanel`, whose
+ * opening box is measured from rects jsdom reports as zero. */
+function floatAt(
+  api: DockviewApi,
+  panelId: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  api.addFloatingGroup(groupOf(api, panelId), { x, y, width, height });
+}
+
+/** Merges `panelId`'s float into `targetId`'s floating window on `side`
+ * — the same dockview call the engine's attach makes. */
+function joinFloats(
+  api: DockviewApi,
+  panelId: string,
+  targetId: string,
+  side: Position,
+): void {
+  groupOf(api, panelId).api.moveTo({
+    group: groupOf(api, targetId),
+    position: side,
+  });
+}
+
+/** The `.dv-resize-container` box element of the float holding `panelId`. */
+function floatBoxElementOf(api: DockviewApi, panelId: string): HTMLElement {
+  const box = groupOf(api, panelId).element.closest<HTMLElement>(
+    ".dv-resize-container",
+  );
+
+  if (box === null) {
+    throw new Error(`${panelId} is not in a float`);
+  }
+
+  return box;
+}
+
+/** Every panel id in the floating window holding `panelId`, sorted. */
+function floatMembersOf(api: DockviewApi, panelId: string): readonly string[] {
+  return [...floatBoxElementOf(api, panelId).querySelectorAll(".dv-groupview")]
+    .flatMap((element) => {
+      return api.groups
+        .filter((group) => {
+          return group.element === element;
+        })
+        .flatMap((group) => {
+          return group.panels.map((panel) => {
+            return panel.id;
+          });
+        });
+    })
+    .sort();
 }
 
 /** Polls the persisted layout until its `rtcDesignPins` sidecar holds
