@@ -15,7 +15,8 @@ closing" below).
 > below is a *migration* (e.g. RxJS → Effect inside the core, or the boundary
 > envelope moving from RxJS to the web-standard `Observable`), in which the edge abstractions and the
 > implementation differ only for the duration of the move and the indirection
-> is collapsed afterwards. See
+> is collapsed afterwards — all of it, the boundary envelope and `bridge/`
+> included; removing the indirection is the point of finishing. See
 > [§23 "Why three cores?"](../architecture/23-application-cores-explained.md#why-three-cores-read-this-first).
 
 The RxJS `Observable` boundary decision itself was never recorded as a
