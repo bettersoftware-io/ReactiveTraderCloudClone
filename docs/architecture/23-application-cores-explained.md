@@ -56,16 +56,24 @@ code rather than argued:
 
 **How this ends in a real project.** The edge abstractions and the
 implementation are allowed to differ *temporarily*, to ease the move. Once one
-core has won, the losing cores are deleted, and the rest of the indirection
-goes as far as the migration went. If the winner's stream type is adopted at
-the edges as well — the bindings, and the `@rtc/domain` ports and simulators,
-which are RxJS today
+core has won, the losing cores are deleted — and then the indirection is
+deleted too, because removing it is the whole point of finishing. The intended
+ending is the complete one: the winner's stream type is adopted at the edges as
+well — the bindings, and the `@rtc/domain` ports and simulators, which are RxJS
+today
 ([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type))
-— then `bridge/` is deleted and `Stream<T>` is replaced by the winner's own
-type. If the edges stay on RxJS, `bridge/` stays as the one gated adapter
-between them: a deliberate seam, not leftover scaffolding. Either way, the
-contract suite stays behind as the behavioural specification of the one core
-that remains. The techniques transfer; the permanent three-way split does not.
+— so `bridge/` is deleted because nothing is left to translate, `Stream<T>` and
+`StateStream<S>` are replaced by the winner's own types, and the rule that
+`rxjs` is the domain's one runtime dependency becomes the same rule naming the
+winner. The edges are the larger half of the move — every port, simulator and
+both bindings change together, which is why
+[§8](08-replaceability-matrix.md#8-replaceability-matrix) rates it "very high"
+— so a migration may land the core first and the edges later; while it waits,
+`bridge/` stays as the one gated adapter between an RxJS edge and a non-RxJS
+core. That is a deliberate intermediate state, not a destination. Either way
+the contract suite stays behind as the behavioural specification of the one
+core that remains. The techniques transfer; the permanent three-way split, and
+the seam, do not.
 
 Read the rest of the chapter with that in mind: everything below describes
 the instrument, and the table above says which parts of it a real migration
