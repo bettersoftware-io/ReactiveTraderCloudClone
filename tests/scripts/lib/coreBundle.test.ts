@@ -221,6 +221,28 @@ describe("classify", () => {
     );
   });
 
+  it("flags the Effect runtime marker in a chunk the entry imports statically without a modulepreload hint", () => {
+    const files = new Map([
+      ["/assets/index.js", `import"./vendor.js";import("./lazy.js");`],
+      ["/assets/vendor.js", EFFECT_RUNTIME_MARKER],
+      ["/assets/rxjs.js", RXJS_MARKER],
+      ["/assets/async.js", ASYNC_MARKER],
+      ["/assets/effect.js", EFFECT_MARKER],
+    ]);
+    // Only the entry is hinted; vendor.js is eager by static import alone.
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          `the Effect runtime marker (${EFFECT_RUNTIME_MARKER}) leaked into eager file /assets/vendor.js`,
+        ),
+      ]),
+    );
+  });
+
   it("does not flag the Effect runtime marker sitting in the lazy effect chunk", () => {
     const files = new Map([
       ["/assets/index.js", "entry"],

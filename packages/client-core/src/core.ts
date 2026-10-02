@@ -15,8 +15,9 @@ export {
  * that a client reaches it only through a dynamic `import()`: that is what
  * lets the bundler split this composition root into its own lazy chunk like
  * the two alternative cores (approach B, ADR-006 Decision 6), leaving the
- * entry bundle with no core at all. The root index still exports `createApp`
- * and `createMachineFactories` for the consumers that compose directly —
- * React Native, the presenter-direct e2e peer, the ui-contract fixtures.
+ * entry bundle with no core at all. The root index exports NONE of the
+ * composition root (`core.publicApi.test.ts` pins that): the consumers that
+ * compose directly — React Native, the presenter-direct e2e peer, the test
+ * pages and fixtures — import this subpath too.
  */
 export const rxjsCore: CoreFactory = { createApp, createMachineFactories };

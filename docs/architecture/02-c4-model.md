@@ -50,7 +50,7 @@ flowchart TB
         solidClient["<b>Solid Web Client</b><br/>@rtc/client-solid · SolidJS + Vite + CSS Modules<br/>dumb UI + browser adapters · full parity w/ Web Client"]:::ui
         bindings["<b>React Bindings</b><br/>@rtc/react-bindings · react-rxjs<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
         solidBindings["<b>Solid Bindings</b><br/>@rtc/solid-bindings · @rx-state/core → signal<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
-        core["<b>Application Cores ×3</b><br/>@rtc/client-core (RxJS, default, eager) ·<br/>@rtc/client-core-async · @rtc/client-core-effect (lazy)<br/>composition root · presenters · machines · port factories"]:::core
+        core["<b>Application Cores ×3</b><br/>@rtc/client-core (RxJS, default) ·<br/>@rtc/client-core-async · @rtc/client-core-effect<br/>(each composition root a lazy chunk)<br/>composition root · presenters · machines · port factories"]:::core
         coreApi["<b>Core Contract</b><br/>@rtc/core-api · types only<br/>Presenters · MachineFactories · AppCommands · CoreFactory"]:::domain
         coreLogic["<b>Shared Core Rules</b><br/>@rtc/core-logic · no stream library<br/>pure folds · view derivations · workspace + Jarvis controllers"]:::core
         server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>effects assembled by buildEffects(loops) · /login · /mcp<br/>Anthropic agent loop · deployed to Fly.io"]:::server

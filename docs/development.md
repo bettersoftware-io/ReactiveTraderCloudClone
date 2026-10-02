@@ -94,11 +94,13 @@ pnpm test:e2e:async                             # e2e against that core (also te
   unknown `VITE_CORE_IMPL` still fails loudly, never falling back to RxJS
   silently. Every successful boot logs which core won and why: `[core]
   booted <impl> from <url|stored|build|fallback>`.
-- **Alternative cores load lazily.** RxJS stays in the entry bundle (the UI
-  reaches into it directly regardless); `async` and `effect` are fetched as
-  their own chunk only once chosen. `pnpm check:core-bundle` proves the split
-  in CI — the eager set carries only the RxJS core's marker, and each
-  alternative core sits in exactly one lazy chunk.
+- **Every core loads lazily.** Each core's composition root is fetched as
+  its own chunk only once the choice resolves — RxJS included since approach
+  B (2026-10-02; its root sits behind the `@rtc/client-core/core` subpath
+  export). `pnpm check:core-bundle` proves the split in CI — the eager set
+  carries no core's marker, and each core sits in exactly one lazy chunk.
+  `@rtc/client-core`'s presenters, machines and adapters still ship eagerly
+  through the root index the UI imports from (ADR-006 Follow-up 9).
 - **Web only.** The React Native client always runs the RxJS core.
 - **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
   (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm

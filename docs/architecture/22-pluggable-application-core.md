@@ -153,11 +153,13 @@ lists (turbo's strict env mode silently strips undeclared vars) and
 `RTC_CORE_IMPL` on `globalPassThroughEnv` for the e2e harness, which resolves
 both once and forwards the answer as `RTC_CORE_IMPL` (`tests/scripts/lib/coreImpl.ts`)
 so a run's build default and its own knob can't silently disagree. Production
-sets neither, so the default visitor's choice still resolves to `rxjs` with
-no extra fetch — but, unlike before 2026-09-27, the same deployed build lets
-that visitor pick `async` or `effect` from `?core=` or Preferences.
-`pnpm check:core-bundle` and `deploy.yml`'s "Guard — alternative cores ship
-only as lazy chunks" step assert the eager/lazy split this depends on — see
+sets neither, so the default visitor's choice still resolves to `rxjs` — at
+the cost of one chunk fetch after the entry executes, since approach B
+(2026-10-02) made the RxJS composition root a lazy chunk like the other two —
+and, unlike before 2026-09-27, the same deployed build lets that visitor pick
+`async` or `effect` from `?core=` or Preferences. `pnpm check:core-bundle` and
+`deploy.yml`'s "Guard — every application core ships only as a lazy chunk"
+step assert the eager/lazy split this depends on — see
 [Bundle isolation](#bundle-isolation) below.
 
 ## Three timing guarantees

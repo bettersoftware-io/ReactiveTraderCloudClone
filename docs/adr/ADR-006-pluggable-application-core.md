@@ -195,8 +195,8 @@ switched between all three cores without a rebuild.
 behind a new `@rtc/client-core/core` subpath export (`src/core.ts`) and left
 the root index, so a web client can reach it only through `loadCore`'s
 dynamic `import()` and the loader treats all three cores alike. Consumers
-that compose directly — React Native, the presenter-direct e2e peer, the
-ui-contract fixtures and the tests — import the subpath. `routeIdleLifecycle`
+that compose directly — React Native, the presenter-direct e2e peer,
+`client-solid`'s `AppPage` test page and the tests — import the subpath. `routeIdleLifecycle`
 moved from `composition.ts` to `adapters/routeIdleLifecycle.ts`: the web
 clients call it eagerly from `buildBrowserPorts`, and any eager reach into
 `composition.ts` would have pulled the whole root back into the entry. What
