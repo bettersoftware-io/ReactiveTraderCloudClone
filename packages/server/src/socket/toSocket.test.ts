@@ -55,6 +55,58 @@ describe("toSocket", () => {
     ]);
   });
 
+  it("drops a frame that parses to a non-object (null, number, array) without emitting or erroring, and still delivers the next valid frame", () => {
+    const ws = new FakeWs();
+    const socket = toSocket(ws as unknown as import("ws").WebSocket);
+    const received: unknown[] = [];
+    let errored = false;
+    socket.messages$.subscribe({
+      next: (msg: unknown) => {
+        received.push(msg);
+      },
+      error: () => {
+        errored = true;
+      },
+    });
+
+    ws.emit("message", "null");
+    ws.emit("message", "42");
+    ws.emit("message", "[]");
+    ws.receive({ type: "subscribe.pricing", payload: { symbol: "EURUSD" } });
+
+    expect(errored).toBe(false);
+    expect(received).toEqual([
+      { type: "subscribe.pricing", payload: { symbol: "EURUSD" } },
+    ]);
+  });
+
+  it("counts CONSECUTIVE drops: a successful take resets the run, so an occasional burst never reaches the close", () => {
+    const ws = new FakeWs();
+    const onFlood = vi.fn();
+    let clock = 0;
+    const socket = toSocket(ws as unknown as import("ws").WebSocket, {
+      bucket: createTokenBucket(1, 1_000),
+      dropsBeforeClose: 3,
+      now: (): number => {
+        return clock;
+      },
+      onFlood,
+    });
+    socket.messages$.subscribe();
+
+    // Three rounds of: one delivered frame, then two dropped (bucket of 1,
+    // refilled over 1 s). Six drops in total, never three in a row.
+    for (let round = 0; round < 3; round += 1) {
+      ws.receive({ type: "ping", payload: round });
+      ws.receive({ type: "ping", payload: round });
+      ws.receive({ type: "ping", payload: round });
+      clock += 1_000;
+    }
+
+    expect(ws.closedWith).toBeUndefined();
+    expect(onFlood).not.toHaveBeenCalled();
+  });
+
   it("drops frames once the bucket is empty, closes with 1008 after dropsBeforeClose drops, and reports the flood once (S8)", () => {
     const ws = new FakeWs();
     const onFlood = vi.fn();

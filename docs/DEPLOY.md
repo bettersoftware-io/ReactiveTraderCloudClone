@@ -128,7 +128,7 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
   long-lived) — a flood becomes refused connections, not an out-of-memory
   crash; the reconnecting `WsAdapter` backs off and retries. Below that the
   app itself says no: 200 live sockets per process and 8 per client IP (`503`
-  on the upgrade), a 64 KiB frame cap (`1009`), a per-socket message budget
+  on the upgrade), a 256 KiB frame cap (`1009`), a per-socket message budget
   (`1008` after 100 dropped frames), a 4 KiB `/login` body (`413`), 10 login
   attempts a minute, and an in-memory ban list — 10 weighted strikes in 10
   minutes earn a 15-minute `429 banned`; a redeploy clears it. Every number

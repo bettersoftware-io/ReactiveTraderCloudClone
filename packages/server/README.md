@@ -88,13 +88,13 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 
 | What | Constant | Default |
 |---|---|---|
-| Largest WebSocket frame (`ws` closes that socket with 1009) | `WS_MAX_PAYLOAD_BYTES` | 64 KiB |
+| Largest WebSocket frame, in bytes (`ws` closes that socket with 1009) — sized for a full Jarvis turn in a 3-byte script | `WS_MAX_PAYLOAD_BYTES` | 256 KiB |
 | `jarvis.chat` message text | `JARVIS_WIRE_TEXT_MAX` (local to `src/effects/jarvis.effects.ts`, beside the history caps) | 4 000 chars |
 | Live `stream()` inner streams per effect per connection | `@rtc/ws-effects` `StreamOptions.maxActive` | 64 |
 | Distinct `keyedStream()` keys per effect per connection | `@rtc/ws-effects` `KeyedStreamOptions.maxKeys` | 128 |
 | Shared blotter / equity order book / RFQ store | `@rtc/domain` simulator constructor arguments | 500 / 500 / 200, oldest evicted first |
 | `/login` body (bytes received, `413` past it) | `LOGIN_MAX_BODY_BYTES` | 4 KiB |
-| `/mcp` declared `Content-Length` (`413` past it) | `MCP_MAX_BODY_BYTES` | 64 KiB |
+| `/mcp` declared `Content-Length` (`413` past it; a chunked body is bounded only by the MCP SDK's own 4 MB limit, behind the Bearer check) | `MCP_MAX_BODY_BYTES` | 64 KiB |
 | Live sockets, whole process / per client IP (`503` upgrade past it) | `MAX_CONNECTIONS_TOTAL` / `MAX_CONNECTIONS_PER_IP` | 200 / 8 |
 | Inbound frames per socket: burst, refill, drops before the socket is closed (1008) | `INBOUND_BURST` / `INBOUND_REFILL_PER_SECOND` / `INBOUND_DROPS_BEFORE_CLOSE` | 100 / 25 per s / 100 |
 | `/login` attempts per IP per window; distinct IPs the table holds | `LOGIN_RATE_LIMIT_MAX` / `LOGIN_RATE_LIMIT_WINDOW_MS`; rate limiter `maxKeys` | 10 / 60 s; 10 000 |
