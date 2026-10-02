@@ -99,6 +99,11 @@ function seedTrade(spec: SeedSpec, baseMs: number): Trade {
   };
 }
 
+/** S9 — the blotter is a shared, process-lifetime store fed by every
+ * connection's trades. Bounded so a scripted client cannot grow it (and the
+ * snapshot every blotter subscriber receives) without limit. */
+const DEFAULT_MAX_TRADES = 500;
+
 /**
  * Mock trade store that accumulates trades from the execution engine.
  * In mock mode, the blotter does NOT subscribe to a BlotterService —
@@ -117,10 +122,13 @@ export class TradeStoreSimulator implements BlotterPort {
    * blotter re-dates itself every calendar day otherwise, silently, because
    * every other field of a seed trade is a literal and only these two are
    * derived from the clock.
+   * @param maxTrades S9 cap on the store; the oldest trade (seeds included)
+   * is evicted first once it is exceeded.
    */
   constructor(
     executionEngine: ExecutionSimulator,
     seedBaseMs: number = Date.now(),
+    private readonly maxTrades: number = DEFAULT_MAX_TRADES,
   ) {
     for (const spec of [...SEED_TRADES].sort((a, b) => {
       return a.tradeId - b.tradeId;
@@ -130,6 +138,7 @@ export class TradeStoreSimulator implements BlotterPort {
 
     executionEngine.onTrade((trade) => {
       this.trades.set(trade.tradeId, trade);
+      this.evictOldest();
       this.snapshots$.next(this.snapshot());
     });
   }
@@ -143,5 +152,17 @@ export class TradeStoreSimulator implements BlotterPort {
   private snapshot(): readonly Trade[] {
     // Reverse insertion order (newest first)
     return [...this.trades.values()].reverse();
+  }
+
+  private evictOldest(): void {
+    while (this.trades.size > this.maxTrades) {
+      const oldest = this.trades.keys().next();
+
+      if (oldest.done) {
+        return;
+      }
+
+      this.trades.delete(oldest.value);
+    }
   }
 }

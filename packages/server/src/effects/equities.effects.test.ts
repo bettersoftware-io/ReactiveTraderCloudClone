@@ -441,6 +441,137 @@ describe("equities effects", () => {
     ]);
     expect(place).toHaveBeenCalledTimes(2);
   });
+
+  it("nacks a malformed PLACE_ORDER without touching the simulator and still serves the next valid one (S11)", () => {
+    const order = {
+      id: "o3",
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 1,
+      status: "filled",
+      filledQty: 1,
+      createdAt: 3,
+    };
+
+    const ctx = {
+      orders: {
+        place: vi.fn(() => {
+          return of(order);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.PLACE_ORDER,
+      payload: { symbol: "AAPL", side: "hold", type: "market", qty: 1 },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.PLACE_ORDER,
+      payload: { symbol: "AAPL", side: "buy", type: "market", qty: 1 },
+      correlationId: "ok",
+    });
+
+    // The malformed frame yields a nack only — no ack and no ORDER_LIFECYCLE.
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.PLACE_ORDER_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.PLACE_ORDER_RESPONSE,
+        payload: { type: "ack", payload: { orderId: "o3" } },
+        correlationId: "ok",
+      },
+      { type: SERVER_MSG.ORDER_LIFECYCLE, payload: order },
+    ]);
+    expect(ctx.orders.place).toHaveBeenCalledTimes(1);
+    expect(ctx.orders.place).toHaveBeenCalledWith({
+      symbol: "AAPL",
+      side: "buy",
+      type: "market",
+      qty: 1,
+    });
+  });
+
+  it("nacks a GET_CANDLE_HISTORY page over the cap and still acks the next valid one (S11)", () => {
+    const candle = {
+      time: -1,
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100.5,
+      volume: 1_200_000,
+    };
+
+    const ctx = {
+      marketData: {
+        candleHistory: vi.fn(() => {
+          return of([candle]);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.GET_CANDLE_HISTORY,
+      payload: { symbol: "AAPL", timeframe: "1D", beforeTime: 0, count: 5_000 },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.GET_CANDLE_HISTORY,
+      payload: { symbol: "AAPL", timeframe: "1D", beforeTime: 0, count: 300 },
+      correlationId: "ok",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.CANDLE_HISTORY_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.CANDLE_HISTORY_RESPONSE,
+        payload: { type: "ack", payload: [candle] },
+        correlationId: "ok",
+      },
+    ]);
+    expect(ctx.marketData.candleHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a SUBSCRIBE_EQ_QUOTES frame without a valid symbol and keeps the effect alive for the next one (S11)", () => {
+    const quote = {
+      symbol: "AAPL",
+      bid: 100,
+      ask: 100.1,
+      last: 100.05,
+      changePct: 0.5,
+      timestamp: 1,
+    };
+
+    const ctx = {
+      marketData: {
+        quotes: vi.fn(() => {
+          return of(quote);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, payload: {} });
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, payload: null });
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_EQ_QUOTES,
+      payload: { symbol: "AAPL" },
+    });
+
+    expect(ctx.marketData.quotes).toHaveBeenCalledTimes(1);
+    expect(ctx.marketData.quotes).toHaveBeenCalledWith("AAPL");
+    expect(sent).toEqual([{ type: SERVER_MSG.EQ_QUOTE, payload: quote }]);
+  });
 });
 
 interface Harness {

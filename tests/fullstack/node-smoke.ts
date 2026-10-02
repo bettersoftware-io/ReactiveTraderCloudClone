@@ -150,6 +150,43 @@ async function runChecks(): Promise<void> {
   }
 }
 
+/**
+ * S1/S14 witness: a frame above `WS_MAX_PAYLOAD_BYTES` closes ONLY that
+ * socket (code 1009) and the server keeps serving — proven by a fresh
+ * `/health` round-trip afterwards. Before B1 the oversized frame was
+ * accepted (100 MiB default) and, once capped, would have crashed the
+ * process through the unhandled `error` event.
+ */
+async function runOversizedFrameSmoke(): Promise<void> {
+  const httpBase = `http://${HOST}:${PORT}`;
+  const login = await loginForToken(httpBase);
+  const { WebSocket } = await import("ws");
+  const raw = new WebSocket(`ws://${HOST}:${PORT}/?access=${login.token}`);
+
+  const closeCode = await new Promise<number>((resolve, reject) => {
+    const guard = setTimeout(() => {
+      reject(new Error("oversized frame: socket was not closed"));
+    }, FIRST_VALUE_TIMEOUT_MS);
+    raw.on("open", () => {
+      raw.send("x".repeat(70 * 1024));
+    });
+    raw.on("close", (code: number) => {
+      clearTimeout(guard);
+      resolve(code);
+    });
+    raw.on("error", () => {
+      // The server-side close races a client-side error on some platforms;
+      // the close code is what we assert on.
+    });
+  });
+
+  assert(closeCode === 1009, `oversized frame close code (got ${closeCode})`);
+  await waitForHttp(`${httpBase}/health`, 5_000);
+  console.log(
+    "  ✓ limits: 70 KiB frame closed with 1009, server still healthy",
+  );
+}
+
 // ── Jarvis gate witness ──────────────────────────────────────────
 //
 // Drives the SAME real client adapter stack as `runChecks` (WsAdapter +
@@ -274,6 +311,7 @@ let failed = false;
 try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
+  await runOversizedFrameSmoke();
   await runGateSmoke();
   console.log("full-stack smoke (node socket): PASS");
 } catch (err) {

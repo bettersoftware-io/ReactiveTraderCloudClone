@@ -1,6 +1,8 @@
 import { of, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import { Direction } from "@rtc/domain";
+import type { CreateRfqRequestDto } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -314,7 +316,90 @@ describe("credit effects", () => {
     ]);
     expect(ctx.workflow.accept).toHaveBeenCalledWith(3);
   });
+
+  it("nacks a malformed CREATE_RFQ and still acks the next valid one (S11)", () => {
+    const ctx = {
+      workflow: {
+        createRfq: vi.fn(() => {
+          return of(7);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.CREATE_RFQ,
+      payload: { dealerIds: "all" },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.CREATE_RFQ,
+      payload: createRfqRequest(),
+      correlationId: "ok",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.CREATE_RFQ_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.CREATE_RFQ_RESPONSE,
+        payload: { type: "ack", payload: 7 },
+        correlationId: "ok",
+      },
+    ]);
+    // The workflow simulator never saw the malformed request.
+    expect(ctx.workflow.createRfq).toHaveBeenCalledTimes(1);
+  });
+
+  it("nacks a QUOTE without a numeric price and still acks the next valid one (S11)", () => {
+    const ctx = {
+      workflow: {
+        quote: vi.fn(() => {
+          return of(undefined);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.QUOTE,
+      payload: { quoteId: 3, price: "101" },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.QUOTE,
+      payload: { quoteId: 3, price: 101 },
+      correlationId: "ok",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.QUOTE_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.QUOTE_RESPONSE,
+        payload: { type: "ack" },
+        correlationId: "ok",
+      },
+    ]);
+    expect(ctx.workflow.quote).toHaveBeenCalledTimes(1);
+  });
 });
+
+function createRfqRequest(): CreateRfqRequestDto {
+  return {
+    instrumentId: 0,
+    dealerIds: [0, 1],
+    quantity: 1_000_000,
+    direction: Direction.Buy,
+    expirySecs: 120,
+  };
+}
 
 interface TypedPayload {
   readonly type: string;
