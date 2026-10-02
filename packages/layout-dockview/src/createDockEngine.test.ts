@@ -7671,6 +7671,11 @@ describe("attached floats — the cluster model and the width rule", () => {
     ).mockReturnValue(createRect(800, 100, 300, 300));
 
     pressHeadOf(api, "fx-blotter", { altKey: false });
+    // The move engages the snap on the cluster's right edge; the release
+    // attaches from that engagement.
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 900, clientY: 150 }),
+    );
     window.dispatchEvent(new PointerEvent("pointerup", { button: 0 }));
 
     expect(floatMembersInOrderOf(api, "fx-analytics")).toEqual([
@@ -7701,8 +7706,39 @@ describe("attached floats — the cluster model and the width rule", () => {
 
     pressHeadOf(api, "fx-blotter", { altKey: false });
     window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 500, clientY: 150 }),
+    );
+    window.dispatchEvent(
       new PointerEvent("pointerup", { button: 0, shiftKey: true }),
     );
+
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    engine.dispose();
+  });
+
+  // A click to focus a float that already sits flush — the leaver of an
+  // Option detach does, against the window it left — engaged no snap, so it
+  // must not attach: the release decides from the drag, not from geometry.
+  it("a press-and-release with no pointermove never attaches", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-blotter", 450, 100, 300, 300);
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 350, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(450, 100, 300, 300));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    window.dispatchEvent(new PointerEvent("pointerup", { button: 0 }));
 
     expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
     engine.dispose();
@@ -7711,32 +7747,44 @@ describe("attached floats — the cluster model and the width rule", () => {
   // dockview's drag loop reads the dragged box and the sibling boxes from
   // `getBoundingClientRect`, so stubbed rects drive the snap hook in jsdom:
   // the first move proposes exactly the dragged window's own rect.
+  // The dock sits at (10, 20) in the viewport, its float host filling it, so
+  // the cue's fixed position must add that origin to the container-px line.
   it("shows the attach cue on the target's edge while a lone float is engaged on it", () => {
-    const engine = createDockEngine({
-      ...createRailBase(),
-      container: sizedContainer(1440, 900),
-    });
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createRailBase(), container });
     const api = lastDockviewApi();
+    const floatHost = container.querySelector(".dv-floating-overlay-host");
 
+    if (floatHost === null) {
+      throw new Error("dockview mounted no floating overlay host");
+    }
+
+    vi.spyOn(container, "getBoundingClientRect").mockReturnValue(
+      createRect(10, 20, 1440, 900),
+    );
+    vi.spyOn(floatHost, "getBoundingClientRect").mockReturnValue(
+      createRect(10, 20, 1440, 900),
+    );
     floatAt(api, "fx-analytics", 100, 100, 350, 300);
     floatAt(api, "fx-blotter", 100, 405, 350, 200);
     vi.spyOn(
       floatBoxElementOf(api, "fx-analytics"),
       "getBoundingClientRect",
-    ).mockReturnValue(createRect(100, 100, 350, 300));
+    ).mockReturnValue(createRect(110, 120, 350, 300));
     vi.spyOn(
       floatBoxElementOf(api, "fx-blotter"),
       "getBoundingClientRect",
-    ).mockReturnValue(createRect(100, 405, 350, 200));
+    ).mockReturnValue(createRect(110, 425, 350, 200));
 
     pressHeadOf(api, "fx-blotter", { altKey: false });
     window.dispatchEvent(
-      new PointerEvent("pointermove", { clientX: 200, clientY: 450 }),
+      new PointerEvent("pointermove", { clientX: 210, clientY: 470 }),
     );
 
     const cue = document.querySelector<HTMLElement>(".rtc-dock-attach-preview");
     expect(cue?.dataset.side).toBe("bottom");
-    expect(cue?.style.top).toBe("398px");
+    expect(cue?.style.left).toBe("110px");
+    expect(cue?.style.top).toBe("418px");
     window.dispatchEvent(new Event("pointercancel"));
     expect(document.querySelector(".rtc-dock-attach-preview")).toBeNull();
     engine.dispose();

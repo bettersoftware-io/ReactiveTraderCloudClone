@@ -33,7 +33,6 @@ import {
   type AttachSide,
   attachedWindowFor,
   type Box,
-  flushSideOf,
   type SnapEngagement,
   shouldAttachOnRelease,
   snapToSiblings,
@@ -3508,6 +3507,14 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let lastModifiers: DragModifierState = { altKey: false, shiftKey: false };
   /** The accent line along the edge a release would attach on (spec §3.4). */
   let attachPreview: HTMLElement | null = null;
+  /** Whether the window a head press is moving holds exactly one group —
+   * fixed at the press (an Option detach happens before the move starts),
+   * so no frame of the drag has to read the model for it. */
+  let movingFloatLone = false;
+  /** {@link refusesAttachAt}'s last answer, keyed by the engaged snapshot
+   * box and side — dockview's sibling snapshot is fixed for the drag, so a
+   * steady engagement is answered without re-reading the model. */
+  let attachRefusal: AttachRefusal | null = null;
 
   /** Moves a float by its head: a plain press anywhere on a floating group's
    * head that is not one of its own controls becomes a press on the group's
@@ -3569,8 +3576,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // Option on a member's head: pull it out first, then move the window
       // it is in afterwards — its own void container is dockview's handle
       // for that window either way (see `isolateMember`).
-      detachPanel(panelId);
-      detachedThisDrag = true;
+      detachedThisDrag = detachPanel(panelId);
     } else if (attached) {
       // A plain press anywhere on a cluster moves the whole window; dockview
       // wired that drag to the window's ANCHOR group's void container only.
@@ -3583,6 +3589,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     event.stopPropagation();
     movingFloatFromHead = true;
     floatBeingMoved = group;
+    movingFloatLone = !attached || detachedThisDrag;
     lastModifiers = { altKey: event.altKey, shiftKey: event.shiftKey };
     moveHandle.dispatchEvent(
       new PointerEvent("pointerdown", {
@@ -3605,6 +3612,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     floatBeingMoved = undefined;
     detachedThisDrag = false;
     snapEngaged = null;
+    movingFloatLone = false;
+    attachRefusal = null;
     clearFloatDockPreview();
     clearAttachPreview();
   }
@@ -3748,15 +3757,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * TARGET's side of the shared edge, so it stays put while the float
    * moves. */
   function showAttachPreview(): void {
-    const moving = floatBeingMoved;
     const engaged = snapEngaged;
-    const lone =
-      moving !== undefined &&
-      (clusterOf(moving.panels[0]?.id ?? "")?.memberIds.length ?? 0) === 1;
 
     if (
       engaged === null ||
-      !lone ||
+      floatBeingMoved === undefined ||
+      !movingFloatLone ||
       detachedThisDrag ||
       lastModifiers.altKey ||
       lastModifiers.shiftKey ||
@@ -3795,55 +3801,92 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   /** True when a release on `engagement` would be refused, so the cue must
    * not promise it: the engaged box names no floating window now, or that
    * window is a cluster and the side crosses its split (`attachPanel`
-   * refuses a cross-axis attach). `engagement.other` is dockview's
-   * drag-start snapshot of a window's box, matched to a live window by
-   * geometry. */
+   * refuses a cross-axis attach). Memoised for the drag on the engaged
+   * snapshot box and side (see {@link attachRefusal}). */
   function refusesAttachAt(engagement: SnapEngagement): boolean {
-    const target = groupsAnywhere(api).find((group) => {
+    if (
+      attachRefusal !== null &&
+      attachRefusal.other === engagement.other &&
+      attachRefusal.side === engagement.side
+    ) {
+      return attachRefusal.refused;
+    }
+
+    const memberId = engagedWindowMembersOf(engagement)[0]?.panels[0]?.id;
+    const refused =
+      memberId === undefined ||
+      crossesClusterAxis(
+        engagement.side,
+        clusterOf(memberId)?.orientation ?? null,
+      );
+
+    attachRefusal = {
+      other: engagement.other,
+      side: engagement.side,
+      refused,
+    };
+
+    return refused;
+  }
+
+  /** The groups of the floating window `engagement` names — dockview's
+   * drag-start snapshot of a sibling window's box, matched to a live window
+   * by geometry (the target does not move during the drag). Empty when no
+   * window matches. The window being moved is never one of them. */
+  function engagedWindowMembersOf(
+    engagement: SnapEngagement,
+  ): readonly DockviewGroupPanel[] {
+    const movingWindow = floatBeingMoved?.element.closest(FLOAT_BOX_SELECTOR);
+
+    return groupsAnywhere(api).filter((group) => {
       return (
         group.api.location.type === "floating" &&
+        group.element.closest(FLOAT_BOX_SELECTOR) !== movingWindow &&
         sameWindowBox(floatWindowBoxOf(group), engagement.other)
       );
     });
-    const memberId = target?.panels[0]?.id;
-
-    if (memberId === undefined) {
-      return true;
-    }
-
-    return crossesClusterAxis(
-      engagement.side,
-      clusterOf(memberId)?.orientation ?? null,
-    );
   }
 
   /** Keeps the cue in step with the modifiers mid-drag: pressing Option or
-   * Shift during a head move hides it, releasing them brings it back. */
+   * Shift during a head move hides it, releasing them brings it back. Only
+   * a CHANGE redraws — dockview's own hook redraws on every frame. */
   function trackDragModifiers(event: Event): void {
-    if (event instanceof PointerEvent && floatBeingMoved !== undefined) {
-      lastModifiers = { altKey: event.altKey, shiftKey: event.shiftKey };
-      showAttachPreview();
+    if (
+      !(event instanceof PointerEvent) ||
+      floatBeingMoved === undefined ||
+      (event.altKey === lastModifiers.altKey &&
+        event.shiftKey === lastModifiers.shiftKey)
+    ) {
+      return;
     }
+
+    lastModifiers = { altKey: event.altKey, shiftKey: event.shiftKey };
+    showAttachPreview();
   }
 
-  /** Spec §3.2: a lone float released flush against another float attaches
-   * on that side. Runs in the capture phase on `window`, like the dock-home
-   * release, and reads the rects as they are at release — dockview has
-   * already moved the box on each pointermove. */
+  /** Spec §3.2: a lone float released while snapped flush against another
+   * float attaches on that side. Decided from the drag's ENGAGEMENT, never
+   * from release geometry alone: a press and release with no move between
+   * them (a click to focus a float that already sits flush — the leaver of
+   * an Option detach does) engaged nothing and attaches nothing, and the
+   * release always agrees with the cue. Runs in the capture phase on
+   * `window`, like the dock-home release. */
   function attachFloatOnRelease(event: Event): void {
     const moving = floatBeingMoved;
+    const engaged = snapEngaged;
 
-    if (moving === undefined || !(event instanceof PointerEvent)) {
+    if (
+      moving === undefined ||
+      !(event instanceof PointerEvent) ||
+      engaged === null
+    ) {
       return;
     }
 
     const panelId = moving.panels[0]?.id;
-    const lone =
-      panelId !== undefined &&
-      (clusterOf(panelId)?.memberIds.length ?? 0) === 1;
-    const target = releaseTargetOf(moving);
+    const target = releaseTargetOf(engaged);
     const decision = {
-      lone,
+      lone: movingFloatLone,
       altKey: event.altKey,
       shiftKey: event.shiftKey,
       detachedThisDrag,
@@ -3859,35 +3902,15 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
-  /** The first other floating window `moving`'s window sits flush against,
-   * as the member a release attaches beside and the side — or null. */
-  function releaseTargetOf(moving: ElementHost): ReleaseTarget | null {
-    const mine = floatWindowBoxOf(moving);
-    const myWindow = moving.element.closest(FLOAT_BOX_SELECTOR);
-    const floating = groupsAnywhere(api).filter((group) => {
-      return group.api.location.type === "floating";
-    });
+  /** The member of the window `engagement` names that a release attaches
+   * beside, and the side — or null when no live window matches. */
+  function releaseTargetOf(engagement: SnapEngagement): ReleaseTarget | null {
+    const panelId = edgeMemberOf(
+      engagedWindowMembersOf(engagement),
+      engagement.side,
+    )?.panels[0]?.id;
 
-    for (const group of floating) {
-      const theirWindow = group.element.closest(FLOAT_BOX_SELECTOR);
-      const side =
-        theirWindow === null || theirWindow === myWindow
-          ? null
-          : flushSideOf(mine, floatWindowBoxOf(group));
-
-      if (side !== null) {
-        const members = floating.filter((member) => {
-          return member.element.closest(FLOAT_BOX_SELECTOR) === theirWindow;
-        });
-        const panelId = edgeMemberOf(members, side)?.panels[0]?.id;
-
-        if (panelId !== undefined) {
-          return { panelId, side };
-        }
-      }
-    }
-
-    return null;
+    return panelId === undefined ? null : { panelId, side: engagement.side };
   }
 
   /** The member of one window whose own leaf touches the window's `side`
@@ -5150,6 +5173,14 @@ interface DragModifierState {
 interface FloatDragPosition {
   readonly top: number;
   readonly left: number;
+}
+
+/** {@link refusesAttachAt}'s memo: its answer for one engaged snapshot box
+ * (by identity) and side. */
+interface AttachRefusal {
+  readonly other: Box;
+  readonly side: AttachSide;
+  readonly refused: boolean;
 }
 
 /** The member a release attaches beside, and on which side of it. */

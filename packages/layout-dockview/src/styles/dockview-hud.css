@@ -407,16 +407,6 @@
   background: var(--border, #334155);
 }
 
-/* The sash INSIDE a floating window (an attached cluster's seam) wears the
- * grid sash's grip bar, so two attached panels read as one window split in
- * two, not as two cards touching. dockview reuses `.dv-split-view-container`
- * inside the float, so the grid rules already size it; this only
- * paints the grip. Placed before the hover rule below, which must still win
- * on equal specificity. */
-.dockview-theme-rtc .dv-resize-container .dv-sash::after {
-  background: var(--border, #334155);
-}
-
 .dockview-theme-rtc
   .dv-split-view-container.dv-horizontal
   > .dv-sash-container
