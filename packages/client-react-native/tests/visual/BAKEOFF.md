@@ -59,10 +59,10 @@ then decide. Until then all three stay on the table and nothing is retired.
 | Caught blatant paint bug | ✅ 67.92% | ✅ 67.92% | — |
 | Android-portable | ❌ Apple-only | ✅ cross-platform | ❌ (owl is iOS/Android but dead here) |
 | Device-pin coupling | **high** (re-measure tap px per pin) | low (a11y ids are pin-agnostic) | — |
-| Goldens committed | **18** (all scenarios) | **3** (the spike's sample) | 0 |
-| Runner pins the device | ✅ `RTC_VISUAL_UDID` (default `booted`) | ❌ **none** — Maestro picks | — |
+| Goldens committed | **25** (all scenarios) | **3** (the spike's sample; re-pinned 2026-10-02) | 0 |
+| Runner pins the device | ✅ `RTC_VISUAL_UDID` (default: the single booted sim) | ✅ **since 2026-10-02** — same variable, passed as `maestro --udid` | — |
 | Runnable on this Mac today | ✅ | ✅ **since 2026-08-08** (openjdk@21) | ❌ |
-| Dev-menu gear hidden | ✅ since 2026-08-05 | ❌ still in all 3 goldens | — |
+| Dev-menu gear hidden | ✅ since 2026-08-05 | ✅ **since 2026-10-02** (3 goldens re-pinned gear-free) | — |
 
 ## simctl — `xcrun simctl` + `idb`
 
@@ -99,7 +99,24 @@ regeneration when `SCENARIO_IDS` changes.
 > deep-link, then `visual-ready`. Maestro then captures + self-reproduces at
 > 0.03%.
 
-### Trap: the Maestro runner pins no device
+### Trap: the Maestro runner pins no device — CLOSED 2026-10-02
+
+**Closed.** `maestro/run.ts` now resolves the UDID exactly as the simctl runner
+does (`RTC_VISUAL_UDID`, else the single booted simulator via the shared
+`shared/bootedUdid.ts`, refusing to guess between two), passes it as
+`maestro --udid`, and brackets the run with `hideDevMenuFab` /
+`restoreDevMenuFab`. What follows is the original analysis, kept for the record.
+
+**What closing it showed.** With the gear gone, Maestro's 25 shots were diffed
+against the simctl goldens with the tier's own comparator: **20 of 25 match at
+0 px**. The other five differ only by the device mask — Maestro's own
+screenshot draws neither the Dynamic Island nor the black rounded corners that
+simctl's pinned `--mask=black` does — which reads 69,520 px on the one
+light-background scenario (`shell/connection-banner`) and 36–1,665 px on four
+boot scenes. So the two tiers, which share nothing but the harness, agree on
+what the app renders. Before the gear was hidden every scenario was off by a
+near-constant ~12,670 px: the gear bubble itself. That is also why each tier
+keeps its own golden set: the capture conventions differ, the content does not.
 
 `maestro/run.ts` drives the device with exactly one call —
 `exec("maestro", ["test", FLOWS_DIR, "--format", "junit"])` — and Maestro
@@ -322,9 +339,8 @@ regardless of how that comparison lands.
 In order. The first is cheap and should not wait; the third is the one gated on
 visual fidelity settling.
 
-1. **Pin Maestro's device** — resolve the UDID and pass it to `maestro test`.
-   Closes the wrong-device hazard and hands the runner the identifier
-   `hideDevMenuFab` needs.
+1. ~~**Pin Maestro's device**~~ — **DONE 2026-10-02**: the runner resolves the
+   UDID, passes `maestro --udid`, and hides the dev-menu gear around the run.
 2. ~~**Install a JDK**~~ — **DONE 2026-08-08**, `openjdk@21`. See the floor-vs-pin
    section above for why 21 and not the newest.
 3. **Capture every tier at full scenario coverage, then judge** — once the
