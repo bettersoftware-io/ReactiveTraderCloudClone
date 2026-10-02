@@ -125,8 +125,9 @@ const BREATHING = Easing.inOut(Easing.cubic);
  *
  * Expressed as `opacity` on the element rather than an alpha baked into a
  * colour string, because a theme colour is not guaranteed to be a hex triple —
- * the holo skin stores several tokens as `rgba(...)` already, and the
- * hex-parsing `withAlpha` in `PnlChart` would silently mangle those.
+ * the holo skin stores several tokens as `rgba(...)` already. `opacity` also
+ * fades the ring's stroke and fill together, which a per-colour `withAlpha`
+ * would not.
  */
 const FILL_ALPHA = 0.11;
 const RING_STROKE_WIDTH = 1;

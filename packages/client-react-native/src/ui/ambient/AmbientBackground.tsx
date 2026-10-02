@@ -26,6 +26,7 @@ import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 /**
  * Ambient background: a full-bleed Skia canvas mounted BEHIND the app's
@@ -316,7 +317,7 @@ function AuroraWashBlob({
         <RadialGradient
           c={vec(0, 0)}
           r={WASH_GRADIENT_REACH}
-          colors={[wash.color, `${wash.color}00`]}
+          colors={[wash.color, withAlpha(wash.color, 0)]}
           positions={[0, 0.62]}
         />
       </Circle>
@@ -327,8 +328,8 @@ function AuroraWashBlob({
 /** The design's two washes (dc.html:57-58), percentage geometry resolved to
  * canvas px: `accentPrimary` as a 130%×60% ellipse whose centre sits 12% down
  * (`left:-15%;top:-18%`), `accent2` as a 120%×55% ellipse centred 5.5% below
- * the bottom edge (`left:-10%;bottom:-22%`). Both accent tokens are 6-digit
- * hex on every skin, so the transparent stop is `colour + "00"`. */
+ * the bottom edge (`left:-10%;bottom:-22%`). The transparent stop is the
+ * wash's own colour at alpha 0, so the fade does not pass through grey. */
 function auroraWashSpecs(
   width: number,
   height: number,

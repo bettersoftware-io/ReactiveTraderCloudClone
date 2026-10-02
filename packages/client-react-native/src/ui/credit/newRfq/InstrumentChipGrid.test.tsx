@@ -28,6 +28,19 @@ test("renders every instrument when there are more than six", async () => {
   expect(page.matchingCount(/^instrument-chip-/)).toBe(9);
 });
 
+test("labels a chip with the bond's full name, not its bare ticker", async () => {
+  await page.mount(instruments(1), null, noop);
+
+  expect(page.hasText("Instrument 1")).toBe(true);
+  expect(page.hasText("INST1")).toBe(false);
+});
+
+test("falls back to the ticker for an instrument with no name", async () => {
+  await page.mount([{ ...instruments(1)[0], name: "" }], null, noop);
+
+  expect(page.hasText("INST1")).toBe(true);
+});
+
 test("marks the selected chip and no other", async () => {
   await page.mount(instruments(3), 2, noop);
 

@@ -1,5 +1,6 @@
 // packages/client-react-native/tests/pages/EquitiesScreenPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
+import { useState } from "react";
 
 import type { OrderTicketState } from "@rtc/client-core";
 import type { Candle, DepthBook, EquityInstrument } from "@rtc/domain";
@@ -14,7 +15,7 @@ const editing: OrderTicketState = {
   error: null,
 };
 
-function vm(): ViewModel {
+function vm(initialSymbol: string, selected: string[]): ViewModel {
   return {
     useWatchlist: (): readonly EquityInstrument[] => {
       return [{ symbol: "AAPL", name: "Apple", exchange: "NASDAQ" }];
@@ -40,6 +41,18 @@ function vm(): ViewModel {
     useEqWatchlistSort: () => {
       return { sort: "chg", setSort: () => {}, cycle: () => {} };
     },
+    // Stateful, like the real singleton: the screen must re-render on the
+    // workspace's own selection, not on anything it keeps itself.
+    useEqWorkspace: () => {
+      const [sel, setSel] = useState(initialSymbol);
+      return {
+        state: { sel },
+        select: (symbol: string): void => {
+          selected.push(symbol);
+          setSel(symbol);
+        },
+      };
+    },
     useOrderTicket: () => {
       return {
         state: editing,
@@ -55,7 +68,11 @@ function vm(): ViewModel {
 }
 
 export interface EquitiesScreenPage {
-  mount(): Promise<void>;
+  /** `initialSymbol` is the workspace's selection at mount; `""` is its
+   * "nothing selected yet". */
+  mount(initialSymbol?: string): Promise<void>;
+  /** Every symbol the screen asked the workspace to select, in order. */
+  selectedSymbols(): readonly string[];
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   press(testId: string): Promise<void>;
@@ -65,13 +82,19 @@ export interface EquitiesScreenPage {
  * own `jest.mock` of `useShellMotionEnabled`, hoisted above every import in
  * the spec file. */
 export function equitiesScreenPage(): EquitiesScreenPage {
+  let selected: string[] = [];
+
   return {
-    async mount(): Promise<void> {
+    async mount(initialSymbol = ""): Promise<void> {
+      selected = [];
       await renderWithTheme(
-        <ViewModelProvider viewModel={vm()}>
+        <ViewModelProvider viewModel={vm(initialSymbol, selected)}>
           <EquitiesScreen />
         </ViewModelProvider>,
       );
+    },
+    selectedSymbols(): readonly string[] {
+      return selected;
     },
     async unmountAll(): Promise<void> {
       await cleanup();

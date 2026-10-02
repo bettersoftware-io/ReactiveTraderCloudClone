@@ -22,6 +22,7 @@ import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 import { weightedFont } from "#/ui/theme/weightedFont";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 /** Equity order ticket in the mobile-v1 shape — `SELL` / `BUY` outlined
  * toggles with a boxed `MKT | LMT` pair, quantity preset chips, a `LIMIT PX`
@@ -326,10 +327,9 @@ interface OrderTicketStyles {
 }
 
 /** The prototype tints an active side toggle at 12% of its colour
- * (`color-mix(... 12%, transparent)`); the accent tokens are six-digit hex,
- * so the alpha byte is appended directly. */
-function tint12(hexColor: string): string {
-  return `${hexColor}1F`;
+ * (`color-mix(... 12%, transparent)`). */
+function tint12(color: string): string {
+  return withAlpha(color, 0.12);
 }
 
 function makeStyles(t: RnTheme): OrderTicketStyles {

@@ -12,15 +12,23 @@ test("starts on Markets", async () => {
   expect(page.exists("markets-view")).toBe(true);
 });
 
-test("Trade prompts until a symbol is chosen", async () => {
-  await page.mount();
+test("Trade prompts while the workspace has no selection yet", async () => {
+  await page.mount("");
   await page.press("equities-tab-trade");
   expect(page.exists("trade-empty")).toBe(true);
 });
 
-test("selecting a movers-board instrument jumps to Trade for that symbol", async () => {
-  await page.mount();
+test("Trade opens on the workspace's selected symbol", async () => {
+  await page.mount("AAPL");
+  await page.press("equities-tab-trade");
+  expect(page.exists("trade-empty")).toBe(false);
+  expect(page.exists("order-ticket")).toBe(true);
+});
+
+test("selecting a movers-board instrument selects it in the workspace and jumps to Trade", async () => {
+  await page.mount("");
   await page.press("eq-mover-AAPL");
+  expect(page.selectedSymbols()).toEqual(["AAPL"]);
   expect(page.exists("instrument-tab-AAPL")).toBe(true);
   expect(page.exists("order-ticket")).toBe(true);
 });

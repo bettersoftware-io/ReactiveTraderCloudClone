@@ -16,7 +16,12 @@ import { conflateWhen } from "./conflateWhen";
  * `quotes` subscription is ref-counted and released when the last row
  * unmounts; a remount repaints the retained window synchronously via an
  * outermost `startWith`. A never-mounted symbol has an empty window and so
- * emits nothing until its first quote. */
+ * emits nothing until its first quote.
+ *
+ * One window per symbol is kept for the presenter's lifetime and never
+ * evicted. That is bounded by the watchlist roster (each at most
+ * `EQUITY_PRICE_HISTORY_SIZE` quotes), exactly as the FX presenter is bounded
+ * by the currency-pair list. */
 export class EquityPriceHistoryPresenter
   implements EquityPriceHistoryPresenterApi
 {

@@ -6,7 +6,7 @@ import type { EquityQuote, MarketDataPort } from "@rtc/domain";
 import { createEquityPriceHistoryPresenter } from "#/presenters/equityPriceHistory";
 
 describe("createEquityPriceHistoryPresenter (async)", () => {
-  it("hands a resubscriber the retained window synchronously and keeps accumulating into the same window", () => {
+  it("releases the quote subscription with its last subscriber, then hands a resubscriber the retained window synchronously and keeps accumulating into it", () => {
     const { port, quotes } = createPort();
     const presenter = createEquityPriceHistoryPresenter(
       port,
@@ -18,6 +18,7 @@ describe("createEquityPriceHistoryPresenter (async)", () => {
     quotes.next(createQuote(1));
     quotes.next(createQuote(2));
     first.unsubscribe();
+    expect(quotes.observed).toBe(false);
 
     const windows: (readonly EquityQuote[])[] = [];
     const again = stream.subscribe((window) => {
