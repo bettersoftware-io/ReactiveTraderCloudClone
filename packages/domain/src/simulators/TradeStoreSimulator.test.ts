@@ -235,6 +235,45 @@ describe("TradeStoreSimulator", () => {
 
     sub.unsubscribe();
   });
+
+  it("keeps at most maxTrades, evicting the oldest first (S9)", async () => {
+    vi.useFakeTimers();
+    const engine = new ExecutionSimulator();
+    // Five seeds (1038..1042) + three executed (1043..1045) = eight; a cap of
+    // six evicts the two oldest seeds and nothing newer.
+    const store = new TradeStoreSimulator(engine, 0, 6);
+    const snapshots: (readonly Trade[])[] = [];
+
+    const sub = store.getTradeStream().subscribe((s) => {
+      return snapshots.push(s);
+    });
+
+    for (let i = 0; i < 3; i += 1) {
+      const tradePromise = firstValueFrom(
+        engine.executeTrade({
+          currencyPair: "EURUSD",
+          spotRate: 1.5,
+          direction: Direction.Buy,
+          notional: 1_000_000,
+          dealtCurrency: "EUR",
+        }),
+      );
+      await vi.advanceTimersByTimeAsync(NORMAL_MAX_DELAY_MS);
+      await tradePromise;
+    }
+
+    const latest = snapshots.at(-1) ?? [];
+    const ids = latest.map((t) => {
+      return t.tradeId;
+    });
+    expect(ids).toHaveLength(6);
+    expect(ids).not.toContain(1038);
+    expect(ids).not.toContain(1039);
+    // Newest first: the three live trades, then the surviving seeds.
+    expect(ids).toEqual([1045, 1044, 1043, 1042, 1041, 1040]);
+
+    sub.unsubscribe();
+  });
 });
 
 const NORMAL_MAX_DELAY_MS = 2_000;

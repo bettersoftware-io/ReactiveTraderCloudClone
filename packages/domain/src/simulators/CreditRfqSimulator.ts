@@ -18,6 +18,12 @@ const DEALER_RESPONSE_WINDOW_MS = 30_000;
 const PRICE_BASELINE = 100;
 const MAX_PRICE_CHANGE = 10;
 
+/** S9 — RFQs (and their quotes and expiry timers) are evicted oldest-first
+ * past this count. Each eviction removes the RFQ, every quote attached to
+ * it and its pending expiry timer, so the three maps and the timer set stay
+ * bounded together. */
+const DEFAULT_MAX_RFQS = 200;
+
 export class CreditRfqSimulator implements WorkflowPort {
   private nextRfqId = 240; // PROTO creditSeq (dc.html L784)
 
@@ -35,9 +41,24 @@ export class CreditRfqSimulator implements WorkflowPort {
 
   private readonly pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
-  constructor(dealers: readonly Dealer[]) {
+  /** rfqId → its expiry handle, so eviction can cancel exactly that timer.
+   * Entries remove themselves when the timer fires. */
+  private readonly expiryTimers = new Map<
+    number,
+    ReturnType<typeof setTimeout>
+  >();
+
+  /**
+   * @param maxRfqs S9 cap on the RFQ store; the oldest RFQ (seeds included)
+   * is evicted first — with its quotes and its expiry timer — once exceeded.
+   */
+  constructor(
+    dealers: readonly Dealer[],
+    private readonly maxRfqs: number = DEFAULT_MAX_RFQS,
+  ) {
     this.dealers = dealers;
     this.seedDemoState();
+    this.evictOldestRfqs();
   }
 
   /**
@@ -189,6 +210,8 @@ export class CreditRfqSimulator implements WorkflowPort {
       // to narrow Map.get's `T | undefined`.
       const rfqQuoteList: number[] = [];
       this.rfqQuotes.set(rfqId, rfqQuoteList);
+      // The new RFQ is the newest entry, so with any cap ≥ 1 it survives this.
+      this.evictOldestRfqs();
       this.events$.next({ type: "rfqCreated", payload: rfq });
 
       this.scheduleExpiry(rfqId, request.expirySecs);
@@ -232,16 +255,21 @@ export class CreditRfqSimulator implements WorkflowPort {
    * only ever bulk-cleared in `dispose()`), an unbounded memory growth that
    * scales with RFQ volume.
    */
-  private schedule(run: () => void, delayMs: number): void {
+  private schedule(
+    run: () => void,
+    delayMs: number,
+  ): ReturnType<typeof setTimeout> {
     const timeout = setTimeout(() => {
       this.pendingTimeouts.delete(timeout);
       run();
     }, delayMs);
     this.pendingTimeouts.add(timeout);
+    return timeout;
   }
 
   private scheduleExpiry(rfqId: number, expirySecs: number): void {
-    this.schedule(() => {
+    const handle = this.schedule(() => {
+      this.expiryTimers.delete(rfqId);
       const rfq = this.rfqs.get(rfqId);
 
       if (!rfq || rfq.state !== RfqState.Open) {
@@ -252,6 +280,7 @@ export class CreditRfqSimulator implements WorkflowPort {
       this.rfqs.set(rfqId, expired);
       this.events$.next({ type: "rfqClosed", payload: expired });
     }, expirySecs * 1000);
+    this.expiryTimers.set(rfqId, handle);
   }
 
   private scheduleDealerResponse(
@@ -417,11 +446,46 @@ export class CreditRfqSimulator implements WorkflowPort {
     });
   }
 
+  /** Test seam for the bounded-store witness: expiry timers still armed. */
+  expiryTimerCount(): number {
+    return this.expiryTimers.size;
+  }
+
   dispose(): void {
     for (const timeout of this.pendingTimeouts) {
       clearTimeout(timeout);
     }
 
     this.pendingTimeouts.clear();
+    this.expiryTimers.clear();
+  }
+
+  private evictOldestRfqs(): void {
+    while (this.rfqs.size > this.maxRfqs) {
+      const oldest = this.rfqs.keys().next();
+
+      if (oldest.done) {
+        return;
+      }
+
+      this.evictRfq(oldest.value);
+    }
+  }
+
+  private evictRfq(rfqId: number): void {
+    for (const quoteId of this.rfqQuotes.get(rfqId) ?? []) {
+      this.quotes.delete(quoteId);
+    }
+
+    this.rfqQuotes.delete(rfqId);
+    this.rfqs.delete(rfqId);
+
+    const timer = this.expiryTimers.get(rfqId);
+
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.pendingTimeouts.delete(timer);
+      this.expiryTimers.delete(rfqId);
+    }
   }
 }
