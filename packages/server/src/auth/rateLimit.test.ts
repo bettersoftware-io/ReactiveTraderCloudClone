@@ -21,4 +21,36 @@ describe("rateLimit", () => {
     expect(rl.hit("a", 0)).toBe(true);
     expect(rl.hit("b", 0)).toBe(true);
   });
+
+  it("evicts expired windows so the table does not grow without bound (S4)", () => {
+    const rl = createRateLimiter(1, 1_000, { maxKeys: 4 });
+
+    for (let i = 0; i < 4; i += 1) {
+      rl.hit(`ip-${i}`, 0);
+    }
+
+    expect(rl.size()).toBe(4);
+    rl.hit("ip-new", 5_000);
+    expect(rl.size()).toBe(1);
+  });
+
+  it("never exceeds maxKeys even when nothing has expired: the oldest window goes", () => {
+    const rl = createRateLimiter(1, 1_000, { maxKeys: 2 });
+    rl.hit("a", 0);
+    rl.hit("b", 100);
+    rl.hit("c", 200);
+
+    expect(rl.size()).toBe(2);
+    expect(rl.hit("a", 300)).toBe(true);
+  });
+
+  it("holds up to maxKeys distinct keys without evicting a live window", () => {
+    const rl = createRateLimiter(1, 1_000, { maxKeys: 2 });
+    rl.hit("a", 0);
+    rl.hit("b", 100);
+
+    expect(rl.size()).toBe(2);
+    expect(rl.hit("a", 200)).toBe(false);
+    expect(rl.hit("b", 200)).toBe(false);
+  });
 });

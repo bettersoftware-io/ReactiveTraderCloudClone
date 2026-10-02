@@ -1,6 +1,7 @@
 import { isLoginRequestDto, type LoginResponseDto } from "@rtc/shared";
 
 import type { AuthService } from "../auth/AuthService.js";
+import type { BanList } from "../auth/banList.js";
 import type { RateLimiter } from "../auth/rateLimit.js";
 
 const JSON_CORS_HEADERS: Record<string, string> = {
@@ -11,6 +12,7 @@ const JSON_CORS_HEADERS: Record<string, string> = {
 export interface LoginHandlerDeps {
   readonly auth: AuthService;
   readonly rateLimit: RateLimiter;
+  readonly banList: BanList;
   readonly now: () => number;
 }
 
@@ -20,25 +22,33 @@ export interface LoginHandlerResult {
   readonly headers?: Record<string, string>;
 }
 
-function jsonResult(
-  status: LoginHandlerResult["status"],
-  body: unknown,
-): LoginHandlerResult {
-  return { status, body: JSON.stringify(body), headers: JSON_CORS_HEADERS };
-}
-
 /**
- * Pure `/login` request handler: rate-limits by caller IP, validates the
- * request shape, then delegates credential checking to `AuthService`. No
- * real HTTP server is needed to test it — `index.ts` wires `node:http`
- * request/response objects to this function.
+ * Pure `/login` request handler, cheapest check first: the §9.2 ban list
+ * (a Map lookup — a banned caller never reaches JSON parsing, let alone the
+ * scrypt hash), then the per-IP rate limit, then the request shape, then
+ * `AuthService.login`. A rate-limit hit and a failed login each strike the
+ * caller. No real HTTP server is needed to test it — `index.ts` wires
+ * `node:http` request/response objects to this function.
  */
-export function authenticateLoginRequest(
+export async function authenticateLoginRequest(
   bodyText: string,
   ip: string,
   deps: LoginHandlerDeps,
-): LoginHandlerResult {
-  if (!deps.rateLimit.hit(ip, deps.now())) {
+): Promise<LoginHandlerResult> {
+  const now = deps.now();
+  const bannedUntil = deps.banList.bannedUntil(ip, now);
+
+  if (bannedUntil !== null) {
+    return jsonResult(
+      429,
+      { error: "banned" },
+      { "Retry-After": String(Math.ceil((bannedUntil - now) / 1_000)) },
+    );
+  }
+
+  if (!deps.rateLimit.hit(ip, now)) {
+    deps.banList.strike(ip, "login-rate-limited", now);
+
     return jsonResult(429, { error: "rate_limited" });
   }
 
@@ -54,16 +64,18 @@ export function authenticateLoginRequest(
     return jsonResult(400, { error: "invalid_request" });
   }
 
-  const result = deps.auth.login(parsed.username, parsed.password);
+  const result = await deps.auth.login(parsed.username, parsed.password);
 
   if (result === null) {
+    deps.banList.strike(ip, "login-failed", now);
+
     return jsonResult(401, { error: "invalid_credentials" });
   }
 
   const response: LoginResponseDto = {
     token: result.token,
     user: result.user,
-    exp: deps.now() + deps.auth.ttlMs,
+    exp: now + deps.auth.ttlMs,
   };
 
   return jsonResult(200, response);
@@ -86,8 +98,16 @@ export function authorizeUpgrade(
 /** Why an upgrade was rejected — surfaced so the server can log the difference
  * between a client that never authenticated (`no-token`, the pre-login case)
  * and one whose token failed verification (`invalid-token`, e.g. an expired
- * session). `no-url` is a malformed request with no URL at all. */
-export type UpgradeRejection = "no-url" | "no-token" | "invalid-token";
+ * session). `no-url` is a malformed request with no URL at all. The last three
+ * are the edge guards in front of the token check (`upgradeGate.ts`): a
+ * §9.2-banned IP, and the S8 total / per-IP live-socket caps. */
+export type UpgradeRejection =
+  | "no-url"
+  | "no-token"
+  | "invalid-token"
+  | "banned"
+  | "too-many-connections"
+  | "too-many-from-ip";
 
 export interface UpgradeDecision {
   readonly ok: boolean;
@@ -117,4 +137,16 @@ export function describeUpgrade(
   }
 
   return { ok: true };
+}
+
+function jsonResult(
+  status: LoginHandlerResult["status"],
+  body: unknown,
+  extraHeaders: Record<string, string> = {},
+): LoginHandlerResult {
+  return {
+    status,
+    body: JSON.stringify(body),
+    headers: { ...JSON_CORS_HEADERS, ...extraHeaders },
+  };
 }

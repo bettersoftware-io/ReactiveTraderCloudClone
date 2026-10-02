@@ -65,6 +65,7 @@ last column says.
 | `RTC_JARVIS_BUDGET_USD` | shell / Fly | Real-Claude spend budget per usage window in USD (default `1`); `off` disables the gate | `parseJarvisGateConfig` (`packages/server/src/services/jarvisGate.ts`) |
 | `RTC_JARVIS_BUDGET_SOFT_RATIO` | shell / Fly | Fraction of the budget (0–1, default `0.8`) at which the soft gate engages | `parseJarvisGateConfig` |
 | `RTC_JARVIS_FORCE_GATE` | shell / Fly | `soft` or `hard` forces that gate level regardless of spend (for rehearsal/testing) | `parseJarvisGateConfig` |
+| `RTC_TRUSTED_IP_HEADER` | shell / Fly | The request header that carries the real client address, lower-cased (default `fly-client-ip`, what Fly's proxy sets). Every per-caller limit — login rate limit, ban list, connection caps — keys on it; `X-Forwarded-For` is never read because its first hop is caller-supplied. Set to `cf-connecting-ip` once Cloudflare fronts the server (hardening spec §9.2) | `resolveTrustedIpHeader` (`packages/server/src/http/clientIp.ts`) |
 | `PORT` | shell / Fly | The server's listen port (default `4000`); for the Vite dev servers, the dev port (defaults `5173` React, `5473` Solid) | `packages/server/src/index.ts`; `packages/client-{react,solid}/vite.config.ts` |
 | `RTC_SOURCEMAPS` | Deploy workflow `include_sourcemaps` | `1` produces a debuggable client build: `@rtc/*` libs resolve from source and **inline** sourcemaps are emitted (a production build ships none) | `packages/client-{react,solid}/vite.config.ts` (`debugBuild`); declared in `turbo.json` `build.env` |
 

@@ -1,7 +1,8 @@
 import { firstValueFrom } from "rxjs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FakeWs } from "./FakeWs.testHelpers.js";
+import { createTokenBucket } from "./tokenBucket.js";
 import { toSocket } from "./toSocket.js";
 
 describe("toSocket", () => {
@@ -52,5 +53,58 @@ describe("toSocket", () => {
     expect(received).toEqual([
       { type: "subscribe.pricing", payload: { symbol: "EURUSD" } },
     ]);
+  });
+
+  it("drops frames once the bucket is empty, closes with 1008 after dropsBeforeClose drops, and reports the flood once (S8)", () => {
+    const ws = new FakeWs();
+    const onFlood = vi.fn();
+    const socket = toSocket(ws as unknown as import("ws").WebSocket, {
+      bucket: createTokenBucket(2, 0),
+      dropsBeforeClose: 3,
+      now: (): number => {
+        return 0;
+      },
+      onFlood,
+    });
+    const received: unknown[] = [];
+    socket.messages$.subscribe((msg: unknown) => {
+      received.push(msg);
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      ws.receive({ type: "ping", payload: i });
+    }
+
+    expect(received).toHaveLength(2);
+    expect(ws.closedWith).toEqual({
+      code: 1008,
+      reason: "message rate exceeded",
+    });
+    expect(onFlood).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps frames flowing when the bucket refills between them", () => {
+    const ws = new FakeWs();
+    let clock = 0;
+    const socket = toSocket(ws as unknown as import("ws").WebSocket, {
+      bucket: createTokenBucket(1, 1_000),
+      dropsBeforeClose: 1,
+      now: (): number => {
+        return clock;
+      },
+      onFlood: vi.fn(),
+    });
+    const received: unknown[] = [];
+    socket.messages$.subscribe((msg: unknown) => {
+      received.push(msg);
+    });
+
+    for (let i = 0; i < 3; i += 1) {
+      ws.receive({ type: "ping", payload: i });
+      clock += 10;
+    }
+
+    expect(received).toHaveLength(3);
+    expect(ws.closedWith).toBeUndefined();
   });
 });
