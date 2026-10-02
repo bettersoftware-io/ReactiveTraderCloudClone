@@ -26,6 +26,7 @@ import {
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { formatNotional } from "#/ui/credit/formatNotional";
 import { findBestQuoteId } from "#/ui/credit/rfqTiles/bestQuote";
 import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCountdownRing } from "#/ui/credit/rfqTiles/RfqCountdownRing";
@@ -120,7 +121,9 @@ export function RfqCard({
         </View>
       </View>
 
-      <View style={styles.quoteList}>
+      {/* dc.html:241 — rows stack with no gap: each one's own top rule and
+          6/5px padding is the whole separation. */}
+      <View>
         {quotes.map((quote) => {
           return (
             <QuoteCard
@@ -270,26 +273,6 @@ function makeStampStyles(t: RnTheme): RfqStampStyles {
   });
 }
 
-/** The subtitle's notional readout — the design abbreviates (dc.html:2166,
- * `(q.qty / 1000000).toFixed(1) + 'M USD'`), where the app printed a raw
- * `2,000,000`.
- *
- * The sub-million branches are OURS, not the prototype's: it only ever seeds
- * whole millions, so `toFixed(1)` alone would render every smaller RFQ the
- * domain can produce as `0.0M USD` — an abbreviation that has abbreviated the
- * number away. Same rounding as the design above a million. */
-function formatNotional(quantity: number): string {
-  if (quantity >= 1_000_000) {
-    return `${(quantity / 1_000_000).toFixed(1)}M USD`;
-  }
-
-  if (quantity >= 1_000) {
-    return `${Math.round(quantity / 1_000)}K USD`;
-  }
-
-  return `${quantity} USD`;
-}
-
 function stateLabel(state: RfqState): string {
   switch (state) {
     case RfqState.Open:
@@ -315,23 +298,29 @@ interface RfqCardStyles {
   badge: TextStyle;
   dismissBtn: ViewStyle;
   dismissText: TextStyle;
-  quoteList: ViewStyle;
 }
 
 function makeStyles(t: RnTheme): RfqCardStyles {
   return StyleSheet.create({
+    // dc.html:222 — `padding:10px 12px 6px; margin-bottom:9px`. The bottom
+    // padding is deliberately the smallest: the last quote row already
+    // carries its own 5px, and an even 12 all round left a visibly empty
+    // band under it.
     card: {
-      gap: SPACING.sm,
-      padding: SPACING.md,
+      paddingTop: 10,
+      paddingHorizontal: SPACING.md,
+      paddingBottom: 6,
       // dc.html:220 — cards sit inside the list's 12px side inset, flush
       // with the filter chips above (which also indent 12).
       marginHorizontal: SPACING.md,
-      marginVertical: SPACING.xs,
+      marginBottom: 9,
     },
+    // dc.html:223 — `margin-bottom:4px` to the first quote row's rule.
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
+      marginBottom: 4,
     },
     headerLeft: { gap: 2, flexShrink: 1 },
     headerRight: {
@@ -364,6 +353,5 @@ function makeStyles(t: RnTheme): RfqCardStyles {
     },
     dismissBtn: { paddingHorizontal: 6, paddingVertical: 2 },
     dismissText: { fontSize: 14, color: t.textMuted },
-    quoteList: { gap: 6 },
   });
 }

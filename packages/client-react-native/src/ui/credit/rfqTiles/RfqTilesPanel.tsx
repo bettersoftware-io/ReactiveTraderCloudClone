@@ -157,9 +157,9 @@ interface RfqTilesPanelStyles {
 function makeStyles(t: RnTheme): RfqTilesPanelStyles {
   return StyleSheet.create({
     panel: { flex: 1 },
-    // dc.html:220 — the card list's own `padding:8px 12px 8px`; with the
-    // chip row's 1px tail and the cards' 4px margins this lands the design's
-    // ~13pt chips→first-card gap (it sat at ~9pt on `paddingVertical: 4`).
+    // dc.html:220 — the card list's own `padding:8px 12px 8px`. The cards
+    // carry no top margin, so with the chip row's 1px tail this is the
+    // design's 9pt chips→first-card gap.
     grid: { paddingVertical: 8 },
     empty: { padding: 16, color: t.textMuted, fontFamily: t.fontDisplay },
   });
