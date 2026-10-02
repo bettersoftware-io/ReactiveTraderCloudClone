@@ -217,7 +217,12 @@ const httpServer = createServer((req, res) => {
           err instanceof BodyTooLargeError
             ? "body_too_large"
             : "malformed_request";
-        res.writeHead(status, { "Content-Type": "application/json" });
+        // The body may be unread (413): close the connection after the
+        // status so the rest of it is never consumed.
+        res.writeHead(status, {
+          "Content-Type": "application/json",
+          Connection: "close",
+        });
         res.end(JSON.stringify({ error }));
       });
     return;

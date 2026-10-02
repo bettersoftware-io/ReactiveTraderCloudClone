@@ -14,6 +14,7 @@ describe("readBodyWithLimit", () => {
 
     await expect(readBodyWithLimit(req, 64)).resolves.toBe('{"a":1}');
     expect(req.destroyed).toBe(false);
+    expect(req.isPaused()).toBe(false);
   });
 
   it("accepts a body of exactly the cap", async () => {
@@ -24,13 +25,14 @@ describe("readBodyWithLimit", () => {
     );
   });
 
-  it("rejects with BodyTooLargeError and destroys the request once the received bytes exceed the cap", async () => {
+  it("rejects with BodyTooLargeError and stops reading (paused, listener gone) once the received bytes exceed the cap", async () => {
     const req = createRequest(["x".repeat(40), "y".repeat(40)]);
 
     await expect(readBodyWithLimit(req, 64)).rejects.toBeInstanceOf(
       BodyTooLargeError,
     );
-    expect(req.destroyed).toBe(true);
+    expect(req.isPaused()).toBe(true);
+    expect(req.listenerCount("data")).toBe(0);
   });
 
   it("names the limit on the error", async () => {
@@ -48,7 +50,8 @@ describe("readBodyWithLimit", () => {
     await expect(readBodyWithLimit(req, 64)).rejects.toBeInstanceOf(
       BodyTooLargeError,
     );
-    expect(req.destroyed).toBe(true);
+    expect(req.isPaused()).toBe(true);
+    expect(req.listenerCount("data")).toBe(0);
   });
 
   it("counts bytes, not characters — a multi-byte body is measured in UTF-8", async () => {
@@ -99,10 +102,9 @@ type FakeRequest = Readable & { headers: Headers };
 
 /**
  * `autoDestroy: false` mirrors the real `IncomingMessage` (the socket owns its
- * lifecycle) — and it is what makes `destroyed` a witness of an EXPLICIT
- * `destroy()`: with the default `autoDestroy: true` a stream that simply ran
- * out of chunks reads `destroyed === true` too, so a reader that rejects
- * without destroying would pass the destroy assertion.
+ * lifecycle), so the happy path can assert the reader never destroyed the
+ * request itself — the HTTP layer answers 413 and closes the socket; a
+ * destroyed request would have dropped the connection before the status.
  */
 function createRequest(
   chunks: readonly string[],

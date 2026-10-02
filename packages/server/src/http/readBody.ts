@@ -7,7 +7,7 @@ export { BodyTooLargeError } from "./BodyTooLargeError.js";
 
 /**
  * Reads a request body, counting bytes as they ARRIVE; past `maxBytes` the
- * request is destroyed (so the client stops sending) and the promise rejects
+ * reader stops consuming (listener removed, stream paused) and the promise rejects
  * with {@link BodyTooLargeError}. `Content-Length` is never consulted — a
  * header that lies low must not buy a bigger body. The resolved string is
  * UTF-8.
@@ -24,7 +24,13 @@ export function readBodyWithLimit(
       received += chunk.length;
 
       if (received > maxBytes) {
-        req.destroy();
+        // Stop reading, but do NOT destroy: destroying an IncomingMessage
+        // tears down the socket before the caller can answer 413, and the
+        // client sees a dropped connection instead of a status. The caller
+        // answers with `Connection: close`; Node then closes the socket with
+        // the rest of the body unread.
+        req.removeAllListeners("data");
+        req.pause();
         reject(new BodyTooLargeError(maxBytes));
 
         return;
