@@ -1,8 +1,5 @@
-import {
-  createMachineFactories,
-  type MachineFactories,
-  type Presenters,
-} from "@rtc/client-core";
+import type { MachineFactories, Presenters } from "@rtc/client-core";
+import { createMachineFactories } from "@rtc/client-core/core";
 import {
   type DevtoolsHub,
   instrumentMachineFactories,

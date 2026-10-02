@@ -1,6 +1,5 @@
 import { describe, expect, it, type Mock, vi } from "vitest";
 
-import { rxjsCore } from "@rtc/client-core";
 import type { CoreFactory } from "@rtc/core-api";
 
 import type { CoreImporters, CoreSelectionDeps } from "./coreSelection";
@@ -111,12 +110,13 @@ describe("loadCore", () => {
   // under vitest takes seconds on a loaded runner. The real imports are
   // witnessed by the e2e runs (test:e2e:async / :effect boot on them) and by
   // `pnpm check:core-bundle` (each sits in exactly one lazy chunk).
-  it("returns the statically imported RxJS core without calling an importer", async () => {
+  it("loads the RxJS core through the rxjs importer alone", async () => {
     const importers = createFakeImporters();
 
     const core = await loadCore("rxjs", importers);
 
-    expect(core).toBe(rxjsCore);
+    expect(core).toBe(FAKE_RXJS_CORE);
+    expect(importers.rxjs).toHaveBeenCalledOnce();
     expect(importers.async).not.toHaveBeenCalled();
     expect(importers.effect).not.toHaveBeenCalled();
   });
@@ -128,6 +128,7 @@ describe("loadCore", () => {
 
     expect(core).toBe(FAKE_ASYNC_CORE);
     expect(importers.async).toHaveBeenCalledOnce();
+    expect(importers.rxjs).not.toHaveBeenCalled();
     expect(importers.effect).not.toHaveBeenCalled();
   });
 
@@ -138,6 +139,7 @@ describe("loadCore", () => {
 
     expect(core).toBe(FAKE_EFFECT_CORE);
     expect(importers.effect).toHaveBeenCalledOnce();
+    expect(importers.rxjs).not.toHaveBeenCalled();
     expect(importers.async).not.toHaveBeenCalled();
   });
 
@@ -370,19 +372,24 @@ function createDeps(saveWorks = true): CreateDepsResult {
   };
 }
 
-/** Stand-ins for the two lazily imported cores — only their identity is
+/** Stand-ins for the three lazily imported cores — only their identity is
  * asserted, so an empty cast object is enough. */
+const FAKE_RXJS_CORE = {} as CoreFactory;
 const FAKE_ASYNC_CORE = {} as CoreFactory;
 const FAKE_EFFECT_CORE = {} as CoreFactory;
 
 /** `CoreImporters` whose members are spies, so a case can assert which one ran. */
 interface FakeImporters extends CoreImporters {
+  readonly rxjs: Mock<CoreImporters["rxjs"]>;
   readonly async: Mock<CoreImporters["async"]>;
   readonly effect: Mock<CoreImporters["effect"]>;
 }
 
 function createFakeImporters(): FakeImporters {
   return {
+    rxjs: vi.fn(() => {
+      return Promise.resolve({ rxjsCore: FAKE_RXJS_CORE });
+    }),
     async: vi.fn(() => {
       return Promise.resolve({ asyncCore: FAKE_ASYNC_CORE });
     }),

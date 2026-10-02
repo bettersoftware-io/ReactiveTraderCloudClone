@@ -22,7 +22,6 @@ import type {
   AppCommands,
   AppPorts,
   AuthPresenter as AuthPresenterApi,
-  CoreFactory,
   Presenters,
   RfqCountdownSeed,
 } from "@rtc/core-api";
@@ -53,7 +52,6 @@ import type {
 } from "@rtc/domain";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
-import type { IWsAdapter } from "#/adapters/IWsAdapter";
 import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { readPreferenceNow } from "#/adapters/readPreferenceNow";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
@@ -128,28 +126,9 @@ import {
   WatchlistPresenter,
 } from "#/presenters/index";
 
-/** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
- * directly testable (idleTeardown.test.ts).
- * - idleTimeout  → closeForIdle() (suppresses auto-reconnect)
- * - reconnect    → reopen()       (sole recovery from idle; button-only)
- * - userActivity → no-op here     (resets countdown in BrowserConnectionEventsAdapter
- *                                   only; does NOT reopen the socket)
- * Provenance: original services/connection.ts:74-96. */
-export function routeIdleLifecycle(
-  event: ConnectionEvent,
-  ws: Pick<IWsAdapter, "closeForIdle" | "reopen">,
-): void {
-  if (event.type === "idleTimeout") {
-    ws.closeForIdle();
-  } else if (event.type === "reconnect") {
-    ws.reopen();
-  }
-}
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 5) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { App, AppCommands, AppPorts, CoreFactory, Presenters };
+/** `@rtc/core-api` types, re-exported for this package's own tests (the root
+ * index re-exports the full set for external consumers). */
+export type { App, AppPorts, Presenters };
 
 /** One-shot synchronous peek at the watchlist's first symbol, used only to
  * seed EqWorkspaceMachine's initial tab/selection at composition time. The
@@ -196,15 +175,6 @@ export function firstWatchlistSymbol$(
     take(1),
   );
 }
-
-/** Moved to `@rtc/core-logic`'s `presenters/jarvisController` (pluggable-core
- * slice 7 wave 2, then slice 8) with the rest of the history rules —
- * re-exported for existing imports. */
-export {
-  historyEntriesExcludingInFlightTurn,
-  LAYOUT_PANEL_IDS,
-  STATIC_WORKSPACE_PANEL_IDS,
-} from "@rtc/core-logic";
 
 /**
  * Threads `presenters.jarvis`'s own state back into `ports.jarvis` as its
@@ -1080,7 +1050,3 @@ export function createMachineFactories(
     },
   };
 }
-
-/** The RxJS core as a `CoreFactory` — what `coreSelection.ts`'s `loadCore`
- * resolves to for the `"rxjs"` impl (the default). */
-export const rxjsCore: CoreFactory = { createApp, createMachineFactories };

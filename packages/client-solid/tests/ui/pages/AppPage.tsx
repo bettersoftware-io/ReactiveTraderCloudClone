@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@solidjs/testing-library";
 
-import { rxjsCore } from "@rtc/client-core";
+import { rxjsCore } from "@rtc/client-core/core";
 import type { CoreSelection } from "@rtc/core-api";
 
 import { AppRoot } from "#/AppRoot";

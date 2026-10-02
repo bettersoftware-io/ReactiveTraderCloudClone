@@ -4,11 +4,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
-  createApp,
-  createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
 } from "@rtc/client-core";
+import { createApp, createMachineFactories } from "@rtc/client-core/core";
 import {
   type AuthOutcome,
   type AuthPort,

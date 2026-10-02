@@ -8,13 +8,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   type AppPorts,
-  createApp,
-  createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
   type Presenters,
   SessionsKpiPresenter,
 } from "@rtc/client-core";
+import { createApp, createMachineFactories } from "@rtc/client-core/core";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,

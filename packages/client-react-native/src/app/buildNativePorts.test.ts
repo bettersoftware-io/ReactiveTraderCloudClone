@@ -1,11 +1,8 @@
 import { filter, firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
-import {
-  createApp,
-  InMemorySessionStore,
-  type WsAdapter,
-} from "@rtc/client-core";
+import { InMemorySessionStore, type WsAdapter } from "@rtc/client-core";
+import { createApp } from "@rtc/client-core/core";
 import {
   type AuthOutcome,
   type ConnectionEvent,
