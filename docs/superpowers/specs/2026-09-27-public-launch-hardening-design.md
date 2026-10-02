@@ -120,6 +120,14 @@ traced.
 
 No code. Under an hour. **These come first, independent of both tracks.**
 
+Progress (2026-10-02): item 1's spend limit is **done** (user). Items 2–3 are
+the user's next move; with the hybrid merged (§8), **rotating `AUTH_USERS`
+(item 3) is the better of the two** — demo logins never reach the server now,
+so private server passwords keep the live desk fully featured for the
+maintainer while making the public password worthless on the server.
+`RTC_JARVIS_FAKE=1` (item 2) is the alternative if real AI should go dark for
+everyone until B3. Items 4–6 remain.
+
 1. **Anthropic Console:** set a monthly spend limit on the workspace, and put
    the server on its own key so it can be revoked alone.
 2. **Turn real AI off on the server** until Track B3 exists:
@@ -270,11 +278,15 @@ and the acceptance checks below pass.
 Revised 2026-09-29. Nothing is posted until B4.
 
 1. **Step 0** (§3). Immediately, independent of everything else.
-2. **Hybrid composition** (§8). The login-routed data source. Built first
-   because every later phase is tested against it.
+2. **Hybrid composition** (§8). **Merged 2026-10-02 (PR #879).**
 3. **B1** server hardening (§5), including the in-app abuse layer (§9.2).
-4. **B2** user management, **B3** metering with bring-your-own keys (§10).
-5. **B4** open the door, then post.
+   **Next.**
+4. **D9 UI round**: the demo-accounts hint on the login screen (both web
+   clients, golden regeneration, user acceptance).
+5. **B2** user management (confirmed needed 2026-10-02 — registration,
+   self-chosen passwords, validated accounts; nothing exists yet), then **B3**
+   metering with bring-your-own keys (§10).
+6. **B4** open the door, then post.
 
 Track A survives as the **simulator-only fallback build**: the same code with
 `VITE_SERVER_URL` empty. It needs no separate work beyond §4.3 items 2 and 3
@@ -291,8 +303,8 @@ if it is ever deployed on its own.
 | D5 | B2/B3: where does durable state live? | Open. Depends on D3. |
 | D6 | Does `/mcp` stay enabled on the real server? | Keep, behind B2 roles. |
 | D7 | Does the React Native app follow Track A or Track B? | Open. It defaults to the deployed endpoint today. The hybrid (§8) is web-only; `buildNativePorts.ts` is untouched. |
-| D8 | Should a mode-change reload suppress the boot splash? | Open. Today the splash replays (§8.3 step 4). Suppressing it needs a one-shot flag the boot-splash gate does not have yet. |
-| D9 | Show the demo accounts on the login screen? | Open. It changes the login goldens in both clients, so it is a separate, user-accepted UI round. |
+| D8 | ~~Should a mode-change reload suppress the boot splash?~~ | **Resolved 2026-10-02: keep the replay.** It happens once per device, reads as "connecting to the live desk", and stands in for the login wait the reload cuts short. Revisit only if someone sees it and dislikes it. |
+| D9 | ~~Show the demo accounts on the login screen?~~ | **Resolved 2026-10-02: yes.** A small UI round in both web clients, scheduled right after B1 (§6); it regenerates the login goldens and needs the user's eyeball acceptance before merge. The hint renders only when a demo roster is present (hybrid and simulator-only builds), never on a plain live build. |
 
 ## 8. Hybrid data source (revision 2026-09-29, built 2026-10-01)
 
