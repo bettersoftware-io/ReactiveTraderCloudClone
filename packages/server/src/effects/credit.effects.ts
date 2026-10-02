@@ -2,15 +2,10 @@ import { concat, from, map, mergeMap, type Observable, of } from "rxjs";
 
 import type { Dealer, Instrument, RfqEvent } from "@rtc/domain";
 import type {
-  AcceptRequestDto,
-  CancelRfqRequestDto,
-  CreateRfqRequestDto,
   DealerDto,
   DealerEvent,
   InstrumentDto,
   InstrumentEvent,
-  PassRequestDto,
-  QuoteRequestDto,
   WorkflowEvent as WorkflowEventDto,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
@@ -23,6 +18,13 @@ import {
 } from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
+import {
+  isCreateRfqRequestDto,
+  isQuoteIdPayload,
+  isQuoteRequestDto,
+  isRfqIdPayload,
+  validated,
+} from "./guards.js";
 
 function transformWorkflowEvent(event: RfqEvent): WorkflowEventDto {
   switch (event.type) {
@@ -167,14 +169,20 @@ const createRfq$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.CREATE_RFQ,
   SERVER_MSG.CREATE_RFQ_RESPONSE,
   (payload, ctx): Observable<number> => {
-    const req = payload as CreateRfqRequestDto;
-    return ctx.workflow.createRfq({
-      instrumentId: req.instrumentId,
-      dealerIds: [...req.dealerIds],
-      quantity: req.quantity,
-      direction: req.direction,
-      expirySecs: req.expirySecs,
-    });
+    return validated(
+      CLIENT_MSG.CREATE_RFQ,
+      payload,
+      isCreateRfqRequestDto,
+      (req): Observable<number> => {
+        return ctx.workflow.createRfq({
+          instrumentId: req.instrumentId,
+          dealerIds: [...req.dealerIds],
+          quantity: req.quantity,
+          direction: req.direction,
+          expirySecs: req.expirySecs,
+        });
+      },
+    );
   },
 );
 
@@ -183,8 +191,14 @@ const cancelRfq$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.CANCEL_RFQ,
   SERVER_MSG.CANCEL_RFQ_RESPONSE,
   (payload, ctx): Observable<void> => {
-    const { rfqId } = payload as CancelRfqRequestDto;
-    return ctx.workflow.cancelRfq(rfqId);
+    return validated(
+      CLIENT_MSG.CANCEL_RFQ,
+      payload,
+      isRfqIdPayload,
+      ({ rfqId }): Observable<void> => {
+        return ctx.workflow.cancelRfq(rfqId);
+      },
+    );
   },
 );
 
@@ -193,8 +207,14 @@ const quote$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.QUOTE,
   SERVER_MSG.QUOTE_RESPONSE,
   (payload, ctx): Observable<void> => {
-    const req = payload as QuoteRequestDto;
-    return ctx.workflow.quote(req);
+    return validated(
+      CLIENT_MSG.QUOTE,
+      payload,
+      isQuoteRequestDto,
+      (req): Observable<void> => {
+        return ctx.workflow.quote({ quoteId: req.quoteId, price: req.price });
+      },
+    );
   },
 );
 
@@ -203,8 +223,14 @@ const pass$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.PASS,
   SERVER_MSG.PASS_RESPONSE,
   (payload, ctx): Observable<void> => {
-    const { quoteId } = payload as PassRequestDto;
-    return ctx.workflow.pass(quoteId);
+    return validated(
+      CLIENT_MSG.PASS,
+      payload,
+      isQuoteIdPayload,
+      ({ quoteId }): Observable<void> => {
+        return ctx.workflow.pass(quoteId);
+      },
+    );
   },
 );
 
@@ -213,8 +239,14 @@ const accept$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.ACCEPT,
   SERVER_MSG.ACCEPT_RESPONSE,
   (payload, ctx): Observable<void> => {
-    const { quoteId } = payload as AcceptRequestDto;
-    return ctx.workflow.accept(quoteId);
+    return validated(
+      CLIENT_MSG.ACCEPT,
+      payload,
+      isQuoteIdPayload,
+      ({ quoteId }): Observable<void> => {
+        return ctx.workflow.accept(quoteId);
+      },
+    );
   },
 );
 

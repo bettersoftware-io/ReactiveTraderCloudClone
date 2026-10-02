@@ -1,5 +1,6 @@
 import {
   catchError,
+  EMPTY,
   map,
   merge,
   mergeMap,
@@ -11,13 +12,11 @@ import {
 
 import type {
   Candle,
-  CandleTimeframe,
   DepthBook,
   EquityInstrument,
   EquityOrder,
   EquityPosition,
   EquityQuote,
-  PlaceOrderRequest,
 } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
@@ -32,26 +31,15 @@ import {
 } from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
-
-interface SymbolPayload {
-  readonly symbol: string;
-}
-
-interface CandlesPayload {
-  readonly symbol: string;
-  readonly timeframe?: CandleTimeframe;
-}
-
-interface CandleHistoryPayload {
-  readonly symbol: string;
-  readonly timeframe: CandleTimeframe;
-  readonly beforeTime: number;
-  readonly count: number;
-}
-
-interface OrderIdPayload {
-  readonly orderId: string;
-}
+import {
+  describeMalformedPayload,
+  isCandleHistoryPayload,
+  isCandlesPayload,
+  isOrderIdPayload,
+  isPlaceOrderRequest,
+  isSymbolPayload,
+  validated,
+} from "./guards.js";
 
 // watchlist — domain type sent directly; no DTO mapping.
 const watchlist$: WsEffect<Ctx> = stream(
@@ -68,16 +56,23 @@ const watchlist$: WsEffect<Ctx> = stream(
 // eqQuotes — 1:1 tick → EquityQuote, forwarded as-is. keyedStream (not stream)
 // because the client re-subscribes a symbol on instrument-tab / selection churn
 // and could not otherwise unsubscribe — refcount per symbol so re-subscribes
-// coalesce and an unsubscribe tears down. See fx.effects.ts pricing$.
+// coalesce and an unsubscribe tears down. See fx.effects.ts pricing$ — incl.
+// the S11 shape: a malformed frame keys to "" and projects to EMPTY.
 const eqQuotes$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_EQ_QUOTES,
   CLIENT_MSG.UNSUBSCRIBE_EQ_QUOTES,
-  (payload) => {
-    return (payload as SymbolPayload).symbol;
+  (payload): string => {
+    return isSymbolPayload(payload) ? payload.symbol : "";
   },
   (payload, ctx) => {
-    const { symbol } = payload as SymbolPayload;
-    return ctx.marketData.quotes(symbol).pipe(
+    if (!isSymbolPayload(payload)) {
+      console.warn(
+        describeMalformedPayload(CLIENT_MSG.SUBSCRIBE_EQ_QUOTES, "dropping"),
+      );
+      return EMPTY;
+    }
+
+    return ctx.marketData.quotes(payload.symbol).pipe(
       map((quote: EquityQuote) => {
         return out(SERVER_MSG.EQ_QUOTE, quote);
       }),
@@ -90,12 +85,18 @@ const eqQuotes$: WsEffect<Ctx> = keyedStream(
 const depth$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_DEPTH,
   CLIENT_MSG.UNSUBSCRIBE_DEPTH,
-  (payload) => {
-    return (payload as SymbolPayload).symbol;
+  (payload): string => {
+    return isSymbolPayload(payload) ? payload.symbol : "";
   },
   (payload, ctx) => {
-    const { symbol } = payload as SymbolPayload;
-    return ctx.marketData.depth(symbol).pipe(
+    if (!isSymbolPayload(payload)) {
+      console.warn(
+        describeMalformedPayload(CLIENT_MSG.SUBSCRIBE_DEPTH, "dropping"),
+      );
+      return EMPTY;
+    }
+
+    return ctx.marketData.depth(payload.symbol).pipe(
       map((book: DepthBook) => {
         return out(SERVER_MSG.DEPTH, book);
       }),
@@ -134,8 +135,14 @@ const getCandles$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.GET_CANDLES,
   SERVER_MSG.CANDLES_RESPONSE,
   (payload, ctx): Observable<readonly Candle[]> => {
-    const { symbol, timeframe } = payload as CandlesPayload;
-    return ctx.marketData.candles(symbol, timeframe);
+    return validated(
+      CLIENT_MSG.GET_CANDLES,
+      payload,
+      isCandlesPayload,
+      ({ symbol, timeframe }): Observable<readonly Candle[]> => {
+        return ctx.marketData.candles(symbol, timeframe);
+      },
+    );
   },
 );
 
@@ -145,9 +152,24 @@ const getCandleHistory$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.GET_CANDLE_HISTORY,
   SERVER_MSG.CANDLE_HISTORY_RESPONSE,
   (payload, ctx): Observable<readonly Candle[]> => {
-    const { symbol, timeframe, beforeTime, count } =
-      payload as CandleHistoryPayload;
-    return ctx.marketData.candleHistory(symbol, timeframe, beforeTime, count);
+    return validated(
+      CLIENT_MSG.GET_CANDLE_HISTORY,
+      payload,
+      isCandleHistoryPayload,
+      ({
+        symbol,
+        timeframe,
+        beforeTime,
+        count,
+      }): Observable<readonly Candle[]> => {
+        return ctx.marketData.candleHistory(
+          symbol,
+          timeframe,
+          beforeTime,
+          count,
+        );
+      },
+    );
   },
 );
 
@@ -156,8 +178,14 @@ const cancelOrder$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.CANCEL_ORDER,
   SERVER_MSG.CANCEL_ORDER_RESPONSE,
   (payload, ctx): Observable<void> => {
-    const { orderId } = payload as OrderIdPayload;
-    return ctx.orders.cancel(orderId);
+    return validated(
+      CLIENT_MSG.CANCEL_ORDER,
+      payload,
+      isOrderIdPayload,
+      ({ orderId }): Observable<void> => {
+        return ctx.orders.cancel(orderId);
+      },
+    );
   },
 );
 
@@ -167,12 +195,28 @@ function placeOrder$(in$: Observable<Inbound>, ctx: Ctx): Observable<Outbound> {
   return in$.pipe(
     matchType(CLIENT_MSG.PLACE_ORDER),
     mergeMap((msg) => {
+      // S11: a malformed request never reaches the simulator. It is nacked
+      // on its correlationId (so the client's rpc rejects instead of hanging,
+      // exactly like the place-error path below) and emits no lifecycle.
+      if (!isPlaceOrderRequest(msg.payload)) {
+        console.warn(
+          describeMalformedPayload(CLIENT_MSG.PLACE_ORDER, "nacking"),
+        );
+        return of(
+          out(
+            SERVER_MSG.PLACE_ORDER_RESPONSE,
+            { type: "nack" },
+            msg.correlationId,
+          ),
+        );
+      }
+
       // refCount:true releases the sim subscription on socket close (via
       // createWsListener's takeUntil); bufferSize:1 lets the ack's take(1)
       // and the lifecycle stream both see the first emission, even in the
       // synchronous case where merge subscribes ack$ before stream$.
       const lifecycle$ = ctx.orders
-        .place(msg.payload as PlaceOrderRequest)
+        .place(msg.payload)
         .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
       const ack$ = lifecycle$.pipe(

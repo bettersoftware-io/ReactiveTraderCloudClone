@@ -1,7 +1,13 @@
 import { from, of, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { PriceTick } from "@rtc/domain";
+import {
+  Direction,
+  type PriceTick,
+  type Trade,
+  TradeStatus,
+} from "@rtc/domain";
+import type { ExecutionRequestDto } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -244,6 +250,7 @@ describe("fx effects", () => {
       payload: {
         currencyPair: "EURUSD",
         spotRate: 1.1,
+        valueDate: "2026-07-02",
         direction: "Buy",
         notional: 1_000_000,
         dealtCurrency: "EUR",
@@ -293,7 +300,121 @@ describe("fx effects", () => {
     ]);
     expect(ctx.pricing.getPriceHistory).toHaveBeenCalledWith("EURUSD");
   });
+
+  it("nacks a malformed EXECUTE_TRADE and still acks the next valid one (S11)", () => {
+    const ctx = {
+      execution: {
+        executeTrade: vi.fn(() => {
+          return of(createTrade());
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.EXECUTE_TRADE,
+      payload: { notional: "lots" },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.EXECUTE_TRADE,
+      payload: createExecutionRequest(),
+      correlationId: "ok",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.EXECUTION_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.EXECUTION_RESPONSE,
+        payload: { type: "ack", payload: createTrade() },
+        correlationId: "ok",
+      },
+    ]);
+    // The simulator never saw the malformed request.
+    expect(ctx.execution.executeTrade).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a SUBSCRIBE_PRICING frame without a valid symbol and keeps the effect alive for the next one (S11)", () => {
+    const ctx = {
+      pricing: {
+        getPriceUpdates: vi.fn(() => {
+          return of(createTick("EURUSD"));
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: {} });
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_PRICING, payload: null });
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_PRICING,
+      payload: { symbol: 42 },
+    });
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_PRICING,
+      payload: { symbol: "EURUSD" },
+    });
+
+    expect(ctx.pricing.getPriceUpdates).toHaveBeenCalledTimes(1);
+    expect(ctx.pricing.getPriceUpdates).toHaveBeenCalledWith("EURUSD");
+    expect(sent).toEqual([
+      { type: SERVER_MSG.PRICE_TICK, payload: createTick("EURUSD") },
+    ]);
+  });
+
+  it("drops a SUBSCRIBE_ANALYTICS frame without a currency and still serves the next one (S11)", () => {
+    const positions = { currentPositions: [], history: [] };
+    const ctx = {
+      analytics: {
+        getAnalytics: vi.fn(() => {
+          return of(positions);
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: {} });
+    messages$.next({ type: CLIENT_MSG.SUBSCRIBE_ANALYTICS, payload: null });
+    messages$.next({
+      type: CLIENT_MSG.SUBSCRIBE_ANALYTICS,
+      payload: { currency: "USD" },
+    });
+
+    expect(ctx.analytics.getAnalytics).toHaveBeenCalledTimes(1);
+    expect(ctx.analytics.getAnalytics).toHaveBeenCalledWith("USD");
+    expect(sent).toEqual([{ type: SERVER_MSG.ANALYTICS, payload: positions }]);
+  });
 });
+
+function createExecutionRequest(): ExecutionRequestDto {
+  return {
+    currencyPair: "EURUSD",
+    spotRate: 1.1,
+    valueDate: "2026-07-02",
+    direction: Direction.Buy,
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+  };
+}
+
+function createTrade(): Trade {
+  return {
+    tradeId: 1,
+    tradeName: "EUR",
+    currencyPair: "EURUSD",
+    notional: 1_000_000,
+    dealtCurrency: "EUR",
+    direction: Direction.Buy,
+    spotRate: 1.1,
+    status: TradeStatus.Done,
+    tradeDate: "2026-07-02",
+    valueDate: "2026-07-04",
+  };
+}
 
 function createTick(symbol: string): PriceTick {
   return {

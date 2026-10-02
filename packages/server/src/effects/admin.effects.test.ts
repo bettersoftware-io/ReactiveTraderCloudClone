@@ -56,6 +56,43 @@ describe("admin effects", () => {
     ]);
     expect(ctx.throughput.setThroughput).toHaveBeenCalledWith(100);
   });
+
+  it("nacks a non-numeric SET_THROUGHPUT without calling setThroughput, and still acks the next valid one (S11)", () => {
+    const ctx = {
+      throughput: {
+        setThroughput: vi.fn(() => {
+          // void
+        }),
+      },
+    };
+    const { messages$, sent } = harness(ctx as unknown as Partial<Ctx>);
+
+    messages$.next({
+      type: CLIENT_MSG.SET_THROUGHPUT,
+      payload: { value: "fast" },
+      correlationId: "bad",
+    });
+    messages$.next({
+      type: CLIENT_MSG.SET_THROUGHPUT,
+      payload: { value: 250 },
+      correlationId: "ok",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: SERVER_MSG.SET_THROUGHPUT_RESPONSE,
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
+      {
+        type: SERVER_MSG.SET_THROUGHPUT_RESPONSE,
+        payload: { type: "ack" },
+        correlationId: "ok",
+      },
+    ]);
+    expect(ctx.throughput.setThroughput).toHaveBeenCalledTimes(1);
+    expect(ctx.throughput.setThroughput).toHaveBeenCalledWith(250);
+  });
 });
 
 interface Harness {
