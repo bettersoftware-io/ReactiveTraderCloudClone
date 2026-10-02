@@ -6716,16 +6716,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     }
   });
 
-  function locationOf(panelId: string): string {
-    const panel = lastDockviewApi().getPanel(panelId);
-
-    if (panel === undefined) {
-      throw new Error(`${panelId} is not in the dock`);
-    }
-
-    return panel.group.api.location.type;
-  }
-
   function isWidthClamped(panelId: string): boolean {
     const [minimum, maximum] = widthClampOf(panelId);
 
@@ -7288,6 +7278,135 @@ describe("attached floats — the cluster model and the width rule", () => {
     ).toBe(false);
     engine.dispose();
   });
+
+  it("attachPanel merges two lone floats into one window and refuses a cluster, the same window, or a docked target", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    floatAt(api, "fx-blotter", 100, 600, 500, 200);
+
+    expect(engine.attachPanel("fx-positions", "fx-analytics", "right")).toBe(
+      true,
+    );
+    expect(floatMembersOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+
+    // A cluster never attaches (spec §4.1) — and the target may not be itself.
+    expect(engine.attachPanel("fx-positions", "fx-blotter", "right")).toBe(
+      false,
+    );
+    expect(engine.attachPanel("fx-blotter", "fx-blotter", "right")).toBe(false);
+    // A docked target is not a float.
+    expect(engine.attachPanel("fx-blotter", "fx-rates", "right")).toBe(false);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    engine.dispose();
+  });
+
+  it("detachPanel pops a member out into its own float and is a no-op on a lone float", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    expect(engine.detachPanel("fx-positions")).toBe(true);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    expect(locationOf("fx-positions")).toBe("floating");
+    expect(reports.at(-1)).toEqual([]);
+
+    expect(engine.detachPanel("fx-positions")).toBe(false);
+    expect(engine.detachPanel("fx-rates")).toBe(false);
+    engine.dispose();
+  });
+
+  it("closing a member empties the attached set and leaves the survivor floating alone", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    const closing = api.getPanel("fx-positions");
+
+    if (closing === undefined) {
+      throw new Error("fx-positions is not in the dock");
+    }
+
+    api.removePanel(closing);
+
+    expect(reports.at(-1)).toEqual([]);
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    engine.dispose();
+  });
+
+  it("docking a member home leaves the other member a lone float and restores the docked panel's home", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    engine.floatPanel("fx-analytics");
+    engine.floatPanel("fx-positions");
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    engine.dockPanel("fx-positions");
+
+    expect(locationOf("fx-positions")).toBe("grid");
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    engine.dispose();
+  });
+
+  // Spec §4.2: the free panel adopts the lock. jsdom reports a 0-wide dock,
+  // which `lockedFloatWidth` treats as uncapped, so the box takes the lock's
+  // model width (card + gap) — what a 1440 dock gives too.
+  it("a FREE anchor joined below by a LOCKED panel box-locks the window and sizes the free member to the lock", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-blotter", 100, 100, 600, 300);
+    floatAt(api, "fx-analytics", 100, 500, 367, 300);
+    const setSize = vi.spyOn(groupOf(api, "fx-blotter").api, "setSize");
+
+    expect(engine.attachPanel("fx-analytics", "fx-blotter", "bottom")).toBe(
+      true,
+    );
+    expect(setSize).toHaveBeenCalledWith({ width: 360 + GROUP_GAP_PX });
+    expect(
+      floatBoxElementOf(api, "fx-blotter").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(true);
+    engine.dispose();
+  });
 });
 
 /** Walks a parsed blob's grid for the leaf whose `views` names `panelId`,
@@ -7414,6 +7533,18 @@ function widthClampOf(panelId: string): readonly [number, number] {
   }
 
   return [panel.group.minimumWidth, panel.group.maximumWidth];
+}
+
+/** Where `panelId`'s group lives on the last engine — "grid", "floating" or
+ * "popout". */
+function locationOf(panelId: string): string {
+  const panel = lastDockviewApi().getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return panel.group.api.location.type;
 }
 
 /** dockview's own group object for `panelId` — what `addFloatingGroup` and

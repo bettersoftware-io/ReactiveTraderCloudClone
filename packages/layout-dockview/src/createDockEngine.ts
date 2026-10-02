@@ -27,11 +27,15 @@ import {
   type SeedSplit,
   seedPanelIdsOf,
 } from "#/dockSeed";
+import { type AttachSide, attachedWindowFor, type Box } from "#/floatMagnets";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
 
 const RTC_TAB_COMPONENT = "rtc-tab";
+
+/** The side of a target float a panel attaches on. */
+export type DockAttachSide = AttachSide;
 
 /** Gap between cards, in px — the in-house engine's 7px drag-handle track
  * (`InhouseLayoutEngine.module.css` `.handle`), so two panels sit exactly as
@@ -267,6 +271,19 @@ export interface DockEngine {
   floatPanel(panelId: string): boolean;
   /** Returns a floating panel to its seed-home slot; no-op when not floating. */
   dockPanel(panelId: string): void;
+  /** Merges panelId's lone float into targetPanelId's floating window on `side`
+   * (relative to the target), sized per the spec's §4.2. False when refused:
+   * either panel unknown or not floating, the same window, or panelId's window
+   * already holds several groups (a cluster never attaches — spec §4.1). */
+  attachPanel(
+    panelId: string,
+    targetPanelId: string,
+    side: DockAttachSide,
+  ): boolean;
+  /** Pulls panelId out of its cluster into its own float at its current
+   * on-screen rect; the remainder shrinks per §4.3. False (no-op) for a panel
+   * that is not in a multi-group floating window. */
+  detachPanel(panelId: string): boolean;
   /** The exact string the next debounced `onLayoutChange` write would carry,
    * built from the LIVE arrangement right now — no debounce wait, no seed
    * expiry, and no call to `onLayoutChange` itself. For a preset save, which
@@ -573,6 +590,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   let lastPopped: readonly string[] = [];
   let lastFloating: readonly string[] = [];
   let lastAttached: readonly string[] = [];
+  // Every multi-member floating window as the last settle left it, keyed by
+  // its first member in layout order — what a member leaving through
+  // dockview (close, dock-home) is shrunk from (shrinkWindowsMembersLeft).
+  let clusterSnapshots = new Map<string, FloatClusterSnapshot>();
 
   function publishPoppedPanels(): void {
     const popped = groupsAnywhere(api)
@@ -2131,7 +2152,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     for (const group of groupsAnywhere(api)) {
       const box =
         group.api.location?.type === "floating"
-          ? group.element.closest<HTMLElement>(".dv-resize-container")
+          ? group.element.closest<HTMLElement>(FLOAT_BOX_SELECTOR)
           : null;
 
       if (box !== null) {
@@ -2209,6 +2230,262 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         }
       }
     }
+  }
+
+  /** The on-screen box of the floating window holding `group`, in container
+   * pixels — the `.dv-resize-container` dockview drags and resizes. Zero in
+   * jsdom, which is why the sizing rules are proven in floatMagnets.test.ts
+   * and the e2e run, and the engine tests assert structure only. */
+  function floatWindowBoxOf(group: ElementHost): Box {
+    const box = group.element.closest(FLOAT_BOX_SELECTOR);
+    const origin = opts.container.getBoundingClientRect();
+    const rect = (box ?? group.element).getBoundingClientRect();
+
+    return {
+      left: rect.left - origin.left,
+      top: rect.top - origin.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  /** Spec §3.2 attach. Both groups are dockview's own objects (`moveTo` and
+   * `getFloatingWindowForGroup` want those), found through `api.getPanel`. */
+  function attachPanel(
+    panelId: string,
+    targetPanelId: string,
+    side: AttachSide,
+  ): boolean {
+    const panel = api.getPanel(panelId);
+    const target = api.getPanel(targetPanelId);
+    const mine = clusterOf(panelId);
+    const theirs = clusterOf(targetPanelId);
+
+    if (
+      panel === undefined ||
+      target === undefined ||
+      mine === null ||
+      theirs === null ||
+      mine.memberIds.length > 1 ||
+      mine.memberIds.includes(targetPanelId)
+    ) {
+      return false;
+    }
+
+    const plan = attachedWindowFor(
+      floatWindowBoxOf(panel.group),
+      floatWindowBoxOf(target.group),
+      side,
+      { mine: lockOfGroup(panel.group), theirs: lockOfGroup(target.group) },
+    );
+
+    panel.group.api.moveTo({ group: target.group, position: side });
+    floatingWindowOf(target.group)?.position(plan.window);
+
+    if (plan.memberWidth === null) {
+      panel.group.api.setSize({ width: plan.newcomerExtent });
+    } else {
+      panel.group.api.setSize({ height: plan.newcomerExtent });
+
+      for (const memberId of clusterOf(targetPanelId)?.memberIds ?? []) {
+        api.getPanel(memberId)?.group.api.setSize({ width: plan.memberWidth });
+      }
+    }
+
+    fitLockedFloatBoxes();
+    refreshClusterSnapshots();
+    publishAttachedPanels();
+
+    return true;
+  }
+
+  /** Spec §4.3 detach. `addFloatingGroup` on a group already in a floating
+   * window takes it out of that window into a new one — the same call the
+   * ⚓ float control makes — so the remainder only needs shrinking. */
+  function detachPanel(panelId: string): boolean {
+    const panel = api.getPanel(panelId);
+    const cluster = clusterOf(panelId);
+
+    if (
+      panel === undefined ||
+      cluster === null ||
+      cluster.memberIds.length < 2
+    ) {
+      return false;
+    }
+
+    const windowBox = floatWindowBoxOf(panel.group);
+    const rect = panel.group.element.getBoundingClientRect();
+    const origin = opts.container.getBoundingClientRect();
+    const leavingFirst = leafOrderOf(panelId)[0] === panelId;
+    const survivorId = cluster.memberIds.find((id) => {
+      return id !== panelId;
+    });
+
+    api.addFloatingGroup(panel.group, {
+      x: rect.left - origin.left,
+      y: rect.top - origin.top,
+      width: rect.width,
+      height: rect.height,
+    });
+
+    if (survivorId !== undefined) {
+      shrinkWindowAfterLeaving(
+        survivorId,
+        windowBox,
+        cluster.orientation,
+        { width: rect.width, height: rect.height },
+        leavingFirst,
+      );
+    }
+
+    fitLockedFloatBoxes();
+    refreshClusterSnapshots();
+    publishAttachedPanels();
+
+    return true;
+  }
+
+  /** The member ids of `panelId`'s window in LAYOUT order (first = leftmost
+   * or topmost), as opposed to `clusterOf`'s sorted ids. */
+  function leafOrderOf(panelId: string): readonly string[] {
+    for (const entry of api.toJSON().floatingGroups ?? []) {
+      if (entry.grid !== undefined) {
+        const order = leafViewsOf(entry.grid.root);
+
+        if (order.includes(panelId)) {
+          return order;
+        }
+      }
+    }
+
+    return [];
+  }
+
+  /** After a member leaves, the window keeps its top-left and loses the
+   * removed extent along the split — except when the FIRST member left, when
+   * the left (or top) edge moves by that extent so the survivor does not
+   * slide (spec §4.3). */
+  function shrinkWindowAfterLeaving(
+    survivorId: string,
+    windowBox: Box,
+    orientation: FloatCluster["orientation"],
+    removed: MemberExtent,
+    leavingFirst: boolean,
+  ): void {
+    const survivor = api.getPanel(survivorId);
+
+    if (survivor === undefined || orientation === null) {
+      return;
+    }
+
+    const horizontal = orientation === "HORIZONTAL";
+
+    floatingWindowOf(survivor.group)?.position({
+      left:
+        horizontal && leavingFirst
+          ? windowBox.left + removed.width
+          : windowBox.left,
+      top:
+        !horizontal && leavingFirst
+          ? windowBox.top + removed.height
+          : windowBox.top,
+      width: horizontal ? windowBox.width - removed.width : windowBox.width,
+      height: horizontal ? windowBox.height : windowBox.height - removed.height,
+    });
+  }
+
+  /** Spec §3.2's last bullet: a member that left its window through dockview
+   * itself — closed, or docked home — leaves the remainder to shrink from
+   * the snapshot the previous settle took, since by now the leaver's rect is
+   * gone. A survivor is a snapshot member still in the SAME window element
+   * (a detached member sits in a window of its own, and must not be read as
+   * the one that stayed). Only a single leaver is shrunk for: the snapshot
+   * box is the pre-leave window, so two leavers would each subtract from
+   * it. */
+  function shrinkWindowsMembersLeft(): void {
+    for (const snapshot of clusterSnapshots.values()) {
+      const stayed = snapshot.order.filter((id) => {
+        const group = api.getPanel(id)?.group;
+
+        return (
+          group !== undefined &&
+          group.api.location.type === "floating" &&
+          group.element.closest(FLOAT_BOX_SELECTOR) === snapshot.windowElement
+        );
+      });
+
+      const gone = snapshot.order.filter((id) => {
+        return !stayed.includes(id);
+      });
+      const [survivorId] = stayed;
+      const [leftId] = gone;
+
+      if (survivorId === undefined || leftId === undefined || gone.length > 1) {
+        continue;
+      }
+
+      const removed = snapshot.memberRects.get(leftId);
+
+      if (removed !== undefined) {
+        shrinkWindowAfterLeaving(
+          survivorId,
+          snapshot.box,
+          snapshot.orientation,
+          removed,
+          snapshot.order[0] === leftId,
+        );
+      }
+    }
+  }
+
+  /** Re-takes the per-window snapshot {@link shrinkWindowsMembersLeft}
+   * reads — every multi-member floating window, keyed by its first member
+   * in layout order. */
+  function refreshClusterSnapshots(): void {
+    const next = new Map<string, FloatClusterSnapshot>();
+
+    for (const entry of api.toJSON().floatingGroups ?? []) {
+      const order =
+        entry.grid === undefined ? [] : leafViewsOf(entry.grid.root);
+      const [firstId] = order;
+      const first = firstId === undefined ? undefined : api.getPanel(firstId);
+      const windowElement = first?.group.element.closest(FLOAT_BOX_SELECTOR);
+
+      if (
+        entry.grid === undefined ||
+        order.length < 2 ||
+        firstId === undefined ||
+        first === undefined ||
+        windowElement === null ||
+        windowElement === undefined
+      ) {
+        continue;
+      }
+
+      const memberRects = new Map<string, MemberExtent>();
+
+      for (const id of order) {
+        const rect = api.getPanel(id)?.group.element.getBoundingClientRect();
+
+        if (rect !== undefined) {
+          memberRects.set(id, { width: rect.width, height: rect.height });
+        }
+      }
+
+      next.set(firstId, {
+        windowElement,
+        box: floatWindowBoxOf(first.group),
+        orientation: splitOrientationOf(
+          entry.grid.root,
+          entry.grid.orientation,
+        ),
+        order,
+        memberRects,
+      });
+    }
+
+    clusterSnapshots = next;
   }
 
   /** Opens `panel` as a brand-new group at the grid's right edge — never
@@ -3568,6 +3845,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    *   back — LAST, once pins are re-clamped and absorption re-settled, so the
    *   room it measures is the room the settled grid really has. */
   function settleFloatTransitions(): void {
+    // First, while the snapshot still describes the windows as they were
+    // before this mutation.
+    shrinkWindowsMembersLeft();
+
     const floating = new Set(floatingPanelIds());
     const left = [...settledFloating].filter((panelId) => {
       return !floating.has(panelId);
@@ -3632,6 +3913,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Outside the gate: a panel popped out OF a float returns to the grid
     // without the floating set changing at all. Last, as the doc says.
     restoreFloatHomeSizes();
+    refreshClusterSnapshots();
     // The attached set is published HERE too, synchronously as the mutation
     // closes — an attach or a detach is read the moment the call returns,
     // not a microtask later (onDidLayoutChange's publish then finds nothing
@@ -4266,6 +4548,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       // (Ruling 10) and an instance's re-share (R6) all ran inside the move
       // above, from settleFloatTransitions — the path a drag home takes too.
     },
+    attachPanel,
+    detachPanel,
     snapshotLayout: (): string => {
       return buildLayoutBlob();
     },
@@ -4770,6 +5054,8 @@ function stripOrientationOf(group: SizableGroup): DockStripOrientation {
 
 const SPLIT_SELECTOR = ".dv-split-view-container";
 const GROUP_SELECTOR = ".dv-groupview";
+/** A floating window's own box — what dockview drags and resizes. */
+const FLOAT_BOX_SELECTOR = ".dv-resize-container";
 const VIEW_SELECTOR = ".dv-view";
 /** The two elements dockview 8.3.1 starts its shift-drag-to-float gesture
  * from — a tab, and the tab bar's void container — each through its own
@@ -5591,6 +5877,24 @@ interface FloatCluster {
    * null = a single group (dockview's legacy `data` form). */
   readonly orientation: FloatSplitOrientation | null;
   readonly box: DockFloatBox;
+}
+
+/** A width and a height — a member's on-screen extent. */
+interface MemberExtent {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** A multi-member floating window as the last settle measured it. */
+interface FloatClusterSnapshot {
+  /** The window's `.dv-resize-container` — who is still IN it after a
+   * mutation (a detached member sits in a new one). */
+  readonly windowElement: Element;
+  readonly box: Box;
+  readonly orientation: FloatCluster["orientation"];
+  /** Member ids in layout order (first = leftmost or topmost). */
+  readonly order: readonly string[];
+  readonly memberRects: ReadonlyMap<string, MemberExtent>;
 }
 
 /** A floating window's split direction, as dockview serialises it. */
