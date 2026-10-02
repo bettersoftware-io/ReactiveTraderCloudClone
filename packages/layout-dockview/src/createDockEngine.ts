@@ -2114,12 +2114,33 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       }
 
       if (axis.minimum() !== model || axis.maximum() !== model) {
-        clampTo(axis, model);
+        if (isInSideBySideFloat(group)) {
+          // Constraints only: the nested grid lays the member out at them.
+          // A setSize here would reach the WINDOW — dockview-core 8.3.1
+          // binds the anchor group's onDidChange to overlay.setBounds, so a
+          // restored pair of locked panels came back one panel wide.
+          axis.constrain(model, model);
+        } else {
+          clampTo(axis, model);
+        }
+
         changed = true;
       }
     }
 
     return changed;
+  }
+
+  /** True for a group in a SIDE-BY-SIDE floating window, where each
+   * member's width is an inner split — never the window's own. */
+  function isInSideBySideFloat(group: SizableGroup): boolean {
+    const [panel] = group.panels;
+
+    return (
+      group.api.location?.type === "floating" &&
+      panel !== undefined &&
+      clusterOf(panel.id)?.orientation === "HORIZONTAL"
+    );
   }
 
   /** The width constraints a design pin recorded for `group` before it

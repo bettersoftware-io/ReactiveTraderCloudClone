@@ -7225,9 +7225,19 @@ describe("attached floats — the cluster model and the width rule", () => {
     const second = createDockEngine({
       ...createLockedRailBase(),
       container,
-      blob: saved,
+      blob: withFloatWindowBox(saved, {
+        left: 300,
+        top: 100,
+        width: 734,
+        height: 300,
+      }),
     });
     const box = floatBoxElementOf(lastDockviewApi(), "fx-analytics");
+
+    // The window comes back at its saved width — not one member's lock,
+    // which a clamp's setSize on the window's anchor group writes through
+    // dockview's anchor listener (group.onDidChange → overlay.setBounds).
+    expect(box.style.width).toBe("734px");
 
     expect(floatMembersOf(lastDockviewApi(), "fx-analytics")).toEqual([
       "fx-analytics",
@@ -8074,6 +8084,29 @@ function floatBoxElementOf(api: DockviewApi, panelId: string): HTMLElement {
   }
 
   return box;
+}
+
+/** A floating window's saved box, as dockview serialises it. */
+interface FloatWindowPosition {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** `blob` with its first floating window's saved box replaced — jsdom lays
+ * nothing out, so a captured blob saves every window at 0×0. */
+function withFloatWindowBox(
+  blob: string,
+  position: FloatWindowPosition,
+): string {
+  const parsed = JSON.parse(blob);
+  const [first, ...rest] = parsed.floatingGroups;
+
+  return JSON.stringify({
+    ...parsed,
+    floatingGroups: [{ ...first, position }, ...rest],
+  });
 }
 
 /** A `getBoundingClientRect` result at an explicit box. */
