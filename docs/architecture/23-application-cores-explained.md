@@ -57,18 +57,21 @@ code rather than argued:
 **How this ends in a real project.** The edge abstractions and the
 implementation are allowed to differ *temporarily*, to ease the move. Once one
 core has won, the losing cores are deleted — and then the indirection is
-deleted too, because removing it is the whole point of finishing. The intended
-ending is the complete one: the winner's stream type is adopted at the edges as
+deleted too, because removing it is the whole point of finishing. (This
+repository keeps all three cores on purpose — it is the instrument, see answer
+1 — so what follows is the ending a product would reach, not a plan for this
+repo.) The intended ending is the complete one: the winner's stream type is adopted at the edges as
 well — the bindings, and the `@rtc/domain` ports and simulators, which are RxJS
 today
 ([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type))
 — so `bridge/` is deleted because nothing is left to translate, `Stream<T>` and
 `StateStream<S>` are replaced by the winner's own types, and the rule that
 `rxjs` is the domain's one runtime dependency becomes the same rule naming the
-winner. The edges are the larger half of the move — every port, simulator and
-both bindings change together, which is why
-[§8](08-replaceability-matrix.md#8-replaceability-matrix) rates it "very high"
-— so a migration may land the core first and the edges later; while it waits,
+winner (or, if the winner is the platform's own `Observable`, no runtime
+dependency at all). The edges are the larger half of the move — every port,
+simulator and both bindings change together, which is why
+[§8](08-replaceability-matrix.md#8-replaceability-matrix) rates the boundary
+swap "very high" — so a migration may land the core first and the edges later; while it waits,
 `bridge/` stays as the one gated adapter between an RxJS edge and a non-RxJS
 core. That is a deliberate intermediate state, not a destination. Either way
 the contract suite stays behind as the behavioural specification of the one
