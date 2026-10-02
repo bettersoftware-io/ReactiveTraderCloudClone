@@ -122,6 +122,20 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
   (`authorizeUpgrade` → `AuthService.verifyToken`), rejecting a missing,
   malformed, or expired token with 401. `/health` and `/login` stay open (HTTP
   routes, not WS upgrades) for Fly's checks and for login itself.
+- **Limits in production** (hardening B1, spec §2.2 / §9.2). Fly refuses new
+  connections to the machine past `hard_limit = 250` (`fly.toml`,
+  `[http_service.concurrency]`, unit `connections` because WebSockets are
+  long-lived) — a flood becomes refused connections, not an out-of-memory
+  crash; the reconnecting `WsAdapter` backs off and retries. Below that the
+  app itself says no: 200 live sockets per process and 8 per client IP (`503`
+  on the upgrade), a 64 KiB frame cap (`1009`), a per-socket message budget
+  (`1008` after 100 dropped frames), a 4 KiB `/login` body (`413`), 10 login
+  attempts a minute, and an in-memory ban list — 10 weighted strikes in 10
+  minutes earn a 15-minute `429 banned`; a redeploy clears it. Every number
+  lives in `packages/server/src/config/limits.ts`. All of it keys on
+  `Fly-Client-IP`; set `RTC_TRUSTED_IP_HEADER=cf-connecting-ip` as a Fly
+  secret once Cloudflare fronts the server. The container runs as the
+  unprivileged `node` user.
 - There is no Vercel Edge Middleware anymore — the old shared-password
   Basic-Auth wall (`middleware.ts`, `SITE_PASSWORD`) and the shared WebSocket
   token (`WS_ACCESS_TOKEN` / `VITE_WS_TOKEN`) have both been removed. Access
