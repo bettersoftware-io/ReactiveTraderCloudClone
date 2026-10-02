@@ -2,6 +2,7 @@ import {
   type AnchoredBox,
   createDockview,
   type DockviewApi,
+  type DockviewGroupPanel,
   type DockviewTheme,
   type DockviewWillShowOverlayLocationEvent,
   directionToPosition,
@@ -273,8 +274,11 @@ export interface DockEngine {
   dockPanel(panelId: string): void;
   /** Merges panelId's lone float into targetPanelId's floating window on `side`
    * (relative to the target), sized per the spec's §4.2. False when refused:
-   * either panel unknown or not floating, the same window, or panelId's window
-   * already holds several groups (a cluster never attaches — spec §4.1). */
+   * either panel unknown or not floating, the same window, panelId's window
+   * already holds several groups (a cluster never attaches — spec §4.1), or
+   * `side` crosses the target cluster's split (v1 keeps a cluster
+   * single-split: top/bottom onto a side-by-side window, left/right onto a
+   * stacked one; a lone target takes any side). */
   attachPanel(
     panelId: string,
     targetPanelId: string,
@@ -594,6 +598,9 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   // its first member in layout order — what a member leaving through
   // dockview (close, dock-home) is shrunk from (shrinkWindowsMembersLeft).
   let clusterSnapshots = new Map<string, FloatClusterSnapshot>();
+  // Windows isolateMember is moving members out of right now — it positions
+  // them itself, so the settle each move runs must not shrink them again.
+  const selfShrunkWindows = new Set<Element>();
 
   function publishPoppedPanels(): void {
     const popped = groupsAnywhere(api)
@@ -2237,9 +2244,25 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * jsdom, which is why the sizing rules are proven in floatMagnets.test.ts
    * and the e2e run, and the engine tests assert structure only. */
   function floatWindowBoxOf(group: ElementHost): Box {
-    const box = group.element.closest(FLOAT_BOX_SELECTOR);
+    return containerBoxOf(
+      group.element.closest(FLOAT_BOX_SELECTOR) ?? group.element,
+    );
+  }
+
+  /** A member's MODEL box in container pixels: its leaf view, not its group
+   * element. `dockview-hud.css` insets every group by half a gap per side
+   * (floats included), so the group element is the card — model − 7px on
+   * both axes — and a member measured by it pops out shrunk and leaves its
+   * window 7px too wide. */
+  function memberBoxOf(group: ElementHost): Box {
+    return containerBoxOf(
+      group.element.closest(VIEW_SELECTOR) ?? group.element,
+    );
+  }
+
+  function containerBoxOf(element: Element): Box {
     const origin = opts.container.getBoundingClientRect();
-    const rect = (box ?? group.element).getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
 
     return {
       left: rect.left - origin.left,
@@ -2247,6 +2270,21 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       width: rect.width,
       height: rect.height,
     };
+  }
+
+  /** `group`'s width lock in the window's own units — model px (card + gap),
+   * capped by the dock as a locked float's box is — or undefined. */
+  function modelLockOf(
+    group: Pick<SizableGroup, "panels">,
+  ): number | undefined {
+    const lock = lockOfGroup(group);
+
+    return lock === undefined
+      ? undefined
+      : lockedFloatWidth(
+          lock + GROUP_GAP_PX,
+          opts.container.getBoundingClientRect().width,
+        );
   }
 
   /** Spec §3.2 attach. Both groups are dockview's own objects (`moveTo` and
@@ -2267,7 +2305,8 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       mine === null ||
       theirs === null ||
       mine.memberIds.length > 1 ||
-      mine.memberIds.includes(targetPanelId)
+      mine.memberIds.includes(targetPanelId) ||
+      crossesClusterAxis(side, theirs.orientation)
     ) {
       return false;
     }
@@ -2276,7 +2315,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       floatWindowBoxOf(panel.group),
       floatWindowBoxOf(target.group),
       side,
-      { mine: lockOfGroup(panel.group), theirs: lockOfGroup(target.group) },
+      { mine: modelLockOf(panel.group), theirs: modelLockOf(target.group) },
     );
 
     panel.group.api.moveTo({ group: target.group, position: side });
@@ -2293,57 +2332,138 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
 
     fitLockedFloatBoxes();
-    refreshClusterSnapshots();
     publishAttachedPanels();
 
     return true;
   }
 
-  /** Spec §4.3 detach. `addFloatingGroup` on a group already in a floating
-   * window takes it out of that window into a new one — the same call the
-   * ⚓ float control makes — so the remainder only needs shrinking. */
+  /** Spec §4.3 detach: {@link isolateMember}, then the float rules. */
   function detachPanel(panelId: string): boolean {
+    if (!isolateMember(panelId)) {
+      return false;
+    }
+
+    fitLockedFloatBoxes();
+    publishAttachedPanels();
+
+    return true;
+  }
+
+  /** Takes `panelId` out of its multi-group floating window into a window of
+   * its own at its on-screen leaf rect, and shrinks the remainder per §4.3.
+   * False (nothing moved) when it is not in such a window.
+   *
+   * Never orphans the window's ANCHOR. dockview-core 8.3.1 binds a window's
+   * `group.onDidChange → overlay.setBounds` to the group it was created
+   * with, and `detachFromNestedWindow`'s `setAnchorGroup(survivor)` never
+   * rebinds it — so popping the anchor out would leave its every later size
+   * change resizing the window it left, and that window deaf to its own
+   * members. When the leaver is the anchor, the SURVIVORS move out instead,
+   * and the anchor's own window is repositioned to the leaver's rect.
+   *
+   * The window is marked handled for the duration, so the settle that each
+   * move runs does not shrink it a second time from its snapshot. */
+  function isolateMember(panelId: string): boolean {
     const panel = api.getPanel(panelId);
     const cluster = clusterOf(panelId);
+    const windowElement = panel?.group.element.closest(FLOAT_BOX_SELECTOR);
 
     if (
       panel === undefined ||
       cluster === null ||
-      cluster.memberIds.length < 2
+      cluster.memberIds.length < 2 ||
+      windowElement === null ||
+      windowElement === undefined
     ) {
       return false;
     }
 
-    const windowBox = floatWindowBoxOf(panel.group);
-    const rect = panel.group.element.getBoundingClientRect();
-    const origin = opts.container.getBoundingClientRect();
-    const leavingFirst = leafOrderOf(panelId)[0] === panelId;
-    const survivorId = cluster.memberIds.find((id) => {
-      return id !== panelId;
-    });
+    const leaf = memberBoxOf(panel.group);
+    const order = leafOrderOf(panelId);
+    const remainder = remainderAfterLeaving(
+      floatWindowBoxOf(panel.group),
+      cluster.orientation,
+      leaf,
+      order[0] === panelId,
+    );
 
-    api.addFloatingGroup(panel.group, {
-      x: rect.left - origin.left,
-      y: rect.top - origin.top,
-      width: rect.width,
-      height: rect.height,
-    });
+    const survivorGroups = order
+      .filter((id) => {
+        return id !== panelId;
+      })
+      .flatMap((id) => {
+        const group = api.getPanel(id)?.group;
 
-    if (survivorId !== undefined) {
-      shrinkWindowAfterLeaving(
-        survivorId,
-        windowBox,
-        cluster.orientation,
-        { width: rect.width, height: rect.height },
-        leavingFirst,
-      );
+        return group === undefined ? [] : [group];
+      });
+
+    const leaverIsAnchor =
+      floatingWindowOf(panel.group)?.group.element === panel.group.element;
+
+    selfShrunkWindows.add(windowElement);
+
+    try {
+      if (leaverIsAnchor) {
+        moveSurvivorsOut(survivorGroups, cluster.orientation, remainder);
+        floatingWindowOf(panel.group)?.position(leaf);
+      } else {
+        api.addFloatingGroup(panel.group, floatingOptionsOf(leaf));
+
+        const [survivor] = survivorGroups;
+
+        if (survivor !== undefined) {
+          floatingWindowOf(survivor)?.position(remainder);
+        }
+      }
+    } finally {
+      selfShrunkWindows.delete(windowElement);
     }
 
-    fitLockedFloatBoxes();
-    refreshClusterSnapshots();
-    publishAttachedPanels();
-
     return true;
+  }
+
+  /** The anchor-leaves half of {@link isolateMember}: the first survivor
+   * opens a new window at the remainder box, each further one joins the
+   * previous along the cluster's split, so layout order is kept. */
+  function moveSurvivorsOut(
+    survivorGroups: readonly DockviewGroupPanel[],
+    orientation: FloatCluster["orientation"],
+    remainder: Box,
+  ): void {
+    const [first, ...rest] = survivorGroups;
+
+    if (first === undefined) {
+      return;
+    }
+
+    api.addFloatingGroup(first, floatingOptionsOf(remainder));
+
+    let previous = first;
+
+    for (const group of rest) {
+      group.api.moveTo({
+        group: previous,
+        position: orientation === "VERTICAL" ? "bottom" : "right",
+      });
+      previous = group;
+    }
+
+    floatingWindowOf(first)?.position(remainder);
+  }
+
+  /** Before a member leaves through a path dockview owns (dock-home, close,
+   * a dynamic panel's removal): an ANCHOR is isolated first, so dockview
+   * never reassigns the window's anchor (see {@link isolateMember}). A
+   * non-anchor leaves through dockview and the settle shrinks the rest. */
+  function isolateAnchorBeforeLeaving(panelId: string): void {
+    const panel = api.getPanel(panelId);
+
+    if (
+      panel !== undefined &&
+      floatingWindowOf(panel.group)?.group.element === panel.group.element
+    ) {
+      isolateMember(panelId);
+    }
   }
 
   /** The member ids of `panelId`'s window in LAYOUT order (first = leftmost
@@ -2362,10 +2482,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     return [];
   }
 
-  /** After a member leaves, the window keeps its top-left and loses the
-   * removed extent along the split — except when the FIRST member left, when
-   * the left (or top) edge moves by that extent so the survivor does not
-   * slide (spec §4.3). */
+  /** Shrinks `survivorId`'s window per §4.3 after a member left it. */
   function shrinkWindowAfterLeaving(
     survivorId: string,
     windowBox: Box,
@@ -2379,32 +2496,32 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return;
     }
 
-    const horizontal = orientation === "HORIZONTAL";
-
-    floatingWindowOf(survivor.group)?.position({
-      left:
-        horizontal && leavingFirst
-          ? windowBox.left + removed.width
-          : windowBox.left,
-      top:
-        !horizontal && leavingFirst
-          ? windowBox.top + removed.height
-          : windowBox.top,
-      width: horizontal ? windowBox.width - removed.width : windowBox.width,
-      height: horizontal ? windowBox.height : windowBox.height - removed.height,
-    });
+    floatingWindowOf(survivor.group)?.position(
+      remainderAfterLeaving(windowBox, orientation, removed, leavingFirst),
+    );
   }
 
   /** Spec §3.2's last bullet: a member that left its window through dockview
    * itself — closed, or docked home — leaves the remainder to shrink from
-   * the snapshot the previous settle took, since by now the leaver's rect is
-   * gone. A survivor is a snapshot member still in the SAME window element
-   * (a detached member sits in a window of its own, and must not be read as
-   * the one that stayed). Only a single leaver is shrunk for: the snapshot
-   * box is the pre-leave window, so two leavers would each subtract from
-   * it. */
+   * the snapshot `onWillMutateLayout` took as this same mutation opened,
+   * while the leaver was still in place. A survivor is a snapshot member
+   * still in the SAME window element (a detached member sits in a window of
+   * its own, and must not be read as the one that stayed). A window
+   * {@link isolateMember} is moving members out of is skipped — it positions
+   * that window itself. Only a single leaver is shrunk for: the snapshot box
+   * is the pre-leave window, so two leavers would each subtract from it.
+   * The snapshot is spent here, so a later mutation dockview never brackets
+   * (a pop-out landing) cannot replay it. */
   function shrinkWindowsMembersLeft(): void {
-    for (const snapshot of clusterSnapshots.values()) {
+    const snapshots = clusterSnapshots;
+
+    clusterSnapshots = new Map();
+
+    for (const snapshot of snapshots.values()) {
+      if (selfShrunkWindows.has(snapshot.windowElement)) {
+        continue;
+      }
+
       const stayed = snapshot.order.filter((id) => {
         const group = api.getPanel(id)?.group;
 
@@ -2439,10 +2556,11 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
-  /** Re-takes the per-window snapshot {@link shrinkWindowsMembersLeft}
-   * reads — every multi-member floating window, keyed by its first member
-   * in layout order. */
-  function refreshClusterSnapshots(): void {
+  /** Takes the per-window snapshot {@link shrinkWindowsMembersLeft} reads —
+   * every multi-member floating window, keyed by its first member in layout
+   * order. Run from `onWillMutateLayout`, so it is always taken while a
+   * leaver is still in place and after any drag or resize of the window. */
+  function snapshotFloatClusters(): void {
     const next = new Map<string, FloatClusterSnapshot>();
 
     for (const entry of api.toJSON().floatingGroups ?? []) {
@@ -2466,10 +2584,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const memberRects = new Map<string, MemberExtent>();
 
       for (const id of order) {
-        const rect = api.getPanel(id)?.group.element.getBoundingClientRect();
+        const group = api.getPanel(id)?.group;
 
-        if (rect !== undefined) {
-          memberRects.set(id, { width: rect.width, height: rect.height });
+        if (group !== undefined) {
+          const { width, height } = memberBoxOf(group);
+
+          memberRects.set(id, { width, height });
         }
       }
 
@@ -2740,6 +2860,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     if (panel === undefined) {
       return;
     }
+
+    // A floating window's anchor is isolated first, so dockview never has
+    // to hand the window to a survivor (see isolateMember).
+    isolateAnchorBeforeLeaving(panelId);
 
     // Read while the owner still exists: deleting it ends the maximize, whose
     // owed shares are paid within this boundary once the survivors restore.
@@ -3599,6 +3723,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   }
 
   const willMutateSub = api.onWillMutateLayout(snapshotGridExtents);
+  const clusterSnapshotSub = api.onWillMutateLayout(snapshotFloatClusters);
 
   /** True for a panel whose docked extent another rule already owns, so a
    * remembered float size would fight it — two mechanisms over one extent
@@ -3913,7 +4038,6 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // Outside the gate: a panel popped out OF a float returns to the grid
     // without the floating set changing at all. Last, as the doc says.
     restoreFloatHomeSizes();
-    refreshClusterSnapshots();
     // The attached set is published HERE too, synchronously as the mutation
     // closes — an attach or a detach is read the moment the call returns,
     // not a microtask later (onDidLayoutChange's publish then finds nothing
@@ -4332,6 +4456,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return;
       }
 
+      // A floating window's anchor is isolated first, so dockview never has
+      // to hand the window to a survivor (see isolateMember).
+      isolateAnchorBeforeLeaving(panelId);
+
       // Closing the maximize owner ends the maximize exactly as an exit does,
       // owed shares included — read its boundary while the owner exists.
       const endedBoundary =
@@ -4493,6 +4621,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
         return;
       }
 
+      // A floating window's anchor is isolated first, so dockview never has
+      // to hand the window to a survivor (see isolateMember).
+      isolateAnchorBeforeLeaving(panelId);
+
       // The seed tree names where this panel belongs; seedAnchorFor (the
       // same helper reopenPanel already uses) resolves it to the nearest
       // GRID-resident seed sibling — restricting "live" to a grid location
@@ -4566,6 +4698,7 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       openerRootObserver.disconnect();
       popoutRoots.clear();
       willMutateSub.dispose();
+      clusterSnapshotSub.dispose();
       mutateSub.dispose();
       opts.container.removeEventListener("pointerdown", armSashUnpin, true);
       opts.container.removeEventListener(
@@ -5899,6 +6032,58 @@ interface FloatClusterSnapshot {
 
 /** A floating window's split direction, as dockview serialises it. */
 type FloatSplitOrientation = "HORIZONTAL" | "VERTICAL";
+
+/** v1 keeps a cluster single-split: attaching ACROSS its axis (top/bottom
+ * onto a side-by-side window, left/right onto a stacked one) would nest the
+ * newcomer under one member, whose window-wide sizing no rule corrects. A
+ * lone target (null) takes any side. */
+function crossesClusterAxis(
+  side: AttachSide,
+  orientation: FloatSplitOrientation | null,
+): boolean {
+  if (orientation === null) {
+    return false;
+  }
+
+  const stacking = side === "top" || side === "bottom";
+
+  return stacking ? orientation === "HORIZONTAL" : orientation === "VERTICAL";
+}
+
+/** The window left behind when a member of extent `removed` leaves (spec
+ * §4.3): it keeps its top-left and loses that extent along the split —
+ * except when the FIRST member left, when the left (or top) edge moves by
+ * it so the survivors do not slide. */
+function remainderAfterLeaving(
+  windowBox: Box,
+  orientation: FloatSplitOrientation | null,
+  removed: MemberExtent,
+  leavingFirst: boolean,
+): Box {
+  if (orientation === null) {
+    return windowBox;
+  }
+
+  const horizontal = orientation === "HORIZONTAL";
+
+  return {
+    left:
+      horizontal && leavingFirst
+        ? windowBox.left + removed.width
+        : windowBox.left,
+    top:
+      !horizontal && leavingFirst
+        ? windowBox.top + removed.height
+        : windowBox.top,
+    width: horizontal ? windowBox.width - removed.width : windowBox.width,
+    height: horizontal ? windowBox.height : windowBox.height - removed.height,
+  };
+}
+
+/** `box` as `addFloatingGroup`'s opening bounds. */
+function floatingOptionsOf(box: Box): FloatingGroupOptions {
+  return { x: box.left, y: box.top, width: box.width, height: box.height };
+}
 
 /** A serialised gridview node, as far as {@link leafViewsOf} reads it. */
 interface SerializedGridNode {
