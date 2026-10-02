@@ -8,7 +8,7 @@
  *     distinct port (RTC_DEV_PORT = 3001..), so they never share app state.
  *   - The presenter suite runs against in-process simulators — no server at all.
  *   - Full-stack smokes boot their own real server (and client) on dedicated
- *     ports (4123/4124/3100).
+ *     ports (4123/4124/3100 for node/browser, 4125/3101 for hybrid).
  *
  * Each suite's output is buffered and flushed atomically on completion (rather
  * than interleaved live), followed by a pass/fail summary. Wall-clock time is
@@ -56,6 +56,7 @@ const suites: Suite[] = [
   // Full-stack smokes — self-contained on their own ports; quick but timing-sensitive.
   { script: "test:fullstack:node" },
   { script: "test:fullstack:browser" },
+  { script: "test:fullstack:hybrid" },
   // Presenter peer — in-process, no server.
   { script: "test:presenter:vitest-fake-timers" },
   // Heavy browser suites — one dev server + browser each.

@@ -66,10 +66,15 @@ export function startServer(
 /**
  * Start the Vite client dev server with VITE_SERVER_URL set, so the client
  * connects to the real backend instead of running its in-process simulators.
+ *
+ * `extraEnv` is spread LAST, like `startServer`'s: the hybrid smoke adds
+ * `VITE_DEMO_AUTH` so the client composes the HYBRID data source (hardening
+ * spec §8.2) instead of the plain WS-real one.
  */
 export function startClient(
   clientPort: number,
   serverUrl: string,
+  extraEnv: Record<string, string> = {},
 ): ChildProcess {
   return spawn("pnpm", ["--filter", "@rtc/client-react", "dev"], {
     cwd: MONOREPO_ROOT,
@@ -83,6 +88,7 @@ export function startClient(
       VITE_SERVER_URL: serverUrl,
       // Don't leak the parent tsx loader into the Vite child.
       NODE_OPTIONS: "",
+      ...extraEnv,
     },
   });
 }
