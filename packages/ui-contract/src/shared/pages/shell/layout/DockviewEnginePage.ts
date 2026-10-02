@@ -29,6 +29,12 @@ export interface DockviewEngineProps {
    * also have a `layoutTestRegistry` entry to render a body — see
    * `panel-desk-heat` there. */
   docked?: readonly string[];
+  /** A workspace reset, as production performs one: the host CLEARS its
+   * store's "fx" blob, then threads the new count into the bridge's
+   * `layoutResets` prop, whose bump disposes the engine and rebuilds it from
+   * the now-empty store (the default seed). Omitted, it stays `0` — the
+   * mount-time no-op. Bump it through `setProps`. */
+  layoutResets?: number;
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike

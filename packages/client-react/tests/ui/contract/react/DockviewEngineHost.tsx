@@ -30,6 +30,7 @@ export function DockviewEngineHost({
   docked,
   interactive,
   specsVariant,
+  layoutResets = 0,
 }: DockviewEngineHostProps): ReactElement {
   const [saveCount, setSaveCount] = useState(0);
   // `interactive` hosts own the collapse set themselves (seeded from the
@@ -93,6 +94,18 @@ export function DockviewEngineHost({
     };
   }
 
+  // A workspace reset as production performs one: the stored blob is
+  // cleared BEFORE the bridge sees the bumped count, so its rebuild effect
+  // (which runs after this render commits) loads the default seed. Done
+  // here in render, guarded by the last count seen, because a host effect
+  // would run AFTER the child bridge's own — too late for its `load`.
+  const clearedResetsRef = useRef(layoutResets);
+
+  if (clearedResetsRef.current !== layoutResets) {
+    clearedResetsRef.current = layoutResets;
+    storeRef.current.clear("fx");
+  }
+
   const headRegistry: Partial<Record<PanelId, () => ReactElement>> = withHeads
     ? {
         "fx-rates": (): ReactElement => {
@@ -132,11 +145,9 @@ export function DockviewEngineHost({
         closed={[]}
         docked={(docked as readonly PanelId[] | undefined) ?? []}
         instances={[]}
-        // Inert: no case in DockviewEngine.contract.spec.ts exercises a
-        // workspace-reset rebuild (that behaviour lives in
-        // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
-        // bumps past the mount-time no-op.
-        layoutResets={0}
+        // `0` unless a case bumps it through `setProps` — the mount-time
+        // no-op; the store was already cleared above for any real bump.
+        layoutResets={layoutResets}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}
@@ -189,4 +200,6 @@ interface DockviewEngineHostProps {
   docked?: readonly string[];
   interactive?: boolean;
   specsVariant?: SpecsVariant;
+  /** A workspace reset count — see `DockviewEngineProps.layoutResets`. */
+  layoutResets?: number;
 }

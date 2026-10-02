@@ -336,6 +336,23 @@ describe("DockviewLayoutEngine attached floats (magnets)", () => {
     expect(page.floatingPanelIds()).toEqual(["fx-analytics", "fx-positions"]);
   });
 
+  // Review Focus 5: a reset rebuilds a FRESH engine from the cleared blob,
+  // and that engine reports the attached set only on a CHANGE — so the
+  // bridge must drop the stale set itself, or the detach buttons would
+  // outlive the cluster on panels now docked back in the seed.
+  it("clears the attached set and its detach controls when a workspace reset rebuilds the engine", async () => {
+    const page = mount(DockviewEngine, {
+      props: { seedBlob: ATTACHED_FX_BLOB },
+    });
+    expect(page.attachedPanelIds()).toEqual(["fx-analytics", "fx-positions"]);
+
+    page.setProps({ layoutResets: 1 });
+    await page.waitForAttached([]);
+
+    expect(page.detachControlLabel("fx-analytics")).toBeNull();
+    expect(page.detachControlLabel("fx-positions")).toBeNull();
+  });
+
   it("renders no detach control for a LONE float", async () => {
     const page = mount(DockviewEngine, { props: {} });
 

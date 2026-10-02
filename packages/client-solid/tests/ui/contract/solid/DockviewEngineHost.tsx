@@ -1,4 +1,4 @@
-import { createSignal, type JSX, Show, untrack } from "solid-js";
+import { createMemo, createSignal, type JSX, Show, untrack } from "solid-js";
 
 import {
   type DockLayoutStore,
@@ -101,6 +101,26 @@ export function DockviewEngineHost(
     },
   };
 
+  // A workspace reset as production performs one: the stored blob is
+  // cleared BEFORE the bridge sees the bumped count. A memo, not an effect:
+  // it recomputes ahead of every effect, so the bridge's reset effect (which
+  // reads this through its `layoutResets` prop) always loads the cleared
+  // store. Seeded with the mount-time count, so mounting clears nothing.
+  const layoutResets = createMemo(
+    (cleared: number): number => {
+      const next = props.layoutResets ?? 0;
+
+      if (next !== cleared) {
+        store.clear("fx");
+      }
+
+      return next;
+    },
+    untrack((): number => {
+      return props.layoutResets ?? 0;
+    }),
+  );
+
   function headRegistry(): Partial<Record<PanelId, () => JSX.Element>> {
     return props.withHeads
       ? {
@@ -138,12 +158,9 @@ export function DockviewEngineHost(
         closed={[]}
         docked={(props.docked as readonly PanelId[] | undefined) ?? []}
         instances={[]}
-        // Inert: no case in DockviewEngine.contract.spec.ts exercises a
-        // workspace-reset rebuild (that behaviour lives in
-        // DockviewLayoutEngine.docked.test.tsx instead) — a fixed `0` never
-        // bumps, so the reset effect's `on()` never fires past its own
-        // no-op mount-time comparison.
-        layoutResets={0}
+        // `0` unless a case bumps it through `setProps` — the reset effect's
+        // `on()` then fires against a store the memo above already cleared.
+        layoutResets={layoutResets()}
         onMaximize={(id: PanelId) => {
           recordIntent(`maximize:${id}`);
         }}
@@ -196,4 +213,6 @@ interface DockviewEngineHostProps {
   docked?: readonly string[];
   interactive?: boolean;
   specsVariant?: SpecsVariant;
+  /** A workspace reset count — see `DockviewEngineProps.layoutResets`. */
+  layoutResets?: number;
 }

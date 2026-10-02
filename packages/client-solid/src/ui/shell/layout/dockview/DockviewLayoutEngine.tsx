@@ -731,10 +731,6 @@ export function DockviewLayoutEngine(
                 : undefined;
             });
 
-            const detachHandler = createMemo(() => {
-              return detachPanelFromCluster(p.panelId);
-            });
-
             const closeHandler = createMemo(() => {
               return isOpenInstance(p.panelId)
                 ? closeInstancePanel(p.panelId)
@@ -756,7 +752,7 @@ export function DockviewLayoutEngine(
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
-                    onDetach={detachHandler()}
+                    onDetach={detachPanelFromCluster(p.panelId)}
                     onFloat={floatHandler()}
                     onClose={closeHandler()}
                   />
