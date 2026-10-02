@@ -72,6 +72,32 @@ For the full end-to-end auth flow across both clients (login, resume-on-boot,
 lock/unlock, the roster, and per-platform credential configuration), see
 [docs/authentication.md](../../docs/authentication.md).
 
+## Limits
+
+Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
+§9.2). The values are generous for one real client and tight for a flood:
+
+| What | Constant | Default |
+|---|---|---|
+| Largest WebSocket frame (`ws` closes that socket with 1009) | `WS_MAX_PAYLOAD_BYTES` | 64 KiB |
+| `jarvis.chat` message text | `JARVIS_WIRE_TEXT_MAX` (local to `src/effects/jarvis.effects.ts`, beside the history caps) | 4 000 chars |
+| Live `stream()` inner streams per effect per connection | `@rtc/ws-effects` `StreamOptions.maxActive` | 64 |
+| Distinct `keyedStream()` keys per effect per connection | `@rtc/ws-effects` `KeyedStreamOptions.maxKeys` | 128 |
+| Shared blotter / equity order book / RFQ store | `@rtc/domain` simulator constructor arguments | 500 / 500 / 200, oldest evicted first |
+
+Every RPC and stream payload is validated at its parse seam
+(`src/effects/guards.ts`): a malformed RPC is **nacked** (every client-core
+adapter already handles a nack), a malformed subscribe frame is **dropped**,
+and in both cases the connection's other effects keep serving. Before B1 a
+malformed frame threw inside the effect and `combineEffects` replaced that
+effect with `EMPTY` for the rest of the socket. The guards are never stricter
+than what `packages/client-core/src/adapters/portFactory.ts` actually sends.
+
+An accepted socket also has an `error` listener: `ws` emits `error` on the
+server-side socket for a protocol violation (an oversized frame, bad UTF-8,
+reserved bits), and with no listener Node turns that into a process crash
+(spec finding S14). The listener logs the error code only.
+
 ## How it's used
 
 The server has no simulator/real-transport split -- it *is* the thing WS-real clients connect to. Its own composition root builds the services once, combines the effects into one listener, wires up `/login` + the token-gated WS upgrade, and wires every incoming connection through it (`packages/server/src/index.ts`):
