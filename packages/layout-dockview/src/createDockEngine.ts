@@ -6,6 +6,7 @@ import {
   type DockviewTheme,
   type DockviewWillShowOverlayLocationEvent,
   directionToPosition,
+  type FloatingGroupDragContext,
   type FloatingGroupOptions,
   type SerializedDockview,
 } from "dockview";
@@ -28,7 +29,15 @@ import {
   type SeedSplit,
   seedPanelIdsOf,
 } from "#/dockSeed";
-import { type AttachSide, attachedWindowFor, type Box } from "#/floatMagnets";
+import {
+  type AttachSide,
+  attachedWindowFor,
+  type Box,
+  flushSideOf,
+  type SnapEngagement,
+  shouldAttachOnRelease,
+  snapToSiblings,
+} from "#/floatMagnets";
 import { HookActionsRenderer } from "#/HookActionsRenderer";
 import { HookContentRenderer } from "#/HookContentRenderer";
 import { HookTabRenderer } from "#/HookTabRenderer";
@@ -363,6 +372,12 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     // "titlebar" stacked a blank 22px bar on the 38px head that nobody could
     // tell was the only grip.
     floatingGroupDragHandle: "tabbar",
+    // Magnets (spec 2026-10-02): a dragged float snaps flush to its siblings.
+    // dockview hands us the proposed top-left each frame plus the sibling
+    // boxes it snapshotted at drag start; we return the snapped position.
+    // NOT dockview's own `smartGuides` — that option is implemented only in
+    // the paid dockview-enterprise module.
+    transformFloatingGroupDrag: snapFloatDrag,
     // `disableFloatingGroups` deliberately left unset: shift-drag-to-float
     // and drag-to-dock (dockview's own built-in gestures) are a KEPT
     // feature, not a deviation this engine suppresses.
@@ -3481,6 +3496,19 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
    * HTML5 drag (see `cancelHeadTabDrag`). */
   let movingFloatFromHead = false;
 
+  // ——— Magnets: the drag state the snap, the cue and the release share ———
+  /** The engaged sibling edge of the drag in flight, for the cue and the
+   * release decision. Null between drags and while nothing is snapped. */
+  let snapEngaged: SnapEngagement | null = null;
+  /** True from an Option-press detach until that drag's pointerup: snapping
+   * resumes if Option is released mid-drag, attaching never does (spec §3.2). */
+  let detachedThisDrag = false;
+  /** The modifier state of the latest pointer event of the drag, read by the
+   * cue (dockview's transform hook only reports modifiers per frame). */
+  let lastModifiers: DragModifierState = { altKey: false, shiftKey: false };
+  /** The accent line along the edge a release would attach on (spec §3.4). */
+  let attachPreview: HTMLElement | null = null;
+
   /** Moves a float by its head: a plain press anywhere on a floating group's
    * head that is not one of its own controls becomes a press on the group's
    * void container — the element dockview's overlay drags the float from
@@ -3533,10 +3561,30 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       return;
     }
 
+    const panelId = group.panels[0]?.id ?? "";
+    const attached = (clusterOf(panelId)?.memberIds.length ?? 0) > 1;
+    let moveHandle: Element = handle;
+
+    if (attached && event.altKey) {
+      // Option on a member's head: pull it out first, then move the window
+      // it is in afterwards — its own void container is dockview's handle
+      // for that window either way (see `isolateMember`).
+      detachPanel(panelId);
+      detachedThisDrag = true;
+    } else if (attached) {
+      // A plain press anywhere on a cluster moves the whole window; dockview
+      // wired that drag to the window's ANCHOR group's void container only.
+      moveHandle =
+        floatingWindowOf(group)?.group.element.querySelector(
+          VOID_CONTAINER_SELECTOR,
+        ) ?? handle;
+    }
+
     event.stopPropagation();
     movingFloatFromHead = true;
     floatBeingMoved = group;
-    handle.dispatchEvent(
+    lastModifiers = { altKey: event.altKey, shiftKey: event.shiftKey };
+    moveHandle.dispatchEvent(
       new PointerEvent("pointerdown", {
         bubbles: true,
         cancelable: true,
@@ -3555,7 +3603,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   function endFloatHeadMove(): void {
     movingFloatFromHead = false;
     floatBeingMoved = undefined;
+    detachedThisDrag = false;
+    snapEngaged = null;
     clearFloatDockPreview();
+    clearAttachPreview();
   }
 
   // ——— Drag-to-dock: Shift during a float's head move docks it ———
@@ -3672,6 +3723,197 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
     }
   }
 
+  // ——— Magnets: snap while dragging, cue, attach on release ———
+  /** dockview's per-frame float-drag hook: pulls the proposed box flush to
+   * the nearest sibling edge in range (Option suspends it), and records the
+   * engaged edge for the cue and the release. A hoisted declaration because
+   * the `createDockview` options literal names it before the closure's
+   * `let`s exist; dockview calls it only once a drag is in flight. */
+  function snapFloatDrag(context: FloatingGroupDragContext): FloatDragPosition {
+    const result = snapToSiblings(
+      context.proposed,
+      context.others,
+      context.modifiers.altKey,
+    );
+
+    snapEngaged = result.engaged;
+    showAttachPreview();
+
+    return { top: result.top, left: result.left };
+  }
+
+  /** Shows the attach cue while the drag is engaged on a sibling edge AND the
+   * release would attach — a lone float, no Option/Shift, no detach this
+   * drag, and a side the target accepts; hides it otherwise. Drawn on the
+   * TARGET's side of the shared edge, so it stays put while the float
+   * moves. */
+  function showAttachPreview(): void {
+    const moving = floatBeingMoved;
+    const engaged = snapEngaged;
+    const lone =
+      moving !== undefined &&
+      (clusterOf(moving.panels[0]?.id ?? "")?.memberIds.length ?? 0) === 1;
+
+    if (
+      engaged === null ||
+      !lone ||
+      detachedThisDrag ||
+      lastModifiers.altKey ||
+      lastModifiers.shiftKey ||
+      refusesAttachAt(engaged)
+    ) {
+      clearAttachPreview();
+
+      return;
+    }
+
+    if (attachPreview === null) {
+      attachPreview = opts.container.ownerDocument.createElement("div");
+      attachPreview.className = ATTACH_PREVIEW_CLASS;
+      opts.container.appendChild(attachPreview);
+    }
+
+    const origin = opts.container.getBoundingClientRect();
+    const line = attachLineOf(
+      engaged.other,
+      engaged.side,
+      ATTACH_PREVIEW_THICKNESS_PX,
+    );
+
+    attachPreview.dataset.side = engaged.side;
+    attachPreview.style.left = `${origin.left + line.left}px`;
+    attachPreview.style.top = `${origin.top + line.top}px`;
+    attachPreview.style.width = `${line.width}px`;
+    attachPreview.style.height = `${line.height}px`;
+  }
+
+  function clearAttachPreview(): void {
+    attachPreview?.remove();
+    attachPreview = null;
+  }
+
+  /** True when a release on `engagement` would be refused, so the cue must
+   * not promise it: the engaged box names no floating window now, or that
+   * window is a cluster and the side crosses its split (`attachPanel`
+   * refuses a cross-axis attach). `engagement.other` is dockview's
+   * drag-start snapshot of a window's box, matched to a live window by
+   * geometry. */
+  function refusesAttachAt(engagement: SnapEngagement): boolean {
+    const target = groupsAnywhere(api).find((group) => {
+      return (
+        group.api.location.type === "floating" &&
+        sameWindowBox(floatWindowBoxOf(group), engagement.other)
+      );
+    });
+    const memberId = target?.panels[0]?.id;
+
+    if (memberId === undefined) {
+      return true;
+    }
+
+    return crossesClusterAxis(
+      engagement.side,
+      clusterOf(memberId)?.orientation ?? null,
+    );
+  }
+
+  /** Keeps the cue in step with the modifiers mid-drag: pressing Option or
+   * Shift during a head move hides it, releasing them brings it back. */
+  function trackDragModifiers(event: Event): void {
+    if (event instanceof PointerEvent && floatBeingMoved !== undefined) {
+      lastModifiers = { altKey: event.altKey, shiftKey: event.shiftKey };
+      showAttachPreview();
+    }
+  }
+
+  /** Spec §3.2: a lone float released flush against another float attaches
+   * on that side. Runs in the capture phase on `window`, like the dock-home
+   * release, and reads the rects as they are at release — dockview has
+   * already moved the box on each pointermove. */
+  function attachFloatOnRelease(event: Event): void {
+    const moving = floatBeingMoved;
+
+    if (moving === undefined || !(event instanceof PointerEvent)) {
+      return;
+    }
+
+    const panelId = moving.panels[0]?.id;
+    const lone =
+      panelId !== undefined &&
+      (clusterOf(panelId)?.memberIds.length ?? 0) === 1;
+    const target = releaseTargetOf(moving);
+    const decision = {
+      lone,
+      altKey: event.altKey,
+      shiftKey: event.shiftKey,
+      detachedThisDrag,
+      side: target?.side ?? null,
+    };
+
+    if (
+      panelId !== undefined &&
+      target !== null &&
+      shouldAttachOnRelease(decision)
+    ) {
+      attachPanel(panelId, target.panelId, decision.side);
+    }
+  }
+
+  /** The first other floating window `moving`'s window sits flush against,
+   * as the member a release attaches beside and the side — or null. */
+  function releaseTargetOf(moving: ElementHost): ReleaseTarget | null {
+    const mine = floatWindowBoxOf(moving);
+    const myWindow = moving.element.closest(FLOAT_BOX_SELECTOR);
+    const floating = groupsAnywhere(api).filter((group) => {
+      return group.api.location.type === "floating";
+    });
+
+    for (const group of floating) {
+      const theirWindow = group.element.closest(FLOAT_BOX_SELECTOR);
+      const side =
+        theirWindow === null || theirWindow === myWindow
+          ? null
+          : flushSideOf(mine, floatWindowBoxOf(group));
+
+      if (side !== null) {
+        const members = floating.filter((member) => {
+          return member.element.closest(FLOAT_BOX_SELECTOR) === theirWindow;
+        });
+        const panelId = edgeMemberOf(members, side)?.panels[0]?.id;
+
+        if (panelId !== undefined) {
+          return { panelId, side };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** The member of one window whose own leaf touches the window's `side`
+   * edge — the one a newcomer on that side must attach beside. Every member
+   * shares the window box, so the window alone cannot say: attaching beside
+   * an inner member would land the newcomer in the middle of the row. Ties
+   * go to the first. */
+  function edgeMemberOf<G extends ElementHost>(
+    members: readonly G[],
+    side: AttachSide,
+  ): G | undefined {
+    let edge: G | undefined;
+    let edgeReach = Number.NEGATIVE_INFINITY;
+
+    for (const member of members) {
+      const reach = edgeReachOf(memberBoxOf(member), side);
+
+      if (edge === undefined || reach > edgeReach) {
+        edge = member;
+        edgeReach = reach;
+      }
+    }
+
+    return edge;
+  }
+
   /** Stops the head's tab from starting an HTML5 drag while that press is
    * moving the float: `draggable` tabs raise `dragstart` from mouse movement
    * whatever the pointerdown's fate, and a started drag would steal the
@@ -3685,7 +3927,10 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
   opts.container.addEventListener("pointerdown", moveFloatFromHead, true);
   opts.container.addEventListener("dragstart", cancelHeadTabDrag, true);
   window.addEventListener("pointermove", previewFloatDock, true);
+  window.addEventListener("pointermove", trackDragModifiers, true);
   window.addEventListener("pointerup", dockFloatOnRelease, true);
+  // Before `endFloatHeadMove`, which clears the `floatBeingMoved` it reads.
+  window.addEventListener("pointerup", attachFloatOnRelease, true);
   window.addEventListener("pointerup", endFloatHeadMove, true);
   window.addEventListener("pointercancel", endFloatHeadMove, true);
 
@@ -4714,10 +4959,13 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       );
       opts.container.removeEventListener("dragstart", cancelHeadTabDrag, true);
       window.removeEventListener("pointermove", previewFloatDock, true);
+      window.removeEventListener("pointermove", trackDragModifiers, true);
       window.removeEventListener("pointerup", dockFloatOnRelease, true);
+      window.removeEventListener("pointerup", attachFloatOnRelease, true);
       window.removeEventListener("pointerup", endFloatHeadMove, true);
       window.removeEventListener("pointercancel", endFloatHeadMove, true);
       clearFloatDockPreview();
+      clearAttachPreview();
       resizeObserver.disconnect();
       disarmSashUnpin();
 
@@ -4881,6 +5129,110 @@ type FloatDockPosition = "left" | "right" | "top" | "bottom" | "center";
 
 /** The class of the drag-to-dock highlight (styled in dockview-hud.css). */
 const DOCK_PREVIEW_CLASS = "rtc-dock-preview";
+
+/** The class of the float-magnets attach cue (styled in dockview-hud.css). */
+const ATTACH_PREVIEW_CLASS = "rtc-dock-attach-preview";
+
+/** The attach cue's thickness, in px. */
+const ATTACH_PREVIEW_THICKNESS_PX = 2;
+
+/** How far apart, in px, a snapshotted sibling box and a live window box may
+ * be on every edge and still name the same window. */
+const WINDOW_MATCH_TOLERANCE_PX = 1;
+
+/** The modifiers the float-magnets cue reads off the drag's latest event. */
+interface DragModifierState {
+  readonly altKey: boolean;
+  readonly shiftKey: boolean;
+}
+
+/** The top-left a dragged float is moved to this frame. */
+interface FloatDragPosition {
+  readonly top: number;
+  readonly left: number;
+}
+
+/** The member a release attaches beside, and on which side of it. */
+interface ReleaseTarget {
+  readonly panelId: string;
+  readonly side: AttachSide;
+}
+
+/** How far `box` reaches toward `side` — larger is further out — so the
+ * member on a window's `side` edge is the one that maximises it. */
+function edgeReachOf(box: Box, side: AttachSide): number {
+  switch (side) {
+    case "right": {
+      return box.left + box.width;
+    }
+
+    case "left": {
+      return -box.left;
+    }
+
+    case "bottom": {
+      return box.top + box.height;
+    }
+
+    case "top": {
+      return -box.top;
+    }
+  }
+}
+
+/** Whether two boxes name the same on-screen window, within
+ * {@link WINDOW_MATCH_TOLERANCE_PX} on every edge. */
+function sameWindowBox(a: Box, b: Box): boolean {
+  return (
+    Math.abs(a.left - b.left) <= WINDOW_MATCH_TOLERANCE_PX &&
+    Math.abs(a.top - b.top) <= WINDOW_MATCH_TOLERANCE_PX &&
+    Math.abs(a.width - b.width) <= WINDOW_MATCH_TOLERANCE_PX &&
+    Math.abs(a.height - b.height) <= WINDOW_MATCH_TOLERANCE_PX
+  );
+}
+
+/** The cue's line, in container px: `thickness` wide along the edge of
+ * `other` on `side` — inside the TARGET, so it stays put while the float
+ * moves. */
+function attachLineOf(other: Box, side: AttachSide, thickness: number): Box {
+  switch (side) {
+    case "right": {
+      return {
+        left: other.left + other.width - thickness,
+        top: other.top,
+        width: thickness,
+        height: other.height,
+      };
+    }
+
+    case "left": {
+      return {
+        left: other.left,
+        top: other.top,
+        width: thickness,
+        height: other.height,
+      };
+    }
+
+    case "bottom": {
+      return {
+        left: other.left,
+        top: other.top + other.height - thickness,
+        width: other.width,
+        height: thickness,
+      };
+    }
+
+    case "top": {
+      return {
+        left: other.left,
+        top: other.top,
+        width: other.width,
+        height: thickness,
+      };
+    }
+  }
+}
 
 /** How far into a group, as a share of its size, a pointer counts as being
  * on that EDGE — docking beside it — rather than in its centre, which joins
