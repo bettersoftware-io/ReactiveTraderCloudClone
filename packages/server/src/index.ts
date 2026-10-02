@@ -17,6 +17,7 @@ import type { AgentLoop } from "./agent/agentLoop.js";
 import { createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
+import { WS_MAX_PAYLOAD_BYTES } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
 import {
   authenticateLoginRequest,
@@ -203,6 +204,10 @@ const connectionLog = createConnectionLog();
 
 const wss = new WebSocketServer({
   server: httpServer,
+  // S1 — `ws`'s default is 100 MiB, far more than the 256 MB VM. An
+  // oversized frame closes THAT socket with 1009 and surfaces as an `error`
+  // event on it (handled below, never thrown).
+  maxPayload: WS_MAX_PAYLOAD_BYTES,
   // Reject unauthorized upgrades with 401 before a socket exists, so
   // listen() only ever runs for authorized clients. /health and /login
   // stay reachable (they are HTTP routes, not WS upgrades). A rejection is
@@ -219,8 +224,17 @@ const wss = new WebSocketServer({
   },
 });
 
+interface CodedError {
+  readonly code?: string;
+}
+
 wss.on("connection", (ws) => {
   connectionLog.recordConnect();
+  // S14 — without this listener a single malformed frame is an unhandled
+  // `error` event, which Node turns into a process crash.
+  ws.on("error", (err: Error & CodedError) => {
+    connectionLog.recordSocketError(err.code ?? err.name);
+  });
   ws.on("close", () => {
     connectionLog.recordDisconnect();
   });
