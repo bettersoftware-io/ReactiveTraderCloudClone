@@ -4,12 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   type AppPorts,
-  createApp,
-  createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
   type Presenters,
 } from "@rtc/client-core";
+import { createApp, createMachineFactories } from "@rtc/client-core/core";
 import {
   AuthSimulator,
   CANDLE_HISTORY_TOTAL,

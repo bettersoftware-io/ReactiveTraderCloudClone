@@ -151,10 +151,12 @@ switched between all three cores without a rebuild.
   ignored/cleared with a console warning and falls through; an unknown build
   default still throws synchronously — a developer error, unchanged in
   substance from today's fail-closed `selectCore`.
-- **RxJS stays the only statically-imported core** (`loadCore` resolves it
-  from the already-imported `rxjsCore`); `async` and `effect` are resolved
-  through `import("@rtc/client-core-async")` / `import("@rtc/client-core-effect")`,
-  which the bundler splits into their own lazy chunks fetched only once
+- **Every core is a lazy chunk** (since approach B, 2026-10-02 — see the
+  amendment below; from 2026-09-27 to then RxJS was the one statically
+  imported core, "approach A"). `loadCore` resolves `rxjs` through
+  `import("@rtc/client-core/core")`, `async` and `effect` through
+  `import("@rtc/client-core-async")` / `import("@rtc/client-core-effect")`,
+  each of which the bundler splits into its own lazy chunk fetched only once
   chosen. `bootCore` (`src/app/bootApp.ts`) runs this resolve-then-load
   sequence before `main.tsx` renders anything; a rejected chunk load renders
   a plain boot-error screen with a "Load the default core" action (clears the
@@ -174,18 +176,39 @@ switched between all three cores without a rebuild.
 - **`check:core-bundle` is redefined** from "one build per core, each free
   of the others' marker" to "one build; the eager set (both pages' entry
   scripts plus every `modulepreload` hint, closed over static imports)
-  carries the `RXJS_CORE_BRAND` and neither alternative's brand; exactly one
-  lazy chunk carries `ASYNC_CORE_BRAND`, exactly one carries
+  carries no core's brand (approach B; approach A required the
+  `RXJS_CORE_BRAND` there); exactly one lazy chunk carries each of
+  `RXJS_CORE_BRAND`, `ASYNC_CORE_BRAND` and
   `EFFECT_CORE_BRAND`; no eager file carries the Effect runtime's own
   `effect/Fiber` marker (catching the composition root staying lazy while
   the library it constructs leaks into a shared eager chunk); no single file
   carries two cores' markers." `--dir` runs it against an already-built
-  output directory rather than building; `deploy.yml`'s "Guard — alternative
-  cores ship only as lazy chunks" step calls it that way over
+  output directory rather than building; `deploy.yml`'s "Guard — every
+  application core ships only as a lazy chunk" step calls it that way over
   `.vercel/output/static`.
-- **Out of scope, recorded as follow-ups below:** a hot swap without a page
-  reload, and "approach B" (all three cores lazy, none privileged in the
-  entry bundle).
+- **Out of scope at design time, recorded as follow-ups below:** a hot swap
+  without a page reload, and "approach B" (all three cores lazy, none
+  privileged in the entry bundle) — the latter adopted 2026-10-02:
+
+**Amended 2026-10-02 — approach B adopted.** The RxJS composition root
+(`createApp`, `createMachineFactories`, `RXJS_CORE_BRAND`, `rxjsCore`) moved
+behind a new `@rtc/client-core/core` subpath export (`src/core.ts`) and left
+the root index, so a web client can reach it only through `loadCore`'s
+dynamic `import()` and the loader treats all three cores alike. Consumers
+that compose directly — React Native, the presenter-direct e2e peer, the
+ui-contract fixtures and the tests — import the subpath. `routeIdleLifecycle`
+moved from `composition.ts` to `adapters/routeIdleLifecycle.ts`: the web
+clients call it eagerly from `buildBrowserPorts`, and any eager reach into
+`composition.ts` would have pulled the whole root back into the entry. What
+this bought, measured: the react entry 318.1 → 315.0 KB gzip, the solid entry
+240.4 → 237.5 KB, a ~4 KB lazy `core-*.js` in each — the composition root
+and nothing more. The bundler assigns a module to the entry chunk whenever
+the entry reaches it statically, and the UI reaches `@rtc/client-core`'s
+presenters, machines and adapters through the root index's barrels, so
+those stay eager. The default visitor now pays one extra chunk fetch (no
+`modulepreload` hint is added: that would re-privilege RxJS, and the gate
+reads a hint as eager). The real bundle win is a separate change, Follow-up
+9.
 
 ## Consequences
 
@@ -199,7 +222,8 @@ switched between all three cores without a rebuild.
   `CoreFactory` as a prop from `bootCore`'s result rather than importing one
   directly.
 - **Superseded by Decision 6:** production no longer pins one core per
-  build. Every build ships all three — RxJS eager, async/Effect lazy — and
+  build. Every build ships all three as lazy chunks (RxJS eager only between
+  2026-09-27 and approach B on 2026-10-02) and
   `VITE_CORE_IMPL` unset now resolves only the *default choice* a visitor
   lands on, not what gets bundled. The deploy workflow's guard, and `pnpm
   check:core-bundle` locally, assert the eager/lazy split described in
@@ -1154,10 +1178,25 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    save-and-reload. Needs the page-lifetime singletons (the devtools hub,
    the transport, other module-level state) to tolerate a second
    composition within one page life.
-8. **Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
-   subpath export for the RxJS composition root, so the entry bundle
-   privileges none of the three; deferred because Approach A (RxJS eager,
-   the other two lazy) costs the default visitor's load nothing.
+8. ~~**Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
+   subpath export for the RxJS composition root~~ — done 2026-10-02 (the
+   amendment under Decision 6): the composition root is lazy and the entry
+   bundle carries no core's brand; measured gain ~3 KB gzip per client,
+   because only the composition root could move — see 9.
+9. **An explicit edge surface for the UI, so the RxJS core's presenters and
+   machines go lazy too.** Today the UI imports `@rtc/client-core`'s root
+   index, whose `export *` barrels reach every presenter and machine module
+   (the view-model helpers the UI needs — `kpisVm`, `latencyBuckets`,
+   `throughputPaths`, `PANEL_SPECS`, the sort helpers — live beside their
+   presenters), and the bundler keeps a statically reachable module in the
+   entry chunk. The change: move those helpers into pure modules (several
+   belong in `@rtc/core-logic`), take the presenter and machine barrels off
+   the root index so the root is the *edge* (adapters, port factories,
+   stores, helpers, constants) and `./core` the only way to the presenters,
+   then re-measure. Architectural — its own spec; it is also the "UI never
+   imports the core's internals" boundary the migration ending in
+   [§23](../architecture/23-application-cores-explained.md#why-three-cores-read-this-first)
+   assumes.
 
 ## See also
 

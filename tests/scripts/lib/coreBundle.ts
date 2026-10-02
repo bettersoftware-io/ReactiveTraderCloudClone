@@ -2,11 +2,12 @@
  * Pure helpers behind `scripts/check-core-bundle.mjs` (§4 of
  * docs/superpowers/specs/2026-09-27-runtime-core-switch-design.md): since
  * slice 8/the runtime core switch, a web client ships ONE production build
- * that boots the RxJS core eagerly (statically imported) and loads the
- * async/Effect cores as lazy chunks fetched only once chosen
- * (src/app/coreSelection.ts's `loadCore`). So the bundle isolation check is
- * no longer "one build per core" — it is "one build; the eager graph carries
- * only RxJS; each alternative core lives in exactly one lazy chunk".
+ * and loads whichever core the visitor resolved to as a lazy chunk fetched
+ * only once chosen (src/app/coreSelection.ts's `loadCore`) — all three of
+ * them, the RxJS core included, since approach B (ADR-006 Decision 6,
+ * 2026-10-02). So the bundle isolation check is no longer "one build per
+ * core" — it is "one build; the eager graph carries NO core's composition
+ * root; each core lives in exactly one lazy chunk".
  *
  * A page's "eager set" is every file the browser fetches before any user
  * choice: its own entry `<script type="module">` plus everything Vite's
@@ -88,9 +89,9 @@ export function eagerFiles(html: string): string[] {
  * Classifies a build's files against the four rules a runtime-switchable
  * bundle must satisfy:
  *
- * 1. the eager set carries the rxjs marker, and neither alternative marker;
- * 2. exactly one non-eager (lazy) file carries the async marker, exactly one
- *    the effect marker;
+ * 1. the eager set carries no core marker at all — not the rxjs one either
+ *    (approach B: the entry bundle privileges none of the three);
+ * 2. exactly one non-eager (lazy) file carries each core's marker;
  * 3. no single file carries two different core markers (a core that reached
  *    for another core's composition root instead of its own);
  * 4. no eager file carries `EFFECT_RUNTIME_MARKER` — the brand rules above
@@ -133,15 +134,7 @@ export function classify(input: ClassifyInput): ClassifyResult {
 
   const eager = expandEagerClosure(input.eager, input.files);
 
-  const eagerRxjs = owners.rxjs.filter((path) => {
-    return eager.has(path);
-  });
-
-  if (eagerRxjs.length === 0) {
-    failures.push("the rxjs marker is missing from the eager set");
-  }
-
-  for (const core of ["async", "effect"] as const) {
+  for (const core of CORES) {
     const eagerHits = owners[core].filter((path) => {
       return eager.has(path);
     });

@@ -1,4 +1,3 @@
-import { rxjsCore } from "@rtc/client-core";
 import type {
   CoreFactory,
   CoreImpl,
@@ -116,8 +115,14 @@ export function resolveCoreChoice(inputs: CoreChoiceInputs): CoreChoice {
  * selection in `loadCore` is unit-testable without really importing a whole
  * core (seconds under vitest on a loaded runner). */
 export interface CoreImporters {
+  readonly rxjs: () => Promise<RxjsCoreModule>;
   readonly async: () => Promise<AsyncCoreModule>;
   readonly effect: () => Promise<EffectCoreModule>;
+}
+
+/** The slice of `@rtc/client-core/core`'s module `loadCore` reads. */
+interface RxjsCoreModule {
+  readonly rxjsCore: CoreFactory;
 }
 
 /** The slice of `@rtc/client-core-async`'s module `loadCore` reads. */
@@ -131,9 +136,16 @@ interface EffectCoreModule {
 }
 
 /** The real importers. Each `import()` specifier must stay a string literal
- * here: that is what lets the bundler split each alternative core into its
- * own lazy chunk (`pnpm check:core-bundle` witnesses it). */
+ * here: that is what lets the bundler split each core into its own lazy
+ * chunk (`pnpm check:core-bundle` witnesses it). The RxJS core is reached
+ * through `@rtc/client-core/core`, a subpath export holding only its
+ * composition root — the root `@rtc/client-core` index the UI imports from
+ * eagerly no longer carries it, so none of the three cores is in the entry
+ * bundle (approach B, ADR-006 Decision 6). */
 const DEFAULT_CORE_IMPORTERS: CoreImporters = {
+  rxjs: () => {
+    return import("@rtc/client-core/core");
+  },
   async: () => {
     return import("@rtc/client-core-async");
   },
@@ -143,10 +155,10 @@ const DEFAULT_CORE_IMPORTERS: CoreImporters = {
 };
 
 /**
- * Resolves the `CoreFactory` for `impl`. RxJS is statically imported (its
- * adapters are in the entry bundle anyway); async and Effect are dynamic
- * imports the bundler splits into their own chunks, fetched only once chosen.
- * A failed chunk fetch rejects with the importer's own error.
+ * Resolves the `CoreFactory` for `impl`. Every core is a dynamic import the
+ * bundler splits into its own chunk, fetched only once chosen — the RxJS
+ * default included, so the entry bundle privileges none of the three. A
+ * failed chunk fetch rejects with the importer's own error.
  */
 export async function loadCore(
   impl: CoreImpl,
@@ -160,7 +172,7 @@ export async function loadCore(
     return (await importers.effect()).effectCore;
   }
 
-  return rxjsCore;
+  return (await importers.rxjs()).rxjsCore;
 }
 
 /** Formats a caught storage exception into one log line — shared by every
@@ -249,9 +261,13 @@ export function urlWithoutCoreParam(href: string): string {
  * Stripping alone would fall through to the next precedence step (the
  * stored choice, then the build default `VITE_CORE_IMPL`), which can be the
  * very core whose chunk just failed to load (e.g. a stale `dev:*:effect`
- * dist) — landing right back on the same failure and looping. RxJS can't
- * fail this way (it's statically imported into the entry bundle, never a
- * lazy chunk), so forcing it here guarantees the reset actually resets.
+ * dist) — landing right back on the same failure and looping. Forcing the
+ * default guarantees the reset lands on a DIFFERENT core than the one that
+ * failed, whenever that one wasn't RxJS. Since approach B the RxJS core is a
+ * lazy chunk too, so it can fail the same way (a dropped network, a stale
+ * dist); the reset is then a plain retry of the same fetch — there is no
+ * safer core to fall back to, and a retry is the right recovery for a
+ * transient fetch failure anyway.
  */
 export function defaultCoreResetHref(href: string): string {
   const url = new URL(href);

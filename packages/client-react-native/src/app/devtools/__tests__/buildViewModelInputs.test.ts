@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApp } from "@rtc/client-core";
+import { createApp } from "@rtc/client-core/core";
 import {
   type AppToInspector,
   createInMemoryDuplexPair,

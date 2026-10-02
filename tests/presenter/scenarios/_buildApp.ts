@@ -6,10 +6,10 @@ import {
   type App,
   type AppPorts,
   type ConnectionIntentsPort,
-  createApp,
   createSimulatorPorts,
   InMemorySessionStore,
 } from "@rtc/client-core";
+import { createApp } from "@rtc/client-core/core";
 import {
   AuthSimulator,
   type ConnectionEvent,

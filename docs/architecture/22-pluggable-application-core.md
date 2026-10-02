@@ -96,7 +96,9 @@ concrete classes directly.
 **Since 2026-09-27** ([ADR-006 Decision 6](../adr/ADR-006-pluggable-application-core.md#decision-6-load-time-core-selection-supersedes-build-time-only-selection),
 [design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md)),
 the core is chosen at load time, not baked into the build: one production
-build ships all three cores — RxJS eager, async and Effect as lazy chunks —
+build ships all three cores as lazy chunks (the RxJS composition root too,
+since approach B on 2026-10-02 — reached through the `@rtc/client-core/core`
+subpath export, never the root index) —
 and a visitor (or the deployed demo itself) can switch between them without a
 rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 `selectCore.ts`) resolves the choice through a pure precedence chain:
@@ -484,11 +486,11 @@ between all three cores (`tests/scripts/lib/coreBundle.ts`'s `classify`):
    `<script type="module">` plus every `<link rel="modulepreload">` hint,
    closed over each file's own static ES imports (a dynamic `import()` is
    deliberately excluded — deferring the fetch is what makes a chunk lazy) —
-   carries `RXJS_CORE_BRAND` (stamped by the RxJS `createApp` on every
-   `App`) and neither `@rtc/client-core-async`'s nor
-   `@rtc/client-core-effect`'s brand;
-2. exactly one non-eager (lazy) chunk carries the async brand, exactly one
-   the Effect brand;
+   carries **no core's brand** — not `RXJS_CORE_BRAND` (stamped by the RxJS
+   `createApp` on every `App`), not `@rtc/client-core-async`'s, not
+   `@rtc/client-core-effect`'s (approach B, 2026-10-02; before it the RxJS
+   brand was *required* in the eager set);
+2. exactly one non-eager (lazy) chunk carries each of the three brands;
 3. no single file carries two different cores' brands (a core reaching for
    another's composition root instead of its own);
 4. no eager file carries `effect/Fiber` — the Effect *library's* own
@@ -498,13 +500,27 @@ between all three cores (`tests/scripts/lib/coreBundle.ts`'s `classify`):
 
 Gzip sizes per core chunk are still printed for visibility. `--dir <dir>`
 skips the build and checks an existing output directory directly —
-`deploy.yml`'s "Guard — alternative cores ship only as lazy chunks" step
-uses it over `.vercel/output/static`, which that job already scoped to the
-one client it built. What the RxJS marker's presence in the eager set proves
-is that the RxJS composition root is there; `@rtc/client-core` itself is not
-`sideEffects: false` and still ships its port factories and adapters in
-every build (the clients take `createSimulatorPorts` and `WsAdapter` from
-it), so a stray UI import of one presenter class would not trip it.
+`deploy.yml`'s "Guard — every application core ships only as a lazy chunk"
+step uses it over `.vercel/output/static`, which that job already scoped to
+the one client it built.
+
+**What the brand rules do and do not prove.** A brand names a core's
+*composition root* — the file that constructs the app. Rule 1 therefore
+proves the entry bundle constructs no core; it does not make
+`@rtc/client-core`'s presenters, machines and adapters lazy. Those are
+reached eagerly through the root index the UI imports from (`PANEL_SPECS`,
+the layout stores, `WsAdapter`, the view-model helpers that live beside
+their presenters), and the bundler assigns a module to the entry chunk
+whenever the entry can reach it *statically*, whoever ends up using it. So
+approach B moved exactly the composition root: measured on 2026-10-02, the
+react entry went 318.1 → 315.0 KB gzip and the solid entry 240.4 → 237.5 KB,
+with a ~4 KB `core-*.js` chunk appearing in each; `@rtc/client-core`'s
+presenters and machines ship eagerly as before. Making *them* lazy needs an
+explicit edge surface for the UI (the helpers it imports moved out of the
+presenter modules, the presenter and machine barrels off the root index) —
+ADR-006 Follow-ups. A stray UI import of one presenter class does not trip
+rule 1 either, for the same reason: only the composition root carries a
+brand.
 
 ## See also
 

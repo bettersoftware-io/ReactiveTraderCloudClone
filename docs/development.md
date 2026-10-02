@@ -64,7 +64,7 @@ after a dependency change, clear the stale Vite cache:
 
 The web clients can run on any of three interchangeable application cores,
 and — since 2026-09-27 — switching between them no longer needs a rebuild:
-every build ships all three (RxJS eager, the other two as lazy chunks), and
+every build ships all three as lazy chunks (the RxJS composition root too, since 2026-10-02), and
 the choice is resolved at **load time**:
 
 | `VITE_CORE_IMPL`  | Core                                                    |
