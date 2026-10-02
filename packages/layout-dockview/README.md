@@ -448,14 +448,20 @@ module implements it. Design and decided scope:
 - **Measurement:** member rects are leaf-view rects (`closest(".dv-view")`),
   not group rects — the card has 3.5px padding, which is why a locked
   float's box is 367 = 360 + `GROUP_GAP_PX`.
-- **Width locks:** a side-by-side cluster is never box-locked (each locked
-  member keeps its own min = max); a stacked cluster with a locked member is
+- **Width locks:** a side-by-side cluster is never sized to a lock (each
+  locked member keeps its own min = max), though one whose EVERY member is
+  locked hides its width handles like a lone locked float — it cannot honour
+  a horizontal resize; a stacked cluster with a locked member is
   box-locked at that width for every member. Read from the model, not the
   DOM — at construction the members all report the same rect. On restore a
   locked member of a side-by-side cluster gets min = max constraints ONLY,
   never `setSize`: `setSize` on the window's anchor resizes the whole window
   through that same dockview listener (the reload squeeze). Lone and stacked
-  locked floats keep `setSize`.
+  locked floats keep `setSize` (in a stacked window a member's width IS the
+  window's, so the write is harmless).
+- **Reload:** an attached cluster comes back as ONE window at its saved
+  width, because the restore applies the members' locks as constraints only
+  (the reasoning above) — never as a `setSize` that would reach the window.
 - **Cue:** `.rtc-dock-attach-preview`, a 2px accent line on the target's side
   of the edge a release would attach on. The sash between attached members
   is painted by the generic sash rule; there is no float-specific CSS.
