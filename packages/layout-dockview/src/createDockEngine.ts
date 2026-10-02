@@ -2206,12 +2206,22 @@ export function createDockEngine(opts: DockEngineOptions): DockEngine {
       const cluster = clusterOf(members[0]?.panels[0]?.id ?? "");
       const lock = lockOfGroup(members[0] ?? { panels: [] });
 
-      // A SIDE-BY-SIDE cluster is never box-locked: each locked member keeps
-      // its own min = max inside the window, and the free members take the
-      // rest. (The old whole-window rule squeezed a restored pair to one
-      // panel's width — the spike's reload bug.)
+      // A SIDE-BY-SIDE cluster is never SIZED here: each locked member keeps
+      // its own min = max inside the window (settleWidthLocks, constraints
+      // only), and the free members take the rest. A setSize on a member
+      // would reach the WINDOW — dockview-core 8.3.1 binds the anchor
+      // group's onDidChange to overlay.setBounds — and squeezed a restored
+      // pair to one panel's width (the spike's reload bug). When EVERY
+      // member is locked the window cannot honour a horizontal resize, so
+      // its width handles hide like a lone locked float's; one free member
+      // keeps them.
       if (cluster?.orientation === "HORIZONTAL") {
-        box.classList.remove("rtc-dock-float-fixed-width");
+        box.classList.toggle(
+          "rtc-dock-float-fixed-width",
+          members.every((member) => {
+            return lockOfGroup(member) !== undefined;
+          }),
+        );
         continue;
       }
 

@@ -7200,10 +7200,13 @@ describe("attached floats — the cluster model and the width rule", () => {
     engine.dispose();
   });
 
-  // The restore bug the spike hit: both members are 360-locked, so the old
-  // rule box-locked the WHOLE window at one panel's width and the second
-  // panel was clipped away after a reload.
-  it("restores a side-by-side cluster of two locked panels without box-locking the window", () => {
+  // The restore bug the spike hit: both members are 360-locked, and a
+  // setSize of one lock on the window's anchor squeezed the WHOLE window to
+  // one panel's width, clipping the second panel away after a reload. The
+  // width-handle class is not what squeezed it: an all-locked pair cannot
+  // honour a horizontal resize, so it hides those handles like a lone
+  // locked float.
+  it("restores a side-by-side cluster of two locked panels, keeps the window at its saved width and hides the width handles", () => {
     const container = sizedContainer(1440, 900);
     let saved = "";
     const first = createDockEngine({
@@ -7243,11 +7246,36 @@ describe("attached floats — the cluster model and the width rule", () => {
       "fx-analytics",
       "fx-positions",
     ]);
-    expect(box.classList.contains("rtc-dock-float-fixed-width")).toBe(false);
+    expect(box.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
     // Each member keeps ITS OWN lock inside the cluster (min = max).
     expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
     expect(widthClampOf("fx-positions")).toEqual([367, 367]);
     second.dispose();
+  });
+
+  // One free member can take a horizontal resize, so the window keeps its
+  // width handles.
+  it("leaves the width handles on a side-by-side cluster of one locked and one free panel", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-blotter", 600, 100, 500, 300);
+    joinFloats(api, "fx-blotter", "fx-analytics", "right");
+
+    expect(floatMembersOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-blotter",
+    ]);
+    expect(
+      floatBoxElementOf(api, "fx-analytics").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(false);
+    engine.dispose();
   });
 
   it("box-locks a STACKED cluster when a member is locked, and gives every member the lock", () => {
@@ -7374,21 +7402,39 @@ describe("attached floats — the cluster model and the width rule", () => {
     engine.dispose();
   });
 
-  it("docking a member home leaves the other member a lone float and restores the docked panel's home", () => {
+  // The home extent is read from the engine's own record (the blob's
+  // `rtcFloatSizes` sidecar, live through snapshotLayout) as it stood when
+  // the panel floated, and the dock-home is witnessed by the docked group
+  // being sized back to it — the lone-float dock-home suite's observation,
+  // here through a cluster.
+  it("docking a member home leaves the other member a lone float, restores the docked panel's home and empties the attached set", () => {
+    const reports: (readonly string[])[] = [];
     const engine = createDockEngine({
       ...createRailBase(),
       container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
     });
     const api = lastDockviewApi();
 
     engine.floatPanel("fx-analytics");
     engine.floatPanel("fx-positions");
+    const home = floatHomeOf(engine.snapshotLayout(), "fx-positions");
+
+    expect(home.size).toBeGreaterThan(0);
+
     engine.attachPanel("fx-positions", "fx-analytics", "right");
+    expect(reports.at(-1)).toEqual(["fx-analytics", "fx-positions"]);
+    const setSize = vi.spyOn(groupOf(api, "fx-positions").api, "setSize");
+
     engine.dockPanel("fx-positions");
 
     expect(locationOf("fx-positions")).toBe("grid");
     expect(locationOf("fx-analytics")).toBe("floating");
     expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    expect(setSize).toHaveBeenCalledWith({ [home.axis]: home.size });
+    expect(reports.at(-1)).toEqual([]);
     engine.dispose();
   });
 
@@ -8107,6 +8153,26 @@ function withFloatWindowBox(
     ...parsed,
     floatingGroups: [{ ...first, position }, ...rest],
   });
+}
+
+/** One panel's remembered pre-float home extent, as the blob's
+ * `rtcFloatSizes` sidecar records it. */
+interface FloatHome {
+  readonly axis: "width" | "height";
+  readonly size: number;
+}
+
+/** `panelId`'s entry in `blob`'s `rtcFloatSizes` sidecar — throws when
+ * absent, so an assertion on it can never pass on a panel the engine did
+ * not record. */
+function floatHomeOf(blob: string, panelId: string): FloatHome {
+  const entry = JSON.parse(blob).rtcFloatSizes?.[panelId];
+
+  if (entry === undefined) {
+    throw new Error(`the blob records no pre-float home for ${panelId}`);
+  }
+
+  return entry;
 }
 
 /** A `getBoundingClientRect` result at an explicit box. */
