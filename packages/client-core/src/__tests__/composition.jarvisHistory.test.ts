@@ -27,6 +27,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { historyEntriesExcludingInFlightTurn } from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
@@ -42,7 +43,7 @@ import {
   createWsRealPorts,
   type PortFactoryDeps,
 } from "#/adapters/portFactory";
-import { createApp, historyEntriesExcludingInFlightTurn } from "#/composition";
+import { createApp } from "#/composition";
 import { JARVIS_GREETING, type JarvisEntry } from "#/presenters/JarvisMachine";
 
 describe("composition — jarvis history-source wiring", () => {
