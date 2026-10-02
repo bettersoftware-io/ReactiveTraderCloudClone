@@ -460,8 +460,10 @@ module implements it. Design and decided scope:
   locked floats keep `setSize` (in a stacked window a member's width IS the
   window's, so the write is harmless).
 - **Reload:** an attached cluster comes back as ONE window at its saved
-  width, because the restore applies the members' locks as constraints only
-  (the reasoning above) — never as a `setSize` that would reach the window.
+  width. In a side-by-side cluster the restore applies the members' locks as
+  constraints only (the reasoning above) — never as a `setSize` that would
+  reach the window; in a stacked cluster the `setSize` is harmless because a
+  member's width IS the window's width.
 - **Cue:** `.rtc-dock-attach-preview`, a 2px accent line on the target's side
   of the edge a release would attach on. The sash between attached members
   is painted by the generic sash rule; there is no float-specific CSS.
