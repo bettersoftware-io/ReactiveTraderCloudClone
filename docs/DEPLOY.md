@@ -73,7 +73,7 @@ loudly instead of shipping:
 - the demo roster was inlined (`mcdc2026` in the bundle, from the committed
   `packages/client-*/.env.production`) — otherwise the hybrid would silently
   send every login, demo accounts included, to the server
-- the alternative application cores ship only as lazy chunks
+- every application core ships only as a lazy chunk (the RxJS composition root too, since approach B)
   (`scripts/check-core-bundle.mjs`)
 - an inline sourcemap is present when `include_sourcemaps` was ticked
 
