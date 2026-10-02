@@ -49,7 +49,9 @@ Inputs the spec implies but is silent about. Each has a test pinned in the ownin
 **Interfaces:**
 - Produces:
   ```ts
-  // packages/server/src/config/limits.ts — every number below is referenced by name elsewhere in this plan
+  // packages/server/src/config/limits.ts — every number below is referenced by name elsewhere in this plan.
+  // knip fails the build on an export nothing consumes yet, so Task 1 creates the file with ONLY
+  // WS_MAX_PAYLOAD_BYTES; each later task adds the constants it wires (same doc comments as here).
   export const WS_MAX_PAYLOAD_BYTES = 64 * 1024;
   export const LOGIN_MAX_BODY_BYTES = 4 * 1024;
   export const MCP_MAX_BODY_BYTES = 64 * 1024;

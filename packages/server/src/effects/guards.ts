@@ -34,11 +34,11 @@ export { MalformedPayloadError } from "./MalformedPayloadError.js";
  * validation (the domain simulators still own that).
  */
 
-export const MAX_SYMBOL_LENGTH = 16;
-export const MAX_CURRENCY_LENGTH = 8;
-export const MAX_ID_LENGTH = 64;
-export const MAX_CANDLE_PAGE = 2_000;
-export const MAX_DEALERS_PER_RFQ = 32;
+const MAX_SYMBOL_LENGTH = 16;
+const MAX_CURRENCY_LENGTH = 8;
+const MAX_ID_LENGTH = 64;
+const MAX_CANDLE_PAGE = 2_000;
+const MAX_DEALERS_PER_RFQ = 32;
 
 export interface SymbolPayload {
   readonly symbol: string;
@@ -121,11 +121,11 @@ export function describeMalformedPayload(
   return `${frameType}: ${verb} malformed payload (body omitted)`;
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function isFiniteNumber(value: unknown): value is number {
+function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
@@ -134,11 +134,11 @@ export function isBoundedString(value: unknown, max: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= max;
 }
 
-export function isDirection(value: unknown): value is Direction {
+function isDirection(value: unknown): value is Direction {
   return value === Direction.Buy || value === Direction.Sell;
 }
 
-export function isCandleTimeframe(value: unknown): value is CandleTimeframe {
+function isCandleTimeframe(value: unknown): value is CandleTimeframe {
   return (CANDLE_TIMEFRAMES as readonly unknown[]).includes(value);
 }
 

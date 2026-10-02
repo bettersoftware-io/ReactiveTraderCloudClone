@@ -18,12 +18,17 @@ describe("rpc", () => {
       return of(42);
     });
 
-    const in$ = of<Inbound>(
+    const frames: Inbound[] = [
       { type: "rpc.x", payload: {}, correlationId: "bad" },
       { type: "rpc.x", payload: {}, correlationId: "ok" },
-    );
+    ];
+    const in$ = of(...frames);
     expect(await drain(effect(in$, undefined))).toEqual([
-      { type: "rpc.x.response", payload: { type: "nack" }, correlationId: "bad" },
+      {
+        type: "rpc.x.response",
+        payload: { type: "nack" },
+        correlationId: "bad",
+      },
       {
         type: "rpc.x.response",
         payload: { type: "ack", payload: 42 },
