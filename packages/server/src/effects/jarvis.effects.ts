@@ -56,6 +56,8 @@ const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
  * these are wire-payload bounds, not runtime tuning. */
 const JARVIS_WIRE_HISTORY_MAX_ENTRIES = 20;
 const JARVIS_WIRE_HISTORY_MAX_TEXT = 2_000;
+/** S6 — the message itself was the one uncapped string on this frame. */
+const JARVIS_WIRE_TEXT_MAX = 4_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -120,6 +122,10 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   const { text, turnId, history, brain, effort } = payload;
 
   if (typeof text !== "string" || typeof turnId !== "string") {
+    return undefined;
+  }
+
+  if (text.length > JARVIS_WIRE_TEXT_MAX) {
     return undefined;
   }
 
