@@ -56,6 +56,8 @@ const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {
  * these are wire-payload bounds, not runtime tuning. */
 const JARVIS_WIRE_HISTORY_MAX_ENTRIES = 20;
 const JARVIS_WIRE_HISTORY_MAX_TEXT = 2_000;
+/** S6 — the message itself was the one uncapped string on this frame. */
+const JARVIS_WIRE_TEXT_MAX = 4_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -96,7 +98,7 @@ function extractTurnId(payload: unknown): string | undefined {
  * WITHOUT ever including the payload body itself — an authenticated
  * connection can otherwise flood the server log with arbitrary attacker-
  * chosen content on every malformed `jarvis.*` frame it sends, and there is
- * no `ws` `maxPayload` cap upstream of this to bound it. `frameType` is the
+ * only the `ws` `maxPayload` cap (S1) upstream of this to bound it. `frameType` is the
  * `CLIENT_MSG.JARVIS_*` wire constant; `turnId` is best-effort (via
  * `extractTurnId`) since a malformed frame may not carry one. */
 function describeMalformedFrame(frameType: string, payload: unknown): string {
@@ -120,6 +122,10 @@ function parseChatPayload(payload: unknown): JarvisChatPayload | undefined {
   const { text, turnId, history, brain, effort } = payload;
 
   if (typeof text !== "string" || typeof turnId !== "string") {
+    return undefined;
+  }
+
+  if (text.length > JARVIS_WIRE_TEXT_MAX) {
     return undefined;
   }
 

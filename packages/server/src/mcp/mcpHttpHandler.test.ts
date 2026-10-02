@@ -42,7 +42,7 @@ describe("createMcpRequestHandler", () => {
   });
 
   it("a valid session token lists and calls tools over the real wire", async () => {
-    const login = auth.login("demo", "mcdc2026");
+    const login = await auth.login("demo", "mcdc2026");
     const client = new Client({ name: "vitest", version: "0.0.0" });
     await client.connect(authedTransport(login?.token ?? ""));
 
@@ -59,7 +59,7 @@ describe("createMcpRequestHandler", () => {
   });
 
   it("a valid token with a lowercase 'bearer' scheme still lists tools", async () => {
-    const login = auth.login("demo", "mcdc2026");
+    const login = await auth.login("demo", "mcdc2026");
     const client = new Client({ name: "vitest", version: "0.0.0" });
     await client.connect(authedTransport(login?.token ?? "", "bearer"));
 
@@ -83,7 +83,7 @@ describe("createMcpRequestHandler", () => {
   });
 
   it("non-POST methods are rejected 405 (stateless endpoint) with an Allow header", async () => {
-    const login = auth.login("demo", "mcdc2026");
+    const login = await auth.login("demo", "mcdc2026");
     const response = await fetch(baseUrl, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${login?.token ?? ""}` },

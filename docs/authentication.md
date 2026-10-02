@@ -85,13 +85,20 @@ sequenceDiagram
      public `ROSTER` and the password against an injected `DevCredentials` map;
      issues a cosmetic `sim.<username>.<id>` token (there is no real WS to gate
      in simulator mode).
-5. **On the server, `authenticateLoginRequest`** (`packages/server/src/http/loginHandler.ts:36-70`)
-   runs, in order: **rate-limit** the caller's IP (`RateLimiter.hit`, 10
-   requests/60s, `packages/server/src/auth/rateLimit.ts`) → **parse** the JSON
-   body (`isLoginRequestDto`) → **`AuthService.login`**
-   (`packages/server/src/auth/AuthService.ts:65-91`), which scrypt-hashes the
-   supplied password against the salted digest built from `AUTH_USERS` at
-   startup (`timingSafeEqual`, so no early-exit timing leak) **and** requires
+5. **On the server, `authenticateLoginRequest`** (`packages/server/src/http/loginHandler.ts`)
+   runs, in order: **ban check** (`BanList.bannedUntil`,
+   `packages/server/src/auth/banList.ts` — a banned IP gets `429
+   {"error":"banned"}` with `Retry-After` before anything else is read) →
+   **rate-limit** the caller's IP (`RateLimiter.hit`, 10 requests/60s, table
+   evicts expired windows and is bounded, `packages/server/src/auth/rateLimit.ts`;
+   a `429` here is a ban strike) → **parse** the JSON body (`isLoginRequestDto`;
+   the body itself was capped at 4 KiB by bytes received before this ran —
+   `413` past it) → **`AuthService.login`**
+   (`packages/server/src/auth/AuthService.ts`), which **asynchronously**
+   scrypt-hashes the supplied password (off the event loop; an unknown username
+   hashes against a dummy salt so it costs the same time) against the salted
+   digest built from `AUTH_USERS` at startup (`timingSafeEqual`, so no
+   early-exit timing leak; a `401` is a ban strike) **and** requires
    the username to resolve via `findRosterUser` — a valid password for a
    username missing from the roster still fails login. On success it signs a
    token via `signToken(username, secret, ttlMs, now)`
@@ -113,7 +120,7 @@ sequenceDiagram
    `sessionStore.read()?.token` fresh on every (re)connect and appends it as
    `?access=<token>` to the WS URL (both `buildBrowserPorts.ts` and
    `buildNativePorts.ts` wire this identically). The server's `verifyClient`
-   hook, `authorizeUpgrade` (`packages/server/src/http/loginHandler.ts:79-95`),
+   hook, `authorizeUpgrade` (`packages/server/src/http/loginHandler.ts`),
    rejects the upgrade outright on a missing URL, a missing `access` param, or
    a token that fails `AuthService.verifyToken` (bad signature, wrong secret,
    or expired) — there is no open-when-empty fallback.

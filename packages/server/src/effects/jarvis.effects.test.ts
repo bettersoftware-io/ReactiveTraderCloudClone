@@ -566,6 +566,49 @@ describe("jarvis effects — malformed payloads don't kill the connection's effe
     ).toBe(true);
   });
 
+  it("rejects a jarvis.chat text longer than the wire cap with a JARVIS_ERROR, and serves the next turn", async () => {
+    const { messages$, sent } = createHarness();
+
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "x".repeat(4_001),
+        turnId: "t-long",
+      } satisfies JarvisChatPayload,
+    });
+    messages$.next({
+      type: CLIENT_MSG.JARVIS_CHAT,
+      payload: {
+        text: "x".repeat(4_000),
+        turnId: "t-ok",
+      } satisfies JarvisChatPayload,
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(sent[0]).toEqual({
+      type: SERVER_MSG.JARVIS_ERROR,
+      payload: { turnId: "t-long", message: "Malformed jarvis.chat payload." },
+    });
+    // The 4 000-char text sits exactly ON the cap and is served to
+    // completion: a JARVIS_DONE for its turnId, and never a JARVIS_ERROR.
+    expect(
+      sent.some((m) => {
+        return (
+          m.type === SERVER_MSG.JARVIS_DONE &&
+          (m.payload as TurnIdCarrier).turnId === "t-ok"
+        );
+      }),
+    ).toBe(true);
+    expect(
+      sent.some((m) => {
+        return (
+          m.type === SERVER_MSG.JARVIS_ERROR &&
+          (m.payload as TurnIdCarrier).turnId === "t-ok"
+        );
+      }),
+    ).toBe(false);
+  });
+
   it("jarvis.chat with a non-object payload is dropped without throwing", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { messages$, sent } = createHarness();

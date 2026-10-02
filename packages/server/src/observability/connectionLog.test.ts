@@ -48,6 +48,19 @@ describe("createConnectionLog", () => {
     expect(lines.join("\n")).not.toContain("connect");
   });
 
+  it("records a socket error by its code only", () => {
+    const lines: string[] = [];
+    const log = createConnectionLog((l) => {
+      return lines.push(l);
+    }, fixedClock());
+
+    log.recordSocketError("WS_ERR_UNSUPPORTED_MESSAGE_LENGTH");
+
+    expect(lines).toEqual([
+      "[ws] 2026-07-25T00:00:00.000Z socket-error   code=WS_ERR_UNSUPPORTED_MESSAGE_LENGTH active=0",
+    ]);
+  });
+
   it("stamps each line with an ISO timestamp from the injected clock", () => {
     const lines: string[] = [];
     const log = createConnectionLog((l) => {

@@ -147,6 +147,44 @@ describe("keyedStream", () => {
     });
   });
 
+  it("ignores a never-seen key once maxKeys distinct keys exist, but still serves known keys", () => {
+    const projected: string[] = [];
+    const in$ = new Subject<Inbound>();
+    const effect = keyedStream<unknown>(
+      SUB,
+      UNSUB,
+      keyOf,
+      (payload) => {
+        projected.push(keyOf(payload));
+        return new Subject<Outbound>();
+      },
+      { maxKeys: 2 },
+    );
+    effect(in$, undefined).subscribe();
+
+    in$.next({ type: SUB, payload: { symbol: "a" } });
+    in$.next({ type: SUB, payload: { symbol: "b" } });
+    in$.next({ type: SUB, payload: { symbol: "c" } }); // third distinct key — ignored
+    in$.next({ type: UNSUB, payload: { symbol: "a" } });
+    in$.next({ type: SUB, payload: { symbol: "a" } }); // known key — still served
+
+    expect(projected).toEqual(["a", "b", "a"]);
+  });
+
+  it("drops a frame whose key is the empty string before it can open a group", () => {
+    let projections = 0;
+    const in$ = new Subject<Inbound>();
+    const effect = keyedStream<unknown>(SUB, UNSUB, keyOf, () => {
+      projections += 1;
+      return new Subject<Outbound>();
+    });
+    effect(in$, undefined).subscribe();
+
+    in$.next({ type: SUB, payload: { symbol: "" } }); // a malformed frame's keyOf yields ""
+
+    expect(projections).toBe(0);
+  });
+
   let scheduler: TestScheduler;
 });
 

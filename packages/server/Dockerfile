@@ -28,6 +28,12 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@rtc/server
 
+# S13 — the build above needs root (pnpm store, dist writes); the running
+# server does not. `node` is the unprivileged user the official image ships
+# (uid 1000). Everything it reads under /app was written by root with
+# world-readable modes, and the server writes nothing to disk.
+USER node
+
 ENV PORT=4000
 ENV HOSTNAME=0.0.0.0
 EXPOSE 4000

@@ -150,6 +150,116 @@ async function runChecks(): Promise<void> {
   }
 }
 
+/**
+ * S1/S14 witness: a frame above `WS_MAX_PAYLOAD_BYTES` closes ONLY that
+ * socket (code 1009) and the server keeps serving — proven by a fresh
+ * `/health` round-trip afterwards. Before B1 the oversized frame was
+ * accepted (100 MiB default) and, once capped, would have crashed the
+ * process through the unhandled `error` event.
+ */
+async function runOversizedFrameSmoke(): Promise<void> {
+  const httpBase = `http://${HOST}:${PORT}`;
+  const login = await loginForToken(httpBase);
+  const { WebSocket } = await import("ws");
+  const raw = new WebSocket(`ws://${HOST}:${PORT}/?access=${login.token}`);
+
+  const closeCode = await new Promise<number>((resolve, reject) => {
+    const guard = setTimeout(() => {
+      reject(new Error("oversized frame: socket was not closed"));
+    }, FIRST_VALUE_TIMEOUT_MS);
+    raw.on("open", () => {
+      raw.send("x".repeat(300 * 1024));
+    });
+    raw.on("close", (code: number) => {
+      clearTimeout(guard);
+      resolve(code);
+    });
+    raw.on("error", () => {
+      // The server-side close races a client-side error on some platforms;
+      // the close code is what we assert on.
+    });
+  });
+
+  assert(closeCode === 1009, `oversized frame close code (got ${closeCode})`);
+  await waitForHttp(`${httpBase}/health`, 5_000);
+  console.log(
+    "  ✓ limits: 300 KiB frame closed with 1009, server still healthy",
+  );
+}
+
+/**
+ * S2/S3/§9.2 witnesses over the real HTTP edge. Runs LAST on `PORT`: its
+ * ten failed logins reach BAN_STRIKES for 127.0.0.1, so nothing on this
+ * server can log in afterwards (the gate smoke uses its own server).
+ */
+async function runEdgeGuardSmoke(): Promise<void> {
+  const httpBase = `http://${HOST}:${PORT}`;
+
+  // S2 — a 5 KiB login body is refused with 413 before it is parsed.
+  const big = await postLogin(httpBase, {
+    username: "demo",
+    password: "x".repeat(5 * 1024),
+  });
+  assert(big.status === 413, `oversized login body status (got ${big.status})`);
+
+  // S3 + §9.2 — failed logins, each claiming a fresh X-Forwarded-For. Were
+  // that header honoured, each attempt would land in its own rate-limit
+  // bucket and its own strike entry and the loop would see 401 forever.
+  // Keyed on the socket address they share, the 401s (one strike each) and
+  // then the rate-limit 429s (two strikes each) reach BAN_STRIKES within a
+  // few attempts and the caller is told it is banned. The exact count
+  // depends on how many logins the earlier checks already spent.
+  const outcomes: string[] = [];
+  let banned: Response | undefined;
+
+  for (let i = 0; i < 20 && banned === undefined; i += 1) {
+    const attempt = await postLogin(
+      httpBase,
+      { username: "demo", password: "wrong" },
+      { "X-Forwarded-For": `203.0.113.${i}` },
+    );
+    const body = (await attempt.json()) as LoginErrorBody;
+    outcomes.push(`${attempt.status}:${body.error ?? "?"}`);
+
+    if (body.error === "banned") {
+      banned = attempt;
+    }
+  }
+
+  assert(
+    banned !== undefined,
+    `caller was never banned (outcomes: ${outcomes.join(" ")})`,
+  );
+  assert(
+    outcomes.includes("401:invalid_credentials"),
+    `expected at least one 401 before the ban (outcomes: ${outcomes.join(" ")})`,
+  );
+  assert(banned.status === 429, `banned login status (got ${banned.status})`);
+  assert(
+    Number(banned.headers.get("retry-after")) > 0,
+    "banned login carries Retry-After",
+  );
+  console.log(
+    `  ✓ edge: 413 on a 5 KiB login body; ${outcomes.length} failures behind spoofed X-Forwarded-For end in a ban`,
+  );
+}
+
+interface LoginErrorBody {
+  readonly error?: string;
+}
+
+function postLogin(
+  httpBase: string,
+  body: Record<string, string>,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return fetch(`${httpBase}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 // ── Jarvis gate witness ──────────────────────────────────────────
 //
 // Drives the SAME real client adapter stack as `runChecks` (WsAdapter +
@@ -274,6 +384,8 @@ let failed = false;
 try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
+  await runOversizedFrameSmoke();
+  await runEdgeGuardSmoke();
   await runGateSmoke();
   console.log("full-stack smoke (node socket): PASS");
 } catch (err) {

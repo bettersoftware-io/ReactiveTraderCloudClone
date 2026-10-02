@@ -1,7 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import { createServer } from "node:http";
 
-import type { VerifyClientCallbackSync } from "ws";
+import type { VerifyClientCallbackAsync } from "ws";
 import { WebSocketServer } from "ws";
 
 import {
@@ -16,25 +16,49 @@ import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import type { AgentLoop } from "./agent/agentLoop.js";
 import { createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
+import { createBanList } from "./auth/banList.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
-import { buildEffects } from "./effects/index.js";
 import {
-  authenticateLoginRequest,
-  describeUpgrade,
-} from "./http/loginHandler.js";
+  BAN_DURATION_MS,
+  BAN_MAX_ENTRIES,
+  BAN_STRIKE_WINDOW_MS,
+  BAN_STRIKES,
+  INBOUND_BURST,
+  INBOUND_DROPS_BEFORE_CLOSE,
+  INBOUND_REFILL_PER_SECOND,
+  LOGIN_MAX_BODY_BYTES,
+  LOGIN_RATE_LIMIT_MAX,
+  LOGIN_RATE_LIMIT_WINDOW_MS,
+  MAX_CONNECTIONS_PER_IP,
+  MAX_CONNECTIONS_TOTAL,
+  MCP_MAX_BODY_BYTES,
+  WS_MAX_PAYLOAD_BYTES,
+} from "./config/limits.js";
+import { buildEffects } from "./effects/index.js";
+import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
+import { authenticateLoginRequest } from "./http/loginHandler.js";
+import {
+  BodyTooLargeError,
+  declaredLengthExceeds,
+  readBodyWithLimit,
+} from "./http/readBody.js";
+import { decideUpgrade, type UpgradeGateDeps } from "./http/upgradeGate.js";
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
+import { scopeServicesToConnection } from "./services/connectionScope.js";
 import {
   createServices,
   type ServiceContainer,
 } from "./services/serviceContainer.js";
+import { createConnectionGuard } from "./socket/connectionGuard.js";
+import { createTokenBucket } from "./socket/tokenBucket.js";
 import { toSocket } from "./socket/toSocket.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOSTNAME: string = process.env.HOSTNAME ?? "0.0.0.0";
 const AUTH_TTL_MS = Number(process.env.AUTH_TTL_MS ?? 8 * 60 * 60 * 1000);
-const LOGIN_RATE_LIMIT_MAX = 10;
-const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000;
+// S3 — every per-caller rule below keys on this header's value.
+const TRUSTED_IP_HEADER: string = resolveTrustedIpHeader(process.env);
 
 function buildJarvisToolsFor(
   services: ServiceContainer,
@@ -89,10 +113,9 @@ const jarvisLoops = createJarvisLoops(
   buildAnthropicLoop,
 );
 
-const listen = createWsListener(
-  combineEffects(...buildEffects(jarvisLoops)),
-  services,
-);
+// One merged effect for the process; a listener is built PER CONNECTION
+// below so each socket gets its own connection-scoped services (S10).
+const effect = combineEffects(...buildEffects(jarvisLoops));
 
 const auth = new AuthService({
   secret: process.env.AUTH_SECRET ?? "",
@@ -104,6 +127,30 @@ const loginRateLimit = createRateLimiter(
   LOGIN_RATE_LIMIT_MAX,
   LOGIN_RATE_LIMIT_WINDOW_MS,
 );
+
+// §9.2 — the in-app expiring ban table, consulted first at both edges.
+const banList = createBanList({
+  strikesToBan: BAN_STRIKES,
+  strikeWindowMs: BAN_STRIKE_WINDOW_MS,
+  banMs: BAN_DURATION_MS,
+  maxEntries: BAN_MAX_ENTRIES,
+  onBan: (ip: string, untilMs: number, reason: string): void => {
+    console.log(
+      `[auth] ${new Date().toISOString()} ban ip=${ip} reason=${reason} until=${new Date(untilMs).toISOString()}`,
+    );
+  },
+});
+
+// S8 — live-socket caps, checked before the handshake and counted over the
+// socket's real lifetime (connection → close).
+const connections = createConnectionGuard({
+  maxTotal: MAX_CONNECTIONS_TOTAL,
+  maxPerIp: MAX_CONNECTIONS_PER_IP,
+});
+
+function readClock(): number {
+  return Date.now();
+}
 
 // ── MCP endpoint ────────────────────────────────────────────────
 
@@ -121,24 +168,7 @@ const serveMcp = createMcpRequestHandler({
 });
 
 function clientIp(req: IncomingMessage): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const firstHop = Array.isArray(forwarded)
-    ? forwarded[0]
-    : forwarded?.split(",")[0];
-  return firstHop?.trim() ?? req.socket.remoteAddress ?? "unknown";
-}
-
-function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => {
-      chunks.push(chunk);
-    });
-    req.on("end", () => {
-      resolve(Buffer.concat(chunks).toString("utf8"));
-    });
-    req.on("error", reject);
-  });
+  return resolveClientIp(req, TRUSTED_IP_HEADER);
 }
 
 // ── HTTP Server ─────────────────────────────────────────────────
@@ -167,26 +197,62 @@ const httpServer = createServer((req, res) => {
   }
 
   if (req.url === "/login" && req.method === "POST") {
-    readBody(req)
+    // §9.2 — a banned caller is answered before its body is even read (the
+    // handler checks again; this saves the read). Same shape as the handler's
+    // answer: 429, `{ error: "banned" }`, Retry-After in whole seconds.
+    const now = readClock();
+    const bannedUntil = banList.bannedUntil(clientIp(req), now);
+
+    if (bannedUntil !== null) {
+      res.writeHead(429, {
+        "Content-Type": "application/json",
+        Connection: "close",
+        "Retry-After": String(Math.ceil((bannedUntil - now) / 1_000)),
+      });
+      res.end(JSON.stringify({ error: "banned" }));
+      return;
+    }
+
+    // S2 — the body is capped by bytes received before it is parsed.
+    readBodyWithLimit(req, LOGIN_MAX_BODY_BYTES)
       .then((bodyText) => {
-        const result = authenticateLoginRequest(bodyText, clientIp(req), {
+        return authenticateLoginRequest(bodyText, clientIp(req), {
           auth,
           rateLimit: loginRateLimit,
-          now: (): number => {
-            return Date.now();
-          },
+          banList,
+          now: readClock,
         });
+      })
+      .then((result) => {
         res.writeHead(result.status, result.headers);
         res.end(result.body);
       })
-      .catch(() => {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "malformed_request" }));
+      .catch((err: unknown) => {
+        // 413 for an oversized body; anything else is a server fault (the
+        // handler answers 400/401/429 itself, so a rejection here is a
+        // failed request stream or a thrown hash), never a bad request.
+        const tooLarge = err instanceof BodyTooLargeError;
+        const status = tooLarge ? 413 : 500;
+        const error = tooLarge ? "body_too_large" : "internal_error";
+        // The body may be unread (413): close the connection after the
+        // status so the rest of it is never consumed.
+        res.writeHead(status, {
+          "Content-Type": "application/json",
+          Connection: "close",
+        });
+        res.end(JSON.stringify({ error }));
       });
     return;
   }
 
   if (req.url === "/mcp" || req.url?.startsWith("/mcp?") === true) {
+    // The MCP transport reads its own body; refuse an over-declared one early.
+    if (declaredLengthExceeds(req.headers, MCP_MAX_BODY_BYTES)) {
+      res.writeHead(413, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "body_too_large" }));
+      return;
+    }
+
     serveMcp(req, res);
     return;
   }
@@ -201,30 +267,75 @@ const httpServer = createServer((req, res) => {
 // disconnect / rejected upgrade, visible live via `fly logs -a rtc-clone-server`.
 const connectionLog = createConnectionLog();
 
+const gateDeps: UpgradeGateDeps = {
+  auth,
+  banList,
+  connections,
+  now: readClock,
+};
+
 const wss = new WebSocketServer({
   server: httpServer,
-  // Reject unauthorized upgrades with 401 before a socket exists, so
-  // listen() only ever runs for authorized clients. /health and /login
-  // stay reachable (they are HTTP routes, not WS upgrades). A rejection is
-  // logged by reason (no-token = never signed in; invalid-token = expired/bad)
-  // — never the token itself.
-  verifyClient: (info: Parameters<VerifyClientCallbackSync>[0]): boolean => {
-    const decision = describeUpgrade(info.req.url, auth);
+  // S1 — `ws`'s default is 100 MiB, far more than the 256 MB VM. An
+  // oversized frame closes THAT socket with 1009 and surfaces as an `error`
+  // event on it (handled below, never thrown).
+  maxPayload: WS_MAX_PAYLOAD_BYTES,
+  // Reject an upgrade before a socket exists, cheapest check first: a banned
+  // IP (429), a capped IP or a full process (503), then the token (401 — a
+  // caller that never signed in, or an expired/bad token). /health and
+  // /login stay reachable (HTTP routes, not WS upgrades). A rejection is
+  // logged by reason — never the token itself.
+  verifyClient: (
+    info: Parameters<VerifyClientCallbackAsync>[0],
+    done: Parameters<VerifyClientCallbackAsync>[1],
+  ): void => {
+    const verdict = decideUpgrade(info.req.url, clientIp(info.req), gateDeps);
 
-    if (!decision.ok && decision.reason) {
-      connectionLog.recordRejectedUpgrade(decision.reason);
+    if (!verdict.ok && verdict.reason) {
+      connectionLog.recordRejectedUpgrade(verdict.reason);
     }
 
-    return decision.ok;
+    done(verdict.ok, verdict.status, verdict.ok ? undefined : verdict.reason);
   },
 });
 
-wss.on("connection", (ws) => {
+interface CodedError {
+  readonly code?: string;
+}
+
+wss.on("connection", (ws, req) => {
+  const ip = clientIp(req);
+  connections.acquire(ip);
   connectionLog.recordConnect();
+  // S14 — without this listener a single malformed frame is an unhandled
+  // `error` event, which Node turns into a process crash. An oversized frame
+  // (S1) is also a ban strike.
+  ws.on("error", (err: Error & CodedError) => {
+    connectionLog.recordSocketError(err.code ?? err.name);
+
+    if (err.code === "WS_ERR_UNSUPPORTED_MESSAGE_LENGTH") {
+      banList.strike(ip, "frame-too-large", readClock());
+    }
+  });
   ws.on("close", () => {
+    connections.release(ip);
     connectionLog.recordDisconnect();
   });
-  listen(toSocket(ws));
+  // S8 — a per-socket token bucket in front of the effects; S10 — a
+  // connection-scoped service container (its own ThroughputService).
+  createWsListener(
+    effect,
+    scopeServicesToConnection(services),
+  )(
+    toSocket(ws, {
+      bucket: createTokenBucket(INBOUND_BURST, INBOUND_REFILL_PER_SECOND),
+      dropsBeforeClose: INBOUND_DROPS_BEFORE_CLOSE,
+      now: readClock,
+      onFlood: (): void => {
+        banList.strike(ip, "message-flood", readClock());
+      },
+    }),
+  );
 });
 
 // ── Start ───────────────────────────────────────────────────────
@@ -235,4 +346,5 @@ httpServer.listen(PORT, HOSTNAME, () => {
   console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/login`);
   console.log(`  MCP:   http://${HOSTNAME}:${PORT}/mcp (Streamable HTTP)`);
   console.log(`  WS:    ws://${HOSTNAME}:${PORT}`);
+  console.log(`  IP:    trusting header ${TRUSTED_IP_HEADER}`);
 });

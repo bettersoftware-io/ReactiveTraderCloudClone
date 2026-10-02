@@ -60,10 +60,19 @@ WebSocket upgrade then requires that token as `?access=<token>`.
 | `AUTH_USERS` | yes (Fly secret, set by hand) | The credential roster, `"user:pass,user2:pass2"` -- parsed by `loadUsers.ts` |
 | `AUTH_TTL_MS` | no (defaults to 8h) | Session-token lifetime in milliseconds |
 
-`/login` is rate-limited per source IP (`src/auth/rateLimit.ts`) and returns
-`429` once exceeded, `401` on bad credentials, `200` with `{ token, user, exp
-}` on success. The WS `verifyClient` hook (`authorizeUpgrade`) always rejects a
-missing, malformed, or expired token -- there is no open-when-unset fallback.
+`/login` keys every per-caller rule on the platform's trusted client-IP header
+(`src/http/clientIp.ts`, `Fly-Client-IP` by default, `RTC_TRUSTED_IP_HEADER`
+to override -- never `X-Forwarded-For`, whose first hop the caller writes). It
+answers `429 {"error":"banned"}` + `Retry-After` for an IP on the in-app ban
+list (`src/auth/banList.ts`, checked before anything else), `429
+{"error":"rate_limited"}` past 10 attempts/minute (`src/auth/rateLimit.ts`, an
+evicting, bounded table), `413` for a body over 4 KiB (counted as received,
+`src/http/readBody.ts`), `401` on bad credentials (hashed asynchronously, so a
+login burst no longer stalls the live sockets), `200` with `{ token, user, exp
+}` on success. A `401` or a `429` is a ban strike. The WS upgrade gate
+(`src/http/upgradeGate.ts` -- ban list, then per-IP / total connection caps,
+then the token) always rejects a missing, malformed, or expired token -- there
+is no open-when-unset fallback.
 Credentials are never committed to this repo; see
 [docs/DEPLOY.md](../../docs/DEPLOY.md) and
 [docs/env-files.md](../../docs/env-files.md) for how they're provisioned.
@@ -71,6 +80,44 @@ Credentials are never committed to this repo; see
 For the full end-to-end auth flow across both clients (login, resume-on-boot,
 lock/unlock, the roster, and per-platform credential configuration), see
 [docs/authentication.md](../../docs/authentication.md).
+
+## Limits
+
+Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
+§9.2). The values are generous for one real client and tight for a flood:
+
+| What | Constant | Default |
+|---|---|---|
+| Largest WebSocket frame, in bytes (`ws` closes that socket with 1009) — sized for a full Jarvis turn in a 3-byte script | `WS_MAX_PAYLOAD_BYTES` | 256 KiB |
+| `jarvis.chat` message text | `JARVIS_WIRE_TEXT_MAX` (local to `src/effects/jarvis.effects.ts`, beside the history caps) | 4 000 chars |
+| Live `stream()` inner streams per effect per connection | `@rtc/ws-effects` `StreamOptions.maxActive` | 64 |
+| Distinct `keyedStream()` keys per effect per connection | `@rtc/ws-effects` `KeyedStreamOptions.maxKeys` | 128 |
+| Shared blotter / equity order book / RFQ store | `@rtc/domain` simulator constructor arguments | 500 / 500 / 200, oldest evicted first |
+| `/login` body (bytes received, `413` past it) | `LOGIN_MAX_BODY_BYTES` | 4 KiB |
+| `/mcp` declared `Content-Length` (`413` past it; a chunked body is bounded only by the MCP SDK's own 4 MB limit, behind the Bearer check) | `MCP_MAX_BODY_BYTES` | 64 KiB |
+| Live sockets, whole process / per client IP (`503` upgrade past it) | `MAX_CONNECTIONS_TOTAL` / `MAX_CONNECTIONS_PER_IP` | 200 / 8 |
+| Inbound frames per socket: burst, refill, drops before the socket is closed (1008) | `INBOUND_BURST` / `INBOUND_REFILL_PER_SECOND` / `INBOUND_DROPS_BEFORE_CLOSE` | 100 / 25 per s / 100 |
+| `/login` attempts per IP per window; distinct IPs the table holds | `LOGIN_RATE_LIMIT_MAX` / `LOGIN_RATE_LIMIT_WINDOW_MS`; rate limiter `maxKeys` | 10 / 60 s; 10 000 |
+| Ban: weighted strikes in the window → ban length; table size | `BAN_STRIKES` / `BAN_STRIKE_WINDOW_MS` / `BAN_DURATION_MS` / `BAN_MAX_ENTRIES` | 10 in 10 min → 15 min; 10 000 |
+
+Every RPC and stream payload is validated at its parse seam
+(`src/effects/guards.ts`): a malformed RPC is **nacked** (every client-core
+adapter already handles a nack), a malformed subscribe frame is **dropped**,
+and in both cases the connection's other effects keep serving. Before B1 a
+malformed frame threw inside the effect and `combineEffects` replaced that
+effect with `EMPTY` for the rest of the socket. The guards are never stricter
+than what `packages/client-core/src/adapters/portFactory.ts` actually sends.
+
+Strikes (`src/auth/banList.ts`): a failed login counts 1, a rate-limited
+attempt 2, an oversized frame 3, a message flood 3. The ban table is in
+memory — a redeploy clears it, which is fine for temporary bans.
+`SET_THROUGHPUT` is per connection (`src/services/connectionScope.ts`), so one
+login can no longer change it for everyone.
+
+An accepted socket also has an `error` listener: `ws` emits `error` on the
+server-side socket for a protocol violation (an oversized frame, bad UTF-8,
+reserved bits), and with no listener Node turns that into a process crash
+(spec finding S14). The listener logs the error code only.
 
 ## How it's used
 

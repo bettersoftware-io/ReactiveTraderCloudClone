@@ -99,5 +99,35 @@ describe("stream", () => {
     });
   });
 
+  it("drops a matching inbound once maxActive inner streams are live, and accepts again when one completes", () => {
+    const inners: Subject<Outbound>[] = [];
+    const effect = stream<unknown>(
+      "subscribe.x",
+      () => {
+        const inner = new Subject<Outbound>();
+        inners.push(inner);
+        return inner;
+      },
+      { maxActive: 2 },
+    );
+    const in$ = new Subject<Inbound>();
+    const outs: Outbound[] = [];
+    effect(in$, undefined).subscribe((frame: Outbound) => {
+      outs.push(frame);
+    });
+
+    in$.next({ type: "subscribe.x" });
+    in$.next({ type: "subscribe.x" });
+    in$.next({ type: "subscribe.x" });
+    expect(inners).toHaveLength(2);
+
+    inners[0]?.complete();
+    in$.next({ type: "subscribe.x" });
+    expect(inners).toHaveLength(3);
+
+    inners[2]?.next(out("tick", 3));
+    expect(outs).toEqual([out("tick", 3)]);
+  });
+
   let scheduler: TestScheduler;
 });

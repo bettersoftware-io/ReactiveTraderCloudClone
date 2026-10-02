@@ -1,4 +1,4 @@
-import { map, type Observable } from "rxjs";
+import { EMPTY, map, type Observable } from "rxjs";
 
 import type {
   CurrencyPair,
@@ -10,7 +10,6 @@ import type {
   AnalyticsDto,
   BlotterMessage,
   CurrencyPairUpdateDto,
-  ExecutionRequestDto,
   ExecutionResponseDto,
   PriceHistoryDto,
   PriceTickDto,
@@ -28,14 +27,13 @@ import {
 } from "@rtc/ws-effects";
 
 import type { Ctx } from "./context.js";
-
-interface SymbolPayload {
-  readonly symbol: string;
-}
-
-interface CurrencyPayload {
-  readonly currency: string;
-}
+import {
+  describeMalformedPayload,
+  isCurrencyPayload,
+  isExecutionRequestDto,
+  isSymbolPayload,
+  validated,
+} from "./guards.js";
 
 // referenceData — bulk SoW; first emission is the state-of-the-world.
 const referenceData$: WsEffect<Ctx> = stream(
@@ -72,15 +70,23 @@ const referenceData$: WsEffect<Ctx> = stream(
 // symbol, so a duplicate subscribe coalesces into the SAME stream and an
 // unsubscribe tears it down at zero — without this the server merged a fresh
 // price interval per re-subscribe and ticks accelerated on every toggle.
+// S11: a malformed frame keys to "" and projects to EMPTY — dropped, never
+// thrown inside groupBy (which would have killed the effect for the socket).
 const pricing$: WsEffect<Ctx> = keyedStream(
   CLIENT_MSG.SUBSCRIBE_PRICING,
   CLIENT_MSG.UNSUBSCRIBE_PRICING,
-  (payload) => {
-    return (payload as SymbolPayload).symbol;
+  (payload): string => {
+    return isSymbolPayload(payload) ? payload.symbol : "";
   },
   (payload, ctx) => {
-    const { symbol } = payload as SymbolPayload;
-    return ctx.pricing.getPriceUpdates(symbol).pipe(
+    if (!isSymbolPayload(payload)) {
+      console.warn(
+        describeMalformedPayload(CLIENT_MSG.SUBSCRIBE_PRICING, "dropping"),
+      );
+      return EMPTY;
+    }
+
+    return ctx.pricing.getPriceUpdates(payload.symbol).pipe(
       map((tick: PriceTick): Outbound => {
         const dto: PriceTickDto = {
           symbol: tick.symbol,
@@ -134,8 +140,14 @@ const blotter$: WsEffect<Ctx> = stream(
 const analytics$: WsEffect<Ctx> = stream(
   CLIENT_MSG.SUBSCRIBE_ANALYTICS,
   (payload, ctx) => {
-    const { currency } = payload as CurrencyPayload;
-    return ctx.analytics.getAnalytics(currency).pipe(
+    if (!isCurrencyPayload(payload)) {
+      console.warn(
+        describeMalformedPayload(CLIENT_MSG.SUBSCRIBE_ANALYTICS, "dropping"),
+      );
+      return EMPTY;
+    }
+
+    return ctx.analytics.getAnalytics(payload.currency).pipe(
       map((pos: PositionUpdates): Outbound => {
         const dto: AnalyticsDto = {
           currentPositions: pos.currentPositions.map((p) => {
@@ -164,31 +176,37 @@ const executeTrade$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.EXECUTE_TRADE,
   SERVER_MSG.EXECUTION_RESPONSE,
   (payload, ctx): Observable<ExecutionResponseDto> => {
-    const req = payload as ExecutionRequestDto;
-    return ctx.execution
-      .executeTrade({
-        currencyPair: req.currencyPair,
-        spotRate: req.spotRate,
-        direction: req.direction,
-        notional: req.notional,
-        dealtCurrency: req.dealtCurrency,
-      })
-      .pipe(
-        map((t: Trade): ExecutionResponseDto => {
-          return {
-            tradeId: t.tradeId,
-            tradeName: t.tradeName,
-            currencyPair: t.currencyPair,
-            notional: t.notional,
-            dealtCurrency: t.dealtCurrency,
-            direction: t.direction,
-            spotRate: t.spotRate,
-            status: t.status,
-            tradeDate: t.tradeDate,
-            valueDate: t.valueDate,
-          };
-        }),
-      );
+    return validated(
+      CLIENT_MSG.EXECUTE_TRADE,
+      payload,
+      isExecutionRequestDto,
+      (req): Observable<ExecutionResponseDto> => {
+        return ctx.execution
+          .executeTrade({
+            currencyPair: req.currencyPair,
+            spotRate: req.spotRate,
+            direction: req.direction,
+            notional: req.notional,
+            dealtCurrency: req.dealtCurrency,
+          })
+          .pipe(
+            map((t: Trade): ExecutionResponseDto => {
+              return {
+                tradeId: t.tradeId,
+                tradeName: t.tradeName,
+                currencyPair: t.currencyPair,
+                notional: t.notional,
+                dealtCurrency: t.dealtCurrency,
+                direction: t.direction,
+                spotRate: t.spotRate,
+                status: t.status,
+                tradeDate: t.tradeDate,
+                valueDate: t.valueDate,
+              };
+            }),
+          );
+      },
+    );
   },
 );
 
@@ -197,22 +215,28 @@ const getPriceHistory$: WsEffect<Ctx> = rpc(
   CLIENT_MSG.GET_PRICE_HISTORY,
   SERVER_MSG.PRICE_HISTORY_RESPONSE,
   (payload, ctx): Observable<PriceHistoryDto> => {
-    const { symbol } = payload as SymbolPayload;
-    return ctx.pricing.getPriceHistory(symbol).pipe(
-      map((prices: readonly PriceTick[]): PriceHistoryDto => {
-        return {
-          prices: prices.map((p) => {
+    return validated(
+      CLIENT_MSG.GET_PRICE_HISTORY,
+      payload,
+      isSymbolPayload,
+      ({ symbol }): Observable<PriceHistoryDto> => {
+        return ctx.pricing.getPriceHistory(symbol).pipe(
+          map((prices: readonly PriceTick[]): PriceHistoryDto => {
             return {
-              symbol: p.symbol,
-              bid: p.bid,
-              ask: p.ask,
-              mid: p.mid,
-              valueDate: p.valueDate,
-              creationTimestamp: p.creationTimestamp,
+              prices: prices.map((p) => {
+                return {
+                  symbol: p.symbol,
+                  bid: p.bid,
+                  ask: p.ask,
+                  mid: p.mid,
+                  valueDate: p.valueDate,
+                  creationTimestamp: p.creationTimestamp,
+                };
+              }),
             };
           }),
-        };
-      }),
+        );
+      },
     );
   },
 );

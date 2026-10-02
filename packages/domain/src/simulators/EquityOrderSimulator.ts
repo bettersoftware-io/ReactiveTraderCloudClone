@@ -18,7 +18,14 @@ export interface EquityOrderDeps {
   listener?: OrderListener;
   seed?: number;
   markFor?: (symbol: string) => number;
+  /** S9 — book size cap; the oldest order is evicted first. Default 500. */
+  maxOrders?: number;
 }
+
+/** S9 — the book is a shared, process-lifetime store fed by every
+ * connection's orders. Bounded so a scripted client cannot grow it (and the
+ * snapshot every subscriber receives) without limit. */
+const DEFAULT_MAX_ORDERS = 500;
 
 export class EquityOrderSimulator implements OrderPort {
   private readonly book: EquityOrder[] = [];
@@ -117,6 +124,11 @@ export class EquityOrderSimulator implements OrderPort {
       this.book[i] = order;
     } else {
       this.book.push(order);
+      const max = this.deps.maxOrders ?? DEFAULT_MAX_ORDERS;
+
+      while (this.book.length > max) {
+        this.book.shift();
+      }
     }
   }
 

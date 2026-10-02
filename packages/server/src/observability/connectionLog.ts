@@ -14,6 +14,10 @@ export interface ConnectionLog {
   recordConnect(): void;
   recordDisconnect(): void;
   recordRejectedUpgrade(reason: UpgradeRejection): void;
+  /** A protocol-level error on an accepted socket (oversized frame, bad
+   * UTF-8, reserved bits). `ws` emits `error` for these and Node would throw
+   * with no listener — so the listener exists, and logs the `code` only. */
+  recordSocketError(code: string): void;
 }
 
 export function createConnectionLog(
@@ -42,6 +46,9 @@ export function createConnectionLog(
     },
     recordRejectedUpgrade(reason: UpgradeRejection): void {
       out(`[ws] ${stamp()} upgrade-reject reason=${reason} active=${active}`);
+    },
+    recordSocketError(code: string): void {
+      out(`[ws] ${stamp()} socket-error   code=${code} active=${active}`);
     },
   };
 }
