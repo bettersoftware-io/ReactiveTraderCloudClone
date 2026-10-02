@@ -159,6 +159,12 @@ export interface LayoutPO {
    * boxes. An attached cluster is ONE window however many members it holds.
    * Dockview-engine only. */
   floatWindowCount(): Promise<number>;
+  /** Whether the float window holding `panelId` hides its width handles —
+   * its box carries `rtc-dock-float-fixed-width` AND its left and right
+   * resize handles compute to `display: none`, so a class with no effect
+   * reads false. A width-locked lone float, and an attached cluster whose
+   * every member is locked, hide them. Dockview-engine only. */
+  floatHidesWidthHandles(panelId: string): Promise<boolean>;
   /** Drags the float holding `panelId` by its head so the window's top-left
    * lands at viewport (`left`, `top`). With `options.option`, Option (Alt) is
    * held throughout — the detach/no-snap modifier — and the attach cue is

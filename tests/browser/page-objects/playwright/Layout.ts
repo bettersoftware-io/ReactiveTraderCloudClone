@@ -1229,6 +1229,27 @@ export class PlaywrightLayout implements LayoutPO {
     return this.page.locator(".dv-resize-container").count();
   }
 
+  async floatHidesWidthHandles(panelId: string): Promise<boolean> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatHidesWidthHandles: the panel is not in a float");
+      }
+
+      const handles = ["left", "right"].map((edge) => {
+        return float.querySelector(`:scope > .dv-resize-handle-${edge}`);
+      });
+
+      return (
+        float.classList.contains("rtc-dock-float-fixed-width") &&
+        handles.every((handle) => {
+          return handle !== null && getComputedStyle(handle).display === "none";
+        })
+      );
+    });
+  }
+
   async dragFloatByHeadTo(
     panelId: string,
     left: number,
