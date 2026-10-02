@@ -12,6 +12,17 @@ import {
 
 import type { Inbound, Outbound, WsEffect } from "./types.js";
 
+export interface KeyedStreamOptions {
+  /**
+   * Distinct keys this effect will ever track per connection (hardening spec
+   * S8). A key is caller-chosen (a symbol string), so without a cap one
+   * socket can hold an unbounded number of `groupBy` groups alive for its
+   * whole life, even when every projection is `EMPTY`. Default
+   * `DEFAULT_MAX_KEYS`.
+   */
+  readonly maxKeys?: number;
+}
+
 interface KeyState {
   readonly count: number;
   readonly payload: unknown;
@@ -39,17 +50,51 @@ interface KeyState {
  * @param unsubType inbound type that releases one subscriber of a key
  * @param keyOf     extracts the subscription key from a frame's payload
  * @param project   builds the outbound stream for a key (run once per 0→1 edge)
+ * @param options   `maxKeys`: the per-connection ceiling on distinct keys
+ *
+ * Two frames never reach `groupBy`: one whose key is `""` — the contract with
+ * the server's parse seam, where `keyOf` yields `""` for a malformed frame —
+ * and one carrying a never-seen key once `maxKeys` distinct keys are already
+ * tracked (logged by type and cap only). Frames for a key already seen keep
+ * flowing, so a client at the ceiling can still unsubscribe and re-subscribe
+ * what it holds.
  */
 export function keyedStream<Ctx>(
   subType: string,
   unsubType: string,
   keyOf: (payload: unknown) => string,
   project: (payload: unknown, ctx: Ctx) => Observable<Outbound>,
+  options: KeyedStreamOptions = {},
 ): WsEffect<Ctx> {
+  const maxKeys = options.maxKeys ?? DEFAULT_MAX_KEYS;
+
   return (in$: Observable<Inbound>, ctx: Ctx): Observable<Outbound> => {
+    const seen = new Set<string>();
+
     return in$.pipe(
       filter((msg) => {
         return msg.type === subType || msg.type === unsubType;
+      }),
+      filter((msg): boolean => {
+        const key = keyOf(msg.payload);
+
+        if (key === "") {
+          return false;
+        }
+
+        if (seen.has(key)) {
+          return true;
+        }
+
+        if (seen.size >= maxKeys) {
+          console.warn(
+            `ws-effects: ${subType} key ignored — ${maxKeys} keys already tracked on this connection`,
+          );
+          return false;
+        }
+
+        seen.add(key);
+        return true;
       }),
       groupBy((msg) => {
         return keyOf(msg.payload);
@@ -87,3 +132,10 @@ export function keyedStream<Ctx>(
     );
   };
 }
+
+/**
+ * Legitimate clients track a few dozen keys per effect (the symbols on the
+ * tiles plus a watchlist); a flood of distinct symbols would pin thousands of
+ * groups to one socket.
+ */
+const DEFAULT_MAX_KEYS = 128;
