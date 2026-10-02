@@ -834,6 +834,18 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "prefs-open",
   },
 
+  // Two floats ATTACHED side by side in one floating window (float magnets,
+  // spec 2026-10-02): the pixel witness for the cluster's chrome — one card
+  // outline around both, the grid-style sash between them, and the ⇱ detach
+  // control in each head. THE FIFTH SINGLE-ENGINE SCENARIO, for the same
+  // reason as the floating one (no in-house twin; visual:engine-parity skips
+  // it). Seeded by the committed `attachedFxBlob.ts`, captured honestly from
+  // a real engine save (see that file).
+  "shell/layout-dockview-attached": {
+    componentKey: "DockviewEngineAttached",
+    fixtureKey: "prefs-open",
+  },
+
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is
