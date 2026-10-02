@@ -148,6 +148,17 @@ const rtcSourceAlias: Record<string, string> = debugBuild
       "@rtc/boot-splash": pkgSrc("boot-splash"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
+      // `@rtc/client-core/core` is the RxJS composition root's subpath export
+      // (approach B: every core is a lazy `import()`), so like the `/styles`
+      // keys above it must precede the bare key or the prefix match rewrites
+      // it to `…/src/index.ts/core`.
+      "@rtc/client-core/core": resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "client-core",
+        "src",
+        "core.ts",
+      ),
       "@rtc/client-core": pkgSrc("client-core"),
       "@rtc/core-api": pkgSrc("core-api"),
       "@rtc/core-logic": pkgSrc("core-logic"),

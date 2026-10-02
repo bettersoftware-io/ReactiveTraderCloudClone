@@ -9,13 +9,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type AppCommands,
   type AppPorts,
-  createApp,
-  createMachineFactories,
   createSimulatorPorts,
   InMemorySessionStore,
   type MachineFactories,
   type Presenters,
 } from "@rtc/client-core";
+import { createApp, createMachineFactories } from "@rtc/client-core/core";
 import type { CoreSelection } from "@rtc/core-api";
 import {
   AuthSimulator,

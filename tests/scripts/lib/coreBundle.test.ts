@@ -51,10 +51,11 @@ describe("eagerFiles", () => {
 });
 
 describe("classify", () => {
-  it("passes a correctly-shaped build: rxjs eager, async/effect each in their own lazy chunk", () => {
+  it("passes a correctly-shaped build: no core eager, each of the three in its own lazy chunk", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "the entry: shell, adapters, the loader"],
       ["/assets/vendor.js", "no marker here"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
       ["/assets/effect.js", EFFECT_MARKER],
     ]);
@@ -70,7 +71,8 @@ describe("classify", () => {
 
   it("fails when the async marker leaks into an eager file", () => {
     const files = new Map([
-      ["/assets/index.js", `${RXJS_MARKER} ${ASYNC_MARKER}`],
+      ["/assets/index.js", ASYNC_MARKER],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/effect.js", EFFECT_MARKER],
     ]);
     const eager = new Set(["/assets/index.js"]);
@@ -84,9 +86,9 @@ describe("classify", () => {
     );
   });
 
-  it("fails when the rxjs marker is missing from the eager set", () => {
+  it("fails when the rxjs marker sits in an eager file (approach B: no core is privileged)", () => {
     const files = new Map([
-      ["/assets/index.js", "no rxjs here"],
+      ["/assets/index.js", RXJS_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
       ["/assets/effect.js", EFFECT_MARKER],
     ]);
@@ -96,14 +98,36 @@ describe("classify", () => {
 
     expect(result.failures).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("rxjs marker is missing from the eager set"),
+        expect.stringContaining(
+          "rxjs marker found in eager file /assets/index.js",
+        ),
+      ]),
+    );
+  });
+
+  it("fails when no lazy chunk carries the rxjs marker at all", () => {
+    const files = new Map([
+      ["/assets/index.js", "no core here"],
+      ["/assets/async.js", ASYNC_MARKER],
+      ["/assets/effect.js", EFFECT_MARKER],
+    ]);
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "expected exactly one lazy chunk carrying the rxjs marker, found 0",
+        ),
       ]),
     );
   });
 
   it("fails when the effect marker sits in two lazy chunks instead of one", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "entry"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/effect-a.js", EFFECT_MARKER],
       ["/assets/effect-b.js", EFFECT_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
@@ -123,7 +147,8 @@ describe("classify", () => {
 
   it("fails when a single file carries two different core markers", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "entry"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/mixed.js", `${ASYNC_MARKER} ${EFFECT_MARKER}`],
     ]);
     const eager = new Set(["/assets/index.js"]);
@@ -141,7 +166,8 @@ describe("classify", () => {
 
   it("fails when no lazy chunk carries the async marker at all", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "entry"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/effect.js", EFFECT_MARKER],
     ]);
     const eager = new Set(["/assets/index.js"]);
@@ -159,7 +185,8 @@ describe("classify", () => {
 
   it("fails when no lazy chunk carries the effect marker at all", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "entry"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
     ]);
     const eager = new Set(["/assets/index.js"]);
@@ -177,7 +204,8 @@ describe("classify", () => {
 
   it("fails when the Effect library's runtime marker leaks into an eager file without the effect brand", () => {
     const files = new Map([
-      ["/assets/index.js", `${RXJS_MARKER} ${EFFECT_RUNTIME_MARKER}`],
+      ["/assets/index.js", `entry ${EFFECT_RUNTIME_MARKER}`],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
       ["/assets/effect.js", EFFECT_MARKER],
     ]);
@@ -193,9 +221,32 @@ describe("classify", () => {
     );
   });
 
+  it("flags the Effect runtime marker in a chunk the entry imports statically without a modulepreload hint", () => {
+    const files = new Map([
+      ["/assets/index.js", `import"./vendor.js";import("./lazy.js");`],
+      ["/assets/vendor.js", EFFECT_RUNTIME_MARKER],
+      ["/assets/rxjs.js", RXJS_MARKER],
+      ["/assets/async.js", ASYNC_MARKER],
+      ["/assets/effect.js", EFFECT_MARKER],
+    ]);
+    // Only the entry is hinted; vendor.js is eager by static import alone.
+    const eager = new Set(["/assets/index.js"]);
+
+    const result = classify({ files, eager });
+
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          `the Effect runtime marker (${EFFECT_RUNTIME_MARKER}) leaked into eager file /assets/vendor.js`,
+        ),
+      ]),
+    );
+  });
+
   it("does not flag the Effect runtime marker sitting in the lazy effect chunk", () => {
     const files = new Map([
-      ["/assets/index.js", RXJS_MARKER],
+      ["/assets/index.js", "entry"],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/async.js", ASYNC_MARKER],
       ["/assets/effect.js", `${EFFECT_MARKER} ${EFFECT_RUNTIME_MARKER}`],
     ]);
@@ -210,8 +261,9 @@ describe("classify", () => {
     const files = new Map([
       [
         "/assets/index.js",
-        `${RXJS_MARKER} import a from"./vendor.js";import("./lazy-dynamic.js");`,
+        `import a from"./vendor.js";import("./lazy-dynamic.js");`,
       ],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/vendor.js", ASYNC_MARKER],
       ["/assets/lazy-dynamic.js", EFFECT_MARKER],
     ]);
@@ -237,10 +289,8 @@ describe("classify", () => {
 
   it("treats a statically-imported chunk as eager even without a modulepreload hint", () => {
     const files = new Map([
-      [
-        "/assets/index.js",
-        `${RXJS_MARKER} import"./vendor.js";import("./lazy-dynamic.js");`,
-      ],
+      ["/assets/index.js", `import"./vendor.js";import("./lazy-dynamic.js");`],
+      ["/assets/rxjs.js", RXJS_MARKER],
       ["/assets/vendor.js", ASYNC_MARKER],
       ["/assets/lazy-dynamic.js", EFFECT_MARKER],
     ]);
