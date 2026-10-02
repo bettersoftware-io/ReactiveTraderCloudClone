@@ -19,6 +19,7 @@ import {
   CHART_WIDTH,
 } from "#/ui/analytics/buildChart";
 import { useTheme } from "#/ui/theme/useTheme";
+import { withAlpha } from "#/ui/theme/withAlpha";
 
 /**
  * The P&L history as a Skia line + area chart.
@@ -130,28 +131,6 @@ function zeroBaseline(y: number): ReturnType<typeof Skia.Path.Make> {
   path.moveTo(BASELINE_INSET, y);
   path.lineTo(CHART_WIDTH - BASELINE_INSET, y);
   return path;
-}
-
-/**
- * A theme colour at a given alpha.
- *
- * Local rather than shared: the repo has no `withAlpha()` helper yet — it is a
- * tracked open item (#301), and doing it properly means a branded hex type,
- * which is out of this task's scope.
- */
-function withAlpha(hex: string, alpha: number): string {
-  const normalized = hex.replace("#", "");
-  const full =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((channel) => {
-            return channel + channel;
-          })
-          .join("")
-      : normalized;
-
-  return `rgba(${Number.parseInt(full.slice(0, 2), 16)},${Number.parseInt(full.slice(2, 4), 16)},${Number.parseInt(full.slice(4, 6), 16)},${alpha})`;
 }
 
 interface PnlChartProps {

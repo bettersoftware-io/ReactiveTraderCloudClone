@@ -22,7 +22,12 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * instruments; real `useInstruments()` data does not, so a seventh must stay
  * reachable. Wrapping keeps every chip on screen inside the form's own vertical
  * scroll — a horizontal rail would push the overflow out of sight, which on a
- * picker is worse than a taller grid. */
+ * picker is worse than a taller grid.
+ *
+ * **A chip prints the bond's full name, not its ticker** (dc.html:696 —
+ * `AAPL 3.85% 2043`): an issuer can have several bonds, and the ticker alone
+ * cannot tell them apart. The ticker is only the fallback for a nameless
+ * instrument. */
 export function InstrumentChipGrid({
   instruments,
   selectedId,
@@ -55,7 +60,7 @@ export function InstrumentChipGrid({
                 numberOfLines={2}
                 style={active ? styles.chipLabelActive : styles.chipLabel}
               >
-                {instrument.ticker || instrument.name}
+                {instrument.name || instrument.ticker}
               </Text>
             </Pressable>
           );

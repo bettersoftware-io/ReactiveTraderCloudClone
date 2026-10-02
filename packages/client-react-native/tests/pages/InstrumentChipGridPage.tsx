@@ -14,6 +14,7 @@ export interface InstrumentChipGridPage {
   ): Promise<void>;
   unmountAll(): Promise<void>;
   matchingCount(pattern: RegExp): number;
+  hasText(text: string): boolean;
   // RNTL v13 dropped `toHaveAccessibilityState`, so this reads the prop
   // directly.
   selected(testId: string): boolean | undefined;
@@ -41,6 +42,9 @@ export function instrumentChipGridPage(): InstrumentChipGridPage {
     },
     matchingCount(pattern: RegExp): number {
       return screen.queryAllByTestId(pattern).length;
+    },
+    hasText(text: string): boolean {
+      return screen.queryByText(text) != null;
     },
     selected(testId: string): boolean | undefined {
       const state = screen.getByTestId(testId).props.accessibilityState as

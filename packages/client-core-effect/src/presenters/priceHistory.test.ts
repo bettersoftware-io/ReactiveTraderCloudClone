@@ -1,6 +1,6 @@
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 import { BehaviorSubject, Observable, Subject } from "rxjs";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Stream } from "@rtc/core-api";
 import type { PriceTick, PricingPort } from "@rtc/domain";
@@ -9,7 +9,13 @@ import type { EffectHost } from "#/bridge/out";
 import { createPriceHistoryPresenter } from "#/presenters/priceHistory";
 
 describe("createPriceHistoryPresenter", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
   afterEach(async () => {
+    vi.useRealTimers();
+
     while (hosts.length > 0) {
       const host = hosts.pop();
 
@@ -138,8 +144,8 @@ function createTick(symbol: string, mid: number): PriceTick {
   };
 }
 
+/** Lets the pending fibre hops run. Under fake timers, so the flush is driven
+ * rather than raced against a real clock. */
 function tick(): Promise<unknown> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
+  return vi.advanceTimersByTimeAsync(0);
 }
