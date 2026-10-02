@@ -1,4 +1,4 @@
-export type AcceptVerdict = "ok" | "too-many-connections" | "too-many-from-ip";
+type AcceptVerdict = "ok" | "too-many-connections" | "too-many-from-ip";
 
 export interface ConnectionLimits {
   readonly maxTotal: number;
