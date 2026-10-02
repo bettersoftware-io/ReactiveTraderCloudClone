@@ -10,6 +10,7 @@ import type {
   FirstDockRender,
   FloatBox,
   FloatDockSide,
+  FloatHeadDragOptions,
   FloatResizeHandle,
   LayoutPO,
   PopoutWindowPO,
@@ -1211,6 +1212,112 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.mouse.down();
     await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 15 });
     await this.page.mouse.up();
+  }
+
+  async waitDockAttached(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-attached",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async floatWindowCount(): Promise<number> {
+    return this.page.locator(".dv-resize-container").count();
+  }
+
+  async floatHidesWidthHandles(panelId: string): Promise<boolean> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatHidesWidthHandles: the panel is not in a float");
+      }
+
+      const handles = ["left", "right"].map((edge) => {
+        return float.querySelector(`:scope > .dv-resize-handle-${edge}`);
+      });
+
+      return (
+        float.classList.contains("rtc-dock-float-fixed-width") &&
+        handles.every((handle) => {
+          return handle !== null && getComputedStyle(handle).display === "none";
+        })
+      );
+    });
+  }
+
+  async dragFloatByHeadTo(
+    panelId: string,
+    left: number,
+    top: number,
+    options: FloatHeadDragOptions = {},
+  ): Promise<void> {
+    const option = options.option === true;
+    const grip = await this.floatHeadGrip(panelId);
+
+    if (option) {
+      await this.page.keyboard.down("Alt");
+    }
+
+    // Released in a finally: a failed mid-drag assertion must not leave
+    // Option or the button held for the rest of the test.
+    try {
+      await this.page.mouse.move(grip.x, grip.y);
+      await this.page.mouse.down();
+      // dockview's overlay takes its grip offset (pointer minus box) on the
+      // FIRST pointermove and moves nothing on it; every later move puts the
+      // box at pointer minus that offset, clamped to the dock. So a 1px first
+      // step fixes the offset without moving the box, and the box is read only
+      // THEN: an Option press has already pulled the member out into its own
+      // window, and a read after a real move would be skewed whenever the
+      // float started against an edge (the clamp holds the box while the
+      // pointer runs on — a 20px first step measured 13.5px short that way).
+      await this.page.mouse.move(grip.x + 1, grip.y + 1);
+      const start = await this.floatBox(panelId);
+      await this.page.mouse.move(
+        grip.x + 1 + (left - start.x),
+        grip.y + 1 + (top - start.y),
+        { steps: 20 },
+      );
+
+      // The cue is drawn by the drag's own per-move hook, so it is judged
+      // here, after the last move and before the release clears it.
+      if (option) {
+        await expect(this.page.locator(".rtc-dock-attach-preview")).toHaveCount(
+          0,
+        );
+      }
+
+      if (options.expectCue === true) {
+        await expect(
+          this.page.locator(".rtc-dock-attach-preview"),
+        ).toBeVisible();
+      }
+    } finally {
+      await this.page.mouse.up();
+
+      if (option) {
+        await this.page.keyboard.up("Alt");
+      }
+    }
+  }
+
+  async detachPanel(panelId: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.layout.detachControl(panelId)).click();
+  }
+
+  async panelBox(panelId: string): Promise<FloatBox> {
+    return this.dockGroupBox(panelId);
+  }
+
+  async viewportWidth(): Promise<number> {
+    return this.page.evaluate(() => {
+      return window.innerWidth;
+    });
   }
 
   async shiftDragFloatOnto(

@@ -138,6 +138,10 @@ export function DockviewLayoutEngine({
   // reload restores it — nothing here clears it on its own the way the reset
   // effect clears `popped`.
   const [floating, setFloating] = useState<readonly PanelId[]>([]);
+  // Panels in a multi-panel floating window (float magnets) — the engine's
+  // `onAttachedChange` set, the same whole-set idiom as `floating`. Cleared
+  // wherever `floating` is: a reset's fresh engine reports only on change.
+  const [attached, setAttached] = useState<readonly PanelId[]>([]);
   // Read through a ref by the engine's title hook: `specs` (like `registry`)
   // is rebuilt by WorkspaceEngine on every render, so listing it as a dep of
   // the engine effect below would tear dockview down and rebuild it from
@@ -371,6 +375,9 @@ export function DockviewLayoutEngine({
       onFloatsChange: (next: readonly string[]): void => {
         setFloating(next as readonly PanelId[]);
       },
+      onAttachedChange: (next: readonly string[]): void => {
+        setAttached(next as readonly PanelId[]);
+      },
       // Jarvis-docked panels and chart instances, both reconciled at
       // construction — an unlisted dynamic id the blob restored is deleted
       // as an orphan, so an instance missing here loses its blob position.
@@ -565,6 +572,7 @@ export function DockviewLayoutEngine({
       // silent, and without this the stale `floatingHere` would hide
       // collapse/maximize on a panel that is no longer floating anywhere.
       setFloating([]);
+      setAttached([]);
       // Unregister BEFORE disposing the outgoing engine — the mount effect
       // cleanup's identical ordering, and for the identical reason: a save
       // triggered by the dispose flush below (or by anything racing it) must
@@ -614,6 +622,9 @@ export function DockviewLayoutEngine({
         },
         onFloatsChange: (next: readonly string[]): void => {
           setFloating(next as readonly PanelId[]);
+        },
+        onAttachedChange: (next: readonly string[]): void => {
+          setAttached(next as readonly PanelId[]);
         },
         // Jarvis-docked panels and chart instances, both reconciled at
         // construction — an unlisted dynamic id the blob restored is deleted
@@ -889,6 +900,12 @@ export function DockviewLayoutEngine({
     };
   }
 
+  function detachPanelFromCluster(panelId: PanelId) {
+    return () => {
+      engineRef.current?.detachPanel(panelId);
+    };
+  }
+
   function closeInstancePanel(panelId: PanelId) {
     return () => {
       onCloseInstance(panelId);
@@ -930,6 +947,7 @@ export function DockviewLayoutEngine({
       data-closed={closed.join(" ")}
       data-popped={popped.join(" ")}
       data-floating={floating.join(" ")}
+      data-attached={attached.join(" ")}
       data-docked={docked.join(" ")}
       data-instances={instanceIds.join(" ")}
       className={styles.engine}
@@ -969,10 +987,12 @@ export function DockviewLayoutEngine({
                 maximizedHere={maximized === panelId}
                 poppedHere={popped.includes(panelId)}
                 floatingHere={floating.includes(panelId)}
+                attachedHere={attached.includes(panelId)}
                 onCollapse={collapsePanel(panelId)}
                 onMaximize={maximizePanel(panelId)}
                 onRestore={onRestore}
                 onPopout={popoutPanel(panelId)}
+                onDetach={detachPanelFromCluster(panelId)}
                 onFloat={
                   maximized === null ? floatOrDockPanel(panelId) : undefined
                 }

@@ -2,6 +2,7 @@ import {
   createDockview,
   type DockviewApi,
   type DockviewGroupDropLocation,
+  type DockviewGroupPanel,
   type DockviewWillShowOverlayLocationEvent,
   Orientation,
   type Position,
@@ -6715,16 +6716,6 @@ describe("floating groups against pins, strips, maximize and the share rule", ()
     }
   });
 
-  function locationOf(panelId: string): string {
-    const panel = lastDockviewApi().getPanel(panelId);
-
-    if (panel === undefined) {
-      throw new Error(`${panelId} is not in the dock`);
-    }
-
-    return panel.group.api.location.type;
-  }
-
   function isWidthClamped(panelId: string): boolean {
     const [minimum, maximum] = widthClampOf(panelId);
 
@@ -7173,6 +7164,719 @@ describe("loadBlobOrSeed's restoreTier (the provable tier label)", () => {
   }
 });
 
+describe("attached floats — the cluster model and the width rule", () => {
+  // A cluster is dockview's own multi-group floating window. These tests
+  // build one through dockview's api (`moveTo` onto a floating group), not
+  // through a gesture: jsdom reports zero-size rects, so the sizing rules
+  // are proven on numbers in floatMagnets.test.ts and in the e2e run.
+  it("publishes the whole attached set on attach and on detach, not on an unrelated change", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    expect(reports).toEqual([]);
+
+    joinFloats(api, "fx-positions", "fx-analytics", "right");
+    expect(reports).toEqual([["fx-analytics", "fx-positions"]]);
+
+    engine.collapsePanel("fx-rates"); // unrelated: no new report
+    expect(reports).toHaveLength(1);
+
+    api.addFloatingGroup(groupOf(api, "fx-positions"), {
+      x: 900,
+      y: 500,
+      width: 367,
+      height: 300,
+    });
+    expect(reports).toEqual([["fx-analytics", "fx-positions"], []]);
+    engine.dispose();
+  });
+
+  // The restore bug the spike hit: both members are 360-locked, and a
+  // setSize of one lock on the window's anchor squeezed the WHOLE window to
+  // one panel's width, clipping the second panel away after a reload. The
+  // width-handle class is not what squeezed it: an all-locked pair cannot
+  // honour a horizontal resize, so it hides those handles like a lone
+  // locked float.
+  it("restores a side-by-side cluster of two locked panels, keeps the window at its saved width and hides the width handles", () => {
+    const container = sizedContainer(1440, 900);
+    let saved = "";
+    const first = createDockEngine({
+      ...createLockedRailBase(),
+      container,
+      onLayoutChange: (blob: string): void => {
+        saved = blob;
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    joinFloats(api, "fx-positions", "fx-analytics", "right");
+    touchContainer(container);
+    first.dispose();
+    expect(saved).toContain('"orientation":"HORIZONTAL"');
+
+    const second = createDockEngine({
+      ...createLockedRailBase(),
+      container,
+      blob: withFloatWindowBox(saved, {
+        left: 300,
+        top: 100,
+        width: 734,
+        height: 300,
+      }),
+    });
+    const box = floatBoxElementOf(lastDockviewApi(), "fx-analytics");
+
+    // The window comes back at its saved width — not one member's lock,
+    // which a clamp's setSize on the window's anchor group writes through
+    // dockview's anchor listener (group.onDidChange → overlay.setBounds).
+    expect(box.style.width).toBe("734px");
+
+    expect(floatMembersOf(lastDockviewApi(), "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(box.classList.contains("rtc-dock-float-fixed-width")).toBe(true);
+    // Each member keeps ITS OWN lock inside the cluster (min = max).
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    expect(widthClampOf("fx-positions")).toEqual([367, 367]);
+    second.dispose();
+  });
+
+  // One free member can take a horizontal resize, so the window keeps its
+  // width handles.
+  it("leaves the width handles on a side-by-side cluster of one locked and one free panel", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-blotter", 600, 100, 500, 300);
+    joinFloats(api, "fx-blotter", "fx-analytics", "right");
+
+    expect(floatMembersOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-blotter",
+    ]);
+    expect(
+      floatBoxElementOf(api, "fx-analytics").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(false);
+    engine.dispose();
+  });
+
+  it("box-locks a STACKED cluster when a member is locked, and gives every member the lock", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-blotter", 100, 500, 600, 200);
+    joinFloats(api, "fx-blotter", "fx-analytics", "bottom");
+
+    expect(
+      floatBoxElementOf(api, "fx-analytics").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(true);
+    expect(widthClampOf("fx-analytics")).toEqual([367, 367]);
+    engine.dispose();
+  });
+
+  it("leaves a stacked cluster of two FREE panels unlocked", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-rates", 100, 100, 500, 300);
+    floatAt(api, "fx-blotter", 100, 500, 600, 200);
+    joinFloats(api, "fx-blotter", "fx-rates", "bottom");
+
+    expect(
+      floatBoxElementOf(api, "fx-rates").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(false);
+    engine.dispose();
+  });
+
+  it("attachPanel merges two lone floats into one window and refuses a cluster, the same window, or a docked target", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    floatAt(api, "fx-blotter", 100, 600, 500, 200);
+
+    expect(engine.attachPanel("fx-positions", "fx-analytics", "right")).toBe(
+      true,
+    );
+    expect(floatMembersOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-positions",
+    ]);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+
+    // A cluster never attaches (spec §4.1) — and the target may not be itself.
+    expect(engine.attachPanel("fx-positions", "fx-blotter", "right")).toBe(
+      false,
+    );
+    expect(engine.attachPanel("fx-blotter", "fx-blotter", "right")).toBe(false);
+    // A docked target is not a float.
+    expect(engine.attachPanel("fx-blotter", "fx-rates", "right")).toBe(false);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    engine.dispose();
+  });
+
+  it("detachPanel pops a member out into its own float and is a no-op on a lone float", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    expect(engine.detachPanel("fx-positions")).toBe(true);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    expect(locationOf("fx-positions")).toBe("floating");
+    expect(reports.at(-1)).toEqual([]);
+
+    expect(engine.detachPanel("fx-positions")).toBe(false);
+    expect(engine.detachPanel("fx-rates")).toBe(false);
+    engine.dispose();
+  });
+
+  it("closing a member empties the attached set and leaves the survivor floating alone", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    const closing = api.getPanel("fx-positions");
+
+    if (closing === undefined) {
+      throw new Error("fx-positions is not in the dock");
+    }
+
+    api.removePanel(closing);
+
+    expect(reports.at(-1)).toEqual([]);
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    engine.dispose();
+  });
+
+  // The home extent is read from the engine's own record (the blob's
+  // `rtcFloatSizes` sidecar, live through snapshotLayout) as it stood when
+  // the panel floated, and the dock-home is witnessed by the docked group
+  // being sized back to it — the lone-float dock-home suite's observation,
+  // here through a cluster.
+  it("docking a member home leaves the other member a lone float, restores the docked panel's home and empties the attached set", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    engine.floatPanel("fx-analytics");
+    engine.floatPanel("fx-positions");
+    const home = floatHomeOf(engine.snapshotLayout(), "fx-positions");
+
+    expect(home.size).toBeGreaterThan(0);
+
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    expect(reports.at(-1)).toEqual(["fx-analytics", "fx-positions"]);
+    const setSize = vi.spyOn(groupOf(api, "fx-positions").api, "setSize");
+
+    engine.dockPanel("fx-positions");
+
+    expect(locationOf("fx-positions")).toBe("grid");
+    expect(locationOf("fx-analytics")).toBe("floating");
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    expect(setSize).toHaveBeenCalledWith({ [home.axis]: home.size });
+    expect(reports.at(-1)).toEqual([]);
+    engine.dispose();
+  });
+
+  // Spec §4.2: the free panel adopts the lock. jsdom reports a 0-wide dock,
+  // which `lockedFloatWidth` treats as uncapped, so the box takes the lock's
+  // model width (card + gap) — what a 1440 dock gives too.
+  it("a FREE anchor joined below by a LOCKED panel box-locks the window and sizes the free member to the lock", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-blotter", 100, 100, 600, 300);
+    floatAt(api, "fx-analytics", 100, 500, 367, 300);
+    const setSize = vi.spyOn(groupOf(api, "fx-blotter").api, "setSize");
+
+    expect(engine.attachPanel("fx-analytics", "fx-blotter", "bottom")).toBe(
+      true,
+    );
+    expect(setSize).toHaveBeenCalledWith({ width: 360 + GROUP_GAP_PX });
+    expect(
+      floatBoxElementOf(api, "fx-blotter").classList.contains(
+        "rtc-dock-float-fixed-width",
+      ),
+    ).toBe(true);
+    engine.dispose();
+  });
+
+  // The same rule for a join dockview makes itself (a drag), which never
+  // reaches attachPanel — so only the settle's fitLockedFloatBoxes sizes it.
+  it("a FREE anchor joined below by a LOCKED panel through dockview adopts the lock too", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-blotter", 100, 100, 600, 300);
+    floatAt(api, "fx-analytics", 100, 500, 367, 300);
+    const setSize = vi.spyOn(groupOf(api, "fx-blotter").api, "setSize");
+
+    joinFloats(api, "fx-analytics", "fx-blotter", "bottom");
+
+    expect(setSize).toHaveBeenCalledWith({ width: 360 + GROUP_GAP_PX });
+    engine.dispose();
+  });
+
+  it("positions a stacked window at the lock's MODEL width on its own, not the card width", () => {
+    const engine = createDockEngine({
+      ...createLockedRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-blotter", 100, 100, 600, 300);
+    floatAt(api, "fx-analytics", 100, 500, 367, 300);
+    const position = vi.spyOn(
+      floatingWindowOfPanel(api, "fx-blotter"),
+      "position",
+    );
+
+    engine.attachPanel("fx-analytics", "fx-blotter", "bottom");
+
+    expect(position).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 360 + GROUP_GAP_PX }),
+    );
+    engine.dispose();
+  });
+
+  it("a stacked attach of two FREE panels gives every member the target window's width", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-rates", 100, 100, 600, 300);
+    floatAt(api, "fx-blotter", 100, 500, 500, 200);
+    // jsdom lays nothing out: the target window reports the box it opened at.
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-rates"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 600, 300));
+    const setSize = vi.spyOn(groupOf(api, "fx-rates").api, "setSize");
+
+    engine.attachPanel("fx-blotter", "fx-rates", "bottom");
+
+    expect(setSize).toHaveBeenCalledWith({ width: 600 });
+    engine.dispose();
+  });
+
+  it("refuses an attach across a cluster's split and accepts one along it", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    floatAt(api, "fx-blotter", 100, 600, 500, 200);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    expect(engine.attachPanel("fx-blotter", "fx-analytics", "bottom")).toBe(
+      false,
+    );
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+
+    expect(engine.attachPanel("fx-blotter", "fx-positions", "right")).toBe(
+      true,
+    );
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(1);
+    expect(floatMembersOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-blotter",
+      "fx-positions",
+    ]);
+    engine.dispose();
+  });
+
+  it("detaching the window's ANCHOR leaves two lone windows and an empty attached set", () => {
+    const reports: (readonly string[])[] = [];
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+      onAttachedChange: (ids: readonly string[]): void => {
+        reports.push(ids);
+      },
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    expect(engine.detachPanel("fx-analytics")).toBe(true);
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    expect(floatMembersOf(api, "fx-positions")).toEqual(["fx-positions"]);
+    expect(reports.at(-1)).toEqual([]);
+    engine.dispose();
+  });
+
+  // dockview-core 8.3.1 binds a window's resize listener to the group it was
+  // created with and never rebinds it: the anchor staying in its ORIGINAL
+  // window is the witness that no listener was orphaned.
+  it("detaching the ANCHOR keeps it in its original window and moves the survivor out", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    const original = floatBoxElementOf(api, "fx-analytics");
+
+    engine.detachPanel("fx-analytics");
+
+    expect(floatBoxElementOf(api, "fx-analytics")).toBe(original);
+    expect(floatBoxElementOf(api, "fx-positions")).not.toBe(original);
+    engine.dispose();
+  });
+
+  it("closing the ANCHOR through the engine moves the survivor into a window of its own", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    const original = floatBoxElementOf(api, "fx-analytics");
+
+    engine.closePanel("fx-analytics");
+
+    expect(api.getPanel("fx-analytics")).toBeUndefined();
+    expect(floatMembersOf(api, "fx-positions")).toEqual(["fx-positions"]);
+    expect(floatBoxElementOf(api, "fx-positions")).not.toBe(original);
+    engine.dispose();
+  });
+
+  it("docking the ANCHOR home leaves the other member a lone float", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    engine.floatPanel("fx-analytics");
+    engine.floatPanel("fx-positions");
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    const original = floatBoxElementOf(api, "fx-analytics");
+
+    engine.dockPanel("fx-analytics");
+
+    expect(locationOf("fx-analytics")).toBe("grid");
+    expect(locationOf("fx-positions")).toBe("floating");
+    expect(floatMembersOf(api, "fx-positions")).toEqual(["fx-positions"]);
+    // The survivor left the anchor's window rather than inheriting it.
+    expect(floatBoxElementOf(api, "fx-positions")).not.toBe(original);
+    engine.dispose();
+  });
+
+  it("a plain press on a NON-anchor member's head is forwarded to the window's anchor void container", () => {
+    const opts = { ...createRailBase(), container: sizedContainer(1440, 900) };
+    const engine = createDockEngine(opts);
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    const anchorVoid = groupOf(api, "fx-analytics").element.querySelector(
+      ".dv-void-container",
+    );
+    const forwarded: string[] = [];
+    anchorVoid?.addEventListener("pointerdown", (event) => {
+      forwarded.push(event.type);
+    });
+
+    pressHeadOf(api, "fx-positions", { altKey: false });
+
+    expect(forwarded).toEqual(["pointerdown"]);
+    window.dispatchEvent(new Event("pointerup"));
+    engine.dispose();
+  });
+
+  it("an Option press on a member's head detaches it before the move starts", () => {
+    const opts = { ...createRailBase(), container: sizedContainer(1440, 900) };
+    const engine = createDockEngine(opts);
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 367, 300);
+    floatAt(api, "fx-positions", 600, 100, 367, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+
+    pressHeadOf(api, "fx-positions", { altKey: true });
+
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    expect(floatMembersOf(api, "fx-analytics")).toEqual(["fx-analytics"]);
+    window.dispatchEvent(new Event("pointerup"));
+    engine.dispose();
+  });
+
+  it("renders no attach preview at rest", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+
+    expect(document.querySelector(".rtc-dock-attach-preview")).toBeNull();
+    engine.dispose();
+  });
+
+  // Every member of a cluster shares the window box, so the window alone
+  // cannot say which member a release attaches to: the member on the shared
+  // edge must take the newcomer, or it lands in the MIDDLE of the row.
+  it("a release flush against a cluster's right edge attaches beside its RIGHTMOST member", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-positions", 450, 100, 350, 300);
+    floatAt(api, "fx-blotter", 800, 100, 300, 300);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    // jsdom lays nothing out: each window and member leaf reports its box.
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 700, 300));
+    vi.spyOn(
+      leafViewOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 350, 300));
+    vi.spyOn(
+      leafViewOf(api, "fx-positions"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(450, 100, 350, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(800, 100, 300, 300));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    // The move engages the snap on the cluster's right edge; the release
+    // attaches from that engagement.
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 900, clientY: 150 }),
+    );
+    window.dispatchEvent(new PointerEvent("pointerup", { button: 0 }));
+
+    expect(floatMembersInOrderOf(api, "fx-analytics")).toEqual([
+      "fx-analytics",
+      "fx-positions",
+      "fx-blotter",
+    ]);
+    engine.dispose();
+  });
+
+  it("a Shift release flush against a sibling never attaches", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-blotter", 450, 100, 300, 300);
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 350, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(450, 100, 300, 300));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 500, clientY: 150 }),
+    );
+    window.dispatchEvent(
+      new PointerEvent("pointerup", { button: 0, shiftKey: true }),
+    );
+
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    engine.dispose();
+  });
+
+  // A click to focus a float that already sits flush — the leaver of an
+  // Option detach does, against the window it left — engaged no snap, so it
+  // must not attach: the release decides from the drag, not from geometry.
+  it("a press-and-release with no pointermove never attaches", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-blotter", 450, 100, 300, 300);
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 350, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(450, 100, 300, 300));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    window.dispatchEvent(new PointerEvent("pointerup", { button: 0 }));
+
+    expect(document.querySelectorAll(".dv-resize-container")).toHaveLength(2);
+    engine.dispose();
+  });
+
+  // dockview's drag loop reads the dragged box and the sibling boxes from
+  // `getBoundingClientRect`, so stubbed rects drive the snap hook in jsdom:
+  // the first move proposes exactly the dragged window's own rect.
+  // The dock sits at (10, 20) in the viewport, its float host filling it, so
+  // the cue's fixed position must add that origin to the container-px line.
+  it("shows the attach cue on the target's edge while a lone float is engaged on it", () => {
+    const container = sizedContainer(1440, 900);
+    const engine = createDockEngine({ ...createRailBase(), container });
+    const api = lastDockviewApi();
+    const floatHost = container.querySelector(".dv-floating-overlay-host");
+
+    if (floatHost === null) {
+      throw new Error("dockview mounted no floating overlay host");
+    }
+
+    vi.spyOn(container, "getBoundingClientRect").mockReturnValue(
+      createRect(10, 20, 1440, 900),
+    );
+    vi.spyOn(floatHost, "getBoundingClientRect").mockReturnValue(
+      createRect(10, 20, 1440, 900),
+    );
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-blotter", 100, 405, 350, 200);
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(110, 120, 350, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(110, 425, 350, 200));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 210, clientY: 470 }),
+    );
+
+    const cue = document.querySelector<HTMLElement>(".rtc-dock-attach-preview");
+    expect(cue?.dataset.side).toBe("bottom");
+    expect(cue?.style.left).toBe("110px");
+    expect(cue?.style.top).toBe("418px");
+    window.dispatchEvent(new Event("pointercancel"));
+    expect(document.querySelector(".rtc-dock-attach-preview")).toBeNull();
+    engine.dispose();
+  });
+
+  it("shows no attach cue for a side the engaged cluster would refuse", () => {
+    const engine = createDockEngine({
+      ...createRailBase(),
+      container: sizedContainer(1440, 900),
+    });
+    const api = lastDockviewApi();
+
+    floatAt(api, "fx-analytics", 100, 100, 350, 300);
+    floatAt(api, "fx-positions", 450, 100, 350, 300);
+    floatAt(api, "fx-blotter", 100, 405, 350, 200);
+    engine.attachPanel("fx-positions", "fx-analytics", "right");
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-analytics"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 100, 700, 300));
+    vi.spyOn(
+      floatBoxElementOf(api, "fx-blotter"),
+      "getBoundingClientRect",
+    ).mockReturnValue(createRect(100, 405, 350, 200));
+
+    pressHeadOf(api, "fx-blotter", { altKey: false });
+    window.dispatchEvent(
+      new PointerEvent("pointermove", { clientX: 200, clientY: 450 }),
+    );
+
+    expect(document.querySelector(".rtc-dock-attach-preview")).toBeNull();
+    window.dispatchEvent(new Event("pointercancel"));
+    engine.dispose();
+  });
+});
+
 /** Walks a parsed blob's grid for the leaf whose `views` names `panelId`,
  * loosely — a test-only mirror of {@link removeDynamicViews}'s own walk,
  * used to hand-corrupt exactly one leaf's group id without disturbing the
@@ -7297,6 +8001,249 @@ function widthClampOf(panelId: string): readonly [number, number] {
   }
 
   return [panel.group.minimumWidth, panel.group.maximumWidth];
+}
+
+/** Where `panelId`'s group lives on the last engine — "grid", "floating" or
+ * "popout". */
+function locationOf(panelId: string): string {
+  const panel = lastDockviewApi().getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return panel.group.api.location.type;
+}
+
+/** dockview's own group object for `panelId` — what `addFloatingGroup` and
+ * `moveTo` want (the engine's `SizableGroup` is a narrowed view). */
+function groupOf(api: DockviewApi, panelId: string): DockviewGroupPanel {
+  const panel = api.getPanel(panelId);
+
+  if (panel === undefined) {
+    throw new Error(`${panelId} is not in the dock`);
+  }
+
+  return panel.group;
+}
+
+/** Floats `panelId` at an explicit box — bypassing `floatPanel`, whose
+ * opening box is measured from rects jsdom reports as zero. */
+function floatAt(
+  api: DockviewApi,
+  panelId: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  api.addFloatingGroup(groupOf(api, panelId), { x, y, width, height });
+}
+
+/** The modifier state of a {@link pressHeadOf} press. */
+interface HeadPressInit {
+  readonly altKey: boolean;
+}
+
+/** A left-button pointer press on the FREE part of `panelId`'s head bar —
+ * the tab strip, not a control — as `moveFloatFromHead` sees one. */
+function pressHeadOf(
+  api: DockviewApi,
+  panelId: string,
+  init: HeadPressInit,
+): void {
+  const head = groupOf(api, panelId).element.querySelector(
+    ".dv-tabs-and-actions-container",
+  );
+
+  if (head === null) {
+    throw new Error(`${panelId} has no head bar`);
+  }
+
+  head.dispatchEvent(
+    new PointerEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      buttons: 1,
+      pointerId: 1,
+      altKey: init.altKey,
+    }),
+  );
+}
+
+/** The `.dv-view` leaf holding `panelId`'s group — what the engine measures
+ * a cluster member by. */
+function leafViewOf(api: DockviewApi, panelId: string): HTMLElement {
+  const view = groupOf(api, panelId).element.closest<HTMLElement>(".dv-view");
+
+  if (view === null) {
+    throw new Error(`${panelId} has no leaf view`);
+  }
+
+  return view;
+}
+
+/** Every panel id in the floating window holding `panelId`, in layout
+ * (DOM) order — where a newcomer landed along the split. */
+function floatMembersInOrderOf(
+  api: DockviewApi,
+  panelId: string,
+): readonly string[] {
+  return [
+    ...floatBoxElementOf(api, panelId).querySelectorAll(".dv-groupview"),
+  ].flatMap((element) => {
+    return api.groups
+      .filter((group) => {
+        return group.element === element;
+      })
+      .flatMap((group) => {
+        return group.panels.map((panel) => {
+          return panel.id;
+        });
+      });
+  });
+}
+
+/** Merges `panelId`'s float into `targetId`'s floating window on `side`
+ * — the same dockview call the engine's attach makes. */
+function joinFloats(
+  api: DockviewApi,
+  panelId: string,
+  targetId: string,
+  side: Position,
+): void {
+  groupOf(api, panelId).api.moveTo({
+    group: groupOf(api, targetId),
+    position: side,
+  });
+}
+
+/** The `.dv-resize-container` box element of the float holding `panelId`. */
+function floatBoxElementOf(api: DockviewApi, panelId: string): HTMLElement {
+  const box = groupOf(api, panelId).element.closest<HTMLElement>(
+    ".dv-resize-container",
+  );
+
+  if (box === null) {
+    throw new Error(`${panelId} is not in a float`);
+  }
+
+  return box;
+}
+
+/** A floating window's saved box, as dockview serialises it. */
+interface FloatWindowPosition {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** `blob` with its first floating window's saved box replaced — jsdom lays
+ * nothing out, so a captured blob saves every window at 0×0. */
+function withFloatWindowBox(
+  blob: string,
+  position: FloatWindowPosition,
+): string {
+  const parsed = JSON.parse(blob);
+  const [first, ...rest] = parsed.floatingGroups;
+
+  return JSON.stringify({
+    ...parsed,
+    floatingGroups: [{ ...first, position }, ...rest],
+  });
+}
+
+/** One panel's remembered pre-float home extent, as the blob's
+ * `rtcFloatSizes` sidecar records it. */
+interface FloatHome {
+  readonly axis: "width" | "height";
+  readonly size: number;
+}
+
+/** `panelId`'s entry in `blob`'s `rtcFloatSizes` sidecar — throws when
+ * absent, so an assertion on it can never pass on a panel the engine did
+ * not record. */
+function floatHomeOf(blob: string, panelId: string): FloatHome {
+  const entry = JSON.parse(blob).rtcFloatSizes?.[panelId];
+
+  if (entry === undefined) {
+    throw new Error(`the blob records no pre-float home for ${panelId}`);
+  }
+
+  return entry;
+}
+
+/** A `getBoundingClientRect` result at an explicit box. */
+function createRect(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): DOMRect {
+  return {
+    left,
+    top,
+    width,
+    height,
+    x: left,
+    y: top,
+    right: left + width,
+    bottom: top + height,
+    toJSON: (): object => {
+      return {};
+    },
+  };
+}
+
+/** The part of dockview's internal floating window a test spies on. */
+interface FloatingWindowProbe {
+  position(bounds: object): void;
+}
+
+/** dockview's internal access to a group's floating window, as far as
+ * {@link floatingWindowOfPanel} reads it. */
+interface FloatingWindowReach {
+  readonly component: {
+    getFloatingWindowForGroup(
+      group: DockviewGroupPanel,
+    ): FloatingWindowProbe | undefined;
+  };
+}
+
+/** dockview's floating window holding `panelId` — the object the engine
+ * repositions (reached the way the engine reaches it). */
+function floatingWindowOfPanel(
+  api: DockviewApi,
+  panelId: string,
+): FloatingWindowProbe {
+  const window = (
+    api as unknown as FloatingWindowReach
+  ).component.getFloatingWindowForGroup(groupOf(api, panelId));
+
+  if (window === undefined) {
+    throw new Error(`${panelId} is not in a float`);
+  }
+
+  return window;
+}
+
+/** Every panel id in the floating window holding `panelId`, sorted. */
+function floatMembersOf(api: DockviewApi, panelId: string): readonly string[] {
+  return [...floatBoxElementOf(api, panelId).querySelectorAll(".dv-groupview")]
+    .flatMap((element) => {
+      return api.groups
+        .filter((group) => {
+          return group.element === element;
+        })
+        .flatMap((group) => {
+          return group.panels.map((panel) => {
+            return panel.id;
+          });
+        });
+    })
+    .sort();
 }
 
 /** Polls the persisted layout until its `rtcDesignPins` sidecar holds

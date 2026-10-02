@@ -869,6 +869,7 @@ export const registry = new Map<AnyToken, ElementFor>([
           docked={(p().docked as readonly string[] | undefined) ?? []}
           interactive={(p().interactive as boolean | undefined) ?? false}
           specsVariant={p().specsVariant as "no-maximize" | undefined}
+          layoutResets={(p().layoutResets as number | undefined) ?? 0}
         />
       );
     },

@@ -1,3 +1,4 @@
+import { ATTACHED_FX_BLOB } from "@ui-visual-shared/attachedFxBlob";
 import { type ReactElement, useRef } from "react";
 
 import {
@@ -147,6 +148,42 @@ export function DockviewEngineFloatingVisual(): ReactElement {
   if (storeRef.current === null) {
     const store = new InMemoryDockLayoutStore();
     store.save("fx", FLOATING_FX_BLOB);
+    storeRef.current = store;
+  }
+
+  return (
+    <div className={styles.stage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={visualDockPanelRegistry}
+        store={storeRef.current}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={[]}
+        instances={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={noop}
+      />
+    </div>
+  );
+}
+
+/** The attached-cluster scenario (`shell/layout-dockview-attached`): the
+ * same stage, the store pre-seeded with the committed attached blob —
+ * fx-analytics and fx-positions side by side in ONE floating window. A
+ * malformed blob falls back to the seed and un-floats both: this golden then
+ * fails loudly. */
+export function DockviewEngineAttachedVisual(): ReactElement {
+  const storeRef = useRef<DockLayoutStore | null>(null);
+
+  if (storeRef.current === null) {
+    const store = new InMemoryDockLayoutStore();
+    store.save("fx", ATTACHED_FX_BLOB);
     storeRef.current = store;
   }
 

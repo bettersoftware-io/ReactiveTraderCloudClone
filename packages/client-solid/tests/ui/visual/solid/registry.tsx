@@ -56,6 +56,7 @@ import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 import { StatusBar } from "#/ui/shell/status/StatusBar";
 
 import {
+  DockviewEngineAttachedVisual,
   DockviewEngineFloatingVisual,
   DockviewEngineStackedVisual,
   DockviewEngineVisual,
@@ -753,5 +754,11 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   // the committed floating blob — see DockviewEngineFloatingVisual.
   DockviewEngineFloating: () => {
     return <DockviewEngineFloatingVisual />;
+  },
+  // Two floats attached in one window (float magnets): the store is
+  // pre-seeded with the committed attached blob — see
+  // DockviewEngineAttachedVisual.
+  DockviewEngineAttached: () => {
+    return <DockviewEngineAttachedVisual />;
   },
 };

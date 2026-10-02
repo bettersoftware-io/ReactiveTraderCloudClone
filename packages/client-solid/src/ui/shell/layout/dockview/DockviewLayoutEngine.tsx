@@ -111,6 +111,10 @@ export function DockviewLayoutEngine(
   // reload restores it — nothing here clears it on its own the way the reset
   // effect clears `popped`.
   const [floating, setFloating] = createSignal<readonly PanelId[]>([]);
+  // Panels in a multi-panel floating window (float magnets) — the engine's
+  // `onAttachedChange` set, the same whole-set idiom as `floating`. Cleared
+  // wherever `floating` is: a reset's fresh engine reports only on change.
+  const [attached, setAttached] = createSignal<readonly PanelId[]>([]);
   // See the `liveEngine` doc above the component.
   const [liveEngine, setLiveEngine] = createSignal<DockEngine | null>(null);
   let containerEl: HTMLDivElement | undefined;
@@ -166,6 +170,12 @@ export function DockviewLayoutEngine(
       }
 
       engine?.floatPanel(panelId);
+    };
+  }
+
+  function detachPanelFromCluster(panelId: PanelId) {
+    return () => {
+      engine?.detachPanel(panelId);
     };
   }
 
@@ -331,6 +341,9 @@ export function DockviewLayoutEngine(
       onFloatsChange: (next: readonly string[]): void => {
         setFloating(next as readonly PanelId[]);
       },
+      onAttachedChange: (next: readonly string[]): void => {
+        setAttached(next as readonly PanelId[]);
+      },
       // Read at CONSTRUCTION time only — like react's `dockedRef` /
       // `instancesRef` construction reads — reconciled once here; every later render is
       // handled by the docked and instance diff effects below instead. Both
@@ -461,6 +474,7 @@ export function DockviewLayoutEngine(
           // `floatingHere` would hide collapse/maximize on a panel that is
           // no longer floating anywhere.
           setFloating([]);
+          setAttached([]);
           applied = [];
           appliedDocked = [];
           appliedInstances = [];
@@ -649,6 +663,7 @@ export function DockviewLayoutEngine(
       data-closed={props.closed.join(" ")}
       data-popped={popped().join(" ")}
       data-floating={floating().join(" ")}
+      data-attached={attached().join(" ")}
       data-docked={props.docked.join(" ")}
       data-instances={instanceIdsOf(props.instances).join(" ")}
       class={styles.engine}
@@ -732,10 +747,12 @@ export function DockviewLayoutEngine(
                     maximizedHere={props.maximized === p.panelId}
                     poppedHere={popped().includes(p.panelId)}
                     floatingHere={floating().includes(p.panelId)}
+                    attachedHere={attached().includes(p.panelId)}
                     onCollapse={collapsePanel(p.panelId)}
                     onMaximize={maximizePanel(p.panelId)}
                     onRestore={props.onRestore}
                     onPopout={popoutPanel(p.panelId)}
+                    onDetach={detachPanelFromCluster(p.panelId)}
                     onFloat={floatHandler()}
                     onClose={closeHandler()}
                   />

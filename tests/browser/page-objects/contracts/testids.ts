@@ -299,6 +299,11 @@ export const TESTIDS = {
     floatControl: (panelId: string) => {
       return `panel-${panelId}-float`;
     },
+    /** The panel's ⇱ detach control (PanelHeadControls.tsx) — rendered only
+     * while the panel is in an attached floating cluster (float magnets). */
+    detachControl: (panelId: string) => {
+      return `panel-${panelId}-detach`;
+    },
   },
   /**
    * J.A.R.V.I.S assistant (JarvisOrb / JarvisOverlay / JarvisConfirmCard,

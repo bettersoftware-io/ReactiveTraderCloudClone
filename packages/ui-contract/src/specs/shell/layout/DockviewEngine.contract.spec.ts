@@ -1,4 +1,5 @@
 import { DockviewEngine } from "@ui-contract/components";
+import { ATTACHED_FX_BLOB } from "@ui-contract/fixtures/attachedFxBlob";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -305,6 +306,60 @@ describe("DockviewLayoutEngine floating groups", () => {
 
     expect(page.bodyVisible("panel-fx-rates-collapse")).toBe(true);
     expect(page.bodyVisible("panel-fx-rates-maximize")).toBe(true);
+  });
+});
+
+describe("DockviewLayoutEngine attached floats (magnets)", () => {
+  it("offers a detach control only on an attached panel, and reports the pair in attachedPanelIds", () => {
+    const page = mount(DockviewEngine, {
+      props: { seedBlob: ATTACHED_FX_BLOB },
+    });
+
+    expect(page.attachedPanelIds()).toEqual(["fx-analytics", "fx-positions"]);
+    expect(page.detachControlLabel("fx-analytics")).toBe("Detach Analytics");
+    expect(page.detachControlLabel("fx-positions")).toBe("Detach Positions");
+    expect(page.detachControlLabel("fx-rates")).toBeNull();
+    // Attached panels are floating too: their float control reads "Dock".
+    expect(page.floatControlLabel("fx-positions")).toBe("Dock Positions");
+  });
+
+  it("detaches a panel from its header control: the control goes, the set empties, both stay floating", async () => {
+    const page = mount(DockviewEngine, {
+      props: { seedBlob: ATTACHED_FX_BLOB },
+    });
+
+    page.detachPanel("fx-positions");
+    await page.waitForAttached([]);
+
+    expect(page.detachControlLabel("fx-positions")).toBeNull();
+    expect(page.detachControlLabel("fx-analytics")).toBeNull();
+    expect(page.floatingPanelIds()).toEqual(["fx-analytics", "fx-positions"]);
+  });
+
+  // Review Focus 5: a reset rebuilds a FRESH engine from the cleared blob,
+  // and that engine reports the attached set only on a CHANGE — so the
+  // bridge must drop the stale set itself, or the detach buttons would
+  // outlive the cluster on panels now docked back in the seed.
+  it("clears the attached set and its detach controls when a workspace reset rebuilds the engine", async () => {
+    const page = mount(DockviewEngine, {
+      props: { seedBlob: ATTACHED_FX_BLOB },
+    });
+    expect(page.attachedPanelIds()).toEqual(["fx-analytics", "fx-positions"]);
+
+    page.setProps({ layoutResets: 1 });
+    await page.waitForAttached([]);
+
+    expect(page.detachControlLabel("fx-analytics")).toBeNull();
+    expect(page.detachControlLabel("fx-positions")).toBeNull();
+  });
+
+  it("renders no detach control for a LONE float", async () => {
+    const page = mount(DockviewEngine, { props: {} });
+
+    page.floatPanel("fx-rates");
+    await page.waitForFloating(["fx-rates"]);
+
+    expect(page.detachControlLabel("fx-rates")).toBeNull();
   });
 });
 

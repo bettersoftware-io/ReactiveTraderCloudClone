@@ -15,10 +15,12 @@ export function PanelHeadControls({
   maximizedHere,
   poppedHere,
   floatingHere,
+  attachedHere,
   onCollapse,
   onMaximize,
   onRestore,
   onPopout,
+  onDetach,
   onFloat,
   onClose,
 }: PanelHeadControlsProps): ReactElement {
@@ -44,6 +46,20 @@ export function PanelHeadControls({
           onClick={onPopout}
         >
           ↗
+        </button>
+      ) : null}
+      {attachedHere && onDetach !== undefined ? (
+        <button
+          type="button"
+          data-testid={`panel-${panelId}-detach`}
+          className={styles.panelControl}
+          aria-label={`Detach ${title}`}
+          title={`Detach ${title}`}
+          disabled={popped}
+          aria-disabled={popped}
+          onClick={onDetach}
+        >
+          ⇱
         </button>
       ) : null}
       {onFloat !== undefined ? (
@@ -120,6 +136,9 @@ export interface PanelHeadControlsProps {
    * a floating box is not a grid member, so those geometry intents have no
    * target. */
   floatingHere?: boolean;
+  /** True while this panel's floating window holds other panels too (an
+   * attached cluster, float magnets): the detach control renders. */
+  attachedHere?: boolean;
   // Slots (property syntax): the header never knows what an engine attaches
   // — see docs/handler-naming.md's slot-vs-handler doctrine.
   onCollapse: () => void;
@@ -133,6 +152,9 @@ export interface PanelHeadControlsProps {
    * already floating — same optional-slot idiom as `onPopout`, attached only
    * by the dockview bridge. */
   onFloat?: () => void;
+  /** Pulls the panel out of its attached cluster into its own float. Optional
+   * slot, attached only by the dockview bridge, like `onFloat`. */
+  onDetach?: () => void;
   /** Closes the panel outright. Optional slot — only the dockview bridge
    * attaches it, and only for a dynamically opened chart instance (a static
    * panel closes through the View menu instead); absent, the head renders no

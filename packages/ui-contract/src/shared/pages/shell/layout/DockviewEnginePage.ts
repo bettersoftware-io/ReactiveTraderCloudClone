@@ -29,6 +29,12 @@ export interface DockviewEngineProps {
    * also have a `layoutTestRegistry` entry to render a body — see
    * `panel-desk-heat` there. */
   docked?: readonly string[];
+  /** A workspace reset, as production performs one: the host CLEARS its
+   * store's "fx" blob, then threads the new count into the bridge's
+   * `layoutResets` prop, whose bump disposes the engine and rebuilds it from
+   * the now-empty store (the default seed). Omitted, it stays `0` — the
+   * mount-time no-op. Bump it through `setProps`. */
+  layoutResets?: number;
 }
 
 /** Page object for DockviewLayoutEngine (the React bridge, Task 4). Unlike
@@ -184,6 +190,40 @@ export class DockviewEnginePage extends MountedComponent<DockviewEngineProps> {
         );
       }
     });
+  }
+
+  /** The attached set the bridge mirrors from the engine's `onAttachedChange`
+   * onto `data-attached` — every panel in a multi-panel floating window. */
+  attachedPanelIds(): readonly string[] {
+    const raw = this.engineEl().getAttribute("data-attached") ?? "";
+
+    return raw === "" ? [] : raw.split(" ");
+  }
+
+  async waitForAttached(panelIds: readonly string[]): Promise<void> {
+    await waitFor(() => {
+      const actual = this.attachedPanelIds();
+
+      if (actual.join(" ") !== panelIds.join(" ")) {
+        throw new Error(
+          `expected data-attached to be "${panelIds.join(" ")}", was "${actual.join(" ")}"`,
+        );
+      }
+    });
+  }
+
+  /** The accessible name of `panelId`'s detach control, or null when the
+   * head renders none — it exists only while the panel is attached. */
+  detachControlLabel(panelId: string): string | null {
+    return (
+      within(this.root)
+        .queryByTestId(`panel-${panelId}-detach`)
+        ?.getAttribute("aria-label") ?? null
+    );
+  }
+
+  detachPanel(panelId: string): void {
+    fireEvent.click(within(this.root).getByTestId(`panel-${panelId}-detach`));
   }
 
   /** The per-tab docked set the bridge received (`Presenters.dockedPanelIdsFor`

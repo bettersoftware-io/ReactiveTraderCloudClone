@@ -254,6 +254,18 @@
   );
 }
 
+/* Attach cue (float magnets): a 2px accent line on the sibling's side of the
+ * edge a release would attach on. Fixed, click-through and above the floats
+ * for the same reasons as `.rtc-dock-preview`; no transition — it tracks the
+ * drag frame by frame. */
+.dockview-theme-rtc .rtc-dock-attach-preview {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--accent-primary, #22d3ee);
+  border-radius: 1px;
+}
+
 /* Resize-edge affordance: dockview's own handles are invisible hit areas —
  * only a cursor, no default visual — along each straight edge of the float.
  * A hover fill in the same colour the in-house sash grip uses on hover
