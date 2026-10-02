@@ -182,6 +182,20 @@ jobs:
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
 
+      # The hybrid (spec §8) only exists if the demo roster was inlined next to
+      # the server URL; a build that lost .env.production would silently send
+      # every login — demo accounts included — to the server. The witness is the
+      # demo PASSWORD, not a username: the usernames also ship via @rtc/domain's
+      # roster.ts (the profile dropdown), so grepping for one could never fail,
+      # while mcdc2026 reaches a production bundle only through VITE_DEMO_AUTH.
+      - name: Guard — demo roster was inlined (hybrid build)
+        run: |
+          if ! grep -rq 'mcdc2026' .vercel/output/static; then
+            echo "::error::VITE_DEMO_AUTH absent from build output — the client would send demo logins to the server instead of running the simulator. Check packages/client-*/.env.production."
+            exit 1
+          fi
+          echo "OK: demo roster is present in the built client bundle (hybrid)."
+
       # Since the runtime core switch, production ships ALL THREE cores — RxJS
       # eager, async/Effect as lazy chunks a visitor only fetches once chosen
       # (src/app/coreSelection.ts's `loadCore`) — so the old "no alternative
@@ -275,6 +289,20 @@ jobs:
             exit 1
           fi
           echo "OK: Fly WS URL is present in the built client bundle."
+
+      # The hybrid (spec §8) only exists if the demo roster was inlined next to
+      # the server URL; a build that lost .env.production would silently send
+      # every login — demo accounts included — to the server. The witness is the
+      # demo PASSWORD, not a username: the usernames also ship via @rtc/domain's
+      # roster.ts (the profile dropdown), so grepping for one could never fail,
+      # while mcdc2026 reaches a production bundle only through VITE_DEMO_AUTH.
+      - name: Guard — demo roster was inlined (hybrid build)
+        run: |
+          if ! grep -rq 'mcdc2026' .vercel/output/static; then
+            echo "::error::VITE_DEMO_AUTH absent from build output — the client would send demo logins to the server instead of running the simulator. Check packages/client-*/.env.production."
+            exit 1
+          fi
+          echo "OK: demo roster is present in the built client bundle (hybrid)."
 
       # See the client-react job for why this reuses check-core-bundle rather
       # than grepping for an absent alternative core.

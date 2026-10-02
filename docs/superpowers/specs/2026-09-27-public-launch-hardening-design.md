@@ -1,9 +1,13 @@
 # Public Launch Hardening — Two-Track Design
 
 **Date:** 2026-09-27
-**Status:** Proposed. The two-track direction was chosen by the user on
-2026-09-27; every item under "Open decisions" is still open. Nothing here is
-built.
+**Status:** Revised 2026-10-01. The two-track direction was chosen by the
+user on 2026-09-27 and **revised on 2026-09-29**: Track B comes first, and the
+two tracks ship as **one hybrid deployment** rather than two sites (§8). §8 is
+being built (plan:
+[../plans/2026-10-01-hybrid-data-source.md](../plans/2026-10-01-hybrid-data-source.md));
+§9 and §10 are recorded findings, not yet built. The remaining open decisions
+are in §7.
 **Trigger:** the project is about to be posted publicly (Reddit). A security
 review of the repository and the deployed server was run on 2026-09-27; this
 document records what it found and the plan that follows from it.
@@ -50,10 +54,11 @@ flowchart TB
 
 | Question | Decision |
 |---|---|
-| What is posted publicly? | **Track A only.** A simulator-only build. |
-| Does the public demo talk to any server? | **No.** Static files only. |
+| What is posted publicly? | **One hybrid build** (§8): demo accounts run the in-browser simulators, registered accounts run against the real server. A simulator-only build stays available as a fallback (no `VITE_SERVER_URL`). |
+| Does the public demo talk to any server? | **Not for demo accounts.** Their credentials are verified in the browser and never leave it (§8.2). |
 | Does the public demo use a real model? | **No.** Scripted Jarvis only. |
-| How does a visitor sign in to the demo? | The fixed demo roster, shipped in the bundle. It is a stage prop, not access control. |
+| How does a visitor sign in to the demo? | The fixed demo roster, shipped in the bundle (`VITE_DEMO_AUTH`). It is a stage prop, not access control. |
+| Which track is built first? | **Track B** (user, 2026-09-29: "no need to rush, I'd rather do things properly"). The hybrid composition (§8) is its first slice. |
 | Who may reach the real server? | Registered **and validated** accounts only (Track B). |
 | Is real AI metered? | **Yes**, per user, with a provider-side spend limit as the backstop. |
 
@@ -262,21 +267,185 @@ and the acceptance checks below pass.
 
 ## 6. Order of work
 
-1. **Step 0** (§3). Today, before anything is posted.
-2. **Track A** (§4). Then post.
-3. **B1**, then **B2**, then **B3**, then **B4**.
+Revised 2026-09-29. Nothing is posted until B4.
 
-Track A and Track B share no code path beyond the composition-root branch that
-already exists, so they can proceed independently.
+1. **Step 0** (§3). Immediately, independent of everything else.
+2. **Hybrid composition** (§8). The login-routed data source. Built first
+   because every later phase is tested against it.
+3. **B1** server hardening (§5), including the in-app abuse layer (§9.2).
+4. **B2** user management, **B3** metering with bring-your-own keys (§10).
+5. **B4** open the door, then post.
+
+Track A survives as the **simulator-only fallback build**: the same code with
+`VITE_SERVER_URL` empty. It needs no separate work beyond §4.3 items 2 and 3
+if it is ever deployed on its own.
 
 ## 7. Open decisions
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | Which URL becomes the public demo: the current production alias, or a new one? | Make the **current alias** the demo and move the real stack to a new, unadvertised one. Links already shared keep working and stay safe. |
-| D2 | Ship the demo for React, Solid, or both? | **Both.** The side-by-side is a selling point and costs one more deploy target. |
+| D1 | ~~Which URL becomes the public demo?~~ | **Resolved 2026-09-29: one hybrid deployment on the current alias** (§8). No second site. |
+| D2 | ~~Ship the demo for React, Solid, or both?~~ | **Resolved: both** — the hybrid lives in each client's `buildBrowserPorts`, so both get it in the same change. |
 | D3 | B2: self-built accounts or a managed identity provider? | For a maintainer with no operations time, a **managed provider plus an approval allowlist** removes password storage, reset flows and most abuse handling. To be weighed against the Graphlyn approach. |
 | D4 | B2: what does "validated" mean? | Open. Email verification, manual approval, or both. |
 | D5 | B2/B3: where does durable state live? | Open. Depends on D3. |
 | D6 | Does `/mcp` stay enabled on the real server? | Keep, behind B2 roles. |
-| D7 | Does the React Native app follow Track A or Track B? | Open. It defaults to the deployed endpoint today. |
+| D7 | Does the React Native app follow Track A or Track B? | Open. It defaults to the deployed endpoint today. The hybrid (§8) is web-only; `buildNativePorts.ts` is untouched. |
+| D8 | Should a mode-change reload suppress the boot splash? | Open. Today the splash replays (§8.3 step 4). Suppressing it needs a one-shot flag the boot-splash gate does not have yet. |
+| D9 | Show the demo accounts on the login screen? | Open. It changes the login goldens in both clients, so it is a separate, user-accepted UI round. |
+
+## 8. Hybrid data source (revision 2026-09-29, built 2026-10-01)
+
+### 8.1 Rule
+
+One deployment. The **login decides the data source**:
+
+- Credentials that match the committed **demo roster** are verified in the
+  browser, and the app runs on the in-browser simulators with the scripted
+  Jarvis. Nothing is sent to any server.
+- Any other credentials are posted to the server's `/login`. On success the app
+  runs on the real WebSocket transport with real, metered AI.
+
+The criterion is **credential match** (username *and* password equal a demo
+entry), not username membership. A demo username with a non-demo password is a
+server login. That keeps every existing full-stack dev and e2e flow working,
+whose server roster is `demo:demo`, while the bundle's demo entry is
+`demo:mcdc2026`.
+
+### 8.2 Composition
+
+The client composes its ports once per page load, before the login screen
+(`AppRoot` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
+**at load**, from a stored choice, exactly as the load-time core switch does
+(ADR-006 Decision 6):
+
+| `VITE_SERVER_URL` | `VITE_DEMO_AUTH` | Composed | Behaviour |
+|---|---|---|---|
+| empty | any | **sim** | Today's simulator mode. The roster is `VITE_DEV_AUTH` ∪ `VITE_DEMO_AUTH`. This is also the Track A fallback build. |
+| set | empty | **live** | Today's WS-real mode, byte for byte. Every `dev:*:fs`, `dev:*:ws:*` and e2e flow lands here, because `.env.development` carries no `VITE_DEMO_AUTH`. |
+| set | set | **hybrid** | The stored choice (`localStorage["rtc.dataSource"]`, `"sim"` or `"live"`) decides. Absent choice: `live` when a stored session exists (a pre-hybrid live session), else `sim`. |
+
+`VITE_DEMO_AUTH` is committed in each web client's `.env.production`, so only a
+production build with a server URL is hybrid. The deploy workflow asserts the
+roster was inlined, next to its existing server-URL guard.
+
+In a hybrid page the `auth` port is a **routing port** (`createRoutingAuthPort`
+in `@rtc/client-core`): it tries the demo roster first (synchronously, in the
+browser), then the server. The demo roster never leaves the browser because the
+server attempt only runs after the local match has failed.
+
+### 8.3 Reload dynamics
+
+A reload happens **only on a mode change**, triggered by a successful login,
+never by boot.
+
+1. **Boot.** No stored choice, so the client composes **sim** and shows the
+   login screen.
+2. **Demo login.** Local match succeeds; the composed mode already matches.
+   The routing port writes the choice (`sim`) and emits the outcome. No
+   reload. The app renders at once.
+3. **Registered login.** Local match fails; `/login` succeeds. The target is
+   `live`, the page is composed `sim`, so the routing port **writes the
+   session and the choice, calls `relaunch()` (a `location.reload()`), and
+   never emits** (a pending observable, not a completed one: the async and
+   Effect cores treat "completed without a value" as an error). The login
+   screen stays in its "authenticating" state for the few milliseconds until
+   the page unloads.
+4. **After the reload.** The client reads the stored choice, composes
+   **live**, and `AuthPresenter.resume()` restores the session from storage,
+   so no login screen is shown; the WebSocket opens with the stored token. The
+   boot splash replays on this load (D8).
+5. **Next visit on that device.** Stored choice is `live`, so boot composes
+   live directly. No reload.
+6. **Logout.** Clears the session; the choice stays. The next login decides
+   afresh, so a demo login on a live-composed page relaunches back into sim
+   (step 3 mirrored).
+7. **Unlock (lock screen).** Re-authenticates with the same username. Same
+   credentials → same target → no reload.
+
+Two consequences to know about:
+
+- **The cinematic login wait is cut short on a mode change.** The wait
+  (`withLoginDelay`) wraps the routing port, so the relaunch fires when the
+  outcome is known, before the delay would have delivered it. A mode change
+  happens once per device, and the reload plays the splash, which takes the
+  wait's place.
+- **Why not swap ports without a reload.** Presenters subscribe to their ports
+  at construction, and the core contract suites assert construction-time port
+  counts (`portDiscipline`). Swapping implementations under running presenters
+  would break the equivalence guarantee across all three cores. A reload keeps
+  the one composition root honest.
+
+The console line `[data] composed <sim|live> from <reason>` says which rule
+won, mirroring `[core] booted …`.
+
+### 8.4 Invariants the tests pin
+
+- Demo credentials produce **no request** to the server origin.
+- A hybrid page without a stored choice composes **sim**.
+- A hybrid page with a stored `live` choice, or a stored session and no
+  choice, composes **live**.
+- A server URL without a demo roster composes **live** and uses the plain
+  HTTP auth adapter (today's behaviour).
+- A mode change writes the session **before** calling `relaunch()`, and
+  never emits (nor completes).
+- An erroring demo leg falls through to the server; an erroring live leg
+  reads as `unavailable`.
+- Same-mode logins emit the outcome and never relaunch.
+
+### 8.5 Not in this slice
+
+- Reserving the demo usernames on the server (B2).
+- A demo-accounts hint on the login screen (D9).
+- Splash suppression on the mode-change reload (D8).
+- The React Native client (D7).
+
+## 9. Abuse and denial-of-service detection (findings, 2026-09-30)
+
+### 9.1 What the platform gives
+
+Fly's proxy sheds load through **per-app concurrency limits** (`soft_limit`,
+`hard_limit` on connections or requests in `fly.toml`), and that is its only
+knob. Fly **does not offer DDoS protection**, and it has **no per-IP rules,
+bans or rate limits at the edge**; the community answer to "can I block IPs" is
+to do it in the app or put a proxy in front. The trusted client address is the
+`Fly-Client-IP` header; the first `X-Forwarded-For` entry is caller-supplied
+(S3).
+
+### 9.2 The layers, cheapest first
+
+| Layer | What it does | What it does not do | Where |
+|---|---|---|---|
+| **Fly concurrency `hard_limit`** | Stops handing connections to the machine past the limit, so a flood becomes refused connections instead of an out-of-memory crash. | Nothing about fairness between callers. | `fly.toml` |
+| **In-app ban list** | Counts failed logins, oversized frames and message bursts per `Fly-Client-IP`; puts offenders in an expiring ban table checked **first**, before the password hash and before the WebSocket upgrade, so a banned caller costs almost nothing. In-memory; a restart clears it, acceptable for temporary bans. This is the "temporarily ban unusual traffic" requirement. | Stop the packets from reaching the machine. | `packages/server/src/auth/rateLimit.ts` and `index.ts`, part of B1 |
+| **Cloudflare in front** (free plan) | Volumetric DDoS absorption, WAF rules, rate-limiting rules and IP bans at the edge, before traffic reaches Fly. WebSockets pass through. | Protect the original Fly hostname, which stays reachable: the server must reject traffic that did not come through Cloudflare (Cloudflare's published address ranges, or a shared header secret). Needs a custom domain proxied through Cloudflare and a certificate on Fly. | DNS + a small server check |
+
+Recommendation: all three, in that order. The first two are small changes in
+this repo and belong to B1. Cloudflare is the only layer that handles a real
+attack, and the only one that stops the traffic before it is paid for.
+
+### 9.3 Sources
+
+- [Setting Hard and Soft Concurrency Limits on Fly.io](https://fly.io/docs/blueprints/setting-concurrency-limits/)
+- [Guidelines for concurrency settings](https://fly.io/docs/apps/concurrency/)
+- [DDoS Protection (Fly community)](https://community.fly.io/t/ddos-protection/21136)
+- [Is it possible to block IPs if they send too many requests? (Fly community)](https://community.fly.io/t/is-it-possible-to-block-ips-if-they-send-to-many-requests/11576)
+- [How does Fly Proxy handle DOS attacks? (Fly community)](https://community.fly.io/t/how-does-fly-proxy-handle-dos-attacks/18130)
+
+## 10. Bring-your-own model keys (findings, 2026-09-29, for B3)
+
+Feasible because the Jarvis tools are plain JSON Schema (`@rtc/agent-tools`)
+and the agent loop is already an interface (`AgentLoop`). Rules:
+
+- **Never persist a user's key on the server.** Hold it in memory for the
+  connection's lifetime; keep it out of every log.
+- **Allow a fixed list of provider hosts only.** A free-form endpoint field
+  turns the server into a relay to arbitrary addresses.
+- **Start with two integrations.** Anthropic plus one OpenAI-compatible loop
+  covers most popular models, including the aggregators.
+- **Widen the brain model.** `JarvisBrain` is a closed list of four today; it
+  becomes a provider plus a model identifier. The display price table applies
+  to the house key only.
+- **Keep rate limits on.** Turns on a user's own key bypass the house budget
+  but still use the server's CPU and bandwidth.
+- **Say what happens to the key**, in the UI, before the field.

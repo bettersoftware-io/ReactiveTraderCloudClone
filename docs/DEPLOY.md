@@ -12,9 +12,12 @@ push or merge, on any branch: Vercel's Git integration is turned off by
 `"git": { "deploymentEnabled": false }` in each client's `vercel.<client>.json`
 (`vercel.react.json` / `vercel.solid.json`), so the workflow is the only path.
 Access is gated by genuine
-per-user login, not a shared password or token: the client POSTs credentials
-to the Fly server's `/login`, which validates them against its `AUTH_USERS`
-roster and returns a signed session token that gates the WebSocket upgrade.
+per-user login, not a shared password or token. The deployed web build is
+**hybrid** ([`docs/authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes)):
+credentials matching the committed demo roster are verified in the browser
+and run the in-browser simulators, and any other credentials are POSTed to the
+Fly server's `/login`, which validates them against its `AUTH_USERS` roster and
+returns a signed session token that gates the WebSocket upgrade.
 
 ## One-time setup
 
@@ -63,13 +66,26 @@ tick the targets you want (`deploy_react` / `deploy_solid` / `deploy_server`,
 plus optional `include_sourcemaps`), or e.g.
 `gh workflow run deploy.yml -f deploy_react=true -f deploy_server=true`.
 (Merging to `main` does **not** deploy; ticking nothing fails the run's `guard`
-job.) Each ticked target is smoke-checked:
+job.) Each client build is guarded **before** it deploys, so a wrong build fails
+loudly instead of shipping:
+- the server URL was inlined (`rtc-clone-server.fly.dev` in the bundle) —
+  otherwise the client would silently run the simulator with no WebSocket
+- the demo roster was inlined (`mcdc2026` in the bundle, from the committed
+  `packages/client-*/.env.production`) — otherwise the hybrid would silently
+  send every login, demo accounts included, to the server
+- the alternative application cores ship only as lazy chunks
+  (`scripts/check-core-bundle.mjs`)
+- an inline sourcemap is present when `include_sourcemaps` was ticked
+
+Each ticked target is then smoke-checked:
 - server `/health` → 200
 - each client → 200 on its canonical alias (the deployed SPA renders its own
   login screen; there is no edge-level password wall to smoke-check anymore)
 
 Open `https://rtc-clone-react.vercel.app` (or `https://rtc-clone-solid.vercel.app`),
-log in with a real credential (ask the team), and watch live prices tick.
+log in with a real credential (ask the team) and watch live prices tick — or
+with a demo account (`demo` / `mcdc2026`) to run the in-browser simulators
+instead; the login decides.
 
 ### Debuggable (sourcemap) builds
 
@@ -88,11 +104,20 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
 
 ## How it works
 
-- The client is a static Vite SPA. When `VITE_SERVER_URL` is set, its login
-  screen POSTs `{ username, password }` to the Fly server's `/login` over
-  HTTPS (`HttpAuthAdapter`). A successful login returns a signed session
+- The client is a static Vite SPA. A production build inlines both
+  `VITE_SERVER_URL` (from Vercel) and the committed demo roster
+  `VITE_DEMO_AUTH` (from `packages/client-*/.env.production`), which makes it
+  **hybrid**: the login decides the data source. Credentials matching the
+  demo roster are verified in the browser and run the in-browser simulators
+  (nothing is sent to any server); any other credentials are POSTed as
+  `{ username, password }` to the Fly server's `/login` over HTTPS
+  (`HttpAuthAdapter`). A successful server login returns a signed session
   token, which the client then appends as `?access=<token>` when it opens the
-  real `wss://` connection.
+  real `wss://` connection. A login that lands in the other mode than the
+  page was composed in stores its session plus `localStorage["rtc.dataSource"]`
+  and reloads once; the console line `[data] composed <sim|live> from <reason>`
+  says which rule won. Full rules and the reload timeline:
+  [`docs/authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes).
 - The server validates the token at the WebSocket handshake
   (`authorizeUpgrade` → `AuthService.verifyToken`), rejecting a missing,
   malformed, or expired token with 401. `/health` and `/login` stay open (HTTP
