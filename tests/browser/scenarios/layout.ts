@@ -712,6 +712,191 @@ async function expectBlotterInFloat(
 // reopen channel, unrelated to the rail).
 const POSITIONS_PANEL_ID = "fx-positions";
 
+/** Sub-pixel layout rounding between two reads of the same edge — a
+ * fractional-px float box against the integer it was positioned at. A real
+ * misplacement is a member's whole width (hundreds of px). */
+const MAGNET_EDGE_SLACK_PX = 2;
+
+/** Float magnets end to end: two floats snap flush and attach into one
+ * window, move together from either head, survive a reload, and come apart
+ * by an Option-drag and by the detach control — of a non-anchor member and
+ * of the window's anchor. Rects are read, never eyeballed; every wait is on
+ * a witness. Dockview-engine only. */
+export async function floatsAttachMoveTogetherAndDetach(
+  ctx: TestContext,
+): Promise<void> {
+  const layout = ctx.po.layout;
+
+  await layout.floatPanel(ANALYTICS_PANEL_ID);
+  await layout.floatPanel(POSITIONS_PANEL_ID);
+  await layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+
+  // Apart first, Option held so nothing snaps on the way.
+  await layout.dragFloatByHeadTo(ANALYTICS_PANEL_ID, 80, 140, {
+    option: true,
+  });
+  await layout.dragFloatByHeadTo(POSITIONS_PANEL_ID, 900, 420, {
+    option: true,
+  });
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two separate floats before attaching",
+  );
+
+  // Within snap range, 8px off vertically: the cue shows before release
+  // (dockview's sibling boxes and the cue's container share one origin, or
+  // it never would), then it snaps flush and top-aligned and attaches.
+  const analytics = await layout.floatBox(ANALYTICS_PANEL_ID);
+  await layout.dragFloatByHeadTo(
+    POSITIONS_PANEL_ID,
+    analytics.x + analytics.width + 9,
+    analytics.y + 8,
+    { expectCue: true },
+  );
+  await layout.waitDockAttached(
+    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  assertEquals(
+    await layout.floatWindowCount(),
+    1,
+    "expected one window after attaching",
+  );
+
+  const attached = await layout.floatBox(POSITIONS_PANEL_ID);
+  assertLte(
+    Math.abs(attached.x - analytics.x),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the window to keep Analytics' left edge (${analytics.x}), was ${attached.x}`,
+  );
+  assertLte(
+    Math.abs(attached.y - analytics.y),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the tops aligned (${analytics.y}), was ${attached.y}`,
+  );
+
+  // Dragging the NON-anchor member moves the whole window.
+  await layout.dragFloatByHeadTo(
+    POSITIONS_PANEL_ID,
+    attached.x + 150,
+    attached.y + 90,
+  );
+  const moved = await layout.floatBox(ANALYTICS_PANEL_ID);
+  assertLte(
+    Math.abs(moved.x - (attached.x + 150)),
+    FLOAT_DRAG_SLACK_PX,
+    `expected the cluster to move with Positions' head, x=${moved.x}`,
+  );
+  assertLte(
+    Math.abs(moved.width - attached.width),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the window width unchanged by a move (${attached.width}), was ${moved.width}`,
+  );
+
+  // Near the right edge the union is clamped, both panels still shown.
+  const viewportWidth = await layout.viewportWidth();
+  await layout.dragFloatByHeadTo(
+    ANALYTICS_PANEL_ID,
+    viewportWidth - 200,
+    moved.y,
+  );
+  const clamped = await layout.floatBox(ANALYTICS_PANEL_ID);
+  assertLte(
+    clamped.x + clamped.width,
+    viewportWidth,
+    `expected the window kept inside the viewport (${viewportWidth}), right edge ${clamped.x + clamped.width}`,
+  );
+  assertTrue(
+    await layout.panelSitsInFloat(POSITIONS_PANEL_ID),
+    "expected Positions still in the float after clamping",
+  );
+
+  // Reload: the cluster comes back at full width, both panels visible.
+  await common.reloadPage(ctx);
+  await common.clickTab(ctx, "fx");
+  await expectEngine(ctx, "dockview");
+  await layout.waitDockAttached(
+    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  const restored = await layout.floatBox(ANALYTICS_PANEL_ID);
+  assertLte(
+    Math.abs(restored.width - clamped.width),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the restored window as wide as before (${clamped.width}), was ${restored.width}`,
+  );
+
+  // Option-drag detaches the pressed member into its own float.
+  await layout.dragFloatByHeadTo(POSITIONS_PANEL_ID, 700, 100, {
+    option: true,
+  });
+  await layout.waitDockAttached([], ENGINE_SWITCH_TIMEOUT_MS);
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two windows after an Option-drag detach",
+  );
+
+  // Attach again, then detach the non-anchor from its header control.
+  await attachPositionsRightOfAnalytics(ctx);
+  await layout.detachPanel(POSITIONS_PANEL_ID);
+  await layout.waitDockAttached([], ENGINE_SWITCH_TIMEOUT_MS);
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two windows after the detach control",
+  );
+
+  // Once more, then detach the ANCHOR (Analytics — the attach target): the
+  // other member moves out, and Positions, the remainder, must not slide
+  // left into the space Analytics vacated.
+  await attachPositionsRightOfAnalytics(ctx);
+  const positionsBefore = await layout.panelBox(POSITIONS_PANEL_ID);
+  await layout.detachPanel(ANALYTICS_PANEL_ID);
+  await layout.waitDockAttached([], ENGINE_SWITCH_TIMEOUT_MS);
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two windows after detaching the anchor",
+  );
+  // Group box against group box: a window's box sits a few px outside its
+  // group's (the float chrome), so mixing the two reads would skew it.
+  const positionsAfter = await layout.panelBox(POSITIONS_PANEL_ID);
+  assertGte(
+    positionsAfter.x,
+    positionsBefore.x - MAGNET_EDGE_SLACK_PX,
+    `expected Positions to keep its on-screen left edge (${positionsBefore.x}) after the anchor left, was ${positionsAfter.x}`,
+  );
+
+  await layout.dockPanel(ANALYTICS_PANEL_ID);
+  await layout.dockPanel(POSITIONS_PANEL_ID);
+  await layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+}
+
+/** Drags lone-float Positions to just right of lone-float Analytics, inside
+ * snap range — the cue must show before release — and waits for the pair
+ * to attach. */
+async function attachPositionsRightOfAnalytics(
+  ctx: TestContext,
+): Promise<void> {
+  const target = await ctx.po.layout.floatBox(ANALYTICS_PANEL_ID);
+
+  await ctx.po.layout.dragFloatByHeadTo(
+    POSITIONS_PANEL_ID,
+    target.x + target.width + 6,
+    target.y + 4,
+    { expectCue: true },
+  );
+  await ctx.po.layout.waitDockAttached(
+    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+}
+
 const SAVED_LAYOUT_NAME = "Desk A";
 
 // A save and a delete both reach the LAYOUTS rows through a published

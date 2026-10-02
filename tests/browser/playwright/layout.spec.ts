@@ -162,6 +162,17 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterResizesFromAnEdgeAndACorner(ctx);
   });
 
+  test("floats snap together like magnets, move as one, survive a reload, and detach by Option-drag and by the header control", async ({
+    ctx,
+  }) => {
+    // Floating groups are a dockview-only feature; dockview is what the app
+    // boots into.
+    await layout.expectEngine(ctx, "dockview");
+    await layout.expectDockGroups(ctx, 4, 5);
+
+    await layout.floatsAttachMoveTogetherAndDetach(ctx);
+  });
+
   test("a floated rail panel pops out, comes back to its float, and docks at its design width", async ({
     ctx,
   }) => {

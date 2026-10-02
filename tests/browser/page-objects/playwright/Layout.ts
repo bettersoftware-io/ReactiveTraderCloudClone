@@ -10,6 +10,7 @@ import type {
   FirstDockRender,
   FloatBox,
   FloatDockSide,
+  FloatHeadDragOptions,
   FloatResizeHandle,
   LayoutPO,
   PopoutWindowPO,
@@ -1211,6 +1212,85 @@ export class PlaywrightLayout implements LayoutPO {
     await this.page.mouse.down();
     await this.page.mouse.move(grip.x + dx, grip.y + dy, { steps: 15 });
     await this.page.mouse.up();
+  }
+
+  async waitDockAttached(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(this.engineRoot()).toHaveAttribute(
+      "data-attached",
+      panelIds.join(" "),
+      { timeout: timeoutMs },
+    );
+  }
+
+  async floatWindowCount(): Promise<number> {
+    return this.page.locator(".dv-resize-container").count();
+  }
+
+  async dragFloatByHeadTo(
+    panelId: string,
+    left: number,
+    top: number,
+    options: FloatHeadDragOptions = {},
+  ): Promise<void> {
+    const option = options.option === true;
+    const grip = await this.floatHeadGrip(panelId);
+
+    if (option) {
+      await this.page.keyboard.down("Alt");
+    }
+
+    await this.page.mouse.move(grip.x, grip.y);
+    await this.page.mouse.down();
+    // dockview's overlay takes its grip offset (pointer minus box) on the
+    // FIRST pointermove and moves nothing on it; every later move puts the
+    // box at pointer minus that offset, clamped to the dock. So a 1px first
+    // step fixes the offset without moving the box, and the box is read only
+    // THEN: an Option press has already pulled the member out into its own
+    // window, and a read after a real move would be skewed whenever the
+    // float started against an edge (the clamp holds the box while the
+    // pointer runs on — a 20px first step measured 13.5px short that way).
+    await this.page.mouse.move(grip.x + 1, grip.y + 1);
+    const start = await this.floatBox(panelId);
+    await this.page.mouse.move(
+      grip.x + 1 + (left - start.x),
+      grip.y + 1 + (top - start.y),
+      { steps: 20 },
+    );
+
+    // The cue is drawn by the drag's own per-move hook, so it is judged
+    // here, after the last move and before the release clears it.
+    if (option) {
+      await expect(this.page.locator(".rtc-dock-attach-preview")).toHaveCount(
+        0,
+      );
+    }
+
+    if (options.expectCue === true) {
+      await expect(this.page.locator(".rtc-dock-attach-preview")).toBeVisible();
+    }
+
+    await this.page.mouse.up();
+
+    if (option) {
+      await this.page.keyboard.up("Alt");
+    }
+  }
+
+  async detachPanel(panelId: string): Promise<void> {
+    await this.page.getByTestId(TESTIDS.layout.detachControl(panelId)).click();
+  }
+
+  async panelBox(panelId: string): Promise<FloatBox> {
+    return this.dockGroupBox(panelId);
+  }
+
+  async viewportWidth(): Promise<number> {
+    return this.page.evaluate(() => {
+      return window.innerWidth;
+    });
   }
 
   async shiftDragFloatOnto(

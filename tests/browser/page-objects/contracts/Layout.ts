@@ -147,6 +147,41 @@ export interface LayoutPO {
    * a point that is not one of the head's own controls — where a user takes
    * hold of a dialog. Dockview-engine only. */
   dragFloatByHead(panelId: string, dx: number, dy: number): Promise<void>;
+  /** Waits for the dockview engine root's `data-attached` witness (the
+   * panel ids in an attached floating cluster, sorted, space-joined — float
+   * magnets) to equal `panelIds` — `waitDockFloating`'s twin for the attach
+   * channel. Dockview-engine only. */
+  waitDockAttached(
+    panelIds: readonly string[],
+    timeoutMs: number,
+  ): Promise<void>;
+  /** How many floating windows dockview shows — its `.dv-resize-container`
+   * boxes. An attached cluster is ONE window however many members it holds.
+   * Dockview-engine only. */
+  floatWindowCount(): Promise<number>;
+  /** Drags the float holding `panelId` by its head so the window's top-left
+   * lands at viewport (`left`, `top`). With `options.option`, Option (Alt) is
+   * held throughout — the detach/no-snap modifier — and the attach cue is
+   * asserted ABSENT just before release; with `options.expectCue`, the
+   * attach cue (`.rtc-dock-attach-preview`) is asserted VISIBLE just before
+   * release. Dockview-engine only. */
+  dragFloatByHeadTo(
+    panelId: string,
+    left: number,
+    top: number,
+    options?: FloatHeadDragOptions,
+  ): Promise<void>;
+  /** Clicks `panelId`'s ⇱ detach control (`TESTIDS.layout.detachControl`),
+   * pulling it out of its attached cluster. Dockview-engine only. */
+  detachPanel(panelId: string): Promise<void>;
+  /** The on-screen box of `panelId`'s OWN dockview group (its
+   * `.dv-groupview`) — inside an attached cluster, the member's slice of the
+   * window rather than the whole window `floatBox` reads. Dockview-engine
+   * only. */
+  panelBox(panelId: string): Promise<FloatBox>;
+  /** The page's layout viewport width in CSS px (`window.innerWidth`) — the
+   * edge a float is clamped inside. */
+  viewportWidth(): Promise<number>;
   /** Resizes the float holding `panelId` by dragging one of dockview's
    * resize handles — an edge or a corner — by `dx`/`dy` px, gripping the
    * handle at its centre. Dockview-engine only. */
@@ -230,6 +265,17 @@ export interface LayoutPO {
 
 /** The side of a target group a drag-to-dock releases near. */
 export type FloatDockSide = "left" | "right";
+
+/** How `dragFloatByHeadTo` drives and checks one head drag. */
+export interface FloatHeadDragOptions {
+  /** Hold Option (Alt) for the whole drag — no snapping, and a press on an
+   * attached member's head pulls it out first. The attach cue is asserted
+   * absent before release. */
+  readonly option?: boolean;
+  /** Assert the attach cue is visible before release — the drag is expected
+   * to end within snap range of a sibling. */
+  readonly expectCue?: boolean;
+}
 
 /** The float resize handles a scenario drives: an edge and a corner. */
 export type FloatResizeHandle = "right" | "bottomright";
