@@ -8,10 +8,13 @@
  * next to the code that owns each.
  */
 
-/** S1 — largest WebSocket frame accepted. The largest legitimate frame is a
- * `jarvis.chat` carrying 20 history entries of 2 000 chars plus a 4 000-char
- * message (~45 KiB with JSON overhead). `ws` closes the socket with 1009. */
-export const WS_MAX_PAYLOAD_BYTES = 64 * 1024;
+/** S1 — largest WebSocket frame accepted, in BYTES. The largest legitimate
+ * frame is a `jarvis.chat` carrying 20 history entries of 2 000 chars plus a
+ * 4 000-char message: 44 000 chars, which is ~45 KiB in ASCII but ~132 KiB in
+ * a 3-byte script (CJK) and ~176 KiB in emoji — the per-field caps bound the
+ * SHAPE, UTF-8 decides the bytes. 256 KiB fits every such frame and is still
+ * nothing against the 256 MB VM; past it `ws` closes the socket with 1009. */
+export const WS_MAX_PAYLOAD_BYTES = 256 * 1024;
 
 /** S2 — `/login` body cap, by bytes RECEIVED (`413` past it). A username +
  * password JSON object is < 200 bytes. */

@@ -712,7 +712,75 @@ const GATES: Gate[] = [
       "../packages/client-solid/tests/ui/visual/playwright/playwright.config.ts",
     ],
   },
+  {
+    // Hardening S13. The build steps need root (pnpm store, dist writes); the
+    // running server does not — it writes nothing to disk. `node` is the
+    // unprivileged user the official image ships. Without this line a
+    // container escape is a root shell.
+    name: "47. The server container runs as an unprivileged user (Dockerfile USER node — hardening S13)",
+    pattern: "",
+    paths: [],
+    customCheck: checkDockerfileRunsAsNode,
+  },
+  {
+    // Hardening §9.2. Fly offers no DDoS protection and no per-IP rules; the
+    // per-app concurrency hard_limit is its ONLY load-shedding knob — past it
+    // the proxy refuses connections instead of letting the 256 MB machine
+    // run out of memory. WebSockets are long-lived, so the unit is
+    // connections, not requests.
+    name: "48. fly.toml declares a connections hard_limit (hardening §9.2 — Fly's only load-shedding knob)",
+    pattern: "",
+    paths: [],
+    customCheck: checkFlyDeclaresConnectionHardLimit,
+  },
 ];
+
+function checkDockerfileRunsAsNode(): string[] {
+  const lines = readFileSync("../packages/server/Dockerfile", "utf8").split(
+    "\n",
+  );
+
+  const userIndex = lines.findIndex((line) => {
+    return /^USER node\s*$/.test(line);
+  });
+
+  const cmdIndex = lines.findIndex((line) => {
+    return line.startsWith("CMD ");
+  });
+
+  if (userIndex < 0) {
+    return [
+      "packages/server/Dockerfile: no `USER node` line — the server would run as root",
+    ];
+  }
+
+  if (cmdIndex >= 0 && userIndex > cmdIndex) {
+    return ["packages/server/Dockerfile: `USER node` must come before CMD"];
+  }
+
+  return [];
+}
+
+function checkFlyDeclaresConnectionHardLimit(): string[] {
+  const toml = readFileSync("../fly.toml", "utf8");
+  const failures: string[] = [];
+
+  if (!/\[http_service\.concurrency\]/.test(toml)) {
+    failures.push("fly.toml: missing [http_service.concurrency]");
+  }
+
+  if (!/type\s*=\s*"connections"/.test(toml)) {
+    failures.push(
+      'fly.toml: concurrency type must be "connections" (WebSockets are long-lived)',
+    );
+  }
+
+  if (!/hard_limit\s*=\s*\d+/.test(toml)) {
+    failures.push("fly.toml: missing hard_limit");
+  }
+
+  return failures;
+}
 
 let failed = 0;
 

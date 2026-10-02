@@ -98,7 +98,7 @@ function extractTurnId(payload: unknown): string | undefined {
  * WITHOUT ever including the payload body itself — an authenticated
  * connection can otherwise flood the server log with arbitrary attacker-
  * chosen content on every malformed `jarvis.*` frame it sends, and there is
- * no `ws` `maxPayload` cap upstream of this to bound it. `frameType` is the
+ * only the `ws` `maxPayload` cap (S1) upstream of this to bound it. `frameType` is the
  * `CLIENT_MSG.JARVIS_*` wire constant; `turnId` is best-effort (via
  * `extractTurnId`) since a malformed frame may not carry one. */
 function describeMalformedFrame(frameType: string, payload: unknown): string {

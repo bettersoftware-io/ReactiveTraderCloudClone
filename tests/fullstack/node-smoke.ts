@@ -168,7 +168,7 @@ async function runOversizedFrameSmoke(): Promise<void> {
       reject(new Error("oversized frame: socket was not closed"));
     }, FIRST_VALUE_TIMEOUT_MS);
     raw.on("open", () => {
-      raw.send("x".repeat(70 * 1024));
+      raw.send("x".repeat(300 * 1024));
     });
     raw.on("close", (code: number) => {
       clearTimeout(guard);
@@ -183,7 +183,7 @@ async function runOversizedFrameSmoke(): Promise<void> {
   assert(closeCode === 1009, `oversized frame close code (got ${closeCode})`);
   await waitForHttp(`${httpBase}/health`, 5_000);
   console.log(
-    "  ✓ limits: 70 KiB frame closed with 1009, server still healthy",
+    "  ✓ limits: 300 KiB frame closed with 1009, server still healthy",
   );
 }
 

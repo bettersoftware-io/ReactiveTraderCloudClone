@@ -197,6 +197,22 @@ const httpServer = createServer((req, res) => {
   }
 
   if (req.url === "/login" && req.method === "POST") {
+    // §9.2 — a banned caller is answered before its body is even read (the
+    // handler checks again; this saves the read). Same shape as the handler's
+    // answer: 429, `{ error: "banned" }`, Retry-After in whole seconds.
+    const now = readClock();
+    const bannedUntil = banList.bannedUntil(clientIp(req), now);
+
+    if (bannedUntil !== null) {
+      res.writeHead(429, {
+        "Content-Type": "application/json",
+        Connection: "close",
+        "Retry-After": String(Math.ceil((bannedUntil - now) / 1_000)),
+      });
+      res.end(JSON.stringify({ error: "banned" }));
+      return;
+    }
+
     // S2 — the body is capped by bytes received before it is parsed.
     readBodyWithLimit(req, LOGIN_MAX_BODY_BYTES)
       .then((bodyText) => {
@@ -212,11 +228,12 @@ const httpServer = createServer((req, res) => {
         res.end(result.body);
       })
       .catch((err: unknown) => {
-        const status = err instanceof BodyTooLargeError ? 413 : 400;
-        const error =
-          err instanceof BodyTooLargeError
-            ? "body_too_large"
-            : "malformed_request";
+        // 413 for an oversized body; anything else is a server fault (the
+        // handler answers 400/401/429 itself, so a rejection here is a
+        // failed request stream or a thrown hash), never a bad request.
+        const tooLarge = err instanceof BodyTooLargeError;
+        const status = tooLarge ? 413 : 500;
+        const error = tooLarge ? "body_too_large" : "internal_error";
         // The body may be unread (413): close the connection after the
         // status so the rest of it is never consumed.
         res.writeHead(status, {

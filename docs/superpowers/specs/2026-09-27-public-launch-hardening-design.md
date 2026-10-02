@@ -77,21 +77,22 @@ recording them here discloses nothing new.
 
 ### 2.2 Server code
 
-| # | Finding | Where | Remedy |
-|---|---|---|---|
-| S1 | The WebSocket server sets no `maxPayload`; the library default is far larger than the VM's memory. | `packages/server/src/index.ts` | Set a small explicit cap (tens of kilobytes). |
-| S2 | The `/login` body is read without a size limit. | `index.ts` `readBody` | Cap the body and reject early. |
-| S3 | The login rate limiter keys on the first `X-Forwarded-For` entry, which a caller can supply. | `index.ts` `clientIp` | Key on the platform's trusted client-IP header. |
-| S4 | The rate limiter's table never evicts. | `auth/rateLimit.ts` | Evict expired windows; bound the table. |
-| S5 | Password hashing is synchronous and blocks the event loop. | `auth/AuthService.ts` | Use the async variant; keep S3 tight. |
-| S6 | `jarvis.chat` `text` has no length cap. History entries are capped; the message itself is not. | `effects/jarvis.effects.ts` | Cap at the parse seam, next to the history caps. |
-| S7 | The AI budget gate is process memory. It is read when a turn starts and resets when the machine restarts. | `services/UsageMeter.ts`, `jarvisGate.ts` | See Track B3. Treat today's gate as a display, not a limit. |
-| S8 | No cap on concurrent connections, per-connection message rate, or live subscriptions. `stream()` starts one producer per frame. | `ws-effects` `stream.ts`, `index.ts` | Per-IP and total connection caps; a token bucket per socket; a subscription ceiling. |
-| S9 | Shared simulators grow without bound (trades, RFQs, equity orders). | `packages/domain/src/simulators/` | Bound each store; evict oldest. |
-| S10 | `SET_THROUGHPUT` changes a process-wide setting and is open to every login. | `effects/admin.effects.ts` | Restrict to an admin role, or make it per-connection. |
-| S11 | RPC payloads are cast, not validated. A malformed frame ends that socket's effect stream. | `effects/*.effects.ts` | Guard at the parse seam, as `jarvis.effects.ts` already does. |
-| S12 | `/mcp` accepts the same session token and runs `execute_trade` without a confirmation step. | `mcp/mcpHttpHandler.ts` | Acceptable while trades are simulated; revisit with B2 roles. |
-| S13 | The container runs as root. | `packages/server/Dockerfile` | Add an unprivileged `USER`. |
+| # | Finding | Where | Remedy | Status |
+|---|---|---|---|---|
+| S1 | The WebSocket server sets no `maxPayload`; the library default is far larger than the VM's memory. | `packages/server/src/index.ts` | Set a small explicit cap (tens of kilobytes). | **Done** (B1 PR 1) |
+| S2 | The `/login` body is read without a size limit. | `index.ts` `readBody` | Cap the body and reject early. | **Done** (B1 PR 2) |
+| S3 | The login rate limiter keys on the first `X-Forwarded-For` entry, which a caller can supply. | `index.ts` `clientIp` | Key on the platform's trusted client-IP header. | **Done** (B1 PR 2) |
+| S4 | The rate limiter's table never evicts. | `auth/rateLimit.ts` | Evict expired windows; bound the table. | **Done** (B1 PR 2) |
+| S5 | Password hashing is synchronous and blocks the event loop. | `auth/AuthService.ts` | Use the async variant; keep S3 tight. | **Done** (B1 PR 2) |
+| S6 | `jarvis.chat` `text` has no length cap. History entries are capped; the message itself is not. | `effects/jarvis.effects.ts` | Cap at the parse seam, next to the history caps. | **Done** (B1 PR 1) |
+| S7 | The AI budget gate is process memory. It is read when a turn starts and resets when the machine restarts. | `services/UsageMeter.ts`, `jarvisGate.ts` | See Track B3. Treat today's gate as a display, not a limit. | Open — B3 |
+| S8 | No cap on concurrent connections, per-connection message rate, or live subscriptions. `stream()` starts one producer per frame. | `ws-effects` `stream.ts`, `index.ts` | Per-IP and total connection caps; a token bucket per socket; a subscription ceiling. | **Done** (B1 PR 1 ceilings, PR 2 caps + token bucket) |
+| S9 | Shared simulators grow without bound (trades, RFQs, equity orders). | `packages/domain/src/simulators/` | Bound each store; evict oldest. | **Done** (B1 PR 1) |
+| S10 | `SET_THROUGHPUT` changes a process-wide setting and is open to every login. | `effects/admin.effects.ts` | Restrict to an admin role, or make it per-connection. | **Done** (B1 PR 2, per-connection) |
+| S11 | RPC payloads are cast, not validated. A malformed frame ends that socket's effect stream. | `effects/*.effects.ts` | Guard at the parse seam, as `jarvis.effects.ts` already does. | **Done** (B1 PR 1) |
+| S12 | `/mcp` accepts the same session token and runs `execute_trade` without a confirmation step. | `mcp/mcpHttpHandler.ts` | Acceptable while trades are simulated; revisit with B2 roles. | Open — B2 roles (acceptable while trades are simulated) |
+| S13 | The container runs as root. | `packages/server/Dockerfile` | Add an unprivileged `USER`. | **Done** (B1 PR 3) |
+| S14 | No `error` listener on accepted sockets. `ws` emits `error` on the server-side socket for any protocol violation (oversized frame, bad UTF-8, reserved bits); unhandled, Node turns it into a process crash — so the S1 cap alone would have made every oversized frame a crash. Found while building S1. | `index.ts` | Attach the listener; log the error code only. | **Done** (B1 PR 1) |
 
 Low-impact notes: the session token travels in the WebSocket URL query, so it
 can appear in proxy logs; unknown usernames return faster than known ones.
@@ -223,11 +224,20 @@ not hand-provisioned.**
 
 ### B1 — server hardening
 
-Every finding in §2.2, shipped as small pull requests. Suggested order by
-impact per line changed: S1, S2, S6, S3 + S4, S8, S9, S10, S11, S5, S13.
+**Done 2026-10-02** as three stacked pull requests (plan:
+[`../plans/2026-10-02-b1-server-hardening.md`](../plans/2026-10-02-b1-server-hardening.md)):
+PR 1 *wire bounds* (S1, S6, S8 ceilings, S9, S11, S14, plus `rpc()` nacking a
+synchronously throwing handler), PR 2 *edge guards* (S2, S3, S4, S5, S8 caps and
+token bucket, S10, the §9.2 ban list), PR 3 *deploy posture* (S13, the Fly
+`hard_limit`, two gates that keep both). S7 waits for B3; S12 for B2 roles.
 
-Each fix ships with a test that a wrong implementation fails
-(`pnpm mutation-check`), and timer-driven limits are tested under fake timers.
+Every finding in §2.2 was shipped with a test a wrong implementation fails
+(`pnpm mutation-check`, 48 mutants killed across the three PRs), timer-driven
+limits take an injected clock or run under fake timers, and the real-server
+smoke (`tests/fullstack/node-smoke.ts`) witnesses the 1009 frame cap, the
+413 body cap and the spoof-proof rate limit ending in a ban. Every limit is a
+named constant in `packages/server/src/config/limits.ts`; the values are
+judgment calls, generous for one real client and tight for a flood.
 
 ### B2 — user management
 
@@ -280,9 +290,9 @@ Revised 2026-09-29. Nothing is posted until B4.
 1. **Step 0** (§3). Immediately, independent of everything else.
 2. **Hybrid composition** (§8). **Merged 2026-10-02 (PR #879).**
 3. **B1** server hardening (§5), including the in-app abuse layer (§9.2).
-   **Next.**
+   **Done 2026-10-02** (three stacked PRs; see §5 B1).
 4. **D9 UI round**: the demo-accounts hint on the login screen (both web
-   clients, golden regeneration, user acceptance).
+   clients, golden regeneration, user acceptance). **Next.**
 5. **B2** user management (confirmed needed 2026-10-02 — registration,
    self-chosen passwords, validated accounts; nothing exists yet), then **B3**
    metering with bring-your-own keys (§10).

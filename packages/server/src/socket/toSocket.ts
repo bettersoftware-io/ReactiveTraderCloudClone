@@ -18,8 +18,8 @@ export interface InboundGuardOptions {
 /**
  * Adapts a `ws` socket to the ws-effects `Socket`. With a `guard`, every
  * inbound frame — parseable or not — takes one token before anything else;
- * a frame without a token is dropped, and the `dropsBeforeClose`-th drop
- * closes the socket with `1008 "message rate exceeded"` and reports the
+ * a frame without a token is dropped, and the `dropsBeforeClose`-th
+ * CONSECUTIVE drop closes the socket with `1008 "message rate exceeded"` and reports the
  * flood exactly once. Without a `guard` nothing is rate-limited.
  */
 export function toSocket(ws: WebSocket, guard?: InboundGuardOptions): Socket {
@@ -40,11 +40,32 @@ export function toSocket(ws: WebSocket, guard?: InboundGuardOptions): Socket {
         return;
       }
 
+      // A successful take ends the run: `dropsBeforeClose` counts
+      // CONSECUTIVE drops, so a long-lived tab that occasionally bursts past
+      // the bucket never accumulates towards a close over hours.
+      drops = 0;
+
+      let parsed: unknown;
+
       try {
-        subscriber.next(JSON.parse(String(data)) as Inbound);
+        parsed = JSON.parse(String(data));
       } catch {
         // ignore unparseable frames (parity with the old handler)
+        return;
       }
+
+      // Only an object can be a frame. `"null"`, `"42"` or `"[]"` parse fine
+      // but have no `type`; letting one through made every effect's
+      // `matchType` throw and die for the rest of the connection.
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
+        return;
+      }
+
+      subscriber.next(parsed as Inbound);
     }
 
     ws.on("message", emitParsedFrame);
