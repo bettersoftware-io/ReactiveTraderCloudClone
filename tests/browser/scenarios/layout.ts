@@ -824,6 +824,9 @@ export async function floatsAttachMoveTogetherAndDetach(
     ENGINE_SWITCH_TIMEOUT_MS,
   );
   const restored = await layout.floatBox(ANALYTICS_PANEL_ID);
+  // The same 2px slack: the restored window is re-laid out from the blob's
+  // stored size, so its fractional px may round differently; a lost member
+  // would be ~367px short.
   assertLte(
     Math.abs(restored.width - clamped.width),
     MAGNET_EDGE_SLACK_PX,

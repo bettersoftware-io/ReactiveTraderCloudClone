@@ -1242,40 +1242,46 @@ export class PlaywrightLayout implements LayoutPO {
       await this.page.keyboard.down("Alt");
     }
 
-    await this.page.mouse.move(grip.x, grip.y);
-    await this.page.mouse.down();
-    // dockview's overlay takes its grip offset (pointer minus box) on the
-    // FIRST pointermove and moves nothing on it; every later move puts the
-    // box at pointer minus that offset, clamped to the dock. So a 1px first
-    // step fixes the offset without moving the box, and the box is read only
-    // THEN: an Option press has already pulled the member out into its own
-    // window, and a read after a real move would be skewed whenever the
-    // float started against an edge (the clamp holds the box while the
-    // pointer runs on — a 20px first step measured 13.5px short that way).
-    await this.page.mouse.move(grip.x + 1, grip.y + 1);
-    const start = await this.floatBox(panelId);
-    await this.page.mouse.move(
-      grip.x + 1 + (left - start.x),
-      grip.y + 1 + (top - start.y),
-      { steps: 20 },
-    );
-
-    // The cue is drawn by the drag's own per-move hook, so it is judged
-    // here, after the last move and before the release clears it.
-    if (option) {
-      await expect(this.page.locator(".rtc-dock-attach-preview")).toHaveCount(
-        0,
+    // Released in a finally: a failed mid-drag assertion must not leave
+    // Option or the button held for the rest of the test.
+    try {
+      await this.page.mouse.move(grip.x, grip.y);
+      await this.page.mouse.down();
+      // dockview's overlay takes its grip offset (pointer minus box) on the
+      // FIRST pointermove and moves nothing on it; every later move puts the
+      // box at pointer minus that offset, clamped to the dock. So a 1px first
+      // step fixes the offset without moving the box, and the box is read only
+      // THEN: an Option press has already pulled the member out into its own
+      // window, and a read after a real move would be skewed whenever the
+      // float started against an edge (the clamp holds the box while the
+      // pointer runs on — a 20px first step measured 13.5px short that way).
+      await this.page.mouse.move(grip.x + 1, grip.y + 1);
+      const start = await this.floatBox(panelId);
+      await this.page.mouse.move(
+        grip.x + 1 + (left - start.x),
+        grip.y + 1 + (top - start.y),
+        { steps: 20 },
       );
-    }
 
-    if (options.expectCue === true) {
-      await expect(this.page.locator(".rtc-dock-attach-preview")).toBeVisible();
-    }
+      // The cue is drawn by the drag's own per-move hook, so it is judged
+      // here, after the last move and before the release clears it.
+      if (option) {
+        await expect(this.page.locator(".rtc-dock-attach-preview")).toHaveCount(
+          0,
+        );
+      }
 
-    await this.page.mouse.up();
+      if (options.expectCue === true) {
+        await expect(
+          this.page.locator(".rtc-dock-attach-preview"),
+        ).toBeVisible();
+      }
+    } finally {
+      await this.page.mouse.up();
 
-    if (option) {
-      await this.page.keyboard.up("Alt");
+      if (option) {
+        await this.page.keyboard.up("Alt");
+      }
     }
   }
 
