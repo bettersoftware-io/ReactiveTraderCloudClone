@@ -35,10 +35,22 @@ minimumReleaseAge: 1440
 # and add a range-scoped entry to `overrides` below like every other advisory
 # fix. Note metro pins image-size ^1 — a forced 1.x→2.x jump is a major-bump
 # API risk, so prefer the 1.x patch or a metro bump when it exists.
+# TEMPORARY suppression (added 2026-10-02): HIGH GHSA-86w9-cpqp-85rv (node-forge
+# RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm
+# elements) reports `node-forge <= 1.4.0` with NO patched version — 1.4.0 IS the
+# latest release on npm (published 2026-03-24), so there is nothing to override
+# to. The advisory dates from 2026-09-03 but was re-scoped on 2026-10-01, which
+# is when it began redding CI gate 25 (`pnpm audit --prod`) on every branch.
+# Reach: client-react-native > expo > @expo/cli (the Expo dev/build CLI — its
+# dev-server TLS tooling), never a browser bundle and not the RN app's runtime.
+# DROP CONDITION: when node-forge publishes a patched release (> 1.4.0), delete
+# this entry and add a range-scoped `"node-forge@<=1.4.0": ^<patched>` to
+# `overrides` below like every other advisory fix.
 auditConfig:
   ignoreGhsas:
     - GHSA-w3rx-r6r6-pgpr
     - GHSA-5p2g-fcmc-qvqq
+    - GHSA-86w9-cpqp-85rv
 
 overrides:
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
