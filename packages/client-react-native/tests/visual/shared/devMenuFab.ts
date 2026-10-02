@@ -86,13 +86,11 @@ const FAB_PREFERENCE_KEY = "EXDevMenuShowFloatingActionButton";
 /** Matches `simctl/capture.ts`'s constant of the same name. Restated rather
  * than imported so this module owes nothing to a specific driver.
  *
- * WIRED INTO THE `simctl` TIER ONLY, and iOS-only besides. Maestro drives the
- * device through its own CLI and its runner never learns a UDID, so it has
- * nothing to pass here. Its three committed goldens (`blotter/seeded`,
- * `shell/appearance`, `shell/connection-banner`) therefore STILL contain the
- * bubble — stated plainly because "the goldens are clean now" would otherwise
- * be true of 18 files and false of 3. Pin Maestro's device (resolve the UDID
- * and pass it to `maestro test`) and it can call these two functions unchanged.
+ * Wired into BOTH iOS tiers (the Maestro runner since 2026-10-02, once it
+ * learned its UDID via `shared/bootedUdid.ts`); iOS-only besides. Until then
+ * Maestro's three committed goldens carried the bubble — it was a
+ * near-constant ~12,670 px in every Maestro shot — and they were re-pinned
+ * without it the same day.
  *
  * Android will need a SIBLING, not this: the FAB exists there too, under the
  * same preference key, but in `SharedPreferences` via `adb shell` rather than

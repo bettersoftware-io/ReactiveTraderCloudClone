@@ -5,6 +5,8 @@ import { argv, cwd, env, exit } from "node:process";
 import { promisify } from "node:util";
 
 import { SCENARIO_IDS } from "../scenarioIds";
+import { resolveBootedUdid } from "../shared/bootedUdid";
+import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
 import { compareToGolden, toleranceFor } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
 
@@ -18,7 +20,8 @@ const exec = promisify(execFile);
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update
  *
- * Env: `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
+ * Env: `RTC_VISUAL_UDID` (the simulator to drive; defaults to the single
+ * booted one, and refuses to guess between two), `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
  * dev-client link — the `MAESTRO_` prefix is what makes Maestro interpolate
  * `${MAESTRO_METRO_PORT}`), `RTC_VISUAL_MAESTRO_SHOTS` (where the flows'
  * `takeScreenshot: shots/<id>` PNGs land). Maestro writes a relative
@@ -31,13 +34,31 @@ const SHOTS: string = env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), "shots");
 
 async function main(): Promise<void> {
   const update = argv.includes("--update");
-  await exec("maestro", ["test", FLOWS_DIR, "--format", "junit"], {
-    env: {
-      ...env,
-      MAESTRO_CLI_NO_ANALYTICS: "1",
-      MAESTRO_METRO_PORT: env.MAESTRO_METRO_PORT ?? "8083",
-    },
-  });
+  // Pinned, never left to Maestro: its goldens sit under a path claiming
+  // `ios-iphone17-26`, and with two simulators booted Maestro would pick one
+  // itself. The same UDID is what `hideDevMenuFab` needs — which is why this
+  // tier's goldens carried the dev-menu gear until 2026-10-01.
+  const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
+
+  // Once around the whole run, restored in `finally` — the same contract as
+  // the simctl tier (see `hideDevMenuFab`).
+  await hideDevMenuFab(udid);
+
+  try {
+    await exec(
+      "maestro",
+      ["--udid", udid, "test", FLOWS_DIR, "--format", "junit"],
+      {
+        env: {
+          ...env,
+          MAESTRO_CLI_NO_ANALYTICS: "1",
+          MAESTRO_METRO_PORT: env.MAESTRO_METRO_PORT ?? "8083",
+        },
+      },
+    );
+  } finally {
+    await restoreDevMenuFab(udid);
+  }
 
   let failures = 0;
 
