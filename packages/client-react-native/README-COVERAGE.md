@@ -35,7 +35,7 @@ The two rows above the merge cannot be added. The providers do not agree on
 how many statements, branches or functions a file has (5,467 istanbul
 statements against 5,751 v8 for the same tree), so a union of those would be
 invented. **Lines** are the one unit both report against the same source text.
-`tests/coverage/mergeLcov.ts` therefore takes jest's instrumented lines as the
+`tests/coverage-merge/mergeLcov.ts` therefore takes jest's instrumented lines as the
 denominator and counts a line covered when either runner hit it.
 
 That is why the gate is on lines only. Branches at 81% (jest alone) is the

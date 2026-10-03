@@ -40,7 +40,7 @@ export default defineConfig({
     // `*.test.tsx` because those component suites need the react-native runtime
     // `jest-expo` bootstraps. Neither tier alone is "RN's coverage" and the two
     // are NOT addable — different providers disagree on what a statement is.
-    // `test:coverage` merges the two by LINE (tests/coverage/mergeLcov.ts);
+    // `test:coverage` merges the two by LINE (tests/coverage-merge/mergeLcov.ts);
     // that merged figure is the one to quote. See README-COVERAGE.md.
     coverage: {
       provider: "v8",
