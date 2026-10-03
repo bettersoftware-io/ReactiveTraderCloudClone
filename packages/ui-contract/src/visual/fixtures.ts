@@ -9,7 +9,7 @@ import type {
   OrderTicketState,
   RfqQuote,
 } from "@rtc/client-core";
-import { instanceIdFor, JARVIS_GREETING } from "@rtc/client-core";
+import { instanceIdFor } from "@rtc/client-core";
 import {
   ADAPTIVE_BANK_NAME,
   type Candle,
@@ -27,6 +27,7 @@ import {
   ExecutionStatus,
   type Instrument,
   JARVIS_BRAINS,
+  JARVIS_GREETING,
   type LogEvent,
   type MetricSample,
   type PositionUpdates,

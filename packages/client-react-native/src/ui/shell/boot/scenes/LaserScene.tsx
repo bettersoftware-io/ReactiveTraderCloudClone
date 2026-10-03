@@ -4,7 +4,7 @@ import type { JSX } from "react";
 import type { SharedValue } from "react-native-reanimated";
 import { useDerivedValue } from "react-native-reanimated";
 
-import { BOOT_DURATION_MS } from "@rtc/client-core";
+import { BOOT_DURATION_MS } from "@rtc/domain";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";
 import { bootProgress } from "#/ui/shell/boot/scenes/coreGeometry";

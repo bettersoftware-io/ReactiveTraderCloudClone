@@ -94,13 +94,17 @@ pnpm test:e2e:async                             # e2e against that core (also te
   unknown `VITE_CORE_IMPL` still fails loudly, never falling back to RxJS
   silently. Every successful boot logs which core won and why: `[core]
   booted <impl> from <url|stored|build|fallback>`.
-- **Every core loads lazily.** Each core's composition root is fetched as
-  its own chunk only once the choice resolves — RxJS included since approach
-  B (2026-10-02; its root sits behind the `@rtc/client-core/core` subpath
-  export). `pnpm check:core-bundle` proves the split in CI — the eager set
-  carries no core's marker, and each core sits in exactly one lazy chunk.
-  `@rtc/client-core`'s presenters, machines and adapters still ship eagerly
-  through the root index the UI imports from (ADR-006 Follow-up 9).
+- **Every core loads lazily.** Each core is fetched as its own chunk only
+  once the choice resolves — RxJS included: its composition root since
+  approach B (2026-10-02), its presenters and machines since 2026-10-03, all
+  behind the `@rtc/client-core/core` subpath export. `pnpm check:core-bundle`
+  proves the split in CI — the eager set carries no core's marker, and each
+  core sits in exactly one lazy chunk — and dependency-cruiser's
+  `client-core-root-is-the-edge` keeps the root index from reaching a
+  presenter module. `@rtc/client-core`'s root index is the *edge* the UI
+  imports statically (adapters, port factories, stores, pure helpers, types);
+  a test that needs a presenter class or a machine factory imports it from
+  `@rtc/client-core/core`.
 - **Web only.** The React Native client always runs the RxJS core.
 - **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
   (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm
