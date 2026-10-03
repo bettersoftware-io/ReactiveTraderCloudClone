@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 import type { VisualDriver } from "../driver";
+import type { SkinOverride } from "../skinOverride";
 
 const exec = promisify(execFile);
 
@@ -210,7 +211,10 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
 
   return {
     name: "simctl",
-    async capture(scenarioId: string): Promise<Buffer> {
+    async capture(
+      scenarioId: string,
+      skinOverride?: SkinOverride,
+    ): Promise<Buffer> {
       // Cold-start every scenario. Re-opening the dev-client URL against an
       // ALREADY-RUNNING app does not reliably re-navigate it: observed on
       // device, the app instead tears down to the iOS home screen and never
@@ -227,7 +231,7 @@ export function createSimctlDriver(cfg: SimctlDriverConfig): VisualDriver {
         scenarioId,
       });
 
-      await openScenarioDeepLink(cfg.udid, scenarioId);
+      await openScenarioDeepLink(cfg.udid, scenarioId, skinOverride);
       await waitForVisualReady({
         idbPath,
         udid: cfg.udid,
@@ -317,12 +321,18 @@ async function openMetroBase(udid: string, metroPort: string): Promise<void> {
 async function openScenarioDeepLink(
   udid: string,
   scenarioId: string,
+  skinOverride?: SkinOverride,
 ): Promise<void> {
+  const query =
+    skinOverride === undefined
+      ? ""
+      : `?skin=${skinOverride.skin}&mode=${skinOverride.mode}`;
+
   await exec("xcrun", [
     "simctl",
     "openurl",
     udid,
-    `${APP_SCHEME}://__visual/${scenarioId}`,
+    `${APP_SCHEME}://__visual/${scenarioId}${query}`,
   ]);
 }
 

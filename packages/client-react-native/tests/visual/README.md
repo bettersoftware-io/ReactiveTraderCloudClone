@@ -82,6 +82,19 @@ Debugging a single scenario without touching goldens: `tsx tests/visual/simctl/r
 
 See **`BAKEOFF.md`** for the full three-tier comparison (owl is not viable on SDK 57 / RN 0.86 / React 19 / new-arch), the injected-paint-bug detection proof, and known capture artifacts (status-bar clock, dev-tools gear).
 
+## Sign-off sweep: any scenario in any skin
+
+Every scenario pins one skin×mode, because a golden has to reproduce itself — which leaves ten of the twelve cells with no capture at all. `--skin=<skin>:<mode>` re-shoots scenarios in another cell, to a scratch directory only:
+
+```bash
+tsx tests/visual/simctl/run.ts --scratch=/tmp/skins --skin=neon:light rates/grid credit/rfq-tiles
+# → /tmp/skins/rates_grid@neon-light.png, /tmp/skins/credit_rfq-tiles@neon-light.png
+```
+
+It rides the deep link (`rtc://__visual/<id>?skin=neon&mode=light`), which the harness route turns into a `SkinOverrideContext` that `VisualScenarioHost` prefers over its pinned props. Without `--scratch` the runner refuses: a golden is captured and compared only in the cell its scenario pins. A misspelt skin is refused too, by the runner and again by the route, rather than quietly shooting the pinned cell under the wrong file name.
+
+These captures are for a person to look at, not for a diff — nothing is pinned for the other ten cells.
+
 ## Adding a scenario: two things that make a golden assert nothing
 
 Both were found on 2026-08-01 by *looking at* the PNGs, after a year of green

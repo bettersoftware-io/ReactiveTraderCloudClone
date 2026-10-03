@@ -8,9 +8,11 @@ import { resolveBootedUdid } from "../shared/bootedUdid";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
 import { compareToGolden, toleranceFor } from "../shared/diff";
 import { goldenPath } from "../shared/goldens";
+import { parseSkinFlag, type SkinOverride } from "../skinOverride";
 import { createSimctlDriver } from "./capture";
 
 const SCRATCH_FLAG = "--scratch";
+const SKIN_FLAG = "--skin=";
 const DEFAULT_SCRATCH_DIR = "/tmp/rtc-visual-scratch";
 
 /** What a run does with each captured PNG: write it outside the golden tree
@@ -18,6 +20,7 @@ const DEFAULT_SCRATCH_DIR = "/tmp/rtc-visual-scratch";
 interface RunOptions {
   readonly update: boolean;
   readonly scratchDir: string | undefined;
+  readonly skinOverride: SkinOverride | undefined;
 }
 
 /**
@@ -45,6 +48,13 @@ interface RunOptions {
  *   tsx tests/visual/simctl/run.ts --scratch blotter/seeded shell/appearance
  *   tsx tests/visual/simctl/run.ts --scratch=/path/to/dir blotter/seeded
  *
+ * `--skin=<skin>:<mode>` (with `--scratch` only) re-shoots the scenarios in
+ * another skin×mode than the one each pins — the sign-off sweep across all 6
+ * themes × dark/light. Files land as `<id>@<skin>-<mode>.png`. Refused without
+ * `--scratch`: a golden is only ever captured or compared in its pinned cell.
+ *
+ *   tsx tests/visual/simctl/run.ts --scratch --skin=neon:light rates/tiles
+ *
  * Config via env: `RTC_VISUAL_UDID` (defaults to the booted simulator's real
  * UDID, resolved via `simctl` — NOT the literal `"booted"` alias, which `idb`
  * rejects; see `resolveBootedUdid`), `RTC_VISUAL_METRO_PORT` (default `8083`),
@@ -63,6 +73,27 @@ async function main(): Promise<void> {
       : (scratchArg.split("=")[1] ??
         env.RTC_VISUAL_SCRATCH ??
         DEFAULT_SCRATCH_DIR);
+
+  const skinArg = args.find((a) => {
+    return a.startsWith(SKIN_FLAG);
+  });
+
+  const skinOverride =
+    skinArg === undefined
+      ? undefined
+      : (parseSkinFlag(skinArg.slice(SKIN_FLAG.length)) ?? undefined);
+
+  if (skinArg !== undefined && skinOverride === undefined) {
+    console.error(`${skinArg}: expected --skin=<skin>:<mode>, e.g. neon:light`);
+    exit(2);
+  }
+
+  if (skinOverride !== undefined && scratchDir === undefined) {
+    console.error(
+      "--skin needs --scratch: goldens are captured and compared only in the skin×mode each scenario pins",
+    );
+    exit(2);
+  }
 
   const idFilter = new Set(
     args.filter((a) => {
@@ -94,7 +125,11 @@ async function main(): Promise<void> {
   let code = 1;
 
   try {
-    code = await runScenarios(driver, ids, { update, scratchDir });
+    code = await runScenarios(driver, ids, {
+      update,
+      scratchDir,
+      skinOverride,
+    });
   } finally {
     // A run that throws halfway must not leave a developer's dev menu switched
     // off — this is dev tooling they use outside the harness.
@@ -114,14 +149,19 @@ async function runScenarios(
   ids: readonly string[],
   opts: RunOptions,
 ): Promise<number> {
-  const { update, scratchDir } = opts;
+  const { update, scratchDir, skinOverride } = opts;
   let failures = 0;
 
   for (const id of ids) {
-    const png = await driver.capture(id);
+    const png = await driver.capture(id, skinOverride);
 
     if (scratchDir !== undefined) {
-      const out = join(scratchDir, `${id.replace(/\//g, "_")}.png`);
+      const cell =
+        skinOverride === undefined
+          ? ""
+          : `@${skinOverride.skin}-${skinOverride.mode}`;
+
+      const out = join(scratchDir, `${id.replace(/\//g, "_")}${cell}.png`);
       await mkdir(dirname(out), { recursive: true });
       await writeFile(out, png);
       console.log(`scratch  ${id} -> ${out}`);

@@ -118,11 +118,18 @@ test("reserves no height while editing — no ~62px blank strip on the ticket's 
   expect(ceremony.isEmpty()).toBe(true);
 });
 
-test("mutes the haptic when motion is disabled, but still renders the toast", async () => {
+// The haptic is not motion: with the animation stripped it is the only
+// non-visual confirmation left. It used to be muted here — and only here; the
+// Rates ceremony and the unlock always fired.
+test("still fires the haptic when motion is disabled, and still renders the toast", async () => {
   Haptics.notificationAsync.mockClear();
-  mockMotionEnabled.mockReturnValueOnce(false);
+  mockMotionEnabled.mockReturnValue(false);
   const ceremony = await page.mount({ phase: "filled", order: ORDER });
-  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+  mockMotionEnabled.mockReturnValue(true);
+  expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(
+    Haptics.NotificationFeedbackType.Success,
+  );
   expect(ceremony.exists("eq-order-toast-filled")).toBe(true);
 });
 
