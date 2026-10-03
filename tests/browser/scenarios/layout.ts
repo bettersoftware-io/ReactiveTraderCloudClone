@@ -1,4 +1,4 @@
-import type { SashGripSize } from "../page-objects/contracts/Layout";
+import type { FloatBox, SashGripSize } from "../page-objects/contracts/Layout";
 import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
@@ -718,35 +718,20 @@ const POSITIONS_PANEL_ID = "fx-positions";
  * misplacement is a member's whole width (hundreds of px). */
 const MAGNET_EDGE_SLACK_PX = 2;
 
-/** Float magnets end to end: two floats snap flush and attach into one
- * window, move together from either head, survive a reload, and come apart
- * by an Option-drag and by the detach control — of a non-anchor member and
- * of the window's anchor. Rects are read, never eyeballed; every wait is on
- * a witness. Dockview-engine only. */
-export async function floatsAttachMoveTogetherAndDetach(
+/** Float magnets, side by side — the ATTACH half: two floats snap flush and
+ * attach into one window, move together from the non-anchor head, stay
+ * inside the viewport, and survive a reload at full width. The detach half
+ * is `attachedFloatsDetachByOptionDragControlAndAnchor`. They are two tests
+ * on purpose: as one scenario this ran 17–19 s on CI and timed out at the
+ * 30 s limit on a runner 1.9x slow (PR #891), so each half keeps its own
+ * budget. Rects are read, never eyeballed; every wait is on a witness.
+ * Dockview-engine only. */
+export async function floatsSnapAttachMoveAndSurviveReload(
   ctx: TestContext,
 ): Promise<void> {
   const layout = ctx.po.layout;
 
-  await layout.floatPanel(ANALYTICS_PANEL_ID);
-  await layout.floatPanel(POSITIONS_PANEL_ID);
-  await layout.waitDockFloating(
-    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
-    ENGINE_SWITCH_TIMEOUT_MS,
-  );
-
-  // Apart first, Option held so nothing snaps on the way.
-  await layout.dragFloatByHeadTo(ANALYTICS_PANEL_ID, 80, 140, {
-    option: true,
-  });
-  await layout.dragFloatByHeadTo(POSITIONS_PANEL_ID, 900, 420, {
-    option: true,
-  });
-  assertEquals(
-    await layout.floatWindowCount(),
-    2,
-    "expected two separate floats before attaching",
-  );
+  await floatAnalyticsAndPositionsApart(ctx);
 
   // Within snap range, 8px off vertically: the cue shows before release
   // (dockview's sibling boxes and the cue's container share one origin, or
@@ -847,6 +832,20 @@ export async function floatsAttachMoveTogetherAndDetach(
     await layout.floatHidesWidthHandles(POSITIONS_PANEL_ID),
     "expected the restored all-locked pair to still hide its width handles",
   );
+}
+
+/** Float magnets, side by side — the DETACH half: an attached pair comes
+ * apart by an Option-drag of a member, by the header control of the
+ * non-anchor member, and by the header control of the window's ANCHOR, where
+ * the remainder must not slide. Then both dock home, so a cluster leaves
+ * nothing behind. Dockview-engine only. */
+export async function attachedFloatsDetachByOptionDragControlAndAnchor(
+  ctx: TestContext,
+): Promise<void> {
+  const layout = ctx.po.layout;
+
+  await floatAnalyticsAndPositionsApart(ctx);
+  await attachPositionsRightOfAnalytics(ctx);
 
   // Option-drag detaches the pressed member into its own float.
   await layout.dragFloatByHeadTo(POSITIONS_PANEL_ID, 700, 100, {
@@ -895,6 +894,32 @@ export async function floatsAttachMoveTogetherAndDetach(
   await layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
 }
 
+/** Floats Analytics and Positions and Option-drags them well apart — Option
+ * held so nothing snaps on the way — leaving two separate lone floats. */
+async function floatAnalyticsAndPositionsApart(
+  ctx: TestContext,
+): Promise<void> {
+  const layout = ctx.po.layout;
+
+  await layout.floatPanel(ANALYTICS_PANEL_ID);
+  await layout.floatPanel(POSITIONS_PANEL_ID);
+  await layout.waitDockFloating(
+    [ANALYTICS_PANEL_ID, POSITIONS_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  await layout.dragFloatByHeadTo(ANALYTICS_PANEL_ID, 80, 140, {
+    option: true,
+  });
+  await layout.dragFloatByHeadTo(POSITIONS_PANEL_ID, 900, 420, {
+    option: true,
+  });
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two separate floats before attaching",
+  );
+}
+
 /** Drags lone-float Positions to just right of lone-float Analytics, inside
  * snap range — the cue must show before release — and waits for the pair
  * to attach. */
@@ -921,11 +946,6 @@ async function attachPositionsRightOfAnalytics(
  * own rounding. A lost member is hundreds of px short. */
 const STACKED_HEIGHT_SLACK_PX = 4;
 
-/** Float magnets, STACKED (spec §4.2): free, wider Blotter attaches below
- * 360-locked Analytics and ADOPTS the lock — the window comes out at
- * Analytics' width, not Blotter's — the window keeps that width through a
- * reload, and an Option-drag takes Blotter back out. Rects are read, never
- * eyeballed; every wait is on a witness. Dockview-engine only. */
 /** The grip's painted box on a side-by-side split, and on a stacked one
  * (dockview-hud.css `.dv-sash::after`). */
 const SIDE_BY_SIDE_GRIP: SashGripSize = { width: 2, height: 30 };
@@ -951,9 +971,102 @@ async function expectFloatSashGrip(
   );
 }
 
+/** Float magnets, STACKED (spec §4.2) — the ATTACH half: free, wider Blotter
+ * attaches below 360-locked Analytics and ADOPTS the lock — the window comes
+ * out at Analytics' width, not Blotter's — and keeps that width through a
+ * reload. The detach half is `stackedFloatDetachesByOptionDrag` (split for
+ * the same CI-budget reason as the side-by-side pair). Rects are read, never
+ * eyeballed; every wait is on a witness. Dockview-engine only. */
 export async function floatsStackAdoptLockAndSurviveReload(
   ctx: TestContext,
 ): Promise<void> {
+  const layout = ctx.po.layout;
+  const { analytics, blotter } = await stackBlotterUnderAnalytics(ctx);
+
+  const attached = await layout.floatBox(BLOTTER_PANEL_ID);
+  // MAGNET_EDGE_SLACK_PX: sub-pixel rounding only — Blotter's own width
+  // would be hundreds of px off.
+  assertLte(
+    Math.abs(attached.width - analytics.width),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the window to adopt Analytics' lock width (${analytics.width}), was ${attached.width}`,
+  );
+  assertLte(
+    Math.abs(attached.height - (analytics.height + blotter.height)),
+    STACKED_HEIGHT_SLACK_PX,
+    `expected the window as tall as both floats (${analytics.height + blotter.height}), was ${attached.height}`,
+  );
+  // Blotter's own slice spans the window like Analytics' does. Group box
+  // against group box: each member's card sits half a gap inside the window
+  // per side (dockview-hud.css), so a card read against the window read
+  // would be off by that gap, not by a lost lock. The same 2px slack.
+  const analyticsSlice = await layout.panelBox(ANALYTICS_PANEL_ID);
+  const blotterSlice = await layout.panelBox(BLOTTER_PANEL_ID);
+  assertLte(
+    Math.abs(blotterSlice.width - analyticsSlice.width),
+    MAGNET_EDGE_SLACK_PX,
+    `expected Blotter's slice as wide as Analytics' (${analyticsSlice.width}), was ${blotterSlice.width}`,
+  );
+  await expectFloatSashGrip(ctx, BLOTTER_PANEL_ID, STACKED_GRIP);
+
+  // Reload: the stacked window comes back at the lock width.
+  await common.reloadPage(ctx);
+  await common.clickTab(ctx, "fx");
+  await expectEngine(ctx, "dockview");
+  await layout.waitDockAttached(
+    [ANALYTICS_PANEL_ID, BLOTTER_PANEL_ID],
+    ENGINE_SWITCH_TIMEOUT_MS,
+  );
+  const restored = await layout.floatBox(BLOTTER_PANEL_ID);
+  assertLte(
+    Math.abs(restored.width - attached.width),
+    MAGNET_EDGE_SLACK_PX,
+    `expected the restored window as wide as before (${attached.width}), was ${restored.width}`,
+  );
+  assertTrue(
+    await layout.panelSitsInFloat(BLOTTER_PANEL_ID),
+    "expected Blotter still in the float after the reload",
+  );
+}
+
+/** Float magnets, STACKED — the DETACH half: an Option-drag takes Blotter
+ * back out of the stacked window into its own float, and both dock home.
+ * Dockview-engine only. */
+export async function stackedFloatDetachesByOptionDrag(
+  ctx: TestContext,
+): Promise<void> {
+  const layout = ctx.po.layout;
+
+  await stackBlotterUnderAnalytics(ctx);
+
+  await layout.dragFloatByHeadTo(BLOTTER_PANEL_ID, 700, 100, {
+    option: true,
+  });
+  await layout.waitDockAttached([], ENGINE_SWITCH_TIMEOUT_MS);
+  assertEquals(
+    await layout.floatWindowCount(),
+    2,
+    "expected two windows after an Option-drag detach",
+  );
+
+  await layout.dockPanel(ANALYTICS_PANEL_ID);
+  await layout.dockPanel(BLOTTER_PANEL_ID);
+  await layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+}
+
+/** The two floats' boxes as they were BEFORE they stacked. */
+interface StackedPairBoxes {
+  readonly analytics: FloatBox;
+  readonly blotter: FloatBox;
+}
+
+/** Floats 360-locked Analytics and free, wider Blotter apart, then drags
+ * Blotter under Analytics inside snap range — the cue must show before
+ * release — and waits for the pair to attach as ONE window. Returns both
+ * pre-attach boxes, which the sizing assertions compare against. */
+async function stackBlotterUnderAnalytics(
+  ctx: TestContext,
+): Promise<StackedPairBoxes> {
   const layout = ctx.po.layout;
 
   await layout.floatPanel(ANALYTICS_PANEL_ID);
@@ -1002,65 +1115,7 @@ export async function floatsStackAdoptLockAndSurviveReload(
     "expected one window after attaching",
   );
 
-  const attached = await layout.floatBox(BLOTTER_PANEL_ID);
-  // MAGNET_EDGE_SLACK_PX: sub-pixel rounding only — Blotter's own width
-  // would be hundreds of px off.
-  assertLte(
-    Math.abs(attached.width - analytics.width),
-    MAGNET_EDGE_SLACK_PX,
-    `expected the window to adopt Analytics' lock width (${analytics.width}), was ${attached.width}`,
-  );
-  assertLte(
-    Math.abs(attached.height - (analytics.height + blotter.height)),
-    STACKED_HEIGHT_SLACK_PX,
-    `expected the window as tall as both floats (${analytics.height + blotter.height}), was ${attached.height}`,
-  );
-  // Blotter's own slice spans the window like Analytics' does. Group box
-  // against group box: each member's card sits half a gap inside the window
-  // per side (dockview-hud.css), so a card read against the window read
-  // would be off by that gap, not by a lost lock. The same 2px slack.
-  const analyticsSlice = await layout.panelBox(ANALYTICS_PANEL_ID);
-  const blotterSlice = await layout.panelBox(BLOTTER_PANEL_ID);
-  assertLte(
-    Math.abs(blotterSlice.width - analyticsSlice.width),
-    MAGNET_EDGE_SLACK_PX,
-    `expected Blotter's slice as wide as Analytics' (${analyticsSlice.width}), was ${blotterSlice.width}`,
-  );
-  await expectFloatSashGrip(ctx, BLOTTER_PANEL_ID, STACKED_GRIP);
-
-  // Reload: the stacked window comes back at the lock width.
-  await common.reloadPage(ctx);
-  await common.clickTab(ctx, "fx");
-  await expectEngine(ctx, "dockview");
-  await layout.waitDockAttached(
-    [ANALYTICS_PANEL_ID, BLOTTER_PANEL_ID],
-    ENGINE_SWITCH_TIMEOUT_MS,
-  );
-  const restored = await layout.floatBox(BLOTTER_PANEL_ID);
-  assertLte(
-    Math.abs(restored.width - attached.width),
-    MAGNET_EDGE_SLACK_PX,
-    `expected the restored window as wide as before (${attached.width}), was ${restored.width}`,
-  );
-  assertTrue(
-    await layout.panelSitsInFloat(BLOTTER_PANEL_ID),
-    "expected Blotter still in the float after the reload",
-  );
-
-  // Option-drag detaches Blotter into its own float.
-  await layout.dragFloatByHeadTo(BLOTTER_PANEL_ID, 700, 100, {
-    option: true,
-  });
-  await layout.waitDockAttached([], ENGINE_SWITCH_TIMEOUT_MS);
-  assertEquals(
-    await layout.floatWindowCount(),
-    2,
-    "expected two windows after an Option-drag detach",
-  );
-
-  await layout.dockPanel(ANALYTICS_PANEL_ID);
-  await layout.dockPanel(BLOTTER_PANEL_ID);
-  await layout.waitDockFloating([], ENGINE_SWITCH_TIMEOUT_MS);
+  return { analytics, blotter };
 }
 
 const SAVED_LAYOUT_NAME = "Desk A";
