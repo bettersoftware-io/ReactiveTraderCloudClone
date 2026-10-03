@@ -8,7 +8,7 @@ import {
 } from "@rtc/devtools-core";
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { buildBrowserPorts, readDemoAccounts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
@@ -57,7 +57,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
       devtoolsHub,
     ),
     commands,
-    { coreSelection },
+    { coreSelection, demoAccounts: readDemoAccounts() },
   );
 
   return (

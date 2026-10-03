@@ -89,3 +89,40 @@ Considered 2026-09-01, deferred: real work for an 11-component UI already holdin
 ≥95% coverage. Revisit if the inspector grows enough view state to make
 prop-drilling or render-scope bugs recur.
 
+
+### Split `CLAUDE.md` into a shared `AGENTS.md`
+
+Only worth doing if a second coding agent (e.g. Codex) becomes a regular tool
+here. Assessed 2026-10-03, deferred: nothing but Claude Code reads the repo's
+instructions today.
+
+Verified that day against the vendors' docs
+([Claude Code](https://code.claude.com/docs/en/memory#agents-md),
+[Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md)):
+
+- **Claude Code** (v2.1.277+) reads `AGENTS.md` natively, but only when no
+  `CLAUDE.md` / `CLAUDE.local.md` exists at or above the working directory.
+  With both present it reads `CLAUDE.md` only, unless that file imports
+  `@AGENTS.md`.
+- **Codex** (checked against codex-cli 0.160.0) reads `AGENTS.override.md` then
+  `AGENTS.md`, walking from the git root down to the cwd. It never reads
+  `CLAUDE.md` unless `~/.codex/config.toml` sets
+  `project_doc_fallback_filenames = ["CLAUDE.md"]`.
+- **Codex caps** combined instructions at 32 KiB (`project_doc_max_bytes`), and
+  `CLAUDE.md` was 45 KB, so the fallback alone would not load it whole.
+- **Codex documents no `@import`**, so sharing only works one way: `CLAUDE.md`
+  importing `AGENTS.md`.
+
+The shape, if it happens: move the tool-neutral content (build commands,
+package structure, dependency rules, test-fixture and naming doctrine) into
+`AGENTS.md`, and keep `CLAUDE.md` as `@AGENTS.md` plus the Claude-only sections
+(slash commands, `.claude/` authoring traps). That keeps the ~96 files
+referencing `CLAUDE.md` valid, and works on Claude Code versions that cannot
+read `AGENTS.md` directly.
+
+What does not carry over: `.claude/` commands, skills, hooks and permissions
+are Claude-only, so hook-enforced guardrails (e.g.
+`split-outward-commands.py`) would not apply under Codex.
+
+Zero-change trial: set the fallback plus `project_doc_max_bytes = 65536` in the
+user's own Codex config — no repo edit needed.

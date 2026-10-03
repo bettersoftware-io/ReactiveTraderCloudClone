@@ -78,6 +78,7 @@ import {
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   type Dealer,
+  type DemoAccount,
   type DepthBook,
   type EqBlotterView,
   type EquityInstrument,
@@ -334,10 +335,14 @@ export interface UseLayoutPresetsResult {
 
 /** App-shell values a host passes through `createViewModel`'s optional 4th
  * arg — things owned by the shell that boots the core, not by the core
- * itself. Currently just the runtime core switch; RN and older callers omit
+ * itself. Today the runtime core switch and the login screen's demo accounts; RN and older callers omit
  * this entirely. */
 export interface ViewModelShell {
   readonly coreSelection?: CoreSelection;
+  /** The sign-ins this page verifies in the browser, for the login
+   * screen's demo-accounts hint. Omitted (or empty) on a plain live build,
+   * where every credential belongs to the server. */
+  readonly demoAccounts?: readonly DemoAccount[];
 }
 
 export interface ViewModel {
@@ -583,6 +588,9 @@ export interface ViewModel {
   useIncident: () => UseIncidentResult;
   /** The app-shell core switch (web only); null when the host offers none. */
   useCoreSelection: () => CoreSelection | null;
+  /** The demo sign-ins the login screen may hint at; empty when the host
+   * offers none (a plain live build, RN). */
+  useDemoAccounts: () => readonly DemoAccount[];
 }
 
 export function createViewModel(
@@ -592,6 +600,7 @@ export function createViewModel(
   shell?: ViewModelShell,
 ): ViewModel {
   const coreSelection = shell?.coreSelection ?? null;
+  const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
 
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
@@ -1535,5 +1544,12 @@ export function createViewModel(
     useCoreSelection: () => {
       return coreSelection;
     },
+    useDemoAccounts: () => {
+      return demoAccounts;
+    },
   };
 }
+
+/** One shared empty list, so a host without demo accounts hands every
+ * render the same reference. */
+const NO_DEMO_ACCOUNTS: readonly DemoAccount[] = [];

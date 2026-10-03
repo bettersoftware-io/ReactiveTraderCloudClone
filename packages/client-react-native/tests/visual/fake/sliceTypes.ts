@@ -141,6 +141,7 @@ export type InertSlice = Pick<
   ViewModel,
   | "useAnimationIntents"
   | "useCoreSelection"
+  | "useDemoAccounts"
   | "useDockedPanelIds"
   | "useDockLayoutStore"
   | "useEventLog"

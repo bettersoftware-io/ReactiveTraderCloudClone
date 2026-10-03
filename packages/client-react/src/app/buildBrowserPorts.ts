@@ -22,6 +22,8 @@ import {
   AuthSimulator,
   type ConnectionEventsPort,
   ConnectionEventsSimulator,
+  type DemoAccount,
+  listDemoAccounts,
 } from "@rtc/domain";
 
 import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
@@ -134,10 +136,7 @@ export function buildBrowserPorts(
   // Simulator roster: the dev file's accounts (dev builds only — Vite loads
   // .env.development in dev) plus the committed demo roster (.env.production),
   // so a production simulator build has working demo logins too.
-  const simulatorAuth = new AuthSimulator({
-    ...parseDevAuth(import.meta.env.VITE_DEV_AUTH),
-    ...demoRoster,
-  });
+  const simulatorAuth = new AuthSimulator(readSimulatorCredentials(demoRoster));
 
   // Hybrid data source — hardening spec §8.
   /** The page's auth port. Non-hybrid pages keep today's single adapter;
@@ -250,4 +249,29 @@ export function buildBrowserPorts(
     bootSplash,
     narratorConfig,
   };
+}
+
+/**
+ * The sign-ins this page verifies IN THE BROWSER — what the login screen may
+ * offer as its demo-accounts hint (hardening spec §7 D9). With a server URL
+ * that is the demo roster alone: a hybrid build lists it, and a plain live
+ * build (no demo roster — every `dev:*:fs` / `dev:*:ws:*` and e2e flow) lists
+ * nothing, since all of its credentials belong to the server. With no server
+ * it is the simulator's whole roster.
+ */
+export function readDemoAccounts(): readonly DemoAccount[] {
+  const demoRoster = parseDevAuth(import.meta.env.VITE_DEMO_AUTH);
+
+  if (import.meta.env.VITE_SERVER_URL) {
+    return listDemoAccounts(demoRoster);
+  }
+
+  return listDemoAccounts(readSimulatorCredentials(demoRoster));
+}
+
+/** The simulator's roster: the dev file's accounts plus the demo roster. */
+function readSimulatorCredentials(
+  demoRoster: Record<string, string>,
+): Record<string, string> {
+  return { ...parseDevAuth(import.meta.env.VITE_DEV_AUTH), ...demoRoster };
 }
