@@ -1,76 +1,85 @@
-# `@rtc/client-react-native` coverage — two tiers, and why neither is "the number"
+# `@rtc/client-react-native` coverage — two runners, one merged number
 
-Until 2026-08-14 this package had **no coverage measurement of any kind**. Not
-"low coverage" — *unmeasured*, so no figure existed for anyone to be alarmed by.
-`pnpm --filter @rtc/client-react-native test:coverage` now produces one, and this
-file exists so the first person to quote it does not quote it wrongly.
+`pnpm --filter @rtc/client-react-native test:coverage` runs both test runners
+with coverage and then prints the **merged line coverage**, which is the
+figure to quote. `test:coverage:gate` is the same run failing below **95%**;
+it is a step in `ci.yml`.
 
-## Why there are two tiers rather than one
+Measured 2026-10-03: **96.89% of lines** (5,173 of 5,339, 188 source files).
 
-This is the only package in the repo running **two test runners**, split by file
+## Why there are two runners
+
+This is the only package in the repo running two test runners, split by file
 extension:
 
-| tier | runner | owns | why |
+| script | runner | owns | why |
 |---|---|---|---|
 | `test:unit:coverage` | vitest (v8) | `*.test.ts` | adapters, hooks, pure logic, scene math — no react-native runtime needed, so it runs in seconds |
-| `test:native:coverage` | jest (`jest-expo`, babel/istanbul) | `*.test.tsx` | component suites that need the react-native runtime `jest-expo` bootstraps |
+| `test:native:coverage` | jest (`jest-expo`, istanbul) | `*.test.tsx` | component suites that need the react-native runtime `jest-expo` bootstraps |
 
-`test:coverage` runs both. Reports land in `reports/unit/coverage/` and
-`reports/native/coverage/` respectively (gitignored, per the repo-wide
-`reports/<tier>/coverage/` convention).
+Reports land in `reports/unit/coverage/`, `reports/native/coverage/` and
+`reports/merged/coverage/summary.json` (all gitignored).
 
-## The trap: the two numbers are NOT addable
+## Why the merge is by line
 
-First measurement, 2026-08-14, both tiers against the **whole** package
-(`src/**/*.{ts,tsx}`):
+Each runner reports the whole package while running half the tests, so neither
+runner's own percentage is the package's:
 
-| tier | statements | branches | functions | lines |
+| measure (2026-10-03) | statements | branches | functions | lines |
 |---|---|---|---|---|
-| jest (109 suites, 507 tests) | **63.89%** (4940/7731) | 76.38% | 53.69% | 63.61% |
-| vitest (58 files, 540 tests) | **26.48%** (1483/5599) | 28.44% | 34.37% | 26.38% |
+| jest alone | 94.20% | 81.25% | 91.24% | 94.06% |
+| vitest alone | 26.65% | 28.97% | 35.46% | 26.55% |
+| **merged** | — | — | — | **96.89%** |
 
-Read those two rows carefully before doing arithmetic on them:
+The two rows above the merge cannot be added. The providers do not agree on
+how many statements, branches or functions a file has (5,467 istanbul
+statements against 5,751 v8 for the same tree), so a union of those would be
+invented. **Lines** are the one unit both report against the same source text.
+`tests/coverage-merge/mergeLcov.ts` therefore takes jest's instrumented lines as the
+denominator and counts a line covered when either runner hit it.
 
-1. **The denominators differ** — 7731 statements vs 5599, for the same source
-   tree. Istanbul (babel) and v8 instrument differently and simply do not agree
-   on what a statement is. This is the same hazard `CLAUDE.md` already flags for
-   the react-vs-solid `ui (visual reach)` tiers: *don't compare percentages
-   across instrumentation, compare which files sit at 0%.*
-2. **Each tier's denominator is the whole package, but each only runs half the
-   tests.** That is deliberate — the number answers "how much of this package
-   does vitest alone reach", which is a real question, and refuses to flatter
-   itself by shrinking the denominator to the half it happens to test. It is not
-   a claim about the package.
-3. **So neither figure is "RN's coverage", and the sum is not either.** The true
-   figure is the *union* of lines covered by both runners, which needs a merged
-   report. That merge is deliberately not built yet.
+That is why the gate is on lines only. Branches at 81% (jest alone) is the
+weakest axis and has no merged figure; it is not gated.
 
-## What is deliberately NOT done here
+## The 63.9% that was never real
 
-Per the ordering recorded in `docs/STATUS.md` — **measure first, gate second**:
+Until 2026-10-03 this file, and `docs/STATUS.md`, quoted jest at **63.89%**
+statements and concluded the package sat far below the web clients' bar. That
+number was wrong, and the cause was the denominator, not the tests.
 
-- **No CI gate.** The web clients are held to ≥95% statements / ≥85% branches.
-  Both tiers here are far below that, and picking a bar before knowing the
-  merged number would be picking it blind.
-- **No merged report.** Needs either a common provider across both runners or an
-  lcov merge step; both are real design calls, not plumbing.
-- **No 9th tier in `coverage-report.yml`.** Follows the merge decision.
-- **No UI contract tier.** RN owns 0 of the 99 shared `@rtc/ui-contract`
-  behavioural specs, and cannot simply adopt them: `MountedRoot.root` /
-  `PageContext.root` are typed `HTMLElement` and **86 of 92** shared page objects
-  query the DOM. The *specs* are nearly clean (only 5 of 99 touch the DOM), so
-  the portable half is the specs and the unportable half is the page-object layer
-  beneath them. Note also that RN implements a *different design* (mobile v1)
-  over the same core, so a large fraction of the web specs assert screens RN
-  deliberately does not have.
+`collectCoverageFrom` was `src/**/*.{ts,tsx}`. jest leaves out the test files
+it runs, but the 59 `*.test.ts` files are vitest's — jest never runs them, so
+it counted every one as uncovered **source**: 2,549 lines, a third of the
+denominator, all at 0%. Both configs now exclude `*.test.{ts,tsx}` and
+`__tests__/`, and the same jest run reads 94%.
 
-## The near-miss that hid this
+The lesson is the one `CLAUDE.md` records for every coverage figure here: look
+at **which files** sit at 0% before believing an aggregate. The 59 files at 0%
+were all named `*.test.ts`.
 
-Three mechanisms each looked like they covered this package and none did. The
-worst was a **name**: `check:react-coverage` (CI step *"React package coverage"*)
-listed `client-react-native` in its policy map and went green — so an auditor
-asking "do all React packages have coverage?" got a tick for the wrong question.
-It never checked test coverage at all; it checks three React *lint* policies.
-It was renamed to **`check:react-policies`** on 2026-08-14 for exactly that
-reason. See `docs/handler-naming.md` — a name must state its effect, and that
-applies to gates as much as to functions.
+## What the gate cannot see
+
+The gate is an aggregate, and an aggregate cannot surface one weak file. The
+report always prints the files with the most uncovered lines; on 2026-10-03
+the weakest by percentage were `useShellTelemetry.ts` (50.0%),
+`AppearanceOverlay.tsx` (66.7%) and `SellSideTicket.tsx` (73.3%).
+
+## Not done
+
+- **No tier in `coverage-report.yml`.** The published report has ten tiers and
+  none is RN.
+- **No UI contract tier.** RN owns none of the shared `@rtc/ui-contract`
+  behavioural specs and cannot simply adopt them: the shared page objects query
+  the DOM, and RN implements a different design (mobile v1) over the same core,
+  so many web specs assert screens RN deliberately does not have. Tracked in
+  `docs/STATUS.md`.
+
+## The near-miss that hid the original gap
+
+Before 2026-08-14 this package had no coverage measurement at all, and three
+mechanisms each looked like they covered it. The worst was a **name**:
+`check:react-coverage` (CI step *"React package coverage"*) listed
+`client-react-native` in its policy map and went green — so an auditor asking
+"do all React packages have coverage?" got a tick for the wrong question. It
+checks three React *lint* policies, and was renamed **`check:react-policies`**
+for that reason. See `docs/handler-naming.md`.
