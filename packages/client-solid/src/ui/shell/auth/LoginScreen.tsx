@@ -1,9 +1,11 @@
 import type { JSX } from "solid-js";
 import { createMemo, createSignal, Show } from "solid-js";
 
+import type { DemoAccount } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { DemoAccountsHint } from "./DemoAccountsHint";
 import { HandshakeConsole } from "./wait/HandshakeConsole";
 import { ReactorRings } from "./wait/ReactorRings";
 import { ReactorWait } from "./wait/ReactorWait";
@@ -19,11 +21,13 @@ import waitStyles from "./wait/authWait.module.css";
  * signals only and are never logged.
  */
 export function LoginScreen(): JSX.Element {
-  const { useAuth } = useViewModel();
+  const { useAuth, useDemoAccounts } = useViewModel();
   const { state, login } = useAuth();
+  const demoAccounts = useDemoAccounts();
 
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
+  let submitButton: HTMLButtonElement | undefined;
 
   const authenticating = createMemo((): boolean => {
     return state().status === "authenticating";
@@ -40,6 +44,14 @@ export function LoginScreen(): JSX.Element {
 
   function changePassword(event: InputChangeEvent): void {
     setPassword(event.currentTarget.value);
+  }
+
+  /** A picked demo account fills both fields and hands focus to AUTHENTICATE,
+   * so the next Enter signs in — the pick itself never does. */
+  function stageSignIn(account: DemoAccount): void {
+    setUsername(account.username);
+    setPassword(account.password);
+    submitButton?.focus();
   }
 
   return (
@@ -104,6 +116,7 @@ export function LoginScreen(): JSX.Element {
           </Show>
 
           <button
+            ref={submitButton}
             type="submit"
             data-testid="login-submit"
             class={
@@ -123,6 +136,12 @@ export function LoginScreen(): JSX.Element {
             <ReactorWait />
           </Show>
         </form>
+
+        <DemoAccountsHint
+          accounts={demoAccounts}
+          busy={authenticating()}
+          onPick={stageSignIn}
+        />
       </div>
     </div>
   );

@@ -1,16 +1,23 @@
+/* The panel centres through its own auto margins, not `align-items` /
+ * `justify-content`: on a viewport shorter than the panel (phone landscape,
+ * heavy zoom) centred flex alignment overflows BOTH ways and the top half
+ * becomes unreachable, whereas auto margins collapse to zero and the overlay
+ * simply scrolls. */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 9000;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 24px 0;
+  overflow-y: auto;
   background: var(--bg-primary, #00060a);
 }
 
-/* Decorative HUD grid backdrop, matching LockScreen. */
+/* Decorative HUD grid backdrop, matching LockScreen. Fixed, not absolute, so
+ * it stays put behind the panel when the overlay scrolls. */
 .grid {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -26,6 +33,7 @@
   z-index: 2;
   width: 360px;
   max-width: 86vw;
+  margin: auto;
   text-align: center;
 }
 

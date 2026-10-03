@@ -860,6 +860,20 @@ const baseScenarios: Record<string, Scenario> = {
   // in the fixture (never the live cycling pointer — see fixtures.ts), and
   // both are full-screen overlays like lock/locked above (captured fullPage
   // via scenarioActions.ts).
+  // The idle sign-in form with the demo-accounts hint under it (hardening
+  // spec §7 D9) — the only golden of the form at rest; the wait-* arms below
+  // seed no demo accounts, so they render without the hint.
+  "login/demo-hint": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-demo-hint",
+  },
+  // The hint while a sign-in is in flight: receded with the fields, pushed
+  // below the wait console. The only witness of the hint's busy styling —
+  // the contract tier can assert `disabled`, not the recede.
+  "login/demo-hint-wait": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-demo-hint-wait",
+  },
   "login/wait-handshake": {
     componentKey: "LoginScreen",
     fixtureKey: "login-wait-handshake",

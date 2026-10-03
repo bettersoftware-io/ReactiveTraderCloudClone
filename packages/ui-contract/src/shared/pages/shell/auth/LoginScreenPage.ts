@@ -65,6 +65,69 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
     return this.commandLog().authLoginArgs;
   }
 
+  /** The username field's current value. */
+  usernameValue(): string {
+    return this.inputValue("login-username");
+  }
+
+  /** The password field's current value. */
+  passwordValue(): string {
+    return this.inputValue("login-password");
+  }
+
+  /** The `data-testid` of the control holding keyboard focus; "" when the
+   * focused element carries none (or nothing is focused). */
+  focusedControl(): string {
+    return (
+      this.root.ownerDocument.activeElement?.getAttribute("data-testid") ?? ""
+    );
+  }
+
+  /** True when the demo-accounts hint is on screen. */
+  hasDemoAccounts(): boolean {
+    return within(this.root).queryByTestId("login-demo-accounts") !== null;
+  }
+
+  /** Each demo-account row as "username — role", top to bottom; empty when
+   * the hint is absent. */
+  demoAccounts(): string[] {
+    return this.demoAccountRows().map((row) => {
+      const [username, role] = Array.from(row.querySelectorAll("span")).map(
+        (cell) => {
+          return cell.textContent?.trim() ?? "";
+        },
+      );
+
+      return `${username} — ${role}`;
+    });
+  }
+
+  /** Each demo-account row's accessible name, top to bottom. */
+  demoAccountLabels(): string[] {
+    return this.demoAccountRows().map((row) => {
+      return row.getAttribute("aria-label") ?? "";
+    });
+  }
+
+  /** The password the hint prints under the list; "" when it prints none. */
+  demoPassword(): string {
+    return (
+      within(this.root)
+        .queryByTestId("login-demo-password")
+        ?.textContent?.trim() ?? ""
+    );
+  }
+
+  /** Click the demo-account row for `username`. */
+  async pickDemoAccount(username: string): Promise<void> {
+    await this.user.click(this.demoAccountRow(username));
+  }
+
+  /** True when the demo-account row for `username` is disabled. */
+  isDemoAccountDisabled(username: string): boolean {
+    return this.demoAccountRow(username).hasAttribute("disabled");
+  }
+
   /** True when either login-wait treatment is on screen. */
   hasWait(): boolean {
     return this.waitVariant() !== null;
@@ -73,5 +136,25 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
   /** Which wait treatment is rendered: "handshake", "reactor", or null. */
   waitVariant(): LoginWaitVariant | null {
     return waitVariantWithin(this.root);
+  }
+
+  private inputValue(testId: string): string {
+    return within(this.root).getByTestId<HTMLInputElement>(testId).value;
+  }
+
+  private demoAccountRows(): HTMLElement[] {
+    return within(this.root).queryAllByTestId("login-demo-account");
+  }
+
+  private demoAccountRow(username: string): HTMLElement {
+    const row = this.demoAccountRows().find((candidate) => {
+      return candidate.getAttribute("data-username") === username;
+    });
+
+    if (row === undefined) {
+      throw new Error(`no demo-account row for "${username}"`);
+    }
+
+    return row;
   }
 }
