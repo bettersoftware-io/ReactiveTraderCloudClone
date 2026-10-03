@@ -1204,10 +1204,11 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    | `@rtc/boot-splash` | 5% |
    | `motion-dom` | 5% |
    | `@rtc/client-core`, all of it | 2.9% |
-   | of which presenters and machines | 2.4% |
+   | of which `presenters/` (machines included) | 2.4% |
 
    The presenters and machines this follow-up would have moved are ~25 KB
-   raw, **~7 KB gzip — 2% of the eager set**. They are thin on purpose: slice
+   raw (that directory minus the view-model helpers, which stay eager either
+   way), **~7 KB gzip — 2% of the eager set**. They are thin on purpose: slice
    8 moved the rules into `@rtc/core-logic`, which is why the async core
    implements all 75 members in a 13 KB chunk. Three reasons not to build
    it:
@@ -1221,11 +1222,15 @@ their natives arrive, not descriptions of shipped sibling behaviour.
      another core.
    - **The boundary already holds in source.** Outside tests and the
      `@rtc/ui-contract` harness, no file takes a presenter class or a
-     machine factory from the root index. The only values that cross are
-     three pure view-model helpers (`kpisVm`, `latencyBuckets`,
-     `throughputPaths`) and domain constants a presenter module re-exports.
-     The cost would have been ~75 *test* files repointed to `./core`, to
-     enforce what is already true.
+     machine factory from the root index. The only values UI source takes
+     that are *defined* in a presenter module are three pure view-model
+     helpers (`kpisVm`, `latencyBuckets`, `throughputPaths`); the rest are
+     domain or core-logic values a presenter module merely re-exports. The
+     change itself would have been small — those helpers and one constant an
+     adapter imports from `JarvisPanelsMachine` moved to pure modules, nine
+     test and harness files repointed to `./core` — but it would have
+     enforced what is already true, at the price of a full verification
+     cycle for a bundling change.
    - **Extending it to `@rtc/core-logic` helps nobody.** Half of its ~40 KB
      raw must stay eager (the layout defaults, the preset codec and the
      Jarvis hint formatters the UI imports). The other half is code all
@@ -1236,9 +1241,9 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    keeps an RxJS machine alive wherever a UI file constructs one directly
    instead of going through the core's `MachineFactories`. Nothing does
    today; the rule that keeps it so belongs to 7's design. If bundle size
-   ever becomes the goal, the table says where to look: the login screen
-   needs neither Dockview nor the workspace UI, which together are about
-   half the entry.
+   ever becomes the goal, the table says where to look: Dockview
+   (`dockview-core` plus `@rtc/layout-dockview`'s 4.6%) is about a third of
+   the entry, and nothing before sign-in mounts it.
 
 ## See also
 
