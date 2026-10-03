@@ -523,9 +523,9 @@ reach it *statically*, whoever ends up using it, so both halves are needed.
 This came in two steps. Approach B (2026-10-02) moved the composition root
 alone: the react entry went 318.1 → 315.0 KB gzip. The edge surface
 (2026-10-03) moved the presenters and machines: the react eager set went
-352.9 → 341.5 KB gzip, the solid one 275.1 → 264.0, and the RxJS core chunk
+352.9 → 341.6 KB gzip, the solid one 275.1 → 264.0, and the RxJS core chunk
 grew from 4.2 to 13.9 KB, next to async's 13.1 and Effect's 73.4. A visitor
-on another core downloads ~8.6 KB less; the default RxJS visitor about 1 KB
+on another core downloads ~8.7 KB less; the default RxJS visitor about 1.2 KB
 more in total, since the presenters are needed at boot either way. The point
 was the boundary, not the bytes — ADR-006's amendments have the full
 breakdown. `@rtc/client-core`'s adapters and port factories ship eagerly by

@@ -214,9 +214,10 @@ the next amendment.
 **Amended 2026-10-03 — the root index is the edge.** `@rtc/client-core`'s
 root index now exports the *edge* only — adapters, port factories, stores and
 pure helpers — plus the presenter barrel's **types** (`export type *`, which
-costs nothing at runtime). The presenter classes and machine factories, 81
-runtime names, left the root and are exported from `@rtc/client-core/core`
-beside the composition root, so that subpath is the whole RxJS core. What
+costs nothing at runtime). The presenter classes, the machine factories and
+the constants and helpers exported beside them — 81 runtime names — left the
+root and are exported from `@rtc/client-core/core` beside the composition
+root, so that subpath is the whole RxJS core. What
 had to move for it:
 
 - `adminKpisVm.ts` (the three pure view-model helpers the UI imports) out of
@@ -237,20 +238,20 @@ gzip, KB):
 
 | | Before | After |
 |---|---|---|
-| react eager set (entry + preloaded shared chunk) | 352.9 | 341.5 |
+| react eager set (entry + preloaded shared chunk) | 352.9 | 341.6 |
 | solid eager set | 275.1 | 264.0 |
 | RxJS core chunk | 4.2 | 13.9 |
 | async core chunk | 13.1 | 13.1 |
 | Effect core chunk | 73.4 | 73.4 |
-| lazy chunks shared by the cores | — | 2.6 + 0.2 |
+| lazy chunks shared by the cores | 0.2 | 2.7 + 0.2 |
 
 The eager set lost ~11 KB — more than the presenters' own ~7 KB, because the
 RxJS operators and `@rtc/core-logic` folds only they used left with them
 (into the RxJS chunk and the two small shared ones). Who gains what: a
-visitor on the async or Effect core downloads ~8.6 KB less. The default RxJS
-visitor downloads ~1 KB **more** in total — the same code split over three
-lazy requests instead of one — because that visitor needs the presenters at
-boot whichever chunk holds them. So this is a change for the boundary, not
+visitor on the async or Effect core downloads ~8.7 KB less. The default RxJS
+visitor downloads ~1.2 KB **more** in total — the same code split over three
+parallel lazy requests instead of two — because that visitor needs the
+presenters at boot whichever chunk holds them. So this is a change for the boundary, not
 for speed: the three cores are now symmetric lazy chunks (13.9 / 13.1 / 73.4
 KB), "a visitor never downloads a core they did not choose" holds without a
 caveat, and the UI cannot reach a presenter class or a machine factory
@@ -1241,7 +1242,7 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    and `react-dom` (19%) the real weight — so it was built for the boundary
    and the symmetry of the three cores, not for size. Extending the split to
    `@rtc/core-logic` was considered and dropped: what only the cores use
-   already leaves the eager set by itself (the ~2.6 KB shared lazy chunk),
+   already leaves the eager set by itself (the ~2.7 KB shared lazy chunk),
    the rest the UI imports, and it is code all three cores share, so no
    visitor would download less. If bundle size ever becomes the goal, the
    attribution says where to look: Dockview (`dockview-core` plus
