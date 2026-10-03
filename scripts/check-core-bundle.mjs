@@ -19,8 +19,8 @@
 // RXJS_CORE_BRAND). `@rtc/client-core`'s presenters, machines and adapters are
 // still reached eagerly through the root index the UI imports from, so they
 // stay in the entry bundle regardless; the measured move is ~3 KB gzip per
-// client. Making THOSE lazy needs an explicit edge surface for the UI — see
-// ADR-006 Follow-ups.
+// client. Making THOSE lazy was measured and declined (~7 KB gzip, which the
+// default visitor needs at boot anyway) — see ADR-006 Follow-up 9.
 //
 // Two modes:
 //   node scripts/check-core-bundle.mjs              — builds each web client

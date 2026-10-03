@@ -208,8 +208,9 @@ the entry reaches it statically, and the UI reaches `@rtc/client-core`'s
 presenters, machines and adapters through the root index's barrels, so
 those stay eager. The default visitor now pays one extra chunk fetch (no
 `modulepreload` hint is added: that would re-privilege RxJS, and the gate
-reads a hint as eager). The real bundle win is a separate change, Follow-up
-9.
+reads a hint as eager). Making the presenters and machines lazy as well was
+then measured and declined — about 7 KB gzip, for a visitor who needs them
+at boot anyway (Follow-up 9).
 
 ## Consequences
 
@@ -1178,26 +1179,71 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    place, as a showcase of the architecture's resilience rather than a
    save-and-reload. Needs the page-lifetime singletons (the devtools hub,
    the transport, other module-level state) to tolerate a second
-   composition within one page life.
+   composition within one page life, and a guard that no UI file constructs
+   a core's machine or presenter directly (see 9).
 8. ~~**Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
    subpath export for the RxJS composition root~~ — done 2026-10-02 (the
    amendment under Decision 6): the composition root is lazy and the entry
    bundle carries no core's brand; measured gain ~3 KB gzip per client,
    because only the composition root could move — see 9.
-9. **An explicit edge surface for the UI, so the RxJS core's presenters and
-   machines go lazy too.** Today the UI imports `@rtc/client-core`'s root
-   index, whose `export *` barrels reach every presenter and machine module
-   (the view-model helpers the UI needs — `kpisVm`, `latencyBuckets`,
-   `throughputPaths`, `PANEL_SPECS`, the sort helpers — live beside their
-   presenters), and the bundler keeps a statically reachable module in the
-   entry chunk. The change: move those helpers into pure modules (several
-   belong in `@rtc/core-logic`), take the presenter and machine barrels off
-   the root index so the root is the *edge* (adapters, port factories,
-   stores, helpers, constants) and `./core` the only way to the presenters,
-   then re-measure. Architectural — its own spec; it is also the "UI never
-   imports the core's internals" boundary the migration ending in
-   [§23](../architecture/23-application-cores-explained.md#why-three-cores-read-this-first)
-   assumes.
+9. ~~**An explicit edge surface for the UI, so the RxJS core's presenters and
+   machines go lazy too**~~ — measured 2026-10-03 and declined; nothing to
+   build. The idea was to take the presenter and machine barrels off
+   `@rtc/client-core`'s root index, so the root is the *edge* (adapters, port
+   factories, stores, helpers, constants) and `./core` the only way to the
+   presenters. A sourcemap attribution of the React client's production
+   build (each minified byte of a chunk charged to its source module) puts
+   the eager set at ~353 KB gzip — the 318 KB entry plus a preloaded 35 KB
+   shared chunk — and the entry's raw bytes at:
+
+   | In the entry chunk | Share of its raw bytes |
+   |---|---|
+   | `dockview-core` | 30% |
+   | the client's own UI | 25% |
+   | `react-dom` | 19% |
+   | `@rtc/boot-splash` | 5% |
+   | `motion-dom` | 5% |
+   | `@rtc/client-core`, all of it | 2.9% |
+   | of which `presenters/` (machines included) | 2.4% |
+
+   The presenters and machines this follow-up would have moved are ~25 KB
+   raw (that directory minus the view-model helpers, which stay eager either
+   way), **~7 KB gzip — 2% of the eager set**. They are thin on purpose: slice
+   8 moved the rules into `@rtc/core-logic`, which is why the async core
+   implements all 75 members in a 13 KB chunk. Three reasons not to build
+   it:
+
+   - **Lazy loading pays only for code some visitors never need.** The async
+     and Effect chunks pass that test: ~86 KB gzip (13 + 73) the default
+     visitor never downloads, which is what made a one-build runtime switch
+     affordable. The RxJS presenters fail it. The default visitor needs them
+     at boot — the core loads before the app mounts — so moving them saves
+     that visitor nothing, and saves ~7 KB only for a visitor who picked
+     another core.
+   - **The boundary already holds in source.** Outside tests and the
+     `@rtc/ui-contract` harness, no file takes a presenter class or a
+     machine factory from the root index. The only values UI source takes
+     that are *defined* in a presenter module are three pure view-model
+     helpers (`kpisVm`, `latencyBuckets`, `throughputPaths`); the rest are
+     domain or core-logic values a presenter module merely re-exports. The
+     change itself would have been small — those helpers and one constant an
+     adapter imports from `JarvisPanelsMachine` moved to pure modules, nine
+     test and harness files repointed to `./core` — but it would have
+     enforced what is already true, at the price of a full verification
+     cycle for a bundling change.
+   - **Extending it to `@rtc/core-logic` helps nobody.** Half of its ~40 KB
+     raw must stay eager (the layout defaults, the preset codec and the
+     Jarvis hint formatters the UI imports). The other half is code all
+     three cores share, so every visitor downloads it in the same page load
+     whichever chunk holds it.
+
+   What survives is a guard, not a bundle change: a hot swap (7) silently
+   keeps an RxJS machine alive wherever a UI file constructs one directly
+   instead of going through the core's `MachineFactories`. Nothing does
+   today; the rule that keeps it so belongs to 7's design. If bundle size
+   ever becomes the goal, the table says where to look: Dockview
+   (`dockview-core` plus `@rtc/layout-dockview`'s 4.6%) is about a third of
+   the entry, and nothing before sign-in mounts it.
 
 ## See also
 

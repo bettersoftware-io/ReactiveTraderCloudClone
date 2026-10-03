@@ -517,10 +517,11 @@ whenever the entry can reach it *statically*, whoever ends up using it. So
 approach B moved exactly the composition root: measured on 2026-10-02, the
 react entry went 318.1 → 315.0 KB gzip and the solid entry 240.4 → 237.5 KB,
 with a ~4 KB `core-*.js` chunk appearing in each; `@rtc/client-core`'s
-presenters and machines ship eagerly as before. Making *them* lazy needs an
-explicit edge surface for the UI (the helpers it imports moved out of the
-presenter modules, the presenter and machine barrels off the root index) —
-ADR-006 Follow-ups. A stray UI import of one presenter class does not trip
+presenters and machines ship eagerly as before. They stay eager on purpose:
+measured on 2026-10-03 they are ~7 KB gzip, 2% of the eager set, and the
+default visitor needs them at boot anyway, so the explicit edge surface that
+would have made them lazy was declined (ADR-006 Follow-up 9 has the
+breakdown). A stray UI import of one presenter class does not trip
 rule 1 either, for the same reason: only the composition root carries a
 brand.
 
