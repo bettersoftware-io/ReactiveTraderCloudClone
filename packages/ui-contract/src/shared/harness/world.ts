@@ -49,6 +49,7 @@ import {
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_VIEW_MODE,
   type Dealer,
+  type DemoAccount,
   type DepthBook,
   type EqBlotterView,
   type EquityInstrument,
@@ -639,6 +640,10 @@ export interface World {
    * host offers no core selection at all (useCoreSelection() returns null),
    * so the row is absent entirely. */
   readonly coreImpl: BehaviorSubject<CoreImpl | null>;
+  /** The demo sign-ins backing useDemoAccounts (drives LoginScreen's
+   * demo-accounts hint). A plain value, not a subject: the real shell reads
+   * it once at composition. Defaults to none — a plain live build. */
+  readonly demoAccounts: readonly DemoAccount[];
 }
 
 /**
@@ -699,6 +704,8 @@ export interface WorldSeeds {
    * distinct from `undefined` on purpose, so a spec can ask for the null
    * case without also having to spell out "rxjs" everywhere else. */
   coreImpl?: CoreImpl | null;
+  /** Seeds `World.demoAccounts`; defaults to none. */
+  demoAccounts?: readonly DemoAccount[];
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -729,6 +736,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     workspaceLayout: workspaceLayoutSeed,
     layoutPresets: layoutPresetsSeed,
     coreImpl: coreImplSeed,
+    demoAccounts = [],
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -1143,6 +1151,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     chartSubstrate,
     layoutEngine,
     coreImpl,
+    demoAccounts,
     jarvisSkin,
     jarvis,
     panelStreamDeps,

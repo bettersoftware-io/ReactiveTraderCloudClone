@@ -13,6 +13,7 @@ import type {
   AmbientStyle,
   ChartSubstrate,
   CreditRfqFilter,
+  DemoAccount,
   EquityInstrument,
   EquityOrder,
   EquityQuote,
@@ -116,6 +117,9 @@ export interface MountOptions<P> {
    * `useCoreSelection()` returns null and the Application core row is
    * absent. */
   coreImpl?: CoreImpl | null;
+  /** Seeds `useDemoAccounts()` (World.demoAccounts); defaults to none, the
+   * plain live build, where LoginScreen renders no demo-accounts hint. */
+  demoAccounts?: readonly DemoAccount[];
 }
 
 const mounted: MountedRoot[] = [];
@@ -296,6 +300,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     layoutEngine: opts.layoutEngine,
     workspaceLayout: opts.workspaceLayout,
     coreImpl: opts.coreImpl,
+    demoAccounts: opts.demoAccounts,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

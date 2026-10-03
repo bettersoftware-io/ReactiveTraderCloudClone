@@ -1,6 +1,11 @@
 // Auth
 
 export { DEFAULT_AUTH_TTL_MS } from "./auth/authTtl.js";
+export type { DemoAccount } from "./auth/demoAccounts.js";
+export {
+  listDemoAccounts,
+  sharedDemoPassword,
+} from "./auth/demoAccounts.js";
 export type { RosterEntry } from "./auth/roster.js";
 export { findRosterUser, ROSTER } from "./auth/roster.js";
 export type { SessionUser } from "./auth/sessionUser.js";

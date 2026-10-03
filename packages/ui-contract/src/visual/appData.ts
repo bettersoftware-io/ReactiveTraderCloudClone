@@ -28,6 +28,7 @@ import {
   type CreditRfqFilter,
   type CurrencyPair,
   type Dealer,
+  type DemoAccount,
   type DepthBook,
   type EqBlotterView,
   type EquityInstrument,
@@ -156,6 +157,9 @@ export interface AppData {
   /** Login-wait treatment (useAuth's `state.waitVariant`); only visible while
    * sessionAuthenticating or sessionUnlocking is true. Defaults to "handshake". */
   waitVariant?: LoginWaitVariant;
+  /** The demo sign-ins LoginScreen hints at (useDemoAccounts); defaults to
+   * none → no hint, the plain live build. */
+  demoAccounts?: readonly DemoAccount[];
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
   adminMetrics?: {
