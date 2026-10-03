@@ -71,6 +71,33 @@ describe("App (shell chrome)", () => {
     expect(page.exists("login-screen")).toBe(false);
   });
 
+  // The composition root's own wiring for the login screen's demo-accounts
+  // hint (hardening spec §7 D9): AppRoot → readDemoAccounts() →
+  // createViewModel → LoginScreen, no fake on the seam. The contract tier
+  // covers LoginScreen against a seeded World and so cannot see whether
+  // AppRoot hands the accounts over at all.
+  it("hints at the simulator's demo accounts, and a picked account signs in", async () => {
+    page.mount();
+
+    expect(page.demoAccountUsernames()).toEqual(["demo"]);
+
+    page.pickDemoAccount("demo");
+    page.click("login-submit");
+
+    await page.waitFor(() => {
+      expect(page.exists("header")).toBe(true);
+    });
+    expect(page.exists("login-screen")).toBe(false);
+  });
+
+  it("shows no demo-accounts hint on a plain live build", () => {
+    vi.stubEnv("VITE_SERVER_URL", "ws://localhost:4000");
+    page.mount();
+
+    expect(page.exists("login-screen")).toBe(true);
+    expect(page.demoAccountUsernames()).toEqual([]);
+  });
+
   it("mounts and renders the live connection status from the simulator ports", async () => {
     page.mount();
     page.signIn();

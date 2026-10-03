@@ -84,11 +84,19 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     // engine-deterministic, so any diff at all is a real divergence. A
     // scenario-level maxDiffPixels instead RAISES the absolute cap for a
     // measured, mechanism-understood divergence (see Scenario's doc).
-    const strictOpts = scenario.strict
+    const budgetOpts = scenario.strict
       ? { maxDiffPixels: 0, maxDiffPixelRatio: 0 }
       : scenario.maxDiffPixels !== undefined
         ? { maxDiffPixels: scenario.maxDiffPixels }
         : {};
+
+    // Scenario.pixelThreshold lowers the PER-PIXEL colour threshold: the
+    // budgets above bound how many pixels may differ, this decides whether a
+    // low-contrast pixel counts at all (see Scenario's doc).
+    const strictOpts =
+      scenario.pixelThreshold === undefined
+        ? budgetOpts
+        : { ...budgetOpts, threshold: scenario.pixelThreshold };
 
     if (action.fullPage) {
       await expect(page).toHaveScreenshot(shot, {

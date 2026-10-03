@@ -208,3 +208,54 @@ export function DockviewEngineAttachedVisual(): ReactElement {
     </div>
   );
 }
+
+/** Panel stubs with NO body copy, for the sash pin: the capture then holds
+ * nothing but dock chrome, so a strict comparison is not hostage to a text
+ * rasteriser. The test ids stay for parity with the lettered registry. */
+const emptyDockPanelRegistry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div data-testid="fx-rates-body" />;
+  },
+  "fx-analytics": () => {
+    return <div data-testid="fx-analytics-body" />;
+  },
+  "fx-positions": () => {
+    return <div data-testid="fx-positions-body" />;
+  },
+  "fx-blotter": () => {
+    return <div data-testid="fx-blotter-body" />;
+  },
+};
+
+/** The sash pin (`shell/layout-dockview-sash`): the seed layout with empty
+ * bodies on the small `sashStage`, asserted at ZERO tolerance
+ * (`Scenario.strict`). It exists because the config budget cannot see a sash
+ * grip — 60 px against a 100 px allowance — on any other dockview golden. */
+export function DockviewEngineSashVisual(): ReactElement {
+  const storeRef = useRef<DockLayoutStore | null>(null);
+
+  if (storeRef.current === null) {
+    storeRef.current = new InMemoryDockLayoutStore();
+  }
+
+  return (
+    <div className={styles.sashStage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={emptyDockPanelRegistry}
+        store={storeRef.current}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={[]}
+        instances={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={noop}
+      />
+    </div>
+  );
+}

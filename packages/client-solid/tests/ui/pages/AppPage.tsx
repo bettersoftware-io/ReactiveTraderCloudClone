@@ -36,6 +36,11 @@ export interface AppPage {
    * page method never hand-throws a wait condition, it only ever performs
    * the mechanical action. */
   signIn(): void;
+  /** The demo-account rows' usernames, top to bottom; empty when the login
+   * screen shows no hint. */
+  demoAccountUsernames(): string[];
+  /** Click the demo-account row for `username`. */
+  pickDemoAccount(username: string): void;
   exists(testId: string): boolean;
   text(testId: string): string;
   click(testId: string): void;
@@ -78,6 +83,22 @@ export function appPage(): AppPage {
       });
       fireEvent.click(screen.getByTestId("login-submit"));
     },
+    demoAccountUsernames(): string[] {
+      return findDemoAccountRows().map((row) => {
+        return row.getAttribute("data-username") ?? "";
+      });
+    },
+    pickDemoAccount(username: string): void {
+      const row = findDemoAccountRows().find((candidate) => {
+        return candidate.getAttribute("data-username") === username;
+      });
+
+      if (row === undefined) {
+        throw new Error(`no demo-account row for "${username}"`);
+      }
+
+      fireEvent.click(row);
+    },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
     },
@@ -104,4 +125,8 @@ export function appPage(): AppPage {
       return waitFor(assertion, options);
     },
   };
+}
+
+function findDemoAccountRows(): HTMLElement[] {
+  return screen.queryAllByTestId("login-demo-account");
 }

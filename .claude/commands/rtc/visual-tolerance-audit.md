@@ -50,7 +50,7 @@ Judge any future change to it against that.
    one it happened to be looking at:
 
    ```bash
-   grep -rn "maxDiffPixelRatio\|pixelmatch(" --include="*.ts" packages/ tests/ \
+   grep -rn "maxDiffPixelRatio\|pixelmatch(\|pixelThreshold" --include="*.ts" packages/ tests/ \
      | grep -v node_modules | grep -v "/reports/" | grep -v "/dist/"
    ```
 
@@ -58,7 +58,7 @@ Judge any future change to it against that.
    |---|---|---|
    | `client-react/.../playwright.config.ts` | **yes** (`visual.yml`) | the tier that WRITES the goldens |
    | `client-solid/.../playwright.config.ts` | **yes** (`visual.yml`) | assert-only; judges solid's renders against **react's** goldens |
-   | `ui-contract/src/visual/scenarios.ts` per-scenario overrides | **yes** (both web tiers) | `strict: true` = zero tolerance; `maxDiffPixels: N` RAISES the absolute cap for one scenario — each use must state its measured basis in a comment (grep both fields) |
+   | `ui-contract/src/visual/scenarios.ts` per-scenario overrides | **yes** (both web tiers) | `strict: true` = a zero PIXEL-COUNT budget; `maxDiffPixels: N` RAISES the absolute cap for one scenario; `pixelThreshold: n` LOWERS the per-pixel colour threshold (default 0.2) — without it even `strict` cannot see a low-contrast change (a removed sash grip passed `strict` on 9 of 10 skins, 2026-10-03). Each use must state its measured basis in a comment (grep all three fields) |
    | `client-react-native/tests/visual/shared/diff.ts` | **no** — runs in no workflow | `DEFAULT_RATIO = 0.06`, per-pixel `threshold: 0.1`; local-only |
 
    **Both web tiers read the same golden set, so the LOOSEST of the two is the

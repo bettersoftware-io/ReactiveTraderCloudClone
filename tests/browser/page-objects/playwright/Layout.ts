@@ -15,6 +15,7 @@ import type {
   LayoutPO,
   PopoutWindowPO,
   RootTheme,
+  SashGripSize,
 } from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
@@ -1157,11 +1158,39 @@ export class PlaywrightLayout implements LayoutPO {
     // its own meaning. Walk the head bar's mid-line for the first point
     // whose topmost element is not a control — the same test the engine
     // applies when deciding whether a press moves the float.
-    return this.group(panelId).evaluate((element) => {
+    //
+    // The head must have stopped moving first. A fresh attach glides the
+    // window's inner split to its final place over ~0.34s (dockview-hud.css,
+    // `[data-dock-glide] .dv-sash`), carrying a stacked member's head with
+    // it: a point measured mid-glide is on the head now and on the member
+    // above by the time the mouse presses. So the rect is sampled per frame
+    // until it holds still — a wait on a condition, not a sleep.
+    return this.group(panelId).evaluate(async (element) => {
       const head = element.querySelector(".dv-tabs-and-actions-container");
 
       if (head === null) {
         throw new Error("floatHeadGrip: the group has no head bar");
+      }
+
+      const stillFramesNeeded = 3;
+      const deadline = performance.now() + 2_000;
+      let lastRect = "";
+      let stillFrames = 0;
+
+      while (stillFrames < stillFramesNeeded) {
+        if (performance.now() > deadline) {
+          throw new Error("floatHeadGrip: the head never stopped moving");
+        }
+
+        await new Promise((resolve) => {
+          requestAnimationFrame(resolve);
+        });
+
+        const sample = head.getBoundingClientRect();
+        const rect = `${sample.x},${sample.y},${sample.width},${sample.height}`;
+
+        stillFrames = rect === lastRect ? stillFrames + 1 : 0;
+        lastRect = rect;
       }
 
       const r = head.getBoundingClientRect();
@@ -1247,6 +1276,34 @@ export class PlaywrightLayout implements LayoutPO {
           return handle !== null && getComputedStyle(handle).display === "none";
         })
       );
+    });
+  }
+
+  async floatSashGrip(panelId: string): Promise<SashGripSize | null> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatSashGrip: the panel is not in a float");
+      }
+
+      const sash = float.querySelector(".dv-sash-container > .dv-sash");
+
+      if (sash === null) {
+        return null;
+      }
+
+      const grip = getComputedStyle(sash, "::after");
+      const painted =
+        grip.content !== "none" &&
+        grip.display !== "none" &&
+        grip.visibility !== "hidden" &&
+        grip.backgroundColor !== "rgba(0, 0, 0, 0)" &&
+        grip.backgroundColor !== "transparent";
+
+      return painted
+        ? { width: parseFloat(grip.width), height: parseFloat(grip.height) }
+        : null;
     });
   }
 
