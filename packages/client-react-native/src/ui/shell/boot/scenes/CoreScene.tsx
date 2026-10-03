@@ -11,7 +11,7 @@ import {
 import type { JSX } from "react";
 import { useDerivedValue } from "react-native-reanimated";
 
-import { BOOT_DURATION_MS } from "@rtc/client-core";
+import { BOOT_DURATION_MS } from "@rtc/domain";
 import type { Projection3dParams } from "@rtc/motion-core";
 
 import type { BootSceneProps } from "#/ui/shell/boot/bootScene";

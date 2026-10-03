@@ -11,9 +11,12 @@ import {
   createSimulatorPorts,
   InMemorySessionStore,
   type Presenters,
-  SessionsKpiPresenter,
 } from "@rtc/client-core";
-import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import {
+  createApp,
+  createMachineFactories,
+  SessionsKpiPresenter,
+} from "@rtc/client-core/core";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,

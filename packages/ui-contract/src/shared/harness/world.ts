@@ -6,13 +6,16 @@ import type {
   AdminJarvisUsagePayload,
   AnimationIntent,
   AuthViewState,
+  EqDrawingsIntents,
   EqDrawingsState,
+  EqWorkspaceIntents,
   EqWorkspaceState,
   IncidentKind,
   IncidentState,
   JarvisAvailability,
   JarvisEvent,
   JarvisPort,
+  Machine,
   PanelStreamDeps,
   SessionUser,
   ThroughputView,
@@ -21,10 +24,7 @@ import type {
 import {
   createEqDrawingsMachine,
   createEqWorkspaceMachine,
-  type EqDrawingsIntents,
-  type EqWorkspaceIntents,
-  type Machine,
-} from "@rtc/client-core";
+} from "@rtc/client-core/core";
 import type { CoreImpl, CoreOption } from "@rtc/core-api";
 import {
   type AmbientStyle,

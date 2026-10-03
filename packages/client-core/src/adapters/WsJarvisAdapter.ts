@@ -9,6 +9,7 @@ import {
   timeout,
 } from "rxjs";
 
+import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
   isJarvisBrain,
@@ -30,8 +31,6 @@ import {
   parsePanelSpec,
   SERVER_MSG,
 } from "@rtc/shared";
-
-import { UNSUPPORTED_SENTINEL_SPEC } from "#/presenters/JarvisPanelsMachine";
 
 import type { IWsAdapter } from "./IWsAdapter";
 import type {
