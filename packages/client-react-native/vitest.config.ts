@@ -40,7 +40,8 @@ export default defineConfig({
     // `*.test.tsx` because those component suites need the react-native runtime
     // `jest-expo` bootstraps. Neither tier alone is "RN's coverage" and the two
     // are NOT addable — different providers disagree on what a statement is.
-    // Read README-COVERAGE.md before quoting either number.
+    // `test:coverage` merges the two by LINE (tests/coverage/mergeLcov.ts);
+    // that merged figure is the one to quote. See README-COVERAGE.md.
     coverage: {
       provider: "v8",
       // Count every source file, not just the ones a test imports, so wholly
@@ -52,6 +53,8 @@ export default defineConfig({
       // client-react-native does vitest alone reach", and refuses to flatter
       // itself by shrinking the denominator to the half it happens to test.
       include: ["src/**/*.{ts,tsx}"],
+      // Test files are not source — the same exclusion jest carries.
+      exclude: ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"],
       reporter: ["text-summary", "html", "lcov"],
       reportsDirectory: "reports/unit/coverage",
     },
