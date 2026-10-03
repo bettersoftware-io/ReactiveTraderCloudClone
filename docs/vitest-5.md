@@ -1,12 +1,14 @@
 # vitest 5 — spiked, parked
 
-**Status (2026-09-27): PARKED on purpose, not blocked by a missing release.**
-The repo stays on vitest **4.1.x**. A full upgrade spike to **5.0.2** was run
-and is kept on the unmerged branch
+**Status (2026-10-03): PARKED on purpose. Nothing technical blocks it any more.**
+The repo stays on vitest **4.1.x**. A full upgrade spike (first on 5.0.2, now
+**5.0.3**) is kept on the unmerged branch
 [`worktree-spike-vitest-5`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/tree/worktree-spike-vitest-5)
-(tip `ffee80039`). It fixes three silent v5 behaviour changes. One failure is
-still open (see [The open blocker](#the-open-blocker--mocks-lost-across-viresetmodules)).
-Every local gate but one is green.
+(tip `6d2a6c007`). It fixes three silent v5 behaviour changes and works around
+one upstream mocking regression (see
+[The mock regression](#the-mock-regression--concurrent-re-imports-after-viresetmodules)).
+The failure that was open on 2026-09-27 is fixed on the branch: every gate
+that was run is green. The branch is about 270 commits behind `main`.
 
 The decision to park was a cost/benefit call, not a technical dead end: see
 [Is it worth upgrading?](#is-it-worth-upgrading). The backlog entry lives in
@@ -18,14 +20,14 @@ The decision to park was a cost/benefit call, not a technical dead end: see
 |---|---|
 | Recorded gate (until 2026-09-27) | `vitest-browser-solid` peers on vitest `^4` only |
 | Was that the real gate? | **No.** The adapter runs on v5 unchanged, and a pnpm `peerDependencyRules` override is enough |
-| What actually broke | 3 behaviour changes, **none of which `pnpm test` noticed**, plus 1 open mocking regression |
-| Open blocker | `client-solid` contract-coverage gate: 33 failures in two registry tests (`vi.mock` + `vi.resetModules()`) |
+| What actually broke | 3 behaviour changes, **none of which `pnpm test` noticed**, plus 1 upstream mocking regression |
+| Open blocker | **None since 2026-10-03.** The 33 failures in two `client-solid` registry tests were a v5 regression with concurrent re-imports after `vi.resetModules()`; one line per test avoids it |
 | Why parked | Small gain (test strictness, browser-mode DX we barely use) against a 3-week-old major with several silent traps; v4 still receives security backports |
-| Recommended way to finish | Option 4 + option 1 [below](#four-ways-to-unblock-it) |
+| What is left to finish | Catch the branch up with `main`, re-run the full gates, and decide to un-park: see [How to resume](#how-to-resume) |
 
 ## What vitest 5 brings
 
-Released **2026-09-03** (5.0.0), then 5.0.1 (09-15) and 5.0.2 (09-25). The
+Released **2026-09-03** (5.0.0), then 5.0.1 (09-15), 5.0.2 (09-25) and 5.0.3 (09-30). The
 last 4.x is **4.1.11 (2026-08-18)**. Grouped by what it means here:
 
 **Test strictness: the main gain.**
@@ -94,11 +96,12 @@ All on `worktree-spike-vitest-5`, each item measured, not assumed.
 
 | change | where |
 |---|---|
-| `vitest`, `@vitest/ui`, `@vitest/coverage-v8`, `@vitest/coverage-istanbul`, `@vitest/browser`, `@vitest/browser-playwright` → **5.0.2** | every workspace manifest (all 27 projects) |
+| `vitest`, `@vitest/ui`, `@vitest/coverage-v8`, `@vitest/coverage-istanbul`, `@vitest/browser`, `@vitest/browser-playwright` → **5.0.3** (5.0.2 until 2026-10-03) | every workspace manifest (all 27 projects) |
 | `vitest-browser-react` 2.2 → **2.3.0** (peers `^4 \|\| ^5`) | `client-react` |
 | `vitest-browser-solid` stays **1.0.1**, with `peerDependencyRules.allowedVersions: { "vitest-browser-solid>vitest": "^5.0.0" }` | `pnpm-workspace.yaml` |
 | `waitForText` → `getByText(text, { exact: false })` (trap 1) | both clients' `tests/ui/visual/vitest-browser/visual.spec.tsx` |
 | html reporter `outputFile.html` → `["html", { outputDir }]` (trap 2) | 13 `vitest*.config.ts`, plus both `vitest.app.coverage.config.ts` |
+| `await import("../app{Head,Panel}Registry")` on its own, before the `Promise.all` re-import wave (the mock regression) | `client-solid`'s `appHeadRegistry.test.ts` and `appPanelRegistry.test.ts` |
 
 **Why `vitest-browser-solid` is safe on v5.** Its entire runtime is about 60
 lines. It uses exactly two `vitest/browser` APIs, `utils.getElementLocatorSelectors`
@@ -109,13 +112,16 @@ carries it, delete the override.
 
 ### Gate results on the spike branch
 
+Measured on 5.0.2 on 2026-09-27. Only the solid contract-coverage row was
+re-run on 5.0.3; the rest need a re-run after the catch-up with `main`.
+
 | gate | v5 result |
 |---|---|
 | `pnpm build` / `pnpm typecheck` / `pnpm test` | ✅ green on the **first** try, before any fix. That is the point: see the traps |
 | fast gauntlet (21 gates) | ✅ after trap 2's fix (Biome had flagged `.vitest/` debris) |
 | `lint:eslint:types`, `check:lint-warnings-drift`, `build`, `check:devtools-dist`, `check:core-bundle` | ✅ |
 | contract coverage — react | ✅ |
-| contract coverage — **solid** | ❌ **33 / 1211 fail**: the open blocker (v4 baseline: 1211 / 1211) |
+| contract coverage — **solid** | ✅ **1211 / 1211** on 5.0.3 with the registry-test fix, 98.63% statements / 93.76% branches (33 / 1211 failed before it, on 5.0.2 and 5.0.3 alike) |
 | coverage — devtools core/app, async core, effect core | ✅ |
 | visual-reach vitest-browser tier, react + solid | ✅ 1872 / 1872 each, after trap 1's fix (80 failures each before) |
 | RN jest | n/a (RN tests run on jest) |
@@ -172,7 +178,7 @@ carries it, delete the override.
 The STATUS entry said vitest 5 was gated on `vitest-browser-solid` releasing
 a `^5` peer. That was a reading of `package.json`, not a measurement. The
 adapter works as published (see above). The real blockers were traps 1, 2
-and the open one below, and none of them was in the recorded list of v5
+and the mock regression below, and none of them was in the recorded list of v5
 breaking changes. That list (`toHaveTextContent`, `sequential`, locator
 objects, `expect.poll`) turned out harmless here: 6 files use
 `toHaveTextContent` or `sequential`, and all pass.
@@ -181,7 +187,10 @@ objects, `expect.poll`) turned out harmless here: 6 files use
 major. Judge it on the full gauntlet **and** the vitest-browser tiers:
 `pnpm --filter @rtc/client-{react,solid} test:ui:visual:vitest-browser:{react,solid}:coverage`.
 
-## The open blocker — mocks lost across `vi.resetModules()`
+## The mock regression — concurrent re-imports after `vi.resetModules()`
+
+This was the open blocker until 2026-10-03. It is a vitest 5 regression
+(5.0.0 through 5.0.3; 4.1.11 is fine), and one line per test avoids it.
 
 ### What the two tests check
 
@@ -210,92 +219,131 @@ vi.mock("solid-js/web", async (importOriginal) => ({
 }));
 ```
 
-### Why it breaks on v5 (contract-coverage run only)
+### Why it broke on v5 (contract-coverage run only)
 
 1. The contract-coverage config also runs co-located `src/ui/**/*.test.ts`.
    Its setup file `tests/ui/contract/solid/setup.ts` imports `./render`,
-   which imports `registry.tsx`, which does `import { App } from "#/ui/App"`
-   at line 137. So the **real** app, both registries included, is loaded
-   with the real `createComponent` before any test file's `vi.mock` applies.
+   which imports `registry.tsx`, which does `import { App } from "#/ui/App"`.
+   So the **real** app, both registries included, is loaded with the real
+   `createComponent` before any test file's `vi.mock` applies.
 2. The tests work around this with `vi.resetModules()` and then re-import the
-   registry and every head fresh. The workaround is documented at length in
-   both test files.
-3. **On v4 the fresh registry gets the mocked `createComponent`. On v5 it
-   gets the real one**, runs `LiveRatesHead` for real, and throws
-   `useFxView must be used within a FxViewProvider`.
+   registry and every head fresh. That is the workaround vitest's maintainers
+   recommend for a setup-file preload
+   ([vitest#10104](https://github.com/vitest-dev/vitest/issues/10104)).
+3. The re-import was **one `Promise.all` of 13 to 16 dynamic imports**. Every
+   one of those modules statically imports the mocked `solid-js/web`.
+4. **On v5, only the first of those concurrent importers gets the mock. The
+   rest get the real module**, with no warning. The registry then runs
+   `LiveRatesHead` for real and throws
+   `useViewModel must be used within ViewModelProvider`. On v4 every importer
+   gets the mock.
 
 Under the unit config (`pnpm test`, which CI also runs) both tests **pass**
 on v5, because that config has no preloading setup file.
 
-### What was measured
+### Minimal reproduction
 
-| experiment (v5, contract-coverage config, `appHeadRegistry.test.ts` alone) | result |
+No plugins, default pool. Passes on 4.1.11; fails on 5.0.0 and 5.0.3, on both
+the `forks` and `threads` pools (Node 26.10, macOS arm64).
+
+```js
+// dep.js
+export const which = "real";
+
+// a1.js, a2.js, a3.js (three identical files)
+import { which } from "./dep.js";
+export const seen = () => which;
+
+// setup.js
+import "./a1.js";
+import "./a2.js";
+import "./a3.js";
+
+// vitest.config.js
+import { defineConfig } from "vitest/config";
+export default defineConfig({ test: { setupFiles: ["./setup.js"] } });
+
+// concurrent.test.js
+import { expect, it, vi } from "vitest";
+
+vi.mock("./dep.js", () => ({ which: "mock" }));
+
+it("concurrent re-imports after resetModules all see the mock", async () => {
+  vi.resetModules();
+  const mods = await Promise.all([import("./a1.js"), import("./a2.js"), import("./a3.js")]);
+  expect(mods.map((m) => m.seen())).toEqual(["mock", "mock", "mock"]);
+  // 5.0.3: ["mock", "real", "real"]
+});
+```
+
+| variant of the reproduction (5.0.3) | result |
 |---|---|
-| as committed | 14 / 15 fail |
-| same file, unit config | 15 / 15 pass |
-| same file, vitest **4** | passes (whole run: 1211 / 1211) |
-| diagnostic: registry module identity before vs after `resetModules` | **different**: the reset works |
-| diagnostic: the test's own `import("solid-js/web")` | **mocked** |
-| `vi.doMock(...)` re-registered right after `resetModules` | still 14 / 15 fail |
-| setup file removed from `setupFiles` | **15 / 15 pass** |
-| registry imported under a new id, `import("../appHeadRegistry?fresh")` | **15 / 15 pass** |
-| `resetModules` implementation, v4 vs v5 (`vitest/dist/chunks/utils.*.js`) | byte-identical |
+| as above | **fails**: `["mock", "real", "real"]` |
+| the same three imports awaited one after another | passes |
+| one import of a module that statically imports `a1`–`a3` | passes |
+| no `setupFiles` entry | passes |
+| async factory with `importOriginal` instead of a sync one | fails the same way |
+| no `vi.resetModules()` | fails on **4.1.11 too**: that is the known limitation in vitest#10104, not this regression |
 
-**Working explanation (unconfirmed):** v5's module runner caches, per importer,
-which `solid-js/web` instance an import resolved to, including the "is this
-mocked?" decision. `resetModules` clears the module's exports but not that
-per-importer cache. So a re-evaluated registry reuses the real `solid-js/web`
-it resolved during the setup preload, while a never-seen importer (the test
-file, or `?fresh`) goes through the mocker. No matching upstream issue existed
-on 2026-09-27.
+So all three ingredients are needed: a setup-file preload, `vi.resetModules()`,
+and **concurrent** re-imports.
 
-### Four ways to unblock it
+### What was measured in the repo
 
-**1. File upstream, keep parked.** Minimal repro: a package with a mocked
-dependency, a `setupFiles` entry that preloads a module importing it,
-`vi.resetModules()`, a re-import; v4 passes, v5 fails.
-- For: fixes the root cause; very likely a genuine regression others will hit;
-  no hack in our code.
-- Against: unknown wait. Upstream may call it intended, which leaves options
-  2–4 anyway.
-- Cost: about an hour for the repro.
+| experiment (v5, contract-coverage config) | result |
+|---|---|
+| both registry tests as committed, 5.0.2 and 5.0.3 | 33 / 39 fail |
+| same files, unit config | all pass |
+| same files, vitest **4** | pass (whole run: 1211 / 1211) |
+| registry module identity before vs after `resetModules` | **different**: the reset works |
+| the test's own `import("solid-js/web")` | **mocked** |
+| `vi.doMock(...)` re-registered right after `resetModules` | still fails |
+| setup file removed from `setupFiles` | passes |
+| registry imported under a new id, `import("../appHeadRegistry?fresh")` | passes |
+| **registry awaited on its own before the `Promise.all`** (5.0.3) | **39 / 39 pass; whole tier 1211 / 1211** |
 
-**2. Work around it in the two tests.** Import the registry under a fresh
-module id (`?fresh`).
-- For: a tiny change, measured to work.
-- Against: it relies on vitest internals and could break silently on a
-  patch release. TypeScript cannot resolve a `?fresh` specifier, so it needs a
-  cast or a string variable (lint/TS suppressions are banned here; this part
-  was **not** verified).
+The first explanation recorded here (2026-09-27) was that a per-importer cache
+survives `resetModules`. That was **wrong about the trigger**: sequential
+re-imports are fine. The trigger is concurrency. The cause inside vitest is
+not confirmed.
 
-**3. Stop the setup file preloading `App`.** Make the `AppShell` token in
-`tests/ui/contract/solid/registry.tsx` load `App` lazily. The registries then
-load after each test file's `vi.mock`, and the whole `resetModules` workaround
-in both tests can be deleted.
-- For: removes the root cause, simplifies both tests, and spares every future
-  mock-based `src/ui` test the same trap.
-- Against: changes the shared contract harness that 6 `AppShell` specs use.
-  Solid's lazy loading adds an async step those specs may need to await, and
-  the Solid harness would start to differ from React's.
-- Cost: not measured.
+### The fix used
 
-**4. Run those two tests under the unit config only.** Exclude them from the
-contract-coverage run. Their assertions keep running under `pnpm test`, which
-passes on v5, so **no assertion is lost**. Measured on the spike branch with
-both files excluded:
-- The gate still passes at **98.59%** statements (bar 95%; branches 93.76%,
-  bar 85%).
-- `appHeadRegistry.tsx` stays at **17 / 17** lines, since other specs render
-  the whole app.
-- `appPanelRegistry.tsx` drops to **29 / 32** lines and **1 / 2** branches.
-- For: the smallest change, and nothing hidden.
-- Against: those two files lose a little *counted* coverage. The tests exist
-  partly because `appPanelRegistry` once sat at 56% contract coverage.
+```ts
+vi.resetModules();
+await import("../appHeadRegistry"); // loads the whole graph through one import
+const [/* … */] = await Promise.all([/* the same imports as before */]);
+```
 
-**Recommendation: 4 + 1.** That lands v5 without a hack, and if upstream fixes
-the regression, putting the two tests back is a one-line revert. Option 3 is
-the thorough fix, but it is harness work for its own PR, not part of a
-dependency bump.
+The registry statically imports every head, so awaiting it alone loads the
+whole graph through a single import. The `Promise.all` that follows only reads
+modules that are already loaded. No assertion changes, the tests stay in the
+contract-coverage run, and the change is also correct on v4.
+
+### Upstream
+
+No report of this existed on 2026-10-03 (searched `vitest-dev/vitest` for
+`resetModules`, `vi.mock` and `setupFiles`). Related but different:
+
+- [vitest#10104](https://github.com/vitest-dev/vitest/issues/10104) (open):
+  the setup-preload limitation itself, on v4. Its recommended workaround is
+  the pattern that regressed.
+- [vitest#11460](https://github.com/vitest-dev/vitest/issues/11460) (open):
+  the same symptom (first import gets the mock, the rest the real module),
+  but for concurrent imports from **one** importer, and it reproduces on
+  vitest 2, 3 and 4. It may share a cause.
+
+An issue with the reproduction above is drafted but **not filed yet**.
+vitest's `CONTRIBUTING.md` requires issues to be opened by a real person, so
+it is not something an agent session should post.
+
+### Options that are no longer needed
+
+Recorded on 2026-09-27, before the trigger was found: import the registry
+under a `?fresh` id (relies on internals); make the contract harness load
+`App` lazily (harness work for its own PR, still a valid simplification); or
+run the two tests under the unit config only (measured: gate 98.59%,
+`appPanelRegistry.tsx` drops to 29 / 32 lines).
 
 ## How to resume
 
@@ -304,11 +352,14 @@ dependency bump.
    check `pnpm outdated -r vitest` for a newer 5.x first.
 2. Check whether a `vitest-browser-solid` release now peers on `^5`. If so,
    drop the `peerDependencyRules` block.
-3. Apply the chosen unblock option above.
+3. Keep the registry-test fix from the branch (see
+   [The fix used](#the-fix-used)). Drop it only once upstream fixes the
+   regression.
 4. Run `/rtc:gauntlet full` **and** both vitest-browser coverage tiers (see
    the trap 3 lesson). Grep for `.vitest/` debris after any test run.
-5. Watch the local `@pnpm/exe` lockfile block: every local pnpm run re-adds
-   25 local-only lines that must **not** be committed.
+5. Watch the leading document of `pnpm-lock.yaml`: a local pnpm run can
+   rewrite its `@pnpm/exe` entries. Before committing, compare that document
+   with `main`'s and keep `main`'s.
 6. Delete the vitest entry in [STATUS.md](STATUS.md) and update this doc's
    status line.
 
@@ -317,4 +368,6 @@ dependency bump.
 - vitest 5.0.0 release notes: <https://github.com/vitest-dev/vitest/releases/tag/v5.0.0>
   (issue numbers above refer to `vitest-dev/vitest`).
 - vitest security advisories: <https://github.com/vitest-dev/vitest/security/advisories>
+- Related upstream mocking issues: <https://github.com/vitest-dev/vitest/issues/10104>,
+  <https://github.com/vitest-dev/vitest/issues/11460>
 - `vitest-browser-solid` peer widening: <https://github.com/advancedtw/vitest-browser-solid/pull/6>

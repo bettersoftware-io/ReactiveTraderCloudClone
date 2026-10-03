@@ -163,15 +163,19 @@ test.describe("Layout engine", () => {
   });
 
   test.describe("float magnets", () => {
-    // These four are real-pointer work end to end — up to seven stepped head
-    // drags each, every one waiting out the dock's 0.34s glide before it
-    // measures — and two of them reload. They were one scenario per shape
-    // until PR #891: that ran 17–19s on CI and timed out at the default 30s
-    // when one e2e job's runner was 1.9x slow across EVERY layout test (the
-    // other fifteen summed 140s there against 75s in its sibling jobs).
-    // Split into an attach half and a detach half each, the longest is still
-    // ~17s on CI, so the budget is raised as well — the same wall-clock
-    // reason, and the same 45s, as jarvis.spec.ts and devtools.spec.ts.
+    // Real-pointer work end to end — up to seven stepped head drags per test,
+    // each waiting out the dock's 0.34s glide before it measures — and two
+    // of the four reload. As ONE journey per shape this ran 17–25s on a
+    // normal CI runner (eleven passing runs, 2026-10-02/03) and went past
+    // the default 30s in the effect-core job three times out of four on
+    // 2026-10-03, stopping at a different late step each time with the app
+    // in the expected state: out of budget, not stuck (that job ran every
+    // layout test ~1.9x slow — the other fifteen summed 140s against 75s).
+    // PR #899 sized that journey's budget to 60s; PR #891 then split each
+    // shape into an attach half and a detach half, so the stacked pair is
+    // covered too and each half has its own budget. The longest half is
+    // still ~17s on CI, hence 45s here — the same wall-clock reason, and the
+    // same value, as the long Jarvis and devtools journeys.
     test.describe.configure({ timeout: 45_000 });
 
     test("floats snap together like magnets, move as one, and survive a reload", async ({

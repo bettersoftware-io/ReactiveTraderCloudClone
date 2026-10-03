@@ -1,6 +1,13 @@
 // packages/client-react-native/tests/pages/LoginScreenPage.tsx
-import { cleanup, fireEvent, screen } from "@testing-library/react-native";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  within,
+} from "@testing-library/react-native";
+import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
+import type { LoginWaitVariant } from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
@@ -11,6 +18,7 @@ type LoginStatus = "unauthenticated" | "authenticating" | "authenticated";
 
 interface LoginScreenMountOptions {
   error?: string | null;
+  waitVariant?: LoginWaitVariant;
   onToggleSimulator?: (v: boolean) => void;
 }
 
@@ -37,11 +45,19 @@ function fakeViewModel(
   status: LoginStatus,
   login: (username: string, password: string) => void,
   error: string | null = null,
+  waitVariant: LoginWaitVariant = "handshake",
 ): ViewModel {
   return {
     useAuth: () => {
       return {
-        state: { status, locked: false, error, user: null },
+        state: {
+          status,
+          locked: false,
+          unlocking: false,
+          error,
+          user: null,
+          waitVariant,
+        },
         login,
         unlock: noop,
         lock: noop,
@@ -61,6 +77,9 @@ export interface LoginScreenPage {
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   errorText(): TextChildren;
+  submitLabel(): TextChildren;
+  /** The flattened `opacity` of a node, `undefined` when it sets none. */
+  opacityOf(testId: string): number | undefined;
   typeUsername(value: string): Promise<void>;
   typePassword(value: string): Promise<void>;
   pressSubmit(): Promise<void>;
@@ -75,9 +94,15 @@ export function loginScreenPage(): LoginScreenPage {
       login: (username: string, password: string) => void,
       options: LoginScreenMountOptions = {},
     ): Promise<void> {
-      const { error = null, onToggleSimulator = noop } = options;
+      const {
+        error = null,
+        onToggleSimulator = noop,
+        waitVariant = "handshake",
+      } = options;
       await renderWithTheme(
-        <ViewModelProvider viewModel={fakeViewModel(status, login, error)}>
+        <ViewModelProvider
+          viewModel={fakeViewModel(status, login, error, waitVariant)}
+        >
           <LoginScreen
             simulator={false}
             onToggleSimulator={onToggleSimulator}
@@ -93,6 +118,15 @@ export function loginScreenPage(): LoginScreenPage {
     },
     errorText(): TextChildren {
       return screen.getByTestId("login-error").props.children as TextChildren;
+    },
+    submitLabel(): TextChildren {
+      return within(screen.getByTestId("login-submit")).getByText(/AUTHENTICAT/)
+        .props.children as TextChildren;
+    },
+    opacityOf(testId: string): number | undefined {
+      return StyleSheet.flatten(
+        screen.getByTestId(testId).props.style as StyleProp<ViewStyle>,
+      )?.opacity as number | undefined;
     },
     async typeUsername(value: string): Promise<void> {
       await fireEvent.changeText(screen.getByTestId("login-username"), value);
