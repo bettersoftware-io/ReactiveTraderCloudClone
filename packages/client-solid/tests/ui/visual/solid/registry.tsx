@@ -58,6 +58,7 @@ import { StatusBar } from "#/ui/shell/status/StatusBar";
 import {
   DockviewEngineAttachedVisual,
   DockviewEngineFloatingVisual,
+  DockviewEngineSashVisual,
   DockviewEngineStackedVisual,
   DockviewEngineVisual,
 } from "./DockviewEngine.visual";
@@ -760,5 +761,10 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   // DockviewEngineAttachedVisual.
   DockviewEngineAttached: () => {
     return <DockviewEngineAttachedVisual />;
+  },
+  // The sash pin: the seed layout with empty bodies on a small stage,
+  // asserted strict — see DockviewEngineSashVisual.
+  DockviewEngineSash: () => {
+    return <DockviewEngineSashVisual />;
   },
 };

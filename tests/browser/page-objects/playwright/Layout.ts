@@ -15,6 +15,7 @@ import type {
   LayoutPO,
   PopoutWindowPO,
   RootTheme,
+  SashGripSize,
 } from "../contracts/Layout";
 import type { PrefsLayoutEngine } from "../contracts/Preferences";
 import { TESTIDS } from "../contracts/testids";
@@ -1247,6 +1248,34 @@ export class PlaywrightLayout implements LayoutPO {
           return handle !== null && getComputedStyle(handle).display === "none";
         })
       );
+    });
+  }
+
+  async floatSashGrip(panelId: string): Promise<SashGripSize | null> {
+    return this.group(panelId).evaluate((element) => {
+      const float = element.closest(".dv-resize-container");
+
+      if (float === null) {
+        throw new Error("floatSashGrip: the panel is not in a float");
+      }
+
+      const sash = float.querySelector(".dv-sash-container > .dv-sash");
+
+      if (sash === null) {
+        return null;
+      }
+
+      const grip = getComputedStyle(sash, "::after");
+      const painted =
+        grip.content !== "none" &&
+        grip.display !== "none" &&
+        grip.visibility !== "hidden" &&
+        grip.backgroundColor !== "rgba(0, 0, 0, 0)" &&
+        grip.backgroundColor !== "transparent";
+
+      return painted
+        ? { width: parseFloat(grip.width), height: parseFloat(grip.height) }
+        : null;
     });
   }
 

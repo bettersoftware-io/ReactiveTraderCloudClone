@@ -1,3 +1,4 @@
+import type { SashGripSize } from "../page-objects/contracts/Layout";
 import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
 import { TESTIDS } from "../page-objects/contracts/testids";
 import type { TestContext } from "../testContext";
@@ -772,6 +773,10 @@ export async function floatsAttachMoveTogetherAndDetach(
     await layout.floatHidesWidthHandles(POSITIONS_PANEL_ID),
     "expected the all-locked pair's window to hide its width handles",
   );
+  // The seam between the two members wears the dock's grip — the cue that
+  // the pair is one window split in two. Read from computed style: at 60 px
+  // the bar is under the pixel tier's default budget.
+  await expectFloatSashGrip(ctx, POSITIONS_PANEL_ID, SIDE_BY_SIDE_GRIP);
 
   const attached = await layout.floatBox(POSITIONS_PANEL_ID);
   assertLte(
@@ -921,6 +926,31 @@ const STACKED_HEIGHT_SLACK_PX = 4;
  * Analytics' width, not Blotter's — the window keeps that width through a
  * reload, and an Option-drag takes Blotter back out. Rects are read, never
  * eyeballed; every wait is on a witness. Dockview-engine only. */
+/** The grip's painted box on a side-by-side split, and on a stacked one
+ * (dockview-hud.css `.dv-sash::after`). */
+const SIDE_BY_SIDE_GRIP: SashGripSize = { width: 2, height: 30 };
+const STACKED_GRIP: SashGripSize = { width: 30, height: 2 };
+
+/** Asserts the float window holding `panelId` paints a grip of `expected`
+ * size on the sash between its members. */
+async function expectFloatSashGrip(
+  ctx: TestContext,
+  panelId: string,
+  expected: SashGripSize,
+): Promise<void> {
+  const grip = await ctx.po.layout.floatSashGrip(panelId);
+
+  assertTrue(
+    grip !== null,
+    `expected the float holding ${panelId} to paint a grip on the sash between its members`,
+  );
+  assertEquals(
+    `${grip?.width}x${grip?.height}`,
+    `${expected.width}x${expected.height}`,
+    `expected the sash grip of the float holding ${panelId} at its designed size`,
+  );
+}
+
 export async function floatsStackAdoptLockAndSurviveReload(
   ctx: TestContext,
 ): Promise<void> {
@@ -996,6 +1026,7 @@ export async function floatsStackAdoptLockAndSurviveReload(
     MAGNET_EDGE_SLACK_PX,
     `expected Blotter's slice as wide as Analytics' (${analyticsSlice.width}), was ${blotterSlice.width}`,
   );
+  await expectFloatSashGrip(ctx, BLOTTER_PANEL_ID, STACKED_GRIP);
 
   // Reload: the stacked window comes back at the lock width.
   await common.reloadPage(ctx);

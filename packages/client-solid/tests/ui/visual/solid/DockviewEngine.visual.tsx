@@ -180,3 +180,50 @@ export function DockviewEngineAttachedVisual(): JSX.Element {
     </div>
   );
 }
+
+/** Panel stubs with NO body copy, for the sash pin (Solid twin of
+ * client-react's `emptyDockPanelRegistry`): the capture holds nothing but
+ * dock chrome, so a strict comparison is not hostage to a text rasteriser. */
+const emptyDockPanelRegistry: PanelRegistry = {
+  "fx-rates": () => {
+    return <div data-testid="fx-rates-body" />;
+  },
+  "fx-analytics": () => {
+    return <div data-testid="fx-analytics-body" />;
+  },
+  "fx-positions": () => {
+    return <div data-testid="fx-positions-body" />;
+  },
+  "fx-blotter": () => {
+    return <div data-testid="fx-blotter-body" />;
+  },
+};
+
+/** The sash pin (`shell/layout-dockview-sash`), Solid twin of client-react's
+ * DockviewEngineSashVisual: the seed layout with empty bodies on the small
+ * `sashStage`, asserted at ZERO tolerance (`Scenario.strict`) against the
+ * react-generated golden. */
+export function DockviewEngineSashVisual(): JSX.Element {
+  const store = new InMemoryDockLayoutStore();
+
+  return (
+    <div class={styles.sashStage}>
+      <DockviewLayoutEngine
+        tab="fx"
+        registry={emptyDockPanelRegistry}
+        store={store}
+        maximized={null}
+        collapsed={[]}
+        closed={[]}
+        docked={[]}
+        instances={[]}
+        layoutResets={0}
+        onMaximize={noop}
+        onRestore={noop}
+        onCollapse={noop}
+        onExpand={noop}
+        onCloseInstance={noop}
+      />
+    </div>
+  );
+}
