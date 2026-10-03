@@ -35,6 +35,12 @@ export const SCENARIO_IDS = [
   // the same emblem / wordmark / tracked-mono idiom. No prototype frame
   // exists for it; the golden is the app's own witness.
   "shell/login",
+  // `LoginScreen` mid-request on the `reactor` wait treatment: rings around
+  // the emblem, the form receded, the indeterminate bar and status line under
+  // the submit. `lock/hold` is the witness for the other treatment
+  // (`handshake`, on the lock screen). Motion is frozen, so the rings rest
+  // unrotated and the bar at the start of its track.
+  "shell/login-reactor",
   // NB: `credit/rfq-tiles-empty` was dropped after on-device golden
   // verification — it is NON-deterministic. `CreditRfqSimulator` emits new
   // Live RFQs over time, so the default "No RFQs to display" view is only

@@ -26,6 +26,33 @@ test("the ring's label reads HOLD TO UNLOCK at rest and AUTHENTICATING… while 
   expect(page.textOf("lock-hold-label")).toBe("AUTHENTICATING…");
 });
 
+test("at rest the password is at full strength and no wait treatment shows", async () => {
+  await page.mountLocked(true, noop, USER);
+
+  expect(page.opacityOf("lock-password")).toBeUndefined();
+  expect(page.exists("auth-wait-handshake")).toBe(false);
+  expect(page.exists("auth-wait-reactor")).toBe(false);
+  expect(page.exists("auth-wait-rings")).toBe(false);
+});
+
+test("a handshake unlock recedes the password and shows the console, not the reactor", async () => {
+  await page.mountLocked(true, noop, USER, true, "handshake");
+
+  expect(page.opacityOf("lock-password")).toBe(0.35);
+  expect(page.exists("auth-wait-handshake")).toBe(true);
+  expect(page.exists("auth-wait-reactor")).toBe(false);
+  expect(page.exists("auth-wait-rings")).toBe(false);
+});
+
+test("a reactor unlock rings the emblem and shows the bar, not the console", async () => {
+  await page.mountLocked(true, noop, USER, true, "reactor");
+
+  expect(page.exists("auth-wait-rings")).toBe(true);
+  expect(page.exists("lock-emblem")).toBe(true);
+  expect(page.exists("auth-wait-reactor")).toBe(true);
+  expect(page.exists("auth-wait-handshake")).toBe(false);
+});
+
 test("AUTHENTICATE press calls unlock with the typed password", async () => {
   const unlock = jest.fn();
   await page.mount(true, unlock, USER);

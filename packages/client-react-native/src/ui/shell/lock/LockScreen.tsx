@@ -15,6 +15,9 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
+import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
+import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
 import { HoldToUnlockRing } from "#/ui/shell/lock/HoldToUnlockRing";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { useHoldToUnlock } from "#/ui/shell/lock/useHoldToUnlock";
@@ -98,7 +101,8 @@ export function LockScreen(): JSX.Element | null {
     return null;
   }
 
-  const { user } = state;
+  const { user, unlocking } = state;
+  const reactorWaiting = unlocking && state.waitVariant === "reactor";
 
   return (
     <KeyboardAvoidingView
@@ -142,7 +146,13 @@ export function LockScreen(): JSX.Element | null {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <LockEmblem />
+        {reactorWaiting ? (
+          <ReactorRings>
+            <LockEmblem />
+          </ReactorRings>
+        ) : (
+          <LockEmblem />
+        )}
 
         <Text testID="lock-title" style={styles.title}>
           SESSION LOCKED
@@ -160,7 +170,7 @@ export function LockScreen(): JSX.Element | null {
           autoCorrect={false}
           placeholder="PASSWORD"
           placeholderTextColor={styles.placeholder.color}
-          style={styles.input}
+          style={unlocking ? styles.inputReceded : styles.input}
         />
 
         {state.error !== null ? (
@@ -173,8 +183,15 @@ export function LockScreen(): JSX.Element | null {
           gesture={gesture}
           progress={progress}
           onPress={submit}
-          label={state.unlocking ? "AUTHENTICATING…" : "HOLD TO UNLOCK"}
+          label={unlocking ? "AUTHENTICATING…" : "HOLD TO UNLOCK"}
         />
+
+        {/* The same two wait treatments the sign-in screen shows, chosen by
+            the same persisted round-robin (`state.waitVariant`). */}
+        {unlocking && state.waitVariant === "handshake" ? (
+          <HandshakeConsole />
+        ) : null}
+        {reactorWaiting ? <ReactorWait /> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -187,6 +204,7 @@ interface LockScreenStyles {
   title: TextStyle;
   desk: TextStyle;
   input: TextStyle;
+  inputReceded: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
 }
@@ -208,6 +226,19 @@ const GLOW_RY = 19;
 const GLOW_OPACITY = 0.09;
 
 function makeStyles(t: RnTheme): LockScreenStyles {
+  const input: TextStyle = {
+    width: 220,
+    marginBottom: RING_GAP,
+    borderWidth: 1,
+    borderColor: t.borderPrimary,
+    borderRadius: 9,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    textAlign: "center",
+    color: t.textPrimary,
+    ...labelStyle(t, 11, 1.5),
+  };
+
   return StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFill,
@@ -245,18 +276,10 @@ function makeStyles(t: RnTheme): LockScreenStyles {
       color: t.textMuted,
       ...labelStyle(t, 9.5, 1.6),
     },
-    input: {
-      width: 220,
-      marginBottom: RING_GAP,
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      borderRadius: 9,
-      paddingVertical: 9,
-      paddingHorizontal: 12,
-      textAlign: "center",
-      color: t.textPrimary,
-      ...labelStyle(t, 11, 1.5),
-    },
+    input,
+    // The password recedes while the unlock is in flight, so the wait
+    // treatment leads (authWait.module.css `.recede`). Opacity only.
+    inputReceded: { ...input, opacity: 0.35 },
     placeholder: { color: t.textMuted },
     error: {
       marginTop: -RING_GAP + 8,

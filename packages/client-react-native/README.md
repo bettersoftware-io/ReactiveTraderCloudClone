@@ -366,9 +366,10 @@ Two traps:
 1. **A `.test.ts` file under jest reports "No tests found" and exits 0** — a
    vacuous pass. If your test renders RN it must be `.test.tsx`; if it is
    pure logic it must not import react-native.
-2. **The coverage numbers of the two halves are not comparable** and neither
-   is "the package's coverage" — different providers, each denominator is the
-   whole package while each runner sees half the tests. See
+2. **Neither half's coverage number is "the package's coverage"** — different
+   providers, each denominator is the whole package while each runner sees
+   half the tests. `pnpm test:coverage` prints the merged line figure, which
+   is the one to quote and the one CI gates at ≥95%. See
    [README-COVERAGE.md](README-COVERAGE.md).
 
 ## See also

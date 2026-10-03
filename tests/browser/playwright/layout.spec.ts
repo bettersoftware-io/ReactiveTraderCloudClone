@@ -165,6 +165,14 @@ test.describe("Layout engine", () => {
   test("floats snap together like magnets, move as one, survive a reload, and detach by Option-drag and by the header control", async ({
     ctx,
   }) => {
+    // One journey, a dozen real pointer drags and a reload: 17–25 s on a
+    // normal CI runner (measured over eleven passing runs, 2026-10-02/03),
+    // which left the default 30 s budget no headroom. On 2026-10-03 the
+    // effect-core job ran it past 30 s three times out of four, each time
+    // stopping at a different late step with the app in the expected state —
+    // out of budget, not stuck. Same remedy as the long Jarvis and devtools
+    // journeys: a budget sized to the journey.
+    test.setTimeout(60_000);
     // Floating groups are a dockview-only feature; dockview is what the app
     // boots into.
     await layout.expectEngine(ctx, "dockview");
