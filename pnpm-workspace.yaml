@@ -46,11 +46,27 @@ minimumReleaseAge: 1440
 # DROP CONDITION: when node-forge publishes a patched release (> 1.4.0), delete
 # this entry and add a range-scoped `"node-forge@<=1.4.0": ^<patched>` to
 # `overrides` below like every other advisory fix.
+# TEMPORARY suppression (added 2026-10-03): HIGH GHSA-vfj7-8cjw-p6xm (braces:
+# stack-exhaustion DoS through deeply nested brace patterns, CVE-2026-93687)
+# reports `braces <= 3.0.3` with NO patched version — 3.0.3 IS the latest
+# release on npm (published 2024), so there is nothing to override to. The
+# advisory dates from 2026-09-18 but was updated on 2026-10-02 22:36 UTC, which
+# is when it began redding CI gate 25 (`pnpm audit --prod`) on every branch
+# (main's last run, five hours earlier, was green).
+# Reach: client-react-native only, through micromatch in build/test tooling
+# (metro-file-map, @expo/metro-file-map, jest-haste-map, @jest/transform,
+# jest-message-util) — never the server, never a browser bundle, and not the
+# RN app's runtime. Triggering it needs a hostile glob pattern, and the only
+# patterns that reach these tools are the repo's own config.
+# DROP CONDITION: when braces publishes a patched release (> 3.0.3), delete
+# this entry and add a range-scoped `"braces@<=3.0.3": ^<patched>` to
+# `overrides` below like every other advisory fix.
 auditConfig:
   ignoreGhsas:
     - GHSA-w3rx-r6r6-pgpr
     - GHSA-5p2g-fcmc-qvqq
     - GHSA-86w9-cpqp-85rv
+    - GHSA-vfj7-8cjw-p6xm
 
 overrides:
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
