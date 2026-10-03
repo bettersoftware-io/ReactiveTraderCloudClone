@@ -25,6 +25,7 @@ beforeAll(async () => {
   // default hookTimeout — passes locally only because the Vite transform
   // cache is already warm there.
   vi.resetModules();
+  await import("../appHeadRegistry");
 
   const [
     { AdminHead },
