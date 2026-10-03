@@ -100,7 +100,9 @@ pnpm test:e2e:async                             # e2e against that core (also te
   export). `pnpm check:core-bundle` proves the split in CI — the eager set
   carries no core's marker, and each core sits in exactly one lazy chunk.
   `@rtc/client-core`'s presenters, machines and adapters still ship eagerly
-  through the root index the UI imports from (ADR-006 Follow-up 9).
+  through the root index the UI imports from — on purpose: the presenters
+  and machines are ~7 KB gzip that the default visitor needs at boot anyway
+  (ADR-006 Follow-up 9, declined with the measurement).
 - **Web only.** The React Native client always runs the RxJS core.
 - **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
   (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm
