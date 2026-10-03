@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import {
@@ -15,6 +14,7 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";
 import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
 import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
 import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
@@ -91,7 +91,7 @@ export function LockScreen(): JSX.Element | null {
 
   useEffect(() => {
     if (wasLockedRef.current && !state.locked) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      playOutcomeHaptic(true);
     }
 
     wasLockedRef.current = state.locked;

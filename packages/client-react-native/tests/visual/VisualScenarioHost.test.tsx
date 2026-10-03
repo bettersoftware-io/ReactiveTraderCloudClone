@@ -1,11 +1,15 @@
 import { expect, jest, test } from "@jest/globals";
 import { render, screen } from "@testing-library/react-native";
+import type { JSX } from "react";
 import { Text } from "react-native";
 
 import { ConnectionStatus } from "@rtc/domain";
 
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
+import { ThemeContext } from "#/ui/theme/ThemeContext";
+import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
+import { SkinOverrideContext } from "./SkinOverrideContext";
 import { VisualScenarioHost } from "./VisualScenarioHost";
 
 test("renders children and raises the ready marker on the fake view model", async () => {
@@ -25,6 +29,40 @@ test("pins the requested skin×mode regardless of default preferences", async ()
     </VisualScenarioHost>,
   );
   expect(await screen.findByTestId("visual-ready")).toBeTruthy();
+});
+
+// The sign-off sweep: the harness route supplies another skin×mode and the
+// host must build its fake view model from THAT, not from its pinned props.
+test("a skin override replaces the pinned skin×mode", async () => {
+  await render(
+    <SkinOverrideContext.Provider value={{ skin: "neon", mode: "light" }}>
+      <VisualScenarioHost skin="classic" mode="dark">
+        <ThemeContext.Consumer>
+          {(t: RnTheme | null): JSX.Element => {
+            return <Text>{t?.bgPrimary}</Text>;
+          }}
+        </ThemeContext.Consumer>
+      </VisualScenarioHost>
+    </SkinOverrideContext.Provider>,
+  );
+  expect(
+    await screen.findByText(rnThemeTokens.neon.light.bgPrimary),
+  ).toBeTruthy();
+});
+
+test("without an override the pinned skin×mode stands", async () => {
+  await render(
+    <VisualScenarioHost skin="classic" mode="dark">
+      <ThemeContext.Consumer>
+        {(t: RnTheme | null): JSX.Element => {
+          return <Text>{t?.bgPrimary}</Text>;
+        }}
+      </ThemeContext.Consumer>
+    </VisualScenarioHost>,
+  );
+  expect(
+    await screen.findByText(rnThemeTokens.classic.dark.bgPrimary),
+  ).toBeTruthy();
 });
 
 test("threads viewModelOverrides into the rendered child", async () => {

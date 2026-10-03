@@ -1,5 +1,4 @@
 // packages/client-react-native/src/ui/equities/trade/OrderCeremony.tsx
-import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
 import {
@@ -13,6 +12,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import type { OrderTicketState } from "@rtc/client-core";
 
+import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { labelStyle } from "#/ui/theme/labelStyle";
 import type { RnTheme } from "#/ui/theme/tokens";
@@ -60,9 +60,11 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * a user sees before every single order, worse than the intermittent ~20px
  * shift it replaced.
  *
- * Both the motion (toast/pill entrance, the toast's exit) and the haptic gate
- * on `useShellMotionEnabled`; every phase's text renders unconditionally so
- * reduced-motion/Freeze users still see the outcome. */
+ * The motion (toast/pill entrance, the toast's exit) gates on
+ * `useShellMotionEnabled`; every phase's text renders unconditionally so
+ * reduced-motion/Freeze users still see the outcome, and the haptic fires
+ * regardless (see `playOutcomeHaptic`) — it used to be muted along with the
+ * motion, which the Rates ceremony and the unlock never did. */
 export function OrderCeremony({
   state,
 }: OrderCeremonyProps): JSX.Element | null {
@@ -173,23 +175,19 @@ function Toast({ testID, text, detail, positive }: ToastProps): JSX.Element {
   const firedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || firedRef.current) {
+    if (firedRef.current) {
       return;
     }
 
     firedRef.current = true;
-    void Haptics.notificationAsync(
-      positive
-        ? Haptics.NotificationFeedbackType.Success
-        : Haptics.NotificationFeedbackType.Error,
-    );
+    playOutcomeHaptic(positive);
     // `firedRef` guards the actual call to exactly once per mount — a fresh
     // Toast instance is exactly what a new phase entry mounts (OrderCeremony
     // has no other case that renders one), so "once per mount" is "once per
-    // entry". Listing `enabled`/`positive` (rather than an empty array) keeps
+    // entry". Listing `positive` (rather than an empty array) keeps
     // this exhaustive-deps-clean; the guard is what makes it idempotent, not
     // the dependency list.
-  }, [enabled, positive]);
+  }, [positive]);
 
   return (
     <Animated.View

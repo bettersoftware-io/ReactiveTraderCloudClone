@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -30,6 +30,7 @@ import { formatNotional } from "#/ui/credit/formatNotional";
 import { findBestQuoteId } from "#/ui/credit/rfqTiles/bestQuote";
 import { QuoteCard } from "#/ui/credit/rfqTiles/QuoteCard";
 import { RfqCountdownRing } from "#/ui/credit/rfqTiles/RfqCountdownRing";
+import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";
 import { SurfaceCard } from "#/ui/SurfaceCard";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -70,6 +71,19 @@ export function RfqCard({
   // Only a live RFQ has a "best" quote to chase — a settled one's rows are
   // history and must not keep a winner tinted (matches `rfqCardVm`).
   const bestQuoteId = live ? findBestQuoteId(rfq, quotes) : null;
+  // The accept is the credit module's ceremony, so it ends on the same success
+  // haptic as a Rates execution or an Equities fill. Seeded with the mount-time
+  // value so only a card that TRADES while on screen buzzes — a card that
+  // mounts already closed (the Closed tab, a remount) is history, not an event.
+  const wasAcceptedRef = useRef(accepted);
+
+  useEffect(() => {
+    if (accepted && !wasAcceptedRef.current) {
+      playOutcomeHaptic(true);
+    }
+
+    wasAcceptedRef.current = accepted;
+  }, [accepted]);
 
   function dismissRfq(): void {
     onDismiss(rfq.id);
