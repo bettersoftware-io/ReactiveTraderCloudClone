@@ -22,7 +22,16 @@ module.exports = {
   // entirely untested component would be absent from the denominator rather
   // than sitting at 0% — which is the failure mode that let this package go
   // unmeasured in the first place.
-  collectCoverageFrom: ["src/**/*.{ts,tsx}"],
+  // Test files are NOT source. jest already leaves out the `.test.tsx` suites
+  // it runs, but the `.test.ts` ones are vitest's: jest never runs them, so
+  // without these exclusions it counted all 59 as uncovered source — 2,549
+  // lines, a third of the denominator — and reported 63.6% for a package whose
+  // real source it covers at 94%.
+  collectCoverageFrom: [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.test.{ts,tsx}",
+    "!src/**/__tests__/**",
+  ],
   coverageDirectory: "reports/native/coverage",
   coverageReporters: ["text-summary", "html", "lcov"],
   moduleNameMapper: {

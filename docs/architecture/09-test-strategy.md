@@ -448,8 +448,8 @@ react-native-worklets' `.native.` extensions under pnpm, pnpm-aware
 Skia, expo-blur/haptics/sensors) in `jest.setup.ts`. Revisit only if RN
 ships Flow-free ESM source or vitest gains an RN transform — until then the
 split is: **`.test.ts` = vitest (node logic), `.test.tsx` = jest (renders
-RN)**. Coverage for the two halves is measured separately and is not
-comparable — see
+RN)**. Each half's own coverage percentage is not the package's; the two are
+merged by line and gated at ≥95% in CI — see
 [`README-COVERAGE.md`](../../packages/client-react-native/README-COVERAGE.md).
 
 CI additionally runs an **Expo export smoke** (Metro bundling of the real app) to catch monorepo-resolution breakage that jest never exercises. jsdom/jest cannot see paint, so RN paint bugs are caught by a separate, Mac-local simulator tier: `packages/client-react-native/tests/visual/` holds committed RN visual goldens (`__screenshots__/`), captured by two runners — `simctl/` (`pnpm --filter @rtc/client-react-native test:rn:visual:simctl`) and `maestro/` (`test:rn:visual:maestro`, generated Maestro flows), each with an `:update` variant — plus a `reach/` coverage instrument (`test:rn:visual:reach`). It is deliberately not a PR gate and is not in `ci.yml`; see that folder's `README.md`.
