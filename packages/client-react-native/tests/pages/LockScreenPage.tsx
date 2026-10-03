@@ -6,7 +6,9 @@ import {
   screen,
 } from "@testing-library/react-native";
 import type { ReactElement } from "react";
+import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
+import type { LoginWaitVariant } from "@rtc/domain";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
@@ -48,6 +50,7 @@ function fakeViewModel(
   user: LockUser | null,
   error: string | null = null,
   unlocking = false,
+  waitVariant: LoginWaitVariant = "handshake",
 ): ViewModel {
   return {
     useAuth: () => {
@@ -58,6 +61,7 @@ function fakeViewModel(
           unlocking,
           error,
           user,
+          waitVariant,
         },
         login: noop,
         unlock,
@@ -78,11 +82,19 @@ function lockedTree(
   unlock: (password: string) => void,
   user: LockUser,
   unlocking = false,
+  waitVariant: LoginWaitVariant = "handshake",
 ): ReactElement {
   return (
     <ThemeContext.Provider value={rnThemeTokens.holo.dark}>
       <ViewModelProvider
-        viewModel={fakeViewModel(locked, unlock, user, null, unlocking)}
+        viewModel={fakeViewModel(
+          locked,
+          unlock,
+          user,
+          null,
+          unlocking,
+          waitVariant,
+        )}
       >
         <LockScreen />
       </ViewModelProvider>
@@ -108,16 +120,20 @@ export interface LockScreenPage {
     unlock: (password: string) => void,
     user: LockUser,
     unlocking?: boolean,
+    waitVariant?: LoginWaitVariant,
   ): Promise<void>;
   rerenderLocked(
     locked: boolean,
     unlock: (password: string) => void,
     user: LockUser,
     unlocking?: boolean,
+    waitVariant?: LoginWaitVariant,
   ): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   textOf(testId: string): TextChildren;
+  /** The flattened `opacity` of a node, `undefined` when it sets none. */
+  opacityOf(testId: string): number | undefined;
   typePassword(value: string): Promise<void>;
   pressAuthenticate(): Promise<void>;
 }
@@ -146,8 +162,11 @@ export function lockScreenPage(): LockScreenPage {
       unlock: (password: string) => void,
       user: LockUser,
       unlocking = false,
+      waitVariant: LoginWaitVariant = "handshake",
     ): Promise<void> {
-      const result = await render(lockedTree(locked, unlock, user, unlocking));
+      const result = await render(
+        lockedTree(locked, unlock, user, unlocking, waitVariant),
+      );
       rerenderFn = result.rerender;
     },
     async rerenderLocked(
@@ -155,12 +174,15 @@ export function lockScreenPage(): LockScreenPage {
       unlock: (password: string) => void,
       user: LockUser,
       unlocking = false,
+      waitVariant: LoginWaitVariant = "handshake",
     ): Promise<void> {
       if (!rerenderFn) {
         throw new Error("mountLocked() must be called before rerenderLocked()");
       }
 
-      await rerenderFn(lockedTree(locked, unlock, user, unlocking));
+      await rerenderFn(
+        lockedTree(locked, unlock, user, unlocking, waitVariant),
+      );
     },
     async unmountAll(): Promise<void> {
       await cleanup();
@@ -170,6 +192,11 @@ export function lockScreenPage(): LockScreenPage {
     },
     textOf(testId: string): TextChildren {
       return screen.getByTestId(testId).props.children as TextChildren;
+    },
+    opacityOf(testId: string): number | undefined {
+      return StyleSheet.flatten(
+        screen.getByTestId(testId).props.style as StyleProp<ViewStyle>,
+      )?.opacity as number | undefined;
     },
     async typePassword(value: string): Promise<void> {
       await fireEvent.changeText(screen.getByTestId("lock-password"), value);

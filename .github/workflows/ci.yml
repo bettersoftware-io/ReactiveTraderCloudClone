@@ -193,6 +193,14 @@ jobs:
       - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
         run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
 
+      # The RN client runs TWO runners (vitest for *.test.ts, jest for
+      # *.test.tsx), so neither runner's own percentage is the package's. This
+      # merges their line coverage and gates the union — see
+      # packages/client-react-native/README-COVERAGE.md. Lines only: statement,
+      # branch and function identities differ between the two providers.
+      - name: React Native coverage gate (merged lines ≥95%)
+        run: pnpm --filter @rtc/client-react-native test:coverage:gate
+
       - name: Build
         run: pnpm build
 
