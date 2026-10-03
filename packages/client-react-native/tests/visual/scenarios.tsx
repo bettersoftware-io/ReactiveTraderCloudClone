@@ -206,6 +206,11 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   tracked-mono idiom. The emblem's orbit spins under `useShellMotionEnabled`
  *   exactly as `lock/hold`'s does, so the two scenarios pin identically.
  *
+ * - `shell/login-reactor` — the same `LoginScreen` mid-request
+ *   (`createPinnedReactorLogin`): the `reactor` wait treatment. `lock/hold`
+ *   already pins an unlock in flight on the default `handshake` treatment, so
+ *   between them both treatments have a golden.
+ *
  * - `rates/ticket` — the REAL `TradeTicketSheet` over that same framed Rates
  *   grid (`TradeTicketFixture`), the pair-selected state `RatesModule` gates
  *   behind an internal `useState` with no prop seam. Deterministic for the
@@ -481,6 +486,11 @@ export const SCENARIOS: readonly Scenario[] = [
         <VisualScenarioHost
           skin="holo3d"
           mode="dark"
+          // `freeze` is load-bearing since the wait treatments landed: an
+          // unlock in flight shows the handshake console, whose caret blinks
+          // on a 1s cycle — unfrozen, a capture pins whichever half it lands
+          // in. `forceReduceMotion` does not reach `useShellMotionEnabled`.
+          powerSaverLevel="freeze"
           viewModelOverrides={createPinnedLockedAuth()}
         >
           <LockHoldFixture />
@@ -495,6 +505,25 @@ export const SCENARIOS: readonly Scenario[] = [
     build: (): ReactNode => {
       return (
         <VisualScenarioHost skin="holo3d" mode="dark">
+          <LoginFixture />
+        </VisualScenarioHost>
+      );
+    },
+  },
+  {
+    id: "shell/login-reactor",
+    skin: "holo3d",
+    mode: "dark",
+    build: (): ReactNode => {
+      return (
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          // `freeze` rests the rings unrotated and the bar at the start of
+          // its track; unfrozen they are captured mid-spin and mid-slide.
+          powerSaverLevel="freeze"
+          viewModelOverrides={createPinnedReactorLogin()}
+        >
           <LoginFixture />
         </VisualScenarioHost>
       );
@@ -785,6 +814,31 @@ function createPinnedLockedAuth(): Partial<ViewModel> {
       unlocking: true,
       error: null,
       waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
+    },
+    login: (): void => {},
+    unlock: (): void => {},
+    lock: (): void => {},
+    logout: (): void => {},
+  };
+
+  return {
+    useAuth: (): PinnedAuth => {
+      return auth;
+    },
+  };
+}
+
+/** `useAuth` pinned mid sign-in on the `reactor` wait treatment — the state
+ * `LoginScreen` shows between pressing AUTHENTICATE and the server's answer. */
+function createPinnedReactorLogin(): Partial<ViewModel> {
+  const auth: PinnedAuth = {
+    state: {
+      status: "authenticating",
+      user: null,
+      locked: false,
+      unlocking: false,
+      error: null,
+      waitVariant: "reactor",
     },
     login: (): void => {},
     unlock: (): void => {},
