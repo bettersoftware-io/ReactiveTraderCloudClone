@@ -17,3 +17,14 @@
   width: 1200px;
   height: 700px;
 }
+
+/* The sash pin's stage (`shell/layout-dockview-sash`): small on purpose, so
+ * the gutters and their grips are a large share of the capture and the image
+ * is quick to read in a diff report. Still wide enough for the seed's
+ * width-locked rail beside a visible Live Rates column. */
+.sashStage {
+  display: flex;
+  flex-direction: column;
+  width: 760px;
+  height: 440px;
+}

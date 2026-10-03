@@ -162,32 +162,57 @@ test.describe("Layout engine", () => {
     await layout.floatBlotterResizesFromAnEdgeAndACorner(ctx);
   });
 
-  test("floats snap together like magnets, move as one, survive a reload, and detach by Option-drag and by the header control", async ({
-    ctx,
-  }) => {
-    // One journey, a dozen real pointer drags and a reload: 17–25 s on a
-    // normal CI runner (measured over eleven passing runs, 2026-10-02/03),
-    // which left the default 30 s budget no headroom. On 2026-10-03 the
-    // effect-core job ran it past 30 s three times out of four, each time
-    // stopping at a different late step with the app in the expected state —
-    // out of budget, not stuck. Same remedy as the long Jarvis and devtools
-    // journeys: a budget sized to the journey.
-    test.setTimeout(60_000);
-    // Floating groups are a dockview-only feature; dockview is what the app
-    // boots into.
-    await layout.expectEngine(ctx, "dockview");
-    await layout.expectDockGroups(ctx, 4, 5);
+  test.describe("float magnets", () => {
+    // Real-pointer work end to end — up to seven stepped head drags per test,
+    // each waiting out the dock's 0.34s glide before it measures — and two
+    // of the four reload. As ONE journey per shape this ran 17–25s on a
+    // normal CI runner (eleven passing runs, 2026-10-02/03) and went past
+    // the default 30s in the effect-core job three times out of four on
+    // 2026-10-03, stopping at a different late step each time with the app
+    // in the expected state: out of budget, not stuck (that job ran every
+    // layout test ~1.9x slow — the other fifteen summed 140s against 75s).
+    // PR #899 sized that journey's budget to 60s; PR #891 then split each
+    // shape into an attach half and a detach half, so the stacked pair is
+    // covered too and each half has its own budget. The longest half is
+    // still ~17s on CI, hence 45s here — the same wall-clock reason, and the
+    // same value, as the long Jarvis and devtools journeys.
+    test.describe.configure({ timeout: 45_000 });
 
-    await layout.floatsAttachMoveTogetherAndDetach(ctx);
-  });
+    test("floats snap together like magnets, move as one, and survive a reload", async ({
+      ctx,
+    }) => {
+      // Floating groups are a dockview-only feature; dockview is what the app
+      // boots into.
+      await layout.expectEngine(ctx, "dockview");
+      await layout.expectDockGroups(ctx, 4, 5);
 
-  test("a free float stacked under a width-locked one adopts its lock, keeps it through a reload, and detaches by Option-drag", async ({
-    ctx,
-  }) => {
-    await layout.expectEngine(ctx, "dockview");
-    await layout.expectDockGroups(ctx, 4, 5);
+      await layout.floatsSnapAttachMoveAndSurviveReload(ctx);
+    });
 
-    await layout.floatsStackAdoptLockAndSurviveReload(ctx);
+    test("attached floats detach by Option-drag, by the header control, and from the anchor", async ({
+      ctx,
+    }) => {
+      await layout.expectEngine(ctx, "dockview");
+      await layout.expectDockGroups(ctx, 4, 5);
+
+      await layout.attachedFloatsDetachByOptionDragControlAndAnchor(ctx);
+    });
+
+    test("a free float stacked under a width-locked one adopts its lock and keeps it through a reload", async ({
+      ctx,
+    }) => {
+      await layout.expectEngine(ctx, "dockview");
+      await layout.expectDockGroups(ctx, 4, 5);
+
+      await layout.floatsStackAdoptLockAndSurviveReload(ctx);
+    });
+
+    test("a stacked float detaches by Option-drag", async ({ ctx }) => {
+      await layout.expectEngine(ctx, "dockview");
+      await layout.expectDockGroups(ctx, 4, 5);
+
+      await layout.stackedFloatDetachesByOptionDrag(ctx);
+    });
   });
 
   test("a floated rail panel pops out, comes back to its float, and docks at its design width", async ({
