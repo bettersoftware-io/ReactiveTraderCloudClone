@@ -16,6 +16,9 @@ import {
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
+import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
+import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -37,7 +40,14 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * toggle when the app boots against a sleeping or credential-less live
  * server. Wrapped in `KeyboardAvoidingView` + a `ScrollView` with
  * `keyboardShouldPersistTaps="handled"` so the soft keyboard never strands
- * the submit control on a real device. */
+ * the submit control on a real device.
+ *
+ * While the request is in flight the form recedes and one of two wait
+ * treatments leads (`state.waitVariant`, the same persisted round-robin the
+ * web clients use): `handshake` shows a telemetry console under the submit,
+ * `reactor` spins rings up around the emblem over an indeterminate bar. The
+ * web submit's sweeping highlight is not ported — the label already reads
+ * `AUTHENTICATING`, and the sweep was emphasis only. */
 export function LoginScreen({
   simulator,
   onToggleSimulator,
@@ -50,6 +60,7 @@ export function LoginScreen({
   const [password, setPassword] = useState("");
 
   const authenticating = state.status === "authenticating";
+  const reactorWaiting = authenticating && state.waitVariant === "reactor";
 
   function submitLogin(): void {
     login(username, password);
@@ -66,7 +77,13 @@ export function LoginScreen({
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <LockEmblem />
+        {reactorWaiting ? (
+          <ReactorRings>
+            <LockEmblem />
+          </ReactorRings>
+        ) : (
+          <LockEmblem />
+        )}
 
         <Text testID="login-title" style={styles.title}>
           REACTIVE TRADER
@@ -82,7 +99,7 @@ export function LoginScreen({
           autoCorrect={false}
           placeholder="USERNAME"
           placeholderTextColor={styles.placeholder.color}
-          style={styles.input}
+          style={authenticating ? styles.inputReceded : styles.input}
         />
         <TextInput
           testID="login-password"
@@ -94,7 +111,7 @@ export function LoginScreen({
           autoCorrect={false}
           placeholder="PASSWORD"
           placeholderTextColor={styles.placeholder.color}
-          style={styles.input}
+          style={authenticating ? styles.inputReceded : styles.input}
         />
 
         {state.error !== null ? (
@@ -115,9 +132,14 @@ export function LoginScreen({
               authenticating ? styles.submitLabelDisabled : null,
             ]}
           >
-            AUTHENTICATE ▸
+            {authenticating ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
           </Text>
         </Pressable>
+
+        {authenticating && state.waitVariant === "handshake" ? (
+          <HandshakeConsole />
+        ) : null}
+        {reactorWaiting ? <ReactorWait /> : null}
 
         <View style={styles.simRow}>
           <Text style={styles.simLabel}>SIMULATOR MODE</Text>
@@ -144,6 +166,7 @@ interface LoginScreenStyles {
   title: TextStyle;
   subtitle: TextStyle;
   input: TextStyle;
+  inputReceded: TextStyle;
   placeholder: TextStyle;
   error: TextStyle;
   submit: ViewStyle;
@@ -158,6 +181,19 @@ interface LoginScreenStyles {
 // overlays, so the sign-in screen reads as the lock's sibling rather than a
 // leftover of the pre-redesign form it used to be.
 function makeStyles(t: RnTheme): LoginScreenStyles {
+  const input: TextStyle = {
+    width: 220,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: t.borderPrimary,
+    borderRadius: 9,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    textAlign: "center",
+    color: t.textPrimary,
+    ...labelStyle(t, 11, 1.5),
+  };
+
   return StyleSheet.create({
     overlay: {
       ...StyleSheet.absoluteFill,
@@ -190,18 +226,11 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
       color: t.textMuted,
       ...labelStyle(t, 9.5, 1.6),
     },
-    input: {
-      width: 220,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: t.borderPrimary,
-      borderRadius: 9,
-      paddingVertical: 9,
-      paddingHorizontal: 12,
-      textAlign: "center",
-      color: t.textPrimary,
-      ...labelStyle(t, 11, 1.5),
-    },
+    input,
+    // authWait.module.css `.recede` — the fields dim so the wait treatment
+    // leads. Opacity on each input, not a wrapping view: a wrapper moved the
+    // idle form by a device pixel, and opacity never re-flows anything.
+    inputReceded: { ...input, opacity: 0.35 },
     placeholder: { color: t.textMuted },
     error: {
       marginBottom: 12,
