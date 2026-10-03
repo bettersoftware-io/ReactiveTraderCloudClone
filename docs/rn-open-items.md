@@ -9,7 +9,9 @@ backlog entry.
 Nothing here is a blocker on shipped work. Items are grouped by what kind of
 thing they are, because that determines who fixes them and where.
 
-**Last updated: 2026-10-02.** That day the maintainer signed off Phase 5a
+**Last updated: 2026-10-03.** That day the login-wait treatments were ported to RN (`shell/auth/wait/`, golden `shell/login-reactor`, 26 scenarios now) and the inset 3D-card scenario was closed as no longer needed (§6).
+
+**2026-10-02.** That day the maintainer signed off Phase 5a
 (T18) and Phase 5b on a device, three §6 rows closed (the `withAlpha()`
 helper, the equities workspace alignment, the new-RFQ chip labels), and the
 Credit refinement pass landed (T49).
@@ -386,7 +388,7 @@ not evidence that a scene renders — only a device is.**
 | **Phase 7** (cross-cutting polish + sign-off) | Untouched, last by definition. |
 | ~~`withAlpha()` helper~~ | **DONE 2026-10-02** — `src/ui/theme/withAlpha.ts` replaces every hand-appended alpha byte and `PnlChart`'s local copy. It returns `#rrggbbaa` for a hex token and `rgba(…)` for an `rgb()`/`rgba()` one, multiplies an alpha the colour already has, and throws on anything else. No branded hex type: the helper accepting both formats removes the need for one. |
 | ~~Equities workspace alignment~~ | **DONE 2026-10-02** — `EquitiesScreen` reads the selected symbol from `useEqWorkspace()`, the singleton the web clients use, so the selection survives leaving the tab and follows anything else that drives the workspace. Which of Markets / Trade / Blotters is showing stays local; there is no shared counterpart. |
-| RN visual harness | An inset 3D-card scenario is still wanted, to guard the `overflow:hidden` shadow-clip regression class the current full-bleed scenario cannot catch. |
+| ~~RN visual harness: inset 3D-card scenario~~ | **Re-tested 2026-10-03 and closed without a new scenario.** The premise is two changes out of date. Since the framed goldens (T48) four scenarios already show inset `SurfaceCard`s with their glow on a dark page (`credit/rfq-tiles`, `credit/sell-side`, `equities/trade`, `analytics/dashboard`). And re-injecting `overflow: "hidden"` on `SurfaceCard` no longer removes the glow on RN 0.86: those four scenarios went red by 6–35 pixels each (0.0002–0.0011%), all at card corners, and the other 22 stayed at 0.0000%. So the zero-tolerance tier does flag the change, and the visible shadow loss the item was written to catch no longer happens on this React Native version. |
 
 ### Projection per boot scene — measured, do not re-derive
 

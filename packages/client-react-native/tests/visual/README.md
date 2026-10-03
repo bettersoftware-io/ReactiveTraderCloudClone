@@ -150,10 +150,16 @@ dev-bundle curl to `/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true`
 (a clean bundle is >100 KB and contains no `Babel plugin exception`). This is
 the RN analogue of CLAUDE.md's Vite "blank screen = stale pre-bundle" note.
 
+## Metro under `CI=1` does not watch files
+
+Metro started with `CI=1` (useful for an unattended run: no interactive
+prompts) prints `reloads are
+disabled` and serves the files as they were when it started. An edit made
+afterwards is **not** in the next capture, and nothing says so: the run
+passes or fails against stale code. **Restart Metro after every edit** before
+capturing. (2026-10-03: a scenario's `powerSaverLevel="freeze"` appeared to do
+nothing for three captures because of this.)
+
 ## Remaining (not yet built)
 
-- **Inset 3D-card scenario** to guard the #147 `overflow: hidden` shadow-clip
-  regression class. The injected-bug proof showed the current full-bleed
-  `SurfaceCard` scenario can't catch it (the drop shadow is off-screen), so a
-  scenario with an inset 3D card on a contrasting background is needed — see
-  `BAKEOFF.md` § "Findings from the injected-paint-bug proof".
+- ~~**Inset 3D-card scenario**~~ — re-tested 2026-10-03 and closed without a new scenario. The premise is two changes out of date. Since the framed goldens (T48) four scenarios already show inset `SurfaceCard`s with their glow on a dark page (`credit/rfq-tiles`, `credit/sell-side`, `equities/trade`, `analytics/dashboard`). And re-injecting `overflow: "hidden"` on `SurfaceCard` no longer removes the glow on RN 0.86: those four scenarios went red by 6–35 pixels each (0.0002–0.0011%), all at card corners, and the other 22 stayed at 0.0000%. So the zero-tolerance tier does flag the change, and the visible shadow loss the item was written to catch no longer happens on this React Native version.
