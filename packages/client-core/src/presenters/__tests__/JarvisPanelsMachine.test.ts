@@ -2,18 +2,15 @@ import { Observable, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
-import type { PanelSpecV1 } from "@rtc/shared";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
-
+import type { JarvisPanelsState, PanelInstance } from "@rtc/core-api";
 import {
-  createJarvisPanelsMachine,
-  type JarvisPanelsState,
   MAX_DOCKED_PANELS,
   MAX_LIVE_PANELS,
-  type PanelInstance,
   UNSUPPORTED_SENTINEL_SPEC,
-} from "../JarvisPanelsMachine";
+} from "@rtc/core-logic";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
+
+import { createJarvisPanelsMachine } from "../JarvisPanelsMachine";
 
 describe("createJarvisPanelsMachine", () => {
   it("starts with no panels", () => {

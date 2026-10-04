@@ -2,6 +2,7 @@ import type { Observable } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type { RfqState } from "@rtc/core-api";
 import {
   type CurrencyPair,
   KNOWN_CURRENCY_PAIRS,
@@ -10,7 +11,7 @@ import {
   type RfqQuoteResult,
 } from "@rtc/domain";
 
-import { createRfqTileMachine, type RfqState } from "../RfqTileMachine";
+import { createRfqTileMachine } from "../RfqTileMachine";
 
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";

@@ -12,8 +12,6 @@ import {
   type PresetSummaryChannel,
 } from "@rtc/core-logic";
 
-export type { LayoutPresetsDeps };
-
 /** The RxJS core's saved-layouts presenter: the shared controller over a
  * `BehaviorSubject` per tab. */
 export function createLayoutPresets(

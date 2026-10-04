@@ -1157,8 +1157,8 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 
 - **`@rtc/core-logic` holds the shared rxjs-free rules** (PR A, #829): the
   pure folds, view derivations, the workspace and Jarvis controllers and
-  `createAuthDeps` moved out of `client-core` (which re-exports them
-  whole). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
+  `createAuthDeps` moved out of `client-core` (which re-exported them
+  whole until 2026-10-04). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
   and `core-logic-stays-inner` pin it. `createAuthDeps` takes its two
   rxjs-bound primitives (`readNow`, `delayAuth`) as an argument, so each
   core supplies its own.

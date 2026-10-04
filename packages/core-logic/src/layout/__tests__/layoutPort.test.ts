@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LayoutNode, LayoutPort, LayoutState } from "../layoutPort";
+import type { LayoutNode, LayoutPort, LayoutState } from "@rtc/core-api";
 
 describe("LayoutPort types", () => {
   it("describes a split tree with panel leaves, sizes, and maximize/collapse fields", () => {

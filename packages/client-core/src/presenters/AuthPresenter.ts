@@ -3,9 +3,10 @@ import { BehaviorSubject } from "rxjs";
 
 import type {
   AuthPresenter as AuthPresenterApi,
-  AuthStatus,
   AuthViewState,
   LoginWaitCycle,
+  SessionStore,
+  StoredSession,
 } from "@rtc/core-api";
 import { describeAuthFailure, nextLoginWaitVariant } from "@rtc/core-logic";
 import {
@@ -15,13 +16,6 @@ import {
   type LoginWaitVariant,
   type SessionUser,
 } from "@rtc/domain";
-
-import type { SessionStore, StoredSession } from "../adapters/sessionStore.js";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { AuthStatus, AuthViewState, LoginWaitCycle };
 
 const UNAUTHENTICATED_STATE: AuthViewState = {
   status: "unauthenticated",

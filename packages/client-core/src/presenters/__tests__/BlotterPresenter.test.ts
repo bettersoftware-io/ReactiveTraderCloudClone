@@ -1,7 +1,9 @@
 import { firstValueFrom, NEVER, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { ActivityEntry } from "@rtc/core-api";
 import {
+  ACTIVITY_FEED_CAP as ACTIVITY_CAP,
   type BlotterPort,
   DEFAULT_TRADER_NAME,
   Direction,
@@ -9,11 +11,7 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import {
-  ACTIVITY_CAP,
-  type ActivityEntry,
-  BlotterPresenter,
-} from "../BlotterPresenter";
+import { BlotterPresenter } from "../BlotterPresenter";
 
 describe("BlotterPresenter", () => {
   it("exposes the trade stream", async () => {

@@ -1,4 +1,4 @@
-import type { LayoutPresetStore } from "#/adapters/layoutPresetStore";
+import type { LayoutPresetStore } from "@rtc/core-api";
 
 /** Map-backed `LayoutPresetStore` — the default when no
  * `AppPorts.layoutPresetStore` is supplied and the store the shared

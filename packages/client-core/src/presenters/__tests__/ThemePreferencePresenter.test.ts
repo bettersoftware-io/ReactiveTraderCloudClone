@@ -1,13 +1,12 @@
 import { BehaviorSubject, firstValueFrom, type Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { ColorSchemeSource } from "@rtc/core-api";
 import {
   PreferencesSimulator,
   type ThemeMode,
   type ThemeModePreference,
 } from "@rtc/domain";
-
-import type { ColorSchemeSource } from "#/theme/colorSchemeSource";
 
 import { createCountingPort } from "../createCountingPort.testHelpers";
 import { ThemePreferencePresenter } from "../ThemePreferencePresenter";

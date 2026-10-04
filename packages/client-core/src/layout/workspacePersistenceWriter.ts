@@ -10,11 +10,6 @@ import {
 } from "@rtc/core-logic";
 import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
-export {
-  type DockedPanelPlacement,
-  resetUnwritablePayloadWarning,
-} from "@rtc/core-logic";
-
 export interface WorkspacePersistenceWriterDeps
   extends WorkspaceLayoutWriteDeps {
   /** Fires once per change worth persisting; the writer debounces it. */

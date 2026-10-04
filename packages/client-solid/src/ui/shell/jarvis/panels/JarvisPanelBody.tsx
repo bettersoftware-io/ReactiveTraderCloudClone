@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, Match, Switch } from "solid-js";
 
-import type { JarvisPanelVm, PanelData } from "@rtc/client-core";
+import type { JarvisPanelVm, PanelData } from "@rtc/core-api";
 
 import { PanelGauge, type PanelGaugeProps } from "./PanelGauge";
 import { PanelHeatmap, type PanelHeatmapProps } from "./PanelHeatmap";

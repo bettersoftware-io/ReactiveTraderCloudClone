@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
-import type { SessionStore } from "@rtc/client-core";
 import { createApp } from "@rtc/client-core/core";
+import type { SessionStore } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 import {
   createViewModel,

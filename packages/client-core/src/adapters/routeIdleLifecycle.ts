@@ -1,6 +1,5 @@
+import type { IWsAdapter } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
-
-import type { IWsAdapter } from "#/adapters/IWsAdapter";
 
 /** Routes idle-lifecycle events to the WS adapter. Exported so the wiring is
  * directly testable (idleTeardown.test.ts). Lives beside the adapters, not

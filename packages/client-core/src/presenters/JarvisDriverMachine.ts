@@ -13,6 +13,7 @@ import { concatMap, filter, map, scan, take } from "rxjs/operators";
 import type {
   DriveOutcome,
   EqWorkspaceIntents,
+  EqWorkspaceState,
   JarvisDriverMachineHandle,
   JarvisDriverState,
   LayoutIntents,
@@ -28,16 +29,7 @@ import {
   driveStaggerMs,
 } from "@rtc/core-logic";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
-import { DRIVE_STAGGER_MS as DOMAIN_DRIVE_STAGGER_MS } from "@rtc/domain";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
-
-import type { EqWorkspaceState } from "./EqWorkspaceMachine";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { DriveOutcome, JarvisDriverMachineHandle, JarvisDriverState };
+import type { JarvisEvent } from "@rtc/shared";
 
 export interface JarvisDriverDeps {
   /** Every reply-turn event, already guarded (`catchError(() => EMPTY)` at
@@ -116,15 +108,6 @@ export interface JarvisDriverDeps {
    * production. */
   readonly scheduler?: SchedulerLike;
 }
-
-/** How far apart (ms) each command after the first, within one batch, is
- * applied — the visible "step by step" choreography. The batch's own FIRST
- * command always fires immediately (no dead pause before the desk visibly
- * reacts to a drive turn); this constant governs the gap BETWEEN commands
- * only. Collapses to 0 under power-saver `"freeze"` (read fresh per command
- * from `powerSaverLevel$`), per the motion-free guarantee
- * `docs/performance.md`/`docs/power-saver-mode.md` demand. */
-export const DRIVE_STAGGER_MS: number = DOMAIN_DRIVE_STAGGER_MS;
 
 const INITIAL_STATE: JarvisDriverState = { lastBatch: [] };
 

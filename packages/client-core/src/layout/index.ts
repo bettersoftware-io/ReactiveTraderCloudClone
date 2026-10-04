@@ -4,7 +4,6 @@
 // that re-implemented the preset rules would prove nothing about the real
 // ones. Otherwise consumed only by `composition.ts`.
 export * from "#/layout/createLayoutPresets";
-export * from "#/layout/layoutPresets";
 export * from "#/layout/lockedWidth";
 export * from "#/layout/maximizeBoundary";
 export * from "#/layout/visibleRoot";

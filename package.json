@@ -79,6 +79,7 @@
     "check:dist": "node scripts/check-dist.mts --all",
     "check:compiler": "node scripts/react-compiler-healthcheck.mts",
     "check:core-bundle": "node scripts/check-core-bundle.mts",
+    "codemod:repoint-imports": "node scripts/repoint-imports.mts",
     "mutation-check": "node scripts/mutation-check.mts",
     "lint:dead": "knip",
     "check:deps": "depcruise --config .dependency-cruiser.mts packages tests",

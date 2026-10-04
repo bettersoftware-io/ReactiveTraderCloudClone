@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { JarvisPanelVm, PanelData } from "@rtc/client-core";
+import type { JarvisPanelVm, PanelData } from "@rtc/core-api";
 
 import { PanelGauge } from "./PanelGauge";
 import { PanelHeatmap } from "./PanelHeatmap";

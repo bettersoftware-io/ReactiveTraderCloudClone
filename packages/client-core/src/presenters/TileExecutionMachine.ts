@@ -9,8 +9,11 @@ import {
   takeUntil,
 } from "rxjs/operators";
 
-import type { TileExecutionIntents, TileExecutionState } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  Machine,
+  TileExecutionIntents,
+  TileExecutionState,
+} from "@rtc/core-api";
 import {
   finishedTileExecution,
   isTerminalTileExecution,
@@ -30,11 +33,6 @@ import {
   type Price,
   TOO_LONG_THRESHOLD_MS,
 } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { TileExecutionIntents, TileExecutionState };
 
 export interface TileExecutionDeps {
   /** The execute command (TradeExecutionPresenter.execute), injected so timing

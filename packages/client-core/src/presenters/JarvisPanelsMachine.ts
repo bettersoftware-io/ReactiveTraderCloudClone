@@ -5,8 +5,6 @@ import { filter, map, scan } from "rxjs/operators";
 import type {
   JarvisPanelsMachineHandle,
   JarvisPanelsState,
-  PanelInstance,
-  PanelStatus,
 } from "@rtc/core-api";
 import {
   applyPanelEvent,
@@ -16,25 +14,7 @@ import {
   restoreDockedPanelInState,
   undockPanelInState,
 } from "@rtc/core-logic";
-import type { PanelSpecV1 } from "@rtc/shared";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
-
-export {
-  MAX_DOCKED_PANELS,
-  MAX_LIVE_PANELS,
-  UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/core-logic";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  JarvisPanelsMachineHandle,
-  JarvisPanelsState,
-  PanelInstance,
-  PanelStatus,
-};
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 const INITIAL: JarvisPanelsState = { panels: [] };
 

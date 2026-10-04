@@ -12,15 +12,14 @@ import { BehaviorSubject, type Observable, of } from "rxjs";
 import { createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  type AnimationIntent,
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-  type PanelData,
-  type Presenters,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import type {
+  AnimationIntent,
+  AppPorts,
+  PanelData,
+  Presenters,
+} from "@rtc/core-api";
 import {
   type AuthOutcome,
   type AuthPort,

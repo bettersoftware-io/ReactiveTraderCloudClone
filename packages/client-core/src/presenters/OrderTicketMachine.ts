@@ -3,11 +3,11 @@ import { concat, merge, type Observable, of, Subject } from "rxjs";
 import { catchError, map, scan, startWith, switchMap } from "rxjs/operators";
 
 import type {
+  Machine,
   OrderTicketForm,
   OrderTicketIntents,
   OrderTicketState,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,
@@ -25,15 +25,6 @@ import type {
   OrderType,
   PlaceOrderRequest,
 } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. `OrderTicketForm` was moved alongside `OrderTicketState`
- * (which embeds it in its "editing" variant) though not itself in Task 3's
- * move table — this file imports it back for local use (the patch
- * subject, `initialForm`) but does NOT re-export it, matching its original
- * (unexported) visibility here. */
-export type { OrderTicketIntents, OrderTicketState };
 
 export interface OrderTicketDeps {
   place: (req: PlaceOrderRequest) => Observable<EquityOrder>;

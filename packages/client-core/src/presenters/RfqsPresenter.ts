@@ -15,13 +15,13 @@ import {
 } from "rxjs";
 
 import type {
+  Machine,
   RfqSubmissionIntents,
   RfqSubmissionState,
   RfqsPresenter as RfqsPresenterApi,
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import { shallowArrayEquals } from "@rtc/core-logic";
 import {
   type CreateRfqInput,
@@ -37,16 +37,6 @@ import {
 } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  RfqSubmissionIntents,
-  RfqSubmissionState,
-  TicketSubmissionIntents,
-  TicketSubmissionState,
-};
 
 /** Presenter-local alias of the domain cadence, so the machine reads as it
  * always has. */

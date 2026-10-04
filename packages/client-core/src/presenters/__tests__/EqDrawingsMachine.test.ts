@@ -1,7 +1,8 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { EqDrawing } from "../EqDrawingsMachine";
+import type { EqDrawing } from "@rtc/core-api";
+
 import { createEqDrawingsMachine } from "../EqDrawingsMachine";
 
 describe("EqDrawingsMachine", () => {

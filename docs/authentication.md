@@ -120,7 +120,7 @@ sequenceDiagram
 7. **The client stores the session.** On a `{ ok: true, token, user }`
    outcome, `AuthPresenter.commitLoginOutcome` writes
    `{ token, user, username, exp }` to the injected
-   `SessionStore` (`packages/client-core/src/adapters/sessionStore.ts`) —
+   `SessionStore` (`packages/core-api/src/adapters.ts`) —
    `exp` is the expiry the `AuthPort` reported (the server's real token expiry,
    or the simulator's `now() + ttlMs`), persisted verbatim rather than
    recomputed from a client-side TTL — and flips state to `"authenticated"`.

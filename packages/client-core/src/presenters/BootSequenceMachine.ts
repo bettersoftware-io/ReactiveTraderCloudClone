@@ -2,28 +2,13 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
-import type { BootSequenceIntents, BootSequenceState } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  BootSequenceIntents,
+  BootSequenceState,
+  Machine,
+} from "@rtc/core-api";
 import { bootProgress, nextBootVariant } from "@rtc/core-logic";
-import {
-  BOOT_TICK_MS,
-  BOOT_VARIANTS,
-  type BootVariant,
-  BOOT_DURATION_MS as DOMAIN_BOOT_DURATION_MS,
-} from "@rtc/domain";
-
-export type { BootVariant };
-// Cycle order lives in domain (PROTO _startBoot v3 list: core → laser →
-// docking → hologram → geo → layers → jarvis → topo); re-exported for
-// existing consumers.
-export { BOOT_VARIANTS };
-/** Re-exported for existing importers; the value lives in `@rtc/domain`. */
-export const BOOT_DURATION_MS: number = DOMAIN_BOOT_DURATION_MS;
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { BootSequenceIntents, BootSequenceState };
+import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 
 export interface BootSequenceDeps {
   /** Current persisted cycle index → the variant for this run. Read once at construction. */

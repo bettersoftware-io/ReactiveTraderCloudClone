@@ -9,6 +9,7 @@
 import { NEVER, type Observable } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { App, AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
   type LoginWaitDelay,
@@ -19,9 +20,8 @@ import {
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import { type App, createApp } from "#/composition";
+import { createApp } from "#/composition";
 
 beforeEach(() => {
   vi.useFakeTimers();

@@ -9,13 +9,13 @@
 import { NEVER, type Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { App, AppPorts } from "@rtc/core-api";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { AppPorts } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import { type App, createApp } from "#/composition";
+import { createApp } from "#/composition";
 
 describe("jarvisPreferences presenter", () => {
   it("writes both preferences through the port", () => {

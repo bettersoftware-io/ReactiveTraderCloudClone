@@ -2,14 +2,8 @@ import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
 import { distinctUntilChanged, map, startWith } from "rxjs/operators";
 
-import type { ReadOnlyMachine } from "@rtc/core-logic";
+import type { ReadOnlyMachine } from "@rtc/core-api";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
-
-/** How long a newly-arrived blotter row stays highlighted, relocated verbatim
- * from the old BlotterRow `setTimeout(…, 3000)`. Now the domain's
- * `BLOTTER_ROW_HIGHLIGHT_MS`; kept under this name for `BlotterRow.tsx` in
- * both web clients and the React contract harness. */
-export const HIGHLIGHT_MS: number = BLOTTER_ROW_HIGHLIGHT_MS;
 
 /** Transient new-row highlight, relocated out of the old BlotterRow useEffect/
  * setTimeout. It has NO intents — it's a pure read-only derivation over a single
@@ -21,17 +15,17 @@ export const HIGHLIGHT_MS: number = BLOTTER_ROW_HIGHLIGHT_MS;
  * exactly the precondition the old `useEffect([isNew])` relied on.
  *
  * The rule (reproduced exactly from the old hook): a NEW row shows the highlight
- * immediately (true) and clears it after HIGHLIGHT_MS (false); a non-new row is
+ * immediately (true) and clears it after BLOTTER_ROW_HIGHLIGHT_MS (false); a non-new row is
  * always false. */
 export function createRowHighlightMachine(
   isNew: boolean,
 ): ReadOnlyMachine<boolean> {
-  // For a new row: emit `false` once HIGHLIGHT_MS has elapsed. The synchronous
-  // `true` seed is supplied by startWith below. For a non-new row: nothing ever
-  // emits after the seed, so it stays `false` forever.
+  // For a new row: emit `false` once BLOTTER_ROW_HIGHLIGHT_MS has elapsed. The
+  // synchronous `true` seed is supplied by startWith below. For a non-new row:
+  // nothing ever emits after the seed, so it stays `false` forever.
   const stream$ = (
     isNew
-      ? timer(HIGHLIGHT_MS).pipe(
+      ? timer(BLOTTER_ROW_HIGHLIGHT_MS).pipe(
           map(() => {
             return false;
           }),

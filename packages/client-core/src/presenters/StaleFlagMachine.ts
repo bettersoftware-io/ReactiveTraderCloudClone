@@ -2,7 +2,7 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, type Observable } from "rxjs";
 import { distinctUntilChanged, map, scan, startWith } from "rxjs/operators";
 
-import type { ReadOnlyMachine } from "@rtc/core-logic";
+import type { ReadOnlyMachine } from "@rtc/core-api";
 import {
   createStaleFlagAcc,
   reduceStaleFlag,

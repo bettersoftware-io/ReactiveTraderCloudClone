@@ -8,11 +8,6 @@ import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
 
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { EquityFillSignal };
-
 export class OrdersBlotterPresenter implements OrdersBlotterPresenterApi {
   private readonly fillsSubject = new Subject<EquityFillSignal>();
 

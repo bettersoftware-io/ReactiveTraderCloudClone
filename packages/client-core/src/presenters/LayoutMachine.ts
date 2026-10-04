@@ -2,23 +2,19 @@ import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
-import type { LayoutIntents, LayoutMachineOptions } from "@rtc/core-api";
 import type {
+  LayoutIntents,
+  LayoutMachineOptions,
   LayoutPort,
   LayoutState,
   Machine,
   PanelId,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
 import {
   createLayoutReducer,
   type LayoutEvent,
   layoutStaticIds,
 } from "@rtc/core-logic";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { LayoutIntents, LayoutMachineOptions };
 
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
 type OpenInstancePayload = { kind: "eq-chart"; symbol: string };

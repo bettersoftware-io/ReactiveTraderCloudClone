@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { App } from "@rtc/client-core";
 import { createApp } from "@rtc/client-core/core";
+import type { App } from "@rtc/core-api";
 import {
   ConnectionStatus,
   IDLE_TIMEOUT_MS,

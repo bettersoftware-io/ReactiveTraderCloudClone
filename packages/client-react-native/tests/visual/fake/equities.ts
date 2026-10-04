@@ -1,4 +1,4 @@
-import type { EqDrawingsState, EqWorkspaceState } from "@rtc/client-core";
+import type { EqDrawingsState, EqWorkspaceState } from "@rtc/core-api";
 import {
   type Candle,
   type ChartSubstrate,

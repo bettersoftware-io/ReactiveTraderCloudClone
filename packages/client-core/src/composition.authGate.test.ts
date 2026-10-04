@@ -8,6 +8,7 @@
 import { NEVER } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
+import type { AppPorts, AuthGatedTransport } from "@rtc/core-api";
 import {
   AuthSimulator,
   findRosterUser,
@@ -16,7 +17,6 @@ import {
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { AppPorts, AuthGatedTransport } from "#/adapters/portFactory";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 

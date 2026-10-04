@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 
-import type { WorkspaceTab } from "@rtc/client-core";
-import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/client-core";
+import type { WorkspaceTab } from "@rtc/core-api";
+import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { LayoutPresetsSection } from "./LayoutPresetsSection";

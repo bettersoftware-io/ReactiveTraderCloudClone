@@ -22,20 +22,9 @@ import {
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
 
-/** UI cadence constants relocated out of the old useThroughput React hook —
- *  now sourced from `@rtc/domain` (pluggable-core slice 5). Kept for
- *  existing importers: re-exports the domain constants. */
-export const DEBOUNCE_MS: number = THROUGHPUT_DEBOUNCE_MS;
-export const MESSAGE_DISMISS_MS: number = THROUGHPUT_MESSAGE_DISMISS_MS;
-
 /** Default value shown when the initial load fails (mirrors the old hook's
  *  useState(100) seed, which it kept on a failed fetch). */
 const DEFAULT_VALUE: number = DEFAULT_THROUGHPUT;
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { ThroughputView };
 
 const INITIAL: ThroughputView = {
   value: DEFAULT_VALUE,
@@ -50,8 +39,8 @@ type Patch = Partial<ThroughputView>;
  * for the contract. Relocated out of the old `useThroughput` React hook;
  * global/shared state, so the seam binds `state$` with react-rxjs `bind`
  * (not a per-mount machine). `setValue` debounces the write by
- * `DEBOUNCE_MS` and auto-dismisses the resulting banner after
- * `MESSAGE_DISMISS_MS`. */
+ * `THROUGHPUT_DEBOUNCE_MS` and auto-dismisses the resulting banner after
+ * `THROUGHPUT_MESSAGE_DISMISS_MS`. */
 export class ThroughputPresenter implements ThroughputPresenterApi {
   readonly state$: StateObservable<ThroughputView>;
 

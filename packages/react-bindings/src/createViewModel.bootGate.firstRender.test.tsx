@@ -1,12 +1,9 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,

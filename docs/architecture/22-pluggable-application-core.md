@@ -63,9 +63,9 @@ machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 whole plug a client needs to name a core without naming an implementation.
 
 `@rtc/client-core` is unchanged in name, adapters, and behaviour; it now
-`implements` `@rtc/core-api`'s presenter interfaces and re-exports every type
-it used to own outright, so no existing import in either binding or client
-changed. `@rtc/client-core-async` and `@rtc/client-core-effect` are new
+`implements` `@rtc/core-api`'s presenter interfaces. It re-exported every type
+it used to own outright until 2026-10-04; since then a consumer imports a
+contract type from `@rtc/core-api` itself. `@rtc/client-core-async` and `@rtc/client-core-effect` are new
 sibling packages implementing the same `CoreFactory` contract on
 `async`/`await` + `AsyncIterable` and Effect-TS respectively. `@rtc/core-contract`
 is dev-only — a devDependency of all three cores, never imported from any
@@ -79,8 +79,9 @@ workspace and Jarvis controllers (`createWorkspaceDock`,
 runtime dependencies are `domain` and `shared` only, and it takes
 `core-api` for types. Two dependency-cruiser rules keep it that way:
 `core-logic-stays-pure` (no runtime `rxjs`/`@rx-state`) and
-`core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exports it
-whole, so no existing import changed. Each alternative core composes from
+`core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exported it
+whole until 2026-10-04; a consumer now imports a shared rule from
+`@rtc/core-logic` directly. Each alternative core composes from
 `core-logic`, `core-api`, `domain`, `shared` and its own members only;
 `@rtc/client-core` is a devDependency there, for test adapters
 (`createSimulatorPorts`), and `alt-cores-no-client-core-at-runtime` forbids
