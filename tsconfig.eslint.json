@@ -41,7 +41,7 @@
     "packages/client-react-native/jest.setup.ts",
     "packages/client-react-native/scripts/**/*.ts",
     "packages/*/*.config.ts",
-    "packages/*/*.cts",
+    "packages/*/*.mts",
     "packages/*/*.config.test.ts",
     "eslint-rules/*.mts",
     "scripts/**/*.ts",

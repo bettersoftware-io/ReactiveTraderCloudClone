@@ -19,6 +19,6 @@
   // two entries and removeExpoEnvDTS() to delete the file. That write is
   // guarded by `if (updates.size)`, so once they are absent Expo stops
   // touching this file entirely — reverting its edit is what made it recur.
-  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "*.cts"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
   "exclude": ["node_modules", "dist"]
 }

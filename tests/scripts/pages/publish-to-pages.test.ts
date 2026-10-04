@@ -153,7 +153,7 @@ function publish(cwd: string, source: string, message: string): void {
 }
 
 const SCRIPT = resolve(
-  __dirname,
+  import.meta.dirname,
   "../../../scripts/pages/publish-to-pages.mts",
 );
 

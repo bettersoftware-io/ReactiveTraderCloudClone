@@ -239,7 +239,7 @@ function put(path: string, content = "x"): string {
 }
 
 const SCRIPT = resolve(
-  __dirname,
+  import.meta.dirname,
   "../../../scripts/pages/build-visual-report.mts",
 );
 
