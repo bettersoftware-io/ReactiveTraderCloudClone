@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { CachedStatus } from "#/accounts/accountStatusCache";
+import type { AccountLookup } from "#/accounts/AccountDirectory";
+import {
+  type CachedStatus,
+  createAccountStatusCache,
+} from "#/accounts/accountStatusCache";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { createBanList } from "#/auth/banList";
 import { signToken } from "#/auth/token";
@@ -113,6 +117,50 @@ describe("decideUpgrade", () => {
       status: 503,
       reason: "too-many-from-ip",
     });
+  });
+
+  it("re-checks the total cap after the awaited status too", async () => {
+    const deps = createDeps({ status: "active", maxTotal: 1 });
+    const pending = decideUpgrade(
+      `/?access=${createAccountToken()}`,
+      "1.2.3.4",
+      deps,
+    );
+
+    deps.connections.acquire("9.9.9.9");
+
+    expect(await pending).toEqual({
+      ok: false,
+      status: 503,
+      reason: "too-many-connections",
+    });
+  });
+
+  it("fails closed with 503 when the directory behind the cache rejects", async () => {
+    const deps = createDeps();
+    const failing: UpgradeGateDeps = {
+      ...deps,
+      accountStatus: createAccountStatusCache({
+        directory: {
+          findAccount: (): Promise<AccountLookup> => {
+            return Promise.reject(new Error("socket hang up"));
+          },
+        },
+        ttlMs: 60_000,
+        maxEntries: 10,
+        now: (): number => {
+          return NOW;
+        },
+      }),
+    };
+
+    expect(
+      await decideUpgrade(
+        `/?access=${createAccountToken()}`,
+        "1.2.3.4",
+        failing,
+      ),
+    ).toEqual({ ok: false, status: 503, reason: "accounts-unavailable" });
   });
 });
 

@@ -24,7 +24,10 @@ export interface UpgradeVerdict {
  * account's token is then re-checked against the account's CURRENT status
  * (spec §5.6): a token lives eight hours, a block must not wait for it. The
  * caps are a CHECK here — `index.ts` acquires the slot on `connection` and
- * releases it on `close`, so a handshake that never completes holds none. */
+ * releases it on `close`, so a handshake that never completes holds none. The
+ * re-check after the awaited status narrows the window between check and
+ * reservation to microtasks; it does not close it — the overshoot is bounded
+ * and accepted (see `connectionGuard`). */
 export async function decideUpgrade(
   url: string | undefined,
   ip: string,
