@@ -20,7 +20,7 @@ import type {
 } from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
-/** The send fuse counts every email the server asks for under one key. */
+/** The send fuse counts every sign-up the server sends under one key. */
 const SEND_FUSE_KEY = "all";
 
 export interface AccountServiceOptions {
@@ -36,9 +36,13 @@ export interface AccountServiceOptions {
    * by the normalized address and shared by `/register`, `/resend-code` and
    * `/request-reset`; never charged for a request that fails validation. */
   readonly sendLimiter: Pick<RateLimiter, "hit">;
-  /** One key for the whole server: every send, whatever the address. A fuse
-   * set below the store's own email limit, so the server refuses honestly
-   * (`unavailable`) instead of the store dropping mail silently. */
+  /** One key for the whole server, charged by `/register` only: every
+   * counted sign-up really is sent an email, so the fuse, set below the
+   * store's own email limit, makes the server refuse honestly
+   * (`unavailable`) instead of the store dropping mail silently. Resends and
+   * reset requests are not charged: one for an address with no account
+   * sends nothing, so charging them would let junk addresses lock every
+   * resend and reset out. */
   readonly sendFuse: Pick<RateLimiter, "hit">;
 }
 
@@ -121,17 +125,13 @@ export function createAccountService(
   /** Sign-ups answered since start; only ever grows. */
   let answered = 0;
 
-  /** The address's own budget first (`throttled`: the caller may be the
-   * owner, and a registered and an unregistered address answer alike), then
-   * the server-wide fuse (`unavailable`). */
-  function chargeSend(email: string): "allowed" | "throttled" | "unavailable" {
-    const at = options.now();
-
-    if (!options.sendLimiter.hit(email, at)) {
-      return "throttled";
-    }
-
-    return options.sendFuse.hit(SEND_FUSE_KEY, at) ? "allowed" : "unavailable";
+  /** Charges the address's own send budget. Over it is `throttled`: the
+   * caller may be the owner, and a registered and an unregistered address
+   * answer alike. */
+  function chargeSend(email: string): "allowed" | "throttled" {
+    return options.sendLimiter.hit(email, options.now())
+      ? "allowed"
+      : "throttled";
   }
 
   async function register(
@@ -154,10 +154,12 @@ export function createAccountService(
       return { outcome: "invalid", rule: "display-name" };
     }
 
-    const budget = chargeSend(email);
+    if (chargeSend(email) === "throttled") {
+      return { outcome: "throttled" };
+    }
 
-    if (budget !== "allowed") {
-      return { outcome: budget };
+    if (!options.sendFuse.hit(SEND_FUSE_KEY, options.now())) {
+      return { outcome: "unavailable" };
     }
 
     const answeredBefore = answered;
@@ -205,10 +207,8 @@ export function createAccountService(
       return "invalid";
     }
 
-    const budget = chargeSend(email);
-
-    if (budget !== "allowed") {
-      return budget;
+    if (chargeSend(email) === "throttled") {
+      return "throttled";
     }
 
     const sent = await directory.resendCode(email, callerIp);
@@ -259,10 +259,8 @@ export function createAccountService(
       return "invalid";
     }
 
-    const budget = chargeSend(email);
-
-    if (budget !== "allowed") {
-      return budget;
+    if (chargeSend(email) === "throttled") {
+      return "throttled";
     }
 
     const sent = await directory.requestReset(email, callerIp);

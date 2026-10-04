@@ -475,22 +475,27 @@ describe("sending per address", () => {
     },
   );
 
-  it("a blown hourly fuse answers 503 unavailable", async () => {
+  it("a blown hourly fuse answers a registration 503 unavailable", async () => {
     const deps = createDeps({ sendFuse: createRateLimiter(1, 60_000) });
 
-    await resendConfirmationCode(
-      JSON.stringify({ email: "ann@desk.io" }),
-      IP,
-      deps,
-    );
-    const result = await requestPasswordReset(
-      JSON.stringify({ email: "bob@desk.io" }),
+    await registerAccount(createRegisterBody(), IP, deps);
+    const result = await registerAccount(
+      createRegisterBody({ email: "bob@desk.io" }),
       IP,
       deps,
     );
 
     expect(result.status).toBe(503);
     expect(JSON.parse(result.body)).toEqual({ error: "unavailable" });
+    expect(
+      (
+        await requestPasswordReset(
+          JSON.stringify({ email: "cy@desk.io" }),
+          IP,
+          deps,
+        )
+      ).status,
+    ).toBe(202);
   });
 });
 

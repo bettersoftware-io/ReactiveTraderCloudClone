@@ -120,11 +120,11 @@ Supabase moves them.
    and leave its expiry at an hour or less. The server refuses a code of any
    other length before it reaches Supabase, so a project left at the default
    6 would make every confirmation and every reset fail.
-   Then set the email-sending rate under Authentication → Rate limits to
-   **at least 30 an hour**: the server stops at 25 an hour
-   (`EMAIL_SENDS_PER_HOUR_MAX`) and answers 503 rather than lose mail, but
-   only while Supabase's own limit sits above it — a send over Supabase's
-   limit is lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
+   Then set the project's email rate limit under Authentication → Rate
+   limits to **at least 60 an hour**: the server stops new sign-ups at 25
+   an hour (`EMAIL_SENDS_PER_HOUR_MAX`) and answers 503, which leaves the
+   rest for resends and password resets. A send over Supabase's own limit
+   is lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
    saved, Email OTP length 8.
 6. **IP forwarding** (Authentication → Rate limits): enable IP address
    forwarding. The server sends each caller's IP as `Sb-Forwarded-For`, so

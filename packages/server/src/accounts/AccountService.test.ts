@@ -912,25 +912,50 @@ describe("AccountService per-address send limit", () => {
     expect(await service.requestReset("nobody@desk.io", IP)).toBe("throttled");
   });
 
-  it("the hourly fuse answers unavailable on the 26th send across different addresses, without a directory call", async () => {
+  it("the hourly fuse answers the 26th registration across different addresses unavailable, without a directory call", async () => {
     const { service, directory } = createService({
+      maxRegistrationsPerDay: 100,
       sendFuse: createRateLimiter(25, HOUR_MS),
     });
-    const calls = spyOnSends(directory);
+    const signUp = vi.spyOn(directory, "signUp");
 
     for (let n = 0; n < 25; n += 1) {
-      expect(await service.resendCode(`n${n}@desk.io`, IP)).toBe("code_sent");
+      expect(
+        await service.register(
+          { ...createRegistration(), email: `n${n}@desk.io` },
+          IP,
+        ),
+      ).toEqual({ outcome: "code_sent" });
     }
 
-    expect(calls()).toBe(25);
-    expect(await service.requestReset("late@desk.io", IP)).toBe("unavailable");
     expect(
       await service.register(
         { ...createRegistration(), email: "later@desk.io" },
         IP,
       ),
     ).toEqual({ outcome: "unavailable" });
-    expect(calls()).toBe(25);
+    expect(signUp).toHaveBeenCalledTimes(25);
+  });
+
+  it("a spent fuse leaves resends and reset requests reaching the directory, and only sign-up unavailable", async () => {
+    const { service, directory } = createService({
+      sendFuse: createRateLimiter(1, HOUR_MS),
+    });
+
+    await service.register(createRegistration(), IP);
+    const resend = vi.spyOn(directory, "resendCode");
+    const reset = vi.spyOn(directory, "requestReset");
+
+    expect(await service.resendCode("bob@desk.io", IP)).toBe("code_sent");
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe("code_sent");
+    expect(resend).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "cy@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "unavailable" });
   });
 
   const HOUR_MS = 60 * 60 * 1_000;

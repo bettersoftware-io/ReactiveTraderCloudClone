@@ -548,11 +548,11 @@ forwards as `Sb-Forwarded-For`, so Supabase buckets a /64 the same way.
 
 | Endpoint | Body | Success | Specific failures |
 |---|---|---|---|
-| `/register` | `email`, `displayName` | `202 {status:"code_sent"}`, also for an address that already has an account | `400 invalid_request` with `rule` `email` or `display-name`; `403 registration_closed` (switch off, or the daily cap reached); `429 rate_limited` (the address's send budget; no strike); `503 unavailable` (also the hourly email fuse) |
-| `/resend-code` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `429 rate_limited` (the address's send budget; no strike); `503` (also the hourly email fuse) |
+| `/register` | `email`, `displayName` | `202 {status:"code_sent"}`, also for an address that already has an account | `400 invalid_request` with `rule` `email` or `display-name`; `403 registration_closed` (switch off, or the daily cap reached); `429 rate_limited` (the address's send budget; no strike); `503 unavailable` (also the hourly sign-up fuse) |
+| `/resend-code` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `429 rate_limited` (the address's send budget; no strike); `503` |
 | `/confirm-email` | `email`, `code`, `password` | `200 {status:"pending_approval"}`, or `200 {status:"password_unset"}` | `400 invalid_request` with the failed password rule (the code is not spent); `400 invalid_code` (wrong, expired, or not eight digits; a ban strike); `429 rate_limited` (per-IP, or the address's code budget); `503` |
 | `/login` | `username`, `password` | `200 {token, user, exp}` | `401 invalid_credentials` (a ban strike); `403 unconfirmed`, `403 pending_approval`, `403 blocked`; `503 unavailable` |
-| `/request-reset` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `429 rate_limited` (the address's send budget; no strike); `503` (also the hourly email fuse) |
+| `/request-reset` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `429 rate_limited` (the address's send budget; no strike); `503` |
 | `/reset-password` | `email`, `code`, `password` | `200 {status:"password_changed"}` | `400 invalid_request` with the failed password rule, or `rule: "password"` when Supabase refuses one the rule allowed; `400 invalid_code` (a ban strike); `429 rate_limited`; `503` |
 
 Every endpoint can also answer `400 malformed_json`, `400 invalid_request`
@@ -674,7 +674,7 @@ each endpoint has its own limiter instance.
 | Addresses the per-address limiter holds | `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 50 000 |
 | Emails per address, one budget shared by `/register`, `/resend-code` and `/request-reset` | `SEND_PER_ADDRESS_MAX` / `SEND_PER_ADDRESS_WINDOW_MS` | 3 per hour |
 | Addresses the per-address send limiter holds | `SEND_PER_ADDRESS_MAX_KEYS` | 50 000 |
-| Emails per hour, whole server (a fuse) | `EMAIL_SENDS_PER_HOUR_MAX` / `EMAIL_SENDS_WINDOW_MS` | 25 per hour |
+| Sign-ups per hour, whole server (a fuse on `/register` only) | `EMAIL_SENDS_PER_HOUR_MAX` / `EMAIL_SENDS_WINDOW_MS` | 25 per hour |
 | Registrations per day, whole service | `MAX_REGISTRATIONS_PER_DAY` | 200 |
 | One account-store call | `ACCOUNT_DIRECTORY_TIMEOUT_MS` | 5 s |
 | Upgrade status cache: lifetime, size | `ACCOUNT_STATUS_CACHE_TTL_MS` / `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` | 60 s, 1 000 |
@@ -699,10 +699,15 @@ each endpoint has its own limiter instance.
   three paths made it, and only for a request that passes local
   validation): over it is `429 rate_limited`, not a ban strike, and the
   answer is the same for a registered and an unregistered address. Every
-  send is also charged to one server-wide fuse of 25 an hour: over it is
-  `503 unavailable`. The fuse must sit **below** the Supabase project's own
-  email rate limit, so the server refuses honestly instead of Supabase
-  answering "sent" and dropping the mail. Both limiters are in memory.
+  `/register` that passes is also charged to one server-wide fuse of 25 an
+  hour: over it is `503 unavailable`. The fuse must sit **below** the
+  Supabase project's own email rate limit, so the server refuses honestly
+  instead of Supabase answering "sent" and dropping the mail, and the rest
+  of the allowance is left for resends and resets. `/resend-code` and
+  `/request-reset` are not charged to it: one for an address with no
+  account sends nothing, so charging them would let 25 junk requests an
+  hour make every resend and reset answer 503 for everyone. Both limiters
+  are in memory.
 - **The daily cap** is counted in the store (`profiles.created_at`), so a
   restart keeps it. It is exact within one server process — sign-ups still
   in flight are counted too — and approximate across several machines, which
