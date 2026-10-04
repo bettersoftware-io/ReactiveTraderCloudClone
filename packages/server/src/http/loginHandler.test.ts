@@ -301,6 +301,7 @@ describe("describeUpgrade", () => {
     });
     expect(describeUpgrade(`/?access=${login.token}`, auth)).toEqual({
       ok: true,
+      token: { username: "demo", accountId: null, access: "user" },
     });
   });
 });

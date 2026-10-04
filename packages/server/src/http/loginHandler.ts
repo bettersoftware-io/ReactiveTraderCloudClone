@@ -10,6 +10,7 @@ import { sessionUserFor } from "../accounts/sessionUserFor.js";
 import type { AuthService } from "../auth/AuthService.js";
 import type { BanList } from "../auth/banList.js";
 import type { RateLimiter } from "../auth/rateLimit.js";
+import type { VerifiedToken } from "../auth/token.js";
 import { type HttpResult, jsonResult } from "./jsonResult.js";
 
 export interface LoginHandlerDeps {
@@ -105,19 +106,23 @@ export function authorizeUpgrade(
  * and one whose token failed verification (`invalid-token`, e.g. an expired
  * session). `no-url` is a malformed request with no URL at all. The last three
  * are the edge guards in front of the token check (`upgradeGate.ts`): a
- * §9.2-banned IP, and the S8 total / per-IP live-socket caps. */
+ * §9.2-banned IP, and the S8 total / per-IP live-socket caps.
+ * `account-not-active` is a registered account that is blocked, unapproved,
+ * unconfirmed or deleted since the token was issued; `accounts-unavailable` is
+ * the account store failing to answer — the gate fails closed. */
 export type UpgradeRejection =
   | "no-url"
   | "no-token"
   | "invalid-token"
   | "banned"
   | "too-many-connections"
-  | "too-many-from-ip";
+  | "too-many-from-ip"
+  | "account-not-active"
+  | "accounts-unavailable";
 
-export interface UpgradeDecision {
-  readonly ok: boolean;
-  readonly reason?: UpgradeRejection;
-}
+export type UpgradeDecision =
+  | { readonly ok: true; readonly token: VerifiedToken }
+  | { readonly ok: false; readonly reason: UpgradeRejection };
 
 /** The reason-carrying core of {@link authorizeUpgrade}. Same strict policy —
  * missing URL / missing `?access=` / unverifiable token all reject — but names
@@ -137,11 +142,13 @@ export function describeUpgrade(
     return { ok: false, reason: "no-token" };
   }
 
-  if (auth.verifyToken(access) === null) {
+  const token = auth.verifyToken(access);
+
+  if (token === null) {
     return { ok: false, reason: "invalid-token" };
   }
 
-  return { ok: true };
+  return { ok: true, token };
 }
 
 const ACCOUNT_REFUSALS: Readonly<
