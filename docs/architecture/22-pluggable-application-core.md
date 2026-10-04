@@ -183,10 +183,11 @@ to reproduce them explicitly:
    `shareReplay({ bufferSize: 1, refCount: true })`'s contract, written out
    explicitly rather than implied by an operator: the async core's `Topic<T>`
    starts its producer on the first subscriber and aborts it on the last;
-   the Effect core's `sharedFold` restates it over a `SubscriptionRef` and a
-   per-warm-period `Scope` — `Stream.share({ replay: 1 })` could not be the
-   envelope, because it replays to a new subscriber on a fiber, never in the
-   caller's tick (slice 1a, measured on 3.22.2).
+   the Effect core's `sharedFold` restates it over a per-warm-period
+   `Scope`, its producer handing each state to the period's subscribers
+   itself — `Stream.share({ replay: 1 })` could not be the envelope,
+   because it replays to a new subscriber on a fiber, never in the caller's
+   tick (slice 1a, measured on 3.22.2).
 3. **Memoised per-key identity.** `price$(EURUSD) === price$(EURUSD)` — a
    contract test asserts it directly, since a core that rebuilt a new stream
    per call would still type-check.
@@ -195,7 +196,7 @@ to reproduce them explicitly:
    after `settle()` (two macrotask turns): an Effect fiber delivers past the
    seed on the scheduler, so a suite asserting later values synchronously
    would be pinning RxJS's delivery tick rather than the behaviour. One
-   related, uncontracted difference: a `SubscriptionRef` fold conflates
+   related, uncontracted difference: an Effect `sharedFold` conflates
    `Object.is`-equal consecutive states (the guard that keeps the seed from
    being delivered twice), where the RxJS core's `scan`/`map` re-emit them
    and the async core's `Topic` reproduces that re-emission. Measured on

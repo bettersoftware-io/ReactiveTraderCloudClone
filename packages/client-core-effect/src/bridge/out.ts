@@ -24,7 +24,7 @@ import {
 } from "#/bridge/in";
 import { turnScheduler } from "#/bridge/turnScheduler";
 
-export { type PortEvents, portEvents } from "#/bridge/in";
+export { portEvents } from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
  * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
@@ -606,6 +606,7 @@ export function sharedFold<S>(
     const scope = host.runtime.runSync(
       Scope.fork(host.scope, ExecutionStrategy.sequential),
     );
+
     const period: WarmPeriod<S> = {
       scope,
       current: seed,

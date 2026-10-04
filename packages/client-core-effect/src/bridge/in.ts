@@ -165,9 +165,11 @@ export function fromObservables<E>(
       }
     },
   };
+
   const subscriptions = sources.map((source) => {
     return source.subscribe(sink);
   });
+
   const subscription: Unsubscribable = {
     unsubscribe: () => {
       for (const each of subscriptions) {

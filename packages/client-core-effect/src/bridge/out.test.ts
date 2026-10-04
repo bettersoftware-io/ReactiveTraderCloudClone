@@ -458,6 +458,7 @@ describe("bridge/out", () => {
         leavingSub.unsubscribe();
       }
     });
+
     const stayingSub = stream.subscribe((value: number) => {
       staying.push(value);
     });

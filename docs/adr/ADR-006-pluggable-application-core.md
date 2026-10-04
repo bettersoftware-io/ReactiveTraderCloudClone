@@ -1194,6 +1194,39 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   resumed from the same store; with the base gone it kills that mutant in
   both cores.
 
+**The Effect bridge after profiling (2026-10-04).** Four changes to
+`@rtc/client-core-effect`'s `bridge/`, each replacing a detail recorded
+above; the presenters' and machines' logic did not move. Found by timing
+every fiber step on the FX screen, after the effect-core e2e job ran slow.
+
+- **Fibers run on the bridge's own scheduler.** Effect's default gives each
+  fiber resume a microtask of its own, so a value crossing N fibers arrived
+  N microtasks later and the UI rendered in between (a tile heard its price
+  a turn before the flash that price causes). `bridge/turnScheduler.ts`
+  settles every ready fiber step inside one microtask; `runnerFor` installs
+  it. Contract: "…reach the tile in one turn".
+- **A scope closed from plain code releases its ports first,
+  synchronously** (`closeScope` → `releasePorts`). `Scope.close` ends the
+  scope's fibers one by one before it unsubscribes anything, so a disposed
+  machine went on listening for a few steps; only the slowness of
+  `Stream.merge` had hidden it. Grep gate 49 forbids the global
+  `Effect.run*` outside `bridge/`.
+- **`sharedFold` hands each state to its subscribers directly**, from the
+  producer's fiber. The `SubscriptionRef`, the watcher fiber per subscriber,
+  the first-write latch and the late-joiner window described above are
+  gone; the fold still conflates `Object.is`-equal states.
+- **Several ports fold through one queue** (`fromPort.merged`), in the
+  order they emitted. `conflatedFold` no longer seeds its calm flag from
+  `peekCurrent`: the flag is subscribed first, so its value is queued ahead
+  of every tick. `Stream.merge` over two ports cost about eleven fiber steps
+  per value.
+
+Measured on the React client (FX screen, nine tiles): scheduler tasks in the
+first two seconds 2,900 → 1,000 and per six seconds of steady state 7,500 →
+2,000; tile renders in steady state from 45% above the RxJS core to level
+with it. Machine state still reaches its subscribers through
+`refToStateStream`'s watcher fiber; see `docs/STATUS.md`.
+
 ## Follow-ups
 
 1. ~~Slices 1a through 8~~ — all shipped; slice 8 closed the workstream
