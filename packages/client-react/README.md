@@ -71,7 +71,7 @@ Every component that renders markup has a co-located `<Component>.module.css`
 (e.g. `src/ui/App.tsx` / `src/ui/App.module.css`) imported as
 `import styles from "./X.module.css"` and applied via `className={styles.x}`.
 Inline `style={{…}}` object literals are banned by an ESLint AST rule scoped
-to client `src` (the root `eslint.config.mjs`, the `no-restricted-syntax`
+to client `src` (the root `eslint.config.mts`, the `no-restricted-syntax`
 `inlineStyleProp` selector) — the only escape hatch is a runtime-computed CSS
 custom property, opted out with an explicit
 `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The policy

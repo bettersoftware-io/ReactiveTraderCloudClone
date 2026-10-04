@@ -1,0 +1,33 @@
+{
+  // Typecheck-only program for the repo's own tooling: the gate scripts, the
+  // custom ESLint rules and the root tool configs. These files are run by
+  // plain `node`, which strips their types and never checks them, so this
+  // program (`pnpm typecheck:tooling`) is the only place they are checked.
+  //
+  // `module: nodenext` matches how Node resolves them at runtime (relative
+  // imports spell out `./x.mts`, hence `allowImportingTsExtensions`), and
+  // `erasableSyntaxOnly` rejects the syntax type-stripping cannot run — an
+  // `enum`, a `namespace`, a constructor parameter property — at typecheck
+  // time, not as ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX in CI.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "lib": ["ES2024"],
+    "types": ["node"]
+  },
+  "include": [
+    "scripts/**/*.mts",
+    "eslint-rules/**/*.mts",
+    "eslint.config.mts",
+    "eslint.config.typed.mts",
+    ".dependency-cruiser.mts"
+  ]
+}

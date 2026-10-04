@@ -56,7 +56,7 @@ function devtoolsPanel(): Plugin {
   // The build's resolved output directory (Vite's own `--outDir`/config
   // default, not the hardcoded "dist" literal) — read once configResolved
   // fires, so closeBundle copies devtools alongside wherever this build
-  // actually wrote its output (e.g. check-core-bundle.mjs's per-core temp
+  // actually wrote its output (e.g. check-core-bundle.mts's per-core temp
   // dirs), never a stale "dist" sibling.
   let outDir = "dist";
 

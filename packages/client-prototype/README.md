@@ -13,7 +13,7 @@ behaviorally, the original is right and this port has a fidelity bug.
 | **Ring** | None — outside the rings. A **design-comprehension island**, deliberately excluded from the Clean Architecture diagrams ([§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring), [§13.1](../../docs/architecture/13-codebase-map.md#131-l0----the-system-on-one-screen)) rather than placed in ring ④ alongside the shipping clients. |
 | **Runtime deps** | `react`, `react-dom` only (`package.json` `dependencies`) — the whole point is total isolation from `@rtc/*`, so no framework substitution here can ever leak into the product graph. |
 | **Consumed by** | Nothing. No other workspace `package.json` lists `@rtc/client-prototype`, and grepping `src/` for `@rtc/` returns zero matches — the import edge doesn't exist in either direction. |
-| **Must never import** | Any `@rtc/*` package (`domain`, `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `ws-effects`, `server`). Not a numbered gate from `docs/architecture/12-architectural-gates.md` — this package sits outside `.dependency-cruiser.cjs`'s scope too — the boundary is structural: `package.json` names only `react`/`react-dom`, and pnpm's strict, per-package `node_modules` makes an unlisted `@rtc/*` import fail to resolve at build time even if someone typed it. |
+| **Must never import** | Any `@rtc/*` package (`domain`, `shared`, `client-core`, `react-bindings`, `client-react`, `client-react-native`, `ws-effects`, `server`). Not a numbered gate from `docs/architecture/12-architectural-gates.md` — this package sits outside `.dependency-cruiser.mts`'s scope too — the boundary is structural: `package.json` names only `react`/`react-dom`, and pnpm's strict, per-package `node_modules` makes an unlisted `@rtc/*` import fail to resolve at build time even if someone typed it. |
 
 ## How this relates to the original
 
@@ -110,17 +110,17 @@ this port, and the standalone design server:
 
 ```json
 "dev:proto": "pnpm --filter @rtc/client-prototype dev",
-"dev:design:web": "node scripts/serve-design.mjs",
+"dev:design:web": "node scripts/serve-design.mts",
 ```
 
 `dev:proto` starts this package's own Vite dev server on port 5273
 (`pnpm --filter @rtc/client-prototype dev`; the port is set in
 `vite.config.ts`), rendering this readable React port. `dev:design:web` runs a
-separate zero-dependency Node static server (`scripts/serve-design.mjs`) that
+separate zero-dependency Node static server (`scripts/serve-design.mts`) that
 serves the **current** canonical web design (v5) on port 8899. Note that this
 port mirrors the **v2** design, which v5 has since moved past — so to serve the
 exact artifact this package is a port *of*, pass its path to the same server:
-`node scripts/serve-design.mjs "docs/design/web/v2/standalone/Reactive Trader.html"`.
+`node scripts/serve-design.mts "docs/design/web/v2/standalone/Reactive Trader.html"`.
 Run that side by side with `dev:proto` to compare the port against the source
 it must stay faithful to.
 

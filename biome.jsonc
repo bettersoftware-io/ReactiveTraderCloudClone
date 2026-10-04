@@ -199,7 +199,12 @@
       // cucumber-js profile configs, `*.d.ts` module declarations). They are the
       // ONLY place default exports are allowed — application and test code must
       // use named exports.
-      "includes": ["**/*.config.*", "**/cucumber.js", "**/*.d.ts"],
+      "includes": [
+        "**/*.config.*",
+        "**/cucumber.mts",
+        ".dependency-cruiser.mts",
+        "**/*.d.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

@@ -28,7 +28,7 @@ import type { LaserRect } from "#/ui/shell/boot/scenes/laserGeometry";
 // FillRectContentShape` — without an inline object type as a generic
 // argument to `Extract<...>`, which the repo's `no-restricted-syntax` bans
 // even inside a type alias (only `interface` bodies and union-member object
-// types stay legal — see eslint.config.mjs's `restrictedSyntax` comment).
+// types stay legal — see eslint.config.mts's `restrictedSyntax` comment).
 export interface FillRectContentShape {
   readonly kind: "fillRect";
   readonly x: number;

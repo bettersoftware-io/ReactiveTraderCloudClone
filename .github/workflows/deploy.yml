@@ -203,10 +203,10 @@ jobs:
       # grep would now fail on every build. The guard this reuses instead
       # proves the SHAPE stays runtime-switchable: the eager set (both pages'
       # entry scripts + modulepreload hints) carries no core's marker, and
-      # each core lives in exactly one lazy chunk. See scripts/check-core-bundle.mjs and
+      # each core lives in exactly one lazy chunk. See scripts/check-core-bundle.mts and
       # docs/superpowers/specs/2026-09-27-runtime-core-switch-design.md §4.
       - name: Guard — every application core ships only as a lazy chunk
-        run: node scripts/check-core-bundle.mjs --dir .vercel/output/static
+        run: node scripts/check-core-bundle.mts --dir .vercel/output/static
 
       # When a debug build is requested, prove the sourcemaps actually landed —
       # turning a silent no-op (e.g. if the RTC_SOURCEMAPS wiring ever regresses)
@@ -307,7 +307,7 @@ jobs:
       # See the client-react job for why this reuses check-core-bundle rather
       # than grepping for an absent alternative core.
       - name: Guard — every application core ships only as a lazy chunk
-        run: node scripts/check-core-bundle.mjs --dir .vercel/output/static
+        run: node scripts/check-core-bundle.mts --dir .vercel/output/static
 
       # See the client-react job for why this greps for an INLINE sourcemap.
       - name: Guard — inline sourcemaps embedded when requested

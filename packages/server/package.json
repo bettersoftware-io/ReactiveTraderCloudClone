@@ -9,7 +9,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mjs",
+    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mts",
     "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

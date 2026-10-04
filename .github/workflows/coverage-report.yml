@@ -306,7 +306,7 @@ jobs:
           rm -rf _stage
           mkdir -p _stage
           cp -R _site _stage/coverage
-          node scripts/pages/publish-to-pages.mjs --source _stage --message "publish coverage @ ${GITHUB_SHA}"
+          node scripts/pages/publish-to-pages.mts --source _stage --message "publish coverage @ ${GITHUB_SHA}"
 
       - name: Live report link
         run: |

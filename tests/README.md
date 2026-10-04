@@ -87,7 +87,7 @@ Folders without a `[shared: …]` tag belong only to the suite they sit in.
 ```
 browser/
   playwright/           native Playwright suite (config + specs + context helpers)
-  playwright-cucumber/  cucumber.js config + world/hooks
+  playwright-cucumber/  cucumber.mts config + world/hooks
   steps/                [shared: playwright-cucumber + its :solid peer] Gherkin step defs
   scenarios/            [shared: playwright + playwright-cucumber] async scenario layer
   page-objects/         [shared: all 4 browser suites] contracts/ (driver-free) + impls

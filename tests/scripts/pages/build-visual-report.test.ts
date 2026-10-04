@@ -240,7 +240,7 @@ function put(path: string, content = "x"): string {
 
 const SCRIPT = resolve(
   __dirname,
-  "../../../scripts/pages/build-visual-report.mjs",
+  "../../../scripts/pages/build-visual-report.mts",
 );
 
 let tmp = "";

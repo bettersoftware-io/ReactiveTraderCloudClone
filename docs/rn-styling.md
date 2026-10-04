@@ -25,7 +25,7 @@ RN" library is an abstraction that compiles down to the same style objects.
   CSS-custom-property exemption. Reanimated styles (`useAnimatedStyle`
   results) pass as array members the same way.
 - **Bare `style={{…}}` is banned** by the same ESLint selector as on web
-  (`eslint.config.mjs`, RN block) — the fix is one of the three bullets
+  (`eslint.config.mts`, RN block) — the fix is one of the three bullets
   above, or the sanctioned
   `// eslint-disable-next-line no-restricted-syntax -- <reason>`.
 
