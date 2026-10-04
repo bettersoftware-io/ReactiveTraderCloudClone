@@ -12,7 +12,6 @@ import {
 import type {
   AnimationDirector as AnimationDirectorApi,
   AnimationIntent,
-  AnimationKind,
   EquityFillSignal,
   ExecutionOutcome,
 } from "@rtc/core-api";
@@ -26,11 +25,6 @@ import {
   type RfqEvent,
   RfqState,
 } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { AnimationIntent, AnimationKind };
 
 export interface AnimationDirectorDeps {
   /** Emits the current list of active currency pairs (from CurrencyPairsPresenter). */

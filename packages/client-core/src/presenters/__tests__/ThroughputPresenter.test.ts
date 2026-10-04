@@ -2,14 +2,14 @@ import type { Observable } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type { ThroughputView } from "@rtc/core-api";
 import type { AdminPort } from "@rtc/domain";
-
 import {
-  DEBOUNCE_MS,
-  MESSAGE_DISMISS_MS,
-  ThroughputPresenter,
-  type ThroughputView,
-} from "../ThroughputPresenter";
+  THROUGHPUT_DEBOUNCE_MS as DEBOUNCE_MS,
+  THROUGHPUT_MESSAGE_DISMISS_MS as MESSAGE_DISMISS_MS,
+} from "@rtc/domain";
+
+import { ThroughputPresenter } from "../ThroughputPresenter";
 
 describe("ThroughputPresenter", () => {
   it("seeds loading:true synchronously, then the loaded value", () => {

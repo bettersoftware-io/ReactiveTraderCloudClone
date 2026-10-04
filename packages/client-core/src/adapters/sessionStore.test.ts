@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { StoredSession } from "@rtc/core-api";
+
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { StoredSession } from "#/adapters/sessionStore";
 
 describe("InMemorySessionStore", () => {
   it("returns null on initial read", () => {

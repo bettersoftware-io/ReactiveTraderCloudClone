@@ -1,9 +1,8 @@
 import { NEVER, type Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { JarvisUsagePort } from "@rtc/core-api";
 import type { JarvisUsageSnapshot } from "@rtc/shared";
-
-import type { JarvisUsagePort } from "#/adapters/jarvisUsagePort";
 
 import { JarvisUsagePresenter } from "./JarvisUsagePresenter";
 

@@ -28,15 +28,8 @@ import {
   type CurrencyPair,
   detectAnomalies,
   type JarvisNarratorPreference,
-  MAX_NARRATIONS_PER_SESSION,
-  NARRATION_COOLDOWN_MS,
   type PriceTick,
 } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { NarratorHandle };
 
 export interface NarratorDeps {
   /** The live FX pair roster to detect over — composition wires this from
@@ -100,10 +93,6 @@ export interface NarratorDeps {
    * `buildBrowserPorts.ts`), `undefined` in production. */
   readonly config?: Partial<AnomalyDetectorConfig>;
 }
-
-/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
- * contract suites can read them (pluggable-core slice 7 wave 2). */
-export { MAX_NARRATIONS_PER_SESSION, NARRATION_COOLDOWN_MS };
 
 /** Merges `pairs`' live tick streams (via the injected, shared `priceFor`)
  * into one — the MERGE counterpart of `composePanelStream.ts`'s

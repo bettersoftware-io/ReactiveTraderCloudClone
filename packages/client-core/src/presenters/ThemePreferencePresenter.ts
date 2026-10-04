@@ -6,7 +6,10 @@ import {
   shareReplay,
 } from "rxjs";
 
-import type { ThemePreferencePresenter as ThemePreferencePresenterApi } from "@rtc/core-api";
+import type {
+  ColorSchemeSource,
+  ThemePreferencePresenter as ThemePreferencePresenterApi,
+} from "@rtc/core-api";
 import {
   DEFAULT_THEME_MODE_PREFERENCE,
   nextThemeModePreference,
@@ -16,7 +19,6 @@ import {
   type ThemeModePreference,
 } from "@rtc/domain";
 
-import type { ColorSchemeSource } from "../theme/colorSchemeSource";
 import { readNow } from "./readNow";
 
 /** Implements `ThemePreferencePresenter` (`@rtc/core-api`) — see the

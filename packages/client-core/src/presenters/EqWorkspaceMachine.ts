@@ -8,7 +8,6 @@ import type {
   EqPaneId,
   EqWorkspaceIntents,
   EqWorkspaceState,
-  EqYScale,
 } from "@rtc/core-api";
 import type { Machine } from "@rtc/core-logic";
 import {
@@ -17,18 +16,6 @@ import {
   reduceEqWorkspace,
 } from "@rtc/core-logic";
 import type { CandleTimeframe } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  EqChartType,
-  EqIndicatorId,
-  EqPaneId,
-  EqWorkspaceIntents,
-  EqWorkspaceState,
-  EqYScale,
-};
 
 export interface EqWorkspaceDeps {
   /** Symbol the workspace opens with — becomes the sole open tab and the

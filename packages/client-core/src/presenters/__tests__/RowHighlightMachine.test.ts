@@ -1,10 +1,9 @@
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
-import {
-  createRowHighlightMachine,
-  HIGHLIGHT_MS,
-} from "../RowHighlightMachine";
+import { BLOTTER_ROW_HIGHLIGHT_MS as HIGHLIGHT_MS } from "@rtc/domain";
+
+import { createRowHighlightMachine } from "../RowHighlightMachine";
 
 describe("createRowHighlightMachine", () => {
   it("starts true synchronously for a new row", () => {

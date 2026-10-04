@@ -2,22 +2,22 @@ import { BehaviorSubject, defer, NEVER, of, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
-import type { LayoutNode } from "@rtc/core-logic";
-import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/core-logic";
+import type { DriveOutcome, JarvisDriverState } from "@rtc/core-api";
+import {
+  createDefaultLayoutPort,
+  type LayoutNode,
+  MAX_DOCKED_PANELS,
+  type WorkspaceTab,
+} from "@rtc/core-logic";
 import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
-import type { DriveCommandV1 } from "@rtc/shared";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
+import { DRIVE_STAGGER_MS } from "@rtc/domain";
+import type { DriveCommandV1, JarvisEvent } from "@rtc/shared";
 
 import { createEqWorkspaceMachine } from "../EqWorkspaceMachine";
 import {
   createJarvisDriverMachine,
-  DRIVE_STAGGER_MS,
-  type DriveOutcome,
   type JarvisDriverDeps,
-  type JarvisDriverState,
 } from "../JarvisDriverMachine";
-import { MAX_DOCKED_PANELS } from "../JarvisPanelsMachine";
 import { createLayoutMachine } from "../LayoutMachine";
 import { createWorkspaceNavMachine } from "../WorkspaceNavMachine";
 

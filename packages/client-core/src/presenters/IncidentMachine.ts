@@ -16,14 +16,6 @@ import {
 } from "@rtc/core-logic";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-// The pure fold lives in @rtc/core-logic (slice 8); re-exported for this
-// module's existing importers.
-export type { IncidentEvent, IncidentIntents, IncidentKind, IncidentState };
-export { incidentConnectionEvent, reduceIncident };
-
 export interface IncidentDeps {
   /** Control handles for the perturbable simulators (latency, errorRate, topology). */
   readonly controls: readonly MetricControl[];

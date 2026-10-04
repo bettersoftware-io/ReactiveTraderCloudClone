@@ -2,9 +2,10 @@ import { NEVER, type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type { TicketSubmissionState } from "@rtc/core-api";
 import type { QuoteRequest, RfqEvent, WorkflowPort } from "@rtc/domain";
 
-import { RfqsPresenter, type TicketSubmissionState } from "../RfqsPresenter";
+import { RfqsPresenter } from "../RfqsPresenter";
 
 describe("RfqsPresenter.createTicketSubmission", () => {
   it("starts not-submitted (synchronous default)", () => {

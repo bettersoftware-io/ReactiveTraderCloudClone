@@ -6,8 +6,9 @@ import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { EventLogPort, LogEvent } from "@rtc/domain";
+import { MAX_LOG_ROWS } from "@rtc/domain";
 
-import { EventLogPresenter, MAX_LOG_ROWS } from "../EventLogPresenter";
+import { EventLogPresenter } from "../EventLogPresenter";
 
 describe("EventLogPresenter", () => {
   it("emits an empty list immediately before any events arrive", async () => {

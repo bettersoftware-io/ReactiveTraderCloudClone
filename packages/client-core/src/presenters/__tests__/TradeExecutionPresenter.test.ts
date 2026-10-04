@@ -1,6 +1,7 @@
 import { firstValueFrom, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { ExecutionOutcome } from "@rtc/core-api";
 import {
   type CurrencyPair,
   Direction,
@@ -13,10 +14,7 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import {
-  type ExecutionOutcome,
-  TradeExecutionPresenter,
-} from "../TradeExecutionPresenter";
+import { TradeExecutionPresenter } from "../TradeExecutionPresenter";
 
 describe("TradeExecutionPresenter", () => {
   it("delegates to ExecuteTradeUseCase", async () => {

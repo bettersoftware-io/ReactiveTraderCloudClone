@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DockLayoutStore,
+  LayoutIntents,
   LayoutPresetStore,
   LayoutPresetSummary,
   LayoutPresetsPresenter,
@@ -24,7 +25,6 @@ import {
 } from "@rtc/core-logic";
 
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
-import type { LayoutIntents } from "#/presenters/LayoutMachine";
 import { createLayoutMachine } from "#/presenters/LayoutMachine";
 
 describe("createLayoutPresets — presetsFor", () => {

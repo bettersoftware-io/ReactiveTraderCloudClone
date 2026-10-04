@@ -1,18 +1,15 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { ConnectionEvent, MetricControl, Perturbation } from "@rtc/domain";
-
-import type {
-  IncidentEvent,
-  IncidentKind,
-  IncidentState,
-} from "../IncidentMachine";
+import type { IncidentKind, IncidentState } from "@rtc/core-api";
 import {
-  createIncidentMachine,
+  type IncidentEvent,
   incidentConnectionEvent,
   reduceIncident,
-} from "../IncidentMachine";
+} from "@rtc/core-logic";
+import type { ConnectionEvent, MetricControl, Perturbation } from "@rtc/domain";
+
+import { createIncidentMachine } from "../IncidentMachine";
 
 describe("IncidentMachine", () => {
   it("inject(latencySpike) perturbs controls and pushes gatewayDisconnected", async () => {

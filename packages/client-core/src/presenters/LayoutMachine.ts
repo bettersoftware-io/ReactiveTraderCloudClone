@@ -15,11 +15,6 @@ import {
   layoutStaticIds,
 } from "@rtc/core-logic";
 
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { LayoutIntents, LayoutMachineOptions };
-
 type ResizePayload = { path: readonly number[]; sizes: readonly number[] };
 type OpenInstancePayload = { kind: "eq-chart"; symbol: string };
 

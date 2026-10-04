@@ -9,6 +9,12 @@ import {
   timeout,
 } from "rxjs";
 
+import type {
+  IWsAdapter,
+  JarvisAskOptions,
+  JarvisAvailability,
+  JarvisPort,
+} from "@rtc/core-api";
 import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
@@ -31,13 +37,6 @@ import {
   parsePanelSpec,
   SERVER_MSG,
 } from "@rtc/shared";
-
-import type { IWsAdapter } from "./IWsAdapter";
-import type {
-  JarvisAskOptions,
-  JarvisAvailability,
-  JarvisPort,
-} from "./jarvisPort";
 
 /** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
  * sends `jarvis.chat` collapses the turn into a synthetic offline error

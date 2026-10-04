@@ -6,11 +6,6 @@ import type { RfqCountdownSeed } from "@rtc/core-api";
 import type { ReadOnlyMachine } from "@rtc/core-logic";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
-/** Re-exported from `@rtc/core-api` (same convention as `RfqTileMachine`'s
- * `RfqState`) so the bindings keep importing every machine type from
- * `@rtc/client-core`. */
-export type { RfqCountdownSeed };
-
 /** How often the credit-RFQ countdown ticks. Presenter-local alias of the
  * domain cadence. Mirrors RfqTileMachine's COUNTDOWN_INTERVAL_MS. */
 const COUNTDOWN_INTERVAL_MS: number = RFQ_COUNTDOWN_INTERVAL_MS;

@@ -21,7 +21,11 @@ import type {
   App,
   AppCommands,
   AppPorts,
+  AuthGatedTransport,
   AuthPresenter as AuthPresenterApi,
+  JarvisEntry,
+  LayoutIntents,
+  PanelInstance,
   Presenters,
   RfqCountdownSeed,
 } from "@rtc/core-api";
@@ -52,7 +56,6 @@ import type {
 } from "@rtc/domain";
 
 import { withLoginDelay } from "#/adapters/delayedAuthPort";
-import type { AuthGatedTransport } from "#/adapters/portFactory";
 import { readPreferenceNow } from "#/adapters/readPreferenceNow";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
@@ -98,16 +101,13 @@ import {
   ForceBootAnimationPresenter,
   InstrumentsPresenter,
   type JarvisDriverDeps,
-  type JarvisEntry,
   JarvisPanelsPresenter,
   JarvisPreferencesPresenter,
   JarvisUsagePresenter,
   LatencyPresenter,
   LayoutEnginePresenter,
-  type LayoutIntents,
   LoginWaitPreferencesPresenter,
   OrdersBlotterPresenter,
-  type PanelInstance,
   PositionsPresenter,
   PowerSaverPresenter,
   PriceHistoryPresenter,
@@ -125,10 +125,6 @@ import {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
-
-/** `@rtc/core-api` types, re-exported for this package's own tests (the root
- * index re-exports the full set for external consumers). */
-export type { App, AppPorts, Presenters };
 
 /** One-shot synchronous peek at the watchlist's first symbol, used only to
  * seed EqWorkspaceMachine's initial tab/selection at composition time. The

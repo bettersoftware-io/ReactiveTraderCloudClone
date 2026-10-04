@@ -1,12 +1,10 @@
 import { concat, map, NEVER, of, tap, timer } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { EquityFillSignal } from "@rtc/core-api";
 import type { EquityOrder, OrderPort, PlaceOrderRequest } from "@rtc/domain";
 
-import {
-  type EquityFillSignal,
-  OrdersBlotterPresenter,
-} from "../OrdersBlotterPresenter";
+import { OrdersBlotterPresenter } from "../OrdersBlotterPresenter";
 
 afterEach(() => {
   vi.useRealTimers();

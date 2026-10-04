@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { JarvisAvailability } from "@rtc/core-api";
+import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
 import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import {
   CLIENT_MSG,
@@ -10,10 +12,7 @@ import {
   SERVER_MSG,
 } from "@rtc/shared";
 
-import { UNSUPPORTED_SENTINEL_SPEC } from "#/presenters/JarvisPanelsMachine";
-
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
-import type { JarvisAvailability } from "./jarvisPort";
 import {
   JARVIS_AVAILABILITY_TIMEOUT_MS,
   JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS,

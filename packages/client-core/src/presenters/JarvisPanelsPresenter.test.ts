@@ -1,7 +1,12 @@
 import { EMPTY, Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { PanelStreamDeps } from "@rtc/core-logic";
+import type { PanelData } from "@rtc/core-api";
+import {
+  MAX_LIVE_PANELS,
+  type PanelStreamDeps,
+  UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/core-logic";
 import type {
   AnalyticsPort,
   BlotterPort,
@@ -9,16 +14,9 @@ import type {
   PricingPort,
   ReferenceDataPort,
 } from "@rtc/domain";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
-import type { JarvisEvent } from "#/adapters/jarvisPort";
-
-import type { PanelData } from "./composePanelStream.js";
-import {
-  createJarvisPanelsMachine,
-  MAX_LIVE_PANELS,
-  UNSUPPORTED_SENTINEL_SPEC,
-} from "./JarvisPanelsMachine.js";
+import { createJarvisPanelsMachine } from "./JarvisPanelsMachine.js";
 import { JarvisPanelsPresenter } from "./JarvisPanelsPresenter.js";
 
 describe("JarvisPanelsPresenter", () => {

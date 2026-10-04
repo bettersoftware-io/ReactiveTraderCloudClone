@@ -6,11 +6,11 @@ import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { MetricSample, TelemetryPort } from "@rtc/domain";
+import { METRIC_WINDOW as WINDOW } from "@rtc/domain";
 
 import { ErrorRatePresenter } from "../ErrorRatePresenter";
 import { LatencyPresenter } from "../LatencyPresenter";
 import { ThroughputMetricPresenter } from "../ThroughputMetricPresenter";
-import { WINDOW } from "../windowedSamples";
 
 describe("ThroughputMetricPresenter", () => {
   it("emits an empty list before any samples arrive", async () => {

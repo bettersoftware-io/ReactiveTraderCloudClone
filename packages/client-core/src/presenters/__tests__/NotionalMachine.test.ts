@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createNotionalMachine, type NotionalView } from "../NotionalMachine";
+import type { NotionalView } from "@rtc/core-api";
+
+import { createNotionalMachine } from "../NotionalMachine";
 
 describe("createNotionalMachine", () => {
   it("initialises from the default notional, formatted with commas", () => {

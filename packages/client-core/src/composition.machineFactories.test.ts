@@ -1,12 +1,13 @@
 import { NEVER, of } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import type { Presenters } from "@rtc/core-api";
 import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/core-logic";
 import type { CurrencyPair } from "@rtc/domain";
 
 import { createLayoutMachine } from "#/presenters/LayoutMachine";
 
-import { createMachineFactories, type Presenters } from "./composition";
+import { createMachineFactories } from "./composition";
 
 // `createMachineFactories` is a WIRING TABLE: ~12 thunks, each pairing a machine
 // with the presenter members that feed it. Every entry looks plausible, so a
