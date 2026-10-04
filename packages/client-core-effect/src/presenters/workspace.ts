@@ -63,7 +63,7 @@ interface NativeWorkspacePresenters {
 }
 
 /** What the Jarvis driver reaches in this workspace, read and written
- * synchronously (`DriveCommandDeps`, client-core). */
+ * synchronously (`DriveCommandDeps`, core-logic). */
 type WorkspaceDriveDeps = Pick<
   DriveCommandDeps,
   | "layout"
@@ -93,7 +93,7 @@ export interface NativeWorkspaceDeps {
 
 /** The workspace on the Effect core: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
- * `@rtc/client-core`, wired to `SyncRef`-backed layout machines and panels
+ * `@rtc/client-adapters`, wired to `SyncRef`-backed layout machines and panels
  * roster — `SubscriptionRef`s committed with `runSync`, their in-core mirrors
  * notified synchronously (the workspace's synchronous-fold contract) — with
  * the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`, the presets

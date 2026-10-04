@@ -171,7 +171,7 @@ express).
 
 ## Close / reopen (Phase 3)
 
-A View-menu close is layer-2 state (`LayoutState.closed`, client-core): the
+A View-menu close is layer-2 state (`LayoutState.closed`, core-api): the
 engine's `closePanel` removes the panel live (releasing any strip record
 without a restore, exiting a maximize that names it, and letting the
 structural pin check dissolve an affected pin), and `reopenPanel` re-adds
@@ -486,7 +486,7 @@ seed-expiry side effect, so calling it any number of times — including from
 a UI that re-reads it on every keystroke of a "Save current as…" field —
 changes nothing about what a real save later persists.
 
-Everything else lives one layer up, in `@rtc/client-core`'s
+Everything else lives one layer up, in `@rtc/client-adapters`'s
 `createLayoutPresets` controller, but two of its rules are worth recording
 here because they bear directly on this engine's blob and its rebuild path:
 
@@ -522,7 +522,7 @@ here because they bear directly on this engine's blob and its rebuild path:
 
 Multi-instance equities charts (one `eq-chart:<symbol>` panel per open
 symbol) are built entirely on the client side of the engine boundary — this
-package gained no code for Phase 4. The client-core layout machine owns
+package gained no code for Phase 4. The client-core-rxjs layout machine owns
 `LayoutState.instances` as its second layer-2 lift (alongside `closed`), and
 the bridges open/close an instance by calling the existing
 `addDynamicPanel({ id, initialPx })` / `removeDynamicPanel(id)` pair — no

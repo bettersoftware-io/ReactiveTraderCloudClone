@@ -57,7 +57,7 @@ interface NativeWorkspacePresenters {
 }
 
 /** What the Jarvis driver reaches in this workspace, read and written
- * synchronously (`DriveCommandDeps`, client-core). */
+ * synchronously (`DriveCommandDeps`, core-logic). */
 type WorkspaceDriveDeps = Pick<
   DriveCommandDeps,
   | "layout"
@@ -87,7 +87,7 @@ export interface NativeWorkspaceDeps {
 
 /** The workspace on this core's kernel: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
- * `@rtc/client-core`, wired to Store-backed layout machines and panels
+ * `@rtc/client-adapters`, wired to Store-backed layout machines and panels
  * roster, with the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`,
  * the presets lists) and the persistence debounce built here. */
 export function createNativeWorkspace(

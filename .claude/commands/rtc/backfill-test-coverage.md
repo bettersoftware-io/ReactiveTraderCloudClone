@@ -29,7 +29,7 @@ If the block above reported no coverage files, or they are older than the code
 you care about, run the tiers first:
 
 ```bash
-pnpm test:coverage        # unit tiers: domain, server, client-core, boot-splash, …
+pnpm test:coverage        # unit tiers: domain, server, client-core-rxjs, client-adapters, boot-splash, …
 pnpm test:ui:coverage     # contract / visual-reach tiers
 ```
 
@@ -45,7 +45,7 @@ matters more:
 1. It is dispatch-only and stale by default (last time: 10 days / 48 commits).
 2. **It only covers 10 tiers** — domain, server, devtools-core, devtools-app,
    and app/contract/visual-reach for each web client. `boot-splash`,
-   `client-core`, `motion-core`, `ws-effects` and `devtools-relay` appear in
+   `client-core-rxjs`, `client-adapters`, `motion-core`, `ws-effects` and `devtools-relay` appear in
    **no** tier, so a gap there is invisible in the report no matter how fresh
    it is. A local run sees all 12.
 

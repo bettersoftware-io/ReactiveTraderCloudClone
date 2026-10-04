@@ -136,7 +136,7 @@ interface Unsubscribable {
 
 /** A warmed `@rx-state/core` `StateObservable` — structurally typed here (not
  * imported by name) so this test-only package doesn't need its own dependency
- * on `@rx-state/core` (a transitive dep via `@rtc/client-core`). */
+ * on `@rx-state/core` (a transitive dep via `@rtc/client-adapters`). */
 interface PeekableState<T> {
   subscribe(onNext: (v: T) => void): Unsubscribable;
   getValue(): T | Promise<T>;
@@ -218,7 +218,7 @@ function getJarvisMachine(world: World): JarvisMachineHandle {
  * `"panel"` leaf contributes its own id, a `"split"` node contributes its
  * children's. Mirrors `composition.ts`'s own `collectPanelIds` (private
  * there) — this test-only fixture keeps its own copy rather than reaching
- * into `@rtc/client-core`'s composition-root internals, exactly like
+ * into `@rtc/client-adapters`'s composition-root internals, exactly like
  * `JarvisPanelLayer.contract.spec.ts` keeps its own copy of
  * `ScriptedJarvisEngine`'s module-private `SCRIPTED_PANEL_ID`. */
 function collectPanelIds(node: LayoutNode): readonly string[] {

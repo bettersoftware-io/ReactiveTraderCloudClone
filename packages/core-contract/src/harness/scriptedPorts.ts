@@ -1267,7 +1267,7 @@ export function scriptPorts(
 }
 
 /** A Map-backed store with the `DockLayoutStore`/`LayoutPresetStore` shape
- * (this package cannot import client-core's in-memory ones). `dropWrites`
+ * (this package cannot import client-adapters's in-memory ones). `dropWrites`
  * accepts every `save` and keeps nothing. */
 function createMapStore(
   entries: Map<string, string>,

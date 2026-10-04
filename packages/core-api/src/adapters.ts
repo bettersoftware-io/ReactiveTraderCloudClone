@@ -58,7 +58,7 @@ export interface DockLayoutStore {
 /** Per-tab persistence for a tab's saved layout presets, as ONE opaque
  * serialized list per tab (`serializeLayoutPresetList`'s output). A raw
  * string on purpose — the twin of `DockLayoutStore`: every rule (versions,
- * unreadable records, names) lives once in client-core's codec, not in each
+ * unreadable records, names) lives once in core-logic's codec, not in each
  * client's adapter copy. `load` returns null when nothing is stored.
  *
  * INVARIANT: After `save(tab, s)`, a `load(tab)` must return **exactly** the

@@ -19,7 +19,7 @@ import {
   HttpAuthAdapter,
   InMemorySessionStore,
   WsAdapter,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import type { JarvisAvailability } from "@rtc/core-api";
 import type { Direction } from "@rtc/domain";
 import { PreferencesSimulator } from "@rtc/domain";
@@ -264,15 +264,15 @@ function postLogin(
 //
 // Drives the SAME real client adapter stack as `runChecks` (WsAdapter +
 // createWsRealPorts), against a SECOND real server forced into the soft
-// budget gate. `ports.jarvis` is a client-core `WsJarvisAdapter` in this
+// budget gate. `ports.jarvis` is a client-adapters `WsJarvisAdapter` in this
 // mode, which — beyond the `JarvisPort` surface — also exposes
 // `availability$(): Observable<JarvisAvailability>`, the same subscribe +
-// parse client-core already owns (see WsJarvisAdapter.availability$ and its
+// parse client-adapters already owns (see WsJarvisAdapter.availability$ and its
 // `parseAvailability`/`parseGate`). Asserting against that ALREADY-PARSED
 // shape (rather than the raw wire frame) is a better witness than a raw `ws`
 // socket would be: it proves the client parser accepts the server's real
 // frame, the exact cross-package contract nothing else integration-tests.
-// `WsJarvisAdapter` itself isn't exported from client-core's package entry
+// `WsJarvisAdapter` itself isn't exported from client-adapters's package entry
 // point (deliberately — see its own doc comment), so `AvailabilityCapable`
 // below narrows the port to the extra method it's known to carry at runtime
 // (every `createWsRealPorts` call constructs a real `WsJarvisAdapter`)
@@ -292,7 +292,7 @@ interface AvailabilityCapable {
 /**
  * Boots a second real server forced into the soft budget gate and asserts
  * that `jarvis.availability` carries the narrowed brains list + gate
- * metadata over the real wire — the fullstack witness for the client-core
+ * metadata over the real wire — the fullstack witness for the client-adapters
  * gate-parsing work (see JarvisMachine's gate handling). This connection
  * only subscribes (`availability$()` sends `jarvis.subscribe` internally,
  * nothing more); it sends no `jarvis.chat` turn, so the dummy

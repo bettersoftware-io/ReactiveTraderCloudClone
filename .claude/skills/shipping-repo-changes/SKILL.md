@@ -48,7 +48,7 @@ Pre-existing uncommitted files in the primary checkout stay there, untouched —
 
 **A fresh worktree cannot run a single test until it is installed and built.**
 It has no `node_modules` and no `dist`, and 13 packages resolve their workspace
-deps through dist — so `pnpm --filter @rtc/client-core test` there does not
+deps through dist — so `pnpm --filter @rtc/client-core-rxjs test` there does not
 report "this tree was never installed", it fails to resolve `@rtc/domain`,
 which reads like a broken change. Pass `--ready` (the script then runs
 `pnpm install && pnpm build`), or run those two yourself, and **prove it with

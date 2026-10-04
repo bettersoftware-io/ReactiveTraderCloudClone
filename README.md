@@ -280,7 +280,7 @@ packages/
   # Application core — pluggable, three implementations of one contract
   core-api/            @rtc/core-api            Types-only contract every core implements.
   core-logic/          @rtc/core-logic          Rules the three cores share that need no stream library.
-  client-core/         @rtc/client-core         The ports every core consumes: WsAdapter, port factories, stores.
+  client-adapters/         @rtc/client-adapters         The ports every core consumes: WsAdapter, port factories, stores.
   client-core-rxjs/    @rtc/client-core-rxjs    The RxJS core (the default): composition root, presenters, state machines.
   client-core-async/   @rtc/client-core-async   Alternative core on async/await + AsyncIterable.
   client-core-effect/  @rtc/client-core-effect  Alternative core on Effect-TS.

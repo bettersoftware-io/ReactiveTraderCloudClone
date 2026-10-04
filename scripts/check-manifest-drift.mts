@@ -3,7 +3,7 @@
 // `NATIVE_PRESENTER_MANIFEST` (React Native, packages/client-react-native) are
 // deliberately call-site copies: devtools-core stays structurally typed, so
 // each composition root owns a concrete map of which presenter members its
-// ViewModel observes. Both clients wire the *same* @rtc/client-core presenters,
+// ViewModel observes. Both clients wire the *same* @rtc/client-adapters presenters,
 // so the two maps must stay identical entry-for-entry — but nothing in the type
 // system couples them (the clients never import each other). This check reads
 // both files, extracts the object literal each assigns to `PresenterManifest`,

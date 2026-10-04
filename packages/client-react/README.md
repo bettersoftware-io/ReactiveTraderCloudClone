@@ -7,7 +7,7 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core` (the default RxJS core) plus the two lazy-loaded alternative cores `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 26). |
+| **Runtime deps** | `@rtc/client-adapters` (the default RxJS core) plus the two lazy-loaded alternative cores `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 26). |
 | **Consumed by** | The `tests` workspace only (`tests/package.json` lists `@rtc/client-react`; [§13.2](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)) — it is a shipping leaf app, not a library other packages import. |
 | **Must never import** | `rxjs` / `@react-rxjs` / `@rx-state` in `src/ui` (gate 26); `localStorage` in `src/ui` (gate 27); `fetch(` / `import.meta.env` in `src/ui` (gate 28); `setTimeout` / `setInterval` in `src/ui` (gate 29) — all four enforced by `tests/scripts/grep-gates.ts`, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -61,7 +61,7 @@ a convention (see [§12. Architectural Gates](../../docs/architecture/12-archite
 
 This is what kept `@rtc/client-solid` a rewrite of `src/ui`
 only — the SolidJS port ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port))
-reused `client-core-rxjs` and `client-core`, `react-bindings`'s sibling `solid-bindings`, and the CSS Modules verbatim
+reused `client-core-rxjs` and `client-adapters`, `react-bindings`'s sibling `solid-bindings`, and the CSS Modules verbatim
 precisely because gates 26–29 keep `src/ui` free of anything React- or
 RxJS-specific beyond JSX and hooks.
 
@@ -107,7 +107,7 @@ Turborepo the build-order edge. The Node-socket full-stack smoke test
 adapters package:
 
 ```typescript
-import { createWsRealPorts, WsAdapter } from "@rtc/client-core";
+import { createWsRealPorts, WsAdapter } from "@rtc/client-adapters";
 ```
 
 ## Scripts

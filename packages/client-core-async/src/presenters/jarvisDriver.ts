@@ -38,7 +38,7 @@ interface CommandTag {
 
 /**
  * `presenters.jarvisDriver` on the async core: the shared interpreter
- * (`applyDriveCommand`, client-core) does every command; this file owns the
+ * (`applyDriveCommand`, core-logic) does every command; this file owns the
  * timing. Batches queue and drain one at a time — a batch arriving
  * mid-stagger waits — and within a batch each command waits
  * `driveStaggerMs` (0 for the first, and under freeze) on a timer, as the

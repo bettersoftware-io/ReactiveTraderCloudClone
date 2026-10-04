@@ -1613,7 +1613,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Eq workspace: the REAL createEqWorkspaceMachine, one shared instance
     // for the whole World (world.eqWorkspace) — its `state$` is already a
-    // warm StateObservable (see @rtc/client-core's Machine interface), so it
+    // warm StateObservable (see @rtc/client-adapters's Machine interface), so it
     // is read directly with `toSignal`, exactly like `@rtc/solid-bindings`'s
     // own createViewModel reads `presenters.eqWorkspace.state$` — NOT a
     // per-mount useMachine, so every component reading useEqWorkspace()
@@ -1645,7 +1645,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Eq drawings: the REAL createEqDrawingsMachine, one shared instance for
     // the whole World (world.eqDrawings) — its `state$` is already a warm
-    // StateObservable (see @rtc/client-core's Machine interface), so it is
+    // StateObservable (see @rtc/client-adapters's Machine interface), so it is
     // read directly with `toSignal`, exactly like `useEqWorkspace` above —
     // NOT a per-mount useMachine, so the chart head's draw-tool pills and
     // the plot's committed drawings, even mounted via separate mountWith()
@@ -1663,7 +1663,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and read directly with `toSignal` — its
-    // `state$` is already a warm StateObservable (see @rtc/client-core's
+    // `state$` is already a warm StateObservable (see @rtc/client-adapters's
     // Machine interface), exactly like `useEqWorkspace` above — so a
     // co-mounted JarvisOrb + JarvisOverlay, even mounted via separate
     // mountWith() calls sharing one World, observe the same open/phase/

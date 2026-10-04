@@ -1,6 +1,6 @@
 /* J.A.R.V.I.S generative-UI desk-panel cascade — a fixed top-right stack of
    independently-live panels, fanned down-left ~16px per panel (nth-child,
-   capped at MAX_LIVE_PANELS=4 — packages/client-core's
+   capped at MAX_LIVE_PANELS=4 — packages/client-adapters's
    JarvisPanelsMachine.ts — so the CSS constant below is a literal mirror of
    that limit, not an arbitrary cap).
 

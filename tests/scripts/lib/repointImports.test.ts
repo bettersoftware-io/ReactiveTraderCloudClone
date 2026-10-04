@@ -6,7 +6,7 @@ describe("repointImports", () => {
   it("moves a type-only import to `import type` from the new home", () => {
     const out = repointImports(
       "a.ts",
-      'import type { PanelId, AppPorts } from "@rtc/client-core";\n',
+      'import type { PanelId, AppPorts } from "@rtc/client-adapters";\n',
       MAP,
     );
 
@@ -19,7 +19,7 @@ describe("repointImports", () => {
   it("keeps an inline-type-only import erasable: it becomes `import type`", () => {
     const out = repointImports(
       "a.ts",
-      'import { type PanelId } from "@rtc/client-core";\n',
+      'import { type PanelId } from "@rtc/client-adapters";\n',
       MAP,
     );
 
@@ -29,7 +29,7 @@ describe("repointImports", () => {
   it("splits a mixed import by home and leaves the names that stay", () => {
     const out = repointImports(
       "a.ts",
-      'import { PANEL_SPECS, WsAdapter, type PanelId } from "@rtc/client-core";\n',
+      'import { PANEL_SPECS, WsAdapter, type PanelId } from "@rtc/client-adapters";\n',
       MAP,
     );
 
@@ -37,7 +37,7 @@ describe("repointImports", () => {
       [
         'import type { PanelId } from "@rtc/core-api";',
         'import { PANEL_SPECS } from "@rtc/core-logic";',
-        'import { WsAdapter } from "@rtc/client-core";',
+        'import { WsAdapter } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
     );
@@ -46,14 +46,14 @@ describe("repointImports", () => {
   it("re-renders what stays as `import type` when only types stay", () => {
     const out = repointImports(
       "a.ts",
-      'import { PANEL_SPECS, type WsAdapterOptions } from "@rtc/client-core";\n',
+      'import { PANEL_SPECS, type WsAdapterOptions } from "@rtc/client-adapters";\n',
       MAP,
     );
 
     expect(out.text).toBe(
       [
         'import { PANEL_SPECS } from "@rtc/core-logic";',
-        'import type { WsAdapterOptions } from "@rtc/client-core";',
+        'import type { WsAdapterOptions } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
     );
@@ -65,7 +65,7 @@ describe("repointImports", () => {
       [
         'import type { CoreImpl } from "@rtc/core-api";',
         'import { PANEL_SPECS } from "@rtc/core-logic";',
-        'import { instanceIdFor, type PanelId } from "@rtc/client-core";',
+        'import { instanceIdFor, type PanelId } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -85,7 +85,7 @@ describe("repointImports", () => {
       "a.ts",
       [
         'import type { WorkspaceDock } from "@rtc/core-logic";',
-        'import { PANEL_SPECS } from "@rtc/client-core";',
+        'import { PANEL_SPECS } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -102,7 +102,7 @@ describe("repointImports", () => {
       [
         'import type { WorkspaceDock } from "@rtc/core-logic";',
         'import { createWorkspaceDock } from "@rtc/core-logic";',
-        'import { PANEL_SPECS } from "@rtc/client-core";',
+        'import { PANEL_SPECS } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -117,7 +117,7 @@ describe("repointImports", () => {
     const out = repointImports(
       "a.ts",
       [
-        'import type { RfqsPresenter } from "@rtc/client-core";',
+        'import type { RfqsPresenter } from "@rtc/client-adapters";',
         'import { type AppPorts, createApp } from "@rtc/client-core-rxjs";',
         "",
       ].join("\n"),
@@ -137,7 +137,7 @@ describe("repointImports", () => {
   it("keeps an alias", () => {
     const out = repointImports(
       "a.ts",
-      'import { PANEL_SPECS as SPECS } from "@rtc/client-core";\n',
+      'import { PANEL_SPECS as SPECS } from "@rtc/client-adapters";\n',
       MAP,
     );
 
@@ -149,7 +149,7 @@ describe("repointImports", () => {
   it("rewrites a re-export, one declaration per new home", () => {
     const out = repointImports(
       "a.ts",
-      'export { instanceIdFor, PANEL_SPECS, type PanelId, WsAdapter } from "@rtc/client-core";\n',
+      'export { instanceIdFor, PANEL_SPECS, type PanelId, WsAdapter } from "@rtc/client-adapters";\n',
       MAP,
     );
 
@@ -157,7 +157,7 @@ describe("repointImports", () => {
       [
         'export type { PanelId } from "@rtc/core-api";',
         'export { instanceIdFor, PANEL_SPECS } from "@rtc/core-logic";',
-        'export { WsAdapter } from "@rtc/client-core";',
+        'export { WsAdapter } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
     );
@@ -170,7 +170,7 @@ describe("repointImports", () => {
       'import { createWorkspaceDock } from "@rtc/core-logic";',
       "import {",
       "  WsAdapter,",
-      '} from "@rtc/client-core";',
+      '} from "@rtc/client-adapters";',
       "",
     ].join("\n");
     const out = repointImports("a.ts", text, MAP);
@@ -188,7 +188,7 @@ describe("repointImports", () => {
         'import { useState } from "react";',
         "",
         "// why this import exists",
-        'import type { PanelId } from "@rtc/client-core";',
+        'import type { PanelId } from "@rtc/client-adapters";',
         "",
         "export const x = <div />;",
         "",
@@ -215,8 +215,8 @@ describe("repointImports", () => {
       "a.ts",
       [
         'import type { PANEL_SPECS, WorkspaceDock } from "@rtc/core-logic";',
-        'export { PANEL_SPECS } from "@rtc/client-core";',
-        'import { PANEL_SPECS, type PANEL_SPECS as Specs } from "@rtc/client-core";',
+        'export { PANEL_SPECS } from "@rtc/client-adapters";',
+        'import { PANEL_SPECS, type PANEL_SPECS as Specs } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -238,17 +238,18 @@ describe("repointImports", () => {
         "import {",
         "  // why this one is here",
         "  PANEL_SPECS,",
-        '} from "@rtc/client-core";',
+        '} from "@rtc/client-adapters";',
       ].join("\n"),
     },
     {
       why: "a trailing comment on the declaration's line",
-      declaration: 'import { PANEL_SPECS } from "@rtc/client-core"; // keep me',
+      declaration:
+        'import { PANEL_SPECS } from "@rtc/client-adapters"; // keep me',
     },
     {
       why: "import attributes",
       declaration:
-        'import { PANEL_SPECS } from "@rtc/client-core" with { type: "json" };',
+        'import { PANEL_SPECS } from "@rtc/client-adapters" with { type: "json" };',
     },
   ])("reports $why and leaves the declaration alone", ({ declaration }) => {
     const text = `${declaration}\n`;
@@ -264,7 +265,7 @@ describe("repointImports", () => {
       "a.ts",
       [
         'import { createWorkspaceDock } from "@rtc/core-logic"; // keep me',
-        'import { PANEL_SPECS } from "@rtc/client-core";',
+        'import { PANEL_SPECS } from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -284,8 +285,8 @@ describe("repointImports", () => {
     const out = repointImports(
       "a.ts",
       [
-        'import * as core from "@rtc/client-core";',
-        'export * from "@rtc/client-core";',
+        'import * as core from "@rtc/client-adapters";',
+        'export * from "@rtc/client-adapters";',
         "",
       ].join("\n"),
       MAP,
@@ -298,7 +299,7 @@ describe("repointImports", () => {
 });
 
 const MAP: RepointMap = {
-  "@rtc/client-core": {
+  "@rtc/client-adapters": {
     AppPorts: "@rtc/core-api",
     PanelId: "@rtc/core-api",
     PANEL_SPECS: "@rtc/core-logic",

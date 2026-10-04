@@ -51,8 +51,8 @@ interface Entry {
  * constant, because `it.each` reads it while the cases are being collected. */
 function createEntries(): readonly Entry[] {
   return [
-    { pkg: "client-core", entry: "src/index.ts" },
-    { pkg: "client-core", entry: "src/testing.ts" },
+    { pkg: "client-adapters", entry: "src/index.ts" },
+    { pkg: "client-adapters", entry: "src/testing.ts" },
     { pkg: "client-core-rxjs", entry: "src/index.ts" },
     { pkg: "client-core-async", entry: "src/index.ts" },
     { pkg: "client-core-effect", entry: "src/index.ts" },

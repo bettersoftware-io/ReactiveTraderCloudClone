@@ -6,7 +6,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type {
   AppCommands,

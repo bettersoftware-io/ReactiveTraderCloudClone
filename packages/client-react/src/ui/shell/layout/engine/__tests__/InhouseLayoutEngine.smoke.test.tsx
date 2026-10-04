@@ -215,7 +215,7 @@ describe("InhouseLayoutEngine", () => {
       expect(sizes[0] + sizes[1] + sizes[2]).toBeCloseTo(1, 5);
       // The machine side — resize() clearing initialPx so the split is a
       // plain ratio split thereafter — is covered by LayoutMachine.test.ts
-      // in @rtc/client-core.
+      // in @rtc/client-adapters.
     });
 
     it("drops the px-fixed treatment while a panel is maximized, so the maximized panel can fill the dock", () => {

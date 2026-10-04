@@ -75,7 +75,7 @@ export interface NativeJarvis {
 
 /**
  * `presenters.jarvis` on the Effect core: the shared `createJarvisController`
- * (client-core) holds every rule; this file owns only the timing, on its
+ * (core-logic) holds every rule; this file owns only the timing, on its
  * own child host.
  * - State is a `SyncRef`, committed synchronously; each patch is applied
  *   exactly once (`SyncRef.set` runs it once inside `runSync`).

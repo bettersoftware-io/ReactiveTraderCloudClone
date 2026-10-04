@@ -6,7 +6,7 @@ Entities, use cases, port interfaces, and simulators — pure TypeScript, the in
 |---|---|
 | **Ring** | ①② Entities & Use Cases — the yolk (`docs/architecture/01-overview.md` §1.3.1). `src/simulators/` is the one exception: it's ring ③ (gateways) even though it lives in this package — production port implementations, not test doubles. |
 | **Runtime deps** | `rxjs` only — the single permitted exception, enforced by pnpm strict mode (`packages/domain/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/shared`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/core-contract`, the three application cores (`@rtc/client-core`, `@rtc/client-core-async`, `@rtc/client-core-effect`), both bindings packages, `@rtc/ui-contract`, `@rtc/agent-tools`, the clients (`@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`), `@rtc/server`, and the `tests` workspace (`grep -l '"@rtc/domain"' packages/*/package.json`); `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
+| **Consumed by** | `@rtc/shared`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/core-contract`, the three application cores (`@rtc/client-adapters`, `@rtc/client-core-async`, `@rtc/client-core-effect`), both bindings packages, `@rtc/ui-contract`, `@rtc/agent-tools`, the clients (`@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`), `@rtc/server`, and the `tests` workspace (`grep -l '"@rtc/domain"' packages/*/package.json`); `@rtc/ws-effects` (rxjs-only) and the isolated `@rtc/client-prototype` do not |
 | **Must never import** | `@rtc/shared`, `@rtc/client-react`, or `@rtc/server` (dependency-cruiser rule `domain-stays-pure`, `.dependency-cruiser.mts`); any Node built-in outside test files (`domain-no-node-builtins` — the package must run in any JS environment, browser or RN). Gate 23 additionally bans `src/ports/__contracts__/` describers from importing `simulators/`, `@rtc/client-react`, or `@rtc/shared/__fixtures__/` (`docs/architecture/12-architectural-gates.md`). |
 
 ## Folder map
@@ -102,7 +102,7 @@ One class per port (plus the metric simulators), each a production `implements` 
 
 ## How it's used
 
-A presenter in `@rtc/client-core` composing a port straight into a use case (`packages/client-core-rxjs/src/presenters/ConnectionStatusPresenter.ts:1-19`):
+A presenter in `@rtc/client-adapters` composing a port straight into a use case (`packages/client-core-rxjs/src/presenters/ConnectionStatusPresenter.ts:1-19`):
 
 ```ts
 import { type Observable, shareReplay } from "rxjs";

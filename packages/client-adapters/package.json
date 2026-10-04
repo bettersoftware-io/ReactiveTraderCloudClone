@@ -1,5 +1,5 @@
 {
-  "name": "@rtc/client-core",
+  "name": "@rtc/client-adapters",
   "version": "0.0.0",
   "private": true,
   "type": "module",

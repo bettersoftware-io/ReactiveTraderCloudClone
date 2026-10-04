@@ -83,7 +83,7 @@ const config: IConfiguration = {
       name: "agent-tools-stays-inner",
       severity: "error",
       comment:
-        "@rtc/agent-tools is the framework-neutral Jarvis desk-tool package — it may depend only on domain (+ rxjs), never on shared, client-core, a client, bindings, or the server.",
+        "@rtc/agent-tools is the framework-neutral Jarvis desk-tool package — it may depend only on domain (+ rxjs), never on shared, client-adapters, a client, bindings, or the server.",
       from: { path: "^packages/agent-tools/src" },
       to: {
         path: "^packages/",
@@ -221,22 +221,23 @@ const config: IConfiguration = {
       },
     },
     {
-      name: "client-core-stays-inner",
+      name: "client-adapters-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core holds the ports every application core consumes — adapters, port factories, stores. It may depend only on core-api/core-logic/domain/shared: never on a core (a core is a sibling that receives these ports as arguments), a binding, any client, or the server.",
-      from: { path: "^packages/client-core/src" },
+        "@rtc/client-adapters holds the ports every application core consumes — adapters, port factories, stores. It may depend only on core-api/core-logic/domain/shared: never on a core (a core is a sibling that receives these ports as arguments), a binding, any client, or the server.",
+      from: { path: "^packages/client-adapters/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|core-api|core-logic|domain|shared)/",
+        pathNot:
+          "^packages/(client-adapters|core-api|core-logic|domain|shared)/",
       },
     },
     {
-      name: "client-core-framework-free",
+      name: "client-adapters-framework-free",
       severity: "error",
       comment:
-        "@rtc/client-core (the adapters) is framework-free by contract — no React/DOM/RN modules.",
-      from: { path: "^packages/client-core/src" },
+        "@rtc/client-adapters (the adapters) is framework-free by contract — no React/DOM/RN modules.",
+      from: { path: "^packages/client-adapters/src" },
       to: {
         path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
       },
@@ -270,26 +271,26 @@ const config: IConfiguration = {
       name: "adapter-fakes-stay-in-tests",
       severity: "error",
       comment:
-        "@rtc/client-core's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
+        "@rtc/client-adapters's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
       from: {
         path: "^packages/[^/]+/(src|app)/",
         pathNot:
-          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-core/src/testing\\.ts$)",
+          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-adapters/src/testing\\.ts$)",
       },
       to: {
-        path: "^packages/client-core/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
+        path: "^packages/client-adapters/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
       },
     },
     {
       name: "bindings-name-no-core",
       severity: "error",
       comment:
-        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core and none of the adapters, so any core can sit behind it; `@rtc/client-core-rxjs` and `@rtc/client-core` are a binding's devDependencies. Only a binding's tests compose a real core.",
+        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core and none of the adapters, so any core can sit behind it; `@rtc/client-core-rxjs` and `@rtc/client-adapters` are a binding's devDependencies. Only a binding's tests compose a real core.",
       from: {
         path: "^packages/(react|solid)-bindings/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
       },
-      to: { path: "^packages/client-core(-rxjs|-async|-effect)?/" },
+      to: { path: "^packages/client-adapters(-rxjs|-async|-effect)?/" },
     },
     {
       name: "ui-takes-wire-types-only",
@@ -316,24 +317,24 @@ const config: IConfiguration = {
       name: "cores-stay-inner",
       severity: "error",
       comment:
-        "The three application cores are siblings. Each may import only ITSELF, core-api, core-logic (the shared stream-free rules), client-core (the adapters, from tests only — `cores-take-ports-as-arguments` below keeps them out of production code), core-contract (its runner test), domain, and shared — never a binding, a client, the server, or EACH OTHER, tests included. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`.",
+        "The three application cores are siblings. Each may import only ITSELF, core-api, core-logic (the shared stream-free rules), client-adapters (the adapters, from tests only — `cores-take-ports-as-arguments` below keeps them out of production code), core-contract (its runner test), domain, and shared — never a binding, a client, the server, or EACH OTHER, tests included. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`.",
       from: { path: "^packages/(client-core-(?:rxjs|async|effect))/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/($1|client-core|core-api|core-contract|core-logic|domain|shared)/",
+          "^packages/($1|client-adapters|core-api|core-contract|core-logic|domain|shared)/",
       },
     },
     {
       name: "cores-take-ports-as-arguments",
       severity: "error",
       comment:
-        "A core composes from @rtc/core-logic and its own members, and receives its ports — already built — as `createApp(ports)`'s argument. @rtc/client-core (the adapters and port factories) is a core's devDependency, for tests that compose a real core over real adapters (createSimulatorPorts), never a runtime import.",
+        "A core composes from @rtc/core-logic and its own members, and receives its ports — already built — as `createApp(ports)`'s argument. @rtc/client-adapters (the adapters and port factories) is a core's devDependency, for tests that compose a real core over real adapters (createSimulatorPorts), never a runtime import.",
       from: {
         path: "^packages/client-core-(rxjs|async|effect)/src",
         pathNot: "\\.test\\.tsx?$",
       },
-      to: { path: "^packages/client-core/" },
+      to: { path: "^packages/client-adapters/" },
     },
     {
       name: "cores-framework-free",
@@ -364,7 +365,7 @@ const config: IConfiguration = {
       name: "core-logic-stays-inner",
       severity: "error",
       comment:
-        "@rtc/core-logic may import only itself, core-api (types), domain and shared — an allowlist, so a package added later is forbidden by default. An edge to client-core in particular would be a cycle (client-core re-exports core-logic).",
+        "@rtc/core-logic may import only itself, core-api (types), domain and shared — an allowlist, so a package added later is forbidden by default. An edge to a core or to client-adapters in particular would be a cycle: all four depend on core-logic.",
       from: { path: "^packages/core-logic/src" },
       to: {
         path: "^packages/",
@@ -401,7 +402,7 @@ const config: IConfiguration = {
       name: "effect-only-in-client-core-effect",
       severity: "error",
       comment:
-        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-core, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
+        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-adapters, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
       from: { path: "^packages/", pathNot: "^packages/client-core-effect/" },
       to: { path: "^effect(/|$)|node_modules/effect/" },
     },
@@ -414,7 +415,7 @@ const config: IConfiguration = {
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(react-bindings|client-core|client-core-rxjs|core-api|domain)/",
+          "^packages/(react-bindings|client-adapters|client-core-rxjs|core-api|domain)/",
       },
     },
     {
@@ -426,7 +427,7 @@ const config: IConfiguration = {
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(solid-bindings|client-core|client-core-rxjs|core-api|domain)/",
+          "^packages/(solid-bindings|client-adapters|client-core-rxjs|core-api|domain)/",
       },
     },
     {

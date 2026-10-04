@@ -5,7 +5,7 @@ export const METRIC_TICK_MS = 1_000;
 
 /**
  * Samples pre-seeded per stream on subscribe — fills the charts' 60-sample
- * rolling window (client-core windowedSamples WINDOW) so every metric chart
+ * rolling window (`METRIC_WINDOW`, which each core's windowed samples keep) so every metric chart
  * renders dense from the very first frame instead of building up over a
  * minute of live ticks.
  */

@@ -10,7 +10,7 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/client-core-rxjs`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
+| **Runtime deps** | `@rtc/client-adapters`, `@rtc/client-core-rxjs`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
 | **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
 | **Must never import** | Gates 30–33 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) mechanically enforce this in `client-react-native/src/ui` — the RN counterpart of gates 26–29 on `client-react/src/ui`: no `rxjs`/`@react-rxjs`/`@rx-state` (30), no `localStorage`/`AsyncStorage` (31), no `fetch`/`expo-constants`/env reads (32), no `setTimeout`/`setInterval` (33). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
 
@@ -72,7 +72,7 @@ Expo Go and the Expo prebuild. Which runner you use depends on the platform.
 From the repo root (with Xcode + an iOS simulator runtime installed):
 
 ```bash
-pnpm build          # build the workspace libs (client-core → dist)
+pnpm build          # build the workspace libs (client-adapters, client-core-rxjs → dist)
 pnpm dev:ios        # simulator mode — builds a dev client, launches the simulator, starts Metro
 ```
 
@@ -399,7 +399,7 @@ breaks `expo prebuild`).
 ## How it's used
 
 This package is a leaf app — nothing else in the workspace imports it — so
-"how it's used" means how *it* consumes `@rtc/client-core-rxjs`, `@rtc/client-core` and
+"how it's used" means how *it* consumes `@rtc/client-core-rxjs`, `@rtc/client-adapters` and
 `@rtc/react-bindings`. `app/_layout.tsx` mounts the composition root exactly
 once around the tab navigator:
 

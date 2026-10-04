@@ -1,6 +1,6 @@
 import type { CandleTimeframe } from "@rtc/domain";
 
-// Declared locally rather than imported from @rtc/motion-core — client-core
+// Declared locally rather than imported from @rtc/motion-core — core-api
 // must not depend on motion-core (see global constraints). These unify
 // structurally with motion-core's ChartKind/IndicatorId equivalents.
 export type EqChartType = "candles" | "line" | "area";

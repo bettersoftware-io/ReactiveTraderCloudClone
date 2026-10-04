@@ -49,13 +49,13 @@ module.exports = {
     // The RxJS core's own package — the RN client composes directly, so it
     // imports `createApp` from here.
     "^@rtc/client-core-rxjs$": "<rootDir>/../client-core-rxjs/dist/index.js",
-    "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
+    "^@rtc/client-adapters$": "<rootDir>/../client-adapters/dist/index.js",
     // Types-only today (no runtime value, grep gate 42), but in the runtime
     // dependency tree — scripts/check-package-wiring.mts maps every such package
     // rather than keeping an exception list.
     "^@rtc/core-api$": "<rootDir>/../core-api/dist/index.js",
     // The shared rules (pluggable-core slice 8): a runtime dependency of
-    // client-core's dist, and imported directly by the visual fakes.
+    // client-core-rxjs's dist, and imported directly by the visual fakes.
     "^@rtc/core-logic$": "<rootDir>/../core-logic/dist/index.js",
     "^@rtc/motion-core$": "<rootDir>/../motion-core/dist/index.js",
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",

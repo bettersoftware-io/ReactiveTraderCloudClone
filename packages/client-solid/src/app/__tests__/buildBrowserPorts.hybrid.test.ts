@@ -1,7 +1,7 @@
 import { firstValueFrom, type Observable } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DATA_SOURCE_STORAGE_KEY, WsAdapter } from "@rtc/client-core";
+import { DATA_SOURCE_STORAGE_KEY, WsAdapter } from "@rtc/client-adapters";
 import type { StoredSession } from "@rtc/core-api";
 import type { AuthOutcome, SessionUser } from "@rtc/domain";
 

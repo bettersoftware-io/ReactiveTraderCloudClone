@@ -1,8 +1,11 @@
 import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createFakeConnectionPorts } from "@rtc/client-core/testing";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
+import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type {
   JarvisPort,
   LayoutState,

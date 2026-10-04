@@ -2,7 +2,7 @@
  * LatencyHistogram contract spec (v2 Parity E Task 2).
  *
  * Verifies the histogram renders 6 fixed latency buckets (via the shared
- * latencyBuckets vm, client-core) from seeded latency samples, flags the
+ * latencyBuckets vm, core-logic) from seeded latency samples, flags the
  * modal (highest-count) bucket with data-accent, and shows the "NO DATA"
  * placeholder when the series is empty. Unlike the prototype's static
  * jittered seed, the bucket heights and the accent bucket are computed from

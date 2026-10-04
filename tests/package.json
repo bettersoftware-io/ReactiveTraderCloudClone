@@ -39,7 +39,7 @@
     "visual:engine-parity": "node scripts/visual-engine-parity.ts"
   },
   "dependencies": {
-    "@rtc/client-core": "workspace:*",
+    "@rtc/client-adapters": "workspace:*",
     "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/client-react": "workspace:*",
     "@rtc/core-api": "workspace:*",

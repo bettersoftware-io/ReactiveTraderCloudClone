@@ -30,7 +30,7 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/orbitron": "^5.2.8",
     "@rtc/boot-splash": "workspace:*",
-    "@rtc/client-core": "workspace:*",
+    "@rtc/client-adapters": "workspace:*",
     "@rtc/client-core-async": "workspace:*",
     "@rtc/client-core-effect": "workspace:*",
     "@rtc/client-core-rxjs": "workspace:*",
