@@ -101,6 +101,20 @@ describe("display names", () => {
     expect(isValidDisplayName(name)).toBe(true);
   });
 
+  it("accepts a Burmese word, whose vowel signs are spacing marks", () => {
+    // မွှေး: four consecutive marks, two of them spacing (Mc) — a real
+    // word, not "Zalgo" stacking.
+    const word = "\u1019\u103d\u103e\u1031\u1038";
+
+    expect(isValidDisplayName(word)).toBe(true);
+  });
+
+  it("refuses a zero-width joiner, a deliberate trade-off: a Persian name spelled with U+200C is refused", () => {
+    // ZWNJ is default-ignorable, so it can hide inside a name; the price is
+    // that a name which needs one must be typed without it.
+    expect(isValidDisplayName("\u0645\u06cc\u200c\u0631\u0627")).toBe(false);
+  });
+
   it("accepts the normal form of a decomposed name", () => {
     expect(isValidDisplayName(normalizeDisplayName("Zoe\u0308 Lee"))).toBe(
       true,

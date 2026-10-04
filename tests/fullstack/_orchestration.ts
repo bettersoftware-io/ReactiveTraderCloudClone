@@ -12,6 +12,12 @@ import { fileURLToPath } from "node:url";
 
 import { LEAN_DEPS_ENV } from "../scripts/lib/leanDeps.ts";
 
+/** The smoke server's fixed, test-only signing secret (never a real one; at
+ * least 32 characters, since the account modes refuse a shorter one). The
+ * accounts journey signs its own tokens with it to witness the upgrade's
+ * status re-check. */
+export const SMOKE_AUTH_SECRET = "e2e-secret-public-by-design-never-deploy";
+
 export const MONOREPO_ROOT = join(
   fileURLToPath(import.meta.url),
   "..",
@@ -57,7 +63,7 @@ export function startServer(
         // real signed token from POST /login before they can connect. A fixed
         // test-only secret + the `demo` roster credential (never a real secret).
         // At least 32 characters: the account modes refuse a shorter one.
-        AUTH_SECRET: "e2e-secret-public-by-design-never-deploy",
+        AUTH_SECRET: SMOKE_AUTH_SECRET,
         AUTH_USERS: "demo:demo",
         // The in-memory account directory (fixed code, seeded accounts) —
         // see packages/server/src/accounts/devAccounts.ts.

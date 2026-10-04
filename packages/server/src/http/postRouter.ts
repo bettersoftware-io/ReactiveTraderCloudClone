@@ -96,6 +96,15 @@ export function createPostRouter(
           );
         }
 
+        // The fault came after the head was written (writing the body
+        // failed): a second head would throw out of this catch. Drop the
+        // connection, so the caller is not left waiting on a half response.
+        if (res.headersSent) {
+          res.destroy();
+
+          return;
+        }
+
         res.writeHead(tooLarge ? 413 : 500, {
           "Access-Control-Allow-Origin": "*",
           "Content-Type": "application/json",

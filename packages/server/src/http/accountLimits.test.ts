@@ -69,8 +69,33 @@ describe("createCodeEntryLimiter", () => {
     );
   });
 
+  it("holds 50,000 addresses before evicting the oldest", () => {
+    expectMaxKeys(createCodeEntryLimiter(), 5, 50_000);
+  });
+
   it("is a fresh instance per call", () => {
     expect(createCodeEntryLimiter()).not.toBe(createCodeEntryLimiter());
+  });
+});
+
+/** Each limit once as a literal, so changing a constant fails a test. */
+describe("the account limits, pinned as numbers", () => {
+  it.each([
+    ["register", 5, 60 * 60 * 1_000],
+    ["resendCode", 5, 60 * 60 * 1_000],
+    ["requestReset", 5, 60 * 60 * 1_000],
+    ["confirmEmail", 10, 10 * 60 * 1_000],
+    ["resetPassword", 10, 10 * 60 * 1_000],
+  ] as const)("%s per IP: %i per %i ms", (member, max, windowMs) => {
+    expectBudget(createAccountLimits()[member], max, windowMs);
+  });
+
+  it("code entry per address: 5 per 15 minutes", () => {
+    expectBudget(createCodeEntryLimiter(), 5, 15 * 60 * 1_000);
+  });
+
+  it("the per-IP limiters hold the default 10,000 keys", () => {
+    expectMaxKeys(createAccountLimits().register, 5, 10_000);
   });
 });
 

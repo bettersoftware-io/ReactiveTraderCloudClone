@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { type BanList, createBanList } from "#/auth/banList";
 import { resolveClientIp } from "#/http/clientIp";
-import { jsonResult } from "#/http/jsonResult";
+import { type HttpResult, jsonResult } from "#/http/jsonResult";
 import { createPostRouter, type PostRoute } from "#/http/postRouter";
 
 afterEach(async () => {
@@ -225,7 +225,7 @@ describe("createPostRouter", () => {
     );
   });
 
-  it("does not log a 413 or a refused ban — those are the caller's fault", async () => {
+  it("does not log a 413 — that is the caller's fault", async () => {
     const lines: string[] = [];
     const base = await startRouter(
       { "/echo": { ...createEchoRoute(), maxBodyBytes: 8 } },
@@ -239,6 +239,64 @@ describe("createPostRouter", () => {
     await fetch(`${base}/echo`, { method: "POST", body: "x".repeat(64) });
 
     expect(lines).toEqual([]);
+  });
+
+  it("does not log a refused ban either", async () => {
+    const lines: string[] = [];
+    const base = await startRouter(
+      { "/echo": createEchoRoute() },
+      {
+        banList: createBannedList(),
+        log: (line: string): void => {
+          lines.push(line);
+        },
+      },
+    );
+
+    const response = await fetch(`${base}/echo`, { method: "POST", body: "x" });
+
+    expect(response.status).toBe(429);
+    expect(lines).toEqual([]);
+  });
+
+  it("a fault after the head was written logs once and drops the connection, never writing a second head", async () => {
+    const lines: string[] = [];
+    const base = await startRouter(
+      {
+        "/echo": {
+          maxBodyBytes: 1_024,
+          // A body `res.end` refuses: it throws after `writeHead` ran.
+          handle: (): Promise<HttpResult> => {
+            return Promise.resolve({
+              status: 200,
+              headers: {},
+              body: 42 as unknown as string,
+            });
+          },
+        },
+      },
+      {
+        log: (line: string): void => {
+          lines.push(line);
+        },
+      },
+    );
+
+    const outcome = await fetch(`${base}/echo`, { method: "POST", body: "x" })
+      .then((response) => {
+        return response.text();
+      })
+      .then(
+        (): string => {
+          return "completed";
+        },
+        (): string => {
+          return "dropped";
+        },
+      );
+
+    expect(outcome).toBe("dropped");
+    expect(lines).toEqual(["[http] 500 route=/echo ip=9.9.9.9 err=TypeError"]);
   });
 
   it("answers 500 when a route throws synchronously", async () => {

@@ -27,6 +27,12 @@ describe("findPasswordViolation", () => {
     expect(findPasswordViolation(atLimit)).toBeNull();
   });
 
+  it("draws the length line at exactly 12 characters", () => {
+    // Each satisfies every other rule.
+    expect(findPasswordViolation("Abcdefgh12!x")).toBeNull();
+    expect(findPasswordViolation("Abcdefgh12!")?.id).toBe("min-length");
+  });
+
   it("reports the first broken rule in display order", () => {
     expect(findPasswordViolation("a")?.id).toBe("min-length");
   });

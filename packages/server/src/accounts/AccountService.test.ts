@@ -553,7 +553,10 @@ describe("AccountService.register under concurrency", () => {
       },
       signUp,
     });
-    const service = createDoubleService(directory, 2);
+    // Max 1: one earlier answered sign-up must not count again once the
+    // directory's count includes it — at max 2 a stale total or a leaked
+    // in-flight slot would still leave room and survive.
+    const service = createDoubleService(directory, 1);
 
     await service.register(createRegistration(), IP);
 

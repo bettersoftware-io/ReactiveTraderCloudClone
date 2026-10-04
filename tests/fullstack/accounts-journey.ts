@@ -11,7 +11,11 @@
  * most three emails per address (`SEND_PER_ADDRESS_MAX`): two registrations
  * for the new address, one reset request for the active seed.
  */
+import { createHmac } from "node:crypto";
+
 import { WebSocket } from "ws";
+
+import { SMOKE_AUTH_SECRET } from "./_orchestration.ts";
 
 /** A documentation-range address unique to this run (RFC 5737). */
 const JOURNEY_IP = `198.51.100.${1 + (Date.now() % 254)}`;
@@ -22,6 +26,12 @@ const WRONG_CODE = "11111111";
 const ACTIVE_SEED = "trader@rtc.test";
 const BLOCKED_SEED = "blocked@rtc.test";
 const SOCKET_TIMEOUT_MS = 10_000;
+const FORGED_TTL_MS = 60_000;
+/** The seeds' ids in `packages/server/src/accounts/devAccounts.ts`. */
+const ACTIVE_SEED_ID = "00000000-0000-4000-8000-000000000002";
+const BLOCKED_SEED_ID = "00000000-0000-4000-8000-000000000004";
+/** A well-formed account id no seed or registration has. */
+const MISSING_ACCOUNT_ID = "00000000-0000-4000-8000-0000000000ff";
 
 interface Answer {
   readonly status: number;
@@ -245,9 +255,57 @@ async function runSeededAccountsLeg(
     password: DEV_PASSWORD,
   });
   assert(stale.status === 401, `login with old password (got ${stale.status})`);
-  console.log(
-    "  ✓ accounts: blocked refused; an active account signs in, connects, is refused on /mcp, and resets its password",
+
+  // The upgrade re-checks the account's status in the directory, so a
+  // validly signed token is not enough. The control proves a token signed
+  // here is accepted at all — without it a wrong secret would make the two
+  // refusals below pass vacuously.
+  assert(
+    await opensSocket(wsBase, signAccountToken(ACTIVE_SEED, ACTIVE_SEED_ID)),
+    "a token signed here for the active seed opens a socket (control: the format and secret match the server's)",
   );
+  assert(
+    !(await opensSocket(
+      wsBase,
+      signAccountToken(BLOCKED_SEED, BLOCKED_SEED_ID),
+    )),
+    "a blocked account's validly signed token cannot open a socket",
+  );
+  assert(
+    !(await opensSocket(
+      wsBase,
+      signAccountToken("ghost@rtc.test", MISSING_ACCOUNT_ID),
+    )),
+    "a validly signed token for an account that does not exist cannot open a socket",
+  );
+  console.log(
+    "  ✓ accounts: blocked refused; an active account signs in, connects, is refused on /mcp, and resets its password; a blocked account's token cannot open a socket",
+  );
+}
+
+/**
+ * An account session token in the server's format
+ * (`packages/server/src/auth/token.ts` `signToken`): base64url JSON
+ * `{u, exp, id, a}`, a dot, then its HMAC-SHA256 under the server's secret.
+ * Reproduced rather than imported: the tests program's `rootDir` is
+ * `tests/`, so it cannot compile a server source file. The active-seed
+ * control above fails loudly if this ever drifts from the real format.
+ */
+function signAccountToken(email: string, accountId: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({
+      u: email,
+      exp: Date.now() + FORGED_TTL_MS,
+      id: accountId,
+      a: "user",
+    }),
+  ).toString("base64url");
+
+  const signature = createHmac("sha256", SMOKE_AUTH_SECRET)
+    .update(payload)
+    .digest("base64url");
+
+  return `${payload}.${signature}`;
 }
 
 export async function runAccountsJourney(

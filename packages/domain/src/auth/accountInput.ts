@@ -19,8 +19,10 @@ const UNPRINTABLE_CHARACTER =
 /** Renders blank but is not default-ignorable: the braille blank. */
 const BLANK_LOOKALIKE = /⠀/u;
 const READABLE_CHARACTER = /[\p{L}\p{N}]/u;
-/** An enclosing mark, or a run of four or more marks ("Zalgo" text). */
-const STACKED_MARKS = /\p{Me}|\p{M}{4,}/u;
+/** An enclosing mark, or a run of four or more NON-SPACING marks ("Zalgo"
+ * text). Spacing marks (`Mc`) are not counted: Burmese and other Brahmic
+ * scripts write ordinary words with several in a row. */
+const STACKED_MARKS = /\p{Me}|\p{Mn}{4,}/u;
 
 /** One person, one spelling: every account lookup uses this form. */
 export function normalizeEmail(raw: string): string {

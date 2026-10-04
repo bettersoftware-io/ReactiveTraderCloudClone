@@ -33,7 +33,7 @@ describe("supabase migrations", () => {
   });
 
   it("reads only the display name from sign-up metadata", () => {
-    const reads = sql.match(/raw_user_meta_data\s*->>\s*'[^']+'/g) ?? [];
+    const reads = sql.match(/raw_user_meta_data\s*->>\s*'[^']+'/gi) ?? [];
 
     expect(reads.length).toBeGreaterThan(0);
 
@@ -57,9 +57,11 @@ describe("supabase migrations", () => {
   });
 
   it("reads sign-up metadata only as the display name, by any operator", () => {
-    const anyRead = sql.match(/raw_user_meta_data/g) ?? [];
+    // Case-insensitive: SQL identifiers fold, so RAW_USER_META_DATA is the
+    // same column and must be counted too.
+    const anyRead = sql.match(/raw_user_meta_data/gi) ?? [];
     const displayNameReads =
-      sql.match(/raw_user_meta_data\s*->>\s*'display_name'/g) ?? [];
+      sql.match(/raw_user_meta_data\s*->>\s*'display_name'/gi) ?? [];
 
     expect(anyRead.length).toBeGreaterThan(0);
     expect(anyRead.length).toBe(displayNameReads.length);
@@ -73,6 +75,24 @@ describe("supabase migrations", () => {
   it("grants nothing on profiles to anon, authenticated or public", () => {
     expect(sql).not.toMatch(
       /grant\s[^;]*\bon\s+(table\s+)?public\.profiles\s+to\s+[^;]*\b(anon|authenticated|public)\b/i,
+    );
+  });
+
+  it.each(["create_profile_for_user", "sync_profile_confirmation"])(
+    "revokes execute on the trigger function %s from public, anon and authenticated",
+    (fn: string) => {
+      expect(sql).toMatch(
+        new RegExp(
+          `revoke\\s+execute\\s+on\\s+function\\s+public\\.${fn}\\(\\)\\s+from\\s+public,\\s*anon,\\s*authenticated\\s*;`,
+          "i",
+        ),
+      );
+    },
+  );
+
+  it("grants nothing on all tables in the schema to anon, authenticated or public", () => {
+    expect(sql).not.toMatch(
+      /grant\s[^;]*\bon\s+all\s+tables\s+in\s+schema\s+public\s+to\s+[^;]*\b(anon|authenticated|public)\b/i,
     );
   });
 

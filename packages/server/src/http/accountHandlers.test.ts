@@ -421,6 +421,31 @@ describe("code entry per address", () => {
     expect(banList.isBanned(IP, 1_000)).toBe(false);
   });
 
+  it("a throttled confirmation adds no strike either", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+
+    const deps = createDeps({
+      banList,
+      codeEntryLimiter: createRateLimiter(1, 60_000),
+    });
+    await deps.accounts.register(
+      { email: "ann@desk.io", displayName: "Ann Lee" },
+      IP,
+    );
+
+    await confirmEmailAddress(createConfirmBody(), IP, deps);
+    const limited = await confirmEmailAddress(createConfirmBody(), IP, deps);
+
+    expect(limited.status).toBe(429);
+    expect(JSON.parse(limited.body)).toEqual({ error: "rate_limited" });
+    expect(banList.isBanned(IP, 1_000)).toBe(false);
+  });
+
   it("a malformed body is not charged to any address", async () => {
     const limiter = createRateLimiter(1, 60_000);
     const deps = createDeps({ codeEntryLimiter: limiter });
