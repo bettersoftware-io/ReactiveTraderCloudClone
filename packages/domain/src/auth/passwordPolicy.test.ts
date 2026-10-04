@@ -28,6 +28,17 @@ describe("findPasswordViolation", () => {
   });
 
   it("reports the first broken rule in display order", () => {
-    expect(findPasswordViolation("a")?.id).toBe(PASSWORD_RULES[0]?.id);
+    expect(findPasswordViolation("a")?.id).toBe("min-length");
+  });
+
+  it("returns the earlier of two broken rules, not the alphabetically first", () => {
+    // Breaks both "uppercase" and "digit"; uppercase comes first in the list
+    // though "digit" sorts first alphabetically.
+    const password = "alllowercase!!!";
+
+    expect(findPasswordViolation(password)?.id).toBe("uppercase");
+    expect(
+      PASSWORD_RULES.map((rule) => rule.id).indexOf("uppercase"),
+    ).toBeLessThan(PASSWORD_RULES.map((rule) => rule.id).indexOf("digit"));
   });
 });

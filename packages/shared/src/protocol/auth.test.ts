@@ -62,3 +62,41 @@ describe("account request guards", () => {
     ).toBe(false);
   });
 });
+
+describe("account request guards reject non-objects and wrong types", () => {
+  const guards: readonly [string, (value: unknown) => boolean, object][] = [
+    [
+      "isRegisterRequestDto",
+      isRegisterRequestDto,
+      { email: "a@b.io", displayName: "Ann", password: "x" },
+    ],
+    ["isEmailRequestDto", isEmailRequestDto, { email: "a@b.io" }],
+    [
+      "isConfirmEmailRequestDto",
+      isConfirmEmailRequestDto,
+      { email: "a@b.io", code: "000000" },
+    ],
+    [
+      "isResetPasswordRequestDto",
+      isResetPasswordRequestDto,
+      { email: "a@b.io", code: "000000", password: "x" },
+    ],
+  ];
+
+  it.each(guards)(
+    "%s refuses a string, an array and null",
+    (_name: string, guard: (value: unknown) => boolean) => {
+      expect(guard("a@b.io")).toBe(false);
+      expect(guard([])).toBe(false);
+      expect(guard(null)).toBe(false);
+    },
+  );
+
+  it.each(guards)(
+    "%s refuses a numeric field",
+    (_name: string, guard: (value: unknown) => boolean, valid: object) => {
+      expect(guard(valid)).toBe(true);
+      expect(guard({ ...valid, email: 1 })).toBe(false);
+    },
+  );
+});
