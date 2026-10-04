@@ -9,12 +9,11 @@
 import { NEVER, type Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import type { App, AppPorts } from "@rtc/core-api";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 describe("jarvisPreferences presenter", () => {

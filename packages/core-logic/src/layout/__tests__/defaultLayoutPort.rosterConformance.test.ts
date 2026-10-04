@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { LAYOUT_PANEL_IDS, PANEL_SPECS } from "@rtc/core-logic";
 import { DESK_PANEL_ROSTER } from "@rtc/shared";
+
+import { PANEL_SPECS } from "#/layout/defaultLayoutPort";
+import { LAYOUT_PANEL_IDS } from "#/layout/workspaceDock";
 
 describe("DESK_PANEL_ROSTER ↔ defaultLayoutPort conformance", () => {
   it("roster ids per tab equal the default-tree ids (order included)", () => {

@@ -1,6 +1,8 @@
 import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import type {
   JarvisPort,
   LayoutState,
@@ -23,9 +25,6 @@ import {
 } from "@rtc/domain";
 import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 describe("composition — workspace-layout rehydration", () => {

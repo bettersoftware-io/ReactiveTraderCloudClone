@@ -13,6 +13,8 @@
 import { NEVER, Observable } from "rxjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import type { JarvisDemoState, StoredSession } from "@rtc/core-api";
 import { collect, scriptPorts } from "@rtc/core-contract";
 import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
@@ -23,9 +25,6 @@ import {
   WORKSPACE_PERSIST_DEBOUNCE_MS,
 } from "@rtc/domain";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 /** Every factory call `createApp` makes, by name, with the teardowns it

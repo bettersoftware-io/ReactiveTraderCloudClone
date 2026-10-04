@@ -26,6 +26,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/client-core-rxjs": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/client-core-async": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"

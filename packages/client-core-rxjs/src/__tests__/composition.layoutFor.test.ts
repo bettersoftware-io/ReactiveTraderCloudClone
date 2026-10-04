@@ -1,15 +1,14 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
   PreferencesSimulator,
 } from "@rtc/domain";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 // Review round-1 IMPORTANT finding: `layoutFor(tab)` returns the SAME

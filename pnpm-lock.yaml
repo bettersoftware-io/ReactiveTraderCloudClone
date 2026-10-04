@@ -337,9 +337,6 @@ importers:
         specifier: ^7.8
         version: 7.8.2
     devDependencies:
-      '@rtc/core-contract':
-        specifier: workspace:*
-        version: link:../core-contract
       '@types/node':
         specifier: ^26.2.0
         version: 26.6.3
@@ -413,6 +410,46 @@ importers:
       effect:
         specifier: ^3.22.2
         version: 3.22.2
+      rxjs:
+        specifier: ^7.8
+        version: 7.8.2
+    devDependencies:
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../client-core
+      '@rtc/core-contract':
+        specifier: workspace:*
+        version: link:../core-contract
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.6.3
+      '@vitest/coverage-v8':
+        specifier: ^5.0.3
+        version: 5.0.3(@vitest/browser@5.0.3)(vitest@5.0.3)
+      tsc-alias:
+        specifier: 1.9.5
+        version: 1.9.5
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@26.6.3)(@vitest/browser-playwright@5.0.3)(@vitest/coverage-istanbul@5.0.3)(@vitest/coverage-v8@5.0.3)(@vitest/ui@5.0.3)(jsdom@30.1.1)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/client-core-rxjs:
+    dependencies:
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
+      '@rtc/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       rxjs:
         specifier: ^7.8
         version: 7.8.2

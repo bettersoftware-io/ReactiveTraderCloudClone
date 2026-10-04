@@ -10,17 +10,14 @@ exports[`@rtc/client-core public runtime API > has a pinned runtime surface 1`] 
   "WsAdapter",
   "WsConnectionEventsAdapter",
   "buildWsUrl",
-  "createLayoutPresets",
   "createRoutingAuthPort",
   "createSimulatorPorts",
-  "createWorkspacePersistenceWriter",
   "createWsRealPorts",
   "formatDataSourceMessage",
   "isDataSource",
   "pairConnectionPorts",
   "resolveDataSource",
   "routeIdleLifecycle",
-  "withLoginDelay",
   "wsUrlToHttpBase",
 ]
 `;

@@ -1,5 +1,5 @@
 {
-  "name": "@rtc/client-core",
+  "name": "@rtc/client-core-rxjs",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,10 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.ts",
-      "import": "./dist/testing.js"
     }
   },
   "imports": {
@@ -35,6 +31,8 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@rtc/client-core": "workspace:*",
+    "@rtc/core-contract": "workspace:*",
     "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^5.0.3",
     "tsc-alias": "1.9.5",

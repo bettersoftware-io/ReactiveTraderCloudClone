@@ -55,10 +55,10 @@ import type {
   ThemeSkin,
 } from "@rtc/domain";
 
-import { withLoginDelay } from "#/adapters/delayedAuthPort";
-import { readPreferenceNow } from "#/adapters/readPreferenceNow";
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
+import { withLoginDelay } from "#/ports/delayedAuthPort";
+import { readPreferenceNow } from "#/ports/readPreferenceNow";
 import {
   AmbientStylePresenter,
   AnalyticsPresenter,

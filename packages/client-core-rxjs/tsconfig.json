@@ -10,8 +10,12 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "references": [
+    // Tests only: the core's source takes its ports as arguments and imports
+    // nothing from the adapters (dependency-cruiser `cores-take-ports-as-arguments`).
+    { "path": "../client-core" },
     { "path": "../core-api" },
     { "path": "../core-logic" },
+    { "path": "../core-contract" },
     { "path": "../domain" },
     { "path": "../shared" }
   ],

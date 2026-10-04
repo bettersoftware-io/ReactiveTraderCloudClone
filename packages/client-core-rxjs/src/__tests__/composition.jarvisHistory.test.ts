@@ -27,6 +27,16 @@
 
 import { describe, expect, it } from "vitest";
 
+import {
+  createSimulatorPorts,
+  createWsRealPorts,
+  InMemorySessionStore,
+  type PortFactoryDeps,
+} from "@rtc/client-core";
+import {
+  createFakeConnectionPorts,
+  FakeWsAdapter,
+} from "@rtc/client-core/testing";
 import type { JarvisEntry } from "@rtc/core-api";
 import { historyEntriesExcludingInFlightTurn } from "@rtc/core-logic";
 import {
@@ -37,14 +47,6 @@ import {
 } from "@rtc/domain";
 import { CLIENT_MSG, type JarvisHistoryEntry, SERVER_MSG } from "@rtc/shared";
 
-import { FakeWsAdapter } from "#/adapters/__tests__/FakeWsAdapter";
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import {
-  createSimulatorPorts,
-  createWsRealPorts,
-  type PortFactoryDeps,
-} from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 describe("composition — jarvis history-source wiring", () => {

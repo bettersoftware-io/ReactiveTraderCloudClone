@@ -6,6 +6,8 @@ import {
 } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import type { JarvisAvailability, JarvisPort } from "@rtc/core-api";
 import {
   AuthSimulator,
@@ -15,9 +17,6 @@ import {
 } from "@rtc/domain";
 import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
 
 describe("composition — jarvis wiring", () => {

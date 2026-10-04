@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthOutcome, AuthPort } from "@rtc/domain";
 
-import { withLoginDelay } from "#/adapters/delayedAuthPort";
+import { withLoginDelay } from "#/ports/delayedAuthPort";
 
 beforeEach(() => {
   vi.useFakeTimers();

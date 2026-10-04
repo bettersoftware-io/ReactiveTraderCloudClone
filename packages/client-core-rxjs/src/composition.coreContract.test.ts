@@ -10,6 +10,7 @@
 
 import { NEVER } from "rxjs";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import type { AppPorts } from "@rtc/core-api";
 import {
   type CoreHarness,
@@ -19,8 +20,6 @@ import {
 } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
 
 function createRxjsHarness(seed?: HarnessSeed): CoreHarness {

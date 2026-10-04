@@ -9,6 +9,8 @@
 import { NEVER, type Observable } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createFakeConnectionPorts } from "@rtc/client-core/testing";
 import type { App, AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
@@ -18,9 +20,6 @@ import {
   PreferencesSimulator,
 } from "@rtc/domain";
 
-import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
-import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
 
 beforeEach(() => {
