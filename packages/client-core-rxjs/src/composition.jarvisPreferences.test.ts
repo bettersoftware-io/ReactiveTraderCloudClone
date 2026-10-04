@@ -1,4 +1,4 @@
-// packages/client-core/src/composition.jarvisPreferences.test.ts
+// packages/client-core-rxjs/src/composition.jarvisPreferences.test.ts
 //
 // The two Jarvis desk-assistant preferences (brain + effort) are resolved
 // through JarvisPreferencesPresenter, wired in composition exactly like

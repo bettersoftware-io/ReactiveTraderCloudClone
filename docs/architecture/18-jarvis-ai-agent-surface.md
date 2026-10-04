@@ -283,7 +283,7 @@ their own tool-permission surface.
 
 ## 18.7 Client state: the JarvisMachine and the orb
 
-Chat state is an RxJS machine in `client-core/src/presenters/` (per
+Chat state is an RxJS machine in `client-core-rxjs/src/presenters/` (per
 [ADR-005](../adr/ADR-005-ui-logic-placement.md): an autonomous async fold decoupled
 from the view). The `JarvisPort` lives in `client-core/adapters` — deliberately *not*
 in `domain/ports`, because chat is an application concern; keeping `@rtc/domain`
@@ -1838,7 +1838,7 @@ counterpart) owned the active workspace tab as a bare
 `useState<WorkspaceTab>("fx")` — the one piece of drivable UI state with no
 path from the composition root, and therefore the one thing Jarvis's new
 `switchTab` command could not reach. The fix promotes it to a
-composition-root singleton, `packages/client-core/src/presenters/WorkspaceNavMachine.ts`:
+composition-root singleton, `packages/client-core-rxjs/src/presenters/WorkspaceNavMachine.ts`:
 
 ```ts
 export interface WorkspaceNavState { readonly activeTab: WorkspaceTab; }
@@ -1908,7 +1908,7 @@ moment anything called `.dispose()` on what it assumed was its own instance.
 
 ### `JarvisDriverMachine` — a total interpreter, staggered, freeze-aware
 
-`packages/client-core/src/presenters/JarvisDriverMachine.ts` is
+`packages/client-core-rxjs/src/presenters/JarvisDriverMachine.ts` is
 `JarvisPanelsMachine`'s sibling: a composition-root singleton folding
 `jarvis.events$`'s `"command"` events (guarded with the same
 `catchError(() => EMPTY)` composition applies to `jarvisPanels`'s source).
@@ -1984,7 +1984,7 @@ byte-identical to before this module existed — production's real
 because nothing in this repo pins a live tick's numeric value against a
 specific `Math.random()` sequence.
 
-**`NarratorMachine`** (`packages/client-core/src/presenters/NarratorMachine.ts`)
+**`NarratorMachine`** (`packages/client-core-rxjs/src/presenters/NarratorMachine.ts`)
 is a third composition-root singleton, subscribing `detectAnomalies` to the
 **same shared, cached** `PriceStreamPresenter.price$` every other
 price-driven surface reads through — never a fresh direct `PricingPort` call,

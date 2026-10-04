@@ -719,7 +719,7 @@ flowchart LR
   c2["<b>Every core behaves<br/>the same</b>"] --> g2["@rtc/core-contract: one suite<br/>per member, run on all three"]
   c3["<b>No RxJS hidden inside<br/>an alternative core</b>"] --> g3["dependency-cruiser bridge-owns-rxjs<br/>+ grep gate 43"]
   c4["<b>The plug is<br/>types only</b>"] --> g4["grep gate 42"]
-  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>alt-cores-no-client-core-at-runtime"]
+  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>cores-stay-inner"]
   c6["<b>Visitors download only<br/>the core they use</b>"] --> g6["pnpm check:core-bundle"]
 ```
 

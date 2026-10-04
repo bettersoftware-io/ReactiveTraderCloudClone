@@ -118,7 +118,7 @@ survives a real page reload, not just a React remount.
 **The pointer advances at the *start* of each boot, not the end.** When
 `createBootSequenceMachine` is constructed (once per splash mount), it does two
 things immediately, before the progress ramp starts
-(`packages/client-core/src/presenters/BootSequenceMachine.ts`):
+(`packages/client-core-rxjs/src/presenters/BootSequenceMachine.ts`):
 
 ```ts
 const variant = deps.variant;                                   // this boot's scene

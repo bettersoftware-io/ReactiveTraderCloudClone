@@ -80,7 +80,7 @@ sequenceDiagram
    `useAuth().state.status`; anything other than `"authenticated"` (i.e.
    `"unauthenticated"` or `"authenticating"`) renders `LoginScreen` instead of
    the app's `children`.
-3. **`AuthPresenter.login`** (`packages/client-core/src/presenters/AuthPresenter.ts:73-84`)
+3. **`AuthPresenter.login`** (`packages/client-core-rxjs/src/presenters/AuthPresenter.ts:73-84`)
    flips state to `"authenticating"` and calls the injected `AuthPort`.
 4. **The `AuthPort`** is one of:
    - `HttpAuthAdapter` (`packages/client-core/src/adapters/HttpAuthAdapter.ts`) —

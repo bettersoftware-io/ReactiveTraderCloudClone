@@ -23,7 +23,7 @@ import { warmReplay } from "./warmReplay.js";
  * `refCount: false` keeps the accumulator (and its one subscription into
  * `SessionsPort`) alive for this presenter's lifetime instead, which is
  * safe because `SessionsKpiPresenter` is a composition-root singleton
- * (packages/client-core/src/composition.ts), not a per-mount instance — and
+ * (packages/client-core-rxjs/src/composition.ts), not a per-mount instance — and
  * that lifetime ends at `app.dispose()` (`warmReplay`'s `disposed$`).
  */
 export class SessionsKpiPresenter implements SessionsKpiPresenterApi {

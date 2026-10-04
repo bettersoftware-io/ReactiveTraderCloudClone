@@ -52,7 +52,7 @@ export class BlotterPresenter implements BlotterPresenterApi {
    * internal subscription (and therefore the scan's accumulator) alive for
    * the lifetime of this presenter instead, which is safe here because
    * `BlotterPresenter` itself is a composition-root singleton
-   * (packages/client-core/src/composition.ts) constructed once for the
+   * (packages/client-core-rxjs/src/composition.ts) constructed once for the
    * app's lifetime — there is no per-mount instance to leak. The
    * trade-off: this presenter now holds one permanent subscription into
    * `trades$` (and transitively the blotter WS stream) even while no UI

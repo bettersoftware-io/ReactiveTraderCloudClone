@@ -40,7 +40,7 @@ function isoDateAt(daysOffset: number): string {
  * The wall-clock `HH:MM:SS` reading `offsetMs` away from `PINNED_NOW_MS` — the
  * fake's replacement for `BlotterPresenter`'s `formatClockTime`, which stamps
  * each `ActivityEntry.time` from `Date.now()` in the live app
- * (`packages/client-core/src/presenters/BlotterPresenter.ts`). That helper
+ * (`packages/client-core-rxjs/src/presenters/BlotterPresenter.ts`). That helper
  * reads local `getHours()`/`getMinutes()`/`getSeconds()`, which is exactly
  * what a capture must NOT depend on (a fixture reproduced on a differently
  * -zoned machine would render a different clock reading). `toISOString()`'s

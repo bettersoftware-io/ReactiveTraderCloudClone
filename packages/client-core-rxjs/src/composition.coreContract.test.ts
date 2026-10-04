@@ -1,4 +1,4 @@
-// packages/client-core/src/composition.coreContract.test.ts
+// packages/client-core-rxjs/src/composition.coreContract.test.ts
 //
 // The RxJS core's runner for `@rtc/core-contract` — the ONE file in this
 // package that executes the paradigm-neutral behavioural contract. The

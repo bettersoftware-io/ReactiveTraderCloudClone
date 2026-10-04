@@ -39,7 +39,7 @@ const PANEL_DOCKED_LIVE_TIMEOUT_MS = 15_000;
 
 /** `WorkspacePersistenceWriter` debounces the `rtc-workspace-layout-v1`
  * `localStorage` write by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
- * `packages/client-core/src/layout/workspacePersistenceWriter.ts`) —
+ * `packages/client-core-rxjs/src/layout/workspacePersistenceWriter.ts`) —
  * generous margin over that for CI jitter. Hardcoded here rather than
  * imported from a client package, same reasoning as `E2E_SESSION_KEY` in
  * `authSeed.ts`: the suite runs against either `@rtc/client-react` or

@@ -1,4 +1,4 @@
-// packages/client-core/src/composition.authGate.test.ts
+// packages/client-core-rxjs/src/composition.authGate.test.ts
 //
 // The transport must stay closed until the user is authenticated. Opening it
 // at composition time sends a tokenless upgrade the server rejects (401 via

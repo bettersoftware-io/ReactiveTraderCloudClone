@@ -20,7 +20,7 @@ import { warmReplay } from "./warmReplay.js";
  * of bug as the Activity feed. `refCount: false` keeps the accumulator (and
  * its one subscription into the underlying port) alive for this
  * presenter's lifetime instead, which is safe because `EventLogPresenter`
- * is a composition-root singleton (packages/client-core/src/composition.ts),
+ * is a composition-root singleton (packages/client-core-rxjs/src/composition.ts),
  * not a per-mount instance — and that lifetime ends at `app.dispose()`.
  */
 export class EventLogPresenter implements EventLogPresenterApi {

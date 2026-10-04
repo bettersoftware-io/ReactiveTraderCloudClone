@@ -1,4 +1,4 @@
-// packages/client-core/src/composition.dispose.test.ts
+// packages/client-core-rxjs/src/composition.dispose.test.ts
 //
 // `app.dispose()`'s ownership half. The `@rtc/core-contract` `dispose` suite
 // (run by `composition.coreContract.test.ts`) witnesses what every core

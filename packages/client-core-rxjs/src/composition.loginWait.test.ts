@@ -1,4 +1,4 @@
-// packages/client-core/src/composition.loginWait.test.ts
+// packages/client-core-rxjs/src/composition.loginWait.test.ts
 //
 // The two login-wait inspection preferences are resolved in composition, not
 // in AuthPresenter: the presenter asks one question ("which treatment for this

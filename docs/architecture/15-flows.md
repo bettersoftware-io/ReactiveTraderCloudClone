@@ -88,12 +88,12 @@ flowchart TB
 ```
 
 1. **Reconnect click** (idle-disconnected only): `ConnectionOverlay.tsx` calls `reconnect` from `useReconnect()`.
-2. `useReconnect` resolves to `commands.reconnect` in `packages/client-core/src/composition.ts`.
+2. `useReconnect` resolves to `commands.reconnect` in `packages/client-core-rxjs/src/composition.ts`.
 3. `commands.reconnect()` calls `ports.connectionIntents.reconnect()` (`composition.ts`), which pushes `{ type: "reconnect" }` onto a reconnect Subject private to this app instance — built, along with `connectionIntents` itself, by `@rtc/client-core`'s `pairConnectionPorts(events$)` at the composition root (`buildBrowserPorts.ts`); `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND `connectionIntents` together (ADR-006 Follow-up 5), so the platform port-builder supplies both from that one call.
 4. The reconnect intent is already merged into `connectionEvents` — that merge is what `pairConnectionPorts` returned in step 3 — so the ws-real branch's `ConnectionEventsPort.events()` just pipes that merged stream through `routeIdleLifecycle()` (`composition.ts`), whose `tap` calls `ws.reopen()` on `WsAdapter` for a `reconnect` event (and `ws.closeForIdle()` for `idleTimeout`) — the one place a connection event has a *side effect* on the transport, not just a state transition.
 5. Whichever adapter produced the event — `WsConnectionEventsAdapter` wrapping `WsAdapter`'s `onopen`/`onclose` handlers in Mode B, `BrowserConnectionEventsAdapter`'s idle timer and `online`/`offline` listeners (always active, both modes), or `ConnectionEventsSimulator` in Mode A — reaches `ConnectionStatusUseCase.execute()` (`packages/domain/src/usecases/ConnectionStatusUseCase.ts`) via the `ConnectionEventsPort`.
 6. The use case `scan`s every event through the pure function `nextConnectionStatus()` (`packages/domain/src/connection/connectionStatus.ts`), producing the next `ConnectionStatus`.
-7. `ConnectionStatusPresenter.status$` (`packages/client-core/src/presenters/ConnectionStatusPresenter.ts`) multicasts it with `shareReplay({ bufferSize: 1, refCount: true })`.
+7. `ConnectionStatusPresenter.status$` (`packages/client-core-rxjs/src/presenters/ConnectionStatusPresenter.ts`) multicasts it with `shareReplay({ bufferSize: 1, refCount: true })`.
 8. `useConnectionStatus()` (bound in `createViewModel.ts`) re-renders every subscribed component — the status bar, the overlay, `ConnectionBanner.tsx` on RN.
 
 Same state machine at message level: [§5.1 Connection Status](05-state-diagrams.md#51-connection-status). The idle/offline wording split lives in `ConnectionOverlay.tsx`'s `overlayMessages` map, not in the domain layer — the domain only knows the five `ConnectionStatus` values.
@@ -135,8 +135,8 @@ flowchart TB
 
 1. `Tile.tsx` reads `useTileExecution` from `useViewModel()`; clicking Buy/Sell calls `tileExecution.intents.execute(direction, price, notional)`.
 2. `useTileExecution(pair)` (`createViewModel.ts`) is a per-mount `useMachine(machines.tileExecution(pair))` — a fresh `TileExecutionMachine` per tile, auto-disposed on unmount.
-3. `createTileExecutionMachine` (`packages/client-core/src/presenters/TileExecutionMachine.ts`) pushes the command onto its internal `execute$` Subject, which `switchMap`s into a lifecycle race: `started` → (`tooLong` at 2s / a result / `timeout` at 30s) → `finished`. The constants (`TOO_LONG_THRESHOLD_MS`, `EXECUTION_TIMEOUT_MS`, `CONFIRMATION_DISMISS_MS`) live in `@rtc/domain`.
-4. The machine's `deps.execute` is wired in `composition.ts` to `TradeExecutionPresenter.execute()` (`packages/client-core/src/presenters/TradeExecutionPresenter.ts`).
+3. `createTileExecutionMachine` (`packages/client-core-rxjs/src/presenters/TileExecutionMachine.ts`) pushes the command onto its internal `execute$` Subject, which `switchMap`s into a lifecycle race: `started` → (`tooLong` at 2s / a result / `timeout` at 30s) → `finished`. The constants (`TOO_LONG_THRESHOLD_MS`, `EXECUTION_TIMEOUT_MS`, `CONFIRMATION_DISMISS_MS`) live in `@rtc/domain`.
+4. The machine's `deps.execute` is wired in `composition.ts` to `TradeExecutionPresenter.execute()` (`packages/client-core-rxjs/src/presenters/TradeExecutionPresenter.ts`).
 5. `TradeExecutionPresenter.execute()` constructs `new ExecuteTradeUseCase(this.execution).execute(input)` (`packages/domain/src/usecases/ExecuteTradeUseCase.ts`), which derives `spotRate` from the tile's displayed bid/ask by `direction` and computes `dealtCurrency`, then calls `ExecutionPort.executeTrade(request)`.
 6. In Mode B, `createExecutionPort(ws)` (`packages/client-core/src/adapters/portFactory.ts`) sends `CLIENT_MSG.EXECUTE_TRADE` via `ws.rpc(...)` with a correlation ID; the `executeTrade$` effect (`packages/server/src/effects/fx.effects.ts`, built with `rpc(CLIENT_MSG.EXECUTE_TRADE, SERVER_MSG.EXECUTION_RESPONSE, ...)`) calls `ctx.execution.executeTrade(...)` against the server-hosted `ExecutionSimulator` (`packages/domain/src/simulators/ExecutionSimulator.ts` — GBPJPY is always rejected, EURJPY carries an extra 4s delay, everything else resolves in 0–2s). In Mode A the same `ExecutionSimulator` class runs in-process, called directly.
 7–9. The resolved `Trade` (or rejection) flows back through the port, and `ExecuteTradeUseCase` maps `TradeStatus.Rejected` to `ExecutionStatus.Rejected`, everything else to `Done`.
@@ -189,7 +189,7 @@ flowchart TB
 
 1. `NewRfqPanel.tsx` calls `submission.intents.submit(input, onRedirect)` from `useRfqSubmission()`.
 2. `useRfqSubmission()` is a per-mount `useMachine(machines.rfqSubmission())`, wired in `composition.ts` to `presenters.rfqs.createSubmission()`.
-3. `RfqsPresenter.createSubmission()` (`packages/client-core/src/presenters/RfqsPresenter.ts`) runs `editing → submitting`, then calls its own `createRfq(input)`.
+3. `RfqsPresenter.createSubmission()` (`packages/client-core-rxjs/src/presenters/RfqsPresenter.ts`) runs `editing → submitting`, then calls its own `createRfq(input)`.
 4. `RfqsPresenter.createRfq()` constructs `new CreateRfqUseCase(this.workflow).execute(input)` (`packages/domain/src/usecases/CreateRfqUseCase.ts`), which calls `WorkflowPort.createRfq(request)`.
 5. `createWorkflowPort(ws)` (`portFactory.ts`) sends `CLIENT_MSG.CREATE_RFQ` via `ws.rpc(...)`; the `createRfq$` rpc effect (`packages/server/src/effects/credit.effects.ts`) hands it to `CreditRfqSimulator`.
 6. The simulator creates the `Rfq` (state `Open`) and, per selected dealer, a `Quote` (state `pendingWithoutPrice`), driven by `DealerSimulator`'s per-dealer response timing (0–30s, ~70% respond at all).
@@ -244,8 +244,8 @@ flowchart TB
 
 1. `OrderTicket.tsx` reads `useOrderTicket` and calls `intents.submit()`.
 2. `useOrderTicket(symbol)` is a per-mount `useMachine(machines.orderTicket(defaultSymbol))`, wired in `composition.ts` (`orderTicket: (defaultSymbol) => createOrderTicketMachine({ place: presenters.ordersBlotter.place, defaultSymbol })`).
-3. `createOrderTicketMachine` (`packages/client-core/src/presenters/OrderTicketMachine.ts`) validates the form (`qty > 0`, a limit price for `type: "limit"`), goes `editing → submitting`, and calls `deps.place(req)`.
-4. `deps.place` is `OrdersBlotterPresenter.place()` (`packages/client-core/src/presenters/OrdersBlotterPresenter.ts`), which calls `this.orderPort.place(req)` — **directly**; there is no `PlaceOrderUseCase` in `@rtc/domain/usecases`, unlike every other command flow in this document.
+3. `createOrderTicketMachine` (`packages/client-core-rxjs/src/presenters/OrderTicketMachine.ts`) validates the form (`qty > 0`, a limit price for `type: "limit"`), goes `editing → submitting`, and calls `deps.place(req)`.
+4. `deps.place` is `OrdersBlotterPresenter.place()` (`packages/client-core-rxjs/src/presenters/OrdersBlotterPresenter.ts`), which calls `this.orderPort.place(req)` — **directly**; there is no `PlaceOrderUseCase` in `@rtc/domain/usecases`, unlike every other command flow in this document.
 5. In Mode B, `createOrderPort(ws)` (`portFactory.ts`) sends `CLIENT_MSG.PLACE_ORDER` via `ws.rpc(...)`. The `placeOrder$` effect (`packages/server/src/effects/equities.effects.ts`) is a raw `WsEffect`, not the `rpc()`/`stream()` sugar — it builds one `shareReplay({ bufferSize: 1, refCount: true })` source from `ctx.orders.place(...)` and derives *both* the RPC ack (`take(1)`, mapped to `{ orderId }`) and the `ORDER_LIFECYCLE` stream from it, so the ack and the first lifecycle frame can never race.
 6. `EquityOrderSimulator` (`packages/domain/src/simulators/` — Mode A runs the same class in-process) advances the order through `new → working → partiallyFilled → filled` (or `rejected`); each fill also calls `EquityPositionSimulator.bookFill(fill)`, updating the Positions blotter on a stream `OrderTicketMachine` never touches.
 7–8. Lifecycle frames flow back through `OrderPort.place()`'s `Observable` (`createOrderPort`'s `ws.on(SERVER_MSG.ORDER_LIFECYCLE, ...)` filters by `orderId` and completes on a terminal status) into `OrdersBlotterPresenter.place()` and back to the machine.
@@ -279,7 +279,7 @@ flowchart TB
 ```
 
 1. `TelemetrySimulator` (`packages/domain/src/simulators/TelemetrySimulator.ts`) walks each metric as a seeded random offset around the admin-set throughput setpoint (`mulberry32` PRNG, `WALK_STEP_FRACTION`/`WALK_CLAMP_FRACTION`), emitting a `MetricSample { t, value }` per tick from `throughput$()`/`latency$()`/`errorRate$()` (`packages/domain/src/ports/telemetryPort.ts`).
-2. Each `*MetricPresenter` (`packages/client-core/src/presenters/ThroughputMetricPresenter.ts` and its `LatencyPresenter`/`ErrorRatePresenter` siblings) pipes the port stream through `windowedSamples()` (`packages/client-core/src/presenters/windowedSamples.ts`), rolling the last N samples oldest-first for a chart series.
+2. Each `*MetricPresenter` (`packages/client-core-rxjs/src/presenters/ThroughputMetricPresenter.ts` and its `LatencyPresenter`/`ErrorRatePresenter` siblings) pipes the port stream through `windowedSamples()` (`packages/client-core-rxjs/src/presenters/windowedSamples.ts`), rolling the last N samples oldest-first for a chart series.
 3. `useMetrics()` (bound in `createViewModel.ts`) plain-`bind`s all three `samples$` streams (not per-mount — one shared subscription for every consumer).
 4. `ThroughputChart.tsx`, `LatencyHistogram.tsx`, and `KpiRow.tsx` (`packages/client-react/src/ui/admin/`) re-render on each new sample.
 

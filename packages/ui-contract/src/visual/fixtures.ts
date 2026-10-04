@@ -2436,7 +2436,7 @@ fixtures["admin-jarvis-usage"] = makeAppData({
 // One `JarvisPanelLayer` fixture per `PanelViz.kind` plus the unsupported
 // sentinel — all hand-frozen (no live simulator tick, no Date.now/random),
 // mirroring the shapes `composePanelStream` actually emits (see
-// packages/client-core/src/presenters/composePanelStream.ts's `PanelData`
+// packages/client-core-rxjs/src/presenters/composePanelStream.ts's `PanelData`
 // union) rather than routing through the real interpreter: the visual tier
 // seeds the ViewModel's `useJarvisPanels`/`useJarvisPanelData` fakes
 // directly (see buildFakeViewModel.ts), so there is no `World`/machine to
@@ -2590,7 +2590,7 @@ fixtures["jarvis-panel-spark-grid"] = makeAppData({
 // negative and near-zero intensities so PanelHeatmap's 7-bucket
 // `data-intensity` styling shows more than one colour. Shaped like the
 // series→heatmap restyle path's real output (this round's flagship restyle:
-// packages/client-core/src/presenters/composePanelStream.ts's `renderHeatmap`
+// packages/client-core-rxjs/src/presenters/composePanelStream.ts's `renderHeatmap`
 // consuming `series` frames — commit f52a1992c), not asserted against that
 // path here (this is a static ViewModel fake, not a `World`-driven spec —
 // see Task 9's contract spec for that assertion).

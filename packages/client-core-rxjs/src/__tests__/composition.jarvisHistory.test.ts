@@ -1,4 +1,4 @@
-// packages/client-core/src/__tests__/composition.jarvisHistory.test.ts
+// packages/client-core-rxjs/src/__tests__/composition.jarvisHistory.test.ts
 //
 // `createApp` late-binds `WsJarvisAdapter.setHistorySource` to
 // `presenters.jarvis.state$` once machines exist (see `composition.ts`'s

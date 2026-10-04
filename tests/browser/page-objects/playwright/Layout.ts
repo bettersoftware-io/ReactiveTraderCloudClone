@@ -64,7 +64,7 @@ const DOCK_LAYOUT_SETTLE_MS = 600;
 // `WorkspacePersistenceWriter` debounces the layer-2 LayoutState write
 // (`collapsed`/`closed`/root tree — a SEPARATE channel from the dock blob
 // above) by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
-// packages/client-core/src/layout/workspacePersistenceWriter.ts). Hardcoded
+// packages/client-core-rxjs/src/layout/workspacePersistenceWriter.ts). Hardcoded
 // here rather than imported, same reasoning as `Jarvis.ts`'s own copy: the
 // suite runs against either client via `RTC_CLIENT_PKG`, and both export the
 // identical string.
