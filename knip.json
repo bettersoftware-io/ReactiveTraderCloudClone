@@ -135,6 +135,7 @@
         "jest.setup.ts",
         "jest.resolver.mts",
         "scripts/liveWsSmoke.ts",
+        "scripts/runAndroidBuild.ts",
         "tests/visual/driver.ts",
         "tests/visual/maestro/generateFlows.ts"
       ],

@@ -269,10 +269,21 @@ Android signing key. Two things in the repo exist only for this:
 
 An Android `preview` build completed on Expo's servers on 2026-10-04 (archive
 344 MB), which confirms the `node: 26.10.0` pin in `eas.json` and the hook
-there. To run the result in an emulator: create a virtual device once in
-Android Studio's Device Manager (an arm64 system image on Apple silicon), start
-it, then `pnpm dlx eas-cli@24.10.0 build:run -p android --latest`. The app has
-not been checked on Android beyond the build succeeding.
+there. To run the result in an emulator, create a virtual device once in Android
+Studio's Device Manager (an arm64 system image on Apple silicon), then:
+
+```bash
+pnpm demo:run:android                          # from the repo root
+RTC_ANDROID_AVD=Pixel_8 pnpm demo:run:android  # a named device, when there are several
+```
+
+It starts the emulator if none is running, waits for Android to finish
+booting, then installs and opens the latest cloud build. It builds nothing
+itself. The SDK is taken from `ANDROID_HOME`, defaulting to
+`~/Library/Android/sdk`, so the Android tools need not be on `PATH`.
+
+On Android the app has been seen to install, start and run in the emulator
+(slowly, as emulators are); it has had no systematic check there.
 
 ### Why iOS-on-a-real-device costs money
 
