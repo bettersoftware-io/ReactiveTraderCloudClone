@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { main, TIERS } from "./coverage-report";
+import { main, TIERS } from "./coverage-report.ts";
 
 describe("coverage-report CLI", () => {
   it("exposes the ten standalone coverage tiers, both clients framework-prefixed and symmetric", () => {

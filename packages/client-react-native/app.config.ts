@@ -56,7 +56,7 @@ const config: ExpoConfig = {
     eas: { projectId: "ec0ee21b-52af-4375-bb5d-70c6c52b8c1a" },
   },
   // React Compiler (ADR-003). `babel-preset-expo@57` injects
-  // `babel-plugin-react-compiler` from this flag, so `babel.config.js` needs no
+  // `babel-plugin-react-compiler` from this flag, so `babel.config.cts` needs no
   // entry — and the worklets plugin stays last, as that file requires.
   // Without this flag RN runs NO auto-memoization, which is why manual
   // `useMemo`/`useCallback` were load-bearing here until this change.

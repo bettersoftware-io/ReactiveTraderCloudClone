@@ -39,7 +39,7 @@ timing and target identity) and counts `requestAnimationFrame` registrations.
      `pnpm --filter @rtc/tests perf:motion-audit -- --levels freeze`
      (comma-separate for several; `--seconds N` widens the sampling window).
    - Against an already-running client instead:
-     `pnpm --filter @rtc/tests exec tsx scripts/motion-audit.ts --url http://localhost:5173`.
+     `pnpm --filter @rtc/tests exec node scripts/motion-audit.ts --url http://localhost:5173`.
 
 2. Read the verdict:
    - **freeze** is asserted by the script itself — any live animation or

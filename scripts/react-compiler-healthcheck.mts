@@ -106,14 +106,14 @@ interface BabelTransformOptions {
 }
 
 interface BabelTransformResult {
-  code: string;
+  code?: string | null;
 }
 
 interface BabelCore {
   transformSync: (
     source: string,
     options: BabelTransformOptions,
-  ) => BabelTransformResult;
+  ) => BabelTransformResult | null;
 }
 
 const require = createRequire(path.join(repoRoot, "packages/client-react/"));
@@ -294,7 +294,7 @@ for (const { file, fn, values, minMemoValues = 1 } of TRACKED) {
   const abs = path.join(repoRoot, file);
   const events: CompilerEvent[] = [];
 
-  const { code } = babel.transformSync(readFileSync(abs, "utf8"), {
+  const result = babel.transformSync(readFileSync(abs, "utf8"), {
     filename: abs,
     babelrc: false,
     configFile: false,
@@ -312,6 +312,16 @@ for (const { file, fn, values, minMemoValues = 1 } of TRACKED) {
       ],
     ],
   });
+
+  const code = result?.code;
+
+  if (typeof code !== "string") {
+    failures.push(
+      `${file}: Babel returned no output, so nothing can be asserted about ${fn}.`,
+    );
+
+    continue;
+  }
 
   const win = events.find((e) => {
     return e.kind === "CompileSuccess" && e.fnName === fn;

@@ -347,7 +347,7 @@ the native fast loop, and when to reach for each) see
 > set. See [ADR-001](./ADR-001-visual-diff-tooling.md) for the decision.
 
 `test:ui:visual` and `test:ui:visual:react` are wired to
-`tsx tests/ui/visual/run-all.ts`. The orchestrator reads `package.json`
+`node tests/ui/visual/run-all.ts`. The orchestrator reads `package.json`
 scripts and discovers every entry matching
 `test:ui:visual:<runner>:<framework>` (exactly five colon-delimited parts) —
 today that resolves to exactly one runner (`playwright`) per framework, since

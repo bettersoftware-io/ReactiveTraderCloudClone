@@ -20,7 +20,7 @@ import { join, relative } from "node:path";
 
 import { chromium } from "playwright";
 
-import { argOf } from "./capture";
+import { argOf } from "./capture.mts";
 
 /** Width of each cell in the sheet. Small enough to fit ~6 per row, large
  * enough that a wrong screen is obvious. */
@@ -90,7 +90,7 @@ export async function buildContactSheet(
   }
 }
 
-if (process.argv[1]?.endsWith("contact-sheet.ts")) {
+if (process.argv[1]?.endsWith("contact-sheet.mts")) {
   buildContactSheet(
     argOf("--out") ?? "/tmp/proto-scratch",
     argOf("--file") ?? "/tmp/proto-contact-sheet.png",

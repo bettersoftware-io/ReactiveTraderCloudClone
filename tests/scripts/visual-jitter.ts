@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Visual-tolerance audit — the comparison half of /rtc:visual-tolerance-audit.
  *

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pairEngineGoldens } from "./enginePairs";
+import { pairEngineGoldens } from "./enginePairs.ts";
 
 describe("pairEngineGoldens", () => {
   it("pairs every -dockview golden with the same-skin in-house sibling", () => {

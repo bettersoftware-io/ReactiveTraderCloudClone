@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Motion audit — the repeatable performance assessment behind /rtc:perf-audit.
  *
@@ -25,7 +25,7 @@
  *   pnpm perf:motion-audit           # react client
  *   pnpm perf:motion-audit:solid     # solid client
  * Direct, against an already-running client:
- *   pnpm --filter @rtc/tests exec tsx scripts/motion-audit.ts --url http://localhost:5173
+ *   pnpm --filter @rtc/tests exec node scripts/motion-audit.ts --url http://localhost:5173
  * Options: --levels off,calm,freeze  --seconds <sampling window per view>
  */
 import process from "node:process";
@@ -36,8 +36,8 @@ import {
   E2E_SESSION_JSON,
   E2E_SESSION_KEY,
   seedLocalStorageItem,
-} from "../browser/authSeed";
-import { type MotionSample, sampleMotion } from "../browser/motionProbe";
+} from "../browser/authSeed.ts";
+import { type MotionSample, sampleMotion } from "../browser/motionProbe.ts";
 
 const VIEWS = ["fx", "credit", "equities", "admin"] as const;
 const ALL_LEVELS = ["off", "calm", "freeze"] as const;
@@ -53,18 +53,6 @@ async function main(): Promise<void> {
   await context.addInitScript(seedLocalStorageItem, {
     key: E2E_SESSION_KEY,
     value: E2E_SESSION_JSON,
-  });
-  // tsx's esbuild transform (keepNames) wraps the inner functions of
-  // `sampleMotion` in `__name(...)` helper calls, and Playwright serialises
-  // that transformed source into the page — where esbuild's helper does not
-  // exist. Provide a pass-through so the serialised probe runs. (`playwright
-  // test` uses its own transform and does not need this; it is tsx-only.)
-  await context.addInitScript(() => {
-    const g = globalThis as EsbuildHelperGlobal;
-
-    g.__name ??= (target: unknown): unknown => {
-      return target;
-    };
   });
   const page = await context.newPage();
   let freezeLeaks = 0;
@@ -138,11 +126,6 @@ function report(view: string, sample: MotionSample): void {
 
 function perSecond(count: number, elapsedMs: number): number {
   return elapsedMs > 0 ? Math.round((count / elapsedMs) * 1000) : 0;
-}
-
-/** esbuild's keepNames helper slot — see the `addInitScript` shim above. */
-interface EsbuildHelperGlobal {
-  __name?: (target: unknown, name: string) => unknown;
 }
 
 interface AuditArgs {

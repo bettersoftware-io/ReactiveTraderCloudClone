@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Framework compare — React (19 + React Compiler) vs Solid runtime cost on
  * identical scenarios, against PRODUCTION builds of both web clients.
@@ -38,7 +38,7 @@ import {
   E2E_SESSION_JSON,
   E2E_SESSION_KEY,
   seedLocalStorageItem,
-} from "../browser/authSeed";
+} from "../browser/authSeed.ts";
 
 const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -97,16 +97,6 @@ async function runTrial(
   await context.addInitScript(seedLocalStorageItem, {
     key: E2E_SESSION_KEY,
     value: E2E_SESSION_JSON,
-  });
-  // tsx's esbuild transform (keepNames) wraps serialized page functions in
-  // `__name(...)` calls that do not exist in the page — same shim as
-  // motion-audit.ts.
-  await context.addInitScript(() => {
-    const g = globalThis as EsbuildHelperGlobal;
-
-    g.__name ??= (target: unknown): unknown => {
-      return target;
-    };
   });
   // Long-task observer: counts main-thread tasks >50ms during a scenario.
   await context.addInitScript(() => {
@@ -535,11 +525,6 @@ async function startPreviewServer(
       return setTimeout(resolve, 250);
     });
   }
-}
-
-/** esbuild's keepNames helper slot — see the `addInitScript` shim above. */
-interface EsbuildHelperGlobal {
-  __name?: (target: unknown, name: string) => unknown;
 }
 
 interface LongTaskGlobal {

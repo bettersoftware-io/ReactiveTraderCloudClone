@@ -124,12 +124,12 @@
       "entry": [
         "app/**/*.{ts,tsx}",
         "app.config.ts",
-        "metro.config.js",
-        "babel.config.js",
+        "metro.config.cts",
+        "babel.config.cts",
         "vitest.config.ts",
         "jest.config.js",
         "jest.setup.ts",
-        "jest.resolver.js",
+        "jest.resolver.cts",
         "scripts/liveWsSmoke.ts",
         "tests/visual/driver.ts",
         "tests/visual/maestro/generateFlows.ts"

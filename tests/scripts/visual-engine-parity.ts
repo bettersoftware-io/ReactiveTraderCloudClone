@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Engine-parity report — how far the Dockview layout engine's rendering sits
  * from the in-house engine's, per workspace state and skin.
@@ -37,7 +37,7 @@ import path from "node:path";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
-import { type EnginePair, pairEngineGoldens } from "./lib/enginePairs";
+import { type EnginePair, pairEngineGoldens } from "./lib/enginePairs.ts";
 
 const PLAYWRIGHT_DEFAULT_PER_PIXEL_THRESHOLD = 0.2;
 const GOLDEN_SETS_ROOT = path.resolve(

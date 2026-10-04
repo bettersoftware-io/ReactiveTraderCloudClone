@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 
 import { type Browser, chromium, type Locator, type Page } from "playwright";
 
-import { SHOTS, type Shot, type ShotStep } from "./shots";
+import { SHOTS, type Shot, type ShotStep } from "./shots.mts";
 
 const PROTOTYPE_URL = "http://localhost:8899/";
 
@@ -304,7 +304,7 @@ export function argOf(flag: string): string | undefined {
 // `main().catch(...)` rather than top-level await, matching
 // scripts/jarvis-live-smoke.ts: the root package has no `"type": "module"`, so
 // tsx transforms these to CJS, where top-level await is a build error.
-if (process.argv[1]?.endsWith("capture.ts")) {
+if (process.argv[1]?.endsWith("capture.mts")) {
   capture({
     only: argOf("--only"),
     outDir: argOf("--out") ?? "docs/design/mobile/v1/reference-shots",

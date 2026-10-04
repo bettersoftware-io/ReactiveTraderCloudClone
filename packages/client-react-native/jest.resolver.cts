@@ -37,7 +37,18 @@
 //
 // Chain the extension filtering of both into the options the RN preset
 // resolver receives, so all three behaviors apply.
-const reactNativePresetResolver = require("@react-native/jest-preset/jest/resolver.js");
+// The slice of jest's resolver options this file reads. Spelled locally:
+// `jest-resolve` is not a direct dependency of this package. The options
+// object is passed through whole, so the fields not named here still reach the
+// preset's resolver.
+interface ResolverOptions {
+  basedir: string;
+  extensions?: string[];
+}
+
+type Resolver = (request: string, options: ResolverOptions) => string;
+
+const reactNativePresetResolver: Resolver = require("@react-native/jest-preset/jest/resolver.js");
 
 // Matches only the physical node_modules/react-native-worklets/... resolution
 // target, not any basedir/request substring. pnpm encodes peer deps into its
@@ -54,6 +65,7 @@ const WORKLETS_REQUEST = /^react-native-worklets(\/|$)/;
 // also fire inside e.g. `expo-blur@…_react-native-reanimated@4.6.0/…`.
 const REANIMATED_PACKAGE_DIR =
   /[\\/]node_modules[\\/]react-native-reanimated[\\/]/;
+
 // Verbatim from upstream's `jest/resolver.js` at the #10377 merge commit
 // (12113efce251e1ca034c6b974845fb8dadf98646). Entries with a `/` match the
 // end of the request; bare entries match its basename.
@@ -72,18 +84,20 @@ const REANIMATED_WEB_ONLY_IN_JEST = [
   "css/component/AnimatedComponent",
 ];
 
-const isReanimatedWebOnlyRequest = (request, basedir) => {
+function isReanimatedWebOnlyRequest(request: string, basedir: string): boolean {
   if (!request.startsWith(".") || !REANIMATED_PACKAGE_DIR.test(basedir)) {
     return false;
   }
-  const basename = request.split("/").pop();
-  return REANIMATED_WEB_ONLY_IN_JEST.some((entry) =>
-    entry.includes("/") ? request.endsWith(entry) : basename === entry,
-  );
-};
 
-module.exports = (request, options) => {
+  const basename = request.split("/").pop();
+  return REANIMATED_WEB_ONLY_IN_JEST.some((entry) => {
+    return entry.includes("/") ? request.endsWith(entry) : basename === entry;
+  });
+}
+
+module.exports = (request: string, options: ResolverOptions): string => {
   let resolveOptions = options;
+
   if (
     WORKLETS_PACKAGE_DIR.test(options.basedir) ||
     WORKLETS_REQUEST.test(request) ||
@@ -91,8 +105,11 @@ module.exports = (request, options) => {
   ) {
     resolveOptions = {
       ...options,
-      extensions: options.extensions?.filter((ext) => !ext.includes("native")),
+      extensions: options.extensions?.filter((ext) => {
+        return !ext.includes("native");
+      }),
     };
   }
+
   return reactNativePresetResolver(request, resolveOptions);
 };

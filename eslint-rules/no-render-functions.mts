@@ -25,16 +25,6 @@ type FunctionNode =
   | TSESTree.FunctionExpression
   | TSESTree.ArrowFunctionExpression;
 
-/** `ParenthesizedExpression` is a node kind the typescript-estree AST does not
- * declare; isJsxValue still unwraps it, so its shape is spelled here rather
- * than the branch being dropped. */
-interface ParenthesizedExpressionNode {
-  type: "ParenthesizedExpression";
-  expression: TSESTree.Node;
-}
-
-type ExpressionLike = TSESTree.Node | ParenthesizedExpressionNode;
-
 const RENDER_NAME = /^render[A-Z0-9_]/;
 
 const FUNCTION_TYPES = new Set([
@@ -54,24 +44,13 @@ function isNode(value: unknown): value is TSESTree.Node {
   );
 }
 
-function isParenthesizedExpression(
-  node: ExpressionLike,
-): node is ParenthesizedExpressionNode {
-  const kind: string = node.type;
-  return kind === "ParenthesizedExpression";
-}
-
 /** True when `expr` is a JSX value in return position — a JSX element or
  * fragment, possibly behind conditionals/logicals/casts (`cond ? <A/> : null`,
  * `flag && <B/>`, `<C/> as ReactElement`). A CallExpression is NOT a JSX
  * value, even when its arguments contain JSX. */
-function isJsxValue(expr: ExpressionLike | null): boolean {
+function isJsxValue(expr: TSESTree.Node | null): boolean {
   if (!expr) {
     return false;
-  }
-
-  if (isParenthesizedExpression(expr)) {
-    return isJsxValue(expr.expression);
   }
 
   switch (expr.type) {

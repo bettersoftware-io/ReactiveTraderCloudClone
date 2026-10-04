@@ -1,6 +1,6 @@
 // Runs every implemented visual runner and prints a pass/fail summary.
-// `tsx tests/ui/visual/run-all.ts` runs all frameworks;
-// `tsx tests/ui/visual/run-all.ts react` runs only react runners. Today only
+// `node tests/ui/visual/run-all.ts` runs all frameworks;
+// `node tests/ui/visual/run-all.ts react` runs only react runners. Today only
 // :react exists, so both are the same; when :solid lands it is discovered
 // automatically (no edit here).
 //

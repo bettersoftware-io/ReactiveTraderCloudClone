@@ -23,7 +23,7 @@ export default tseslint.config(
   },
   ...base,
   {
-    files: ["**/*.{ts,tsx,mts}"],
+    files: ["**/*.{ts,tsx,mts,cts}"],
     plugins: { "@typescript-eslint": tseslint.plugin },
     languageOptions: {
       parserOptions: {

@@ -1,6 +1,6 @@
 // Runs every implemented visual runner and prints a pass/fail summary.
-// `tsx tests/ui/visual/run-all.ts` runs all frameworks;
-// `tsx tests/ui/visual/run-all.ts solid` runs only solid runners. Today only
+// `node tests/ui/visual/run-all.ts` runs all frameworks;
+// `node tests/ui/visual/run-all.ts solid` runs only solid runners. Today only
 // :solid exists in THIS package (react's own copy discovers :react), so both
 // are the same. Verbatim copy of client-react's run-all.ts apart from
 // package-name references in this comment block — see that file's header for

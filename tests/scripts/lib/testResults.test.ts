@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { summarize } from "./testResults";
+import { summarize } from "./testResults.ts";
 
 describe("summarize", () => {
   it("reads vitest json reporter counts", () => {
