@@ -330,9 +330,6 @@ importers:
       '@rtc/shared':
         specifier: workspace:*
         version: link:../shared
-      '@rx-state/core':
-        specifier: ^0.1.4
-        version: 0.1.4(rxjs@7.8.2)
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -536,6 +533,9 @@ importers:
       '@rtc/client-core-effect':
         specifier: workspace:*
         version: link:../client-core-effect
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -672,6 +672,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -847,6 +850,9 @@ importers:
       '@rtc/client-core-effect':
         specifier: workspace:*
         version: link:../client-core-effect
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -1224,6 +1230,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -1338,6 +1347,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.15)
@@ -1359,9 +1371,9 @@ importers:
 
   packages/ui-contract:
     dependencies:
-      '@rtc/client-core':
+      '@rtc/client-core-rxjs':
         specifier: workspace:*
-        version: link:../client-core
+        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -1424,6 +1436,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../packages/client-core
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../packages/client-core-rxjs
       '@rtc/client-react':
         specifier: workspace:*
         version: link:../packages/client-react

@@ -11,7 +11,7 @@ import {
   createApp,
   createMachineFactories,
   SessionsKpiPresenter,
-} from "@rtc/client-core/core";
+} from "@rtc/client-core-rxjs";
 import type { AppPorts, Presenters } from "@rtc/core-api";
 import {
   AuthSimulator,

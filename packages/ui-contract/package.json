@@ -15,7 +15,7 @@
     "clean:deep": "pnpm run clean && (rm -rf node_modules 2>/dev/null || true)"
   },
   "dependencies": {
-    "@rtc/client-core": "workspace:*",
+    "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",

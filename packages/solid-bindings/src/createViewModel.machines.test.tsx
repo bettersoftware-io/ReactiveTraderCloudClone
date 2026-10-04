@@ -16,7 +16,7 @@ import { renderHook, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
 import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,

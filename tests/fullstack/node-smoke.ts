@@ -18,8 +18,8 @@ import {
   createWsRealPorts,
   HttpAuthAdapter,
   InMemorySessionStore,
+  WsAdapter,
 } from "@rtc/client-core";
-import { WsAdapter } from "@rtc/client-react";
 import type { JarvisAvailability } from "@rtc/core-api";
 import type { Direction } from "@rtc/domain";
 import { PreferencesSimulator } from "@rtc/domain";

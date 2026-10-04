@@ -10,7 +10,7 @@ presenter and every state machine, and nothing else.
 | **Ring** | ③ Interface Adapters — the application layer, on RxJS |
 | **Runtime deps** | `@rtc/core-api` (types), `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` |
 | **Consumed by** | Both web clients, as a lazy chunk loaded only when chosen; `client-react-native`, statically; the bindings, `ui-contract` and `tests`, from their tests and harnesses |
-| **Must never import** | Another core, the adapters (`@rtc/client-core`), a framework, a client or the server — `cores-never-import-each-other`, `cores-take-ports-as-arguments`, `client-core-rxjs-stays-inner`, `client-core-rxjs-framework-free` |
+| **Must never import** | Another core, the adapters (`@rtc/client-core`), a framework, a client or the server — `cores-stay-inner`, `cores-take-ports-as-arguments`, `cores-framework-free` |
 
 ## What lives here
 

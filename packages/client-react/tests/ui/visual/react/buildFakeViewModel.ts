@@ -69,7 +69,7 @@ import type { AppData } from "@ui-visual-shared/appData";
 import { useState } from "react";
 import { EMPTY } from "rxjs";
 
-import { createLayoutMachine } from "@rtc/client-core/core";
+import { createLayoutMachine } from "@rtc/client-core-rxjs";
 import type {
   BootSequenceState,
   CoreSelection,

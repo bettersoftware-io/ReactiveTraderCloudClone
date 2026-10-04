@@ -253,7 +253,7 @@ function targetOf(
     home.module.startsWith("presenters/") || home.module === "composition.ts";
 
   return specifier === "@rtc/client-core" && inCore
-    ? "@rtc/client-core/core"
+    ? "@rtc/client-core-rxjs"
     : undefined;
 }
 

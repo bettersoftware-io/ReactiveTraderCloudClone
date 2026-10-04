@@ -46,6 +46,7 @@
     "@rtc/client-core": "workspace:*",
     "@rtc/client-core-async": "workspace:*",
     "@rtc/client-core-effect": "workspace:*",
+    "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/core-logic": "workspace:*",
     "@rtc/devtools-core": "workspace:*",

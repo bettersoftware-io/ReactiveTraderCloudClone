@@ -43,7 +43,8 @@ interface Entry {
 function createEntries(): readonly Entry[] {
   return [
     { pkg: "client-core", entry: "src/index.ts" },
-    { pkg: "client-core", entry: "src/core.ts" },
+    { pkg: "client-core", entry: "src/testing.ts" },
+    { pkg: "client-core-rxjs", entry: "src/index.ts" },
     { pkg: "client-core-async", entry: "src/index.ts" },
     { pkg: "client-core-effect", entry: "src/index.ts" },
     { pkg: "core-logic", entry: "src/index.ts" },

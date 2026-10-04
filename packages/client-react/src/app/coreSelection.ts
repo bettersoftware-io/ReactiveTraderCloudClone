@@ -120,7 +120,7 @@ export interface CoreImporters {
   readonly effect: () => Promise<EffectCoreModule>;
 }
 
-/** The slice of `@rtc/client-core/core`'s module `loadCore` reads. */
+/** The slice of `@rtc/client-core-rxjs`'s module `loadCore` reads. */
 interface RxjsCoreModule {
   readonly rxjsCore: CoreFactory;
 }
@@ -137,14 +137,15 @@ interface EffectCoreModule {
 
 /** The real importers. Each `import()` specifier must stay a string literal
  * here: that is what lets the bundler split each core into its own lazy
- * chunk (`pnpm check:core-bundle` witnesses it). The RxJS core is reached
- * through `@rtc/client-core/core`, a subpath export holding only its
- * composition root — the root `@rtc/client-core` index the UI imports from
- * eagerly no longer carries it, so none of the three cores is in the entry
- * bundle (approach B, ADR-006 Decision 6). */
+ * chunk (`pnpm check:core-bundle` witnesses it). All three are sibling
+ * packages reached the same way; `@rtc/client-core`, which the UI imports
+ * eagerly, holds only the adapters, so none of the three cores is in the
+ * entry bundle (ADR-006 Decision 6). A static import of a core from this
+ * client's source is a dependency-cruiser error
+ * (`web-clients-load-cores-lazily`). */
 const DEFAULT_CORE_IMPORTERS: CoreImporters = {
   rxjs: () => {
-    return import("@rtc/client-core/core");
+    return import("@rtc/client-core-rxjs");
   },
   async: () => {
     return import("@rtc/client-core-async");

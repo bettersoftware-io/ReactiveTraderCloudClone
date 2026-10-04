@@ -243,7 +243,7 @@ function wireJarvisHistorySource(
  * it returns, so the literal ships exactly when this composition root does,
  * and `check:core-bundle` greps for it to prove a build that selected another
  * core carries none of it — the twin of `ASYNC_CORE_BRAND`. */
-export const RXJS_CORE_BRAND = "@rtc/client-core:brand";
+export const RXJS_CORE_BRAND = "@rtc/client-core-rxjs:brand";
 
 export function createApp(ports: AppPorts): App {
   // The app's lifetime. `held` collects every session-lifetime subscription

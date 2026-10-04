@@ -3,7 +3,7 @@
 import { merge, Subject } from "rxjs";
 
 import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createApp } from "@rtc/client-core/core";
+import { createApp } from "@rtc/client-core-rxjs";
 import type { App, AppPorts, ConnectionIntentsPort } from "@rtc/core-api";
 import {
   AuthSimulator,

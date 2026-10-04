@@ -342,7 +342,7 @@ function createIndexHtml(options: CreateIndexHtmlOptions): string {
 </html>`;
 }
 
-const RXJS_MARKER = "@rtc/client-core:brand";
+const RXJS_MARKER = "@rtc/client-core-rxjs:brand";
 
 const ASYNC_MARKER = "@rtc/client-core-async:brand";
 

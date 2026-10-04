@@ -2,7 +2,7 @@
 // statically to build them: adapters, port factories and stores. No
 // application core lives here and none is imported — a core is a sibling
 // package that receives these ports as arguments (dependency-cruiser's
-// `client-adapters-imports-no-core`). Nor does anything here re-export another
+// `client-core-stays-inner`). Nor does anything here re-export another
 // package's name: a contract type comes from `@rtc/core-api`, a shared rule
 // from `@rtc/core-logic` (`tests/scripts/lib/packageSurfaces.test.ts`).
 
