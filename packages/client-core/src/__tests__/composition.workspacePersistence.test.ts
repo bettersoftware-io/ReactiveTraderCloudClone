@@ -1,13 +1,13 @@
 import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisPort, Presenters } from "@rtc/core-api";
 import type {
+  JarvisPort,
   LayoutState,
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
+  Presenters,
   WorkspaceTab,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
+import type { PersistedTabLayout, WorkspaceLayoutV1 } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,

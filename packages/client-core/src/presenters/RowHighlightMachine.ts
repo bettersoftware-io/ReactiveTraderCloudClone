@@ -2,7 +2,7 @@ import { type StateObservable, state } from "@rx-state/core";
 import { EMPTY, timer } from "rxjs";
 import { distinctUntilChanged, map, startWith } from "rxjs/operators";
 
-import type { ReadOnlyMachine } from "@rtc/core-logic";
+import type { ReadOnlyMachine } from "@rtc/core-api";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
 
 /** Transient new-row highlight, relocated out of the old BlotterRow useEffect/
@@ -20,9 +20,9 @@ import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
 export function createRowHighlightMachine(
   isNew: boolean,
 ): ReadOnlyMachine<boolean> {
-  // For a new row: emit `false` once BLOTTER_ROW_HIGHLIGHT_MS has elapsed. The synchronous
-  // `true` seed is supplied by startWith below. For a non-new row: nothing ever
-  // emits after the seed, so it stays `false` forever.
+  // For a new row: emit `false` once BLOTTER_ROW_HIGHLIGHT_MS has elapsed. The
+  // synchronous `true` seed is supplied by startWith below. For a non-new row:
+  // nothing ever emits after the seed, so it stays `false` forever.
   const stream$ = (
     isNew
       ? timer(BLOTTER_ROW_HIGHLIGHT_MS).pipe(

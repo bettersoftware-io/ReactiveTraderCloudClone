@@ -638,6 +638,9 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
@@ -726,9 +729,6 @@ importers:
       '@react-native/jest-preset':
         specifier: ^0.86.2
         version: 0.86.3(@babel/core@7.29.7(supports-color@11.0.0))(react@19.3.0)(supports-color@11.0.0)
-      '@rtc/core-logic':
-        specifier: workspace:*
-        version: link:../core-logic
       '@rtc/devtools-relay':
         specifier: workspace:*
         version: link:../devtools-relay
@@ -1168,9 +1168,6 @@ importers:
       '@react-rxjs/core':
         specifier: ^0.10.7
         version: 0.10.8(react@19.3.0)(rxjs@7.8.2)
-      '@rtc/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -1187,6 +1184,9 @@ importers:
         specifier: ^7.8
         version: 7.8.2
     devDependencies:
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -1279,9 +1279,6 @@ importers:
 
   packages/solid-bindings:
     dependencies:
-      '@rtc/client-core':
-        specifier: workspace:*
-        version: link:../client-core
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -1301,6 +1298,9 @@ importers:
         specifier: ^1.9.14
         version: 1.9.15
     devDependencies:
+      '@rtc/client-core':
+        specifier: workspace:*
+        version: link:../client-core
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.15)

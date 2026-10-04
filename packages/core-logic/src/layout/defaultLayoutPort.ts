@@ -1,14 +1,11 @@
-import type { WorkspaceTab } from "@rtc/core-api";
-
 import type {
   LayoutNode,
   LayoutPort,
   LayoutState,
   PanelId,
   PanelSpec,
-} from "./layoutPort";
-
-export type { WorkspaceTab };
+  WorkspaceTab,
+} from "@rtc/core-api";
 
 /** Static panel descriptors. `pinned: true` (unused by any default tree today)
  * marks a panel the engine renders in a fixed bottom strip, kept out of any

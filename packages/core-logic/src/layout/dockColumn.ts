@@ -1,4 +1,4 @@
-import type { LayoutNode, PanelId } from "./layoutPort";
+import type { LayoutNode, PanelId } from "@rtc/core-api";
 
 /** Design-value default width (css px) of a freshly-created dock column — the
  * same convention as the default trees' own rail `initialPx` values (FX 360,

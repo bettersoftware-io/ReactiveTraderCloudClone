@@ -7,8 +7,9 @@ import type {
   LayoutState,
   Presenters,
   SaveLayoutPresetResult,
+  WorkspaceTab,
 } from "@rtc/core-api";
-import type { StoredLayoutPreset, WorkspaceTab } from "@rtc/core-logic";
+import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,

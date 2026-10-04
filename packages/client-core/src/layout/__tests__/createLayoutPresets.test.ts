@@ -6,13 +6,11 @@ import type {
   LayoutPresetStore,
   LayoutPresetSummary,
   LayoutPresetsPresenter,
-  Machine,
-} from "@rtc/core-api";
-import type {
   LayoutState,
-  StoredLayoutPreset,
+  Machine,
   WorkspaceTab,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
+import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,

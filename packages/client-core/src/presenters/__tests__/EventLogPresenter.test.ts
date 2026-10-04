@@ -5,8 +5,7 @@
 import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { EventLogPort, LogEvent } from "@rtc/domain";
-import { MAX_LOG_ROWS } from "@rtc/domain";
+import { type EventLogPort, type LogEvent, MAX_LOG_ROWS } from "@rtc/domain";
 
 import { EventLogPresenter } from "../EventLogPresenter";
 

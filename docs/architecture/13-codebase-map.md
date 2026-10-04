@@ -115,7 +115,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | The framework-free application core -- the default (RxJS) one of three that implement `@rtc/core-api`: composition root, presenters, state machines, `WsAdapter` + `portFactory` (whose ports every core consumes). |
 | **Ring** | ③ Interface Adapters -- presenters, gateways, ViewModel wiring |
 | **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` (`packages/client-core/package.json` `dependencies`) |
-| **Consumed by** | `react-bindings`, `solid-bindings`, `ui-contract`, the three clients, `tests`; a devDependency (test adapters only) of the two alternative cores |
+| **Consumed by** | `ui-contract`, the three clients, `tests`; a devDependency (test adapters and the core under test) of the two alternative cores and, since 2026-10-04, of both bindings -- their `src` names the contract (`@rtc/core-api`), never a core |
 | **Non-obvious** | Zero framework imports -- no React, no DOM types, no React Native -- despite being consumed by three UI-facing packages ([§1.3](01-overview.md#13-layered-architecture--terminology)); machine-enforced by dependency-cruiser's `client-core-stays-inner` + `client-core-framework-free` pair rules ([§6](06-package-dependencies.md#6-package-dependencies)). |
 | **README** | [`packages/client-core/README.md`](../../packages/client-core/README.md) |
 
@@ -137,7 +137,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | The rules all three cores share that need no stream library: the pure folds (`blotterFolds`, `staleFlagFold`, `incidentFold`, …), view derivations, the layout reducer and workspace/Jarvis controllers (`createWorkspaceDock`, `createJarvisController`, …), and `createAuthDeps`. |
 | **Ring** | ③ Interface Adapters -- application rules below the stream shell of each core |
 | **Depends on** | `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (`packages/core-logic/package.json` `dependencies`) -- `core-api` for types only |
-| **Consumed by** | The three cores; `client-react`, `client-solid` and `ui-contract`, which call its view rules directly; a devDependency of `client-react-native` (tests) |
+| **Consumed by** | The three cores; the three clients and `ui-contract`, which call its view rules directly (`client-react-native` from its visual fakes, which the app bundle includes) |
 | **Non-obvious** | A rule written here cannot drift between cores, because there is only one copy ([§23](23-application-cores-explained.md#the-shared-rulebook)). `core-logic-stays-pure` forbids a runtime `rxjs`/`@rx-state` import (grep gate 43 backs it up), and `core-logic-stays-inner` is an allowlist. |
 | **README** | [`packages/core-logic/README.md`](../../packages/core-logic/README.md) |
 
@@ -180,7 +180,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The one package that knows both worlds: `createViewModel`, `useMachine`, `ViewModelProvider`/`useViewModel`. |
 | **Ring** | ③ Interface Adapters -- ViewModel bridge |
-| **Depends on** | `@react-rxjs/core`, `@rtc/client-core`, `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `react`, `rxjs` (`packages/react-bindings/package.json` `dependencies`) |
+| **Depends on** | `@react-rxjs/core`, `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `react`, `rxjs` (`packages/react-bindings/package.json` `dependencies`); `@rtc/client-core` is a devDependency, for its tests |
 | **Consumed by** | `client-react`, `client-react-native` |
 | **Non-obvious** | The *only* package permitted to depend on both React and the core's RxJS streams ([§6](06-package-dependencies.md#6-package-dependencies)) -- kept small ([§2.3](02-c4-model.md#23-component-diagram----web-client)) precisely so a `@rtc/solid-bindings` sibling was roughly a day's work, which it was. |
 | **README** | [`packages/react-bindings/README.md`](../../packages/react-bindings/README.md) |
@@ -191,7 +191,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The Solid↔RxJS bridge, parallel to `react-bindings`: `createViewModel`, `useMachine`, `ViewModelProvider`/`useViewModel`, implementing the exact same `ViewModel` member list over Solid signals instead of React hooks. |
 | **Ring** | ③ Interface Adapters -- ViewModel bridge |
-| **Depends on** | `@rtc/client-core`, `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `@rx-state/core`, `rxjs`, `solid-js` (`packages/solid-bindings/package.json` `dependencies`) |
+| **Depends on** | `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `@rx-state/core`, `rxjs`, `solid-js` (`packages/solid-bindings/package.json` `dependencies`); `@rtc/client-core` is a devDependency, for its tests |
 | **Consumed by** | `client-solid` (the only client on this bridge -- `react-bindings` and `solid-bindings` never share a client) |
 | **Non-obvious** | Not a reuse of `react-bindings` -- a sibling package binding the *same*, unmodified `client-core` (the multi-client proof in miniature, [§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)). `useMachine`'s Solid counterpart uses `onCleanup` instead of react-bindings' StrictMode-safe microtask-deferred `dispose()` -- Solid has no StrictMode double-invoke to guard against, so the lifecycle bridge is simpler here, not just differently spelled. It lands within the same order of magnitude of size as `react-bindings`. |
 | **README** | [`packages/solid-bindings/README.md`](../../packages/solid-bindings/README.md) |
@@ -213,7 +213,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 |---|---|
 | **What it is** | The mobile client: dumb Expo/RN UI (`src/ui`) + native-specific platform adapters (`src/app`). |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) |
-| **Depends on** | `@rtc/client-core`, `@rtc/core-api`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/devtools-core`, `react`, `react-dom`, `react-native`, `rxjs`, `expo` + its `expo-*` modules, `@expo-google-fonts/*`, and the RN runtime packages (`react-native-svg`, `@shopify/react-native-skia`, `react-native-reanimated` + `react-native-worklets`, `react-native-gesture-handler`, `react-native-screens`, `react-native-safe-area-context`, `@gorhom/bottom-sheet`, `@react-native-async-storage/async-storage`) -- the full list is `packages/client-react-native/package.json` `dependencies` |
+| **Depends on** | `@rtc/client-core`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/devtools-core`, `react`, `react-dom`, `react-native`, `rxjs`, `expo` + its `expo-*` modules, `@expo-google-fonts/*`, and the RN runtime packages (`react-native-svg`, `@shopify/react-native-skia`, `react-native-reanimated` + `react-native-worklets`, `react-native-gesture-handler`, `react-native-screens`, `react-native-safe-area-context`, `@gorhom/bottom-sheet`, `@react-native-async-storage/async-storage`) -- the full list is `packages/client-react-native/package.json` `dependencies` |
 | **Consumed by** | Nothing in-workspace -- it is a leaf app, and unlike `client-react` it is *not* a `tests` dependency (`tests/package.json` lists `@rtc/client-react` but not `@rtc/client-react-native`) |
 | **Non-obvious** | `rxjs` is a listed runtime dep and appears in `src/app/adapters` (e.g. `AppearanceColorSchemeAdapter` returns `Observable<boolean>`) but never in `src/ui` -- the same dumb-UI discipline as web, now machine-gated here too by gates 30–33, the RN counterpart of gates 26–29 on `client-react/src/ui`. Its own suite runs vitest + jest-expo; it isn't exercised by the root `tests` e2e/presenter/fullstack suites. It has its own visual goldens, captured on the iOS simulator by two runners (`test:rn:visual:simctl`, `test:rn:visual:maestro`, under `tests/visual/`). It stays on the RxJS core (it depends on `client-core` only) and applies the devtools decorators under `__DEV__`, reaching the browser inspector through `@rtc/devtools-relay` (a devDependency). |
 | **Styling doctrine** | No CSS on native; StyleSheet.create + useThemedStyles; array-form runtime channel: see [rn-styling.md](../rn-styling.md) |
@@ -425,8 +425,7 @@ src/
 ├── presenters/     presenters & state machines, RxJS shells over core-logic rules
 ├── adapters/        WsAdapter, portFactory (createSimulatorPorts / createWsRealPorts), HttpAuthAdapter, Jarvis adapters
 ├── blotter/          column sort + filter state
-├── layout/           layout presets · locked width · maximize boundary · workspace persistence writer
-└── theme/            ColorSchemeSource app-port (OS dark/light signal)
+└── layout/           layout presets · locked width · maximize boundary · workspace persistence writer
 ```
 
 `@rtc/client-core-async`:
@@ -663,7 +662,7 @@ What's shared verbatim, what's adapted per platform, and what doesn't apply -- v
 
 [^1]: The preference presenter (`ThemeSkinPreferencePresenter`/`ThemePreferencePresenter`, `packages/client-core/src/presenters/`) is shared verbatim by every UI. What's adapted is the token *rendering*: `client-react` applies CSS custom properties from `packages/client-react/src/ui/shell/theme/tokens.ts` via `:root`; `client-react-native` delivers a plain-object `rnThemeTokens` tree (plus an RN-only `DepthTokens` shadow/elevation descriptor, since RN can't express layered/inset box-shadows) from `packages/client-react-native/src/ui/theme/tokens.ts` via React context; `client-solid` applies the same CSS custom properties as `client-react` (the CSS Modules ported byte-for-byte), a third instance of the same rendering strategy, not a third design.
 [^2]: Consumed transitively, not directly: no client imports `CLIENT_MSG`/`SERVER_MSG` or any other **value** from `@rtc/shared` -- only `client-core`'s `WsAdapter`/`wsReal*` adapters touch the protocol, and `client-solid` inherits the same indirection by reusing `client-core`. Since 2026-10-04 both web clients (and both bindings, and `ui-contract`) do list `@rtc/shared`, for three Jarvis wire **types** their Jarvis usage card and view models name (`JarvisEvent`, `AdminJarvisUsagePayload`, `JarvisUsageSnapshot`) -- until then they reached those through a `client-core` pass-through. `import type` only: dependency-cruiser's `ui-takes-wire-types-only` rejects a value edge from the UI side into `packages/shared/`.
-[^3]: `client-solid` uses the sibling package `@rtc/solid-bindings` (`@rx-state/core` → Solid signal), not a reuse of `@rtc/react-bindings` -- `docs/architecture/06-package-dependencies.md` draws `solidc --> sb` and `sb --> core`, i.e. a separate framework-specific bridge binding the *same*, unmodified `client-core`. This is the multi-client proof in miniature: only the bridge and the UI change; everything below stays put ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)).
+[^3]: `client-solid` uses the sibling package `@rtc/solid-bindings` (`@rx-state/core` → Solid signal), not a reuse of `@rtc/react-bindings` -- `docs/architecture/06-package-dependencies.md` draws `solidc --> sb` and `sb --> api`, i.e. a separate framework-specific bridge over the *same* contract, composed by the client with the same, unmodified `client-core`. This is the multi-client proof in miniature: only the bridge and the UI change; everything below stays put ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)).
 [^5]: Imported directly from `@rtc/core-logic` (until 2026-10-04 through `@rtc/client-core`, which re-exported it whole); every core also composes from it.
 [^6]: Implemented natively, member for member, against the same `@rtc/core-api` interface -- `async`/`await` + `AsyncIterable` in one, Effect-TS in the other -- with the pure rule imported from `@rtc/core-logic` wherever there is one. `@rtc/core-contract` runs the same suite against all three cores to witness that they agree ([§22](22-pluggable-application-core.md#the-contract-tier)).
 [^7]: Not in the core at all: a core receives its ports already built (by `client-core`'s `createSimulatorPorts` / `createWsRealPorts`, called from the client's `buildBrowserPorts`), so simulators, the `WsAdapter` and the wire protocol stay on the port side of the plug. The alternative cores import `@rtc/shared` only for Jarvis wire types (`JarvisEvent`), and `client-core` only as a devDependency, for test adapters.

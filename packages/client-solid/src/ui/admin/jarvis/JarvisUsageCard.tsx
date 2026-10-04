@@ -128,11 +128,8 @@ interface UsageSectionProps {
 }
 
 /** One per-brain usage row, as carried by both `AdminJarvisUsagePayload`
- * windows — referenced structurally off the client-core-exported payload
- * type rather than importing `@rtc/shared`'s `JarvisBrainUsageRow` directly
- * (client-solid has no direct dependency on `@rtc/shared`; only
- * `AdminJarvisUsagePayload` itself is re-exported through
- * `@rtc/client-core`'s `jarvisUsagePort`). */
+ * windows — referenced structurally off the payload type, so this file
+ * names one wire type from `@rtc/shared` rather than two. */
 type JarvisBrainUsageRow = AdminJarvisUsagePayload["currentWindow"][number];
 
 function pad2(n: number): string {

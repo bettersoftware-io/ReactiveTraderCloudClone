@@ -260,6 +260,17 @@ const config: IConfiguration = {
       },
     },
     {
+      name: "bindings-name-no-core",
+      severity: "error",
+      comment:
+        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core, so any core can sit behind it and `@rtc/client-core` is a binding's devDependency, not a dependency. Only a binding's tests compose a real core.",
+      from: {
+        path: "^packages/(react|solid)-bindings/src",
+        pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
+      },
+      to: { path: "^packages/client-core(-async|-effect)?/" },
+    },
+    {
       name: "ui-takes-wire-types-only",
       severity: "error",
       comment:
@@ -374,7 +385,7 @@ const config: IConfiguration = {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on client-core/domain (+ react), never on an app or the server.",
+        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on core-api/domain (+ react), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/react-bindings/src" },
       to: {
         path: "^packages/",
@@ -385,7 +396,7 @@ const config: IConfiguration = {
       name: "solid-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on client-core/domain (+ solid-js/@rx-state/core/rxjs), never on an app or the server.",
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@rx-state/core/rxjs), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",

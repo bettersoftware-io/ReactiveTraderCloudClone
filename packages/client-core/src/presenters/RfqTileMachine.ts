@@ -9,8 +9,12 @@ import {
   takeWhile,
 } from "rxjs/operators";
 
-import type { RfqQuote, RfqState, RfqTileIntents } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  Machine,
+  RfqQuote,
+  RfqState,
+  RfqTileIntents,
+} from "@rtc/core-api";
 import {
   type CurrencyPair,
   REJECTED_DISPLAY_MS,

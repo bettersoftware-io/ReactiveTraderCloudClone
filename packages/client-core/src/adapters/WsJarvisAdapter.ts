@@ -529,8 +529,8 @@ export class WsJarvisAdapter implements JarvisPort {
     } satisfies JarvisConfirmPayload);
   }
 
-  /** Not turn-scoped and not part of `JarvisPort` (see `jarvisPort.ts` — its
-   * surface stays unchanged for this task): a query/push channel for the
+  /** Not turn-scoped and not part of `JarvisPort` (`@rtc/core-api`'s
+   * `adapters.ts` — its surface stays unchanged for this task): a query/push channel for the
    * Jarvis backend's live availability.
    *
    * Re-queries on every `gatewayConnected` event from `ws.connectionEvents()`

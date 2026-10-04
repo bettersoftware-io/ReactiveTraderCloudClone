@@ -2,8 +2,7 @@ import { type StateObservable, state } from "@rx-state/core";
 import { timer } from "rxjs";
 import { map, takeWhile } from "rxjs/operators";
 
-import type { RfqCountdownSeed } from "@rtc/core-api";
-import type { ReadOnlyMachine } from "@rtc/core-logic";
+import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 /** How often the credit-RFQ countdown ticks. Presenter-local alias of the

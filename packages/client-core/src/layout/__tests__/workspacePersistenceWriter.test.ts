@@ -1,17 +1,16 @@
 import { Subject, VirtualTimeScheduler } from "rxjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { LayoutState, WorkspaceTab } from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
   type DockedPanelPlacement,
   dockedLeafIds,
   insertDockedLeaf,
-  type LayoutState,
   parseWorkspaceLayout,
   resetUnwritablePayloadWarning,
   serializeWorkspaceLayout,
   type WorkspaceLayoutV1,
-  type WorkspaceTab,
 } from "@rtc/core-logic";
 import type { PanelSpecV1 } from "@rtc/shared";
 

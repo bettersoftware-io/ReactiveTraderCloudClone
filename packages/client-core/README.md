@@ -55,8 +55,8 @@ is the platform port-builder that assembles the `AppPorts` object `createApp`
 consumes, using this package's factories and adapters directly:
 
 ```ts
+import type { AppPorts } from "@rtc/core-api";
 import {
-  type AppPorts,
   buildWsUrl,
   createSimulatorPorts,
   createWsRealPorts,

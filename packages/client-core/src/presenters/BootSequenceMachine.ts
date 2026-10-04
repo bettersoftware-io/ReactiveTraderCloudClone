@@ -2,8 +2,11 @@ import { type StateObservable, state } from "@rx-state/core";
 import { merge, Subject, timer } from "rxjs";
 import { filter, map, take, takeUntil, takeWhile } from "rxjs/operators";
 
-import type { BootSequenceIntents, BootSequenceState } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  BootSequenceIntents,
+  BootSequenceState,
+  Machine,
+} from "@rtc/core-api";
 import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 

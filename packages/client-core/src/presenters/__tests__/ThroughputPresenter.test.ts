@@ -3,8 +3,8 @@ import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
 import type { ThroughputView } from "@rtc/core-api";
-import type { AdminPort } from "@rtc/domain";
 import {
+  type AdminPort,
   THROUGHPUT_DEBOUNCE_MS as DEBOUNCE_MS,
   THROUGHPUT_MESSAGE_DISMISS_MS as MESSAGE_DISMISS_MS,
 } from "@rtc/domain";

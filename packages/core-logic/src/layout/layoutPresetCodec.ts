@@ -43,10 +43,10 @@
 import type {
   LayoutPresetNameProblem,
   LayoutPresetSummary,
+  WorkspaceTab,
 } from "@rtc/core-api";
 import { MAX_LAYOUT_PRESETS as DOMAIN_MAX_LAYOUT_PRESETS } from "@rtc/domain";
 
-import type { WorkspaceTab } from "./defaultLayoutPort";
 import type {
   PersistedTabLayout,
   WorkspaceLayoutV1,

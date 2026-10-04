@@ -15,13 +15,13 @@ import {
 } from "rxjs";
 
 import type {
+  Machine,
   RfqSubmissionIntents,
   RfqSubmissionState,
   RfqsPresenter as RfqsPresenterApi,
   TicketSubmissionIntents,
   TicketSubmissionState,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import { shallowArrayEquals } from "@rtc/core-logic";
 import {
   type CreateRfqInput,

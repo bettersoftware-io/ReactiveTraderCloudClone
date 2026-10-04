@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@react-rxjs/core": "^0.10.7",
-    "@rtc/client-core": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
@@ -31,6 +30,7 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
+    "@rtc/client-core": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19",

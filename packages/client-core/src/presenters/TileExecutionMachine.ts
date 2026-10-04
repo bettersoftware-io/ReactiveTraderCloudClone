@@ -9,8 +9,11 @@ import {
   takeUntil,
 } from "rxjs/operators";
 
-import type { TileExecutionIntents, TileExecutionState } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  Machine,
+  TileExecutionIntents,
+  TileExecutionState,
+} from "@rtc/core-api";
 import {
   finishedTileExecution,
   isTerminalTileExecution,

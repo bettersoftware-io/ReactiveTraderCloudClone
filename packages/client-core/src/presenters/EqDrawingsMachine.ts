@@ -7,8 +7,8 @@ import type {
   EqDrawingsIntents,
   EqDrawingsState,
   EqDrawTool,
+  Machine,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   type EqDrawingsEvent,
   INITIAL_EQ_DRAWINGS_STATE,

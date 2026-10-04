@@ -2,13 +2,14 @@ import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
-import type { LayoutIntents, LayoutMachineOptions } from "@rtc/core-api";
 import type {
+  LayoutIntents,
+  LayoutMachineOptions,
   LayoutPort,
   LayoutState,
   Machine,
   PanelId,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
 import {
   createLayoutReducer,
   type LayoutEvent,

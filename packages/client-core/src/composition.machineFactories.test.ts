@@ -1,8 +1,8 @@
 import { NEVER, of } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Presenters } from "@rtc/core-api";
-import { createDefaultLayoutPort, type WorkspaceTab } from "@rtc/core-logic";
+import type { Presenters, WorkspaceTab } from "@rtc/core-api";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 import type { CurrencyPair } from "@rtc/domain";
 
 import { createLayoutMachine } from "#/presenters/LayoutMachine";

@@ -25,11 +25,14 @@ import type {
   AuthPresenter as AuthPresenterApi,
   JarvisEntry,
   LayoutIntents,
+  LayoutState,
+  Machine,
+  MachineFactories,
   PanelInstance,
   Presenters,
   RfqCountdownSeed,
+  WorkspaceTab,
 } from "@rtc/core-api";
-import type { LayoutState } from "@rtc/core-logic";
 import {
   createAuthDeps,
   createDefaultLayoutPort,
@@ -38,10 +41,7 @@ import {
   InMemoryDockLayoutStore,
   InMemoryLayoutPresetStore,
   LAYOUT_PANEL_IDS,
-  type Machine,
-  type MachineFactories,
   modelFacingHistory,
-  type WorkspaceTab,
 } from "@rtc/core-logic";
 import type {
   BootVariant,

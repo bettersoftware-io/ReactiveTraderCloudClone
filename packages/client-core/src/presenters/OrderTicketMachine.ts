@@ -3,11 +3,11 @@ import { concat, merge, type Observable, of, Subject } from "rxjs";
 import { catchError, map, scan, startWith, switchMap } from "rxjs/operators";
 
 import type {
+  Machine,
   OrderTicketForm,
   OrderTicketIntents,
   OrderTicketState,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   createOrderTicketAcc,
   createOrderTicketForm,

@@ -54,8 +54,8 @@ module.exports = {
     // dependency tree — scripts/check-package-wiring.mts maps every such package
     // rather than keeping an exception list.
     "^@rtc/core-api$": "<rootDir>/../core-api/dist/index.js",
-    // client-core re-exports it (pluggable-core slice 8) — its first runtime
-    // @rtc dependency jest has to follow out of client-core's dist.
+    // The shared rules (pluggable-core slice 8): a runtime dependency of
+    // client-core's dist, and imported directly by the visual fakes.
     "^@rtc/core-logic$": "<rootDir>/../core-logic/dist/index.js",
     "^@rtc/motion-core$": "<rootDir>/../motion-core/dist/index.js",
     "^@rtc/react-bindings$": "<rootDir>/../react-bindings/dist/index.js",

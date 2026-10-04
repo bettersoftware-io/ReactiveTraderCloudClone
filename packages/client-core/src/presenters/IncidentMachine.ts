@@ -6,8 +6,8 @@ import type {
   IncidentIntents,
   IncidentKind,
   IncidentState,
+  Machine,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   INCIDENT_INITIAL_STATE,
   type IncidentEvent,

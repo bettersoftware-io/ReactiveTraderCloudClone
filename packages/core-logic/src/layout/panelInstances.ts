@@ -1,6 +1,5 @@
+import type { PanelId } from "@rtc/core-api";
 import { MAX_PANEL_INSTANCES as DOMAIN_MAX_PANEL_INSTANCES } from "@rtc/domain";
-
-import type { PanelId } from "./layoutPort";
 
 /** Global cap on dynamically opened panel instances (Phase 4) — mirrors the
  * `MAX_DOCKED_PANELS = 4` precedent in `composition.ts` /

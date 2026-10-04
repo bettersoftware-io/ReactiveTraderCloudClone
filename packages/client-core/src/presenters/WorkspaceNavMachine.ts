@@ -2,8 +2,12 @@ import { type StateObservable, state } from "@rx-state/core";
 import { Subject } from "rxjs";
 import { distinctUntilChanged, scan } from "rxjs/operators";
 
-import type { WorkspaceNavIntents, WorkspaceNavState } from "@rtc/core-api";
-import type { Machine, WorkspaceTab } from "@rtc/core-logic";
+import type {
+  Machine,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
+  WorkspaceTab,
+} from "@rtc/core-api";
 
 const INITIAL_STATE: WorkspaceNavState = { activeTab: "fx" };
 

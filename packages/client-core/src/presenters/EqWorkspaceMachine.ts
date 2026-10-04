@@ -8,8 +8,8 @@ import type {
   EqPaneId,
   EqWorkspaceIntents,
   EqWorkspaceState,
+  Machine,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   createEqWorkspaceState,
   type EqWorkspaceEvent,

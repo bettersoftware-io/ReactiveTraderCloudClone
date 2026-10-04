@@ -1,7 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { WorkspaceTab } from "@rtc/core-logic";
+import type { WorkspaceTab } from "@rtc/core-api";
 
 import { createWorkspaceNavMachine } from "../WorkspaceNavMachine";
 

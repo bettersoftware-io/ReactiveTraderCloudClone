@@ -48,6 +48,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@rtc/client-core": "workspace:*",
     "@rtc/core-api": "workspace:*",
+    "@rtc/core-logic": "workspace:*",
     "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/motion-core": "workspace:*",
@@ -79,7 +80,6 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@react-native/jest-preset": "^0.86.2",
-    "@rtc/core-logic": "workspace:*",
     "@rtc/devtools-relay": "workspace:*",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^30.0.0",
