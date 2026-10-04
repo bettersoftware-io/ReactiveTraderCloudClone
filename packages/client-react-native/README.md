@@ -248,6 +248,28 @@ CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 | **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
 | **iOS Expo Go** (App Store) | `expo start --go`, scan the QR — see "A real iPhone" above. No developer mode, no Apple account; runs only while the Mac serves it | Free |
 
+### Running an EAS cloud build
+
+```bash
+cd packages/client-react-native
+pnpm dlx eas-cli@24.10.0 build -p android --profile preview
+```
+
+Run it in your own terminal: the first build asks whether to generate an
+Android signing key. Two things in the repo exist only for this:
+
+- **`.easignore`** (repo root). EAS archives the whole repository, does not
+  read `.git/info/exclude`, and has a 2.0 GB limit. Without the file the
+  archive was 3.3 GB (other checkouts under `.claude/worktrees`, docs,
+  goldens); with it, 377 MB. It replaces `.gitignore` for the upload, so its
+  first block mirrors that file and must be kept in step with it.
+- **`eas-build-post-install`** (this package's scripts). The app resolves
+  `@rtc/*` to each library's built `dist/`, which is never uploaded, so the
+  hook builds the libraries the app depends on after `pnpm install`.
+
+As of 2026-10-04 no cloud build has completed, so the `node: 26.10.0` pin in
+`eas.json` and the hook are untested on Expo's servers.
+
 ### Why iOS-on-a-real-device costs money
 
 iOS refuses to run any app on a physical device unless it's **code-signed with a

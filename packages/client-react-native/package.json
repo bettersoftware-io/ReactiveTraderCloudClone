@@ -28,6 +28,7 @@
     "test:native:coverage": "jest --coverage",
     "build": "tsc --noEmit",
     "export": "expo export --platform ios --output-dir dist",
+    "eas-build-post-install": "pnpm -w exec turbo run build --filter=@rtc/client-react-native^...",
     "publish:demo": "EXPO_PUBLIC_BUILD_COMMIT=$(git rev-parse --short HEAD) EXPO_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%MZ) pnpm dlx eas-cli@24.10.0 update --branch demo --platform ios --environment preview --message \"$(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)\" --non-interactive",
     "smoke:ws": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/liveWsSmoke.ts",
     "test:rn:visual:simctl": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/simctl/run.ts",
