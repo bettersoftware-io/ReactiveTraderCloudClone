@@ -1248,6 +1248,15 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    attribution says where to look: Dockview (`dockview-core` plus
    `@rtc/layout-dockview`) is about a third of the entry, and nothing before
    sign-in mounts it.
+10. **The RxJS core in its own package, `@rtc/client-core-rxjs`.** Since 9
+    `@rtc/client-core` holds two separable things — the edge every visitor
+    uses, and the RxJS application core behind the `./core` subpath, a name
+    that says "core" twice in two senses. The symmetric shape is three sibling
+    packages (`-rxjs`, `-async`, `-effect`) and one package for the shared
+    edge, with the UI taking presenter types from `@rtc/core-api` rather than
+    from an implementation. 9's dependency rule already proves the cut in one
+    direction. Its own spec; scope and order are tracked in
+    [`docs/STATUS.md`](../STATUS.md).
 
 ## See also
 
