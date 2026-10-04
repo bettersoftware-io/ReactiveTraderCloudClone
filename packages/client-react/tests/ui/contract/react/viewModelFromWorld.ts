@@ -1869,5 +1869,8 @@ export function reactViewModel(world: World): ViewModel {
         },
       };
     },
+    useDemoAccounts: () => {
+      return world.demoAccounts;
+    },
   };
 }

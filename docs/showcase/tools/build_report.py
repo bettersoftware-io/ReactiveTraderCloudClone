@@ -48,11 +48,11 @@ MODULES = [
     ], None),
     ("credit/rfq-tiles", "close", "RFQ tiles", [
         "Rebuilt to the design (2026-08-30): the real desk names, five per card, uppercase; <code>◂ BEST</code> / <code>◂ WON</code> after the winning dealer; prices without <code>$</code>, the best in accent; subtitle <code>BUY · 5.0M USD · #101</code>; LIVE / DONE / ALL as outlined pills; every ACCEPT chip-tinted with the best one an accent gradient.",
-        "What remains is data: the app's instruments are the domain's <code>Acme 5.5% 2030</code> where the design seeds tickers, and the domain spells <code>JP MORGAN</code> where the design has <code>J.P. MORGAN</code>.",
+        "Data pass landed (2026-09, #682): the cards now carry the real bond catalogue (<code>AAPL 2.4 08/30</code>) and <code>J.P. MORGAN</code> as the design spells it. Refinement pass (2026-10-02, #889): card padding, header and row spacing measured against the prototype's CSS and matched. What remains is the fixture: one live card and one accepted, where the design's sample shows three live.",
     ], None),
     ("equities/markets", "close", "Movers board", [
         "Rebuilt to the design (2026-08-30): the <code>MOVERS</code> heading and the whole <code>SECTORS</code> block are gone, <code>RANK BY</code> is the design's 8px tracked label with pill chips (solid accent when active), sparklines widened to the design's 64px.",
-        "What remains is data: the fake's perfect sine sparklines and the domain simulator's six-symbol roster against the design's eight; a selected-row highlight the design has no equivalent of.",
+        "Data pass landed (2026-09): the roster is the design's eight symbols, and each sparkline plots that symbol's price history instead of a sine. What remains is a selected-row highlight the design has no equivalent of, and row order — both rank by % change over different numbers.",
     ], None),
     ("analytics/dashboard", "close", "P&amp;L · pair P&amp;L · net exposure", [
         "Rebuilt to the design (2026-08-30): <code>+$29,672</code> / <code>+420.0K</code> / <code>Δ +4.2K / 12S</code> formatting via RN-local formatters (the shared domain helpers still feed the web), the delta chip coloured by sign on the design's <code>panel-head</code> tint, seven pair rows and seven exposure bubbles over a 48-point tick history.",
@@ -64,7 +64,7 @@ MODULES = [
     ], None),
     ("credit/sell-side", "close", "Sell-side ticket", [
         "Stepper, SUBMIT BID, the <code>INCOMING RFQ</code> header with countdown and progress rail all land.",
-        "Subtitle prints a raw <code>2,000,000</code> and no client where the design abbreviates <code>3.0M USD · ADAPTIVE ASSET MGMT</code>; the CTA is flat cyan vs the design's cyan→green gradient; the app adds a <code>PASS</code> link and omits the design's <code>YOUR QUOTES</code> heading beneath the card.",
+        "Refinement pass (2026-10-02, #889): the subtitle abbreviates the notional as the design does (<code>2.0M USD</code>). It still names no client — the domain's RFQ carries no counterparty (rn-open-items T19). Kept on purpose: a <code>PASS</code> link the design lacks, and <code>YOUR QUOTES</code> hidden until a quote has settled. The CTA is flat cyan against the design's cyan→green gradient.",
     ], None),
     ("rates/grid", "close", "Spot tile grid", [
         "Filter chips, the 2-column tile grid, big-figure / pip typography, spread pill and bid / ask footer all match. Residuals round (2026-08-31, #630): the chip label was the app's last faux-bold — <code>fontWeight: 600</code> on the single-file mono face — and now takes the face's real 600 cut.",
@@ -88,7 +88,7 @@ MODULES = [
     ], None),
     ("credit/new-rfq", "close", "New RFQ form", [
         "New scenario (2026-08-30), pre-filled through a new <code>initialSelection</code> seam. Restyled: mono-uppercase <code>BUY</code> / <code>SELL</code> tinted per side, chips on the chip token, the gradient <code>⟟ BROADCAST RFQ</code> with its glow, and the sans <code>New RFQ</code> heading the design never had removed.",
-        "Footnote reads <code>120S WINDOW</code> from the domain's real RFQ expiry, not the prototype's <code>45S</code>. The credit fake carries two bonds where the design seeds six equities — data, not layout.",
+        "Footnote reads <code>120S WINDOW</code> from the domain's real RFQ expiry, not the prototype's <code>45S</code>. The chips now show full bond names in a flush two-column grid (2026-10-02, #884 and #889) — eight instruments from the real catalogue where the design seeds six.",
     ], None),
     ("shell/dock-open", "close", "Radial dock, fanned open", [
         "New scenario (2026-08-30) through a <code>DockOpenContext</code> seam (null in production). Restyled: the design's overlay tint under the blur (measured to within a few rgb points of the shot), single-line satellite labels, <code>borderPrimary</code> rings with the glow halo on the active one.",
@@ -115,6 +115,7 @@ APP_ONLY = [
     ("boot/static", "Reduced-motion boot", "The boot sequence with the canvas gated off (power-saver Freeze / reduce motion): the hex emblem stands in for the scene under the same chrome — no prototype equivalent."),
     ("shell/chrome", "The HUD frame, empty body", "The isolated chrome witness: header, banner, status strip, collapsed dock. <code>SIM</code> badge by design (the harness is a static fake)."),
     ("shell/connection-banner", "Disconnected banner (classic / light)", "The one light-mode scenario, and the only one pinned DISCONNECTED — it exists for the Reconnect affordance. Residuals round (2026-08-31, #644): its <code>LIVE</code> badge is a weighted label on the classic skin, which used to fall back to the platform sans; <code>weightedFont</code>'s cut-less arm now keeps the platform mono, so classic's weighted and unweighted labels finally share a face."),
+    ("shell/login-reactor", "Sign-in, waiting (2026-10-03, #892)", "The login-wait treatment ported from the web client: reactor rings, the handshake console and the <code>AUTHENTICATING</code> bar while credentials are checked. Captured frozen. The same three pieces run on <code>lock/hold</code> during an unlock."),
     ("shell/login", "Sign-in (restyled 2026-08-31, #646)", "The pre-session sibling of <code>lock/hold</code>, and a surface the design never drew. It wore the pre-redesign form until the residuals round — Title-case sans labels, an ad-hoc hex, a plain text button — and now takes the lock screen's design-derived idiom exactly: the hex emblem, the Orbitron wordmark over a tracked-mono line, bordered mono inputs with uppercase placeholders, <code>AUTHENTICATE ▸</code> as the boot chrome's bordered pill. New scenario, so it has no before-golden."),
 ]
 
@@ -266,7 +267,7 @@ page = f"""<!doctype html>
 <div class="wrap">
 <header class="bench">
   <button id="theme" class="toggle" type="button" aria-label="Toggle theme">theme</button>
-  <p class="eyebrow">Showcase · first built 2026-08-29 · refreshed 2026-08-31 · @rtc/client-react-native vs docs/design/mobile/v1</p>
+  <p class="eyebrow">Showcase · first built 2026-08-29 · refreshed 2026-10-04 · @rtc/client-react-native vs docs/design/mobile/v1</p>
   <h1>How far the React Native client sits from the mobile-v1 prototype, screen by screen</h1>
   <p class="lede">Three columns per surface. <strong>Before</strong> — the committed <code>simctl</code> golden at <code>{BEFORE_COMMIT}</code> (2026-08-29), the morning this page was first built and before the fidelity pass touched a single module. <strong>App</strong> — the golden at <code>{COMMIT}</code>, after the pass and its residuals round. <strong>Prototype</strong> — the frozen reference shot from the deviation corpus. All three are 1206×2622, the iPhone 17 logical viewport; the app frames are rendered in the real HUD chrome over a static fake ViewModel with motion frozen. The prototype cannot change, so a difference is never a failure — it is a measure of how far the app sat from the design, and how far it moved. Verdicts are an eyeball, not a pixel metric: a pixel diff between two different renderers of different sample data measures nothing.</p>
   <dl class="readout">

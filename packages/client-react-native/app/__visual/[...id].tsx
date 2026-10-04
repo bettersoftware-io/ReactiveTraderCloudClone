@@ -2,7 +2,9 @@ import { useLocalSearchParams } from "expo-router";
 import type { JSX } from "react";
 import { Text } from "react-native";
 
+import { SkinOverrideContext } from "#/../tests/visual/SkinOverrideContext";
 import { getScenario } from "#/../tests/visual/scenarios";
+import { parseSkinOverride } from "#/../tests/visual/skinOverride";
 import { visualHarnessEnabled } from "#/app/visualHarnessGate";
 
 /**
@@ -32,10 +34,13 @@ import { visualHarnessEnabled } from "#/app/visualHarnessGate";
  */
 type VisualHarnessParams = {
   id: string | string[];
+  /** Sign-off sweeps only — see `tests/visual/skinOverride.ts`. */
+  skin?: string;
+  mode?: string;
 };
 
 export default function VisualHarnessRoute(): JSX.Element {
-  const { id } = useLocalSearchParams<VisualHarnessParams>();
+  const { id, skin, mode } = useLocalSearchParams<VisualHarnessParams>();
 
   if (!visualHarnessEnabled()) {
     return <Text>disabled</Text>;
@@ -51,5 +56,21 @@ export default function VisualHarnessRoute(): JSX.Element {
     );
   }
 
-  return <>{scenario.build()}</>;
+  const override = parseSkinOverride(skin, mode);
+
+  // Asked for an override and did not get one: say so instead of rendering the
+  // scenario's own pin, which a sweep would then file under the wrong skin.
+  if (override === null && (skin !== undefined || mode !== undefined)) {
+    return (
+      <Text testID="visual-not-found">
+        bad skin override: {String(skin)}:{String(mode)}
+      </Text>
+    );
+  }
+
+  return (
+    <SkinOverrideContext.Provider value={override}>
+      {scenario.build()}
+    </SkinOverrideContext.Provider>
+  );
 }

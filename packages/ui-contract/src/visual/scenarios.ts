@@ -24,6 +24,17 @@ export interface Scenario {
    *  cross-client divergence the cap would otherwise flag forever; state
    *  both in a comment at the use site. Mutually exclusive with `strict`. */
   readonly maxDiffPixels?: number;
+  /** Lower Playwright's PER-PIXEL colour threshold (`threshold`, default
+   *  0.2) for this scenario. The pixel budgets above only bound how MANY
+   *  pixels may differ; this decides whether a pixel counts as different at
+   *  all, and a low-contrast subject sits under the default — a removed sash
+   *  grip registered on 1 of 10 skins at 0.2 and on all 10 at 0.05 (measured
+   *  2026-10-03), so even `strict` passed without it. Composes with `strict`.
+   *  Keep it above the capture's measured run-to-run colour wobble: a soft
+   *  blurred glow moves by ~2/765 per pixel between runs, which is why the
+   *  default is not zero (see /rtc:visual-tolerance-audit, "the measurement
+   *  trap"). */
+  readonly pixelThreshold?: number;
 }
 
 const baseScenarios: Record<string, Scenario> = {
@@ -846,6 +857,30 @@ const baseScenarios: Record<string, Scenario> = {
     fixtureKey: "prefs-open",
   },
 
+  // The sash pin (2026-10-03): the four seed panels with EMPTY bodies on a
+  // small stage, asserted STRICT. Every other dockview golden runs under the
+  // config budget (min(100 px, 0.5%)), and a sash grip is a 2x30 bar — 60 px
+  // — so it could vanish from all of them unnoticed. Here nothing but chrome
+  // is drawn (heads, card borders, the gutters and their grips), both
+  // frameworks mount the SAME framework-neutral engine DOM under the same
+  // CSS, so any differing pixel is a real change to the dock chrome. THE
+  // SIXTH SINGLE-ENGINE SCENARIO (no in-house twin: the in-house gutters are
+  // a different element, and visual:engine-parity skips it).
+  //
+  // `strict` alone was NOT enough: with all three grips removed it still
+  // passed on 9 of 10 skins, because the grip's colour sits under
+  // Playwright's default per-pixel threshold and uncounted pixels cannot
+  // exceed a budget of zero. Measured per threshold (pixels the missing grips
+  // change, worst skin): 0.2 -> 0, 0.1 -> 0, 0.05 -> 78, 0.03 -> 84. 0.03 is
+  // the value: every skin registers >= 84 px, and it stays ~4x above a
+  // 2-level glow wobble. Local noise was 0 px at threshold 0 over 3 runs.
+  "shell/layout-dockview-sash": {
+    componentKey: "DockviewEngineSash",
+    fixtureKey: "prefs-open",
+    strict: true,
+    pixelThreshold: 0.03,
+  },
+
   // --- Phase 2: HUD shell surfaces ---
   // Boot is captured under reduced motion (canvas suppressed) so only the
   // deterministic chrome is golden'd; the per-variant animated canvas art is
@@ -860,6 +895,20 @@ const baseScenarios: Record<string, Scenario> = {
   // in the fixture (never the live cycling pointer — see fixtures.ts), and
   // both are full-screen overlays like lock/locked above (captured fullPage
   // via scenarioActions.ts).
+  // The idle sign-in form with the demo-accounts hint under it (hardening
+  // spec §7 D9) — the only golden of the form at rest; the wait-* arms below
+  // seed no demo accounts, so they render without the hint.
+  "login/demo-hint": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-demo-hint",
+  },
+  // The hint while a sign-in is in flight: receded with the fields, pushed
+  // below the wait console. The only witness of the hint's busy styling —
+  // the contract tier can assert `disabled`, not the recede.
+  "login/demo-hint-wait": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-demo-hint-wait",
+  },
   "login/wait-handshake": {
     componentKey: "LoginScreen",
     fixtureKey: "login-wait-handshake",

@@ -421,6 +421,13 @@ const scenarioActions: Record<string, ScenarioAction> = {
     fullPage: true,
     waitForText: "AWAITING AUTH GRANT",
   },
+  // The hint's footer is the last thing LoginScreen renders, so waiting for
+  // it proves the whole block is on screen before the full-page capture.
+  "login/demo-hint": { fullPage: true, waitForText: "click to fill" },
+  "login/demo-hint-wait": {
+    fullPage: true,
+    waitForText: "AWAITING AUTH GRANT",
+  },
   "login/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
   "lock/wait-handshake": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },
   "lock/wait-reactor": { fullPage: true, waitForText: "AWAITING AUTH GRANT" },

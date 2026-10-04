@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import type { ThemeMode, ThemeSkin } from "@rtc/domain";
 
+import type { SkinOverride } from "./skinOverride";
+
 /** One capturable surface: a pinned skin×mode leaf composed under
  * `VisualScenarioHost` (see `VisualScenarioHost.tsx`). `build()` returns the
  * element tree a driver mounts and screenshots. */
@@ -19,5 +21,7 @@ export interface Scenario {
  * interface's `capture`). */
 export interface VisualDriver {
   name: "simctl" | "maestro" | "owl";
-  capture(scenarioId: string): Promise<Buffer>;
+  /** `skinOverride` re-shoots the scenario in another skin×mode for a
+   * sign-off sweep; omitted on every golden run. */
+  capture(scenarioId: string, skinOverride?: SkinOverride): Promise<Buffer>;
 }

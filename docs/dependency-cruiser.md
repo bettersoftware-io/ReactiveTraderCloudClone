@@ -1,6 +1,6 @@
 # dependency-cruiser configuration
 
-`.dependency-cruiser.cjs` is the **executable form of the clean-architecture
+`.dependency-cruiser.mts` is the **executable form of the clean-architecture
 layering** described in [architecture.md §6](./architecture/06-package-dependencies.md#6-package-dependencies):
 "dependencies flow inward only." Where Biome's `noRestrictedImports` only sees a
 single literal import string, dependency-cruiser resolves the **whole module
@@ -10,7 +10,7 @@ graph** — so it catches a forbidden layer crossing even when it happens
 It runs as a blocking gate:
 
 ```bash
-pnpm check:deps   # depcruise --config .dependency-cruiser.cjs packages tests
+pnpm check:deps   # depcruise --config .dependency-cruiser.mts packages tests
 ```
 
 and is wired into the CI `checks` job alongside the other static-analysis gates.
@@ -76,7 +76,7 @@ graph TD
 ```
 
 The diagram is a representative sample, not the full edge list — the authoritative
-graph is the `from`/`pathNot` allowlists in `.dependency-cruiser.cjs`.
+graph is the `from`/`pathNot` allowlists in `.dependency-cruiser.mts`.
 
 Solid arrows are permitted imports; dashed crossed (`-.-x`) arrows are examples of
 the edges the `forbidden` rules reject. `domain-stays-pure` forbids
@@ -97,7 +97,7 @@ the apps may reach inward but never reach across to each other.
 
 ## The forbidden rules
 
-All rules are `severity: "error"` — any match fails the gate. `.dependency-cruiser.cjs`
+All rules are `severity: "error"` — any match fails the gate. `.dependency-cruiser.mts`
 is the authoritative list; the table below is a readable summary of the
 package-boundary rules.
 

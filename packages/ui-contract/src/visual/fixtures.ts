@@ -18,6 +18,7 @@ import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
   type Dealer,
+  type DemoAccount,
   type DepthBook,
   Direction,
   type EquityInstrument,
@@ -29,6 +30,7 @@ import {
   JARVIS_BRAINS,
   JARVIS_GREETING,
   type LogEvent,
+  listDemoAccounts,
   type MetricSample,
   type PositionUpdates,
   type Price,
@@ -1334,6 +1336,17 @@ export const fixtures: Record<string, AppData> = {
     sessionAuthenticating: true,
     waitVariant: "handshake",
   }),
+  // The idle sign-in form on a build that verifies the demo roster in the
+  // browser (hybrid or simulator-only): the four roster accounts, sharing
+  // the one committed demo password, so the hint prints it once.
+  "login-demo-hint": makeAppData({ demoAccounts: createRosterDemoAccounts() }),
+  // The same form while its sign-in is in flight: the hint recedes with the
+  // fields and sits below the handshake console.
+  "login-demo-hint-wait": makeAppData({
+    demoAccounts: createRosterDemoAccounts(),
+    sessionAuthenticating: true,
+    waitVariant: "handshake",
+  }),
   "login-wait-reactor": makeAppData({
     sessionAuthenticating: true,
     waitVariant: "reactor",
@@ -1800,6 +1813,18 @@ const msftCandles: readonly Candle[] = aaplCandles.map((c) => {
     volume: c.volume,
   };
 });
+
+/** The four roster accounts on the one committed demo password — what a
+ * hybrid or simulator build's login hint lists, and shares, so the hint prints
+ * the password once. A fresh list per call. */
+function createRosterDemoAccounts(): readonly DemoAccount[] {
+  return listDemoAccounts({
+    astark: "mcdc2026",
+    nromanoff: "mcdc2026",
+    tchalla: "mcdc2026",
+    demo: "mcdc2026",
+  });
+}
 
 function roundToCents(value: number): number {
   return Math.round(value * 100) / 100;

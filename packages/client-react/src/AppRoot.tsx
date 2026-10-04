@@ -11,7 +11,7 @@ import {
   ViewModelProvider,
 } from "@rtc/react-bindings";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { buildBrowserPorts, readDemoAccounts } from "#/app/buildBrowserPorts";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
@@ -54,7 +54,7 @@ export function AppRoot({
         devtoolsHub,
       ),
       commands,
-      { coreSelection },
+      { coreSelection, demoAccounts: readDemoAccounts() },
     );
   }
 

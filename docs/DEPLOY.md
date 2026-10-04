@@ -74,7 +74,7 @@ loudly instead of shipping:
   `packages/client-*/.env.production`) — otherwise the hybrid would silently
   send every login, demo accounts included, to the server
 - every application core ships only as a lazy chunk (the RxJS composition root too, since approach B)
-  (`scripts/check-core-bundle.mjs`)
+  (`scripts/check-core-bundle.mts`)
 - an inline sourcemap is present when `include_sourcemaps` was ticked
 
 Each ticked target is then smoke-checked:

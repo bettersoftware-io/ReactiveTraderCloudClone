@@ -9,7 +9,7 @@ import {
 import type { AuthOutcome, SessionUser } from "@rtc/domain";
 
 import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { buildBrowserPorts, readDemoAccounts } from "#/app/buildBrowserPorts";
 
 // The Solid mirror of client-react's buildBrowserPorts.hybrid.test.ts — the
 // two composition roots are functionally identical, so the hybrid contract
@@ -100,6 +100,31 @@ describe("buildBrowserPorts (hybrid: server URL + demo roster)", () => {
 
     expect(outcome.ok).toBe(true);
     expect(relaunch).not.toHaveBeenCalled();
+  });
+
+  // The login hint (hardening spec §7 D9) must never advertise an account
+  // this page would post to the server. `readDemoAccounts()` derives its list
+  // from the env on its own, so this pins it against the auth port composed
+  // from the same env: listed ⇒ signs in with no fetch; not listed ⇒ server.
+  it("the login hint lists exactly the accounts this page signs in without the server", async () => {
+    seedHybridEnv();
+    vi.stubEnv("VITE_DEV_AUTH", JSON.stringify({ astark: "dev-pw" }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 401 }));
+    const ports = buildBrowserPorts({ relaunch: vi.fn() });
+
+    const hinted = readDemoAccounts();
+    expect(hinted).toEqual([
+      { username: "demo", password: "mcdc2026", role: "Read-Only Guest" },
+    ]);
+    const listed = await firstValueFrom(ports.auth.login("demo", "mcdc2026"));
+    expect(listed.ok).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const unlisted = await firstValueFrom(ports.auth.login("astark", "dev-pw"));
+    expect(unlisted.ok).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("a malformed demo roster means no roster: today's ws-real mode, plain HTTP auth", async () => {

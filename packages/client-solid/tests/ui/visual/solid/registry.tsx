@@ -58,6 +58,7 @@ import { StatusBar } from "#/ui/shell/status/StatusBar";
 import {
   DockviewEngineAttachedVisual,
   DockviewEngineFloatingVisual,
+  DockviewEngineSashVisual,
   DockviewEngineStackedVisual,
   DockviewEngineVisual,
 } from "./DockviewEngine.visual";
@@ -86,7 +87,7 @@ import {
 // empty-panel placeholders (react registry parity): centred, muted, mono
 // font, pinned line-height (the #width-flake determinism rule). Inline
 // `style` is fine here — the src/ui inline-style ban is scoped to
-// `packages/client-solid/src/**/*.tsx` only (see eslint.config.mjs), not this
+// `packages/client-solid/src/**/*.tsx` only (see eslint.config.mts), not this
 // test harness. Solid's `style` prop takes kebab-case CSS property keys
 // (unlike React's camelCase JSX.CSSProperties), and numeric lengths need an
 // explicit unit string (Solid does not auto-append "px").
@@ -760,5 +761,10 @@ export const registry: Record<string, (fixtureKey: string) => JSX.Element> = {
   // DockviewEngineAttachedVisual.
   DockviewEngineAttached: () => {
     return <DockviewEngineAttachedVisual />;
+  },
+  // The sash pin: the seed layout with empty bodies on a small stage,
+  // asserted strict — see DockviewEngineSashVisual.
+  DockviewEngineSash: () => {
+    return <DockviewEngineSashVisual />;
   },
 };

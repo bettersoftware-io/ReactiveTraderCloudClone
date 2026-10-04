@@ -279,8 +279,8 @@ design: the ports are built before any core loads.
   core chunk are still reported for visibility.
 - `effect` is pinned `^3.22.2` (published 2026-09-09; 4.0 was a release
   candidate, not stable, at design time — a named follow-up).
-  `@effect/vitest` is **not** used: its peer range is `vitest ^3.2` and the
-  repo runs `vitest ^4.1.10`. Timing tests use `effect`'s own `TestContext` /
+  `@effect/vitest` is **not** used: its peer range was `vitest ^3.2` while the
+  repo ran `vitest ^4.1.10` (vitest `^5.0.3` since 2026-10-04). Timing tests use `effect`'s own `TestContext` /
   `TestClock` under plain vitest instead.
 
 **Learned in slice 0** (findings that shaped the implementation but were not

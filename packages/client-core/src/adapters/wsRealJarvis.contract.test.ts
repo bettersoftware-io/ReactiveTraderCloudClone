@@ -1196,7 +1196,7 @@ describe("WsJarvisAdapter.availability$()", () => {
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
 // so `Extract<JarvisEvent, ...>` never takes an inline object type argument —
 // the repo's `no-restricted-syntax` bans that even inside a type alias (see
-// eslint.config.mjs's `restrictedSyntax` comment).
+// eslint.config.mts's `restrictedSyntax` comment).
 interface ConfirmRequestTag {
   readonly type: "confirmRequest";
 }

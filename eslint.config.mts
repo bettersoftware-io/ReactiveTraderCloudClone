@@ -1,0 +1,708 @@
+import type { TSESLint } from "@typescript-eslint/utils";
+import prettier from "eslint-config-prettier";
+import reactHooks from "eslint-plugin-react-hooks";
+import solid from "eslint-plugin-solid";
+import tseslint from "typescript-eslint";
+
+import { classFilenameMatch } from "./eslint-rules/class-filename-match.mts";
+import { componentNewspaper } from "./eslint-rules/component-newspaper.mts";
+import { jsonFixturesInFactories } from "./eslint-rules/json-fixtures-in-factories.mts";
+import { nameFixtureFactories } from "./eslint-rules/name-fixture-factories.mts";
+import { nameFunctionsByEffect } from "./eslint-rules/name-functions-by-effect.mts";
+import { nameJsxHandlers } from "./eslint-rules/name-jsx-handlers.mts";
+import { newspaperOrder } from "./eslint-rules/newspaper-order.mts";
+import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mts";
+import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mts";
+import { noRenderFunctions } from "./eslint-rules/no-render-functions.mts";
+import { pageObjectsOwnTheirComponent } from "./eslint-rules/page-objects-own-their-component.mts";
+
+// Structural `no-restricted-syntax` bans shared between the repo-wide block and
+// the client-`src` block (which appends the inline-style ban). Flat config
+// REPLACES — does not merge — a rule's options across matching blocks, so the
+// scoped block must re-list these via the spread or it would silently disable
+// them for client `src`.
+//
+// Ban anonymous inline object types in USAGE positions — extract each to a
+// named interface/type alias. DEFINITION positions stay legal: `type X = {...}`,
+// discriminated-union members (`| { ... }`), `interface` bodies, and object
+// types nested inside a named type's property. Functions' return types are also
+// enforced here because Biome's useExplicitType permits inline-object returns;
+// this is the one rule that forbids them. (Each selector is split out so the
+// message names the offending position.)
+const restrictedSyntax = [
+  {
+    selector:
+      ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .returnType TSTypeLiteral",
+    message:
+      "Inline object return type — extract to a named interface/type alias.",
+  },
+  {
+    selector:
+      ":matches(FunctionDeclaration, FunctionExpression, ArrowFunctionExpression, TSDeclareFunction, TSMethodSignature, TSFunctionType, TSConstructorType) > .params TSTypeLiteral",
+    message:
+      "Inline object parameter type — extract to a named interface/type alias.",
+  },
+  {
+    selector: "VariableDeclarator > .id > TSTypeAnnotation TSTypeLiteral",
+    message:
+      "Inline object variable type — extract to a named interface/type alias.",
+  },
+  {
+    selector: "PropertyDefinition > .typeAnnotation TSTypeLiteral",
+    message:
+      "Inline object property type — extract to a named interface/type alias.",
+  },
+  {
+    selector: ":matches(TSAsExpression, TSSatisfiesExpression) > TSTypeLiteral",
+    message:
+      "Inline object type in a cast — extract to a named interface/type alias.",
+  },
+  {
+    selector: "TSTypeParameterInstantiation > TSTypeLiteral",
+    message:
+      "Inline object as a type argument — extract to a named interface/type alias.",
+  },
+  {
+    selector:
+      "VariableDeclarator[init.callee.name='useViewModel'][id.type='Identifier']",
+    message: "Destructure the hooks you need: const { useX } = useViewModel().",
+  },
+  {
+    // Ban chained access off useViewModel() — `useViewModel().useX()` reaches into
+    // the bundle inline. Destructure first, then call:
+    //   const { useX } = useViewModel();  useX(args)
+    selector: "MemberExpression[object.callee.name='useViewModel']",
+    message:
+      "Don't chain off useViewModel(). Destructure first: const { useX } = useViewModel(); then call useX().",
+  },
+];
+
+// Ban inline `style={{…}}` object literals — with or without an `as
+// CSSProperties` cast (the cast wraps the object in a TSAsExpression, so it is
+// no longer a direct child of the JSX expression container). `style={variable}`
+// / `style={fn()}` are NOT matched (literal objects only — the original CSS-
+// Modules-migration grep gate's reach). Scoped to client `src` below.
+const inlineStyleProp = {
+  selector:
+    "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression, JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression",
+  message:
+    "Inline style={{…}} is banned — move static styling to a co-located *.module.css. Only runtime-computed values (CSS custom properties) are exempt; if genuinely needed, add: // eslint-disable-next-line no-restricted-syntax -- <reason>.",
+};
+
+// The same ban for React Native, with the native prescription: there is no
+// CSS on native, so static styling belongs in a co-located StyleSheet.create
+// block (see docs/rn-styling.md). Runtime-computed values use the array-form
+// dynamic member — style={[styles.x, { height }]} — which this selector
+// deliberately does NOT match (direct-child ObjectExpression only): the array
+// form is RN's sanctioned runtime channel, the analogue of the web ban's
+// CSS-custom-property exemption.
+// A raw `.groups` read in @rtc/layout-dockview (see the scoped block below).
+const rawDockviewGroups = {
+  selector: "MemberExpression[computed=false][property.name='groups']",
+  message:
+    "Don't read dockview's `api.groups` directly: it still lists floating and popped-out groups. Use `gridGroups(api)` (in the grid) or `groupsAnywhere(api)` (grid, floating and popped out) from dockGroups.ts.",
+};
+
+const rnInlineStyleProp = {
+  selector:
+    "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression, JSXAttribute[name.name='style'] > JSXExpressionContainer > TSAsExpression > ObjectExpression",
+  message:
+    "Inline style={{…}} is banned — move static styling to this file's StyleSheet.create block; pass runtime-computed values as the array-form dynamic member: style={[styles.x, { height }]}. See docs/rn-styling.md.",
+};
+
+// Both custom rules ship under the `rtc` plugin namespace. A single shared
+// plugin object lets two config blocks reference it (newspaper-order stays
+// test-file-scoped; class-filename-match applies to all ts/tsx) without
+// "Cannot redefine plugin" — flat config accepts the same object reference in
+// multiple blocks.
+const rtcPlugin: TSESLint.FlatConfig.Plugin = {
+  rules: {
+    "newspaper-order": newspaperOrder,
+    "class-filename-match": classFilenameMatch,
+    "component-newspaper": componentNewspaper,
+    "no-render-functions": noRenderFunctions,
+    "name-functions-by-effect": nameFunctionsByEffect,
+    "name-jsx-handlers": nameJsxHandlers,
+    "name-fixture-factories": nameFixtureFactories,
+    "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
+    "no-minified-json-literal": noMinifiedJsonLiteral,
+    "json-fixtures-in-factories": jsonFixturesInFactories,
+    "page-objects-own-their-component": pageObjectsOwnTheirComponent,
+  },
+};
+
+export default tseslint.config(
+  {
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/*.d.ts",
+      "**/coverage/**",
+      "**/reports/**",
+      "**/__screenshots__/**",
+      "**/.turbo/**",
+      ".tooling/**",
+      // Design-handoff prototypes are self-contained artifacts, not app code —
+      // excluded from lint (matches biome.jsonc `!docs/design` + knip's ignore).
+      "docs/design/**",
+    ],
+  },
+  {
+    // No new JavaScript. Node 26 runs TypeScript directly (it strips the
+    // types), so a script, a lint rule or a tool config is written as `.mts`
+    // and typechecked by `pnpm typecheck:tooling` — a `.js`/`.mjs`/`.cjs` file
+    // is checked by nothing. The selector matches the file's root node, so
+    // every JavaScript file ESLint reaches is reported once, at line 1.
+    //
+    // The two exemptions are files a third-party loader reads and that loader
+    // takes no TypeScript (both measured 2026-10-04): stylelint 17 (cosmiconfig:
+    // `No loader specified for extension ".mts"`), and Jest 29, which reads a
+    // `.ts` config only through `ts-node` and rejects any other extension.
+    // Adding a file here needs the same kind of reason — a loader that cannot
+    // read TypeScript — never "it was quicker to write".
+    files: ["**/*.{js,mjs,cjs,jsx}"],
+    ignores: [
+      "stylelint.config.mjs",
+      "packages/client-react-native/jest.config.js",
+    ],
+    languageOptions: {
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Program",
+          message:
+            "JavaScript files are banned — write TypeScript. Name a Node script, lint rule or tool config `.mts` (Node 26 runs it directly: `node scripts/x.mts`; `.cts` for a CommonJS config) and make sure a tsconfig includes it. See the exemption list in eslint.config.mts if a tool's loader cannot read TypeScript.",
+        },
+      ],
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    languageOptions: { parser: tseslint.parser },
+    rules: {
+      "func-style": ["error", "declaration", { allowArrowFunctions: false }],
+      "arrow-body-style": ["error", "always"],
+      "func-names": ["error", "always"],
+      "lines-between-class-members": [
+        "error",
+        "always",
+        { exceptAfterSingleLine: false },
+      ],
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "*", next: "function" },
+        { blankLine: "always", prev: "function", next: "*" },
+        { blankLine: "always", prev: "multiline-block-like", next: "*" },
+        { blankLine: "always", prev: "*", next: "multiline-block-like" },
+        // Multiline variable declarations (e.g. a run of `const x =
+        // createMemo(() => {…})`) are VariableDeclarations, not block-like, so
+        // the rules above miss them — they pack together with no separator.
+        // Require one blank line between adjacent multiline declarations so
+        // each stands as its own paragraph. The "no MORE than one" half is
+        // handled by Biome's formatter, which collapses blank-line runs to one.
+        {
+          blankLine: "always",
+          prev: ["multiline-const", "multiline-let", "multiline-var"],
+          next: ["multiline-const", "multiline-let", "multiline-var"],
+        },
+      ],
+      "no-restricted-syntax": ["error", ...restrictedSyntax],
+      "max-classes-per-file": ["error", 1],
+    },
+  },
+  {
+    // Inline style={{…}} ban — production UI only. The test harness
+    // (tests/ui/visual/*) uses inline styles as framework-neutral layout
+    // scaffolding (e.g. the panel-width wrapper) and is intentionally out of
+    // scope. Re-lists `restrictedSyntax` via the spread because flat config
+    // REPLACES (does not merge) a rule's options across matching blocks — a
+    // bare `[inlineStyleProp]` here would disable the type bans for client src.
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/client-prototype/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
+      "packages/devtools-extension/src/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, inlineStyleProp],
+    },
+  },
+  {
+    // Inline style={{…}} ban, RN edition — same selector, native message.
+    // Re-lists `restrictedSyntax` via the spread because flat config REPLACES
+    // (does not merge) a rule's options across matching blocks.
+    files: [
+      "packages/client-react-native/src/**/*.tsx",
+      "packages/client-react-native/app/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, rnInlineStyleProp],
+    },
+  },
+  {
+    // dockview's `api.groups` is NOT pruned when a group floats or pops out,
+    // so a raw read silently answers "every group anywhere" when the caller
+    // usually means "what is in the dock". That shipped twice (#745's
+    // absorber check, the R7 maximize strip). Every read goes through
+    // dockGroups.ts, whose two accessors make the caller name its question.
+    // Re-lists `restrictedSyntax` because flat config REPLACES (does not
+    // merge) a rule's options across matching blocks.
+    files: ["packages/layout-dockview/src/**/*.ts"],
+    ignores: [
+      "packages/layout-dockview/src/dockGroups.ts",
+      "packages/layout-dockview/src/**/*.test.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, rawDockviewGroups],
+    },
+  },
+  {
+    // React Compiler / Rules-of-React diagnostics, scoped to the app source the
+    // compiler actually compiles (src — not tests, which never go through the
+    // Babel transform). The `recommended-latest` preset bundles rules-of-hooks,
+    // the compiler's purity/immutability/set-state checks, and exhaustive-deps;
+    // these guard against writing components the compiler would silently bail
+    // out on, now that manual memoization has been removed in favour of it.
+    // `devtools-app` has run the compiler since day one too — it joins here so
+    // it gets the same diagnostics.
+    files: [
+      "packages/client-react/src/**/*.{ts,tsx}",
+      "packages/devtools-app/src/**/*.{ts,tsx}",
+    ],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactHooks.configs["recommended-latest"].rules,
+  },
+  {
+    // Provisional exception (see docs/adr/ADR-003). The StrictMode
+    // build-once-ref seam must read a stable, never-reassigned ref during
+    // render; no lint-clean rewrite preserves single construction without
+    // leaking RxJS subscriptions. `react-hooks/refs` is scoped off for these
+    // three files ONLY — it stays active everywhere else (it caught
+    // FxBlotter). `InspectorApp.tsx` holds a `LiveHistory` instance for the
+    // same documented reason: a build-once ref read during render.
+    files: [
+      "packages/client-react/src/ui/viewModel/useMachine.ts",
+      "packages/client-react/src/AppRoot.tsx",
+      "packages/devtools-app/src/InspectorApp.tsx",
+    ],
+    rules: { "react-hooks/refs": "off" },
+  },
+  {
+    // Same React hook-correctness rules for React Native — parity with the web
+    // client. RN does NOT run the React Compiler (its pipeline is
+    // babel-preset-expo), so the preset's compiler-oriented rules are advisory
+    // here, but they pass clean and the core rules (rules-of-hooks,
+    // exhaustive-deps, purity, set-state) guard RN components just the same.
+    files: [
+      "packages/client-react-native/src/**/*.{ts,tsx}",
+      "packages/client-react-native/app/**/*.{ts,tsx}",
+    ],
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      ...reactHooks.configs["recommended-latest"].rules,
+      // `react-hooks/refs` fights two legitimate RN idioms that read `.current`
+      // during render by design: the ADR-003 build-once-ref VM seam (see
+      // src/app/AppRoot.tsx) and `useRef(new Animated.Value(x)).current`, the
+      // canonical way to hold a stable animated value across renders. Off for
+      // RN (stays on for the web client, where it caught FxBlotter).
+      "react-hooks/refs": "off",
+    },
+  },
+  {
+    // Manual memoization is banned — the React Compiler memoizes at build time
+    // (ADR-003). Scoped to the packages that actually run the compiler.
+    //
+    // `devtools-extension` belongs here because `@rtc/devtools-app` exports
+    // `./src/index.ts` — raw source — so the extension's own Vite build
+    // compiles the inspector's components rather than consuming a prebuilt
+    // bundle. Its config therefore enables the compiler too; without that the
+    // extension would ship the same de-memoized source unoptimized.
+    //
+    // `client-prototype` is deliberately OUT of scope: it is an abandoned port
+    // of the design prototype, kept for reference, and is not worth churning.
+    // Test harnesses are also out of scope (never Babel-transformed, so their
+    // stable identities are real).
+    //
+    // `no-restricted-imports` rather than `no-restricted-syntax`: flat config
+    // REPLACES a rule's options across matching blocks, which is why the shared
+    // `restrictedSyntax` array has to be re-spread everywhere it appears. This
+    // rule is used nowhere else, so a new block carries no such coupling.
+    // Caveat: it cannot see `React.useMemo` via a namespace import — verified
+    // that no such import exists in these packages (named imports only).
+    files: [
+      "packages/client-react/src/**/*.{ts,tsx}",
+      "packages/client-react-native/src/**/*.{ts,tsx}",
+      "packages/client-react-native/app/**/*.{ts,tsx}",
+      "packages/devtools-app/src/**/*.{ts,tsx}",
+      "packages/devtools-extension/src/**/*.{ts,tsx}",
+    ],
+    // Test files are OUT of scope: they never go through the Babel transform,
+    // so nothing auto-memoizes them and their stable identities are real.
+    // `client-react` keeps tests outside `src/`, but `devtools-app` keeps them
+    // in `src/__tests__/` — without this the glob catches them and contradicts
+    // the deliberate non-goal stated in the comment above.
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              // "default" closes the one hole the named list cannot see:
+              // `import React from "react"` then `React.useMemo(...)`.
+              // `no-restricted-imports` matches imported NAMES, and a
+              // default import names none of them, so the member access is
+              // invisible to it. A namespace import (`import * as React`)
+              // IS caught, because ESLint conservatively treats it as able
+              // to reach every restricted name. Banning the default import
+              // outright is effectively free: React 19's automatic JSX
+              // runtime makes it unnecessary and no file here uses one.
+              importNames: ["default", "useMemo", "useCallback", "memo"],
+              message:
+                "Manual memoization is banned — the React Compiler memoizes (ADR-003). Write the plain value, or a function declaration for a callback. For a build-once INSTANCE (not a cache), use the useRef + `if (current === null)` idiom. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The ONE exception to the memo ban. `useHoldToUnlock`'s two `useMemo`s
+    // carry semantics, not caching: they hold the `Gesture.LongPress()`
+    // identity stable so its native handler is not reattached every render.
+    // The compiler cannot supply that identity here — `runOnJS(fireComplete)()`
+    // closes over a ref (a bail), and even ref-free the memo would key on
+    // `onComplete`, which churns because `LockScreen` bails on the ViewModel
+    // seam. Full reasoning in the hook's header comment. A clean-architecture
+    // fix is tracked in docs/STATUS.md.
+    files: [
+      "packages/client-react-native/src/ui/shell/lock/useHoldToUnlock.ts",
+    ],
+    rules: { "no-restricted-imports": "off" },
+  },
+  {
+    // `react-bindings` is banned too, but for a DIFFERENT reason than the block
+    // above — state it honestly rather than reusing that message. This package
+    // is built by `tsc` (`tsc --build && tsc-alias`), never by Babel, so the
+    // React Compiler does not and cannot run over it: nothing here is
+    // auto-memoized, and nothing will be.
+    //
+    // The ban is therefore "this seam stays memo-free by design", not "the
+    // compiler covers it". It holds today at zero call sites. The package is
+    // three thin files bridging React to RxJS; a `useMemo` appearing here is a
+    // signal the logic belongs in `client-core` (an RxJS machine) or in
+    // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
+    // rather than being cached at the binding layer.
+    files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              // "default" closes the one hole the named list cannot see:
+              // `import React from "react"` then `React.useMemo(...)`.
+              // `no-restricted-imports` matches imported NAMES, and a
+              // default import names none of them, so the member access is
+              // invisible to it. A namespace import (`import * as React`)
+              // IS caught, because ESLint conservatively treats it as able
+              // to reach every restricted name. Banning the default import
+              // outright is effectively free: React 19's automatic JSX
+              // runtime makes it unnecessary and no file here uses one.
+              importNames: ["default", "useMemo", "useCallback", "memo"],
+              message:
+                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Newspaper order for test files: helpers, types, hoisted mocks AND
+    // provably-deferred const/let fixtures sit BELOW the tests — at the end of
+    // the file, or of the enclosing `describe`. Custom autofixable rule in
+    // eslint-rules/. Unconditional across every package: the per-package
+    // `fixtures` opt-in list that staged the burn-down is gone now that it
+    // covered the whole repo. class/enum/vi.doMock/jest.doMock/vi.hoisted stay
+    // put, and so does any fixture read during collection.
+    files: ["**/*.{spec,test}.{ts,tsx,mts,cts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/newspaper-order": "error" },
+  },
+  {
+    // Every package the page-object-isolation plan named (devtools-app,
+    // client-react, client-solid, client-react-native) is now migrated at
+    // `src/**` and held to ERROR by its own dedicated block below — the
+    // plan's stated end state. This block SURVIVES not as a backlog (there
+    // is none left: `docs/lint-warnings.md` reads zero), but as a residual
+    // safety net over each web/native client's `tests/**` tree, which no
+    // error block covers (their error blocks are `src/**`-only, matching
+    // devtools-app's). `tests/**` mostly holds the already-ignored
+    // pages/contract/visual chokepoints below, plus the occasional
+    // non-UI spec (e.g. client-solid's `tests/parity/cssParity.test.ts`,
+    // a filesystem check with no testing-library import, so the rule is
+    // silent on it either way) — this WARNs, rather than leaving the tree
+    // fully ungoverned, if a future spec lands directly under `tests/**`
+    // outside those chokepoints. client-prototype is out of scope (abandoned
+    // reference port), and the bindings packages' renderHook specs stay out
+    // until a harness exists for them.
+    files: [
+      "packages/client-react/tests/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-solid/tests/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react-native/tests/**/*.{test,spec}.{ts,tsx}",
+    ],
+    ignores: [
+      "**/tests/**/pages/**",
+      "**/page-objects/**",
+      "**/harness/**",
+      "**/*.page.{ts,tsx}",
+      "**/tests/ui/contract/react/**",
+      "**/tests/ui/contract/solid/**",
+      "**/tests/ui/visual/**", // the visual specs ARE the driver layer (spec §Decisions 5)
+      "**/tests/visual/**", // client-react-native's visual harness — the RN counterpart of tests/ui/visual/** above, same rationale (spec §Decisions 5)
+      "**/setup/**",
+      "**/*fixtures*",
+      "**/*.testHelpers.*",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "warn" },
+  },
+  {
+    // devtools-app is migrated (Wave A of the page-object-isolation plan):
+    // every spec under src/**/*.{test,spec}.{ts,tsx} speaks page objects
+    // under tests/pages/, so this package is held to error while the rest
+    // of the warn block above burns down.
+    files: ["packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-react is migrated (Wave B, react half, of the
+    // page-object-isolation plan): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/ui/pages/, so this package is held to error.
+    files: ["packages/client-react/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-solid is migrated (Wave B, solid half, of the
+    // page-object-isolation plan): every co-located spec under
+    // src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/ui/pages/ (ported from client-react's pages where the specs are
+    // ports of each other; App.test.tsx's page is solid-only), so this
+    // package is held to error too.
+    files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // client-react-native is migrated (Wave C of the page-object-isolation
+    // plan, batches 1-3 + the batch-3 fix round): every co-located spec
+    // under src/**/*.{test,spec}.{ts,tsx} speaks page objects under
+    // tests/pages/, and so do the two expo-router specs under
+    // app/**/*.{test,spec}.{ts,tsx} (app/_layout.test.tsx,
+    // app/(app)/_layout.test.tsx — migrated via the "#app/*" alias
+    // (package.json/tsconfig/jest/vitest, mirroring "#tests/*"), pages
+    // living under tests/pages/ same as every other page, never inside
+    // app/ itself (expo-router 57's route-context regex has no
+    // .test./.spec. exclusion, so a co-located page module there would
+    // register as an app route). This package is held to error too — the
+    // plan's stated end state, all four packages named in it now enforced,
+    // `src/**` AND `app/**` both covered. `tests/visual/**` (the RN visual
+    // harness — the driver layer, same rationale as tests/ui/visual/**
+    // above) stays excluded: nothing under `tests/**` matches this block's
+    // `files` globs, error or otherwise.
+    files: [
+      "packages/client-react-native/src/**/*.{test,spec}.{ts,tsx}",
+      "packages/client-react-native/app/**/*.{test,spec}.{ts,tsx}",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // JSX belongs in components: `render*`-named functions must not return JSX
+    // (write a standalone component instead). Applies to every .tsx in the
+    // repo; RTL-style helpers returning a render(...) CALL and anonymous
+    // arrows in render-prop position stay legal by construction (see the
+    // rule's header comment).
+    files: ["**/*.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-render-functions": "error" },
+  },
+  {
+    // A JSON payload is spelled as an object literal + JSON.stringify, never
+    // pasted as a minified string. Repo-wide: an opaque blob is as bad in
+    // production as in a test, and the rule fires nowhere today, so the
+    // widest scope is free. The 120-char threshold was MEASURED against the
+    // tree (every legitimate JSON literal is <= 41 chars; the blob this
+    // prevents was 880) — read the rule header before moving it.
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // A page object CONSTRUCTS the component it is named for; its published
+    // contract takes props, never a rendered element. `no-framework-calls-in-
+    // specs` states the same doctrine but enforces it by banning framework
+    // IMPORTS, so a `mount(element: ReactElement)` contract passes it cleanly
+    // while leaving the whole ARRANGE half in the spec — that is how
+    // client-react sat "migrated" while its docked spec wrote 15 props at each
+    // of 16 render sites, 9 of them identical every time.
+    //
+    // NO IGNORE LIST, deliberately. An earlier cut carried one as a
+    // "migration ledger"; that is a suppression whatever it is called, and the
+    // files on it were exactly the ones the rule existed for. Every page
+    // object in the repo now satisfies this, so the rule is unconditional and
+    // a regression cannot be parked.
+    files: ["**/tests/**/pages/**/*.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/page-objects-own-their-component": "error" },
+  },
+  {
+    // A test's fixture factory is named `create…` — never a bare noun, nor
+    // `make*`/`build*`/`fake*`/`stub*`. `name-functions-by-effect` works from a
+    // BLOCKLIST of bad prefixes and so passes noun-named functions; requiring a
+    // verb instead would need an unbounded lexicon. This rule takes the two
+    // shapes that need none. UNCONDITIONAL — every factory in the repo was
+    // renamed rather than parked.
+    //
+    // SPECS ONLY, not `tests/**`: page objects under `tests/**/pages/` follow
+    // their own `xxxPage()` convention and hold internals like
+    // `stubPopoutWindow` that are the page's mechanics, not fixtures.
+    files: ["**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-fixture-factories": "error" },
+  },
+  {
+    // Large JSON fixtures live in a named create* factory, not inline in a
+    // case body. TESTS ONLY, deliberately: "fixture factory" is a concept
+    // that exists only in a test — production code that builds JSON is a
+    // serializer, and naming it for its effect means `serializeLayout`, not
+    // `createLayout`. A repo-wide draft flagged exactly that function; the
+    // rule was wrong, not the code. The 10-line threshold sits in a measured
+    // EMPTY band (spans here are 4 at >= 15 lines, 18 at <= 6, none in 7-14).
+    files: [
+      "**/*.{test,spec}.{ts,tsx,mts,cts}",
+      "**/tests/**/*.{ts,tsx}",
+      "**/__tests__/**/*.{ts,tsx}",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/json-fixtures-in-factories": "error" },
+  },
+  {
+    // One class per file: a top-level class must live in a file named after it
+    // (filename's first dot-segment === class name). Scoped to production
+    // source — the rule's purpose is filename discoverability of production
+    // classes, and that purpose doesn't hold for test doubles or env shims,
+    // which are never looked up by filename. Fires only when a top-level
+    // class exists, so non-class modules are untouched. Sanctioned exceptions
+    // use a per-line eslint-disable.
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    ignores: [
+      "**/*.{test,spec}.{ts,tsx,mts,cts}",
+      "**/tests/**",
+      "**/__tests__/**",
+      "**/setup/**",
+    ],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/class-filename-match": "error" },
+  },
+  {
+    // One component per .tsx file: the exported component is the newspaper lede
+    // (private subcomponents/helpers/types below it) and the filename matches it.
+    // Scoped to client-react + client-react-native source; test .tsx are excluded
+    // (they may define throwaway components and are governed by rtc/newspaper-order
+    // instead). RN's app/** route files are out of scope (not under src/): Expo
+    // Router discovers screens by filename (index.tsx, credit.tsx, _layout.tsx),
+    // which can't match the component name.
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/client-react-native/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
+    ],
+    ignores: ["**/*.{test,spec}.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/component-newspaper": "error" },
+  },
+  {
+    // A function's own name must state its EFFECT — what it does, to what —
+    // never the occasion that triggers it. Slots are exempt BY SHAPE:
+    // function-typed PROPERTY-syntax members, JSX attributes, `vi.fn()` spies
+    // and uninitialised slot captures are legal by construction, so there is
+    // nothing to keep in sync. A function-valued member written in METHOD
+    // syntax is treated as a command and IS flagged — a prop slot must be
+    // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
+    //
+    // See docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md.
+    files: ["**/*.{ts,tsx,mts,cts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-functions-by-effect": "error" },
+  },
+  {
+    // Inline JSX callbacks are banned — a handler is extracted and named for
+    // its effect (docs/handler-naming.md). Covers all four UI-bearing
+    // packages (client-react, devtools-app, client-solid, client-react-native);
+    // tests are out of scope (throwaway wiring is fine there), and
+    // client-prototype is out of scope like everywhere else.
+    files: [
+      "packages/client-react/src/**/*.tsx",
+      "packages/devtools-app/src/**/*.tsx",
+      "packages/client-solid/src/**/*.tsx",
+      "packages/client-react-native/src/**/*.tsx",
+      "packages/client-react-native/app/**/*.tsx",
+    ],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.tsx"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/name-jsx-handlers": "error" },
+  },
+  {
+    // eslint-plugin-solid's recommended rules — Solid's JSX has different
+    // reactivity semantics than React's (no re-render on prop/state change;
+    // props are getters backed by a proxy), so it needs its own lint pass
+    // (no-destructure, reactivity, jsx-uses-vars, …) rather than reusing the
+    // react-hooks block above. Scoped to the two Solid packages only.
+    files: [
+      "packages/client-solid/**/*.{ts,tsx}",
+      "packages/solid-bindings/**/*.{ts,tsx}",
+    ],
+    ...solid.configs["flat/recommended"],
+  },
+  {
+    // `solid/reactivity`'s MemberExpression heuristic only recognises a
+    // reactive-tracking call by its callee's property NAME matching
+    // `/^(?:use|create)[A-Z]/` (eslint-plugin-solid dist/index.js) — so
+    // `page.mount(seriesLen, …)` / `page.mountLive(layoutState, …)` read as
+    // an untracked accessor pass-through even though `mount`/`mountLive`
+    // wrap the argument in a `render`/`renderHook` tracked scope one level
+    // down inside the page module. `customReactiveFunctions` is the rule's
+    // own escape hatch for exactly this shape: it extends the property-name
+    // match to anything starting with `mount`, so every co-located spec's
+    // page-object calls are recognised without a per-call-site disable
+    // comment. Scoped to spec files ONLY (not `packages/client-solid/src`
+    // production code, which the block above already covers with the
+    // recommended default) — flat config's per-file rule resolution takes
+    // the LAST matching config's options for a given rule, so this narrower,
+    // later block overrides `solid/reactivity`'s options for `*.test.tsx`
+    // files without touching the recommended block's options anywhere else.
+    // No production `.mount(...)` call site exists under
+    // `packages/client-solid/src` outside tests (verified:
+    // `grep -rn "\.mount(" packages/client-solid/src` excluding
+    // `*.test.{ts,tsx}` returns nothing), so this cannot loosen the rule for
+    // real components.
+    files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
+    rules: {
+      "solid/reactivity": ["warn", { customReactiveFunctions: ["/^mount/"] }],
+    },
+  },
+  prettier,
+);

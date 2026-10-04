@@ -4,7 +4,7 @@ name: Publish Site
 # (docs/presentations/), and the showcase artifacts (docs/showcase/) to the
 # gh-pages branch, which GitHub Pages serves. Coverage is published separately by
 # coverage-report.yml; each workflow owns a disjoint subtree via
-# scripts/pages/publish-to-pages.mjs, so neither clobbers the other. Shares the
+# scripts/pages/publish-to-pages.mts, so neither clobbers the other. Shares the
 # `pages-write` concurrency group with coverage so the two writers serialise.
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      # publish-to-pages.mjs pushes the staged site to the gh-pages branch.
+      # publish-to-pages.mts pushes the staged site to the gh-pages branch.
       contents: write
     steps:
       # lfs: true materialises the real deck bytes, not the 3-line LFS pointer.
@@ -53,14 +53,14 @@ jobs:
           cp docs/pages/index.html _stage/index.html
           cp docs/pages/.nojekyll _stage/.nojekyll
           cp -R docs/presentations/. _stage/presentations/
-          node scripts/pages/build-presentations-index.mjs docs/presentations _stage/presentations/index.html
+          node scripts/pages/build-presentations-index.mts docs/presentations _stage/presentations/index.html
           # Showcase: publish the generated HTML artifacts only (not the README);
           # the index is (re)generated, so a stale committed one can't leak in.
           cp docs/showcase/*.html _stage/showcase/
-          node scripts/pages/build-showcase-index.mjs docs/showcase _stage/showcase/index.html
+          node scripts/pages/build-showcase-index.mts docs/showcase _stage/showcase/index.html
 
       - name: Publish to gh-pages
         run: >
-          node scripts/pages/publish-to-pages.mjs
+          node scripts/pages/publish-to-pages.mts
           --source _stage
           --message "publish site: hub + presentations + showcase @ ${GITHUB_SHA}"

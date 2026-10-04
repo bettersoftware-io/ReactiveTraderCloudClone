@@ -65,7 +65,15 @@ sequenceDiagram
    `packages/client-react-native/src/ui/shell/auth/LoginScreen.tsx`) are dumb
    forms: typed credentials live only in local component state, are never
    logged, and are handed straight to `useAuth().login` from the `useViewModel()`
-   seam.
+   seam. The two web clients also render a **demo-accounts hint** under the
+   form (`DemoAccountsHint`): one click-to-fill row per account the page
+   verifies in the browser, plus the password when every account shares it.
+   The list comes from `readDemoAccounts()` in each web client's
+   `buildBrowserPorts.ts` through `useDemoAccounts()` — the simulator's
+   roster with no server URL, the `VITE_DEMO_AUTH` roster on a hybrid build,
+   and nothing on a plain live build, where every credential belongs to the
+   server. Picking a row fills the fields and moves keyboard focus to AUTHENTICATE;
+   it does not sign in.
 2. **`AuthGate` renders `LoginScreen` until authenticated.** `AuthGate`
    (`packages/client-react/src/ui/shell/auth/AuthGate.tsx`,
    `packages/client-react-native/src/ui/shell/auth/AuthGate.tsx`) reads

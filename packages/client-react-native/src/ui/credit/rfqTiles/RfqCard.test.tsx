@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "@jest/globals";
+import { afterEach, expect, type jest, test } from "@jest/globals";
 
 import type { Quote } from "@rtc/domain";
 import { Direction, type Rfq, RfqState } from "@rtc/domain";
@@ -82,6 +82,39 @@ test("a closed RFQ shows the state badge and a dismiss button, no ring", async (
   expect(page.exists("rfq-dismiss-3")).toBe(true);
 });
 
+// The accept is the credit module's ceremony; it ends on the same success
+// haptic as a Rates execution and an Equities fill.
+test("fires the success haptic once when a live rfq trades", async () => {
+  Haptics.notificationAsync.mockClear();
+  await page.mount(rfq(RfqState.Open), []);
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+
+  await page.update(rfq(RfqState.Closed), []);
+  expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  expect(Haptics.notificationAsync).toHaveBeenCalledWith(
+    Haptics.NotificationFeedbackType.Success,
+  );
+
+  // A re-render that stays traded is not a second trade.
+  await page.update({ ...rfq(RfqState.Closed), quantity: 26 }, []);
+  expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+});
+
+// The Closed tab lists history: a card that arrives already traded did not
+// just trade, so it must not buzz.
+test("stays silent for a card that mounts already traded", async () => {
+  Haptics.notificationAsync.mockClear();
+  await page.mount(rfq(RfqState.Closed), []);
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+});
+
+test("stays silent when a live rfq expires", async () => {
+  Haptics.notificationAsync.mockClear();
+  await page.mount(rfq(RfqState.Open), []);
+  await page.update(rfq(RfqState.Expired), []);
+  expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+});
+
 test("renders a quote per quote", async () => {
   const quotes: Quote[] = [
     {
@@ -105,6 +138,13 @@ test("flat skins render no gradient tile surface", async () => {
   await page.mount(rfq(RfqState.Open), []);
   expect(page.exists("surface-sheen")).toBe(false);
 });
+
+interface MockedHaptics {
+  notificationAsync: jest.Mock;
+  NotificationFeedbackType: { Success: string; Error: string };
+}
+
+const Haptics = require("expo-haptics") as MockedHaptics;
 
 function rfq(state: RfqState): Rfq {
   return {

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "composite": false,
     "declaration": false,
     "declarationMap": false,
@@ -12,7 +13,8 @@
   },
   "include": [
     "browser/**/*.ts",
-    "browser/playwright-cucumber/cucumber.js",
+    "browser/playwright-cucumber/cucumber.mts",
+    "presenter/cucumber-fake-timers/cucumber.mts",
     "presenter/**/*.ts",
     "fullstack/**/*.ts",
     "scripts/**/*.ts"

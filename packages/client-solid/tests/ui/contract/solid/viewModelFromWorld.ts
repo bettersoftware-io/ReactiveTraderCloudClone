@@ -1814,5 +1814,8 @@ export function solidViewModel(world: World): ViewModel {
         },
       };
     },
+    useDemoAccounts: () => {
+      return world.demoAccounts;
+    },
   };
 }

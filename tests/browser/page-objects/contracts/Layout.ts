@@ -165,6 +165,12 @@ export interface LayoutPO {
    * reads false. A width-locked lone float, and an attached cluster whose
    * every member is locked, hide them. Dockview-engine only. */
   floatHidesWidthHandles(panelId: string): Promise<boolean>;
+  /** The grip painted on the sash between the members of the float window
+   * holding `panelId` — its computed `::after` box — or null when that sash
+   * paints none (no sash, no pseudo-element, hidden, or a transparent fill).
+   * Read from computed style because the pixel tier's default budget cannot
+   * see a bar this small. Dockview-engine only. */
+  floatSashGrip(panelId: string): Promise<SashGripSize | null>;
   /** Drags the float holding `panelId` by its head so the window's top-left
    * lands at viewport (`left`, `top`). With `options.option`, Option (Alt) is
    * held throughout — the detach/no-snap modifier — and the attach cue is
@@ -296,6 +302,13 @@ export interface RootTheme {
 }
 
 /** A float's on-screen box, in viewport px. */
+/** A sash grip's painted box in CSS px: 2x30 on a side-by-side split, 30x2
+ * on a stacked one (dockview-hud.css). */
+export interface SashGripSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface FloatBox {
   readonly x: number;
   readonly y: number;

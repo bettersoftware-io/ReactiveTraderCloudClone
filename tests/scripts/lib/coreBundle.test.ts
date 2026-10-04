@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classify, EFFECT_RUNTIME_MARKER, eagerFiles } from "./coreBundle";
+import { classify, EFFECT_RUNTIME_MARKER, eagerFiles } from "./coreBundle.ts";
 
 describe("eagerFiles", () => {
   it("collects the entry module script plus every modulepreload hint", () => {

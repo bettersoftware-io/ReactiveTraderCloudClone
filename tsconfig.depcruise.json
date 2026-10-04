@@ -1,5 +1,5 @@
 {
-  // Resolution-only tsconfig for dependency-cruiser (see .dependency-cruiser.cjs
+  // Resolution-only tsconfig for dependency-cruiser (see .dependency-cruiser.mts
   // options.tsConfig). It maps every `@rtc/<pkg>` main-entry import to that
   // package's SOURCE entry instead of its published `dist/` entry.
   //
@@ -18,7 +18,7 @@
   // can't do this: `*` is greedy over slashes, so it can't distinguish the main
   // entry from a subpath. New packages need a line pair here (same as they need
   // a dependency-cruiser rule and a knip entry) — enforced for every depended-on
-  // workspace package by scripts/check-package-wiring.mjs (`pnpm check:scripts`).
+  // workspace package by scripts/check-package-wiring.mts (`pnpm check:scripts`).
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",

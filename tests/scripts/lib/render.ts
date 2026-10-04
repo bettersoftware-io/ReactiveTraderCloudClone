@@ -1,7 +1,7 @@
 import { relative } from "node:path";
 
-import type { FileStat, PackageStat } from "./coverage";
-import type { TierResult } from "./testResults";
+import type { FileStat, PackageStat } from "./coverage.ts";
+import type { TierResult } from "./testResults.ts";
 
 export const SUMMARY_CAP = 900_000;
 

@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useContext, useEffect, useState } from "react";
 import { View } from "react-native";
 
 import type { PowerSaverLevel, ThemeMode, ThemeSkin } from "@rtc/domain";
@@ -10,6 +10,7 @@ import { ThemeProvider } from "#/ui/theme/ThemeProvider";
 import { useTheme } from "#/ui/theme/useTheme";
 
 import { buildFakeViewModel } from "./buildFakeViewModel";
+import { SkinOverrideContext } from "./SkinOverrideContext";
 
 interface Props {
   skin: ThemeSkin;
@@ -112,10 +113,13 @@ export function VisualScenarioHost({
   // same trap one level up.
   const skiaFontsLoaded = useBootSceneFonts(HARNESS_FONT_PROBE) !== null;
   const fontsReady = fontsLoaded && skiaFontsLoaded;
+  // A sign-off sweep re-shoots a scenario in another skin×mode; `null` on
+  // every golden run, so the pinned props stay in force there.
+  const override = useContext(SkinOverrideContext);
   const [viewModel] = useState(() => {
     return buildFakeViewModel({
-      skin,
-      mode,
+      skin: override?.skin ?? skin,
+      mode: override?.mode ?? mode,
       powerSaverLevel,
       animatedBackground: !forceReduceMotion,
       overrides: viewModelOverrides,

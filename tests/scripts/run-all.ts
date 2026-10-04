@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Parallel e2e orchestrator.
  *
@@ -16,7 +16,7 @@
  */
 import { spawn } from "node:child_process";
 
-import { adoptCoreImpl } from "./lib/coreImpl";
+import { adoptCoreImpl } from "./lib/coreImpl.ts";
 
 // Resolve the run's application core once (RTC_CORE_IMPL, else
 // VITE_CORE_IMPL, else rxjs) so every suite this spawns inherits it — see

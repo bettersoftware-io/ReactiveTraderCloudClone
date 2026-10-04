@@ -1,10 +1,10 @@
 module.exports = {
   preset: "jest-expo",
-  // See jest.resolver.js: composes @react-native/jest-preset's resolver
+  // See jest.resolver.cts: composes @react-native/jest-preset's resolver
   // (which this `resolver` key would otherwise silently replace) with
   // react-native-worklets' `.native.` extension filtering, so reanimated's
   // jest mock can load without pulling in the real JSI binding.
-  resolver: "<rootDir>/jest.resolver.js",
+  resolver: "<rootDir>/jest.resolver.cts",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   testMatch: ["**/*.test.tsx"],
   // jest-expo's first non-trivial component mount is very slow on the shared
@@ -51,7 +51,7 @@ module.exports = {
     "^@rtc/client-core/core$": "<rootDir>/../client-core/dist/core.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
     // Types-only today (no runtime value, grep gate 42), but in the runtime
-    // dependency tree — scripts/check-package-wiring.mjs maps every such package
+    // dependency tree — scripts/check-package-wiring.mts maps every such package
     // rather than keeping an exception list.
     "^@rtc/core-api$": "<rootDir>/../core-api/dist/index.js",
     // client-core re-exports it (pluggable-core slice 8) — its first runtime

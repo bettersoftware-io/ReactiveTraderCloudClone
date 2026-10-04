@@ -1,6 +1,6 @@
 {
   // Lint-only umbrella program for the type-aware ESLint tier
-  // (eslint.config.typed.mjs). It exists so the type-aware rules
+  // (eslint.config.typed.mts). It exists so the type-aware rules
   // (no-floating-promises, no-misused-promises, switch-exhaustiveness-check)
   // run on EVERY ts/tsx file with no gaps — src, tests, and config files
   // alike. The per-environment build tsconfigs (tsconfig.json,
@@ -19,6 +19,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "composite": false,
     "declaration": false,
     "declarationMap": false,
@@ -32,6 +33,7 @@
     "packages/*/src/**/*.tsx",
     "packages/*/tests/**/*.ts",
     "packages/*/tests/**/*.tsx",
+    "packages/*/tests/**/*.mts",
     "packages/client-react-native/app/**/*.ts",
     "packages/client-react-native/app/**/*.tsx",
     "packages/client-react-native/__mocks__/**/*.ts",
@@ -39,10 +41,15 @@
     "packages/client-react-native/jest.setup.ts",
     "packages/client-react-native/scripts/**/*.ts",
     "packages/*/*.config.ts",
+    "packages/*/*.cts",
     "packages/*/*.config.test.ts",
-    "eslint-rules/*.ts",
+    "eslint-rules/*.mts",
     "scripts/**/*.ts",
-    "tests/**/*.ts"
+    "scripts/**/*.mts",
+    "*.mts",
+    ".dependency-cruiser.mts",
+    "tests/**/*.ts",
+    "tests/**/*.mts"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**"]
 }

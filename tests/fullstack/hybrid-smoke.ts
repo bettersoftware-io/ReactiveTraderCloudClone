@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Hybrid data-source smoke (browser) — hardening spec §8.
  *
@@ -22,7 +22,7 @@ import {
   startServer,
   stopProcess,
   waitForHttp,
-} from "./_orchestration.js";
+} from "./_orchestration.ts";
 
 const HOST = "127.0.0.1";
 const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4125);

@@ -292,10 +292,11 @@ Revised 2026-09-29. Nothing is posted until B4.
 3. **B1** server hardening (§5), including the in-app abuse layer (§9.2).
    **Done 2026-10-02** (three stacked PRs; see §5 B1).
 4. **D9 UI round**: the demo-accounts hint on the login screen (both web
-   clients, golden regeneration, user acceptance). **Next.**
+   clients, golden regeneration, user acceptance). **Done 2026-10-03** (see
+   §7 D9).
 5. **B2** user management (confirmed needed 2026-10-02 — registration,
-   self-chosen passwords, validated accounts; nothing exists yet), then **B3**
-   metering with bring-your-own keys (§10).
+   self-chosen passwords, validated accounts; nothing exists yet). **Next.**
+   Then **B3** metering with bring-your-own keys (§10).
 6. **B4** open the door, then post.
 
 Track A survives as the **simulator-only fallback build**: the same code with
@@ -314,7 +315,7 @@ if it is ever deployed on its own.
 | D6 | Does `/mcp` stay enabled on the real server? | Keep, behind B2 roles. |
 | D7 | Does the React Native app follow Track A or Track B? | Open. It defaults to the deployed endpoint today. The hybrid (§8) is web-only; `buildNativePorts.ts` is untouched. |
 | D8 | ~~Should a mode-change reload suppress the boot splash?~~ | **Resolved 2026-10-02: keep the replay.** It happens once per device, reads as "connecting to the live desk", and stands in for the login wait the reload cuts short. Revisit only if someone sees it and dislikes it. |
-| D9 | ~~Show the demo accounts on the login screen?~~ | **Resolved 2026-10-02: yes.** A small UI round in both web clients, scheduled right after B1 (§6); it regenerates the login goldens and needs the user's eyeball acceptance before merge. The hint renders only when a demo roster is present (hybrid and simulator-only builds), never on a plain live build. |
+| D9 | ~~Show the demo accounts on the login screen?~~ | **Resolved 2026-10-02: yes.** A small UI round in both web clients, scheduled right after B1 (§6); it regenerates the login goldens and needs the user's eyeball acceptance before merge. The hint renders only for accounts the page verifies in the browser (hybrid and simulator builds, simulator-mode dev included), never on a plain live build. **Shipped 2026-10-03:** one click-to-fill row per account (username and role) under the form, the password printed once when every account shares it (chosen by the user over password-hidden, text-only and one-click sign-in); picking a row fills both fields and moves focus to AUTHENTICATE; it does not sign in. The list is exactly the accounts the page verifies in the browser — `readDemoAccounts()` in each client's `buildBrowserPorts.ts`, handed to the UI through `ViewModelShell.demoAccounts` / `useDemoAccounts()`, so no application core changed. |
 
 ## 8. Hybrid data source (revision 2026-09-29, built 2026-10-01)
 
@@ -418,7 +419,7 @@ won, mirroring `[core] booted …`.
 ### 8.5 Not in this slice
 
 - Reserving the demo usernames on the server (B2).
-- A demo-accounts hint on the login screen (D9).
+- A demo-accounts hint on the login screen (D9 — shipped 2026-10-03, §7).
 - Splash suppression on the mode-change reload (D8).
 - The React Native client (D7).
 

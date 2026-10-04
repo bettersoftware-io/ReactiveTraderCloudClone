@@ -87,7 +87,7 @@ Folders without a `[shared: …]` tag belong only to the suite they sit in.
 ```
 browser/
   playwright/           native Playwright suite (config + specs + context helpers)
-  playwright-cucumber/  cucumber.js config + world/hooks
+  playwright-cucumber/  cucumber.mts config + world/hooks
   steps/                [shared: playwright-cucumber + its :solid peer] Gherkin step defs
   scenarios/            [shared: playwright + playwright-cucumber] async scenario layer
   page-objects/         [shared: all 4 browser suites] contracts/ (driver-free) + impls
@@ -149,6 +149,36 @@ server on port 4123 and drives it directly over a Node WebSocket;
 `test:fullstack:browser` boots the real server on 4124 and the Vite client on
 3100, then runs a Playwright spec against the live UI. Neither uses mocks or
 simulators.
+
+## Dev-server payload (lean deps)
+
+The browser suites run against the Vite **dev** server, and every test opens a
+fresh browser context, so every test downloads every dependency again. Vite
+serves each pre-bundled dependency whole (no tree-shaking in dev) with its
+source map appended inline. For the Effect core that was the entire `effect`
+library — 600 modules, 11 MB — on every page load, and Playwright's always-on
+trace (`retain-on-failure`) captures every response body on top.
+
+So the harness starts every dev server with `RTC_LEAN_DEPS=1`
+(`scripts/lib/leanDeps.ts`), which both clients' `vite.config.ts` read:
+dependencies are served minified and without a source map (`effect` 11 MB →
+1 MB). Plain `pnpm dev` and production builds are unaffected. The switch leans
+on Vite internals, so `assertDepsServedLean` fails the run at start-up if a
+dependency comes back with a map. The cost: a failing trace shows minified
+stack frames for third-party code (never for app or `@rtc/*` code).
+
+**Reading e2e job timings.** GitHub hands out two speeds of runner. The
+presenter suite, which does not depend on the core, takes ≈3 s on the fast kind
+and ≈5 s on the slow kind, and every suite is about 1.4x faster on the fast
+kind. Read that number in a job's log before comparing two jobs or two runs.
+
+**Decided, 2026-10-04: keep `import { Effect, Layer } from "effect"`.**
+Importing Effect per module (`import * as Effect from "effect/Effect"`) would
+shrink the dev pre-bundle from 600 to 216 modules. Simulated on top of the lean
+switch it saved 0.5 MB per page load and about 1% of run time (27.0 s against
+27.3 s over 16 tests — inside the noise). It changes nothing in production,
+where the barrel is tree-shaken either way. Not worth 87 files of less readable
+imports and a lint rule to hold them.
 
 ## Caching & freshness
 

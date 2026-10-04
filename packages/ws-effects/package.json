@@ -15,7 +15,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mjs",
+    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mts",
     "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -27,9 +27,9 @@
     "rxjs": "^7.8"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/ui": "^5.0.3",
     "tsc-alias": "1.9.5",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }

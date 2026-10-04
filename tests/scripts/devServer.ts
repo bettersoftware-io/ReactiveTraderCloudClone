@@ -2,6 +2,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { assertDepsServedLean, LEAN_DEPS_ENV } from "./lib/leanDeps.ts";
+
 export interface DevServerHandle {
   /** The port the dev server actually bound (may differ from the preferred one). */
   readonly port: number;
@@ -69,6 +71,16 @@ function parseBoundPort(log: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`GET ${url} answered ${response.status}`);
+  }
+
+  return response.text();
+}
+
 interface SpawnedServer {
   readonly child: ChildProcess;
   /** Last ~4 KB of the dev server's stdout+stderr, for parsing + diagnostics. */
@@ -101,6 +113,7 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
       NODE_OPTIONS: "",
       VITE_DEV_AUTH: '{"demo":"demo"}',
       VITE_CORE_IMPL: process.env.RTC_CORE_IMPL ?? "",
+      ...LEAN_DEPS_ENV,
     },
   });
   let log = "";
@@ -207,6 +220,7 @@ export async function startDevServer(): Promise<DevServerHandle> {
 
   try {
     const port = await awaitReady(server, 30_000);
+    await assertDepsServedLean(`http://127.0.0.1:${port}`, fetchText);
     return { port, stop: makeStop(server.child) };
   } catch (err) {
     await makeStop(server.child)();

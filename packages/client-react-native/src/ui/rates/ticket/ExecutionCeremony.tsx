@@ -1,5 +1,4 @@
 // packages/client-react-native/src/ui/rates/ticket/ExecutionCeremony.tsx
-import * as Haptics from "expo-haptics";
 import type { JSX } from "react";
 import { useEffect, useRef } from "react";
 import {
@@ -23,6 +22,7 @@ import Animated, {
 import type { TileExecutionState } from "@rtc/client-core";
 import { type Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 
+import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { labelStyle } from "#/ui/theme/labelStyle";
 import { useTheme } from "#/ui/theme/useTheme";
@@ -39,7 +39,8 @@ import { useTheme } from "#/ui/theme/useTheme";
  * the Notional/Buy-Sell pads underneath while execution is in flight. Fires
  * an `expo-haptics` notification exactly once when a terminal state is newly
  * entered — guarded by a ref tracking the previously-seen terminality, so
- * re-renders that keep the same terminal status don't re-fire. All motion
+ * re-renders that keep the same terminal status don't re-fire. The haptic is
+ * never gated (see `playOutcomeHaptic`). All motion
  * (spinner spin, scan-bar loop, stamp spring) is gated by
  * `useShellMotionEnabled`; every overlay's text renders unconditionally so
  * reduced-motion/Freeze users still see the outcome, just without the
@@ -54,12 +55,10 @@ export function ExecutionCeremony({
     const nowTerminal = isTerminal(state);
 
     if (nowTerminal && !wasTerminalRef.current) {
-      const type =
+      playOutcomeHaptic(
         state.status === "finished" &&
-        state.executionStatus === ExecutionStatus.Done
-          ? Haptics.NotificationFeedbackType.Success
-          : Haptics.NotificationFeedbackType.Error;
-      void Haptics.notificationAsync(type);
+          state.executionStatus === ExecutionStatus.Done,
+      );
     }
 
     wasTerminalRef.current = nowTerminal;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { type FileCov, fileStat, type PackageStat } from "./coverage";
-import { render, SUMMARY_CAP } from "./render";
+import { type FileCov, fileStat, type PackageStat } from "./coverage.ts";
+import { render, SUMMARY_CAP } from "./render.ts";
 
 describe("render", () => {
   it("emits a title, the test summary, and a coverage table", () => {

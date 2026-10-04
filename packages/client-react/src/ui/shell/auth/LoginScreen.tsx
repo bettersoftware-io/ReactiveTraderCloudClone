@@ -1,9 +1,11 @@
 import type { ChangeEvent, FormEvent, ReactElement } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
+import type { DemoAccount } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
+import { DemoAccountsHint } from "./DemoAccountsHint";
 import { HandshakeConsole } from "./wait/HandshakeConsole";
 import { ReactorRings } from "./wait/ReactorRings";
 import { ReactorWait } from "./wait/ReactorWait";
@@ -19,11 +21,13 @@ import waitStyles from "./wait/authWait.module.css";
  * credentials live in local component state only and are never logged.
  */
 export function LoginScreen(): ReactElement {
-  const { useAuth } = useViewModel();
+  const { useAuth, useDemoAccounts } = useViewModel();
   const { state, login } = useAuth();
+  const demoAccounts = useDemoAccounts();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   function submitLogin(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -36,6 +40,14 @@ export function LoginScreen(): ReactElement {
 
   function changePassword(event: ChangeEvent<HTMLInputElement>): void {
     setPassword(event.target.value);
+  }
+
+  /** A picked demo account fills both fields and hands focus to AUTHENTICATE,
+   * so the next Enter signs in — the pick itself never does. */
+  function stageSignIn(account: DemoAccount): void {
+    setUsername(account.username);
+    setPassword(account.password);
+    submitRef.current?.focus();
   }
 
   const authenticating = state.status === "authenticating";
@@ -102,6 +114,7 @@ export function LoginScreen(): ReactElement {
           ) : null}
 
           <button
+            ref={submitRef}
             type="submit"
             data-testid="login-submit"
             className={
@@ -121,6 +134,12 @@ export function LoginScreen(): ReactElement {
             <ReactorWait />
           ) : null}
         </form>
+
+        <DemoAccountsHint
+          accounts={demoAccounts}
+          busy={authenticating}
+          onPick={stageSignIn}
+        />
       </div>
     </div>
   );
