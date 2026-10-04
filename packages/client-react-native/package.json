@@ -30,12 +30,12 @@
     "export": "expo export --platform ios --output-dir dist",
     "eas-build-post-install": "pnpm -w exec turbo run build --filter=@rtc/client-react-native^...",
     "publish:demo": "EXPO_PUBLIC_BUILD_COMMIT=$(git rev-parse --short HEAD) EXPO_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%MZ) pnpm dlx eas-cli@24.10.0 update --branch demo --platform ios --environment preview --message \"$(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)\" --non-interactive",
-    "smoke:ws": "tsx scripts/liveWsSmoke.ts",
-    "test:rn:visual:simctl": "tsx tests/visual/simctl/run.ts",
-    "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
-    "test:rn:visual:maestro": "tsx tests/visual/maestro/run.ts",
-    "test:rn:visual:maestro:update": "tsx tests/visual/maestro/run.ts --update",
-    "test:rn:visual:reach": "jest tests/visual/reach --coverage --coverageProvider=babel --collectCoverageFrom='src/ui/**/*.tsx' --coverageReporters=json-summary --coverageDirectory=reports/native/visual-reach && tsx tests/visual/reach/report.ts",
+    "smoke:ws": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/liveWsSmoke.ts",
+    "test:rn:visual:simctl": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/simctl/run.ts",
+    "test:rn:visual:simctl:update": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/simctl/run.ts --update",
+    "test:rn:visual:maestro": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts",
+    "test:rn:visual:maestro:update": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts --update",
+    "test:rn:visual:reach": "jest tests/visual/reach --coverage --coverageProvider=babel --collectCoverageFrom='src/ui/**/*.tsx' --coverageReporters=json-summary --coverageDirectory=reports/native/visual-reach && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/reach/report.ts",
     "clean": "rm -rf dist .turbo reports coverage .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"
   },
@@ -95,7 +95,6 @@
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
     "test-renderer": "^1.2.0",
-    "tsx": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^5.0.3"
   }

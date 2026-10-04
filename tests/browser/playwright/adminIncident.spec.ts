@@ -5,9 +5,9 @@
 // connection overlay appears, clears it, asserts the overlay disappears.
 //
 // All assertions delegate to scenario helpers — gates 10 and 11 compliant.
-import * as adminIncident from "../scenarios/adminIncident";
-import { test } from "./_context";
-import { withWorkspaceOpen } from "./_openWorkspace";
+import * as adminIncident from "../scenarios/adminIncident.ts";
+import { test } from "./_context.ts";
+import { withWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("Admin incident injection", () => {
   withWorkspaceOpen();

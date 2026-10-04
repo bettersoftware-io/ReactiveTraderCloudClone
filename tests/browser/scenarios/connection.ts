@@ -1,5 +1,5 @@
-import type { TestContext } from "../testContext";
-import { assertTrue } from "./assert";
+import type { TestContext } from "../testContext.ts";
+import { assertTrue } from "./assert.ts";
 
 export async function setBrowserOffline(
   ctx: TestContext,

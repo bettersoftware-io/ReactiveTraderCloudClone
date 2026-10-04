@@ -1,8 +1,8 @@
 // tests/presenter/steps/blotter.steps.ts
 import { Then } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as blotter from "../scenarios/_shared/blotter";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as blotter from "../scenarios/_shared/blotter.ts";
 
 Then(
   "the blotter table is visible",

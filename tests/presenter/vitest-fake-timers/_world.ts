@@ -6,12 +6,15 @@ import {
 } from "rxjs";
 import { vi } from "vitest";
 
-import type { AwaitHelpers } from "../scenarios/_await";
-import { buildPresenterApp, type PresenterCtx } from "../scenarios/_buildApp";
+import type { AwaitHelpers } from "../scenarios/_await.ts";
+import {
+  buildPresenterApp,
+  type PresenterCtx,
+} from "../scenarios/_buildApp.ts";
 import {
   newScratchpad,
   type PresenterScratchpad,
-} from "../scenarios/_shared/common";
+} from "../scenarios/_shared/common.ts";
 
 export interface VitestPlainPresenterWorld extends AwaitHelpers {
   ctx: PresenterCtx;

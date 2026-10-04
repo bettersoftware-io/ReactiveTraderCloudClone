@@ -7,9 +7,9 @@ import type {
   EquitiesIndicatorKind,
   EquitiesPaneKind,
   PlotFraction,
-} from "../contracts/EquitiesChart";
-import { TESTIDS } from "../contracts/testids";
-import { readBoxWhenLaidOut } from "./geometry";
+} from "../contracts/EquitiesChart.ts";
+import { TESTIDS } from "../contracts/testids.ts";
+import { readBoxWhenLaidOut } from "./geometry.ts";
 
 /**
  * Minimum plot-percent change in the drawing's SHAPE (`x2-x1`/`y2-y1`, not
@@ -46,7 +46,11 @@ function parseGeometry(
 }
 
 export class PlaywrightEquitiesChart implements EquitiesChartPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private plot(): Locator {
     return this.page.getByTestId(TESTIDS.equities.chart.plot);

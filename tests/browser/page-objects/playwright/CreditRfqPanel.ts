@@ -1,11 +1,15 @@
 import { expect, type Page } from "@playwright/test";
 
-import type { CreditRfqPanelPO } from "../contracts/CreditRfqPanel";
-import { STRINGS } from "../contracts/strings";
-import { TESTIDS } from "../contracts/testids";
+import type { CreditRfqPanelPO } from "../contracts/CreditRfqPanel.ts";
+import { STRINGS } from "../contracts/strings.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightCreditRfqPanel implements CreditRfqPanelPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async dockIsVisible(): Promise<boolean> {
     const [form, rfqs, blotter] = await Promise.all([

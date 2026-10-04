@@ -1,7 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 
-import * as creditRfq from "../scenarios/creditRfq";
-import type { StepContext } from "../testContext";
+import * as creditRfq from "../scenarios/creditRfq.ts";
+import type { StepContext } from "../testContext.ts";
 
 Then(
   "the credit RFQ list is empty within {int} seconds",

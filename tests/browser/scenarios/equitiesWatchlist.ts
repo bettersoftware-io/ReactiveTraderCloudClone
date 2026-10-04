@@ -1,4 +1,4 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 
 /**
  * Wait for the first equities watchlist row to be visible AND show a live
