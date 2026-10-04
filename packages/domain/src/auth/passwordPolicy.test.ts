@@ -38,7 +38,13 @@ describe("findPasswordViolation", () => {
 
     expect(findPasswordViolation(password)?.id).toBe("uppercase");
     expect(
-      PASSWORD_RULES.map((rule) => rule.id).indexOf("uppercase"),
-    ).toBeLessThan(PASSWORD_RULES.map((rule) => rule.id).indexOf("digit"));
+      PASSWORD_RULES.map((rule) => {
+        return rule.id;
+      }).indexOf("uppercase"),
+    ).toBeLessThan(
+      PASSWORD_RULES.map((rule) => {
+        return rule.id;
+      }).indexOf("digit"),
+    );
   });
 });

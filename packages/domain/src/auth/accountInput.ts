@@ -51,6 +51,7 @@ export function initialsOf(displayName: string): string {
   const last = Array.from(
     words.length > 1 ? (words[words.length - 1] ?? "") : "",
   );
+
   const letters =
     last.length === 0
       ? first.slice(0, 2).join("")
