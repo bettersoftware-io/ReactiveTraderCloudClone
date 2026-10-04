@@ -7,7 +7,7 @@
  * placeholder when the series is empty. Unlike the prototype's static
  * jittered seed, the bucket heights and the accent bucket are computed from
  * the actual sample distribution — this tier pins the UI wiring; bucket-math
- * edge cases are covered by adminKpisVm.test.ts in client-core.
+ * edge cases are covered by adminKpisVm.test.ts in core-logic.
  */
 
 import { LatencyHistogram } from "@ui-contract/components";

@@ -214,7 +214,9 @@ the next amendment.
 **Amended 2026-10-03 — the root index is the edge.** `@rtc/client-core`'s
 root index now exports the *edge* only — adapters, port factories, stores and
 pure helpers — plus the presenter barrel's **types** (`export type *`, which
-costs nothing at runtime). The presenter classes, the machine factories and
+costs nothing at runtime). (Since 2026-10-04 it exports neither the types nor
+the pure helpers: Follow-up 10 sends contract types to `@rtc/core-api` and the
+helpers to `@rtc/core-logic`.) The presenter classes, the machine factories and
 the constants and helpers exported beside them — 81 runtime names — left the
 root and are exported from `@rtc/client-core/core` beside the composition
 root, so that subpath is the whole RxJS core. What
