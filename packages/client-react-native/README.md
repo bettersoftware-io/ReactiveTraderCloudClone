@@ -267,8 +267,12 @@ Android signing key. Two things in the repo exist only for this:
   `@rtc/*` to each library's built `dist/`, which is never uploaded, so the
   hook builds the libraries the app depends on after `pnpm install`.
 
-As of 2026-10-04 no cloud build has completed, so the `node: 26.10.0` pin in
-`eas.json` and the hook are untested on Expo's servers.
+An Android `preview` build completed on Expo's servers on 2026-10-04 (archive
+344 MB), which confirms the `node: 26.10.0` pin in `eas.json` and the hook
+there. To run the result in an emulator: create a virtual device once in
+Android Studio's Device Manager (an arm64 system image on Apple silicon), start
+it, then `pnpm dlx eas-cli@24.10.0 build:run -p android --latest`. The app has
+not been checked on Android beyond the build succeeding.
 
 ### Why iOS-on-a-real-device costs money
 

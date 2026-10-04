@@ -12,7 +12,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
 - `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone17-26`).
-- `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash tsx/esbuild).
+- `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
 - `simctl/` — **Tier 1** capture driver + CLI runner (`xcrun simctl` + `idb`).
 - `maestro/` — **Tier 2** generated flows + CLI runner (`maestro test`, XCUITest a11y driver).
