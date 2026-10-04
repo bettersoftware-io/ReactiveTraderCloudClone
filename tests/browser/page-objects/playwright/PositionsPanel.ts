@@ -1,10 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { PositionsPanelPO } from "../contracts/PositionsPanel";
-import { TESTIDS } from "../contracts/testids";
+import type { PositionsPanelPO } from "../contracts/PositionsPanel.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightPositionsPanel implements PositionsPanelPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private locator(): Locator {
     return this.page.getByTestId(TESTIDS.positions.panel);

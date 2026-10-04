@@ -50,6 +50,9 @@
 | 44 | Pixel specs wait out dockview's tab-strip resize flash before capturing (custom check) |
 | 45 | Both engine bridges keep the `dockview-theme-rtc` class (`DOCK_THEME_CLASS`) on their container — the settle wait keys on it (custom check) |
 | 46 | The visual-tier Playwright webServers launch their server without a `pnpm` wrapper, which orphans it at teardown |
+| 47 | The server container runs as an unprivileged user — the Dockerfile's `USER node` comes before `CMD` (custom check) |
+| 48 | `fly.toml` declares a connections `hard_limit` — Fly's only load-shedding knob (custom check) |
+| 49 | The Effect core runs effects through its bridge, never the global `Effect.run*` — the bridge puts fibers on the turn scheduler and releases a scope's ports before closing it |
 
 Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
 

@@ -1,10 +1,10 @@
 import { expect, type Page } from "@playwright/test";
 
-import { seedLocalStorageItem } from "#/browser/authSeed";
+import { seedLocalStorageItem } from "#/browser/authSeed.ts";
 
-import type { BootOpenOptions, BootPO } from "../contracts/Boot";
-import { TESTIDS } from "../contracts/testids";
-import { navigateAndAwaitMount } from "./appMount";
+import type { BootOpenOptions, BootPO } from "../contracts/Boot.ts";
+import { TESTIDS } from "../contracts/testids.ts";
+import { navigateAndAwaitMount } from "./appMount.ts";
 
 /**
  * The preference's localStorage key, mirrored verbatim from
@@ -17,7 +17,11 @@ import { navigateAndAwaitMount } from "./appMount";
 const FORCE_BOOT_ANIMATION_KEY = "rtc-force-boot-animation";
 
 export class PlaywrightBoot implements BootPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async open(options?: BootOpenOptions): Promise<void> {
     // Distinguish "seed false" from "leave unseeded": an empty store now

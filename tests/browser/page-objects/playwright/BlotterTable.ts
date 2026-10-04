@@ -1,10 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { BlotterTablePO } from "../contracts/BlotterTable";
-import { TESTIDS } from "../contracts/testids";
+import type { BlotterTablePO } from "../contracts/BlotterTable.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightBlotterTable implements BlotterTablePO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private locator(): Locator {
     return this.page.getByTestId(TESTIDS.blotter.table);

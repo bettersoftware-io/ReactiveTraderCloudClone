@@ -1,26 +1,26 @@
 import type { Page } from "@playwright/test";
 
-import type { PageObjects } from "../contracts";
-import { PlaywrightAnalyticsDashboard } from "./AnalyticsDashboard";
-import { PlaywrightBlotterTable } from "./BlotterTable";
-import { PlaywrightBoot } from "./Boot";
-import { PlaywrightConnectionOverlay } from "./ConnectionOverlay";
-import { PlaywrightCreditRfqForm } from "./CreditRfqForm";
-import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel";
-import { PlaywrightEquitiesChart } from "./EquitiesChart";
-import { PlaywrightEquitiesWatchlist } from "./EquitiesWatchlist";
-import { PlaywrightFooter } from "./Footer";
-import { PlaywrightFxRfqForm } from "./FxRfqForm";
-import { PlaywrightInspector } from "./Inspector";
-import { PlaywrightJarvis } from "./Jarvis";
-import { PlaywrightLayout } from "./Layout";
-import { PlaywrightLiveRatesTile } from "./LiveRatesTile";
-import { PlaywrightLoginScreen } from "./LoginScreen";
-import { PlaywrightPositionsPanel } from "./PositionsPanel";
-import { PlaywrightPowerSaver } from "./PowerSaver";
-import { PlaywrightPreferences } from "./Preferences";
-import { PlaywrightThemeToggle } from "./ThemeToggle";
-import { PlaywrightWorkspace } from "./Workspace";
+import type { PageObjects } from "../contracts/index.ts";
+import { PlaywrightAnalyticsDashboard } from "./AnalyticsDashboard.ts";
+import { PlaywrightBlotterTable } from "./BlotterTable.ts";
+import { PlaywrightBoot } from "./Boot.ts";
+import { PlaywrightConnectionOverlay } from "./ConnectionOverlay.ts";
+import { PlaywrightCreditRfqForm } from "./CreditRfqForm.ts";
+import { PlaywrightCreditRfqPanel } from "./CreditRfqPanel.ts";
+import { PlaywrightEquitiesChart } from "./EquitiesChart.ts";
+import { PlaywrightEquitiesWatchlist } from "./EquitiesWatchlist.ts";
+import { PlaywrightFooter } from "./Footer.ts";
+import { PlaywrightFxRfqForm } from "./FxRfqForm.ts";
+import { PlaywrightInspector } from "./Inspector.ts";
+import { PlaywrightJarvis } from "./Jarvis.ts";
+import { PlaywrightLayout } from "./Layout.ts";
+import { PlaywrightLiveRatesTile } from "./LiveRatesTile.ts";
+import { PlaywrightLoginScreen } from "./LoginScreen.ts";
+import { PlaywrightPositionsPanel } from "./PositionsPanel.ts";
+import { PlaywrightPowerSaver } from "./PowerSaver.ts";
+import { PlaywrightPreferences } from "./Preferences.ts";
+import { PlaywrightThemeToggle } from "./ThemeToggle.ts";
+import { PlaywrightWorkspace } from "./Workspace.ts";
 
 export function buildPlaywrightPageObjects(page: Page): PageObjects {
   return {

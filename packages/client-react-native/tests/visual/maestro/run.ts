@@ -4,11 +4,11 @@ import { dirname, join } from "node:path";
 import { argv, cwd, env, exit } from "node:process";
 import { promisify } from "node:util";
 
-import { SCENARIO_IDS } from "../scenarioIds";
-import { resolveBootedUdid } from "../shared/bootedUdid";
-import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
-import { compareToGolden, toleranceFor } from "../shared/diff";
-import { goldenPath } from "../shared/goldens";
+import { SCENARIO_IDS } from "../scenarioIds.ts";
+import { resolveBootedUdid } from "../shared/bootedUdid.ts";
+import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
+import { compareToGolden, toleranceFor } from "../shared/diff.ts";
+import { goldenPath } from "../shared/goldens.ts";
 
 const exec = promisify(execFile);
 

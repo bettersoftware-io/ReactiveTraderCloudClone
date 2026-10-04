@@ -45,7 +45,7 @@ The **visual** (pixel-golden) tier has its own home under `client-react`:
 | `test:browser:playwright-cucumber:solid` | same config + `.feature`/steps as `test:browser:playwright-cucumber`, driven against `@rtc/client-solid`, ports 3003/3004 | dev server | `browser/playwright-cucumber-solid/` | **parked — weekly** |
 | `test:presenter:vitest-fake-timers` | presenter scenarios as plain vitest `it()` blocks (no Gherkin), virtual time | none | `presenter/vitest-fake-timers/` | gating |
 | `test:presenter:cucumber-fake-timers` | the same `@presenter` `.feature` corpus driven by Cucumber.js over the live presenters, virtual time (`@sinonjs/fake-timers`) | none | `presenter/cucumber-fake-timers/` + `presenter/steps/` | **parked — weekly** |
-| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare tsx script, no framework — the one exception) | gating |
+| `test:fullstack:node` | smoke against the REAL server via a Node WebSocket (no browser) | own server | — (bare node script, no framework — the one exception) | gating |
 | `test:fullstack:browser` | smoke against the REAL server + client, Playwright drives the browser | own server + client | `fullstack/browser/` | gating |
 | `test:fullstack:browser:headed` | ↑ in a visible browser (`--headed`) | own server + client | `fullstack/browser/` | dev tool |
 | `test:hooks` | unit tests for the cucumber-js hooks' teardown policy (`browser/playwright-cucumber/__tests__`), plain vitest | none | — | CI `checks` ("Cucumber hooks unit tests") |
@@ -116,7 +116,7 @@ the `artifacts/` **sibling**; the two are siblings because each HTML reporter
 owns — and wipes — its own `report/` folder at write time.
 
 Failure screenshots are embedded in the report itself for all four browser
-suites. The one script with no report: `test:fullstack:node` (a bare tsx
+suites. The one script with no report: `test:fullstack:node` (a bare node
 script with no test framework — terminal output only). `reports/` is
 gitignored and removed by `pnpm clean`.
 

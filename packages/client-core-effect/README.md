@@ -87,11 +87,32 @@ Two details of the host are load-bearing:
 - **Fibers are forked into the app's scope.** `ManagedRuntime.runFork` mints
   ROOT fibers; disposing the runtime does not interrupt them, so without the
   scope they would outlive the app. Closing the scope is what ends them.
-- **Unsubscribe interrupts via the GLOBAL runtime**, not the managed one.
+- **Unsubscribe interrupts via the DEFAULT runtime**, not the managed one.
   `ManagedRuntime.dispose()` swaps its runtime effect for
   `die("ManagedRuntime disposed")`, so an interrupt forked on it after
   disposal would die with an unhandled defect and quietly leave the fiber
   running. Interrupting needs no context, so the default runtime is correct.
+  Plain code reaches it only through the bridge — `interruptFiber(fiber)`,
+  `closeScope(scope)`, `closeScopeAndWait(scope)` — never through the global
+  `Effect.runFork` / `runPromise` (grep gate 49).
+- **Every fiber runs on the turn scheduler** (`bridge/turnScheduler.ts`),
+  which `runnerFor` installs for every host. Since effect 3.20 the default
+  scheduler gives each fiber resume a microtask of its own, so a value
+  crossing N fibers arrives N microtasks later and a UI renders in between:
+  a tile heard its price a turn before the flash that price causes — three
+  renders per tick against two (624 against 404 over 6 s, measured
+  2026-10-04). The turn scheduler runs every ready fiber step, and the steps
+  those make ready, inside ONE microtask, capped like Effect's own at 2048
+  waves before it yields to a macrotask. The contract case "a tick's price
+  and the flash it causes reach the tile in one turn" pins it.
+- **Closing a scope releases its ports first, synchronously.** `Scope.close`
+  interrupts the scope's fibers one at a time, newest first, waiting for
+  each to end, and only then runs the finalizers that unsubscribe the ports
+  — so for a few fiber steps after `dispose()` returns, a machine is still
+  listening. Measured: a disposed stale-flag machine folded two more
+  connection events. `closeScope` therefore calls `releasePorts(scope)`
+  (`bridge/in.ts`) before it forks the close: nothing emitted after the call
+  returns is received, which is what an RxJS `unsubscribe()` guarantees.
 
 `refToStateStream` reads the ref's current value **per subscription**, not
 once at construction. `@rx-state/core`'s `StateObservable` subscribes its

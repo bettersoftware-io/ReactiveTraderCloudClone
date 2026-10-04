@@ -4,14 +4,18 @@ import {
   JARVIS_NARRATOR_ON_VALUE,
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
-} from "#/browser/authSeed";
+} from "#/browser/authSeed.ts";
 
-import { TESTIDS } from "../contracts/testids";
-import type { WorkspacePO } from "../contracts/Workspace";
-import { navigateAndAwaitMount } from "./appMount";
+import { TESTIDS } from "../contracts/testids.ts";
+import type { WorkspacePO } from "../contracts/Workspace.ts";
+import { navigateAndAwaitMount } from "./appMount.ts";
 
 export class PlaywrightWorkspace implements WorkspacePO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   /** `page.goto(url)`, then wait until the app has mounted — see
    * `navigateAndAwaitMount` (a bare `goto` can return on an empty `#root`

@@ -1,7 +1,7 @@
 // tests/presenter/steps/common.steps.ts
 import { Given, When } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
 
 // "Opening a workspace" is a UI-only concept — at the presenter tier the app is
 // already built live in the Before hook (buildPresenterApp), so these Given

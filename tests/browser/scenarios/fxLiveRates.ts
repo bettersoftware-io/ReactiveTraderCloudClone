@@ -1,11 +1,11 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 import {
   assertEquals,
   assertGreaterThanZero,
   assertGte,
   assertLte,
   assertTrue,
-} from "./assert";
+} from "./assert.ts";
 
 export async function expectFirstPriceTileVisibleWithin(
   ctx: TestContext,
