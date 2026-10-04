@@ -165,6 +165,10 @@ newest update. Sign in with `demo` / `mcdc2026`.
 - It is a production bundle running inside Expo Go's shell. Only someone
   signed in to the owning Expo account sees the project, so this is for
   showing the app on your own phone, not for handing it out.
+- The script passes `--environment preview`: EAS requires an environment in
+  non-interactive mode, and `preview` matches the `preview` build profile in
+  `eas.json`. No variables are defined for it on EAS, so the app's own
+  defaults apply.
 - `eas-cli` must be signed in (`pnpm dlx eas-cli@24.10.0 login`). Publishing is free
   on Expo's free plan.
 - The runtime version follows the SDK (`runtimeVersion.policy: "sdkVersion"`),
