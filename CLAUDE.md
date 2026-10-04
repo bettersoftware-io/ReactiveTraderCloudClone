@@ -269,12 +269,15 @@ gates every relative md link + anchor in CI.
 The app is a permanently-animated HUD over a live data stream, so per-frame
 main-thread work compounds forever. **Before writing or reviewing any CSS
 animation, transition, or WAAPI call, read `docs/performance.md`** — it
-catalogues the traps that burned ~70% of a core (only `transform`/`opacity`
-composite; no `var()` inside animated transforms; one animation per property
-per element; SVG-child transforms and large `filter`s never composite), the
-fix patterns that keep the visuals, the profiling recipe, and a pre-merge
-checklist. Steady-state animations must show zero `compositeFailed` events
-in a trace.
+catalogues the traps that burned ~70% of a core, as rules: animate only
+`transform`/`opacity`; no `var()` inside animated transforms; one animation
+per property per element; no transforms on SVG children; no large `filter`s.
+It also holds the fix patterns that keep the visuals, the profiling recipe,
+and a pre-merge checklist. Steady-state animations must show zero
+`compositeFailed` events in a trace. Three of those rules (`background-color`,
+`var()` in a transform, SVG children) are stricter than Chromium 153 needs in
+the simplest case — re-measured 2026-10-04, see the doc's "Re-measured"
+section. They stay as rules; do not state them as limits of the browser.
 
 ## UI Logic Placement
 
