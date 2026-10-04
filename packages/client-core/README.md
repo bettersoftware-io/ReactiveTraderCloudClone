@@ -22,19 +22,18 @@ guided tour in [§23](../../docs/architecture/23-application-cores-explained.md)
 | `src/core.ts` | The `@rtc/client-core/core` subpath export — the whole RxJS core's public surface: `rxjsCore` (the `CoreFactory` the web clients lazy-load), the composition root, and every presenter class and machine factory. Web clients reach it only through `import()`; React Native, tests and harnesses import it statically. |
 | `src/composition.ts` | The composition root — `createApp(ports)` builds every presenter/machine from an `AppPorts` object; `createMachineFactories(presenters)` builds the per-mount `MachineFactories` the ViewModel seam injects. |
 | `src/presenters/` | The presenters and state machines — the business logic layer. Presenters (`XPresenter.ts`) wrap a domain port/use case as an `Observable`-backed class; machines (`createXMachine.ts` factories, typed via `Machine<TState, TIntents>` from `@rtc/core-api`, `packages/core-api/src/machine.ts`) add intents + `dispose()` for per-mount UI state. |
-| `src/adapters/` | The real-transport gateways: `WsAdapter`/`IWsAdapter` (WebSocket transport), `WsConnectionEventsAdapter` (connection lifecycle), and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
+| `src/adapters/` | The real-transport gateways: `WsAdapter` (WebSocket transport, implementing `@rtc/core-api`'s `IWsAdapter`), `WsConnectionEventsAdapter` (connection lifecycle), and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
 | `src/admin/` | Pure admin view-model helpers (`kpisVm`, `latencyBuckets`, `throughputPaths`) the UI calls directly. |
 | `src/blotter/` | Pure blotter column-sort and filter-state helpers. |
-| `src/layout/` | The replaceable layout seam — `LayoutPort`/`LayoutState`/`LayoutNode` types and `createDefaultLayoutPort`, the in-house split-tree engine's data shape. Deliberately app-layer, not `@rtc/domain` — layout is presentation infrastructure, not business domain. |
-| `src/theme/` | `ColorSchemeSource`, the app-layer port over the OS `prefers-color-scheme` signal. |
+| `src/layout/` | The RxJS shell of the saved-layouts controller (`createLayoutPresets`), the workspace persistence writer, and three pure layout-tree helpers the UI calls directly (`lockedWidthPx`, `maximizeBoundaryPath`, `visibleRootOf`). The layout types (`LayoutPort`/`LayoutState`/`LayoutNode`) are in `@rtc/core-api`; the in-house split-tree rules (`createDefaultLayoutPort`, the reducer) are in `@rtc/core-logic`. |
 | `src/wsUrl.ts` | `buildWsUrl` — appends the `?access=` token query param a browser WebSocket can't pass as a header. |
-| `src/index.ts` | The root barrel — the **edge** a client imports statically: adapters, the admin and blotter helpers, layout, theme, `wsUrl`, `@rtc/core-logic`, and the presenter barrel's *types* only. It exports no presenter class, machine factory or composition root at runtime (dependency-cruiser `client-core-root-is-the-edge`, `core.publicApi.test.ts`). |
+| `src/index.ts` | The root barrel — the **edge** a client imports statically: adapters, the admin and blotter helpers, layout and `wsUrl`. It exports no presenter class, machine factory or composition root (dependency-cruiser `client-core-root-is-the-edge`, `core.publicApi.test.ts`), and — like `src/core.ts` — no name another package declares: a contract type is imported from `@rtc/core-api`, a shared rule from `@rtc/core-logic` (`tests/scripts/lib/packageSurfaces.test.ts`). |
 
 ## Where to start reading
 
 1. `src/composition.ts` — `createApp(ports: AppPorts): App` is the framework-free heart of both clients: a plain function, no DI container, that turns one `AppPorts` object into `{ presenters, ports, commands }` (`docs/architecture/14-composition-and-wiring.md` §14.1).
 2. `src/adapters/portFactory.ts` — `AppPorts` (the interface every platform must satisfy) and its two production implementations, `createSimulatorPorts` and `createWsRealPorts`.
-3. `src/adapters/WsAdapter.ts` + `src/adapters/IWsAdapter.ts` — the real-transport gateway: connection lifecycle, message routing, RPC correlation, and the pre-open `sendQueue` that prevents dropped subscriptions.
+3. `src/adapters/WsAdapter.ts` (its interface, `IWsAdapter`, is in `packages/core-api/src/adapters.ts`) — the real-transport gateway: connection lifecycle, message routing, RPC correlation, and the pre-open `sendQueue` that prevents dropped subscriptions.
 4. `packages/core-api/src/machine.ts` — the `Machine<TState, TIntents>` contract (with `MachineFactories` alongside it in `@rtc/core-api`) every state machine and the bindings bridges agree on.
 
 ## How it's used

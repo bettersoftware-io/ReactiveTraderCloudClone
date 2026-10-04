@@ -27,6 +27,7 @@ graph TB
     webc --> core
     webc --> alts
     webc --> api
+    webc --> logic
     webc --> leaves
     webc --> dtcore
     webc --> domain
@@ -34,11 +35,13 @@ graph TB
     solidc --> core
     solidc --> alts
     solidc --> api
+    solidc --> logic
     solidc --> leaves
     solidc --> dtcore
     solidc --> domain
     rnc --> rb
     rnc --> core
+    rnc --> api
     rnc -->|"motion-core only"| leaves
     rnc --> dtcore
     rnc --> domain
@@ -101,6 +104,7 @@ graph TB
     ecore --> domain
     uic --> core
     uic --> api
+    uic --> logic
     uic --> motion
     uic --> domain
     cc --> api
@@ -207,6 +211,7 @@ graph TB
 - `@rtc/shared` depends on `domain`, `rxjs`, and, narrowly, `motion-core`: `src/jarvis/ScriptedJarvisEngine.ts` (the transport-neutral scripted Jarvis brain, shared by the sim-mode client adapter and the server's ScriptedAgentLoop) uses `speechChunks`/`SPEECH_CHUNK_INTERVAL_MS` typed-reveal chunk math to pace Jarvis replies -- the dependency-cruiser allowlist (`shared-no-apps`) was widened accordingly.
 - `@rtc/client-core` depends on `core-api` + `core-logic` + `domain` + `shared` (+ `rxjs`, `@rx-state/core`) and on **no framework** -- no React, no DOM types, no React Native. `ScriptedJarvisAdapter` is now a thin subclass shim over `@rtc/shared`'s `ScriptedJarvisEngine`, so client-core no longer imports `motion-core` directly.
 - **The application core is pluggable** ([§22](22-pluggable-application-core.md), ADR-006): `@rtc/core-api` (types only, grep gate 42) is the contract all three cores implement; `@rtc/core-logic` holds the rules they share that need no stream library (runtime deps `domain` + `shared` only -- `core-logic-stays-pure`, `core-logic-stays-inner`). `@rtc/client-core-async` and `@rtc/client-core-effect` compose from `core-logic`, `core-api`, `domain`, `shared` and their own members only: `rxjs` is a value import only inside each one's `bridge/` (`bridge-owns-rxjs`), and `@rtc/client-core` is a devDependency for test adapters, never a runtime import (`alt-cores-no-client-core-at-runtime`, since slice 8). Both web clients depend on all three and ship all three in one build -- each composition root a lazy chunk chosen at load time (`src/app/coreSelection.ts`; ADR-006 Decision 6, approach B since 2026-10-02; the RxJS root behind the `@rtc/client-core/core` subpath) -- with `pnpm check:core-bundle` asserting the eager/lazy split; React Native stays on the RxJS core.
+- **Each name is imported from the package that defines it** (since 2026-10-04): the clients, the bindings and `ui-contract` take contract types from `core-api` and the pure view rules from `core-logic` directly, never through a `client-core` re-export -- `tests/scripts/lib/packageSurfaces.test.ts` proves no core's entry point exports a name another package declares. The UI side also names three Jarvis wire **types** from `@rtc/shared`; those type-only edges are not drawn above, and `ui-takes-wire-types-only` rejects a value edge.
 - `@rtc/react-bindings` is the only package allowed to depend on both React and the core's streams.
 - `client-react` depends on `client-core` (and the two alternative cores) + `core-api` + `react-bindings` + `domain`; `client-solid` depends on the same set with `solid-bindings` in place of `react-bindings`; `client-react-native` depends on `client-core` + `react-bindings` + `domain` only (plus the `motion-core` and `devtools-core` leaves). The bindings list `core-api` too, as a type-only import (e.g. `CoreSelection`, behind `useCoreSelection`). **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.

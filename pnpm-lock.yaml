@@ -1390,6 +1390,9 @@ importers:
       '@rtc/client-react':
         specifier: workspace:*
         version: link:../packages/client-react
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../packages/core-api
       '@rtc/domain':
         specifier: workspace:*
         version: link:../packages/domain
@@ -1412,9 +1415,6 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.63.0
-      '@rtc/core-api':
-        specifier: workspace:*
-        version: link:../packages/core-api
       '@sinonjs/fake-timers':
         specifier: ^15.0.0
         version: 15.4.0

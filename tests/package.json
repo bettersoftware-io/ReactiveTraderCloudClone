@@ -41,6 +41,7 @@
   "dependencies": {
     "@rtc/client-core": "workspace:*",
     "@rtc/client-react": "workspace:*",
+    "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/server": "workspace:*",
     "@rtc/shared": "workspace:*",
@@ -50,7 +51,6 @@
   "devDependencies": {
     "@cucumber/cucumber": "^13.0.0",
     "@playwright/test": "^1.60.0",
-    "@rtc/core-api": "workspace:*",
     "@sinonjs/fake-timers": "^15.0.0",
     "@types/istanbul-lib-coverage": "^2.0.6",
     "@types/node": "^26.2.0",
