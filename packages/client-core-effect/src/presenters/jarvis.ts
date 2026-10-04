@@ -3,7 +3,7 @@ import {
   Effect,
   ExecutionStrategy,
   Exit,
-  Fiber,
+  type Fiber,
   Scope,
   Stream,
 } from "effect";
@@ -40,10 +40,12 @@ import {
 import type { JarvisEvent } from "@rtc/shared";
 
 import {
+  closeScope,
   createChildHost,
   createHotStream,
   type EffectHost,
   fromPortIn,
+  interruptFiber,
   listenToStream,
   reportOutOfBand,
 } from "#/bridge/out";
@@ -116,7 +118,7 @@ export function createJarvisMachine(
     // `Fiber.interrupt` is itself scheduled, so a tick can still land after
     // this — harmless, the tick and expiry patches are pending-guarded.
     if (countdown !== null) {
-      Effect.runFork(Fiber.interrupt(countdown));
+      interruptFiber(countdown);
       countdown = null;
     }
   }
@@ -368,7 +370,7 @@ export function createJarvisMachine(
     dispose: () => {
       closed = true;
       endCountdown();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 

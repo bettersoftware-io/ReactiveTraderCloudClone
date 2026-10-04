@@ -6,6 +6,7 @@ import {
   ExecutionStrategy,
   Exit,
   Fiber,
+  FiberRef,
   Option,
   Runtime,
   Scope,
@@ -16,7 +17,8 @@ import { filter, map, Observable, type Subscriber } from "rxjs";
 
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
 
-import { fromObservable } from "#/bridge/in";
+import { fromObservable, releasePorts } from "#/bridge/in";
+import { turnScheduler } from "#/bridge/turnScheduler";
 
 /** What a host runs Effects with: the two operations every bridge helper
  * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
@@ -41,11 +43,77 @@ export interface EffectHost {
   readonly scope: Scope.CloseableScope;
 }
 
+/** Every host's runner goes through here, so this is where the core's
+ * fibers are put on the turn scheduler (`bridge/turnScheduler.ts`): whatever
+ * one event makes them do is done within one turn. */
 export function runnerFor(runtime: Runtime.Runtime<never>): EffectRunner {
+  const settling = Runtime.setFiberRef(
+    runtime,
+    FiberRef.currentScheduler,
+    turnScheduler,
+  );
+
   return {
-    runSync: Runtime.runSync(runtime),
-    runFork: Runtime.runFork(runtime),
+    runSync: Runtime.runSync(settling),
+    runFork: Runtime.runFork(settling),
   };
+}
+
+/** The DEFAULT runtime, on the turn scheduler: what runs an effect that must
+ * still work whatever has become of a host — a machine's own fibers, and
+ * every interrupt and scope close made from plain code (`interruptFiber`,
+ * `closeScope`). `app.dispose()` replaces a managed runtime's effect with
+ * `die("ManagedRuntime disposed")`, so an unsubscribe arriving after it
+ * could not be run there; ending a fiber needs no context, so the default
+ * runtime does. */
+const detached: EffectRunner = runnerFor(Runtime.defaultRuntime);
+
+/** Interrupt a fiber from plain code — an unsubscribe, a superseded run —
+ * without waiting for it to end. Through the bridge like every other effect
+ * run from plain code (grep gate 49), so there is one place that decides
+ * what such an effect runs on. (Which scheduler THIS runs on is not
+ * observable: the interrupt is signalled before the call returns either
+ * way. The mutant that forks it with a bare `Effect.runFork` survives every
+ * test, and is equivalent.) */
+export function interruptFiber(
+  fiber: Fiber.RuntimeFiber<unknown, unknown>,
+): void {
+  detached.runFork(Fiber.interrupt(fiber));
+}
+
+/** End a scope from plain code — a machine's `dispose()`, a fold period's
+ * last unsubscribe — without waiting. Two steps, in this order:
+ *
+ * 1. its port subscriptions are released NOW (`releasePorts`, `bridge/in.ts`
+ *    — which says why the close alone is not enough): nothing emitted after
+ *    this call returns is received;
+ * 2. the scope is closed on a fiber: finalizers run, and the fibers forked
+ *    into it are interrupted.
+ *
+ * Never a bare `Effect.runFork(Scope.close(…))` (grep gate 49): that skips
+ * step 1, which is the step that matters — with the ports released, which
+ * scheduler the close itself runs on is not observable (an equivalent
+ * mutant). Closing a closed scope is a no-op. */
+export function closeScope(scope: Scope.CloseableScope): void {
+  releasePorts(scope);
+  detached.runFork(Scope.close(scope, Exit.void));
+}
+
+/** `closeScope`, resolving once every finalizer has run — for
+ * `app.dispose()`, which promises its caller that. */
+export function closeScopeAndWait(scope: Scope.CloseableScope): Promise<void> {
+  releasePorts(scope);
+
+  return new Promise<void>((resolve, reject) => {
+    detached.runFork(Scope.close(scope, Exit.void)).addObserver((exit) => {
+      if (Exit.isSuccess(exit)) {
+        resolve();
+        return;
+      }
+
+      reject(Cause.squash(exit.cause));
+    });
+  });
 }
 
 /** A host for something that owns its own lifetime rather than the app's —
@@ -54,7 +122,7 @@ export function runnerFor(runtime: Runtime.Runtime<never>): EffectRunner {
  * `dispose()` closes it (slice 2 ruling 8). */
 export function createDetachedHost(): EffectHost {
   return {
-    runtime: runnerFor(Runtime.defaultRuntime),
+    runtime: detached,
     scope: Effect.runSync(Scope.make()),
   };
 }
@@ -67,7 +135,7 @@ export function createDetachedHost(): EffectHost {
  * a fold period's scope (a warm period's). */
 export function createChildHost(parent: EffectHost): EffectHost {
   return {
-    runtime: runnerFor(Runtime.defaultRuntime),
+    runtime: detached,
     scope: Effect.runSync(
       Scope.fork(parent.scope, ExecutionStrategy.sequential),
     ),
@@ -336,12 +404,10 @@ export function streamToStream<T, E>(
     );
 
     return () => {
-      // The GLOBAL runtime, deliberately, NOT `host.runtime`: `dispose()`
-      // replaces the managed runtime's effect with `die("ManagedRuntime
-      // disposed")`, so an unsubscribe arriving after dispose would fork a
-      // fiber that dies with an unhandled defect while leaving this fiber
-      // running. Interrupting needs no context, so the default runtime does.
-      Effect.runFork(Fiber.interrupt(fiber));
+      // NOT `host.runtime`: an unsubscribe arriving after `dispose()` would
+      // fork a fiber that dies with an unhandled defect while leaving this
+      // one running — see `detached`.
+      interruptFiber(fiber);
     };
   });
 }
@@ -537,9 +603,9 @@ export function sharedFold<S>(
       warm = null;
     }
 
-    // The global runtime, as in `streamToStream`: this must still work
-    // after `host.runtime` has been disposed.
-    Effect.runFork(Scope.close(period.scope, Exit.void));
+    // Not `host.runtime`, as in `streamToStream`: this must still work
+    // after it has been disposed.
+    closeScope(period.scope);
   }
 
   // The seed arrives already evaluated: `fold.seed()` is the ONE thing

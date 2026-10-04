@@ -1,9 +1,10 @@
-import { Duration, Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { Duration, Effect, SubscriptionRef } from "effect";
 
 import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
 import {
+  closeScope,
   createDetachedHost,
   refToStateStream,
   setRefIfChanged,
@@ -49,7 +50,7 @@ export function createRfqCountdownMachine(
     state$: refToStateStream(host, ref),
     intents: {},
     dispose: () => {
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }

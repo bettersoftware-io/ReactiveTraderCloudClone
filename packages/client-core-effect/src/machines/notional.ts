@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { SubscriptionRef } from "effect";
 
 import type { Machine, NotionalIntents, NotionalView } from "@rtc/core-api";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@rtc/core-logic";
 
 import {
+  closeScope,
   createDetachedHost,
   refToStateStream,
   setRefIfChanged,
@@ -45,7 +46,7 @@ export function createNotionalMachine(
     },
     dispose: () => {
       disposed = true;
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }

@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { Effect, Scope, SubscriptionRef } from "effect";
 
 import type {
   IncidentIntents,
@@ -14,6 +14,7 @@ import {
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
 import {
+  closeScope,
   createChildHost,
   type EffectHost,
   refToWarmStateStream,
@@ -96,7 +97,7 @@ export function createIncidentMachine(
     },
     dispose: () => {
       markDisposed();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }
