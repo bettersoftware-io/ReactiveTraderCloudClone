@@ -3,10 +3,10 @@ import { untrack } from "solid-js";
 
 import {
   createDefaultLayoutPort,
-  createLayoutMachine,
   type LayoutPort,
   type PanelId,
 } from "@rtc/client-core";
+import { createLayoutMachine } from "@rtc/client-core/core";
 import { useMachine } from "@rtc/solid-bindings";
 
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";

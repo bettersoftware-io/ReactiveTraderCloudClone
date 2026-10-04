@@ -216,10 +216,10 @@ export default defineConfig({
   // VITE_CORE_IMPL sets this build's DEFAULT application core (see
   // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
   // the stored choice above this build default, itself above "rxjs"). All
-  // three cores ship in every build; RxJS is statically
-  // imported into the entry chunk while async/effect are dynamic imports
-  // `loadCore` fetches lazily once chosen, so this no longer selects what
-  // gets bundled (see `pnpm check:core-bundle`). Vite's built-in
+  // three cores ship in every build, each a dynamic import `loadCore`
+  // fetches lazily once chosen (RxJS included, through the
+  // `@rtc/client-core/core` subpath), so this no longer selects what gets
+  // bundled (see `pnpm check:core-bundle`). Vite's built-in
   // import.meta.env replacement leaves the value as whatever string ran the
   // process, so `define` re-inlines it as a JSON string literal `bootApp.ts`
   // reads through `import.meta.env.VITE_CORE_IMPL`. Unset → "rxjs".

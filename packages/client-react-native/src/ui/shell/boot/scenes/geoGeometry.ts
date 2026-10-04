@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/geoGeometry.ts
-import { BOOT_DURATION_MS } from "@rtc/client-core";
+import { BOOT_DURATION_MS } from "@rtc/domain";
 
 import { BOOT_TELEMETRY_BULLET } from "./bootGlyphs";
 import { clamp01, ease, hashRandom } from "./coreGeometry";

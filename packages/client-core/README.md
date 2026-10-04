@@ -19,14 +19,16 @@ guided tour in [§23](../../docs/architecture/23-application-cores-explained.md)
 
 | Path | What lives here |
 |---|---|
+| `src/core.ts` | The `@rtc/client-core/core` subpath export — the whole RxJS core's public surface: `rxjsCore` (the `CoreFactory` the web clients lazy-load), the composition root, and every presenter class and machine factory. Web clients reach it only through `import()`; React Native, tests and harnesses import it statically. |
 | `src/composition.ts` | The composition root — `createApp(ports)` builds every presenter/machine from an `AppPorts` object; `createMachineFactories(presenters)` builds the per-mount `MachineFactories` the ViewModel seam injects. |
 | `src/presenters/` | The presenters and state machines — the business logic layer. Presenters (`XPresenter.ts`) wrap a domain port/use case as an `Observable`-backed class; machines (`createXMachine.ts` factories, typed via `Machine<TState, TIntents>` from `@rtc/core-api`, `packages/core-api/src/machine.ts`) add intents + `dispose()` for per-mount UI state. |
 | `src/adapters/` | The real-transport gateways: `WsAdapter`/`IWsAdapter` (WebSocket transport), `WsConnectionEventsAdapter` (connection lifecycle), and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
+| `src/admin/` | Pure admin view-model helpers (`kpisVm`, `latencyBuckets`, `throughputPaths`) the UI calls directly. |
 | `src/blotter/` | Pure blotter column-sort and filter-state helpers. |
 | `src/layout/` | The replaceable layout seam — `LayoutPort`/`LayoutState`/`LayoutNode` types and `createDefaultLayoutPort`, the in-house split-tree engine's data shape. Deliberately app-layer, not `@rtc/domain` — layout is presentation infrastructure, not business domain. |
 | `src/theme/` | `ColorSchemeSource`, the app-layer port over the OS `prefers-color-scheme` signal. |
 | `src/wsUrl.ts` | `buildWsUrl` — appends the `?access=` token query param a browser WebSocket can't pass as a header. |
-| `src/index.ts` | The public barrel — re-exports adapters, composition, layout, presenters, theme, and `wsUrl`. |
+| `src/index.ts` | The root barrel — the **edge** a client imports statically: adapters, the admin and blotter helpers, layout, theme, `wsUrl`, `@rtc/core-logic`, and the presenter barrel's *types* only. It exports no presenter class, machine factory or composition root at runtime (dependency-cruiser `client-core-root-is-the-edge`, `core.publicApi.test.ts`). |
 
 ## Where to start reading
 

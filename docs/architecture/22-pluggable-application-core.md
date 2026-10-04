@@ -508,21 +508,28 @@ the one client it built.
 
 **What the brand rules do and do not prove.** A brand names a core's
 *composition root* — the file that constructs the app. Rule 1 therefore
-proves the entry bundle constructs no core; it does not make
-`@rtc/client-core`'s presenters, machines and adapters lazy. Those are
-reached eagerly through the root index the UI imports from (`PANEL_SPECS`,
-the layout stores, `WsAdapter`, the view-model helpers that live beside
-their presenters), and the bundler assigns a module to the entry chunk
-whenever the entry can reach it *statically*, whoever ends up using it. So
-approach B moved exactly the composition root: measured on 2026-10-02, the
-react entry went 318.1 → 315.0 KB gzip and the solid entry 240.4 → 237.5 KB,
-with a ~4 KB `core-*.js` chunk appearing in each; `@rtc/client-core`'s
-presenters and machines ship eagerly as before. Making *them* lazy needs an
-explicit edge surface for the UI (the helpers it imports moved out of the
-presenter modules, the presenter and machine barrels off the root index) —
-ADR-006 Follow-ups. A stray UI import of one presenter class does not trip
-rule 1 either, for the same reason: only the composition root carries a
-brand.
+proves the entry bundle constructs no core. That the RxJS core's presenters
+and machines are lazy too rests on two more facts. First, `@rtc/client-core`'s
+root index — the only thing the UI imports statically — is the *edge*:
+adapters, port factories, stores, pure helpers, and the presenter barrel's
+types (`export type *`). It reaches no presenter module, which
+dependency-cruiser's `client-core-root-is-the-edge` checks on source, without
+a build. Second, the presenters are exported only from
+`@rtc/client-core/core`, beside the composition root: a UI file that imported
+that subpath statically would drag the brand into the eager set and fail rule
+1. The bundler assigns a module to the entry chunk whenever the entry can
+reach it *statically*, whoever ends up using it, so both halves are needed.
+
+This came in two steps. Approach B (2026-10-02) moved the composition root
+alone: the react entry went 318.1 → 315.0 KB gzip. The edge surface
+(2026-10-03) moved the presenters and machines: the react eager set went
+352.9 → 341.6 KB gzip, the solid one 275.1 → 264.0, and the RxJS core chunk
+grew from 4.2 to 13.9 KB, next to async's 13.1 and Effect's 73.4. A visitor
+on another core downloads ~8.7 KB less; the default RxJS visitor about 1.2 KB
+more in total, since the presenters are needed at boot either way. The point
+was the boundary, not the bytes — ADR-006's amendments have the full
+breakdown. `@rtc/client-core`'s adapters and port factories ship eagerly by
+design: the ports are built before any core loads.
 
 ## See also
 

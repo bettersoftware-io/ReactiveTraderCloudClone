@@ -208,8 +208,55 @@ the entry reaches it statically, and the UI reaches `@rtc/client-core`'s
 presenters, machines and adapters through the root index's barrels, so
 those stay eager. The default visitor now pays one extra chunk fetch (no
 `modulepreload` hint is added: that would re-privilege RxJS, and the gate
-reads a hint as eager). The real bundle win is a separate change, Follow-up
-9.
+reads a hint as eager). The presenters and machines followed a day later —
+the next amendment.
+
+**Amended 2026-10-03 — the root index is the edge.** `@rtc/client-core`'s
+root index now exports the *edge* only — adapters, port factories, stores and
+pure helpers — plus the presenter barrel's **types** (`export type *`, which
+costs nothing at runtime). The presenter classes, the machine factories and
+the constants and helpers exported beside them — 81 runtime names — left the
+root and are exported from `@rtc/client-core/core` beside the composition
+root, so that subpath is the whole RxJS core. What
+had to move for it:
+
+- `adminKpisVm.ts` (the three pure view-model helpers the UI imports) out of
+  `presenters/` into `admin/`;
+- `WsJarvisAdapter`'s import of `UNSUPPORTED_SENTINEL_SPEC` to
+  `@rtc/core-logic`, where the value lives — the one eager-to-presenter edge
+  inside the package;
+- React Native's `BOOT_DURATION_MS` and a fixture's `JARVIS_GREETING` to
+  `@rtc/domain`, where those live;
+- eight test files and the `@rtc/ui-contract` harness to the subpath.
+
+No web UI source file changed: the only presenter-barrel values it took were
+those three helpers. Dependency-cruiser's `client-core-root-is-the-edge` — a
+`reachable` rule from the root index to `presenters/`, `composition.ts` and
+`core.ts` — keeps it so without a build, and `core.publicApi.test.ts` pins
+that the root exports no presenter class or machine factory. Measured (vite,
+gzip, KB):
+
+| | Before | After |
+|---|---|---|
+| react eager set (entry + preloaded shared chunk) | 352.9 | 341.6 |
+| solid eager set | 275.1 | 264.0 |
+| RxJS core chunk | 4.2 | 13.9 |
+| async core chunk | 13.1 | 13.1 |
+| Effect core chunk | 73.4 | 73.4 |
+| lazy chunks shared by the cores | 0.2 | 2.7 + 0.2 |
+
+The eager set lost ~11 KB — more than the presenters' own ~7 KB, because the
+RxJS operators and `@rtc/core-logic` folds only they used left with them
+(into the RxJS chunk and the two small shared ones). Who gains what: a
+visitor on the async or Effect core downloads ~8.7 KB less. The default RxJS
+visitor downloads ~1.2 KB **more** in total — the same code split over three
+parallel lazy requests instead of two — because that visitor needs the
+presenters at boot whichever chunk holds them. So this is a change for the boundary, not
+for speed: the three cores are now symmetric lazy chunks (13.9 / 13.1 / 73.4
+KB), "a visitor never downloads a core they did not choose" holds without a
+caveat, and the UI cannot reach a presenter class or a machine factory
+statically. `@rtc/client-core`'s adapters and port factories stay eager by
+design: the ports are built before any core loads.
 
 ## Consequences
 
@@ -1178,26 +1225,38 @@ their natives arrive, not descriptions of shipped sibling behaviour.
    place, as a showcase of the architecture's resilience rather than a
    save-and-reload. Needs the page-lifetime singletons (the devtools hub,
    the transport, other module-level state) to tolerate a second
-   composition within one page life.
+   composition within one page life. The UI-side precondition holds since 9:
+   the root index exports no presenter class or machine factory, so no UI
+   file can construct one behind the core's back and keep it alive across a
+   swap.
 8. ~~**Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
    subpath export for the RxJS composition root~~ — done 2026-10-02 (the
    amendment under Decision 6): the composition root is lazy and the entry
    bundle carries no core's brand; measured gain ~3 KB gzip per client,
    because only the composition root could move — see 9.
-9. **An explicit edge surface for the UI, so the RxJS core's presenters and
-   machines go lazy too.** Today the UI imports `@rtc/client-core`'s root
-   index, whose `export *` barrels reach every presenter and machine module
-   (the view-model helpers the UI needs — `kpisVm`, `latencyBuckets`,
-   `throughputPaths`, `PANEL_SPECS`, the sort helpers — live beside their
-   presenters), and the bundler keeps a statically reachable module in the
-   entry chunk. The change: move those helpers into pure modules (several
-   belong in `@rtc/core-logic`), take the presenter and machine barrels off
-   the root index so the root is the *edge* (adapters, port factories,
-   stores, helpers, constants) and `./core` the only way to the presenters,
-   then re-measure. Architectural — its own spec; it is also the "UI never
-   imports the core's internals" boundary the migration ending in
-   [§23](../architecture/23-application-cores-explained.md#why-three-cores-read-this-first)
-   assumes.
+9. ~~**An explicit edge surface for the UI, so the RxJS core's presenters and
+   machines go lazy too**~~ — done 2026-10-03 (the second amendment under
+   Decision 6). Measured before building: a sourcemap attribution put the
+   presenters and machines at ~7 KB gzip, 2% of the eager set, with
+   `dockview-core` (30% of the entry's raw bytes), the client's own UI (25%)
+   and `react-dom` (19%) the real weight — so it was built for the boundary
+   and the symmetry of the three cores, not for size. Extending the split to
+   `@rtc/core-logic` was considered and dropped: what only the cores use
+   already leaves the eager set by itself (the ~2.7 KB shared lazy chunk),
+   the rest the UI imports, and it is code all three cores share, so no
+   visitor would download less. If bundle size ever becomes the goal, the
+   attribution says where to look: Dockview (`dockview-core` plus
+   `@rtc/layout-dockview`) is about a third of the entry, and nothing before
+   sign-in mounts it.
+10. **The RxJS core in its own package, `@rtc/client-core-rxjs`.** Since 9
+    `@rtc/client-core` holds two separable things — the edge every visitor
+    uses, and the RxJS application core behind the `./core` subpath, a name
+    that says "core" twice in two senses. The symmetric shape is three sibling
+    packages (`-rxjs`, `-async`, `-effect`) and one package for the shared
+    edge, with the UI taking presenter types from `@rtc/core-api` rather than
+    from an implementation. 9's dependency rule already proves the cut in one
+    direction. Its own spec; scope and order are tracked in
+    [`docs/STATUS.md`](../STATUS.md).
 
 ## See also
 

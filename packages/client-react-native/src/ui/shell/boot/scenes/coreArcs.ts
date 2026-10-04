@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/coreArcs.ts
-import { BOOT_DURATION_MS } from "@rtc/client-core";
+import { BOOT_DURATION_MS } from "@rtc/domain";
 
 import {
   CORE_HUBS,
