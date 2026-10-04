@@ -412,7 +412,16 @@ const GATES: Gate[] = [
     name: "1. No raw data-testid literals outside testids.ts",
     pattern: 'data-testid="[a-z]',
     paths: ["."],
-    excludes: ["browser/page-objects/contracts/testids.ts", "/node_modules/"],
+    // `./reports/` is generated, git-ignored output: since vitest 5 the
+    // presenter suite's HTML report ships vitest's own UI bundle there, which
+    // carries `data-testid="…"` strings — so a second local run failed on a
+    // file that is not our code (CI, starting from a fresh checkout, never
+    // saw it).
+    excludes: [
+      "browser/page-objects/contracts/testids.ts",
+      "/node_modules/",
+      "./reports/",
+    ],
   },
   {
     name: "2. No driver imports in contracts",
