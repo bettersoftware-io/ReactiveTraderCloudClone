@@ -1,5 +1,5 @@
 // The root index is the EDGE: what a client imports statically — adapters,
-// port factories, stores and pure helpers, all declared in this package. The
+// port factories and stores, all declared in this package. The
 // RxJS core itself (the composition root, every presenter class, every machine
 // factory) is exported only from the `@rtc/client-core/core` subpath, which
 // the web clients reach through a lazy `import()` (see `src/core.ts`). A
@@ -22,7 +22,5 @@ export * from "#/adapters/routeIdleLifecycle";
 export * from "#/adapters/ScriptedJarvisAdapter";
 export * from "#/adapters/WsAdapter";
 export * from "#/adapters/WsConnectionEventsAdapter";
-export * from "#/admin/adminKpisVm";
-export * from "#/blotter/index";
 export * from "#/layout/index";
 export * from "#/wsUrl";

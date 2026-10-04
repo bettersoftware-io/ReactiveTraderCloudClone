@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 
-import { visibleRootOf } from "@rtc/client-core";
-import { PANEL_SPECS } from "@rtc/core-logic";
+import { PANEL_SPECS, visibleRootOf } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { CreditViewProvider } from "./credit/CreditViewProvider";

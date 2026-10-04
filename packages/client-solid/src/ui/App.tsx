@@ -1,9 +1,8 @@
 import type { JSX } from "solid-js";
 import { createMemo, Show, untrack } from "solid-js";
 
-import { visibleRootOf } from "@rtc/client-core";
 import type { LayoutPanelInstance, LayoutState } from "@rtc/core-api";
-import { PANEL_SPECS } from "@rtc/core-logic";
+import { PANEL_SPECS, visibleRootOf } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";

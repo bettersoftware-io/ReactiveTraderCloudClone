@@ -97,7 +97,6 @@ import type {
 } from "@ui-contract/harness/component";
 import type { Accessor, JSX } from "solid-js";
 
-import type { ColumnFilter, SortState } from "@rtc/client-core";
 import type {
   EqChartType,
   EqDrawing,
@@ -112,6 +111,7 @@ import type {
   RfqTileIntents,
   TileExecutionState,
 } from "@rtc/core-api";
+import type { ColumnFilter, SortState } from "@rtc/core-logic";
 import type {
   Candle,
   CandleTimeframe,

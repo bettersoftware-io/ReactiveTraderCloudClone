@@ -5,4 +5,4 @@
  * `@rtc/domain`). Page objects only need the SHAPE to type props/return
  * values, so only the types are re-exported here.
  */
-export type { ColumnFilter, Comparator, SortState } from "@rtc/client-core";
+export type { ColumnFilter, Comparator, SortState } from "@rtc/core-logic";
