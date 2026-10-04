@@ -53,7 +53,7 @@ export interface PairedConnectionPorts {
  * gateway's events, a simulator's, or both plus browser lifecycle events —
  * see each branch in `buildBrowserPorts`/`buildNativePorts`). Every call
  * gets its OWN Subjects, so two pairs from two calls never leak into each
- * other. This is the only producer of the pair in `@rtc/client-core` — a
+ * other. This is the only producer of the pair in `@rtc/client-adapters` — a
  * core reaches it only through `ports.connectionIntents`/`connectionEvents`,
  * never a module-level Subject.
  */

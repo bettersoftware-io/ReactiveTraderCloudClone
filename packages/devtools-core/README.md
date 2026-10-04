@@ -10,7 +10,7 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 | **Ring** | ④ Frameworks & Drivers -- an instrumentation framework, structurally analogous to `@rtc/ws-effects` (`docs/architecture/06-package-dependencies.md` §6) |
 | **Runtime deps** | `rxjs` only -- the same single permitted exception as `@rtc/domain`/`@rtc/ws-effects`, enforced by pnpm strict mode at install time |
 | **Consumed by** | `@rtc/devtools-app` (the inspector SPA), `@rtc/devtools-extension` (the MV3 DevTools panel), and the three clients `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native` (the composition-root decorators + the app-side hub singleton; RN attaches under `__DEV__` only) |
-| **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core`'s concrete types -- that is the whole point of a composition-root decorator. |
+| **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core-rxjs`'s or `@rtc/client-adapters`'s concrete types -- that is the whole point of a composition-root decorator. |
 
 ## Folder map
 

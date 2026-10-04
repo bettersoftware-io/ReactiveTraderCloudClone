@@ -10,7 +10,7 @@ import { storeToWarmStateStream } from "#/bridge/out";
 import { createStore, type Store } from "#/kernel/store";
 
 /** One tab's layout machine: a `Store` folded by the SHARED layout reducer
- * (`@rtc/client-core`'s `createLayoutReducer` — the RxJS core folds the very
+ * (`@rtc/core-logic`'s `createLayoutReducer` — the RxJS core folds the very
  * same function), so every intent has committed by the time it returns (the
  * workspace's synchronous-fold contract). `seed` is the persisted tree a
  * first-opened tab starts from; `reset()` still returns `initial`. The

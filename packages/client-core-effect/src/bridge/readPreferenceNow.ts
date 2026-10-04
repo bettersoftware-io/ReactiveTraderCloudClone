@@ -1,4 +1,4 @@
-// A verbatim copy of @rtc/client-core's `adapters/readPreferenceNow.ts`, so
+// A verbatim copy of @rtc/client-core-rxjs's `ports/readPreferenceNow.ts`, so
 // this core's `AuthDepsPrimitives.readNow` is the RxJS core's by construction
 // (undefined → fallback; a source that errors → fallback, the error reported
 // out of band) — `peek` differs on both. The bridge is the one place rxjs may

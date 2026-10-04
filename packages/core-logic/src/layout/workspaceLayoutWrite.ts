@@ -169,7 +169,7 @@ function buildPayload(deps: WorkspaceLayoutWriteDeps): WorkspaceLayoutV1 {
  * that survives one debounce window survives all of them, and this writer
  * fires on every layout drag settle, so an unguarded log would flood the
  * console for the rest of the session. Plain `console` matches the only other
- * client-core logging precedent (`WsAdapter`'s connect/retry lines). */
+ * client-adapters logging precedent (`WsAdapter`'s connect/retry lines). */
 let warnedAboutUnwritablePayload = false;
 
 export function writeWorkspaceLayout(deps: WorkspaceLayoutWriteDeps): void {

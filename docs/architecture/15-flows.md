@@ -8,7 +8,7 @@
 
 Three different "directions" are easy to conflate in a codebase this layered, and each flow below draws on all three:
 
-**Imports** are a compile-time fact, fixed by the dependency rule: `client-react` / `client-react-native` depend on `react-bindings`, which depends on `client-core`, which depends on `domain` and `shared` ([§6 Package Dependencies](06-package-dependencies.md)). This direction never reverses — it's enforced by `package.json` and the grep gates in [§12](12-architectural-gates.md), not by any runtime behaviour.
+**Imports** are a compile-time fact, fixed by the dependency rule: `client-react` / `client-react-native` depend on `react-bindings` (which names only the contract, `core-api`), on a core (`client-core-rxjs` by default) and on the adapters (`client-adapters`), which all depend on `domain` and `shared` ([§6 Package Dependencies](06-package-dependencies.md)). This direction never reverses — it's enforced by `package.json` and the grep gates in [§12](12-architectural-gates.md), not by any runtime behaviour.
 
 **Control flow** — who calls whom — mostly follows imports *inward*: a click handler in the UI calls a ViewModel hook (`useViewModel()`), which calls a machine intent or a presenter method, which constructs a domain use case, which calls a port method, which an adapter fulfils (a WS `rpc()`/`send()` or an in-process simulator call). This is a synchronous call chain even though most of the methods being called return `Observable`s — nothing has *happened* yet at the moment of the call; a subscription has merely been arranged.
 
@@ -61,7 +61,7 @@ flowchart TB
         hook["useConnectionStatus()"]:::bridge
         reconnectHook["useReconnect()"]:::bridge
     end
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         direction LR
         pres["ConnectionStatusPresenter<br/>status$"]:::core
         cmd["commands.reconnect()<br/>ports.connectionIntents.reconnect() (composition.ts)"]:::core
@@ -89,7 +89,7 @@ flowchart TB
 
 1. **Reconnect click** (idle-disconnected only): `ConnectionOverlay.tsx` calls `reconnect` from `useReconnect()`.
 2. `useReconnect` resolves to `commands.reconnect` in `packages/client-core-rxjs/src/composition.ts`.
-3. `commands.reconnect()` calls `ports.connectionIntents.reconnect()` (`composition.ts`), which pushes `{ type: "reconnect" }` onto a reconnect Subject private to this app instance — built, along with `connectionIntents` itself, by `@rtc/client-core`'s `pairConnectionPorts(events$)` at the composition root (`buildBrowserPorts.ts`); `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND `connectionIntents` together (ADR-006 Follow-up 5), so the platform port-builder supplies both from that one call.
+3. `commands.reconnect()` calls `ports.connectionIntents.reconnect()` (`composition.ts`), which pushes `{ type: "reconnect" }` onto a reconnect Subject private to this app instance — built, along with `connectionIntents` itself, by `@rtc/client-adapters`'s `pairConnectionPorts(events$)` at the composition root (`buildBrowserPorts.ts`); `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND `connectionIntents` together (ADR-006 Follow-up 5), so the platform port-builder supplies both from that one call.
 4. The reconnect intent is already merged into `connectionEvents` — that merge is what `pairConnectionPorts` returned in step 3 — so the ws-real branch's `ConnectionEventsPort.events()` just pipes that merged stream through `routeIdleLifecycle()` (`composition.ts`), whose `tap` calls `ws.reopen()` on `WsAdapter` for a `reconnect` event (and `ws.closeForIdle()` for `idleTimeout`) — the one place a connection event has a *side effect* on the transport, not just a state transition.
 5. Whichever adapter produced the event — `WsConnectionEventsAdapter` wrapping `WsAdapter`'s `onopen`/`onclose` handlers in Mode B, `BrowserConnectionEventsAdapter`'s idle timer and `online`/`offline` listeners (always active, both modes), or `ConnectionEventsSimulator` in Mode A — reaches `ConnectionStatusUseCase.execute()` (`packages/domain/src/usecases/ConnectionStatusUseCase.ts`) via the `ConnectionEventsPort`.
 6. The use case `scan`s every event through the pure function `nextConnectionStatus()` (`packages/domain/src/connection/connectionStatus.ts`), producing the next `ConnectionStatus`.
@@ -108,7 +108,7 @@ flowchart TB
     subgraph bindings["@rtc/react-bindings"]
         hook["useTileExecution(pair)<br/>useMachine(machines.tileExecution)"]:::bridge
     end
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         machine["TileExecutionMachine<br/>intents.execute(direction, price, notional)"]:::core
         pres["TradeExecutionPresenter<br/>execute() · executions$"]:::core
     end
@@ -138,7 +138,7 @@ flowchart TB
 3. `createTileExecutionMachine` (`packages/client-core-rxjs/src/presenters/TileExecutionMachine.ts`) pushes the command onto its internal `execute$` Subject, which `switchMap`s into a lifecycle race: `started` → (`tooLong` at 2s / a result / `timeout` at 30s) → `finished`. The constants (`TOO_LONG_THRESHOLD_MS`, `EXECUTION_TIMEOUT_MS`, `CONFIRMATION_DISMISS_MS`) live in `@rtc/domain`.
 4. The machine's `deps.execute` is wired in `composition.ts` to `TradeExecutionPresenter.execute()` (`packages/client-core-rxjs/src/presenters/TradeExecutionPresenter.ts`).
 5. `TradeExecutionPresenter.execute()` constructs `new ExecuteTradeUseCase(this.execution).execute(input)` (`packages/domain/src/usecases/ExecuteTradeUseCase.ts`), which derives `spotRate` from the tile's displayed bid/ask by `direction` and computes `dealtCurrency`, then calls `ExecutionPort.executeTrade(request)`.
-6. In Mode B, `createExecutionPort(ws)` (`packages/client-core/src/adapters/portFactory.ts`) sends `CLIENT_MSG.EXECUTE_TRADE` via `ws.rpc(...)` with a correlation ID; the `executeTrade$` effect (`packages/server/src/effects/fx.effects.ts`, built with `rpc(CLIENT_MSG.EXECUTE_TRADE, SERVER_MSG.EXECUTION_RESPONSE, ...)`) calls `ctx.execution.executeTrade(...)` against the server-hosted `ExecutionSimulator` (`packages/domain/src/simulators/ExecutionSimulator.ts` — GBPJPY is always rejected, EURJPY carries an extra 4s delay, everything else resolves in 0–2s). In Mode A the same `ExecutionSimulator` class runs in-process, called directly.
+6. In Mode B, `createExecutionPort(ws)` (`packages/client-adapters/src/adapters/portFactory.ts`) sends `CLIENT_MSG.EXECUTE_TRADE` via `ws.rpc(...)` with a correlation ID; the `executeTrade$` effect (`packages/server/src/effects/fx.effects.ts`, built with `rpc(CLIENT_MSG.EXECUTE_TRADE, SERVER_MSG.EXECUTION_RESPONSE, ...)`) calls `ctx.execution.executeTrade(...)` against the server-hosted `ExecutionSimulator` (`packages/domain/src/simulators/ExecutionSimulator.ts` — GBPJPY is always rejected, EURJPY carries an extra 4s delay, everything else resolves in 0–2s). In Mode A the same `ExecutionSimulator` class runs in-process, called directly.
 7–9. The resolved `Trade` (or rejection) flows back through the port, and `ExecuteTradeUseCase` maps `TradeStatus.Rejected` to `ExecutionStatus.Rejected`, everything else to `Done`.
 10. `TradeExecutionPresenter.execute()`'s `tap` also pushes an `ExecutionOutcome` onto its own `executions$` Subject (a side channel other tiles/the blotter can observe independently of this call's caller).
 11. Back in the machine, the result collapses the race into `{ status: "finished", executionStatus, trade }`, then auto-dismisses to `ready` after `CONFIRMATION_DISMISS_MS` (5s).
@@ -163,7 +163,7 @@ flowchart TB
         acceptHook["useAcceptQuote() / useCancelRfq()"]:::bridge
         rfqsHook["useRfqs() / useQuotesForRfq()"]:::bridge
     end
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         rfqsPres["RfqsPresenter<br/>createRfq · acceptQuote · quoteRfq · pass"]:::core
         subState["RfqsPresenter.createSubmission()<br/>editing → submitting → confirmed"]:::core
     end
@@ -217,7 +217,7 @@ flowchart TB
     subgraph bindings["@rtc/react-bindings"]
         hook["useOrderTicket(symbol)<br/>useMachine(machines.orderTicket)"]:::bridge
     end
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         machine["OrderTicketMachine<br/>intents.submit()"]:::core
         blotterPres["OrdersBlotterPresenter.place()"]:::core
     end
@@ -255,7 +255,7 @@ Same message exchange, including the "ack + stream from one shared source" detai
 
 ### 15.6 Admin Telemetry -- Simulated Metrics to Chart
 
-This flow never touches the wire in *either* mode — confirmed by grepping `packages/shared/src/protocol/messages.ts` for any `telemetry`/throughput-sampling message name and finding none. `TelemetrySimulator` is constructed directly in both `createSimulatorPorts` and `createWsRealPorts` (`packages/client-core/src/adapters/portFactory.ts`), mirroring how `preferences` is handled — see the "always local" callout in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when). (The `admin` throughput *setpoint* is the one exception: `GET_THROUGHPUT`/`SET_THROUGHPUT` *is* WS-backed in Mode B — only the sampled telemetry series are always local.)
+This flow never touches the wire in *either* mode — confirmed by grepping `packages/shared/src/protocol/messages.ts` for any `telemetry`/throughput-sampling message name and finding none. `TelemetrySimulator` is constructed directly in both `createSimulatorPorts` and `createWsRealPorts` (`packages/client-adapters/src/adapters/portFactory.ts`), mirroring how `preferences` is handled — see the "always local" callout in [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when). (The `admin` throughput *setpoint* is the one exception: `GET_THROUGHPUT`/`SET_THROUGHPUT` *is* WS-backed in Mode B — only the sampled telemetry series are always local.)
 
 ```mermaid
 flowchart TB
@@ -263,7 +263,7 @@ flowchart TB
         sim["TelemetrySimulator<br/>wraps ThroughputSimulator + LatencySimulator + ErrorRateSimulator<br/>mulberry32 seeded random walk"]:::domain
         port["TelemetryPort<br/>throughput$() · latency$() · errorRate$()"]:::domain
     end
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         presT["ThroughputMetricPresenter<br/>windowedSamples(port.throughput$())"]:::core
         presL["LatencyPresenter"]:::core
         presE["ErrorRatePresenter"]:::core

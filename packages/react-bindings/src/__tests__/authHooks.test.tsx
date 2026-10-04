@@ -2,7 +2,10 @@ import { act, renderHook } from "@testing-library/react";
 import { type Observable, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {

@@ -138,7 +138,7 @@ interface EffectCoreModule {
 /** The real importers. Each `import()` specifier must stay a string literal
  * here: that is what lets the bundler split each core into its own lazy
  * chunk (`pnpm check:core-bundle` witnesses it). All three are sibling
- * packages reached the same way; `@rtc/client-core`, which the UI imports
+ * packages reached the same way; `@rtc/client-adapters`, which the UI imports
  * eagerly, holds only the adapters, so none of the three cores is in the
  * entry bundle (ADR-006 Decision 6). A static import of a core from this
  * client's source is a dependency-cruiser error

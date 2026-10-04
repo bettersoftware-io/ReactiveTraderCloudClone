@@ -105,11 +105,11 @@ identity. Each describer is parameterised by a `makeHarness()` factory
 returning `{port, driver, teardown}`, so the same assertions run twice:
 once against the simulator implementation in `packages/domain/src/simulators/`
 and once against the WsReal implementation in
-`packages/client-core/src/adapters/portFactory.ts` driven by an in-memory
+`packages/client-adapters/src/adapters/portFactory.ts` driven by an in-memory
 `FakeWsAdapter` that scripts canonical wire frames from
 `packages/shared/src/__fixtures__/wireFrames.ts`. The equities port trio has
 the same treatment (`wsRealMarketData.contract.test.ts`, `portFactory.equities.test.ts`
-in `client-core`).
+in `client-adapters`).
 
 The contract is happy-path only. Error semantics (RPC nack handling) are
 covered by three `wsReal<Execution|Pricing|Workflow>.errors.test.ts`

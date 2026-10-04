@@ -6,7 +6,7 @@ Wire-protocol DTOs and the `CLIENT_MSG`/`SERVER_MSG` envelope types shared by cl
 |---|---|
 | **Ring** | ③ Interface Adapters — boundary DTOs |
 | **Runtime deps** | `@rtc/domain`, `@rtc/motion-core` (the scripted Jarvis brain's typed-reveal `speechChunks` pacing), `rxjs` (`packages/shared/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/core-api`, `@rtc/core-logic`, the three application cores (`client-core`, `client-core-async`, `client-core-effect`), `server`, and the `tests` workspace. Both web clients, both bindings and `ui-contract` list it too, for **types only** (three Jarvis wire types they name); dependency-cruiser's `ui-takes-wire-types-only` rejects a value import from the UI side |
+| **Consumed by** | `@rtc/core-api`, `@rtc/core-logic`, the three application cores (`client-core-rxjs`, `client-core-async`, `client-core-effect`), `server`, and the `tests` workspace. Both web clients, both bindings and `ui-contract` list it too, for **types only** (three Jarvis wire types they name); dependency-cruiser's `ui-takes-wire-types-only` rejects a value import from the UI side |
 | **Must never import** | `client-react`, `server` — dependency-cruiser's `shared-no-apps` rule (`docs/dependency-cruiser.md`) restricts `shared` to reaching inward, at most to `domain` and `motion-core`; the `domain-stays-pure` rule additionally forbids `@rtc/domain` from ever importing `@rtc/shared` back |
 
 ## Folder map
@@ -24,7 +24,7 @@ Wire-protocol DTOs and the `CLIENT_MSG`/`SERVER_MSG` envelope types shared by cl
 1. `src/protocol/messages.ts` — `CLIENT_MSG`/`SERVER_MSG`, the flat namespaces of every message name the client sends and the server streams back; a typo here breaks the wire contract silently, so it's the first thing to read before touching either side of the connection.
 2. `src/protocol/sow.ts` — the two envelope shapes every subscription stream uses: `BulkSoWMessage<T>` (bulk refresh, used by Blotter/ReferenceData/Analytics) and `MarkerEvent<T>` (incremental added/removed markers, used by Workflow/Instrument/Dealer).
 3. `src/index.ts` — the public export surface: every DTO and protocol type re-exported flat, so consumers import everything from `@rtc/shared` regardless of which folder it lives in.
-4. `src/__fixtures__/wireFrames.ts` — real, typed server-frame factories consumed by `@rtc/client-core`'s `WsAdapter` contract tests; read this to see the DTOs and envelopes actually assembled into wire-shaped payloads.
+4. `src/__fixtures__/wireFrames.ts` — real, typed server-frame factories consumed by `@rtc/client-adapters`'s `WsAdapter` contract tests; read this to see the DTOs and envelopes actually assembled into wire-shaped payloads.
 
 ## How it's used
 
@@ -71,10 +71,10 @@ const referenceData$: WsEffect<Ctx> = stream(
         isFirst = false;
 ```
 
-`@rtc/client-core`'s `portFactory.ts` imports the identical DTOs and constants on the receiving end (`packages/client-core/src/adapters/portFactory.ts:64-77`), and its `wsReal*.contract.test.ts` suites build request/response frames from `@rtc/shared/__fixtures__/wireFrames` — so the same envelope shapes are exercised on both sides of the socket, in production code and in tests, without duplication.
+`@rtc/client-adapters`'s `portFactory.ts` imports the identical DTOs and constants on the receiving end (`packages/client-adapters/src/adapters/portFactory.ts:64-77`), and its `wsReal*.contract.test.ts` suites build request/response frames from `@rtc/shared/__fixtures__/wireFrames` — so the same envelope shapes are exercised on both sides of the socket, in production code and in tests, without duplication.
 
 ## See also
 
 - [Its §13 card](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)
-- [§15.1 Control Flow vs Imports vs Data Flow](../../docs/architecture/15-flows.md#151-control-flow-vs-imports-vs-data-flow) — the `client-react → react-bindings → client-core → domain`/`shared` import direction this package sits at the bottom of
+- [§15.1 Control Flow vs Imports vs Data Flow](../../docs/architecture/15-flows.md#151-control-flow-vs-imports-vs-data-flow) — the `client-react → react-bindings → client-core-rxjs → domain`/`shared` import direction this package sits at the bottom of
 - [§16 Trailheads — "Add a wire message"](../../docs/architecture/16-trailheads.md#16-trailheads) — the step-by-step recipe for adding a `CLIENT_MSG`/`SERVER_MSG` pair and its DTO here

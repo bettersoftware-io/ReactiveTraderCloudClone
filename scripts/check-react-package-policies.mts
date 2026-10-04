@@ -89,7 +89,7 @@ const POLICY: Readonly<Record<string, PackagePolicy | undefined>> = {
     memoBan: true,
     reactHooks: false,
     inlineStyleBan: false,
-    why: "tsc-built, so the compiler cannot run over it. Banned anyway: the bridge stays memo-free by design — a memo here signals logic belonging in client-core or motion-core (ADR-005). react-hooks is off because its deliberate build-once-ref seam trips `refs`. inlineStyleBan is off because the bridge renders no styled markup — a single context Provider.",
+    why: "tsc-built, so the compiler cannot run over it. Banned anyway: the bridge stays memo-free by design — a memo here signals logic belonging in client-core-rxjs or motion-core (ADR-005). react-hooks is off because its deliberate build-once-ref seam trips `refs`. inlineStyleBan is off because the bridge renders no styled markup — a single context Provider.",
   },
   "client-prototype": {
     compiler: false,

@@ -13,7 +13,7 @@ import {
   WsAdapter,
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import type { AppPorts } from "@rtc/core-api";
 import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {

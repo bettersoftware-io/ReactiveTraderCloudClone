@@ -372,7 +372,7 @@ function parseGate(gate: unknown): JarvisAvailabilityGate | null {
   };
 }
 
-/** Normalizes a wire `JarvisAvailabilityPayload` into the client-core
+/** Normalizes a wire `JarvisAvailabilityPayload` into the core-api
  * `JarvisAvailability` shape: `brains`/`defaultBrain` are OPTIONAL on the
  * wire (a pre-round server never sends them), so an absent `brains` maps to
  * "every selectable brain offered" when available, else none, and an absent

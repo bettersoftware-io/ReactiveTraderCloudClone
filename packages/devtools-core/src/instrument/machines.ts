@@ -2,8 +2,8 @@ import type { Observable } from "rxjs";
 
 import type { DevtoolsHub } from "../DevtoolsHub";
 
-/** Structural mirror of client-core's Machine<S,I> — devtools-core never
- * imports @rtc/client-core; matching by shape is the whole point. */
+/** Structural mirror of core-api's Machine<S,I> — devtools-core never
+ * imports @rtc/client-core-rxjs; matching by shape is the whole point. */
 export interface InstrumentableMachine {
   state$: Observable<unknown>;
   intents: object;
@@ -17,7 +17,7 @@ type AnyMachineFactory = (...args: never[]) => InstrumentableMachine;
  * future factory. Instrumentation failures never block the wrapped call.
  *
  * Constrained to `object` (not `Record<string, AnyMachineFactory>`) so a
- * factory bag typed as a named interface — e.g. client-core's
+ * factory bag typed as a named interface — e.g. client-core-rxjs's
  * `MachineFactories`, which has no index signature — satisfies it, mirroring
  * `instrumentPresenters`'s `<T extends object>`. The values are read
  * structurally at runtime regardless. */

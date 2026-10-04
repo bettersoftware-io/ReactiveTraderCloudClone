@@ -1,4 +1,4 @@
-// packages/client-core/src/adapters/WsAdapter.test.ts
+// packages/client-adapters/src/adapters/WsAdapter.test.ts
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

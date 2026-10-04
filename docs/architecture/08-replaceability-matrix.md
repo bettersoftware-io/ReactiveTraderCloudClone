@@ -8,12 +8,12 @@ Columns folded to three so the table stays readable at GitHub's narrow column wi
 
 | Component (current) | Cost to replace | Contract & verification |
 |---|---|---|
-| **UI framework**<br>React 19 (web) / React Native (mobile) / SolidJS (web) | ~1 dev-week (rewrite one UI package) — **empirically calibrated twice**: by the RN client (reused core + bindings verbatim), then by `@rtc/client-solid` (every UI component mechanically rewritten, CSS Modules byte-copied, zero `@rtc/domain`/`@rtc/client-core` changes) | `ViewModel` hook signatures and intent callbacks. No business logic in components.<br>*Verified:* Behavioural specs (Gherkin) + visual goldens + UI contract suite, all unchanged |
+| **UI framework**<br>React 19 (web) / React Native (mobile) / SolidJS (web) | ~1 dev-week (rewrite one UI package) — **empirically calibrated twice**: by the RN client (reused core + bindings verbatim), then by `@rtc/client-solid` (every UI component mechanically rewritten, CSS Modules byte-copied, zero `@rtc/domain`/`@rtc/client-core-rxjs` changes) | `ViewModel` hook signatures and intent callbacks. No business logic in components.<br>*Verified:* Behavioural specs (Gherkin) + visual goldens + UI contract suite, all unchanged |
 | **State streams ↔ UI bridge**<br>`@rtc/react-bindings` (react-rxjs) / `@rtc/solid-bindings` (`@rx-state/core` → signal) | ~1 dev-day — **done**: `@rtc/solid-bindings` is the same order of size as `@rtc/react-bindings` (compare `wc -l` over each package's non-test `src/` files) | `Observable<T>`/`StateObservable<T>` -> framework-native reactive primitive; same `ViewModel` member list.<br>*Verified:* UI contract tests (every `*.contract.spec.ts` in `packages/ui-contract/src/specs/`, shared verbatim by both clients), unchanged |
 | **State streams**<br>RxJS + `@rx-state/core` | Application layer: **pluggable** ([§22](22-pluggable-application-core.md)) — three cores behind `@rtc/core-api`; domain ports/use cases/simulators still RxJS (very high, unchanged) | Boundary stream type matches across all layers.<br>*Verified:* Use-case tests + port contract tests + presenter-direct e2e peers |
 | **Use cases**<br>Vanilla TS + RxJS | N/A (this is the domain) | *Verified:* Unit tests over use cases with simulator ports |
 | **Boundary stream type**<br>RxJS `Observable<T>` | Very high (this is the spine) | -- |
-| **Port adapters (transport)**<br>WebSocket-backed factories in `client-core` | ~1 dev-week per adapter family | Implements port interface.<br>*Verified:* Contract tests parameterised over adapter (simulator + WsReal) |
+| **Port adapters (transport)**<br>WebSocket-backed factories in `client-adapters` | ~1 dev-week per adapter family | Implements port interface.<br>*Verified:* Contract tests parameterised over adapter (simulator + WsReal) |
 | **Server dispatch framework**<br>`@rtc/ws-effects` | ~1 dev-week (it is one package; effects are pure stream transforms) | `WsEffect = (in$, ctx) => out$`; wire protocol in `@rtc/shared`.<br>*Verified:* Marble tests + fullstack smokes |
 | **View-layer motion math**<br>`@rtc/motion-core` | ~1 dev-day per consumer (pure functions; no framework/DOM coupling to unwind) | `flipDeltas`/`coalesceOrder`/`computeRankDirections`/`sameOrder` signatures + easing/duration constants.<br>*Verified:* Unit tests in `packages/motion-core` (`flip.test.ts`, `rankGlide.test.ts`) |
 | **Server host**<br>Node.js + `ws` | ~2 dev-days (`toSocket` is the only ws-coupled file) | `Socket` interface (`messages$`, `send`, `closed$`).<br>*Verified:* Fullstack smokes |
@@ -29,9 +29,9 @@ Columns folded to three so the table stays readable at GitHub's narrow column wi
 
 ### 8.1 The Multi-Client Proof & the SolidJS Port
 
-The replaceability matrix used to be a theory. The React Native client turned it into a first measurement: **adding an entire second platform required zero changes to `@rtc/domain`, `@rtc/shared`, `@rtc/client-core`, or `@rtc/react-bindings`** — only a new UI package with two platform adapters. The SolidJS port is a second, independent measurement of the same claim, this time across a genuinely different reactive framework (not just a different render target for React): `@rtc/client-solid` shipped with full contract, visual, and behavioural parity against `@rtc/client-react`, and it required the same zero changes below the `ViewModel` contract. The animation below cycles through the three clients; note what never moves.
+The replaceability matrix used to be a theory. The React Native client turned it into a first measurement: **adding an entire second platform required zero changes to `@rtc/domain`, `@rtc/shared`, `@rtc/client-core-rxjs` + `@rtc/client-adapters`, or `@rtc/react-bindings`** — only a new UI package with two platform adapters. The SolidJS port is a second, independent measurement of the same claim, this time across a genuinely different reactive framework (not just a different render target for React): `@rtc/client-solid` shipped with full contract, visual, and behavioural parity against `@rtc/client-react`, and it required the same zero changes below the `ViewModel` contract. The animation below cycles through the three clients; note what never moves.
 
-![Animated diagram cycling React web, React Native, and SolidJS clients above an unchanged client-core, domain and shared stack, joined by the ViewModel contract](framework-swap.svg)
+![Animated diagram cycling React web, React Native, and SolidJS clients above an unchanged client-core-rxjs + client-adapters, domain and shared stack, joined by the ViewModel contract](framework-swap.svg)
 
 **Why the RN client was cheap** — the checklist of what it actually had to build:
 
@@ -46,7 +46,7 @@ flowchart TD
         n6["expo-router tabs + AppRoot"]
     end
     subgraph reused["What it imported verbatim"]
-        r1["@rtc/client-core — every presenter,<br/>machine, WsAdapter, port factory"]
+        r1["@rtc/client-core-rxjs + @rtc/client-adapters — every presenter,<br/>machine, WsAdapter, port factory"]
         r2["@rtc/react-bindings — the whole<br/>ViewModel (React is React)"]
         r3["@rtc/domain — entities, use cases,<br/>simulators (device-local Mode A!)"]
     end
@@ -55,7 +55,7 @@ flowchart TD
 
 **The SolidJS port** (`@rtc/client-solid`, shipped) followed the same recipe with one extra step — since Solid is *not* React, it needed its own bindings package:
 
-1. **`@rtc/solid-bindings`** (~1 dev-day, as estimated): maps `StateObservable` → Solid signal. `@rx-state/core` (already framework-neutral, already in `client-core`) is the same primitive react-rxjs's `bind()` consumes, so this is the `solid-rxjs` analogue the design always assumed. Implements the same `ViewModel` member list; `useMachine`'s Solid counterpart is a `createMachine`-style per-component primitive using `onCleanup` instead of a StrictMode-deferred dispose (Solid has no StrictMode double-invoke to guard against).
+1. **`@rtc/solid-bindings`** (~1 dev-day, as estimated): maps `StateObservable` → Solid signal. `@rx-state/core` (already framework-neutral, already in `client-core-rxjs`) is the same primitive react-rxjs's `bind()` consumes, so this is the `solid-rxjs` analogue the design always assumed. Implements the same `ViewModel` member list; `useMachine`'s Solid counterpart is a `createMachine`-style per-component primitive using `onCleanup` instead of a StrictMode-deferred dispose (Solid has no StrictMode double-invoke to guard against).
 2. **`@rtc/client-solid`** (~1 dev-week per the estimate; every component mechanically rewritten in practice): the dumb components, rewritten. CSS Modules ported verbatim — the CSS-modules migration deliberately left zero inline styles and semantic `data-*` state hooks precisely so markup/styling survived the swap unchanged.
 3. **Verification, all pre-existing, all green**: the framework-neutral UI-contract specs (every `*.contract.spec.ts` file in `packages/ui-contract/src/specs/`, all shared by both clients — the same test count green on Solid and on React, full parity; run against a `solid/` swap-trio next to `react/` — same specs, same assertions, a different DOM renderer underneath), the visual goldens (the single asserted `playwright` tier, **assert-only** against the `packages/ui-contract/goldens/` `__screenshots__/react/` trees — generated only from `client-react` renders — `client-solid` owns no goldens of its own, so a pixel match is a genuine cross-framework proof, not a self-comparison), and the Gherkin behavioural suites (page objects get a Solid implementation; specs unchanged).
 
@@ -69,7 +69,7 @@ The "~1 dev-week to swap the UI framework" figure in the matrix above rests on a
 
 A component in this app calls two kinds of `useX`, and only one of them is React-specific work:
 
-- **ViewModel-provided hooks** — `useLayout`, `useOrderTicket`, `useBootSequence`, `useSession`, `useBootGate`, `useMetrics`, and their siblings all arrive through `useViewModel()` from `@rtc/react-bindings`. Each is a *thin binding* over a framework-free RxJS machine or presenter in `@rtc/client-core` (e.g. `useLayout` is one line: `useMachine(() => machines.layout(tab))`). The behaviour lives outside React entirely, so the Solid port re-implements only the ~1-line binding once in `@rtc/solid-bindings` (§8.1 step 1) — never the logic. These do not count against the swap budget.
+- **ViewModel-provided hooks** — `useLayout`, `useOrderTicket`, `useBootSequence`, `useSession`, `useBootGate`, `useMetrics`, and their siblings all arrive through `useViewModel()` from `@rtc/react-bindings`. Each is a *thin binding* over a framework-free RxJS machine or presenter in `@rtc/client-core-rxjs` (e.g. `useLayout` is one line: `useMachine(() => machines.layout(tab))`). The behaviour lives outside React entirely, so the Solid port re-implements only the ~1-line binding once in `@rtc/solid-bindings` (§8.1 step 1) — never the logic. These do not count against the swap budget.
 - **Standalone UI hooks** — hooks actually *defined* inside `@rtc/client-react/src/ui`. This is the whole React-specific surface a Solid port must re-author. It was seven when this section was first written and is **thirteen** today (list them with `find packages/client-react/src/ui -name 'use*.ts*' ! -name '*.test.*'`):
 
 | Hook | Kind | What a Solid port re-writes |
@@ -90,7 +90,7 @@ A component in this app calls two kinds of `useX`, and only one of them is React
 
 Read the table by kind, not by size. **Three are thin context readers** — no logic at all, just a `useContext` call plus a provider-presence guard. **Five more are small** — two pure-derived-state helpers (`useTickFlash`, `useNewestOrderId`) whose computation is framework-agnostic and moves to Solid untouched, a one-shot cue over a shared machine, one global listener, and one rAF sampler. That leaves **five DOM-imperative shells** — the FLIP pair, the dialog drag, and the two chart-gesture hooks — and even their size overstates the port cost: they are mostly DOM plumbing and doc comments, because the *algorithms* (`flipDeltas`, `coalesceOrder`, `computeRankDirections`, `sameOrder`, `clampDragOffset`, the chart viewport ops) were extracted into the framework-free `@rtc/motion-core` package precisely so both clients share one implementation ([ADR-005](../adr/ADR-005-ui-logic-placement.md)). What a Solid port rewrites for those is a thin imperative shell over identical shared functions, not the logic itself.
 
-So the React-specific hook surface a framework swap confronts is: three trivial readers, five small helpers, and five thin DOM shells over shared math. That deliberately-tiny surface — not optimism — is why the React Native client reused `client-core` and `react-bindings` verbatim, and why the "UI framework — ~1 dev-week" row is a measurement rather than a hope.
+So the React-specific hook surface a framework swap confronts is: three trivial readers, five small helpers, and five thin DOM shells over shared math. That deliberately-tiny surface — not optimism — is why the React Native client reused `client-core-rxjs` + `client-adapters` and `react-bindings` verbatim, and why the "UI framework — ~1 dev-week" row is a measurement rather than a hope.
 
 ---
 

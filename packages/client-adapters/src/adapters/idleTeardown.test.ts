@@ -1,4 +1,4 @@
-// packages/client-core/src/adapters/idleTeardown.test.ts
+// packages/client-adapters/src/adapters/idleTeardown.test.ts
 //
 // Verifies the composition.ts WS-branch tap wiring:
 //   idleTimeout  → ws.closeForIdle()

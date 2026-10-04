@@ -487,8 +487,8 @@ describe("JarvisPanelLayer pinning", () => {
 });
 
 /** No public export of `PanelSpecV1` reaches `@rtc/ui-contract` (it isn't a
- * dependency of `@rtc/shared` — only `@rtc/client-core` is, and that package
- * never re-exports the type by name), so this borrows the type off the one
+ * runtime dependency of `@rtc/shared`, and no package it does import
+ * re-exports the type by name), so this borrows the type off the one
  * already-exported `PanelSpecV1`-typed const instead of widening any
  * package's public surface just for test literals. */
 type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;

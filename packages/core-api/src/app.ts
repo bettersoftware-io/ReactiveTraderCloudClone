@@ -182,7 +182,7 @@ export interface ConnectionIntentsPort {
 }
 
 /** Omits BOTH `connectionEvents` and `connectionIntents` — the platform
- * layer builds this pair together (`@rtc/client-core`'s `pairConnectionPorts`
+ * layer builds this pair together (`@rtc/client-adapters`'s `pairConnectionPorts`
  * is the one place that does), never one without the other. A port factory
  * that assembled `connectionEvents` itself while forgetting `connectionIntents`
  * (or the reverse) would otherwise typecheck with a dead port — this is the
@@ -407,7 +407,7 @@ export interface CoreFactory {
   createMachineFactories(presenters: Presenters): MachineFactories;
 }
 
-/** Which application core a page can boot: the RxJS default (`client-core`)
+/** Which application core a page can boot: the RxJS default (`client-core-rxjs`)
  * or one of its two siblings (`client-core-async`, `client-core-effect`). */
 export type CoreImpl = "rxjs" | "async" | "effect";
 

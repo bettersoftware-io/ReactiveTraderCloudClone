@@ -7,7 +7,7 @@ import type { LayoutPresetStore } from "@rtc/core-api";
  * returning null on read rather than throwing. The stored value is the raw
  * opaque serialized list string `createLayoutPresets` hands `store.save` —
  * no shape validation here; an unreadable record or whole-list is
- * `layoutPresetCodec`'s own concern (client-core owns every rule once).
+ * `layoutPresetCodec`'s own concern (core-logic owns every rule once).
  */
 export class LocalStorageLayoutPresetStore implements LayoutPresetStore {
   private key(tab: string): string {

@@ -37,7 +37,7 @@ type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
 
 /**
  * `presenters.jarvisDriver` on the Effect core: the shared interpreter
- * (`applyDriveCommand`, client-core) does every command; this file owns the
+ * (`applyDriveCommand`, core-logic) does every command; this file owns the
  * timing. Batches queue (an Effect `Queue`) and one consumer fiber drains
  * them — a batch arriving mid-stagger waits — and within a batch each
  * command waits `driveStaggerMs` (0 for the first, and under freeze) on an

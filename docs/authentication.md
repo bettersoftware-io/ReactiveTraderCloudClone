@@ -23,7 +23,7 @@ WebSocket — which no longer exists anywhere in this repo.
   expiry — no server-side session table to manage.
 - **Same flow, two transports.** In "WS-real" mode (a real server configured)
   both clients call the identical `POST /login` HTTP endpoint via
-  `HttpAuthAdapter` (`packages/client-core/src/adapters/HttpAuthAdapter.ts`).
+  `HttpAuthAdapter` (`packages/client-adapters/src/adapters/HttpAuthAdapter.ts`).
   In simulator mode (no server configured) each client instead uses the
   in-process `AuthSimulator` (`packages/domain/src/simulators/AuthSimulator.ts`),
   which validates against the same public roster plus locally-supplied dev
@@ -83,7 +83,7 @@ sequenceDiagram
 3. **`AuthPresenter.login`** (`packages/client-core-rxjs/src/presenters/AuthPresenter.ts:73-84`)
    flips state to `"authenticating"` and calls the injected `AuthPort`.
 4. **The `AuthPort`** is one of:
-   - `HttpAuthAdapter` (`packages/client-core/src/adapters/HttpAuthAdapter.ts`) —
+   - `HttpAuthAdapter` (`packages/client-adapters/src/adapters/HttpAuthAdapter.ts`) —
      `POST {httpBaseUrl}/login` with `{ username, password }`, used whenever a
      real server URL is configured. `wsUrlToHttpBase` derives the HTTP base
      from the WS URL by swapping only the scheme (`ws://`→`http://`,
@@ -339,7 +339,7 @@ production build with a server URL is hybrid. The deploy workflow asserts the
 roster was inlined, next to its existing server-URL guard.
 
 In a hybrid page the `auth` port is a **routing port** (`createRoutingAuthPort`
-in `@rtc/client-core`): it tries the demo roster first (synchronously, in the
+in `@rtc/client-adapters`): it tries the demo roster first (synchronously, in the
 browser), then the server. The demo roster never leaves the browser because the
 server attempt only runs after the local match has failed.
 
@@ -390,7 +390,7 @@ won, mirroring `[core] booted …`.
 
 ### 6.3 Where the pieces live
 
-- `resolveDataSource` and `createRoutingAuthPort` — `@rtc/client-core`
+- `resolveDataSource` and `createRoutingAuthPort` — `@rtc/client-adapters`
   (framework-free; `location.reload()` is injected by each client as
   `relaunch`).
 - The composition, the `VITE_DEMO_AUTH` parsing and the `rtc.dataSource`

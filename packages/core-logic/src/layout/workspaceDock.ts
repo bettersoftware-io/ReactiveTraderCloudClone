@@ -59,7 +59,7 @@ export const WORKSPACE_TABS: readonly WorkspaceTab[] = [
  * default shape, not whatever a live per-mount layout machine's current
  * `root` happens to be (panel ids never move between tabs at runtime, so the
  * default tree's id set is exactly the live set too). Also used by the
- * client-core conformance test to verify DESK_PANEL_ROSTER against the
+ * core-logic conformance test to verify DESK_PANEL_ROSTER against the
  * real layout trees. */
 export const LAYOUT_PANEL_IDS: Readonly<
   Record<WorkspaceTab, readonly string[]>

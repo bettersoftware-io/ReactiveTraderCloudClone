@@ -8,7 +8,7 @@ import styles from "./KpiRow.module.css";
  * Faint sparkline pinned to a KPI card's lower edge; the stroke colour matches
  * the card's value colour, set in CSS via data-kpi/data-warn on the path
  * itself. PROTO Kpis/KpiSparkline.tsx — geometry comes from kpisVm's smoothed
- * spark path `d` string (client-core), this component only paints it.
+ * spark path `d` string (core-logic), this component only paints it.
  */
 export function KpiSparkline(props: KpiSparklineProps): JSX.Element {
   return (

@@ -190,7 +190,7 @@ const SERVER_PORT = Number(process.env.FULLSTACK_PORT ?? 4125);
 
 const SERVER_ORIGIN = `127.0.0.1:${SERVER_PORT}`;
 
-/** `DATA_SOURCE_STORAGE_KEY` in @rtc/client-core — the stored choice. */
+/** `DATA_SOURCE_STORAGE_KEY` in @rtc/client-adapters — the stored choice. */
 const DATA_SOURCE_KEY = "rtc.dataSource";
 
 /** The bundle's demo entry for `demo` (set by the launcher's VITE_DEMO_AUTH). */

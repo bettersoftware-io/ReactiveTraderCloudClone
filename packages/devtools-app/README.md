@@ -10,7 +10,7 @@ protocol.
 | **Ring** | ④ Frameworks & Drivers -- a leaf tool, not part of the app's own client stack |
 | **Runtime deps** | `@rtc/devtools-core`, `react`, `react-dom` (`package.json` `dependencies`) |
 | **Consumed by** | `@rtc/devtools-extension`, which imports `InspectorApp` as source (`src/index.ts`) and transpiles it in its own build; `@rtc/client-react` and `@rtc/client-solid` take only a `devDependency` build-order/dist-path edge to serve it at `/devtools/` (`docs/architecture/06-package-dependencies.md` §6) |
-| **Must never import** | `@rtc/client-core`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes the Chrome-extension shell (`@rtc/devtools-extension`) a thin wrapper around this same `InspectorApp` (spec §9 / [§20.8](../../docs/architecture/20-devtools.md#208-future-extensions)). |
+| **Must never import** | `@rtc/client-core-rxjs`, `@rtc/client-adapters`, `@rtc/domain`, or any concrete client/server package -- enforced by the dependency-cruiser `devtools-app-protocol-only` rule (`^packages/devtools-app/src` → every `@rtc/*` package except `devtools-core`, see `docs/dependency-cruiser.md`). It understands only the wire protocol, which is what makes the Chrome-extension shell (`@rtc/devtools-extension`) a thin wrapper around this same `InspectorApp` (spec §9 / [§20.8](../../docs/architecture/20-devtools.md#208-future-extensions)). |
 
 ## Folder map
 

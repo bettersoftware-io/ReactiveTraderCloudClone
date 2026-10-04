@@ -9,7 +9,7 @@
 > then, which is not always the package that owns it now. Sections whose base
 > moved or whose files were deleted carry their own provenance note; the
 > repo-wide moves that affect most citations are the app-layer lift into
-> `@rtc/client-core` (`a246be547`, 2026-07-01) and the server's cutover to
+> `@rtc/client-adapters` (`a246be547`, 2026-07-01) and the server's cutover to
 > declarative `@rtc/ws-effects` (`55091b766`, 2026-07-02).
 
 > **Coverage instrument note (2026-07-20).** The `vitest-browser` tier that
@@ -45,7 +45,7 @@ suite through its own registry and byte-match the same goldens.
 | Domain (report-only) | 96.23% | 84.34% | 96.18% | 96.20% |
 | Server (report-only) | 99.34% | 81.48% | 100% | 99.34% |
 | Client app layer (report-only) | 92.66% | 84.21% | 93.18% | 92.66% |
-| client-core (report-only) | 93.07% | 83.33% | 96.22% | 91.72% |
+| client-core (report-only; since 2026-10-04 split into client-core-rxjs and client-adapters) | 93.07% | 83.33% | 96.22% | 91.72% |
 | react-bindings (report-only) | 64.39% | 83.33% | 41.33% | 64.39% |
 
 Goldens: 1,242 scenarios × 3 tiers × 2 arches (react/ x86 + react-local/
@@ -222,7 +222,7 @@ Only the `portFactory` wiring gap below remains, with the same intentional ratio
 
 > **Path below is as-of 2026-06-30**, relative to the then-current
 > `packages/client-react/src/app/`; `portFactory.ts` moved to
-> `packages/client-core/src/adapters/` with the 2026-07-01 app-layer lift
+> `packages/client-adapters/src/adapters/` with the 2026-07-01 app-layer lift
 > (`a246be547`). Line numbers are as-of the audit.
 
 | File | Lines | Reason |
@@ -305,9 +305,9 @@ post-behaviour-sync codebase; intentionally-open gaps are documented below.
 
 > **Paths below are as-of 2026-06-25**, relative to the then-current
 > `packages/client-react/src/app/`. The universal app layer was lifted into
-> `@rtc/client-core` in `a246be547` (2026-07-01), so the `adapters/WsAdapter.ts`,
+> `@rtc/client-adapters` in `a246be547` (2026-07-01), so the `adapters/WsAdapter.ts`,
 > `adapters/portFactory.ts` and `presenters/RfqsPresenter.ts` rows now correspond
-> to `packages/client-core/src/…`. `adapters/BrowserConnectionEventsAdapter.ts`
+> to `packages/client-adapters/src/…`. `adapters/BrowserConnectionEventsAdapter.ts`
 > stayed behind as a browser-specific adapter and still resolves against that
 > base — it now also has a `client-solid` twin. Line numbers are as-of the audit
 > and will not match either tree.

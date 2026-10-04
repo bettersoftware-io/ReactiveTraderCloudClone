@@ -13,8 +13,11 @@
 import { NEVER, Observable } from "rxjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createFakeConnectionPorts } from "@rtc/client-core/testing";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
+import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type { JarvisDemoState, StoredSession } from "@rtc/core-api";
 import { collect, scriptPorts } from "@rtc/core-contract";
 import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
