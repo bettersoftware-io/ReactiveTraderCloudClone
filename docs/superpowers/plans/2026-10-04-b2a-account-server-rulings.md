@@ -324,6 +324,34 @@ Fixed in the code; listed because the plan's text mandated each one.
 | The status lookup had no `try` | A throwing store rejected the upgrade instead of failing closed | Reads as `unavailable`, never cached |
 | The probe: in no typecheck or lint program | It would rot silently | `tsconfig.scripts.json`, and the typed ESLint program includes it |
 
+## Left open after the final fix wave
+
+The whole-branch review's findings were fixed in one wave and re-reviewed
+once: every finding addressed, nothing new of consequence. The process allows
+one wave, so these six small items were parked rather than fixed. None changes
+behaviour a user or operator relies on.
+
+| Item | Why it was left |
+|---|---|
+| The comment on `readErrorCode` says a Supabase API-version header would make every refusal read as "unavailable". In fact a wrong password would read as `invalid`, a code as `invalid_code`, a reset update as `rejected`. | Comment only; nothing sends that header. |
+| Two comments say every sign-up the email fuse counts really sends mail. The fuse is charged before the daily-cap count, so a registration that is then refused, or a repeat for a confirmed address, also spends it. | Accuracy only; the lever is item 5 of the blocking list. |
+| Keying an IPv6 caller by its /64 puts every device of one home or office network under the eight-connection cap and one ban, as IPv4 NAT already does. | Part of the NAT-posture decision that is already the user's. |
+| The smoke checks that a blocked account's token cannot open a socket, not that the refusal was the `403`. A control token for an active account rules out a format or secret drift. | Test strength only. |
+| No test asserts the logout after a failed password update, exactly one logout per sign-in, or the logout when Supabase returns no user id. | Gaps on a best-effort call; the mutant for the logout itself is killed. |
+| NAT64, SIIT, IPv4-compatible and Teredo prefixes each collapse to one key shared by unrelated callers. | Not reachable through Fly's header in practice. |
+
+## Mutants
+
+92 mutants, one or more per security rule: 89 killed. The three survivors are
+equivalent mutants, not test gaps:
+
+- the in-memory directory's first "already confirmed" guard — a second guard
+  after the password hash refuses the same case;
+- stripping an IPv6 zone id — the zone sits in the last hextet, which the /64
+  key discards;
+- the `try/catch` around the logout — the call it wraps already turns every
+  failure into a value.
+
 ## What a live project must still prove
 
 `pnpm --filter @rtc/server accounts:probe` has not been run. Until it prints
