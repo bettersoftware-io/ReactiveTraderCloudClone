@@ -20,20 +20,14 @@ describe("isLoginRequestDto", () => {
 });
 
 describe("account request guards", () => {
-  it("isRegisterRequestDto needs three string fields", () => {
+  it("isRegisterRequestDto needs an email and a display name, no password", () => {
     expect(
-      isRegisterRequestDto({
-        email: "ann@desk.io",
-        displayName: "Ann",
-        password: "x",
-      }),
+      isRegisterRequestDto({ email: "ann@desk.io", displayName: "Ann" }),
     ).toBe(true);
     expect(isRegisterRequestDto({ email: "ann@desk.io", password: "x" })).toBe(
       false,
     );
-    expect(
-      isRegisterRequestDto({ email: 1, displayName: "Ann", password: "x" }),
-    ).toBe(false);
+    expect(isRegisterRequestDto({ email: 1, displayName: "Ann" })).toBe(false);
   });
 
   it("isEmailRequestDto needs a string email", () => {
@@ -42,10 +36,17 @@ describe("account request guards", () => {
     expect(isEmailRequestDto(null)).toBe(false);
   });
 
-  it("isConfirmEmailRequestDto needs email and code", () => {
+  it("isConfirmEmailRequestDto needs email, code and the password to set", () => {
+    expect(
+      isConfirmEmailRequestDto({
+        email: "ann@desk.io",
+        code: "000000",
+        password: "x",
+      }),
+    ).toBe(true);
     expect(
       isConfirmEmailRequestDto({ email: "ann@desk.io", code: "000000" }),
-    ).toBe(true);
+    ).toBe(false);
     expect(isConfirmEmailRequestDto({ email: "ann@desk.io" })).toBe(false);
   });
 
@@ -68,13 +69,13 @@ describe("account request guards reject non-objects and wrong types", () => {
     [
       "isRegisterRequestDto",
       isRegisterRequestDto,
-      { email: "a@b.io", displayName: "Ann", password: "x" },
+      { email: "a@b.io", displayName: "Ann" },
     ],
     ["isEmailRequestDto", isEmailRequestDto, { email: "a@b.io" }],
     [
       "isConfirmEmailRequestDto",
       isConfirmEmailRequestDto,
-      { email: "a@b.io", code: "000000" },
+      { email: "a@b.io", code: "000000", password: "x" },
     ],
     [
       "isResetPasswordRequestDto",

@@ -28,19 +28,23 @@ export function isLoginRequestDto(value: unknown): value is LoginRequestDto {
   return typeof v.username === "string" && typeof v.password === "string";
 }
 
+/** No password: one chosen before the mailbox is proven could be an
+ * attacker's. The confirmation request, which carries the emailed code, sets
+ * it (`ConfirmEmailRequestDto`). */
 export interface RegisterRequestDto {
   readonly email: string;
   readonly displayName: string;
-  readonly password: string;
 }
 
 export interface EmailRequestDto {
   readonly email: string;
 }
 
+/** Proves the mailbox and sets the account's password in one request. */
 export interface ConfirmEmailRequestDto {
   readonly email: string;
   readonly code: string;
+  readonly password: string;
 }
 
 export interface ResetPasswordRequestDto {
@@ -49,10 +53,13 @@ export interface ResetPasswordRequestDto {
   readonly password: string;
 }
 
+/** `password_unset`: the email is confirmed but the password could not be
+ * stored; the user sets one through the reset flow. */
 export type AccountFlowStatus =
   | "code_sent"
   | "pending_approval"
-  | "password_changed";
+  | "password_changed"
+  | "password_unset";
 
 export interface AccountFlowResponseDto {
   readonly status: AccountFlowStatus;
@@ -81,7 +88,7 @@ export interface AccountErrorDto {
 export function isRegisterRequestDto(
   value: unknown,
 ): value is RegisterRequestDto {
-  return hasStringFields(value, ["email", "displayName", "password"]);
+  return hasStringFields(value, ["email", "displayName"]);
 }
 
 export function isEmailRequestDto(value: unknown): value is EmailRequestDto {
@@ -91,7 +98,7 @@ export function isEmailRequestDto(value: unknown): value is EmailRequestDto {
 export function isConfirmEmailRequestDto(
   value: unknown,
 ): value is ConfirmEmailRequestDto {
-  return hasStringFields(value, ["email", "code"]);
+  return hasStringFields(value, ["email", "code", "password"]);
 }
 
 export function isResetPasswordRequestDto(
