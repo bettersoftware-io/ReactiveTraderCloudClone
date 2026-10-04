@@ -1,4 +1,4 @@
-import type { PrefsLayoutEngine } from "./Preferences";
+import type { PrefsLayoutEngine } from "./Preferences.ts";
 
 /**
  * Drives the in-house layout engine's resizable split panes. The reducer-level

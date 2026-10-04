@@ -1,6 +1,6 @@
-import * as devtools from "../scenarios/devtools";
-import * as fxTrading from "../scenarios/fxTrading";
-import { test } from "./_context";
+import * as devtools from "../scenarios/devtools.ts";
+import * as fxTrading from "../scenarios/fxTrading.ts";
+import { test } from "./_context.ts";
 
 // The inspector is served at /devtools/ FROM the app's own origin (client-react
 // Vite middleware in dev, dist/devtools in prod). That is load-bearing: the

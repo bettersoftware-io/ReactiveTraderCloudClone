@@ -157,7 +157,7 @@
         "presenter/cucumber-fake-timers/world.ts"
       ],
       "project": "**/*.{ts,tsx}",
-      "ignoreDependencies": ["@rtc/server"]
+      "ignoreDependencies": ["@rtc/server", "@rtc/client-react"]
     }
   }
 }

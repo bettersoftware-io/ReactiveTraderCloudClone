@@ -88,7 +88,7 @@ export function startClient(
       ...process.env,
       PORT: String(clientPort),
       VITE_SERVER_URL: serverUrl,
-      // Don't leak the parent tsx loader into the Vite child.
+      // Don't leak the parent's NODE_OPTIONS into the Vite child.
       NODE_OPTIONS: "",
       ...LEAN_DEPS_ENV,
       ...extraEnv,

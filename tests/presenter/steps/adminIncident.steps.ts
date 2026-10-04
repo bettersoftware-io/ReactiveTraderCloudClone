@@ -17,8 +17,8 @@ import type { ConnectionStatus } from "@rtc/domain";
 import {
   buildIncidentPresenterApp,
   type IncidentPresenterCtx,
-} from "../scenarios/_buildApp";
-import type { PresenterWorld } from "../scenarios/_world";
+} from "../scenarios/_buildApp.ts";
+import type { PresenterWorld } from "../scenarios/_world.ts";
 
 // String-literal stand-ins for ConnectionStatus const enum values.
 const CS_CONNECTED = "CONNECTED" as unknown as ConnectionStatus;

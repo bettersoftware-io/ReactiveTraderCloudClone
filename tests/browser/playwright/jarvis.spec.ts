@@ -1,7 +1,7 @@
-import * as jarvis from "../scenarios/jarvis";
-import * as layout from "../scenarios/layout";
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as jarvis from "../scenarios/jarvis.ts";
+import * as layout from "../scenarios/layout.ts";
+import { test } from "./_context.ts";
+import { withFxWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("Jarvis assistant", () => {
   withFxWorkspaceOpen();

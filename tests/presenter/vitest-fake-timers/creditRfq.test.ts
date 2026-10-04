@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import * as credit from "../scenarios/_shared/creditRfq";
+import * as credit from "../scenarios/_shared/creditRfq.ts";
 import {
   buildWorld,
   teardownWorld,
   type VitestPlainPresenterWorld,
-} from "./_world";
+} from "./_world.ts";
 
 describe("@presenter Feature: Credit RFQ", () => {
   beforeEach(() => {

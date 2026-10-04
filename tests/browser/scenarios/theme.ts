@@ -1,10 +1,10 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 import {
   assertContains,
   assertEquals,
   assertNotEqual,
   assertTrue,
-} from "./assert";
+} from "./assert.ts";
 
 export async function toggleAndCaptureBackgrounds(
   ctx: TestContext,

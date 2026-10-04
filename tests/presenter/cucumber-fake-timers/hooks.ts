@@ -2,9 +2,9 @@
 import { After, Before } from "@cucumber/cucumber";
 import FakeTimers from "@sinonjs/fake-timers";
 
-import { buildPresenterApp } from "../scenarios/_buildApp";
-import { newScratchpad } from "../scenarios/_shared/common";
-import type { FakePresenterWorld } from "./world";
+import { buildPresenterApp } from "../scenarios/_buildApp.ts";
+import { newScratchpad } from "../scenarios/_shared/common.ts";
+import type { FakePresenterWorld } from "./world.ts";
 
 Before(function installFakeClockBefore(this: FakePresenterWorld) {
   // Install clock BEFORE buildPresenterApp so simulators capture patched setTimeout/setInterval.

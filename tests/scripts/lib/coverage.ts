@@ -1,5 +1,5 @@
 // istanbul-lib-coverage is CommonJS. Under Node's native ESM loader (how the
-// CLI runs via tsx) a named import fails — the cjs-module-lexer doesn't surface
+// CLI runs) a named import fails — the cjs-module-lexer doesn't surface
 // `createCoverageMap` as a named export — so default-import the module object
 // and reach members off it. The type import is erased at runtime.
 import libCoverage, { type CoverageMapData } from "istanbul-lib-coverage";

@@ -1,7 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 
-import * as theme from "../scenarios/theme";
-import type { StepContext } from "../testContext";
+import * as theme from "../scenarios/theme.ts";
+import type { StepContext } from "../testContext.ts";
 
 When("the trader toggles the theme", function toggleTheme(this: StepContext) {
   return theme.toggleAndCaptureBackgrounds(this.ctx);

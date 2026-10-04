@@ -1,7 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 
-import * as connection from "../scenarios/connection";
-import type { StepContext } from "../testContext";
+import * as connection from "../scenarios/connection.ts";
+import type { StepContext } from "../testContext.ts";
 
 When(
   "the browser goes offline",

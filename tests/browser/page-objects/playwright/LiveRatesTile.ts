@@ -1,10 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { LiveRatesTilePO } from "../contracts/LiveRatesTile";
-import { TESTIDS } from "../contracts/testids";
+import type { LiveRatesTilePO } from "../contracts/LiveRatesTile.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private allTiles(): Locator {
     return this.page.locator(

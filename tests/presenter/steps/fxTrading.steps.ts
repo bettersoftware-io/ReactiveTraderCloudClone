@@ -1,8 +1,8 @@
 // tests/presenter/steps/fxTrading.steps.ts
 import { Then, When } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as trading from "../scenarios/_shared/fxTrading";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as trading from "../scenarios/_shared/fxTrading.ts";
 
 When(
   "the trader clicks buy on the first tile",
