@@ -6,12 +6,13 @@
  * WebSocket, is refused on `/mcp` and resets its password. The unit tests
  * cover each rule; this proves they are wired to real routes.
  *
- * The server is not behind Fly here, so every request arrives from the
- * socket address the rest of the smoke shares. The journey therefore spends
- * a few ban strikes (one failed login, one wrong code, one stale-password
- * login) well under the ban threshold, and runs before the edge-guard check
- * that deliberately gets that address banned.
+ * Every request carries its own `Fly-Client-IP`, so the journey shares no
+ * rate-limit bucket or strike table with the other smoke checks.
  */
+import { WebSocket } from "ws";
+
+/** A documentation-range address unique to this run (RFC 5737). */
+const JOURNEY_IP = `198.51.100.${1 + (Date.now() % 254)}`;
 const DEV_PASSWORD = "Mcdc2026!desk";
 const NEW_PASSWORD = "Reset2026!desk";
 const DEV_CODE = "000000";
@@ -38,7 +39,10 @@ async function post(
 ): Promise<Answer> {
   const response = await fetch(`${httpBase}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Fly-Client-IP": JOURNEY_IP,
+    },
     body: JSON.stringify(payload),
   });
 
@@ -53,6 +57,7 @@ function opensSocket(wsBase: string, token: string): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = new WebSocket(
       `${wsBase}/?access=${encodeURIComponent(token)}`,
+      { headers: { "Fly-Client-IP": JOURNEY_IP } },
     );
 
     const timer = setTimeout(() => {
@@ -60,12 +65,12 @@ function opensSocket(wsBase: string, token: string): Promise<boolean> {
       resolve(false);
     }, SOCKET_TIMEOUT_MS);
 
-    socket.addEventListener("open", () => {
+    socket.on("open", () => {
       clearTimeout(timer);
       socket.close();
       resolve(true);
     });
-    socket.addEventListener("error", () => {
+    socket.on("error", () => {
       clearTimeout(timer);
       resolve(false);
     });
@@ -80,7 +85,9 @@ async function runRegistrationLeg(httpBase: string): Promise<void> {
   const email = `journey-${Date.now()}@rtc.test`;
   const credentials = { username: email, password: DEV_PASSWORD };
 
-  const health = await fetch(`${httpBase}/health/accounts`);
+  const health = await fetch(`${httpBase}/health/accounts`, {
+    headers: { "Fly-Client-IP": JOURNEY_IP },
+  });
   const healthBody = (await health.json()) as Record<string, unknown>;
   assert(
     healthBody.directory === "in-memory",
@@ -155,17 +162,21 @@ async function runRegistrationLeg(httpBase: string): Promise<void> {
   );
 }
 
-async function refusesOnMcp(httpBase: string, token: string): Promise<number> {
+async function postToMcp(httpBase: string, token: string): Promise<Answer> {
   const response = await fetch(`${httpBase}/mcp`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "Fly-Client-IP": JOURNEY_IP,
     },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
   });
 
-  return response.status;
+  return {
+    status: response.status,
+    body: (await response.json()) as Record<string, unknown>,
+  };
 }
 
 async function runSeededAccountsLeg(
@@ -193,8 +204,12 @@ async function runSeededAccountsLeg(
     "an active account's token opens a WebSocket",
   );
 
-  const mcpStatus = await refusesOnMcp(httpBase, token);
-  assert(mcpStatus === 403, `account token on /mcp (got ${mcpStatus})`);
+  const mcp = await postToMcp(httpBase, token);
+  const mcpError = mcp.body.error as { message?: string } | undefined;
+  assert(
+    mcp.status === 403 && mcpError?.message === "account_tokens_not_accepted",
+    `account token on /mcp (got ${mcp.status} ${String(mcpError?.message)})`,
+  );
 
   const requested = await post(httpBase, "/request-reset", {
     email: ACTIVE_SEED,
