@@ -1,14 +1,9 @@
-import {
-  Cause,
-  Effect,
-  Exit,
-  Fiber,
-  Scope,
-  type SubscriptionRef,
-} from "effect";
+import { Cause, Effect, type Fiber, type SubscriptionRef } from "effect";
 
 import {
+  closeScope,
   type EffectHost,
+  interruptFiber,
   reportOutOfBand,
   setRefIfChanged,
 } from "#/bridge/out";
@@ -60,7 +55,7 @@ export function createRunSlot<S>(
     active = null;
 
     if (activeFiber !== null) {
-      Effect.runFork(Fiber.interrupt(activeFiber));
+      interruptFiber(activeFiber);
       activeFiber = null;
     }
   }
@@ -108,7 +103,7 @@ export function createRunSlot<S>(
 
       disposed = true;
       end();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
     isDisposed: () => {
       return disposed;

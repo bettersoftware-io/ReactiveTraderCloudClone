@@ -60,6 +60,26 @@ describe("createStaleFlagMachine", () => {
     expect(collect(m.state$)).toEqual([true]);
   });
 
+  it("dispose() releases both ports before it returns — an event emitted right after is never folded, even with the state stream just unsubscribed", async () => {
+    const status$ = new Subject<ConnectionStatus>();
+    const value$ = new Subject<number>();
+    const m = createStaleFlagMachine({ status$, value$ });
+    const subscription = m.state$.subscribe();
+    await tick();
+    // The order `useMachine` tears down in. The unsubscribe leaves a watcher
+    // fiber ending in the machine's scope, and the scope's close waits for
+    // it before it reaches the fold fiber — the window in which a disposed
+    // machine once folded these two events.
+    subscription.unsubscribe();
+    m.dispose();
+    expect(status$.observed).toBe(false);
+    expect(value$.observed).toBe(false);
+    status$.next(ConnectionStatus.DISCONNECTED);
+    status$.next(ConnectionStatus.CONNECTED);
+    await tick();
+    expect(collect(m.state$)).toEqual([false]);
+  });
+
   it("a failing source closes the machine's scope and rethrows the cause out of band", async () => {
     vi.useFakeTimers();
     const status$ = new Subject<ConnectionStatus>();

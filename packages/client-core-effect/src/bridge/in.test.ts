@@ -2,7 +2,7 @@ import { Chunk, Effect, Exit, Scope, Stream } from "effect";
 import { of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { fromObservable } from "#/bridge/in";
+import { fromObservable, releasePorts } from "#/bridge/in";
 
 describe("bridge/in", () => {
   it("fromObservable() yields values in order and ends on completion", async () => {
@@ -132,6 +132,35 @@ describe("bridge/in", () => {
     fromObservable(source, scope);
     expect(source.observed).toBe(true);
     await Effect.runPromise(Scope.close(scope, Exit.void));
+    expect(source.observed).toBe(false);
+  });
+
+  it("releasePorts() unsubscribes every port of the scope before it returns, and leaves another scope's alone", () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const other = new Subject<number>();
+    const scope = Effect.runSync(Scope.make());
+    const otherScope = Effect.runSync(Scope.make());
+    fromObservable(first, scope);
+    fromObservable(second, scope);
+    fromObservable(other, otherScope);
+
+    releasePorts(scope);
+
+    // No await: the scope itself is still open, its finalizers have not run.
+    expect(first.observed).toBe(false);
+    expect(second.observed).toBe(false);
+    expect(other.observed).toBe(true);
+    releasePorts(otherScope);
+  });
+
+  it("releasePorts() is a no-op for a scope that owns no port, and when called again", () => {
+    const source = new Subject<number>();
+    const scope = Effect.runSync(Scope.make());
+    releasePorts(scope);
+    fromObservable(source, scope);
+    releasePorts(scope);
+    releasePorts(scope);
     expect(source.observed).toBe(false);
   });
 });
