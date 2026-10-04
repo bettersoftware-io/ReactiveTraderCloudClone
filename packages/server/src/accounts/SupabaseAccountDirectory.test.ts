@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AccountDirectory } from "#/accounts/AccountDirectory";
 import { createSupabaseAccountDirectory } from "#/accounts/SupabaseAccountDirectory";
+import { collapseToNetworkKey } from "#/http/clientIp";
 
 describe("SupabaseAccountDirectory — transport", () => {
   it("sends the secret key, the caller's IP and never a key in the URL", async () => {
@@ -459,6 +460,17 @@ describe("SupabaseAccountDirectory — hardening", () => {
 
     expect(fake.requests[0]?.headers["Sb-Forwarded-For"]).toBeUndefined();
     expect(fake.requests[1]?.headers["Sb-Forwarded-For"]).toBe(IP);
+  });
+
+  it("forwards an IPv6 caller's /64 key as given (it is a valid address)", async () => {
+    const fake = createFakeFetch([createReply(200, {})]);
+    const key = collapseToNetworkKey("2001:db8:1:2:aaaa:bbbb:cccc:dddd");
+
+    await createDirectory(fake).requestReset("ann@desk.io", key);
+
+    expect(fake.requests[0]?.headers["Sb-Forwarded-For"]).toBe(
+      "2001:db8:1:2::",
+    );
   });
 
   it("a 200 whose body is not JSON never yields a session", async () => {

@@ -533,6 +533,18 @@ the JSON and its shape. A success body is `{"status": …}`; a failure body is
 `{"error": …, "rule"?: …}` (`AccountFlowResponseDto` / `AccountErrorDto` in
 `packages/shared/src/protocol/auth.ts`).
 
+**The caller's IP** is the platform header (`Fly-Client-IP`, or
+`RTC_TRUSTED_IP_HEADER`), else the socket address, collapsed by
+`collapseToNetworkKey` (`packages/server/src/http/clientIp.ts`) before any
+bound reads it: an IPv4 address is itself, an IPv4-mapped IPv6 address
+(`::ffff:a.b.c.d`) is the IPv4 address, and any other IPv6 address is its
+/64 network, spelled as its first four hextets plus `::`
+(`2001:db8:1:2:aaaa:bbbb:cccc:dddd` → `2001:db8:1:2::`). One subscriber is
+routed a whole /64, so keying on the full address would give anyone
+unlimited keys. Every per-IP bound — the rate limiters, the ban list, the
+connection caps — uses that key, and it is also what the Supabase adapter
+forwards as `Sb-Forwarded-For`, so Supabase buckets a /64 the same way.
+
 | Endpoint | Body | Success | Specific failures |
 |---|---|---|---|
 | `/register` | `email`, `displayName` | `202 {status:"code_sent"}`, also for an address that already has an account | `400 invalid_request` with `rule` `email` or `display-name`; `403 registration_closed` (switch off, or the daily cap reached); `503 unavailable` |
