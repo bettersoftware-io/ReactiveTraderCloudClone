@@ -245,7 +245,7 @@ const config: IConfiguration = {
       name: "web-clients-load-cores-lazily",
       severity: "error",
       comment:
-        "A web client reaches an application core only through a dynamic import() (src/app/coreSelection.ts), so the bundler can put each core in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6; `pnpm check:core-bundle` proves it on a real build, this rule on source, without one). A static value import of a core anywhere in a client's source would pull that core into the eager set. Type-only imports are invisible to this graph (tsPreCompilationDeps:false) and cost nothing at runtime.",
+        'A web client reaches an application core only through a dynamic import() (src/app/coreSelection.ts), so the bundler can put each core in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6; `pnpm check:core-bundle` proves it on a real build, this rule on source, without one). A static value import of a core anywhere in a client\'s source would pull that core into the eager set. An `import type { X }` is invisible to this graph (tsPreCompilationDeps:false) and costs nothing at runtime; the inline form, `import { type X }`, survives transpilation as a bare `import "…"` and IS caught. The same core reached through @rtc/ui-contract, whose harness imports it statically, is `ui-contract-only-in-client-tests` below.',
       from: {
         path: "^packages/client-(react|solid)/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/)",
@@ -253,6 +253,31 @@ const config: IConfiguration = {
       to: {
         path: "^packages/client-core-(rxjs|async|effect)/",
         dynamic: false,
+      },
+    },
+    {
+      name: "ui-contract-only-in-client-tests",
+      severity: "error",
+      comment:
+        "@rtc/ui-contract is a client's devDependency: the test harness, the contract specs, the visual matrix. Its harness imports the RxJS core statically, so one import of it from a web client's production source would put that core in the eager bundle by another road than the one `web-clients-load-cores-lazily` watches.",
+      from: {
+        path: "^packages/client-(react|solid)/src",
+        pathNot: "(\\.test\\.tsx?$|/__tests__/)",
+      },
+      to: { path: "^packages/ui-contract/" },
+    },
+    {
+      name: "adapter-fakes-stay-in-tests",
+      severity: "error",
+      comment:
+        "@rtc/client-core's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
+      from: {
+        path: "^packages/[^/]+/(src|app)/",
+        pathNot:
+          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-core/src/testing\\.ts$)",
+      },
+      to: {
+        path: "^packages/client-core/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
       },
     },
     {

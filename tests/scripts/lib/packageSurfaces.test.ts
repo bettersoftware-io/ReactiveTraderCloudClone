@@ -10,7 +10,7 @@ import { buildHomeMap } from "./homeMap.ts";
  * follows every re-export, so a type-only pass-through is caught too.
  * What it cannot see is a NEW declaration that merely copies a foreign value
  * (`export const X = DOMAIN_X`): that is this package's name to the checker.
- * The pinned surfaces (`publicApi.test.ts`, `core.publicApi.test.ts`) are
+ * The pinned surfaces (each package's `publicApi.test.ts` snapshot) are
  * where one of those shows up, as a new name in the snapshot. */
 describe("package entry points export only names the package declares", () => {
   it.each(createEntries())(

@@ -28,7 +28,7 @@ worked example. This chapter is the precise reference behind it.
 flowchart TB
   CoreAPI["@rtc/core-api<br/>(types only)"]
   CoreLogic["@rtc/core-logic<br/>(shared rxjs-free rules)"]
-  RxjsCore["@rtc/client-core<br/>(RxJS)"]
+  RxjsCore["@rtc/client-core-rxjs<br/>(RxJS, the default)"]
   AsyncCore["@rtc/client-core-async"]
   EffectCore["@rtc/client-core-effect"]
   CoreContract["@rtc/core-contract<br/>(dev-only)"]
@@ -45,10 +45,12 @@ flowchart TB
   CoreContract -. witnesses .-> RxjsCore
   CoreContract -. witnesses .-> AsyncCore
   CoreContract -. witnesses .-> EffectCore
-  RxjsCore --> ReactBindings
-  RxjsCore --> SolidBindings
+  CoreAPI --> ReactBindings
+  CoreAPI --> SolidBindings
   ReactBindings --> ClientReact
   SolidBindings --> ClientSolid
+  RxjsCore -. "loadCore · lazy import()" .-> ClientReact
+  RxjsCore -. "loadCore · lazy import()" .-> ClientSolid
   AsyncCore -. "loadCore · lazy import()" .-> ClientReact
   EffectCore -. "loadCore · lazy import()" .-> ClientReact
   AsyncCore -. "loadCore · lazy import()" .-> ClientSolid
@@ -62,11 +64,13 @@ machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 `Presenters` / `AppCommands` / `AppPorts` / `App`, and `CoreFactory` — the
 whole plug a client needs to name a core without naming an implementation.
 
-`@rtc/client-core` is unchanged in name, adapters, and behaviour; it now
-`implements` `@rtc/core-api`'s presenter interfaces. It re-exported every type
-it used to own outright until 2026-10-04; since then a consumer imports a
-contract type from `@rtc/core-api` itself. `@rtc/client-core-async` and `@rtc/client-core-effect` are new
-sibling packages implementing the same `CoreFactory` contract on
+`@rtc/client-core-rxjs` is the RxJS core: it `implements` `@rtc/core-api`'s
+presenter interfaces. Until 2026-10-04 it lived inside `@rtc/client-core`,
+which also re-exported every contract type; since then the core is its own
+package, `@rtc/client-core` holds only the adapters, port factories and
+stores, and a consumer imports a contract type from `@rtc/core-api` itself.
+`@rtc/client-core-async` and `@rtc/client-core-effect` are its
+sibling packages, implementing the same `CoreFactory` contract on
 `async`/`await` + `AsyncIterable` and Effect-TS respectively. `@rtc/core-contract`
 is dev-only — a devDependency of all three cores, never imported from any
 `src` — and is the behavioural witness that all three agree.

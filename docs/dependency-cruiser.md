@@ -25,7 +25,7 @@ graph TD
     webc["@rtc/client-react<br/>(web UI + browser adapters)"]
     rnc["@rtc/client-react-native<br/>(RN UI + native adapters)"]
     rb["@rtc/react-bindings<br/>(ViewModel bridge)"]
-    core["@rtc/client-core<br/>(application core)"]
+    core["@rtc/client-core + @rtc/client-core-rxjs<br/>(adapters + the default application core)"]
     server["@rtc/server<br/>(WebSocket server)"]
     wse["@rtc/ws-effects<br/>(effects framework, rxjs only)"]
     shared["@rtc/shared<br/>(DTOs / wire protocol)"]
@@ -147,6 +147,8 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `effect-only-in-client-core-effect` | `^packages/` **except** `^packages/client-core-effect/` | — (rejects `effect`, bare specifier included) | The Effect runtime never leaks past its own package boundary — an alternative core is pluggable precisely because of that |
 | `client-core-framework-free` | `^packages/client-core/src` | — (rejects `react`/`react-dom`/`react-native`/`solid-js`, same pattern) | The adapters stay framework-free despite UI-facing consumers |
 | `web-clients-load-cores-lazily` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects a **static** import of `^packages/client-core-(rxjs\|async\|effect)/`: `dynamic: false`) | A web client reaches a core only through `import()`, so each core sits in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6). The repo's only `dynamic`-qualified rule: the same edge is allowed when it is a dynamic import |
+| `ui-contract-only-in-client-tests` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects `^packages/ui-contract/`) | `@rtc/ui-contract` is a client's devDependency, and its harness imports the RxJS core statically: an import from production source would put that core in the eager bundle by a road `web-clients-load-cores-lazily` does not watch |
+| `adapter-fakes-stay-in-tests` | any package's `src/` or `app/` (tests and `client-core/src/testing.ts` excepted) | — (rejects `client-core`'s `testing.ts`, `adapters/__tests__/` and `*.testHelpers.ts`) | The adapters' test scaffolding (`@rtc/client-core/testing`) never reaches a shipped bundle |
 | `ui-takes-wire-types-only` | `^packages/(client-react\|client-solid\|client-react-native\|react-bindings\|solid-bindings\|ui-contract)/` | — (rejects `^packages/shared/`) | The UI side may name a wire DTO **type** from `@rtc/shared` but never import a value: the wire protocol and the scripted Jarvis brain stay on the port side of the plug. Type-only edges are invisible to the graph, so every edge the rule sees is a value edge |
 | `react-bindings-no-apps` | `^packages/react-bindings/src` | `react-bindings\|client-core\|client-core-rxjs\|core-api\|domain` | The React↔RxJS bridge depends only inward, never on an app or the server |
 | `solid-bindings-no-apps` | `^packages/solid-bindings/src` | `solid-bindings\|client-core\|client-core-rxjs\|core-api\|domain` | The Solid↔RxJS bridge depends only inward, never on an app or the server |
@@ -173,8 +175,8 @@ so importing a server **test** file from the client is rejected too — not only
 (`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
 `devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
 bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
-`client-core`, `core-api`, `core-logic`, `core-contract`, the two
-alternative cores) allow a small inward set; the clients are guarded against each
+`client-core`, `core-api`, `core-logic`, `core-contract`, the three
+application cores) allow a small inward set; the clients are guarded against each
 other and the server. Two backstops complement these rules: `no-circular`, and
 pnpm strict mode (a package cannot even resolve an **undeclared** `@rtc/*`
 import). The allowlist rules add the layer pnpm-strict can't — a **declared

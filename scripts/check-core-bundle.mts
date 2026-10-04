@@ -32,10 +32,10 @@
 //     guard, over `.vercel/output/static`, which already holds exactly the
 //     one client that job built).
 //
-// Precondition (build mode only): the alternative-core packages must already
-// be built — each web client consumes @rtc/client-core-async /
-// @rtc/client-core-effect through their `dist/`-only `exports`, not their
-// `src/`. CI's `Build` step (which runs `pnpm build` before this check)
+// Precondition (build mode only): the three core packages must already be
+// built — each web client consumes @rtc/client-core-rxjs,
+// @rtc/client-core-async and @rtc/client-core-effect through their
+// `dist/`-only `exports`, not their `src/`. CI's `Build` step (which runs `pnpm build` before this check)
 // guarantees that. Locally, a stale `dist/` produces a false "expected
 // exactly one lazy chunk … found 0" below — rebuild first: `pnpm build`.
 import { execSync } from "node:child_process";

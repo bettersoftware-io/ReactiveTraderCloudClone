@@ -98,11 +98,11 @@ flowchart TD
   ui["<b>UI components</b><br/>React or Solid — render only"]
   bind["<b>Bindings</b><br/>@rtc/react-bindings · @rtc/solid-bindings"]
   plug{{"<b>THE PLUG</b> — @rtc/core-api<br/>types only: what a core must offer"}}
-  rx["<b>@rtc/client-core</b><br/>RxJS — the default"]
+  rx["<b>@rtc/client-core-rxjs</b><br/>RxJS — the default"]
   as["<b>@rtc/client-core-async</b><br/>async/await + AsyncIterable"]
   ef["<b>@rtc/client-core-effect</b><br/>Effect-TS"]
   socket{{"<b>THE SOCKET</b> — AppPorts<br/>what a core is given"}}
-  adapters["<b>Adapters</b><br/>WebSocket · simulators · localStorage"]
+  adapters["<b>Adapters</b> — @rtc/client-core<br/>WebSocket · simulators · localStorage"]
   world(["Server and browser"])
 
   ui --> bind
@@ -757,7 +757,7 @@ an accident.
 | `@rtc/domain` ports and simulators | `Observable`, operators | yes — RxJS is its only runtime dependency ([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)) |
 | `@rtc/core-api` | `Observable`, `StateObservable` | **no** — types only |
 | `@rtc/core-logic` | nothing | no |
-| `@rtc/client-core` (RxJS core) | everything | yes |
+| `@rtc/client-core-rxjs` (RxJS core) | everything | yes |
 | alternative cores, inside `bridge/` | `new Observable`, `state()`, `take`, `firstValueFrom` | yes |
 | alternative cores, outside `bridge/` | type names only | **no** |
 | bindings | `combineLatest`, `map`, `firstValueFrom`; `@react-rxjs/core` (React), `state()` (Solid) | yes |

@@ -53,7 +53,7 @@ for (const from of flags.from) {
   for (const [name, home] of Object.entries(
     buildHomeMap(resolve(ROOT, entry), ROOT),
   )) {
-    const target = targetOf(specifier, ownPkg, home);
+    const target = targetOf(ownPkg, home);
 
     if (target !== undefined && home.name !== name) {
       problems.push(
@@ -232,29 +232,14 @@ function listForeignNames(module: string, pkg: string): Record<string, string> {
   return foreign;
 }
 
-/** Where a name imported from `specifier` should come from instead, or
- * `undefined` to leave it. A name another package declares goes to that
- * package. A name `client-core` declares in its RxJS core, imported from the
- * ROOT, goes to the `./core` subpath — the root stops exporting it. */
-function targetOf(
-  specifier: string,
-  ownPkg: string,
-  home: Home,
-): string | undefined {
+/** Where a name should come from instead, or `undefined` to leave it: a
+ * name another package declares goes to that package. */
+function targetOf(ownPkg: string, home: Home): string | undefined {
   if (home.pkg === "") {
     return undefined;
   }
 
-  if (home.pkg !== ownPkg) {
-    return `@rtc/${home.pkg}`;
-  }
-
-  const inCore =
-    home.module.startsWith("presenters/") || home.module === "composition.ts";
-
-  return specifier === "@rtc/client-core" && inCore
-    ? "@rtc/client-core-rxjs"
-    : undefined;
+  return home.pkg === ownPkg ? undefined : `@rtc/${home.pkg}`;
 }
 
 function listSourceFiles(dir: string): string[] {
