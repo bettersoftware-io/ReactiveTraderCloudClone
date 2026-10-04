@@ -69,6 +69,62 @@ describe("bridge/in", () => {
     ).rejects.toThrow("boom");
   });
 
+  it("fromObservable() carries a burst the source emits in one turn as ONE chunk — before the stream first runs, and again while it is already waiting", async () => {
+    const source = new Subject<number>();
+    const chunks = collectChunks(fromObservable(source));
+    source.next(1);
+    source.next(2);
+    source.next(3);
+    await nextMacrotask();
+    source.next(4);
+    source.next(5);
+    source.next(6);
+    await nextMacrotask();
+    expect(chunks).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+  });
+
+  it("fromObservable() keeps values from separate turns in separate chunks — nothing is held back to wait for more", async () => {
+    const source = new Subject<number>();
+    const chunks = collectChunks(fromObservable(source));
+    source.next(1);
+    await nextMacrotask();
+    source.next(2);
+    await nextMacrotask();
+    expect(chunks).toEqual([[1], [2]]);
+  });
+
+  it("fromObservable() delivers the values that preceded an error in the same turn, then fails", async () => {
+    const source = new Subject<number>();
+    const seen: number[] = [];
+    const outcome = Effect.runPromise(
+      Stream.runForEach(fromObservable(source), (value) => {
+        return Effect.sync(() => {
+          seen.push(value);
+        });
+      }),
+    );
+    source.next(1);
+    source.next(2);
+    source.error(new Error("boom"));
+    await expect(outcome).rejects.toThrow("boom");
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it("fromObservable() delivers the values that preceded completion in the same turn, then ends", async () => {
+    const source = new Subject<number>();
+    const chunks = collectChunks(fromObservable(source));
+    source.next(1);
+    source.next(2);
+    source.complete();
+    await nextMacrotask();
+    source.next(3);
+    await nextMacrotask();
+    expect(chunks).toEqual([[1, 2]]);
+  });
+
   it("fromObservable(source, scope) releases the source when the scope closes even if the stream was never run", async () => {
     const source = new Subject<number>();
     const scope = Effect.runSync(Scope.make());
@@ -79,3 +135,22 @@ describe("bridge/in", () => {
     expect(source.observed).toBe(false);
   });
 });
+
+/** Run the stream and keep each chunk it emits, as plain arrays. */
+function collectChunks(stream: Stream.Stream<number, unknown>): number[][] {
+  const chunks: number[][] = [];
+  Effect.runFork(
+    Stream.runForEachChunk(stream, (chunk) => {
+      return Effect.sync(() => {
+        chunks.push(Chunk.toArray(chunk));
+      });
+    }),
+  );
+  return chunks;
+}
+
+function nextMacrotask(): Promise<void> {
+  return new Promise((resume) => {
+    setTimeout(resume, 0);
+  });
+}

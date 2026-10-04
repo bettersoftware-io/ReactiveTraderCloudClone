@@ -566,6 +566,7 @@ the precise versions.
 | 5 | **One subscriber throwing does not hurt the others.** | One broken panel must not freeze the desk. |
 | 6 | **After `dispose()`, the core holds no port subscription** once its consumers have let go. | No leaks. |
 | 7 | **Each port method is called once, at construction.** | A port call can open a subscription on the server; calling it twice doubles the load. |
+| 8 | **Values that arrive together are delivered together.** | The screen redraws once per turn. Fifty prices in one turn is one redraw; fifty prices in fifty turns is fifty. |
 
 Promise 1 is the one that shapes the bridges most:
 
@@ -590,6 +591,43 @@ sequenceDiagram
 Only the *first* value is promised to be synchronous. Later values may arrive
 a tick later (in the Effect core they arrive on a fiber), and the contract
 tests allow for that.
+
+### Promise 8, and the mistake behind it
+
+Promise 8 was added after it was broken for weeks without a single test
+failing (found 2026-10-04).
+
+When a price tile appears, the pricing simulator sends it the last 50 prices
+at once, so the sparkline has a history. In the RxJS core those 50 values run
+through the pipeline inside one function call, so the tile sees them in one
+turn and React redraws it once. The Effect core delivered the same 50 values,
+in the same order, but one per turn: its fibers pass work to each other
+through the scheduler, and at every `Stream.merge` each piece of work crossed
+over separately.
+
+Nothing was wrong with the values, so every contract test passed. But the
+nine FX tiles redrew 1,070 times in their first two seconds instead of about
+95, and the page was four times busier at start-up. On a small CI runner that
+made every test touching the FX screen about two seconds slower, which is how
+it was finally noticed.
+
+Two lessons, and where each one now lives:
+
+- **"Same values" is not the whole contract; "same number of turns" matters
+  too.** The contract harness has `collectTurns`, which counts the turns a
+  stream's values arrive in, and three members (`priceStream`,
+  `priceHistory`, `animationDirector`) carry a case named "…in one turn".
+  Give the same case to any new member that folds a port which can burst.
+- **In the Effect core, a burst must enter as one chunk.** Effect moves
+  *chunks* between fibers, not single values, so `bridge/in.ts` drains
+  everything a port emitted in one turn and passes it on as one chunk. The
+  comment there has the measurements and says what not to simplify.
+
+How it was found, in case it is needed again: slow the processor down in a
+probe (`Emulation.setCPUThrottlingRate`), take a CPU profile from navigation
+to two seconds after the app appears, and count renders per component. The
+profile showed React doing four times the work inside `Tile`; a counter in
+`Tile` showed `price` changing 472 times instead of 30.
 
 ## A command that can be cancelled
 

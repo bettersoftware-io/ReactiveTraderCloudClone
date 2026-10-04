@@ -206,6 +206,25 @@ to reproduce them explicitly:
    (`packages/client-core-effect/src/bridge/in.ts`) now does; a stream built
    over it must therefore be called inside a `sharedFold`'s `run`, never at
    presenter construction.
+5. **A burst stays a burst.** Values a port delivers in one turn reach a
+   subscriber in one turn — every value, in order. A UI re-renders once per
+   turn (React and Solid both batch the store updates made inside one), so
+   this is what decides whether a burst of N costs one render or N. RxJS
+   gets it for free (a synchronous chain), and the async core passes the
+   same cases unchanged; the Effect core has to arrange it. Its fibers pass a stream's
+   CHUNKS between each other, one scheduler turn per chunk at every
+   `Stream.merge` / `mergeAll` / `flatMap`, so `fromObservable` drains
+   everything the port emitted in a turn and emits it as ONE chunk
+   (`drainBurst` + `joinConsecutiveValues`). Measured 2026-10-04, before
+   that: the pricing simulator replays 50 historical ticks per pair on
+   subscribe, the nine FX tiles rendered 1,070 times in their first two
+   seconds against ~95 on the other cores, and start-up kept the page busy
+   for 666 ms against 166 ms (4.1 s against 0.8 s under 6x CPU throttling).
+   It passed every contract suite, because the suites asserted WHICH values
+   arrive, never how many turns they take. The cases named "…in one turn"
+   (`priceStream`, `priceHistory`, `animationDirector`) now assert it with
+   `collectTurns` (`@rtc/core-contract`'s harness); a new member that folds
+   a port which can burst should get the same case.
 
 ## Failure, teardown and port discipline
 

@@ -1,4 +1,4 @@
-import { Effect, Queue, Scope, Stream, Take } from "effect";
+import { Chunk, Effect, Queue, Scope, Stream, Take } from "effect";
 import type { Observable } from "rxjs";
 
 /** Push an Observable into an Effect Stream, subscribing SYNCHRONOUSLY, as a
@@ -36,6 +36,27 @@ import type { Observable } from "rxjs";
  * `fromObservable(source)` stream and drains it to completion more than
  * once will only see the first run's subscription (the second sees an
  * already-unsubscribed source).
+ *
+ * BURSTS TRAVEL WHOLE. Everything the source emits in one turn is drained
+ * together and sent downstream as ONE chunk (`drainBurst` +
+ * `joinConsecutiveValues` below). That is load-bearing for the UI, not a
+ * tuning detail. `Stream.merge`, `mergeAll` and `flatMap` hand each CHUNK
+ * from one fiber to another on its own scheduler turn, and a UI renders once
+ * per turn — so a burst that enters as fifty single-value chunks (what the
+ * obvious `Stream.fromQueue(queue).pipe(Stream.flattenTake)` produces: one
+ * chunk per `Take`) reaches every fold with a `merge` in it, and then the
+ * screen, one value per turn.
+ *
+ * MEASURED 2026-10-04, when this was `fromQueue` + `flattenTake`: the
+ * pricing simulator replays 50 historical ticks per pair on subscribe, and
+ * the nine FX tiles rendered 1,070 times in their first two seconds against
+ * ~95 on the RxJS and async cores; the page was busy for 666 ms at start-up
+ * against 166 ms, 4.1 s against 0.8 s under 6x CPU throttling — which is
+ * what made the effect-core e2e job slow. With the burst kept whole: ~150
+ * renders, 380 ms, 1.8 s. A waiting `take` is handed the burst's first value
+ * alone, hence the `takeAll` that follows it. Do not simplify this back: the
+ * contract cases named "…in one turn" (`collectTurns`, `@rtc/core-contract`)
+ * and this file's chunk tests fail if a burst is split.
  *
  * The calling rule, stated as what to DO: call it inside a `sharedFold`'s
  * `run`, once per warm period. Never at presenter construction, never
@@ -81,7 +102,19 @@ export function fromObservable<T>(
     );
   }
 
-  return Stream.fromQueue(queue).pipe(
+  // One drain = everything the source emitted in one turn. A parked `take`
+  // is handed the burst's FIRST value alone (the queue completes a waiting
+  // taker with one element), so the rest is collected with `takeAll` once
+  // this fiber resumes — by then the source's synchronous loop has finished
+  // and the whole burst is queued.
+  const drainBurst = Queue.take(queue).pipe(
+    Effect.zipWith(Queue.takeAll(queue), (first, rest) => {
+      return Chunk.prepend(rest, first);
+    }),
+  );
+
+  return Stream.repeatEffectChunk(drainBurst).pipe(
+    Stream.mapChunks(joinConsecutiveValues),
     Stream.flattenTake,
     Stream.ensuring(
       Effect.sync(() => {
@@ -89,4 +122,41 @@ export function fromObservable<T>(
       }),
     ),
   );
+}
+
+/** Everything the queue held at one drain, with each run of consecutive
+ * values joined into ONE `Take` — so a burst the source emitted in a single
+ * turn travels downstream as a single chunk. A terminal `Take` (end or
+ * failure) stays where it was, after the values that preceded it. */
+function joinConsecutiveValues<T>(
+  takes: Chunk.Chunk<Take.Take<T, unknown>>,
+): Chunk.Chunk<Take.Take<T, unknown>> {
+  const joined: Take.Take<T, unknown>[] = [];
+  let values: T[] = [];
+
+  function flushValues(): void {
+    if (values.length > 0) {
+      joined.push(Take.chunk(Chunk.unsafeFromArray(values)));
+      values = [];
+    }
+  }
+
+  for (const take of takes) {
+    Take.match(take, {
+      onEnd: () => {
+        flushValues();
+        joined.push(take);
+      },
+      onFailure: () => {
+        flushValues();
+        joined.push(take);
+      },
+      onSuccess: (chunk: Chunk.Chunk<T>) => {
+        values.push(...chunk);
+      },
+    });
+  }
+
+  flushValues();
+  return Chunk.unsafeFromArray(joined);
 }

@@ -12,6 +12,11 @@ import { collect } from "#/harness/collect";
 import { createTick, EURUSD, GBPUSD } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
+import { collectTurns } from "#/harness/turns";
+
+/** A same-turn burst, standing in for the 50 historical ticks the pricing
+ * simulator replays on subscribe. */
+const BURST_MIDS = [1.1, 1.2, 1.15, 1.18, 1.17, 1.19];
 
 function mid(price: Price): number {
   return price.mid;
@@ -63,6 +68,48 @@ export function describePriceStreamContract(
           ),
         );
         expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a burst the port delivers in one turn reaches the subscriber in one turn — every value, in order, but one UI render instead of one per value", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collectTurns(h.app.presenters.priceStream.price$(EURUSD));
+
+        for (const tickMid of BURST_MIDS) {
+          h.driver.tickPrice(createTick("EURUSD", tickMid));
+        }
+
+        await settle();
+        expect(c.values.map(mid)).toEqual(BURST_MIDS);
+        expect(c.turnCount()).toBe(1);
+        expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a burst arriving later, on a stream already live, also lands in one turn", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collectTurns(h.app.presenters.priceStream.price$(EURUSD));
+        h.driver.tickPrice(createTick("EURUSD", 1));
+        await settle();
+        const turnsBefore = c.turnCount();
+
+        for (const tickMid of BURST_MIDS) {
+          h.driver.tickPrice(createTick("EURUSD", tickMid));
+        }
+
+        await settle();
+        expect(c.values.map(mid)).toEqual([1, ...BURST_MIDS]);
+        expect(c.turnCount() - turnsBefore).toBe(1);
         c.unsubscribe();
       } finally {
         await h.teardown();
