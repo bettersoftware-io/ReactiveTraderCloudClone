@@ -12,6 +12,8 @@ import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
+import type { BuildStamp } from "#/ui/shell/buildStamp";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
 import { matchesTextExactly } from "#tests/pages/support/textContent";
 
@@ -21,6 +23,9 @@ interface LoginScreenMountOptions {
   error?: string | null;
   waitVariant?: LoginWaitVariant;
   onToggleSimulator?: (v: boolean) => void;
+  /** The running build's stamp, as `AppRoot` supplies it. Default `null` —
+   * a development run. */
+  buildStamp?: BuildStamp | null;
 }
 
 /** What a single-child RN `<Text>` node's `props.children` actually holds. */
@@ -100,16 +105,19 @@ export function loginScreenPage(): LoginScreenPage {
         error = null,
         onToggleSimulator = noop,
         waitVariant = "handshake",
+        buildStamp = null,
       } = options;
       await renderWithTheme(
-        <ViewModelProvider
-          viewModel={fakeViewModel(status, login, error, waitVariant)}
-        >
-          <LoginScreen
-            simulator={false}
-            onToggleSimulator={onToggleSimulator}
-          />
-        </ViewModelProvider>,
+        <BuildStampContext.Provider value={buildStamp}>
+          <ViewModelProvider
+            viewModel={fakeViewModel(status, login, error, waitVariant)}
+          >
+            <LoginScreen
+              simulator={false}
+              onToggleSimulator={onToggleSimulator}
+            />
+          </ViewModelProvider>
+        </BuildStampContext.Provider>,
       );
     },
     async unmountAll(): Promise<void> {

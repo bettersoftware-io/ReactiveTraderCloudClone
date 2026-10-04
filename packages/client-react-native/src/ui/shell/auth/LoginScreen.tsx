@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,7 +19,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
 import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
 import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
-import { BUILD_STAMP } from "#/ui/shell/buildStamp";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -56,6 +56,7 @@ export function LoginScreen({
   const { useAuth } = useViewModel();
   const { state, login } = useAuth();
   const styles = useThemedStyles(makeStyles);
+  const buildStamp = useContext(BuildStampContext);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -151,9 +152,9 @@ export function LoginScreen({
           />
         </View>
 
-        {BUILD_STAMP !== null ? (
+        {buildStamp !== null ? (
           <Text testID="login-build" style={styles.build}>
-            BUILD {BUILD_STAMP.commit} · {BUILD_STAMP.builtAt}
+            BUILD {buildStamp.commit} · {buildStamp.builtAt}
           </Text>
         ) : null}
       </ScrollView>
