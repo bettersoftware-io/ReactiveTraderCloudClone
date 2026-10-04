@@ -14,13 +14,15 @@
 //   3. no single file carries two different cores' markers;
 //   4. no eager file carries the Effect runtime's own `effect/Fiber` marker.
 //
-// What "the RxJS core" means here is its COMPOSITION ROOT (the file that
-// constructs the app — `createApp`, `createMachineFactories`, stamped with
-// RXJS_CORE_BRAND). `@rtc/client-core`'s presenters, machines and adapters are
-// still reached eagerly through the root index the UI imports from, so they
-// stay in the entry bundle regardless; the measured move is ~3 KB gzip per
-// client. Making THOSE lazy needs an explicit edge surface for the UI — see
-// ADR-006 Follow-ups.
+// A marker names a core's COMPOSITION ROOT (the file that constructs the app
+// — `createApp`, `createMachineFactories`, stamped with RXJS_CORE_BRAND). The
+// RxJS core's presenters and machines sit behind the same
+// `@rtc/client-core/core` subpath since 2026-10-03, so a static import of it
+// drags the marker into the eager set and fails rule 1; that the ROOT index
+// reaches no presenter module is dependency-cruiser's
+// `client-core-root-is-the-edge`, checked on source. `@rtc/client-core`'s
+// adapters and port factories ship eagerly by design — the ports are built
+// before any core loads.
 //
 // Two modes:
 //   node scripts/check-core-bundle.mts              — builds each web client

@@ -32,11 +32,12 @@ import type { World } from "@ui-contract/harness/world";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { EqWorkspaceState, JarvisEvent } from "@rtc/client-core";
-import {
-  DRIVE_STAGGER_MS,
-  type UNSUPPORTED_SENTINEL_SPEC,
+import type {
+  EqWorkspaceState,
+  JarvisEvent,
+  UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/client-core";
+import { DRIVE_STAGGER_MS } from "@rtc/client-core/core";
 
 afterEach(() => {
   vi.useRealTimers();

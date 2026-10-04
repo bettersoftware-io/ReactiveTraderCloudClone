@@ -81,11 +81,11 @@ import type {
 } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
-  createLayoutMachine,
   InMemoryDockLayoutStore,
   JARVIS_DEMO_STEPS,
   type WorkspaceTab,
 } from "@rtc/client-core";
+import { createLayoutMachine } from "@rtc/client-core/core";
 import type { CoreSelection } from "@rtc/core-api";
 import type { ViewModel } from "@rtc/solid-bindings";
 import {

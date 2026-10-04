@@ -43,15 +43,22 @@ import type {
   WorkspaceNavState,
 } from "@rtc/client-core";
 import {
+  createDefaultLayoutPort,
+  createLayoutPresets,
+  createWorkspaceDock,
+  createWorkspacePersistenceWriter,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
+  type WorkspaceTab,
+} from "@rtc/client-core";
+import {
   CandleSeriesPresenter,
   createBootSequenceMachine,
-  createDefaultLayoutPort,
   createJarvisDemoMachine,
   createJarvisDriverMachine,
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
-  createLayoutPresets,
   createNotionalMachine,
   createOrderTicketMachine,
   createRfqCountdownMachine,
@@ -59,14 +66,9 @@ import {
   createRowHighlightMachine,
   createStaleFlagMachine,
   createTileExecutionMachine,
-  createWorkspaceDock,
   createWorkspaceNavMachine,
-  createWorkspacePersistenceWriter,
-  InMemoryDockLayoutStore,
-  InMemoryLayoutPresetStore,
   JarvisPanelsPresenter,
-  type WorkspaceTab,
-} from "@rtc/client-core";
+} from "@rtc/client-core/core";
 import type { CoreImpl, RfqCountdownSeed } from "@rtc/core-api";
 import type {
   AmbientStyle,
