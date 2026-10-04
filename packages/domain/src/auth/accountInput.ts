@@ -2,23 +2,29 @@ export const EMAIL_MAX_LENGTH = 254;
 export const DISPLAY_NAME_MIN_LENGTH = 2;
 export const DISPLAY_NAME_MAX_LENGTH = 40;
 
-const EMAIL_SHAPE =
-  /^[\x21-\x3f\x41-\x7e]+@[\x21-\x3f\x41-\x7e]+\.[\x21-\x3f\x41-\x7e]+$/;
+const EMAIL_SHAPE = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 const CONFIRMATION_CODE_SHAPE = /^\d{6}$/;
 /** Control, format (zero-width, bidi), surrogate, private-use, unassigned,
- * and the line and paragraph separators. */
-const UNPRINTABLE_CHARACTER = /[\p{C}\p{Zl}\p{Zp}]/u;
-/** Letters that render blank: Hangul fillers and the braille blank. */
-const BLANK_LOOKALIKE = /[\u115f\u1160\u2800\u3164\uffa0]/u;
+ * line and paragraph separators, and every code point Unicode marks as
+ * invisible by default (fillers, variation selectors, joiners). */
+const UNPRINTABLE_CHARACTER =
+  /[\p{C}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/u;
+/** Renders blank but is not default-ignorable: the braille blank. */
+const BLANK_LOOKALIKE = /⠀/u;
+const READABLE_CHARACTER = /[\p{L}\p{N}]/u;
+/** An enclosing mark, or a run of four or more marks ("Zalgo" text). */
+const STACKED_MARKS = /\p{Me}|\p{M}{4,}/u;
 
 /** One person, one spelling: every account lookup uses this form. */
 export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
-/** A pragmatic shape check on an already-normalized address, printable ASCII
- * only (an internationalized domain is typed in its punycode form). Whether
- * the mailbox exists is what the confirmation code proves. */
+/** A pragmatic shape check: the address must already be in `normalizeEmail`
+ * form (an uppercase letter fails), with an RFC "atext" local part and
+ * hostname labels in the domain (an internationalized domain is typed in its
+ * punycode form). Whether the mailbox exists is what the confirmation code
+ * proves. */
 export function isValidEmail(email: string): boolean {
   return email.length <= EMAIL_MAX_LENGTH && EMAIL_SHAPE.test(email);
 }
@@ -31,10 +37,13 @@ export function isValidDisplayName(name: string): boolean {
   const length = Array.from(name).length;
 
   return (
+    name === normalizeDisplayName(name) &&
     length >= DISPLAY_NAME_MIN_LENGTH &&
     length <= DISPLAY_NAME_MAX_LENGTH &&
     !UNPRINTABLE_CHARACTER.test(name) &&
-    !BLANK_LOOKALIKE.test(name)
+    !BLANK_LOOKALIKE.test(name) &&
+    READABLE_CHARACTER.test(name) &&
+    !STACKED_MARKS.test(name)
   );
 }
 

@@ -16,11 +16,16 @@ describe("normalizeEmail", () => {
 });
 
 describe("isValidEmail", () => {
+  it("accepts the normal form of a messy spelling", () => {
+    expect(isValidEmail(normalizeEmail("  Ann@Desk.IO "))).toBe(true);
+  });
+
   it.each([
     "ann@desk.io",
     "a.b+tag@sub.desk.io",
     "ann.lee+rtc@desk.example.io",
     "o'neil@desk.io",
+    "a@xn--dsk-bma.io",
   ])("accepts %s", (email) => {
     expect(isValidEmail(email)).toBe(true);
   });
@@ -32,6 +37,11 @@ describe("isValidEmail", () => {
     "ann@",
     "ann @desk.io",
     "ann@@desk.io",
+    "Ann@Desk.io",
+    "a@b.c<script>",
+    "a b@desk.io",
+    "ann@desk..io",
+    '"ann"@desk.io',
     "\u0430nn@desk.io",
     "ann@d\u00ebsk.io",
     "\uff41nn@desk.io",
@@ -65,21 +75,45 @@ describe("display names", () => {
     ["only zero-width spaces", "\u200b\u200b"],
     ["only Hangul fillers", "\u3164\u3164"],
     ["a line separator", "Ann\u2028Lee"],
+    ["outer spaces", "  Ann  "],
+    ["a doubled space", "Ann  Lee"],
+    ["an ideographic space", "Ann\u3000Lee"],
+    ["a fullwidth letter", "\uff21nn"],
+    ["a variation selector", "Ann\ufe0f"],
+    ["a combining grapheme joiner", "An\u034fn"],
+    ["only an emoji", "\u{1f680}\u{1f680}"],
+    ["only punctuation", ".."],
+    ["stacked combining acutes", "A\u0301\u0301\u0301\u0301nn"],
+    ["an enclosing mark", "A\u20ddnn"],
+    ["the braille blank", "Ann\u2800Lee"],
+    ["a decomposed letter (not NFC)", "Zoe\u0308"],
   ])("rejects %s", (_label: string, name: string) => {
     expect(isValidDisplayName(name)).toBe(false);
   });
 
-  it.each(["Zo\u00eb M\u00fcller", "\u674e \u96f7", "Ann \u{1f680}"])(
-    "accepts %s",
-    (name: string) => {
-      expect(isValidDisplayName(name)).toBe(true);
-    },
-  );
+  it.each([
+    "Zo\u00eb M\u00fcller",
+    "\u674e \u96f7",
+    "Ann \u{1f680}",
+    "O'Neil-Smith Jr.",
+    "Nguy\u1ec5n V\u0103n A",
+  ])("accepts %s", (name: string) => {
+    expect(isValidDisplayName(name)).toBe(true);
+  });
+
+  it("accepts the normal form of a decomposed name", () => {
+    expect(isValidDisplayName(normalizeDisplayName("Zoe\u0308 Lee"))).toBe(
+      true,
+    );
+  });
 
   it("counts code points, not UTF-16 units", () => {
-    expect(isValidDisplayName("\u{1f680}".repeat(40))).toBe(true);
-    expect(isValidDisplayName("\u{1f680}".repeat(41))).toBe(false);
-    expect(isValidDisplayName("\u{1f680}")).toBe(false);
+    // U+20000: a letter, one code point, two UTF-16 units, stable under NFKC.
+    const letter = "\u{20000}";
+
+    expect(isValidDisplayName(letter.repeat(40))).toBe(true);
+    expect(isValidDisplayName(letter.repeat(41))).toBe(false);
+    expect(isValidDisplayName(letter)).toBe(false);
   });
 
   it("folds compatibility forms to one spelling", () => {
