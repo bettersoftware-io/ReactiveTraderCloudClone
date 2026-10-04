@@ -171,6 +171,47 @@ const rtcSourceAlias: Record<string, string> = debugBuild
     }
   : {};
 
+// The e2e harness sets RTC_LEAN_DEPS=1 on every dev server it starts
+// (tests/scripts/devServer.ts, tests/fullstack/_orchestration.ts): pre-bundled
+// dependencies are then served minified and without a source map. Each e2e
+// test opens a fresh browser context, so every test re-downloads every
+// dependency, and Vite appends each one's source map inline to the response —
+// `effect` alone was 11 MB per page load (3.3 MB of code + its map), which
+// made the effect-core e2e job ~1.65x the default one. Measured 2026-10-04 on
+// 16 tests with tracing on: 36 s at 11 MB, 30.5 s without the map, 28.3 s
+// minified too, against 26.5 s for the RxJS core. Unset (plain `pnpm dev`),
+// nothing changes: dependencies keep their source maps for debugging.
+const leanDeps = process.env.RTC_LEAN_DEPS === "1";
+
+/** A transform answer that tells Vite "this module has no source map". */
+interface MaplessCode {
+  readonly code: string;
+  readonly map: { readonly mappings: "" };
+}
+
+/** Serve Vite's pre-bundled dependencies without a source map. `mappings: ""`
+ * is the plugin API's "no source map" answer; Vite's dep optimizer hard-codes
+ * `sourcemap: "hidden"`, and deleting the `.map` file makes Vite generate a
+ * larger fallback map instead (18 MB for `effect`), so this is the one way
+ * to drop it. The appended newline is load-bearing: Vite keeps the map it
+ * loaded whenever the transform pipeline leaves the code byte-identical, which
+ * is the case for a dependency with no imports to rewrite (dockview, motion).
+ * `assertDepsServedLean` (tests/scripts/lib/leanDeps.ts) fails the e2e run if
+ * a Vite upgrade stops honouring any of this. */
+function dropDepSourcemaps(): Plugin {
+  return {
+    name: "rtc-drop-dep-sourcemaps",
+    apply: "serve",
+    transform(code: string, id: string): MaplessCode | null {
+      if (!id.includes("/.vite/deps/")) {
+        return null;
+      }
+
+      return { code: `${code}\n`, map: { mappings: "" } };
+    },
+  };
+}
+
 export default defineConfig({
   // VITE_CORE_IMPL sets this build's DEFAULT application core (see
   // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
@@ -197,8 +238,12 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] }),
     devtoolsPanel(),
+    ...(leanDeps ? [dropDepSourcemaps()] : []),
   ],
   resolve: { alias: rtcSourceAlias },
+  optimizeDeps: leanDeps
+    ? { rolldownOptions: { output: { minify: true } } }
+    : {},
   server: {
     host: "127.0.0.1",
     // PORT is the PREFERRED port; Vite auto-increments to the next free one if
