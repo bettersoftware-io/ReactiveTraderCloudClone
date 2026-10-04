@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { WsAdapter } from "@rtc/client-core";
+import { WsAdapter } from "@rtc/client-adapters";
 
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";

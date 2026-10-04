@@ -14,7 +14,7 @@ import type { EffectHost } from "#/bridge/out";
 import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
 
 /** One tab's layout machine: a `SyncRef` folded by the SHARED layout
- * reducer (`@rtc/client-core`'s `createLayoutReducer` — the RxJS core folds
+ * reducer (`@rtc/core-logic`'s `createLayoutReducer` — the RxJS core folds
  * the very same function). Every intent has committed by the time it
  * returns (the workspace's synchronous-fold contract); `seed` is the
  * persisted tree a first-opened tab starts from, `reset()` still returns

@@ -7,7 +7,7 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | **Ring** | ③ Interface Adapters for the controllers/gateways (`src/effects/` + `src/socket/`'s `toSocket`) + ④ Frameworks & Drivers for the host wiring (`src/index.ts`, `node:http` + `ws`) -- per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
 | **Runtime deps** | `@rtc/domain`, `@rtc/shared`, `@rtc/ws-effects`, `@rtc/agent-tools`, `rxjs`, `ws`, `@anthropic-ai/sdk` (confined to `src/agent/`), `@modelcontextprotocol/sdk` (confined to `src/mcp/`) (`packages/server/package.json` `dependencies`) |
 | **Consumed by** | `tests` only -- no other workspace package lists `@rtc/server` as a dependency (`grep -l '"@rtc/server"' packages/*/package.json tests/package.json`); the `tests` workspace spawns it as a child process via `pnpm --filter @rtc/server exec tsx src/index.ts` (`tests/fullstack/_orchestration.ts`), not an import |
-| **Must never import** | `@rtc/client-react` -- enforced by the dependency-cruiser `server-not-client` rule (`from: ^packages/server/src`, `to: ^packages/client-react/`, `.dependency-cruiser.mts`, see [§6](../../docs/architecture/06-package-dependencies.md#6-package-dependencies)). It also never imports `@rtc/client-core` in practice (`grep -rln "@rtc/client-core" packages/server/src` returns nothing) and skips `@rtc/domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-side orchestration; the server drives the domain simulators directly. |
+| **Must never import** | `@rtc/client-react` -- enforced by the dependency-cruiser `server-not-client` rule (`from: ^packages/server/src`, `to: ^packages/client-react/`, `.dependency-cruiser.mts`, see [§6](../../docs/architecture/06-package-dependencies.md#6-package-dependencies)). It also never imports `@rtc/client-adapters` in practice (`grep -rln "@rtc/client-adapters" packages/server/src` returns nothing) and skips `@rtc/domain`'s `usecases/` entirely (`grep -rn "UseCase" packages/server/src` returns nothing) -- use cases are client-side orchestration; the server drives the domain simulators directly. |
 
 ## Folder map
 
@@ -101,12 +101,12 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 | Ban: weighted strikes in the window → ban length; table size | `BAN_STRIKES` / `BAN_STRIKE_WINDOW_MS` / `BAN_DURATION_MS` / `BAN_MAX_ENTRIES` | 10 in 10 min → 15 min; 10 000 |
 
 Every RPC and stream payload is validated at its parse seam
-(`src/effects/guards.ts`): a malformed RPC is **nacked** (every client-core
+(`src/effects/guards.ts`): a malformed RPC is **nacked** (every client-adapters
 adapter already handles a nack), a malformed subscribe frame is **dropped**,
 and in both cases the connection's other effects keep serving. Before B1 a
 malformed frame threw inside the effect and `combineEffects` replaced that
 effect with `EMPTY` for the rest of the socket. The guards are never stricter
-than what `packages/client-core/src/adapters/portFactory.ts` actually sends.
+than what `packages/client-adapters/src/adapters/portFactory.ts` actually sends.
 
 Strikes (`src/auth/banList.ts`): a failed login counts 1, a rate-limited
 attempt 2, an oversized frame 3, a message flood 3. The ban table is in

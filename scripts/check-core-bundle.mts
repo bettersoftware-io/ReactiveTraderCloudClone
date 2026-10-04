@@ -19,7 +19,7 @@
 // core's presenters and machines sit in the same package as its composition
 // root, so a static import of that package drags the marker into the eager
 // set and fails rule 1; dependency-cruiser's `web-clients-load-cores-lazily`
-// rejects the same import on source, without a build. `@rtc/client-core`'s
+// rejects the same import on source, without a build. `@rtc/client-adapters`'s
 // adapters and port factories ship eagerly by design — the ports are built
 // before any core loads.
 //

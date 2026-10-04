@@ -60,7 +60,7 @@ export function createServices(
   const execution = new ExecutionSimulator();
   const blotter = new TradeStoreSimulator(execution);
   const analytics = new AnalyticsSimulator();
-  // Fixed dev seed (3) — mirrors how client-core's simulator composition
+  // Fixed dev seed (3) — mirrors how client-adapters's simulator composition
   // seeds the same class (see `createSimulatorPorts` in `portFactory.ts`).
   const serviceHealth = new ServiceTopologySimulator(3);
   const instruments = new InstrumentSimulator();

@@ -1,7 +1,10 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {

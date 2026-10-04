@@ -1,4 +1,4 @@
-# @rtc/client-core
+# @rtc/client-adapters
 
 The ports every application core consumes, and the factories that build them:
 `WsAdapter`, `portFactory` (`createSimulatorPorts` / `createWsRealPorts`), the
@@ -6,19 +6,19 @@ auth adapters and the session and data-source stores. A client imports this
 package statically, builds an `AppPorts` object from it, and hands that object
 to whichever core it loaded.
 
-No application core lives here. Until 2026-10-04 this package also held the
-RxJS core; that is now [`@rtc/client-core-rxjs`](../client-core-rxjs/README.md),
-a sibling of `@rtc/client-core-async` and `@rtc/client-core-effect`. This
-package is to be renamed `@rtc/client-adapters` (ADR-006 Follow-up 10). See
+No application core lives here. Until 2026-10-04 this package was named
+`@rtc/client-core` and also held the RxJS core; that is now
+[`@rtc/client-core-rxjs`](../client-core-rxjs/README.md), a sibling of
+`@rtc/client-core-async` and `@rtc/client-core-effect` (ADR-006). See
 [§22](../../docs/architecture/22-pluggable-application-core.md) and the guided
 tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters — gateways and port assembly (`docs/architecture/01-overview.md` §1.3.1) |
-| **Runtime deps** | `@rtc/core-api` (types), `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs` (`packages/client-core/package.json` `dependencies`) |
+| **Runtime deps** | `@rtc/core-api` (types), `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs` (`packages/client-adapters/package.json` `dependencies`) |
 | **Consumed by** | `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`, `tests`; and, as a devDependency for test adapters only, the three cores and both bindings |
-| **Must never import** | An application core, a binding, a client, the server, or a framework. Two dependency-cruiser rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-core-stays-inner` allows only `core-api` / `core-logic` / `domain` / `shared`, and `client-core-framework-free` blocks `react` / `react-dom` / `react-native` / `solid-js`. |
+| **Must never import** | An application core, a binding, a client, the server, or a framework. Two dependency-cruiser rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-adapters-stays-inner` allows only `core-api` / `core-logic` / `domain` / `shared`, and `client-adapters-framework-free` blocks `react` / `react-dom` / `react-native` / `solid-js`. |
 
 ## Folder map
 
@@ -27,7 +27,7 @@ tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 | `src/adapters/` | The real-transport gateways: `WsAdapter` (WebSocket transport, implementing `@rtc/core-api`'s `IWsAdapter`), `WsConnectionEventsAdapter` (connection lifecycle), the Jarvis adapters, `HttpAuthAdapter` and `RoutingAuthPort`, the in-memory session and data-source stores, and `portFactory.ts` (`createSimulatorPorts` / `createWsRealPorts`, the two `AppPorts` assembly functions every platform port-builder calls). |
 | `src/wsUrl.ts` | `buildWsUrl` — appends the `?access=` token query param a browser WebSocket can't pass as a header. |
 | `src/index.ts` | The root barrel: everything above. It exports no name another package declares: a contract type is imported from `@rtc/core-api`, a shared rule from `@rtc/core-logic` (`tests/scripts/lib/packageSurfaces.test.ts`). |
-| `src/testing.ts` | The `@rtc/client-core/testing` entry: test scaffolding for anything that composes a core over these adapters (`FakeWsAdapter`, `awaitPendingRpc`, `createFakeConnectionPorts`). Not part of the root barrel, because a client's source has no use for a fake. |
+| `src/testing.ts` | The `@rtc/client-adapters/testing` entry: test scaffolding for anything that composes a core over these adapters (`FakeWsAdapter`, `awaitPendingRpc`, `createFakeConnectionPorts`). Not part of the root barrel, because a client's source has no use for a fake. |
 
 ## Where to start reading
 
@@ -51,7 +51,7 @@ import {
   routeIdleLifecycle,
   WsAdapter,
   WsConnectionEventsAdapter,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 ```
 
 The composition-root component (`AppRoot` in

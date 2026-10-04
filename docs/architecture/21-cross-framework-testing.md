@@ -354,7 +354,7 @@ render target is the detail that varies.
 
 **Humble object / dumb UI.** [ADR-005](../adr/ADR-005-ui-logic-placement.md)
 and the rxjs-machines refactor pushed state and orchestration into
-`client-core` machines and presenters, leaving `src/ui` thin enough that a
+`client-core-rxjs` machines and presenters, leaving `src/ui` thin enough that a
 framework port is a `src/ui`-only rewrite — nothing in the swap touches
 business logic, because none of it lives where the swap happens.
 

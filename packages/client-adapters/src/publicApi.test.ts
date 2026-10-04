@@ -8,7 +8,7 @@ import * as clientCore from "#/index";
  * effect of a barrel. Each core's own surface is pinned in its own package
  * (`packages/client-core-rxjs/src/publicApi.test.ts`). Type exports are
  * covered by the typecheck. */
-describe("@rtc/client-core public runtime API", () => {
+describe("@rtc/client-adapters public runtime API", () => {
   it("has a pinned runtime surface", () => {
     expect(Object.keys(clientCore).sort()).toMatchSnapshot();
   });

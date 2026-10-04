@@ -209,7 +209,7 @@ and `--update` after a green verify pass is the standing flow now.
 
 ## 1. Data-model mismatches — shared by BOTH clients
 
-These live in `@rtc/domain` / `@rtc/client-core`, below the UI and above both
+These live in `@rtc/domain` / `@rtc/client-core-rxjs`, below the UI and above both
 clients, so they are **not** RN-only: the web client has the same gaps, it just
 does not exercise them. Full table with per-item workaround vs. model change in
 the [Phase 5 design §8.1](superpowers/specs/2026-07-25-rn-mobile-v1-rehaul-phase-5-design.md).

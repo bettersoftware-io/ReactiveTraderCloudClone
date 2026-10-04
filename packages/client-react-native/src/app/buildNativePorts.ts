@@ -11,7 +11,7 @@ import {
   WsAdapter,
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import type { AppPorts, SessionStore } from "@rtc/core-api";
 import {
   AuthSimulator,

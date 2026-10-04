@@ -60,7 +60,7 @@ trigger, and execute through the same confirm-gated path as §18.5.
 roadmap) + one HUD component.
 
 **8. Cross-device séance.** Start a Jarvis conversation on the web HUD, continue it on
-the RN app — same server-side session, both clients share `client-core`. A quiet but
+the RN app — same server-side session, both clients share `client-core-rxjs` + `client-adapters`. A quiet but
 devastating proof that the core is framework-free: the AI conversation itself becomes
 the demo.
 *Seam:* session keyed to user instead of socket; the RN panel reuses `JarvisMachine`.
@@ -125,7 +125,7 @@ flowchart TD
 flowchart TD
     S5["Event-shaped protocol +<br/>devtools observe bus"]
     S4["Tool registry +<br/>agent loop (slice 1)"]
-    S6["Framework-free<br/>client-core"]
+    S6["Framework-free<br/>client-core-rxjs"]
 
     C5["5 Self-introspection"]
     C6["6 Time travel + explain"]

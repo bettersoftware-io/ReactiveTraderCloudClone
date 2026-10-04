@@ -3,7 +3,7 @@ import {
   type DataSource,
   type DataSourceStore,
   isDataSource,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 
 /**
  * localStorage-backed `DataSourceStore` (hardening spec §8.2) — the last

@@ -10,7 +10,7 @@ presenter and every state machine, and nothing else.
 | **Ring** | ③ Interface Adapters — the application layer, on RxJS |
 | **Runtime deps** | `@rtc/core-api` (types), `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs`, `@rx-state/core` |
 | **Consumed by** | Both web clients, as a lazy chunk loaded only when chosen; `client-react-native`, statically; the bindings, `ui-contract` and `tests`, from their tests and harnesses |
-| **Must never import** | Another core, the adapters (`@rtc/client-core`), a framework, a client or the server — `cores-stay-inner`, `cores-take-ports-as-arguments`, `cores-framework-free` |
+| **Must never import** | Another core, the adapters (`@rtc/client-adapters`), a framework, a client or the server — `cores-stay-inner`, `cores-take-ports-as-arguments`, `cores-framework-free` |
 
 ## What lives here
 
@@ -25,9 +25,9 @@ presenter and every state machine, and nothing else.
 ## The rule that shapes it
 
 A core takes its ports as arguments. `createApp(ports)` receives an `AppPorts`
-object already built by the client (from `@rtc/client-core`'s
+object already built by the client (from `@rtc/client-adapters`'s
 `createSimulatorPorts` / `createWsRealPorts`), so this package's source imports
-nothing from the adapters. `@rtc/client-core` is a devDependency: only the
+nothing from the adapters. `@rtc/client-adapters` is a devDependency: only the
 tests compose a real core over real adapters.
 
 ## How a client reaches it

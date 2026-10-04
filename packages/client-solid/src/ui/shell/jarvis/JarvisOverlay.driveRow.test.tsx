@@ -8,7 +8,7 @@
  * entry, so JarvisOverlay's existing `<For each={state().entries}>` already
  * renders it — this file proves that rendering path for the Solid shell,
  * mirroring the shared `ui-contract` tier's own toolEvent-row proof but
- * scoped to client-solid (composition/machine wiring is client-core's
+ * scoped to client-solid (composition/machine wiring is client-core-rxjs's
  * territory, already covered there; the cross-framework contract spec is a
  * later task's).
  */

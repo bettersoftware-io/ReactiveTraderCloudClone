@@ -3,7 +3,7 @@ import * as ExpoCrypto from "expo-crypto";
 /** Supplies the Web Crypto globals that Hermes omits, so shared code can keep
  * calling the platform API it is entitled to assume.
  *
- * **Why this exists.** `@rtc/client-core` and `@rtc/shared` are framework-free
+ * **Why this exists.** `@rtc/client-adapters` and `@rtc/shared` are framework-free
  * and run on three runtimes — browser, Node (server + tests) and Hermes. Two of
  * the three supply `globalThis.crypto`; Hermes supplies none, so
  * `crypto.randomUUID()` throws `Property 'crypto' doesn't exist` the first time

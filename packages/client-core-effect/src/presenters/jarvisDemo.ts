@@ -45,7 +45,7 @@ interface DemoRun {
 
 /**
  * `presenters.jarvisDemo` on the Effect core: the shared script and step
- * watcher (`createDemoStepWatch`, client-core) decide; this file owns the
+ * watcher (`createDemoStepWatch`, core-logic) decide; this file owns the
  * timing. A run is one fiber, exhaust-style (a second start while one runs
  * is dropped); each step is an `Effect.async` settled by the watcher and
  * raced against `DEMO_STEP_TIMEOUT_MS`; a beat (`Effect.sleep`) follows

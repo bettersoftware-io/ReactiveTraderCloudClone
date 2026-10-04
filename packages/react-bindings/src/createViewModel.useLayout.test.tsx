@@ -2,7 +2,10 @@ import { act, cleanup, render } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {
@@ -20,7 +23,7 @@ afterEach(cleanup);
  * test that would have caught the Solid-side class of bug BEFORE it shipped
  * — no witness like it existed when useLayout was rewritten off useMachine.
  *
- * `machines.layout(tab)` (client-core's `Presenters.layoutFor`) resolves to
+ * `machines.layout(tab)` (client-core-rxjs's `Presenters.layoutFor`) resolves to
  * a composition-root SINGLETON shared across every mount for that tab — not
  * a fresh instance per mount like every other `useMachine`-bridged factory.
  * `useMachine`'s cleanup calls `.dispose()` on whatever instance it's given,

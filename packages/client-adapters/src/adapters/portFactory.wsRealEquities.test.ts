@@ -175,11 +175,11 @@ describe("orders.cancel", () => {
   });
 });
 
-// The RPC-backed equity ports were the largest uncovered block in client-core.
+// The RPC-backed equity ports were the largest uncovered block in client-adapters.
 // Their failure modes are all silent from the UI's side: a nack that never
 // reaches the subscriber is indistinguishable from a request still in flight,
 // and an order stream that drops its id filter shows another order's fills.
-// client-core appears in no tier of the published coverage report, so none of
+// client-adapters appears in no tier of the published coverage report, so none of
 // this was visible there. (portFactory.equities.test.ts covers the SIMULATOR
 // ports; this file covers createWsRealPorts.)
 

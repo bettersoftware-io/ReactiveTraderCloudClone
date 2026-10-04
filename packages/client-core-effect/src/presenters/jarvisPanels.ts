@@ -49,7 +49,7 @@ type PanelSpecV1 = NonNullable<PanelInstance["spec"]>;
 type PanelSource = PanelSpecV1["source"];
 
 /** The desk-panels roster: a `SyncRef` folded by the SHARED folds
- * (`@rtc/client-core`'s `jarvisPanelsFolds`), fed the `panel` events of the
+ * (`@rtc/core-logic`'s `jarvisPanelsFolds`), fed the `panel` events of the
  * Jarvis turns it is handed on a fiber of the host scope. Every intent
  * commits synchronously (the workspace's synchronous-fold contract), and —
  * as in the RxJS machine — writes a FRESH state object even when the fold
@@ -316,7 +316,7 @@ export function createJarvisPanelsPresenter(
 }
 
 /** One desk panel's interpreted data: its source's port streams, folded by
- * the SHARED per-source steps (`@rtc/client-core`'s `panelFrames`), through
+ * the SHARED per-source steps (`@rtc/core-logic`'s `panelFrames`), through
  * the spec's transforms and viz — a `sharedFold`, the RxJS
  * `shareReplay({ refCount: true })`. A multi-symbol source publishes once
  * every symbol has a series (`Stream.zipLatestAll`, `combineLatest`'s

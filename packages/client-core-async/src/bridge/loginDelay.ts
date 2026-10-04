@@ -1,4 +1,4 @@
-// A verbatim copy of @rtc/client-core's `adapters/delayedAuthPort.ts`: the
+// A verbatim copy of @rtc/client-core-rxjs's `ports/delayedAuthPort.ts`: the
 // bridge is the one place this core may use rxjs at runtime, and
 // @rtc/core-logic (which composes it through `AuthDepsPrimitives`) may not.
 // Sharing it is the adapters split (spec follow-up 5).

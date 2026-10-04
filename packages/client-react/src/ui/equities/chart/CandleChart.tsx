@@ -266,7 +266,7 @@ export function CandleChart({
     ? [...previewDrawings, draftToDrawing(draft)]
     : previewDrawings;
 
-  // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
+  // EqDrawing (core-api) satisfies motion-core's structural `Drawing` —
   // passed directly, no mapping.
   const drawItems = drawingScene(
     allDrawings,

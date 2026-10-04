@@ -714,7 +714,7 @@ stop whenever the value stops justifying the effort.
 ### Stage 0 — decide what you are actually buying (no code)
 
 The RN client's *logic* is already covered: jest + RNTL component tests, plus
-the shared `@rtc/client-core` presenters tested once for all three clients. The
+the shared `@rtc/client-core-rxjs` presenters tested once for all three clients. The
 gap T1 names is **paint** and **navigation** — pixels and flows. Before spending
 anything, write down which of these you want a CI signal for:
 

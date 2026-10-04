@@ -26,8 +26,8 @@ Walk these in order; the logic lands in exactly one home.
 
 **① Is it application state or behavior?** (what data exists; what happens on an
 intent; timers; persistence; transport; business rules)
-- Needs external I/O → **Port + adapter + presenter** in `client-core`.
-- Pure app state/behavior → **RxJS machine** in `client-core` (`createXMachine`:
+- Needs external I/O → **Port + adapter + presenter** in `client-core-rxjs` + `client-adapters`.
+- Pure app state/behavior → **RxJS machine** in `client-core-rxjs` (`createXMachine`:
   `Subjects → merge → scan(reduce) → state()`), bound by a one-line `useMachine`
   in `createViewModel`. → *layout, orderTicket, boot, rfqCountdown, rowHighlight.*
 - Else → ②
@@ -37,7 +37,7 @@ intent; timers; persistence; transport; business rules)
 - Yes → **view-layer effect**. Stays in the framework layer (React hook now;
   Solid directive / `createEffect` later). The timing seam (`useLayoutEffect` /
   `onMount`) is framework-specific and cannot be hoisted into RxJS or
-  `client-core`. Extract the pure parts (geometry, decisions, set-diffs) into
+  `client-core-rxjs`. Extract the pure parts (geometry, decisions, set-diffs) into
   `@rtc/motion-core` and inject DOM-derived facts as arguments (the
   `coalesceOrder(…, gliding)` pattern). → *useFlipGrid, useRankGlide.*
 - Else → ③
@@ -62,8 +62,8 @@ injected signal.
 
 | Hook | Branch | Home |
 |---|---|---|
-| `useLayout` | ① pure app state | `createLayoutMachine` (client-core) via `useMachine` |
-| `useOrderTicket`, `useBootSequence`, `useRfqCountdown` | ① pure app state | machines in client-core |
+| `useLayout` | ① pure app state | `createLayoutMachine` (client-core-rxjs) via `useMachine` |
+| `useOrderTicket`, `useBootSequence`, `useRfqCountdown` | ① pure app state | machines in client-core-rxjs |
 | (admin throughput) | ① external I/O | `AdminPort` + adapter + presenter |
 | `useFlipGrid` | ② DOM-frame effect | React hook shell + `flipDeltas` in `@rtc/motion-core` |
 | `useRankGlide` | ② DOM-frame effect | React hook shell + `coalesceOrder`/`computeRankDirections` in `@rtc/motion-core` |

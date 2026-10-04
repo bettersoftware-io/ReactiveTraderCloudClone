@@ -100,7 +100,7 @@ project-local `.pnpm-store` fallback:
   "isolate": [
     "packages/domain/node_modules",
     "packages/shared/node_modules",
-    "packages/client-core/node_modules",
+    "packages/client-adapters/node_modules",
     "packages/react-bindings/node_modules",
     "packages/client-react/node_modules",
     "packages/client-react-native/node_modules",
@@ -110,7 +110,7 @@ project-local `.pnpm-store` fallback:
     "tests/node_modules",
     "packages/domain/dist",
     "packages/shared/dist",
-    "packages/client-core/dist",
+    "packages/client-adapters/dist",
     "packages/react-bindings/dist",
     "packages/client-react/dist",
     "packages/ws-effects/dist",
@@ -120,7 +120,7 @@ project-local `.pnpm-store` fallback:
     ".turbo",
     "packages/domain/.turbo",
     "packages/shared/.turbo",
-    "packages/client-core/.turbo",
+    "packages/client-adapters/.turbo",
     "packages/react-bindings/.turbo",
     "packages/client-react/.turbo",
     "packages/client-react-native/.turbo",
@@ -160,7 +160,7 @@ re-emits.
 **When a new package is added**, add its `node_modules`, its `.turbo` cache, and —
 if it emits one — its `dist` entry to `.claude-sandbox.json`; no launcher edit, no
 host-side change. (A `tsc --noEmit` package such as `@rtc/client-react-native` has
-no `dist` to isolate; a tsc-build or Vite package such as `@rtc/client-core` or
+no `dist` to isolate; a tsc-build or Vite package such as `@rtc/client-adapters` or
 `@rtc/client-prototype` does.) That's the whole point of keeping the policy in the
 repo.
 

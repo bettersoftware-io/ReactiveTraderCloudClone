@@ -1,7 +1,7 @@
 import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { InMemorySessionStore } from "@rtc/client-core";
+import { InMemorySessionStore } from "@rtc/client-adapters";
 import type {
   AuthViewState,
   LoginWaitCycle,

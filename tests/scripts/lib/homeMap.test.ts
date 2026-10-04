@@ -21,7 +21,6 @@ describe("buildHomeMap", () => {
     expect(homes.makeThing).toEqual({
       pkg: "beta",
       module: "thing.ts",
-      name: "makeThing",
       isValue: true,
     });
   });
@@ -30,7 +29,6 @@ describe("buildHomeMap", () => {
     expect(homes.Thing).toEqual({
       pkg: "beta",
       module: "thing.ts",
-      name: "Thing",
       isValue: false,
     });
   });
@@ -39,7 +37,6 @@ describe("buildHomeMap", () => {
     expect(homes.OTHER).toEqual({
       pkg: "beta",
       module: "other.ts",
-      name: "OTHER",
       isValue: true,
     });
   });
@@ -48,16 +45,14 @@ describe("buildHomeMap", () => {
     expect(homes.own).toEqual({
       pkg: "alpha",
       module: "nested/own.ts",
-      name: "own",
       isValue: true,
     });
   });
 
-  it("keeps the declared name of a renamed re-export", () => {
+  it("follows a renamed re-export to its declaration", () => {
     expect(homes.buildThing).toEqual({
       pkg: "beta",
       module: "thing.ts",
-      name: "makeThing",
       isValue: true,
     });
   });

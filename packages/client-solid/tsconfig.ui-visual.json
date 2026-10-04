@@ -31,7 +31,7 @@
   "exclude": ["tests/ui/contract"],
   "references": [
     { "path": "../domain" },
-    { "path": "../client-core" },
+    { "path": "../client-adapters" },
     { "path": "../client-core-rxjs" },
     { "path": "../solid-bindings" },
     { "path": "../ui-contract" }

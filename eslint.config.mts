@@ -482,7 +482,7 @@ export default tseslint.config(
     // The ban is therefore "this seam stays memo-free by design", not "the
     // compiler covers it". It holds today at zero call sites. The package is
     // three thin files bridging React to RxJS; a `useMemo` appearing here is a
-    // signal the logic belongs in `client-core` (an RxJS machine) or in
+    // signal the logic belongs in `client-core-rxjs` (an RxJS machine) or in
     // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
     // rather than being cached at the binding layer.
     files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
@@ -505,7 +505,7 @@ export default tseslint.config(
               // runtime makes it unnecessary and no file here uses one.
               importNames: ["default", "useMemo", "useCallback", "memo"],
               message:
-                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
+                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core-rxjs) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
             },
           ],
         },

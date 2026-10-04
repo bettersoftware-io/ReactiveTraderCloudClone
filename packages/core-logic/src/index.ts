@@ -9,7 +9,7 @@ export * from "#/layout/defaultLayoutPort";
 // (client-react, client-solid) need the SAME 360px pin a seeded rail's
 // `initialPx` uses, for a Jarvis panel opened at runtime via
 // `DockEngine.addDynamicPanel`. The two leaf helpers are public only because
-// client-core's layout tests use them across the package boundary (slice 8);
+// client-core-rxjs's layout tests use them across the package boundary (slice 8);
 // the remove/other helpers stay internal to the layout rules.
 export {
   DOCK_COLUMN_INITIAL_PX,

@@ -40,13 +40,13 @@ Two new packages, following the existing naming and layering conventions
 | `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
 | `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2012-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
-`devtools-core` never imports `@rtc/client-core` — it decorates by
+`devtools-core` never imports `@rtc/client-core-rxjs` — it decorates by
 *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with a
 `.subscribe`), so its types are generic. The presenter **manifest** — which
 keys of `Presenters` are streams, parameterized-stream methods, or a shared
 machine — lives at the call site in `client-react`
 (`packages/client-react/src/app/devtools/presenterManifest.ts`), which
-already knows the concrete types. `devtools-app` never imports `client-core`
+already knows the concrete types. `devtools-app` never imports `client-core-rxjs`
 or `domain` either — it understands only the wire protocol, which is what
 makes a future extension shell a thin wrapper around the same bundle.
 
@@ -479,7 +479,7 @@ this.
 
 devtools-app deliberately does **not** use `@rtc/react-bindings`. The reason
 is structural, not stylistic: `devtools-core` is an rxjs-only leaf that may
-not import `client-core`, so `createViewModel`/`bind()` are unavailable to
+not import `client-core-rxjs`, so `createViewModel`/`bind()` are unavailable to
 the packages built on it. The sanctioned pattern is therefore:
 
 - **Live data** flows rxjs → `InspectorStore` (copy-on-write,

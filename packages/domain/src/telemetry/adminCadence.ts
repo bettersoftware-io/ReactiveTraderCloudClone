@@ -1,6 +1,6 @@
 /** Admin-view cadence, shared by every application core (ADR-006 slice 5):
  * the contract suites assert these, and `@rtc/core-contract` may not import
- * `@rtc/client-core`, so they live here — the slice-4 cooldown precedent. */
+ * a core (`@rtc/client-core-rxjs`), so they live here — the slice-4 cooldown precedent. */
 
 /** Rolling window — MetricSamples retained per KPI chart series. */
 export const METRIC_WINDOW: number = 60;

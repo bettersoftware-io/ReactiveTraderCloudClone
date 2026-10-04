@@ -260,6 +260,51 @@ caveat, and the UI cannot reach a presenter class or a machine factory
 statically. `@rtc/client-core`'s adapters and port factories stay eager by
 design: the ports are built before any core loads.
 
+**Amended 2026-10-04 — the RxJS core in its own package.** Follow-up 10, in
+four PRs, consumers first (#921, #926, #929 and the rename). The package that
+was `@rtc/client-core` is now two:
+
+- **`@rtc/client-core-rxjs`** — the RxJS application core: the composition
+  root, every presenter and state machine. A sibling of
+  `@rtc/client-core-async` and `@rtc/client-core-effect`, under one rule set.
+- **`@rtc/client-adapters`** — the ports every core consumes: `WsAdapter`,
+  the port factories, the auth, session and data-source stores. The old
+  package, renamed for what is left in it.
+
+The `@rtc/client-core/core` subpath is gone, and with it the name that said
+"core" twice in two senses. What had to be true first:
+
+- **Each name is imported from the package that defines it.** `client-core`
+  re-exported 283 names of other packages from its root and 88 from `/core`,
+  types included — 128 and 27 of them runtime names: contract types from
+  `@rtc/core-api`, shared rules from `@rtc/core-logic`, a few from
+  `@rtc/shared` and `@rtc/domain`. `@rtc/core-logic` passed 13 contract types
+  through. All are gone.
+  `tests/scripts/lib/packageSurfaces.test.ts` asks the TypeScript checker,
+  for every core's entry point, the adapters' and `core-logic`'s, where each
+  export is declared, and none may be foreign.
+- **The pure view helpers a UI calls directly** (blotter sort and filter, the
+  admin KPI view model, three layout-tree helpers) moved to `@rtc/core-logic`.
+- **A core takes its ports as arguments.** The RxJS core's source imports
+  nothing from the adapters; only its tests do.
+
+The rules, each proven by a mutant: `cores-stay-inner` (a core imports no
+sibling core, tests included), `cores-take-ports-as-arguments`,
+`cores-framework-free`, `client-adapters-stays-inner` (the adapters import no
+core), `web-clients-load-cores-lazily` (a web client's source may not import a
+core statically — the source-level twin of `pnpm check:core-bundle`),
+`ui-contract-only-in-client-tests`, `adapter-fakes-stay-in-tests` and
+`bindings-name-no-core`. That last one records a side effect nobody planned:
+once each contract type came from `@rtc/core-api`, nothing in either binding's
+source named a core any more, so the RxJS core and the adapters are the
+bindings' devDependencies.
+
+Nothing changed at runtime. Measured (vite, gzip, kB), before the first PR and
+after the last: RxJS core chunk 13.90 → 13.63; react entry 309.49 → 309.17;
+solid entry 232.00 → 231.70. The public surface of the RxJS core is the old
+subpath's 69 runtime names, identical by diff, plus the two layout shells the
+UI-contract fixtures use.
+
 ## Consequences
 
 - Four new packages join the graph: `@rtc/core-api` (types-only, innermost
@@ -1243,10 +1288,11 @@ with it. Machine state still reaches its subscribers through
 5. ~~Pair `connectionEvents` with `connectionIntents` structurally~~ — done:
    `@rtc/core-api`'s `TransportPorts` now omits both members together, so a
    port factory can no longer typecheck while supplying one without the
-   other. `@rtc/client-core`'s `pairConnectionPorts(events$)` is the only
-   producer of the pair in that package — instance-scoped per call, returned
-   as the matching `{ connectionEvents, connectionIntents }` fragment
-   (`packages/client-core/src/adapters/connectionIntents.ts`).
+   other. `pairConnectionPorts(events$)` is the only producer of the pair in
+   its package (`@rtc/client-core` then, `@rtc/client-adapters` since
+   2026-10-04) — instance-scoped per call, returned as the matching
+   `{ connectionEvents, connectionIntents }` fragment
+   (`packages/client-adapters/src/adapters/connectionIntents.ts`).
 6. ~~The RxJS core's `dispose()` is still a knowing no-op~~ — done
    2026-09-26: a `held` subscription bag, owned-machine disposal (Jarvis's
    cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`
@@ -1283,18 +1329,10 @@ with it. Machine state still reaches its subscribers through
    attribution says where to look: Dockview (`dockview-core` plus
    `@rtc/layout-dockview`) is about a third of the entry, and nothing before
    sign-in mounts it.
-10. **The RxJS core in its own package, `@rtc/client-core-rxjs`.** Since 9
-    `@rtc/client-core` holds two separable things — the edge every visitor
-    uses, and the RxJS application core behind the `./core` subpath, a name
-    that says "core" twice in two senses. The symmetric shape is three sibling
-    packages (`-rxjs`, `-async`, `-effect`) and one package for the shared
-    edge, with the UI taking presenter types from `@rtc/core-api` rather than
-    from an implementation. 9's dependency rule already proves the cut in one
-    direction. Designed 2026-10-04:
-    [the package split spec](../superpowers/specs/2026-10-04-client-core-rxjs-package-split-design.md)
-    — four PRs, consumers first, ending with `@rtc/client-core` renamed
-    `@rtc/client-adapters`. Order and progress are tracked in
-    [`docs/STATUS.md`](../STATUS.md).
+10. ~~**The RxJS core in its own package, `@rtc/client-core-rxjs`.**~~ —
+    done 2026-10-04 (#921, #926, #929 and the rename to
+    `@rtc/client-adapters`); see "Amended 2026-10-04" under Decision 6.
+    [The package split spec](../superpowers/specs/2026-10-04-client-core-rxjs-package-split-design.md).
 
 ## See also
 

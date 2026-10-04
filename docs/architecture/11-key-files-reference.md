@@ -21,7 +21,7 @@
 | **Effect Core** | `packages/client-core-effect/src/{composition,layers,bridge/}` | Effect-TS core: `Layer` graph over a `ManagedRuntime`; `bridge/` owns the rxjs ↔ `Stream`/`SubscriptionRef` translation |
 | **Core Equivalence Tier** | `packages/core-contract/src/{registry,suites/,harness/}` | `CONTRACT_SUITES` (one suite per member) + `PENDING_SUITES` drift check, scripted-`AppPorts` harness; each core runs it from its own test file (e.g. `client-core-rxjs/src/composition.coreContract.test.ts`) |
 | **Core Selection (web)** | `packages/client-react/src/app/{coreSelection,bootApp}.ts` (+ the same pair in `client-solid`) | `?core=` → stored preference → `VITE_CORE_IMPL` → rxjs; lazy-loads the chosen `CoreFactory` before `AppRoot` mounts |
-| **Port Factory + Transport** | `packages/client-core/src/adapters/{portFactory,WsAdapter,WsConnectionEventsAdapter}.ts` | `createSimulatorPorts` / `createWsRealPorts`; the WebSocket transport |
+| **Port Factory + Transport** | `packages/client-adapters/src/adapters/{portFactory,WsAdapter,WsConnectionEventsAdapter}.ts` | `createSimulatorPorts` / `createWsRealPorts`; the WebSocket transport |
 | **ViewModel Bridge** | `packages/react-bindings/src/{createViewModel,useMachine,useViewModel,ViewModelProvider}.ts(x)` | The only React↔RxJS meeting point; `ViewModel` interface = the seam contract |
 | **Solid ViewModel Bridge** | `packages/solid-bindings/src/{createViewModel,useMachine,toSignal,ViewModelProvider}.ts(x)` | The same `ViewModel` member list over Solid signals; `toSignal` is the stream → signal seam |
 | **Web Composition Root** | `packages/client-react/src/AppRoot.tsx` + `src/app/buildBrowserPorts.ts` | `core.createApp(buildBrowserPorts())` + `createViewModel`, once per mount; `VITE_SERVER_URL` switch |
