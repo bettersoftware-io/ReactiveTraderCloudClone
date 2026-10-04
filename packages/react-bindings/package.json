@@ -26,6 +26,7 @@
     "@rtc/client-core": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",
+    "@rtc/shared": "workspace:*",
     "react": "^19.2.3",
     "rxjs": "^7.8"
   },

@@ -1,4 +1,9 @@
 import {
+  createDefaultLayoutPort,
+  InMemoryDockLayoutStore,
+  JARVIS_DEMO_STEPS,
+} from "@rtc/core-logic";
+import {
   type CurrencyPair,
   DEFAULT_CHART_SUBSTRATE,
   DEFAULT_CREDIT_RFQ_FILTER,
@@ -13,6 +18,7 @@ import {
   DEFAULT_VIEW_MODE,
   JARVIS_BRAINS,
   resolveThemeMode,
+  type SessionUser,
 } from "@rtc/domain";
 
 // The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
@@ -66,8 +72,10 @@ import type { AppData } from "@ui-visual-shared/appData";
 import { EMPTY } from "rxjs";
 import { createSignal } from "solid-js";
 
+import { createLayoutMachine } from "@rtc/client-core/core";
 import type {
   BootSequenceState,
+  CoreSelection,
   JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
@@ -76,17 +84,9 @@ import type {
   LayoutState,
   NotionalView,
   RfqCountdownSeed,
-  SessionUser,
   WorkspaceNavState,
-} from "@rtc/client-core";
-import {
-  createDefaultLayoutPort,
-  InMemoryDockLayoutStore,
-  JARVIS_DEMO_STEPS,
-  type WorkspaceTab,
-} from "@rtc/client-core";
-import { createLayoutMachine } from "@rtc/client-core/core";
-import type { CoreSelection } from "@rtc/core-api";
+  WorkspaceTab,
+} from "@rtc/core-api";
 import type { ViewModel } from "@rtc/solid-bindings";
 import {
   type MaybeAccessor,

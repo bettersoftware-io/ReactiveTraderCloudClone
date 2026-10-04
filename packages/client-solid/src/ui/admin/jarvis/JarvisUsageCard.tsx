@@ -1,8 +1,8 @@
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 
-import type { AdminJarvisUsagePayload } from "@rtc/client-core";
 import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
+import type { AdminJarvisUsagePayload } from "@rtc/shared";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./JarvisUsageCard.module.css";

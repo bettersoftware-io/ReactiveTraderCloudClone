@@ -1,7 +1,7 @@
 import { batch, createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import type { EqDrawTool } from "@rtc/client-core";
+import type { EqDrawTool } from "@rtc/core-api";
 import type { DrawingGrip } from "@rtc/motion-core";
 
 import { chartGesturesPage } from "#tests/ui/pages/CreateChartGesturesPage";

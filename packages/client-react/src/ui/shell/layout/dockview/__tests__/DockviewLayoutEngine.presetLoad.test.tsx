@@ -1,10 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import type { DockLayoutStore } from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
-  type DockLayoutStore,
   InMemoryDockLayoutStore,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { createDockEngine, DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

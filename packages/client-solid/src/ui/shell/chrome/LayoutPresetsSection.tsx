@@ -6,12 +6,12 @@ import type {
   LayoutPresetSummary,
   SaveLayoutPresetResult,
   WorkspaceTab,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   DEFAULT_LAYOUT_PRESET_NAME,
   MAX_LAYOUT_PRESET_NAME_LENGTH,
   MAX_LAYOUT_PRESETS,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import type { LayoutEngine } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 

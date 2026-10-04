@@ -23,7 +23,10 @@ export function buildHomeMap(
   const options = readSourceResolvingOptions(repoRoot);
   const host = ts.createCompilerHost(options);
 
-  host.resolveModuleNames = (names, containingFile) => {
+  host.resolveModuleNames = (
+    names: string[],
+    containingFile: string,
+  ): (ts.ResolvedModule | undefined)[] => {
     return names.map((name) => {
       return (
         resolveOwnAlias(name, containingFile) ??
@@ -73,7 +76,9 @@ function readSourceResolvingOptions(repoRoot: string): ts.CompilerOptions {
     {},
     {
       ...ts.sys,
-      onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+      onUnRecoverableConfigFileDiagnostic: (
+        diagnostic: ts.Diagnostic,
+      ): void => {
         throw new Error(
           ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
         );

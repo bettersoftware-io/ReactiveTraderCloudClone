@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-import type { AdminJarvisUsagePayload } from "@rtc/client-core";
 import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
+import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import styles from "./JarvisUsageCard.module.css";
 

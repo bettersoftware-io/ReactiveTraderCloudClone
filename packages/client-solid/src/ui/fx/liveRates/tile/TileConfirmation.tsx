@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, Match, Switch } from "solid-js";
 
-import type { TileExecutionState } from "@rtc/client-core";
+import type { TileExecutionState } from "@rtc/core-api";
 import { Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 
 import { formatSpotDate } from "./formatSpotDate";

@@ -1,6 +1,6 @@
 import { type Accessor, Index, type JSX, Show } from "solid-js";
 
-import type { EqChartType } from "@rtc/client-core";
+import type { EqChartType } from "@rtc/core-api";
 import type { ChartSubstrate } from "@rtc/domain";
 import {
   type Canvas2D,

@@ -17,8 +17,10 @@
   "dependencies": {
     "@rtc/client-core": "workspace:*",
     "@rtc/core-api": "workspace:*",
+    "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/motion-core": "workspace:*",
+    "@rtc/shared": "workspace:*",
     "rxjs": "^7.8"
   },
   "devDependencies": {

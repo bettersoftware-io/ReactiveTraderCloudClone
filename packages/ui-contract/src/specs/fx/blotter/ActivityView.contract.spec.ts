@@ -2,7 +2,7 @@ import { FxBlotterWorkspace } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { ActivityEntry } from "@rtc/client-core";
+import type { ActivityEntry } from "@rtc/core-api";
 import { Direction, type Trade, TradeStatus } from "@rtc/domain";
 
 afterEach(() => {

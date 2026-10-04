@@ -16,7 +16,7 @@
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { DriveOutcome, JarvisDriverState } from "@rtc/client-core";
+import type { DriveOutcome, JarvisDriverState } from "@rtc/core-api";
 import type { ViewModel } from "@rtc/solid-bindings";
 
 import { jarvisDrivenPulsePage } from "#tests/ui/pages/UseJarvisDrivenPulsePage";

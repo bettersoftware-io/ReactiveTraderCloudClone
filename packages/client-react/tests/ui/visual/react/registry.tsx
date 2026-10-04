@@ -1,8 +1,8 @@
 import { fixtures } from "@ui-visual-shared/fixtures";
 import type { CSSProperties, ReactElement } from "react";
 
-import type { LayoutState } from "@rtc/client-core";
-import { createDefaultLayoutPort } from "@rtc/client-core";
+import type { LayoutState } from "@rtc/core-api";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 
 import { App } from "#/ui/App";
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";

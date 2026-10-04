@@ -2,7 +2,7 @@
 import { cleanup, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 
-import type { TileExecutionState } from "@rtc/client-core";
+import type { TileExecutionState } from "@rtc/core-api";
 import type { Direction } from "@rtc/domain";
 
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

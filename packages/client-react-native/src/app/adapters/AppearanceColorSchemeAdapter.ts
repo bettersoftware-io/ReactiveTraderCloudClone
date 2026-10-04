@@ -1,7 +1,7 @@
 import { Appearance } from "react-native";
 import { BehaviorSubject, distinctUntilChanged, type Observable } from "rxjs";
 
-import type { ColorSchemeSource } from "@rtc/client-core";
+import type { ColorSchemeSource } from "@rtc/core-api";
 
 interface ColorSchemePref {
   colorScheme: "dark" | "light" | null;

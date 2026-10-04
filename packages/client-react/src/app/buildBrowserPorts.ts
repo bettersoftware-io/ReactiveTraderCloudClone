@@ -2,7 +2,6 @@ import { merge, mergeMap, of, tap } from "rxjs";
 
 import { shouldPlayBootSplash } from "@rtc/boot-splash";
 import {
-  type AppPorts,
   createRoutingAuthPort,
   createSimulatorPorts,
   createWsRealPorts,
@@ -15,6 +14,7 @@ import {
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
 } from "@rtc/client-core";
+import type { AppPorts } from "@rtc/core-api";
 import { instrumentWsAdapter } from "@rtc/devtools-core";
 import {
   type AnomalyDetectorConfig,

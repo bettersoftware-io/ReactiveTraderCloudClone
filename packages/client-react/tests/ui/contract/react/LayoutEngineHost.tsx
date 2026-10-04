@@ -1,11 +1,8 @@
 import type { ReactElement } from "react";
 
-import {
-  createDefaultLayoutPort,
-  type LayoutPort,
-  type PanelId,
-} from "@rtc/client-core";
 import { createLayoutMachine } from "@rtc/client-core/core";
+import type { LayoutPort, PanelId } from "@rtc/core-api";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 import { useMachine } from "@rtc/react-bindings";
 
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";

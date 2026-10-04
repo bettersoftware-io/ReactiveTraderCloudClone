@@ -1,11 +1,16 @@
 import { BehaviorSubject, EMPTY, type Observable, of, Subject } from "rxjs";
 import { filter } from "rxjs/operators";
 
+import {
+  createEqDrawingsMachine,
+  createEqWorkspaceMachine,
+} from "@rtc/client-core/core";
 import type {
   ActivityEntry,
-  AdminJarvisUsagePayload,
   AnimationIntent,
   AuthViewState,
+  CoreImpl,
+  CoreOption,
   EqDrawingsIntents,
   EqDrawingsState,
   EqWorkspaceIntents,
@@ -13,19 +18,12 @@ import type {
   IncidentKind,
   IncidentState,
   JarvisAvailability,
-  JarvisEvent,
   JarvisPort,
   Machine,
-  PanelStreamDeps,
-  SessionUser,
   ThroughputView,
   WorkspaceTab,
-} from "@rtc/client-core";
-import {
-  createEqDrawingsMachine,
-  createEqWorkspaceMachine,
-} from "@rtc/client-core/core";
-import type { CoreImpl, CoreOption } from "@rtc/core-api";
+} from "@rtc/core-api";
+import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
   type AmbientStyle,
   type Candle,
@@ -81,11 +79,13 @@ import {
   type RfqQuoteResult,
   type ServiceTopology,
   type SessionInfo,
+  type SessionUser,
   type ThemeModePreference,
   type ThemeSkin,
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
+import type { AdminJarvisUsagePayload, JarvisEvent } from "@rtc/shared";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */

@@ -190,12 +190,12 @@ const config: IConfiguration = {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/domain/motion-core, never on a concrete client, a binding, or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(ui-contract|client-core|core-api|domain|motion-core)/",
+          "^packages/(ui-contract|client-core|core-api|core-logic|domain|motion-core)/",
       },
     },
     {

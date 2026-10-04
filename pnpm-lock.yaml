@@ -502,6 +502,9 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
@@ -517,6 +520,9 @@ importers:
       '@rtc/react-bindings':
         specifier: workspace:*
         version: link:../react-bindings
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -629,6 +635,9 @@ importers:
       '@rtc/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../core-api
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
@@ -717,6 +726,9 @@ importers:
       '@react-native/jest-preset':
         specifier: ^0.86.2
         version: 0.86.3(@babel/core@7.29.7(supports-color@11.0.0))(react@19.3.0)(supports-color@11.0.0)
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/devtools-relay':
         specifier: workspace:*
         version: link:../devtools-relay
@@ -801,6 +813,9 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/devtools-core':
         specifier: workspace:*
         version: link:../devtools-core
@@ -813,6 +828,9 @@ importers:
       '@rtc/motion-core':
         specifier: workspace:*
         version: link:../motion-core
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rtc/solid-bindings':
         specifier: workspace:*
         version: link:../solid-bindings
@@ -1159,6 +1177,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       react:
         specifier: ^19.2.3
         version: 19.3.0
@@ -1267,6 +1288,9 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -1304,12 +1328,18 @@ importers:
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
+      '@rtc/core-logic':
+        specifier: workspace:*
+        version: link:../core-logic
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
       '@rtc/motion-core':
         specifier: workspace:*
         version: link:../motion-core
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -1382,6 +1412,9 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.63.0
+      '@rtc/core-api':
+        specifier: workspace:*
+        version: link:../packages/core-api
       '@sinonjs/fake-timers':
         specifier: ^15.0.0
         version: 15.4.0

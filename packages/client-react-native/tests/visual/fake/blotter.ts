@@ -1,4 +1,4 @@
-import type { ActivityEntry } from "@rtc/client-core";
+import type { ActivityEntry } from "@rtc/core-api";
 import {
   DEFAULT_TRADER_NAME,
   Direction,

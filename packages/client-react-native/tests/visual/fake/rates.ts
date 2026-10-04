@@ -2,7 +2,7 @@ import type {
   NotionalView,
   TileExecutionIntents,
   TileExecutionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   type CurrencyPair,
   calculateSpread,

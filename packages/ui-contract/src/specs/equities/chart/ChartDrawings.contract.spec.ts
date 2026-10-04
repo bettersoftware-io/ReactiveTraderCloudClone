@@ -31,7 +31,7 @@ import type { ChartPanelPage } from "@ui-contract/pages/equities/chart/ChartPane
 import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartHeadPage";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { EqDrawing, EqDrawingsState } from "@rtc/client-core";
+import type { EqDrawing, EqDrawingsState } from "@rtc/core-api";
 import type { Candle, EquityInstrument, EquityQuote } from "@rtc/domain";
 import { chartVm, drawingScene } from "@rtc/motion-core";
 

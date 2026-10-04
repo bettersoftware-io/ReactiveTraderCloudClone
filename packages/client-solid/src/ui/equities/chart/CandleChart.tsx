@@ -7,7 +7,7 @@ import type {
   EqIndicatorId,
   EqPaneId,
   EqYScale,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import type { Candle, ChartSubstrate } from "@rtc/domain";
 import {
   type ChartViewport,

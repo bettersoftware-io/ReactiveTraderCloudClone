@@ -1,6 +1,6 @@
 import { createMemo, type JSX, Show } from "solid-js";
 
-import type { EqDrawing } from "@rtc/client-core";
+import type { EqDrawing } from "@rtc/core-api";
 import { CANDLE_DEFAULT_VISIBLE, type CandleTimeframe } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
