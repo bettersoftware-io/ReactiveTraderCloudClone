@@ -79,7 +79,8 @@
         "VITE_SERVER_URL",
         "VITE_DEMO_AUTH",
         "EXPO_PUBLIC_SERVER_URL",
-        "VITE_CORE_IMPL"
+        "VITE_CORE_IMPL",
+        "RTC_LEAN_DEPS"
       ]
     },
     "clean": {
