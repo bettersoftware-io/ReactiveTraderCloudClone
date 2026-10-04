@@ -1,11 +1,14 @@
 // packages/client-react-native/tests/pages/AppRootPage.tsx
 import { cleanup, render, screen } from "@testing-library/react-native";
+import { useContext } from "react";
 import { Text } from "react-native";
 
 import type { AuthStatus } from "@rtc/client-core";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { AppRoot } from "#/app/AppRoot";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
+import { textContentOf } from "#tests/pages/support/textContent";
 
 export interface AppRootPage {
   /** Mounts `<AppRoot simulator><Text>{text}</Text></AppRoot>`, keeping the
@@ -22,6 +25,9 @@ export interface AppRootPage {
   unmount(): Promise<unknown>;
   unmountAll(): Promise<void>;
   mountAuthProbe(): Promise<void>;
+  /** Mounts a child that prints the build stamp `AppRoot` supplies. */
+  mountBuildStampProbe(): Promise<void>;
+  buildStampText(): string;
   authStatus(): AuthStatus;
 }
 
@@ -69,6 +75,25 @@ export function appRootPage(): AppRootPage {
           <AuthProbe />
         </AppRoot>,
       );
+    },
+    async mountBuildStampProbe(): Promise<void> {
+      function BuildStampProbe(): React.JSX.Element {
+        const stamp = useContext(BuildStampContext);
+        return (
+          <Text testID="build-stamp">
+            {stamp === null ? "none" : `${stamp.commit}|${stamp.builtAt}`}
+          </Text>
+        );
+      }
+
+      await render(
+        <AppRoot simulator>
+          <BuildStampProbe />
+        </AppRoot>,
+      );
+    },
+    buildStampText(): string {
+      return textContentOf(screen.getByTestId("build-stamp"));
     },
     authStatus(): AuthStatus {
       return screen.getByTestId("auth-status").props.children as AuthStatus;

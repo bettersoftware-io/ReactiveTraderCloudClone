@@ -18,6 +18,24 @@ test("typing credentials then pressing AUTHENTICATE calls login with them", asyn
   expect(login).toHaveBeenCalledWith("trader1", "s3cret");
 });
 
+// A development run has no stamp, and half a line would read as a fact.
+test("prints no build line when the bundle carries no stamp", async () => {
+  await page.mount("unauthenticated", () => {});
+
+  expect(page.exists("login-build")).toBe(false);
+});
+
+// The answer to "which published build is this?", readable before signing in.
+test("prints the commit and publish time of a published build", async () => {
+  await page.mount("unauthenticated", () => {}, {
+    buildStamp: { commit: "f0482c5", builtAt: "2026-10-04T15:20Z" },
+  });
+
+  expect(
+    page.hasTextContent("login-build", "BUILD f0482c5 · 2026-10-04T15:20Z"),
+  ).toBe(true);
+});
+
 test("renders the seeded error message", async () => {
   await page.mount("unauthenticated", () => {}, {
     error: "Invalid credentials",

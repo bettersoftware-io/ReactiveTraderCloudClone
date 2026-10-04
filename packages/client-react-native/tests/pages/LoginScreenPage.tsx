@@ -12,7 +12,10 @@ import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
+import type { BuildStamp } from "#/ui/shell/buildStamp";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 type LoginStatus = "unauthenticated" | "authenticating" | "authenticated";
 
@@ -20,6 +23,9 @@ interface LoginScreenMountOptions {
   error?: string | null;
   waitVariant?: LoginWaitVariant;
   onToggleSimulator?: (v: boolean) => void;
+  /** The running build's stamp, as `AppRoot` supplies it. Default `null` —
+   * a development run. */
+  buildStamp?: BuildStamp | null;
 }
 
 /** What a single-child RN `<Text>` node's `props.children` actually holds. */
@@ -76,6 +82,7 @@ export interface LoginScreenPage {
   ): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
+  hasTextContent(testId: string, text: string): boolean;
   errorText(): TextChildren;
   submitLabel(): TextChildren;
   /** The flattened `opacity` of a node, `undefined` when it sets none. */
@@ -98,16 +105,19 @@ export function loginScreenPage(): LoginScreenPage {
         error = null,
         onToggleSimulator = noop,
         waitVariant = "handshake",
+        buildStamp = null,
       } = options;
       await renderWithTheme(
-        <ViewModelProvider
-          viewModel={fakeViewModel(status, login, error, waitVariant)}
-        >
-          <LoginScreen
-            simulator={false}
-            onToggleSimulator={onToggleSimulator}
-          />
-        </ViewModelProvider>,
+        <BuildStampContext.Provider value={buildStamp}>
+          <ViewModelProvider
+            viewModel={fakeViewModel(status, login, error, waitVariant)}
+          >
+            <LoginScreen
+              simulator={false}
+              onToggleSimulator={onToggleSimulator}
+            />
+          </ViewModelProvider>
+        </BuildStampContext.Provider>,
       );
     },
     async unmountAll(): Promise<void> {
@@ -115,6 +125,9 @@ export function loginScreenPage(): LoginScreenPage {
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
+    },
+    hasTextContent(testId: string, text: string): boolean {
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     errorText(): TextChildren {
       return screen.getByTestId("login-error").props.children as TextChildren;

@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +19,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
 import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
 import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -55,6 +56,7 @@ export function LoginScreen({
   const { useAuth } = useViewModel();
   const { state, login } = useAuth();
   const styles = useThemedStyles(makeStyles);
+  const buildStamp = useContext(BuildStampContext);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -149,6 +151,12 @@ export function LoginScreen({
             onValueChange={onToggleSimulator}
           />
         </View>
+
+        {buildStamp !== null ? (
+          <Text testID="login-build" style={styles.build}>
+            BUILD {buildStamp.commit} · {buildStamp.builtAt}
+          </Text>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -174,6 +182,7 @@ interface LoginScreenStyles {
   submitLabelDisabled: TextStyle;
   simRow: ViewStyle;
   simLabel: TextStyle;
+  build: TextStyle;
 }
 
 // Every value below is `LockScreen`'s (title / subtitle / input / error) or
@@ -261,6 +270,12 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
     simLabel: {
       color: t.textMuted,
       ...labelStyle(t, 8.5, 2),
+    },
+    // Present only in a published build; a development run prints nothing.
+    build: {
+      color: t.textMuted,
+      marginTop: 14,
+      ...labelStyle(t, 8, 1.5),
     },
   });
 }
