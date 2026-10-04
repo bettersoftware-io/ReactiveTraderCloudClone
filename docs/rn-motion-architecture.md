@@ -125,7 +125,7 @@ machinery:
    `undefined` — silently. Five boot scenes shipped dead this way; the full
    investigation is
    [research/2026-07-27-rn-boot-scenes-blank-on-device.md](research/2026-07-27-rn-boot-scenes-blank-on-device.md).
-3. **jest is structurally blind to both.** `babel.config.cts` disables the
+3. **jest is structurally blind to both.** `babel.config.mts` disables the
    worklet plugins under `api.env("test")` and `jest.setup.ts` mocks
    Reanimated wholesale, so in tests every worklet is an ordinary function in
    the ordinary runtime. The witnesses are `pnpm check:worklet-order` (gates

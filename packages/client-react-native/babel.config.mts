@@ -15,7 +15,7 @@ interface BabelConfig {
   plugins: unknown[];
 }
 
-module.exports = (api: BabelApi): BabelConfig => {
+export default function babelConfig(api: BabelApi): BabelConfig {
   const isTest = api.env("test");
   // api.cache(true) alone would ignore this env-dependent branch; using()
   // keys the cache on isTest so jest and native builds get distinct configs.
@@ -54,4 +54,4 @@ module.exports = (api: BabelApi): BabelConfig => {
       ...(isTest ? [] : ["react-native-worklets/plugin"]),
     ],
   };
-};
+}

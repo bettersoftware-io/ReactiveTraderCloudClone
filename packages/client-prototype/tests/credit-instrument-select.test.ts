@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 describe("InstrumentSelect.module.css", () => {
   test("the dropdown label has no open-state border override (PROTO's border is the fixed 1px solid var(--border) at every state)", () => {
     const cssPath = path.resolve(
-      __dirname,
+      import.meta.dirname,
       "../src/credit/NewRfq/InstrumentSelect.module.css",
     );
     const css = readFileSync(cssPath, "utf-8");

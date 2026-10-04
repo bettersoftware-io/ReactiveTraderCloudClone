@@ -80,7 +80,7 @@ function fixture(): string {
 }
 
 const SCRIPT = resolve(
-  __dirname,
+  import.meta.dirname,
   "../../../scripts/pages/build-presentations-index.mts",
 );
 
