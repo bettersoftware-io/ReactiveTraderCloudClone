@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { createSignal, For, Show, untrack } from "solid-js";
 
-import type { ColumnFilter, Comparator } from "@rtc/client-core";
+import type { ColumnFilter, Comparator } from "@rtc/core-logic";
 
 import styles from "./NumberFilter.module.css";
 

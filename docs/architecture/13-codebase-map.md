@@ -134,7 +134,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The rules all three cores share that need no stream library: the pure folds (`blotterFolds`, `staleFlagFold`, `incidentFold`, …), view derivations, the layout reducer and workspace/Jarvis controllers (`createWorkspaceDock`, `createJarvisController`, …), and `createAuthDeps`. |
+| **What it is** | The pure rules, with no stream library, shared by the three cores and the UIs: the pure folds (`blotterFolds`, `staleFlagFold`, `incidentFold`, …), view derivations, the layout reducer and workspace/Jarvis controllers (`createWorkspaceDock`, `createJarvisController`, …), `createAuthDeps`, and the view helpers a UI calls directly (`blotter/` sort and filter, `admin/adminKpisVm`, `layout/` `lockedWidthPx` · `maximizeBoundaryPath` · `visibleRootOf` -- moved in from `client-core` on 2026-10-04). |
 | **Ring** | ③ Interface Adapters -- application rules below the stream shell of each core |
 | **Depends on** | `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (`packages/core-logic/package.json` `dependencies`) -- `core-api` for types only |
 | **Consumed by** | The three cores; the three clients and `ui-contract`, which call its view rules directly (`client-react-native` from its visual fakes, which the app bundle includes) |
@@ -424,8 +424,7 @@ src/
 ├── composition.ts  createApp · createMachineFactories — the composition root
 ├── presenters/     presenters & state machines, RxJS shells over core-logic rules
 ├── adapters/        WsAdapter, portFactory (createSimulatorPorts / createWsRealPorts), HttpAuthAdapter, Jarvis adapters
-├── blotter/          column sort + filter state
-└── layout/           layout presets · locked width · maximize boundary · workspace persistence writer
+└── layout/           the RxJS shells: layout presets · workspace persistence writer
 ```
 
 `@rtc/client-core-async`:

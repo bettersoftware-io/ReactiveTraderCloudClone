@@ -221,7 +221,7 @@ root, so that subpath is the whole RxJS core. What
 had to move for it:
 
 - `adminKpisVm.ts` (the three pure view-model helpers the UI imports) out of
-  `presenters/` into `admin/`;
+  `presenters/` into `admin/` (and on to `@rtc/core-logic` on 2026-10-04);
 - `WsJarvisAdapter`'s import of `UNSUPPORTED_SENTINEL_SPEC` to
   `@rtc/core-logic`, where the value lives — the one eager-to-presenter edge
   inside the package;

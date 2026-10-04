@@ -80,7 +80,7 @@ graph TB
 
     uic["@rtc/ui-contract<br/>framework-neutral UI contract<br/>specs · harness · visual matrix"]
     cc["@rtc/core-contract<br/>equivalence tier (dev-only)<br/>one suite per member"]
-    logic["@rtc/core-logic<br/>shared stream-free rules<br/>folds · controllers · createAuthDeps"]
+    logic["@rtc/core-logic<br/>pure rules, no stream library<br/>folds · controllers · view helpers"]
 
     api["@rtc/core-api<br/>types-only contract"]
     shared["@rtc/shared<br/>DTOs · wire protocol<br/>CLIENT_MSG / SERVER_MSG"]
