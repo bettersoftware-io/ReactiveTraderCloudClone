@@ -1255,7 +1255,10 @@ their natives arrive, not descriptions of shipped sibling behaviour.
     packages (`-rxjs`, `-async`, `-effect`) and one package for the shared
     edge, with the UI taking presenter types from `@rtc/core-api` rather than
     from an implementation. 9's dependency rule already proves the cut in one
-    direction. Its own spec; scope and order are tracked in
+    direction. Designed 2026-10-04:
+    [the package split spec](../superpowers/specs/2026-10-04-client-core-rxjs-package-split-design.md)
+    — four PRs, consumers first, ending with `@rtc/client-core` renamed
+    `@rtc/client-adapters`. Order and progress are tracked in
     [`docs/STATUS.md`](../STATUS.md).
 
 ## See also
