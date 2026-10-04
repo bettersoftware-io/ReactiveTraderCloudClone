@@ -1,32 +1,31 @@
-import { isLoginRequestDto, type LoginResponseDto } from "@rtc/shared";
+import {
+  type AccountErrorDto,
+  isLoginRequestDto,
+  type LoginRequestDto,
+  type LoginResponseDto,
+} from "@rtc/shared";
 
+import type { AccountService } from "../accounts/AccountService.js";
+import { sessionUserFor } from "../accounts/sessionUserFor.js";
 import type { AuthService } from "../auth/AuthService.js";
 import type { BanList } from "../auth/banList.js";
 import type { RateLimiter } from "../auth/rateLimit.js";
-
-const JSON_CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Content-Type": "application/json",
-};
+import { type HttpResult, jsonResult } from "./jsonResult.js";
 
 export interface LoginHandlerDeps {
   readonly auth: AuthService;
   readonly rateLimit: RateLimiter;
   readonly banList: BanList;
+  readonly accounts: AccountService;
   readonly now: () => number;
-}
-
-export interface LoginHandlerResult {
-  readonly status: 200 | 400 | 401 | 429;
-  readonly body: string;
-  readonly headers?: Record<string, string>;
 }
 
 /**
  * Pure `/login` request handler, cheapest check first: the §9.2 ban list
  * (a Map lookup — a banned caller never reaches JSON parsing, let alone the
  * scrypt hash), then the per-IP rate limit, then the request shape, then
- * `AuthService.login`. A rate-limit hit and a failed login each strike the
+ * `AuthService.login` for a roster username, or `AccountService.login` for an
+ * email address. A rate-limit hit and a failed login each strike the
  * caller. No real HTTP server is needed to test it — `index.ts` wires
  * `node:http` request/response objects to this function.
  */
@@ -34,7 +33,7 @@ export async function authenticateLoginRequest(
   bodyText: string,
   ip: string,
   deps: LoginHandlerDeps,
-): Promise<LoginHandlerResult> {
+): Promise<HttpResult> {
   const now = deps.now();
   const bannedUntil = deps.banList.bannedUntil(ip, now);
 
@@ -62,6 +61,12 @@ export async function authenticateLoginRequest(
 
   if (!isLoginRequestDto(parsed)) {
     return jsonResult(400, { error: "invalid_request" });
+  }
+
+  // An email address is a registered account; anything else is the roster.
+  // The demo usernames contain no `@`, so the two can never collide.
+  if (parsed.username.includes("@")) {
+    return answerAccountLogin(parsed, ip, now, deps);
   }
 
   const result = await deps.auth.login(parsed.username, parsed.password);
@@ -139,14 +144,51 @@ export function describeUpgrade(
   return { ok: true };
 }
 
-function jsonResult(
-  status: LoginHandlerResult["status"],
-  body: unknown,
-  extraHeaders: Record<string, string> = {},
-): LoginHandlerResult {
-  return {
-    status,
-    body: JSON.stringify(body),
-    headers: { ...JSON_CORS_HEADERS, ...extraHeaders },
+const ACCOUNT_REFUSALS: Readonly<
+  Record<"unconfirmed" | "pending" | "blocked", AccountErrorDto>
+> = {
+  unconfirmed: { error: "unconfirmed" },
+  pending: { error: "pending_approval" },
+  blocked: { error: "blocked" },
+};
+
+/** The registered-account leg of `/login` (spec §5.4). Only a wrong
+ * password is a strike: `unconfirmed`, `pending` and `blocked` are told to
+ * someone who proved they own the account. */
+async function answerAccountLogin(
+  request: LoginRequestDto,
+  ip: string,
+  now: number,
+  deps: LoginHandlerDeps,
+): Promise<HttpResult> {
+  const decision = await deps.accounts.login(
+    request.username,
+    request.password,
+    ip,
+  );
+
+  if (decision.outcome === "invalid") {
+    deps.banList.strike(ip, "login-failed", now);
+
+    return jsonResult(401, { error: "invalid_credentials" });
+  }
+
+  if (decision.outcome === "unavailable") {
+    return jsonResult(503, { error: "unavailable" });
+  }
+
+  if (decision.outcome !== "ok") {
+    return jsonResult(403, ACCOUNT_REFUSALS[decision.outcome]);
+  }
+
+  const response: LoginResponseDto = {
+    token: deps.auth.issueAccountSession(decision.account.email, {
+      accountId: decision.account.id,
+      access: decision.account.access,
+    }),
+    user: sessionUserFor(decision.account),
+    exp: now + deps.auth.ttlMs,
   };
+
+  return jsonResult(200, response);
 }

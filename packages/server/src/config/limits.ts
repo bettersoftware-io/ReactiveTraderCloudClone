@@ -52,3 +52,34 @@ export const BAN_STRIKES = 10;
 export const BAN_STRIKE_WINDOW_MS = 10 * 60_000;
 export const BAN_DURATION_MS = 15 * 60_000;
 export const BAN_MAX_ENTRIES = 10_000;
+
+/** B2 — body cap for the account endpoints, by bytes RECEIVED. */
+export const ACCOUNT_MAX_BODY_BYTES = 4 * 1024;
+
+/** B2 — `/register` per IP. A person registers once. */
+export const REGISTER_RATE_LIMIT_MAX = 5;
+export const REGISTER_RATE_LIMIT_WINDOW_MS = 60 * 60_000;
+
+/** B2 — `/resend-code` and `/request-reset` per IP, each. Each sends an email. */
+export const SEND_CODE_RATE_LIMIT_MAX = 5;
+export const SEND_CODE_RATE_LIMIT_WINDOW_MS = 60 * 60_000;
+
+/** B2 — `/confirm-email` and `/reset-password` per IP, each. Bounds guessing
+ * a 6-digit code; Supabase also expires and rate-limits codes. */
+export const CODE_ENTRY_RATE_LIMIT_MAX = 10;
+export const CODE_ENTRY_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
+
+/** B2 — registrations per day across the whole service: a fuse against a
+ * scripted flood. Counted in the account store, so a restart keeps it. */
+export const MAX_REGISTRATIONS_PER_DAY = 200;
+
+/** B2 — one account-store call. A slow Supabase must not hold a request. */
+export const ACCOUNT_DIRECTORY_TIMEOUT_MS = 5_000;
+
+/** B2 — how long the upgrade trusts a cached account status, and how many
+ * accounts the cache holds. A dashboard block lands within this window. */
+export const ACCOUNT_STATUS_CACHE_TTL_MS = 60_000;
+export const ACCOUNT_STATUS_CACHE_MAX_ENTRIES = 1_000;
+
+/** B2 — `/health/accounts` re-reads the store at most this often. */
+export const ACCOUNTS_HEALTH_CACHE_MS = 60_000;

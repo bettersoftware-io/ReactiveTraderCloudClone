@@ -1,6 +1,8 @@
 export type StrikeReason =
   | "login-failed"
   | "login-rate-limited"
+  | "account-rate-limited"
+  | "code-failed"
   | "frame-too-large"
   | "message-flood";
 
@@ -9,6 +11,8 @@ export type StrikeReason =
 export const STRIKE_WEIGHT: Readonly<Record<StrikeReason, number>> = {
   "login-failed": 1,
   "login-rate-limited": 2,
+  "account-rate-limited": 2,
+  "code-failed": 1,
   "frame-too-large": 3,
   "message-flood": 3,
 };
