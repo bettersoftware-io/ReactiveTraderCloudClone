@@ -68,7 +68,9 @@ describe("SupabaseAccountDirectory — signUp", () => {
     ["email_address_invalid", 400, "rejected-email"],
     ["user_already_exists", 422, "sent"],
     ["email_exists", 422, "sent"],
-    ["over_email_send_rate_limit", 429, "unavailable"],
+    ["over_email_send_rate_limit", 429, "sent"],
+    ["over_request_rate_limit", 429, "unavailable"],
+    ["unexpected_failure", 400, "unavailable"],
   ])("maps %s to %s", async (errorCode, status, outcome) => {
     const fake = createFakeFetch([
       createReply(status, { error_code: errorCode }),
@@ -288,11 +290,142 @@ describe("SupabaseAccountDirectory — profiles", () => {
   });
 });
 
+describe("SupabaseAccountDirectory — the timeout", () => {
+  it.each(createOperations())(
+    "%s carries an abort signal",
+    async (_name, run, _unavailable) => {
+      const fake = createFakeFetch([createReply(200, {})]);
+
+      await run(createDirectory(fake));
+
+      expect(fake.requests[0]?.signal).toBeInstanceOf(AbortSignal);
+    },
+  );
+
+  it("a hanging Supabase is unavailable once the timeout fires", async () => {
+    const directory = createSupabaseAccountDirectory({
+      url: "https://proj.supabase.co",
+      secretKey: "sb_secret_test",
+      timeoutMs: 5,
+      fetchImpl: createHangingFetch(),
+    });
+
+    expect(await directory.checkPassword("ann@desk.io", "pw", IP)).toEqual({
+      outcome: "unavailable",
+    });
+    expect(await directory.findAccount(ACCOUNT_ID)).toEqual({
+      outcome: "unavailable",
+    });
+  });
+});
+
+describe("SupabaseAccountDirectory — a rejected key is not a verdict", () => {
+  it.each(createOperations())(
+    "%s: a 401 is unavailable, never a verdict about the user",
+    async (_name, run, unavailable) => {
+      const fake = createFakeFetch([
+        createReply(401, { message: "Invalid API key" }),
+      ]);
+
+      expect(await run(createDirectory(fake))).toEqual(unavailable);
+    },
+  );
+
+  it("a 403 with no error_code is the gateway, so unavailable", async () => {
+    const fake = createFakeFetch([createReply(403, { message: "forbidden" })]);
+
+    expect(
+      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+    ).toBe("unavailable");
+  });
+
+  it("a 403 with an error_code is still a refusal (otp_expired)", async () => {
+    const fake = createFakeFetch([
+      createReply(403, { error_code: "otp_expired" }),
+    ]);
+
+    expect(
+      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+    ).toBe("invalid_code");
+  });
+});
+
+describe("SupabaseAccountDirectory — hardening", () => {
+  it("a non-finite since-time is unavailable, not a throw", async () => {
+    const fake = createFakeFetch([]);
+
+    expect(
+      await createDirectory(fake).countRegistrationsSince(Number.NaN),
+    ).toEqual({ outcome: "unavailable" });
+    expect(fake.requests).toHaveLength(0);
+  });
+
+  it("forwards only a real IP address", async () => {
+    const fake = createFakeFetch([createReply(200, {}), createReply(200, {})]);
+    const directory = createDirectory(fake);
+
+    await directory.requestReset("ann@desk.io", "not-an-ip");
+    await directory.requestReset("ann@desk.io", IP);
+
+    expect(fake.requests[0]?.headers["Sb-Forwarded-For"]).toBeUndefined();
+    expect(fake.requests[1]?.headers["Sb-Forwarded-For"]).toBe(IP);
+  });
+
+  it("a 200 whose body is not JSON never yields a session", async () => {
+    const fake = createFakeFetch([new Response("<html>", { status: 200 })]);
+
+    expect(
+      await createDirectory(fake).checkPassword("ann@desk.io", "pw", IP),
+    ).toEqual({ outcome: "unavailable" });
+  });
+
+  it("a verified reset code with no access token never sends the update", async () => {
+    const fake = createFakeFetch([createReply(200, {})]);
+
+    expect(
+      await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
+    ).toBe("unavailable");
+    expect(fake.requests).toHaveLength(1);
+  });
+
+  it("a profile lookup refused with a 4xx is unavailable", async () => {
+    const fake = createFakeFetch([createReply(400, { code: "PGRST100" })]);
+
+    expect(await createDirectory(fake).findAccount(ACCOUNT_ID)).toEqual({
+      outcome: "unavailable",
+    });
+  });
+
+  it("confirm and reset are unavailable on a 5xx", async () => {
+    const fake = createFakeFetch([createReply(503, {}), createReply(503, {})]);
+    const directory = createDirectory(fake);
+
+    expect(await directory.confirmEmail("ann@desk.io", "1", IP)).toBe(
+      "unavailable",
+    );
+    expect(await directory.resetPassword("ann@desk.io", "1", "pw", IP)).toBe(
+      "unavailable",
+    );
+  });
+
+  it("confirm and reset are unavailable on a thrown fetch", async () => {
+    const directory = createDirectory(createFailingFetch());
+
+    expect(await directory.confirmEmail("ann@desk.io", "1", IP)).toBe(
+      "unavailable",
+    );
+    expect(await directory.resetPassword("ann@desk.io", "1", "pw", IP)).toBe(
+      "unavailable",
+    );
+  });
+});
+
 interface RecordedRequest {
   readonly url: string;
   readonly method: string;
   readonly headers: Record<string, string>;
   readonly body: string | undefined;
+  readonly signal: AbortSignal | undefined;
 }
 
 interface FakeFetch {
@@ -311,6 +444,7 @@ function createFakeFetch(replies: readonly Response[]): FakeFetch {
       method: init.method ?? "GET",
       headers: init.headers as Record<string, string>,
       body: typeof init.body === "string" ? init.body : undefined,
+      signal: init.signal ?? undefined,
     });
 
     const reply = replies[next];
@@ -324,6 +458,74 @@ function createFakeFetch(replies: readonly Response[]): FakeFetch {
   }) as typeof fetch;
 
   return { fetchImpl, requests };
+}
+
+/** Never answers; rejects only when the signal it was handed aborts. */
+function createHangingFetch(): typeof fetch {
+  return ((_url: string, init: RequestInit): Promise<Response> => {
+    return new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => {
+        reject(init.signal?.reason);
+      });
+    });
+  }) as typeof fetch;
+}
+
+type Run = (directory: AccountDirectory) => Promise<unknown>;
+
+type Operation = readonly [name: string, run: Run, unavailable: unknown];
+
+/** All nine port methods with the value each answers when the store is down. */
+function createOperations(): Operation[] {
+  const down = { outcome: "unavailable" };
+
+  function signUp(d: AccountDirectory): Promise<unknown> {
+    return d.signUp({ email: "a@b.io", displayName: "A", password: "p" }, IP);
+  }
+
+  function resendCode(d: AccountDirectory): Promise<unknown> {
+    return d.resendCode("a@b.io", IP);
+  }
+
+  function confirmEmail(d: AccountDirectory): Promise<unknown> {
+    return d.confirmEmail("a@b.io", "1", IP);
+  }
+
+  function checkPassword(d: AccountDirectory): Promise<unknown> {
+    return d.checkPassword("a@b.io", "p", IP);
+  }
+
+  function requestReset(d: AccountDirectory): Promise<unknown> {
+    return d.requestReset("a@b.io", IP);
+  }
+
+  function resetPassword(d: AccountDirectory): Promise<unknown> {
+    return d.resetPassword("a@b.io", "1", "p", IP);
+  }
+
+  function findAccount(d: AccountDirectory): Promise<unknown> {
+    return d.findAccount(ACCOUNT_ID);
+  }
+
+  function countRegistrationsSince(d: AccountDirectory): Promise<unknown> {
+    return d.countRegistrationsSince(0);
+  }
+
+  function ping(d: AccountDirectory): Promise<unknown> {
+    return d.ping();
+  }
+
+  return [
+    ["signUp", signUp, "unavailable"],
+    ["resendCode", resendCode, "unavailable"],
+    ["confirmEmail", confirmEmail, "unavailable"],
+    ["checkPassword", checkPassword, down],
+    ["requestReset", requestReset, "unavailable"],
+    ["resetPassword", resetPassword, "unavailable"],
+    ["findAccount", findAccount, down],
+    ["countRegistrationsSince", countRegistrationsSince, down],
+    ["ping", ping, false],
+  ];
 }
 
 function createFailingFetch(): FakeFetch {

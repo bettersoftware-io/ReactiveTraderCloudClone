@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import {
   type AccountDirectory,
   type AccountLookup,
@@ -80,7 +82,7 @@ export function createSupabaseAccountDirectory(
       headers["Content-Type"] = "application/json";
     }
 
-    if (request.callerIp !== undefined) {
+    if (request.callerIp !== undefined && isIP(request.callerIp) !== 0) {
       headers["Sb-Forwarded-For"] = request.callerIp;
     }
 
@@ -103,6 +105,17 @@ export function createSupabaseAccountDirectory(
     }
 
     const body = await readJson(response);
+
+    // A 401 is the gateway refusing OUR key (rotated, revoked, mistyped); a
+    // 403 with no `error_code` is the gateway too (GoTrue's own refusals,
+    // `otp_expired` among them, carry one). Neither says anything about the
+    // user, so neither may read as a wrong password or a bad code.
+    if (
+      response.status === 401 ||
+      (response.status === 403 && readString(body, "error_code") === null)
+    ) {
+      return UNREACHABLE;
+    }
 
     if (response.ok) {
       return {
@@ -165,8 +178,11 @@ export function createSupabaseAccountDirectory(
         return "rejected-email";
       }
 
+      // `over_email_send_rate_limit` fires only for an address that already
+      // has a user record, so it must read as `sent`, like an existing one.
       return reply.errorCode === "user_already_exists" ||
-        reply.errorCode === "email_exists"
+        reply.errorCode === "email_exists" ||
+        reply.errorCode === "over_email_send_rate_limit"
         ? "sent"
         : "unavailable";
     },
@@ -307,6 +323,10 @@ export function createSupabaseAccountDirectory(
     },
 
     async countRegistrationsSince(sinceMs: number): Promise<RegistrationCount> {
+      if (!Number.isFinite(sinceMs)) {
+        return { outcome: "unavailable" };
+      }
+
       const since = encodeURIComponent(new Date(sinceMs).toISOString());
       const reply = await call({
         method: "GET",

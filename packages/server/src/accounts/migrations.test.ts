@@ -52,6 +52,31 @@ describe("supabase migrations", () => {
     }
   });
 
+  it("keeps profiles.email and the confirmation time in sync", () => {
+    expect(sql).toContain("update of email, email_confirmed_at");
+  });
+
+  it("reads sign-up metadata only as the display name, by any operator", () => {
+    const anyRead = sql.match(/raw_user_meta_data/g) ?? [];
+    const displayNameReads =
+      sql.match(/raw_user_meta_data\s*->>\s*'display_name'/g) ?? [];
+
+    expect(anyRead.length).toBeGreaterThan(0);
+    expect(anyRead.length).toBe(displayNameReads.length);
+  });
+
+  it("never turns row-level security off or relaxes it", () => {
+    expect(sql).not.toMatch(/disable\s+row\s+level\s+security/i);
+    expect(sql).not.toMatch(/no\s+force\s+row/i);
+  });
+
+  it("grants nothing on profiles to anon, authenticated or public", () => {
+    expect(sql).not.toMatch(
+      /grant\s[^;]*\bon\s+(table\s+)?public\.profiles\s+to\s+[^;]*\b(anon|authenticated|public)\b/i,
+    );
+  });
+
+  // A describe body runs fully before its cases, so `sql` is set by then.
   const sql = readAllMigrations();
 });
 

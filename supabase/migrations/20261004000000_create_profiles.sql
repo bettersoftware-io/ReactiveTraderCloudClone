@@ -47,7 +47,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.create_profile_for_user();
 
--- Mirrors the confirmation timestamp, so the server reads one table.
+-- Mirrors the email and its confirmation timestamp, so the server reads one table.
 create function public.sync_profile_confirmation()
 returns trigger
 language plpgsql
@@ -55,14 +55,15 @@ security definer set search_path = ''
 as $$
 begin
   update public.profiles
-  set email_confirmed_at = new.email_confirmed_at
+  set email = new.email,
+      email_confirmed_at = new.email_confirmed_at
   where id = new.id;
   return new;
 end;
 $$;
 
 create trigger on_auth_user_confirmed
-  after update of email_confirmed_at on auth.users
+  after update of email, email_confirmed_at on auth.users
   for each row execute function public.sync_profile_confirmation();
 
 revoke execute on function public.create_profile_for_user() from public, anon, authenticated;

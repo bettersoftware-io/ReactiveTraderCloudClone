@@ -24,12 +24,22 @@ Only `@rtc/server` talks to it. No client has its URL or a key.
 9. After your own first sign-up: in the table editor set your `profiles` row
    to `role = 'admin'`, `approved = true`.
 
+## Keep these closed
+
+- The **phone** and **anonymous** sign-in providers must stay disabled:
+  `profiles.email` is `not null`, so such a user would break the profile trigger.
+- The project URL plus the publishable key allow a direct `/auth/v1/signup`
+  that bypasses the server's password rule and per-IP limits. Such an account
+  still needs approval and cannot read `profiles`, so keep the URL private and
+  do not hand out the publishable key.
+
 ## Probing a real project
 
 `pnpm --filter @rtc/server accounts:probe` drives the server's Supabase
 adapter against the project named by `SUPABASE_URL` / `SUPABASE_SECRET_KEY`
 and prints one line per check. It creates one throwaway account and deletes
-it. Run it after setup and whenever Supabase changes its Auth API.
+it. If the probe is killed or its cleanup fails it leaves one account behind,
+whose id it printed. Run it after setup and whenever Supabase changes its Auth API.
 
 ## Approving and blocking
 

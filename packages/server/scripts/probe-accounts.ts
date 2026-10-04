@@ -66,6 +66,7 @@ async function generateCode(
         password: firstPassword,
         data: { display_name: "Probe Account" },
       }),
+      signal: AbortSignal.timeout(10_000),
     },
   );
 
@@ -82,6 +83,7 @@ async function deleteAccount(accountId: string): Promise<number> {
     {
       method: "DELETE",
       headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}` },
+      signal: AbortSignal.timeout(10_000),
     },
   );
 
@@ -159,7 +161,11 @@ try {
   );
 } finally {
   const status = await deleteAccount(signup.id);
-  check("cleanup", status === 200, `delete answered ${status}`);
+  check(
+    "cleanup",
+    status === 200,
+    `account ${signup.id}, delete answered ${status}`,
+  );
 }
 
 console.log(
