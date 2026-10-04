@@ -1,5 +1,5 @@
 // TDD — RED: written before adminKpisVm existed.
-//   pnpm --filter @rtc/client-core test -- adminKpisVm  → FAIL (module missing)
+//   pnpm --filter @rtc/core-logic test -- adminKpisVm  → FAIL (module missing)
 // GREEN: adminKpisVm created → all cases pass.
 
 import { describe, expect, it } from "vitest";

@@ -6,11 +6,6 @@ import {
   useRef,
 } from "react";
 
-import {
-  lockedWidthPx,
-  maximizeBoundaryPath,
-  nodeAtPath,
-} from "@rtc/client-core";
 import type {
   LayoutIntents,
   LayoutNode,
@@ -19,7 +14,12 @@ import type {
   PanelSpec,
   SplitDir,
 } from "@rtc/core-api";
-import { PANEL_SPECS } from "@rtc/core-logic";
+import {
+  lockedWidthPx,
+  maximizeBoundaryPath,
+  nodeAtPath,
+  PANEL_SPECS,
+} from "@rtc/core-logic";
 
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { PanelHeadControls } from "./PanelHeadControls";

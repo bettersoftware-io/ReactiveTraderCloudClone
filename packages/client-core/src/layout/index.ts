@@ -4,9 +4,6 @@
 // that re-implemented the preset rules would prove nothing about the real
 // ones. Otherwise consumed only by `composition.ts`.
 export * from "#/layout/createLayoutPresets";
-export * from "#/layout/lockedWidth";
-export * from "#/layout/maximizeBoundary";
-export * from "#/layout/visibleRoot";
 // The persistence writer is public for the ui-contract fixtures
 // (`tests/ui/contract/<framework>/viewModelFromWorld.ts`), which reproduce
 // composition.ts's dock/undock/persist wiring over the neutral World; its
