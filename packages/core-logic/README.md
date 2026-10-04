@@ -1,8 +1,10 @@
 # @rtc/core-logic
 
-The rxjs-free rules every application core composes over (`@rtc/client-core`,
-`@rtc/client-core-async`, `@rtc/client-core-effect`): reducers, folds,
-patches and the synchronous workspace / Jarvis controllers. Pluggable-core
+The pure rules, with no stream library, shared by the application cores
+(`@rtc/client-core`, `@rtc/client-core-async`, `@rtc/client-core-effect`) and
+the UIs: reducers, folds, patches, the synchronous workspace / Jarvis
+controllers, and the view helpers a UI calls directly (`blotter/`, `admin/`,
+and `layout/`'s `lockedWidthPx`, `maximizeBoundaryPath`, `visibleRootOf`). Pluggable-core
 slice 8 moved them here so the alternative cores need no runtime dependency
 on the RxJS core.
 

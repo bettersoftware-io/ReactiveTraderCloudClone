@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { AdminKpiVm } from "@rtc/client-core";
+import type { AdminKpiVm } from "@rtc/core-logic";
 
 import styles from "./KpiRow.module.css";
 

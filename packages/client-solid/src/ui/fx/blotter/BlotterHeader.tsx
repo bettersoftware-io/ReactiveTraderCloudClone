@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { createSignal, For, Match, Show, Switch } from "solid-js";
 
-import type { ColumnFilter, SortState } from "@rtc/client-core";
+import type { ColumnFilter, SortState } from "@rtc/core-logic";
 
 import type { ColumnDef } from "./blotterColumns";
 import { DateFilter } from "./columnFilter/DateFilter";
