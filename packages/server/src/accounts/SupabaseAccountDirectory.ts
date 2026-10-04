@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 
 import {
@@ -57,6 +58,14 @@ interface Call {
 }
 
 const UNREACHABLE: Reply = { kind: "unreachable" };
+
+/** What became of "verify the emailed code, then set the password with the
+ * session that verification returned" — shared by confirmation and reset. */
+type CodeAndPassword =
+  | { readonly step: "code-unreachable" }
+  | { readonly step: "code-refused" }
+  | { readonly step: "no-session" }
+  | { readonly step: "password-answered"; readonly reply: Reply };
 
 /**
  * The account directory over Supabase's REST endpoints — Auth for
@@ -132,19 +141,48 @@ export function createSupabaseAccountDirectory(
     };
   }
 
-  /** Verifies an emailed code; on success Supabase answers with a session. */
-  function verifyCode(
+  /**
+   * Verifies an emailed code; on success Supabase answers with that user's
+   * session, which then sets the password (`PUT /auth/v1/user`). The session
+   * is used for this one call and dropped.
+   */
+  async function setPasswordWithCode(
     type: string,
     email: string,
     token: string,
+    password: string,
     callerIp: string,
-  ): Promise<Reply> {
-    return call({
+  ): Promise<CodeAndPassword> {
+    const verified = await call({
       method: "POST",
       path: "/auth/v1/verify",
       body: { type, email, token },
       callerIp,
     });
+
+    if (verified.kind === "unreachable") {
+      return { step: "code-unreachable" };
+    }
+
+    if (verified.kind === "refused") {
+      return { step: "code-refused" };
+    }
+
+    const session = readString(verified.body, "access_token");
+
+    if (session === null) {
+      return { step: "no-session" };
+    }
+
+    const reply = await call({
+      method: "PUT",
+      path: "/auth/v1/user",
+      body: { password },
+      bearer: session,
+      callerIp,
+    });
+
+    return { step: "password-answered", reply };
   }
 
   return {
@@ -156,7 +194,7 @@ export function createSupabaseAccountDirectory(
         path: "/auth/v1/signup",
         body: {
           email: input.email,
-          password: input.password,
+          password: createUnknowablePassword(),
           data: { display_name: input.displayName },
         },
         callerIp,
@@ -170,16 +208,14 @@ export function createSupabaseAccountDirectory(
         return "unavailable";
       }
 
-      if (reply.errorCode === "weak_password") {
-        return "rejected-password";
-      }
-
       if (reply.errorCode === "email_address_invalid") {
         return "rejected-email";
       }
 
       // `over_email_send_rate_limit` fires only for an address that already
       // has a user record, so it must read as `sent`, like an existing one.
+      // `weak_password` is about OUR random password — a store whose policy
+      // refuses it is misconfigured — so it falls through to `unavailable`.
       return reply.errorCode === "user_already_exists" ||
         reply.errorCode === "email_exists" ||
         reply.errorCode === "over_email_send_rate_limit"
@@ -201,15 +237,37 @@ export function createSupabaseAccountDirectory(
     async confirmEmail(
       email: string,
       code: string,
+      password: string,
       callerIp: string,
     ): Promise<ConfirmOutcome> {
-      const reply = await verifyCode(CONFIRM_OTP_TYPE, email, code, callerIp);
+      const result = await setPasswordWithCode(
+        CONFIRM_OTP_TYPE,
+        email,
+        code,
+        password,
+        callerIp,
+      );
 
-      if (reply.kind === "unreachable") {
+      if (result.step === "code-unreachable") {
         return "unavailable";
       }
 
-      return reply.kind === "ok" ? "confirmed" : "invalid_code";
+      if (result.step === "code-refused") {
+        return "invalid_code";
+      }
+
+      // From here the code is spent and the email confirmed; only the
+      // password can still be missing.
+      if (result.step === "no-session") {
+        return "confirmed_unset";
+      }
+
+      const { reply } = result;
+
+      return reply.kind === "ok" ||
+        (reply.kind === "refused" && reply.errorCode === "same_password")
+        ? "confirmed"
+        : "confirmed_unset";
     },
 
     async checkPassword(
@@ -260,40 +318,27 @@ export function createSupabaseAccountDirectory(
       password: string,
       callerIp: string,
     ): Promise<ResetOutcome> {
-      const verified = await verifyCode(
+      const result = await setPasswordWithCode(
         RECOVERY_OTP_TYPE,
         email,
         code,
+        password,
         callerIp,
       );
 
-      if (verified.kind === "unreachable") {
-        return "unavailable";
-      }
-
-      if (verified.kind === "refused") {
+      if (result.step === "code-refused") {
         return "invalid_code";
       }
 
-      const session = readString(verified.body, "access_token");
-
-      if (session === null) {
+      if (result.step !== "password-answered") {
         return "unavailable";
       }
 
-      const updated = await call({
-        method: "PUT",
-        path: "/auth/v1/user",
-        body: { password },
-        bearer: session,
-        callerIp,
-      });
-
-      if (updated.kind === "unreachable") {
+      if (result.reply.kind === "unreachable") {
         return "unavailable";
       }
 
-      return updated.kind === "ok" ? "changed" : "rejected";
+      return result.reply.kind === "ok" ? "changed" : "rejected";
     },
 
     async findAccount(accountId: string): Promise<AccountLookup> {
@@ -354,6 +399,16 @@ export function createSupabaseAccountDirectory(
       return reply.kind === "ok";
     },
   };
+}
+
+/**
+ * The password a sign-up stores until the confirmation sets the real one:
+ * 32 random bytes nobody ever sees (never logged, never returned), behind a
+ * prefix that satisfies any character-class policy. 47 bytes, under bcrypt's
+ * 72.
+ */
+function createUnknowablePassword(): string {
+  return `Aa1!${randomBytes(32).toString("base64url")}`;
 }
 
 /** A code was sent, as far as the caller may know. A REFUSAL (a per-address

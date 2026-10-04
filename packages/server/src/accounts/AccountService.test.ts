@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ConfirmEmailRequestDto, RegisterRequestDto } from "@rtc/shared";
+
 import type {
   AccountDirectory,
+  ConfirmOutcome,
   RegistrationCount,
   SignUpOutcome,
 } from "#/accounts/AccountDirectory";
@@ -31,8 +34,6 @@ describe("AccountService.register", () => {
   it.each([
     [{ email: "not-an-email" }, "email"],
     [{ displayName: "A" }, "display-name"],
-    [{ password: "short" }, "min-length"],
-    [{ password: "nouppercase2026!" }, "uppercase"],
   ])("names the broken rule for %o", async (override, rule) => {
     const { service } = createService();
 
@@ -46,16 +47,14 @@ describe("AccountService.register", () => {
     const signUp = vi.spyOn(directory, "signUp");
 
     await service.register(
-      {
-        email: "  Ann@Desk.IO ",
-        displayName: "  Ann   Lee ",
-        password: PASSWORD,
-      },
+      { email: "  Ann@Desk.IO ", displayName: "  Ann   Lee " },
       IP,
     );
 
+    // Exactly these two fields: nothing chosen before the mailbox is proven
+    // reaches the directory as a credential.
     expect(signUp).toHaveBeenCalledWith(
-      { email: "ann@desk.io", displayName: "Ann Lee", password: PASSWORD },
+      { email: "ann@desk.io", displayName: "Ann Lee" },
       IP,
     );
   });
@@ -155,12 +154,12 @@ describe("AccountService.login", () => {
     ).toEqual({ outcome: "invalid" });
   });
 
-  it("is unconfirmed before the code is entered", async () => {
+  it("no password signs in before the code is entered — none was chosen yet", async () => {
     const { service } = createService();
     await service.register(createRegistration(), IP);
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
-      outcome: "unconfirmed",
+      outcome: "invalid",
     });
   });
 
@@ -242,22 +241,85 @@ describe("AccountService codes and resets", () => {
     const { service } = createService();
     await service.register(createRegistration(), IP);
 
-    expect(await service.confirmEmail("ann@desk.io", "111111", IP)).toBe(
-      "invalid_code",
-    );
     expect(
-      await service.confirmEmail(" Ann@Desk.io", DEV_CONFIRMATION_CODE, IP),
-    ).toBe("confirmed");
+      await service.confirmEmail(createConfirmation({ code: "111111" }), IP),
+    ).toEqual({ outcome: "invalid_code" });
+    expect(
+      await service.confirmEmail(
+        createConfirmation({ email: " Ann@Desk.io" }),
+        IP,
+      ),
+    ).toEqual({ outcome: "confirmed" });
   });
 
-  it("refuses a malformed code without asking the directory", async () => {
+  it("refuses a malformed code without asking the directory, before the password rule", async () => {
     const { service, directory } = createService();
     const confirm = vi.spyOn(directory, "confirmEmail");
 
-    expect(await service.confirmEmail("ann@desk.io", "12ab", IP)).toBe(
-      "invalid_code",
-    );
+    expect(
+      await service.confirmEmail(
+        createConfirmation({ code: "12ab", password: "weak" }),
+        IP,
+      ),
+    ).toEqual({ outcome: "invalid_code" });
     expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("hands the directory the normalized address, the code and the password", async () => {
+    const { service, directory } = createService();
+    const confirm = vi.spyOn(directory, "confirmEmail");
+
+    await service.confirmEmail(
+      createConfirmation({ email: " ANN@desk.io " }),
+      IP,
+    );
+
+    expect(confirm).toHaveBeenCalledWith(
+      "ann@desk.io",
+      DEV_CONFIRMATION_CODE,
+      PASSWORD,
+      IP,
+    );
+  });
+
+  it("a weak password at confirm names its rule and does not spend the code", async () => {
+    const { service, directory } = createService();
+    await service.register(createRegistration(), IP);
+    const confirm = vi.spyOn(directory, "confirmEmail");
+
+    expect(
+      await service.confirmEmail(createConfirmation({ password: "short" }), IP),
+    ).toEqual({ outcome: "invalid", rule: "min-length" });
+    expect(
+      await service.confirmEmail(
+        createConfirmation({ password: "nouppercase2026!" }),
+        IP,
+      ),
+    ).toEqual({ outcome: "invalid", rule: "uppercase" });
+    expect(confirm).not.toHaveBeenCalled();
+
+    // Still unconfirmed: the same code then confirms with a good password.
+    expect(await service.confirmEmail(createConfirmation(), IP)).toEqual({
+      outcome: "confirmed",
+    });
+    expect((await service.login("ann@desk.io", PASSWORD, IP)).outcome).toBe(
+      "pending",
+    );
+  });
+
+  it("passes `confirmed_unset` through: confirmed, but no password stored", async () => {
+    const directory = createDoubleDirectory({
+      confirmEmail: (): Promise<ConfirmOutcome> => {
+        return Promise.resolve("confirmed_unset");
+      },
+    });
+
+    expect(
+      await createDoubleService(directory, 10).confirmEmail(
+        createConfirmation(),
+        IP,
+      ),
+    ).toEqual({ outcome: "confirmed_unset" });
   });
 
   it("resend and request-reset reject only a malformed address", async () => {
@@ -303,6 +365,58 @@ describe("AccountService codes and resets", () => {
     expect(
       (await service.login("trader@rtc.test", "Fresh2026!pass", IP)).outcome,
     ).toBe("ok");
+  });
+});
+
+describe("AccountService closes account pre-hijacking", () => {
+  it("an unconfirmed squatter's registration gives them no credential on the owner's account", async () => {
+    const { service } = createService();
+    const attacker = "Attack2026!pass";
+    const owner = "Owner2026!pass";
+
+    // The attacker registers the victim's address and never confirms. The
+    // request carries no password; an extra field is not read.
+    expect(
+      await service.register(
+        {
+          email: "victim@rtc.test",
+          displayName: "Mallory",
+          password: attacker,
+        } as RegisterRequestDto,
+        IP,
+      ),
+    ).toEqual({ outcome: "code_sent" });
+
+    // The owner registers the same address, receives the code and confirms
+    // it together with their own password.
+    expect(
+      await service.register(
+        { email: "victim@rtc.test", displayName: "Victoria" },
+        IP,
+      ),
+    ).toEqual({ outcome: "code_sent" });
+    expect(
+      await service.confirmEmail(
+        {
+          email: "victim@rtc.test",
+          code: DEV_CONFIRMATION_CODE,
+          password: owner,
+        },
+        IP,
+      ),
+    ).toEqual({ outcome: "confirmed" });
+
+    // The owner's password is the account's: accepted, awaiting approval.
+    expect(await service.login("victim@rtc.test", owner, IP)).toEqual({
+      outcome: "pending",
+    });
+    // No other password signs in — the attacker's least of all.
+    expect(await service.login("victim@rtc.test", attacker, IP)).toEqual({
+      outcome: "invalid",
+    });
+    expect(
+      await service.login("victim@rtc.test", "Other2026!pass", IP),
+    ).toEqual({ outcome: "invalid" });
   });
 });
 
@@ -575,14 +689,19 @@ function createClock(): () => number {
   };
 }
 
-interface Registration {
-  readonly email: string;
-  readonly displayName: string;
-  readonly password: string;
+function createRegistration(): RegisterRequestDto {
+  return { email: "ann@desk.io", displayName: "Ann Lee" };
 }
 
-function createRegistration(): Registration {
-  return { email: "ann@desk.io", displayName: "Ann Lee", password: PASSWORD };
+function createConfirmation(
+  overrides: Partial<ConfirmEmailRequestDto> = {},
+): ConfirmEmailRequestDto {
+  return {
+    email: "ann@desk.io",
+    code: DEV_CONFIRMATION_CODE,
+    password: PASSWORD,
+    ...overrides,
+  };
 }
 
 const IP = "1.2.3.4";

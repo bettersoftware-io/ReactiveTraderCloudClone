@@ -24,6 +24,15 @@ Only `@rtc/server` talks to it. No client has its URL or a key.
 9. After your own first sign-up: in the table editor set your `profiles` row
    to `role = 'admin'`, `approved = true`.
 
+**Passwords are set by the confirmation, not the sign-up.** A sign-up stores
+a random password nobody knows; the request that carries the emailed code
+also carries the user's password and sets it. So someone who registers an
+address they do not own never holds a working credential for it. If
+*leaked password protection* or a stricter password policy is enabled in the
+project, a confirmation can answer `password_unset` (the email is confirmed
+but the password was refused); the user then finishes through "forgot
+password".
+
 ## Keep these closed
 
 - The **phone** and **anonymous** sign-in providers must stay disabled:

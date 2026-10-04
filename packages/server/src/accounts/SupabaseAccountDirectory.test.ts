@@ -47,24 +47,38 @@ describe("SupabaseAccountDirectory — signUp", () => {
 
     expect(
       await createDirectory(fake).signUp(
-        { email: "ann@desk.io", displayName: "Ann Lee", password: "pw" },
+        { email: "ann@desk.io", displayName: "Ann Lee" },
         IP,
       ),
     ).toBe("sent");
     expect(fake.requests[0]?.url).toBe(
       "https://proj.supabase.co/auth/v1/signup",
     );
-    expect(fake.requests[0]?.body).toBe(
-      JSON.stringify({
-        email: "ann@desk.io",
-        password: "pw",
-        data: { display_name: "Ann Lee" },
-      }),
-    );
+
+    const body = readSignUpBody(fake.requests[0]);
+
+    expect(body.email).toBe("ann@desk.io");
+    expect(body.data).toEqual({ display_name: "Ann Lee" });
+  });
+
+  it("stores a fresh random password nobody knows, different every call", async () => {
+    const fake = createFakeFetch([createReply(200, {}), createReply(200, {})]);
+    const directory = createDirectory(fake);
+
+    await directory.signUp({ email: "ann@desk.io", displayName: "Ann" }, IP);
+    await directory.signUp({ email: "ann@desk.io", displayName: "Ann" }, IP);
+
+    const first = readSignUpBody(fake.requests[0]).password;
+    const second = readSignUpBody(fake.requests[1]).password;
+
+    // "Aa1!" + 32 random bytes as base64url: 47 bytes, every character class.
+    expect(first).toMatch(/^Aa1!.{43}$/);
+    expect(second).toMatch(/^Aa1!.{43}$/);
+    expect(first).not.toBe(second);
   });
 
   it.each([
-    ["weak_password", 422, "rejected-password"],
+    ["weak_password", 422, "unavailable"],
     ["email_address_invalid", 400, "rejected-email"],
     ["user_already_exists", 422, "sent"],
     ["email_exists", 422, "sent"],
@@ -78,7 +92,7 @@ describe("SupabaseAccountDirectory — signUp", () => {
 
     expect(
       await createDirectory(fake).signUp(
-        { email: "ann@desk.io", displayName: "Ann", password: "pw" },
+        { email: "ann@desk.io", displayName: "Ann" },
         IP,
       ),
     ).toBe(outcome);
@@ -96,25 +110,87 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
     expect(await directory.requestReset("ann@desk.io", IP)).toBe("sent");
   });
 
-  it("confirms with the email OTP type", async () => {
-    const fake = createFakeFetch([createReply(200, { access_token: "t" })]);
+  it("confirms with the email OTP type, then sets the password with the returned token", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "confirm-token" }),
+      createReply(200, {}),
+    ]);
 
     expect(
-      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+      await createDirectory(fake).confirmEmail(
+        "ann@desk.io",
+        "123456",
+        "Owner2026!pass",
+        IP,
+      ),
     ).toBe("confirmed");
     expect(fake.requests[0]?.body).toBe(
       JSON.stringify({ type: "email", email: "ann@desk.io", token: "123456" }),
     );
+
+    const update = fake.requests[1];
+
+    expect(update?.url).toBe("https://proj.supabase.co/auth/v1/user");
+    expect(update?.method).toBe("PUT");
+    expect(update?.headers.Authorization).toBe("Bearer confirm-token");
+    expect(update?.headers.apikey).toBe("sb_secret_test");
+    expect(update?.headers["Sb-Forwarded-For"]).toBe(IP);
+    expect(update?.body).toBe(JSON.stringify({ password: "Owner2026!pass" }));
   });
 
-  it("a refused code is invalid_code", async () => {
+  it("a refused code is invalid_code and never reaches the update", async () => {
     const fake = createFakeFetch([
       createReply(403, { error_code: "otp_expired" }),
     ]);
 
     expect(
-      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+      await createDirectory(fake).confirmEmail(
+        "ann@desk.io",
+        "123456",
+        "pw",
+        IP,
+      ),
     ).toBe("invalid_code");
+    expect(fake.requests).toHaveLength(1);
+  });
+
+  it("a password update refused as the same password still confirms", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "confirm-token" }),
+      createReply(422, { error_code: "same_password" }),
+    ]);
+
+    expect(
+      await createDirectory(fake).confirmEmail("ann@desk.io", "1", "pw", IP),
+    ).toBe("confirmed");
+  });
+
+  it.each([
+    ["any other refusal", [createReply(422, { error_code: "weak_password" })]],
+    ["a 5xx", [createReply(503, {})]],
+    ["a thrown fetch", []],
+  ])(
+    "a verified code whose password update meets %s is confirmed_unset",
+    async (_name: string, updateReplies: readonly Response[]) => {
+      const fake = createFakeFetch([
+        createReply(200, { access_token: "confirm-token" }),
+        ...updateReplies,
+      ]);
+
+      expect(
+        await createDirectory(fake).confirmEmail("ann@desk.io", "1", "pw", IP),
+      ).toBe("confirmed_unset");
+      expect(fake.requests).toHaveLength(2);
+    },
+  );
+
+  it("a verified code with no access token is confirmed_unset, and no update is sent", async () => {
+    const fake = createFakeFetch([createReply(200, {})]);
+
+    expect(
+      await createDirectory(fake).confirmEmail("ann@desk.io", "1", "pw", IP),
+    ).toBe("confirmed_unset");
+    expect(fake.requests).toHaveLength(1);
   });
 
   it("checkPassword returns the account id on a match", async () => {
@@ -335,7 +411,12 @@ describe("SupabaseAccountDirectory — a rejected key is not a verdict", () => {
     const fake = createFakeFetch([createReply(403, { message: "forbidden" })]);
 
     expect(
-      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+      await createDirectory(fake).confirmEmail(
+        "ann@desk.io",
+        "123456",
+        "pw",
+        IP,
+      ),
     ).toBe("unavailable");
   });
 
@@ -345,7 +426,12 @@ describe("SupabaseAccountDirectory — a rejected key is not a verdict", () => {
     ]);
 
     expect(
-      await createDirectory(fake).confirmEmail("ann@desk.io", "123456", IP),
+      await createDirectory(fake).confirmEmail(
+        "ann@desk.io",
+        "123456",
+        "pw",
+        IP,
+      ),
     ).toBe("invalid_code");
   });
 });
@@ -400,7 +486,7 @@ describe("SupabaseAccountDirectory — hardening", () => {
     const fake = createFakeFetch([createReply(503, {}), createReply(503, {})]);
     const directory = createDirectory(fake);
 
-    expect(await directory.confirmEmail("ann@desk.io", "1", IP)).toBe(
+    expect(await directory.confirmEmail("ann@desk.io", "1", "pw", IP)).toBe(
       "unavailable",
     );
     expect(await directory.resetPassword("ann@desk.io", "1", "pw", IP)).toBe(
@@ -411,7 +497,7 @@ describe("SupabaseAccountDirectory — hardening", () => {
   it("confirm and reset are unavailable on a thrown fetch", async () => {
     const directory = createDirectory(createFailingFetch());
 
-    expect(await directory.confirmEmail("ann@desk.io", "1", IP)).toBe(
+    expect(await directory.confirmEmail("ann@desk.io", "1", "pw", IP)).toBe(
       "unavailable",
     );
     expect(await directory.resetPassword("ann@desk.io", "1", "pw", IP)).toBe(
@@ -480,7 +566,7 @@ function createOperations(): Operation[] {
   const down = { outcome: "unavailable" };
 
   function signUp(d: AccountDirectory): Promise<unknown> {
-    return d.signUp({ email: "a@b.io", displayName: "A", password: "p" }, IP);
+    return d.signUp({ email: "a@b.io", displayName: "A" }, IP);
   }
 
   function resendCode(d: AccountDirectory): Promise<unknown> {
@@ -488,7 +574,7 @@ function createOperations(): Operation[] {
   }
 
   function confirmEmail(d: AccountDirectory): Promise<unknown> {
-    return d.confirmEmail("a@b.io", "1", IP);
+    return d.confirmEmail("a@b.io", "1", "p", IP);
   }
 
   function checkPassword(d: AccountDirectory): Promise<unknown> {
@@ -526,6 +612,16 @@ function createOperations(): Operation[] {
     ["countRegistrationsSince", countRegistrationsSince, down],
     ["ping", ping, false],
   ];
+}
+
+interface SignUpBody {
+  readonly email: string;
+  readonly password: string;
+  readonly data: unknown;
+}
+
+function readSignUpBody(request: RecordedRequest | undefined): SignUpBody {
+  return JSON.parse(request?.body ?? "null") as SignUpBody;
 }
 
 function createFailingFetch(): FakeFetch {

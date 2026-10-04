@@ -83,7 +83,8 @@ export async function resendConfirmationCode(
   return sendCodeResult(await deps.accounts.resendCode(admitted.dto.email, ip));
 }
 
-/** `POST /confirm-email`. A wrong code is a ban strike. */
+/** `POST /confirm-email`: proves the mailbox and sets the password. A wrong
+ * code is a ban strike; a weak password is not. */
 export async function confirmEmailAddress(
   bodyText: string,
   ip: string,
@@ -101,17 +102,21 @@ export async function confirmEmailAddress(
     return admitted.result;
   }
 
-  const outcome = await deps.accounts.confirmEmail(
-    admitted.dto.email,
-    admitted.dto.code,
-    ip,
-  );
+  const result = await deps.accounts.confirmEmail(admitted.dto, ip);
 
-  if (outcome === "invalid_code") {
+  if (result.outcome === "invalid") {
+    return errorResult(400, { error: "invalid_request", rule: result.rule });
+  }
+
+  if (result.outcome === "invalid_code") {
     return refuseCode(ip, deps);
   }
 
-  return outcome === "confirmed"
+  if (result.outcome === "confirmed_unset") {
+    return flowResult(200, "password_unset");
+  }
+
+  return result.outcome === "confirmed"
     ? flowResult(200, "pending_approval")
     : errorResult(503, { error: "unavailable" });
 }

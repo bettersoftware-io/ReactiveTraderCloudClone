@@ -6,7 +6,11 @@ import {
   normalizeDisplayName,
   normalizeEmail,
 } from "@rtc/domain";
-import type { RegisterRequestDto, ResetPasswordRequestDto } from "@rtc/shared";
+import type {
+  ConfirmEmailRequestDto,
+  RegisterRequestDto,
+  ResetPasswordRequestDto,
+} from "@rtc/shared";
 
 import type {
   AccountDirectory,
@@ -29,7 +33,15 @@ export type RegisterOutcome =
 
 export type SendCodeOutcome = "code_sent" | "invalid" | "unavailable";
 
-export type ConfirmEmailOutcome = "confirmed" | "invalid_code" | "unavailable";
+export type ConfirmEmailOutcome =
+  | {
+      readonly outcome:
+        | "confirmed"
+        | "confirmed_unset"
+        | "invalid_code"
+        | "unavailable";
+    }
+  | { readonly outcome: "invalid"; readonly rule: string };
 
 export type ResetPasswordOutcome =
   | { readonly outcome: "changed" | "invalid_code" | "unavailable" }
@@ -53,8 +65,7 @@ export interface AccountService {
   ): Promise<RegisterOutcome>;
   resendCode(rawEmail: string, callerIp: string): Promise<SendCodeOutcome>;
   confirmEmail(
-    rawEmail: string,
-    code: string,
+    request: ConfirmEmailRequestDto,
     callerIp: string,
   ): Promise<ConfirmEmailOutcome>;
   requestReset(rawEmail: string, callerIp: string): Promise<SendCodeOutcome>;
@@ -106,12 +117,6 @@ export function createAccountService(
       return { outcome: "invalid", rule: "display-name" };
     }
 
-    const violation = findPasswordViolation(request.password);
-
-    if (violation !== null) {
-      return { outcome: "invalid", rule: violation.id };
-    }
-
     const answeredBefore = answered;
     const counted = await directory.countRegistrationsSince(
       options.now() - DAY_MS,
@@ -134,10 +139,7 @@ export function createAccountService(
     let sent: SignUpOutcome;
 
     try {
-      sent = await directory.signUp(
-        { email, displayName, password: request.password },
-        callerIp,
-      );
+      sent = await directory.signUp({ email, displayName }, callerIp);
     } finally {
       inFlight -= 1;
       answered += 1;
@@ -145,10 +147,6 @@ export function createAccountService(
 
     if (sent === "rejected-email") {
       return { outcome: "invalid", rule: "email" };
-    }
-
-    if (sent === "rejected-password") {
-      return { outcome: "invalid", rule: "password" };
     }
 
     return { outcome: sent === "sent" ? "code_sent" : "unavailable" };
@@ -169,18 +167,33 @@ export function createAccountService(
     return sent === "sent" ? "code_sent" : "unavailable";
   }
 
+  /** The request that proves the mailbox is the one that sets the password.
+   * A weak password is refused before the directory is asked, so it does
+   * not spend the code. */
   async function confirmEmail(
-    rawEmail: string,
-    code: string,
+    request: ConfirmEmailRequestDto,
     callerIp: string,
   ): Promise<ConfirmEmailOutcome> {
-    const email = readEmail(rawEmail);
+    const email = readEmail(request.email);
 
-    if (email === null || !isConfirmationCode(code)) {
-      return "invalid_code";
+    if (email === null || !isConfirmationCode(request.code)) {
+      return { outcome: "invalid_code" };
     }
 
-    return directory.confirmEmail(email, code, callerIp);
+    const violation = findPasswordViolation(request.password);
+
+    if (violation !== null) {
+      return { outcome: "invalid", rule: violation.id };
+    }
+
+    const confirmed = await directory.confirmEmail(
+      email,
+      request.code,
+      request.password,
+      callerIp,
+    );
+
+    return { outcome: confirmed };
   }
 
   async function requestReset(

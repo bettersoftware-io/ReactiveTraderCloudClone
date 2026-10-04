@@ -5,12 +5,18 @@
  * still match. It needs SUPABASE_URL and SUPABASE_SECRET_KEY, creates ONE
  * throwaway account through the admin API (so no email is sent and no inbox
  * is needed), walks it through confirm → sign-in → reset, and deletes it.
+ * It also signs up ONE fresh address through the adapter (this one does send
+ * a confirmation email, to an undeliverable probe domain) to prove nobody
+ * knows a sign-up's password, and deletes that account too.
  *
  *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… pnpm --filter @rtc/server accounts:probe
  *
  * Prints account ids and outcomes only — never a key, a password or a code.
  */
-import type { AccountDirectory } from "../src/accounts/AccountDirectory.ts";
+import type {
+  AccountDirectory,
+  SignUpOutcome,
+} from "../src/accounts/AccountDirectory.ts";
 import { createSupabaseAccountDirectory } from "../src/accounts/SupabaseAccountDirectory.ts";
 
 const url: string = process.env.SUPABASE_URL ?? "";
@@ -23,8 +29,10 @@ if (url === "" || secretKey === "") {
 
 const PROBE_IP = "203.0.113.1";
 const email = `probe-${Date.now()}@rtc-probe.dev`;
+const freshEmail = `probe-fresh-${Date.now()}@rtc-probe.dev`;
 const firstPassword = "Probe2026!first";
 const secondPassword = "Probe2026!second";
+const thirdPassword = "Probe2026!third";
 const directory: AccountDirectory = createSupabaseAccountDirectory({
   url,
   secretKey,
@@ -60,11 +68,18 @@ async function generateCode(
         Authorization: `Bearer ${secretKey}`,
         "Content-Type": "application/json",
       },
+      // The metadata tries to grant itself admin, approval and a block; the
+      // profile trigger must ignore all three (a sign-up cannot set its role).
       body: JSON.stringify({
         type,
         email,
         password: firstPassword,
-        data: { display_name: "Probe Account" },
+        data: {
+          display_name: "Probe Account",
+          role: "admin",
+          approved: true,
+          blocked: true,
+        },
       }),
       signal: AbortSignal.timeout(10_000),
     },
@@ -75,6 +90,25 @@ async function generateCode(
   }
 
   return (await response.json()) as GeneratedLink;
+}
+
+/** The id of the profile row for an address, through PostgREST. */
+async function findAccountIdByEmail(address: string): Promise<string | null> {
+  const response = await fetch(
+    `${url.replace(/\/+$/, "")}/rest/v1/profiles?email=eq.${encodeURIComponent(address)}&select=id`,
+    {
+      headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}` },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = (await response.json()) as readonly { readonly id: string }[];
+
+  return rows[0]?.id ?? null;
 }
 
 async function deleteAccount(accountId: string): Promise<number> {
@@ -103,25 +137,69 @@ try {
     before.outcome,
   );
 
-  const wrong = await directory.confirmEmail(email, "000000", PROBE_IP);
+  // An unconfirmed user must not reveal itself: a wrong password is
+  // `invalid`, not `unconfirmed`.
+  const guessed = await directory.checkPassword(
+    email,
+    "Wrong2026!pass",
+    PROBE_IP,
+  );
+  check(
+    "a wrong password before confirming",
+    guessed.outcome === "invalid",
+    guessed.outcome,
+  );
+
+  const wrong = await directory.confirmEmail(
+    email,
+    "000000",
+    secondPassword,
+    PROBE_IP,
+  );
   check("a wrong code", wrong === "invalid_code", wrong);
 
   const confirmed = await directory.confirmEmail(
     email,
     signup.email_otp,
+    secondPassword,
     PROBE_IP,
   );
-  check("the right code", confirmed === "confirmed", confirmed);
+  check(
+    "the right code sets the password",
+    confirmed === "confirmed",
+    confirmed,
+  );
 
-  const after = await directory.checkPassword(email, firstPassword, PROBE_IP);
-  check("sign-in after confirming", after.outcome === "match", after.outcome);
+  const after = await directory.checkPassword(email, secondPassword, PROBE_IP);
+  check(
+    "sign-in with the confirmed password",
+    after.outcome === "match",
+    after.outcome,
+  );
+
+  const replaced = await directory.checkPassword(
+    email,
+    firstPassword,
+    PROBE_IP,
+  );
+  check(
+    "the pre-confirmation password no longer signs in",
+    replaced.outcome === "invalid",
+    replaced.outcome,
+  );
 
   const bad = await directory.checkPassword(email, "Wrong2026!pass", PROBE_IP);
   check("a wrong password", bad.outcome === "invalid", bad.outcome);
 
+  const again = await directory.signUp(
+    { email, displayName: "Probe Again" },
+    PROBE_IP,
+  );
+  check("signing up the existing address", again === "sent", again);
+
   const found = await directory.findAccount(signup.id);
   check(
-    "the profile row",
+    "the profile row ignores a self-granted role, approval and block",
     found.outcome === "found" &&
       found.account.status === "pending" &&
       found.account.access === "user" &&
@@ -144,16 +222,12 @@ try {
   const reset = await directory.resetPassword(
     email,
     recovery.email_otp,
-    secondPassword,
+    thirdPassword,
     PROBE_IP,
   );
   check("password reset", reset === "changed", reset);
 
-  const relogin = await directory.checkPassword(
-    email,
-    secondPassword,
-    PROBE_IP,
-  );
+  const relogin = await directory.checkPassword(email, thirdPassword, PROBE_IP);
   check(
     "sign-in with the new password",
     relogin.outcome === "match",
@@ -166,6 +240,40 @@ try {
     status === 200,
     `account ${signup.id}, delete answered ${status}`,
   );
+}
+
+const fresh: SignUpOutcome = await directory.signUp(
+  { email: freshEmail, displayName: "Probe Fresh" },
+  PROBE_IP,
+);
+check("a fresh sign-up", fresh === "sent", fresh);
+
+const freshId: string | null = await findAccountIdByEmail(freshEmail);
+
+try {
+  // The sign-up stored a random password: no password the caller could
+  // know signs in, so the answer is `invalid`, never `unconfirmed`.
+  const unknowable = await directory.checkPassword(
+    freshEmail,
+    firstPassword,
+    PROBE_IP,
+  );
+  check(
+    "no known password opens a fresh sign-up",
+    unknowable.outcome === "invalid",
+    unknowable.outcome,
+  );
+} finally {
+  if (freshId === null) {
+    check("fresh cleanup", false, "its profile row was not found");
+  } else {
+    const status = await deleteAccount(freshId);
+    check(
+      "fresh cleanup",
+      status === 200,
+      `account ${freshId}, delete answered ${status}`,
+    );
+  }
 }
 
 console.log(

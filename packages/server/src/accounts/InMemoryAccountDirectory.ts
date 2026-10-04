@@ -30,14 +30,20 @@ export interface InMemoryDirectoryOptions {
   readonly seeds: readonly DevAccountSeed[];
 }
 
+interface Credential {
+  readonly salt: Buffer;
+  readonly digest: Buffer;
+}
+
 interface Entry {
   readonly id: string;
   readonly email: string;
   readonly displayName: string;
   readonly access: AccessLevel;
   readonly createdAt: number;
-  salt: Buffer;
-  digest: Buffer;
+  /** Null from sign-up until the confirmation (or a reset) sets one: the
+   * stand-in for Supabase's random sign-up password nobody knows. */
+  credential: Credential | null;
   confirmed: boolean;
   approved: boolean;
   blocked: boolean;
@@ -55,7 +61,6 @@ export function createInMemoryAccountDirectory(
   options: InMemoryDirectoryOptions,
 ): AccountDirectory {
   const byEmail = new Map<string, Entry>();
-  const signingUp = new Set<string>();
   const dummySalt = createSalt();
 
   for (const seed of options.seeds) {
@@ -67,8 +72,10 @@ export function createInMemoryAccountDirectory(
       displayName: seed.displayName,
       access: seed.access,
       createdAt: 0,
-      salt,
-      digest: hashPasswordSync(DEV_ACCOUNT_PASSWORD, salt),
+      credential: {
+        salt,
+        digest: hashPasswordSync(DEV_ACCOUNT_PASSWORD, salt),
+      },
       confirmed: seed.status !== "unconfirmed",
       approved: seed.status === "active",
       blocked: seed.status === "blocked",
@@ -89,52 +96,48 @@ export function createInMemoryAccountDirectory(
   return {
     kind: "in-memory",
 
-    async signUp(input: SignUpInput): Promise<SignUpOutcome> {
-      // The address is claimed synchronously, before the hash is awaited, so
-      // of two overlapping sign-ups the one that STARTED first wins, whole.
-      if (byEmail.has(input.email) || signingUp.has(input.email)) {
-        return "sent";
-      }
-
-      signingUp.add(input.email);
-
-      try {
-        const salt = createSalt();
-
+    signUp(input: SignUpInput): Promise<SignUpOutcome> {
+      // Checked and claimed in one synchronous turn — nothing is awaited in
+      // between — so of two overlapping sign-ups the first wins, whole, and
+      // a repeat for an existing address changes nothing.
+      if (!byEmail.has(input.email)) {
         byEmail.set(input.email, {
           id: randomUUID(),
           email: input.email,
           displayName: input.displayName,
           access: "user",
           createdAt: options.now(),
-          salt,
-          digest: await hashPassword(input.password, salt),
+          credential: null,
           confirmed: false,
           approved: false,
           blocked: false,
           resetRequested: false,
         });
-      } finally {
-        signingUp.delete(input.email);
       }
 
-      return "sent";
+      return Promise.resolve("sent");
     },
 
     resendCode(): Promise<SendOutcome> {
       return Promise.resolve("sent");
     },
 
-    confirmEmail(email: string, code: string): Promise<ConfirmOutcome> {
+    async confirmEmail(
+      email: string,
+      code: string,
+      password: string,
+    ): Promise<ConfirmOutcome> {
       const entry = byEmail.get(email);
 
       if (entry === undefined || entry.confirmed || !isDevCode(code)) {
-        return Promise.resolve("invalid_code");
+        return "invalid_code";
       }
 
+      // Marked before the hash is awaited, so the code is spent once.
       entry.confirmed = true;
+      entry.credential = await createCredential(password);
 
-      return Promise.resolve("confirmed");
+      return "confirmed";
     },
 
     async checkPassword(
@@ -142,9 +145,19 @@ export function createInMemoryAccountDirectory(
       password: string,
     ): Promise<PasswordCheck> {
       const entry = byEmail.get(email);
-      const candidate = await hashPassword(password, entry?.salt ?? dummySalt);
+      const credential = entry?.credential ?? null;
+      // One hash whether or not a password exists: an unknown address and an
+      // account with none yet cost and answer the same as a wrong password.
+      const candidate = await hashPassword(
+        password,
+        credential?.salt ?? dummySalt,
+      );
 
-      if (entry === undefined || !digestsMatch(candidate, entry.digest)) {
+      if (
+        entry === undefined ||
+        credential === null ||
+        !digestsMatch(candidate, credential.digest)
+      ) {
         return { outcome: "invalid" };
       }
 
@@ -174,10 +187,7 @@ export function createInMemoryAccountDirectory(
         return "invalid_code";
       }
 
-      const salt = createSalt();
-
-      entry.salt = salt;
-      entry.digest = await hashPassword(password, salt);
+      entry.credential = await createCredential(password);
       entry.resetRequested = false;
 
       return "changed";
@@ -218,6 +228,12 @@ export function createInMemoryAccountDirectory(
       return Promise.resolve(true);
     },
   };
+}
+
+async function createCredential(password: string): Promise<Credential> {
+  const salt = createSalt();
+
+  return { salt, digest: await hashPassword(password, salt) };
 }
 
 function isDevCode(code: string): boolean {

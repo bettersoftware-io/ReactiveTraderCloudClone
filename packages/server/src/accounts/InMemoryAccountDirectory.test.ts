@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccountDirectory } from "#/accounts/AccountDirectory";
+import type {
+  AccountDirectory,
+  SignUpInput,
+} from "#/accounts/AccountDirectory";
 import {
   DEV_ACCOUNT_PASSWORD,
   DEV_ACCOUNT_SEEDS,
@@ -11,20 +14,29 @@ import {
 } from "#/accounts/InMemoryAccountDirectory";
 
 describe("InMemoryAccountDirectory", () => {
-  it("a new sign-up is unconfirmed until the code is entered", async () => {
+  it("a new sign-up has no password until the code sets one", async () => {
     const directory = createDirectory();
 
     expect(await directory.signUp(createSignUp("ann@desk.io"), IP)).toBe(
       "sent",
     );
+    // No password exists yet, so every guess reads like an unknown address.
     expect(await directory.checkPassword("ann@desk.io", PASSWORD, IP)).toEqual({
-      outcome: "unconfirmed",
+      outcome: "invalid",
     });
-    expect(await directory.confirmEmail("ann@desk.io", "111111", IP)).toBe(
-      "invalid_code",
-    );
     expect(
-      await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP),
+      await directory.confirmEmail("ann@desk.io", "111111", PASSWORD, IP),
+    ).toBe("invalid_code");
+    expect(await directory.checkPassword("ann@desk.io", PASSWORD, IP)).toEqual({
+      outcome: "invalid",
+    });
+    expect(
+      await directory.confirmEmail(
+        "ann@desk.io",
+        DEV_CONFIRMATION_CODE,
+        PASSWORD,
+        IP,
+      ),
     ).toBe("confirmed");
 
     const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
@@ -32,10 +44,35 @@ describe("InMemoryAccountDirectory", () => {
     expect(check.outcome).toBe("match");
   });
 
+  it("confirming an already confirmed account never changes its password", async () => {
+    const directory = createDirectory();
+
+    expect(
+      await directory.confirmEmail(
+        "trader@rtc.test",
+        DEV_CONFIRMATION_CODE,
+        "Taken2026!over",
+        IP,
+      ),
+    ).toBe("invalid_code");
+    expect(
+      (
+        await directory.checkPassword(
+          "trader@rtc.test",
+          DEV_ACCOUNT_PASSWORD,
+          IP,
+        )
+      ).outcome,
+    ).toBe("match");
+    expect(
+      (await directory.checkPassword("trader@rtc.test", "Taken2026!over", IP))
+        .outcome,
+    ).toBe("invalid");
+  });
+
   it("a confirmed sign-up is pending, never active, with the user role", async () => {
     const directory = createDirectory();
-    await directory.signUp(createSignUp("ann@desk.io"), IP);
-    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    await createConfirmedAccount(directory, "ann@desk.io");
     const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
 
     if (check.outcome !== "match") {
@@ -56,25 +93,17 @@ describe("InMemoryAccountDirectory", () => {
 
   it("signing up an existing address answers `sent` and changes nothing", async () => {
     const directory = createDirectory();
-    await directory.signUp(createSignUp("ann@desk.io"), IP);
-    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    await createConfirmedAccount(directory, "ann@desk.io");
 
     expect(
       await directory.signUp(
-        {
-          email: "ann@desk.io",
-          displayName: "Mallory",
-          password: "Other2026!x",
-        },
+        { email: "ann@desk.io", displayName: "Mallory" },
         IP,
       ),
     ).toBe("sent");
     expect(
       (await directory.checkPassword("ann@desk.io", PASSWORD, IP)).outcome,
     ).toBe("match");
-    expect(
-      (await directory.checkPassword("ann@desk.io", "Other2026!x", IP)).outcome,
-    ).toBe("invalid");
   });
 
   it("an unknown address and a wrong password read the same", async () => {
@@ -163,25 +192,20 @@ describe("InMemoryAccountDirectory", () => {
     const directory = createDirectory();
     const [first, second] = await Promise.all([
       directory.signUp(createSignUp("ann@desk.io"), IP),
-      directory.signUp(
-        {
-          email: "ann@desk.io",
-          displayName: "Mallory",
-          password: "Other2026!x",
-        },
-        IP,
-      ),
+      directory.signUp({ email: "ann@desk.io", displayName: "Mallory" }, IP),
     ]);
 
     expect([first, second]).toEqual(["sent", "sent"]);
 
-    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    await directory.confirmEmail(
+      "ann@desk.io",
+      DEV_CONFIRMATION_CODE,
+      PASSWORD,
+      IP,
+    );
     const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
 
     expect(check.outcome).toBe("match");
-    expect(
-      (await directory.checkPassword("ann@desk.io", "Other2026!x", IP)).outcome,
-    ).toBe("invalid");
 
     if (check.outcome !== "match") {
       throw new Error("expected a match");
@@ -196,10 +220,9 @@ describe("InMemoryAccountDirectory", () => {
 
   it("an existing address keeps its display name after a repeat sign-up", async () => {
     const directory = createDirectory();
-    await directory.signUp(createSignUp("ann@desk.io"), IP);
-    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    await createConfirmedAccount(directory, "ann@desk.io");
     await directory.signUp(
-      { email: "ann@desk.io", displayName: "Mallory", password: "Other2026!x" },
+      { email: "ann@desk.io", displayName: "Mallory" },
       IP,
     );
     const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
@@ -246,15 +269,24 @@ describe("InMemoryAccountDirectory", () => {
     const directory = createDirectory();
 
     expect(
-      await directory.confirmEmail("nobody@desk.io", DEV_CONFIRMATION_CODE, IP),
+      await directory.confirmEmail(
+        "nobody@desk.io",
+        DEV_CONFIRMATION_CODE,
+        PASSWORD,
+        IP,
+      ),
     ).toBe("invalid_code");
     expect(
       await directory.confirmEmail(
         "trader@rtc.test",
         DEV_CONFIRMATION_CODE,
+        PASSWORD,
         IP,
       ),
     ).toBe("invalid_code");
+    expect(
+      (await directory.checkPassword("nobody@desk.io", PASSWORD, IP)).outcome,
+    ).toBe("invalid");
   });
 
   it("counts registrations since a moment, seeds excluded by their age", async () => {
@@ -285,14 +317,17 @@ function createDirectory(): AccountDirectory {
   });
 }
 
-interface SignUp {
-  readonly email: string;
-  readonly displayName: string;
-  readonly password: string;
+function createSignUp(email: string): SignUpInput {
+  return { email, displayName: "Ann Lee" };
 }
 
-function createSignUp(email: string): SignUp {
-  return { email, displayName: "Ann Lee", password: PASSWORD };
+/** Signs up and confirms with the dev code, setting `PASSWORD`. */
+async function createConfirmedAccount(
+  directory: AccountDirectory,
+  email: string,
+): Promise<void> {
+  await directory.signUp(createSignUp(email), IP);
+  await directory.confirmEmail(email, DEV_CONFIRMATION_CODE, PASSWORD, IP);
 }
 
 const IP = "1.2.3.4";

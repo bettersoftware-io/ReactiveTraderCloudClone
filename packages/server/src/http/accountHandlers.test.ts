@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AccountDirectory } from "#/accounts/AccountDirectory";
+import type {
+  AccountDirectory,
+  ConfirmOutcome,
+} from "#/accounts/AccountDirectory";
 import { createAccountService } from "#/accounts/AccountService";
 import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
 import { DEV_ACCOUNT_SEEDS } from "#/accounts/devAccounts";
@@ -48,7 +51,7 @@ describe("registerAccount", () => {
 
   it("answers 400 with the broken rule", async () => {
     const result = await registerAccount(
-      createRegisterBody({ password: "short" }),
+      createRegisterBody({ email: "not-an-email" }),
       IP,
       createDeps(),
     );
@@ -56,7 +59,7 @@ describe("registerAccount", () => {
     expect(result.status).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
       error: "invalid_request",
-      rule: "min-length",
+      rule: "email",
     });
   });
 
@@ -136,9 +139,64 @@ describe("registerAccount", () => {
 });
 
 describe("confirmEmailAddress", () => {
-  it("answers 200 pending_approval for the right code", async () => {
+  it("answers 200 pending_approval for the right code, and the password is set", async () => {
     const deps = createDeps();
     await registerAccount(createRegisterBody(), IP, deps);
+
+    const result = await confirmEmailAddress(createConfirmBody(), IP, deps);
+
+    expect(result.status).toBe(200);
+    expect(JSON.parse(result.body)).toEqual({ status: "pending_approval" });
+    expect(
+      (await deps.accounts.login("ann@desk.io", PASSWORD, IP)).outcome,
+    ).toBe("pending");
+  });
+
+  it("answers 200 password_unset when the code held but the password was not stored", async () => {
+    const result = await confirmEmailAddress(
+      createConfirmBody(),
+      IP,
+      createDeps({
+        directory: {
+          ...createDisabledAccountDirectory(),
+          confirmEmail: (): Promise<ConfirmOutcome> => {
+            return Promise.resolve("confirmed_unset");
+          },
+        },
+      }),
+    );
+
+    expect(result.status).toBe(200);
+    expect(JSON.parse(result.body)).toEqual({ status: "password_unset" });
+  });
+
+  it("a weak password is 400 with its rule, and no strike", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+    const deps = createDeps({ banList });
+    await registerAccount(createRegisterBody(), IP, deps);
+
+    const result = await confirmEmailAddress(
+      createConfirmBody({ password: "short" }),
+      IP,
+      deps,
+    );
+
+    expect(result.status).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({
+      error: "invalid_request",
+      rule: "min-length",
+    });
+    expect(banList.isBanned(IP, 1_000)).toBe(false);
+  });
+
+  it("a body without the password is 400 and never reaches the service", async () => {
+    const deps = createDeps();
+    const confirm = vi.spyOn(deps.accounts, "confirmEmail");
 
     const result = await confirmEmailAddress(
       JSON.stringify({ email: "ann@desk.io", code: DEV_CONFIRMATION_CODE }),
@@ -146,8 +204,20 @@ describe("confirmEmailAddress", () => {
       deps,
     );
 
-    expect(result.status).toBe(200);
-    expect(JSON.parse(result.body)).toEqual({ status: "pending_approval" });
+    expect(result.status).toBe(400);
+    expect(JSON.parse(result.body)).toEqual({ error: "invalid_request" });
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when the directory is unavailable", async () => {
+    const result = await confirmEmailAddress(
+      createConfirmBody(),
+      IP,
+      createDeps({ directory: createDisabledAccountDirectory() }),
+    );
+
+    expect(result.status).toBe(503);
+    expect(JSON.parse(result.body)).toEqual({ error: "unavailable" });
   });
 
   it("a wrong code is 400 and a strike", async () => {
@@ -161,7 +231,7 @@ describe("confirmEmailAddress", () => {
     await registerAccount(createRegisterBody(), IP, deps);
 
     const result = await confirmEmailAddress(
-      JSON.stringify({ email: "ann@desk.io", code: "111111" }),
+      createConfirmBody({ code: "111111" }),
       IP,
       deps,
     );
@@ -300,13 +370,24 @@ function createClock(at: number): () => number {
 
 interface RegisterOverrides {
   readonly email?: string;
-  readonly password?: string;
 }
 
 function createRegisterBody(overrides: RegisterOverrides = {}): string {
   return JSON.stringify({
     email: overrides.email ?? "ann@desk.io",
     displayName: "Ann Lee",
+  });
+}
+
+interface ConfirmOverrides {
+  readonly code?: string;
+  readonly password?: string;
+}
+
+function createConfirmBody(overrides: ConfirmOverrides = {}): string {
+  return JSON.stringify({
+    email: "ann@desk.io",
+    code: overrides.code ?? DEV_CONFIRMATION_CODE,
     password: overrides.password ?? PASSWORD,
   });
 }
