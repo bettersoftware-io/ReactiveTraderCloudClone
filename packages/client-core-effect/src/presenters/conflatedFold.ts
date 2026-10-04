@@ -6,9 +6,9 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  portEvents,
   sharedFold,
 } from "#/bridge/out";
-import { peekCurrent } from "#/bridge/peek";
 
 /** One input of the conflation fold. */
 type ConflationEvent<T> =
@@ -54,35 +54,24 @@ export function conflatedFold<T>(
       // Subscribed HERE, in plain synchronous code, not inside the
       // `Effect.gen` below: `fromPort` is eager by design (see
       // `bridge/in.ts`), so the period owns both subscriptions from the
-      // moment it starts.
-      const calmEvents = fromPort(calm$).pipe(
-        Stream.map((on): ConflationEvent<T> => {
+      // moment it starts. ONE queue for both ports, the flag first: a
+      // replay-current flag emits during its subscribe, so its value is
+      // queued ahead of every tick — the order the RxJS `conflateWhen` gets
+      // structurally (its `flag$.pipe(switchMap(…))` subscribes the source
+      // only once the flag has emitted). A flag with no current value
+      // queues nothing, and ticks before it speaks are dropped.
+      const events = fromPort.merged<ConflationEvent<T>>([
+        portEvents(calm$, (on: boolean) => {
           return { kind: "calm", on };
         }),
-      );
-
-      const tickEvents = fromPort(source).pipe(
-        Stream.map((value): ConflationEvent<T> => {
+        portEvents(source, (value: T) => {
           return { kind: "tick", value };
         }),
-      );
+      ]);
 
       return Effect.gen(function* foldConflation() {
-        // MEASURED: `Stream.merge` gives no ordering across its two
-        // sources, and it drains the tick queue FIRST — so a burst driven
-        // in the same turn as the subscribe (what the FX contract suites
-        // do) was dropped wholesale as "before the flag spoke". The flag's
-        // CURRENT value is therefore read synchronously here, before the
-        // first tick can be folded, which is also what the RxJS
-        // `conflateWhen` does structurally: its `flag$.pipe(switchMap(…))`
-        // subscribes the source only once the flag has emitted, and a
-        // replay-current flag emits during `subscribe`. A flag with no
-        // current value still seeds `None`, so "before the flag spoke" is
-        // unchanged for a genuinely silent flag. The flag stream's own
-        // first event re-states the same value a moment later, which is a
-        // no-op transition.
         const state = yield* Ref.make<ConflationState<T>>({
-          calm: peekCurrent(calm$),
+          calm: Option.none(),
           window: Option.none(),
           pending: Option.none(),
         });
@@ -190,8 +179,6 @@ export function conflatedFold<T>(
             { ...current, pending: Option.some(event.value) },
           ];
         }
-
-        const events = Stream.merge(tickEvents, calmEvents);
 
         yield* Stream.runForEach(events, (event) => {
           return Ref.modify(state, (current) => {

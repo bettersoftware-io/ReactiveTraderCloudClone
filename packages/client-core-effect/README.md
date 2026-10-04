@@ -127,16 +127,33 @@ makes that head the NEW value.
 A `sharedFold` period is **seedless-capable**: `seed()` returns an
 `Option`, so a port that has not emitted by the time it is peeked seeds
 `None` and its subscribers hear nothing until the producer's first write —
-the RxJS core's behaviour, rather than a fabricated default. The producer's
-first write of a period waits on a **latch**: a `Deferred` the period's
-watcher succeeds the moment it has subscribed the ref's PubSub. That is the
-structural close of a race an `Effect.yieldNow()` per write used to merely
-win — without it a same-tick burst of three port events delivers `[0, 6]`
-instead of `[0, 1, 3, 6]`, because the producer publishes every
-intermediate state before the watcher fiber exists and only the `Ref.get`
-head survives. Each period also owns its own subscriber set, so a stale
-producer failing in the unsubscribe → scope-close window cannot error the
-next period's subscribers.
+the RxJS core's behaviour, rather than a fabricated default. A period keeps
+its current state in a plain field and its subscribers in a set, and the
+producer's `update` **hands each new state to the subscribers itself**, from
+its own fiber. A subscriber is given the current state inside its
+`subscribe` call and every later one after that, so one joining in the
+middle of a same-tick burst misses nothing (`[0, 1, 3, 6]` for both the
+first subscriber and a late one). Each period owns its own subscriber set,
+so a stale producer still running in the unsubscribe → scope-close window
+can neither write to nor error the next period's subscribers.
+
+It was first written the other way round — the state in a
+`SubscriptionRef`, each subscriber following `ref.changes` on a watcher
+fiber of its own, and a `Deferred` latch holding the producer's first write
+until the first watcher was listening. Timing every fiber step on the FX
+screen (2026-10-04) showed those watchers were a quarter of the core's
+fiber work: 820 of 2,900 scheduler tasks in the first two seconds, 1,750 of
+7,500 per six seconds of steady state, all spent forwarding values.
+
+A producer that folds SEVERAL ports takes them as one stream of events
+through **`fromPort.merged([portEvents(a$, toEvent), portEvents(b$, toEvent)])`**
+rather than `Stream.merge` over two `fromPort` streams. All the ports feed
+one queue, so events keep the order the ports emitted them in — across
+ports, which `Stream.merge` does not promise — and a burst costs one fiber
+step, where `Stream.merge` runs each side on a fiber of its own and spends
+about eleven steps per value. The price and price-history folds and the
+stale-flag machines went from 4,250 scheduler tasks per six seconds to 600.
+The stream ends when every port has completed and fails as soon as one does.
 
 Slice 4 adds three more bridge exports. `scopedPortStream(open)` is the
 lifecycle twin of `rpc`: a per-call, MULTI-value port stream whose `open()`
@@ -179,13 +196,14 @@ token bucket, `aggregateWithin` trailing-only). One `Ref` holds the whole
 state so every transition is an atomic `Ref.modify`; the window is ONE
 forked fiber that loops in place rather than forking its successor (a
 forked child dies with its parent, so a timer fiber that forked the next
-window and then ended would kill it at once). The calm flag's CURRENT value
-is read synchronously with `peekCurrent` before the first tick can be
-folded: `Stream.merge` gives no ordering across its two sources and drains
-the tick queue first, so a burst driven in the same turn as the subscribe
-was otherwise dropped wholesale as "before the flag spoke" — which is also
-what the RxJS `flag$.pipe(switchMap(…))` structurally avoids, since it
-subscribes the source only once a (replay-current) flag has emitted.
+window and then ended would kill it at once). The calm flag and the source
+feed ONE queue (`fromPort.merged`), the flag subscribed first: a
+replay-current flag emits during its subscribe, so its value is queued ahead
+of every tick — including the ticks a source replays during ITS subscribe,
+as the pricing simulator does. That is the order the RxJS
+`flag$.pipe(switchMap(…))` gets structurally, since it subscribes the source
+only once the flag has emitted. A flag with no current value queues nothing,
+and ticks before it speaks are dropped.
 
 A machine here is a `SubscriptionRef` plus a **detached host**: its own
 scope under the default runtime, closed by `dispose()`. `state$` is
@@ -328,7 +346,7 @@ preference presenter (`themePreference`, `themeSkinPreference`,
 `loginWaitPreferences`, `jarvisPreferences`, `animatedBackground`,
 `ambientStyle`, `chartSubstrate`, `layoutEngine`, `forceBootAnimation`) and
 `commands.reconnect`. The native idiom for a replay-current stream is `sharedFold` (a
-`SubscriptionRef` seeded synchronously on every first subscribe, driven by a
+state seeded synchronously on every first subscribe, driven by a
 producer fiber in a per-warm-period child scope) — `Stream.share` cannot be
 the envelope, since it replays to a new subscriber on a fiber rather than in
 the caller's tick; `mirrorPort` / `mirrorPortAsIs` are the port-stream
@@ -340,7 +358,7 @@ with no stream of its own, `bootPreference`, takes no host). The presenter
 files group by API shape: `preferences.ts` (one stream plus setters,
 including the two boolean toggles), `groupedPreferences.ts` (several
 independent streams under one member), `readPreferences.ts`. One documented
-difference from the RxJS core: a `SubscriptionRef` fold conflates
+difference from the RxJS core: a `sharedFold` conflates
 `Object.is`-equal consecutive states.
 
 `src/coreContract.test.ts` runs the full `@rtc/core-contract` suite set

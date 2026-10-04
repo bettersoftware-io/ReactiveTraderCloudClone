@@ -253,7 +253,7 @@ all 75 are implemented natively in all three cores.
 |---|---|---|---|
 | Package | `@rtc/client-core` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
 | Style | operators over `Observable` | `async`/`await`, callbacks, `AsyncIterable` | `Effect`, `Stream`, fibers |
-| A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `SubscriptionRef` |
+| A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `Scope` |
 | A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SubscriptionRef<S>` |
 | Cancelling work | `unsubscribe()`, `switchMap`, `takeUntil` | `AbortController` / `AbortSignal` | `Fiber.interrupt`, closing a `Scope` |
 | Waiting | `timer()` | `sleep(ms, signal)` | `Effect.sleep` |
@@ -398,6 +398,7 @@ flowchart TD
 |---|---|---|---|---|
 | in | `rpc(source)` | `Observable` | `Effect` of the first value | a one-shot call |
 | in | `fromPort(source)` | `Observable` | Effect `Stream` | following a port during one warm period |
+| in | `fromPort.merged([...])` | several `Observable`s | one Effect `Stream` of events | folding two or more ports together, in the order they emitted |
 | in | `peek(source, fallback)` | `Observable` | the current value, read at once | seeding, synchronous reads |
 | out | `sharedFold(host, { seed, run })` | a seed and a producer | `Stream` (shared, replays the latest) | every shared stream |
 | out | `refToStateStream(host, ref)` | `SubscriptionRef` | `StateStream` | every machine's `state$` |
@@ -486,7 +487,7 @@ flowchart TD
 
   subgraph effect["Effect core"]
     e1["events port"] --> e2["fromPort → Stream.runForEach<br/>on a fiber"]
-    e2 --> e3["SubscriptionRef"]
+    e2 --> e3["update(next)"]
     e3 --> e4["sharedFold"]
   end
 
@@ -675,6 +676,29 @@ forbids closing a scope any other way.
 The lesson for both: **when two things only work because one is slower than
 the other, it is a race, even if it has never failed.** Look for the
 ordering the code actually guarantees, not the one it happens to have.
+
+### What a value costs in the Effect core
+
+Getting the turns right fixed what the screen does. The same profiling also
+showed how much work each value took, and two habits were responsible for
+most of it.
+
+- **A fiber per subscriber, only to pass values on.** A shared stream kept
+  its state in a `SubscriptionRef`, and every subscriber followed it on a
+  fiber of its own. Now the fiber that computes a state hands it to the
+  subscribers itself. Nine tiles reading four streams each no longer means
+  thirty-six extra fibers.
+- **`Stream.merge` over two ports.** Merging runs each side on its own fiber
+  and passes every value across: about eleven fiber steps per value. A fold
+  that listens to two ports now asks for them as one stream,
+  `fromPort.merged([...])`, which puts both ports into one queue. It is
+  cheaper, and the events also keep the order they were emitted in, which
+  `Stream.merge` never promised.
+
+Together they took the first two seconds of the FX screen from about 2,900
+fiber steps to about 1,000, and steady state from about 7,500 per six
+seconds to about 2,000. When you write a new Effect member: fold several
+ports with `fromPort.merged`, and let `sharedFold` do the sharing.
 
 ## A command that can be cancelled
 
