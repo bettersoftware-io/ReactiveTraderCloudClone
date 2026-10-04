@@ -1,5 +1,5 @@
 // tests/presenter/scenarios/_shared/analytics.ts
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 export async function expectAnalyticsVisibleWithin(
   w: PresenterWorld,

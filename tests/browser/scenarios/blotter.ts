@@ -1,11 +1,11 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 import {
   assertContains,
   assertEquals,
   assertGreaterThanZero,
   assertLte,
   assertTrue,
-} from "./assert";
+} from "./assert.ts";
 
 export async function clickFirstBlotterHeader(ctx: TestContext): Promise<void> {
   await ctx.po.blotterTable.clickFirstHeader();

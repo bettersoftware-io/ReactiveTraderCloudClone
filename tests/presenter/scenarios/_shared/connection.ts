@@ -4,7 +4,7 @@ import { filter } from "rxjs";
 
 import type { ConnectionStatus } from "@rtc/domain";
 
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 export async function browserGoesOffline(w: PresenterWorld): Promise<void> {
   w.ctx.connectionEvents$.next({ type: "browserOffline" });

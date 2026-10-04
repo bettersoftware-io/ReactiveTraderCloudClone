@@ -1,6 +1,6 @@
-import type { PowerSaverPO } from "../page-objects/contracts/PowerSaver";
-import type { TestContext } from "../testContext";
-import { assertEquals, assertTrue } from "./assert";
+import type { PowerSaverPO } from "../page-objects/contracts/PowerSaver.ts";
+import type { TestContext } from "../testContext.ts";
+import { assertEquals, assertTrue } from "./assert.ts";
 
 // The Freeze catch-all sets `animation-duration: 0.01ms !important` (1e-5s).
 // getComputedStyle always resolves to seconds and browsers are free to

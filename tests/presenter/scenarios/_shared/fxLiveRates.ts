@@ -1,7 +1,7 @@
 // tests/presenter/scenarios/_shared/fxLiveRates.ts
 import { firstValueFrom } from "rxjs";
 
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 export async function expectPriceTileVisibleWithin(
   w: PresenterWorld,

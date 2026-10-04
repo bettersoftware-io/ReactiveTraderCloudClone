@@ -1,7 +1,7 @@
 import { Given, When } from "@cucumber/cucumber";
 
-import * as common from "../scenarios/common";
-import type { StepContext } from "../testContext";
+import * as common from "../scenarios/common.ts";
+import type { StepContext } from "../testContext.ts";
 
 Given(
   "the trader has the workspace open",

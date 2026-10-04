@@ -4,6 +4,7 @@
     "rootDir": ".",
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "composite": false,
     "declaration": false,
     "declarationMap": false,

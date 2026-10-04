@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import * as fx from "../scenarios/_shared/fxLiveRates";
-import * as rfq from "../scenarios/_shared/fxRfq";
+import * as fx from "../scenarios/_shared/fxLiveRates.ts";
+import * as rfq from "../scenarios/_shared/fxRfq.ts";
 import {
   buildWorld,
   teardownWorld,
   type VitestPlainPresenterWorld,
-} from "./_world";
+} from "./_world.ts";
 
 describe("@presenter Feature: FX RFQ flow", () => {
   beforeEach(() => {

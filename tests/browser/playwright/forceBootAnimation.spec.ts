@@ -15,8 +15,8 @@
 //
 // All assertions delegate to scenario helpers — gates 9-11 compliant (no raw
 // driver handles or page-object access in this file).
-import * as boot from "../scenarios/boot";
-import { test } from "./_context";
+import * as boot from "../scenarios/boot.ts";
+import { test } from "./_context.ts";
 
 test.describe("force boot animation (reduced motion)", () => {
   // `reducedMotion` is a BrowserContextOptions field, not a top-level test
