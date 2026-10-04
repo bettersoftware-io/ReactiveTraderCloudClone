@@ -101,6 +101,29 @@
       ],
     },
     {
+      // Native libraries that EXPO GO BUNDLES. Expo Go is the only free way to
+      // run the RN client on a real iPhone, and it ships a fixed native
+      // version of each of these; our JS must match it or every screen fails
+      // on load with `undefined is not a function` (2026-10-04 — routine
+      // "react-native community" bumps had carried seven of them ahead). They
+      // move only with an Expo SDK upgrade (`expo install --fix`), never on
+      // their own. `packages/client-react-native/tests/versions/expoGoVersions.test.ts`
+      // asserts the installed versions against Expo's own list, so a bump
+      // that slips past this rule still reds CI. MUST stay after the
+      // "react-native community" group above: later rules win.
+      matchPackageNames: [
+        "@react-native-async-storage/async-storage",
+        "@shopify/react-native-skia",
+        "react-native-gesture-handler",
+        "react-native-reanimated",
+        "react-native-safe-area-context",
+        "react-native-screens",
+        "react-native-svg",
+        "react-native-worklets",
+      ],
+      enabled: false,
+    },
+    {
       // TypeScript is a deliberate DUAL install (docs/typescript-7.md): the
       // `typescript` name aliases @typescript/typescript6 (the 6.x JS API that
       // typescript-eslint, dependency-cruiser and Expo need) while

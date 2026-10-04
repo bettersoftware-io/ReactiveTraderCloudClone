@@ -65,11 +65,9 @@ Expo Go and the Expo prebuild. Which runner you use depends on the platform.
 
 ### iOS — use the simulator (recommended)
 
-> **Why not Expo Go on your iPhone?** App Store **Expo Go is frozen at SDK 54**
-> (Apple's review backlog), but this app is on **SDK 57**. Expo Go only runs the
-> single SDK baked into it, so it rejects this app on iOS as "incompatible."
-> Until Apple ships a newer Expo Go, the free iOS path is the **simulator**
-> (a dev build), not Expo Go.
+> **On a real iPhone, use Expo Go** — see the next section. The simulator is
+> for development: it runs the app's own dev build, which the visual goldens
+> and the dev tooling depend on.
 
 From the repo root (with Xcode + an iOS simulator runtime installed):
 
@@ -118,6 +116,34 @@ Then open the installed dev client at Metro:
 xcrun simctl openurl booted "exp+rtc-mobile://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 ```
 </details>
+
+### A real iPhone — Expo Go
+
+Expo Go from the App Store runs this app as of SDK 57 (Expo Go 57.x, checked
+2026-10-04). It needs no developer mode on the phone and no Apple account, so
+it is the only free way onto a physical iPhone — and the only place the
+haptics can be felt, since the simulator has no haptic engine.
+
+```bash
+pnpm build
+EXPO_PUBLIC_SERVER_URL= pnpm --filter @rtc/client-react-native exec expo start --go
+```
+
+Scan the QR code with the iPhone camera (phone and Mac on the **same Wi-Fi**;
+add `--tunnel` if the network blocks it) and sign in with `demo` / `mcdc2026`.
+The empty `EXPO_PUBLIC_SERVER_URL` selects the built-in simulator data.
+
+- **"Sign in to Expo Go as …"** — the project carries an EAS project id, so
+  Expo Go must be signed in to the same Expo account as the CLI (its profile
+  tab), or start with `--offline`.
+- **Black screen and `undefined is not a function` for every route** — a
+  native library's JS is ahead of the version Expo Go bundles. Eight
+  libraries are pinned to Expo's versions for this reason
+  (`tests/versions/expoGoVersions.test.ts`; Renovate leaves them alone). They move only with
+  an SDK upgrade, via `expo install --fix`.
+
+The app only runs while the Mac is serving it, and it is a development
+bundle: fine for a look and a feel, not for performance numbers.
 
 ### Android — Expo Go or an APK
 
@@ -183,7 +209,7 @@ CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 | **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `eas build -p android --profile preview` → share the link | Free |
 | **Your own iPhone** (physical) | `expo run:ios --device` — cabled, signed with a **free** Apple ID (Xcode Personal Team) | Free, but **7-day** expiry + must be cabled |
 | **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
-| **iOS Expo Go** (App Store) | ❌ Not possible — frozen at SDK 54, rejects this SDK-57 app | — |
+| **iOS Expo Go** (App Store) | `expo start --go`, scan the QR — see "A real iPhone" above. No developer mode, no Apple account; runs only while the Mac serves it | Free |
 
 ### Why iOS-on-a-real-device costs money
 
