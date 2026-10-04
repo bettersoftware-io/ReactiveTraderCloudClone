@@ -6,21 +6,38 @@ Only `@rtc/server` talks to it. No client has its URL or a key.
 
 ## One-time setup
 
-1. Create a project in London (`eu-west-2`).
+This section covers the Supabase project itself. The whole rollout (the
+email sender, the probe, the Fly secrets, the deploy and the first
+administrator) is one numbered procedure in
+[`docs/DEPLOY.md` §4](../docs/DEPLOY.md#4-supabase-account-store); follow that, and
+use this list as the reference for the project-side steps. Menu names are as
+of October 2026; Supabase moves them.
+
+1. Create a project in London (`eu-west-2`). `docs/privacy.md` names this
+   region; change it there if you choose another.
 2. Apply `migrations/` in filename order (SQL editor, or `supabase db push`).
 3. **Authentication → Emails:** paste `templates/confirm-signup.html` into
    *Confirm signup* and `templates/reset-password.html` into *Reset
    password*. Both print a 6-digit code (`{{ .Token }}`), not a link.
 4. **Authentication → Sign In / Providers → Email:** *Confirm email* on;
-   minimum password length 12.
-5. **Authentication → Emails → SMTP settings:** a custom sender. The built-in
-   one allows only a couple of emails an hour.
+   minimum password length 12. Phone and anonymous off (below).
+5. **Authentication → Emails → SMTP settings:** a custom sender is
+   **required** before registration is opened. The built-in one allows only
+   a couple of emails an hour, and a sign-up Supabase throttles still
+   answers "code sent" through the server and sends nothing — so a busy hour
+   silently loses sign-ups. Check the email-sending rate under
+   Authentication → Rate limits as well.
 6. **Authentication → Rate limits:** enable IP address forwarding
    (`Sb-Forwarded-For`), so Supabase limits each visitor, not our server's
    one address.
-7. Create a **secret** API key (`sb_secret_…`) and set, on Fly:
-   `flyctl secrets set SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_…`
-8. Run the probe (below) before the first deploy.
+7. **Authentication → Sessions:** if your plan offers a session time-box, set
+   one. Every sign-in through the server leaves a session row the server
+   never revokes.
+8. **Project Settings → API Keys:** create a **secret** key (`sb_secret_…`).
+   It never goes on a command line, into a file or into a client: the probe
+   and the Fly secret take it from a shell variable read at a prompt
+   ([`docs/DEPLOY.md` §4](../docs/DEPLOY.md#4-supabase-account-store) steps
+   9–12 run the probe, stage the secrets and deploy).
 9. After your own first sign-up: in the table editor set your `profiles` row
    to `role = 'admin'`, `approved = true`.
 
@@ -48,8 +65,11 @@ password".
 adapter against the project named by `SUPABASE_URL` / `SUPABASE_SECRET_KEY`
 and prints one line per check. It also needs `PROBE_EMAIL_DOMAIN`: a domain
 you control or a test inbox — the probe sends one real confirmation email
-to it. It creates two throwaway accounts and deletes them. If the probe is
-killed or a cleanup fails it leaves an account behind, whose id it printed. Run it after setup and whenever Supabase changes its Auth API.
+to it. It creates two throwaway accounts, addressed `probe-<timestamp>@…`
+and `probe-fresh-<timestamp>@…`, and deletes them; each cleanup line prints
+the account's id. If a cleanup fails, delete that id; if the probe is killed
+before cleanup, search Authentication → Users for addresses starting with
+`probe-`. Run it after setup and whenever Supabase changes its Auth API.
 
 ## Approving and blocking
 

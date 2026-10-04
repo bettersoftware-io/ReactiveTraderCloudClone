@@ -69,7 +69,7 @@ project-side reference is [`supabase/README.md`](../supabase/README.md); this
 is the rollout, in the order it must be done. Every step is **yours** — none
 happens on its own, and none is done by a deploy.
 
-**Until step 11 is done the deployed server runs in `disabled` mode:**
+**Until the step 12 deploy the deployed server runs in `disabled` mode** (step 11 only stages the secrets):
 registered logins answer `503 unavailable`, `/health/accounts` answers
 `disabled`, and everything else — demo accounts, roster logins — works as
 before. Merging B2a changes nothing on the deployed server until you
@@ -88,6 +88,9 @@ domain** to use (step 1), and whether to keep the free plan with the
 `accounts-keepalive.yml` workflow or pay for **Supabase Pro**, which removes
 pausing outright (step 14).
 
+The Supabase dashboard menu names in steps 2–8 are as of October 2026;
+Supabase moves them.
+
 1. **Email sender.** Choose an SMTP provider and a sending domain you
    control, and add the provider's DNS records (SPF, DKIM) for it.
    *Done:* the provider shows the domain verified, and you have its SMTP
@@ -98,7 +101,8 @@ pausing outright (step 14).
 2. **Create the project** in the Supabase dashboard, region London
    (`eu-west-2`, next to Fly `lhr`), separate from any other project.
    *Done:* the project is up; note its URL, `https://<ref>.supabase.co`.
-   Keep that URL private.
+   Keep that URL private. [`privacy.md`](privacy.md) names this region —
+   change it there if you choose another.
 3. **Apply the migration** `supabase/migrations/20261004000000_create_profiles.sql`
    (paste it into the SQL editor and run it, or `supabase db push`).
    *Done:* Table editor shows `public.profiles` with row-level security
@@ -141,11 +145,17 @@ pausing outright (step 14).
    `PROBE_EMAIL_DOMAIN` is a domain you control or a test inbox: the probe
    sends **one real confirmation email** there, which is also your check
    that steps 1 and 5 work (it shows a 6-digit code). It creates two
-   throwaway accounts, walks them through confirm, sign-in and reset, and
-   deletes them; it prints only account ids and outcomes. *Done:* the last
-   line is `accounts probe: PASS`, and both `cleanup` lines are `✓`. If it
-   was killed or a cleanup failed, delete the account whose id it printed
-   (Authentication → Users). The probe does not check steps 6 and 7.
+   throwaway accounts: the first (`probe-<timestamp>@…`) is walked through
+   confirm, sign-in and reset; the second (`probe-fresh-<timestamp>@…`) is a
+   real sign-up, checked only for a password nobody knows. It deletes both
+   and prints only account ids and outcomes. *Done:* the last line is
+   `accounts probe: PASS`, both `cleanup` lines are `✓`, **and** the
+   confirmation email arrived at the probe domain — the probe passes whether
+   or not it arrives, so only you can check that. If a cleanup failed,
+   delete the account whose id that line printed (Authentication → Users);
+   if the probe was killed before its cleanup, no id was printed, so search
+   Authentication → Users for addresses starting with `probe-`. The probe
+   does not check steps 6 and 7.
 10. **Check the server's other secrets.** With accounts on, the server will
     not start unless `AUTH_SECRET` is at least 32 characters (trimmed), and
     no `AUTH_USERS` username may contain `@`. Fly does not show secret
@@ -157,11 +167,14 @@ pausing outright (step 14).
     and re-set `AUTH_USERS` without any `@` if you ever put one in.
 11. **Set the account secrets on Fly:**
 
-        fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_… -a rtc-clone-server
+        fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" -a rtc-clone-server
 
     Add `REGISTRATION_OPEN=false` to the same command to keep sign-up
-    closed while you check the result. `--stage` stores the secrets without
-    restarting the machine; the next deploy picks them up. Without it, Fly
+    closed while you check the result. Run it in the shell from step 9, so
+    `$SUPABASE_SECRET_KEY` still holds the key and the key itself never
+    appears on a command line. `--stage` is flyctl's documented way to store
+    secrets without restarting the machine (confirm with `fly secrets set
+    --help`); the next deploy picks them up. Without it, Fly
     restarts the machine at once on the image it is already running — and a
     server that refuses to start (below) is an outage until it is fixed.
 12. **Deploy the server:** run `deploy.yml` with `deploy_server` ticked

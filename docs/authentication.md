@@ -588,12 +588,13 @@ two cannot collide, because the server refuses an `AUTH_USERS` username with
 an `@`.
 
 1. The address is normalized; one that is not a valid address is `401
-   invalid_credentials`, without a store call.
+   invalid_credentials` and a ban strike, without a store call.
 2. The password is checked with the store. Wrong, or no such account → `401
    invalid_credentials` and a ban strike. The store says unconfirmed → `403
    unconfirmed`. The store unreachable, or rate-limiting us (a 429) → `503
    unavailable`.
-3. The profile is read. Missing → `401`. Blocked → `403 blocked`; not
+3. The profile is read. Missing → `401 invalid_credentials` and a ban
+   strike. Blocked → `403 blocked`; not
    approved → `403 pending_approval`.
 4. Otherwise the server signs a token with
    `AuthService.issueAccountSession` and answers `200`.

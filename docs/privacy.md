@@ -11,14 +11,29 @@ nothing about you. This notice covers **registered accounts** only.
 | Your display name | Shown in the app's profile menu, and to the administrator who approves the account |
 | When the account was created, and whether it is confirmed, approved or blocked | To run the approval step |
 | A hash of your password | Held by Supabase Auth. The password is chosen when you enter the emailed code; the project's own code passes it to Supabase in that one request and never stores or logs it |
-| A record of each sign-in session | Kept by Supabase Auth, which stores it with the request's IP address and browser identification |
+| A record of each sign-in session | Kept by Supabase Auth, which stores it with an IP address and a client identification. The client is the project's server, not your browser: the server forwards your IP address but not your browser's identification |
 
-Nothing else is collected. There is no tracking and no advertising. Trades
-and prices in the app are simulated and are not kept.
+Apart from these and the assistant's messages (below), nothing is collected.
+There is no tracking and no advertising. Trades and prices in the app are
+simulated and are not kept.
 
 After you sign in, your browser keeps the session token the server issued.
 That token carries your email address and expires after eight hours by
 default. Signing out removes it.
+
+## The Jarvis assistant
+
+When you are signed in to the live desk, the Jarvis assistant can answer with
+a model from Anthropic. When it does, the text of your message, the recent
+conversation (a capped number of earlier messages) and the results of the desk
+tools it calls (simulated prices, trades and analytics) are sent to the
+Anthropic API to produce the answer. Your email address and display name
+are not sent. Anthropic's own data retention applies to what it receives.
+The scripted assistant sends nothing anywhere.
+
+The server keeps the conversation in memory only for as long as your
+connection is open, and does not store or log message contents. It counts
+turns and tokens per model for the whole server, not per person.
 
 ## Where
 
@@ -30,8 +45,9 @@ address and the code it carries.
 
 The account is kept until you ask for it to be deleted. To delete it, open an
 issue at <https://github.com/bettersoftware-io/ReactiveTraderCloudClone/issues>
-or email the maintainer from the account's address. Deletion removes the
-account and its profile.
+asking for account deletion **without naming your address** (issues are
+public); the maintainer will ask you to confirm from the account's address.
+Deletion removes the account and its profile.
 
 ## Logs
 

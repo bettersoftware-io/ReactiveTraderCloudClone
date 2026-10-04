@@ -17,8 +17,7 @@ each change is in the B2a rulings,
   not at sign-up (account pre-hijacking).
 - [§4](#4-architecture) and [§5.8](#58-dev-e2e-and-the-keep-alive): three
   account modes; the in-memory directory is asked for by name and refused on
-  a deployed machine, and the server refuses five kinds of bad configuration
-  at startup.
+  a deployed machine, and the server refuses bad configuration at startup.
 - [§5.1](#51-data-model): no `account_directory` view; `profiles` carries the
   email and its confirmation time.
 - [§5.2](#52-components): the components as built, the caller's IP forwarded
@@ -366,9 +365,11 @@ Every value is a named constant in `packages/server/src/config/limits.ts`.
 | `AUTH_SECRET` length (*amended 2026-10-04*) | at least 32 characters when accounts are enabled | It signs admin sessions; a guessable key forges one |
 
 A rate-limit hit, a failed login and a wrong code are ban strikes, with the
-weights B1 set. Logs name the endpoint, the outcome and the IP. They never
+weights B1 set. ~~Logs name the endpoint, the outcome and the IP.~~ Logs never
 contain a password, a code, a token or a request body. An email address is
-personal data and is not logged either; the account id is.
+personal data and is not logged either~~; the account id is~~. *Amended
+2026-10-04:* the struck parts are superseded by the Logs bullet below — the
+account endpoints log nothing per request, and no account id is logged.
 
 *Amended 2026-10-04 — limits as built.* The constants are
 `REGISTER_RATE_LIMIT_*`, `SEND_CODE_RATE_LIMIT_*`, `CODE_ENTRY_RATE_LIMIT_*`,
@@ -627,7 +628,7 @@ None of this happens on its own, and none of it is done by the implementation.
 | Before B2a deploys | Paste the two email templates from `supabase/templates/`; set the password minimum to 12 in Supabase's settings |
 | Before B2a deploys | *Amended 2026-10-04.* Keep the **phone** and **anonymous** sign-in providers disabled (`profiles.email` is `not null`, so such a user breaks the profile trigger); keep the project URL private and do not hand out the publishable key — a direct `/auth/v1/signup` bypasses the server's rules, though such an account still needs approval and cannot read `profiles` |
 | Before B2a deploys | *Amended 2026-10-04.* Enable IP address forwarding in the project's Auth rate-limit settings, so `Sb-Forwarded-For` is honoured |
-| Before B2a deploys | *Amended 2026-10-04.* Set a session time-box in the project's Auth settings: every sign-in leaves a Supabase session row the server never revokes (§6) |
+| Before B2a deploys | *Amended 2026-10-04.* If your plan offers it, set a session time-box in the project's Auth settings: every sign-in leaves a Supabase session row the server never revokes (§6) |
 | Before B2a deploys | *Amended 2026-10-04.* Run `pnpm --filter @rtc/server accounts:probe` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `PROBE_EMAIL_DOMAIN` (a domain you control or a test inbox; the probe sends one real confirmation email there) and see `PASS`. It prints the id of each account it creates and deletes |
 | Before B2a deploys | *Amended 2026-10-04.* Make sure `AUTH_SECRET` is at least 32 characters and no `AUTH_USERS` username contains `@`; the server refuses to start otherwise (§5.8) |
 | Before B2a deploys | `flyctl secrets set SUPABASE_URL=… SUPABASE_SECRET_KEY=…` |
