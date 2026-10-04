@@ -370,7 +370,8 @@ describe("AccountService codes and resets", () => {
 
 describe("AccountService closes account pre-hijacking", () => {
   it("an unconfirmed squatter's registration gives them no credential on the owner's account", async () => {
-    const { service } = createService();
+    const { service, directory } = createService();
+    const signUp = vi.spyOn(directory, "signUp");
     const attacker = "Attack2026!pass";
     const owner = "Owner2026!pass";
 
@@ -386,6 +387,10 @@ describe("AccountService closes account pre-hijacking", () => {
         IP,
       ),
     ).toEqual({ outcome: "code_sent" });
+    expect(signUp).toHaveBeenCalledWith(
+      { email: "victim@rtc.test", displayName: "Mallory" },
+      IP,
+    );
 
     // The owner registers the same address, receives the code and confirms
     // it together with their own password.

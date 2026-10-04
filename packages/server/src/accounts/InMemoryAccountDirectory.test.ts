@@ -11,7 +11,9 @@ import {
 import {
   createInMemoryAccountDirectory,
   DEV_CONFIRMATION_CODE,
+  type PasswordHash,
 } from "#/accounts/InMemoryAccountDirectory";
+import { hashPassword } from "#/auth/passwordHash";
 
 describe("InMemoryAccountDirectory", () => {
   it("a new sign-up has no password until the code sets one", async () => {
@@ -155,6 +157,105 @@ describe("InMemoryAccountDirectory", () => {
         )
       ).outcome,
     ).toBe("invalid");
+  });
+
+  it("a reset of an unconfirmed account confirms it, as Supabase's recovery does", async () => {
+    const directory = createDirectory();
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+    await directory.requestReset("ann@desk.io", IP);
+
+    expect(
+      await directory.resetPassword(
+        "ann@desk.io",
+        DEV_CONFIRMATION_CODE,
+        PASSWORD,
+        IP,
+      ),
+    ).toBe("changed");
+
+    const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
+
+    if (check.outcome !== "match") {
+      throw new Error(`expected a match, got ${check.outcome}`);
+    }
+
+    const found = await directory.findAccount(check.accountId);
+
+    expect(found.outcome === "found" && found.account.status).toBe("pending");
+  });
+
+  it("a confirmation whose hash fails is unavailable and changes nothing", async () => {
+    const hash = createSwitchableHash();
+    const directory = createDirectory(hash.hash);
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+
+    hash.failing = true;
+
+    expect(
+      await directory.confirmEmail(
+        "ann@desk.io",
+        DEV_CONFIRMATION_CODE,
+        PASSWORD,
+        IP,
+      ),
+    ).toBe("unavailable");
+
+    hash.failing = false;
+
+    // Still unconfirmed: the same code confirms on the next attempt.
+    expect(
+      await directory.confirmEmail(
+        "ann@desk.io",
+        DEV_CONFIRMATION_CODE,
+        PASSWORD,
+        IP,
+      ),
+    ).toBe("confirmed");
+    expect(
+      (await directory.checkPassword("ann@desk.io", PASSWORD, IP)).outcome,
+    ).toBe("match");
+  });
+
+  it("a reset whose hash fails is unavailable and keeps the old password", async () => {
+    const hash = createSwitchableHash();
+    const directory = createDirectory(hash.hash);
+    const next = "Fresh2026!pass";
+    await directory.requestReset("trader@rtc.test", IP);
+
+    hash.failing = true;
+
+    expect(
+      await directory.resetPassword(
+        "trader@rtc.test",
+        DEV_CONFIRMATION_CODE,
+        next,
+        IP,
+      ),
+    ).toBe("unavailable");
+
+    hash.failing = false;
+
+    expect(
+      (
+        await directory.checkPassword(
+          "trader@rtc.test",
+          DEV_ACCOUNT_PASSWORD,
+          IP,
+        )
+      ).outcome,
+    ).toBe("match");
+    // The request still stands: the next attempt changes the password.
+    expect(
+      await directory.resetPassword(
+        "trader@rtc.test",
+        DEV_CONFIRMATION_CODE,
+        next,
+        IP,
+      ),
+    ).toBe("changed");
+    expect(
+      (await directory.checkPassword("trader@rtc.test", next, IP)).outcome,
+    ).toBe("match");
   });
 
   it("requesting a reset for an unknown address still answers `sent`", async () => {
@@ -308,13 +409,33 @@ describe("InMemoryAccountDirectory", () => {
   });
 });
 
-function createDirectory(): AccountDirectory {
+function createDirectory(hash?: PasswordHash): AccountDirectory {
   return createInMemoryAccountDirectory({
     now: (): number => {
       return 1_000;
     },
     seeds: DEV_ACCOUNT_SEEDS,
+    hash,
   });
+}
+
+interface SwitchableHash {
+  failing: boolean;
+  readonly hash: PasswordHash;
+}
+
+/** The real hash, or a rejection while `failing` is set. */
+function createSwitchableHash(): SwitchableHash {
+  const switchable: SwitchableHash = {
+    failing: false,
+    hash: (password: string, salt: Buffer): Promise<Buffer> => {
+      return switchable.failing
+        ? Promise.reject(new Error("scrypt failed"))
+        : hashPassword(password, salt);
+    },
+  };
+
+  return switchable;
 }
 
 function createSignUp(email: string): SignUpInput {

@@ -25,9 +25,14 @@ import { DEV_ACCOUNT_PASSWORD, type DevAccountSeed } from "./devAccounts.js";
 /** The code every dev confirmation and reset accepts. There is no mailbox. */
 export const DEV_CONFIRMATION_CODE = "000000";
 
+/** Derives a digest from a password and a salt (scrypt by default). */
+export type PasswordHash = (password: string, salt: Buffer) => Promise<Buffer>;
+
 export interface InMemoryDirectoryOptions {
   readonly now: () => number;
   readonly seeds: readonly DevAccountSeed[];
+  /** Defaults to `hashPassword`; a test injects a failing one. */
+  readonly hash?: PasswordHash;
 }
 
 interface Credential {
@@ -61,6 +66,7 @@ export function createInMemoryAccountDirectory(
   options: InMemoryDirectoryOptions,
 ): AccountDirectory {
   const byEmail = new Map<string, Entry>();
+  const hash = options.hash ?? hashPassword;
   const dummySalt = createSalt();
 
   for (const seed of options.seeds) {
@@ -133,9 +139,22 @@ export function createInMemoryAccountDirectory(
         return "invalid_code";
       }
 
-      // Marked before the hash is awaited, so the code is spent once.
+      let credential: Credential;
+
+      try {
+        credential = await createCredential(password, hash);
+      } catch {
+        return "unavailable";
+      }
+
+      // Re-checked after the await, then applied in one synchronous step: a
+      // concurrent confirmation that finished first has spent the code.
+      if (entry.confirmed) {
+        return "invalid_code";
+      }
+
+      entry.credential = credential;
       entry.confirmed = true;
-      entry.credential = await createCredential(password);
 
       return "confirmed";
     },
@@ -148,10 +167,7 @@ export function createInMemoryAccountDirectory(
       const credential = entry?.credential ?? null;
       // One hash whether or not a password exists: an unknown address and an
       // account with none yet cost and answer the same as a wrong password.
-      const candidate = await hashPassword(
-        password,
-        credential?.salt ?? dummySalt,
-      );
+      const candidate = await hash(password, credential?.salt ?? dummySalt);
 
       if (
         entry === undefined ||
@@ -187,7 +203,22 @@ export function createInMemoryAccountDirectory(
         return "invalid_code";
       }
 
-      entry.credential = await createCredential(password);
+      let credential: Credential;
+
+      try {
+        credential = await createCredential(password, hash);
+      } catch {
+        return "unavailable";
+      }
+
+      if (!entry.resetRequested) {
+        return "invalid_code";
+      }
+
+      // A recovery code proves the mailbox, so it confirms an unconfirmed
+      // address — as Supabase's recovery verification does.
+      entry.credential = credential;
+      entry.confirmed = true;
       entry.resetRequested = false;
 
       return "changed";
@@ -230,10 +261,13 @@ export function createInMemoryAccountDirectory(
   };
 }
 
-async function createCredential(password: string): Promise<Credential> {
+async function createCredential(
+  password: string,
+  hash: PasswordHash,
+): Promise<Credential> {
   const salt = createSalt();
 
-  return { salt, digest: await hashPassword(password, salt) };
+  return { salt, digest: await hash(password, salt) };
 }
 
 function isDevCode(code: string): boolean {

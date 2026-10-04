@@ -24,8 +24,10 @@ export interface SupabaseDirectoryOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
-/** Supabase's OTP type for an emailed sign-up confirmation code. */
-const CONFIRM_OTP_TYPE = "email";
+/** Supabase's OTP type for the sign-up confirmation code — and ONLY that
+ * code. Type "email" would also accept a recovery code, turning
+ * confirmation into a second password-reset path for a confirmed account. */
+const SIGNUP_OTP_TYPE = "signup";
 const RECOVERY_OTP_TYPE = "recovery";
 
 const UUID_SHAPE =
@@ -241,7 +243,7 @@ export function createSupabaseAccountDirectory(
       callerIp: string,
     ): Promise<ConfirmOutcome> {
       const result = await setPasswordWithCode(
-        CONFIRM_OTP_TYPE,
+        SIGNUP_OTP_TYPE,
         email,
         code,
         password,

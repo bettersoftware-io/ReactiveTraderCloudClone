@@ -46,9 +46,10 @@ password".
 
 `pnpm --filter @rtc/server accounts:probe` drives the server's Supabase
 adapter against the project named by `SUPABASE_URL` / `SUPABASE_SECRET_KEY`
-and prints one line per check. It creates one throwaway account and deletes
-it. If the probe is killed or its cleanup fails it leaves one account behind,
-whose id it printed. Run it after setup and whenever Supabase changes its Auth API.
+and prints one line per check. It also needs `PROBE_EMAIL_DOMAIN`: a domain
+you control or a test inbox — the probe sends one real confirmation email
+to it. It creates two throwaway accounts and deletes them. If the probe is
+killed or a cleanup fails it leaves an account behind, whose id it printed. Run it after setup and whenever Supabase changes its Auth API.
 
 ## Approving and blocking
 

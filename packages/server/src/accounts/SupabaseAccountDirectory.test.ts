@@ -110,7 +110,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
     expect(await directory.requestReset("ann@desk.io", IP)).toBe("sent");
   });
 
-  it("confirms with the email OTP type, then sets the password with the returned token", async () => {
+  it("confirms with the signup OTP type (never a recovery code), then sets the password with the returned token", async () => {
     const fake = createFakeFetch([
       createReply(200, { access_token: "confirm-token" }),
       createReply(200, {}),
@@ -125,7 +125,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
       ),
     ).toBe("confirmed");
     expect(fake.requests[0]?.body).toBe(
-      JSON.stringify({ type: "email", email: "ann@desk.io", token: "123456" }),
+      JSON.stringify({ type: "signup", email: "ann@desk.io", token: "123456" }),
     );
 
     const update = fake.requests[1];

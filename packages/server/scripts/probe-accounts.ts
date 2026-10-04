@@ -5,11 +5,12 @@
  * still match. It needs SUPABASE_URL and SUPABASE_SECRET_KEY, creates ONE
  * throwaway account through the admin API (so no email is sent and no inbox
  * is needed), walks it through confirm → sign-in → reset, and deletes it.
- * It also signs up ONE fresh address through the adapter (this one does send
- * a confirmation email, to an undeliverable probe domain) to prove nobody
- * knows a sign-up's password, and deletes that account too.
+ * It also signs up ONE fresh address through the adapter to prove nobody
+ * knows a sign-up's password, and deletes that account too. That sign-up
+ * sends ONE real confirmation email, so the addresses use
+ * PROBE_EMAIL_DOMAIN: a domain you control or a test inbox.
  *
- *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… pnpm --filter @rtc/server accounts:probe
+ *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… PROBE_EMAIL_DOMAIN=… pnpm --filter @rtc/server accounts:probe
  *
  * Prints account ids and outcomes only — never a key, a password or a code.
  */
@@ -21,15 +22,20 @@ import { createSupabaseAccountDirectory } from "../src/accounts/SupabaseAccountD
 
 const url: string = process.env.SUPABASE_URL ?? "";
 const secretKey: string = process.env.SUPABASE_SECRET_KEY ?? "";
+const emailDomain: string = process.env.PROBE_EMAIL_DOMAIN ?? "";
 
-if (url === "" || secretKey === "") {
-  console.error("probe: set SUPABASE_URL and SUPABASE_SECRET_KEY");
+if (url === "" || secretKey === "" || emailDomain === "") {
+  console.error(
+    "probe: set SUPABASE_URL, SUPABASE_SECRET_KEY and PROBE_EMAIL_DOMAIN " +
+      "(a domain you control or a test inbox — the probe sends one real " +
+      "confirmation email to it)",
+  );
   process.exit(2);
 }
 
 const PROBE_IP = "203.0.113.1";
-const email = `probe-${Date.now()}@rtc-probe.dev`;
-const freshEmail = `probe-fresh-${Date.now()}@rtc-probe.dev`;
+const email = `probe-${Date.now()}@${emailDomain}`;
+const freshEmail = `probe-fresh-${Date.now()}@${emailDomain}`;
 const firstPassword = "Probe2026!first";
 const secondPassword = "Probe2026!second";
 const thirdPassword = "Probe2026!third";
@@ -218,7 +224,21 @@ try {
     counted.outcome === "counted" ? String(counted.count) : counted.outcome,
   );
 
+  // A recovery code proves the mailbox too, but only the sign-up code may
+  // confirm: at /confirm-email it must not become a second reset path.
   const recovery = await generateCode("recovery");
+  const crossed = await directory.confirmEmail(
+    email,
+    recovery.email_otp,
+    "Probe2026!crossed",
+    PROBE_IP,
+  );
+  check(
+    "a recovery code does not confirm",
+    crossed === "invalid_code",
+    crossed,
+  );
+
   const reset = await directory.resetPassword(
     email,
     recovery.email_otp,
@@ -250,23 +270,28 @@ check("a fresh sign-up", fresh === "sent", fresh);
 
 const freshId: string | null = await findAccountIdByEmail(freshEmail);
 
-try {
-  // The sign-up stored a random password: no password the caller could
-  // know signs in, so the answer is `invalid`, never `unconfirmed`.
-  const unknowable = await directory.checkPassword(
-    freshEmail,
-    firstPassword,
-    PROBE_IP,
-  );
-  check(
-    "no known password opens a fresh sign-up",
-    unknowable.outcome === "invalid",
-    unknowable.outcome,
-  );
-} finally {
-  if (freshId === null) {
-    check("fresh cleanup", false, "its profile row was not found");
-  } else {
+// Without an account the next check's `invalid` would prove nothing.
+check(
+  "the fresh sign-up created an account",
+  freshId !== null,
+  freshId ?? "no profile row — the unknowable-password check is skipped",
+);
+
+if (freshId !== null) {
+  try {
+    // The sign-up stored a random password: no password the caller could
+    // know signs in, so the answer is `invalid`, never `unconfirmed`.
+    const unknowable = await directory.checkPassword(
+      freshEmail,
+      firstPassword,
+      PROBE_IP,
+    );
+    check(
+      "no known password opens a fresh sign-up",
+      unknowable.outcome === "invalid",
+      unknowable.outcome,
+    );
+  } finally {
     const status = await deleteAccount(freshId);
     check(
       "fresh cleanup",
