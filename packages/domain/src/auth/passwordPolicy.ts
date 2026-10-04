@@ -1,7 +1,7 @@
-export const PASSWORD_MIN_LENGTH = 12;
+const PASSWORD_MIN_LENGTH = 12;
 
 /** Supabase hashes with bcrypt, which reads at most 72 BYTES of input. */
-export const PASSWORD_MAX_BYTES = 72;
+const PASSWORD_MAX_BYTES = 72;
 
 export type PasswordRuleId =
   | "min-length"

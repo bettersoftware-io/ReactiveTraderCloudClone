@@ -27,13 +27,13 @@ export interface AccountServiceOptions {
   readonly maxRegistrationsPerDay: number;
 }
 
-export type RegisterOutcome =
+type RegisterOutcome =
   | { readonly outcome: "code_sent" | "closed" | "unavailable" }
   | { readonly outcome: "invalid"; readonly rule: string };
 
-export type SendCodeOutcome = "code_sent" | "invalid" | "unavailable";
+type SendCodeOutcome = "code_sent" | "invalid" | "unavailable";
 
-export type ConfirmEmailOutcome =
+type ConfirmEmailOutcome =
   | {
       readonly outcome:
         | "confirmed"
@@ -43,11 +43,11 @@ export type ConfirmEmailOutcome =
     }
   | { readonly outcome: "invalid"; readonly rule: string };
 
-export type ResetPasswordOutcome =
+type ResetPasswordOutcome =
   | { readonly outcome: "changed" | "invalid_code" | "unavailable" }
   | { readonly outcome: "invalid"; readonly rule: string };
 
-export type LoginDecision =
+type LoginDecision =
   | { readonly outcome: "ok"; readonly account: AccountRecord }
   | {
       readonly outcome:

@@ -12,6 +12,13 @@ import {
 import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
+import { createAccountService } from "./accounts/AccountService.js";
+import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
+import {
+  createAccountDirectory,
+  isRegistrationOpen,
+  resolveAccountsMode,
+} from "./accounts/resolveAccountsMode.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import type { AgentLoop } from "./agent/agentLoop.js";
 import { createJarvisLoops } from "./agent/agentLoop.js";
@@ -19,10 +26,19 @@ import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
 import { createRateLimiter } from "./auth/rateLimit.js";
 import {
+  ACCOUNT_DIRECTORY_TIMEOUT_MS,
+  ACCOUNT_MAX_BODY_BYTES,
+  ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
+  ACCOUNT_STATUS_CACHE_TTL_MS,
+  ACCOUNTS_HEALTH_CACHE_MS,
   BAN_DURATION_MS,
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
   BAN_STRIKES,
+  CODE_ENTRY_PER_ADDRESS_MAX,
+  CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
+  CODE_ENTRY_RATE_LIMIT_MAX,
+  CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
   INBOUND_BURST,
   INBOUND_DROPS_BEFORE_CLOSE,
   INBOUND_REFILL_PER_SECOND,
@@ -31,17 +47,28 @@ import {
   LOGIN_RATE_LIMIT_WINDOW_MS,
   MAX_CONNECTIONS_PER_IP,
   MAX_CONNECTIONS_TOTAL,
+  MAX_REGISTRATIONS_PER_DAY,
   MCP_MAX_BODY_BYTES,
+  REGISTER_RATE_LIMIT_MAX,
+  REGISTER_RATE_LIMIT_WINDOW_MS,
+  SEND_CODE_RATE_LIMIT_MAX,
+  SEND_CODE_RATE_LIMIT_WINDOW_MS,
   WS_MAX_PAYLOAD_BYTES,
 } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
+import {
+  type AccountHandlerDeps,
+  confirmEmailAddress,
+  registerAccount,
+  requestPasswordReset,
+  resendConfirmationCode,
+  resetAccountPassword,
+} from "./http/accountHandlers.js";
+import { createAccountsHealth } from "./http/accountsHealth.js";
 import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
 import { authenticateLoginRequest } from "./http/loginHandler.js";
-import {
-  BodyTooLargeError,
-  declaredLengthExceeds,
-  readBodyWithLimit,
-} from "./http/readBody.js";
+import { createPostRouter, type PostRoute } from "./http/postRouter.js";
+import { declaredLengthExceeds } from "./http/readBody.js";
 import { decideUpgrade, type UpgradeGateDeps } from "./http/upgradeGate.js";
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
@@ -152,6 +179,74 @@ function readClock(): number {
   return Date.now();
 }
 
+// ── Accounts (B2) ───────────────────────────────────────────────
+
+// Throws on a half-configured or ambiguous environment, on an empty
+// AUTH_SECRET in either account mode, and on the dev directory being asked
+// for on a deployed machine — all before the server listens.
+const accountsMode = resolveAccountsMode(process.env);
+// ONE directory instance: the service, the upgrade's status cache and the
+// health probe all read the same store.
+const accountDirectory = createAccountDirectory(accountsMode, {
+  now: readClock,
+  timeoutMs: ACCOUNT_DIRECTORY_TIMEOUT_MS,
+});
+
+const accounts = createAccountService({
+  directory: accountDirectory,
+  now: readClock,
+  registrationOpen: isRegistrationOpen(process.env),
+  maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
+});
+
+const accountStatus = createAccountStatusCache({
+  directory: accountDirectory,
+  ttlMs: ACCOUNT_STATUS_CACHE_TTL_MS,
+  maxEntries: ACCOUNT_STATUS_CACHE_MAX_ENTRIES,
+  now: readClock,
+});
+
+const accountsHealth = createAccountsHealth({
+  directory: accountDirectory,
+  cacheMs: ACCOUNTS_HEALTH_CACHE_MS,
+  now: readClock,
+});
+
+// Each endpoint owns its limiter: a caller who spends `/register`'s budget
+// has not spent `/resend-code`'s. The one shared instance is the per-ADDRESS
+// code-entry budget, which confirm and reset spend together by design.
+const accountDeps: AccountHandlerDeps = {
+  accounts,
+  banList,
+  limits: {
+    register: createRateLimiter(
+      REGISTER_RATE_LIMIT_MAX,
+      REGISTER_RATE_LIMIT_WINDOW_MS,
+    ),
+    resendCode: createRateLimiter(
+      SEND_CODE_RATE_LIMIT_MAX,
+      SEND_CODE_RATE_LIMIT_WINDOW_MS,
+    ),
+    confirmEmail: createRateLimiter(
+      CODE_ENTRY_RATE_LIMIT_MAX,
+      CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
+    ),
+    requestReset: createRateLimiter(
+      SEND_CODE_RATE_LIMIT_MAX,
+      SEND_CODE_RATE_LIMIT_WINDOW_MS,
+    ),
+    resetPassword: createRateLimiter(
+      CODE_ENTRY_RATE_LIMIT_MAX,
+      CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
+    ),
+    codeEntryPerAddress: createRateLimiter(
+      CODE_ENTRY_PER_ADDRESS_MAX,
+      CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
+    ),
+  },
+  now: readClock,
+};
+
 // ── MCP endpoint ────────────────────────────────────────────────
 
 /** MCP-side HITL is the external client's job (Claude Desktop/Code ask
@@ -171,13 +266,88 @@ function clientIp(req: IncomingMessage): string {
   return resolveClientIp(req, TRUSTED_IP_HEADER);
 }
 
+// ── POST routes ─────────────────────────────────────────────────
+
+const POST_ROUTES: ReadonlyMap<string, PostRoute> = new Map<string, PostRoute>([
+  [
+    "/login",
+    {
+      maxBodyBytes: LOGIN_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return authenticateLoginRequest(bodyText, ip, {
+          auth,
+          accounts,
+          rateLimit: loginRateLimit,
+          banList,
+          now: readClock,
+        });
+      },
+    },
+  ],
+  [
+    "/register",
+    {
+      maxBodyBytes: ACCOUNT_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return registerAccount(bodyText, ip, accountDeps);
+      },
+    },
+  ],
+  [
+    "/resend-code",
+    {
+      maxBodyBytes: ACCOUNT_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return resendConfirmationCode(bodyText, ip, accountDeps);
+      },
+    },
+  ],
+  [
+    "/confirm-email",
+    {
+      maxBodyBytes: ACCOUNT_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return confirmEmailAddress(bodyText, ip, accountDeps);
+      },
+    },
+  ],
+  [
+    "/request-reset",
+    {
+      maxBodyBytes: ACCOUNT_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return requestPasswordReset(bodyText, ip, accountDeps);
+      },
+    },
+  ],
+  [
+    "/reset-password",
+    {
+      maxBodyBytes: ACCOUNT_MAX_BODY_BYTES,
+      handle: (bodyText: string, ip: string) => {
+        return resetAccountPassword(bodyText, ip, accountDeps);
+      },
+    },
+  ],
+]);
+
+// Preflight, the ban check before the body, the S2 body cap and the error
+// mapping — once, for every route above; the IP is always `clientIp`'s (S3).
+const servePostRoute = createPostRouter({
+  routes: POST_ROUTES,
+  banList,
+  clientIp,
+  now: readClock,
+});
+
 // ── HTTP Server ─────────────────────────────────────────────────
 
 // The WebSocket transport is the app's real-time data path. HTTP carries
-// two routes: /health (Fly probe, token-free GET) and /login (rate-limited
-// POST that exchanges credentials for a session token used to gate the WS
-// upgrade). Both are permissively CORS'd — /login additionally answers its
-// OPTIONS preflight.
+// /health (Fly probe, token-free GET), /health/accounts (the account store's
+// reachability as one word, token-free GET), the six POST routes — /login
+// (exchanges credentials for the session token that gates the WS upgrade)
+// and the five account routes — and /mcp. All are permissively CORS'd; the
+// POST routes answer their OPTIONS preflight.
 const httpServer = createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -188,60 +358,23 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
-  if (req.url === "/login" && req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.writeHead(204);
-    res.end();
+  if (req.url === "/health/accounts" && req.method === "GET") {
+    // One of four words — never a URL, a key, an error or a count. `read`
+    // never rejects; the catch is the last line of defence.
+    accountsHealth
+      .read()
+      .then((directory) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, directory }));
+      })
+      .catch(() => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, directory: "down" }));
+      });
     return;
   }
 
-  if (req.url === "/login" && req.method === "POST") {
-    // §9.2 — a banned caller is answered before its body is even read (the
-    // handler checks again; this saves the read). Same shape as the handler's
-    // answer: 429, `{ error: "banned" }`, Retry-After in whole seconds.
-    const now = readClock();
-    const bannedUntil = banList.bannedUntil(clientIp(req), now);
-
-    if (bannedUntil !== null) {
-      res.writeHead(429, {
-        "Content-Type": "application/json",
-        Connection: "close",
-        "Retry-After": String(Math.ceil((bannedUntil - now) / 1_000)),
-      });
-      res.end(JSON.stringify({ error: "banned" }));
-      return;
-    }
-
-    // S2 — the body is capped by bytes received before it is parsed.
-    readBodyWithLimit(req, LOGIN_MAX_BODY_BYTES)
-      .then((bodyText) => {
-        return authenticateLoginRequest(bodyText, clientIp(req), {
-          auth,
-          rateLimit: loginRateLimit,
-          banList,
-          now: readClock,
-        });
-      })
-      .then((result) => {
-        res.writeHead(result.status, result.headers);
-        res.end(result.body);
-      })
-      .catch((err: unknown) => {
-        // 413 for an oversized body; anything else is a server fault (the
-        // handler answers 400/401/429 itself, so a rejection here is a
-        // failed request stream or a thrown hash), never a bad request.
-        const tooLarge = err instanceof BodyTooLargeError;
-        const status = tooLarge ? 413 : 500;
-        const error = tooLarge ? "body_too_large" : "internal_error";
-        // The body may be unread (413): close the connection after the
-        // status so the rest of it is never consumed.
-        res.writeHead(status, {
-          "Content-Type": "application/json",
-          Connection: "close",
-        });
-        res.end(JSON.stringify({ error }));
-      });
+  if (servePostRoute(req, res)) {
     return;
   }
 
@@ -271,6 +404,7 @@ const gateDeps: UpgradeGateDeps = {
   auth,
   banList,
   connections,
+  accountStatus,
   now: readClock,
 };
 
@@ -283,19 +417,33 @@ const wss = new WebSocketServer({
   // Reject an upgrade before a socket exists, cheapest check first: a banned
   // IP (429), a capped IP or a full process (503), then the token (401 — a
   // caller that never signed in, or an expired/bad token). /health and
-  // /login stay reachable (HTTP routes, not WS upgrades). A rejection is
+  // /login stay reachable (HTTP routes, not WS upgrades). A registered
+  // account's token is then re-checked against the account's current status
+  // (403, or 503 when the account store does not answer). A rejection is
   // logged by reason — never the token itself.
   verifyClient: (
     info: Parameters<VerifyClientCallbackAsync>[0],
     done: Parameters<VerifyClientCallbackAsync>[1],
   ): void => {
-    const verdict = decideUpgrade(info.req.url, clientIp(info.req), gateDeps);
+    decideUpgrade(info.req.url, clientIp(info.req), gateDeps)
+      .then((verdict) => {
+        if (!verdict.ok && verdict.reason) {
+          connectionLog.recordRejectedUpgrade(verdict.reason);
+        }
 
-    if (!verdict.ok && verdict.reason) {
-      connectionLog.recordRejectedUpgrade(verdict.reason);
-    }
-
-    done(verdict.ok, verdict.status, verdict.ok ? undefined : verdict.reason);
+        done(
+          verdict.ok,
+          verdict.status,
+          verdict.ok ? undefined : verdict.reason,
+        );
+      })
+      .catch(() => {
+        // The gate resolves by design (the status cache reads a failing
+        // lookup as `unavailable`); if it ever rejects, fail closed rather
+        // than leave the handshake hanging.
+        connectionLog.recordRejectedUpgrade("accounts-unavailable");
+        done(false, 503, "accounts-unavailable");
+      });
   },
 });
 
@@ -344,6 +492,11 @@ httpServer.listen(PORT, HOSTNAME, () => {
   console.log(`Server listening on ${HOSTNAME}:${PORT}`);
   console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/health`);
   console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/login`);
+  console.log(
+    "  HTTP:  /register /resend-code /confirm-email /request-reset /reset-password",
+  );
+  console.log(`  HTTP:  http://${HOSTNAME}:${PORT}/health/accounts`);
+  console.log(`  Accounts: ${accountDirectory.kind}`);
   console.log(`  MCP:   http://${HOSTNAME}:${PORT}/mcp (Streamable HTTP)`);
   console.log(`  WS:    ws://${HOSTNAME}:${PORT}`);
   console.log(`  IP:    trusting header ${TRUSTED_IP_HEADER}`);

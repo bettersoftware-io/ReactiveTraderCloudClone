@@ -58,6 +58,9 @@ export function startServer(
         // test-only secret + the `demo` roster credential (never a real secret).
         AUTH_SECRET: "e2e-secret",
         AUTH_USERS: "demo:demo",
+        // The in-memory account directory (fixed code, seeded accounts) —
+        // see packages/server/src/accounts/devAccounts.ts.
+        RTC_DEV_ACCOUNTS: "1",
         RTC_JARVIS_FAKE: "1",
         ...extraEnv,
       },

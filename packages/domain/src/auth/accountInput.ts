@@ -1,6 +1,6 @@
-export const EMAIL_MAX_LENGTH = 254;
-export const DISPLAY_NAME_MIN_LENGTH = 2;
-export const DISPLAY_NAME_MAX_LENGTH = 40;
+const EMAIL_MAX_LENGTH = 254;
+const DISPLAY_NAME_MIN_LENGTH = 2;
+const DISPLAY_NAME_MAX_LENGTH = 40;
 
 const EMAIL_SHAPE = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 const CONFIRMATION_CODE_SHAPE = /^\d{6}$/;
