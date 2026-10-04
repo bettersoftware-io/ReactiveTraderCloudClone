@@ -12,6 +12,7 @@ import type {
   ResetPasswordRequestDto,
 } from "@rtc/shared";
 
+import type { RateLimiter } from "../auth/rateLimit.js";
 import type {
   AccountDirectory,
   AccountRecord,
@@ -25,6 +26,10 @@ export interface AccountServiceOptions {
   readonly now: () => number;
   readonly registrationOpen: boolean;
   readonly maxRegistrationsPerDay: number;
+  /** Charged once per real code guess, keyed by the normalized address and
+   * shared by confirm and reset; the service never charges a request that
+   * fails local validation. */
+  readonly codeEntryLimiter: Pick<RateLimiter, "hit">;
 }
 
 type RegisterOutcome =
@@ -39,12 +44,19 @@ type ConfirmEmailOutcome =
         | "confirmed"
         | "confirmed_unset"
         | "invalid_code"
+        | "throttled"
         | "unavailable";
     }
   | { readonly outcome: "invalid"; readonly rule: string };
 
 type ResetPasswordOutcome =
-  | { readonly outcome: "changed" | "invalid_code" | "unavailable" }
+  | {
+      readonly outcome:
+        | "changed"
+        | "invalid_code"
+        | "throttled"
+        | "unavailable";
+    }
   | { readonly outcome: "invalid"; readonly rule: string };
 
 type LoginDecision =
@@ -186,6 +198,10 @@ export function createAccountService(
       return { outcome: "invalid", rule: violation.id };
     }
 
+    if (!options.codeEntryLimiter.hit(email, options.now())) {
+      return { outcome: "throttled" };
+    }
+
     const confirmed = await directory.confirmEmail(
       email,
       request.code,
@@ -225,6 +241,10 @@ export function createAccountService(
 
     if (email === null || !isConfirmationCode(request.code)) {
       return { outcome: "invalid_code" };
+    }
+
+    if (!options.codeEntryLimiter.hit(email, options.now())) {
+      return { outcome: "throttled" };
     }
 
     const changed = await directory.resetPassword(

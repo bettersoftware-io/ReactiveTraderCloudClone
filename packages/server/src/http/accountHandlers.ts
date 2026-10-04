@@ -1,4 +1,3 @@
-import { normalizeEmail } from "@rtc/domain";
 import {
   type AccountErrorDto,
   type AccountFlowResponseDto,
@@ -20,8 +19,6 @@ export interface AccountRateLimits {
   readonly confirmEmail: RateLimiter;
   readonly requestReset: RateLimiter;
   readonly resetPassword: RateLimiter;
-  /** Keyed by normalized email; shared by confirm and reset. */
-  readonly codeEntryPerAddress: RateLimiter;
 }
 
 export interface AccountHandlerDeps {
@@ -105,14 +102,14 @@ export async function confirmEmailAddress(
     return admitted.result;
   }
 
-  if (!chargeAddress(admitted.dto.email, deps)) {
-    return errorResult(429, { error: "rate_limited" });
-  }
-
   const result = await deps.accounts.confirmEmail(admitted.dto, ip);
 
   if (result.outcome === "invalid") {
     return errorResult(400, { error: "invalid_request", rule: result.rule });
+  }
+
+  if (result.outcome === "throttled") {
+    return throttledResult();
   }
 
   if (result.outcome === "invalid_code") {
@@ -169,14 +166,14 @@ export async function resetAccountPassword(
     return admitted.result;
   }
 
-  if (!chargeAddress(admitted.dto.email, deps)) {
-    return errorResult(429, { error: "rate_limited" });
-  }
-
   const result = await deps.accounts.resetPassword(admitted.dto, ip);
 
   if (result.outcome === "invalid") {
     return errorResult(400, { error: "invalid_request", rule: result.rule });
+  }
+
+  if (result.outcome === "throttled") {
+    return throttledResult();
   }
 
   if (result.outcome === "invalid_code") {
@@ -242,10 +239,10 @@ function admit<T>(
   return { ok: true, dto: parsed };
 }
 
-/** Charges one code-entry try to the address. Over the budget is NOT a ban
- * strike: the caller may be the address's real owner. */
-function chargeAddress(email: string, deps: AccountHandlerDeps): boolean {
-  return deps.limits.codeEntryPerAddress.hit(normalizeEmail(email), deps.now());
+/** The address's own code-entry budget is spent. NOT a ban strike: the
+ * caller may be the address's real owner. */
+function throttledResult(): HttpResult {
+  return errorResult(429, { error: "rate_limited" });
 }
 
 function refuseCode(ip: string, deps: AccountHandlerDeps): HttpResult {

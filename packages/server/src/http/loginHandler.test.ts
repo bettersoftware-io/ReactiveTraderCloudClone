@@ -96,6 +96,7 @@ describe("authenticateLoginRequest", () => {
         now,
         registrationOpen: true,
         maxRegistrationsPerDay: 100,
+        codeEntryLimiter: createRateLimiter(100, 60_000),
       }),
     });
 
@@ -137,6 +138,7 @@ describe("authenticateLoginRequest", () => {
         now: createClock(1_000),
         registrationOpen: true,
         maxRegistrationsPerDay: 100,
+        codeEntryLimiter: createRateLimiter(100, 60_000),
       }),
     });
 
@@ -367,6 +369,7 @@ function createAccounts(): AccountService {
     now,
     registrationOpen: true,
     maxRegistrationsPerDay: 100,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
   });
 }
 

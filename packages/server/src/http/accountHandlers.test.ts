@@ -323,11 +323,17 @@ describe("resetAccountPassword", () => {
 });
 
 describe("code entry per address", () => {
-  it("bounds one address across callers: the third attempt from a third IP is 429 and never reaches the service", async () => {
-    const deps = createDeps({
-      limits: { codeEntryPerAddress: createRateLimiter(2, 60_000) },
+  it("bounds one address across callers: the third attempt from a third IP is 429 and never reaches the directory", async () => {
+    const directory = createInMemoryAccountDirectory({
+      now: createClock(2 * 24 * 60 * 60 * 1_000),
+      seeds: DEV_ACCOUNT_SEEDS,
     });
-    const reset = vi.spyOn(deps.accounts, "resetPassword");
+
+    const deps = createDeps({
+      directory,
+      codeEntryLimiter: createRateLimiter(2, 60_000),
+    });
+    const reset = vi.spyOn(directory, "resetPassword");
     const body = createResetBody("Fresh2026!pass");
 
     await resetAccountPassword(body, "10.0.0.1", deps);
@@ -341,7 +347,7 @@ describe("code entry per address", () => {
 
   it("another address from the same IP still gets through", async () => {
     const deps = createDeps({
-      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+      codeEntryLimiter: createRateLimiter(1, 60_000),
     });
     const reset = vi.spyOn(deps.accounts, "resetPassword");
     await requestResetFor(deps, "trader@rtc.test");
@@ -360,7 +366,7 @@ describe("code entry per address", () => {
 
   it("spellings of one address share one budget", async () => {
     const deps = createDeps({
-      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+      codeEntryLimiter: createRateLimiter(1, 60_000),
     });
 
     await resetAccountPassword(createResetBody("Fresh2026!pass"), IP, deps);
@@ -375,9 +381,8 @@ describe("code entry per address", () => {
 
   it("confirm and reset share one budget", async () => {
     const deps = createDeps({
-      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+      codeEntryLimiter: createRateLimiter(1, 60_000),
     });
-    const confirm = vi.spyOn(deps.accounts, "confirmEmail");
 
     await resetAccountPassword(
       createResetBody("Fresh2026!pass", "ann@desk.io"),
@@ -387,7 +392,7 @@ describe("code entry per address", () => {
     const result = await confirmEmailAddress(createConfirmBody(), IP, deps);
 
     expect(result.status).toBe(429);
-    expect(confirm).not.toHaveBeenCalled();
+    expect(JSON.parse(result.body)).toEqual({ error: "rate_limited" });
   });
 
   it("the 429 adds no strike", async () => {
@@ -400,7 +405,7 @@ describe("code entry per address", () => {
 
     const deps = createDeps({
       banList,
-      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+      codeEntryLimiter: createRateLimiter(1, 60_000),
     });
     await requestResetFor(deps, "trader@rtc.test");
 
@@ -417,7 +422,7 @@ describe("code entry per address", () => {
 
   it("a malformed body is not charged to any address", async () => {
     const limiter = createRateLimiter(1, 60_000);
-    const deps = createDeps({ limits: { codeEntryPerAddress: limiter } });
+    const deps = createDeps({ codeEntryLimiter: limiter });
     await requestResetFor(deps, "trader@rtc.test");
 
     await resetAccountPassword("{nope", IP, deps);
@@ -561,6 +566,7 @@ interface DepsOverrides {
   readonly banList?: BanList;
   readonly limiter?: RateLimiter;
   readonly limits?: Partial<AccountRateLimits>;
+  readonly codeEntryLimiter?: RateLimiter;
   readonly registrationOpen?: boolean;
 }
 
@@ -578,6 +584,8 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       now,
       registrationOpen: overrides.registrationOpen ?? true,
       maxRegistrationsPerDay: 100,
+      codeEntryLimiter:
+        overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
     }),
     banList:
       overrides.banList ??
@@ -593,7 +601,6 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       confirmEmail: limiter,
       requestReset: limiter,
       resetPassword: limiter,
-      codeEntryPerAddress: createRateLimiter(100, 60_000),
       ...overrides.limits,
     },
     now: createClock(1_000),

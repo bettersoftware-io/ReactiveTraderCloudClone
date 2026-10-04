@@ -21,6 +21,7 @@ import {
   createInMemoryAccountDirectory,
   DEV_CONFIRMATION_CODE,
 } from "#/accounts/InMemoryAccountDirectory";
+import { createRateLimiter, type RateLimiter } from "#/auth/rateLimit";
 
 describe("AccountService.register", () => {
   it("sends a code for a valid request", async () => {
@@ -100,6 +101,7 @@ describe("AccountService.register", () => {
       now: createClock(),
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
+      codeEntryLimiter: createRateLimiter(100, 60_000),
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -123,6 +125,7 @@ describe("AccountService.register", () => {
       now: createClock(),
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
+      codeEntryLimiter: createRateLimiter(100, 60_000),
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -205,6 +208,7 @@ describe("AccountService.login", () => {
       now: createClock(),
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
+      codeEntryLimiter: createRateLimiter(100, 60_000),
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -228,6 +232,7 @@ describe("AccountService.login", () => {
       now: createClock(),
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
+      codeEntryLimiter: createRateLimiter(100, 60_000),
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -660,9 +665,123 @@ describe("AccountService daily window", () => {
   });
 });
 
+describe("AccountService per-address code limit", () => {
+  it("counts only requests that reach the directory: local validation failures spend nothing", async () => {
+    const { service, directory } = createService({
+      codeEntryLimiter: createRateLimiter(2, WINDOW_MS),
+    });
+    await service.register(createRegistration(), IP);
+    await service.requestReset("ann@desk.io", IP);
+    const confirm = vi.spyOn(directory, "confirmEmail");
+    const reset = vi.spyOn(directory, "resetPassword");
+
+    for (let i = 0; i < 3; i += 1) {
+      await service.confirmEmail(createConfirmation({ code: "12ab" }), IP);
+      await service.confirmEmail(createConfirmation({ password: "weak" }), IP);
+      await service.resetPassword(
+        { email: "ann@desk.io", code: "12ab", password: PASSWORD },
+        IP,
+      );
+      await service.resetPassword(
+        { email: "ann@desk.io", code: DEV_CONFIRMATION_CODE, password: "weak" },
+        IP,
+      );
+    }
+
+    expect(confirm).not.toHaveBeenCalled();
+    expect(reset).not.toHaveBeenCalled();
+    expect(await service.confirmEmail(createConfirmation(), IP)).toEqual({
+      outcome: "confirmed",
+    });
+    expect(confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("two well-formed wrong-code attempts spend the budget; the third is throttled without a directory call", async () => {
+    const { service, directory } = createService({
+      codeEntryLimiter: createRateLimiter(2, WINDOW_MS),
+    });
+    await service.register(createRegistration(), IP);
+    const confirm = vi.spyOn(directory, "confirmEmail");
+    const wrong = createConfirmation({ code: "111111" });
+
+    await service.confirmEmail(wrong, IP);
+    await service.confirmEmail(wrong, IP);
+
+    expect(await service.confirmEmail(createConfirmation(), IP)).toEqual({
+      outcome: "throttled",
+    });
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it("confirm and reset share one budget", async () => {
+    const { service, directory } = createService({
+      codeEntryLimiter: createRateLimiter(2, WINDOW_MS),
+    });
+    const reset = vi.spyOn(directory, "resetPassword");
+
+    await service.confirmEmail(createConfirmation({ code: "111111" }), IP);
+    await service.resetPassword(
+      { email: "ann@desk.io", code: "111111", password: PASSWORD },
+      IP,
+    );
+
+    expect(
+      await service.resetPassword(
+        { email: "ann@desk.io", code: "111111", password: PASSWORD },
+        IP,
+      ),
+    ).toEqual({ outcome: "throttled" });
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("spellings of one address share one budget", async () => {
+    const { service } = createService({
+      codeEntryLimiter: createRateLimiter(1, WINDOW_MS),
+    });
+
+    await service.confirmEmail(
+      createConfirmation({ email: "trader@rtc.test", code: "111111" }),
+      IP,
+    );
+
+    expect(
+      await service.confirmEmail(
+        createConfirmation({ email: " Trader@RTC.test ", code: "111111" }),
+        IP,
+      ),
+    ).toEqual({ outcome: "throttled" });
+  });
+
+  it("the address may try again once the window has passed", async () => {
+    let at = 2 * 24 * 60 * 60 * 1_000;
+    const { service } = createService({
+      now: (): number => {
+        return at;
+      },
+      codeEntryLimiter: createRateLimiter(1, WINDOW_MS),
+    });
+    const wrong = createConfirmation({ code: "111111" });
+
+    await service.confirmEmail(wrong, IP);
+    expect(await service.confirmEmail(wrong, IP)).toEqual({
+      outcome: "throttled",
+    });
+
+    at += WINDOW_MS;
+
+    expect(await service.confirmEmail(wrong, IP)).toEqual({
+      outcome: "invalid_code",
+    });
+  });
+
+  const WINDOW_MS = 60_000;
+});
+
 interface ServiceOverrides {
   readonly registrationOpen?: boolean;
   readonly maxRegistrationsPerDay?: number;
+  readonly now?: () => number;
+  readonly codeEntryLimiter?: RateLimiter;
 }
 
 interface ServiceFixture {
@@ -671,7 +790,7 @@ interface ServiceFixture {
 }
 
 function createService(overrides: ServiceOverrides = {}): ServiceFixture {
-  const now = createClock();
+  const now = overrides.now ?? createClock();
   const directory = createInMemoryAccountDirectory({
     now,
     seeds: DEV_ACCOUNT_SEEDS,
@@ -682,6 +801,8 @@ function createService(overrides: ServiceOverrides = {}): ServiceFixture {
     now,
     registrationOpen: overrides.registrationOpen ?? true,
     maxRegistrationsPerDay: overrides.maxRegistrationsPerDay ?? 10,
+    codeEntryLimiter:
+      overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
   });
 
   return { service, directory };
@@ -754,5 +875,6 @@ function createDoubleService(
     now: createClock(),
     registrationOpen: true,
     maxRegistrationsPerDay,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
   });
 }

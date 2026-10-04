@@ -70,11 +70,19 @@ export const CODE_ENTRY_RATE_LIMIT_MAX = 10;
 export const CODE_ENTRY_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
 
 /** B2 — `/confirm-email` and `/reset-password` per normalized email address,
- * one budget shared by both. 5 tries per 15 minutes makes a 1-in-a-million
- * code unguessable in its lifetime, at the cost that someone can make an
- * address wait 15 minutes by burning its tries. */
+ * one budget shared by both, charged only for a request that reaches the
+ * account store. 5 tries per 15 minutes makes a 1-in-a-million code
+ * unguessable in its lifetime. The price: anyone who can send five
+ * well-formed code attempts for an address makes it wait out the window;
+ * that is what bounding guessing from many IPs costs. */
 export const CODE_ENTRY_PER_ADDRESS_MAX = 5;
 export const CODE_ENTRY_PER_ADDRESS_WINDOW_MS = 15 * 60 * 1000;
+
+/** B2 — addresses the per-address limiter holds. The keys are caller-chosen:
+ * every eviction of a live window costs an attacker this many well-formed
+ * requests through the per-IP limits for five more guesses. About 150 bytes
+ * per key. */
+export const CODE_ENTRY_PER_ADDRESS_MAX_KEYS = 50_000;
 
 /** B2 — registrations per day across the whole service: a fuse against a
  * scripted flood. Counted in the account store, so a restart keeps it. */

@@ -36,6 +36,7 @@ import {
   BAN_STRIKE_WINDOW_MS,
   BAN_STRIKES,
   CODE_ENTRY_PER_ADDRESS_MAX,
+  CODE_ENTRY_PER_ADDRESS_MAX_KEYS,
   CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
   CODE_ENTRY_RATE_LIMIT_MAX,
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
@@ -197,6 +198,11 @@ const accounts = createAccountService({
   now: readClock,
   registrationOpen: isRegistrationOpen(process.env),
   maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
+  codeEntryLimiter: createRateLimiter(
+    CODE_ENTRY_PER_ADDRESS_MAX,
+    CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
+    { maxKeys: CODE_ENTRY_PER_ADDRESS_MAX_KEYS },
+  ),
 });
 
 const accountStatus = createAccountStatusCache({
@@ -238,10 +244,6 @@ const accountDeps: AccountHandlerDeps = {
     resetPassword: createRateLimiter(
       CODE_ENTRY_RATE_LIMIT_MAX,
       CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
-    ),
-    codeEntryPerAddress: createRateLimiter(
-      CODE_ENTRY_PER_ADDRESS_MAX,
-      CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
     ),
   },
   now: readClock,
