@@ -102,7 +102,7 @@ flowchart TD
   as["<b>@rtc/client-core-async</b><br/>async/await + AsyncIterable"]
   ef["<b>@rtc/client-core-effect</b><br/>Effect-TS"]
   socket{{"<b>THE SOCKET</b> — AppPorts<br/>what a core is given"}}
-  adapters["<b>Adapters</b> — @rtc/client-core<br/>WebSocket · simulators · localStorage"]
+  adapters["<b>Adapters</b> — @rtc/client-adapters<br/>WebSocket · simulators · localStorage"]
   world(["Server and browser"])
 
   ui --> bind
@@ -251,7 +251,7 @@ all 75 are implemented natively in all three cores.
 
 | Question | RxJS core | async core | Effect core |
 |---|---|---|---|
-| Package | `@rtc/client-core` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
+| Package | `@rtc/client-core-rxjs` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
 | Style | operators over `Observable` | `async`/`await`, callbacks, `AsyncIterable` | `Effect`, `Stream`, fibers |
 | A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `Scope` |
 | A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SubscriptionRef<S>` |

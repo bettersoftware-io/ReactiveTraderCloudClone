@@ -37,12 +37,12 @@ Two terms commonly conflated -- "client" and "UI" -- mean different things here.
 | **Domain** | Pure-TypeScript entities, value objects, ports, use cases, and simulators. Lives in `@rtc/domain`. RxJS is the single permitted runtime dependency (used as the boundary stream type). Knows nothing about UI or transport. |
 | **Server** | Process that hosts the domain simulators behind declarative WebSocket effects (`@rtc/ws-effects`) and serves data to clients. |
 | **Client** | Everything that runs on the user's device -- the whole bundle/app. **Includes** the application core, the bindings bridge, *and* the UI layer. There are three shipping clients: web React, mobile React Native, and web SolidJS. |
-| **Application Core** | `@rtc/client-core` -- the default (RxJS) core: composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native, no Solid. Shared verbatim by every client. Two siblings implement the same `@rtc/core-api` contract -- `@rtc/client-core-async` (`async`/`await` + `AsyncIterable`) and `@rtc/client-core-effect` (Effect-TS) -- with the rules all three share in `@rtc/core-logic` ([§22](22-pluggable-application-core.md#22-pluggable-application-core)). |
+| **Application Core** | `@rtc/client-core-rxjs` -- the default (RxJS) core: composition root, presenters, state machines, and port adapters (WS transport + simulator assembly). Vanilla TS + RxJS + `@rx-state/core`. **Zero framework imports** -- no React, no DOM, no React Native, no Solid. Shared verbatim by every client. Two siblings implement the same `@rtc/core-api` contract -- `@rtc/client-core-async` (`async`/`await` + `AsyncIterable`) and `@rtc/client-core-effect` (Effect-TS) -- with the rules all three share in `@rtc/core-logic` ([§22](22-pluggable-application-core.md#22-pluggable-application-core)). |
 | **Bindings** | `@rtc/react-bindings` -- the package that knows both React and RxJS. Maps `Observable<T>` state to framework-native reactivity: `createViewModel` (react-rxjs `bind()` for shared streams, `useMachine` for per-mount machines, `firstValueFrom` for one-shot commands). The SolidJS client has its own sibling, `@rtc/solid-bindings`, implementing the identical `ViewModel` member list over Solid signals. |
 | **UI Layer** | Dumb components only. Web (React): React 19 + CSS Modules in `@rtc/client-react/src/ui`. Mobile: React Native + `react-native-svg` in `@rtc/client-react-native/src/ui`. Web (Solid): SolidJS + the same CSS Modules, byte-copied, in `@rtc/client-solid/src/ui`. Consumes the core exclusively through the [ViewModel seam](03-uml-class-diagrams.md#36-the-viewmodel-seam) (`useViewModel()`); **never imports `rxjs`** (machine-enforced, gate 26 for React web, gate 34 for Solid web). |
 | **Platform Adapters** | The thin per-client leaves: web (React) and web (Solid) both have `LocalStoragePreferencesAdapter` / `MediaQueryColorSchemeAdapter` / `buildBrowserPorts` (Solid's are separate files, same design); mobile has `AsyncStoragePreferencesAdapter` / `AppearanceColorSchemeAdapter` / `buildNativePorts`. Everything else is shared. |
 
-Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is the implementation language of the default core, `@rtc/client-core`. It is forbidden in the UI layer of both clients.
+Note: **"no RxJS on the UI side" is not the same as "no RxJS on the client side"**. RxJS is the boundary stream type for ports and use cases (in `@rtc/domain`) and is the implementation language of the default core, `@rtc/client-core-rxjs`. It is forbidden in the UI layer of both clients.
 
 ```mermaid
 graph TB
@@ -53,8 +53,8 @@ graph TB
     end
     subgraph InterfaceAdapters["Interface Adapters"]
         VM["ViewModel bridge<br/>@rtc/react-bindings<br/>(bind · useMachine · commands)"]
-        Presenters["Presenters & State Machines<br/>@rtc/client-core<br/>(RxJS + @rx-state/core)"]
-        Adapters["Port Adapters<br/>@rtc/client-core<br/>(WsAdapter · portFactory · simulators assembly)"]
+        Presenters["Presenters & State Machines<br/>@rtc/client-core-rxjs<br/>(RxJS + @rx-state/core)"]
+        Adapters["Port Adapters<br/>@rtc/client-adapters<br/>(WsAdapter · portFactory · simulators assembly)"]
     end
     subgraph ApplicationCircle["Application / Use Cases"]
         UseCases["Use Cases<br/>@rtc/domain (vanilla TS)"]
@@ -103,7 +103,7 @@ flowchart TB
         end
         uc["@rtc/domain usecases + ports (interfaces)<br/>PriceStreamUseCase · ExecuteTradeUseCase · PricingPort · WorkflowPort"]:::uc
       end
-      ia["@rtc/client-core presenters + WsAdapter · @rtc/react-bindings (ViewModel)<br/>@rtc/domain simulators (in-memory gateways) · @rtc/server effects · @rtc/shared DTOs"]:::ia
+      ia["@rtc/client-core-rxjs + @rtc/client-adapters presenters + WsAdapter · @rtc/react-bindings (ViewModel)<br/>@rtc/domain simulators (in-memory gateways) · @rtc/server effects · @rtc/shared DTOs"]:::ia
     end
     fw["@rtc/client-react (React UI) · @rtc/client-react-native (Expo)<br/>@rtc/ws-effects · Node http+ws · Vite · Playwright"]:::fw
   end
@@ -134,7 +134,7 @@ flowchart TB
   end
   subgraph r3["③ Interface Adapters"]
     bindings["@rtc/react-bindings<br/>@rtc/solid-bindings"]
-    cores["application cores ×3<br/>@rtc/client-core (RxJS, default)<br/>@rtc/client-core-async · @rtc/client-core-effect"]
+    cores["application cores ×3<br/>@rtc/client-core-rxjs (RxJS, default)<br/>@rtc/client-core-async · @rtc/client-core-effect"]
     tiers["test tiers (dev-only)<br/>@rtc/ui-contract · @rtc/core-contract"]
     agent["@rtc/agent-tools"]
     logic["@rtc/core-logic"]
@@ -203,7 +203,7 @@ flowchart TB
   linkStyle 25,26,27,28,29,30 stroke:#f85149,stroke-width:2px
 ```
 
-> **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. A further rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. Edges the diagram leaves out or a grouped box hides: `core-logic` also imports `domain` directly; `server` also imports `domain` directly; `ui-contract` also imports `motion-core`, and `shared` imports it narrowly (the scripted Jarvis brain's typed-reveal pacing) -- `motion-core` is a zero-dependency leaf, so that edge cannot close a cycle; `core-contract` imports only `core-api` and `domain`; `client-react-native` takes only `client-core`, `react-bindings`, `motion-core` and `devtools-core` from those boxes, while both web clients take all three cores (the alternative two as lazy chunks, [§22](22-pluggable-application-core.md#selection-at-load-time)). Inside the devtools box, `devtools-extension` → `devtools-app` → `devtools-core`, and none of the four imports `domain`. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)
+> **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. A further rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. Edges the diagram leaves out or a grouped box hides: `core-logic` also imports `domain` directly; `server` also imports `domain` directly; `ui-contract` also imports `motion-core`, and `shared` imports it narrowly (the scripted Jarvis brain's typed-reveal pacing) -- `motion-core` is a zero-dependency leaf, so that edge cannot close a cycle; `core-contract` imports only `core-api` and `domain`; `client-react-native` takes only `client-core-rxjs` + `client-adapters`, `react-bindings`, `motion-core` and `devtools-core` from those boxes, while both web clients take all three cores (the alternative two as lazy chunks, [§22](22-pluggable-application-core.md#selection-at-load-time)). Inside the devtools box, `devtools-extension` → `devtools-app` → `devtools-core`, and none of the four imports `domain`. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)
 
 The exact mapping, ring by ring:
 
@@ -211,7 +211,7 @@ The exact mapping, ring by ring:
 |---|---|---|---|
 | ① | **Entities** (Enterprise Business Rules) | What a thing *is*, independent of any app | `@rtc/domain/src/{fx,credit,equities,connection,analytics,telemetry,preferences}/` -- `Price`, `Notional`, `Trade`, `Instrument`, `Dealer`, `Rfq`, `Quote`, `EquityQuote`, `Candle`, `DepthBook`, `ConnectionStatus`, `PositionUpdates` |
 | ② | **Use Cases** (Application Business Rules) | App-specific orchestration + the interfaces it needs | `@rtc/domain/src/usecases/` (`PriceStreamUseCase`, `ExecuteTradeUseCase`, `CreateRfqUseCase`, `ConnectionStatusUseCase`, ...) **and** `@rtc/domain/src/ports/` (the port interfaces -- `PricingPort`, `ExecutionPort`, `WorkflowPort`, `MarketDataPort`, ...) |
-| ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core-rxjs/src/presenters/` (the default core; `@rtc/client-core-async` and `@rtc/client-core-effect` implement the same members, behind the types-only `@rtc/core-api` contract, with shared rules in `@rtc/core-logic`). **Gateways (real):** `@rtc/client-core/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`, `client-solid/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings` (React) and `@rtc/solid-bindings` (Solid). **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
+| ③ | **Interface Adapters** (presenters · gateways · controllers) | Convert between use-case shapes and the outside world | **Presenters/machines:** `@rtc/client-core-rxjs/src/presenters/` (the default core; `@rtc/client-core-async` and `@rtc/client-core-effect` implement the same members, behind the types-only `@rtc/core-api` contract, with shared rules in `@rtc/core-logic`). **Gateways (real):** `@rtc/client-adapters/src/adapters/` (`WsAdapter`, `portFactory`). **Gateways (in-memory, production -- not mocks):** `@rtc/domain/src/simulators/`. **Platform adapters:** `client-react/src/app/adapters/`, `client-react-native/src/app/adapters/`, `client-solid/src/app/adapters/`. **ViewModel bridge:** `@rtc/react-bindings` (React) and `@rtc/solid-bindings` (Solid). **Server controllers/gateways:** `@rtc/server/src/effects/` + `toSocket`. **Boundary DTOs:** `@rtc/shared` |
 | ④ | **Frameworks & Drivers** | The replaceable, volatile detail | `@rtc/client-react/src/ui/` (React + DOM + CSS Modules), `@rtc/client-react-native` UI (Expo/RN + react-native-svg), `@rtc/client-solid/src/ui/` (SolidJS + DOM + the same CSS Modules), `@rtc/ws-effects` (the dispatch framework), `@rtc/motion-core` (view-layer motion math), `@rtc/boot-splash` and `@rtc/layout-dockview` (DOM-touching view leaves), the devtools packages, the `@rtc/server` host (`node:http` + `ws`), Vite, Metro, Vitest/Playwright, `@rtc/client-prototype` (design island) |
 
 > **Where's the wiring?** `AppRoot.tsx` (web and RN) and `server/src/index.ts` are the **composition roots** -- they live at the very outer edge and are the *only* places that instantiate concrete adapters and inject them inward. Everything inner receives its dependencies; nothing inner constructs them.
@@ -229,7 +229,7 @@ The ①/② split is the most commonly confused boundary in Clean Architecture, 
 
 The test: **would the rule survive deleting all the software?** Yes → entity. Only true because this app works this way → use case.
 
-A trap worth defusing explicitly: **"Application" does not mean "the web app" or "the mobile app".** It means the system being automated -- Reactive Trader as a product. Web and mobile are not two applications; they are **two delivery mechanisms (rings ③--④) onto the same application**. The web `Tile` and the RN `SpotTile` invoke the *same* `ExecuteTradeUseCase`; that is exactly why both clients share `@rtc/domain` + `@rtc/client-core` with zero duplication. A `WebExecuteTradeUseCase` / `MobileExecuteTradeUseCase` pair would be a smell -- a business rule leaking outward into the delivery layer.
+A trap worth defusing explicitly: **"Application" does not mean "the web app" or "the mobile app".** It means the system being automated -- Reactive Trader as a product. Web and mobile are not two applications; they are **two delivery mechanisms (rings ③--④) onto the same application**. The web `Tile` and the RN `SpotTile` invoke the *same* `ExecuteTradeUseCase`; that is exactly why both clients share `@rtc/domain` + `@rtc/client-core-rxjs` + `@rtc/client-adapters` with zero duplication. A `WebExecuteTradeUseCase` / `MobileExecuteTradeUseCase` pair would be a smell -- a business rule leaking outward into the delivery layer.
 
 Where legitimate platform differences go instead:
 
@@ -255,7 +255,7 @@ The current stack is a snapshot, not a commitment. Each row says what role is be
 |---|---|---|
 | Entities & use cases | Pure TypeScript + RxJS | RxJS only (the explicit architectural exception in `@rtc/domain`) |
 | Boundary stream type | RxJS `Observable<T>` | RxJS, the single explicit dependency exception in `@rtc/domain` |
-| Client state streams & machines | RxJS + `@rx-state/core` in `@rtc/client-core` | RxJS, `@rx-state/core`, vanilla TS -- **no framework imports** |
+| Client state streams & machines | RxJS + `@rx-state/core` in `@rtc/client-core-rxjs` | RxJS, `@rx-state/core`, vanilla TS -- **no framework imports** |
 | UI ↔ stream bridge | `@rtc/react-bindings` (react-rxjs `bind` + hand-written `useMachine`) | The bridge package only; the sole place React and RxJS meet |
 | Web UI rendering | React 19 + CSS Modules | React; **no `rxjs` import** (gate 26) |
 | Mobile UI rendering | React Native 0.86 / Expo SDK 57 + `react-native-svg` | React Native; same no-`rxjs` rule |

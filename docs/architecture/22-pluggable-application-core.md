@@ -3,7 +3,7 @@
 ## 22. Pluggable Application Core
 
 [§21](21-cross-framework-testing.md) proved the *UI* layer replaceable: two
-web clients share one framework-free `@rtc/client-core` and pass the same
+web clients share one framework-free `@rtc/client-core-rxjs` and pass the same
 behavioural specs. This chapter is the same experiment run one ring inward —
 the **application layer** (presenters, machines, the composition root) is
 now pluggable too, with two alternative implementations proven equivalent to
@@ -67,7 +67,7 @@ whole plug a client needs to name a core without naming an implementation.
 `@rtc/client-core-rxjs` is the RxJS core: it `implements` `@rtc/core-api`'s
 presenter interfaces. Until 2026-10-04 it lived inside `@rtc/client-core`,
 which also re-exported every contract type; since then the core is its own
-package, `@rtc/client-core` holds only the adapters, port factories and
+package, `@rtc/client-adapters` holds only the adapters, port factories and
 stores, and a consumer imports a contract type from `@rtc/core-api` itself.
 `@rtc/client-core-async` and `@rtc/client-core-effect` are its
 sibling packages, implementing the same `CoreFactory` contract on
@@ -88,14 +88,14 @@ whole until 2026-10-04; a consumer now imports a shared rule from
 `@rtc/core-logic` directly. Each core — the RxJS one too, in its own package
 `@rtc/client-core-rxjs` since 2026-10-04 — composes from `core-logic`,
 `core-api`, `domain`, `shared` and its own members only, and never from
-another core (`cores-stay-inner`). `@rtc/client-core`, which now holds only
+another core (`cores-stay-inner`). `@rtc/client-adapters`, which now holds only
 the adapters, port factories and stores, is a core's devDependency, for test
 adapters (`createSimulatorPorts`): a core takes its ports as arguments, and
 `cores-take-ports-as-arguments` forbids the import from any non-test file.
 
 The bindings (`react-bindings`, `solid-bindings`) are unaffected by which
 core is active: they consume `Presenters` / `MachineFactories` /
-`AppCommands` by shape, from `@rtc/core-api`, not by importing `@rtc/client-core`'s
+`AppCommands` by shape, from `@rtc/core-api`, not by importing `@rtc/client-core-rxjs`'s
 concrete classes directly.
 
 ## Selection: at load time
@@ -450,7 +450,7 @@ connection-event stream that originate inside the app — the Reconnect
 button and the admin incident machine — so no core imports a module-level
 Subject. `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND
 `connectionIntents` together (ADR-006 Follow-up 5), so a port factory can no
-longer typecheck while supplying one without the other. `@rtc/client-core`'s
+longer typecheck while supplying one without the other. `@rtc/client-adapters`'s
 `pairConnectionPorts(events$)` is the only producer of the pair in that
 package: it builds an instance-scoped reconnect/incident Subject pair per
 call and hands the client back `connectionEvents` (the merge) alongside
@@ -574,8 +574,8 @@ the one client it built.
 *composition root* — the file that constructs the app. Rule 1 therefore
 proves the entry bundle constructs no core. That a core's presenters and
 machines are lazy too rests on two more facts. First, a core is a package of
-its own, and what the UI imports statically — `@rtc/client-core`: adapters,
-port factories and stores — imports no core (`client-core-stays-inner`).
+its own, and what the UI imports statically — `@rtc/client-adapters`: adapters,
+port factories and stores — imports no core (`client-adapters-stays-inner`).
 Second, a core's presenters are exported from the same package as its
 composition root: a UI file that imported that package statically would drag
 the brand into the eager set and fail rule 1, and dependency-cruiser's
@@ -591,7 +591,7 @@ grew from 4.2 to 13.9 KB, next to async's 13.1 and Effect's 73.4. A visitor
 on another core downloads ~8.7 KB less; the default RxJS visitor about 1.2 KB
 more in total, since the presenters are needed at boot either way. The point
 was the boundary, not the bytes — ADR-006's amendments have the full
-breakdown. `@rtc/client-core`'s adapters and port factories ship eagerly by
+breakdown. `@rtc/client-adapters`'s adapters and port factories ship eagerly by
 design: the ports are built before any core loads.
 
 ## See also

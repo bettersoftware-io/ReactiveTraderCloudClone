@@ -59,12 +59,12 @@ Simulator (server)          ->  defer(...) + new Observable / interval / Subject
   |
 ws-effects stream()         ->  matchType(SUBSCRIBE_PRICING) -> mergeMap(project) -> out frames
   |
-Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)   [@rtc/client-core]
+Client WS Adapter           ->  new Observable<T>(sub => ws.onmessage handler)   [@rtc/client-adapters]
   |
 Use Case                    ->  enriches Observable<PriceTick> -> Observable<Price>   [@rtc/domain]
                                  (defer + closure for per-subscription state)
   |
-Presenter                   ->  pipe(share/shareReplay/combineLatest) -> price$   [@rtc/client-core]
+Presenter                   ->  pipe(share/shareReplay/combineLatest) -> price$   [@rtc/client-core-rxjs]
   |
 ViewModel hook              ->  bind(price$) -> usePrice(symbol)   [@rtc/react-bindings]
   |
@@ -89,7 +89,7 @@ flowchart TD
     RootN["buildNativePorts()<br/>client-react-native"] --> Q
     Q -->|"no"| SIM["createSimulatorPorts()<br/>simulators run IN the tab / on the device"]
     Q -->|"yes"| WS["createWsRealPorts(ws)<br/>thin WS adapters → backend"]
-    SIM --> Ports["AppPorts — identical interface either way<br/>(both factories live in @rtc/client-core)"]
+    SIM --> Ports["AppPorts — identical interface either way<br/>(both factories live in @rtc/client-adapters)"]
     WS --> Ports
     Ports --> UI["UI (cannot tell which transport)"]
 ```
@@ -172,7 +172,7 @@ The wire protocol survived the rewrite unchanged (same `{ type, payload, correla
 
 Earlier revisions of this document described an **equities coverage gap**: the panels were built simulator-first and the old `wsHandler` served FX + Credit + Admin only, so equities data silently vanished in Mode B. The ws-effects rewrite closed that gap — `createServices()` now instantiates the equities trio (`EquityMarketDataSimulator`, `EquityOrderSimulator`, `EquityPositionSimulator`) and eight equities effects serve the full surface:
 
-| Concern | Wire messages | Client consumer (in `@rtc/client-core`) |
+| Concern | Wire messages | Client consumer (in `@rtc/client-adapters`) |
 |---|---|---|
 | Watchlist | `SUBSCRIBE_WATCHLIST` → `WATCHLIST` | `createMarketDataPort(ws).watchlist()` |
 | Quotes | `SUBSCRIBE_EQ_QUOTES` → `EQ_QUOTE` | `createMarketDataPort(ws).quotes()` |
