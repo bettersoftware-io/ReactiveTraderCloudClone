@@ -8,7 +8,11 @@ import {
 } from "@rtc/domain";
 import type { RegisterRequestDto, ResetPasswordRequestDto } from "@rtc/shared";
 
-import type { AccountDirectory, AccountRecord } from "./AccountDirectory.js";
+import type {
+  AccountDirectory,
+  AccountRecord,
+  SignUpOutcome,
+} from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
@@ -69,13 +73,18 @@ export interface AccountService {
  * The account policy (spec §5.4, §5.7), over whichever directory is
  * configured. Three rules live here and nowhere else: an address is
  * normalized before any lookup; registration can be closed or capped per
- * day; and a login succeeds only for an `active` account, with the reason
+ * day (exact within one server process; approximate across several
+ * machines, which only share the directory's count); and a login succeeds only for an `active` account, with the reason
  * it did not revealed only after the password was right.
  */
 export function createAccountService(
   options: AccountServiceOptions,
 ): AccountService {
   const { directory } = options;
+  /** Sign-ups sent to the directory and not yet answered. */
+  let inFlight = 0;
+  /** Sign-ups answered since start; only ever grows. */
+  let answered = 0;
 
   async function register(
     request: RegisterRequestDto,
@@ -103,6 +112,7 @@ export function createAccountService(
       return { outcome: "invalid", rule: violation.id };
     }
 
+    const answeredBefore = answered;
     const counted = await directory.countRegistrationsSince(
       options.now() - DAY_MS,
     );
@@ -111,14 +121,27 @@ export function createAccountService(
       return { outcome: "unavailable" };
     }
 
-    if (counted.count >= options.maxRegistrationsPerDay) {
+    // Sign-ups the count may not include: those still in flight, and those
+    // answered while the count was being read. Over-counting only closes early.
+    const uncounted = inFlight + (answered - answeredBefore);
+
+    if (counted.count + uncounted >= options.maxRegistrationsPerDay) {
       return { outcome: "closed" };
     }
 
-    const sent = await directory.signUp(
-      { email, displayName, password: request.password },
-      callerIp,
-    );
+    inFlight += 1;
+
+    let sent: SignUpOutcome;
+
+    try {
+      sent = await directory.signUp(
+        { email, displayName, password: request.password },
+        callerIp,
+      );
+    } finally {
+      inFlight -= 1;
+      answered += 1;
+    }
 
     if (sent === "rejected-email") {
       return { outcome: "invalid", rule: "email" };

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { AccountDirectory } from "#/accounts/AccountDirectory";
+import type {
+  AccountDirectory,
+  RegistrationCount,
+  SignUpOutcome,
+} from "#/accounts/AccountDirectory";
 import {
   type AccountService,
   createAccountService,
@@ -91,7 +95,7 @@ describe("AccountService.register", () => {
     ).toEqual({ outcome: "closed" });
   });
 
-  it("is unavailable when the directory cannot count or cannot sign up", async () => {
+  it("is unavailable when the directory cannot count", async () => {
     const service = createAccountService({
       directory: createDisabledAccountDirectory(),
       now: createClock(),
@@ -302,6 +306,241 @@ describe("AccountService codes and resets", () => {
   });
 });
 
+describe("AccountService.register under concurrency", () => {
+  it("lets only one of a burst through when one slot is left", async () => {
+    const signUps: Deferred<SignUpOutcome>[] = [];
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 9 });
+      },
+      signUp: () => {
+        const deferred = createDeferred<SignUpOutcome>();
+        signUps.push(deferred);
+
+        return deferred.promise;
+      },
+    });
+    const service = createDoubleService(directory, 10);
+
+    const results = [1, 2, 3, 4, 5].map((n) => {
+      return service.register(
+        { ...createRegistration(), email: `n${n}@desk.io` },
+        IP,
+      );
+    });
+    await flushMicrotasks();
+
+    expect(signUps).toHaveLength(1);
+    signUps[0]?.resolve("sent");
+
+    const outcomes = (await Promise.all(results)).map((r) => {
+      return r.outcome;
+    });
+
+    expect(
+      outcomes.filter((o) => {
+        return o === "code_sent";
+      }),
+    ).toHaveLength(1);
+    expect(
+      outcomes.filter((o) => {
+        return o === "closed";
+      }),
+    ).toHaveLength(4);
+  });
+
+  it("counts a sign-up answered while a stale count was being read", async () => {
+    const counts: Deferred<RegistrationCount>[] = [];
+    const signUps: Deferred<SignUpOutcome>[] = [];
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        const deferred = createDeferred<RegistrationCount>();
+        counts.push(deferred);
+
+        return deferred.promise;
+      },
+      signUp: () => {
+        const deferred = createDeferred<SignUpOutcome>();
+        signUps.push(deferred);
+
+        return deferred.promise;
+      },
+    });
+    const service = createDoubleService(directory, 1);
+
+    const a = service.register(createRegistration(), IP);
+    await flushMicrotasks();
+    counts[0]?.resolve({ outcome: "counted", count: 0 });
+    await flushMicrotasks();
+
+    const b = service.register(
+      { ...createRegistration(), email: "bob@desk.io" },
+      IP,
+    );
+    await flushMicrotasks();
+    signUps[0]?.resolve("sent");
+
+    expect(await a).toEqual({ outcome: "code_sent" });
+    counts[1]?.resolve({ outcome: "counted", count: 0 });
+
+    expect(await b).toEqual({ outcome: "closed" });
+    expect(signUps).toHaveLength(1);
+  });
+
+  it("opens again once the answered sign-ups are inside the directory's count", async () => {
+    const signUp = vi.fn((): Promise<SignUpOutcome> => {
+      return Promise.resolve("sent");
+    });
+
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp,
+    });
+    const service = createDoubleService(directory, 2);
+
+    await service.register(createRegistration(), IP);
+
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "bob@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "code_sent" });
+    expect(signUp).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not leak an in-flight slot when signUp rejects", async () => {
+    let calls = 0;
+    const signUp = vi.fn((): Promise<SignUpOutcome> => {
+      calls += 1;
+
+      return calls === 1
+        ? Promise.reject(new Error("boom"))
+        : Promise.resolve("sent");
+    });
+
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp,
+    });
+    const service = createDoubleService(directory, 1);
+
+    await expect(service.register(createRegistration(), IP)).rejects.toThrow(
+      "boom",
+    );
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    expect(signUp).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("AccountService normalization on every method", () => {
+  it("resendCode and requestReset hand the directory a normalized address", async () => {
+    const { service, directory } = createService();
+    const resend = vi.spyOn(directory, "resendCode");
+    const reset = vi.spyOn(directory, "requestReset");
+
+    await service.resendCode(" TRADER@rtc.test ", IP);
+    await service.requestReset(" TRADER@rtc.test ", IP);
+
+    expect(resend).toHaveBeenCalledWith("trader@rtc.test", IP);
+    expect(reset).toHaveBeenCalledWith("trader@rtc.test", IP);
+  });
+
+  it("resetPassword matches a differently spelled address", async () => {
+    const { service } = createService();
+    await service.requestReset(" TRADER@rtc.test ", IP);
+
+    expect(
+      await service.resetPassword(
+        {
+          email: " TRADER@rtc.test ",
+          code: DEV_CONFIRMATION_CODE,
+          password: "Fresh2026!pass",
+        },
+        IP,
+      ),
+    ).toEqual({ outcome: "changed" });
+  });
+});
+
+describe("AccountService when one directory operation is unavailable", () => {
+  it("register is unavailable when only signUp is", async () => {
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp: () => {
+        return Promise.resolve("unavailable");
+      },
+    });
+
+    expect(
+      await createDoubleService(directory, 10).register(
+        createRegistration(),
+        IP,
+      ),
+    ).toEqual({ outcome: "unavailable" });
+  });
+
+  it("resendCode and requestReset are unavailable", async () => {
+    const directory = createDoubleDirectory({
+      resendCode: () => {
+        return Promise.resolve("unavailable");
+      },
+      requestReset: () => {
+        return Promise.resolve("unavailable");
+      },
+    });
+    const service = createDoubleService(directory, 10);
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("unavailable");
+    expect(await service.requestReset("ann@desk.io", IP)).toBe("unavailable");
+  });
+
+  it("login is unavailable when the password check is", async () => {
+    const directory = createDoubleDirectory({
+      checkPassword: () => {
+        return Promise.resolve({ outcome: "unavailable" });
+      },
+    });
+
+    expect(
+      await createDoubleService(directory, 10).login(
+        "ann@desk.io",
+        PASSWORD,
+        IP,
+      ),
+    ).toEqual({ outcome: "unavailable" });
+  });
+});
+
+describe("AccountService daily window", () => {
+  it("asks the directory to count exactly the last 24 hours", async () => {
+    const sinceMs: number[] = [];
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: (since: number): Promise<RegistrationCount> => {
+        sinceMs.push(since);
+
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp: () => {
+        return Promise.resolve("sent");
+      },
+    });
+
+    await createDoubleService(directory, 10).register(createRegistration(), IP);
+
+    expect(sinceMs).toEqual([createClock()() - 86_400_000]);
+  });
+});
+
 interface ServiceOverrides {
   readonly registrationOpen?: boolean;
   readonly maxRegistrationsPerDay?: number;
@@ -349,3 +588,47 @@ function createRegistration(): Registration {
 const IP = "1.2.3.4";
 
 const PASSWORD = "Mcdc2026!desk";
+
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+}
+
+function createDeferred<T>(): Deferred<T> {
+  let resolve: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+
+  return {
+    promise,
+    resolve(value: T): void {
+      resolve?.(value);
+    },
+  };
+}
+
+/** Lets every already-resolved promise hop run. */
+async function flushMicrotasks(): Promise<void> {
+  for (let hop = 0; hop < 10; hop += 1) {
+    await Promise.resolve();
+  }
+}
+
+function createDoubleDirectory(
+  overrides: Partial<AccountDirectory>,
+): AccountDirectory {
+  return { ...createDisabledAccountDirectory(), ...overrides };
+}
+
+function createDoubleService(
+  directory: AccountDirectory,
+  maxRegistrationsPerDay: number,
+): AccountService {
+  return createAccountService({
+    directory,
+    now: createClock(),
+    registrationOpen: true,
+    maxRegistrationsPerDay,
+  });
+}
