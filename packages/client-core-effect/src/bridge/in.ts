@@ -78,18 +78,103 @@ export function fromObservable<T>(
   source: Observable<T>,
   scope?: Scope.Scope,
 ): Stream.Stream<T, unknown> {
-  const queue = Effect.runSync(Queue.unbounded<Take.Take<T, unknown>>());
-  const subscription = source.subscribe({
-    next: (value: T) => {
-      Queue.unsafeOffer(queue, Take.of(value));
+  return fromObservables(
+    [
+      portEvents(source, (value: T) => {
+        return value;
+      }),
+    ],
+    scope,
+  );
+}
+
+/** One source of a merged stream: a port, and what each of its values
+ * becomes there (`portEvents`). */
+export interface PortEvents<E> {
+  /** Subscribe the port, handing every value to `sink` as an event. */
+  readonly subscribe: (sink: EventSink<E>) => Unsubscribable;
+}
+
+/** Where a merged stream's sources put what they emit. */
+interface EventSink<E> {
+  emit(event: E): void;
+  fail(error: unknown): void;
+  end(): void;
+}
+
+/** A port as a source of a merged stream: `toEvent` turns each value into
+ * the stream's event type — usually by tagging it with which port it came
+ * from. It runs in the port's own emission, so it must not throw. */
+export function portEvents<A, E>(
+  source: Observable<A>,
+  toEvent: (value: A) => E,
+): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      return source.subscribe({
+        next: (value: A) => {
+          sink.emit(toEvent(value));
+        },
+        error: (error: unknown) => {
+          sink.fail(error);
+        },
+        complete: () => {
+          sink.end();
+        },
+      });
     },
-    error: (error: unknown) => {
+  };
+}
+
+/** Several ports as ONE stream: `fromObservable` for more than one source,
+ * all feeding the same queue. Everything `fromObservable` says holds — the
+ * ports are subscribed synchronously, in the order given, as a side effect
+ * of this call; a burst travels as one chunk — and two things besides:
+ *
+ * - Events arrive in the order the ports emitted them, across ports.
+ *   `Stream.merge` promises no order between its sides (measured: it drained
+ *   one side first, so a fold had to read a flag's current value on the side
+ *   to avoid dropping the ticks that arrived "before" it).
+ * - It costs one fiber step per burst, not about eleven per value.
+ *   `Stream.merge` runs each side on a fiber of its own and hands every
+ *   chunk across. MEASURED 2026-10-04 (React client, FX screen, 6 s of
+ *   steady state): the price and price-history folds and the stale-flag
+ *   machines, each a `Stream.merge` of two ports, ran 4,250 scheduler tasks;
+ *   merged here instead, 600.
+ *
+ * The stream ends when EVERY port has completed, and fails as soon as one
+ * does, after the events that came before the failure. */
+export function fromObservables<E>(
+  sources: readonly PortEvents<E>[],
+  scope?: Scope.Scope,
+): Stream.Stream<E, unknown> {
+  const queue = Effect.runSync(Queue.unbounded<Take.Take<E, unknown>>());
+  let live = sources.length;
+  const sink: EventSink<E> = {
+    emit: (event: E) => {
+      Queue.unsafeOffer(queue, Take.of(event));
+    },
+    fail: (error: unknown) => {
       Queue.unsafeOffer(queue, Take.fail(error));
     },
-    complete: () => {
-      Queue.unsafeOffer(queue, Take.end);
+    end: () => {
+      live -= 1;
+
+      if (live === 0) {
+        Queue.unsafeOffer(queue, Take.end);
+      }
     },
+  };
+  const subscriptions = sources.map((source) => {
+    return source.subscribe(sink);
   });
+  const subscription: Unsubscribable = {
+    unsubscribe: () => {
+      for (const each of subscriptions) {
+        each.unsubscribe();
+      }
+    },
+  };
 
   // A stream that is never run never reaches its `ensuring` — so the period
   // that opened this subscription also owns it: closing the scope releases

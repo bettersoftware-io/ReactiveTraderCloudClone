@@ -1,8 +1,14 @@
 import { Chunk, Effect, Exit, Scope, Stream } from "effect";
-import { of, Subject, throwError } from "rxjs";
+import { BehaviorSubject, of, Subject, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { fromObservable, releasePorts } from "#/bridge/in";
+import {
+  fromObservable,
+  fromObservables,
+  type PortEvents,
+  portEvents,
+  releasePorts,
+} from "#/bridge/in";
 
 describe("bridge/in", () => {
   it("fromObservable() yields values in order and ends on completion", async () => {
@@ -135,6 +141,116 @@ describe("bridge/in", () => {
     expect(source.observed).toBe(false);
   });
 
+  it("fromObservables() delivers the ports' events in the order they were emitted, across ports, as one chunk per turn", async () => {
+    const letters = new Subject<string>();
+    const numbers = new Subject<number>();
+    const chunks = collectChunks(
+      fromObservables<string>([
+        portEvents(letters, (letter: string) => {
+          return `letter ${letter}`;
+        }),
+        portEvents(numbers, (value: number) => {
+          return `number ${value}`;
+        }),
+      ]),
+    );
+    await nextMacrotask();
+
+    letters.next("a");
+    numbers.next(1);
+    letters.next("b");
+    await nextMacrotask();
+    numbers.next(2);
+    await nextMacrotask();
+
+    expect(chunks).toEqual([
+      ["letter a", "number 1", "letter b"],
+      ["number 2"],
+    ]);
+  });
+
+  it("fromObservables() subscribes the ports synchronously and in the order given — what an earlier port replays on subscribe is queued ahead of a later port's", async () => {
+    const flag = new BehaviorSubject("flag");
+    const chunks = collectChunks(
+      fromObservables<string>([
+        portEvents(flag, (value: string) => {
+          return value;
+        }),
+        portEvents(of("first", "second"), (value: string) => {
+          return value;
+        }),
+      ]),
+    );
+    expect(flag.observed).toBe(true);
+    await nextMacrotask();
+    expect(chunks).toEqual([["flag", "first", "second"]]);
+  });
+
+  it("fromObservables() ends only when every port has completed", async () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    let ended = false;
+    Effect.runFork(
+      Stream.runDrain(fromObservables([asIs(first), asIs(second)])).pipe(
+        Effect.andThen(
+          Effect.sync(() => {
+            ended = true;
+          }),
+        ),
+      ),
+    );
+    await nextMacrotask();
+    first.complete();
+    await nextMacrotask();
+    expect(ended).toBe(false);
+    second.complete();
+    await nextMacrotask();
+    expect(ended).toBe(true);
+  });
+
+  it("fromObservables() fails as soon as one port fails, after the events before it, and releases the other ports", async () => {
+    const healthy = new Subject<number>();
+    const failing = new Subject<number>();
+    const seen: number[] = [];
+    const exit = Effect.runPromiseExit(
+      Stream.runForEach(
+        fromObservables([asIs(healthy), asIs(failing)]),
+        (value) => {
+          return Effect.sync(() => {
+            seen.push(value);
+          });
+        },
+      ),
+    );
+    await nextMacrotask();
+    healthy.next(1);
+    failing.next(2);
+    failing.error(new Error("port"));
+    expect(Exit.isFailure(await exit)).toBe(true);
+    expect(seen).toEqual([1, 2]);
+    expect(healthy.observed).toBe(false);
+  });
+
+  it("fromObservables(sources, scope) ties every port to the scope: closing it, or releasePorts, releases them all", async () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const scope = Effect.runSync(Scope.make());
+    fromObservables([asIs(first), asIs(second)], scope);
+    expect(first.observed).toBe(true);
+    expect(second.observed).toBe(true);
+    releasePorts(scope);
+    expect(first.observed).toBe(false);
+    expect(second.observed).toBe(false);
+
+    const third = new Subject<number>();
+    const fourth = new Subject<number>();
+    const closing = Effect.runSync(Scope.make());
+    fromObservables([asIs(third), asIs(fourth)], closing);
+    await Effect.runPromise(Scope.close(closing, Exit.void));
+    expect(third.observed).toBe(false);
+    expect(fourth.observed).toBe(false);
+  });
+
   it("releasePorts() unsubscribes every port of the scope before it returns, and leaves another scope's alone", () => {
     const first = new Subject<number>();
     const second = new Subject<number>();
@@ -165,9 +281,16 @@ describe("bridge/in", () => {
   });
 });
 
+/** A port whose values are the merged stream's events unchanged. */
+function asIs(source: Subject<number>): PortEvents<number> {
+  return portEvents(source, (value: number) => {
+    return value;
+  });
+}
+
 /** Run the stream and keep each chunk it emits, as plain arrays. */
-function collectChunks(stream: Stream.Stream<number, unknown>): number[][] {
-  const chunks: number[][] = [];
+function collectChunks<T>(stream: Stream.Stream<T, unknown>): T[][] {
+  const chunks: T[][] = [];
   Effect.runFork(
     Stream.runForEachChunk(stream, (chunk) => {
       return Effect.sync(() => {

@@ -26,9 +26,11 @@ import {
   fromPortIn,
   interruptFiber,
   listenToStateStream,
+  portEvents,
   refToStateStream,
   refToWarmStateStream,
   reportOutOfBand,
+  type SharedFold,
   scopedPortStream,
   setRefIfChanged,
   sharedFold,
@@ -376,6 +378,97 @@ describe("bridge/out", () => {
     await tick();
     expect(seen).toEqual([0, 1, 3, 6]);
     sub.unsubscribe();
+  });
+
+  it("sharedFold() a subscriber joining in the same tick as a burst misses none of it — the current state at once, then every later one", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const first: number[] = [];
+    const late: number[] = [];
+    const firstSub = stream.subscribe((value: number) => {
+      first.push(value);
+    });
+    await tick();
+    // The burst is queued, not yet folded, when the second subscriber joins.
+    subject.next(1);
+    subject.next(2);
+    subject.next(3);
+    const lateSub = stream.subscribe((value: number) => {
+      late.push(value);
+    });
+    expect(late).toEqual([0]);
+    await tick();
+    expect(first).toEqual([0, 1, 3, 6]);
+    expect(late).toEqual([0, 1, 3, 6]);
+    firstSub.unsubscribe();
+    lateSub.unsubscribe();
+  });
+
+  it("sharedFold() hands the first subscriber the seed before anything the producer writes in its first synchronous step", () => {
+    const stream = sharedFold<number>(useHost(), {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: (update: FoldUpdate<number>) => {
+        return update(() => {
+          return 5;
+        });
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((value: number) => {
+      seen.push(value);
+    });
+    // No await: a producer that is a plain effect runs inside `subscribe`.
+    expect(seen).toEqual([0, 5]);
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() a subscriber that joins from inside another's next() hears that state once", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const joined: number[] = [];
+    let joinedSub: Subscription | null = null;
+    const sub = stream.subscribe((value: number) => {
+      if (value === 1 && joinedSub === null) {
+        joinedSub = stream.subscribe((heard: number) => {
+          joined.push(heard);
+        });
+      }
+    });
+    await tick();
+    subject.next(1);
+    await tick();
+    subject.next(2);
+    await tick();
+    expect(joined).toEqual([1, 3]);
+    sub.unsubscribe();
+    unsubscribeIfSet(joinedSub);
+  });
+
+  it("sharedFold() a subscriber that unsubscribes from inside its next() hears nothing more, and the others still do", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const leaving: number[] = [];
+    const staying: number[] = [];
+    const leavingSub: Subscription = stream.subscribe((value: number) => {
+      leaving.push(value);
+
+      if (value === 1) {
+        leavingSub.unsubscribe();
+      }
+    });
+    const stayingSub = stream.subscribe((value: number) => {
+      staying.push(value);
+    });
+    await tick();
+    subject.next(1);
+    await tick();
+    subject.next(2);
+    await tick();
+    expect(leaving).toEqual([0, 1]);
+    expect(staying).toEqual([0, 1, 3]);
+    stayingSub.unsubscribe();
   });
 
   it("sharedFold() starts the producer on the first subscriber and interrupts it on the last", async () => {
@@ -1058,6 +1151,69 @@ describe("bridge/out", () => {
     expect(subject.observed).toBe(false);
   });
 
+  it("sharedFold() folds several ports as one stream through fromPort.merged, in emission order, and releases them all on the last unsubscribe", async () => {
+    const letters = new Subject<string>();
+    const numbers = new Subject<number>();
+    const stream = sharedFold<string>(useHost(), {
+      seed: () => {
+        return Option.some("");
+      },
+      run: (update: FoldUpdate<string>, fromPort: FromPort) => {
+        return fromPort
+          .merged<string>([
+            portEvents(letters, (letter: string) => {
+              return letter;
+            }),
+            portEvents(numbers, (value: number) => {
+              return String(value);
+            }),
+          ])
+          .pipe(
+            Stream.runForEach((event) => {
+              return update((text) => {
+                return (
+                  Option.getOrElse(text, () => {
+                    return "";
+                  }) + event
+                );
+              });
+            }),
+          );
+      },
+    });
+    const seen: string[] = [];
+    const sub = stream.subscribe((value: string) => {
+      seen.push(value);
+    });
+    letters.next("a");
+    numbers.next(1);
+    letters.next("b");
+    await tick();
+    expect(seen).toEqual(["", "a", "a1", "a1b"]);
+    sub.unsubscribe();
+    expect(letters.observed).toBe(false);
+    expect(numbers.observed).toBe(false);
+  });
+
+  it("fromPortIn(scope).merged ties every port to that scope", () => {
+    const first = new Subject<number>();
+    const second = new Subject<string>();
+    const scope = Effect.runSync(Scope.make());
+    fromPortIn(scope).merged<string>([
+      portEvents(first, (value: number) => {
+        return String(value);
+      }),
+      portEvents(second, (value: string) => {
+        return value;
+      }),
+    ]);
+    expect(first.observed).toBe(true);
+    expect(second.observed).toBe(true);
+    closeScope(scope);
+    expect(first.observed).toBe(false);
+    expect(second.observed).toBe(false);
+  });
+
   it("closeScopeAndWait() resolves only once every finalizer has run", async () => {
     const scope = Effect.runSync(Scope.make());
     let finalized = false;
@@ -1322,6 +1478,32 @@ describe("bridge/out", () => {
  * `runPromise`/`dispose`, which the cases drive directly. */
 interface TestHost extends EffectHost {
   runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+/** A fold that keeps the running sum of what the port emits, from 0. */
+function createSummingFold(source: Subject<number>): SharedFold<number> {
+  return {
+    seed: () => {
+      return Option.some(0);
+    },
+    run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+      return fromPort(source).pipe(
+        Stream.runForEach((value: number) => {
+          return update((sum) => {
+            return (
+              Option.getOrElse(sum, () => {
+                return 0;
+              }) + value
+            );
+          });
+        }),
+      );
+    },
+  };
+}
+
+function unsubscribeIfSet(subscription: Subscription | null): void {
+  subscription?.unsubscribe();
 }
 
 function createHost(): TestHost {

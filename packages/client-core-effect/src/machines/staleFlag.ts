@@ -13,6 +13,7 @@ import {
   closeScope,
   createDetachedHost,
   fromPortIn,
+  portEvents,
   refToStateStream,
   reportOutOfBand,
   setRefIfChanged,
@@ -24,7 +25,8 @@ export interface StaleFlagDeps<T> {
 }
 
 /** The stale-flag fold (the RxJS core's reducer, imported) as
- * `Stream.runFoldEffect` over the merged sources, writing the flag through
+ * `Stream.runFoldEffect` over both sources as one stream of events
+ * (`fromPort.merged`: one queue, in emission order), writing the flag through
  * `setRefIfChanged` (the `distinctUntilChanged`). Both ports are subscribed
  * at once through the machine's own `fromPortIn` — warm from creation, as
  * the RxJS `state$.subscribe()` is — and released when `dispose()` closes
@@ -36,18 +38,14 @@ export function createStaleFlagMachine<T>(
   const host = createDetachedHost();
   const ref = host.runtime.runSync(SubscriptionRef.make(false));
   const fromPort = fromPortIn(host.scope);
-  const events = Stream.merge(
-    fromPort(deps.status$).pipe(
-      Stream.map((status): StaleFlagEvent<T> => {
-        return { kind: "status", status };
-      }),
-    ),
-    fromPort(deps.value$).pipe(
-      Stream.map((value): StaleFlagEvent<T> => {
-        return { kind: "value", value };
-      }),
-    ),
-  );
+  const events = fromPort.merged<StaleFlagEvent<T>>([
+    portEvents(deps.status$, (status: ConnectionStatus) => {
+      return { kind: "status", status };
+    }),
+    portEvents(deps.value$, (value: T) => {
+      return { kind: "value", value };
+    }),
+  ]);
 
   function close(): void {
     closeScope(host.scope);
