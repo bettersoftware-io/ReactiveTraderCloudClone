@@ -1,18 +1,16 @@
-import { randomBytes, scrypt, scryptSync, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-
 import { findRosterUser } from "@rtc/domain";
 import type { SessionUserDto } from "@rtc/shared";
 
+import {
+  createSalt,
+  digestsMatch,
+  hashPassword,
+  hashPasswordSync,
+} from "./passwordHash.js";
 import type { TokenAccount, VerifiedToken } from "./token.js";
 import { signToken, verifyToken } from "./token.js";
 
 export { parseAuthUsers } from "./loadUsers.js";
-
-const SCRYPT_KEY_LENGTH = 32;
-const SALT_LENGTH = 16;
-
-const scryptAsync = promisify(scrypt);
 
 interface CredentialRecord {
   readonly salt: Buffer;
@@ -43,7 +41,7 @@ export class AuthService {
   /** Hashed against when the username is unknown, so an unknown and a known
    * username cost the same scrypt — a probe cannot tell them apart by
    * timing (the spec's low-impact note on S5). Per instance, never stored. */
-  private readonly dummySalt: Buffer = randomBytes(SALT_LENGTH);
+  private readonly dummySalt: Buffer = createSalt();
 
   constructor(opts: AuthServiceOptions) {
     if (opts.credentials.size > 0 && !opts.secret) {
@@ -60,7 +58,7 @@ export class AuthService {
     this.table = new Map<string, CredentialRecord>();
 
     for (const [username, password] of opts.credentials) {
-      const salt = randomBytes(SALT_LENGTH);
+      const salt = createSalt();
       const digest = hashPasswordSync(password, salt);
       this.table.set(username, { salt, digest });
     }
@@ -73,11 +71,7 @@ export class AuthService {
       record?.salt ?? this.dummySalt,
     );
 
-    if (
-      record === undefined ||
-      candidate.length !== record.digest.length ||
-      !timingSafeEqual(candidate, record.digest)
-    ) {
+    if (record === undefined || !digestsMatch(candidate, record.digest)) {
       return null;
     }
 
@@ -115,15 +109,4 @@ export class AuthService {
 
     return verified;
   }
-}
-
-/** Startup only: the table is built synchronously once from `AUTH_USERS`. */
-function hashPasswordSync(password: string, salt: Buffer): Buffer {
-  return scryptSync(password, salt, SCRYPT_KEY_LENGTH);
-}
-
-/** S5 — every login hashes off the event loop (libuv threadpool), so a
- * burst of logins no longer stalls every live WebSocket's ticks. */
-function hashPassword(password: string, salt: Buffer): Promise<Buffer> {
-  return scryptAsync(password, salt, SCRYPT_KEY_LENGTH) as Promise<Buffer>;
 }
