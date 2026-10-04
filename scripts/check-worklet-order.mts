@@ -10,7 +10,7 @@
  * definition, no warning, just a scene that silently draws nothing. Separately,
  * a function reached from inside a worklet that does not itself carry
  * `"worklet"` throws `[Worklets] Tried to synchronously call a Remote
- * Function`. jest is structurally blind to BOTH classes: `babel.config.js`
+ * Function`. jest is structurally blind to BOTH classes: `babel.config.cts`
  * disables the worklet plugins under `api.env("test")` and `jest.setup.ts`
  * mocks `react-native-reanimated` wholesale, so no worklet is ever transformed
  * or run. 295 green RN tests coexisted with five dead boot scenes.

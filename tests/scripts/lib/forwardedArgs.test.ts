@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dropArgSeparator } from "./forwardedArgs";
+import { dropArgSeparator } from "./forwardedArgs.ts";
 
 describe("dropArgSeparator", () => {
   it("drops the separator pnpm forwards, keeping the filter after it", () => {

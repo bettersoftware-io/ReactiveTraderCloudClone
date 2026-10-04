@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { coverageOf, type FileMap, fileStat, packageStat } from "./coverage";
+import { coverageOf, type FileMap, fileStat, packageStat } from "./coverage.ts";
 
 describe("coverageOf", () => {
   it("maps each line to its statement hit count", () => {

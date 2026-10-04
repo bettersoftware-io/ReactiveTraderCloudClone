@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "paths": {
       "#/*": ["./src/*"],
@@ -18,6 +19,6 @@
   // two entries and removeExpoEnvDTS() to delete the file. That write is
   // guarded by `if (updates.size)`, so once they are absent Expo stops
   // touching this file entirely — reverting its edit is what made it recur.
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts", "*.cts"],
   "exclude": ["node_modules", "dist"]
 }

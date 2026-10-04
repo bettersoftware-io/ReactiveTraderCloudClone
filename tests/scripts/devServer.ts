@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assertDepsServedLean, LEAN_DEPS_ENV } from "./lib/leanDeps";
+import { assertDepsServedLean, LEAN_DEPS_ENV } from "./lib/leanDeps.ts";
 
 export interface DevServerHandle {
   /** The port the dev server actually bound (may differ from the preferred one). */

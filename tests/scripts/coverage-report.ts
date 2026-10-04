@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { coverageOf, packageStat } from "./lib/coverage";
-import { render } from "./lib/render";
-import { summarize, type TierResult } from "./lib/testResults";
+import { coverageOf, packageStat } from "./lib/coverage.ts";
+import { render } from "./lib/render.ts";
+import { summarize, type TierResult } from "./lib/testResults.ts";
 
 // Coverage tiers (paths relative to repo root). Each tier is reported standalone
 // (no union) so every file is attributable to one script; the two UI tiers
@@ -215,7 +215,7 @@ export async function main(opts: MainOpts): Promise<string> {
   return md;
 }
 
-// CLI: `tsx tests/scripts/coverage-report.ts`
+// CLI: `node tests/scripts/coverage-report.ts`
 // Writes to $GITHUB_STEP_SUMMARY when set, else --out <file>, else stdout.
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const repoRoot = fileURLToPath(new URL("../../", import.meta.url));

@@ -75,8 +75,22 @@ function flag(name: string, fallback: string): string {
   return i === -1 ? fallback : args[i + 1];
 }
 
-const LIMIT = Number(flag("--limit", "30"));
-const MIN_PCT = Number(flag("--min-pct", "95"));
+/** A numeric flag's value. A flag given with no value, or with one that is not
+ * a number, is a usage error — it would otherwise read as NaN, which compares
+ * false against everything and silently reports no gaps at all. */
+function numberFlag(name: string, fallback: number): number {
+  const value = Number(flag(name, String(fallback)));
+
+  if (!Number.isFinite(value)) {
+    console.error(`${name} needs a number, e.g. ${name} ${fallback}`);
+    process.exit(2);
+  }
+
+  return value;
+}
+
+const LIMIT = numberFlag("--limit", 30);
+const MIN_PCT = numberFlag("--min-pct", 95);
 const AS_JSON = args.includes("--json");
 
 const root = resolve(process.cwd());

@@ -24,8 +24,8 @@ import { WsAdapter } from "@rtc/client-react";
 import type { Direction } from "@rtc/domain";
 import { PreferencesSimulator } from "@rtc/domain";
 
-import { startServer, stopProcess, waitForHttp } from "./_orchestration.js";
-import { loginForToken } from "./loginForToken.js";
+import { startServer, stopProcess, waitForHttp } from "./_orchestration.ts";
+import { loginForToken } from "./loginForToken.ts";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under
 // verbatimModuleSyntax; use the underlying string literal (same pattern as

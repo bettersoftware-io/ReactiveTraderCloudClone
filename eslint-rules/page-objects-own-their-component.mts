@@ -64,6 +64,11 @@ const BANNED_QUALIFIED = new Set(["ReactElement", "Element"]);
 const EXEMPT_PARAM = new Set(["children"]);
 /** Types that describe a function rather than declare one. */
 const FUNCTION_TYPE = new Set(["TSFunctionType", "TSConstructorType"]);
+/** Type-parameter lists: generic arguments and generic declarations. */
+const TYPE_PARAMETER_LIST = new Set([
+  "TSTypeParameterInstantiation",
+  "TSTypeParameterDeclaration",
+]);
 
 /** The banned name this reference resolves to, or null when it is not one. */
 function bannedNameOf(typeName: TSESTree.EntityName): string | null {
@@ -95,6 +100,15 @@ function parameterOf(
 
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const parent = ancestors[i];
+
+    // A generic argument or constraint (`Map<string, ReactElement>`,
+    // `<T extends ReactElement>`) is not a parameter position. These two nodes
+    // also carry a `params` array — of TYPES — so they are answered here,
+    // before the signature check below can mistake them for a signature.
+    if (TYPE_PARAMETER_LIST.has(parent.type)) {
+      return null;
+    }
+
     const params: TSESTree.Node[] | undefined =
       "params" in parent ? parent.params : undefined;
 

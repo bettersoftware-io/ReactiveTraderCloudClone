@@ -325,10 +325,10 @@ was rejected — verify it against the Fly server's `AUTH_USERS` secret.
 
 ## Monorepo resolution (how the build finds the workspace libs)
 
-Metro is configured for pnpm in `metro.config.js` (watchFolders → workspace
+Metro is configured for pnpm in `metro.config.cts` (watchFolders → workspace
 root, `nodeModulesPaths`, symlinks + package `exports`). Workspace packages are
 consumed from their built `dist`, so run `pnpm build` after changing a lib. The
-`#/` alias resolves via `babel-plugin-module-resolver` (`babel.config.js`).
+`#/` alias resolves via `babel-plugin-module-resolver` (`babel.config.cts`).
 
 The `@expo/metro-runtime` override (`pnpm-workspace.yaml`) is pinned to the
 SDK-57 line, and `@xmldom/xmldom` to `^0.8.13` — both load-bearing for native

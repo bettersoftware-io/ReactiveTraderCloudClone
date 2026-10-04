@@ -1,13 +1,13 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 import { spawn } from "node:child_process";
 
 import {
   type DevServerHandle,
   SHARED_DEV_SERVER_ENV,
   startDevServer,
-} from "./devServer";
-import { adoptCoreImpl } from "./lib/coreImpl";
-import { dropArgSeparator } from "./lib/forwardedArgs";
+} from "./devServer.ts";
+import { adoptCoreImpl } from "./lib/coreImpl.ts";
+import { dropArgSeparator } from "./lib/forwardedArgs.ts";
 
 // Standalone browser runs (e.g. test:browser:playwright) enter here without
 // run-all.ts; resolve the core the same way before the dev server starts.

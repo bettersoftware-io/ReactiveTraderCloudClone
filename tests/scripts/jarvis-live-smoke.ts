@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /**
  * Manual, key-gated live smoke test for the Anthropic-backed Jarvis loop
  * (`AnthropicAgentLoop` / `AnthropicAgentSession`, packages/server/src/agent).

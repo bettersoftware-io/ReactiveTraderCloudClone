@@ -1,8 +1,27 @@
-module.exports = (api) => {
+// The slice of Babel's config-function API this file uses. Spelled locally:
+// `@babel/core` is not a direct dependency of this package (the preset brings
+// it), so its own types are not resolvable from here.
+interface BabelCache {
+  using: (key: () => boolean) => void;
+}
+
+interface BabelApi {
+  env: (name: string) => boolean;
+  cache: BabelCache;
+}
+
+interface BabelConfig {
+  presets: unknown[];
+  plugins: unknown[];
+}
+
+module.exports = (api: BabelApi): BabelConfig => {
   const isTest = api.env("test");
   // api.cache(true) alone would ignore this env-dependent branch; using()
   // keys the cache on isTest so jest and native builds get distinct configs.
-  api.cache.using(() => isTest);
+  api.cache.using(() => {
+    return isTest;
+  });
   return {
     presets: [
       [

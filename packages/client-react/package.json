@@ -26,8 +26,8 @@
     "test:ui:coverage": "pnpm test:ui:contract:coverage && pnpm test:ui:visual:vitest-browser:react:coverage",
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
-    "test:ui:visual": "tsx tests/ui/visual/run-all.ts",
-    "test:ui:visual:react": "tsx tests/ui/visual/run-all.ts react",
+    "test:ui:visual": "node tests/ui/visual/run-all.ts",
+    "test:ui:visual:react": "node tests/ui/visual/run-all.ts react",
     "test:ui:visual:playwright:react": "playwright test -c tests/ui/visual/playwright/playwright.config.ts",
     "test:ui:visual:playwright:react:update": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --update-snapshots=all",
     "test:ui:visual:playwright:react:ui": "playwright test -c tests/ui/visual/playwright/playwright.config.ts --ui",
@@ -79,7 +79,6 @@
     "jsdom": "^30.0.1",
     "playwright": "^1.60.0",
     "tsc-alias": "1.9.5",
-    "tsx": "^4",
     "vite": "^8",
     "vitest": "^5.0.3",
     "vitest-browser-react": "^2.3.0"

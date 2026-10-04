@@ -32,6 +32,14 @@ ruleTester.run(
         code: "export interface P {\n  wrap(children: () => JSX.Element): void;\n}\n",
       },
       {
+        name: "an element as a GENERIC ARGUMENT of the parameter's type is not the parameter",
+        code: "export interface P {\n  seed(cache: Map<string, ReactElement>): void;\n}\n",
+      },
+      {
+        name: "an element as a generic CONSTRAINT on the method is not a parameter",
+        code: "export interface P {\n  seed<T extends ReactElement>(key: string): void;\n}\n",
+      },
+      {
         name: "the sanctioned shape — the contract takes a props object",
         code: "export interface P {\n  mount(props: MountProps): void;\n}\n",
       },
