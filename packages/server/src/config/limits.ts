@@ -82,8 +82,11 @@ export const CODE_ENTRY_PER_ADDRESS_WINDOW_MS = 15 * 60 * 1000;
 
 /** B2 — addresses the per-address limiter holds. The keys are caller-chosen:
  * every eviction of a live window costs an attacker this many well-formed
- * requests through the per-IP limits for five more guesses. About 150 bytes
- * per key. */
+ * requests through the per-IP limits for five more guesses. A key is a
+ * normalized address of up to 254 ASCII characters, so the worst case is
+ * roughly 400 bytes per key (the string, the Map entry and its window): a
+ * full table is about 20 MB. The send limiter (`SEND_PER_ADDRESS_MAX_KEYS`)
+ * holds a second table of the same size. */
 export const CODE_ENTRY_PER_ADDRESS_MAX_KEYS = 50_000;
 
 /** B2 — emails sent per normalized address per window, one budget shared by

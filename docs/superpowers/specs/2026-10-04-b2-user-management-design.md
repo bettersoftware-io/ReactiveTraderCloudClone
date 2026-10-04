@@ -495,6 +495,15 @@ Monday and Thursday at 07:17 UTC and fails only on `down`.
 | Server restart mid-flow | Every flow is stateless on our side; the state is in Supabase. |
 | Every Supabase sign-in | *Amended 2026-10-04:* each password check — and each verified code — creates a Supabase session row that the server uses within the one request ~~, drops and never revokes. A session time-box in the project's Auth settings (or a later revocation follow-up) keeps that table small~~. *Amended 2026-10-04 (final review):* and then logs out with `POST /auth/v1/logout?scope=local`, so a confirmed account cannot grow the session and refresh-token tables at the sign-in rate; a failed logout is ignored and never changes the answer, so a session time-box stays a useful backstop. |
 
+*Amended 2026-10-04 (final review) — known residuals, each tracked as
+blocking registration under B2a in [`docs/STATUS.md`](../../STATUS.md):*
+
+| Residual | What it is |
+|---|---|
+| Response-time oracle | In Supabase mode a known address answers more slowly than an unknown one at `/request-reset`, `/resend-code`, `/register` and a failed `/login`, so timing can reveal who is registered (the in-memory directory hides this with a dummy hash). To be measured with the probe's printed durations, then closed with a response-time floor or detached sends. |
+| A reset does not end sessions | A password reset leaves the account's session tokens valid until they expire (up to eight hours) and an open socket open indefinitely, so a reset does not evict an attacker who already signed in. B2c closes the account's sessions on a reset, a block and a delete (§8). |
+| Resend and reset mail is bounded per address only | The hourly email fuse covers sign-up only, so junk accounts — up to 25 new an hour, 200 a day, never purged — can each draw resends and resets (three an hour per address) and spend the project's email allowance, after which legitimate mail is lost silently. The fix (a status lookup by address so only real sends are attempted and counted, a fuse per path, and the purge of never-confirmed accounts) is one piece of work. |
+
 ## 7. Client (stage B2b)
 
 - `AuthPort` gains `register`, `resendCode`, `confirmEmail`,
@@ -559,6 +568,19 @@ shape; the three new failure reasons read as a failed sign-in there.
   login. *Amended 2026-10-04:* in B2a `/mcp` refuses every account token
   (§5.5), so the gate B2c adds replaces that refusal and must check the
   account's **current** status, not only the token's claim.
+
+*Amended 2026-10-04 (final review) — B2c requirements found in B2a's
+review:*
+
+- A password reset, a block and a delete close the account's open sessions:
+  its sockets and its tokens (today a reset leaves an attacker's token valid
+  for up to eight hours and an open socket indefinitely).
+- `access` is read from the directory at the moment it is used, not from the
+  eight-hour token claim, so a demotion takes effect at once.
+- The identity (account id and access) reaches the connection handler, so
+  the admin effects can check it.
+- The in-memory directory gains the admin operations (list, approve, block,
+  delete), so dev and e2e exercise the Users panel.
 
 There is no notification when someone registers. The pending count in the
 panel is the signal.
@@ -640,7 +662,7 @@ None of this happens on its own, and none of it is done by the implementation.
 | Before B2a deploys | *Amended 2026-10-04.* If your plan offers it, set a session time-box in the project's Auth settings: *amended 2026-10-04 (final review):* the server logs out each session it opens, but ignores a failed logout, so the time-box is a backstop (§6) |
 | Before B2a deploys | *Amended 2026-10-04.* Run `pnpm --filter @rtc/server accounts:probe` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `PROBE_EMAIL_DOMAIN` (a domain you control or a test inbox; the probe sends one real confirmation email there) and see `PASS`. It prints the id of each account it creates and deletes |
 | Before B2a deploys | *Amended 2026-10-04.* Make sure `AUTH_SECRET` is at least 32 characters and no `AUTH_USERS` username contains `@`; the server refuses to start otherwise (§5.8) |
-| Before B2a deploys | `flyctl secrets set SUPABASE_URL=… SUPABASE_SECRET_KEY=…` |
+| Before B2a deploys | ~~`flyctl secrets set SUPABASE_URL=… SUPABASE_SECRET_KEY=…`~~ *Amended 2026-10-04 (final review):* follow [`docs/DEPLOY.md` §4](../../DEPLOY.md#4-supabase-account-store) — the key is read at a prompt and staged with `--stage`, never typed on a command line |
 | After the first sign-up | Mark your own account `role = 'admin'`, `approved = true` in the table editor |
 | Any time | Decide between the keep-alive workflow (built by default) and Supabase Pro, which removes pausing outright |
 | Any time | Redeploy (`deploy.yml` is dispatch-only) |

@@ -556,6 +556,16 @@ forwards as `Sb-Forwarded-For`, so Supabase buckets a /64 the same way.
 | `/request-reset` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `429 rate_limited` (the address's send budget; no strike); `503` |
 | `/reset-password` | `email`, `code`, `password` | `200 {status:"password_changed"}` | `400 invalid_request` with the failed password rule, or `rule: "password"` when Supabase refuses one the rule allowed; `400 invalid_code` (a ban strike); `429 rate_limited`; `503` |
 
+A password refusal means different things at the two code endpoints. At
+`/confirm-email` a password rule never spends the code: the rule is checked
+before the store is asked, and a password the store refuses afterwards
+answers `200 password_unset` instead. At `/reset-password`, `rule:
+"password"` comes from the store **after** it accepted the code, so that
+code is spent and the user must request a new one; the other rules are
+checked before the store is asked and spend nothing. Both endpoints check
+the address and the code's shape first (`invalid_code`), then the
+password rule.
+
 Every endpoint can also answer `400 malformed_json`, `400 invalid_request`
 without a `rule` (wrong shape), `413 body_too_large`, `429 banned` with
 `Retry-After`, `429 rate_limited` (its per-IP limit; a ban strike) and

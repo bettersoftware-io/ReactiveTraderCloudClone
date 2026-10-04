@@ -12,10 +12,21 @@
  *
  *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… PROBE_EMAIL_DOMAIN=… pnpm --filter @rtc/server accounts:probe
  *
- * Prints account ids and outcomes only — never a key, a password or a code.
+ * Prints account ids, outcomes and how long each directory call took (in
+ * ms, to compare a known and an unknown address for a response-time
+ * oracle) — never a key, a password or a code.
  */
+import { performance } from "node:perf_hooks";
+
 import type {
   AccountDirectory,
+  AccountLookup,
+  ConfirmOutcome,
+  PasswordCheck,
+  RegistrationCount,
+  ResetOutcome,
+  SendOutcome,
+  SignUpInput,
   SignUpOutcome,
 } from "../src/accounts/AccountDirectory.ts";
 import { createSupabaseAccountDirectory } from "../src/accounts/SupabaseAccountDirectory.ts";
@@ -39,11 +50,17 @@ const freshEmail = `probe-fresh-${Date.now()}@${emailDomain}`;
 const firstPassword = "Probe2026!first";
 const secondPassword = "Probe2026!second";
 const thirdPassword = "Probe2026!third";
-const directory: AccountDirectory = createSupabaseAccountDirectory({
-  url,
-  secretKey,
-  timeoutMs: 10_000,
-});
+/** How long the latest directory call took; printed (and cleared) by the
+ * next `check`. Null when the check did not call the directory. */
+let lastCallMs: number | null = null;
+
+const directory: AccountDirectory = timeEveryCall(
+  createSupabaseAccountDirectory({
+    url,
+    secretKey,
+    timeoutMs: 10_000,
+  }),
+);
 
 const CODE_SHAPE = /^\d{8}$/;
 
@@ -54,7 +71,87 @@ function check(label: string, pass: boolean, detail: string): void {
     failures += 1;
   }
 
-  console.log(`  ${pass ? "✓" : "✗"} ${label} (${detail})`);
+  const took = lastCallMs === null ? "" : `, ${lastCallMs} ms`;
+  lastCallMs = null;
+
+  console.log(`  ${pass ? "✓" : "✗"} ${label} (${detail}${took})`);
+}
+
+/** Runs one directory call and records its duration in `lastCallMs`. */
+async function recordDuration<T>(run: () => Promise<T>): Promise<T> {
+  const started = performance.now();
+
+  try {
+    return await run();
+  } finally {
+    lastCallMs = Math.round(performance.now() - started);
+  }
+}
+
+/** The same directory, with every call's duration recorded. */
+function timeEveryCall(inner: AccountDirectory): AccountDirectory {
+  return {
+    kind: inner.kind,
+    signUp: (input: SignUpInput, ip: string): Promise<SignUpOutcome> => {
+      return recordDuration(() => {
+        return inner.signUp(input, ip);
+      });
+    },
+    resendCode: (address: string, ip: string): Promise<SendOutcome> => {
+      return recordDuration(() => {
+        return inner.resendCode(address, ip);
+      });
+    },
+    confirmEmail: (
+      address: string,
+      code: string,
+      password: string,
+      ip: string,
+    ): Promise<ConfirmOutcome> => {
+      return recordDuration(() => {
+        return inner.confirmEmail(address, code, password, ip);
+      });
+    },
+    checkPassword: (
+      address: string,
+      password: string,
+      ip: string,
+    ): Promise<PasswordCheck> => {
+      return recordDuration(() => {
+        return inner.checkPassword(address, password, ip);
+      });
+    },
+    requestReset: (address: string, ip: string): Promise<SendOutcome> => {
+      return recordDuration(() => {
+        return inner.requestReset(address, ip);
+      });
+    },
+    resetPassword: (
+      address: string,
+      code: string,
+      password: string,
+      ip: string,
+    ): Promise<ResetOutcome> => {
+      return recordDuration(() => {
+        return inner.resetPassword(address, code, password, ip);
+      });
+    },
+    findAccount: (accountId: string): Promise<AccountLookup> => {
+      return recordDuration(() => {
+        return inner.findAccount(accountId);
+      });
+    },
+    countRegistrationsSince: (sinceMs: number): Promise<RegistrationCount> => {
+      return recordDuration(() => {
+        return inner.countRegistrationsSince(sinceMs);
+      });
+    },
+    ping: (): Promise<boolean> => {
+      return recordDuration(() => {
+        return inner.ping();
+      });
+    },
+  };
 }
 
 /** The server refuses any code that is not eight digits before it reaches

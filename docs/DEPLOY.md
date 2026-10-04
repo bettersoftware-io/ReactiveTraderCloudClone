@@ -123,13 +123,18 @@ Supabase moves them.
    Then set the project's email rate limit under Authentication → Rate
    limits to **at least 60 an hour**: the server stops new sign-ups at 25
    an hour (`EMAIL_SENDS_PER_HOUR_MAX`) and answers 503, which leaves the
-   rest for resends and password resets. A send over Supabase's own limit
-   is lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
+   rest for resends and password resets. Watch the sender's own dashboard
+   for volume in the first days: resends and resets are limited per
+   address, not overall (see [`STATUS.md`](STATUS.md)). A send over
+   Supabase's own limit is lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
    saved, Email OTP length 8.
 6. **IP forwarding** (Authentication → Rate limits): enable IP address
    forwarding. The server sends each caller's IP as `Sb-Forwarded-For`, so
    Supabase's per-IP limits apply to each visitor rather than to the
-   server's one address. *Done:* the setting is on.
+   server's one address. Keep **CAPTCHA protection OFF** (Authentication →
+   Attack Protection): the server cannot solve a challenge, so with it on
+   every sign-in reads as a wrong password and strikes the caller toward a
+   ban. *Done:* forwarding is on, CAPTCHA is off.
 7. **Sessions.** Every sign-in and every verified code through the server
    opens a Supabase session, which the server logs out (`scope=local`) as
    soon as it has used it. A logout that fails is ignored, so a session can
@@ -156,7 +161,11 @@ Supabase moves them.
    throwaway accounts: the first (`probe-<timestamp>@…`) is walked through
    confirm, sign-in and reset; the second (`probe-fresh-<timestamp>@…`) is a
    real sign-up, checked only for a password nobody knows. It deletes both
-   and prints only account ids and outcomes. *Done:* the last line is
+   and prints only account ids, outcomes and each call's duration in ms.
+   Then open the project's auth logs (Logs → Auth) and check that the
+   probe's requests show its forwarded address, `203.0.113.1`, and not your
+   machine's — that proves step 6's IP forwarding is on. *Done:* the last
+   line is
    `accounts probe: PASS`, both `cleanup` lines are `✓`, **and** the
    confirmation email arrived at the probe domain — the probe passes whether
    or not it arrives, so only you can check that. If a cleanup failed,
@@ -179,8 +188,9 @@ Supabase moves them.
 
     Add `REGISTRATION_OPEN=false` to the same command to keep sign-up
     closed while you check the result. Run it in the shell from step 9, so
-    `$SUPABASE_SECRET_KEY` still holds the key and the key itself never
-    appears on a command line. `--stage` is flyctl's documented way to store
+    `$SUPABASE_SECRET_KEY` still holds the key and the key itself is never
+    typed and never in your shell history (the shell expands it into
+    flyctl's arguments). `--stage` is flyctl's documented way to store
     secrets without restarting the machine (confirm with `fly secrets set
     --help`); the next deploy picks them up. Without it, Fly
     restarts the machine at once on the image it is already running — and a
@@ -236,12 +246,24 @@ Supabase moves them.
     the read prevents pausing; Supabase Pro removes pausing outright. *Done:*
     you have chosen; a manual run of the workflow (`gh workflow run
     accounts-keepalive.yml`) is green.
+15. **Clear the key from your shell:** `unset SUPABASE_SECRET_KEY`. A later
+    local `pnpm dev:ws` in that shell would otherwise refuse to start
+    (`SUPABASE_SECRET_KEY` without `SUPABASE_URL`). *Done:* `echo
+    "${SUPABASE_SECRET_KEY:-unset}"` prints `unset`.
+
+**Before opening registration** to the public (`REGISTRATION_OPEN` unset or
+`true`): the items listed as blocking under B2a in
+[`STATUS.md`](STATUS.md) must be done first — cross-origin abuse, the
+response-time oracle, the purge of unconfirmed accounts, the live probe and
+the sign-up denial residuals.
 
 **Approving and blocking** (until the B2c Users panel): edit `approved` /
 `blocked` on the account's `profiles` row in the table editor. A change
 applies at the account's next sign-in, and to an open session within 60
 seconds, at its next connect — a socket already open stays open until it
-reconnects. **Deleting an account** (a privacy request,
+reconnects. Until B2c closes sockets on a block, `fly machine restart -a
+rtc-clone-server` is how to drop a blocked user's open socket at once
+(everyone reconnects; the blocked account is then refused). **Deleting an account** (a privacy request,
 [`privacy.md`](privacy.md)): delete the user under Authentication → Users;
 its profile goes with it.
 

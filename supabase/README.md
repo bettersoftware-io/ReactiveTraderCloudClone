@@ -39,7 +39,8 @@ of October 2026; Supabase moves them.
    or a verified code) right after using it, but ignores a logout that
    fails, so an occasional session row can still be left behind.
 8. **Project Settings → API Keys:** create a **secret** key (`sb_secret_…`).
-   It never goes on a command line, into a file or into a client: the probe
+   It is never typed, never in your shell history, never in a file and
+   never in a client: the probe
    and the Fly secret take it from a shell variable read at a prompt
    ([`docs/DEPLOY.md` §4](../docs/DEPLOY.md#4-supabase-account-store) steps
    9–12 run the probe, stage the secrets and deploy).
