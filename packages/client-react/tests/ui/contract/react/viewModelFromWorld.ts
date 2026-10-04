@@ -17,10 +17,6 @@ import {
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
 
 import {
-  createLayoutPresets,
-  createWorkspacePersistenceWriter,
-} from "@rtc/client-core";
-import {
   CandleSeriesPresenter,
   createBootSequenceMachine,
   createJarvisDemoMachine,
@@ -28,6 +24,7 @@ import {
   createJarvisMachine,
   createJarvisPanelsMachine,
   createLayoutMachine,
+  createLayoutPresets,
   createNotionalMachine,
   createOrderTicketMachine,
   createRfqCountdownMachine,
@@ -36,8 +33,9 @@ import {
   createStaleFlagMachine,
   createTileExecutionMachine,
   createWorkspaceNavMachine,
+  createWorkspacePersistenceWriter,
   JarvisPanelsPresenter,
-} from "@rtc/client-core/core";
+} from "@rtc/client-core-rxjs";
 import type {
   CoreImpl,
   DockLayoutStore,

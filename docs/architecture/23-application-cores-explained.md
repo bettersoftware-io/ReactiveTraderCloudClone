@@ -98,11 +98,11 @@ flowchart TD
   ui["<b>UI components</b><br/>React or Solid — render only"]
   bind["<b>Bindings</b><br/>@rtc/react-bindings · @rtc/solid-bindings"]
   plug{{"<b>THE PLUG</b> — @rtc/core-api<br/>types only: what a core must offer"}}
-  rx["<b>@rtc/client-core</b><br/>RxJS — the default"]
+  rx["<b>@rtc/client-core-rxjs</b><br/>RxJS — the default"]
   as["<b>@rtc/client-core-async</b><br/>async/await + AsyncIterable"]
   ef["<b>@rtc/client-core-effect</b><br/>Effect-TS"]
   socket{{"<b>THE SOCKET</b> — AppPorts<br/>what a core is given"}}
-  adapters["<b>Adapters</b><br/>WebSocket · simulators · localStorage"]
+  adapters["<b>Adapters</b> — @rtc/client-core<br/>WebSocket · simulators · localStorage"]
   world(["Server and browser"])
 
   ui --> bind
@@ -790,7 +790,7 @@ flowchart LR
   c2["<b>Every core behaves<br/>the same</b>"] --> g2["@rtc/core-contract: one suite<br/>per member, run on all three"]
   c3["<b>No RxJS hidden inside<br/>an alternative core</b>"] --> g3["dependency-cruiser bridge-owns-rxjs<br/>+ grep gate 43"]
   c4["<b>The plug is<br/>types only</b>"] --> g4["grep gate 42"]
-  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>alt-cores-no-client-core-at-runtime"]
+  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>cores-stay-inner"]
   c6["<b>Visitors download only<br/>the core they use</b>"] --> g6["pnpm check:core-bundle"]
 ```
 
@@ -828,7 +828,7 @@ an accident.
 | `@rtc/domain` ports and simulators | `Observable`, operators | yes — RxJS is its only runtime dependency ([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)) |
 | `@rtc/core-api` | `Observable`, `StateObservable` | **no** — types only |
 | `@rtc/core-logic` | nothing | no |
-| `@rtc/client-core` (RxJS core) | everything | yes |
+| `@rtc/client-core-rxjs` (RxJS core) | everything | yes |
 | alternative cores, inside `bridge/` | `new Observable`, `state()`, `take`, `firstValueFrom` | yes |
 | alternative cores, outside `bridge/` | type names only | **no** |
 | bindings | `combineLatest`, `map`, `firstValueFrom`; `@react-rxjs/core` (React), `state()` (Solid) | yes |

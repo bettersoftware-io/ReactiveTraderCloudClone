@@ -1,4 +1,4 @@
-import { createMachineFactories } from "@rtc/client-core/core";
+import { createMachineFactories } from "@rtc/client-core-rxjs";
 import type { MachineFactories, Presenters } from "@rtc/core-api";
 import {
   type DevtoolsHub,

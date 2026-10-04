@@ -1,7 +1,7 @@
 # @rtc/core-logic
 
 The pure rules, with no stream library, shared by the application cores
-(`@rtc/client-core`, `@rtc/client-core-async`, `@rtc/client-core-effect`) and
+(`@rtc/client-core-rxjs`, `@rtc/client-core-async`, `@rtc/client-core-effect`) and
 the UIs: reducers, folds, patches, the synchronous workspace / Jarvis
 controllers, and the view helpers a UI calls directly (`blotter/`, `admin/`,
 and `layout/`'s `lockedWidthPx`, `maximizeBoundaryPath`, `visibleRootOf`). Pluggable-core

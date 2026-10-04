@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@rtc/client-core": "workspace:*",
+    "@rtc/client-core-rxjs": "workspace:*",
     "@rtc/client-react": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/domain": "workspace:*",

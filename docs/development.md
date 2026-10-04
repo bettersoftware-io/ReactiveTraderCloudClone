@@ -69,7 +69,7 @@ the choice is resolved at **load time**:
 
 | `VITE_CORE_IMPL`  | Core                                                    |
 |-------------------|---------------------------------------------------------|
-| unset or `rxjs`   | `@rtc/client-core` — RxJS, the default                  |
+| unset or `rxjs`   | `@rtc/client-core-rxjs` — RxJS, the default             |
 | `async`           | `@rtc/client-core-async` — async/await + AsyncIterable  |
 | `effect`          | `@rtc/client-core-effect` — Effect-TS                   |
 
@@ -95,18 +95,16 @@ pnpm test:e2e:async                             # e2e against that core (also te
   silently. Every successful boot logs which core won and why: `[core]
   booted <impl> from <url|stored|build|fallback>`.
 - **Every core loads lazily.** Each core is fetched as its own chunk only
-  once the choice resolves — RxJS included: its composition root since
-  approach B (2026-10-02), its presenters and machines since 2026-10-03, all
-  behind the `@rtc/client-core/core` subpath export. `pnpm check:core-bundle`
-  proves the split in CI — the eager set carries no core's marker, and each
-  core sits in exactly one lazy chunk — and dependency-cruiser's
-  `client-core-root-is-the-edge` keeps the root index from reaching a
-  presenter module. `@rtc/client-core`'s root index is the *edge* the UI
-  imports statically (adapters, port factories, stores), and it
-  re-exports nothing: a contract type comes from `@rtc/core-api`, a shared
-  rule from `@rtc/core-logic`;
-  a test that needs a presenter class or a machine factory imports it from
-  `@rtc/client-core/core`.
+  once the choice resolves — RxJS included, a package of its own since
+  2026-10-04 (`@rtc/client-core-rxjs`). `pnpm check:core-bundle` proves the
+  split in CI — the eager set carries no core's marker, and each core sits in
+  exactly one lazy chunk — and dependency-cruiser's
+  `web-clients-load-cores-lazily` rejects a static import of a core from a
+  web client's source. `@rtc/client-core` is what the UI imports statically
+  (adapters, port factories, stores), and it re-exports nothing: a contract
+  type comes from `@rtc/core-api`, a shared rule from `@rtc/core-logic`; a
+  test that needs a presenter class or a machine factory imports it from
+  `@rtc/client-core-rxjs`.
 - **Web only.** The React Native client always runs the RxJS core.
 - **e2e honours either variable.** The harness's own knob is `RTC_CORE_IMPL`
   (what `test:e2e:async` / `test:e2e:effect` set); `VITE_CORE_IMPL=async pnpm

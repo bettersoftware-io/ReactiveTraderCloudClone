@@ -190,12 +190,12 @@ const config: IConfiguration = {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core-rxjs (the core its harness composes), core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(ui-contract|client-core|core-api|core-logic|domain|motion-core)/",
+          "^packages/(ui-contract|client-core-rxjs|core-api|core-logic|domain|motion-core)/",
       },
     },
     {
@@ -224,51 +224,72 @@ const config: IConfiguration = {
       name: "client-core-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core is the shared application core — it may depend only on domain/shared, never on bindings, any client, or the server.",
+        "@rtc/client-core holds the ports every application core consumes — adapters, port factories, stores. It may depend only on core-api/core-logic/domain/shared: never on a core (a core is a sibling that receives these ports as arguments), a binding, any client, or the server.",
       from: { path: "^packages/client-core/src" },
       to: {
         path: "^packages/",
-        pathNot:
-          "^packages/(client-core|core-api|core-contract|core-logic|domain|shared)/",
+        pathNot: "^packages/(client-core|core-api|core-logic|domain|shared)/",
       },
-    },
-    {
-      name: "client-core-src-uses-core-contract-only-in-tests",
-      severity: "error",
-      comment:
-        "@rtc/client-core may import @rtc/core-contract ONLY from its runner test — the contract is a dev-only tier, never a source dependency of a core.",
-      from: { path: "^packages/client-core/src", pathNot: "\\.test\\.ts$" },
-      to: { path: "^packages/core-contract/" },
     },
     {
       name: "client-core-framework-free",
       severity: "error",
       comment:
-        "@rtc/client-core is framework-free by contract (its README's headline claim) — no React/DOM/RN modules.",
+        "@rtc/client-core (the adapters) is framework-free by contract — no React/DOM/RN modules.",
       from: { path: "^packages/client-core/src" },
-      to: { path: "node_modules/(react|react-dom|react-native)/" },
+      to: {
+        path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
+      },
     },
     {
-      name: "client-core-root-is-the-edge",
+      name: "web-clients-load-cores-lazily",
       severity: "error",
       comment:
-        "@rtc/client-core's root index is the EDGE the UI imports statically (adapters, port factories, stores); the RxJS core itself — composition root, presenters, machines — is reached only through the `@rtc/client-core/core` subpath, which a web client loads with a dynamic import(). A bundler keeps every module the entry reaches statically in the entry chunk, so one value edge from the root into presenters/ would put the core back in the eager bundle (ADR-006 Follow-up 9). Type-only edges are excluded (tsPreCompilationDeps:false). Spell a type-only import of a presenter module as `import type { X }`, not `import { type X }`: the inline form can survive transpilation as a value edge and trip this rule.",
-      from: { path: "^packages/client-core/src/index\\.ts$" },
+        'A web client reaches an application core only through a dynamic import() (src/app/coreSelection.ts), so the bundler can put each core in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6; `pnpm check:core-bundle` proves it on a real build, this rule on source, without one). A static value import of a core anywhere in a client\'s source would pull that core into the eager set. An `import type { X }` is invisible to this graph (tsPreCompilationDeps:false) and costs nothing at runtime; the inline form, `import { type X }`, survives transpilation as a bare `import "…"` and IS caught. The same core reached through @rtc/ui-contract, whose harness imports it statically, is `ui-contract-only-in-client-tests` below.',
+      from: {
+        path: "^packages/client-(react|solid)/src",
+        pathNot: "(\\.test\\.tsx?$|/__tests__/)",
+      },
       to: {
-        path: "^packages/client-core/src/(presenters/|composition\\.ts$|core\\.ts$)",
-        reachable: true,
+        path: "^packages/client-core-(rxjs|async|effect)/",
+        dynamic: false,
+      },
+    },
+    {
+      name: "ui-contract-only-in-client-tests",
+      severity: "error",
+      comment:
+        "@rtc/ui-contract is a client's devDependency: the test harness, the contract specs, the visual matrix. Its harness imports the RxJS core statically, so one import of it from a web client's production source would put that core in the eager bundle by another road than the one `web-clients-load-cores-lazily` watches.",
+      from: {
+        path: "^packages/client-(react|solid)/src",
+        pathNot: "(\\.test\\.tsx?$|/__tests__/)",
+      },
+      to: { path: "^packages/ui-contract/" },
+    },
+    {
+      name: "adapter-fakes-stay-in-tests",
+      severity: "error",
+      comment:
+        "@rtc/client-core's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
+      from: {
+        path: "^packages/[^/]+/(src|app)/",
+        pathNot:
+          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-core/src/testing\\.ts$)",
+      },
+      to: {
+        path: "^packages/client-core/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
       },
     },
     {
       name: "bindings-name-no-core",
       severity: "error",
       comment:
-        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core, so any core can sit behind it and `@rtc/client-core` is a binding's devDependency, not a dependency. Only a binding's tests compose a real core.",
+        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core and none of the adapters, so any core can sit behind it; `@rtc/client-core-rxjs` and `@rtc/client-core` are a binding's devDependencies. Only a binding's tests compose a real core.",
       from: {
         path: "^packages/(react|solid)-bindings/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
       },
-      to: { path: "^packages/client-core(-async|-effect)?/" },
+      to: { path: "^packages/client-core(-rxjs|-async|-effect)?/" },
     },
     {
       name: "ui-takes-wire-types-only",
@@ -281,22 +302,22 @@ const config: IConfiguration = {
       to: { path: "^packages/shared/" },
     },
     {
-      name: "alt-cores-use-core-contract-only-in-tests",
+      name: "cores-use-core-contract-only-in-tests",
       severity: "error",
       comment:
-        "The alternative cores import @rtc/core-contract only from their runner tests.",
+        "A core imports @rtc/core-contract only from its runner test — the contract is a dev-only tier, never a source dependency of a core.",
       from: {
-        path: "^packages/client-core-(async|effect)/src",
+        path: "^packages/client-core-(rxjs|async|effect)/src",
         pathNot: "\\.test\\.ts$",
       },
       to: { path: "^packages/core-contract/" },
     },
     {
-      name: "alt-cores-stay-inner",
+      name: "cores-stay-inner",
       severity: "error",
       comment:
-        "The alternative application cores may import only THEMSELVES, core-api, core-logic (the shared rxjs-free rules), client-core (test adapters only — `alt-cores-no-client-core-at-runtime` below keeps it out of production code), core-contract (their runner test), domain, and shared — never a binding, a client, the server, or each other. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`: it re-admits the cruising package's own modules WITHOUT admitting its sibling core, which a plain `client-core-(async|effect)` alternation would have done. (`^packages/client-core/` does not cover them: the trailing slash stops it matching `packages/client-core-async/`.)",
-      from: { path: "^packages/(client-core-(?:async|effect))/src" },
+        "The three application cores are siblings. Each may import only ITSELF, core-api, core-logic (the shared stream-free rules), client-core (the adapters, from tests only — `cores-take-ports-as-arguments` below keeps them out of production code), core-contract (its runner test), domain, and shared — never a binding, a client, the server, or EACH OTHER, tests included. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`.",
+      from: { path: "^packages/(client-core-(?:rxjs|async|effect))/src" },
       to: {
         path: "^packages/",
         pathNot:
@@ -304,22 +325,25 @@ const config: IConfiguration = {
       },
     },
     {
-      name: "alt-cores-no-client-core-at-runtime",
+      name: "cores-take-ports-as-arguments",
       severity: "error",
       comment:
-        "Slice 8: an alternative core composes from @rtc/core-logic and its own members only. @rtc/client-core is a devDependency for test adapters (createSimulatorPorts), never a runtime import.",
+        "A core composes from @rtc/core-logic and its own members, and receives its ports — already built — as `createApp(ports)`'s argument. @rtc/client-core (the adapters and port factories) is a core's devDependency, for tests that compose a real core over real adapters (createSimulatorPorts), never a runtime import.",
       from: {
-        path: "^packages/client-core-(async|effect)/src",
-        pathNot: "\\.test\\.ts$",
+        path: "^packages/client-core-(rxjs|async|effect)/src",
+        pathNot: "\\.test\\.tsx?$",
       },
       to: { path: "^packages/client-core/" },
     },
     {
-      name: "alt-cores-framework-free",
+      name: "cores-framework-free",
       severity: "error",
-      comment: "Alternative cores are framework-free like client-core.",
-      from: { path: "^packages/client-core-(async|effect)/src" },
-      to: { path: "node_modules/(react|react-dom|react-native|solid-js)/" },
+      comment:
+        "An application core is framework-free: no React/DOM/RN/Solid modules.",
+      from: { path: "^packages/client-core-(rxjs|async|effect)/src" },
+      to: {
+        path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
+      },
     },
     {
       name: "core-logic-stays-pure",
@@ -385,22 +409,24 @@ const config: IConfiguration = {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on core-api/domain (+ react), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
+        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on core-api/domain (+ react), and on the adapters and the RxJS core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/react-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(react-bindings|client-core|core-api|domain)/",
+        pathNot:
+          "^packages/(react-bindings|client-core|client-core-rxjs|core-api|domain)/",
       },
     },
     {
       name: "solid-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@rx-state/core/rxjs), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@rx-state/core/rxjs), and on the adapters and the RxJS core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(solid-bindings|client-core|core-api|domain)/",
+        pathNot:
+          "^packages/(solid-bindings|client-core|client-core-rxjs|core-api|domain)/",
       },
     },
     {

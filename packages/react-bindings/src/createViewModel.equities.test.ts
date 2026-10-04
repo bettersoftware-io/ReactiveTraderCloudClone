@@ -3,7 +3,7 @@ import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts, Presenters } from "@rtc/core-api";
 import {
   AuthSimulator,

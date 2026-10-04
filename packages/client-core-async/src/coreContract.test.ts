@@ -2,7 +2,7 @@
 //
 // The async core's runner for `@rtc/core-contract` — the ONE file in this
 // package that executes the paradigm-neutral behavioural contract. It is the
-// twin of `packages/client-core/src/composition.coreContract.test.ts`: same
+// twin of `packages/client-core-rxjs/src/composition.coreContract.test.ts`: same
 // base `AppPorts` construction (domain simulators + in-memory stores), same
 // suites, a different `createApp`/`createMachineFactories` pair and a
 // different label.

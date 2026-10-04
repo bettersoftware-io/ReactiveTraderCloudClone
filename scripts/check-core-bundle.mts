@@ -2,9 +2,9 @@
 // Asserts a web client's production build is runtime-switchable between the
 // three application cores (docs/superpowers/specs/2026-09-27-runtime-core-
 // switch-design.md §4): ONE build, not one per core. src/app/coreSelection.ts's
-// `loadCore` reaches EVERY core — the RxJS default included, through the
-// `@rtc/client-core/core` subpath export (approach B, ADR-006 Decision 6,
-// 2026-10-02) — via `import()`, which the bundler splits into its own lazy
+// `loadCore` reaches EVERY core — the RxJS default included, each a sibling
+// package (`@rtc/client-core-rxjs` since 2026-10-04; ADR-006 Decision 6) —
+// via `import()`, which the bundler splits into its own lazy
 // chunk fetched only once a visitor's choice resolves. So the check is no
 // longer "does the rxjs build carry no foreign core" — it is:
 //
@@ -15,12 +15,11 @@
 //   4. no eager file carries the Effect runtime's own `effect/Fiber` marker.
 //
 // A marker names a core's COMPOSITION ROOT (the file that constructs the app
-// — `createApp`, `createMachineFactories`, stamped with RXJS_CORE_BRAND). The
-// RxJS core's presenters and machines sit behind the same
-// `@rtc/client-core/core` subpath since 2026-10-03, so a static import of it
-// drags the marker into the eager set and fails rule 1; that the ROOT index
-// reaches no presenter module is dependency-cruiser's
-// `client-core-root-is-the-edge`, checked on source. `@rtc/client-core`'s
+// — `createApp`, `createMachineFactories`, stamped with RXJS_CORE_BRAND). A
+// core's presenters and machines sit in the same package as its composition
+// root, so a static import of that package drags the marker into the eager
+// set and fails rule 1; dependency-cruiser's `web-clients-load-cores-lazily`
+// rejects the same import on source, without a build. `@rtc/client-core`'s
 // adapters and port factories ship eagerly by design — the ports are built
 // before any core loads.
 //
@@ -33,10 +32,10 @@
 //     guard, over `.vercel/output/static`, which already holds exactly the
 //     one client that job built).
 //
-// Precondition (build mode only): the alternative-core packages must already
-// be built — each web client consumes @rtc/client-core-async /
-// @rtc/client-core-effect through their `dist/`-only `exports`, not their
-// `src/`. CI's `Build` step (which runs `pnpm build` before this check)
+// Precondition (build mode only): the three core packages must already be
+// built — each web client consumes @rtc/client-core-rxjs,
+// @rtc/client-core-async and @rtc/client-core-effect through their
+// `dist/`-only `exports`, not their `src/`. CI's `Build` step (which runs `pnpm build` before this check)
 // guarantees that. Locally, a stale `dist/` produces a false "expected
 // exactly one lazy chunk … found 0" below — rebuild first: `pnpm build`.
 import { execSync } from "node:child_process";

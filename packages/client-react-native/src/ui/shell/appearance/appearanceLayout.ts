@@ -28,7 +28,7 @@ export const SKIN_DISPLAY_ORDER: readonly ThemeSkin[] = [
  * persisted preference on each call rather than a captured render value, so
  * firing it synchronously N times still lands on the true target. The
  * presenter behind `cycle()` is guarded directly by
- * `packages/client-core/src/presenters/__tests__/ThemePreferencePresenter.test.ts`
+ * `packages/client-core-rxjs/src/presenters/__tests__/ThemePreferencePresenter.test.ts`
  * ("cycle advances dark → light → system → dark from the live current
  * value") — this function only computes how many times to call it.
  *

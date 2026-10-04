@@ -227,7 +227,7 @@ alarm.
 | `dpdm -T --circular` (transpiles → elides `import type`) | ✅ **0 cycles** |
 
 The 4 reported cycles are all type-only (`machine.ts` ↔ presenters via
-`import type`; those files now live in `packages/client-core/src/presenters/`).
+`import type`; those files now live in `packages/client-core-rxjs/src/presenters/`).
 **Whatever tool we pick must exclude type-only edges**, or we'll chase ghosts.
 
 > **Resolved:** dependency-cruiser was adopted and runs as the blocking

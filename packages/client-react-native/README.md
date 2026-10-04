@@ -1,7 +1,7 @@
 # @rtc/client-react-native
 
 React Native (Expo Router) client for ReactiveTraderCloudClone. Consumes the
-framework-neutral `@rtc/client-core` verbatim; only the leaf UI + platform
+framework-neutral `@rtc/client-core-rxjs` verbatim; only the leaf UI + platform
 adapters are RN-specific. See `docs/superpowers/specs/2026-06-29-react-native-expo-client-design.md`.
 
 Runs on **Expo SDK 57 / React Native 0.86** (see
@@ -10,7 +10,7 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/client-core-rxjs`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
 | **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
 | **Must never import** | Gates 30–33 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) mechanically enforce this in `client-react-native/src/ui` — the RN counterpart of gates 26–29 on `client-react/src/ui`: no `rxjs`/`@react-rxjs`/`@rx-state` (30), no `localStorage`/`AsyncStorage` (31), no `fetch`/`expo-constants`/env reads (32), no `setTimeout`/`setInterval` (33). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
 
@@ -47,7 +47,7 @@ segment shorter here because Expo Router reserves the bare `app/` name.
 
 The screen streams live FX spot tiles from the deployed Fly server by
 default (`extra.serverUrl` in `app.config.ts`, no env needed) — real
-`WsAdapter` transport, the same `@rtc/client-core` composition the web
+`WsAdapter` transport, the same `@rtc/client-core-rxjs` composition the web
 client uses. A **Simulator** switch in the toolbar flips to the in-process
 simulator ports (no network, deterministic ticks) without changing any
 other wiring: same presenters, same UI, different ports.
@@ -399,7 +399,7 @@ breaks `expo prebuild`).
 ## How it's used
 
 This package is a leaf app — nothing else in the workspace imports it — so
-"how it's used" means how *it* consumes `@rtc/client-core` and
+"how it's used" means how *it* consumes `@rtc/client-core-rxjs`, `@rtc/client-core` and
 `@rtc/react-bindings`. `app/_layout.tsx` mounts the composition root exactly
 once around the tab navigator:
 
@@ -410,7 +410,7 @@ once around the tab navigator:
 ```
 
 `AppRoot` (`src/app/AppRoot.tsx`) then does the actual composition-root work,
-verbatim against the same `@rtc/client-core` / `@rtc/react-bindings` APIs the
+verbatim against the same `@rtc/client-core-rxjs` / `@rtc/react-bindings` APIs the
 web client uses:
 
 ```tsx

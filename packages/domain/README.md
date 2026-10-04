@@ -102,7 +102,7 @@ One class per port (plus the metric simulators), each a production `implements` 
 
 ## How it's used
 
-A presenter in `@rtc/client-core` composing a port straight into a use case (`packages/client-core/src/presenters/ConnectionStatusPresenter.ts:1-19`):
+A presenter in `@rtc/client-core` composing a port straight into a use case (`packages/client-core-rxjs/src/presenters/ConnectionStatusPresenter.ts:1-19`):
 
 ```ts
 import { type Observable, shareReplay } from "rxjs";

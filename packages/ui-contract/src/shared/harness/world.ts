@@ -4,7 +4,7 @@ import { filter } from "rxjs/operators";
 import {
   createEqDrawingsMachine,
   createEqWorkspaceMachine,
-} from "@rtc/client-core/core";
+} from "@rtc/client-core-rxjs";
 import type {
   ActivityEntry,
   AnimationIntent,

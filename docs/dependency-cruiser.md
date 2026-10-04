@@ -25,7 +25,7 @@ graph TD
     webc["@rtc/client-react<br/>(web UI + browser adapters)"]
     rnc["@rtc/client-react-native<br/>(RN UI + native adapters)"]
     rb["@rtc/react-bindings<br/>(ViewModel bridge)"]
-    core["@rtc/client-core<br/>(application core)"]
+    core["@rtc/client-core + @rtc/client-core-rxjs<br/>(adapters + the default application core)"]
     server["@rtc/server<br/>(WebSocket server)"]
     wse["@rtc/ws-effects<br/>(effects framework, rxjs only)"]
     shared["@rtc/shared<br/>(DTOs / wire protocol)"]
@@ -137,20 +137,23 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `core-logic-stays-inner` | `^packages/core-logic/src` | `core-logic\|core-api\|domain\|shared` | The rules all three application cores share reach only inward (slice 8) |
 | `core-logic-stays-pure` | `^packages/core-logic/src` (tests excepted) | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed; pattern `(^\|node_modules/)` because an unresolvable bare import is recorded unprefixed) | A runtime rxjs import here would put RxJS inside the alternative cores |
 | `core-contract-stays-neutral` | `^packages/core-contract/src` | `core-contract\|core-api\|domain` | The paradigm-neutral behavioural spec imports only `core-api` and `domain` — never a core (each core's runner supplies its own factory), a binding, or a client |
-| `client-core-stays-inner` | `^packages/client-core/src` | `client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The RxJS application core reaches only inward — never bindings, a view leaf, a client, or the server (`core-contract` in its runner test only: `client-core-src-uses-core-contract-only-in-tests`) |
-| `alt-cores-stay-inner` | `^packages/client-core-(async\|effect)/src` | itself (`$1`, not its sibling) `\|client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The alternative cores reach only inward; `client-core` and `core-contract` only from tests (`alt-cores-no-client-core-at-runtime`, `alt-cores-use-core-contract-only-in-tests`) |
-| `alt-cores-no-client-core-at-runtime` | `^packages/client-core-(async\|effect)/src` (tests excepted) | — (rejects `^packages/client-core/`) | Since slice 8 an alternative core composes from `core-logic` and its own members only; `client-core` is a devDependency for test adapters |
+| `client-core-stays-inner` | `^packages/client-core/src` | `client-core\|core-api\|core-logic\|domain\|shared` | The adapters, port factories and stores reach only inward — never a core (a core is a sibling that receives these ports as arguments), a binding, a view leaf, a client, or the server |
+| `cores-stay-inner` | `^packages/client-core-(rxjs\|async\|effect)/src` | itself (`$1`, not a sibling) `\|client-core\|core-api\|core-contract\|core-logic\|domain\|shared` | The three application cores are siblings: each reaches only inward and never imports another core, tests included; `client-core` and `core-contract` only from tests (`cores-take-ports-as-arguments`, `cores-use-core-contract-only-in-tests`) |
+| `cores-use-core-contract-only-in-tests` | `^packages/client-core-(rxjs\|async\|effect)/src` (tests excepted) | — (rejects `^packages/core-contract/`) | The contract is a dev-only tier: a core imports it only from its runner test |
+| `cores-take-ports-as-arguments` | `^packages/client-core-(rxjs\|async\|effect)/src` (tests excepted) | — (rejects `^packages/client-core/`) | A core composes from `core-logic` and its own members and receives its ports already built, as `createApp(ports)`'s argument; `client-core` is a devDependency for test adapters |
 | `bridge-owns-rxjs` | `^packages/client-core-(async\|effect)/src` except `bridge/` and tests | — (rejects a runtime `rxjs`/`@rx-state` import; type-only allowed) | An alternative core that reaches for an operator is RxJS with extra steps (grep gate 43 is the belt to these braces) |
-| `alt-cores-framework-free` | `^packages/client-core-(async\|effect)/src` | — (rejects `node_modules/(react\|react-dom\|react-native\|solid-js)/`) | The alternative cores stay framework-free like `client-core` |
+| `cores-framework-free` | `^packages/client-core-(rxjs\|async\|effect)/src` | — (rejects `react`/`react-dom`/`react-native`/`solid-js`; pattern `(^\|node_modules/)` because an unresolvable bare import is recorded unprefixed) | An application core is framework-free |
 | `effect-port-subscription-owned-by-the-bridge` | `^packages/client-core-effect/src` except `bridge/` and tests | — (rejects `bridge/in.ts`) | `fromObservable` subscribes a port eagerly, so it is reached only through a shared fold's period-scoped `fromPort`; presenters never import `bridge/in.ts` directly |
 | `effect-only-in-client-core-effect` | `^packages/` **except** `^packages/client-core-effect/` | — (rejects `effect`, bare specifier included) | The Effect runtime never leaks past its own package boundary — an alternative core is pluggable precisely because of that |
-| `client-core-framework-free` | `^packages/client-core/src` | — (rejects `react`/`react-dom`/`react-native`) | `client-core` stays framework-free by contract despite UI-facing consumers |
-| `client-core-root-is-the-edge` | `^packages/client-core/src/index.ts` | — (rejects anything from which `presenters/`, `composition.ts` or `core.ts` is **reachable**) | The root index is what the UI imports statically; one value path into the core would put it back in the eager bundle (ADR-006 Follow-up 9). The repo's only `reachable` rule — it follows transitive edges, not just direct ones |
+| `client-core-framework-free` | `^packages/client-core/src` | — (rejects `react`/`react-dom`/`react-native`/`solid-js`, same pattern) | The adapters stay framework-free despite UI-facing consumers |
+| `web-clients-load-cores-lazily` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects a **static** import of `^packages/client-core-(rxjs\|async\|effect)/`: `dynamic: false`) | A web client reaches a core only through `import()`, so each core sits in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6). The repo's only `dynamic`-qualified rule: the same edge is allowed when it is a dynamic import |
+| `ui-contract-only-in-client-tests` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects `^packages/ui-contract/`) | `@rtc/ui-contract` is a client's devDependency, and its harness imports the RxJS core statically: an import from production source would put that core in the eager bundle by a road `web-clients-load-cores-lazily` does not watch |
+| `adapter-fakes-stay-in-tests` | any package's `src/` or `app/` (tests and `client-core/src/testing.ts` excepted) | — (rejects `client-core`'s `testing.ts`, `adapters/__tests__/` and `*.testHelpers.ts`) | The adapters' test scaffolding (`@rtc/client-core/testing`) never reaches a shipped bundle |
 | `ui-takes-wire-types-only` | `^packages/(client-react\|client-solid\|client-react-native\|react-bindings\|solid-bindings\|ui-contract)/` | — (rejects `^packages/shared/`) | The UI side may name a wire DTO **type** from `@rtc/shared` but never import a value: the wire protocol and the scripted Jarvis brain stay on the port side of the plug. Type-only edges are invisible to the graph, so every edge the rule sees is a value edge |
-| `react-bindings-no-apps` | `^packages/react-bindings/src` | `react-bindings\|client-core\|core-api\|domain` | The React↔RxJS bridge depends only inward, never on an app or the server |
-| `solid-bindings-no-apps` | `^packages/solid-bindings/src` | `solid-bindings\|client-core\|core-api\|domain` | The Solid↔RxJS bridge depends only inward, never on an app or the server |
-| `bindings-name-no-core` | `^packages/(react\|solid)-bindings/src`, tests excepted | — (rejects `^packages/client-core(-async\|-effect)?/`) | A binding bridges the contract (`@rtc/core-api`) and receives the app already composed, so its source names no core; `@rtc/client-core` is its devDependency, for tests |
-| `ui-contract-stays-neutral` | `^packages/ui-contract/src` | `ui-contract\|client-core\|core-api\|core-logic\|domain\|motion-core` | The framework-neutral UI-contract harness never depends on a concrete client, a binding, or the server |
+| `react-bindings-no-apps` | `^packages/react-bindings/src` | `react-bindings\|client-core\|client-core-rxjs\|core-api\|domain` | The React↔RxJS bridge depends only inward, never on an app or the server |
+| `solid-bindings-no-apps` | `^packages/solid-bindings/src` | `solid-bindings\|client-core\|client-core-rxjs\|core-api\|domain` | The Solid↔RxJS bridge depends only inward, never on an app or the server |
+| `bindings-name-no-core` | `^packages/(react\|solid)-bindings/src`, tests excepted | — (rejects `^packages/client-core(-rxjs\|-async\|-effect)?/`) | A binding bridges the contract (`@rtc/core-api`) and receives the app already composed, so its source names no core and no adapter; `@rtc/client-core-rxjs` and `@rtc/client-core` are its devDependencies, for tests |
+| `ui-contract-stays-neutral` | `^packages/ui-contract/src` | `ui-contract\|client-core-rxjs\|core-api\|core-logic\|domain\|motion-core` | The framework-neutral UI-contract harness never depends on a concrete client, a binding, or the server |
 | `clients-never-import-each-other` | `^packages/(client-react\|client-react-native\|client-prototype\|client-solid)/src` | — (rejects any *other* client, via `pathNot ^packages/$1/`) | Peer clients composed from the same core never import one another |
 | `prototype-isolated` | `^packages/client-prototype/src` | nothing (`pathNot ^packages/client-prototype/`) | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
 | `motion-core-stays-pure` | `^packages/motion-core/src` | nothing (`pathNot ^packages/motion-core/`) | The view-layer motion-math package stays a zero-dependency pure leaf |
@@ -167,13 +170,13 @@ allowlist is matched against the **bare package path** (e.g. `^packages/server/`
 so importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** every one of the twenty-five workspace packages is either the
+**Full coverage:** every one of the twenty-six workspace packages is either the
 `from` of a package-boundary rule or reachable only inward. The pure leaves
 (`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
 `devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
 bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
-`client-core`, `core-api`, `core-logic`, `core-contract`, the two
-alternative cores) allow a small inward set; the clients are guarded against each
+`client-core`, `core-api`, `core-logic`, `core-contract`, the three
+application cores) allow a small inward set; the clients are guarded against each
 other and the server. Two backstops complement these rules: `no-circular`, and
 pnpm strict mode (a package cannot even resolve an **undeclared** `@rtc/*`
 import). The allowlist rules add the layer pnpm-strict can't — a **declared

@@ -11,6 +11,7 @@
   },
   "references": [
     { "path": "../client-core" },
+    { "path": "../client-core-rxjs" },
     { "path": "../core-api" },
     { "path": "../domain" },
     { "path": "../shared" }

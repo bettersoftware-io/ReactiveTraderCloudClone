@@ -118,7 +118,7 @@ describe("repointImports", () => {
       "a.ts",
       [
         'import type { RfqsPresenter } from "@rtc/client-core";',
-        'import { type AppPorts, createApp } from "@rtc/client-core/core";',
+        'import { type AppPorts, createApp } from "@rtc/client-core-rxjs";',
         "",
       ].join("\n"),
       MAP,
@@ -127,7 +127,7 @@ describe("repointImports", () => {
     expect(out.text).toBe(
       [
         'import type { AppPorts } from "@rtc/core-api";',
-        'import { createApp, type RfqsPresenter } from "@rtc/client-core/core";',
+        'import { createApp, type RfqsPresenter } from "@rtc/client-core-rxjs";',
         "",
       ].join("\n"),
     );
@@ -303,9 +303,9 @@ const MAP: RepointMap = {
     PanelId: "@rtc/core-api",
     PANEL_SPECS: "@rtc/core-logic",
     instanceIdFor: "@rtc/core-logic",
-    RfqsPresenter: "@rtc/client-core/core",
+    RfqsPresenter: "@rtc/client-core-rxjs",
   },
-  "@rtc/client-core/core": {
+  "@rtc/client-core-rxjs": {
     AppPorts: "@rtc/core-api",
   },
 };

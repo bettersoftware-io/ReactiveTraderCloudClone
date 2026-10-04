@@ -2,9 +2,9 @@
 
 ## 6. Package Dependencies
 
-Twenty-five workspace packages plus the `tests` package. Every solid arrow is a real `dependencies` entry (verified against each `package.json`); a dashed arrow is a `devDependencies` entry, drawn only where it carries architectural meaning. Dependencies flow **inward only** (toward `domain`). One diagram of all 26 would be unreadable at column width, so the graph is drawn in four slices; a package that appears in two slices is the same node.
+Twenty-six workspace packages plus the `tests` package. Every solid arrow is a real `dependencies` entry (verified against each `package.json`); a dashed arrow is a `devDependencies` entry, drawn only where it carries architectural meaning. Dependencies flow **inward only** (toward `domain`). One diagram of all 27 would be unreadable at column width, so the graph is drawn in four slices; a package that appears in two slices is the same node.
 
-**Slice 1 -- the clients and what they import.** The core boxes (`client-core`, the two alternative cores, `core-api`) are expanded in slice 2.
+**Slice 1 -- the clients and what they import.** The core boxes (`client-core`, the three cores, `core-api`) are expanded in slice 2.
 
 ```mermaid
 graph TB
@@ -15,8 +15,8 @@ graph TB
     rb["@rtc/react-bindings<br/>createViewModel · useMachine<br/>@react-rxjs/core"]
     sb["@rtc/solid-bindings<br/>createViewModel · useMachine<br/>@rx-state/core → signal"]
 
-    core["@rtc/client-core<br/>RxJS core (default)"]
-    alts["@rtc/client-core-async<br/>@rtc/client-core-effect<br/>(lazy chunks, chosen at load time)"]
+    core["@rtc/client-core<br/>adapters · port factories · stores"]
+    alts["the three cores<br/>@rtc/client-core-rxjs (default)<br/>-async · -effect<br/>(web: lazy chunks, chosen at load time)"]
     api["@rtc/core-api<br/>types-only contract"]
 
     leaves["view leaves, no @rtc deps<br/>@rtc/motion-core (pure, zero-dep)<br/>@rtc/boot-splash · @rtc/layout-dockview<br/>(DOM-touching)"]
@@ -41,6 +41,7 @@ graph TB
     solidc --> domain
     rnc --> rb
     rnc --> core
+    rnc -->|"rxjs only, static"| alts
     rnc --> api
     rnc -->|"motion-core only"| leaves
     rnc --> dtcore
@@ -70,11 +71,12 @@ graph TB
     style domain fill:#4CAF50,color:#fff
 ```
 
-**Slice 2 -- the application cores and the inner circles.** `@rtc/core-contract` (the behavioural equivalence tier) and `@rtc/ui-contract` (the UI test contract) are test-only: every core takes `core-contract` as a devDependency, both web clients take `ui-contract` as one, and each is imported only from test files (the per-core runner, e.g. `client-core/src/composition.coreContract.test.ts`, lives beside the source; `client-core-src-uses-core-contract-only-in-tests` / `alt-cores-use-core-contract-only-in-tests` keep it there).
+**Slice 2 -- the application cores and the inner circles.** `@rtc/core-contract` (the behavioural equivalence tier) and `@rtc/ui-contract` (the UI test contract) are test-only: every core takes `core-contract` as a devDependency, both web clients take `ui-contract` as one, and each is imported only from test files (the per-core runner, e.g. `client-core-rxjs/src/composition.coreContract.test.ts`, lives beside the source; `cores-use-core-contract-only-in-tests` keeps it there).
 
 ```mermaid
 graph TB
-    core["@rtc/client-core<br/>RxJS core (default)<br/>presenters · machines · port factories"]
+    rcore["@rtc/client-core-rxjs<br/>RxJS core (default)<br/>presenters · machines"]
+    core["@rtc/client-core<br/>adapters · port factories · stores"]
     acore["@rtc/client-core-async<br/>async/await + AsyncIterable core"]
     ecore["@rtc/client-core-effect<br/>Effect-TS core (+ effect)"]
 
@@ -88,6 +90,10 @@ graph TB
 
     domain["@rtc/domain<br/>entities · ports · use cases · simulators<br/>rxjs only"]
 
+    rcore --> logic
+    rcore --> api
+    rcore --> shared
+    rcore --> domain
     core --> logic
     core --> api
     core --> shared
@@ -100,7 +106,7 @@ graph TB
     ecore --> api
     ecore --> shared
     ecore --> domain
-    uic --> core
+    uic --> rcore
     uic --> api
     uic --> logic
     uic --> motion
@@ -114,13 +120,15 @@ graph TB
     api --> domain
     shared --> motion
     shared --> domain
-    core -. "devDependency" .-> cc
+    rcore -. "devDependency" .-> cc
     acore -. "devDependency" .-> cc
     ecore -. "devDependency" .-> cc
+    rcore -. "devDependency<br/>(test adapters only)" .-> core
     acore -. "devDependency<br/>(test adapters only)" .-> core
     ecore -. "devDependency<br/>(test adapters only)" .-> core
 
-    style core fill:#00897B,color:#fff
+    style rcore fill:#00897B,color:#fff
+    style core fill:#0097A7,color:#fff
     style acore fill:#00897B,color:#fff
     style ecore fill:#00897B,color:#fff
     style logic fill:#26A69A,color:#fff
@@ -207,16 +215,16 @@ graph TB
 **Dependency rules** (each machine-enforced):
 - `@rtc/domain` has **`rxjs` as its single runtime dependency** -- the explicit architectural exception, used as the boundary stream type. No other runtime deps are permitted (pnpm strict mode). `@rtc/ws-effects` follows the same rxjs-only constraint.
 - `@rtc/shared` depends on `domain`, `rxjs`, and, narrowly, `motion-core`: `src/jarvis/ScriptedJarvisEngine.ts` (the transport-neutral scripted Jarvis brain, shared by the sim-mode client adapter and the server's ScriptedAgentLoop) uses `speechChunks`/`SPEECH_CHUNK_INTERVAL_MS` typed-reveal chunk math to pace Jarvis replies -- the dependency-cruiser allowlist (`shared-no-apps`) was widened accordingly.
-- `@rtc/client-core` depends on `core-api` + `core-logic` + `domain` + `shared` (+ `rxjs`, `@rx-state/core`) and on **no framework** -- no React, no DOM types, no React Native. `ScriptedJarvisAdapter` is now a thin subclass shim over `@rtc/shared`'s `ScriptedJarvisEngine`, so client-core no longer imports `motion-core` directly.
-- **The application core is pluggable** ([§22](22-pluggable-application-core.md), ADR-006): `@rtc/core-api` (types only, grep gate 42) is the contract all three cores implement; `@rtc/core-logic` holds the rules they share that need no stream library (runtime deps `domain` + `shared` only -- `core-logic-stays-pure`, `core-logic-stays-inner`). `@rtc/client-core-async` and `@rtc/client-core-effect` compose from `core-logic`, `core-api`, `domain`, `shared` and their own members only: `rxjs` is a value import only inside each one's `bridge/` (`bridge-owns-rxjs`), and `@rtc/client-core` is a devDependency for test adapters, never a runtime import (`alt-cores-no-client-core-at-runtime`, since slice 8). Both web clients depend on all three and ship all three in one build -- each composition root a lazy chunk chosen at load time (`src/app/coreSelection.ts`; ADR-006 Decision 6, approach B since 2026-10-02; the RxJS root behind the `@rtc/client-core/core` subpath) -- with `pnpm check:core-bundle` asserting the eager/lazy split; React Native stays on the RxJS core.
+- `@rtc/client-core` holds the ports every core consumes -- adapters, port factories, stores. It depends on `core-api` + `core-logic` + `domain` + `shared` (+ `rxjs`) and on **no framework** and **no core** (`client-core-stays-inner`, `client-core-framework-free`). `ScriptedJarvisAdapter` is now a thin subclass shim over `@rtc/shared`'s `ScriptedJarvisEngine`, so client-core no longer imports `motion-core` directly.
+- **The application core is pluggable** ([§22](22-pluggable-application-core.md), ADR-006): `@rtc/core-api` (types only, grep gate 42) is the contract all three cores implement; `@rtc/core-logic` holds the rules they share that need no stream library (runtime deps `domain` + `shared` only -- `core-logic-stays-pure`, `core-logic-stays-inner`). The three cores are sibling packages -- `@rtc/client-core-rxjs` (the default, its own package since 2026-10-04), `@rtc/client-core-async` and `@rtc/client-core-effect` -- under one rule set: each composes from `core-logic`, `core-api`, `domain`, `shared` and its own members only and never imports another core (`cores-stay-inner`); each takes its ports as `createApp(ports)`'s argument, so `@rtc/client-core` is a devDependency for test adapters, never a runtime import (`cores-take-ports-as-arguments`); each is framework-free (`cores-framework-free`). In the two alternative cores `rxjs` is a value import only inside `bridge/` (`bridge-owns-rxjs`). Both web clients depend on all three and ship all three in one build -- each composition root a lazy chunk chosen at load time (`src/app/coreSelection.ts`; ADR-006 Decision 6, each core a package of its own; `web-clients-load-cores-lazily`) -- with `pnpm check:core-bundle` asserting the eager/lazy split; React Native stays on the RxJS core.
 - **Each name is imported from the package that defines it** (since 2026-10-04): the clients, the bindings and `ui-contract` take contract types from `core-api` and the pure view rules from `core-logic` directly, never through a `client-core` re-export -- `tests/scripts/lib/packageSurfaces.test.ts` proves that neither a core's entry point nor `core-logic`'s exports a name another package declares. The UI side also names three Jarvis wire **types** from `@rtc/shared`; those type-only edges are not drawn above, and `ui-takes-wire-types-only` rejects a value edge.
 - `@rtc/react-bindings` is the only package allowed to depend on both React and the core's streams.
-- `client-react` depends on `client-core` (and the two alternative cores) + `core-api` + `core-logic` + `react-bindings` + `domain`; `client-solid` depends on the same set with `solid-bindings` in place of `react-bindings`; `client-react-native` depends on `client-core` + `core-api` + `core-logic` + `react-bindings` + `domain` (plus the `motion-core` and `devtools-core` leaves). The bindings depend on `core-api` and `domain` only: their `src` names the contract and never a core, so `client-core` is their devDependency, for tests. **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
+- `client-react` depends on `client-core` (the adapters) and the three cores + `core-api` + `core-logic` + `react-bindings` + `domain`; `client-solid` depends on the same set with `solid-bindings` in place of `react-bindings`; `client-react-native` depends on `client-core` + `client-core-rxjs` + `core-api` + `core-logic` + `react-bindings` + `domain` (plus the `motion-core` and `devtools-core` leaves). The bindings depend on `core-api` and `domain` only: their `src` names the contract and never a core, so `client-core` and `client-core-rxjs` are their devDependencies, for tests (`bindings-name-no-core`). **Clients and server never import each other** (dependency-cruiser `client-not-server` / `server-not-client`).
 - `@rtc/client-prototype` is an intentional island: `react`/`react-dom` only, no `@rtc/*` imports.
 - `@rtc/motion-core` is a zero-runtime-dependency leaf (no `rxjs`, no DOM, no React) consumed directly by a client's animation shell -- `client-react` and `client-solid` each depend on it the same way (`client-solid → motion-core`), never through `react-bindings`/`solid-bindings`. `@rtc/shared` is also a direct consumer (`shared → motion`, above) -- narrowly, for the scripted Jarvis brain's speech-chunk pacing (`speechChunks`) -- so the "never through an inner-circle package" framing no longer holds; the framework-shell edges and the shared-package edge are both real, and dependency-cruiser's `shared-no-apps` rule allows the latter explicitly.
 - `@rtc/boot-splash` is the framework-free boot/splash feature: the canvas draw engine (six 3D scene variants + shared laser/docking helpers), the reduced-motion/webdriver gate, and the two `*.module.css` stylesheets. It must not import any other `@rtc/*` package (dependency-cruiser `boot-splash-stays-pure`), but -- unlike `motion-core` -- it is a **DOM-touching** leaf, not a no-DOM one: the engine reaches the canvas 2D context and the gate reads `navigator`/`location` directly. Both web clients (`client-react`, `client-solid`) depend on it directly, each supplying its own thin `BootSequence`/`BootGate` shell.
 - `@rtc/layout-dockview` is the framework-neutral Dockview wrapper behind the [`LayoutEngine` preference](../adr/ADR-002-layout-management-port.md) (`"inhouse" | "dockview"`, default dockview — an existing "inhouse" choice is kept). It must not import any other `@rtc/*` package (dependency-cruiser `layout-dockview-stays-pure`) -- like `boot-splash`, it is a DOM-touching leaf (`createDockEngine` mounts Dockview into a container element), not a no-DOM one like `motion-core`. Its one runtime dependency, `dockview@8.3.1`, is confined to this package by a second rule (`dockview-only-in-layout-dockview`) -- a direct client import of `dockview`/`dockview-core` would leak the engine's vocabulary and break the swap guarantee the ADR exists to buy. Both web clients (`client-react`, `client-solid`) depend on it directly, each supplying its own thin `DockviewLayoutEngine` bridge that portal-mounts the existing panel registries' content into Dockview's panels.
-- `@rtc/ui-contract` is the framework-neutral UI test contract (shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree). It depends on `client-core` + `domain` + `motion-core` (+ `rxjs`) and is framework-free -- the `motion-core` edge is the canvas chart spike's `drawChartScene` consuming the `ChartScene` type and `chartScene` function; clients consume `ui-contract` as a **devDependency** for their contract/visual suites -- it never appears in any `src/` import.
+- `@rtc/ui-contract` is the framework-neutral UI test contract (shared harness + contract specs + visual scenario matrix, extracted from client-react's test tree). It depends on `client-core-rxjs` (the core its harness composes) + `core-api` + `core-logic` + `domain` + `motion-core` (+ `rxjs`) and is framework-free -- the `motion-core` edge is the canvas chart spike's `drawChartScene` consuming the `ChartScene` type and `chartScene` function; clients consume `ui-contract` as a **devDependency** for their contract/visual suites -- it never appears in any `src/` import.
 - `@rtc/agent-tools` is the framework-neutral **Jarvis desk-tool registry** (the seven tools an AI may call over the domain's ports, as JSON Schema + a `run(input): Promise<string>` handler). It depends on `@rtc/domain` (+ `rxjs`) and **nothing else** in the workspace -- not `shared`, not `client-core`, not a client, not `server` (dependency-cruiser `agent-tools-stays-inner`). It is deliberately **SDK-free**: no Anthropic SDK, no MCP SDK, no transport imports, so the same registry serves both transports and its tests call `run` straight against the domain simulators. Consumed by `server` only. See [§18.13](18-jarvis-ai-agent-surface.md#1813-phase-3-shipped--the-real-loop).
 - **`@anthropic-ai/sdk` is a server-only runtime dependency**, confined to `packages/server/src/agent/`. Dependency-cruiser's `no-anthropic-sdk-in-inner-packages` pins it -- and does so as an **allowlist inversion** (`from: ^packages/, pathNot: ^packages/server/` → `to: node_modules/@anthropic-ai/`) rather than an enumerated blocklist of the inner packages that happened to exist when the rule was written. The first draft *was* a blocklist, and it silently left the browser clients uncovered, where an SDK import could ship a key-bearing code path into a bundle; the inversion means a package invented tomorrow is covered by default. Note that npm-package bans need their own rule shape: the workspace-path rules above are blind to `node_modules` edges.
 - `@rtc/devtools-core` is an `rxjs`-only leaf, like `ws-effects` -- it decorates by structural shape and must not import any other `@rtc/*` package (dependency-cruiser `devtools-core-stays-pure`). `@rtc/devtools-app` (the inspector SPA) depends only on `devtools-core` + `react`/`react-dom` -- it understands the wire protocol, never `client-core`/`domain` (`devtools-app-protocol-only`). `client-react` has a real runtime edge to `devtools-core` (the composition-root decorators) plus a **dev-only asset edge** to `devtools-app` -- a `devDependency` used only to build-order and locate its `dist/` for the `/devtools/` Vite middleware/copy (see [§20](20-devtools.md)).
@@ -225,7 +233,7 @@ graph TB
 
 **Build order** (Turborepo topological): `domain` | `ws-effects` | `motion-core` | `boot-splash` | `layout-dockview` | `devtools-core` | `devtools-relay` → `shared` | `agent-tools` → `core-api` → `core-logic` | `core-contract` → `client-core` | `client-core-async` | `client-core-effect` → `react-bindings` | `solid-bindings` | `ui-contract` | `devtools-app` → `client-react` | `client-react-native` | `client-solid` | `server` | `devtools-extension` (prototype builds independently).
 
-> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`): about forty named rules in `.dependency-cruiser.mts` (the file is the source of truth; `grep -c 'name:' .dependency-cruiser.mts` counts them), among them `no-circular`, `domain-stays-pure`, `shared-no-apps`, `client-not-server` / `server-not-client`, the per-leaf `*-stays-pure` rules, `no-anthropic-sdk-in-inner-packages` / `no-mcp-sdk-outside-server`, the core rules (`core-api-stays-inner`, `core-logic-stays-pure`, `core-contract-stays-neutral`, `client-core-framework-free`, `alt-cores-framework-free`, `alt-cores-no-client-core-at-runtime`, `bridge-owns-rxjs`, `effect-only-in-client-core-effect`, `effect-port-subscription-owned-by-the-bridge`) and the client rules (`clients-never-import-each-other`, `solid-stays-react-free`, `prototype-isolated`). See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
+> The inward-only rule is machine-enforced by **dependency-cruiser** as a blocking CI gate (`pnpm check:deps`): about forty named rules in `.dependency-cruiser.mts` (the file is the source of truth; `grep -c 'name:' .dependency-cruiser.mts` counts them), among them `no-circular`, `domain-stays-pure`, `shared-no-apps`, `client-not-server` / `server-not-client`, the per-leaf `*-stays-pure` rules, `no-anthropic-sdk-in-inner-packages` / `no-mcp-sdk-outside-server`, the core rules (`core-api-stays-inner`, `core-logic-stays-pure`, `core-contract-stays-neutral`, `client-core-stays-inner`, `client-core-framework-free`, `cores-stay-inner`, `cores-take-ports-as-arguments`, `cores-framework-free`, `web-clients-load-cores-lazily`, `bindings-name-no-core`, `bridge-owns-rxjs`, `effect-only-in-client-core-effect`, `effect-port-subscription-owned-by-the-bridge`) and the client rules (`clients-never-import-each-other`, `solid-stays-react-free`, `prototype-isolated`). See [dependency-cruiser.md](../dependency-cruiser.md) for the rule-by-rule breakdown.
 
 > **History**: the Application Layer originally lived inside `@rtc/client-react` (the doc's earlier revisions called this out as a possible future extraction). The React Native workstream forced the question, and the extraction happened: `@rtc/client-core` + `@rtc/react-bindings` are that promotion, executed without breaking UI consumers -- exactly because components only ever imported the hook bridge.
 

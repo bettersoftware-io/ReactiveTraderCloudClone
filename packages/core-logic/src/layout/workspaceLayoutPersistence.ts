@@ -87,7 +87,7 @@ const SIZE_SUM_TOLERANCE = 1e-6;
 const MAX_LAYOUT_NODE_DEPTH = 64;
 
 /** Mirrors `MAX_DOCKED_PANELS` in
- * `packages/client-core/src/presenters/JarvisPanelsMachine.ts` — a GLOBAL
+ * `packages/client-core-rxjs/src/presenters/JarvisPanelsMachine.ts` — a GLOBAL
  * cap on docked entries across the WHOLE payload (one live-panels array for
  * the entire session), not per tab. It is re-declared as a literal here
  * rather than imported: `presenters` already imports FROM `layout`

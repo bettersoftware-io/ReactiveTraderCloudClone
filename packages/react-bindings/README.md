@@ -1,11 +1,11 @@
 # @rtc/react-bindings
 
-The React↔RxJS bridge: the one package that knows both worlds, translating `@rtc/client-core`'s presenters and machines into React hooks (`createViewModel`, `useMachine`, `useViewModel`) that the dumb UI packages consume.
+The React↔RxJS bridge: the one package that knows both worlds, translating `@rtc/client-core-rxjs`'s presenters and machines into React hooks (`createViewModel`, `useMachine`, `useViewModel`) that the dumb UI packages consume.
 
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters — ViewModel bridge (see `docs/architecture/01-overview.md` §1.3.1) |
-| **Runtime deps** | `@react-rxjs/core`, `@rtc/client-core`, `@rtc/core-api`, `@rtc/domain`, `react`, `rxjs` — the only package in the repo permitted to depend on both React and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
+| **Runtime deps** | `@react-rxjs/core`, `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `react`, `rxjs` (`@rtc/client-core-rxjs` and `@rtc/client-core` are devDependencies, for tests: the bridge names the contract, never a core) — the only package in the repo permitted to depend on both React and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
 | **Consumed by** | `client-react`, `client-react-native` (both shipping clients — see "How it's used" below) |
 | **Must never import** | `client-react`, `client-react-native`, `server` — the dependency direction is one-way (react-bindings sits below both clients in the build order). The flip side of this boundary is machine-enforced: gate 26 bans `rxjs` / `@react-rxjs` / `@rx-state` imports in `client-react/src/ui` outright, *except* through this bridge (`docs/architecture/12-architectural-gates.md`) |
 

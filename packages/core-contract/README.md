@@ -10,7 +10,7 @@ core. Each core owns exactly one **runner** file that builds its own base
 `AppPorts`, wraps them with `scriptPorts`, and calls `describeCoreContract`:
 
 ```ts
-// packages/client-core/src/composition.coreContract.test.ts
+// packages/client-core-rxjs/src/composition.coreContract.test.ts
 describeCoreContract("rxjs", makeRxjsHarness);
 ```
 

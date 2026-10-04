@@ -28,7 +28,7 @@ worked example. This chapter is the precise reference behind it.
 flowchart TB
   CoreAPI["@rtc/core-api<br/>(types only)"]
   CoreLogic["@rtc/core-logic<br/>(shared rxjs-free rules)"]
-  RxjsCore["@rtc/client-core<br/>(RxJS)"]
+  RxjsCore["@rtc/client-core-rxjs<br/>(RxJS, the default)"]
   AsyncCore["@rtc/client-core-async"]
   EffectCore["@rtc/client-core-effect"]
   CoreContract["@rtc/core-contract<br/>(dev-only)"]
@@ -45,10 +45,12 @@ flowchart TB
   CoreContract -. witnesses .-> RxjsCore
   CoreContract -. witnesses .-> AsyncCore
   CoreContract -. witnesses .-> EffectCore
-  RxjsCore --> ReactBindings
-  RxjsCore --> SolidBindings
+  CoreAPI --> ReactBindings
+  CoreAPI --> SolidBindings
   ReactBindings --> ClientReact
   SolidBindings --> ClientSolid
+  RxjsCore -. "loadCore · lazy import()" .-> ClientReact
+  RxjsCore -. "loadCore · lazy import()" .-> ClientSolid
   AsyncCore -. "loadCore · lazy import()" .-> ClientReact
   EffectCore -. "loadCore · lazy import()" .-> ClientReact
   AsyncCore -. "loadCore · lazy import()" .-> ClientSolid
@@ -62,11 +64,13 @@ machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 `Presenters` / `AppCommands` / `AppPorts` / `App`, and `CoreFactory` — the
 whole plug a client needs to name a core without naming an implementation.
 
-`@rtc/client-core` is unchanged in name, adapters, and behaviour; it now
-`implements` `@rtc/core-api`'s presenter interfaces. It re-exported every type
-it used to own outright until 2026-10-04; since then a consumer imports a
-contract type from `@rtc/core-api` itself. `@rtc/client-core-async` and `@rtc/client-core-effect` are new
-sibling packages implementing the same `CoreFactory` contract on
+`@rtc/client-core-rxjs` is the RxJS core: it `implements` `@rtc/core-api`'s
+presenter interfaces. Until 2026-10-04 it lived inside `@rtc/client-core`,
+which also re-exported every contract type; since then the core is its own
+package, `@rtc/client-core` holds only the adapters, port factories and
+stores, and a consumer imports a contract type from `@rtc/core-api` itself.
+`@rtc/client-core-async` and `@rtc/client-core-effect` are its
+sibling packages, implementing the same `CoreFactory` contract on
 `async`/`await` + `AsyncIterable` and Effect-TS respectively. `@rtc/core-contract`
 is dev-only — a devDependency of all three cores, never imported from any
 `src` — and is the behavioural witness that all three agree.
@@ -81,11 +85,13 @@ runtime dependencies are `domain` and `shared` only, and it takes
 `core-logic-stays-pure` (no runtime `rxjs`/`@rx-state`) and
 `core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exported it
 whole until 2026-10-04; a consumer now imports a shared rule from
-`@rtc/core-logic` directly. Each alternative core composes from
-`core-logic`, `core-api`, `domain`, `shared` and its own members only;
-`@rtc/client-core` is a devDependency there, for test adapters
-(`createSimulatorPorts`), and `alt-cores-no-client-core-at-runtime` forbids
-it from any non-test file.
+`@rtc/core-logic` directly. Each core — the RxJS one too, in its own package
+`@rtc/client-core-rxjs` since 2026-10-04 — composes from `core-logic`,
+`core-api`, `domain`, `shared` and its own members only, and never from
+another core (`cores-stay-inner`). `@rtc/client-core`, which now holds only
+the adapters, port factories and stores, is a core's devDependency, for test
+adapters (`createSimulatorPorts`): a core takes its ports as arguments, and
+`cores-take-ports-as-arguments` forbids the import from any non-test file.
 
 The bindings (`react-bindings`, `solid-bindings`) are unaffected by which
 core is active: they consume `Presenters` / `MachineFactories` /
@@ -97,9 +103,9 @@ concrete classes directly.
 **Since 2026-09-27** ([ADR-006 Decision 6](../adr/ADR-006-pluggable-application-core.md#decision-6-load-time-core-selection-supersedes-build-time-only-selection),
 [design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md)),
 the core is chosen at load time, not baked into the build: one production
-build ships all three cores as lazy chunks (the RxJS composition root too,
-since approach B on 2026-10-02 — reached through the `@rtc/client-core/core`
-subpath export, never the root index) —
+build ships all three cores as lazy chunks (the RxJS core too: its
+composition root since approach B on 2026-10-02, the whole of it as the
+package `@rtc/client-core-rxjs` since 2026-10-04) —
 and a visitor (or the deployed demo itself) can switch between them without a
 rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 `selectCore.ts`) resolves the choice through a pure precedence chain:
@@ -528,7 +534,7 @@ advances vitest's fake timers where a member is timer-driven
 asserts only at the envelope level described above.
 
 One runner file per core imports every suite against that core's own
-`makeHarness`: `packages/client-core/src/composition.coreContract.test.ts`
+`makeHarness`: `packages/client-core-rxjs/src/composition.coreContract.test.ts`
 for RxJS, `src/coreContract.test.ts` in each alternative core. **Ordering
 rule for the whole workstream:** a member's suite must exist and be green on
 the RxJS core before either alternative core ports that member natively —
@@ -566,15 +572,15 @@ the one client it built.
 
 **What the brand rules do and do not prove.** A brand names a core's
 *composition root* — the file that constructs the app. Rule 1 therefore
-proves the entry bundle constructs no core. That the RxJS core's presenters
-and machines are lazy too rests on two more facts. First, `@rtc/client-core`'s
-root index — the only thing the UI imports statically — is the *edge*:
-adapters, port factories and stores. It reaches no presenter module, which
-dependency-cruiser's `client-core-root-is-the-edge` checks on source, without
-a build. Second, the presenters are exported only from
-`@rtc/client-core/core`, beside the composition root: a UI file that imported
-that subpath statically would drag the brand into the eager set and fail rule
-1. The bundler assigns a module to the entry chunk whenever the entry can
+proves the entry bundle constructs no core. That a core's presenters and
+machines are lazy too rests on two more facts. First, a core is a package of
+its own, and what the UI imports statically — `@rtc/client-core`: adapters,
+port factories and stores — imports no core (`client-core-stays-inner`).
+Second, a core's presenters are exported from the same package as its
+composition root: a UI file that imported that package statically would drag
+the brand into the eager set and fail rule 1, and dependency-cruiser's
+`web-clients-load-cores-lazily` rejects the same import on source, without a
+build. The bundler assigns a module to the entry chunk whenever the entry can
 reach it *statically*, whoever ends up using it, so both halves are needed.
 
 This came in two steps. Approach B (2026-10-02) moved the composition root
