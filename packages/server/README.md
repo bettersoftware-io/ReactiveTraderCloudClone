@@ -1,6 +1,6 @@
 # @rtc/server
 
-The WebSocket server: a thin Node.js host that exposes the domain simulators to every client over declarative `@rtc/ws-effects` effects (assembled by `buildEffects`), plus `/login`, `/health` and an `/mcp` endpoint.
+The WebSocket server: a thin Node.js host that exposes the domain simulators to every client over declarative `@rtc/ws-effects` effects (assembled by `buildEffects`), plus `/login`, the five registered-account endpoints (`/register`, `/resend-code`, `/confirm-email`, `/request-reset`, `/reset-password`), `/health`, `/health/accounts` and an `/mcp` endpoint.
 
 | | |
 |---|---|
@@ -19,9 +19,10 @@ The WebSocket server: a thin Node.js host that exposes the domain simulators to 
 | `src/mcp/` | The `/mcp` Streamable-HTTP endpoint: `buildJarvisMcpServer` exposes the `@rtc/agent-tools` registry to external MCP clients, `mcpHttpHandler` serves it behind the same token auth (the only place `@modelcontextprotocol/sdk` is imported). |
 | `src/observability/` | `connectionLog.ts` -- the structured stdout line per WebSocket lifecycle event (see below). |
 | `src/socket/` | The transport seam: `toSocket` adapts a raw `ws` `WebSocket` into `@rtc/ws-effects`'s domain-blind `Socket` shape (`messages$`/`closed$`/`send`), `protocol.ts` holds the `WsMessage` envelope, and `FakeWs.testHelpers.ts` is the in-memory test double. Named `socket`, not `ws`, on purpose -- see the note below. |
-| `src/auth/` | `AuthService` -- scrypt-hashes + `timingSafeEqual`-checks credentials from the `AUTH_USERS` roster and issues/verifies signed session tokens (`token.ts`); `loadUsers.ts` parses the `"user:pass,user2:pass2"` `AUTH_USERS` format; `rateLimit.ts` is the per-IP rate limiter `/login` runs through. |
-| `src/http/` | `loginHandler.ts` -- `authenticateLoginRequest` (the pure `/login` request handler: rate-limit → parse → `AuthService.login`) and `authorizeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`), both run before `src/index.ts` ever creates a socket. |
-| `src/index.ts` | The composition root: HTTP server (`/health`, `/login`, `/mcp`) + `WebSocketServer` (gated by `authorizeUpgrade`) + `combineEffects(...buildEffects(jarvisLoops))` + `createWsListener` + `httpServer.listen`. |
+| `src/auth/` | `AuthService` -- scrypt-hashes + `timingSafeEqual`-checks credentials from the `AUTH_USERS` roster and issues/verifies signed session tokens (`token.ts`; an account session carries the account id and access level too); `loadUsers.ts` parses the `"user:pass,user2:pass2"` `AUTH_USERS` format and refuses a username containing `@`; `rateLimit.ts` is the per-IP rate limiter every POST route runs through; `banList.ts` the in-app ban list. |
+| `src/accounts/` | Registered accounts (B2a, [docs/authentication.md §7](../../docs/authentication.md#7-registered-accounts-b2a)): the `AccountDirectory` port and its three implementations (Supabase over plain `fetch`, in-memory for dev, disabled), `AccountService` (the policy), `resolveAccountsMode` (which store, and the startup refusals), `accountStatusCache` (the upgrade re-check) and `sessionUserFor`. The only code in the repo that knows Supabase exists. |
+| `src/http/` | `loginHandler.ts` -- `authenticateLoginRequest` (the pure `/login` request handler: ban check → rate-limit → parse → `AuthService.login` for a roster username, `AccountService.login` for an email address) and `describeUpgrade` (the WebSocket-upgrade token check, reads `?access=` and calls `AuthService.verifyToken`); `upgradeGate.ts` (the whole upgrade decision, including the account status re-check); `accountHandlers.ts` + `accountLimits.ts` (the five account endpoints and their limiters); `postRouter.ts` (one preflight, ban check, body cap and error mapping for all six POST routes); `accountsHealth.ts` (`/health/accounts`). |
+| `src/index.ts` | The composition root: HTTP server (`/health`, `/health/accounts`, the six POST routes, `/mcp`) + `WebSocketServer` (gated by `decideUpgrade`) + `combineEffects(...buildEffects(jarvisLoops))` + `createWsListener` + `httpServer.listen`. |
 
 ### `src/effects/` inventory
 
@@ -56,9 +57,36 @@ WebSocket upgrade then requires that token as `?access=<token>`.
 
 | Env var | Required | Holds |
 |---|---|---|
-| `AUTH_SECRET` | yes (Fly secret, set by hand) | HMAC secret that signs/verifies session tokens |
-| `AUTH_USERS` | yes (Fly secret, set by hand) | The credential roster, `"user:pass,user2:pass2"` -- parsed by `loadUsers.ts` |
+| `AUTH_SECRET` | yes (Fly secret, set by hand) | HMAC secret that signs/verifies session tokens; at least 32 characters (trimmed) when accounts are enabled |
+| `AUTH_USERS` | yes (Fly secret, set by hand) | The credential roster, `"user:pass,user2:pass2"` -- parsed by `loadUsers.ts`; a username may not contain `@` |
 | `AUTH_TTL_MS` | no (defaults to 8h) | Session-token lifetime in milliseconds |
+| `SUPABASE_URL` | with `SUPABASE_SECRET_KEY` (Fly secret) | The account store's project URL (`https://…`); turns on Supabase mode |
+| `SUPABASE_SECRET_KEY` | with `SUPABASE_URL` (Fly secret) | A Supabase **secret** key (`sb_secret_…`); bypasses row-level security, server-only |
+| `RTC_DEV_ACCOUNTS` | no; `1` in the `dev:ws` / `dev:*:fs` scripts | `1` turns on the in-memory dev account directory; refused when `FLY_APP_NAME` is set |
+| `REGISTRATION_OPEN` | no (unset = open) | `true` or `false`; `false` makes `/register` answer `403 registration_closed`; any other value stops the server |
+| `PROBE_EMAIL_DOMAIN` | for `accounts:probe` only | Where the live probe's one confirmation email goes |
+
+With neither `SUPABASE_URL` nor `RTC_DEV_ACCOUNTS=1` the account store is
+**disabled**: registered logins answer `503` and the roster is untouched. The
+full account flow, the six endpoints' answers, the startup refusals and the
+dev accounts are in
+[docs/authentication.md §7](../../docs/authentication.md#7-registered-accounts-b2a);
+the rollout is [docs/DEPLOY.md §4](../../docs/DEPLOY.md#4-supabase-account-store).
+
+| Route | What |
+|---|---|
+| `POST /login` | `{username, password}` → `200 {token, user, exp}`; an identifier containing `@` is checked against the account store |
+| `POST /register` | `{email, displayName}` → `202 {status:"code_sent"}` (also for a known address) |
+| `POST /resend-code` | `{email}` → `202 code_sent` |
+| `POST /confirm-email` | `{email, code, password}` → `200 pending_approval` or `password_unset`; sets the password |
+| `POST /request-reset` | `{email}` → `202 code_sent` |
+| `POST /reset-password` | `{email, code, password}` → `200 password_changed` |
+| `GET /health/accounts` | `{ok: true, directory: "up" \| "down" \| "in-memory" \| "disabled"}` |
+
+`pnpm --filter @rtc/server accounts:probe` (`scripts/probe-accounts.ts`)
+drives the Supabase adapter against a real project. It has not yet been run
+against one, so until it prints `PASS` the adapter's agreement with
+Supabase's real answers is unproven.
 
 `/login` keys every per-caller rule on the platform's trusted client-IP header
 (`src/http/clientIp.ts`, `Fly-Client-IP` by default, `RTC_TRUSTED_IP_HEADER`
@@ -99,6 +127,16 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 | Inbound frames per socket: burst, refill, drops before the socket is closed (1008) | `INBOUND_BURST` / `INBOUND_REFILL_PER_SECOND` / `INBOUND_DROPS_BEFORE_CLOSE` | 100 / 25 per s / 100 |
 | `/login` attempts per IP per window; distinct IPs the table holds | `LOGIN_RATE_LIMIT_MAX` / `LOGIN_RATE_LIMIT_WINDOW_MS`; rate limiter `maxKeys` | 10 / 60 s; 10 000 |
 | Ban: weighted strikes in the window → ban length; table size | `BAN_STRIKES` / `BAN_STRIKE_WINDOW_MS` / `BAN_DURATION_MS` / `BAN_MAX_ENTRIES` | 10 in 10 min → 15 min; 10 000 |
+| Account endpoint body (bytes received) | `ACCOUNT_MAX_BODY_BYTES` | 4 KiB |
+| `/register` per IP | `REGISTER_RATE_LIMIT_MAX` / `_WINDOW_MS` | 5 per hour |
+| `/resend-code`, `/request-reset` per IP, each | `SEND_CODE_RATE_LIMIT_MAX` / `_WINDOW_MS` | 5 per hour |
+| `/confirm-email`, `/reset-password` per IP, each | `CODE_ENTRY_RATE_LIMIT_MAX` / `_WINDOW_MS` | 10 per 10 min |
+| Code entry per address (confirm + reset share it); addresses held | `CODE_ENTRY_PER_ADDRESS_MAX` / `_WINDOW_MS`; `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 5 per 15 min; 50 000 |
+| Registrations per day, whole service | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| One account-store call | `ACCOUNT_DIRECTORY_TIMEOUT_MS` | 5 s |
+| Upgrade status cache: lifetime; size | `ACCOUNT_STATUS_CACHE_TTL_MS` / `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` | 60 s; 1 000 |
+| Shortest `AUTH_SECRET` with accounts on | `AUTH_SECRET_MIN_LENGTH` | 32 |
+| `/health/accounts` store read | `ACCOUNTS_HEALTH_CACHE_MS` | once per 60 s |
 
 Every RPC and stream payload is validated at its parse seam
 (`src/effects/guards.ts`): a malformed RPC is **nacked** (every client-core
@@ -108,8 +146,9 @@ malformed frame threw inside the effect and `combineEffects` replaced that
 effect with `EMPTY` for the rest of the socket. The guards are never stricter
 than what `packages/client-core/src/adapters/portFactory.ts` actually sends.
 
-Strikes (`src/auth/banList.ts`): a failed login counts 1, a rate-limited
-attempt 2, an oversized frame 3, a message flood 3. The ban table is in
+Strikes (`src/auth/banList.ts`): a failed login counts 1, a wrong confirmation
+or reset code 1, a rate-limited attempt 2 (at `/login` or an account
+endpoint), an oversized frame 3, a message flood 3. The ban table is in
 memory — a redeploy clears it, which is fine for temporary bans.
 `SET_THROUGHPUT` is per connection (`src/services/connectionScope.ts`), so one
 login can no longer change it for everyone.
@@ -190,7 +229,9 @@ from the outside with no logging framework and no client inspector:
   start).
 - **upgrade-reject** logs the [`describeUpgrade`](src/http/loginHandler.ts) reason
   — `no-token` (never signed in — the pre-login case), `invalid-token`
-  (expired/bad), or `no-url` — and **never the token itself**.
+  (expired/bad), `no-url`, the edge guards `banned`, `too-many-connections`
+  and `too-many-from-ip`, and for a registered account `account-not-active`
+  or `accounts-unavailable` — and **never the token itself**.
 
 Watch it live:
 

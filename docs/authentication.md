@@ -32,6 +32,12 @@ WebSocket — which no longer exists anywhere in this repo.
   (`packages/domain/src/auth/roster.ts`) are checked into the repo — they are
   just display data (name, initials, role, desk, clearance). Passwords are
   never checked in anywhere; see [§4](#4-configuring-passwords--per-platform).
+- **Registered accounts (since B2a).** Besides the roster, the server signs in
+  registered accounts — an email address and a password checked against its
+  own account store (Supabase in production), after the email is confirmed
+  and an administrator has approved the account. `/login` sends any
+  identifier containing `@` that way. See
+  [§7](#7-registered-accounts-b2a).
 
 ## 2. How it works end to end
 
@@ -294,12 +300,24 @@ build can verify demo logins in the browser, §6), and in the `dev:ws` /
 rotatable: change the password in those places (and the Fly `AUTH_USERS`
 secret) if it ever matters.
 
+The **dev registered accounts** are committed too, for the same reason: the
+in-memory account directory's four seeded `@rtc.test` addresses, their
+password `Mcdc2026!desk` and its fixed confirmation code `000000`
+(`packages/server/src/accounts/devAccounts.ts` and
+`InMemoryAccountDirectory.ts`, [§7.7](#77-dev-accounts)). They can never work on
+a deployed server: the server refuses to start with the in-memory directory
+when `FLY_APP_NAME` is set.
+
 What still stays **out of version control** is the thing that actually protects
 the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and
 verifies session tokens. It's a Fly secret set by hand (dev uses a throwaway
 `dev-local-secret-public-by-design-never-deploy` in the scripts). Public demo logins only let someone sign in
 as the roster's `Read-Only Guest`; without `AUTH_SECRET` nobody can forge a
-token. The `.env.example` templates still ship placeholder values, and an
+token. With accounts enabled it also signs administrator sessions, so the
+server then requires it to be at least 32 characters. The account store's key,
+**`SUPABASE_SECRET_KEY`**, is a Fly secret as well: it bypasses Supabase's
+row-level security, lives only on the server, and is never in a client, a
+client build or `@rtc/shared` / `@rtc/domain`. The `.env.example` templates still ship placeholder values, and an
 untracked `.env.local` overrides the committed demo creds. See
 [`docs/env-files.md`](env-files.md) for the full inventory of every `.env*`
 file, and [`docs/DEPLOY.md`](DEPLOY.md) for the deploy-time setup walkthrough.
@@ -402,3 +420,316 @@ won, mirroring `[core] booted …`.
   was inlined — [`docs/DEPLOY.md`](DEPLOY.md).
 - The full design, invariants and what is deliberately not in this slice —
   [hardening spec §8](superpowers/specs/2026-09-27-public-launch-hardening-design.md#8-hybrid-data-source-revision-2026-09-29-built-2026-10-01).
+
+## 7. Registered accounts (B2a)
+
+A visitor registers with an email address and a display name, proves the
+mailbox with a 6-digit emailed code — and sets a password in that same
+request — and then waits for an administrator to approve the account. Once
+approved, the account signs in through the same `POST /login` as the roster
+and gets the same kind of session token. The design, with its dated
+amendments, is the
+[B2 spec](superpowers/specs/2026-10-04-b2-user-management-design.md); the
+privacy notice is [`privacy.md`](privacy.md).
+
+B2a is the server half. There are no registration screens yet (B2b adds
+them), so registering, confirming and resetting are `curl` calls for now
+([`DEPLOY.md` §4](DEPLOY.md#4-supabase-account-store) has them). Signing in
+already works from the existing sign-in form, because the hybrid client sends
+every non-demo credential to `/login`: type the email address as the
+username. The current clients show the three new `403` refusals as "Service
+unavailable", since `HttpAuthAdapter` reads every status but `200` and `401`
+that way; B2b gives each its own message.
+
+Only `@rtc/server` knows the account store exists. No Supabase URL, key or
+SDK is in a client, in `@rtc/shared` or in `@rtc/domain`, and Supabase's own
+session tokens are used inside one server request and dropped.
+
+### 7.1 Three modes
+
+| Environment | Account store | `GET /health/accounts` → `directory` |
+|---|---|---|
+| `SUPABASE_URL` + `SUPABASE_SECRET_KEY` | Supabase (Auth + the `profiles` table), production | `up` or `down` |
+| `RTC_DEV_ACCOUNTS=1` | in-memory, four seeded accounts ([§7.7](#77-dev-accounts)), dev and the full-stack smoke | `in-memory` |
+| neither | **disabled**: every account call is unavailable, so a registered login answers `503 unavailable`; the roster is untouched | `disabled` |
+
+The dev directory is never a default: an unset `SUPABASE_URL` means
+`disabled`, not in-memory, and only the exact value `1` turns it on.
+`/health/accounts` is a token-free `GET` answering
+`{"ok":true,"directory":"…"}`; only the Supabase mode reads the store, at
+most once per `ACCOUNTS_HEALTH_CACHE_MS` (60 s). The startup log prints the
+mode as `Accounts: <supabase|in-memory|disabled>`.
+
+**The server will not start** (it throws before listening, and never echoes
+a value) if:
+
+- `RTC_DEV_ACCOUNTS=1` and `FLY_APP_NAME` are both set — Fly sets
+  `FLY_APP_NAME` on every machine, so the dev directory can never run
+  deployed;
+- `RTC_DEV_ACCOUNTS=1` and `SUPABASE_URL` are both set;
+- `SUPABASE_SECRET_KEY` is set without `SUPABASE_URL`, or `SUPABASE_URL`
+  without `SUPABASE_SECRET_KEY`;
+- `SUPABASE_URL` does not start with `https://`;
+- either account mode is on and `AUTH_SECRET` is empty or, trimmed, shorter
+  than `AUTH_SECRET_MIN_LENGTH` (32) characters;
+- `REGISTRATION_OPEN` is set to anything but `true` or `false` (unset means
+  open);
+- an `AUTH_USERS` username contains `@`, or `AUTH_USERS` has entries and
+  `AUTH_SECRET` is empty (the latter unchanged since before B2).
+
+### 7.2 The flow
+
+```mermaid
+sequenceDiagram
+    participant V as Visitor
+    participant S as Server
+    participant DB as Supabase<br/>(Auth + profiles)
+    participant A as Administrator
+
+    V->>S: POST /register {email, displayName}
+    S->>DB: sign up with a random password nobody knows
+    DB-->>V: email with a 6-digit code
+    S-->>V: 202 code_sent (same for a known address)
+    V->>S: POST /confirm-email {email, code, password}
+    S->>DB: verify the sign-up code, then set the password
+    S-->>V: 200 pending_approval
+    A->>DB: profiles.approved = true (dashboard until B2c)
+    V->>S: POST /login {username: email, password}
+    S->>DB: check the password, read the profile
+    S-->>V: 200 {token, user, exp}
+    V->>S: WebSocket upgrade ?access=token
+    S->>DB: account status (cached 60 s)
+    S-->>V: 101, or 403 / 503
+```
+
+**Why the password arrives with the code.** Supabase Auth does not update an
+unconfirmed user when the same address signs up again — it re-sends the
+code — so a password chosen at registration could be an attacker's, waiting
+for the real owner to confirm the address (account pre-hijacking). A
+sign-up therefore stores a random password nobody ever sees, and only the
+request that proves the mailbox sets the real one. The password rule is
+checked before the store is asked, so a weak password does not spend the
+code. If the store accepts the code but refuses the password (a stricter
+policy or leaked-password protection in the project), the answer is
+`password_unset`: the address is confirmed, and the user sets a password
+through the reset flow.
+
+The Supabase adapter verifies a confirmation code with OTP type `signup`,
+which accepts only the sign-up code; type `email` would also accept a
+recovery code and make `/confirm-email` a second reset path. A reset uses
+type `recovery`.
+
+**Known residual:** an address someone else registered earlier and never
+confirmed keeps that first display name when its owner registers and
+confirms. It is not a credential; the administrator sees it beside the email
+at approval, and a rename comes with the B2c Users panel.
+
+### 7.3 Endpoints
+
+All six are `POST` with a JSON body, CORS-open, capped at
+`ACCOUNT_MAX_BODY_BYTES` / `LOGIN_MAX_BODY_BYTES` (4 KiB, bytes received),
+and checked in this order: the ban list, the endpoint's own per-IP limit,
+the JSON and its shape. A success body is `{"status": …}`; a failure body is
+`{"error": …, "rule"?: …}` (`AccountFlowResponseDto` / `AccountErrorDto` in
+`packages/shared/src/protocol/auth.ts`).
+
+| Endpoint | Body | Success | Specific failures |
+|---|---|---|---|
+| `/register` | `email`, `displayName` | `202 {status:"code_sent"}`, also for an address that already has an account | `400 invalid_request` with `rule` `email` or `display-name`; `403 registration_closed` (switch off, or the daily cap reached); `503 unavailable` |
+| `/resend-code` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `503` |
+| `/confirm-email` | `email`, `code`, `password` | `200 {status:"pending_approval"}`, or `200 {status:"password_unset"}` | `400 invalid_request` with the failed password rule (the code is not spent); `400 invalid_code` (wrong, expired, or not six digits; a ban strike); `429 rate_limited` (per-IP, or the address's code budget); `503` |
+| `/login` | `username`, `password` | `200 {token, user, exp}` | `401 invalid_credentials` (a ban strike); `403 unconfirmed`, `403 pending_approval`, `403 blocked`; `503 unavailable` |
+| `/request-reset` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `503` |
+| `/reset-password` | `email`, `code`, `password` | `200 {status:"password_changed"}` | `400 invalid_request` with the failed password rule, or `rule: "password"` when Supabase refuses one the rule allowed; `400 invalid_code` (a ban strike); `429 rate_limited`; `503` |
+
+Every endpoint can also answer `400 malformed_json`, `400 invalid_request`
+without a `rule` (wrong shape), `413 body_too_large`, `429 banned` with
+`Retry-After`, `429 rate_limited` (its per-IP limit; a ban strike) and
+`500 internal_error`.
+
+`/register`, `/resend-code` and `/request-reset` answer the same way whether
+or not the address has an account, and the Supabase adapter reads every
+refusal of a resend or a reset request — a per-address limit, say — as
+"sent", so none of them reveals who is registered.
+
+**How the store's failures read.** Every store call is bounded by
+`ACCOUNT_DIRECTORY_TIMEOUT_MS`. A timeout, a network failure or any 5xx
+(Supabase answers 540 for a paused project) is `503 unavailable`. So is an
+HTTP 401, or a 403 without an `error_code`: that is Supabase's gateway
+refusing **our** key (rotated, revoked or mistyped), which says nothing
+about the user and must not read as a wrong password or a bad code — those
+are ban strikes. A sign-up Supabase throttles (`over_email_send_rate_limit`)
+reads as `202 code_sent`, because that is also its answer for an address
+that already has an account — but no email goes out. With Supabase's
+built-in email sender, which allows a couple of emails an hour, a busy hour
+therefore loses sign-ups silently; that is why a custom SMTP sender is
+required before registration is opened
+([`DEPLOY.md` §4](DEPLOY.md#4-supabase-account-store)). The user's way out,
+once the limit has passed, is to register again (which re-sends the code for
+an address that already has an account) or to call `/resend-code`.
+
+The password rule is `@rtc/domain`'s `PASSWORD_RULES`: at least 12
+characters, at most 72 bytes (bcrypt's limit), an uppercase letter, a
+lowercase letter, a digit and a special character; the `rule` values are
+`min-length`, `max-length`, `uppercase`, `lowercase`, `digit`, `special`. An
+email address is trimmed and lowercased before every lookup, and must then
+be lowercase ASCII (an internationalized domain is typed in punycode). A
+display name is NFKC-normalized, trimmed and whitespace-collapsed, and must
+then be 2–40 code points with at least one letter or digit, with no
+control, format or invisible characters, no braille blank, no enclosing
+mark and no run of four or more combining marks (`isValidDisplayName` in
+`packages/domain/src/auth/accountInput.ts`).
+
+### 7.4 The login decision
+
+`/login` with an identifier containing `@` goes to `AccountService.login`;
+anything else to `AuthService.login` and the roster, exactly as before. The
+two cannot collide, because the server refuses an `AUTH_USERS` username with
+an `@`.
+
+1. The address is normalized; one that is not a valid address is `401
+   invalid_credentials`, without a store call.
+2. The password is checked with the store. Wrong, or no such account → `401
+   invalid_credentials` and a ban strike. The store says unconfirmed → `403
+   unconfirmed`. The store unreachable, or rate-limiting us (a 429) → `503
+   unavailable`.
+3. The profile is read. Missing → `401`. Blocked → `403 blocked`; not
+   approved → `403 pending_approval`.
+4. Otherwise the server signs a token with
+   `AuthService.issueAccountSession` and answers `200`.
+
+The three `403`s are only told to someone who just proved the password, so
+they do not help anyone enumerate accounts, and they are not strikes.
+Because a sign-up no longer sets a password, `403 unconfirmed` arises only for
+an account whose password was set outside the server's flow.
+
+There is deliberately **no per-address limit on `/login`** password attempts:
+it would let anyone lock a named user out. The per-IP limit
+(`LOGIN_RATE_LIMIT_MAX`, 10 per 60 s, shared with roster logins) and the ban
+list bound guessing instead.
+
+The token is the same HMAC token as a roster login, with two more claims:
+`{u, exp, id, a}`, where `u` is the email address, `id` the account id and
+`a` the access level (`user` or `admin`). A token carries both account claims
+or neither; a half-claimed token is refused. An account token is refused
+under an empty `AUTH_SECRET` both when signing and when verifying. The
+`user` in the answer is derived from the account (`sessionUserFor`): the
+display name and its initials, the email, `USR-` plus the first four hex
+digits of the account id, and the role "Guest Trader" or "Desk
+Administrator".
+
+### 7.5 The upgrade re-check, and `/mcp`
+
+A token lives eight hours, so the WebSocket upgrade re-checks a registered
+account's **current** status after verifying the token (roster tokens have
+no account and skip it). The status comes through `accountStatusCache`:
+
+- one store lookup per account per `ACCOUNT_STATUS_CACHE_TTL_MS` (60 s), and
+  only one in flight per account, so a reconnect storm costs one call;
+- only `active` is admitted; anything else — unconfirmed, pending, blocked,
+  or the account gone — is `403` (logged as `account-not-active`);
+- a lookup that fails, throws or times out reads as unavailable and is
+  never cached: the upgrade answers `503` (`accounts-unavailable`) — the gate
+  fails closed;
+- the connection caps are checked again after the awaited lookup;
+- at most `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` (1 000) accounts are held; past
+  that the oldest entry is dropped.
+
+So a block made in the Supabase dashboard applies within 60 seconds, at the
+account's next connect. A socket already open stays open until it
+reconnects; closing it at once arrives with the B2c Users panel.
+
+`/mcp` refuses every token that carries account claims with `403`
+(`account_tokens_not_accepted`): only the upgrade re-checks status, so a
+since-blocked account's token would otherwise work there until it expired.
+Registered accounts have no `/mcp` access until B2c adds its administrator
+gate; roster tokens keep today's access.
+
+### 7.6 Limits
+
+Every value is a named constant in `packages/server/src/config/limits.ts`;
+each endpoint has its own limiter instance.
+
+| What | Constant | Value |
+|---|---|---|
+| Account endpoint body (bytes received, `413` past it) | `ACCOUNT_MAX_BODY_BYTES` | 4 KiB |
+| `/register` per IP | `REGISTER_RATE_LIMIT_MAX` / `REGISTER_RATE_LIMIT_WINDOW_MS` | 5 per hour |
+| `/resend-code`, `/request-reset` per IP, each | `SEND_CODE_RATE_LIMIT_MAX` / `SEND_CODE_RATE_LIMIT_WINDOW_MS` | 5 per hour |
+| `/confirm-email`, `/reset-password` per IP, each | `CODE_ENTRY_RATE_LIMIT_MAX` / `CODE_ENTRY_RATE_LIMIT_WINDOW_MS` | 10 per 10 minutes |
+| `/confirm-email` + `/reset-password` per address, one shared budget | `CODE_ENTRY_PER_ADDRESS_MAX` / `CODE_ENTRY_PER_ADDRESS_WINDOW_MS` | 5 per 15 minutes |
+| Addresses the per-address limiter holds | `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 50 000 |
+| Registrations per day, whole service | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| One account-store call | `ACCOUNT_DIRECTORY_TIMEOUT_MS` | 5 s |
+| Upgrade status cache: lifetime, size | `ACCOUNT_STATUS_CACHE_TTL_MS` / `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` | 60 s, 1 000 |
+| Shortest `AUTH_SECRET` with accounts on | `AUTH_SECRET_MIN_LENGTH` | 32 characters |
+| `/health/accounts` store read | `ACCOUNTS_HEALTH_CACHE_MS` | once per 60 s |
+
+- **The per-address code limit** charges a code guess to the normalized
+  address as well as to the caller's IP, but only for a request that passes
+  local validation and reaches the store. Five tries per 15 minutes makes a
+  one-in-a-million code unguessable in its lifetime even from many IPs. The
+  cost, accepted: anyone who can send five well-formed code attempts for an
+  address makes that address wait out the window. A per-address refusal is
+  `429 rate_limited` but not a ban strike, since the caller may be the
+  owner.
+- **The daily cap** is counted in the store (`profiles.created_at`), so a
+  restart keeps it. It is exact within one server process — sign-ups still
+  in flight are counted too — and approximate across several machines, which
+  share only the stored count.
+- **`REGISTRATION_OPEN=false`** closes sign-up (`403 registration_closed`)
+  without a code change.
+- **Ban strikes** (B1's ban list): a per-IP rate-limit hit on an account
+  endpoint weighs 2 (`account-rate-limited`), a wrong code 1
+  (`code-failed`), a failed login 1, as before.
+
+### 7.7 Dev accounts
+
+`RTC_DEV_ACCOUNTS=1` — set by the root `dev:ws`, `dev:react:fs`,
+`dev:solid:fs` and `dev:ios:fs` scripts, and by the full-stack smoke's
+server — gives the server an in-memory directory with one account per
+status, all with the password `Mcdc2026!desk`:
+
+| Email | Access | Status |
+|---|---|---|
+| `admin@rtc.test` | admin | active |
+| `trader@rtc.test` | user | active |
+| `pending@rtc.test` | user | pending (signs in to `403 pending_approval`) |
+| `blocked@rtc.test` | user | blocked (signs in to `403 blocked`) |
+
+The confirmation and reset code is always `000000`; a reset needs a
+`/request-reset` first. New registrations live until the server restarts.
+The directory has no admin API, so a newly registered dev account stays
+pending — use the seeded ones to exercise each status. `.test` is a reserved
+top-level domain, so these addresses can never belong to anyone. Locally:
+
+```bash
+pnpm dev:ws
+curl -s localhost:4000/login -H 'Content-Type: application/json' \
+  -d '{"username":"trader@rtc.test","password":"Mcdc2026!desk"}'
+```
+
+### 7.8 Where the pieces live
+
+| Piece | File |
+|---|---|
+| Password rule; email and display-name rules | `packages/domain/src/auth/passwordPolicy.ts`, `accountInput.ts` |
+| Request / response DTOs and guards | `packages/shared/src/protocol/auth.ts` |
+| Account store port and status derivation | `packages/server/src/accounts/AccountDirectory.ts` |
+| Supabase adapter (plain `fetch`, no SDK) | `packages/server/src/accounts/SupabaseAccountDirectory.ts` |
+| In-memory and disabled directories; dev seeds | `packages/server/src/accounts/InMemoryAccountDirectory.ts`, `DisabledAccountDirectory.ts`, `devAccounts.ts` |
+| The policy: normalization, the daily cap, the per-address code limit, the login decision | `packages/server/src/accounts/AccountService.ts` |
+| Mode selection and the startup refusals | `packages/server/src/accounts/resolveAccountsMode.ts` |
+| Upgrade status cache | `packages/server/src/accounts/accountStatusCache.ts` |
+| Registered user's profile card | `packages/server/src/accounts/sessionUserFor.ts` |
+| Token claims; account sessions | `packages/server/src/auth/token.ts`, `AuthService.ts` |
+| The five account endpoints; their limiters | `packages/server/src/http/accountHandlers.ts`, `accountLimits.ts` |
+| `/login`'s `@` branch | `packages/server/src/http/loginHandler.ts` |
+| One route table for the six POSTs | `packages/server/src/http/postRouter.ts` |
+| Upgrade gate with the re-check | `packages/server/src/http/upgradeGate.ts` |
+| `/health/accounts` | `packages/server/src/http/accountsHealth.ts` |
+| Every limit | `packages/server/src/config/limits.ts` |
+| Schema, triggers, RLS | `supabase/migrations/20261004000000_create_profiles.sql` |
+| Email templates; project setup | `supabase/templates/`, [`supabase/README.md`](../supabase/README.md) |
+| Live probe of a real project | `packages/server/scripts/probe-accounts.ts` (`pnpm --filter @rtc/server accounts:probe`) |
+| Keep-alive | `.github/workflows/accounts-keepalive.yml` |
+| Full-stack journey | `tests/fullstack/accounts-journey.ts` |

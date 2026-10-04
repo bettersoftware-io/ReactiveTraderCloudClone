@@ -16,8 +16,10 @@ per-user login, not a shared password or token. The deployed web build is
 **hybrid** ([`docs/authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes)):
 credentials matching the committed demo roster are verified in the browser
 and run the in-browser simulators, and any other credentials are POSTed to the
-Fly server's `/login`, which validates them against its `AUTH_USERS` roster and
-returns a signed session token that gates the WebSocket upgrade.
+Fly server's `/login`, which validates them against its `AUTH_USERS` roster —
+or, for an email address, against its account store
+([§4](#4-supabase-account-store)) — and returns a signed session token that
+gates the WebSocket upgrade.
 
 ## One-time setup
 
@@ -58,6 +60,176 @@ Settings → Secrets and variables → Actions → New repository secret:
     VERCEL_ORG_ID            = <from `vercel link` / .vercel/project.json>
     VERCEL_REACT_PROJECT_ID  = <the rtc-clone-react project's id>
     VERCEL_SOLID_PROJECT_ID  = <the rtc-clone-solid project's id>
+
+### 4. Supabase (account store)
+
+Registered accounts (B2a, [`authentication.md` §7](authentication.md#7-registered-accounts-b2a))
+live in a Supabase project that only the Fly server talks to. The
+project-side reference is [`supabase/README.md`](../supabase/README.md); this
+is the rollout, in the order it must be done. Every step is **yours** — none
+happens on its own, and none is done by a deploy.
+
+**Until step 11 is done the deployed server runs in `disabled` mode:**
+registered logins answer `503 unavailable`, `/health/accounts` answers
+`disabled`, and everything else — demo accounts, roster logins — works as
+before. Merging B2a changes nothing on the deployed server until you
+redeploy it.
+
+**Unproven until step 9 passes.** The server's Supabase adapter is tested
+against replayed copies of the responses Supabase documents; it has never
+run against a real project. Until the probe prints `PASS`, its agreement
+with Supabase's real answers is unproven. If a check prints `✗`, stop: the
+adapter's mapping for that operation needs a fix (a follow-up PR against
+`packages/server/src/accounts/SupabaseAccountDirectory.ts`) before you go
+on.
+
+Two choices are still open and change no code: which **email sender and
+domain** to use (step 1), and whether to keep the free plan with the
+`accounts-keepalive.yml` workflow or pay for **Supabase Pro**, which removes
+pausing outright (step 14).
+
+1. **Email sender.** Choose an SMTP provider and a sending domain you
+   control, and add the provider's DNS records (SPF, DKIM) for it.
+   *Done:* the provider shows the domain verified, and you have its SMTP
+   host, port, user and password. **This is required, not optional.**
+   Supabase's built-in sender allows only a couple of emails an hour, and a
+   sign-up Supabase throttles still answers "code sent" — so with the
+   built-in sender a busy hour silently loses sign-ups, and nobody is told.
+2. **Create the project** in the Supabase dashboard, region London
+   (`eu-west-2`, next to Fly `lhr`), separate from any other project.
+   *Done:* the project is up; note its URL, `https://<ref>.supabase.co`.
+   Keep that URL private.
+3. **Apply the migration** `supabase/migrations/20261004000000_create_profiles.sql`
+   (paste it into the SQL editor and run it, or `supabase db push`).
+   *Done:* Table editor shows `public.profiles` with row-level security
+   enabled and no policies.
+4. **Auth providers** (Authentication → Sign In / Providers). Email: enabled,
+   *Confirm email* on, minimum password length 12, new sign-ups allowed.
+   **Phone** and **Anonymous**: disabled — `profiles.email` is `not null`, so
+   such a user would break the profile trigger. *Done:* only Email is
+   enabled.
+5. **SMTP and templates** (Authentication → Emails). Enter the step 1
+   sender under *SMTP settings*. Paste `supabase/templates/confirm-signup.html`
+   into *Confirm signup* and `supabase/templates/reset-password.html` into
+   *Reset password*; both print a 6-digit code (`{{ .Token }}`), not a link.
+   Then look at the email-sending rate under Authentication → Rate limits
+   and set it above the sign-ups you expect in an hour — a sign-up over it is
+   lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
+   saved.
+6. **IP forwarding** (Authentication → Rate limits): enable IP address
+   forwarding. The server sends each caller's IP as `Sb-Forwarded-For`, so
+   Supabase's per-IP limits apply to each visitor rather than to the
+   server's one address. *Done:* the setting is on.
+7. **Sessions.** Every sign-in through the server leaves a Supabase session
+   row that the server never revokes. If your plan offers a session time-box
+   (Authentication → Sessions), set one, so that table stays small;
+   otherwise it stays an open follow-up in [`STATUS.md`](STATUS.md).
+8. **Secret key** (Project Settings → API Keys): create a **secret** key
+   (`sb_secret_…`). It bypasses row-level security: it goes only into the
+   probe's shell and the Fly secret below, never into a client, a file or a
+   chat. Do not hand out the project's publishable key either: with the URL
+   it allows a direct `/auth/v1/signup` that skips the server's rules (such
+   an account still needs approval and cannot read `profiles`).
+9. **Run the probe** from an up-to-date checkout of `main` (after `pnpm
+   install`), with the secret typed at a prompt rather than on the command
+   line:
+
+       read -rs SUPABASE_SECRET_KEY && export SUPABASE_SECRET_KEY
+       SUPABASE_URL=https://<ref>.supabase.co PROBE_EMAIL_DOMAIN=<your domain or test inbox> \
+         pnpm --filter @rtc/server accounts:probe
+
+   `PROBE_EMAIL_DOMAIN` is a domain you control or a test inbox: the probe
+   sends **one real confirmation email** there, which is also your check
+   that steps 1 and 5 work (it shows a 6-digit code). It creates two
+   throwaway accounts, walks them through confirm, sign-in and reset, and
+   deletes them; it prints only account ids and outcomes. *Done:* the last
+   line is `accounts probe: PASS`, and both `cleanup` lines are `✓`. If it
+   was killed or a cleanup failed, delete the account whose id it printed
+   (Authentication → Users). The probe does not check steps 6 and 7.
+10. **Check the server's other secrets.** With accounts on, the server will
+    not start unless `AUTH_SECRET` is at least 32 characters (trimmed), and
+    no `AUTH_USERS` username may contain `@`. Fly does not show secret
+    values, so if you are not sure, rotate the secret now (this signs every
+    user out once):
+
+        fly secrets set --stage AUTH_SECRET="$(openssl rand -hex 32)" -a rtc-clone-server
+
+    and re-set `AUTH_USERS` without any `@` if you ever put one in.
+11. **Set the account secrets on Fly:**
+
+        fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY=sb_secret_… -a rtc-clone-server
+
+    Add `REGISTRATION_OPEN=false` to the same command to keep sign-up
+    closed while you check the result. `--stage` stores the secrets without
+    restarting the machine; the next deploy picks them up. Without it, Fly
+    restarts the machine at once on the image it is already running — and a
+    server that refuses to start (below) is an outage until it is fixed.
+12. **Deploy the server:** run `deploy.yml` with `deploy_server` ticked
+    (`gh workflow run deploy.yml -f deploy_server=true`). *Done:* the
+    workflow's `/health` smoke passes, and
+
+        curl -s https://rtc-clone-server.fly.dev/health/accounts
+
+    answers `{"ok":true,"directory":"up"}`. `disabled` means the secrets did
+    not reach the machine; `down` means the server cannot read the project
+    (a wrong key reads as `down`, not as an error). If the machine does not
+    come up, `fly logs -a rtc-clone-server` shows which refusal stopped it:
+
+    **The server will not start if:**
+    - `SUPABASE_URL` is set without `SUPABASE_SECRET_KEY`, or the reverse;
+    - `SUPABASE_URL` does not start with `https://`;
+    - an account mode is on and `AUTH_SECRET` is empty or shorter than 32
+      characters (trimmed);
+    - `REGISTRATION_OPEN` is anything but `true` or `false`;
+    - an `AUTH_USERS` username contains `@`, or `AUTH_USERS` is set with an
+      empty `AUTH_SECRET`;
+    - `RTC_DEV_ACCOUNTS=1` is set (Fly sets `FLY_APP_NAME` on every machine,
+      and the dev directory is refused there), or set together with
+      `SUPABASE_URL`.
+13. **Make yourself the administrator.** Register, confirm and sign in with
+    `curl` (B2b adds the screens; the password goes into your shell history
+    unless the line starts with a space):
+
+        SERVER=https://rtc-clone-server.fly.dev
+        curl -s $SERVER/register -H 'Content-Type: application/json' \
+          -d '{"email":"you@example.com","displayName":"Your Name"}'
+        # → {"status":"code_sent"}; the code arrives by email
+        curl -s $SERVER/confirm-email -H 'Content-Type: application/json' \
+          -d '{"email":"you@example.com","code":"123456","password":"<12+ chars, Aa1!>"}'
+        # → {"status":"pending_approval"}
+
+    (`/register` needs `REGISTRATION_OPEN` unset or `true`.) Then in the SQL
+    editor:
+
+        update public.profiles set role = 'admin', approved = true
+        where email = 'you@example.com';
+
+    *Done:* `curl -s $SERVER/login -H 'Content-Type: application/json' -d
+    '{"username":"you@example.com","password":"…"}'` answers `200` with a
+    token, and the deployed web client signs in with the email address typed
+    as the username.
+14. **Keep-alive or Pro.** `accounts-keepalive.yml` already runs Monday and
+    Thursday at 07:17 UTC: it reads `/health/accounts`, which is the activity
+    that keeps a free-plan project from pausing, and fails on `down` (GitHub
+    emails you) — passing quietly on `disabled`. Supabase does not guarantee
+    the read prevents pausing; Supabase Pro removes pausing outright. *Done:*
+    you have chosen; a manual run of the workflow (`gh workflow run
+    accounts-keepalive.yml`) is green.
+
+**Approving and blocking** (until the B2c Users panel): edit `approved` /
+`blocked` on the account's `profiles` row in the table editor. A change
+applies at the account's next sign-in, and to an open session within 60
+seconds, at its next connect — a socket already open stays open until it
+reconnects. **Deleting an account** (a privacy request,
+[`privacy.md`](privacy.md)): delete the user under Authentication → Users;
+its profile goes with it.
+
+**Closing sign-up without a code change:**
+`fly secrets set REGISTRATION_OPEN=false -a rtc-clone-server` (this restarts
+the machine with the new value; `/register` then answers `403
+registration_closed`). Reopen with `true`, or `fly secrets unset
+REGISTRATION_OPEN`. Any other value stops the server at startup, so a typo
+cannot leave sign-up silently open.
 
 ## Deploying
 
@@ -119,9 +291,12 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
   says which rule won. Full rules and the reload timeline:
   [`docs/authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes).
 - The server validates the token at the WebSocket handshake
-  (`authorizeUpgrade` → `AuthService.verifyToken`), rejecting a missing,
-  malformed, or expired token with 401. `/health` and `/login` stay open (HTTP
-  routes, not WS upgrades) for Fly's checks and for login itself.
+  (`decideUpgrade` → `AuthService.verifyToken`), rejecting a missing,
+  malformed, or expired token with 401. A registered account's token is then
+  re-checked against the account's current status (`403` unless active,
+  `503` when the account store does not answer). `/health`,
+  `/health/accounts`, `/login` and the five account endpoints stay open
+  (HTTP routes, not WS upgrades).
 - **Limits in production** (hardening B1, spec §2.2 / §9.2). Fly refuses new
   connections to the machine past `hard_limit = 250` (`fly.toml`,
   `[http_service.concurrency]`, unit `connections` because WebSockets are
@@ -131,7 +306,9 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
   on the upgrade), a 256 KiB frame cap (`1009`), a per-socket message budget
   (`1008` after 100 dropped frames), a 4 KiB `/login` body (`413`), 10 login
   attempts a minute, and an in-memory ban list — 10 weighted strikes in 10
-  minutes earn a 15-minute `429 banned`; a redeploy clears it. Every number
+  minutes earn a 15-minute `429 banned`; a redeploy clears it. The account
+  endpoints add their own per-IP and per-address limits and a daily sign-up
+  cap ([`authentication.md` §7.6](authentication.md#76-limits)). Every number
   lives in `packages/server/src/config/limits.ts`. All of it keys on
   `Fly-Client-IP`; set `RTC_TRUSTED_IP_HEADER=cf-connecting-ip` as a Fly
   secret once Cloudflare fronts the server. The container runs as the
@@ -163,7 +340,13 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
   change in step, since the client always authenticates fresh via `/login`.
 - **Session-signing secret:** `fly secrets set AUTH_SECRET=<new> -a rtc-clone-server`
   invalidates every outstanding session token immediately (users must log in
-  again) — useful if a token were ever compromised.
+  again) — useful if a token were ever compromised. With accounts enabled the
+  new value must be at least 32 characters, or the server will not start.
+- **Account store key:** create a new secret key in Supabase, `fly secrets set
+  SUPABASE_SECRET_KEY=<new> -a rtc-clone-server`, then delete the old key in
+  Supabase. A revoked or mistyped key makes every account call `503
+  unavailable` and `/health/accounts` read `down`; it never reads as a wrong
+  password.
 - This is a **demo app**, so the demo login password (`mcdc2026`) is committed
   for local dev (`.env.development` + the `dev:*` scripts) — throwaway and
   rotatable. The **`AUTH_SECRET`** token-signing key is the credential that
