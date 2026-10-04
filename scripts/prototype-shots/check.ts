@@ -7,10 +7,11 @@
 // beside its generator with nothing tying the two together, which let the
 // Maestro tier sit at 3 flows against 8 scenario ids unnoticed.
 //
-// Runs under tsx rather than as a sibling `check-*.mjs` under plain node,
-// because a .mjs gate would be a plain-node process importing a TypeScript
-// manifest — which works only on runtimes that strip types natively, a silent
-// dependency on the Node version rather than on anything this repo declares.
+// Runs under tsx rather than as a sibling `check-*.mts` under plain node: it
+// imports the manifest (`./shots`) without an extension, as the tsx-run capture
+// scripts beside it do, and plain node resolves only a spelled-out `./shots.ts`.
+// The root gate scripts are `.mts` run by node directly — the Node floor that
+// makes that work is declared in the root package.json `engines`.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

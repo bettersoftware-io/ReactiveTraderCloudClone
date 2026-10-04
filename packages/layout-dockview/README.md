@@ -150,7 +150,7 @@ Zero other `@rtc/*` dependencies. Unlike `@rtc/motion-core` (pure, no-DOM
 math) this package legitimately touches the DOM: `createDockEngine` mounts
 Dockview into a container element. Its only architectural constraint is that
 it imports no other `@rtc` package (`layout-dockview-stays-pure` in
-`.dependency-cruiser.cjs`) and that `dockview` is confined to this
+`.dependency-cruiser.mts`) and that `dockview` is confined to this
 package (`dockview-only-in-layout-dockview`) — the engine stays
 swappable by replacing one package (ADR-002).
 

@@ -13,7 +13,7 @@ deployment artifact — never edit it by hand.
 | `/coverage/**`          | `.github/workflows/coverage-report.yml` |
 
 Each producer writes only its own subtree via
-`scripts/pages/publish-to-pages.mjs`, which replaces its top-level entries and
+`scripts/pages/publish-to-pages.mts`, which replaces its top-level entries and
 preserves the others — so the two never clobber each other.
 
 ## Add a presentation

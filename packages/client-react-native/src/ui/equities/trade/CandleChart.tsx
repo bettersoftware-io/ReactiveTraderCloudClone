@@ -36,7 +36,7 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * written as a plain derived value, recomputed during the ordinary re-render
  * — and handed to one declarative `<Rect>` per body and per wick.
  * Compiler-memoized, ADR-003; verified via
- * `scripts/react-compiler-healthcheck.mjs`, whole-function form: the
+ * `scripts/react-compiler-healthcheck.mts`, whole-function form: the
  * compiler fuses `bars` and `keyedBars` into the same memo block as the JSX
  * they feed, keyed on `candles`/`styles`/`theme`/`width`, so no single
  * binding is worth tracking on its own — only that the fused block memoized

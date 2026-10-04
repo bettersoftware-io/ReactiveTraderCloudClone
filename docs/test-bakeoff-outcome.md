@@ -60,7 +60,7 @@ The initial retirement deleted all three non-winner peers. A later decision kept
 | | `cucumber-fake-timers` ✅ | `vitest-quickpickle-fake-timers` |
 |---|---|---|
 | Runner | **`@cucumber/cucumber`** — same as the parked browser peer | quickpickle (Gherkin-in-Vitest) |
-| Structure | `cucumber.js` + `hooks` + `world` + shared `steps/` — identical shape to `playwright-cucumber` | own `vitest.config` + self-contained `steps/` |
+| Structure | `cucumber.mts` + `hooks` + `world` + shared `steps/` — identical shape to `playwright-cucumber` | own `vitest.config` + self-contained `steps/` |
 | Feature corpus | **`specs/**/*.feature`** — the same files `playwright-cucumber` runs | (own step-binding of the corpus) |
 | Dependency to re-add | `@sinonjs/fake-timers` (`@cucumber/cucumber` already kept for the browser peer) | `quickpickle` |
 | Speed (CI) | **2.0s** (fastest of the four peers) | 4.0s |

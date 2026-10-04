@@ -149,7 +149,7 @@ magick out.png -colorspace Gray -format '%[fx:mean]\n' info:
 #   ~0.97-0.99 => blank   |   ~0.63-0.79 => drawing
 ```
 
-`scripts/check-worklet-order.mjs` (added with this document) reports
+`scripts/check-worklet-order.mts` (added with this document) reports
 worklet→worklet forward references. It reproduces the 5-broken / 3-clean split
 exactly, which is why it is worth keeping — but see §4.2 for its blind spots.
 
@@ -212,7 +212,7 @@ old header's "necessary but not sufficient" caveat was understating the problem:
 it was not measuring the right *kind* of thing. `layers` stayed blank through a
 complete function reorder for exactly this reason.
 
-**What now guards it.** `scripts/check-worklet-order.mjs` covers all three
+**What now guards it.** `scripts/check-worklet-order.mts` covers all three
 classes, resolves imports across the tree for class 3, strips comments (three
 phantom findings and one mis-attributed caller came from matching names inside
 JSDoc), and exits non-zero. It runs in CI's `checks` job and in

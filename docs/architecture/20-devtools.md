@@ -492,7 +492,7 @@ the packages built on it. The sanctioned pattern is therefore:
   not belong in the store.
 - **Time travel** (`LiveHistory`) is a build-once ref in `InspectorApp.tsx`
   — one of the three sanctioned `react-hooks/refs` exemptions in
-  `eslint.config.mjs`.
+  `eslint.config.mts`.
 
 Grep gates 38–40 hold the tier to the same dumb-UI bars as the clients (no
 timers, no storage, no self-made transport). A reactive `bind()`-style layer
@@ -573,7 +573,7 @@ source position, and this repo bans lint-disable comments). Instead
 scripts run synchronously in document order, ahead of any deferred module
 script, so no import order is involved at all. Opt back in with
 `?react-devtools` to debug the inspector's own React tree.
-`scripts/check-devtools-dist.mjs` asserts the built `/devtools/` page still
+`scripts/check-devtools-dist.mts` asserts the built `/devtools/` page still
 contains the guard, post-build. The extension panel is its own
 `chrome-extension://` page that the content script never reaches, and MV3's
 CSP forbids inline scripts there anyway, so it carries no guard.

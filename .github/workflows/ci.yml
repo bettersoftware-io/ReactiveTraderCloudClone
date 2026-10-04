@@ -218,7 +218,7 @@ jobs:
       # each web client once and asserts the eager set (both pages' entry
       # scripts + modulepreload hints) carries NO core's marker, while each
       # core's composition root sits in exactly one lazy chunk — see
-      # scripts/check-core-bundle.mjs and the runtime-core-switch design doc.
+      # scripts/check-core-bundle.mts and the runtime-core-switch design doc.
       - name: Core bundle isolation (every core only in its own lazy chunk)
         run: pnpm check:core-bundle
 

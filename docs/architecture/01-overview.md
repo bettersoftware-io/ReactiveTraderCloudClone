@@ -121,7 +121,7 @@ flowchart TB
   style FW fill:none,stroke:#e3b341
 ```
 
-**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with six of the rules in `.dependency-cruiser.cjs` that enforce it (about forty in all; full table in [dependency-cruiser.md](../dependency-cruiser.md)); ring colors match the onion exactly. To stay readable at column width, packages that sit in the same ring and share their edges are drawn as one box.
+**The rings aren't a convention you have to remember -- they're compiled.** Every green arrow below is an *allowed* import; every red crossing is a layer violation that fails CI. This is the same package graph as the onion, flattened and annotated with six of the rules in `.dependency-cruiser.mts` that enforce it (about forty in all; full table in [dependency-cruiser.md](../dependency-cruiser.md)); ring colors match the onion exactly. To stay readable at column width, packages that sit in the same ring and share their edges are drawn as one box.
 
 ```mermaid
 flowchart TB

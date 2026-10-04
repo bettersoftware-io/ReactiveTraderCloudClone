@@ -295,7 +295,7 @@ sequenceDiagram
 | File | Role |
 |---|---|
 | [`.github/workflows/update-visual-goldens.yml`](../../../../../.github/workflows/update-visual-goldens.yml) | Route 1 — dispatch, filter, auto-commit |
-| [`scripts/goldens-in-container.mjs`](../../../../../scripts/goldens-in-container.mjs) | Route 2 — regen / verify wrapper |
+| [`scripts/goldens-in-container.mts`](../../../../../scripts/goldens-in-container.mts) | Route 2 — regen / verify wrapper |
 | `packages/client-react/package.json` → `test:ui:visual:*` | Route 3 — native `:update` scripts |
 | `tests/ui/visual/playwright/*.config.ts` | baseline routing · `SCENARIO_PATTERN` filter |
 | [`packages/ui-contract/goldens/`](../../../../ui-contract/goldens/) | where the surviving `playwright` tier's `react/` + `react-local/<arch>/` sets actually live |
@@ -307,5 +307,5 @@ tolerance is `maxDiffPixelRatio: 0.005` + `maxDiffPixels: 100` (react and solid 
 (`playwright-ct` and `vitest-browser`'s assert role retired 2026-07-20 — see
 ADR-001). Keep the image tag identical across
 `ci.yml`, `visual.yml`, `update-visual-goldens.yml`, and
-`scripts/goldens-in-container.mjs` (the `check:image-tag-drift` gate enforces
+`scripts/goldens-in-container.mts` (the `check:image-tag-drift` gate enforces
 this).

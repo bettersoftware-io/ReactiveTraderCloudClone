@@ -1,5 +1,5 @@
 /**
- * Pure helpers behind `scripts/check-core-bundle.mjs` (§4 of
+ * Pure helpers behind `scripts/check-core-bundle.mts` (§4 of
  * docs/superpowers/specs/2026-09-27-runtime-core-switch-design.md): since
  * slice 8/the runtime core switch, a web client ships ONE production build
  * and loads whichever core the visitor resolved to as a lazy chunk fetched

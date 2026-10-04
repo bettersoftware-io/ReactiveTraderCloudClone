@@ -33,7 +33,7 @@ file. Both trees hold only **step definitions + a world/hooks harness**:
 ```
 tests/presenter/                  tests/browser/
   cucumber-fake-timers/             playwright-cucumber/
-    cucumber.js  world  hooks         cucumber.js  world  hooks
+    cucumber.mts  world  hooks         cucumber.mts  world  hooks
   steps/                            steps/
     *.steps.ts  (bind → presenters)   *.steps.ts  (bind → the DOM)
   scenarios/_shared/*.ts            scenarios/*.ts

@@ -81,7 +81,7 @@ function fixture(): string {
 
 const SCRIPT = resolve(
   __dirname,
-  "../../../scripts/pages/build-presentations-index.mjs",
+  "../../../scripts/pages/build-presentations-index.mts",
 );
 
 let tmp = "";

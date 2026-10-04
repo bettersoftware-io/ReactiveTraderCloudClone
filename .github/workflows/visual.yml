@@ -265,7 +265,7 @@ jobs:
           FAILED=""
           [ "$REACT_OUTCOME" = "failure" ] && FAILED="$FAILED client-react"
           [ "$SOLID_OUTCOME" = "failure" ] && FAILED="$FAILED client-solid"
-          node scripts/pages/build-visual-report.mjs \
+          node scripts/pages/build-visual-report.mts \
             --out _stage/visual \
             --react packages/client-react \
             --solid packages/client-solid \
@@ -277,7 +277,7 @@ jobs:
           # Mirror coverage-report.yml: clear the dubious-ownership guard before
           # publish-to-pages does its worktree add.
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          node scripts/pages/publish-to-pages.mjs --source _stage --message "publish visual report @ ${GITHUB_SHA}"
+          node scripts/pages/publish-to-pages.mts --source _stage --message "publish visual report @ ${GITHUB_SHA}"
 
       - name: Live report link
         run: |

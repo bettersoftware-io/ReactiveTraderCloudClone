@@ -51,7 +51,7 @@ module.exports = {
     "^@rtc/client-core/core$": "<rootDir>/../client-core/dist/core.js",
     "^@rtc/client-core$": "<rootDir>/../client-core/dist/index.js",
     // Types-only today (no runtime value, grep gate 42), but in the runtime
-    // dependency tree — scripts/check-package-wiring.mjs maps every such package
+    // dependency tree — scripts/check-package-wiring.mts maps every such package
     // rather than keeping an exception list.
     "^@rtc/core-api$": "<rootDir>/../core-api/dist/index.js",
     // client-core re-exports it (pluggable-core slice 8) — its first runtime
