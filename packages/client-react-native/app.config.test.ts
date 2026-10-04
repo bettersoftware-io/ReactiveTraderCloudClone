@@ -47,6 +47,27 @@ describe("app.config react compiler", () => {
   });
 });
 
+// The published demo build (EAS Update) is opened by Expo Go, away from any
+// Mac. Two settings make that work, and either one drifting fails silently:
+// the update simply never shows up on the phone.
+describe("app.config published demo build", () => {
+  it("publishes to the same Expo project the app is registered under", async () => {
+    const config = await loadConfig();
+    const projectId: unknown = config.extra?.eas?.projectId;
+
+    expect(projectId).toEqual(expect.any(String));
+    expect(config.updates?.url).toBe(`https://u.expo.dev/${String(projectId)}`);
+  });
+
+  // Expo Go only opens an update whose runtime is its own SDK. The earlier
+  // `appVersion` policy would publish `0.0.0`, which no Expo Go matches.
+  it("targets Expo Go's runtime, the SDK version", async () => {
+    const config = await loadConfig();
+
+    expect(config.runtimeVersion).toEqual({ policy: "sdkVersion" });
+  });
+});
+
 async function resolveServerUrl(): Promise<unknown> {
   vi.resetModules();
   const mod = await import("./app.config");

@@ -15,21 +15,16 @@ const config: ExpoConfig = {
   android: { package: "io.bettersoftware.rtcmobile" },
   // SDK 55 removed `newArchEnabled` from ExpoConfig — the New Architecture is
   // now the only architecture, so the field no longer exists in the type.
-  runtimeVersion: { policy: "appVersion" },
-  // Free-path distribution (this task): no EAS Update channel, so no
-  // `expo-updates` dependency. Explicit `enabled: false` (rather than
-  // omitting `updates`) is required for knip's Expo plugin, which otherwise
-  // unconditionally expects `expo-updates` to be installed
-  // (`config.updates?.enabled !== false` in its dependency inference).
-  updates: { enabled: false },
-  // `eas.projectId` is already set in the EXISTING `extra` object below (done —
-  // no future step needed there; do NOT add a second `extra` key, that would
-  // clobber `serverUrl`/`devAuth`).
-  // EAS Update / OTA (top-level `updates.url` + the `expo-updates` package) is
-  // intentionally OUT OF SCOPE under this workstream's free-path distribution
-  // policy; the `updates: { enabled: false }` above encodes that. If OTA is ever
-  // adopted, it must REPLACE `enabled: false` (e.g. `updates: { url: "..." }`) —
-  // never be merged alongside it.
+  // EAS Update: the app's JavaScript is published to Expo's servers, so Expo
+  // Go on a phone can open it with no Mac serving it (adopted 2026-10-04 —
+  // the earlier free-path policy had this switched off). Publishing costs
+  // nothing on the free plan. `sdkVersion` because the runtime is Expo Go's:
+  // an update is compatible with whichever Expo Go carries the same SDK.
+  runtimeVersion: { policy: "sdkVersion" },
+  // `eas.projectId` lives in the EXISTING `extra` object below; the URL here
+  // must name the same project. Do NOT add a second `extra` key — that would
+  // clobber `serverUrl`/`devAuth`.
+  updates: { url: "https://u.expo.dev/ec0ee21b-52af-4375-bb5d-70c6c52b8c1a" },
   // `router.root` (in the existing `extra`) pins Expo Router to the real
   // top-level `app/` directory.
   // Without it, Expo Router auto-detects `src/app` (it prefers that layout
