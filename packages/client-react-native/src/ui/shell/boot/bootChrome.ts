@@ -93,7 +93,7 @@ export const BOOT_SCENE_NAMES: Record<BootVariant, string> = {
 /** The prototype's `_bootLogs` (dc.html:1036), verbatim. */
 export const BOOT_LOG_LINES: readonly string[] = [
   "INIT KERNEL 2.0-RN",
-  "MOUNT @rtc/client-adapters",
+  "MOUNT @rtc/client-core",
   "WS HANDSHAKE wss://rtc-clone",
   "STREAM FX·CREDIT·EQ",
   "HYDRATE PRESENTERS",

@@ -486,7 +486,7 @@ seed-expiry side effect, so calling it any number of times — including from
 a UI that re-reads it on every keystroke of a "Save current as…" field —
 changes nothing about what a real save later persists.
 
-Everything else lives one layer up, in `@rtc/client-adapters`'s
+Everything else lives one layer up, in `@rtc/client-core-rxjs`'s
 `createLayoutPresets` controller, but two of its rules are worth recording
 here because they bear directly on this engine's blob and its rebuild path:
 

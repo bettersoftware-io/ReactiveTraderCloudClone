@@ -3,7 +3,7 @@
  * Framework compare — React (19 + React Compiler) vs Solid runtime cost on
  * identical scenarios, against PRODUCTION builds of both web clients.
  *
- * Both clients share `@rtc/client-adapters` (streams, presenters, machines) and
+ * Both clients share `@rtc/client-core-rxjs` (streams, presenters, machines) and
  * the same scenario roster, so any main-thread difference is the framework
  * layer: reconciliation, DOM writes, and the style/layout they trigger. Runs
  * default to power-saver FREEZE — the motion audit proves freeze is

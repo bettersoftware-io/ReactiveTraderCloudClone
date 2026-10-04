@@ -1,5 +1,5 @@
 // TDD — RED: written before SessionsKpiPresenter existed.
-//   pnpm --filter @rtc/client-adapters test -- SessionsKpiPresenter  → FAIL (module missing)
+//   pnpm --filter @rtc/client-core-rxjs test -- SessionsKpiPresenter  → FAIL (module missing)
 // GREEN: SessionsKpiPresenter created → all cases pass.
 
 import { firstValueFrom, NEVER, Subject } from "rxjs";

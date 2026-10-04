@@ -285,7 +285,7 @@ their own tool-permission surface.
 
 Chat state is an RxJS machine in `client-core-rxjs/src/presenters/` (per
 [ADR-005](../adr/ADR-005-ui-logic-placement.md): an autonomous async fold decoupled
-from the view). The `JarvisPort` lives in `client-adapters/adapters` — deliberately *not*
+from the view). The `JarvisPort` interface lives in `@rtc/core-api` (its adapters in `client-adapters`) — deliberately *not*
 in `domain/ports`, because chat is an application concern; keeping `@rtc/domain`
 untouched is the headline.
 

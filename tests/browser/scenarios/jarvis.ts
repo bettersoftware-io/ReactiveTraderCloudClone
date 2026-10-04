@@ -371,7 +371,7 @@ async function dockScriptedPanel(ctx: TestContext): Promise<void> {
 }
 
 /** The width a Jarvis-docked panel arrives at (DOCK_COLUMN_INITIAL_PX in
- * @rtc/client-adapters), the design pin the first sash drag releases. */
+ * @rtc/core-logic), the design pin the first sash drag releases. */
 const DOCKED_DESIGN_WIDTH_PX = 360;
 /** Leftwards, so the panel at the RIGHT edge grows. Well past the assertion
  * margin below at any viewport this suite runs. */

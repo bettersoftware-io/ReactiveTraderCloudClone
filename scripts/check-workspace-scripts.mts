@@ -56,7 +56,7 @@ const REQUIRED: readonly Requirement[] = [
 // UPSTREAM build rather than the package's own, so a package's `typecheck` and
 // `build` run CONCURRENTLY in the same directory. Aimed at one path they
 // corrupt each other, and the failure does not look like a race: CI run
-// 30204813551 reported ~40 `TS2305` errors — EVERY export of `@rtc/client-adapters`
+// 30204813551 reported ~40 `TS2305` errors — EVERY export of `@rtc/client-core` (as the package holding the adapters and the RxJS core was then named)
 // missing at once — then `Segmentation fault (core dumped)` (exit 139), and a
 // rerun of the identical SHA was green. That reads as infrastructure and is
 // not. Each such `typecheck` must therefore name its own `--tsBuildInfoFile`.

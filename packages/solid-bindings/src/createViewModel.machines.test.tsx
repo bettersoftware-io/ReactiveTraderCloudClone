@@ -5,7 +5,7 @@
 //   useMachine exactly as react-bindings does (see its createViewModel.ts:605-752).
 //
 // Smoke coverage only — the machines themselves are exhaustively unit-tested
-// in @rtc/client-adapters (presenters/__tests__/*Machine.test.ts); this proves the
+// in @rtc/client-core-rxjs (presenters/__tests__/*Machine.test.ts); this proves the
 // seam wiring (factory called once, state readable as an Accessor, intents
 // forward to the machine) mirroring how react-bindings'
 // __tests__/creditRfqHooks.test.tsx exercises useRfqSubmission/useCancelRfq

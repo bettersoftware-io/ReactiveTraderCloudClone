@@ -71,7 +71,7 @@ test.describe("full-stack: jarvis chat + confirm-gated execution over the real w
     await common.openWorkspace(ctx);
 
     // NOT a proof of the subscribe -> availability round-trip: JarvisMachine's
-    // INITIAL.available is `true` (see packages/client-adapters's JarvisMachine),
+    // INITIAL.available is `true` (see packages/client-core-rxjs's JarvisMachine),
     // so the orb renders on mount regardless of whether jarvis.subscribe /
     // jarvis.availability ever complete — this assertion only proves the orb
     // isn't hidden by an EARLY `available:false` landing before the click

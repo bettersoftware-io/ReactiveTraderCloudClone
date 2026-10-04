@@ -27,7 +27,7 @@ flowchart TB
     subgraph SharedFloors["Shared floors — one contract, three cores, every client"]
         rb["react-bindings<br/>createViewModel · useMachine"]:::bridge
         sb["solid-bindings<br/>Observable → signal"]:::bridge
-        core["application cores ×3<br/>client-core-rxjs (RxJS, default) · client-core-async · client-core-effect<br/>presenters · machines · WsAdapter · portFactory"]:::core
+        core["application cores ×3<br/>client-core-rxjs (RxJS, default) · client-core-async · client-core-effect<br/>presenters · machines<br/>over client-adapters: WsAdapter · portFactory"]:::core
         api["core-api (types) · core-logic (shared rules)"]:::core
         domain["domain<br/>entities · use cases · ports · simulators"]:::domain
         shared["shared<br/>DTOs · CLIENT_MSG / SERVER_MSG"]:::domain
@@ -182,7 +182,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **Ring** | ④ -- a test-only leaf, like `ui-contract`, not part of any bundle |
 | **Depends on** | `@rtc/core-api`, `@rtc/domain`, `rxjs` (`packages/core-contract/package.json` `dependencies`) |
 | **Consumed by** | All three cores, as a **devDependency** -- each runs it from one runner test file |
-| **Non-obvious** | Never imports `@rtc/client-adapters` (`core-contract-stays-neutral`) -- the reference implementation is judged by the contract, not the other way round, and importing it would create a build-order cycle. See [§22](22-pluggable-application-core.md#the-contract-tier). |
+| **Non-obvious** | Never imports a core, `@rtc/client-core-rxjs` included (`core-contract-stays-neutral`) -- the reference implementation is judged by the contract, not the other way round, and importing it would create a build-order cycle. See [§22](22-pluggable-application-core.md#the-contract-tier). |
 | **README** | [`packages/core-contract/README.md`](../../packages/core-contract/README.md) |
 
 #### `@rtc/react-bindings`

@@ -290,7 +290,9 @@ const config: IConfiguration = {
         path: "^packages/(react|solid)-bindings/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
       },
-      to: { path: "^packages/client-adapters(-rxjs|-async|-effect)?/" },
+      to: {
+        path: "^packages/(client-adapters|client-core-(rxjs|async|effect))/",
+      },
     },
     {
       name: "ui-takes-wire-types-only",

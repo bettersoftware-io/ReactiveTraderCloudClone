@@ -87,7 +87,7 @@ export interface NativeWorkspaceDeps {
 
 /** The workspace on this core's kernel: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
- * `@rtc/client-adapters`, wired to Store-backed layout machines and panels
+ * `@rtc/core-logic`, wired to Store-backed layout machines and panels
  * roster, with the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`,
  * the presets lists) and the persistence debounce built here. */
 export function createNativeWorkspace(

@@ -1,5 +1,5 @@
 /** The workspace's caps and cadences. The suites in `@rtc/core-contract`
- * assert them, and that package may not import `@rtc/client-adapters` — hence
+ * assert them, and that package may not import a core (`@rtc/client-core-rxjs`) — hence
  * here (pluggable-core slice 7, the `bootCadence` precedent). */
 
 /** Open `eq-chart:<symbol>` panel instances per tab. */

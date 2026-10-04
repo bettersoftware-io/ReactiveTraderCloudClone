@@ -3,7 +3,7 @@
 // fileURLToPath throws, so this golden test must run in the node environment.
 // @vitest-environment node
 //
-// nextSortDirection itself now lives in @rtc/client-adapters's blotter/ module
+// nextSortDirection itself now lives in @rtc/core-logic's blotter/ module
 // (relocated out of this package — it was already framework-free, importing
 // only @rtc/domain). This golden test stays here rather than moving with it:
 // the fixture-loading harness (loadGolden + the `.original.json` fixture

@@ -468,8 +468,8 @@ describe("JarvisDriver", () => {
 });
 
 /** No public export of `DriveBatchV1` reaches `@rtc/ui-contract` (it lives in
- * `@rtc/shared`, not a dependency of this package — only `@rtc/client-adapters`
- * is), so this borrows the type structurally off the already-exported
+ * `@rtc/shared`, which this package lists for three Jarvis wire types only),
+ * so this borrows the type structurally off the already-exported
  * `JarvisEvent`'s own `"command"` variant — the identical trick
  * `JarvisPanelLayer.contract.spec.ts` uses to borrow `PanelSpecV1` off
  * `UNSUPPORTED_SENTINEL_SPEC` — instead of widening any package's public

@@ -1,5 +1,5 @@
 /** Jarvis's copy, caps and cadences. The suites in `@rtc/core-contract`
- * assert them, and that package may not import `@rtc/client-adapters` — hence
+ * assert them, and that package may not import a core (`@rtc/client-core-rxjs`) — hence
  * here (pluggable-core slice 7 wave 2, the `workspaceLimits` precedent). */
 
 /** How long a confirmation card counts down before it declines itself. */

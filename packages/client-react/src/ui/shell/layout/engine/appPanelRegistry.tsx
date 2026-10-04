@@ -111,7 +111,7 @@ export function dockedRegistryFor(
 }
 
 /** The DYNAMIC `specs` slice for the currently docked panels — merged with
- * `PANEL_SPECS` (`@rtc/client-adapters`) the same way `dockedRegistryFor` merges
+ * `PANEL_SPECS` (`@rtc/core-logic`) the same way `dockedRegistryFor` merges
  * with `appPanelRegistry`. `InhouseLayoutEngine` reads `specs[panelId]` for
  * the head's title fallback, `maximizable`, and `maximizeScope`; a docked
  * desk panel accepts every default (full-dock maximize, maximizable) —

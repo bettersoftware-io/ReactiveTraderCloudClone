@@ -117,7 +117,7 @@ interface SharedProps {
   specs: Readonly<Record<PanelId, PanelSpec>>;
   headRegistry?: Partial<Record<PanelId, () => ReactElement>>;
   /** Path of the split the current maximize is bounded by (see
-   * maximizeBoundaryPath in @rtc/client-adapters), or null when nothing is
+   * maximizeBoundaryPath in @rtc/core-logic), or null when nothing is
    * maximized. Cells outside the boundary subtree keep their geometry —
    * including a scoped rail's initialPx design width. */
   boundaryPath: readonly number[] | null;

@@ -275,10 +275,11 @@ The `@rtc/client-core/core` subpath is gone, and with it the name that said
 "core" twice in two senses. What had to be true first:
 
 - **Each name is imported from the package that defines it.** `client-core`
-  re-exported 283 names of other packages from its root and 88 from `/core`
-  (contract types from `@rtc/core-api`, shared rules from `@rtc/core-logic`,
-  a few from `@rtc/shared` and `@rtc/domain`); `@rtc/core-logic` passed 13
-  contract types through. All are gone.
+  re-exported 283 names of other packages from its root and 88 from `/core`,
+  types included — 128 and 27 of them runtime names: contract types from
+  `@rtc/core-api`, shared rules from `@rtc/core-logic`, a few from
+  `@rtc/shared` and `@rtc/domain`. `@rtc/core-logic` passed 13 contract types
+  through. All are gone.
   `tests/scripts/lib/packageSurfaces.test.ts` asks the TypeScript checker,
   for every core's entry point, the adapters' and `core-logic`'s, where each
   export is declared, and none may be foreign.
@@ -1287,10 +1288,11 @@ with it. Machine state still reaches its subscribers through
 5. ~~Pair `connectionEvents` with `connectionIntents` structurally~~ — done:
    `@rtc/core-api`'s `TransportPorts` now omits both members together, so a
    port factory can no longer typecheck while supplying one without the
-   other. `@rtc/client-core`'s `pairConnectionPorts(events$)` is the only
-   producer of the pair in that package — instance-scoped per call, returned
-   as the matching `{ connectionEvents, connectionIntents }` fragment
-   (`packages/client-core/src/adapters/connectionIntents.ts`).
+   other. `pairConnectionPorts(events$)` is the only producer of the pair in
+   its package (`@rtc/client-core` then, `@rtc/client-adapters` since
+   2026-10-04) — instance-scoped per call, returned as the matching
+   `{ connectionEvents, connectionIntents }` fragment
+   (`packages/client-adapters/src/adapters/connectionIntents.ts`).
 6. ~~The RxJS core's `dispose()` is still a knowing no-op~~ — done
    2026-09-26: a `held` subscription bag, owned-machine disposal (Jarvis's
    cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`

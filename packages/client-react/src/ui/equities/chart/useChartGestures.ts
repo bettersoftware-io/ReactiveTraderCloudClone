@@ -91,7 +91,7 @@ interface EditDrag {
 }
 
 /** The drawing-tool gesture inputs — a slot object, so this hook stays
- * machine-agnostic (it never imports `@rtc/client-adapters`'s drawings machine,
+ * machine-agnostic (it never imports `@rtc/client-core-rxjs`'s drawings machine,
  * only its `EqDrawTool` union). Optional on the hook: every existing call
  * site that doesn't draw keeps compiling untouched. */
 export interface DrawGestureSlots {

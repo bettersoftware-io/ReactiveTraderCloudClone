@@ -3,7 +3,7 @@ import type { Observable } from "rxjs";
 import type { DevtoolsHub } from "../DevtoolsHub";
 
 /** Structural mirror of core-api's Machine<S,I> — devtools-core never
- * imports @rtc/client-adapters; matching by shape is the whole point. */
+ * imports @rtc/client-core-rxjs; matching by shape is the whole point. */
 export interface InstrumentableMachine {
   state$: Observable<unknown>;
   intents: object;
