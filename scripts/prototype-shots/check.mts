@@ -7,16 +7,13 @@
 // beside its generator with nothing tying the two together, which let the
 // Maestro tier sit at 3 flows against 8 scenario ids unnoticed.
 //
-// Runs under tsx rather than as a sibling `check-*.mts` under plain node: it
-// imports the manifest (`./shots`) without an extension, as the tsx-run capture
-// scripts beside it do, and plain node resolves only a spelled-out `./shots.ts`.
-// The root gate scripts are `.mts` run by node directly — the Node floor that
-// makes that work is declared in the root package.json `engines`.
+// Run by plain node, like every root gate script: the Node floor that strips
+// the types is declared in the root package.json `engines`.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { SHOTS, type Shot } from "./shots";
+import { SHOTS, type Shot } from "./shots.mts";
 
 const SHOTS_DIR = join(process.cwd(), "docs/design/mobile/v1/reference-shots");
 

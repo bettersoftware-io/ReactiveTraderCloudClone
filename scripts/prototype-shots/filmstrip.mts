@@ -16,8 +16,8 @@ import { dirname, join } from "node:path";
 
 import { type Browser, chromium } from "playwright";
 
-import { argOf, driveToShot } from "./capture";
-import { SHOTS, type Shot } from "./shots";
+import { argOf, driveToShot } from "./capture.mts";
+import { SHOTS, type Shot } from "./shots.mts";
 
 /** Height each frame is drawn at in the strip. The frames are 1206x2622
  * natively; four of those side by side is unreadable on a phone. */
@@ -108,7 +108,7 @@ export async function buildFilmstrips(outDir: string): Promise<void> {
   }
 }
 
-if (process.argv[1]?.endsWith("filmstrip.ts")) {
+if (process.argv[1]?.endsWith("filmstrip.mts")) {
   buildFilmstrips(
     argOf("--out") ?? "docs/design/mobile/v1/reference-shots",
   ).catch((err: unknown) => {

@@ -10,7 +10,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LEAN_DEPS_ENV } from "../scripts/lib/leanDeps";
+import { LEAN_DEPS_ENV } from "../scripts/lib/leanDeps.ts";
 
 export const MONOREPO_ROOT = join(
   fileURLToPath(import.meta.url),

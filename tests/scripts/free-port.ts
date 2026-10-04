@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 // Cross-platform "free the dev-server port" helper.
 //
 // macOS ships `lsof`; the linuxkit/Docker images we run CI in often ship only
@@ -6,10 +6,10 @@
 // and have it fail on the other platform, this script probes for whichever PID
 // finder is present, kills the listener(s), and reports clearly.
 //
-// Usage: tsx scripts/free-port.ts [port]   (defaults to the dev-server port)
+// Usage: node scripts/free-port.ts [port]   (defaults to the dev-server port)
 import { spawnSync } from "node:child_process";
 
-import { DEV_PORT } from "./devServer";
+import { DEV_PORT } from "./devServer.ts";
 
 const port = Number(process.argv[2] ?? DEV_PORT);
 

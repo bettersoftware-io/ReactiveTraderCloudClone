@@ -102,16 +102,6 @@ type FunctionValue =
 
 type ClassMember = TSESTree.PropertyDefinition | TSESTree.MethodDefinition;
 
-/** `TSParenthesizedType` is a node kind the current typescript-estree AST no
- * longer declares; isCallbackType still unwraps it, so its shape is spelled
- * here rather than the branch being dropped. */
-interface ParenthesizedTypeNode {
-  type: "TSParenthesizedType";
-  typeAnnotation: TSESTree.TypeNode;
-}
-
-type TypeNodeLike = TSESTree.TypeNode | ParenthesizedTypeNode;
-
 const TRIGGER_PREFIX = /^(on|handle)[A-Z]/;
 
 const VACUOUS_VERB =
@@ -140,23 +130,12 @@ function isFunctionValue(node: TSESTree.Node): node is FunctionValue {
   return FUNCTION_EXPRESSIONS.has(node.type);
 }
 
-function isParenthesizedType(
-  node: TypeNodeLike,
-): node is ParenthesizedTypeNode {
-  const kind: string = node.type;
-  return kind === "TSParenthesizedType";
-}
-
 /** True when `node` is a type node denoting a function — an inline function
  * type, a *Listener/*Callback/*Handler/*Fn type reference, or a union
  * containing either. */
-function isCallbackType(node: TypeNodeLike | null): boolean {
+function isCallbackType(node: TSESTree.TypeNode | null): boolean {
   if (!node) {
     return false;
-  }
-
-  if (isParenthesizedType(node)) {
-    return isCallbackType(node.typeAnnotation);
   }
 
   switch (node.type) {
@@ -187,7 +166,10 @@ function isAttachPoint(params: TSESTree.Parameter[]): boolean {
     return false;
   }
 
-  const sole = params[0];
+  // A constructor parameter property (`private cb: Cb`) wraps the parameter;
+  // its annotation lives on the wrapped one.
+  const sole =
+    params[0].type === "TSParameterProperty" ? params[0].parameter : params[0];
   const pattern = sole.type === "AssignmentPattern" ? sole.left : sole;
   const annotation =
     "typeAnnotation" in pattern ? pattern.typeAnnotation : undefined;

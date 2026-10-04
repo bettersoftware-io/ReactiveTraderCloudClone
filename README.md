@@ -374,6 +374,7 @@ contract, visual and e2e suites passing on React and Solid) and
 - [`docs/development.md`](docs/development.md) — running, testing and deploying, in full.
 - [`docs/architecture.md`](docs/architecture.md) — layers, ports, data flow, sequence diagrams.
 - [`docs/adr/`](docs/adr/) — architecture decision records.
+- [`CHANGELOG.md`](CHANGELOG.md) — what landed, week by week, with the decisions behind it.
 - [`docs/STATUS.md`](docs/STATUS.md) — the pending-work backlog; [`docs/IDEAS.md`](docs/IDEAS.md) is the icebox upstream of it.
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — how the Vercel + Fly.io demo is deployed.
 - [Project site](https://bettersoftware-io.github.io/ReactiveTraderCloudClone/) — presentations and the coverage report.

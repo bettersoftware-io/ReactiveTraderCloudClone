@@ -154,19 +154,16 @@ export default tseslint.config(
     // is checked by nothing. The selector matches the file's root node, so
     // every JavaScript file ESLint reaches is reported once, at line 1.
     //
-    // The exemptions are files a third-party loader reads and that loader
-    // takes no TypeScript: stylelint 17 (cosmiconfig: `No loader specified for
-    // extension ".mts"`, measured 2026-10-04), and the React Native
-    // toolchain's CommonJS configs (Babel, Metro, Jest 29 and its resolver).
+    // The two exemptions are files a third-party loader reads and that loader
+    // takes no TypeScript (both measured 2026-10-04): stylelint 17 (cosmiconfig:
+    // `No loader specified for extension ".mts"`), and Jest 29, which reads a
+    // `.ts` config only through `ts-node` and rejects any other extension.
     // Adding a file here needs the same kind of reason — a loader that cannot
-    // read `.mts` — never "it was quicker to write".
+    // read TypeScript — never "it was quicker to write".
     files: ["**/*.{js,mjs,cjs,jsx}"],
     ignores: [
       "stylelint.config.mjs",
-      "packages/client-react-native/babel.config.js",
-      "packages/client-react-native/metro.config.js",
       "packages/client-react-native/jest.config.js",
-      "packages/client-react-native/jest.resolver.js",
     ],
     languageOptions: {
       parserOptions: { ecmaFeatures: { jsx: true } },
@@ -177,13 +174,13 @@ export default tseslint.config(
         {
           selector: "Program",
           message:
-            "JavaScript files are banned — write TypeScript. Name a Node script, lint rule or tool config `.mts` (Node 26 runs it directly: `node scripts/x.mts`) and it is typechecked by `pnpm typecheck:tooling`. See the exemption list in eslint.config.mts if a tool's loader cannot read `.mts`.",
+            "JavaScript files are banned — write TypeScript. Name a Node script, lint rule or tool config `.mts` (Node 26 runs it directly: `node scripts/x.mts`; `.cts` for a CommonJS config) and make sure a tsconfig includes it. See the exemption list in eslint.config.mts if a tool's loader cannot read TypeScript.",
         },
       ],
     },
   },
   {
-    files: ["**/*.{ts,tsx,mts}"],
+    files: ["**/*.{ts,tsx,mts,cts}"],
     languageOptions: { parser: tseslint.parser },
     rules: {
       "func-style": ["error", "declaration", { allowArrowFunctions: false }],
@@ -348,7 +345,7 @@ export default tseslint.config(
     // `client-react` keeps tests outside `src/`, but `devtools-app` keeps them
     // in `src/__tests__/` — without this the glob catches them and contradicts
     // the deliberate non-goal stated in the comment above.
-    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -402,7 +399,7 @@ export default tseslint.config(
     // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
     // rather than being cached at the binding layer.
     files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
-    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -436,7 +433,7 @@ export default tseslint.config(
     // `fixtures` opt-in list that staged the burn-down is gone now that it
     // covered the whole repo. class/enum/vi.doMock/jest.doMock/vi.hoisted stay
     // put, and so does any fixture read during collection.
-    files: ["**/*.{spec,test}.{ts,tsx,mts}"],
+    files: ["**/*.{spec,test}.{ts,tsx,mts,cts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
   },
@@ -548,7 +545,7 @@ export default tseslint.config(
     // widest scope is free. The 120-char threshold was MEASURED against the
     // tree (every legitimate JSON literal is <= 41 chars; the blob this
     // prevents was 880) — read the rule header before moving it.
-    files: ["**/*.{ts,tsx,mts}"],
+    files: ["**/*.{ts,tsx,mts,cts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
   },
@@ -581,7 +578,7 @@ export default tseslint.config(
     // SPECS ONLY, not `tests/**`: page objects under `tests/**/pages/` follow
     // their own `xxxPage()` convention and hold internals like
     // `stubPopoutWindow` that are the page's mechanics, not fixtures.
-    files: ["**/*.{test,spec}.{ts,tsx,mts}"],
+    files: ["**/*.{test,spec}.{ts,tsx,mts,cts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-fixture-factories": "error" },
   },
@@ -594,7 +591,7 @@ export default tseslint.config(
     // rule was wrong, not the code. The 10-line threshold sits in a measured
     // EMPTY band (spans here are 4 at >= 15 lines, 18 at <= 6, none in 7-14).
     files: [
-      "**/*.{test,spec}.{ts,tsx,mts}",
+      "**/*.{test,spec}.{ts,tsx,mts,cts}",
       "**/tests/**/*.{ts,tsx}",
       "**/__tests__/**/*.{ts,tsx}",
     ],
@@ -609,9 +606,9 @@ export default tseslint.config(
     // which are never looked up by filename. Fires only when a top-level
     // class exists, so non-class modules are untouched. Sanctioned exceptions
     // use a per-line eslint-disable.
-    files: ["**/*.{ts,tsx,mts}"],
+    files: ["**/*.{ts,tsx,mts,cts}"],
     ignores: [
-      "**/*.{test,spec}.{ts,tsx,mts}",
+      "**/*.{test,spec}.{ts,tsx,mts,cts}",
       "**/tests/**",
       "**/__tests__/**",
       "**/setup/**",
@@ -647,7 +644,7 @@ export default tseslint.config(
     // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
     //
     // See docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md.
-    files: ["**/*.{ts,tsx,mts}"],
+    files: ["**/*.{ts,tsx,mts,cts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },
   },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adoptCoreImpl, resolveCoreImpl } from "./coreImpl";
+import { adoptCoreImpl, resolveCoreImpl } from "./coreImpl.ts";
 
 describe("resolveCoreImpl", () => {
   it("defaults to rxjs when neither variable is set", () => {

@@ -6,7 +6,7 @@ import {
   type FetchText,
   findDepUrls,
   findEntryModuleUrl,
-} from "./leanDeps";
+} from "./leanDeps.ts";
 
 describe("findEntryModuleUrl", () => {
   it("skips Vite's own module scripts and returns the app entry", () => {

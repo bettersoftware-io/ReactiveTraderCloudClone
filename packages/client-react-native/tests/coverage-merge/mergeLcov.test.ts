@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { mergeLineCoverage, percent } from "./mergeLcov";
+import { mergeLineCoverage, percent } from "./mergeLcov.mts";
 
 test("a line either runner hit is covered; the first report's lines are the denominator", () => {
   const merged = mergeLineCoverage(

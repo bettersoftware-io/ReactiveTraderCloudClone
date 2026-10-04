@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { argv, exit } from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { type FileCoverage, mergeLineCoverage, percent } from "./mergeLcov";
+import { type FileCoverage, mergeLineCoverage, percent } from "./mergeLcov.mts";
 
 /**
  * Prints this package's MERGED line coverage — the union of its two runners,

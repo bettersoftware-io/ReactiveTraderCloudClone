@@ -12,7 +12,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { APP_ONLY_IDS, SHOTS, type Shot } from "./shots";
+import { APP_ONLY_IDS, SHOTS, type Shot } from "./shots.mts";
 
 const SHOTS_DIR = "docs/design/mobile/v1/reference-shots";
 const APP_DIR =

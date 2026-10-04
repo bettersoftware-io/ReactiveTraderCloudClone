@@ -239,7 +239,7 @@ prerequisite landed — see "Vitest browser mode — implemented (Tier 3)" above
 | **Solid-reuse story** | **Alias-swap** — re-point `@ui-visual` in the CT Vite config to `solid/` and swap the CT adapter; one config change | **Verbatim reuse** — `visual.spec.ts` needs zero changes; only the Vite host's `main.tsx` is replaced | **Alias-swap + render shim** — re-point `@ui-visual` and swap `vitest-browser-react` for the framework's `render`; no lagging CT adapter to track |
 | **Framework lock-in** | CT adapter per framework (React adapter lags for Solid — see adapter-status table below) | None; depends only on a running Vite server | `vitest-browser-<framework>` render shim; Vite-native, no separate CT-adapter version to track |
 
-**Orchestration:** `tsx tests/ui/visual/run-all.ts` discovers all scripts matching
+**Orchestration:** `node tests/ui/visual/run-all.ts` discovers all scripts matching
 `test:ui:visual:<runner>:<framework>` (exactly 5 colon-separated parts) in
 `package.json` and runs them concurrently. `test:ui:visual` and `test:ui:visual:react`
 are alias scripts for the orchestrator. When a `:solid` framework set lands and
