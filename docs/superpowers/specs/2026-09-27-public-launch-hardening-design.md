@@ -245,8 +245,14 @@ Requirements as stated by the user:
 
 - A visitor can **register** and **choose a password**.
 - An account must be **validated** before it can sign in. The intended model
-  follows the approach used in the user's Graphlyn project. Its exact rules
-  are to be written into this section before B2 is planned.
+  follows the approach used in the user's Graflyn project.
+
+**Designed 2026-10-04:**
+[`2026-10-04-b2-user-management-design.md`](2026-10-04-b2-user-management-design.md).
+Validated means a confirmed email **and** an admin's approval (Graflyn's rule,
+§3 there); accounts live in Supabase, reached only by the Fly server; the
+admin approves in an in-app Users panel; three stages, B2a server, B2b client
+flows, B2c Users panel and roles.
 
 What this changes structurally:
 
@@ -309,9 +315,9 @@ if it is ever deployed on its own.
 |---|---|---|
 | D1 | ~~Which URL becomes the public demo?~~ | **Resolved 2026-09-29: one hybrid deployment on the current alias** (§8). No second site. |
 | D2 | ~~Ship the demo for React, Solid, or both?~~ | **Resolved: both** — the hybrid lives in each client's `buildBrowserPorts`, so both get it in the same change. |
-| D3 | B2: self-built accounts or a managed identity provider? | For a maintainer with no operations time, a **managed provider plus an approval allowlist** removes password storage, reset flows and most abuse handling. To be weighed against the Graphlyn approach. |
-| D4 | B2: what does "validated" mean? | Open. Email verification, manual approval, or both. |
-| D5 | B2/B3: where does durable state live? | Open. Depends on D3. |
+| D3 | ~~B2: self-built accounts or a managed identity provider?~~ | **Resolved 2026-10-04: Supabase Auth, as in Graflyn, reached only by the Fly server** (B2 design §2, §4). No password is stored by us and no Supabase SDK or key ships in a client. |
+| D4 | ~~B2: what does "validated" mean?~~ | **Resolved 2026-10-04: both** — a confirmed email and an admin's approval, enforced on the server (B2 design §5.4). |
+| D5 | ~~B2/B3: where does durable state live?~~ | **Resolved 2026-10-04: the same Supabase project's Postgres** (B2 design §5.1); B3's per-user metering reuses it. |
 | D6 | Does `/mcp` stay enabled on the real server? | Keep, behind B2 roles. |
 | D7 | Does the React Native app follow Track A or Track B? | Open. It defaults to the deployed endpoint today. The hybrid (§8) is web-only; `buildNativePorts.ts` is untouched. |
 | D8 | ~~Should a mode-change reload suppress the boot splash?~~ | **Resolved 2026-10-02: keep the replay.** It happens once per device, reads as "connecting to the live desk", and stands in for the login wait the reload cuts short. Revisit only if someone sees it and dislikes it. |
