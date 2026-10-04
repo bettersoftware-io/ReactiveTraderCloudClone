@@ -568,8 +568,7 @@ the one client it built.
 proves the entry bundle constructs no core. That the RxJS core's presenters
 and machines are lazy too rests on two more facts. First, `@rtc/client-core`'s
 root index — the only thing the UI imports statically — is the *edge*:
-adapters, port factories, stores, pure helpers, and the presenter barrel's
-types (`export type *`). It reaches no presenter module, which
+adapters, port factories and stores. It reaches no presenter module, which
 dependency-cruiser's `client-core-root-is-the-edge` checks on source, without
 a build. Second, the presenters are exported only from
 `@rtc/client-core/core`, beside the composition root: a UI file that imported

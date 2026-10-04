@@ -252,7 +252,7 @@ const config: IConfiguration = {
       name: "client-core-root-is-the-edge",
       severity: "error",
       comment:
-        "@rtc/client-core's root index is the EDGE the UI imports statically (adapters, port factories, stores, pure helpers); the RxJS core itself — composition root, presenters, machines — is reached only through the `@rtc/client-core/core` subpath, which a web client loads with a dynamic import(). A bundler keeps every module the entry reaches statically in the entry chunk, so one value edge from the root into presenters/ would put the core back in the eager bundle (ADR-006 Follow-up 9). Type-only edges are excluded (tsPreCompilationDeps:false). Spell a type-only import of a presenter module as `import type { X }`, not `import { type X }`: the inline form can survive transpilation as a value edge and trip this rule.",
+        "@rtc/client-core's root index is the EDGE the UI imports statically (adapters, port factories, stores); the RxJS core itself — composition root, presenters, machines — is reached only through the `@rtc/client-core/core` subpath, which a web client loads with a dynamic import(). A bundler keeps every module the entry reaches statically in the entry chunk, so one value edge from the root into presenters/ would put the core back in the eager bundle (ADR-006 Follow-up 9). Type-only edges are excluded (tsPreCompilationDeps:false). Spell a type-only import of a presenter module as `import type { X }`, not `import { type X }`: the inline form can survive transpilation as a value edge and trip this rule.",
       from: { path: "^packages/client-core/src/index\\.ts$" },
       to: {
         path: "^packages/client-core/src/(presenters/|composition\\.ts$|core\\.ts$)",

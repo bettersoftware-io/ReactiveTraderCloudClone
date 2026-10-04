@@ -102,7 +102,7 @@ pnpm test:e2e:async                             # e2e against that core (also te
   core sits in exactly one lazy chunk — and dependency-cruiser's
   `client-core-root-is-the-edge` keeps the root index from reaching a
   presenter module. `@rtc/client-core`'s root index is the *edge* the UI
-  imports statically (adapters, port factories, stores, pure helpers), and it
+  imports statically (adapters, port factories, stores), and it
   re-exports nothing: a contract type comes from `@rtc/core-api`, a shared
   rule from `@rtc/core-logic`;
   a test that needs a presenter class or a machine factory imports it from

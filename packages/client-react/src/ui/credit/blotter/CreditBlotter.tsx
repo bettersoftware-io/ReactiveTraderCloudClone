@@ -7,7 +7,7 @@ import {
   type ColumnFilter,
   nextSortDirection,
   type SortState,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { type CreditTrade, Direction } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
