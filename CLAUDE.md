@@ -185,6 +185,7 @@ and dozens of merges old.
 | `visual.yml` | push to main (post-merge, **not** a PR gate) | — |
 | `publish-site.yml` | push to main | — |
 | `e2e-gherkin-weekly.yml` | weekly cron (Mon 06:00) | up to 7 days of Gherkin drift |
+| `weekly-tag.yml` | weekly cron (Mon 00:05 UTC) | — (tags the finished ISO week `2026-Wnn` and opens a "write the changelog" issue; the entry itself is written by `/rtc:changelog`, so `CHANGELOG.md` lags until someone runs it) |
 
 **Before trusting the coverage report, refresh it and wait** (~7 min):
 

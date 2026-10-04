@@ -17,7 +17,12 @@ with two local adaptations:
 Every merged PR is cited. The newest week is first. This file says
 what **landed**; what is still **pending** lives in
 [`docs/STATUS.md`](docs/STATUS.md), and the reasoning behind a decision lives in
-the [ADRs](docs/adr/) and the linked specs. Add a week with `/rtc:changelog`.
+the [ADRs](docs/adr/) and the linked specs.
+
+Each finished week is also a **git tag** of the same name, on the last commit
+that reached `main` before Monday 00:00 UTC — so `git diff 2026-W39 2026-W40`
+is exactly the change the W40 section describes. The `Weekly tag` workflow
+creates the tag and opens a reminder issue; `/rtc:changelog` writes the entry.
 
 ## 2026-W40 — 28 Sep – 4 Oct
 

@@ -72,3 +72,12 @@ empty. Then run `pnpm check:doc-links`.
 
 Follow the `shipping-repo-changes` skill: worktree off `origin/main`, one PR
 titled `docs(changelog): 2026-Wnn`, merge commit once CI is green.
+
+The `Weekly tag` workflow opens an issue titled `Changelog: write 2026-Wnn`
+when it tags a finished week. If one is open for the week you wrote
+(`gh issue list --search "in:title Changelog: write"`), put `Closes #<n>` in
+the PR body.
+
+Do not create or move a week tag here: `weekly-tag.yml` owns them, and tags
+the last commit on `main` before Monday 00:00 UTC — which is by design
+*earlier* than the PR that writes the week up.
