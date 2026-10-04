@@ -27,7 +27,7 @@ describe("InMemoryAccountDirectory", () => {
       outcome: "invalid",
     });
     expect(
-      await directory.confirmEmail("ann@desk.io", "111111", PASSWORD, IP),
+      await directory.confirmEmail("ann@desk.io", "11111111", PASSWORD, IP),
     ).toBe("invalid_code");
     expect(await directory.checkPassword("ann@desk.io", PASSWORD, IP)).toEqual({
       outcome: "invalid",
@@ -135,7 +135,7 @@ describe("InMemoryAccountDirectory", () => {
     await directory.requestReset("trader@rtc.test", IP);
 
     expect(
-      await directory.resetPassword("trader@rtc.test", "111111", next, IP),
+      await directory.resetPassword("trader@rtc.test", "11111111", next, IP),
     ).toBe("invalid_code");
     expect(
       await directory.resetPassword(

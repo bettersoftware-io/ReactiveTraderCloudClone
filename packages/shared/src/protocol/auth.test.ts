@@ -40,12 +40,12 @@ describe("account request guards", () => {
     expect(
       isConfirmEmailRequestDto({
         email: "ann@desk.io",
-        code: "000000",
+        code: "00000000",
         password: "x",
       }),
     ).toBe(true);
     expect(
-      isConfirmEmailRequestDto({ email: "ann@desk.io", code: "000000" }),
+      isConfirmEmailRequestDto({ email: "ann@desk.io", code: "00000000" }),
     ).toBe(false);
     expect(isConfirmEmailRequestDto({ email: "ann@desk.io" })).toBe(false);
   });
@@ -54,12 +54,12 @@ describe("account request guards", () => {
     expect(
       isResetPasswordRequestDto({
         email: "ann@desk.io",
-        code: "000000",
+        code: "00000000",
         password: "x",
       }),
     ).toBe(true);
     expect(
-      isResetPasswordRequestDto({ email: "ann@desk.io", code: "000000" }),
+      isResetPasswordRequestDto({ email: "ann@desk.io", code: "00000000" }),
     ).toBe(false);
   });
 });
@@ -75,12 +75,12 @@ describe("account request guards reject non-objects and wrong types", () => {
     [
       "isConfirmEmailRequestDto",
       isConfirmEmailRequestDto,
-      { email: "a@b.io", code: "000000", password: "x" },
+      { email: "a@b.io", code: "00000000", password: "x" },
     ],
     [
       "isResetPasswordRequestDto",
       isResetPasswordRequestDto,
-      { email: "a@b.io", code: "000000", password: "x" },
+      { email: "a@b.io", code: "00000000", password: "x" },
     ],
   ];
 

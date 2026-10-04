@@ -232,7 +232,7 @@ describe("confirmEmailAddress", () => {
     await registerAccount(createRegisterBody(), IP, deps);
 
     const result = await confirmEmailAddress(
-      createConfirmBody({ code: "111111" }),
+      createConfirmBody({ code: "11111111" }),
       IP,
       deps,
     );

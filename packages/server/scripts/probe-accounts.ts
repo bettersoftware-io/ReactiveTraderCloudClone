@@ -45,6 +45,8 @@ const directory: AccountDirectory = createSupabaseAccountDirectory({
   timeoutMs: 10_000,
 });
 
+const CODE_SHAPE = /^\d{8}$/;
+
 let failures = 0;
 
 function check(label: string, pass: boolean, detail: string): void {
@@ -53,6 +55,19 @@ function check(label: string, pass: boolean, detail: string): void {
   }
 
   console.log(`  ${pass ? "✓" : "✗"} ${label} (${detail})`);
+}
+
+/** The server refuses any code that is not eight digits before it reaches
+ * Supabase, so a project still sending six would fail every confirmation.
+ * The probe calls the directory directly and would not notice otherwise. */
+function checkCodeLength(label: string, code: string): void {
+  check(
+    `${label} is eight digits`,
+    CODE_SHAPE.test(code),
+    CODE_SHAPE.test(code)
+      ? `${code.length} digits`
+      : "set Email OTP length to 8 in the project's Auth settings",
+  );
 }
 
 interface GeneratedLink {
@@ -134,6 +149,7 @@ console.log("accounts probe: starting");
 check("ping", await directory.ping(), "profiles table reachable");
 
 const signup: GeneratedLink = await generateCode("signup");
+checkCodeLength("the sign-up code", signup.email_otp);
 
 try {
   const before = await directory.checkPassword(email, firstPassword, PROBE_IP);
@@ -158,7 +174,7 @@ try {
 
   const wrong = await directory.confirmEmail(
     email,
-    "000000",
+    "00000000",
     secondPassword,
     PROBE_IP,
   );
@@ -227,6 +243,7 @@ try {
   // A recovery code proves the mailbox too, but only the sign-up code may
   // confirm: at /confirm-email it must not become a second reset path.
   const recovery = await generateCode("recovery");
+  checkCodeLength("the recovery code", recovery.email_otp);
   const crossed = await directory.confirmEmail(
     email,
     recovery.email_otp,

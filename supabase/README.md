@@ -18,7 +18,11 @@ of October 2026; Supabase moves them.
 2. Apply `migrations/` in filename order (SQL editor, or `supabase db push`).
 3. **Authentication → Emails:** paste `templates/confirm-signup.html` into
    *Confirm signup* and `templates/reset-password.html` into *Reset
-   password*. Both print a 6-digit code (`{{ .Token }}`), not a link.
+   password*. Both print the code (`{{ .Token }}`), not a link.
+   Under **Sign In / Providers → Email**, set *Email OTP length* to **8** and
+   leave its expiry at an hour or less: the server refuses any code that is
+   not eight digits before it reaches Supabase, so a project left at the
+   default 6 makes every confirmation and reset fail (the probe checks it).
 4. **Authentication → Sign In / Providers → Email:** *Confirm email* on;
    minimum password length 12. Phone and anonymous off (below).
 5. **Authentication → Emails → SMTP settings:** a custom sender is

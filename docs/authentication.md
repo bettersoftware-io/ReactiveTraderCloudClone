@@ -302,7 +302,7 @@ secret) if it ever matters.
 
 The **dev registered accounts** are committed too, for the same reason: the
 in-memory account directory's four seeded `@rtc.test` addresses, their
-password `Mcdc2026!desk` and its fixed confirmation code `000000`
+password `Mcdc2026!desk` and its fixed confirmation code `00000000`
 (`packages/server/src/accounts/devAccounts.ts` and
 `InMemoryAccountDirectory.ts`, [§7.7](#77-dev-accounts)). They can never work on
 a deployed server: the server refuses to start with the in-memory directory
@@ -424,7 +424,7 @@ won, mirroring `[core] booted …`.
 ## 7. Registered accounts (B2a)
 
 A visitor registers with an email address and a display name, proves the
-mailbox with a 6-digit emailed code — and sets a password in that same
+mailbox with an 8-digit emailed code — and sets a password in that same
 request — and then waits for an administrator to approve the account. Once
 approved, the account signs in through the same `POST /login` as the roster
 and gets the same kind of session token. The design, with its dated
@@ -488,7 +488,7 @@ sequenceDiagram
 
     V->>S: POST /register {email, displayName}
     S->>DB: sign up with a random password nobody knows
-    DB-->>V: email with a 6-digit code
+    DB-->>V: email with an 8-digit code
     S-->>V: 202 code_sent (same for a known address)
     V->>S: POST /confirm-email {email, code, password}
     S->>DB: verify the sign-up code, then set the password
@@ -537,7 +537,7 @@ the JSON and its shape. A success body is `{"status": …}`; a failure body is
 |---|---|---|---|
 | `/register` | `email`, `displayName` | `202 {status:"code_sent"}`, also for an address that already has an account | `400 invalid_request` with `rule` `email` or `display-name`; `403 registration_closed` (switch off, or the daily cap reached); `503 unavailable` |
 | `/resend-code` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `503` |
-| `/confirm-email` | `email`, `code`, `password` | `200 {status:"pending_approval"}`, or `200 {status:"password_unset"}` | `400 invalid_request` with the failed password rule (the code is not spent); `400 invalid_code` (wrong, expired, or not six digits; a ban strike); `429 rate_limited` (per-IP, or the address's code budget); `503` |
+| `/confirm-email` | `email`, `code`, `password` | `200 {status:"pending_approval"}`, or `200 {status:"password_unset"}` | `400 invalid_request` with the failed password rule (the code is not spent); `400 invalid_code` (wrong, expired, or not eight digits; a ban strike); `429 rate_limited` (per-IP, or the address's code budget); `503` |
 | `/login` | `username`, `password` | `200 {token, user, exp}` | `401 invalid_credentials` (a ban strike); `403 unconfirmed`, `403 pending_approval`, `403 blocked`; `503 unavailable` |
 | `/request-reset` | `email` | `202 code_sent` for any well-formed address | `400 invalid_request` (`rule: "email"`); `503` |
 | `/reset-password` | `email`, `code`, `password` | `200 {status:"password_changed"}` | `400 invalid_request` with the failed password rule, or `rule: "password"` when Supabase refuses one the rule allowed; `400 invalid_code` (a ban strike); `429 rate_limited`; `503` |
@@ -667,8 +667,11 @@ each endpoint has its own limiter instance.
 
 - **The per-address code limit** charges a code guess to the normalized
   address as well as to the caller's IP, but only for a request that passes
-  local validation and reaches the store. Five tries per 15 minutes makes a
-  one-in-a-million code unguessable in its lifetime even from many IPs. The
+  local validation and reaches the store. Five tries per 15 minutes is 480
+  a day per address; with 100,000,000 eight-digit codes that is about 5 in
+  a million per address per day. The limiter is in memory, so a restart or
+  a scale-to-zero resets it. (At six digits the same arithmetic gave about
+  0.05% a day per account, which is why the code is eight.) The
   cost, accepted: anyone who can send five well-formed code attempts for an
   address makes that address wait out the window. A per-address refusal is
   `429 rate_limited` but not a ban strike, since the caller may be the
@@ -697,7 +700,7 @@ status, all with the password `Mcdc2026!desk`:
 | `pending@rtc.test` | user | pending (signs in to `403 pending_approval`) |
 | `blocked@rtc.test` | user | blocked (signs in to `403 blocked`) |
 
-The confirmation and reset code is always `000000`; a reset needs a
+The confirmation and reset code is always `00000000`; a reset needs a
 `/request-reset` first. New registrations live until the server restarts.
 The directory has no admin API, so a newly registered dev account stays
 pending — use the seeded ones to exercise each status. `.test` is a reserved

@@ -65,14 +65,16 @@ export const SEND_CODE_RATE_LIMIT_MAX = 5;
 export const SEND_CODE_RATE_LIMIT_WINDOW_MS = 60 * 60_000;
 
 /** B2 — `/confirm-email` and `/reset-password` per IP, each. Bounds guessing
- * a 6-digit code; Supabase also expires and rate-limits codes. */
+ * an 8-digit code; Supabase also expires and rate-limits codes. */
 export const CODE_ENTRY_RATE_LIMIT_MAX = 10;
 export const CODE_ENTRY_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
 
 /** B2 — `/confirm-email` and `/reset-password` per normalized email address,
  * one budget shared by both, charged only for a request that reaches the
- * account store. 5 tries per 15 minutes makes a 1-in-a-million code
- * unguessable in its lifetime. The price: anyone who can send five
+ * account store. 5 tries per 15 minutes is 480 a day per address; against
+ * 100,000,000 eight-digit codes that is about 5 in a million per address per
+ * day. The limiter is in memory, so a restart or a scale-to-zero resets it.
+ * The price: anyone who can send five
  * well-formed code attempts for an address makes it wait out the window;
  * that is what bounding guessing from many IPs costs. */
 export const CODE_ENTRY_PER_ADDRESS_MAX = 5;

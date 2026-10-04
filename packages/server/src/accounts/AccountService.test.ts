@@ -247,7 +247,7 @@ describe("AccountService codes and resets", () => {
     await service.register(createRegistration(), IP);
 
     expect(
-      await service.confirmEmail(createConfirmation({ code: "111111" }), IP),
+      await service.confirmEmail(createConfirmation({ code: "11111111" }), IP),
     ).toEqual({ outcome: "invalid_code" });
     expect(
       await service.confirmEmail(
@@ -702,7 +702,7 @@ describe("AccountService per-address code limit", () => {
     });
     await service.register(createRegistration(), IP);
     const confirm = vi.spyOn(directory, "confirmEmail");
-    const wrong = createConfirmation({ code: "111111" });
+    const wrong = createConfirmation({ code: "11111111" });
 
     await service.confirmEmail(wrong, IP);
     await service.confirmEmail(wrong, IP);
@@ -719,15 +719,15 @@ describe("AccountService per-address code limit", () => {
     });
     const reset = vi.spyOn(directory, "resetPassword");
 
-    await service.confirmEmail(createConfirmation({ code: "111111" }), IP);
+    await service.confirmEmail(createConfirmation({ code: "11111111" }), IP);
     await service.resetPassword(
-      { email: "ann@desk.io", code: "111111", password: PASSWORD },
+      { email: "ann@desk.io", code: "11111111", password: PASSWORD },
       IP,
     );
 
     expect(
       await service.resetPassword(
-        { email: "ann@desk.io", code: "111111", password: PASSWORD },
+        { email: "ann@desk.io", code: "11111111", password: PASSWORD },
         IP,
       ),
     ).toEqual({ outcome: "throttled" });
@@ -740,13 +740,13 @@ describe("AccountService per-address code limit", () => {
     });
 
     await service.confirmEmail(
-      createConfirmation({ email: "trader@rtc.test", code: "111111" }),
+      createConfirmation({ email: "trader@rtc.test", code: "11111111" }),
       IP,
     );
 
     expect(
       await service.confirmEmail(
-        createConfirmation({ email: " Trader@RTC.test ", code: "111111" }),
+        createConfirmation({ email: " Trader@RTC.test ", code: "11111111" }),
         IP,
       ),
     ).toEqual({ outcome: "throttled" });
@@ -760,7 +760,7 @@ describe("AccountService per-address code limit", () => {
       },
       codeEntryLimiter: createRateLimiter(1, WINDOW_MS),
     });
-    const wrong = createConfirmation({ code: "111111" });
+    const wrong = createConfirmation({ code: "11111111" });
 
     await service.confirmEmail(wrong, IP);
     expect(await service.confirmEmail(wrong, IP)).toEqual({

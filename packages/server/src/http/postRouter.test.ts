@@ -212,7 +212,7 @@ describe("createPostRouter", () => {
 
     const response = await fetch(`${base}/register`, {
       method: "POST",
-      body: JSON.stringify({ email: "body@example.com", code: "123456" }),
+      body: JSON.stringify({ email: "body@example.com", code: "12345678" }),
       headers: { "X-Secret-Header": "header-value" },
     });
 

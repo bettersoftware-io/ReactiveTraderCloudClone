@@ -115,11 +115,15 @@ Supabase moves them.
 5. **SMTP and templates** (Authentication → Emails). Enter the step 1
    sender under *SMTP settings*. Paste `supabase/templates/confirm-signup.html`
    into *Confirm signup* and `supabase/templates/reset-password.html` into
-   *Reset password*; both print a 6-digit code (`{{ .Token }}`), not a link.
+   *Reset password*; both print the code (`{{ .Token }}`), not a link. Set
+   **Email OTP length to 8** (Authentication → Sign In / Providers → Email)
+   and leave its expiry at an hour or less. The server refuses a code of any
+   other length before it reaches Supabase, so a project left at the default
+   6 would make every confirmation and every reset fail.
    Then look at the email-sending rate under Authentication → Rate limits
    and set it above the sign-ups you expect in an hour — a sign-up over it is
    lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
-   saved.
+   saved, Email OTP length 8.
 6. **IP forwarding** (Authentication → Rate limits): enable IP address
    forwarding. The server sends each caller's IP as `Sb-Forwarded-For`, so
    Supabase's per-IP limits apply to each visitor rather than to the
@@ -144,7 +148,8 @@ Supabase moves them.
 
    `PROBE_EMAIL_DOMAIN` is a domain you control or a test inbox: the probe
    sends **one real confirmation email** there, which is also your check
-   that steps 1 and 5 work (it shows a 6-digit code). It creates two
+   that steps 1 and 5 work (it shows an 8-digit code; the probe also fails
+   if the codes it obtains are not eight digits). It creates two
    throwaway accounts: the first (`probe-<timestamp>@…`) is walked through
    confirm, sign-in and reset; the second (`probe-fresh-<timestamp>@…`) is a
    real sign-up, checked only for a password nobody knows. It deletes both
@@ -208,7 +213,7 @@ Supabase moves them.
           -d '{"email":"you@example.com","displayName":"Your Name"}'
         # → {"status":"code_sent"}; the code arrives by email
         curl -s $SERVER/confirm-email -H 'Content-Type: application/json' \
-          -d '{"email":"you@example.com","code":"123456","password":"<12+ chars, Aa1!>"}'
+          -d '{"email":"you@example.com","code":"12345678","password":"<12+ chars, Aa1!>"}'
         # → {"status":"pending_approval"}
 
     (`/register` needs `REGISTRATION_OPEN` unset or `true`.) Then in the SQL

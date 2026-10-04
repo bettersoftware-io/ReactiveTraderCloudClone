@@ -134,10 +134,14 @@ describe("display names", () => {
 });
 
 describe("isConfirmationCode", () => {
-  it("accepts exactly six digits", () => {
-    expect(isConfirmationCode("000000")).toBe(true);
-    expect(isConfirmationCode("12345")).toBe(false);
+  it("accepts exactly eight digits", () => {
+    expect(isConfirmationCode("00000000")).toBe(true);
     expect(isConfirmationCode("1234567")).toBe(false);
-    expect(isConfirmationCode("12345a")).toBe(false);
+    expect(isConfirmationCode("123456789")).toBe(false);
+    expect(isConfirmationCode("1234567a")).toBe(false);
+  });
+
+  it("refuses the six-digit code a misconfigured project would send", () => {
+    expect(isConfirmationCode("123456")).toBe(false);
   });
 });

@@ -119,13 +119,17 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
     expect(
       await createDirectory(fake).confirmEmail(
         "ann@desk.io",
-        "123456",
+        "12345678",
         "Owner2026!pass",
         IP,
       ),
     ).toBe("confirmed");
     expect(fake.requests[0]?.body).toBe(
-      JSON.stringify({ type: "signup", email: "ann@desk.io", token: "123456" }),
+      JSON.stringify({
+        type: "signup",
+        email: "ann@desk.io",
+        token: "12345678",
+      }),
     );
 
     const update = fake.requests[1];
@@ -146,7 +150,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
     expect(
       await createDirectory(fake).confirmEmail(
         "ann@desk.io",
-        "123456",
+        "12345678",
         "pw",
         IP,
       ),
@@ -240,7 +244,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
     expect(
       await createDirectory(fake).resetPassword(
         "ann@desk.io",
-        "123456",
+        "12345678",
         "Fresh2026!pass",
         IP,
       ),
@@ -249,7 +253,7 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
       JSON.stringify({
         type: "recovery",
         email: "ann@desk.io",
-        token: "123456",
+        token: "12345678",
       }),
     );
     expect(fake.requests[1]?.url).toBe("https://proj.supabase.co/auth/v1/user");
@@ -413,7 +417,7 @@ describe("SupabaseAccountDirectory — a rejected key is not a verdict", () => {
     expect(
       await createDirectory(fake).confirmEmail(
         "ann@desk.io",
-        "123456",
+        "12345678",
         "pw",
         IP,
       ),
@@ -428,7 +432,7 @@ describe("SupabaseAccountDirectory — a rejected key is not a verdict", () => {
     expect(
       await createDirectory(fake).confirmEmail(
         "ann@desk.io",
-        "123456",
+        "12345678",
         "pw",
         IP,
       ),

@@ -23,7 +23,7 @@ import {
 import { DEV_ACCOUNT_PASSWORD, type DevAccountSeed } from "./devAccounts.js";
 
 /** The code every dev confirmation and reset accepts. There is no mailbox. */
-export const DEV_CONFIRMATION_CODE = "000000";
+export const DEV_CONFIRMATION_CODE = "00000000";
 
 /** Derives a digest from a password and a salt (scrypt by default). */
 export type PasswordHash = (password: string, salt: Buffer) => Promise<Buffer>;

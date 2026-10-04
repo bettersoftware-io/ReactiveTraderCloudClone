@@ -3,7 +3,14 @@ const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 40;
 
 const EMAIL_SHAPE = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
-const CONFIRMATION_CODE_SHAPE = /^\d{6}$/;
+/** Eight digits: at five tries per fifteen minutes per address, a guesser
+ * gets about 5 in a million per address per day (six digits gave 0.05%).
+ * The account store must be configured to send codes of this length. */
+const CONFIRMATION_CODE_LENGTH = 8;
+const CONFIRMATION_CODE_SHAPE = new RegExp(
+  `^\\d{${CONFIRMATION_CODE_LENGTH}}$`,
+);
+
 /** Control, format (zero-width, bidi), surrogate, private-use, unassigned,
  * line and paragraph separators, and every code point Unicode marks as
  * invisible by default (fillers, variation selectors, joiners). */

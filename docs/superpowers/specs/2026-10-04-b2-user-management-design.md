@@ -78,11 +78,11 @@ Read from `bettersoftware-io/graflyn` on 2026-10-04 (`src/store/auth-store.ts`,
 |---|---|---|
 | Identity | Email + password in Supabase Auth | Same |
 | Password | ≥ 12 characters, with an uppercase letter, a lowercase letter, a digit and a special character; checked in the browser at sign-up | Same rule, plus a 72-**byte** ceiling (bcrypt reads at most 72 bytes); checked in the form **and enforced on the server**. *Amended 2026-10-04:* chosen with the emailed code, not at sign-up (§5.3) |
-| Email confirmation | A link back to `/auth/callback` | A **6-digit code** typed into the app (§5.3) |
+| Email confirmation | A link back to `/auth/callback` | An **8-digit code** typed into the app (§5.3). *Amended 2026-10-04:* eight digits, not six — at the per-address limit (§5.7) a six-digit code gave a guesser about 0.05% a day per account |
 | Approval | `profiles.approved` defaults to `false`; an admin sets it on `/admin` | Same, in the Users panel (§8) |
 | Block | `profiles.blocked`; admins cannot edit their own row | Same, and a block closes live sockets |
 | Roles | `user` / `admin`; the first admin is set by hand in the database | Same |
-| Reset | A reset link by email | A 6-digit code by email |
+| Reset | A reset link by email | An 8-digit code by email (*amended 2026-10-04:* was six digits, see above) |
 | Enforcement | **Browser only** — the API checks that a token is valid, not that the account is approved | **Server** — the gap is not copied |
 
 ## 4. Architecture
@@ -356,7 +356,7 @@ Every value is a named constant in `packages/server/src/config/limits.ts`.
 |---|---|---|
 | `/register` per IP | 5 per hour | A person registers once |
 | `/resend-code`, `/request-reset` per IP | 5 per hour each | Each sends an email |
-| `/confirm-email`, `/reset-password` per IP | 10 per 10 minutes each | Bounds guessing a 6-digit code; Supabase also expires and rate-limits codes |
+| `/confirm-email`, `/reset-password` per IP | 10 per 10 minutes each | Bounds guessing an 8-digit code (*amended 2026-10-04:* was six); Supabase also expires and rate-limits codes |
 | `/confirm-email` + `/reset-password` per address (*amended 2026-10-04*) | 5 per 15 minutes, one budget shared by both; at most 50 000 addresses held | Bounds guessing from many IPs; see below |
 | Registrations per day, whole service | 200 | A fuse against a scripted flood; counted in the database (`profiles.created_at`, *amended 2026-10-04*), so a restart does not reset it |
 | `REGISTRATION_OPEN` | env, default `true` | Set to `false` on Fly to close sign-up without a deploy; `/register` answers `403 registration_closed`. *Amended 2026-10-04:* any value but `true` or `false` stops the server at startup, so `0` or `FALSE` cannot leave sign-up silently open |
@@ -383,8 +383,13 @@ strike of weight 1 (`code-failed`).
 
 - **Per-address code entry.** A code guess is charged to the normalized
   address as well as to the caller's IP, and only for a request that passes
-  local validation and reaches the store. Five tries per 15 minutes makes a
-  one-in-a-million code unguessable in its lifetime even from many IPs. The
+  local validation and reaches the store. *Amended 2026-10-04 (approved
+  text: "makes a one-in-a-million code unguessable in its lifetime"):* five
+  tries per 15 minutes is 480 a day per address; with 100,000,000 eight-digit
+  codes that is about 5 in a million per address per day, and the limiter is
+  in memory, so a restart or a scale-to-zero resets it. The code is eight
+  digits for that reason: at six the same arithmetic gave about 0.05% a day
+  per account, against every known address in parallel. The
   price, accepted: anyone who can send five well-formed code attempts for an
   address makes that address wait out the window. A per-address refusal is
   `429 rate_limited` but not a ban strike — the caller may be the owner.
@@ -418,7 +423,7 @@ strike of weight 1 (`code-failed`).
 - *Amended 2026-10-04 (approved text: "`SUPABASE_URL` unset →
   `InMemoryAccountDirectory`").* `RTC_DEV_ACCOUNTS=1` → `InMemoryAccountDirectory`,
   **never** `SUPABASE_URL` being unset (that is `disabled`), and refused when
-  `FLY_APP_NAME` is set. Its confirmation code is the fixed `000000`, and it
+  `FLY_APP_NAME` is set. Its confirmation code is the fixed `00000000`, and it
   seeds one account per status, admin included, whose password is committed
   (dev-only, like `mcdc2026`). The `dev:ws` / `dev:*:fs` scripts and the
   full-stack smoke run on it (details below).
@@ -444,7 +449,7 @@ one is never a default:
 
 The in-memory directory is selected by `RTC_DEV_ACCOUNTS=1`, **never** by
 `SUPABASE_URL` being unset (that is `disabled`): it accepts the fixed code
-`000000` and seeds an admin whose password is committed, so a deployed
+`00000000` and seeds an admin whose password is committed, so a deployed
 server that fell back to it would hand out admin sessions. The root
 `dev:ws` and `dev:*:fs` scripts set it, and the full-stack node smoke runs
 the register → confirm → pending journey against it
