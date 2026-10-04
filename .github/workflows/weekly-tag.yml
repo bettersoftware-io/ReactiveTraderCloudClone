@@ -1,0 +1,89 @@
+name: Weekly tag
+
+# CHANGELOG.md versions the repo by ISO week (2026-W40 = Mon 28 Sep – Sun 4 Oct,
+# by merge time in UTC). This job closes each week mechanically:
+#   1. tags the last first-parent commit on main before Monday 00:00 UTC as
+#      `<year>-W<week>`, so `git diff 2026-W39 2026-W40` is exactly the PRs the
+#      changelog's W40 section describes;
+#   2. opens a reminder issue to write that week's entry with `/rtc:changelog`.
+# Writing the entry needs judgement (grouping, the Decisions section), so it is
+# NOT done here — only the two steps a script can get right.
+#
+# Idempotent: the tag is the "this week is closed" marker, so a run that finds
+# it does nothing. A manual dispatch (which targets the most recently FINISHED
+# week) is therefore always safe.
+on:
+  schedule:
+    - cron: "5 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  close-week:
+    name: tag the finished week + remind
+    runs-on: ubuntu-latest
+    permissions:
+      # Creates the annotated tag through the API.
+      contents: write
+      # Opens the reminder issue.
+      issues: write
+      # Counts the week's merged PRs for the reminder.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          # Full first-parent history is needed to find the week's last commit;
+          # blobs are not, and v5's LFS media even less.
+          fetch-depth: 0
+          filter: blob:none
+          # The tag goes through the API, not `git push`: keep the token out of
+          # .git/config (zizmor `artipacked`; see docs/adr/ADR-007).
+          persist-credentials: false
+
+      - name: Tag the finished week and open the changelog reminder
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # The most recent Monday 00:00 UTC is where the finished week ends.
+          today=$(date -u +%F)
+          week_end=$(date -u -d "$today -$(( $(date -u +%u) - 1 )) days" +%F)
+          week_start=$(date -u -d "$week_end -7 days" +%F)
+          week_last=$(date -u -d "$week_end -1 day" +%F)
+          tag=$(date -u -d "$week_last" +%G-W%V)
+          echo "Closing $tag ($week_start .. $week_last UTC)"
+
+          if gh api "repos/$REPO/git/ref/tags/$tag" --silent 2>/dev/null; then
+            echo "Tag $tag already exists - this week is already closed."
+            exit 0
+          fi
+
+          sha=$(git rev-list -1 --first-parent --before="${week_end}T00:00:00Z" HEAD)
+          message="$tag - main as of the end of $week_start .. $week_last (UTC). See CHANGELOG.md."
+          tag_object=$(gh api "repos/$REPO/git/tags" \
+            -f tag="$tag" -f message="$message" -f object="$sha" -f type=commit \
+            --jq .sha)
+          gh api "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$tag_object" --silent
+          echo "Tagged $sha as $tag"
+
+          merged=$(gh pr list --repo "$REPO" --state merged --limit 500 \
+            --search "merged:${week_start}..${week_last}" --json number --jq length)
+          if [ "$merged" -eq 0 ]; then
+            echo "No PRs merged in $tag - nothing to write up."
+            exit 0
+          fi
+
+          body=$(printf '%s\n' \
+            "**$merged PRs** merged in $tag ($week_start to $week_last, UTC) and the week is now tagged \`$tag\`." \
+            "" \
+            "Write its entry in \`CHANGELOG.md\` by running this in Claude Code:" \
+            "" \
+            "    /rtc:changelog $tag" \
+            "" \
+            "The command's PR closes this issue.")
+          gh issue create --repo "$REPO" --title "Changelog: write $tag" --body "$body"
