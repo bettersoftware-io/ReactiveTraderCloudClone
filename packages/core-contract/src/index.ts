@@ -52,6 +52,7 @@ export {
   type WorkflowCommand,
 } from "#/harness/scriptedPorts";
 export { settle } from "#/harness/settle";
+export { type CollectedTurns, collectTurns } from "#/harness/turns";
 export {
   CONTRACT_SUITES,
   type ContractMember,

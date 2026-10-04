@@ -11,6 +11,7 @@ import { collect } from "#/harness/collect";
 import { createTick } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
+import { collectTurns } from "#/harness/turns";
 
 function mids(window: readonly PriceTick[]): number[] {
   return window.map((tick) => {
@@ -55,6 +56,34 @@ export function describePriceHistoryContract(
         const last = c.values.at(-1);
         expect(last).toHaveLength(PRICE_HISTORY_SIZE);
         expect(mids(last ?? [])[0]).toBe(4);
+        expect(c.errors).toEqual([]);
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a burst the port delivers in one turn grows the window in one turn — every intermediate window, in order, but one UI render instead of one per tick", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collectTurns(
+          h.app.presenters.priceHistory.history$("EURUSD"),
+        );
+
+        for (const tickMid of [1, 2, 3, 4, 5]) {
+          h.driver.tickPrice(createTick("EURUSD", tickMid));
+        }
+
+        await settle();
+        expect(c.values.map(mids)).toEqual([
+          [1],
+          [1, 2],
+          [1, 2, 3],
+          [1, 2, 3, 4],
+          [1, 2, 3, 4, 5],
+        ]);
+        expect(c.turnCount()).toBe(1);
         expect(c.errors).toEqual([]);
         c.unsubscribe();
       } finally {

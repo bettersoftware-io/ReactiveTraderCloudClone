@@ -20,6 +20,7 @@ import {
 } from "#/harness/fixtures";
 import type { CoreHarness, MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
+import { collectTurns } from "#/harness/turns";
 
 /** `presenters.animationDirector` — the app's choreography intents, keyed by
  * target. Carried ruling R5: counted emissions settle in between. */
@@ -44,6 +45,29 @@ export function describeAnimationDirectorContract(
         }
 
         expect(kinds(c.values)).toEqual(["tickUp", "tickUp", "tickDown"]);
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a burst of prices delivered in one turn flashes its tile in one turn — every intent, in order, but one UI render instead of one per tick", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collectTurns(
+          h.app.presenters.animationDirector.intentsFor("tile:EURUSD"),
+        );
+        h.driver.emitPairs([EURUSD]);
+        await settle();
+
+        for (const mid of [1.1, 1.2, 1.2, 1.15]) {
+          h.driver.tickPrice(createTick("EURUSD", mid));
+        }
+
+        await settle();
+        expect(kinds(c.values)).toEqual(["tickUp", "tickUp", "tickDown"]);
+        expect(c.turnCount()).toBe(1);
         c.unsubscribe();
       } finally {
         await h.teardown();
