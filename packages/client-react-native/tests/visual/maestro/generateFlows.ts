@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { SCENARIO_IDS } from "../scenarioIds";
+import { SCENARIO_IDS } from "../scenarioIds.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 

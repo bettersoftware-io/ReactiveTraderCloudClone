@@ -2,10 +2,10 @@ import type {
   EquitiesDrawTool,
   EquitiesPaneKind,
   PlotFraction,
-} from "../page-objects/contracts/EquitiesChart";
-import type { PrefsChartSubstrate } from "../page-objects/contracts/Preferences";
-import type { TestContext } from "../testContext";
-import { assertEquals, assertTrue } from "./assert";
+} from "../page-objects/contracts/EquitiesChart.ts";
+import type { PrefsChartSubstrate } from "../page-objects/contracts/Preferences.ts";
+import type { TestContext } from "../testContext.ts";
+import { assertEquals, assertTrue } from "./assert.ts";
 
 export async function openEquitiesWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.openEquities();

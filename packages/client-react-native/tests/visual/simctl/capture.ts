@@ -6,8 +6,8 @@ import { pid } from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
-import type { VisualDriver } from "../driver";
-import type { SkinOverride } from "../skinOverride";
+import type { VisualDriver } from "../driver.ts";
+import type { SkinOverride } from "../skinOverride.ts";
 
 const exec = promisify(execFile);
 

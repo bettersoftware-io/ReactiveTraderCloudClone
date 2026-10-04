@@ -333,7 +333,7 @@ on in the table above and in [§3.2](#32-presenter-family).
 |---|---|---|
 | **Drives** | real server via raw `ws` | real server + real client UI via Playwright |
 | **Proves** | client adapters ↔ wire ↔ server ↔ domain | the same, *through the real DOM* |
-| **Cost** | tiny (bare `tsx` script, no framework) | boots server + Vite client + browser |
+| **Cost** | tiny (bare `node` script, no framework) | boots server + Vite client + browser |
 
 ### 5.4 Why keep them all (in *this* repo)
 

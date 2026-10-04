@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import type { ConnectionStatus } from "@rtc/domain";
 
-import * as conn from "../scenarios/_shared/connection";
+import * as conn from "../scenarios/_shared/connection.ts";
 import {
   buildWorld,
   teardownWorld,
   type VitestPlainPresenterWorld,
-} from "./_world";
+} from "./_world.ts";
 
 describe("@presenter Feature: Connection status", () => {
   beforeEach(() => {

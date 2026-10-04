@@ -1,7 +1,7 @@
 import { firstValueFrom, lastValueFrom, toArray } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildPresenterApp } from "../scenarios/_buildApp";
+import { buildPresenterApp } from "../scenarios/_buildApp.ts";
 
 afterEach(() => {
   return vi.useRealTimers();

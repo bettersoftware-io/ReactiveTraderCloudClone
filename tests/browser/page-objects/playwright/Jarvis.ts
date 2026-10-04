@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { JarvisPO } from "../contracts/Jarvis";
-import { TESTIDS } from "../contracts/testids";
+import type { JarvisPO } from "../contracts/Jarvis.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 /** The typed reveal paces out at SPEECH_CHUNK_INTERVAL_MS per chunk (see
  * @rtc/motion-core), so a multi-sentence reply can take a few real seconds
@@ -69,7 +69,11 @@ const DRIVE_ROW_TIMEOUT_MS = 15_000;
 const DEMO_STEP_TIMEOUT_MS = 20_000;
 
 export class PlaywrightJarvis implements JarvisPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private orb(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.orb);

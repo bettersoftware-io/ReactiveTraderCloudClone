@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import * as analytics from "../scenarios/_shared/analytics";
-import * as fx from "../scenarios/_shared/fxLiveRates";
+import * as analytics from "../scenarios/_shared/analytics.ts";
+import * as fx from "../scenarios/_shared/fxLiveRates.ts";
 import {
   buildWorld,
   teardownWorld,
   type VitestPlainPresenterWorld,
-} from "./_world";
+} from "./_world.ts";
 
 describe("@presenter Feature: Analytics panel", () => {
   beforeEach(() => {

@@ -1,5 +1,5 @@
-import type { LoginScreenPO } from "../page-objects/contracts/LoginScreen";
-import type { TestContext } from "../testContext";
+import type { LoginScreenPO } from "../page-objects/contracts/LoginScreen.ts";
+import type { TestContext } from "../testContext.ts";
 
 /** Narrow `ctx.po.login` (optional on the shared contract — Playwright-only)
  *  to a present PO, failing loudly under a driver that does not provide it. */

@@ -1,9 +1,9 @@
-import * as blotter from "../scenarios/blotter";
-import * as common from "../scenarios/common";
-import * as fxLiveRates from "../scenarios/fxLiveRates";
-import * as fxTrading from "../scenarios/fxTrading";
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as blotter from "../scenarios/blotter.ts";
+import * as common from "../scenarios/common.ts";
+import * as fxLiveRates from "../scenarios/fxLiveRates.ts";
+import * as fxTrading from "../scenarios/fxTrading.ts";
+import { test } from "./_context.ts";
+import { withFxWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("FX trade blotter", () => {
   withFxWorkspaceOpen();
