@@ -152,7 +152,7 @@ it anywhere, publish the app's JavaScript to Expo's servers (EAS Update);
 Expo Go then opens it from there.
 
 ```bash
-pnpm demo:publish:ios      # from the repo root; builds, then publishes to branch "demo"
+pnpm demo:ios:publish      # from the repo root; builds, then publishes to branch "demo"
 ```
 
 On the phone: open Expo Go and tap **rtc-mobile** under Projects. It opens the
@@ -250,9 +250,13 @@ CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 
 ### Running an EAS cloud build
 
+Script names follow `<purpose>:<platform>:<variant>`, as `dev:ios:sim` does:
+`dev:*` is a development app with live code, `preview:*` is a finished cloud
+build, `demo:*` is the build published for Expo Go. There is no `dev:android`
+yet — nobody has needed to develop against Android.
+
 ```bash
-cd packages/client-react-native
-pnpm dlx eas-cli@24.10.0 build -p android --profile preview
+pnpm preview:android:build      # from the repo root
 ```
 
 Run it in your own terminal: the first build asks whether to generate an
@@ -273,8 +277,8 @@ there. To run the result in an emulator, create a virtual device once in Android
 Studio's Device Manager (an arm64 system image on Apple silicon), then:
 
 ```bash
-pnpm demo:run:android                          # from the repo root
-RTC_ANDROID_AVD=Pixel_8 pnpm demo:run:android  # a named device, when there are several
+pnpm preview:android:run                          # from the repo root
+RTC_ANDROID_AVD=Pixel_8 pnpm preview:android:run  # a named device, when there are several
 ```
 
 It starts the emulator if none is running, waits for Android to finish

@@ -15,8 +15,8 @@ import {
  * Installs and opens the latest EAS cloud build in an Android emulator,
  * starting the emulator first if none is running:
  *
- *   pnpm demo:run:android                       # from the repo root
- *   RTC_ANDROID_AVD=Pixel_8 pnpm demo:run:android
+ *   pnpm preview:android:run                       # from the repo root
+ *   RTC_ANDROID_AVD=Pixel_8 pnpm preview:android:run
  *
  * It does not build anything. The build is whatever `eas build -p android
  * --profile preview` last produced; this downloads that APK (EAS caches it)
@@ -110,7 +110,7 @@ function readOutput(command: string, args: readonly string[]): string {
   });
 }
 
-/** Kept in step with `publish:demo` in package.json: one exact, known-good
+/** Kept in step with `demo:ios:publish` in package.json: one exact, known-good
  * eas-cli rather than whatever is newest on npm. */
 const EAS_CLI = "24.10.0";
 const BOOT_TIMEOUT_MS = 180_000;

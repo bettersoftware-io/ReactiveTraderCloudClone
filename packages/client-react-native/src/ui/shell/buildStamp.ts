@@ -1,6 +1,6 @@
 /** Which published build is running: the commit it was bundled from and when.
  *
- * `pnpm demo:publish:ios` sets two `EXPO_PUBLIC_BUILD_*` variables, the app
+ * `pnpm demo:ios:publish` sets two `EXPO_PUBLIC_BUILD_*` variables, the app
  * layer reads them (`src/app/readBuildStamp.ts` — the UI may not read the
  * environment) and hands the result down through `BuildStampContext`. A
  * published build therefore carries its own stamp and a development run
