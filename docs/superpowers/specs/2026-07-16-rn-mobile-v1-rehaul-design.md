@@ -76,7 +76,12 @@ existing, correct model — not a rebuild. The 6 skin keys, the mode toggle, the
   `client-core`; per-frame DOM/native-edge computation → pure fn in `motion-core` + thin
   shell. Boot math, FLIP, rank-glide, countdown are pure-fn.
 - **Reduced motion & ambient toggle:** honor the existing ambient toggle and a
-  reduced-motion setting everywhere (skip to static splash, disable aurora/loops).
+  reduced-motion setting everywhere (disable aurora/loops). **The boot splash is the
+  one exception (amended 2026-10-04):** it plays under OS Reduce Motion by default,
+  because `forceBootAnimation` defaults to `true` in `@rtc/domain` — the splash is
+  product identity, a posture shared with the web clients. It falls back to the
+  static splash when the user turns that preference off in Appearance, and always
+  under power-saver Freeze.
 - **Power-saver mode (three-state ladder, React + Solid today):** the web clients ship
   an ordered Off → Calm → Freeze power-saver ladder (`Freeze ⊇ Calm`; PR #218 for Calm,
   `docs/power-saver-mode.md`, design: `docs/superpowers/specs/2026-07-18-power-saver-freeze-tier-design.md`).
@@ -180,11 +185,13 @@ on a proven motion stack.
 - **Gyroscope parallax** via `expo-sensors` feeding the boot drift inputs (`mx`,`my`).
 - `geo`/`topo` precompute geometry once per boot and only re-project per frame.
 - **Exit gate:** ≥2 scenes rotate/skip/persist correctly on-device with no steady-state
-  jank; reduced-motion falls back to a static splash.
+  jank; the static splash stands in when boot motion is off (power-saver Freeze, or
+  OS Reduce Motion with `forceBootAnimation` turned off — see the amended rule above).
 
 ### Phase 7 — Cross-cutting polish & sign-off
 **Deliverable:** the finished, verified rehaul.
-- Reduced-motion audit (static splash, ambient off, no loops), haptics pass across
+- Reduced-motion audit (ambient off, no loops; static splash per the amended boot
+  rule above), haptics pass across
   ceremonies, Hermes perf profile (zero steady-state jank across modules).
 - Final on-device sign-off across all **6 themes × dark/light**.
 - Full visual-baseline **re-pin** + a Maestro flow per module.
