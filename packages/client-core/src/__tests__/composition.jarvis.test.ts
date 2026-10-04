@@ -6,19 +6,19 @@ import {
 } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
+import type { JarvisAvailability, JarvisPort } from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  DRIVE_STAGGER_MS,
   PreferencesSimulator,
 } from "@rtc/domain";
 import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { JarvisAvailability, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
 import { createApp, createMachineFactories } from "#/composition";
-import { DRIVE_STAGGER_MS } from "#/presenters/JarvisDriverMachine";
 
 describe("composition — jarvis wiring", () => {
   it("app.presenters.jarvis starts with the greeting entry and the default skin", async () => {

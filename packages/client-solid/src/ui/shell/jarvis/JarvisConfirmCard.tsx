@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 
-import type { JarvisConfirmation } from "@rtc/client-core";
+import type { JarvisConfirmation } from "@rtc/core-api";
 import { Direction } from "@rtc/domain";
 import { ringCircumference, ringDashOffset } from "@rtc/motion-core";
 

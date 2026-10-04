@@ -1,6 +1,6 @@
 import type { Accessor, JSX } from "solid-js";
 
-import type { JarvisPanelVm, PanelId } from "@rtc/client-core";
+import type { JarvisPanelVm, PanelId } from "@rtc/core-api";
 
 import { AdminHead } from "#/ui/admin/AdminHead";
 import { CreditBlotterHead } from "#/ui/credit/blotter/CreditBlotterHead";

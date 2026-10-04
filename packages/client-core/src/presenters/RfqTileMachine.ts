@@ -9,8 +9,12 @@ import {
   takeWhile,
 } from "rxjs/operators";
 
-import type { RfqQuote, RfqState, RfqTileIntents } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type {
+  Machine,
+  RfqQuote,
+  RfqState,
+  RfqTileIntents,
+} from "@rtc/core-api";
 import {
   type CurrencyPair,
   REJECTED_DISPLAY_MS,
@@ -18,11 +22,6 @@ import {
   RFQ_TIMEOUT_MS,
   type RfqQuoteResult,
 } from "@rtc/domain";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { RfqQuote, RfqState, RfqTileIntents };
 
 export interface RfqTileDeps {
   /** The request-quote command (RfqQuotePresenter.requestQuote), injected so

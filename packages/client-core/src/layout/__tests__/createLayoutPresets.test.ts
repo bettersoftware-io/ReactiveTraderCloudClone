@@ -2,16 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DockLayoutStore,
+  LayoutIntents,
   LayoutPresetStore,
   LayoutPresetSummary,
   LayoutPresetsPresenter,
-  Machine,
-} from "@rtc/core-api";
-import type {
   LayoutState,
-  StoredLayoutPreset,
+  Machine,
   WorkspaceTab,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
+import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
@@ -24,7 +23,6 @@ import {
 } from "@rtc/core-logic";
 
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
-import type { LayoutIntents } from "#/presenters/LayoutMachine";
 import { createLayoutMachine } from "#/presenters/LayoutMachine";
 
 describe("createLayoutPresets — presetsFor", () => {

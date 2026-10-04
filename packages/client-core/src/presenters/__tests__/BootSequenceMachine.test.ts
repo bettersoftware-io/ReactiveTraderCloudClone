@@ -1,12 +1,9 @@
 import { TestScheduler } from "rxjs/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  BOOT_DURATION_MS,
-  BOOT_VARIANTS,
-  type BootVariant,
-  createBootSequenceMachine,
-} from "../BootSequenceMachine";
+import { BOOT_DURATION_MS, BOOT_VARIANTS, type BootVariant } from "@rtc/domain";
+
+import { createBootSequenceMachine } from "../BootSequenceMachine";
 
 describe("createBootSequenceMachine", () => {
   beforeEach(() => {

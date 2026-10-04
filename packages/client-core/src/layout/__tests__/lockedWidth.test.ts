@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-logic";
+import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-api";
 
 import { lockedWidthPx } from "../lockedWidth";
 

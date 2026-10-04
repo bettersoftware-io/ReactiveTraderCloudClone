@@ -190,12 +190,12 @@ const config: IConfiguration = {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/domain/motion-core, never on a concrete client, a binding, or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core/core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(ui-contract|client-core|core-api|domain|motion-core)/",
+          "^packages/(ui-contract|client-core|core-api|core-logic|domain|motion-core)/",
       },
     },
     {
@@ -252,12 +252,33 @@ const config: IConfiguration = {
       name: "client-core-root-is-the-edge",
       severity: "error",
       comment:
-        "@rtc/client-core's root index is the EDGE the UI imports statically (adapters, port factories, stores, pure helpers); the RxJS core itself — composition root, presenters, machines — is reached only through the `@rtc/client-core/core` subpath, which a web client loads with a dynamic import(). A bundler keeps every module the entry reaches statically in the entry chunk, so one value edge from the root into presenters/ would put the core back in the eager bundle (ADR-006 Follow-up 9). Type-only edges are excluded (tsPreCompilationDeps:false), which is why the root may `export type *` from the presenter barrel. Spell a type-only import of a presenter module as `import type { X }`, not `import { type X }`: the inline form can survive transpilation as a value edge and trip this rule.",
+        "@rtc/client-core's root index is the EDGE the UI imports statically (adapters, port factories, stores, pure helpers); the RxJS core itself — composition root, presenters, machines — is reached only through the `@rtc/client-core/core` subpath, which a web client loads with a dynamic import(). A bundler keeps every module the entry reaches statically in the entry chunk, so one value edge from the root into presenters/ would put the core back in the eager bundle (ADR-006 Follow-up 9). Type-only edges are excluded (tsPreCompilationDeps:false). Spell a type-only import of a presenter module as `import type { X }`, not `import { type X }`: the inline form can survive transpilation as a value edge and trip this rule.",
       from: { path: "^packages/client-core/src/index\\.ts$" },
       to: {
         path: "^packages/client-core/src/(presenters/|composition\\.ts$|core\\.ts$)",
         reachable: true,
       },
+    },
+    {
+      name: "bindings-name-no-core",
+      severity: "error",
+      comment:
+        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core, so any core can sit behind it and `@rtc/client-core` is a binding's devDependency, not a dependency. Only a binding's tests compose a real core.",
+      from: {
+        path: "^packages/(react|solid)-bindings/src",
+        pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
+      },
+      to: { path: "^packages/client-core(-async|-effect)?/" },
+    },
+    {
+      name: "ui-takes-wire-types-only",
+      severity: "error",
+      comment:
+        "The UI side — the three clients, both bindings and the UI contract — may NAME a wire DTO type from @rtc/shared (the Jarvis event and usage types that @rtc/core-api's own interfaces carry), but never import a VALUE from it: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, out of the UI's bundle. Type-only edges are invisible to this graph (tsPreCompilationDeps:false), so every edge this rule sees is a value edge.",
+      from: {
+        path: "^packages/(client-react|client-solid|client-react-native|react-bindings|solid-bindings|ui-contract)/",
+      },
+      to: { path: "^packages/shared/" },
     },
     {
       name: "alt-cores-use-core-contract-only-in-tests",
@@ -364,7 +385,7 @@ const config: IConfiguration = {
       name: "react-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on client-core/domain (+ react), never on an app or the server.",
+        "@rtc/react-bindings is the React↔RxJS bridge — it may depend only on core-api/domain (+ react), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/react-bindings/src" },
       to: {
         path: "^packages/",
@@ -375,7 +396,7 @@ const config: IConfiguration = {
       name: "solid-bindings-no-apps",
       severity: "error",
       comment:
-        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on client-core/domain (+ solid-js/@rx-state/core/rxjs), never on an app or the server.",
+        "@rtc/solid-bindings is the Solid↔RxJS bridge (the Solid counterpart of react-bindings) — it may depend only on core-api/domain (+ solid-js/@rx-state/core/rxjs), and on client-core from its tests (bindings-name-no-core), never on an app or the server.",
       from: { path: "^packages/solid-bindings/src" },
       to: {
         path: "^packages/",

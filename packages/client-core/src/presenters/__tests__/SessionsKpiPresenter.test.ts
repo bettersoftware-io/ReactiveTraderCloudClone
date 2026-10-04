@@ -5,10 +5,14 @@
 import { firstValueFrom, NEVER, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { MetricSample, SessionInfo, SessionsPort } from "@rtc/domain";
+import {
+  type MetricSample,
+  type SessionInfo,
+  type SessionsPort,
+  METRIC_WINDOW as WINDOW,
+} from "@rtc/domain";
 
 import { SessionsKpiPresenter } from "../SessionsKpiPresenter";
-import { WINDOW } from "../windowedSamples";
 
 describe("SessionsKpiPresenter", () => {
   beforeEach(() => {

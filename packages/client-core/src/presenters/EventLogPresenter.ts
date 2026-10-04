@@ -3,17 +3,9 @@ import { scan, startWith } from "rxjs/operators";
 
 import type { EventLogPresenter as EventLogPresenterApi } from "@rtc/core-api";
 import { prependLogEvent } from "@rtc/core-logic";
-import {
-  MAX_LOG_ROWS as DOMAIN_MAX_LOG_ROWS,
-  type EventLogPort,
-  type LogEvent,
-} from "@rtc/domain";
+import type { EventLogPort, LogEvent } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
-
-/** Maximum number of log rows retained in the rolling window (newest-first).
- * Kept for existing importers: re-exports the domain constant. */
-export const MAX_LOG_ROWS: number = DOMAIN_MAX_LOG_ROWS;
 
 /** Implements `EventLogPresenter` (`@rtc/core-api`) — see the interface for
  * the contract. Accumulates `EventLogPort.events$()` via `scan`.

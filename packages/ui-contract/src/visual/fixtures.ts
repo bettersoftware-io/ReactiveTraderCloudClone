@@ -4,12 +4,11 @@ import type {
   JarvisConfirmation,
   JarvisEntry,
   JarvisState,
-  JarvisUsageSnapshot,
   NotionalView,
   OrderTicketState,
   RfqQuote,
-} from "@rtc/client-core";
-import { instanceIdFor } from "@rtc/client-core";
+} from "@rtc/core-api";
+import { instanceIdFor } from "@rtc/core-logic";
 import {
   ADAPTIVE_BANK_NAME,
   type Candle,
@@ -46,6 +45,7 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
+import type { JarvisUsageSnapshot } from "@rtc/shared";
 
 import { type AppData, makeAppData } from "./appData";
 

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import type { EqDrawTool } from "@rtc/client-core";
+import type { EqDrawTool } from "@rtc/core-api";
 import {
   type ChartViewport,
   clampViewport,

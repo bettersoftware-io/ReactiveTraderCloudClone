@@ -2,11 +2,14 @@ import { firstValueFrom, from } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type {
+  JarvisPort,
   LayoutPresetSummary,
   LayoutState,
+  Presenters,
   SaveLayoutPresetResult,
+  WorkspaceTab,
 } from "@rtc/core-api";
-import type { StoredLayoutPreset, WorkspaceTab } from "@rtc/core-logic";
+import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
@@ -19,13 +22,11 @@ import {
   ConnectionEventsSimulator,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import type { Presenters } from "#/composition";
 import { createApp } from "#/composition";
 
 describe("composition — resetWorkspaceLayout leaves saved layouts alone", () => {

@@ -1,6 +1,11 @@
 import { BehaviorSubject, EMPTY, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type {
+  AnimationIntent,
+  EquityFillSignal,
+  ExecutionOutcome,
+} from "@rtc/core-api";
 import {
   ConnectionStatus,
   type CurrencyPair,
@@ -11,9 +16,7 @@ import {
   RfqState,
 } from "@rtc/domain";
 
-import { AnimationDirector, type AnimationIntent } from "../AnimationDirector";
-import type { EquityFillSignal } from "../OrdersBlotterPresenter";
-import type { ExecutionOutcome } from "../TradeExecutionPresenter";
+import { AnimationDirector } from "../AnimationDirector";
 
 describe("AnimationDirector", () => {
   it("maps a rising price tick to a tickUp intent on the pair's target", () => {

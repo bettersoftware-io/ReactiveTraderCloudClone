@@ -2,6 +2,11 @@ import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type {
+  AuthViewState,
+  LoginWaitCycle,
+  StoredSession,
+} from "@rtc/core-api";
+import type {
   AuthOutcome,
   AuthPort,
   LoginWaitVariant,
@@ -10,13 +15,8 @@ import type {
 import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { StoredSession } from "#/adapters/sessionStore";
 
-import {
-  AuthPresenter,
-  type AuthViewState,
-  type LoginWaitCycle,
-} from "../AuthPresenter";
+import { AuthPresenter } from "../AuthPresenter";
 
 describe("AuthPresenter", () => {
   it("resumes a non-expired session as authenticated", () => {

@@ -1,4 +1,4 @@
-import type { LayoutPort, PanelId, PanelSpec } from "@rtc/client-core";
+import type { LayoutPort, PanelId, PanelSpec } from "@rtc/core-api";
 
 /** Synthetic pinned + fixedPx tree for the contract suite only.
  *

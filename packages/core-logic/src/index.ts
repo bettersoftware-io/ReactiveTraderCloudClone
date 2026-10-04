@@ -1,8 +1,6 @@
 export * from "#/adapters/authDeps";
-export * from "#/adapters/dockLayoutStore";
 export * from "#/adapters/InMemoryDockLayoutStore";
 export * from "#/adapters/InMemoryLayoutPresetStore";
-export * from "#/adapters/layoutPresetStore";
 export * from "#/layout/defaultLayoutPort";
 // The design-width constant is public because the Dockview bridges
 // (client-react, client-solid) need the SAME 360px pin a seeded rail's
@@ -15,7 +13,6 @@ export {
   dockedLeafIds,
   insertDockedLeaf,
 } from "#/layout/dockColumn";
-export * from "#/layout/layoutPort";
 export * from "#/layout/layoutPresetCodec";
 export * from "#/layout/layoutPresetsController";
 export * from "#/layout/layoutReducer";
@@ -41,7 +38,6 @@ export * from "#/presenters/jarvisDemoScript";
 export * from "#/presenters/jarvisDriveCommands";
 export * from "#/presenters/jarvisGuideCatalog";
 export * from "#/presenters/jarvisPanelsFolds";
-export * from "#/presenters/machine";
 export * from "#/presenters/narratorGate";
 export * from "#/presenters/notionalView";
 export * from "#/presenters/orderTicketFold";

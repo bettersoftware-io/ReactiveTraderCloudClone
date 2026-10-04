@@ -1,7 +1,7 @@
 import type { ComponentType, ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { LayoutPanelInstance, PanelId } from "@rtc/client-core";
+import type { LayoutPanelInstance, PanelId } from "@rtc/core-api";
 
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";

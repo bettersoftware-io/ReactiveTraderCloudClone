@@ -16,40 +16,9 @@ import {
 } from "rxjs";
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
 
-import type {
-  DockLayoutStore,
-  DriveOutcome,
-  JarvisDemoMachineHandle,
-  JarvisDriverMachineHandle,
-  JarvisMachineHandle,
-  JarvisPanelsMachineHandle,
-  JarvisPanelsState,
-  JarvisPanelVm,
-  LayoutIntents,
-  LayoutNode,
-  LayoutPresetStore,
-  LayoutPresetSummary,
-  LayoutPresetsPresenter,
-  LayoutState,
-  Machine,
-  PanelData,
-  PanelInstance,
-  RfqSubmissionState,
-  SaveLayoutPresetOptions,
-  TicketSubmissionState,
-  WorkspaceDock,
-  WorkspaceDockPanels,
-  WorkspaceNavIntents,
-  WorkspaceNavState,
-} from "@rtc/client-core";
 import {
-  createDefaultLayoutPort,
   createLayoutPresets,
-  createWorkspaceDock,
   createWorkspacePersistenceWriter,
-  InMemoryDockLayoutStore,
-  InMemoryLayoutPresetStore,
-  type WorkspaceTab,
 } from "@rtc/client-core";
 import {
   CandleSeriesPresenter,
@@ -69,7 +38,41 @@ import {
   createWorkspaceNavMachine,
   JarvisPanelsPresenter,
 } from "@rtc/client-core/core";
-import type { CoreImpl, RfqCountdownSeed } from "@rtc/core-api";
+import type {
+  CoreImpl,
+  DockLayoutStore,
+  DriveOutcome,
+  JarvisDemoMachineHandle,
+  JarvisDriverMachineHandle,
+  JarvisMachineHandle,
+  JarvisPanelsMachineHandle,
+  JarvisPanelsState,
+  JarvisPanelVm,
+  LayoutIntents,
+  LayoutNode,
+  LayoutPresetStore,
+  LayoutPresetSummary,
+  LayoutPresetsPresenter,
+  LayoutState,
+  Machine,
+  PanelData,
+  PanelInstance,
+  RfqCountdownSeed,
+  RfqSubmissionState,
+  SaveLayoutPresetOptions,
+  TicketSubmissionState,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
+  WorkspaceTab,
+} from "@rtc/core-api";
+import {
+  createDefaultLayoutPort,
+  createWorkspaceDock,
+  InMemoryDockLayoutStore,
+  InMemoryLayoutPresetStore,
+  type WorkspaceDock,
+  type WorkspaceDockPanels,
+} from "@rtc/core-logic";
 import type {
   AmbientStyle,
   Candle,

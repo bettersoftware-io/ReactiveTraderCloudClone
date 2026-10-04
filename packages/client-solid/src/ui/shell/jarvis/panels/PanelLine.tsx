@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, For, Show } from "solid-js";
 
-import type { PanelData } from "@rtc/client-core";
+import type { PanelData } from "@rtc/core-api";
 
 import styles from "./panels.module.css";
 

@@ -6,17 +6,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-  type Presenters,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import {
   createApp,
   createMachineFactories,
   SessionsKpiPresenter,
 } from "@rtc/client-core/core";
+import type { AppPorts, Presenters } from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,

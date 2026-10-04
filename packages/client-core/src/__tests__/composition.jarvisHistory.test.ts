@@ -27,10 +27,12 @@
 
 import { describe, expect, it } from "vitest";
 
+import type { JarvisEntry } from "@rtc/core-api";
 import { historyEntriesExcludingInFlightTurn } from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  JARVIS_GREETING,
   PreferencesSimulator,
 } from "@rtc/domain";
 import { CLIENT_MSG, type JarvisHistoryEntry, SERVER_MSG } from "@rtc/shared";
@@ -44,7 +46,6 @@ import {
   type PortFactoryDeps,
 } from "#/adapters/portFactory";
 import { createApp } from "#/composition";
-import { JARVIS_GREETING, type JarvisEntry } from "#/presenters/JarvisMachine";
 
 describe("composition — jarvis history-source wiring", () => {
   it("simulator mode composes without error (ScriptedJarvisAdapter has no setHistorySource)", () => {

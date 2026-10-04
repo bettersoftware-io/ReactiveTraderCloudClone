@@ -97,8 +97,8 @@ import type {
 } from "@ui-contract/harness/component";
 import type { ReactElement } from "react";
 
+import type { ColumnFilter, SortState } from "@rtc/client-core";
 import type {
-  ColumnFilter,
   EqChartType,
   EqDrawing,
   EqDrawTool,
@@ -108,9 +108,8 @@ import type {
   NotionalIntents,
   NotionalView,
   PanelId,
-  SortState,
   TileExecutionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import type {
   Candle,
   CandleTimeframe,

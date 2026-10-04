@@ -6,7 +6,7 @@ import {
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { TileExecutionState as TileState } from "@rtc/client-core";
+import type { TileExecutionState as TileState } from "@rtc/core-api";
 
 export interface TileConfirmationProps {
   state: TileState;

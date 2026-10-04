@@ -1,4 +1,4 @@
-import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-logic";
+import type { LayoutNode, PanelId, PanelSpec } from "@rtc/core-api";
 
 /** The width every panel under `node` is locked at (`PanelSpec.fixedWidthPx`),
  * or `undefined` when any panel under it is unlocked, unknown, or locked at

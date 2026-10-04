@@ -2,11 +2,12 @@ import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
+  JarvisPort,
   LayoutState,
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
+  Presenters,
   WorkspaceTab,
-} from "@rtc/core-logic";
+} from "@rtc/core-api";
+import type { PersistedTabLayout, WorkspaceLayoutV1 } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
@@ -20,13 +21,11 @@ import {
   ConnectionEventsSimulator,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createFakeConnectionPorts } from "#/adapters/connectionIntents.testHelpers";
 import { InMemorySessionStore } from "#/adapters/InMemorySessionStore";
-import type { JarvisEvent, JarvisPort } from "#/adapters/jarvisPort";
 import { createSimulatorPorts } from "#/adapters/portFactory";
-import type { Presenters } from "#/composition";
 import { createApp } from "#/composition";
 
 describe("composition — workspace-layout rehydration", () => {

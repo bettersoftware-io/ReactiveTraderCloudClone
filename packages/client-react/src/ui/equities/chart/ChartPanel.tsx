@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { EqDrawing } from "@rtc/client-core";
+import type { EqDrawing } from "@rtc/core-api";
 import { CANDLE_DEFAULT_VISIBLE } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 

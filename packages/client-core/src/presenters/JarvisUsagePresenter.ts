@@ -1,9 +1,10 @@
 import { defer, type Observable, startWith } from "rxjs";
 
-import type { JarvisUsagePresenter as JarvisUsagePresenterApi } from "@rtc/core-api";
+import type {
+  JarvisUsagePort,
+  JarvisUsagePresenter as JarvisUsagePresenterApi,
+} from "@rtc/core-api";
 import type { AdminJarvisUsagePayload } from "@rtc/shared";
-
-import type { JarvisUsagePort } from "#/adapters/jarvisUsagePort";
 
 import { warmReplay } from "./warmReplay.js";
 

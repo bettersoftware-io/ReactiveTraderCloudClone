@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 
-import type { JarvisUsageSnapshot } from "@rtc/client-core";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelContext } from "@rtc/react-bindings";
+import type { JarvisUsageSnapshot } from "@rtc/shared";
 
 import { JarvisUsageCard } from "#/ui/admin/jarvis/JarvisUsageCard";
 

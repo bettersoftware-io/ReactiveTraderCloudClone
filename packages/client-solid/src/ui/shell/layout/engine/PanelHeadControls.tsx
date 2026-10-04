@@ -1,6 +1,6 @@
 import { type JSX, Show } from "solid-js";
 
-import type { PanelId } from "@rtc/client-core";
+import type { PanelId } from "@rtc/core-api";
 
 import styles from "./PanelHead.module.css";
 

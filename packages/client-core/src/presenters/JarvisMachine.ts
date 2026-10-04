@@ -20,12 +20,10 @@ import {
 } from "rxjs/operators";
 
 import type {
-  JarvisConfirmation,
-  JarvisEntry,
-  JarvisIntents,
+  DriveOutcome,
+  JarvisAvailability,
   JarvisMachineHandle,
   JarvisPort,
-  JarvisRole,
   JarvisState,
 } from "@rtc/core-api";
 import {
@@ -44,36 +42,11 @@ import {
 } from "@rtc/core-logic";
 import {
   JARVIS_CONFIRM_TIMEOUT_MS,
-  JARVIS_GREETING,
-  JARVIS_NARRATION_PREFIX,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
-
-import type { JarvisAvailability, JarvisEvent } from "#/adapters/jarvisPort";
-
-import type { DriveOutcome } from "./JarvisDriverMachine";
-
-/** Moved to `./jarvisController` (pluggable-core slice 7 wave 2) —
- * re-exported so existing imports keep working. */
-export {
-  formatBrainHint,
-  formatGateHint,
-  formatGateResetTime,
-} from "@rtc/core-logic";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  JarvisConfirmation,
-  JarvisEntry,
-  JarvisIntents,
-  JarvisMachineHandle,
-  JarvisRole,
-  JarvisState,
-};
+import type { JarvisEvent } from "@rtc/shared";
 
 export interface JarvisDeps {
   port: JarvisPort;
@@ -96,10 +69,6 @@ export interface JarvisDeps {
   /** Injectable for tests; defaults to JARVIS_CONFIRM_TIMEOUT_MS. */
   confirmTimeoutMs?: number;
 }
-
-/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
- * contract suites can read them (pluggable-core slice 7 wave 2). */
-export { JARVIS_CONFIRM_TIMEOUT_MS, JARVIS_GREETING, JARVIS_NARRATION_PREFIX };
 
 // A named tag (rather than an inline `{ type: "confirmRequest" }` literal)
 // so `Extract<JarvisEvent, ...>` never takes an inline object type argument —

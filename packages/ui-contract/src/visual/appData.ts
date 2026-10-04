@@ -7,7 +7,6 @@ import type {
   EqWorkspaceState,
   IncidentKind,
   JarvisState,
-  JarvisUsageSnapshot,
   LayoutPanelInstance,
   LayoutPresetSummary,
   NotionalView,
@@ -20,7 +19,7 @@ import type {
   ThroughputView,
   TicketSubmissionState,
   TileExecutionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   type AmbientStyle,
   type Candle,
@@ -54,6 +53,7 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
+import type { JarvisUsageSnapshot } from "@rtc/shared";
 
 export interface AppData {
   prices: Record<string, Price | null>;

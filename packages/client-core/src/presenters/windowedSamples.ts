@@ -2,13 +2,9 @@ import type { Observable } from "rxjs";
 import { scan, startWith } from "rxjs/operators";
 
 import { appendMetricSample } from "@rtc/core-logic";
-import { METRIC_WINDOW, type MetricSample } from "@rtc/domain";
+import type { MetricSample } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
-
-/** Rolling window size — number of MetricSamples retained per chart series.
- * Kept for existing importers: re-exports the domain constant. */
-export const WINDOW: number = METRIC_WINDOW;
 
 export function windowedSamples(
   source$: Observable<MetricSample>,

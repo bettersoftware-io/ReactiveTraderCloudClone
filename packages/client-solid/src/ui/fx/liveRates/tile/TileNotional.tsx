@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, Show } from "solid-js";
 
-import type { NotionalIntents, NotionalView } from "@rtc/client-core";
+import type { NotionalIntents, NotionalView } from "@rtc/core-api";
 
 import styles from "./TileNotional.module.css";
 

@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { Show } from "solid-js";
 
-import type { ThroughputView } from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/core-api";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./AdminPanel.module.css";

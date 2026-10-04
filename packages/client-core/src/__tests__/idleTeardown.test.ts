@@ -10,7 +10,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import type { IWsAdapter } from "#/adapters/IWsAdapter";
+import type { IWsAdapter } from "@rtc/core-api";
+
 import { routeIdleLifecycle } from "#/adapters/routeIdleLifecycle";
 
 describe("composition.ts idle-teardown wiring (T2.2)", () => {

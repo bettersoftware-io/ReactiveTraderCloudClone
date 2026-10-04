@@ -1,4 +1,4 @@
-import type { SessionStore, StoredSession } from "@rtc/client-core";
+import type { SessionStore, StoredSession } from "@rtc/core-api";
 import type { SessionUser } from "@rtc/domain";
 
 export const SESSION_STORAGE_KEY = "rtc-session";

@@ -2,25 +2,16 @@ import { EMPTY, type Observable, of, type Subscription } from "rxjs";
 import { map, shareReplay, switchMap } from "rxjs/operators";
 
 import type {
+  JarvisPanelsMachineHandle,
   JarvisPanelsPresenter as JarvisPanelsPresenterApi,
   JarvisPanelVm,
+  PanelData,
+  PanelInstance,
 } from "@rtc/core-api";
+import type { PanelStreamDeps } from "@rtc/core-logic";
 import type { PanelSpecV1 } from "@rtc/shared";
 
-import {
-  composePanelStream,
-  type PanelData,
-  type PanelStreamDeps,
-} from "./composePanelStream.js";
-import type {
-  JarvisPanelsMachineHandle,
-  PanelInstance,
-} from "./JarvisPanelsMachine.js";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { JarvisPanelVm };
+import { composePanelStream } from "./composePanelStream.js";
 
 /** Title shown for a panel the render adapter (Task 4) substituted with
  * `UNSUPPORTED_SENTINEL_SPEC` — the VM never touches that sentinel's own

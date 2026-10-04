@@ -2,14 +2,8 @@ import { type StateObservable, state } from "@rx-state/core";
 import { timer } from "rxjs";
 import { map, takeWhile } from "rxjs/operators";
 
-import type { RfqCountdownSeed } from "@rtc/core-api";
-import type { ReadOnlyMachine } from "@rtc/core-logic";
+import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
-
-/** Re-exported from `@rtc/core-api` (same convention as `RfqTileMachine`'s
- * `RfqState`) so the bindings keep importing every machine type from
- * `@rtc/client-core`. */
-export type { RfqCountdownSeed };
 
 /** How often the credit-RFQ countdown ticks. Presenter-local alias of the
  * domain cadence. Mirrors RfqTileMachine's COUNTDOWN_INTERVAL_MS. */

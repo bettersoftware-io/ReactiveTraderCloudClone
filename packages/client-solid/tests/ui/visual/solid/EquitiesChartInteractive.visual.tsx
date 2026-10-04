@@ -1,6 +1,6 @@
 import { createMemo, type JSX } from "solid-js";
 
-import type { EqDrawing, EqIndicatorId } from "@rtc/client-core";
+import type { EqDrawing, EqIndicatorId } from "@rtc/core-api";
 import type { Candle } from "@rtc/domain";
 import {
   type ChartViewport,

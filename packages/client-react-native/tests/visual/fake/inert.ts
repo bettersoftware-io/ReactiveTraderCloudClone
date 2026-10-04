@@ -1,15 +1,15 @@
-import {
-  JARVIS_DEMO_STEPS,
-  type JarvisDemoState,
-  type JarvisDriverState,
-  type JarvisState,
-  type LayoutIntents,
-  type LayoutState,
-  type ThroughputView,
-  type WorkspaceNavIntents,
-  type WorkspaceNavState,
-  type WorkspaceTab,
-} from "@rtc/client-core";
+import type {
+  JarvisDemoState,
+  JarvisDriverState,
+  JarvisState,
+  LayoutIntents,
+  LayoutState,
+  ThroughputView,
+  WorkspaceNavIntents,
+  WorkspaceNavState,
+  WorkspaceTab,
+} from "@rtc/core-api";
+import { JARVIS_DEMO_STEPS } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_EFFORT,

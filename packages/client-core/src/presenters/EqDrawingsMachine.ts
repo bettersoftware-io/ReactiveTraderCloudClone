@@ -4,28 +4,16 @@ import { scan } from "rxjs/operators";
 
 import type {
   EqDrawing,
-  EqDrawingAnchor,
   EqDrawingsIntents,
   EqDrawingsState,
   EqDrawTool,
+  Machine,
 } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
 import {
   type EqDrawingsEvent,
   INITIAL_EQ_DRAWINGS_STATE,
   reduceEqDrawings,
 } from "@rtc/core-logic";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  EqDrawing,
-  EqDrawingAnchor,
-  EqDrawingsIntents,
-  EqDrawingsState,
-  EqDrawTool,
-};
 
 /**
  * Per-symbol chart annotations (trendlines + horizontal levels): the active

@@ -2,6 +2,7 @@ import { NEVER, type Observable, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type { RfqSubmissionState } from "@rtc/core-api";
 import {
   type CreateRfqInput,
   Direction,
@@ -9,7 +10,7 @@ import {
   type WorkflowPort,
 } from "@rtc/domain";
 
-import { type RfqSubmissionState, RfqsPresenter } from "../RfqsPresenter";
+import { RfqsPresenter } from "../RfqsPresenter";
 
 describe("RfqsPresenter.createSubmission", () => {
   it("goes editing → submitting → confirmed → editing (after the redirect delay) and fires onRedirect at exactly REDIRECT_DELAY_MS", () => {
