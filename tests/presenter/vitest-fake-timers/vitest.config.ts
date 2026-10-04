@@ -10,11 +10,11 @@ export default defineConfig({
   test: {
     include: ["presenter/vitest-fake-timers/**/*.test.ts"],
     // HTML report (additive): test:presenter:vitest-fake-timers =>
-    // reports/presenter/vitest-fake-timers/. outputFile is root-relative (tests/).
-    reporters: ["default", "html"],
-    outputFile: {
-      html: "reports/presenter/vitest-fake-timers/report/index.html",
-    },
+    // reports/presenter/vitest-fake-timers/. outputDir is root-relative (tests/).
+    reporters: [
+      "default",
+      ["html", { outputDir: "reports/presenter/vitest-fake-timers/report" }],
+    ],
     pool: "threads",
   },
 });

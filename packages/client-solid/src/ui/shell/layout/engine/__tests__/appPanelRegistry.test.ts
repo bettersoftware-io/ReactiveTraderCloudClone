@@ -28,6 +28,12 @@ beforeAll(async () => {
   // default hookTimeout — passes locally only because the Vite transform
   // cache is already warm there.
   vi.resetModules();
+  // vitest 5 (5.0.0–5.0.3): after a setup-file preload + resetModules, only
+  // the FIRST of several concurrent importers gets the vi.mock. Loading the
+  // registry alone first pulls the whole graph through one import, so the
+  // Promise.all below only reads already-loaded modules. Remove once upstream
+  // fixes it — see docs/vitest-5-upstream-bug-report.md.
+  await import("../appPanelRegistry");
 
   const [
     { AdminDashboard },

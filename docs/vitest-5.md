@@ -1,18 +1,15 @@
-# vitest 5 — spiked, parked
+# vitest 5 — upgraded
 
-**Status (2026-10-03): PARKED on purpose. Nothing technical blocks it any more.**
-The repo stays on vitest **4.1.x**. A full upgrade spike (first on 5.0.2, now
-**5.0.3**) is kept on the unmerged branch
-[`worktree-spike-vitest-5`](https://github.com/bettersoftware-io/ReactiveTraderCloudClone/tree/worktree-spike-vitest-5)
-(tip `6d2a6c007`). It fixes three silent v5 behaviour changes and works around
-one upstream mocking regression (see
+**Status (2026-10-04): LANDED.** The repo runs vitest **5.0.3** (from 4.1.x).
+The upgrade fixes three silent v5 behaviour changes and works around one
+upstream mocking regression (see
 [The mock regression](#the-mock-regression--concurrent-re-imports-after-viresetmodules)).
-The failure that was open on 2026-09-27 is fixed on the branch: every gate
-that was run is green. The branch is about 270 commits behind `main`.
 
-The decision to park was a cost/benefit call, not a technical dead end: see
-[Is it worth upgrading?](#is-it-worth-upgrading). The backlog entry lives in
-[STATUS.md](STATUS.md) ("vitest 4 → 5").
+History: spiked on 5.0.2 on 2026-09-27 and parked on a cost/benefit call;
+the one open failure was reduced to a minimal reproduction and fixed on
+2026-10-03; landed on 2026-10-04. What is still open is in
+[What is left](#what-is-left) and in [STATUS.md](STATUS.md)
+("vitest 5 follow-ups").
 
 ## TL;DR
 
@@ -21,9 +18,9 @@ The decision to park was a cost/benefit call, not a technical dead end: see
 | Recorded gate (until 2026-09-27) | `vitest-browser-solid` peers on vitest `^4` only |
 | Was that the real gate? | **No.** The adapter runs on v5 unchanged, and a pnpm `peerDependencyRules` override is enough |
 | What actually broke | 3 behaviour changes, **none of which `pnpm test` noticed**, plus 1 upstream mocking regression |
-| Open blocker | **None since 2026-10-03.** The 33 failures in two `client-solid` registry tests were a v5 regression with concurrent re-imports after `vi.resetModules()`; one line per test avoids it |
-| Why parked | Small gain (test strictness, browser-mode DX we barely use) against a 3-week-old major with several silent traps; v4 still receives security backports |
-| What is left to finish | Catch the branch up with `main`, re-run the full gates, and decide to un-park: see [How to resume](#how-to-resume) |
+| The mocking regression | After a setup-file preload and `vi.resetModules()`, **concurrent** re-imports give only the first importer the mock. One line in each of two `client-solid` tests avoids it. Still unreported upstream: see [vitest-5-upstream-bug-report.md](vitest-5-upstream-bug-report.md) |
+| Why it was parked for a week | Small gain (test strictness, browser-mode DX we barely use) against a young major with several silent traps; v4 still receives security backports |
+| What is left | Report the regression upstream, remove the workaround once fixed, drop the peer override once `vitest-browser-solid` releases |
 
 ## What vitest 5 brings
 
@@ -65,42 +62,42 @@ backports. 4.1.11 fixed the `@vitest/mocker` redirect path traversal
 (2026-08-18) and 4.1.10 fixed a browser-mode file-access bypass (2026-07-08);
 even 3.2.x got fixes. There is no security clock.
 
-## Is it worth upgrading?
+## Was it worth upgrading?
 
-**Not yet**, as of 2026-09-27.
+On 2026-09-27 the answer was **not yet**, and the spike was parked. The
+reasons, kept here because they explain the week's delay:
 
 For:
 - Stricter tests by default, especially failing on un-awaited assertions.
 - Staying current keeps the eventual jump small.
-- Most of the work is already done and sits on the spike branch.
+- Most of the work was already done on the spike branch.
 
-Against:
+Against, at the time:
 - **Three silent behaviour changes** hit this repo (below). Only a full local
   gauntlet **plus** the dispatch-only visual-reach tier surfaced them;
   per-PR CI would have missed one of them entirely.
-- **One open mocking regression** with no upstream issue yet.
+- **One open mocking regression** with no upstream issue.
 - **An abandoned adapter:** `vitest-browser-solid` has had no commit since
-  2025-10-31, so we would depend on it through a peer-range override.
-- **A 3-week-old major.** A 5.1 or a few more patches is the cheaper point
-  to land on.
+  2025-10-31, so we depend on it through a peer-range override.
+- **A 3-week-old major.**
 
-**Revisit when** any of these happens:
-1. The open blocker is fixed upstream, or one of the options below is chosen.
-2. A vitest 5.1 (or later) ships.
-3. A v5-only feature becomes wanted.
-4. A v4 advisory ships without a backport.
+What changed by 2026-10-04: the mocking regression was understood and worked
+around with one line per test, v5 had three patch releases, and every trap
+that hits this repo was known and fixed. The adapter is still abandoned and
+still needs the override.
 
-## What the spike changed
+## What the upgrade changed
 
-All on `worktree-spike-vitest-5`, each item measured, not assumed.
+Each item measured, not assumed. Developed on the branch
+`worktree-spike-vitest-5`, then re-applied onto `main` for the landing PR.
 
 | change | where |
 |---|---|
-| `vitest`, `@vitest/ui`, `@vitest/coverage-v8`, `@vitest/coverage-istanbul`, `@vitest/browser`, `@vitest/browser-playwright` → **5.0.3** (5.0.2 until 2026-10-03) | every workspace manifest (all 27 projects) |
+| `vitest`, `@vitest/ui`, `@vitest/coverage-v8`, `@vitest/coverage-istanbul`, `@vitest/browser`, `@vitest/browser-playwright` → **5.0.3** | every workspace manifest |
 | `vitest-browser-react` 2.2 → **2.3.0** (peers `^4 \|\| ^5`) | `client-react` |
 | `vitest-browser-solid` stays **1.0.1**, with `peerDependencyRules.allowedVersions: { "vitest-browser-solid>vitest": "^5.0.0" }` | `pnpm-workspace.yaml` |
 | `waitForText` → `getByText(text, { exact: false })` (trap 1) | both clients' `tests/ui/visual/vitest-browser/visual.spec.tsx` |
-| html reporter `outputFile.html` → `["html", { outputDir }]` (trap 2) | 13 `vitest*.config.ts`, plus both `vitest.app.coverage.config.ts` |
+| html reporter `outputFile.html` → `["html", { outputDir }]` (trap 2) | 13 `vitest*.config.ts`, both `vitest.app.coverage.config.ts`, and three the spike missed: both clients' `vitest-browser.config.ts` and `tests/presenter/vitest-fake-timers/vitest.config.ts` |
 | `await import("../app{Head,Panel}Registry")` on its own, before the `Promise.all` re-import wave (the mock regression) | `client-solid`'s `appHeadRegistry.test.ts` and `appPanelRegistry.test.ts` |
 
 **Why `vitest-browser-solid` is safe on v5.** Its entire runtime is about 60
@@ -110,22 +107,23 @@ Upstream PR [advancedtw/vitest-browser-solid#6](https://github.com/advancedtw/vi
 (open since 2026-09-06) widens the peer to `^4.0.0 || ^5.0.0`. Once a release
 carries it, delete the override.
 
-### Gate results on the spike branch
+### Gate results on 5.0.3
 
-Measured on 5.0.2 on 2026-09-27. Only the solid contract-coverage row was
-re-run on 5.0.3; the rest need a re-run after the catch-up with `main`.
+Run locally on 2026-10-04 on the landing branch, off current `main`.
 
-| gate | v5 result |
+| gate | result |
 |---|---|
-| `pnpm build` / `pnpm typecheck` / `pnpm test` | ✅ green on the **first** try, before any fix. That is the point: see the traps |
-| fast gauntlet (21 gates) | ✅ after trap 2's fix (Biome had flagged `.vitest/` debris) |
-| `lint:eslint:types`, `check:lint-warnings-drift`, `build`, `check:devtools-dist`, `check:core-bundle` | ✅ |
-| contract coverage — react | ✅ |
-| contract coverage — **solid** | ✅ **1211 / 1211** on 5.0.3 with the registry-test fix, 98.63% statements / 93.76% branches (33 / 1211 failed before it, on 5.0.2 and 5.0.3 alike) |
+| fast gauntlet (21 gates) | ✅ |
+| `pnpm typecheck`, `pnpm test`, `pnpm build` | ✅ (they were also green on the **first** try of the spike, before any fix. That is the point: see the traps) |
+| `lint:eslint:types`, `check:lint-warnings-drift`, `check:devtools-dist`, `check:core-bundle` | ✅ |
+| contract coverage — react | ✅ 1272 / 1272, 97.95% statements |
+| contract coverage — **solid** | ✅ 1237 / 1237, 98.63% statements / 93.63% branches (33 failed before the registry-test fix, on 5.0.2 and 5.0.3 alike) |
 | coverage — devtools core/app, async core, effect core | ✅ |
-| visual-reach vitest-browser tier, react + solid | ✅ 1872 / 1872 each, after trap 1's fix (80 failures each before) |
-| RN jest | n/a (RN tests run on jest) |
-| Expo bundle smoke | not run locally (CI-only by design) |
+| React Native merged line coverage | ✅ 96.93% |
+| visual-reach vitest-browser tier, react + solid | ✅ 1912 / 1912 each (80 failed in each before trap 1's fix) |
+| presenter fake-timers suite | ✅ 22 / 22 |
+| `.vitest/` debris after all of the above | none |
+| Expo bundle smoke, e2e | CI only |
 
 ## The traps
 
@@ -160,7 +158,8 @@ re-run on 5.0.3; the rest need a re-run after the catch-up with `main`.
   (`reporterDir = resolve(root, options.outputDir || ".vitest")`, #10620).
   The v4 key `outputFile: { html: "…/index.html" }` is silently ignored.
 - **Fix used:** `reporters: ["default", ["html", { outputDir: "reports/unit/report" }]]`
-  in 13 configs. Two configs needed more:
+  in 13 configs, plus three the spike missed (see the note below). Two
+  configs needed more:
   - `client-react/vitest.app.coverage.config.ts` builds on its base with
     `mergeConfig`, which **concatenates arrays**. Re-declaring `reporters`
     there would run the base's html reporter as well, so the spike **replaces**
@@ -168,6 +167,11 @@ re-run on 5.0.3; the rest need a re-run after the catch-up with `main`.
   - `client-solid/vitest.app.coverage.config.ts` had an `outputFile.html`
     that was **already inert on v4** (its base declares no html reporter), so
     it is simply dropped.
+- **Missed by the spike, caught at landing:** both clients'
+  `vitest-browser.config.ts` and `tests/presenter/vitest-fake-timers/vitest.config.ts`
+  carried the same `outputFile.html`. The spike only grepped for debris after
+  `pnpm test`, which runs none of them. Grep **every** `vitest*.config.ts` for
+  `outputFile`, not only the ones a given run touched.
 - **Checked and NOT affected:** an explicit `--outputFile.json=…`
   (`coverage-report.yml`) **is still honoured** on v5. It was verified by
   running it: the file lands at the given path and no `.vitest/` appears.
@@ -333,9 +337,10 @@ No report of this existed on 2026-10-03 (searched `vitest-dev/vitest` for
   but for concurrent imports from **one** importer, and it reproduces on
   vitest 2, 3 and 4. It may share a cause.
 
-An issue with the reproduction above is drafted but **not filed yet**.
-vitest's `CONTRIBUTING.md` requires issues to be opened by a real person, so
-it is not something an agent session should post.
+Still unreported as of 2026-10-04. vitest's `CONTRIBUTING.md` requires issues
+to be opened by a real person, so it is not something an agent session should
+post. The steps, the reproduction script and the issue text are in
+[vitest-5-upstream-bug-report.md](vitest-5-upstream-bug-report.md).
 
 ### Options that are no longer needed
 
@@ -345,23 +350,22 @@ under a `?fresh` id (relies on internals); make the contract harness load
 run the two tests under the unit config only (measured: gate 98.59%,
 `appPanelRegistry.tsx` drops to 29 / 32 lines).
 
-## How to resume
+## What is left
 
-1. Fetch `worktree-spike-vitest-5`, then merge `origin/main` in. Expect
-   conflicts in manifests and `pnpm-lock.yaml`. Re-run `pnpm install`, and
-   check `pnpm outdated -r vitest` for a newer 5.x first.
-2. Check whether a `vitest-browser-solid` release now peers on `^5`. If so,
-   drop the `peerDependencyRules` block.
-3. Keep the registry-test fix from the branch (see
-   [The fix used](#the-fix-used)). Drop it only once upstream fixes the
-   regression.
-4. Run `/rtc:gauntlet full` **and** both vitest-browser coverage tiers (see
-   the trap 3 lesson). Grep for `.vitest/` debris after any test run.
-5. Watch the leading document of `pnpm-lock.yaml`: a local pnpm run can
-   rewrite its `@pnpm/exe` entries. Before committing, compare that document
-   with `main`'s and keep `main`'s.
-6. Delete the vitest entry in [STATUS.md](STATUS.md) and update this doc's
-   status line.
+Tracked in [STATUS.md](STATUS.md) ("vitest 5 follow-ups"):
+
+1. **Report the mock regression upstream.** A person has to do it:
+   [vitest-5-upstream-bug-report.md](vitest-5-upstream-bug-report.md).
+2. **Remove the workaround once upstream fixes it.** Delete the one
+   `await import("../app{Head,Panel}Registry")` line from each of the two
+   registry tests and re-run the solid contract-coverage gate. The same page
+   has the steps.
+3. **Drop the `peerDependencyRules` block** in `pnpm-workspace.yaml` once a
+   `vitest-browser-solid` release peers on vitest `^5`.
+
+For the next test-runner major, start from the trap 3 lesson: run the full
+gauntlet **and** the tiers no PR runs (both vitest-browser coverage tiers, the
+presenter suites), and grep for stray report directories afterwards.
 
 ## Sources
 
