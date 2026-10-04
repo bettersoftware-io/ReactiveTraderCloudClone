@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Scope, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Stream, SubscriptionRef } from "effect";
 
 import type { Stream as CoreStream, ReadOnlyMachine } from "@rtc/core-api";
 import {
@@ -10,6 +10,7 @@ import {
 import type { ConnectionStatus } from "@rtc/domain";
 
 import {
+  closeScope,
   createDetachedHost,
   fromPortIn,
   refToStateStream,
@@ -49,7 +50,7 @@ export function createStaleFlagMachine<T>(
   );
 
   function close(): void {
-    Effect.runFork(Scope.close(host.scope, Exit.void));
+    closeScope(host.scope);
   }
 
   host.runtime.runFork(

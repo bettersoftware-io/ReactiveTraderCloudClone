@@ -212,19 +212,41 @@ to reproduce them explicitly:
    this is what decides whether a burst of N costs one render or N. RxJS
    gets it for free (a synchronous chain), and the async core passes the
    same cases unchanged; the Effect core has to arrange it. Its fibers pass a stream's
-   CHUNKS between each other, one scheduler turn per chunk at every
-   `Stream.merge` / `mergeAll` / `flatMap`, so `fromObservable` drains
-   everything the port emitted in a turn and emits it as ONE chunk
-   (`drainBurst` + `joinConsecutiveValues`). Measured 2026-10-04, before
-   that: the pricing simulator replays 50 historical ticks per pair on
-   subscribe, the nine FX tiles rendered 1,070 times in their first two
-   seconds against ~95 on the other cores, and start-up kept the page busy
-   for 666 ms against 166 ms (4.1 s against 0.8 s under 6x CPU throttling).
-   It passed every contract suite, because the suites asserted WHICH values
-   arrive, never how many turns they take. The cases named "…in one turn"
+   CHUNKS between each other, one hand-over per chunk at every
+   `Stream.merge` / `mergeAll` / `flatMap`, and on Effect's default
+   scheduler each hand-over was a turn of its own. Measured 2026-10-04: the
+   pricing simulator replays 50 historical ticks per pair on subscribe, the
+   nine FX tiles rendered 1,070 times in their first two seconds against
+   ~95 on the other cores, and start-up kept the page busy for 666 ms
+   against 166 ms (4.1 s against 0.8 s under 6x CPU throttling). It passed
+   every contract suite, because the suites asserted WHICH values arrive,
+   never how many turns they take. The cases named "…in one turn"
    (`priceStream`, `priceHistory`, `animationDirector`) now assert it with
    `collectTurns` (`@rtc/core-contract`'s harness); a new member that folds
-   a port which can burst should get the same case.
+   a port which can burst should get the same case. Two things hold it up
+   in the Effect core: guarantee 6's scheduler, which is what the cases
+   depend on, and `fromObservable` draining everything the port emitted in
+   a turn into ONE chunk (`drainBurst` + `joinConsecutiveValues`), which no
+   longer decides the renders but still saves the hand-overs (~40 ms of
+   start-up work).
+6. **One event, one turn.** Whatever a single event makes the core do —
+   however many members it passes through — reaches subscribers within the
+   turn it arrived in. A price tick moves the price stream, then the
+   animation director, then the per-tile intent stream; a tile reads the
+   first and the last, and must hear both before it re-renders. RxJS gets
+   this for free too, and the async core's hops all run before the UI's
+   own microtask. Effect's default scheduler breaks it: since 3.20 every
+   fiber resume is a microtask of its own, so a value that crosses N
+   fibers arrives N microtasks after it entered, and the UI renders in
+   between. Measured 2026-10-04 (React client, nine tiles, 6 s of steady
+   state): 624 tile renders against 404 on the RxJS core — three per tick
+   against two — and the price reached the tile a turn before the flash it
+   causes. The Effect core therefore runs every fiber on its own scheduler
+   (`bridge/turnScheduler.ts`, installed by `runnerFor`), which runs each
+   ready fiber step, and the steps those make ready, inside one microtask
+   until nothing is left: ~430 renders against ~420. The `animationDirector`
+   case "a tick's price and the flash it causes reach the tile in one turn"
+   pins it; `collectTurns` takes several streams for exactly this.
 
 ## Failure, teardown and port discipline
 
@@ -272,6 +294,21 @@ explicitly (residual sweep, 2026-09-19):
    it from constancy once no core built a second copy of any member; the
    absolute count caught the RxJS `RfqsPresenter` calling
    `workflow.events()` twice (now once, subscribed twice).
+5. **A release is synchronous.** When a machine's `dispose()` or a stream's
+   last unsubscribe returns, its ports are already unsubscribed: nothing
+   emitted afterwards is received. RxJS and the async core unsubscribe in
+   the call. In the Effect core the natural shape does not: `Scope.close`
+   is an effect that interrupts the scope's fibers one at a time, newest
+   first, waiting for each to end, and only then runs the finalizers that
+   unsubscribe the ports. Measured 2026-10-04: a disposed stale-flag
+   machine folded two connection events emitted after `dispose()`. It had
+   passed its contract case only because `Stream.merge` carried an event
+   more slowly than the close reached the fold fiber — a race, which the
+   turn scheduler stopped it winning. So the bridge releases a scope's
+   ports itself before it closes the scope (`closeScope` →
+   `releasePorts`), and grep gate 49 forbids the global `Effect.run*`
+   outside `bridge/`, because a bare `Effect.runFork(Scope.close(…))`
+   skips that release.
 
 ## Warm singletons, conflation and machines
 

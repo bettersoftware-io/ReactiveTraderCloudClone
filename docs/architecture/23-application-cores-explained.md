@@ -409,6 +409,13 @@ Presenters never call `fromObservable` directly. They receive `fromPort` from
 subscription is always released when the period ends. A dependency-cruiser
 rule (`effect-port-subscription-owned-by-the-bridge`) keeps it that way.
 
+Two more things the bridge owns, both explained under
+[promise 9](#promise-9-one-event-one-turn). Every fiber runs on the bridge's
+own scheduler (`turnScheduler.ts`), so one event is finished within one turn.
+And plain code never runs an effect with the global `Effect.runFork`: it
+uses a host's runner, or `interruptFiber` and `closeScope`, which releases a
+scope's ports before closing it (grep gate 49).
+
 ## Worked example: connection status
 
 `connection.status$` answers "are we connected?". It listens to connection
@@ -567,6 +574,7 @@ the precise versions.
 | 6 | **After `dispose()`, the core holds no port subscription** once its consumers have let go. | No leaks. |
 | 7 | **Each port method is called once, at construction.** | A port call can open a subscription on the server; calling it twice doubles the load. |
 | 8 | **Values that arrive together are delivered together.** | The screen redraws once per turn. Fifty prices in one turn is one redraw; fifty prices in fifty turns is fifty. |
+| 9 | **Everything one event causes is delivered in the same turn.** | A price and the flash it causes must redraw the tile once, not once each. |
 
 Promise 1 is the one that shapes the bridges most:
 
@@ -618,16 +626,55 @@ Two lessons, and where each one now lives:
   stream's values arrive in, and three members (`priceStream`,
   `priceHistory`, `animationDirector`) carry a case named "…in one turn".
   Give the same case to any new member that folds a port which can burst.
-- **In the Effect core, a burst must enter as one chunk.** Effect moves
+- **In the Effect core, a burst enters as one chunk.** Effect moves
   *chunks* between fibers, not single values, so `bridge/in.ts` drains
-  everything a port emitted in one turn and passes it on as one chunk. The
-  comment there has the measurements and says what not to simplify.
+  everything a port emitted in one turn and passes it on as one chunk. That
+  was the whole fix at first. Since promise 9's scheduler it is no longer
+  what protects the redraws, but it still saves the work of fifty
+  hand-overs; the comment there has the measurements.
 
 How it was found, in case it is needed again: slow the processor down in a
 probe (`Emulation.setCPUThrottlingRate`), take a CPU profile from navigation
 to two seconds after the app appears, and count renders per component. The
 profile showed React doing four times the work inside `Tile`; a counter in
 `Tile` showed `price` changing 472 times instead of 30.
+
+### Promise 9: one event, one turn
+
+Promise 8 is about many values in one stream. Promise 9 is about one value
+that travels through several members.
+
+A price tick goes to the price stream, then to the animation director, which
+works out whether the tile should flash up or down, then to that tile's own
+intent stream. The tile reads the price and the intent. In the RxJS core all
+of this is one chain of function calls, so both arrive before React redraws.
+
+In the Effect core each member is a fiber, and Effect's default scheduler
+gives every fiber its own slot in the queue each time it wakes. So the price
+arrived, React redrew the tile, and several slots later the flash arrived
+and React redrew it again: three redraws per tick against two (measured
+2026-10-04: 624 redraws in six seconds against 404).
+
+The fix is one small file, `bridge/turnScheduler.ts`. It replaces Effect's
+scheduler with one that keeps running fibers, including the fibers those
+wake, until none is waiting, all in a single slot. React's redraw waits
+behind that slot, so it sees the core only once it has settled. Nothing is
+held up longer than before: a chain of slots never let the browser paint in
+between anyway.
+
+It had one side effect, which exposed a second mistake. Disposing a machine
+closed its `Scope`, and closing a scope is itself a little program: it stops
+the scope's fibers one after another and unsubscribes the ports last. For a
+few steps after `dispose()` returned, the machine was still listening. It
+never showed, because a merge was slower than the close. With the new
+scheduler the event won, and a disposed machine processed two more events.
+The bridge now unsubscribes a scope's ports *before* it closes the scope
+(`closeScope`), which is what RxJS's `unsubscribe()` always did, and a gate
+forbids closing a scope any other way.
+
+The lesson for both: **when two things only work because one is slower than
+the other, it is a race, even if it has never failed.** Look for the
+ordering the code actually guarantees, not the one it happens to have.
 
 ## A command that can be cancelled
 
