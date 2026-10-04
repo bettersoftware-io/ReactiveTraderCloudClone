@@ -39,10 +39,10 @@ export default defineConfig({
     // Parity with the Playwright tier's grep; a config value rather than -t so
     // both tiers read the one env var.
     testNamePattern: process.env.SCENARIO_PATTERN || undefined,
-    reporters: ["default", "html"],
-    outputFile: {
-      html: "reports/ui/visual/vitest-browser/solid/report/index.html",
-    },
+    reporters: [
+      "default",
+      ["html", { outputDir: "reports/ui/visual/vitest-browser/solid/report" }],
+    ],
     browser: {
       enabled: true,
       provider: playwright(),

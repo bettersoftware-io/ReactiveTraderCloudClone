@@ -52,8 +52,10 @@ export default defineConfig({
       "./tests/ui/contract/react/setup.ts",
     ],
     passWithNoTests: false,
-    reporters: ["default", "html"],
-    outputFile: { html: "reports/ui/contract/report/index.html" },
+    reporters: [
+      "default",
+      ["html", { outputDir: "reports/ui/contract/report" }],
+    ],
     coverage: {
       provider: "v8",
       // Count every src/ui file, even ones no contract spec mounts yet, so the

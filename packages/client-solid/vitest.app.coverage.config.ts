@@ -19,7 +19,6 @@ export default mergeConfig(
   base,
   defineConfig({
     test: {
-      outputFile: { html: "reports/app/report/index.html" },
       coverage: {
         provider: "v8",
         // Count every src/app file so untested adapters surface at 0%.
