@@ -297,7 +297,7 @@ secret) if it ever matters.
 What still stays **out of version control** is the thing that actually protects
 the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and
 verifies session tokens. It's a Fly secret set by hand (dev uses a throwaway
-`dev-local-secret` in the scripts). Public demo logins only let someone sign in
+`dev-local-secret-public-by-design-never-deploy` in the scripts). Public demo logins only let someone sign in
 as the roster's `Read-Only Guest`; without `AUTH_SECRET` nobody can forge a
 token. The `.env.example` templates still ship placeholder values, and an
 untracked `.env.local` overrides the committed demo creds. See

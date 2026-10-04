@@ -16,6 +16,8 @@ interface PostRouterDeps {
   /** The S3 trusted-header resolver — the one source of the caller's IP. */
   readonly clientIp: (req: IncomingMessage) => string;
   readonly now: () => number;
+  /** Where a handler fault's one fixed line goes. */
+  readonly log: (line: string) => void;
 }
 
 /**
@@ -23,14 +25,17 @@ interface PostRouterDeps {
  * the CORS preflight, the §9.2 ban check before the body is even read, the
  * S2 body cap by bytes received, and one error mapping (413 for an
  * oversized body, 500 for anything a handler throws). Returns `false` for a
- * path or method it does not own, so the caller's routing continues. Logs
- * nothing: a body carries passwords, codes and email addresses.
+ * path or method it does not own, so the caller's routing continues. A
+ * handler fault is logged as one fixed line — the route, the IP and the
+ * error's NAME — never its message, the body or a header: a body carries
+ * passwords, codes and email addresses, and an error message can echo them.
  */
 export function createPostRouter(
   deps: PostRouterDeps,
 ): (req: IncomingMessage, res: ServerResponse) => boolean {
   return (req: IncomingMessage, res: ServerResponse): boolean => {
-    const route = req.url === undefined ? undefined : deps.routes.get(req.url);
+    const path = req.url;
+    const route = path === undefined ? undefined : deps.routes.get(path);
 
     if (route === undefined) {
       return false;
@@ -84,6 +89,12 @@ export function createPostRouter(
         // unread (413): close the connection after the status so the rest
         // of it is never consumed.
         const tooLarge = err instanceof BodyTooLargeError;
+
+        if (!tooLarge) {
+          deps.log(
+            `[http] 500 route=${path} ip=${ip} err=${err instanceof Error ? err.name : "unknown"}`,
+          );
+        }
 
         res.writeHead(tooLarge ? 413 : 500, {
           "Access-Control-Allow-Origin": "*",

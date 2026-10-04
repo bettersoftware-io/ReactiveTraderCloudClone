@@ -35,11 +35,6 @@ import {
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
   BAN_STRIKES,
-  CODE_ENTRY_PER_ADDRESS_MAX,
-  CODE_ENTRY_PER_ADDRESS_MAX_KEYS,
-  CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
-  CODE_ENTRY_RATE_LIMIT_MAX,
-  CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
   INBOUND_BURST,
   INBOUND_DROPS_BEFORE_CLOSE,
   INBOUND_REFILL_PER_SECOND,
@@ -50,10 +45,6 @@ import {
   MAX_CONNECTIONS_TOTAL,
   MAX_REGISTRATIONS_PER_DAY,
   MCP_MAX_BODY_BYTES,
-  REGISTER_RATE_LIMIT_MAX,
-  REGISTER_RATE_LIMIT_WINDOW_MS,
-  SEND_CODE_RATE_LIMIT_MAX,
-  SEND_CODE_RATE_LIMIT_WINDOW_MS,
   WS_MAX_PAYLOAD_BYTES,
 } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
@@ -65,11 +56,19 @@ import {
   resendConfirmationCode,
   resetAccountPassword,
 } from "./http/accountHandlers.js";
+import {
+  createAccountLimits,
+  createCodeEntryLimiter,
+} from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
 import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
-import { authenticateLoginRequest } from "./http/loginHandler.js";
+import {
+  authenticateLoginRequest,
+  type UpgradeRejection,
+} from "./http/loginHandler.js";
 import { createPostRouter, type PostRoute } from "./http/postRouter.js";
 import { declaredLengthExceeds } from "./http/readBody.js";
+import { settleUpgrade } from "./http/settleUpgrade.js";
 import { decideUpgrade, type UpgradeGateDeps } from "./http/upgradeGate.js";
 import { createMcpRequestHandler } from "./mcp/mcpHttpHandler.js";
 import { createConnectionLog } from "./observability/connectionLog.js";
@@ -198,11 +197,7 @@ const accounts = createAccountService({
   now: readClock,
   registrationOpen: isRegistrationOpen(process.env),
   maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
-  codeEntryLimiter: createRateLimiter(
-    CODE_ENTRY_PER_ADDRESS_MAX,
-    CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
-    { maxKeys: CODE_ENTRY_PER_ADDRESS_MAX_KEYS },
-  ),
+  codeEntryLimiter: createCodeEntryLimiter(),
 });
 
 const accountStatus = createAccountStatusCache({
@@ -218,34 +213,13 @@ const accountsHealth = createAccountsHealth({
   now: readClock,
 });
 
-// Each endpoint owns its limiter: a caller who spends `/register`'s budget
-// has not spent `/resend-code`'s. The one shared instance is the per-ADDRESS
-// code-entry budget, which confirm and reset spend together by design.
+// Each endpoint owns its limiter (`createAccountLimits`); the one shared
+// instance is the per-ADDRESS code-entry budget inside the account service,
+// which confirm and reset spend together by design.
 const accountDeps: AccountHandlerDeps = {
   accounts,
   banList,
-  limits: {
-    register: createRateLimiter(
-      REGISTER_RATE_LIMIT_MAX,
-      REGISTER_RATE_LIMIT_WINDOW_MS,
-    ),
-    resendCode: createRateLimiter(
-      SEND_CODE_RATE_LIMIT_MAX,
-      SEND_CODE_RATE_LIMIT_WINDOW_MS,
-    ),
-    confirmEmail: createRateLimiter(
-      CODE_ENTRY_RATE_LIMIT_MAX,
-      CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
-    ),
-    requestReset: createRateLimiter(
-      SEND_CODE_RATE_LIMIT_MAX,
-      SEND_CODE_RATE_LIMIT_WINDOW_MS,
-    ),
-    resetPassword: createRateLimiter(
-      CODE_ENTRY_RATE_LIMIT_MAX,
-      CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
-    ),
-  },
+  limits: createAccountLimits(),
   now: readClock,
 };
 
@@ -340,6 +314,9 @@ const servePostRoute = createPostRouter({
   banList,
   clientIp,
   now: readClock,
+  log: (line: string): void => {
+    console.log(line);
+  },
 });
 
 // ── HTTP Server ─────────────────────────────────────────────────
@@ -427,25 +404,19 @@ const wss = new WebSocketServer({
     info: Parameters<VerifyClientCallbackAsync>[0],
     done: Parameters<VerifyClientCallbackAsync>[1],
   ): void => {
-    decideUpgrade(info.req.url, clientIp(info.req), gateDeps)
-      .then((verdict) => {
-        if (!verdict.ok && verdict.reason) {
-          connectionLog.recordRejectedUpgrade(verdict.reason);
-        }
-
-        done(
-          verdict.ok,
-          verdict.status,
-          verdict.ok ? undefined : verdict.reason,
-        );
-      })
-      .catch(() => {
-        // The gate resolves by design (the status cache reads a failing
-        // lookup as `unavailable`); if it ever rejects, fail closed rather
-        // than leave the handshake hanging.
-        connectionLog.recordRejectedUpgrade("accounts-unavailable");
-        done(false, 503, "accounts-unavailable");
-      });
+    // Settles the handshake exactly once; never leaves a rejection unhandled.
+    void settleUpgrade(
+      decideUpgrade(info.req.url, clientIp(info.req), gateDeps),
+      done,
+      {
+        recordRejectedUpgrade: (reason: UpgradeRejection): void => {
+          connectionLog.recordRejectedUpgrade(reason);
+        },
+        log: (line: string): void => {
+          console.log(line);
+        },
+      },
+    );
   },
 });
 

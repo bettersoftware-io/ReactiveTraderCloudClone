@@ -47,7 +47,7 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 The **demo login password is committed** (`mcdc2026`) — this is a demo app, and
 those credentials are throwaway and rotatable. The one credential that stays out
 of git is the server's **`AUTH_SECRET`** (the token-signing key); dev uses a
-throwaway `dev-local-secret` baked into the `dev:*` scripts, and the deployed
+throwaway `dev-local-secret-public-by-design-never-deploy` baked into the `dev:*` scripts, and the deployed
 value is a Fly secret set by hand. The `.env.example` templates still ship
 overridable placeholder values.
 

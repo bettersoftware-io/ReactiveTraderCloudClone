@@ -1,3 +1,4 @@
+import { AUTH_SECRET_MIN_LENGTH } from "../config/limits.js";
 import type { AccountDirectory } from "./AccountDirectory.js";
 import { createDisabledAccountDirectory } from "./DisabledAccountDirectory.js";
 import { DEV_ACCOUNT_SEEDS } from "./devAccounts.js";
@@ -24,9 +25,9 @@ interface AccountDirectoryDeps {
  * committed password, so it must be asked for by name and is refused on a
  * deployed machine (Fly sets `FLY_APP_NAME` on every one). Throws at startup
  * on a half-configured or ambiguous environment, the way `AuthService`
- * refuses `AUTH_USERS` without `AUTH_SECRET` — and on an empty
+ * refuses `AUTH_USERS` without `AUTH_SECRET` — and on an empty or short
  * `AUTH_SECRET` in either account mode, since an account token signed with
- * an empty key is forgeable by anyone.
+ * a guessable key is forgeable by anyone.
  */
 export function resolveAccountsMode(env: NodeJS.ProcessEnv): AccountsMode {
   const url = env.SUPABASE_URL ?? "";
@@ -49,6 +50,13 @@ export function resolveAccountsMode(env: NodeJS.ProcessEnv): AccountsMode {
 
   if (!env.AUTH_SECRET) {
     throw new Error("AUTH_SECRET must be set when accounts are enabled");
+  }
+
+  // Never echo the secret: a startup error lands in the deploy log.
+  if (env.AUTH_SECRET.trim().length < AUTH_SECRET_MIN_LENGTH) {
+    throw new Error(
+      `AUTH_SECRET must be at least ${AUTH_SECRET_MIN_LENGTH} characters when accounts are enabled`,
+    );
   }
 
   if (devAccounts) {
@@ -95,7 +103,28 @@ export function createAccountDirectory(
   return createDisabledAccountDirectory();
 }
 
-/** The no-deploy switch for sign-up: `REGISTRATION_OPEN=false` closes it. */
+/**
+ * The no-deploy switch for sign-up: unset or `true` is open, `false` closes
+ * it. Anything else stops the server at startup — an operator closing
+ * sign-up during abuse with `0` or `FALSE` must not leave it silently open.
+ * The refusal never echoes the value.
+ */
 export function isRegistrationOpen(env: NodeJS.ProcessEnv): boolean {
-  return env.REGISTRATION_OPEN !== "false";
+  const raw = env.REGISTRATION_OPEN;
+
+  if (raw === undefined) {
+    return true;
+  }
+
+  const value = raw.trim();
+
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  throw new Error('REGISTRATION_OPEN must be "true" or "false"');
 }

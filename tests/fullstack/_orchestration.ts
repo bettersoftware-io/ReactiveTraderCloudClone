@@ -56,11 +56,18 @@ export function startServer(
         // authorizeUpgrade — no open-when-empty fallback), so both smokes need a
         // real signed token from POST /login before they can connect. A fixed
         // test-only secret + the `demo` roster credential (never a real secret).
-        AUTH_SECRET: "e2e-secret",
+        // At least 32 characters: the account modes refuse a shorter one.
+        AUTH_SECRET: "e2e-secret-public-by-design-never-deploy",
         AUTH_USERS: "demo:demo",
         // The in-memory account directory (fixed code, seeded accounts) —
         // see packages/server/src/accounts/devAccounts.ts.
         RTC_DEV_ACCOUNTS: "1",
+        // A shell that exports the Supabase pair (or FLY_APP_NAME) would
+        // make this server refuse to start: `resolveAccountsMode` reads an
+        // empty value as unset, so blank them.
+        SUPABASE_URL: "",
+        SUPABASE_SECRET_KEY: "",
+        FLY_APP_NAME: "",
         RTC_JARVIS_FAKE: "1",
         ...extraEnv,
       },

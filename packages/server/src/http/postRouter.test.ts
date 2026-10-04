@@ -192,6 +192,55 @@ describe("createPostRouter", () => {
     expect(await response.json()).toEqual({ error: "internal_error" });
   });
 
+  it("logs a handler fault as one fixed line — the route, the IP and the error's name only", async () => {
+    const lines: string[] = [];
+    const base = await startRouter(
+      {
+        "/register": {
+          maxBodyBytes: 1_024,
+          handle: () => {
+            return Promise.reject(new TypeError("secret@example.com hunter2"));
+          },
+        },
+      },
+      {
+        log: (line: string): void => {
+          lines.push(line);
+        },
+      },
+    );
+
+    const response = await fetch(`${base}/register`, {
+      method: "POST",
+      body: JSON.stringify({ email: "body@example.com", code: "123456" }),
+      headers: { "X-Secret-Header": "header-value" },
+    });
+
+    expect(response.status).toBe(500);
+    expect(lines).toEqual([
+      "[http] 500 route=/register ip=9.9.9.9 err=TypeError",
+    ]);
+    expect(lines.join("\n")).not.toMatch(
+      /secret@example\.com|hunter2|body@example\.com|123456|header-value/,
+    );
+  });
+
+  it("does not log a 413 or a refused ban — those are the caller's fault", async () => {
+    const lines: string[] = [];
+    const base = await startRouter(
+      { "/echo": { ...createEchoRoute(), maxBodyBytes: 8 } },
+      {
+        log: (line: string): void => {
+          lines.push(line);
+        },
+      },
+    );
+
+    await fetch(`${base}/echo`, { method: "POST", body: "x".repeat(64) });
+
+    expect(lines).toEqual([]);
+  });
+
   it("answers 500 when a route throws synchronously", async () => {
     const base = await startRouter({
       "/echo": {
@@ -211,6 +260,7 @@ describe("createPostRouter", () => {
 interface RouterOverrides {
   readonly banList?: BanList;
   readonly clientIp?: (req: IncomingMessage) => string;
+  readonly log?: (line: string) => void;
 }
 
 function createEchoRoute(): PostRoute {
@@ -264,6 +314,7 @@ async function startRouter(
     now: (): number => {
       return 1_000;
     },
+    log: overrides.log ?? createLineSink(),
   });
 
   const started = createServer((req, res) => {
@@ -284,3 +335,12 @@ async function startRouter(
 }
 
 let server: Server | undefined;
+
+/** A log that keeps its lines to itself, for cases that do not read them. */
+function createLineSink(): (line: string) => void {
+  const lines: string[] = [];
+
+  return (line: string): void => {
+    lines.push(line);
+  };
+}

@@ -96,5 +96,10 @@ export const ACCOUNT_DIRECTORY_TIMEOUT_MS = 5_000;
 export const ACCOUNT_STATUS_CACHE_TTL_MS = 60_000;
 export const ACCOUNT_STATUS_CACHE_MAX_ENTRIES = 1_000;
 
+/** B2 — shortest `AUTH_SECRET` (trimmed) a server with accounts starts
+ * with: it is the key that signs account and admin session tokens, so a
+ * guessable one forges any of them. */
+export const AUTH_SECRET_MIN_LENGTH = 32;
+
 /** B2 — `/health/accounts` re-reads the store at most this often. */
 export const ACCOUNTS_HEALTH_CACHE_MS = 60_000;
