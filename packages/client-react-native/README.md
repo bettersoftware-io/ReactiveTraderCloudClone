@@ -145,6 +145,32 @@ The empty `EXPO_PUBLIC_SERVER_URL` selects the built-in simulator data.
 The app only runs while the Mac is serving it, and it is a development
 bundle: fine for a look and a feel, not for performance numbers.
 
+### Demo away from the Mac — a published build in Expo Go
+
+The Expo Go path above only works while the Mac is serving the app. To show
+it anywhere, publish the app's JavaScript to Expo's servers (EAS Update);
+Expo Go then opens it from there.
+
+```bash
+pnpm demo:publish:ios      # from the repo root; builds, then publishes to branch "demo"
+```
+
+On the phone: Expo Go → **rtc-mobile** under Projects → branch **demo** → the
+newest update. Sign in with `demo` / `mcdc2026`.
+
+- The published build talks to the deployed server (`wss://rtc-clone-server.fly.dev`,
+  the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
+  on the Mac at all. The login screen's Simulator mode switch still works
+  offline.
+- It is a production bundle running inside Expo Go's shell. Only someone
+  signed in to the owning Expo account sees the project, so this is for
+  showing the app on your own phone, not for handing it out.
+- `eas-cli` must be signed in (`pnpm dlx eas-cli login`). Publishing is free
+  on Expo's free plan.
+- The runtime version follows the SDK (`runtimeVersion.policy: "sdkVersion"`),
+  so a published build keeps opening until Expo Go moves to the next SDK;
+  after an SDK upgrade, publish again.
+
 ### Android — Expo Go or an APK
 
 Android's Play Store Expo Go tracks the latest SDK, so the QR path generally
