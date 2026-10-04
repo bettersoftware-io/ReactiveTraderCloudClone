@@ -1,0 +1,36 @@
+name: Accounts keep-alive
+
+# Twice a week: asks the deployed server to make one cheap read of its
+# account store (GET /health/accounts — see
+# packages/server/src/http/accountsHealth.ts). A free-plan Supabase project
+# is paused after a quiet week; this read is the activity that prevents it.
+# Supabase does not guarantee that, so the job also FAILS when the store is
+# "down" — which is how a paused project gets noticed (GitHub emails the
+# failure). "disabled" (no SUPABASE_URL on the server yet) passes quietly.
+on:
+  schedule:
+    - cron: "17 7 * * 1,4"
+  workflow_dispatch:
+
+# No checkout, no token use: this job only makes one HTTPS request.
+permissions: {}
+
+jobs:
+  ping:
+    name: read the account store
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /health/accounts
+        env:
+          ACCOUNTS_HEALTH_URL: https://rtc-clone-server.fly.dev/health/accounts
+        run: |
+          set -euo pipefail
+          # The machine scales to zero: the first request wakes it, so retry.
+          body="$(curl --silent --show-error --fail --retry 4 --retry-delay 15 --retry-all-errors --max-time 30 "${ACCOUNTS_HEALTH_URL}")"
+          echo "${body}"
+          directory="$(printf '%s' "${body}" | jq -r '.directory')"
+          if [ "${directory}" = "down" ]; then
+            echo "::error::The account store is down. A paused Supabase project reads as down: restore it in the Supabase dashboard."
+            exit 1
+          fi
