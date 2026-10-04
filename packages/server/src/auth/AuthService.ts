@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { findRosterUser } from "@rtc/domain";
 import type { SessionUserDto } from "@rtc/shared";
 
-import type { VerifiedToken } from "./token.js";
+import type { TokenAccount, VerifiedToken } from "./token.js";
 import { signToken, verifyToken } from "./token.js";
 
 export { parseAuthUsers } from "./loadUsers.js";
@@ -91,6 +91,17 @@ export class AuthService {
       token: signToken(username, this.secret, this.ttlMs, this.now()),
       user: entry.user,
     };
+  }
+
+  /** Signs a session for a registered account the caller has ALREADY
+   * validated (`AccountService.login`). An empty secret would make every
+   * token forgeable, an admin one included, so it is refused outright. */
+  issueAccountSession(email: string, account: TokenAccount): string {
+    if (!this.secret) {
+      throw new Error("AUTH_SECRET must be set to issue an account session");
+    }
+
+    return signToken(email, this.secret, this.ttlMs, this.now(), account);
   }
 
   verifyToken(token: string): VerifiedToken | null {

@@ -11,7 +11,11 @@ describe("AuthService", () => {
     }
 
     expect(r.user.name).toBe("Demo Operator");
-    expect(svc.verifyToken(r.token)).toEqual({ username: "demo" });
+    expect(svc.verifyToken(r.token)).toEqual({
+      username: "demo",
+      accountId: null,
+      access: "user",
+    });
   });
 
   it("rejects a wrong password", async () => {
@@ -129,4 +133,43 @@ const svc = new AuthService({
   now: (): number => {
     return 1_000_000;
   },
+});
+
+describe("issueAccountSession", () => {
+  it("issues a token that verifies with the account's id and access", () => {
+    const auth = new AuthService({
+      secret: "s3cret",
+      ttlMs: 60_000,
+      credentials: new Map<string, string>(),
+      now: (): number => {
+        return 1_000;
+      },
+    });
+
+    const token = auth.issueAccountSession("ann@desk.io", {
+      accountId: "acc-1",
+      access: "admin",
+    });
+
+    expect(auth.verifyToken(token)).toEqual({
+      username: "ann@desk.io",
+      accountId: "acc-1",
+      access: "admin",
+    });
+  });
+
+  it("refuses to sign with an empty secret (Review Focus 2)", () => {
+    const auth = new AuthService({
+      secret: "",
+      ttlMs: 60_000,
+      credentials: new Map<string, string>(),
+    });
+
+    expect(() => {
+      return auth.issueAccountSession("ann@desk.io", {
+        accountId: "acc-1",
+        access: "user",
+      });
+    }).toThrow("AUTH_SECRET must be set to issue an account session");
+  });
 });
