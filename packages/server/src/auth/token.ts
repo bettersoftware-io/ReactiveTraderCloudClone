@@ -92,6 +92,7 @@ function readClaims(payload: Payload): VerifiedToken | null {
 
   if (
     typeof payload.id !== "string" ||
+    payload.id === "" ||
     (payload.a !== "user" && payload.a !== "admin")
   ) {
     return null;

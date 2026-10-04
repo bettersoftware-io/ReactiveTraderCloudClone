@@ -105,7 +105,15 @@ export class AuthService {
   }
 
   verifyToken(token: string): VerifiedToken | null {
-    return verifyToken(token, this.secret, this.now());
+    const verified = verifyToken(token, this.secret, this.now());
+
+    // An empty-key HMAC is computable by anyone, so under an empty secret
+    // no account claim (an admin one included) can be trusted.
+    if (verified !== null && verified.accountId !== null && !this.secret) {
+      return null;
+    }
+
+    return verified;
   }
 }
 

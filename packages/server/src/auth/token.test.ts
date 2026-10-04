@@ -39,6 +39,28 @@ describe("token", () => {
     expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
   });
 
+  it("rejects an empty-string account id", () => {
+    const payload = JSON.stringify({
+      u: "demo",
+      exp: 9e15,
+      id: "",
+      a: "user",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
+  it("rejects a non-string account id with a valid access level", () => {
+    const payload = JSON.stringify({
+      u: "demo",
+      exp: 9e15,
+      id: 1,
+      a: "admin",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
   it("rejects an access level it does not know", () => {
     const payload = JSON.stringify({
       u: "demo",

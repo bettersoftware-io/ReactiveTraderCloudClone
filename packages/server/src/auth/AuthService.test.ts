@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
+import { signToken } from "#/auth/token";
 
 describe("AuthService", () => {
   it("issues a token + profile on valid credentials", async () => {
@@ -122,19 +123,6 @@ describe("AuthService", () => {
   });
 });
 
-interface TokenPayload {
-  exp: number;
-}
-
-const svc = new AuthService({
-  secret: "s",
-  ttlMs: 60_000,
-  credentials: parseAuthUsers("demo:localpass,astark:hunter2"),
-  now: (): number => {
-    return 1_000_000;
-  },
-});
-
 describe("issueAccountSession", () => {
   it("issues a token that verifies with the account's id and access", () => {
     const auth = new AuthService({
@@ -173,3 +161,48 @@ describe("issueAccountSession", () => {
     }).toThrow("AUTH_SECRET must be set to issue an account session");
   });
 });
+
+describe("verifyToken under an empty secret", () => {
+  it("refuses an account token, which anyone can sign offline", () => {
+    const token = signToken("ann@desk.io", "", 60_000, 1_000, {
+      accountId: "00000000-0000-4000-8000-000000000001",
+      access: "admin",
+    });
+
+    expect(createEmptySecretAuth().verifyToken(token)).toBeNull();
+  });
+
+  it("still verifies a roster token (refusal is scoped to account claims)", () => {
+    const token = signToken("demo", "", 60_000, 1_000);
+
+    expect(createEmptySecretAuth().verifyToken(token)).toEqual({
+      username: "demo",
+      accountId: null,
+      access: "user",
+    });
+  });
+});
+
+interface TokenPayload {
+  exp: number;
+}
+
+const svc = new AuthService({
+  secret: "s",
+  ttlMs: 60_000,
+  credentials: parseAuthUsers("demo:localpass,astark:hunter2"),
+  now: (): number => {
+    return 1_000_000;
+  },
+});
+
+function createEmptySecretAuth(): AuthService {
+  return new AuthService({
+    secret: "",
+    ttlMs: 60_000,
+    credentials: new Map<string, string>(),
+    now: (): number => {
+      return 1_000;
+    },
+  });
+}
