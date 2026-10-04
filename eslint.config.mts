@@ -110,6 +110,43 @@ const rnInlineStyleProp = {
     "Inline style={{…}} is banned — move static styling to this file's StyleSheet.create block; pass runtime-computed values as the array-form dynamic member: style={[styles.x, { height }]}. See docs/rn-styling.md.",
 };
 
+// CommonJS globals, banned in TypeScript (see the `no-restricted-globals`
+// blocks below). `require` is listed apart because the React Native package is
+// allowed it.
+interface RestrictedGlobal {
+  name: string;
+  message: string;
+}
+
+const commonJsModuleGlobals: RestrictedGlobal[] = [
+  {
+    name: "module",
+    message: "CommonJS `module.exports` — use an ES `export`.",
+  },
+  {
+    name: "exports",
+    message: "CommonJS `exports` — use an ES `export`.",
+  },
+];
+
+const commonJsGlobals: RestrictedGlobal[] = [
+  ...commonJsModuleGlobals,
+  {
+    name: "__dirname",
+    message: "CommonJS `__dirname` — use `import.meta.dirname`.",
+  },
+  {
+    name: "__filename",
+    message: "CommonJS `__filename` — use `import.meta.filename`.",
+  },
+];
+
+const commonJsRequire: RestrictedGlobal = {
+  name: "require",
+  message:
+    "CommonJS `require()` — use an ES `import`. To resolve from another package or load a CommonJS-only file, build one explicitly: `createRequire(import.meta.url)`.",
+};
+
 // Both custom rules ship under the `rtc` plugin namespace. A single shared
 // plugin object lets two config blocks reference it (newspaper-order stays
 // test-file-scoped; class-filename-match applies to all ts/tsx) without
@@ -174,13 +211,63 @@ export default tseslint.config(
         {
           selector: "Program",
           message:
-            "JavaScript files are banned — write TypeScript. Name a Node script, lint rule or tool config `.mts` (Node 26 runs it directly: `node scripts/x.mts`; `.cts` for a CommonJS config) and make sure a tsconfig includes it. See the exemption list in eslint.config.mts if a tool's loader cannot read TypeScript.",
+            "JavaScript files are banned — write TypeScript. Name a Node script, lint rule or tool config `.mts` (Node 26 runs it directly: `node scripts/x.mts`) and make sure a tsconfig includes it. See the exemption list in eslint.config.mts if a tool's loader cannot read TypeScript.",
         },
       ],
     },
   },
   {
-    files: ["**/*.{ts,tsx,mts,cts}"],
+    // No CommonJS files. `.cjs` is caught by the JavaScript ban above; this is
+    // its TypeScript twin. Every loader in the repo that takes TypeScript takes
+    // an ES module (`.mts`) — including the ones that `require()` their config
+    // (Babel, Metro, jest's resolver), since Node 26 can `require()` an ES
+    // module. No exemptions: none was needed.
+    files: ["**/*.cts"],
+    languageOptions: { parser: tseslint.parser },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Program",
+          message:
+            "CommonJS files are banned — write an ES module and name it `.mts`. A tool that `require()`s its config can still load it: Node 26 can `require()` an ES module.",
+        },
+      ],
+    },
+  },
+  {
+    // No CommonJS constructs inside TypeScript either. `no-restricted-globals`
+    // reports only the GLOBAL binding, so the sanctioned ES-module escape hatch
+    // — a local `const require = createRequire(import.meta.url)`, used to
+    // resolve from another package's node_modules or to load a CommonJS-only
+    // file — is not reported.
+    files: ["**/*.{ts,tsx,mts}"],
+    languageOptions: { parser: tseslint.parser },
+    rules: {
+      "no-restricted-globals": ["error", ...commonJsGlobals, commonJsRequire],
+    },
+  },
+  {
+    // The React Native package keeps the global `require`, for two idioms that
+    // have no ES-module spelling: a `jest.mock()` factory (jest hoists it above
+    // the file's imports, so it can only `require()`), and a Metro asset
+    // (`require("./logo.png")`). The other CommonJS globals stay banned.
+    files: ["packages/client-react-native/**/*.{ts,tsx,mts}"],
+    rules: {
+      "no-restricted-globals": ["error", ...commonJsGlobals],
+    },
+  },
+  {
+    // jest runs this package's `*.test.tsx` suites as CommonJS (through
+    // babel-preset-expo), where `import.meta` does not exist — so `__dirname`
+    // is the only way such a suite can locate a sibling file.
+    files: ["packages/client-react-native/**/*.test.tsx"],
+    rules: {
+      "no-restricted-globals": ["error", ...commonJsModuleGlobals],
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx,mts}"],
     languageOptions: { parser: tseslint.parser },
     rules: {
       "func-style": ["error", "declaration", { allowArrowFunctions: false }],
@@ -345,7 +432,7 @@ export default tseslint.config(
     // `client-react` keeps tests outside `src/`, but `devtools-app` keeps them
     // in `src/__tests__/` — without this the glob catches them and contradicts
     // the deliberate non-goal stated in the comment above.
-    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -399,7 +486,7 @@ export default tseslint.config(
     // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
     // rather than being cached at the binding layer.
     files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
-    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    ignores: ["**/__tests__/**", "**/*.{test,spec}.{ts,tsx,mts}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -433,7 +520,7 @@ export default tseslint.config(
     // `fixtures` opt-in list that staged the burn-down is gone now that it
     // covered the whole repo. class/enum/vi.doMock/jest.doMock/vi.hoisted stay
     // put, and so does any fixture read during collection.
-    files: ["**/*.{spec,test}.{ts,tsx,mts,cts}"],
+    files: ["**/*.{spec,test}.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/newspaper-order": "error" },
   },
@@ -545,7 +632,7 @@ export default tseslint.config(
     // widest scope is free. The 120-char threshold was MEASURED against the
     // tree (every legitimate JSON literal is <= 41 chars; the blob this
     // prevents was 880) — read the rule header before moving it.
-    files: ["**/*.{ts,tsx,mts,cts}"],
+    files: ["**/*.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
   },
@@ -578,7 +665,7 @@ export default tseslint.config(
     // SPECS ONLY, not `tests/**`: page objects under `tests/**/pages/` follow
     // their own `xxxPage()` convention and hold internals like
     // `stubPopoutWindow` that are the page's mechanics, not fixtures.
-    files: ["**/*.{test,spec}.{ts,tsx,mts,cts}"],
+    files: ["**/*.{test,spec}.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-fixture-factories": "error" },
   },
@@ -591,7 +678,7 @@ export default tseslint.config(
     // rule was wrong, not the code. The 10-line threshold sits in a measured
     // EMPTY band (spans here are 4 at >= 15 lines, 18 at <= 6, none in 7-14).
     files: [
-      "**/*.{test,spec}.{ts,tsx,mts,cts}",
+      "**/*.{test,spec}.{ts,tsx,mts}",
       "**/tests/**/*.{ts,tsx}",
       "**/__tests__/**/*.{ts,tsx}",
     ],
@@ -606,9 +693,9 @@ export default tseslint.config(
     // which are never looked up by filename. Fires only when a top-level
     // class exists, so non-class modules are untouched. Sanctioned exceptions
     // use a per-line eslint-disable.
-    files: ["**/*.{ts,tsx,mts,cts}"],
+    files: ["**/*.{ts,tsx,mts}"],
     ignores: [
-      "**/*.{test,spec}.{ts,tsx,mts,cts}",
+      "**/*.{test,spec}.{ts,tsx,mts}",
       "**/tests/**",
       "**/__tests__/**",
       "**/setup/**",
@@ -644,7 +731,7 @@ export default tseslint.config(
     // declared in property syntax (`onX: (d) => void`, not `onX(d): void`).
     //
     // See docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md.
-    files: ["**/*.{ts,tsx,mts,cts}"],
+    files: ["**/*.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/name-functions-by-effect": "error" },
   },

@@ -1,10 +1,9 @@
 // Learn more: https://docs.expo.dev/guides/monorepo/
-import type { MetroConfig } from "expo/metro-config";
+import path from "node:path";
 
-const { getDefaultConfig } = require("expo/metro-config");
-const path: typeof import("node:path") = require("node:path");
+import { getDefaultConfig, type MetroConfig } from "expo/metro-config.js";
 
-const projectRoot: string = __dirname;
+const projectRoot: string = import.meta.dirname;
 const workspaceRoot: string = path.resolve(projectRoot, "../..");
 
 const defaults: MetroConfig = getDefaultConfig(projectRoot);
@@ -46,4 +45,4 @@ const config: MetroConfig = {
   },
 };
 
-module.exports = config;
+export default config;

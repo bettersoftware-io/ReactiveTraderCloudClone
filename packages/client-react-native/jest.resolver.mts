@@ -37,6 +37,8 @@
 //
 // Chain the extension filtering of both into the options the RN preset
 // resolver receives, so all three behaviors apply.
+import reactNativePresetResolver from "@react-native/jest-preset/jest/resolver.js";
+
 // The slice of jest's resolver options this file reads. Spelled locally:
 // `jest-resolve` is not a direct dependency of this package. The options
 // object is passed through whole, so the fields not named here still reach the
@@ -45,10 +47,6 @@ interface ResolverOptions {
   basedir: string;
   extensions?: string[];
 }
-
-type Resolver = (request: string, options: ResolverOptions) => string;
-
-const reactNativePresetResolver: Resolver = require("@react-native/jest-preset/jest/resolver.js");
 
 // Matches only the physical node_modules/react-native-worklets/... resolution
 // target, not any basedir/request substring. pnpm encodes peer deps into its
@@ -95,7 +93,7 @@ function isReanimatedWebOnlyRequest(request: string, basedir: string): boolean {
   });
 }
 
-module.exports = (request: string, options: ResolverOptions): string => {
+export function sync(request: string, options: ResolverOptions): string {
   let resolveOptions = options;
 
   if (
@@ -112,4 +110,4 @@ module.exports = (request: string, options: ResolverOptions): string => {
   }
 
   return reactNativePresetResolver(request, resolveOptions);
-};
+}
