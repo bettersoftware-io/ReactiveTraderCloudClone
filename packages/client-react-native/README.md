@@ -165,7 +165,7 @@ newest update. Sign in with `demo` / `mcdc2026`.
 - It is a production bundle running inside Expo Go's shell. Only someone
   signed in to the owning Expo account sees the project, so this is for
   showing the app on your own phone, not for handing it out.
-- `eas-cli` must be signed in (`pnpm dlx eas-cli login`). Publishing is free
+- `eas-cli` must be signed in (`pnpm dlx eas-cli@24.10.0 login`). Publishing is free
   on Expo's free plan.
 - The runtime version follows the SDK (`runtimeVersion.policy: "sdkVersion"`),
   so a published build keeps opening until Expo Go moves to the next SDK;

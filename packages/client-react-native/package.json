@@ -28,7 +28,7 @@
     "test:native:coverage": "jest --coverage",
     "build": "tsc --noEmit",
     "export": "expo export --platform ios --output-dir dist",
-    "publish:demo": "pnpm dlx eas-cli@latest update --branch demo --platform ios --message \"$(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)\" --non-interactive",
+    "publish:demo": "pnpm dlx eas-cli@24.10.0 update --branch demo --platform ios --message \"$(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)\" --non-interactive",
     "smoke:ws": "tsx scripts/liveWsSmoke.ts",
     "test:rn:visual:simctl": "tsx tests/visual/simctl/run.ts",
     "test:rn:visual:simctl:update": "tsx tests/visual/simctl/run.ts --update",
