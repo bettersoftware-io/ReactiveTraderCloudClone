@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import { useState } from "react";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 import type { Candle, DepthBook, EquityInstrument } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 

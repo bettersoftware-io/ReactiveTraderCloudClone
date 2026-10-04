@@ -26,11 +26,11 @@ import {
 } from "rxjs/operators";
 
 import type {
-  JarvisDemoIntents,
   JarvisDemoMachineHandle,
   JarvisDemoState,
   JarvisDemoStep,
   JarvisIntents,
+  JarvisState,
 } from "@rtc/core-api";
 import {
   advanceDemoPatch,
@@ -40,25 +40,8 @@ import {
   JARVIS_DEMO_STEPS,
   lastEntryId,
 } from "@rtc/core-logic";
-import {
-  DEMO_STEP_BEAT_MS,
-  DEMO_STEP_TIMEOUT_MS,
-  type PowerSaverLevel,
-} from "@rtc/domain";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
-
-import type { JarvisState } from "./JarvisMachine";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type {
-  JarvisDemoIntents,
-  JarvisDemoMachineHandle,
-  JarvisDemoState,
-  JarvisDemoStep,
-};
+import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 export interface JarvisDemoDeps {
   readonly jarvisState$: Observable<JarvisState>;
@@ -86,14 +69,6 @@ export interface JarvisDemoDeps {
    * default) in production. Mirrors `JarvisDriverDeps.scheduler`. */
   readonly scheduler?: SchedulerLike;
 }
-
-/** Moved to `./jarvisDemoScript` (pluggable-core slice 7 wave 2) —
- * re-exported so existing imports keep working. */
-export { guideCommand, JARVIS_DEMO_STEPS } from "@rtc/core-logic";
-
-/** Re-exported from `@rtc/domain` (`jarvis/jarvisConstants.ts`), where the
- * contract suites can read them (pluggable-core slice 7 wave 2). */
-export { DEMO_STEP_BEAT_MS, DEMO_STEP_TIMEOUT_MS };
 
 /** Reads a warm/replay-backed Observable's CURRENT value synchronously, or
  * `undefined` if nothing has emitted yet — same idiom as

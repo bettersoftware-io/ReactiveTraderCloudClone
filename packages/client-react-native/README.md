@@ -155,8 +155,10 @@ Expo Go then opens it from there.
 pnpm demo:publish:ios      # from the repo root; builds, then publishes to branch "demo"
 ```
 
-On the phone: Expo Go → **rtc-mobile** under Projects → branch **demo** → the
-newest update. Sign in with `demo` / `mcdc2026`.
+On the phone: open Expo Go and tap **rtc-mobile** under Projects. It opens the
+newest published build directly — there is no branch or update to pick (seen on
+Expo Go 57, 2026-10-04). Close the app fully first if it is already open, or it
+keeps running the build it has. Sign in with `demo` / `mcdc2026`.
 
 - The published build talks to the deployed server (`wss://rtc-clone-server.fly.dev`,
   the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
@@ -165,6 +167,11 @@ newest update. Sign in with `demo` / `mcdc2026`.
 - It is a production bundle running inside Expo Go's shell. Only someone
   signed in to the owning Expo account sees the project, so this is for
   showing the app on your own phone, not for handing it out.
+- **Which build is on the phone?** The script stamps the bundle with the
+  commit and the publish time (UTC). The status strip's build cell prints the
+  commit on every screen, and the sign-in screen prints
+  `BUILD <commit> · <time>`. A development run has no stamp: the strip shows
+  `V2.0-RN` and the sign-in screen shows no build line.
 - The script passes `--environment preview`: EAS requires an environment in
   non-interactive mode, and `preview` matches the `preview` build profile in
   `eas.json`. No variables are defined for it on EAS, so the app's own

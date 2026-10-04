@@ -9,19 +9,16 @@ import {
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
-import type {
-  AnomalyDetectorConfig,
-  CurrencyPair,
-  JarvisNarratorPreference,
-  PriceTick,
-} from "@rtc/domain";
-
 import {
-  createNarratorMachine,
+  type AnomalyDetectorConfig,
+  type CurrencyPair,
+  type JarvisNarratorPreference,
   MAX_NARRATIONS_PER_SESSION,
   NARRATION_COOLDOWN_MS,
-  type NarratorDeps,
-} from "../NarratorMachine";
+  type PriceTick,
+} from "@rtc/domain";
+
+import { createNarratorMachine, type NarratorDeps } from "../NarratorMachine";
 
 describe("createNarratorMachine — exported constants", () => {
   it("pins NARRATION_COOLDOWN_MS and MAX_NARRATIONS_PER_SESSION", () => {

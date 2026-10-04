@@ -2,6 +2,7 @@ import type { Observable } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type { TileExecutionState } from "@rtc/core-api";
 import {
   type CurrencyPair,
   Direction,
@@ -17,10 +18,7 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import {
-  createTileExecutionMachine,
-  type TileExecutionState,
-} from "../TileExecutionMachine";
+import { createTileExecutionMachine } from "../TileExecutionMachine";
 
 const _pairOrUndef = KNOWN_CURRENCY_PAIRS.find((p) => {
   return p.symbol === "EURUSD";

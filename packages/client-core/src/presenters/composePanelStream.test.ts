@@ -1,6 +1,8 @@
 import { EMPTY, from, Observable, of } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { PanelData } from "@rtc/core-api";
+import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
   type AnalyticsPort,
   type BlotterPort,
@@ -14,11 +16,7 @@ import {
 } from "@rtc/domain";
 import type { PanelSpecV1 } from "@rtc/shared";
 
-import {
-  composePanelStream,
-  type PanelData,
-  type PanelStreamDeps,
-} from "./composePanelStream";
+import { composePanelStream } from "./composePanelStream";
 
 describe("composePanelStream", () => {
   it("fxTicks + line accumulates points per symbol as ticks arrive", () => {

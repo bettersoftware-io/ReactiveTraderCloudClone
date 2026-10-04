@@ -2,7 +2,7 @@ import { TileConfirmation } from "@ui-contract/components";
 import { mount } from "@ui-contract/mount";
 import { describe, expect, it } from "vitest";
 
-import type { TileExecutionState as TileState } from "@rtc/client-core";
+import type { TileExecutionState as TileState } from "@rtc/core-api";
 import {
   Direction,
   ExecutionStatus,

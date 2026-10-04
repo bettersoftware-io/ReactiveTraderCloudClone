@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { InMemoryDockLayoutStore } from "@rtc/client-core";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineBridgePage } from "#tests/ui/pages/DockviewLayoutEngineBridgePage";

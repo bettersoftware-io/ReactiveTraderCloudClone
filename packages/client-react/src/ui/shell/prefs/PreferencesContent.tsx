@@ -1,7 +1,7 @@
 import { type ReactElement, useState } from "react";
 
-import { formatBrainHint, formatGateHint } from "@rtc/client-core";
 import type { CoreImpl, CoreSelection } from "@rtc/core-api";
+import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
 import type {
   AmbientStyle,
   ChartSubstrate,

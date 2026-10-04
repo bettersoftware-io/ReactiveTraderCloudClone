@@ -11,25 +11,9 @@ import {
   reduceActivity,
   reduceNewTrades,
 } from "@rtc/core-logic";
-import {
-  ACTIVITY_FEED_CAP,
-  type BlotterPort,
-  type Trade,
-  TradeBlotterUseCase,
-} from "@rtc/domain";
+import { type BlotterPort, type Trade, TradeBlotterUseCase } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 4) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { ActivityEntry };
-
-/** Maximum number of Activity feed rows retained (newest-first), mirroring
- * client-prototype's own `ACTIVITY_CAP` (packages/client-prototype/src/fx/useFxRates.ts)
- * for behavioural parity with the v2 design. Now the domain's
- * `ACTIVITY_FEED_CAP`; kept under this name for the two web clients' imports. */
-export const ACTIVITY_CAP: number = ACTIVITY_FEED_CAP;
 
 export class BlotterPresenter implements BlotterPresenterApi {
   readonly trades$: Observable<readonly Trade[]>;
@@ -52,7 +36,7 @@ export class BlotterPresenter implements BlotterPresenterApi {
    * `newTradeIds$`, the first snapshot is suppressed (seed load isn't
    * "activity"), and this stream-diff lives here, not in the dumb UI.
    *
-   * Capped at `ACTIVITY_CAP` entries (oldest dropped first).
+   * Capped at `ACTIVITY_FEED_CAP` entries (oldest dropped first).
    *
    * Uses `refCount: false` (unlike every other shareReplay in this
    * codebase) so the `scan` accumulator is NOT torn down when the last

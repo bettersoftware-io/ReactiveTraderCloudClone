@@ -25,7 +25,7 @@ import {
   formatGateResetTime,
   JARVIS_GUIDE_CATALOG,
   sampleGuideChips,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { Direction } from "@rtc/domain";
 
 afterEach(() => {

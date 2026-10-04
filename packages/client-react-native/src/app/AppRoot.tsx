@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
 import { type ReactElement, type ReactNode, useEffect, useRef } from "react";
 
-import type { SessionStore } from "@rtc/client-core";
 import { createApp } from "@rtc/client-core/core";
+import type { SessionStore } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 import {
   createViewModel,
@@ -18,6 +18,8 @@ import {
 import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
 import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 import { resolveRelayUrl } from "#/app/devtools/resolveRelayUrl";
+import { BUILD_STAMP } from "#/app/readBuildStamp";
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
 
 /** The RN app's composition root, as a component. Builds the presenters and the
  * ViewModel exactly once for this mount and supplies the ViewModelProvider to
@@ -106,9 +108,11 @@ export function AppRoot({
   }, []);
 
   return (
-    <ViewModelProvider viewModel={ref.current.viewModel}>
-      {children}
-    </ViewModelProvider>
+    <BuildStampContext.Provider value={BUILD_STAMP}>
+      <ViewModelProvider viewModel={ref.current.viewModel}>
+        {children}
+      </ViewModelProvider>
+    </BuildStampContext.Provider>
   );
 }
 

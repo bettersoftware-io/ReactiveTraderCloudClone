@@ -1,4 +1,4 @@
-import type { LayoutPresetStore } from "@rtc/client-core";
+import type { LayoutPresetStore } from "@rtc/core-api";
 
 import type { World } from "./world";
 

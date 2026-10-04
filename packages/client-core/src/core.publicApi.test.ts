@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import * as coreLogic from "@rtc/core-logic";
-
 import * as core from "#/core";
 import * as root from "#/index";
 import * as presenters from "#/presenters/index";
@@ -11,9 +9,9 @@ import * as presenters from "#/presenters/index";
  * (ADR-006 Follow-up 9), everything the presenter barrel exports too. NONE of it
  * is reachable from the root index — a root export would put it back on the
  * web clients' eager import graph, which is what `pnpm check:core-bundle` and
- * dependency-cruiser's `client-core-root-is-the-edge` forbid. The root keeps
- * the presenter barrel's TYPES (`export type *`), which cost nothing at
- * runtime. */
+ * dependency-cruiser's `client-core-root-is-the-edge` forbid. The root
+ * exports none of the presenter barrel's types either: a contract type comes
+ * from `@rtc/core-api`, a presenter class's own type from this subpath. */
 describe("@rtc/client-core/core", () => {
   it("exports the composition root", () => {
     expect(Object.keys(core)).toEqual(
@@ -32,12 +30,8 @@ describe("@rtc/client-core/core", () => {
   it("is the ONLY place the presenter barrel's values are exported from", () => {
     const barrel = Object.keys(presenters);
     const rootKeys = new Set(Object.keys(root));
-    const sharedRules = new Set(Object.keys(coreLogic));
-    // A barrel name may also be on the root only when it is a
-    // `@rtc/core-logic` value a presenter module re-exports — the root
-    // re-exports that package whole, without touching a presenter module.
     const leaked = barrel.filter((name) => {
-      return rootKeys.has(name) && !sharedRules.has(name);
+      return rootKeys.has(name);
     });
 
     // Positive witness that the barrel still names the core's building

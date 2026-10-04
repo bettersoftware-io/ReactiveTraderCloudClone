@@ -11,7 +11,8 @@
   "references": [
     { "path": "../client-core" },
     { "path": "../core-api" },
-    { "path": "../domain" }
+    { "path": "../domain" },
+    { "path": "../shared" }
   ],
   "include": ["src"]
 }

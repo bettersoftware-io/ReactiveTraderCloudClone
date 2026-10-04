@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import type { WorkspaceTab } from "../defaultLayoutPort";
+import type {
+  LayoutNode,
+  PanelId,
+  PanelSpec,
+  WorkspaceTab,
+} from "@rtc/core-api";
+
 import {
   createDefaultLayoutPort,
   PANEL_SPECS,
   staticPanelIdsFor,
 } from "../defaultLayoutPort";
-import type { LayoutNode, PanelId, PanelSpec } from "../layoutPort";
 
 describe("createDefaultLayoutPort", () => {
   it("fx: a tiles-over-blotter left column beside a full-height analytics/positions right rail (prototype shape, same as equities)", () => {

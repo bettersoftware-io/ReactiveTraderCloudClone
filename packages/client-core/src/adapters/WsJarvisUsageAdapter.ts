@@ -1,10 +1,8 @@
 import { filter, Observable, switchMap } from "rxjs";
 
+import type { IWsAdapter, JarvisUsagePort } from "@rtc/core-api";
 import type { AdminJarvisUsagePayload } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
-
-import type { IWsAdapter } from "./IWsAdapter";
-import type { JarvisUsagePort } from "./jarvisUsagePort";
 
 /** One connection's live `SERVER_MSG.ADMIN_JARVIS_USAGE` feed: registers the
  * handler, sends `admin.jarvisUsage.subscribe`, and forwards every push for

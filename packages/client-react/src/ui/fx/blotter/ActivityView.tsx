@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { ActivityEntry } from "@rtc/client-core";
+import type { ActivityEntry } from "@rtc/core-api";
 import { Direction, TradeStatus } from "@rtc/domain";
 
 import { formatNotional, formatRate } from "./blotterColumns";

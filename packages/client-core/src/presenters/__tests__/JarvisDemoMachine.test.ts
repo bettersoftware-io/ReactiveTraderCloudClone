@@ -2,26 +2,23 @@ import { BehaviorSubject, Subject } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
+import type { JarvisDemoState, JarvisEntry, JarvisState } from "@rtc/core-api";
+import { guideCommand, JARVIS_DEMO_STEPS } from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_BRAIN,
   DEFAULT_JARVIS_SKIN,
+  DEMO_STEP_BEAT_MS,
+  DEMO_STEP_TIMEOUT_MS,
   Direction,
   JARVIS_BRAINS,
   type PowerSaverLevel,
 } from "@rtc/domain";
-
-import type { JarvisEvent } from "#/adapters/jarvisPort";
+import type { JarvisEvent } from "@rtc/shared";
 
 import {
   createJarvisDemoMachine,
-  DEMO_STEP_BEAT_MS,
-  DEMO_STEP_TIMEOUT_MS,
-  guideCommand,
-  JARVIS_DEMO_STEPS,
   type JarvisDemoDeps,
-  type JarvisDemoState,
 } from "../JarvisDemoMachine";
-import type { JarvisEntry, JarvisState } from "../JarvisMachine";
 
 describe("createJarvisDemoMachine", () => {
   it("starts idle with the static stepCount", () => {

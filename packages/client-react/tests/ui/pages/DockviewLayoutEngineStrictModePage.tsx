@@ -7,7 +7,7 @@ import type {
   LayoutPanelInstance,
   PanelId,
   WorkspaceTab,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

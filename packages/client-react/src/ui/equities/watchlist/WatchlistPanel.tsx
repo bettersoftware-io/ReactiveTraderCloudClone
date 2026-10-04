@@ -1,6 +1,6 @@
 import { type ReactElement, useRef, useState } from "react";
 
-import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
+import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { useRankGlide } from "./useRankGlide";

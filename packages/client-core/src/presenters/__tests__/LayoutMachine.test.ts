@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LayoutNode, LayoutPort, LayoutState } from "@rtc/core-logic";
+import type { LayoutNode, LayoutPort, LayoutState } from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
   instanceIdFor,

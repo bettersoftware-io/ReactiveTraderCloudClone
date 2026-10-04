@@ -1,7 +1,7 @@
 import { combineLatest, type Observable, of, shareReplay } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
-import type { PanelData, PanelPoint, PanelTone } from "@rtc/core-api";
+import type { PanelData, PanelPoint } from "@rtc/core-api";
 import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
   analyticsTableFrame,
@@ -23,10 +23,6 @@ import {
   TradeBlotterUseCase,
 } from "@rtc/domain";
 import type { PanelSource, PanelSpecV1 } from "@rtc/shared";
-
-export { MAX_POINTS_PER_SERIES } from "@rtc/core-logic";
-
-export type { PanelData, PanelPoint, PanelStreamDeps, PanelTone };
 
 function accumulatePoints$(
   ticks$: Observable<PriceTick>,

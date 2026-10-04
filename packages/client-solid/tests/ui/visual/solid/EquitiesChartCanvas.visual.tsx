@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 
-import type { EqDrawing } from "@rtc/client-core";
+import type { EqDrawing } from "@rtc/core-api";
 import type { Candle } from "@rtc/domain";
 import {
   chartScene,

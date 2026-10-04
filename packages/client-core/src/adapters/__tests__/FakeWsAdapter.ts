@@ -2,10 +2,9 @@
 
 import { type Observable, ReplaySubject } from "rxjs";
 
+import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
 import type { RpcResponse } from "@rtc/shared";
-
-import type { IWsAdapter, MessageHandler } from "../IWsAdapter";
 
 interface SentMessage {
   type: string;

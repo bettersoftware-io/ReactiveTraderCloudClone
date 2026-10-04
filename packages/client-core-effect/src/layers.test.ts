@@ -2,11 +2,8 @@ import { Effect, ManagedRuntime } from "effect";
 import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import type { AppPorts } from "@rtc/core-api";
 import {
   AuthSimulator,
   type CurrencyPair,

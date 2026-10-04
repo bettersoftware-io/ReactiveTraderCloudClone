@@ -1,10 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  type DockLayoutStore,
-  InMemoryDockLayoutStore,
-  type WorkspaceTab,
-} from "@rtc/client-core";
+import type { DockLayoutStore, WorkspaceTab } from "@rtc/core-api";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

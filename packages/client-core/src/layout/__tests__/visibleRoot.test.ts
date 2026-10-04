@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { LayoutNode } from "@rtc/core-logic";
+import type { LayoutNode } from "@rtc/core-api";
 
 import { visibleRootOf } from "#/layout/visibleRoot";
 

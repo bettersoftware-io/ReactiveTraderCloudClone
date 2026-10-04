@@ -24,7 +24,7 @@ import type {
   EqDrawTool,
   EqIndicatorId,
   EqPaneId,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import type { Candle, ChartSubstrate } from "@rtc/domain";
 
 import { candleAt, generateCandles } from "./candleFixture";

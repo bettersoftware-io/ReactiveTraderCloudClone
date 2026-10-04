@@ -1,17 +1,19 @@
 import { type Accessor, Index, type JSX, Show } from "solid-js";
 
 import {
-  type LayoutIntents,
-  type LayoutNode,
-  type LayoutState,
   lockedWidthPx,
   maximizeBoundaryPath,
   nodeAtPath,
-  PANEL_SPECS,
-  type PanelId,
-  type PanelSpec,
-  type SplitDir,
 } from "@rtc/client-core";
+import type {
+  LayoutIntents,
+  LayoutNode,
+  LayoutState,
+  PanelId,
+  PanelSpec,
+  SplitDir,
+} from "@rtc/core-api";
+import { PANEL_SPECS } from "@rtc/core-logic";
 
 import { PanelErrorBoundary } from "./PanelErrorBoundary";
 import { PanelHeadControls } from "./PanelHeadControls";

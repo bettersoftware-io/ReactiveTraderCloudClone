@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, Show } from "solid-js";
 
-import type { JarvisPanelVm } from "@rtc/client-core";
+import type { JarvisPanelVm } from "@rtc/core-api";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { JarvisPanelBody } from "./JarvisPanelBody";

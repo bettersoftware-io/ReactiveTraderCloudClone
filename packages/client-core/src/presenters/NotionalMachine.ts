@@ -2,17 +2,11 @@ import { type DefaultedStateObservable, state } from "@rx-state/core";
 import { merge, Subject } from "rxjs";
 import { map } from "rxjs/operators";
 
-import type { NotionalIntents, NotionalView } from "@rtc/core-api";
-import type { Machine } from "@rtc/core-logic";
+import type { Machine, NotionalIntents, NotionalView } from "@rtc/core-api";
 import {
   createInitialNotionalView,
   reduceNotionalInput,
 } from "@rtc/core-logic";
-
-/** Moved to `@rtc/core-api` (pluggable-core-slice-0 Task 3) — re-exported
- * here so every existing `import … from "@rtc/client-core"` keeps working
- * unchanged. */
-export type { NotionalIntents, NotionalView };
 
 type NotionalEvent = { type: "change"; input: string } | { type: "reset" };
 

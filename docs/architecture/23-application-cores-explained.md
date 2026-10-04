@@ -47,7 +47,7 @@ code rather than argued:
 
 | A migration needs to… | What this repository shows |
 |---|---|
-| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the core as types only (via `@rtc/client-core`'s re-export of the `core-api` types) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
+| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the contract as types only (straight from `@rtc/core-api`) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
 | Know the new implementation behaves the same | `@rtc/core-contract`: one suite per member, absolute construction-time counts, the `transportGate` and `portDiscipline` cross-checks. |
 | Migrate only the stream layer, not the business rules | `@rtc/core-logic`: the pure folds and controllers moved out once and every core reuses them; only the *plumbing* is rewritten per core. |
 | Let old and new coexist during the cutover | `bridge/`: the one place the old library may be imported as a value; everywhere else it is types only, so the old library cannot spread beyond it at runtime (dependency-cruiser `bridge-owns-rxjs` and grep gate 43; see [What keeps it honest](#what-keeps-it-honest)). |

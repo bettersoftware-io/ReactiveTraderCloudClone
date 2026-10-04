@@ -5,7 +5,7 @@ import type {
   LayoutPanelInstance,
   PanelId,
   PanelSpec,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 
 import { AdminDashboard } from "#/ui/admin/AdminDashboard";
 import { CreditBlotter } from "#/ui/credit/blotter/CreditBlotter";

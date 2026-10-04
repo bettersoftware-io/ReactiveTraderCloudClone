@@ -1,11 +1,6 @@
 import { defer, map, Observable, of } from "rxjs";
 
-import type {
-  AppPorts,
-  AuthGatedTransport,
-  ConnectionIntentsPort,
-  TransportPorts,
-} from "@rtc/core-api";
+import type { IWsAdapter, SessionStore, TransportPorts } from "@rtc/core-api";
 import {
   type AdminPort,
   type AnalyticsPort,
@@ -78,27 +73,9 @@ import type {
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
-import type { IWsAdapter } from "./IWsAdapter";
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
-import type { SessionStore } from "./sessionStore.js";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";
-
-/** Moved to `@rtc/core-api` — `AuthGatedTransport` in pluggable-core-slice-0
- * Task 2, `AppPorts`/`TransportPorts` in Task 5 — re-exported here so every
- * existing `import … from "@rtc/client-core"` keeps working unchanged. Only
- * `TransportPorts` is also used locally by the port factories below; the
- * rest are re-exported for callers. `TransportPorts` omits BOTH
- * `connectionEvents` and `connectionIntents` (ADR-006 Follow-up 5) —
- * neither factory below supplies either; a builder gets both together from
- * `pairConnectionPorts` (`./connectionIntents`), spread alongside a
- * factory's own spread. */
-export type {
-  AppPorts,
-  AuthGatedTransport,
-  ConnectionIntentsPort,
-  TransportPorts,
-};
 
 /** Dependencies injected by the platform layer into both simulator and WS-real port factories. */
 export interface PortFactoryDeps {

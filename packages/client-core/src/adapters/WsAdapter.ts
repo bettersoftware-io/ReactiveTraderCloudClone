@@ -5,9 +5,9 @@
 
 import { type Observable, ReplaySubject } from "rxjs";
 
+import type { IWsAdapter, MessageHandler } from "@rtc/core-api";
 import type { ConnectionEvent } from "@rtc/domain";
 
-import type { IWsAdapter, MessageHandler } from "#/adapters/IWsAdapter";
 import { buildWsUrl } from "#/wsUrl";
 
 interface WsMessage {

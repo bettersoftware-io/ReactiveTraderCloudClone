@@ -2,18 +2,17 @@ import Constants from "expo-constants";
 import { tap } from "rxjs";
 
 import {
-  type AppPorts,
   createSimulatorPorts,
   createWsRealPorts,
   HttpAuthAdapter,
   InMemorySessionStore,
   pairConnectionPorts,
   routeIdleLifecycle,
-  type SessionStore,
   WsAdapter,
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
 } from "@rtc/client-core";
+import type { AppPorts, SessionStore } from "@rtc/core-api";
 import {
   AuthSimulator,
   type ConnectionEventsPort,

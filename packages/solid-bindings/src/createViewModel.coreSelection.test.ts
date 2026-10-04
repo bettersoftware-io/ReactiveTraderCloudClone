@@ -6,16 +6,15 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  type AppCommands,
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-  type MachineFactories,
-  type Presenters,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import { createApp, createMachineFactories } from "@rtc/client-core/core";
-import type { CoreSelection } from "@rtc/core-api";
+import type {
+  AppCommands,
+  AppPorts,
+  CoreSelection,
+  MachineFactories,
+  Presenters,
+} from "@rtc/core-api";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,

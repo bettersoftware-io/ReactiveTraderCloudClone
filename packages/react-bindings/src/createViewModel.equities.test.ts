@@ -2,13 +2,9 @@ import { act, renderHook } from "@testing-library/react";
 import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-  type Presenters,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
 import { createApp, createMachineFactories } from "@rtc/client-core/core";
+import type { AppPorts, Presenters } from "@rtc/core-api";
 import {
   AuthSimulator,
   CANDLE_HISTORY_TOTAL,

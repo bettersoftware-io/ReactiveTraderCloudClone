@@ -2,31 +2,28 @@ import { NEVER, of } from "rxjs";
 import { TestScheduler } from "rxjs/testing";
 import { describe, expect, it } from "vitest";
 
+import type {
+  JarvisAskOptions,
+  JarvisAvailability,
+  JarvisPort,
+  JarvisState,
+} from "@rtc/core-api";
+import {
+  formatBrainHint,
+  formatGateHint,
+  formatGateResetTime,
+} from "@rtc/core-logic";
 import {
   DEFAULT_JARVIS_SKIN,
   Direction,
+  JARVIS_GREETING,
   type JarvisBrain,
   type JarvisEffort,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
-import type {
-  JarvisAskOptions,
-  JarvisAvailability,
-  JarvisEvent,
-  JarvisPort,
-} from "#/adapters/jarvisPort";
-
-import {
-  createJarvisMachine,
-  formatBrainHint,
-  formatGateHint,
-  formatGateResetTime,
-  JARVIS_GREETING,
-  type JarvisDeps,
-  type JarvisState,
-} from "../JarvisMachine";
+import { createJarvisMachine, type JarvisDeps } from "../JarvisMachine";
 
 describe("createJarvisMachine", () => {
   it("starts with the greeting, closed, idle, no pending confirmation, the first skin$ value, and the sim-default scripted-only brain", () => {

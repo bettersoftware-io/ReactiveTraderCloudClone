@@ -3,12 +3,11 @@ import { BehaviorSubject } from "rxjs";
 import type {
   AnimationIntent,
   AuthViewState,
+  CoreImpl,
   IncidentKind,
   JarvisAvailability,
-  JarvisEvent,
   ThroughputView,
-} from "@rtc/client-core";
-import type { CoreImpl } from "@rtc/core-api";
+} from "@rtc/core-api";
 import type {
   AmbientStyle,
   ChartSubstrate,
@@ -35,6 +34,7 @@ import type {
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {
