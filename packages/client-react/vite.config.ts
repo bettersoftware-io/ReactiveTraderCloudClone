@@ -176,8 +176,8 @@ const rtcSourceAlias: Record<string, string> = debugBuild
 // dependencies are then served minified and without a source map. Each e2e
 // test opens a fresh browser context, so every test re-downloads every
 // dependency, and Vite appends each one's source map inline to the response —
-// `effect` alone was 11 MB per page load (3.3 MB of code + its map), which
-// made the effect-core e2e job ~1.65x the default one. Measured 2026-10-04 on
+// `effect` alone was 11 MB per page load (3.3 MB of code + its map), the main
+// reason the effect-core e2e job ran ~1.65x the default one. Measured 2026-10-04 on
 // 16 tests with tracing on: 36 s at 11 MB, 30.5 s without the map, 28.3 s
 // minified too, against 26.5 s for the RxJS core. Unset (plain `pnpm dev`),
 // nothing changes: dependencies keep their source maps for debugging.

@@ -3,8 +3,9 @@
 // minified and without a source map. Why it matters: each test opens a fresh
 // browser context, so every test downloads every dependency again, and Vite
 // appends each one's source map to the response — `effect` alone was 11 MB per
-// page load, which made the effect-core e2e job ~1.65x the default one
-// (measured 2026-10-04; the numbers live beside the switch in vite.config.ts).
+// page load, the main reason the effect-core e2e job ran ~1.65x the default
+// one (measured 2026-10-04; the numbers live beside the switch in
+// vite.config.ts and in tests/README.md).
 //
 // The switch leans on Vite internals (a transform hook answering "no source
 // map"), so a Vite upgrade could silently bring the maps back and the slowness
@@ -71,8 +72,8 @@ export async function assertDepsServedLean(
     if (carriesInlineSourceMap(await fetchText(`${origin}${depUrl}`))) {
       throw new Error(
         `lean-deps check: ${depUrl} is served WITH an inline source map although the harness set RTC_LEAN_DEPS=1. ` +
-          "Every e2e page load now re-downloads every dependency's map (11 MB for `effect`), which is what made the " +
-          "effect-core e2e job ~1.65x slower. See `dropDepSourcemaps` in the client's vite.config.ts.",
+          "Every e2e page load now re-downloads every dependency's map (11 MB for `effect`), which is the main thing " +
+          "that made the effect-core e2e job ~1.65x slower. See `dropDepSourcemaps` in the client's vite.config.ts.",
       );
     }
   }
