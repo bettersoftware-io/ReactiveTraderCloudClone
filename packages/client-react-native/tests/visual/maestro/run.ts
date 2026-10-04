@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { SCENARIO_IDS } from "../scenarioIds.ts";
 import { resolveBootedUdid } from "../shared/bootedUdid.ts";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
-import { compareToGolden, toleranceFor } from "../shared/diff.ts";
+import { compareToGolden, toleranceFor, verdictLine } from "../shared/diff.ts";
 import { goldenPath } from "../shared/goldens.ts";
 
 const exec = promisify(execFile);
@@ -78,13 +78,13 @@ async function main(): Promise<void> {
       allowedMismatchedPixelRatio: toleranceFor(id),
     });
 
-    // Four decimals, not two: the bar is now exact reproduction, and at two
-    // decimals every ratio below 0.005% prints as a reassuring "0.00%".
+    // Four decimals, not two: the bar is exact reproduction, and at two decimals
+    // every ratio below 0.005% prints as a reassuring "0.00%".
     if (result.pass) {
-      console.log(`pass     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
+      console.log(verdictLine(id, result));
     } else {
       failures += 1;
-      console.error(`FAIL     ${id}  (${(result.ratio * 100).toFixed(4)}%)`);
+      console.error(verdictLine(id, result));
     }
   }
 
