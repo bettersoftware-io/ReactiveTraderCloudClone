@@ -64,7 +64,7 @@ otherwise one line ("all N CI steps mapped").
 | React Native coverage gate (merged lines ≥95%) | full |
 | Build | full |
 | Prod /devtools/ bundle check | full |
-| Core bundle isolation (alternative cores only in their own lazy chunks) | full |
+| Core bundle isolation (every core only in its own lazy chunk) | full |
 | Expo bundle smoke (Metro monorepo resolution) | CI-only — Metro monorepo resolution belongs on a clean runner |
 
 Setup steps (Enable Corepack, Resolve pnpm store path, Cache the pnpm store,

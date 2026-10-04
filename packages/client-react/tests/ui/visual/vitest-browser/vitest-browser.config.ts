@@ -47,14 +47,14 @@ export default defineConfig({
     // env var (and -t wouldn't forward cleanly through `pnpm run <script> --`).
     testNamePattern: process.env.SCENARIO_PATTERN || undefined,
     // HTML report (additive): test:ui:visual:vitest-browser:react =>
-    // reports/ui/visual/vitest-browser/react/. outputFile is root-relative
+    // reports/ui/visual/vitest-browser/react/. outputDir is root-relative
     // (root is pinned to the package dir above). On failure the html reporter
     // embeds the actual/diff PNGs into report/data/, so the report is
     // self-contained.
-    reporters: ["default", "html"],
-    outputFile: {
-      html: "reports/ui/visual/vitest-browser/react/report/index.html",
-    },
+    reporters: [
+      "default",
+      ["html", { outputDir: "reports/ui/visual/vitest-browser/react/report" }],
+    ],
     browser: {
       enabled: true,
       provider: playwright(),

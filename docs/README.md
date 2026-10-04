@@ -120,9 +120,12 @@ flowchart TD
 - [`typescript-7.md`](typescript-7.md) — why `tsc` is TypeScript **7** while the
   `typescript` package name resolves to the **6.x** API (the dual install), the
   measurements behind it, the three gates that block a plain bump, and the exit plan.
-- [`vitest-5.md`](vitest-5.md) — the vitest 4 → 5 upgrade spike (2026-09-27, parked): what v5
-  brings, whether it is worth it, the three silent v5 traps and their fixes, the open
-  `vi.resetModules()` mock blocker with four unblock options, and how to resume.
+- [`vitest-5.md`](vitest-5.md) — the vitest 4 → 5 upgrade (landed 2026-10-04 on 5.0.3): what v5
+  brings, the three silent v5 traps and their fixes, the concurrent-re-import mock regression
+  with its minimal reproduction and workaround, and what is left to do.
+- [`vitest-5-upstream-bug-report.md`](vitest-5-upstream-bug-report.md) — how to report that
+  mock regression to the vitest maintainers: why a person must file it, the reproduction
+  script, the issue text to paste, and what to do once it is fixed.
 - [`mobile-ci-testing-options.md`](mobile-ci-testing-options.md) — decision
   support for running iOS/Android tests in CI: why iOS needs a Mac, every option
   with dated costs, what teams actually gate on, and a staged recommendation.
