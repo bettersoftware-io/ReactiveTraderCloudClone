@@ -6,7 +6,7 @@ Wire-protocol DTOs and the `CLIENT_MSG`/`SERVER_MSG` envelope types shared by cl
 |---|---|
 | **Ring** | ③ Interface Adapters — boundary DTOs |
 | **Runtime deps** | `@rtc/domain`, `@rtc/motion-core` (the scripted Jarvis brain's typed-reveal `speechChunks` pacing), `rxjs` (`packages/shared/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/core-api`, `@rtc/core-logic`, the three application cores (`client-core`, `client-core-async`, `client-core-effect`), `server`, and the `tests` workspace -- *not* the UI clients directly (none lists it as a dependency) |
+| **Consumed by** | `@rtc/core-api`, `@rtc/core-logic`, the three application cores (`client-core`, `client-core-async`, `client-core-effect`), `server`, and the `tests` workspace. Both web clients, both bindings and `ui-contract` list it too, for **types only** (three Jarvis wire types they name); dependency-cruiser's `ui-takes-wire-types-only` rejects a value import from the UI side |
 | **Must never import** | `client-react`, `server` — dependency-cruiser's `shared-no-apps` rule (`docs/dependency-cruiser.md`) restricts `shared` to reaching inward, at most to `domain` and `motion-core`; the `domain-stays-pure` rule additionally forbids `@rtc/domain` from ever importing `@rtc/shared` back |
 
 ## Folder map

@@ -1,5 +1,5 @@
 import { Chunk, Effect, Queue, Scope, Stream, Take } from "effect";
-import type { Observable } from "rxjs";
+import type { Observable, Unsubscribable } from "rxjs";
 
 /** Push an Observable into an Effect Stream, subscribing SYNCHRONOUSLY, as a
  * side effect of calling `fromObservable` itself — not lazily, on first
@@ -39,24 +39,30 @@ import type { Observable } from "rxjs";
  *
  * BURSTS TRAVEL WHOLE. Everything the source emits in one turn is drained
  * together and sent downstream as ONE chunk (`drainBurst` +
- * `joinConsecutiveValues` below). That is load-bearing for the UI, not a
- * tuning detail. `Stream.merge`, `mergeAll` and `flatMap` hand each CHUNK
- * from one fiber to another on its own scheduler turn, and a UI renders once
- * per turn — so a burst that enters as fifty single-value chunks (what the
- * obvious `Stream.fromQueue(queue).pipe(Stream.flattenTake)` produces: one
- * chunk per `Take`) reaches every fold with a `merge` in it, and then the
- * screen, one value per turn.
+ * `joinConsecutiveValues` below). `Stream.merge`, `mergeAll` and `flatMap`
+ * hand each CHUNK from one fiber to another as a step of its own, so a burst
+ * that enters as fifty single-value chunks (what the obvious
+ * `Stream.fromQueue(queue).pipe(Stream.flattenTake)` produces: one chunk per
+ * `Take`) costs fifty hand-overs at every merge it crosses.
  *
- * MEASURED 2026-10-04, when this was `fromQueue` + `flattenTake`: the
- * pricing simulator replays 50 historical ticks per pair on subscribe, and
- * the nine FX tiles rendered 1,070 times in their first two seconds against
- * ~95 on the RxJS and async cores; the page was busy for 666 ms at start-up
- * against 166 ms, 4.1 s against 0.8 s under 6x CPU throttling — which is
- * what made the effect-core e2e job slow. With the burst kept whole: ~150
- * renders, 380 ms, 1.8 s. A waiting `take` is handed the burst's first value
- * alone, hence the `takeAll` that follows it. Do not simplify this back: the
- * contract cases named "…in one turn" (`collectTurns`, `@rtc/core-contract`)
- * and this file's chunk tests fail if a burst is split.
+ * What that has cost, MEASURED 2026-10-04 on the pricing simulator's replay
+ * of 50 historical ticks per pair on subscribe (React client, nine tiles):
+ *
+ * - On Effect's default scheduler every hand-over was a turn of its own, and
+ *   a UI renders once per turn: the tiles rendered 1,070 times in their
+ *   first two seconds against ~95 on the RxJS and async cores, and start-up
+ *   kept the page busy for 666 ms against 166 ms. That is what made the
+ *   effect-core e2e job slow, and why this was written.
+ * - On the turn scheduler (`bridge/turnScheduler.ts`) the hand-overs all
+ *   happen inside one turn, so the RENDERS no longer depend on this — the
+ *   contract cases named "…in one turn" pass with the burst split. The WORK
+ *   is still saved: start-up is ~40 ms busier with it split (580 ms against
+ *   537 ms).
+ *
+ * So this is a saving of fiber steps now; the one-turn guarantee is the
+ * scheduler's. A waiting `take` is handed the burst's first value alone,
+ * hence the `takeAll` that follows it. This file's chunk tests pin the
+ * joining.
  *
  * The calling rule, stated as what to DO: call it inside a `sharedFold`'s
  * `run`, once per warm period. Never at presenter construction, never
@@ -72,18 +78,105 @@ export function fromObservable<T>(
   source: Observable<T>,
   scope?: Scope.Scope,
 ): Stream.Stream<T, unknown> {
-  const queue = Effect.runSync(Queue.unbounded<Take.Take<T, unknown>>());
-  const subscription = source.subscribe({
-    next: (value: T) => {
-      Queue.unsafeOffer(queue, Take.of(value));
+  return fromObservables(
+    [
+      portEvents(source, (value: T) => {
+        return value;
+      }),
+    ],
+    scope,
+  );
+}
+
+/** One source of a merged stream: a port, and what each of its values
+ * becomes there (`portEvents`). */
+export interface PortEvents<E> {
+  /** Subscribe the port, handing every value to `sink` as an event. */
+  readonly subscribe: (sink: EventSink<E>) => Unsubscribable;
+}
+
+/** Where a merged stream's sources put what they emit. */
+interface EventSink<E> {
+  emit(event: E): void;
+  fail(error: unknown): void;
+  end(): void;
+}
+
+/** A port as a source of a merged stream: `toEvent` turns each value into
+ * the stream's event type — usually by tagging it with which port it came
+ * from. It runs in the port's own emission, so it must not throw. */
+export function portEvents<A, E>(
+  source: Observable<A>,
+  toEvent: (value: A) => E,
+): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      return source.subscribe({
+        next: (value: A) => {
+          sink.emit(toEvent(value));
+        },
+        error: (error: unknown) => {
+          sink.fail(error);
+        },
+        complete: () => {
+          sink.end();
+        },
+      });
     },
-    error: (error: unknown) => {
+  };
+}
+
+/** Several ports as ONE stream: `fromObservable` for more than one source,
+ * all feeding the same queue. Everything `fromObservable` says holds — the
+ * ports are subscribed synchronously, in the order given, as a side effect
+ * of this call; a burst travels as one chunk — and two things besides:
+ *
+ * - Events arrive in the order the ports emitted them, across ports.
+ *   `Stream.merge` promises no order between its sides (measured: it drained
+ *   one side first, so a fold had to read a flag's current value on the side
+ *   to avoid dropping the ticks that arrived "before" it).
+ * - It costs one fiber step per burst, not about eleven per value.
+ *   `Stream.merge` runs each side on a fiber of its own and hands every
+ *   chunk across. MEASURED 2026-10-04 (React client, FX screen, 6 s of
+ *   steady state): the price and price-history folds and the stale-flag
+ *   machines, each a `Stream.merge` of two ports, ran 4,250 scheduler tasks;
+ *   merged here instead, 600.
+ *
+ * The stream ends when EVERY port has completed, and fails as soon as one
+ * does, after the events that came before the failure. */
+export function fromObservables<E>(
+  sources: readonly PortEvents<E>[],
+  scope?: Scope.Scope,
+): Stream.Stream<E, unknown> {
+  const queue = Effect.runSync(Queue.unbounded<Take.Take<E, unknown>>());
+  let live = sources.length;
+  const sink: EventSink<E> = {
+    emit: (event: E) => {
+      Queue.unsafeOffer(queue, Take.of(event));
+    },
+    fail: (error: unknown) => {
       Queue.unsafeOffer(queue, Take.fail(error));
     },
-    complete: () => {
-      Queue.unsafeOffer(queue, Take.end);
+    end: () => {
+      live -= 1;
+
+      if (live === 0) {
+        Queue.unsafeOffer(queue, Take.end);
+      }
     },
+  };
+
+  const subscriptions = sources.map((source) => {
+    return source.subscribe(sink);
   });
+
+  const subscription: Unsubscribable = {
+    unsubscribe: () => {
+      for (const each of subscriptions) {
+        each.unsubscribe();
+      }
+    },
+  };
 
   // A stream that is never run never reaches its `ensuring` — so the period
   // that opened this subscription also owns it: closing the scope releases
@@ -100,6 +193,7 @@ export function fromObservable<T>(
         }),
       ),
     );
+    holdForSynchronousRelease(scope, subscription);
   }
 
   // One drain = everything the source emitted in one turn. A parked `take`
@@ -122,6 +216,54 @@ export function fromObservable<T>(
       }),
     ),
   );
+}
+
+/** The port subscriptions each scope owns, so `releasePorts` can end them
+ * without running the scope's finalizers. Weak: an entry goes with its scope. */
+const portsOf = new WeakMap<Scope.Scope, Set<Unsubscribable>>();
+
+function holdForSynchronousRelease(
+  scope: Scope.Scope,
+  subscription: Unsubscribable,
+): void {
+  const held = portsOf.get(scope);
+
+  if (held === undefined) {
+    portsOf.set(scope, new Set([subscription]));
+    return;
+  }
+
+  held.add(subscription);
+}
+
+/** Unsubscribe, NOW, every port `fromObservable` subscribed for `scope` —
+ * what an RxJS `unsubscribe()` does, and what closing the scope does not.
+ *
+ * `Scope.close` is an effect: it interrupts the fibers forked into the scope
+ * one at a time, newest first, WAITING for each to end before it turns to
+ * the next, and only then runs the finalizers that unsubscribe the ports. So
+ * for several fiber steps after a `dispose()` returns, the ports are still
+ * subscribed and the fold fiber is still running: an event emitted in that
+ * window is received and folded.
+ *
+ * MEASURED 2026-10-04: a stale-flag machine whose `state$` had just been
+ * unsubscribed (its watcher fiber is the newest in the scope, so the close
+ * waits on it first) folded two connection events emitted after `dispose()`.
+ * It had passed until then only because `Stream.merge` took longer to carry
+ * an event than the close took to reach the fold fiber. Released here, an
+ * event emitted after the close began is never received at all. */
+export function releasePorts(scope: Scope.Scope): void {
+  const held = portsOf.get(scope);
+
+  if (held === undefined) {
+    return;
+  }
+
+  portsOf.delete(scope);
+
+  for (const subscription of held) {
+    subscription.unsubscribe();
+  }
 }
 
 /** Everything the queue held at one drain, with each run of consecutive

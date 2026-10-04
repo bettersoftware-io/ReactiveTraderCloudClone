@@ -1,6 +1,6 @@
 import { type ReactElement, useEffect, useRef, useState } from "react";
 
-import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
+import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./WatchlistRow.module.css";

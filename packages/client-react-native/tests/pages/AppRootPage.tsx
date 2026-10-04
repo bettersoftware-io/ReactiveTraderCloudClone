@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react-native";
 import { useContext } from "react";
 import { Text } from "react-native";
 
-import type { AuthStatus } from "@rtc/client-core";
+import type { AuthStatus } from "@rtc/core-api";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { AppRoot } from "#/app/AppRoot";

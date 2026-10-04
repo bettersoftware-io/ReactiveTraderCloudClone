@@ -4,6 +4,7 @@ import type { AnimationIntent } from "@rtc/core-api";
 import {
   Direction,
   type EquityOrder,
+  type Price,
   RfqState,
   TradeStatus,
 } from "@rtc/domain";
@@ -68,6 +69,33 @@ export function describeAnimationDirectorContract(
         await settle();
         expect(kinds(c.values)).toEqual(["tickUp", "tickUp", "tickDown"]);
         expect(c.turnCount()).toBe(1);
+        c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a tick's price and the flash it causes reach the tile in one turn — one UI render per tick, not one for the price and another for the intent", async () => {
+      const h = makeHarness();
+
+      try {
+        const c = collectTurns<Price | AnimationIntent>(
+          h.app.presenters.priceStream.price$(EURUSD),
+          h.app.presenters.animationDirector.intentsFor("tile:EURUSD"),
+        );
+        h.driver.emitPairs([EURUSD]);
+        await settle();
+        h.driver.tickPrice(createTick("EURUSD", 1.1));
+        await settle();
+        const seenBefore = c.values.length;
+        const turnsBefore = c.turnCount();
+        h.driver.tickPrice(createTick("EURUSD", 1.2));
+        await settle();
+        expect(c.values.slice(seenBefore)).toEqual([
+          expect.objectContaining({ mid: 1.2 }),
+          { target: "tile:EURUSD", kind: "tickUp" },
+        ]);
+        expect(c.turnCount() - turnsBefore).toBe(1);
         c.unsubscribe();
       } finally {
         await h.teardown();

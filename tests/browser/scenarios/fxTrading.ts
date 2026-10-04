@@ -1,5 +1,5 @@
-import type { TestContext } from "../testContext";
-import { assertGte, assertTrue } from "./assert";
+import type { TestContext } from "../testContext.ts";
+import { assertGte, assertTrue } from "./assert.ts";
 
 function parseRegexList(raw: string): RegExp[] {
   return raw

@@ -20,6 +20,7 @@
   "references": [
     { "path": "../domain" },
     { "path": "../client-core" },
+    { "path": "../client-core-rxjs" },
     { "path": "../solid-bindings" },
     { "path": "../ui-contract" }
   ]

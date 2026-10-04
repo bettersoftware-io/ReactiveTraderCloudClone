@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { ColumnFilter, SortState } from "@rtc/client-core";
+import type { ColumnFilter, SortState } from "@rtc/core-logic";
 
 import type { ColumnDef } from "./blotterColumns";
 import { DateFilter } from "./columnFilter/DateFilter";

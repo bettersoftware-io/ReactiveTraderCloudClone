@@ -1,7 +1,7 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useState } from "react";
 
-import type { ColumnFilter, Comparator } from "@rtc/client-core";
+import type { ColumnFilter, Comparator } from "@rtc/core-logic";
 
 import styles from "./NumberFilter.module.css";
 

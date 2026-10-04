@@ -4,7 +4,7 @@ import {
   FIRST_DOCK_RENDER_ARM_KEY,
   type FirstDockRenderArm,
   type FirstDockRenderWindow,
-} from "#/browser/firstDockRenderRecorder";
+} from "#/browser/firstDockRenderRecorder.ts";
 
 import type {
   FirstDockRender,
@@ -16,10 +16,10 @@ import type {
   PopoutWindowPO,
   RootTheme,
   SashGripSize,
-} from "../contracts/Layout";
-import type { PrefsLayoutEngine } from "../contracts/Preferences";
-import { TESTIDS } from "../contracts/testids";
-import { readBoxWhenLaidOut } from "./geometry";
+} from "../contracts/Layout.ts";
+import type { PrefsLayoutEngine } from "../contracts/Preferences.ts";
+import { TESTIDS } from "../contracts/testids.ts";
+import { readBoxWhenLaidOut } from "./geometry.ts";
 
 const HANDLE = `hr[data-testid^="${TESTIDS.layout.handlePrefix}"]`;
 // dockview-core's own draggable tab wrapper (see dockview-core's Tab
@@ -64,7 +64,7 @@ const DOCK_LAYOUT_SETTLE_MS = 600;
 // `WorkspacePersistenceWriter` debounces the layer-2 LayoutState write
 // (`collapsed`/`closed`/root tree — a SEPARATE channel from the dock blob
 // above) by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
-// packages/client-core/src/layout/workspacePersistenceWriter.ts). Hardcoded
+// packages/client-core-rxjs/src/layout/workspacePersistenceWriter.ts). Hardcoded
 // here rather than imported, same reasoning as `Jarvis.ts`'s own copy: the
 // suite runs against either client via `RTC_CLIENT_PKG`, and both export the
 // identical string.
@@ -165,7 +165,11 @@ interface DockGroupBox {
 }
 
 export class PlaywrightLayout implements LayoutPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private first(): Locator {
     return this.page.locator(HANDLE).first();

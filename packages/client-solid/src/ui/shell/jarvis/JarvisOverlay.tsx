@@ -8,14 +8,13 @@ import {
   Show,
 } from "solid-js";
 
+import type { JarvisConfirmation, JarvisEntry } from "@rtc/core-api";
 import {
   JARVIS_GUIDE_CATALOG,
-  type JarvisConfirmation,
-  type JarvisEntry,
   type JarvisGuideItem,
   type JarvisGuideSection,
   sampleGuideChips,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 

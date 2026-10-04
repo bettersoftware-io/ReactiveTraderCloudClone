@@ -1,12 +1,8 @@
 import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
-import type { App } from "@rtc/core-api";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import type { App, AppPorts } from "@rtc/core-api";
 import { scriptPorts } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 

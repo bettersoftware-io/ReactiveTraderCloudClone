@@ -1,4 +1,4 @@
-import type { DockLayoutStore } from "#/adapters/dockLayoutStore";
+import type { DockLayoutStore } from "@rtc/core-api";
 
 /** Map-backed `DockLayoutStore` — the default when no `AppPorts.dockLayoutStore`
  * is supplied (Presenters.dockLayoutStore's fallback) and the store the shared

@@ -19,7 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import type { TileExecutionState } from "@rtc/client-core";
+import type { TileExecutionState } from "@rtc/core-api";
 import { type Direction, ExecutionStatus, type Trade } from "@rtc/domain";
 
 import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";

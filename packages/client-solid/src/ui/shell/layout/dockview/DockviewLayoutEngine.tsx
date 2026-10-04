@@ -12,18 +12,20 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
+import type {
+  DockLayoutStore,
+  LayoutIntents,
+  LayoutPanelInstance,
+  PanelId,
+  PanelSpec,
+  WorkspaceTab,
+} from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
   DOCK_COLUMN_INITIAL_PX,
-  type DockLayoutStore,
   instanceIdFor,
-  type LayoutIntents,
-  type LayoutPanelInstance,
   PANEL_SPECS,
-  type PanelId,
-  type PanelSpec,
-  type WorkspaceTab,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import {
   createDockEngine,
   type DockDynamicPanel,

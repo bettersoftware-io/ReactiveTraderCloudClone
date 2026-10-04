@@ -1,4 +1,7 @@
-import type { MotionSample, MotionSampleOptions } from "#/browser/motionProbe";
+import type {
+  MotionSample,
+  MotionSampleOptions,
+} from "#/browser/motionProbe.ts";
 
 /**
  * Header power-saver cycling control (PowerSaverToggle: off → calm → freeze →

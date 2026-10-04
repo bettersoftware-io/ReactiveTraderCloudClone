@@ -8,7 +8,7 @@ import type {
   EqIndicatorId,
   EqPaneId,
   EqYScale,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import type { Candle, ChartSubstrate } from "@rtc/domain";
 
 /** Props CandleChart reads (Task C2/C3's interactive-plot contract: the

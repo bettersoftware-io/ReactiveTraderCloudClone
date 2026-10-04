@@ -1,4 +1,4 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 
 export async function openWorkspace(ctx: TestContext): Promise<void> {
   await ctx.po.workspace.open();

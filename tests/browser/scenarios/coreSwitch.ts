@@ -1,11 +1,11 @@
 import {
   CORE_IMPLS,
   type CoreImpl as CoreImplName,
-} from "#/scripts/lib/coreImpl";
+} from "#/scripts/lib/coreImpl.ts";
 
-import type { PrefsCoreImpl } from "../page-objects/contracts/Preferences";
-import type { TestContext } from "../testContext";
-import { findBootFailure } from "./login";
+import type { PrefsCoreImpl } from "../page-objects/contracts/Preferences.ts";
+import type { TestContext } from "../testContext.ts";
+import { findBootFailure } from "./login.ts";
 
 export interface DistinctCores {
   /** The `?core=` value for the journey's very first load. */

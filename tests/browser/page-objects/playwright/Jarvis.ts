@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { JarvisPO } from "../contracts/Jarvis";
-import { TESTIDS } from "../contracts/testids";
+import type { JarvisPO } from "../contracts/Jarvis.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 /** The typed reveal paces out at SPEECH_CHUNK_INTERVAL_MS per chunk (see
  * @rtc/motion-core), so a multi-sentence reply can take a few real seconds
@@ -39,7 +39,7 @@ const PANEL_DOCKED_LIVE_TIMEOUT_MS = 15_000;
 
 /** `WorkspacePersistenceWriter` debounces the `rtc-workspace-layout-v1`
  * `localStorage` write by `WORKSPACE_PERSIST_DEBOUNCE_MS` (500ms —
- * `packages/client-core/src/layout/workspacePersistenceWriter.ts`) —
+ * `packages/client-core-rxjs/src/layout/workspacePersistenceWriter.ts`) —
  * generous margin over that for CI jitter. Hardcoded here rather than
  * imported from a client package, same reasoning as `E2E_SESSION_KEY` in
  * `authSeed.ts`: the suite runs against either `@rtc/client-react` or
@@ -69,7 +69,11 @@ const DRIVE_ROW_TIMEOUT_MS = 15_000;
 const DEMO_STEP_TIMEOUT_MS = 20_000;
 
 export class PlaywrightJarvis implements JarvisPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private orb(): Locator {
     return this.page.getByTestId(TESTIDS.jarvis.orb);

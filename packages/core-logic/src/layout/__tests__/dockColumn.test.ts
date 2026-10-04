@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { LayoutNode, PanelId } from "@rtc/core-api";
+
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import type { LayoutNode, PanelId } from "#/layout/layoutPort";
 
 import {
   DOCK_COLUMN_INITIAL_PX,

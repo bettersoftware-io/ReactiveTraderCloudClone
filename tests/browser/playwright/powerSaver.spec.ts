@@ -1,8 +1,8 @@
-import * as common from "../scenarios/common";
-import * as connection from "../scenarios/connection";
-import * as powerSaver from "../scenarios/powerSaver";
-import { test } from "./_context";
-import { withWorkspaceOpen } from "./_openWorkspace";
+import * as common from "../scenarios/common.ts";
+import * as connection from "../scenarios/connection.ts";
+import * as powerSaver from "../scenarios/powerSaver.ts";
+import { test } from "./_context.ts";
+import { withWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("Power saver", () => {
   withWorkspaceOpen();

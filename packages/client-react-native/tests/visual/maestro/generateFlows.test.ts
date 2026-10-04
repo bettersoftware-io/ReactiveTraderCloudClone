@@ -42,7 +42,7 @@ describe("flowYaml", () => {
  * regenerating; the second catches `flowYaml()` changing without regenerating,
  * which the first cannot see. Both are fixed the same way:
  *
- *     pnpm exec tsx tests/visual/maestro/generateFlows.ts
+ *     node tests/visual/maestro/generateFlows.ts
  *
  * NOTE what this deliberately does NOT assert: that a golden exists for each
  * flow. Goldens can only be produced by a Mac-local `:update` pass against a

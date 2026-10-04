@@ -10,7 +10,7 @@ import { JarvisUsageCard } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { AdminJarvisUsagePayload } from "@rtc/client-core";
+import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 afterEach(() => {
   cleanupMounted();

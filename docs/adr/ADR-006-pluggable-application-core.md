@@ -214,14 +214,16 @@ the next amendment.
 **Amended 2026-10-03 — the root index is the edge.** `@rtc/client-core`'s
 root index now exports the *edge* only — adapters, port factories, stores and
 pure helpers — plus the presenter barrel's **types** (`export type *`, which
-costs nothing at runtime). The presenter classes, the machine factories and
+costs nothing at runtime). (Since 2026-10-04 it exports neither the types nor
+the pure helpers: Follow-up 10 sends contract types to `@rtc/core-api` and the
+helpers to `@rtc/core-logic`.) The presenter classes, the machine factories and
 the constants and helpers exported beside them — 81 runtime names — left the
 root and are exported from `@rtc/client-core/core` beside the composition
 root, so that subpath is the whole RxJS core. What
 had to move for it:
 
 - `adminKpisVm.ts` (the three pure view-model helpers the UI imports) out of
-  `presenters/` into `admin/`;
+  `presenters/` into `admin/` (and on to `@rtc/core-logic` on 2026-10-04);
 - `WsJarvisAdapter`'s import of `UNSUPPORTED_SENTINEL_SPEC` to
   `@rtc/core-logic`, where the value lives — the one eager-to-presenter edge
   inside the package;
@@ -1157,8 +1159,8 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 
 - **`@rtc/core-logic` holds the shared rxjs-free rules** (PR A, #829): the
   pure folds, view derivations, the workspace and Jarvis controllers and
-  `createAuthDeps` moved out of `client-core` (which re-exports them
-  whole). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
+  `createAuthDeps` moved out of `client-core` (which re-exported them
+  whole until 2026-10-04). Runtime deps `domain` + `shared` only; `core-logic-stays-pure`
   and `core-logic-stays-inner` pin it. `createAuthDeps` takes its two
   rxjs-bound primitives (`readNow`, `delayAuth`) as an argument, so each
   core supplies its own.
@@ -1193,6 +1195,39 @@ their natives arrive, not descriptions of shipped sibling behaviour.
   expired-session store-clear could not fail against a sibling while the base
   resumed from the same store; with the base gone it kills that mutant in
   both cores.
+
+**The Effect bridge after profiling (2026-10-04).** Four changes to
+`@rtc/client-core-effect`'s `bridge/`, each replacing a detail recorded
+above; the presenters' and machines' logic did not move. Found by timing
+every fiber step on the FX screen, after the effect-core e2e job ran slow.
+
+- **Fibers run on the bridge's own scheduler.** Effect's default gives each
+  fiber resume a microtask of its own, so a value crossing N fibers arrived
+  N microtasks later and the UI rendered in between (a tile heard its price
+  a turn before the flash that price causes). `bridge/turnScheduler.ts`
+  settles every ready fiber step inside one microtask; `runnerFor` installs
+  it. Contract: "…reach the tile in one turn".
+- **A scope closed from plain code releases its ports first,
+  synchronously** (`closeScope` → `releasePorts`). `Scope.close` ends the
+  scope's fibers one by one before it unsubscribes anything, so a disposed
+  machine went on listening for a few steps; only the slowness of
+  `Stream.merge` had hidden it. Grep gate 49 forbids the global
+  `Effect.run*` outside `bridge/`.
+- **`sharedFold` hands each state to its subscribers directly**, from the
+  producer's fiber. The `SubscriptionRef`, the watcher fiber per subscriber,
+  the first-write latch and the late-joiner window described above are
+  gone; the fold still conflates `Object.is`-equal states.
+- **Several ports fold through one queue** (`fromPort.merged`), in the
+  order they emitted. `conflatedFold` no longer seeds its calm flag from
+  `peekCurrent`: the flag is subscribed first, so its value is queued ahead
+  of every tick. `Stream.merge` over two ports cost about eleven fiber steps
+  per value.
+
+Measured on the React client (FX screen, nine tiles): scheduler tasks in the
+first two seconds 2,900 → 1,000 and per six seconds of steady state 7,500 →
+2,000; tile renders in steady state from 45% above the RxJS core to level
+with it. Machine state still reaches its subscribers through
+`refToStateStream`'s watcher fiber; see `docs/STATUS.md`.
 
 ## Follow-ups
 

@@ -1,6 +1,6 @@
 import { type Accessor, onCleanup } from "solid-js";
 
-import type { Machine } from "@rtc/client-core";
+import type { Machine } from "@rtc/core-api";
 
 import { toSignal } from "#/toSignal";
 

@@ -1,22 +1,30 @@
 import { state } from "@rx-state/core";
 import {
   Cause,
-  Deferred,
   Effect,
   ExecutionStrategy,
   Exit,
   Fiber,
+  FiberRef,
   Option,
   Runtime,
   Scope,
   Stream,
   SubscriptionRef,
 } from "effect";
-import { filter, map, Observable, type Subscriber } from "rxjs";
+import { filter, Observable, type Subscriber } from "rxjs";
 
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
 
-import { fromObservable } from "#/bridge/in";
+import {
+  fromObservable,
+  fromObservables,
+  type PortEvents,
+  releasePorts,
+} from "#/bridge/in";
+import { turnScheduler } from "#/bridge/turnScheduler";
+
+export { portEvents } from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
  * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
@@ -41,11 +49,77 @@ export interface EffectHost {
   readonly scope: Scope.CloseableScope;
 }
 
+/** Every host's runner goes through here, so this is where the core's
+ * fibers are put on the turn scheduler (`bridge/turnScheduler.ts`): whatever
+ * one event makes them do is done within one turn. */
 export function runnerFor(runtime: Runtime.Runtime<never>): EffectRunner {
+  const settling = Runtime.setFiberRef(
+    runtime,
+    FiberRef.currentScheduler,
+    turnScheduler,
+  );
+
   return {
-    runSync: Runtime.runSync(runtime),
-    runFork: Runtime.runFork(runtime),
+    runSync: Runtime.runSync(settling),
+    runFork: Runtime.runFork(settling),
   };
+}
+
+/** The DEFAULT runtime, on the turn scheduler: what runs an effect that must
+ * still work whatever has become of a host — a machine's own fibers, and
+ * every interrupt and scope close made from plain code (`interruptFiber`,
+ * `closeScope`). `app.dispose()` replaces a managed runtime's effect with
+ * `die("ManagedRuntime disposed")`, so an unsubscribe arriving after it
+ * could not be run there; ending a fiber needs no context, so the default
+ * runtime does. */
+const detached: EffectRunner = runnerFor(Runtime.defaultRuntime);
+
+/** Interrupt a fiber from plain code — an unsubscribe, a superseded run —
+ * without waiting for it to end. Through the bridge like every other effect
+ * run from plain code (grep gate 49), so there is one place that decides
+ * what such an effect runs on. (Which scheduler THIS runs on is not
+ * observable: the interrupt is signalled before the call returns either
+ * way. The mutant that forks it with a bare `Effect.runFork` survives every
+ * test, and is equivalent.) */
+export function interruptFiber(
+  fiber: Fiber.RuntimeFiber<unknown, unknown>,
+): void {
+  detached.runFork(Fiber.interrupt(fiber));
+}
+
+/** End a scope from plain code — a machine's `dispose()`, a fold period's
+ * last unsubscribe — without waiting. Two steps, in this order:
+ *
+ * 1. its port subscriptions are released NOW (`releasePorts`, `bridge/in.ts`
+ *    — which says why the close alone is not enough): nothing emitted after
+ *    this call returns is received;
+ * 2. the scope is closed on a fiber: finalizers run, and the fibers forked
+ *    into it are interrupted.
+ *
+ * Never a bare `Effect.runFork(Scope.close(…))` (grep gate 49): that skips
+ * step 1, which is the step that matters — with the ports released, which
+ * scheduler the close itself runs on is not observable (an equivalent
+ * mutant). Closing a closed scope is a no-op. */
+export function closeScope(scope: Scope.CloseableScope): void {
+  releasePorts(scope);
+  detached.runFork(Scope.close(scope, Exit.void));
+}
+
+/** `closeScope`, resolving once every finalizer has run — for
+ * `app.dispose()`, which promises its caller that. */
+export function closeScopeAndWait(scope: Scope.CloseableScope): Promise<void> {
+  releasePorts(scope);
+
+  return new Promise<void>((resolve, reject) => {
+    detached.runFork(Scope.close(scope, Exit.void)).addObserver((exit) => {
+      if (Exit.isSuccess(exit)) {
+        resolve();
+        return;
+      }
+
+      reject(Cause.squash(exit.cause));
+    });
+  });
 }
 
 /** A host for something that owns its own lifetime rather than the app's —
@@ -54,7 +128,7 @@ export function runnerFor(runtime: Runtime.Runtime<never>): EffectRunner {
  * `dispose()` closes it (slice 2 ruling 8). */
 export function createDetachedHost(): EffectHost {
   return {
-    runtime: runnerFor(Runtime.defaultRuntime),
+    runtime: detached,
     scope: Effect.runSync(Scope.make()),
   };
 }
@@ -67,7 +141,7 @@ export function createDetachedHost(): EffectHost {
  * a fold period's scope (a warm period's). */
 export function createChildHost(parent: EffectHost): EffectHost {
   return {
-    runtime: runnerFor(Runtime.defaultRuntime),
+    runtime: detached,
     scope: Effect.runSync(
       Scope.fork(parent.scope, ExecutionStrategy.sequential),
     ),
@@ -280,9 +354,7 @@ export function setRefIfChanged<S>(
  * the subscription exists from the moment it returns and the scope's close
  * releases it. */
 export function fromPortIn(scope: Scope.Scope): FromPort {
-  return <T>(source: CoreStream<T>) => {
-    return fromObservable(source, scope);
-  };
+  return fromPortOf(scope);
 }
 
 /** Rethrow a cause on a macrotask, outside every fiber — the Effect twin of
@@ -336,12 +408,10 @@ export function streamToStream<T, E>(
     );
 
     return () => {
-      // The GLOBAL runtime, deliberately, NOT `host.runtime`: `dispose()`
-      // replaces the managed runtime's effect with `die("ManagedRuntime
-      // disposed")`, so an unsubscribe arriving after dispose would fork a
-      // fiber that dies with an unhandled defect while leaving this fiber
-      // running. Interrupting needs no context, so the default runtime does.
-      Effect.runFork(Fiber.interrupt(fiber));
+      // NOT `host.runtime`: an unsubscribe arriving after `dispose()` would
+      // fork a fiber that dies with an unhandled defect while leaving this
+      // one running — see `detached`.
+      interruptFiber(fiber);
     };
   });
 }
@@ -399,14 +469,10 @@ export function refToStateStream<S>(
 
 /** How a `sharedFold` producer writes its state: apply `next` to the
  * current value (`None` until the period's first write, for a seedless
- * period) and publish the result only if it is not `Object.is`-equal to the
- * current one — a `SubscriptionRef` re-publishes an equal `set` (measured on
- * 3.22.2), which would hand every subscriber the seed twice. The first write
- * of a period waits for the period's watcher to have subscribed the ref's
- * PubSub (`WarmPeriod.watching`) — the structural close of the race a
- * `yieldNow` used to win. A consequence a caller must know: an Effect-core
- * fold CONFLATES equal consecutive states (the RxJS core's `scan`/`map` do
- * not). */
+ * period) and, unless the result is `Object.is`-equal to the current one,
+ * keep it and hand it to every subscriber of the period before the effect
+ * completes. A consequence a caller must know: an Effect-core fold CONFLATES
+ * equal consecutive states (the RxJS core's `scan`/`map` do not). */
 export type FoldUpdate<S> = (
   next: (current: Option.Option<S>) => S,
 ) => Effect.Effect<void>;
@@ -418,8 +484,30 @@ export type FoldUpdate<S> = (
  * calls this ONCE PER PORT PER PERIOD — never per event, which would pile
  * up one subscription and one finalizer per value for the period's whole
  * life. Named rather than inlined into `FoldRun` because every producer has
- * to annotate the parameter. */
-export type FromPort = <T>(source: CoreStream<T>) => Stream.Stream<T, unknown>;
+ * to annotate the parameter.
+ *
+ * `merged` is the same for a producer that folds SEVERAL ports as one
+ * stream of events: prefer it to `Stream.merge` over two `fromPort` streams
+ * — events keep the order the ports emitted them in, and a value costs one
+ * fiber step instead of about eleven (`fromObservables`, `bridge/in.ts`). */
+export interface FromPort {
+  <T>(source: CoreStream<T>): Stream.Stream<T, unknown>;
+  merged<E>(sources: readonly PortEvents<E>[]): Stream.Stream<E, unknown>;
+}
+
+function fromPortOf(scope: Scope.Scope): FromPort {
+  function fromPort<T>(source: CoreStream<T>): Stream.Stream<T, unknown> {
+    return fromObservable(source, scope);
+  }
+
+  fromPort.merged = <E>(
+    sources: readonly PortEvents<E>[],
+  ): Stream.Stream<E, unknown> => {
+    return fromObservables(sources, scope);
+  };
+
+  return fromPort;
+}
 
 /** The producer of one warm period, handed the period's `update` and its
  * own `fromPort`. */
@@ -443,11 +531,13 @@ export interface SharedFold<S> {
 
 interface WarmPeriod<S> {
   scope: Scope.CloseableScope;
-  /** THIS period's subscribers — failure fans out to these and no others, so
-   * a stale period's producer failing in the unsubscribe → close window
-   * cannot error a later period's subscribers. */
+  /** The latest state: the seed, then whatever the producer last wrote. */
+  current: Option.Option<S>;
+  /** THIS period's subscribers — every write and a failure go to these and
+   * no others, so a stale period's producer, still running in the
+   * unsubscribe → close window, can neither write to nor error a later
+   * period's subscribers. */
   subscribers: Set<Subscriber<S>>;
-  changes: CoreStream<S>;
 }
 
 /** Two `Option`s hold the same state: both `None`, or both `Some` of
@@ -460,65 +550,25 @@ function sameState<S>(a: Option.Option<S>, b: Option.Option<S>): boolean {
   return Object.is(a.value, b.value);
 }
 
-/** A period's ref as a replay-current Observable of its `Some` values: the
- * current value (if any) synchronously, then later values. The head
- * `ref.changes` replays is dropped only when it equals what was just
- * delivered — a `set` between the read and the watcher's subscribe carries a
- * NEW value and must arrive. The first emission the watcher sees succeeds
- * `watching`, which is what `update` awaits.
+/** `shareReplay({ bufferSize: 1, refCount: true })` restated over a `Scope`.
+ * The FIRST subscriber seeds the period and forks `run` into a scope of its
+ * own — a child of the app's, so `dispose()` still ends it. Every subscriber
+ * is handed the current state inside its `subscribe` call, and from then on
+ * each state the producer writes, DIRECTLY: `update` calls the subscribers
+ * from the producer's fiber. The LAST unsubscribe releases the period's
+ * ports and closes its scope, interrupting the producer.
  *
- * What each subscriber is promised differs, and the difference is worth
- * stating: the period's FIRST subscriber receives every intermediate state
- * of a same-tick burst, because the producer's first write blocks on
- * `watching` until that subscriber's watcher has subscribed the PubSub. A
- * LATER joiner has no such latch — the Deferred is already done — so its
- * watcher subscribes a fiber-step after its synchronous head read, and any
- * burst landing in that window is conflated into the head it just
- * delivered. That is the same window `refToStateStream` documents: a late
- * joiner can miss INTERMEDIATE values, never see a stale one. Conflation,
- * not staleness. */
-function periodStream<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<Option.Option<S>>,
-  watching: Deferred.Deferred<void>,
-): CoreStream<S> {
-  return new Observable<S>((subscriber) => {
-    const seed = host.runtime.runSync(SubscriptionRef.get(ref));
-
-    if (Option.isSome(seed)) {
-      subscriber.next(seed.value);
-    }
-
-    return streamToStream(
-      host,
-      ref.changes.pipe(
-        Stream.tap(() => {
-          return Deferred.succeed(watching, undefined);
-        }),
-      ),
-    )
-      .pipe(
-        filter((value, index) => {
-          return index > 0 || !sameState(value, seed);
-        }),
-        filter(Option.isSome),
-        map((value) => {
-          return value.value;
-        }),
-      )
-      .subscribe(subscriber);
-  });
-}
-
-/** `shareReplay({ bufferSize: 1, refCount: true })` restated over a
- * `SubscriptionRef` and a `Scope`. The FIRST subscriber seeds the ref and
- * forks `run` into a scope of its own — a child of the app's, so
- * `dispose()` still ends it; every subscriber reads the ref's current value
- * synchronously and then follows `ref.changes` on the scheduler; the LAST
- * unsubscribe closes the scope, interrupting the producer and releasing every
- * port subscription the producer opened through `fromPort`. `Stream.share`
- * cannot be this envelope: it replays to a new subscriber on a fiber, never
- * in the caller's tick. */
+ * Why directly, and not through a `SubscriptionRef` each subscriber follows
+ * on a fiber of its own — which is how this was first written. MEASURED
+ * 2026-10-04 (React client, FX screen, timing every fiber step): those
+ * watcher fibers were 820 of the 2,900 scheduler tasks of the first two
+ * seconds and 1,750 of 7,500 per six seconds of steady state — a quarter of
+ * the core's fiber work, spent forwarding values. They also needed a latch
+ * (the producer's first write waited for the first watcher to be listening)
+ * and left a window in which a later subscriber missed intermediate states.
+ * Called from the producer, a subscriber is registered before the producer
+ * starts, so neither exists. `Stream.share` cannot be this envelope either:
+ * it replays to a new subscriber on a fiber, never in the caller's tick. */
 export function sharedFold<S>(
   host: EffectHost,
   fold: SharedFold<S>,
@@ -537,9 +587,9 @@ export function sharedFold<S>(
       warm = null;
     }
 
-    // The global runtime, as in `streamToStream`: this must still work
-    // after `host.runtime` has been disposed.
-    Effect.runFork(Scope.close(period.scope, Exit.void));
+    // Not `host.runtime`, as in `streamToStream`: this must still work
+    // after it has been disposed.
+    closeScope(period.scope);
   }
 
   // The seed arrives already evaluated: `fold.seed()` is the ONE thing
@@ -556,12 +606,11 @@ export function sharedFold<S>(
     const scope = host.runtime.runSync(
       Scope.fork(host.scope, ExecutionStrategy.sequential),
     );
-    const ref = host.runtime.runSync(SubscriptionRef.make(seed));
-    const watching = host.runtime.runSync(Deferred.make<void>());
+
     const period: WarmPeriod<S> = {
       scope,
+      current: seed,
       subscribers: new Set([first]),
-      changes: periodStream(host, ref, watching),
     };
     // Assigned BEFORE `runFork`: a producer that fails at once fans that
     // failure out while this call is still on the stack, and the fan-out
@@ -572,36 +621,36 @@ export function sharedFold<S>(
     // subscriber's `error()` deliberately starts a fresh one.
     warm = period;
 
-    // MEASURED (effect 3.22.2): a `SubscriptionRef` publishes into a
-    // `PubSub.unbounded()`, and `ref.changes` is `Ref.get →
-    // PubSub.subscribe → concat(head, fromPubSub(...))` — so once the
-    // watcher fiber (forked inside `periodStream`) has subscribed to that
-    // PubSub, EVERY publish reaches it in order; there is no conflation of a
-    // fast burst against a slow watcher. The only values a watcher can miss
-    // are ones published BEFORE its PubSub subscription exists: a producer
-    // forked ahead of the watcher that drains several already-queued events
-    // (`fromObservable`'s Queue — see `in.ts`) in one uninterrupted burst
-    // publishes them all before the watcher fiber has started, so the
-    // watcher's `Ref.get` head observes only the final value and the PubSub
-    // never had a subscriber for the intermediate ones — `[6]` instead of
-    // `[1, 3, 6]`. The latch `update` awaits is the structural close.
+    // The seed reaches the first subscriber BEFORE the producer is forked,
+    // so whatever the producer writes — even from its first synchronous
+    // step — arrives after it, in order.
+    if (Option.isSome(seed)) {
+      first.next(seed.value);
+    }
+
     function update(
       next: (current: Option.Option<S>) => S,
     ): Effect.Effect<void> {
-      return Deferred.await(watching).pipe(
-        Effect.andThen(SubscriptionRef.get(ref)),
-        Effect.flatMap((current) => {
-          const value = Option.some(next(current));
-          return sameState(value, current)
-            ? Effect.void
-            : SubscriptionRef.set(ref, value);
-        }),
-      );
+      return Effect.sync(() => {
+        const value = next(period.current);
+        const state = Option.some(value);
+
+        if (sameState(state, period.current)) {
+          return;
+        }
+
+        period.current = state;
+
+        // A copy: a subscriber may unsubscribe, or subscribe another, from
+        // inside its `next`. A newcomer has already been handed this state
+        // by its own subscribe, so it must not hear it again here.
+        for (const subscriber of [...period.subscribers]) {
+          subscriber.next(value);
+        }
+      });
     }
 
-    function fromPort<T>(source: CoreStream<T>): Stream.Stream<T, unknown> {
-      return fromObservable(source, scope);
-    }
+    const fromPort = fromPortOf(scope);
 
     host.runtime.runFork(
       fold.run(update, fromPort).pipe(
@@ -662,12 +711,13 @@ export function sharedFold<S>(
     } else {
       period = warm;
       period.subscribers.add(subscriber);
+
+      if (Option.isSome(period.current)) {
+        subscriber.next(period.current.value);
+      }
     }
 
-    const inner = period.changes.subscribe(subscriber);
-
     return () => {
-      inner.unsubscribe();
       period.subscribers.delete(subscriber);
 
       if (period.subscribers.size === 0 && fold.retain !== true) {

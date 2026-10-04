@@ -1,4 +1,4 @@
-import { Effect, Fiber, Scope } from "effect";
+import { Effect, type Fiber, Scope } from "effect";
 
 import type {
   AppPorts,
@@ -32,6 +32,7 @@ import type { JarvisEvent } from "@rtc/shared";
 import {
   createChildHost,
   type EffectHost,
+  interruptFiber,
   type WarmStateStream,
 } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
@@ -394,7 +395,7 @@ function createPersistDebounce(
       // fired can still write once — reading LIVE state, so identical to the
       // write the new window will make (one extra write, never a stale one).
       if (pending !== null) {
-        Effect.runFork(Fiber.interrupt(pending));
+        interruptFiber(pending);
       }
 
       pending = host.runtime.runFork(

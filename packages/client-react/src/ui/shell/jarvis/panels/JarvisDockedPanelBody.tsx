@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { JarvisPanelVm } from "@rtc/client-core";
+import type { JarvisPanelVm } from "@rtc/core-api";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { JarvisPanelBody } from "./JarvisPanelBody";

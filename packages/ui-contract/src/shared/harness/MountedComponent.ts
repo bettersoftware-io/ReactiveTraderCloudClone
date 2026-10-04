@@ -2,9 +2,8 @@ import type {
   AnimationIntent,
   IncidentKind,
   JarvisAvailability,
-  JarvisEvent,
   ThroughputView,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import type {
   CreditRfqFilter,
   EquityInstrument,
@@ -18,6 +17,7 @@ import type {
   ServiceTopology,
   SessionInfo,
 } from "@rtc/domain";
+import type { JarvisEvent } from "@rtc/shared";
 
 import type { CommandLog, HookValues, MetricsView } from "./world";
 

@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Scope, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Scope, Stream, SubscriptionRef } from "effect";
 
 import type {
   Stream as CoreStream,
@@ -18,6 +18,7 @@ import {
 import type { CandleTimeframe, EquityInstrument } from "@rtc/domain";
 
 import {
+  closeScope,
   createChildHost,
   type EffectHost,
   fromPortIn,
@@ -91,7 +92,7 @@ export function createEqWorkspaceMachine(
     // that the very next intent is ignored, and closing the scope is a
     // forked effect.
     markDisposed();
-    Effect.runFork(Scope.close(host.scope, Exit.void));
+    closeScope(host.scope);
   }
 
   const roster$ = deps.watchlist$;

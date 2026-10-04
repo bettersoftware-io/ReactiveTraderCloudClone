@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { TESTIDS } from "../contracts/testids";
+import { TESTIDS } from "../contracts/testids.ts";
 
 /**
  * Upper bound on a load's boot: navigation `load` → the chosen application

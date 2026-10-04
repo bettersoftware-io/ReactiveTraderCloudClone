@@ -7,11 +7,9 @@ import type { IConfiguration } from "@cucumber/cucumber/api";
 //   so `export default { default: {...} }` fails schema validation. Trade-off:
 //   only one profile is possible until this is reorganised into named exports.
 //
-// - No `loader: ["tsx/esm"]` here. tsx 4.21+'s initialize hook throws when
-//   Cucumber invokes it via `node:module.register(specifier)` (Cucumber omits
-//   the `data` arg). Instead, tsx is loaded via NODE_OPTIONS in
-//   tests/package.json `test:browser:playwright-cucumber` script:
-//   `NODE_OPTIONS='--import tsx/esm'`.
+// - No loader. The step definitions and support files are TypeScript that
+//   Node runs directly (it strips the types), so their relative and `#/`
+//   imports spell out the `.ts` extension.
 //
 // - All paths below are CWD-relative (cucumber-js runs from tests/),
 //   not config-file-relative.

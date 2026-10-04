@@ -1,7 +1,7 @@
-import * as creditRfq from "../scenarios/creditRfq";
-import * as theme from "../scenarios/theme";
-import { test } from "./_context";
-import { withCreditWorkspaceOpen } from "./_openWorkspace";
+import * as creditRfq from "../scenarios/creditRfq.ts";
+import * as theme from "../scenarios/theme.ts";
+import { test } from "./_context.ts";
+import { withCreditWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("Credit RFQ", () => {
   withCreditWorkspaceOpen();

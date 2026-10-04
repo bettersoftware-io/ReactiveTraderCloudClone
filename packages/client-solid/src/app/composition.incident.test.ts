@@ -2,7 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { filter } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
-import { createApp } from "@rtc/client-core/core";
+import { createApp } from "@rtc/client-core-rxjs";
 import { ConnectionStatus } from "@rtc/domain";
 
 import { buildBrowserPorts } from "./buildBrowserPorts";

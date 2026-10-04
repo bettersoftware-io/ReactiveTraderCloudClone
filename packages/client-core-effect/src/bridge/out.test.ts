@@ -6,6 +6,7 @@ import {
   Layer,
   ManagedRuntime,
   Option,
+  Queue,
   Scope,
   Stream,
   SubscriptionRef,
@@ -14,6 +15,8 @@ import { BehaviorSubject, Subject, type Subscription } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  closeScope,
+  closeScopeAndWait,
   createChildHost,
   createDetachedHost,
   createHotStream,
@@ -21,10 +24,13 @@ import {
   type FoldUpdate,
   type FromPort,
   fromPortIn,
+  interruptFiber,
   listenToStateStream,
+  portEvents,
   refToStateStream,
   refToWarmStateStream,
   reportOutOfBand,
+  type SharedFold,
   scopedPortStream,
   setRefIfChanged,
   sharedFold,
@@ -372,6 +378,98 @@ describe("bridge/out", () => {
     await tick();
     expect(seen).toEqual([0, 1, 3, 6]);
     sub.unsubscribe();
+  });
+
+  it("sharedFold() a subscriber joining in the same tick as a burst misses none of it — the current state at once, then every later one", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const first: number[] = [];
+    const late: number[] = [];
+    const firstSub = stream.subscribe((value: number) => {
+      first.push(value);
+    });
+    await tick();
+    // The burst is queued, not yet folded, when the second subscriber joins.
+    subject.next(1);
+    subject.next(2);
+    subject.next(3);
+    const lateSub = stream.subscribe((value: number) => {
+      late.push(value);
+    });
+    expect(late).toEqual([0]);
+    await tick();
+    expect(first).toEqual([0, 1, 3, 6]);
+    expect(late).toEqual([0, 1, 3, 6]);
+    firstSub.unsubscribe();
+    lateSub.unsubscribe();
+  });
+
+  it("sharedFold() hands the first subscriber the seed before anything the producer writes in its first synchronous step", () => {
+    const stream = sharedFold<number>(useHost(), {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: (update: FoldUpdate<number>) => {
+        return update(() => {
+          return 5;
+        });
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((value: number) => {
+      seen.push(value);
+    });
+    // No await: a producer that is a plain effect runs inside `subscribe`.
+    expect(seen).toEqual([0, 5]);
+    sub.unsubscribe();
+  });
+
+  it("sharedFold() a subscriber that joins from inside another's next() hears that state once", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const joined: number[] = [];
+    let joinedSub: Subscription | null = null;
+    const sub = stream.subscribe((value: number) => {
+      if (value === 1 && joinedSub === null) {
+        joinedSub = stream.subscribe((heard: number) => {
+          joined.push(heard);
+        });
+      }
+    });
+    await tick();
+    subject.next(1);
+    await tick();
+    subject.next(2);
+    await tick();
+    expect(joined).toEqual([1, 3]);
+    sub.unsubscribe();
+    unsubscribeIfSet(joinedSub);
+  });
+
+  it("sharedFold() a subscriber that unsubscribes from inside its next() hears nothing more, and the others still do", async () => {
+    const subject = new Subject<number>();
+    const stream = sharedFold(useHost(), createSummingFold(subject));
+    const leaving: number[] = [];
+    const staying: number[] = [];
+    const leavingSub: Subscription = stream.subscribe((value: number) => {
+      leaving.push(value);
+
+      if (value === 1) {
+        leavingSub.unsubscribe();
+      }
+    });
+
+    const stayingSub = stream.subscribe((value: number) => {
+      staying.push(value);
+    });
+    await tick();
+    subject.next(1);
+    await tick();
+    subject.next(2);
+    await tick();
+    expect(leaving).toEqual([0, 1]);
+    expect(staying).toEqual([0, 1, 3]);
+    stayingSub.unsubscribe();
   });
 
   it("sharedFold() starts the producer on the first subscriber and interrupts it on the last", async () => {
@@ -943,6 +1041,250 @@ describe("bridge/out", () => {
     expect(interrupted).toBe(true);
   });
 
+  it("interruptFiber() ends a running fiber without waiting for it", async () => {
+    const host = createDetachedHost();
+    let interrupted = false;
+    const fiber = host.runtime.runFork(
+      Effect.never.pipe(
+        Effect.onInterrupt(() => {
+          return Effect.sync(() => {
+            interrupted = true;
+          });
+        }),
+      ),
+    );
+    interruptFiber(fiber);
+    await tick();
+    expect(interrupted).toBe(true);
+  });
+
+  it("closeScope() runs the scope's finalizers and interrupts what was forked into it; closing it again is a no-op", async () => {
+    const host = createDetachedHost();
+    let finalized = 0;
+    let interrupted = false;
+    host.runtime.runSync(
+      Scope.addFinalizer(
+        host.scope,
+        Effect.sync(() => {
+          finalized += 1;
+        }),
+      ),
+    );
+    host.runtime.runFork(
+      Effect.never.pipe(
+        Effect.onInterrupt(() => {
+          return Effect.sync(() => {
+            interrupted = true;
+          });
+        }),
+      ),
+      { scope: host.scope },
+    );
+    closeScope(host.scope);
+    closeScope(host.scope);
+    await tick();
+    expect(finalized).toBe(1);
+    expect(interrupted).toBe(true);
+  });
+
+  it("closeScope() releases the scope's ports before it returns — nothing emitted afterwards is received", async () => {
+    const subject = new Subject<number>();
+    const host = createDetachedHost();
+    const seen: number[] = [];
+    host.runtime.runFork(
+      Stream.runForEach(fromPortIn(host.scope)(subject), (value) => {
+        return Effect.sync(() => {
+          seen.push(value);
+        });
+      }),
+      { scope: host.scope },
+    );
+    await tick();
+    subject.next(1);
+    await tick();
+
+    closeScope(host.scope);
+
+    // No await: an RxJS unsubscribe is synchronous, and so is this.
+    expect(subject.observed).toBe(false);
+    subject.next(2);
+    await tick();
+    expect(seen).toEqual([1]);
+  });
+
+  it("closeScopeAndWait() releases the scope's ports before it returns too", async () => {
+    const subject = new Subject<number>();
+    const host = createDetachedHost();
+    fromPortIn(host.scope)(subject);
+    // A fiber forked into the scope AFTER the port: the close has to wait
+    // for it to end before it reaches the port's finalizer, so only the
+    // synchronous release can have unsubscribed by the next line.
+    host.runtime.runFork(Effect.never, { scope: host.scope });
+    const closed = closeScopeAndWait(host.scope);
+    expect(subject.observed).toBe(false);
+    await closed;
+  });
+
+  it("sharedFold() releases the period's ports on the last unsubscribe, before it returns", async () => {
+    const host = useHost();
+    const subject = new Subject<number>();
+    const stream = sharedFold<number>(host, {
+      seed: () => {
+        return Option.some(0);
+      },
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(subject).pipe(
+          Stream.runForEach((value) => {
+            return update(() => {
+              return value;
+            });
+          }),
+        );
+      },
+    });
+    const first = stream.subscribe();
+    const second = stream.subscribe();
+    await tick();
+
+    first.unsubscribe();
+    expect(subject.observed).toBe(true);
+    second.unsubscribe();
+    expect(subject.observed).toBe(false);
+  });
+
+  it("sharedFold() folds several ports as one stream through fromPort.merged, in emission order, and releases them all on the last unsubscribe", async () => {
+    const letters = new Subject<string>();
+    const numbers = new Subject<number>();
+    const stream = sharedFold<string>(useHost(), {
+      seed: () => {
+        return Option.some("");
+      },
+      run: (update: FoldUpdate<string>, fromPort: FromPort) => {
+        return fromPort
+          .merged<string>([
+            portEvents(letters, (letter: string) => {
+              return letter;
+            }),
+            portEvents(numbers, (value: number) => {
+              return String(value);
+            }),
+          ])
+          .pipe(
+            Stream.runForEach((event) => {
+              return update((text) => {
+                return (
+                  Option.getOrElse(text, () => {
+                    return "";
+                  }) + event
+                );
+              });
+            }),
+          );
+      },
+    });
+    const seen: string[] = [];
+    const sub = stream.subscribe((value: string) => {
+      seen.push(value);
+    });
+    letters.next("a");
+    numbers.next(1);
+    letters.next("b");
+    await tick();
+    expect(seen).toEqual(["", "a", "a1", "a1b"]);
+    sub.unsubscribe();
+    expect(letters.observed).toBe(false);
+    expect(numbers.observed).toBe(false);
+  });
+
+  it("fromPortIn(scope).merged ties every port to that scope", () => {
+    const first = new Subject<number>();
+    const second = new Subject<string>();
+    const scope = Effect.runSync(Scope.make());
+    fromPortIn(scope).merged<string>([
+      portEvents(first, (value: number) => {
+        return String(value);
+      }),
+      portEvents(second, (value: string) => {
+        return value;
+      }),
+    ]);
+    expect(first.observed).toBe(true);
+    expect(second.observed).toBe(true);
+    closeScope(scope);
+    expect(first.observed).toBe(false);
+    expect(second.observed).toBe(false);
+  });
+
+  it("closeScopeAndWait() resolves only once every finalizer has run", async () => {
+    const scope = Effect.runSync(Scope.make());
+    let finalized = false;
+    Effect.runSync(
+      Scope.addFinalizer(
+        scope,
+        // Two yields make the finalizer finish on a later step than the
+        // close starts on, with no timer involved.
+        Effect.yieldNow().pipe(
+          Effect.andThen(Effect.yieldNow()),
+          Effect.andThen(
+            Effect.sync(() => {
+              finalized = true;
+            }),
+          ),
+        ),
+      ),
+    );
+    await closeScopeAndWait(scope);
+    expect(finalized).toBe(true);
+  });
+
+  it("closeScopeAndWait() rejects with the defect of a finalizer that dies", async () => {
+    const scope = Effect.runSync(Scope.make());
+    Effect.runSync(
+      Scope.addFinalizer(scope, Effect.die(new Error("finalizer"))),
+    );
+    await expect(closeScopeAndWait(scope)).rejects.toThrow("finalizer");
+  });
+
+  it("a host's runner settles a value across fibers within one turn (runnerFor puts them on the turn scheduler)", async () => {
+    const host = createDetachedHost();
+    const [entry, exit] = [
+      host.runtime.runSync(Queue.unbounded<number>()),
+      host.runtime.runSync(Queue.unbounded<number>()),
+    ];
+    const arrived: number[] = [];
+    host.runtime.runFork(
+      Queue.take(entry).pipe(
+        Effect.flatMap((value) => {
+          return Queue.offer(exit, value);
+        }),
+        Effect.forever,
+      ),
+      { scope: host.scope },
+    );
+    host.runtime.runFork(
+      Queue.take(exit).pipe(
+        Effect.flatMap((value) => {
+          return Effect.sync(() => {
+            arrived.push(value);
+          });
+        }),
+        Effect.forever,
+      ),
+      { scope: host.scope },
+    );
+    await tick();
+
+    Queue.unsafeOffer(entry, 4);
+    let arrivedByNextMicrotask: readonly number[] = [];
+    queueMicrotask(() => {
+      arrivedByNextMicrotask = [...arrived];
+    });
+    await tick();
+
+    expect(arrivedByNextMicrotask).toEqual([4]);
+    closeScope(host.scope);
+  });
+
   it("reportOutOfBand rethrows a squashed cause on a macrotask", () => {
     vi.useFakeTimers();
     reportOutOfBand(Cause.fail(new Error("machine")));
@@ -1137,6 +1479,32 @@ describe("bridge/out", () => {
  * `runPromise`/`dispose`, which the cases drive directly. */
 interface TestHost extends EffectHost {
   runtime: ManagedRuntime.ManagedRuntime<never, never>;
+}
+
+/** A fold that keeps the running sum of what the port emits, from 0. */
+function createSummingFold(source: Subject<number>): SharedFold<number> {
+  return {
+    seed: () => {
+      return Option.some(0);
+    },
+    run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+      return fromPort(source).pipe(
+        Stream.runForEach((value: number) => {
+          return update((sum) => {
+            return (
+              Option.getOrElse(sum, () => {
+                return 0;
+              }) + value
+            );
+          });
+        }),
+      );
+    },
+  };
+}
+
+function unsubscribeIfSet(subscription: Subscription | null): void {
+  subscription?.unsubscribe();
 }
 
 function createHost(): TestHost {

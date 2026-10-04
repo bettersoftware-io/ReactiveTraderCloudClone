@@ -1,6 +1,6 @@
 import { type ReactElement, useId } from "react";
 
-import { throughputPaths } from "@rtc/client-core";
+import { throughputPaths } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./ThroughputChart.module.css";

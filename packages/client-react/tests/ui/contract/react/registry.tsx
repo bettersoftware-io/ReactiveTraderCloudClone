@@ -98,7 +98,6 @@ import type {
 import type { ReactElement } from "react";
 
 import type {
-  ColumnFilter,
   EqChartType,
   EqDrawing,
   EqDrawTool,
@@ -108,9 +107,9 @@ import type {
   NotionalIntents,
   NotionalView,
   PanelId,
-  SortState,
   TileExecutionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
+import type { ColumnFilter, SortState } from "@rtc/core-logic";
 import type {
   Candle,
   CandleTimeframe,

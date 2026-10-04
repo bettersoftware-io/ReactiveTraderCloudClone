@@ -13,7 +13,7 @@ import {
   formatGateResetTime,
   parseWorkspaceLayout,
   type UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { JARVIS_BRAINS } from "@rtc/domain";
 
 afterEach(() => {

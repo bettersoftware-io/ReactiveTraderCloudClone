@@ -1,5 +1,8 @@
-import type { BootOpenOptions, BootPO } from "../page-objects/contracts/Boot";
-import type { TestContext } from "../testContext";
+import type {
+  BootOpenOptions,
+  BootPO,
+} from "../page-objects/contracts/Boot.ts";
+import type { TestContext } from "../testContext.ts";
 
 // Assertion budget: the boot machine's `done` transition (BOOT_DURATION_MS =
 // 4200ms in BootSequenceMachine.ts) dismisses the whole boot-sequence root

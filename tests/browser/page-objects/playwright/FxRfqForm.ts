@@ -1,10 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { FxRfqFormPO } from "../contracts/FxRfqForm";
-import { TESTIDS } from "../contracts/testids";
+import type { FxRfqFormPO } from "../contracts/FxRfqForm.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightFxRfqForm implements FxRfqFormPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private firstTile(): Locator {
     return this.page

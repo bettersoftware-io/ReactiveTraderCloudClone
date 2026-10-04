@@ -2,9 +2,8 @@
 
 import type { Observable } from "rxjs";
 
+import type { IWsAdapter } from "@rtc/core-api";
 import type { ConnectionEvent, ConnectionEventsPort } from "@rtc/domain";
-
-import type { IWsAdapter } from "./IWsAdapter";
 
 /**
  * ConnectionEventsPort backed by an IWsAdapter's lifecycle stream.

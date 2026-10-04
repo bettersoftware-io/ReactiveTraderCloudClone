@@ -1,7 +1,7 @@
 import type { Component } from "solid-js";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import type { LayoutPanelInstance, PanelId } from "@rtc/client-core";
+import type { LayoutPanelInstance, PanelId } from "@rtc/core-api";
 
 const PANEL_IDS: readonly PanelId[] = [
   "fx-rates",

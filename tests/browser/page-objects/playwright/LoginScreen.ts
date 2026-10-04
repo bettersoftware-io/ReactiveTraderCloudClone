@@ -1,8 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 
-import type { LoginScreenPO } from "../contracts/LoginScreen";
-import { TESTIDS } from "../contracts/testids";
-import { awaitAppMount } from "./appMount";
+import type { LoginScreenPO } from "../contracts/LoginScreen.ts";
+import { TESTIDS } from "../contracts/testids.ts";
+import { awaitAppMount } from "./appMount.ts";
 
 /**
  * Playwright impl of {@link LoginScreenPO}. Constructed with the PRIMARY app
@@ -28,7 +28,11 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
    * `pageerror` at all; this scan is only ever for the build-default case.) */
   private pageErrors: string[] = [];
 
-  constructor(private readonly appPage: Page) {}
+  private readonly appPage: Page;
+
+  constructor(appPage: Page) {
+    this.appPage = appPage;
+  }
 
   private page(): Page {
     if (this.loginPage === undefined) {

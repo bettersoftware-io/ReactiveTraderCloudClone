@@ -47,7 +47,7 @@ code rather than argued:
 
 | A migration needs to… | What this repository shows |
 |---|---|
-| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the core as types only (via `@rtc/client-core`'s re-export of the `core-api` types) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
+| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the contract as types only (straight from `@rtc/core-api`) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
 | Know the new implementation behaves the same | `@rtc/core-contract`: one suite per member, absolute construction-time counts, the `transportGate` and `portDiscipline` cross-checks. |
 | Migrate only the stream layer, not the business rules | `@rtc/core-logic`: the pure folds and controllers moved out once and every core reuses them; only the *plumbing* is rewritten per core. |
 | Let old and new coexist during the cutover | `bridge/`: the one place the old library may be imported as a value; everywhere else it is types only, so the old library cannot spread beyond it at runtime (dependency-cruiser `bridge-owns-rxjs` and grep gate 43; see [What keeps it honest](#what-keeps-it-honest)). |
@@ -98,11 +98,11 @@ flowchart TD
   ui["<b>UI components</b><br/>React or Solid — render only"]
   bind["<b>Bindings</b><br/>@rtc/react-bindings · @rtc/solid-bindings"]
   plug{{"<b>THE PLUG</b> — @rtc/core-api<br/>types only: what a core must offer"}}
-  rx["<b>@rtc/client-core</b><br/>RxJS — the default"]
+  rx["<b>@rtc/client-core-rxjs</b><br/>RxJS — the default"]
   as["<b>@rtc/client-core-async</b><br/>async/await + AsyncIterable"]
   ef["<b>@rtc/client-core-effect</b><br/>Effect-TS"]
   socket{{"<b>THE SOCKET</b> — AppPorts<br/>what a core is given"}}
-  adapters["<b>Adapters</b><br/>WebSocket · simulators · localStorage"]
+  adapters["<b>Adapters</b> — @rtc/client-core<br/>WebSocket · simulators · localStorage"]
   world(["Server and browser"])
 
   ui --> bind
@@ -253,7 +253,7 @@ all 75 are implemented natively in all three cores.
 |---|---|---|---|
 | Package | `@rtc/client-core` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
 | Style | operators over `Observable` | `async`/`await`, callbacks, `AsyncIterable` | `Effect`, `Stream`, fibers |
-| A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `SubscriptionRef` |
+| A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `Scope` |
 | A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SubscriptionRef<S>` |
 | Cancelling work | `unsubscribe()`, `switchMap`, `takeUntil` | `AbortController` / `AbortSignal` | `Fiber.interrupt`, closing a `Scope` |
 | Waiting | `timer()` | `sleep(ms, signal)` | `Effect.sleep` |
@@ -398,6 +398,7 @@ flowchart TD
 |---|---|---|---|---|
 | in | `rpc(source)` | `Observable` | `Effect` of the first value | a one-shot call |
 | in | `fromPort(source)` | `Observable` | Effect `Stream` | following a port during one warm period |
+| in | `fromPort.merged([...])` | several `Observable`s | one Effect `Stream` of events | folding two or more ports together, in the order they emitted |
 | in | `peek(source, fallback)` | `Observable` | the current value, read at once | seeding, synchronous reads |
 | out | `sharedFold(host, { seed, run })` | a seed and a producer | `Stream` (shared, replays the latest) | every shared stream |
 | out | `refToStateStream(host, ref)` | `SubscriptionRef` | `StateStream` | every machine's `state$` |
@@ -408,6 +409,13 @@ Presenters never call `fromObservable` directly. They receive `fromPort` from
 `sharedFold`, already tied to the warm period's `Scope`, so a port
 subscription is always released when the period ends. A dependency-cruiser
 rule (`effect-port-subscription-owned-by-the-bridge`) keeps it that way.
+
+Two more things the bridge owns, both explained under
+[promise 9](#promise-9-one-event-one-turn). Every fiber runs on the bridge's
+own scheduler (`turnScheduler.ts`), so one event is finished within one turn.
+And plain code never runs an effect with the global `Effect.runFork`: it
+uses a host's runner, or `interruptFiber` and `closeScope`, which releases a
+scope's ports before closing it (grep gate 49).
 
 ## Worked example: connection status
 
@@ -479,7 +487,7 @@ flowchart TD
 
   subgraph effect["Effect core"]
     e1["events port"] --> e2["fromPort → Stream.runForEach<br/>on a fiber"]
-    e2 --> e3["SubscriptionRef"]
+    e2 --> e3["update(next)"]
     e3 --> e4["sharedFold"]
   end
 
@@ -567,6 +575,7 @@ the precise versions.
 | 6 | **After `dispose()`, the core holds no port subscription** once its consumers have let go. | No leaks. |
 | 7 | **Each port method is called once, at construction.** | A port call can open a subscription on the server; calling it twice doubles the load. |
 | 8 | **Values that arrive together are delivered together.** | The screen redraws once per turn. Fifty prices in one turn is one redraw; fifty prices in fifty turns is fifty. |
+| 9 | **Everything one event causes is delivered in the same turn.** | A price and the flash it causes must redraw the tile once, not once each. |
 
 Promise 1 is the one that shapes the bridges most:
 
@@ -618,16 +627,78 @@ Two lessons, and where each one now lives:
   stream's values arrive in, and three members (`priceStream`,
   `priceHistory`, `animationDirector`) carry a case named "…in one turn".
   Give the same case to any new member that folds a port which can burst.
-- **In the Effect core, a burst must enter as one chunk.** Effect moves
+- **In the Effect core, a burst enters as one chunk.** Effect moves
   *chunks* between fibers, not single values, so `bridge/in.ts` drains
-  everything a port emitted in one turn and passes it on as one chunk. The
-  comment there has the measurements and says what not to simplify.
+  everything a port emitted in one turn and passes it on as one chunk. That
+  was the whole fix at first. Since promise 9's scheduler it is no longer
+  what protects the redraws, but it still saves the work of fifty
+  hand-overs; the comment there has the measurements.
 
 How it was found, in case it is needed again: slow the processor down in a
 probe (`Emulation.setCPUThrottlingRate`), take a CPU profile from navigation
 to two seconds after the app appears, and count renders per component. The
 profile showed React doing four times the work inside `Tile`; a counter in
 `Tile` showed `price` changing 472 times instead of 30.
+
+### Promise 9: one event, one turn
+
+Promise 8 is about many values in one stream. Promise 9 is about one value
+that travels through several members.
+
+A price tick goes to the price stream, then to the animation director, which
+works out whether the tile should flash up or down, then to that tile's own
+intent stream. The tile reads the price and the intent. In the RxJS core all
+of this is one chain of function calls, so both arrive before React redraws.
+
+In the Effect core each member is a fiber, and Effect's default scheduler
+gives every fiber its own slot in the queue each time it wakes. So the price
+arrived, React redrew the tile, and several slots later the flash arrived
+and React redrew it again: three redraws per tick against two (measured
+2026-10-04: 624 redraws in six seconds against 404).
+
+The fix is one small file, `bridge/turnScheduler.ts`. It replaces Effect's
+scheduler with one that keeps running fibers, including the fibers those
+wake, until none is waiting, all in a single slot. React's redraw waits
+behind that slot, so it sees the core only once it has settled. Nothing is
+held up longer than before: a chain of slots never let the browser paint in
+between anyway.
+
+It had one side effect, which exposed a second mistake. Disposing a machine
+closed its `Scope`, and closing a scope is itself a little program: it stops
+the scope's fibers one after another and unsubscribes the ports last. For a
+few steps after `dispose()` returned, the machine was still listening. It
+never showed, because a merge was slower than the close. With the new
+scheduler the event won, and a disposed machine processed two more events.
+The bridge now unsubscribes a scope's ports *before* it closes the scope
+(`closeScope`), which is what RxJS's `unsubscribe()` always did, and a gate
+forbids closing a scope any other way.
+
+The lesson for both: **when two things only work because one is slower than
+the other, it is a race, even if it has never failed.** Look for the
+ordering the code actually guarantees, not the one it happens to have.
+
+### What a value costs in the Effect core
+
+Getting the turns right fixed what the screen does. The same profiling also
+showed how much work each value took, and two habits were responsible for
+most of it.
+
+- **A fiber per subscriber, only to pass values on.** A shared stream kept
+  its state in a `SubscriptionRef`, and every subscriber followed it on a
+  fiber of its own. Now the fiber that computes a state hands it to the
+  subscribers itself. Nine tiles reading four streams each no longer means
+  thirty-six extra fibers.
+- **`Stream.merge` over two ports.** Merging runs each side on its own fiber
+  and passes every value across: about eleven fiber steps per value. A fold
+  that listens to two ports now asks for them as one stream,
+  `fromPort.merged([...])`, which puts both ports into one queue. It is
+  cheaper, and the events also keep the order they were emitted in, which
+  `Stream.merge` never promised.
+
+Together they took the first two seconds of the FX screen from about 2,900
+fiber steps to about 1,000, and steady state from about 7,500 per six
+seconds to about 2,000. When you write a new Effect member: fold several
+ports with `fromPort.merged`, and let `sharedFold` do the sharing.
 
 ## A command that can be cancelled
 
@@ -719,7 +790,7 @@ flowchart LR
   c2["<b>Every core behaves<br/>the same</b>"] --> g2["@rtc/core-contract: one suite<br/>per member, run on all three"]
   c3["<b>No RxJS hidden inside<br/>an alternative core</b>"] --> g3["dependency-cruiser bridge-owns-rxjs<br/>+ grep gate 43"]
   c4["<b>The plug is<br/>types only</b>"] --> g4["grep gate 42"]
-  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>alt-cores-no-client-core-at-runtime"]
+  c5["<b>Alternative cores do not<br/>depend on the RxJS core</b>"] --> g5["dependency-cruiser<br/>cores-stay-inner"]
   c6["<b>Visitors download only<br/>the core they use</b>"] --> g6["pnpm check:core-bundle"]
 ```
 
@@ -757,7 +828,7 @@ an accident.
 | `@rtc/domain` ports and simulators | `Observable`, operators | yes — RxJS is its only runtime dependency ([§10.1](10-key-design-decisions.md#101-rxjs-observablet-as-the-boundary-stream-type)) |
 | `@rtc/core-api` | `Observable`, `StateObservable` | **no** — types only |
 | `@rtc/core-logic` | nothing | no |
-| `@rtc/client-core` (RxJS core) | everything | yes |
+| `@rtc/client-core-rxjs` (RxJS core) | everything | yes |
 | alternative cores, inside `bridge/` | `new Observable`, `state()`, `take`, `firstValueFrom` | yes |
 | alternative cores, outside `bridge/` | type names only | **no** |
 | bindings | `combineLatest`, `map`, `firstValueFrom`; `@react-rxjs/core` (React), `state()` (Solid) | yes |

@@ -1,0 +1,61 @@
+# What EAS Build uploads. EAS archives the whole repository root for a
+# monorepo, and once this file exists it REPLACES .gitignore for that purpose —
+# so everything .gitignore keeps out has to be repeated in the first block.
+#
+# Why it exists: without it the archive was 3.3 GB against EAS's 2.0 GB limit
+# (2026-10-04). EAS does not read .git/info/exclude, which is where
+# .claude/worktrees (other checkouts of this same repo, ~17 GB) is ignored
+# locally, and it does not skip .git (2.1 GB) either.
+#
+# A cloud build needs: the root manifests, pnpm-lock.yaml, and packages/*
+# source. It does not need history, other checkouts, docs, goldens or tests.
+
+# ---- 1. Mirror of .gitignore (keep in step when that file changes) ----------
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+reports/
+coverage/
+playwright-report/
+test-results/
+.pnpm-store/
+.idea/
+.DS_Store
+.github/.token
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.tooling/
+.vercel/
+.superpowers/
+.env
+.env.local
+.env.*.local
+.playwright-mcp/
+.golden-out/
+
+# ---- 2. From packages/client-react-native/.gitignore ------------------------
+.expo/
+*.log
+web-build/
+packages/client-react-native/ios/
+packages/client-react-native/android/
+packages/client-react-native/shots/
+packages/client-react-native/report.xml
+.maestro/
+
+# ---- 3. Not needed to build the app -----------------------------------------
+# History and other checkouts of this repo.
+.git/
+.claude/
+.remember/
+# Documentation, design prototypes (LFS), decks.
+/docs/
+/specs/
+# Committed screenshots: 326 MB of web goldens, 11 MB of RN goldens.
+packages/ui-contract/goldens/
+packages/client-react-native/tests/visual/__screenshots__/
+# CI config. (The root tests/ workspace stays: it is a pnpm workspace member,
+# so the frozen lockfile needs its package.json, and it is under 1 MB.)
+
+.github/

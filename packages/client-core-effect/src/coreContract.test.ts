@@ -2,18 +2,15 @@
 //
 // The Effect-TS core's runner for `@rtc/core-contract` — the ONE file in this
 // package that executes the paradigm-neutral behavioural contract. It is the
-// twin of `packages/client-core/src/composition.coreContract.test.ts`: same
+// twin of `packages/client-core-rxjs/src/composition.coreContract.test.ts`: same
 // base `AppPorts` construction (domain simulators + in-memory stores), same
 // suites, a different `createApp`/`createMachineFactories` pair and a
 // different label.
 
 import { NEVER } from "rxjs";
 
-import {
-  type AppPorts,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import type { AppPorts } from "@rtc/core-api";
 import {
   type CoreHarness,
   describeCoreContract,

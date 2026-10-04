@@ -28,7 +28,7 @@ worked example. This chapter is the precise reference behind it.
 flowchart TB
   CoreAPI["@rtc/core-api<br/>(types only)"]
   CoreLogic["@rtc/core-logic<br/>(shared rxjs-free rules)"]
-  RxjsCore["@rtc/client-core<br/>(RxJS)"]
+  RxjsCore["@rtc/client-core-rxjs<br/>(RxJS, the default)"]
   AsyncCore["@rtc/client-core-async"]
   EffectCore["@rtc/client-core-effect"]
   CoreContract["@rtc/core-contract<br/>(dev-only)"]
@@ -45,10 +45,12 @@ flowchart TB
   CoreContract -. witnesses .-> RxjsCore
   CoreContract -. witnesses .-> AsyncCore
   CoreContract -. witnesses .-> EffectCore
-  RxjsCore --> ReactBindings
-  RxjsCore --> SolidBindings
+  CoreAPI --> ReactBindings
+  CoreAPI --> SolidBindings
   ReactBindings --> ClientReact
   SolidBindings --> ClientSolid
+  RxjsCore -. "loadCore · lazy import()" .-> ClientReact
+  RxjsCore -. "loadCore · lazy import()" .-> ClientSolid
   AsyncCore -. "loadCore · lazy import()" .-> ClientReact
   EffectCore -. "loadCore · lazy import()" .-> ClientReact
   AsyncCore -. "loadCore · lazy import()" .-> ClientSolid
@@ -62,11 +64,13 @@ machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 `Presenters` / `AppCommands` / `AppPorts` / `App`, and `CoreFactory` — the
 whole plug a client needs to name a core without naming an implementation.
 
-`@rtc/client-core` is unchanged in name, adapters, and behaviour; it now
-`implements` `@rtc/core-api`'s presenter interfaces and re-exports every type
-it used to own outright, so no existing import in either binding or client
-changed. `@rtc/client-core-async` and `@rtc/client-core-effect` are new
-sibling packages implementing the same `CoreFactory` contract on
+`@rtc/client-core-rxjs` is the RxJS core: it `implements` `@rtc/core-api`'s
+presenter interfaces. Until 2026-10-04 it lived inside `@rtc/client-core`,
+which also re-exported every contract type; since then the core is its own
+package, `@rtc/client-core` holds only the adapters, port factories and
+stores, and a consumer imports a contract type from `@rtc/core-api` itself.
+`@rtc/client-core-async` and `@rtc/client-core-effect` are its
+sibling packages, implementing the same `CoreFactory` contract on
 `async`/`await` + `AsyncIterable` and Effect-TS respectively. `@rtc/core-contract`
 is dev-only — a devDependency of all three cores, never imported from any
 `src` — and is the behavioural witness that all three agree.
@@ -79,12 +83,15 @@ workspace and Jarvis controllers (`createWorkspaceDock`,
 runtime dependencies are `domain` and `shared` only, and it takes
 `core-api` for types. Two dependency-cruiser rules keep it that way:
 `core-logic-stays-pure` (no runtime `rxjs`/`@rx-state`) and
-`core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exports it
-whole, so no existing import changed. Each alternative core composes from
-`core-logic`, `core-api`, `domain`, `shared` and its own members only;
-`@rtc/client-core` is a devDependency there, for test adapters
-(`createSimulatorPorts`), and `alt-cores-no-client-core-at-runtime` forbids
-it from any non-test file.
+`core-logic-stays-inner` (an allowlist). `@rtc/client-core` re-exported it
+whole until 2026-10-04; a consumer now imports a shared rule from
+`@rtc/core-logic` directly. Each core — the RxJS one too, in its own package
+`@rtc/client-core-rxjs` since 2026-10-04 — composes from `core-logic`,
+`core-api`, `domain`, `shared` and its own members only, and never from
+another core (`cores-stay-inner`). `@rtc/client-core`, which now holds only
+the adapters, port factories and stores, is a core's devDependency, for test
+adapters (`createSimulatorPorts`): a core takes its ports as arguments, and
+`cores-take-ports-as-arguments` forbids the import from any non-test file.
 
 The bindings (`react-bindings`, `solid-bindings`) are unaffected by which
 core is active: they consume `Presenters` / `MachineFactories` /
@@ -96,9 +103,9 @@ concrete classes directly.
 **Since 2026-09-27** ([ADR-006 Decision 6](../adr/ADR-006-pluggable-application-core.md#decision-6-load-time-core-selection-supersedes-build-time-only-selection),
 [design spec](../superpowers/specs/2026-09-27-runtime-core-switch-design.md)),
 the core is chosen at load time, not baked into the build: one production
-build ships all three cores as lazy chunks (the RxJS composition root too,
-since approach B on 2026-10-02 — reached through the `@rtc/client-core/core`
-subpath export, never the root index) —
+build ships all three cores as lazy chunks (the RxJS core too: its
+composition root since approach B on 2026-10-02, the whole of it as the
+package `@rtc/client-core-rxjs` since 2026-10-04) —
 and a visitor (or the deployed demo itself) can switch between them without a
 rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 `selectCore.ts`) resolves the choice through a pure precedence chain:
@@ -183,10 +190,11 @@ to reproduce them explicitly:
    `shareReplay({ bufferSize: 1, refCount: true })`'s contract, written out
    explicitly rather than implied by an operator: the async core's `Topic<T>`
    starts its producer on the first subscriber and aborts it on the last;
-   the Effect core's `sharedFold` restates it over a `SubscriptionRef` and a
-   per-warm-period `Scope` — `Stream.share({ replay: 1 })` could not be the
-   envelope, because it replays to a new subscriber on a fiber, never in the
-   caller's tick (slice 1a, measured on 3.22.2).
+   the Effect core's `sharedFold` restates it over a per-warm-period
+   `Scope`, its producer handing each state to the period's subscribers
+   itself — `Stream.share({ replay: 1 })` could not be the envelope,
+   because it replays to a new subscriber on a fiber, never in the caller's
+   tick (slice 1a, measured on 3.22.2).
 3. **Memoised per-key identity.** `price$(EURUSD) === price$(EURUSD)` — a
    contract test asserts it directly, since a core that rebuilt a new stream
    per call would still type-check.
@@ -195,7 +203,7 @@ to reproduce them explicitly:
    after `settle()` (two macrotask turns): an Effect fiber delivers past the
    seed on the scheduler, so a suite asserting later values synchronously
    would be pinning RxJS's delivery tick rather than the behaviour. One
-   related, uncontracted difference: a `SubscriptionRef` fold conflates
+   related, uncontracted difference: an Effect `sharedFold` conflates
    `Object.is`-equal consecutive states (the guard that keeps the seed from
    being delivered twice), where the RxJS core's `scan`/`map` re-emit them
    and the async core's `Topic` reproduces that re-emission. Measured on
@@ -212,19 +220,41 @@ to reproduce them explicitly:
    this is what decides whether a burst of N costs one render or N. RxJS
    gets it for free (a synchronous chain), and the async core passes the
    same cases unchanged; the Effect core has to arrange it. Its fibers pass a stream's
-   CHUNKS between each other, one scheduler turn per chunk at every
-   `Stream.merge` / `mergeAll` / `flatMap`, so `fromObservable` drains
-   everything the port emitted in a turn and emits it as ONE chunk
-   (`drainBurst` + `joinConsecutiveValues`). Measured 2026-10-04, before
-   that: the pricing simulator replays 50 historical ticks per pair on
-   subscribe, the nine FX tiles rendered 1,070 times in their first two
-   seconds against ~95 on the other cores, and start-up kept the page busy
-   for 666 ms against 166 ms (4.1 s against 0.8 s under 6x CPU throttling).
-   It passed every contract suite, because the suites asserted WHICH values
-   arrive, never how many turns they take. The cases named "…in one turn"
+   CHUNKS between each other, one hand-over per chunk at every
+   `Stream.merge` / `mergeAll` / `flatMap`, and on Effect's default
+   scheduler each hand-over was a turn of its own. Measured 2026-10-04: the
+   pricing simulator replays 50 historical ticks per pair on subscribe, the
+   nine FX tiles rendered 1,070 times in their first two seconds against
+   ~95 on the other cores, and start-up kept the page busy for 666 ms
+   against 166 ms (4.1 s against 0.8 s under 6x CPU throttling). It passed
+   every contract suite, because the suites asserted WHICH values arrive,
+   never how many turns they take. The cases named "…in one turn"
    (`priceStream`, `priceHistory`, `animationDirector`) now assert it with
    `collectTurns` (`@rtc/core-contract`'s harness); a new member that folds
-   a port which can burst should get the same case.
+   a port which can burst should get the same case. Two things hold it up
+   in the Effect core: guarantee 6's scheduler, which is what the cases
+   depend on, and `fromObservable` draining everything the port emitted in
+   a turn into ONE chunk (`drainBurst` + `joinConsecutiveValues`), which no
+   longer decides the renders but still saves the hand-overs (~40 ms of
+   start-up work).
+6. **One event, one turn.** Whatever a single event makes the core do —
+   however many members it passes through — reaches subscribers within the
+   turn it arrived in. A price tick moves the price stream, then the
+   animation director, then the per-tile intent stream; a tile reads the
+   first and the last, and must hear both before it re-renders. RxJS gets
+   this for free too, and the async core's hops all run before the UI's
+   own microtask. Effect's default scheduler breaks it: since 3.20 every
+   fiber resume is a microtask of its own, so a value that crosses N
+   fibers arrives N microtasks after it entered, and the UI renders in
+   between. Measured 2026-10-04 (React client, nine tiles, 6 s of steady
+   state): 624 tile renders against 404 on the RxJS core — three per tick
+   against two — and the price reached the tile a turn before the flash it
+   causes. The Effect core therefore runs every fiber on its own scheduler
+   (`bridge/turnScheduler.ts`, installed by `runnerFor`), which runs each
+   ready fiber step, and the steps those make ready, inside one microtask
+   until nothing is left: ~430 renders against ~420. The `animationDirector`
+   case "a tick's price and the flash it causes reach the tile in one turn"
+   pins it; `collectTurns` takes several streams for exactly this.
 
 ## Failure, teardown and port discipline
 
@@ -272,6 +302,21 @@ explicitly (residual sweep, 2026-09-19):
    it from constancy once no core built a second copy of any member; the
    absolute count caught the RxJS `RfqsPresenter` calling
    `workflow.events()` twice (now once, subscribed twice).
+5. **A release is synchronous.** When a machine's `dispose()` or a stream's
+   last unsubscribe returns, its ports are already unsubscribed: nothing
+   emitted afterwards is received. RxJS and the async core unsubscribe in
+   the call. In the Effect core the natural shape does not: `Scope.close`
+   is an effect that interrupts the scope's fibers one at a time, newest
+   first, waiting for each to end, and only then runs the finalizers that
+   unsubscribe the ports. Measured 2026-10-04: a disposed stale-flag
+   machine folded two connection events emitted after `dispose()`. It had
+   passed its contract case only because `Stream.merge` carried an event
+   more slowly than the close reached the fold fiber — a race, which the
+   turn scheduler stopped it winning. So the bridge releases a scope's
+   ports itself before it closes the scope (`closeScope` →
+   `releasePorts`), and grep gate 49 forbids the global `Effect.run*`
+   outside `bridge/`, because a bare `Effect.runFork(Scope.close(…))`
+   skips that release.
 
 ## Warm singletons, conflation and machines
 
@@ -489,7 +534,7 @@ advances vitest's fake timers where a member is timer-driven
 asserts only at the envelope level described above.
 
 One runner file per core imports every suite against that core's own
-`makeHarness`: `packages/client-core/src/composition.coreContract.test.ts`
+`makeHarness`: `packages/client-core-rxjs/src/composition.coreContract.test.ts`
 for RxJS, `src/coreContract.test.ts` in each alternative core. **Ordering
 rule for the whole workstream:** a member's suite must exist and be green on
 the RxJS core before either alternative core ports that member natively —
@@ -527,16 +572,15 @@ the one client it built.
 
 **What the brand rules do and do not prove.** A brand names a core's
 *composition root* — the file that constructs the app. Rule 1 therefore
-proves the entry bundle constructs no core. That the RxJS core's presenters
-and machines are lazy too rests on two more facts. First, `@rtc/client-core`'s
-root index — the only thing the UI imports statically — is the *edge*:
-adapters, port factories, stores, pure helpers, and the presenter barrel's
-types (`export type *`). It reaches no presenter module, which
-dependency-cruiser's `client-core-root-is-the-edge` checks on source, without
-a build. Second, the presenters are exported only from
-`@rtc/client-core/core`, beside the composition root: a UI file that imported
-that subpath statically would drag the brand into the eager set and fail rule
-1. The bundler assigns a module to the entry chunk whenever the entry can
+proves the entry bundle constructs no core. That a core's presenters and
+machines are lazy too rests on two more facts. First, a core is a package of
+its own, and what the UI imports statically — `@rtc/client-core`: adapters,
+port factories and stores — imports no core (`client-core-stays-inner`).
+Second, a core's presenters are exported from the same package as its
+composition root: a UI file that imported that package statically would drag
+the brand into the eager set and fail rule 1, and dependency-cruiser's
+`web-clients-load-cores-lazily` rejects the same import on source, without a
+build. The bundler assigns a module to the entry chunk whenever the entry can
 reach it *statically*, whoever ends up using it, so both halves are needed.
 
 This came in two steps. Approach B (2026-10-02) moved the composition root

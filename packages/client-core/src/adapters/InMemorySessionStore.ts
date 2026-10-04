@@ -1,4 +1,4 @@
-import type { SessionStore, StoredSession } from "./sessionStore.js";
+import type { SessionStore, StoredSession } from "@rtc/core-api";
 
 export class InMemorySessionStore implements SessionStore {
   private session: StoredSession | null = null;

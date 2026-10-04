@@ -333,7 +333,7 @@ Two rows dropped from this table during the 2026-07-26 doc sweep, both moved
 out of `src/ui` entirely and so out of this document's scope (their own
 package's report-only tier tracks them now, not this one): `filterState.ts`'s
 `return true` fallthrough (`ColumnFilter` exhaustive switch) — the file is now
-`packages/client-core/src/blotter/filterState.ts`; and `useViewModel.ts`'s
+`packages/core-logic/src/blotter/filterState.ts`; and `useViewModel.ts`'s
 outside-provider throw — the file is now `packages/react-bindings/src/useViewModel.ts`
 (`src/ui/viewModel/useViewModel.ts` never existed in `client-react` after the
 bindings split).
@@ -561,6 +561,6 @@ doesn't drive**, not *missing snapshots*. Cover them in the unit/contract tiers.
 > render arms) snapshotted by Phase 9. `columnSort.ts` (sort-direction cycling
 > + comparator logic) and `columnFilter/filterState.ts` (filter predicate
 > construction/application) — both formerly listed here too — moved the same
-> way, out to `packages/client-core/src/blotter/`; they are no longer part of
+> way, out to `packages/core-logic/src/blotter/`; they are no longer part of
 > `client-react` at all, so they're out of this document's scope (`src/ui`)
 > entirely rather than merely uncovered by this tier.

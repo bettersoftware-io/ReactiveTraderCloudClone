@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createDefaultLayoutPort, type LayoutState } from "@rtc/client-core";
+import type { LayoutState } from "@rtc/core-api";
+import { createDefaultLayoutPort } from "@rtc/core-logic";
 
 import { inhouseLayoutEnginePage } from "#tests/ui/pages/InhouseLayoutEnginePage";
 

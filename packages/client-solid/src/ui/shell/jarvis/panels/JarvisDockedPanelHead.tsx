@@ -1,7 +1,7 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo } from "solid-js";
 
-import type { JarvisPanelVm } from "@rtc/client-core";
+import type { JarvisPanelVm } from "@rtc/core-api";
 
 import styles from "./JarvisDockedPanelHead.module.css";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyBrowserTeardown } from "../teardownPolicy";
+import { classifyBrowserTeardown } from "../teardownPolicy.ts";
 
 describe("classifyBrowserTeardown", () => {
   it("says nothing when close() completed cleanly in time", () => {

@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
 import type { Accessor } from "solid-js";
 
-import type { DockLayoutStore, PanelId, WorkspaceTab } from "@rtc/client-core";
+import type { DockLayoutStore, PanelId, WorkspaceTab } from "@rtc/core-api";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

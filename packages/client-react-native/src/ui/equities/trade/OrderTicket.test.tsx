@@ -1,6 +1,6 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { orderTicketPage } from "#tests/pages/OrderTicketPage";

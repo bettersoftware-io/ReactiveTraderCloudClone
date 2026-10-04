@@ -2,7 +2,7 @@ import type {
   AuthViewState,
   BootSequenceState,
   IncidentState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   ConnectionStatus,
   DEFAULT_AMBIENT_STYLE,

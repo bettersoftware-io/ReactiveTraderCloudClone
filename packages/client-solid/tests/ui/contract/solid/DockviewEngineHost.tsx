@@ -1,12 +1,7 @@
 import { createMemo, createSignal, type JSX, Show, untrack } from "solid-js";
 
-import {
-  type DockLayoutStore,
-  InMemoryDockLayoutStore,
-  PANEL_SPECS,
-  type PanelId,
-  type PanelSpec,
-} from "@rtc/client-core";
+import type { DockLayoutStore, PanelId, PanelSpec } from "@rtc/core-api";
+import { InMemoryDockLayoutStore, PANEL_SPECS } from "@rtc/core-logic";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 

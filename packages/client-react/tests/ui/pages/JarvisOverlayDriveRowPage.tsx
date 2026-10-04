@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 
-import type { JarvisEntry } from "@rtc/client-core";
+import type { JarvisEntry } from "@rtc/core-api";
 import type { ViewModel } from "@rtc/react-bindings";
 import { ViewModelContext } from "@rtc/react-bindings";
 

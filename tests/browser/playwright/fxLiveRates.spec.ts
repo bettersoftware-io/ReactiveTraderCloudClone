@@ -1,7 +1,7 @@
-import * as common from "../scenarios/common";
-import * as fxLiveRates from "../scenarios/fxLiveRates";
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as common from "../scenarios/common.ts";
+import * as fxLiveRates from "../scenarios/fxLiveRates.ts";
+import { test } from "./_context.ts";
+import { withFxWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("FX live rates", () => {
   withFxWorkspaceOpen();

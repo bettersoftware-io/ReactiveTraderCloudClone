@@ -148,17 +148,7 @@ const rtcSourceAlias: Record<string, string> = debugBuild
       "@rtc/boot-splash": pkgSrc("boot-splash"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
-      // `@rtc/client-core/core` is the RxJS composition root's subpath export
-      // (approach B: every core is a lazy `import()`), so like the `/styles`
-      // keys above it must precede the bare key or the prefix match rewrites
-      // it to `…/src/index.ts/core`.
-      "@rtc/client-core/core": resolve(
-        dirname(fileURLToPath(import.meta.url)),
-        "..",
-        "client-core",
-        "src",
-        "core.ts",
-      ),
+      "@rtc/client-core-rxjs": pkgSrc("client-core-rxjs"),
       "@rtc/client-core": pkgSrc("client-core"),
       "@rtc/core-api": pkgSrc("core-api"),
       "@rtc/core-logic": pkgSrc("core-logic"),
@@ -220,8 +210,8 @@ export default defineConfig({
   // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
   // the stored choice above this build default, itself above "rxjs"). All
   // three cores ship in every build, each a dynamic import `loadCore`
-  // fetches lazily once chosen (RxJS included, through the
-  // `@rtc/client-core/core` subpath), so this no longer selects what gets
+  // fetches lazily once chosen (RxJS included, from its own package,
+  // `@rtc/client-core-rxjs`), so this no longer selects what gets
   // bundled (see `pnpm check:core-bundle`). Vite's built-in
   // import.meta.env replacement leaves the value as whatever string ran the
   // process, so `define` re-inlines it as a JSON string literal `bootApp.ts`

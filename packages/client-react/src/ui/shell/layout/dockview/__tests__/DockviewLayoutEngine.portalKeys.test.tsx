@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { InMemoryDockLayoutStore } from "@rtc/client-core";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 import { dockviewLayoutEngineStrictModePage } from "#tests/ui/pages/DockviewLayoutEngineStrictModePage";

@@ -4,8 +4,8 @@ import { filter } from "rxjs";
 
 import type { ConnectionStatus } from "@rtc/domain";
 
-import type { AwaitHelpers } from "../_await";
-import type { IncidentPresenterCtx } from "../_buildApp";
+import type { AwaitHelpers } from "../_await.ts";
+import type { IncidentPresenterCtx } from "../_buildApp.ts";
 
 // String-literal stand-ins for the ConnectionStatus const enum. Same trick as
 // connection.ts — verbatimModuleSyntax + isolatedModules forbid accessing

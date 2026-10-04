@@ -37,12 +37,11 @@
  * the payload it is about to serialize.
  */
 
+import type { LayoutState, WorkspaceTab } from "@rtc/core-api";
 import type { PanelSpecV1 } from "@rtc/shared";
 
-import type { WorkspaceTab } from "./defaultLayoutPort";
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds, removeDockedLeaf } from "./dockColumn";
-import type { LayoutState } from "./layoutPort";
 import type {
   DockedPanelEntry,
   PersistedTabLayout,

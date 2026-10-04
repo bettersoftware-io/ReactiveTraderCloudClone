@@ -1,12 +1,11 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  type DockLayoutStore,
-  InMemoryDockLayoutStore,
-  instanceIdFor,
-  type LayoutPanelInstance,
-  type PanelId,
-} from "@rtc/client-core";
+import type {
+  DockLayoutStore,
+  LayoutPanelInstance,
+  PanelId,
+} from "@rtc/core-api";
+import { InMemoryDockLayoutStore, instanceIdFor } from "@rtc/core-logic";
 import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

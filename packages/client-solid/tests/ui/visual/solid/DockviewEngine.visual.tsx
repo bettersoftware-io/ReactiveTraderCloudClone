@@ -1,7 +1,7 @@
 import { ATTACHED_FX_BLOB } from "@ui-visual-shared/attachedFxBlob";
 import type { JSX } from "solid-js";
 
-import { InMemoryDockLayoutStore } from "@rtc/client-core";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

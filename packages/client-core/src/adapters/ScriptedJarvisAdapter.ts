@@ -1,8 +1,5 @@
-import { type ScriptedJarvisDeps, ScriptedJarvisEngine } from "@rtc/shared";
-
-import type { JarvisPort } from "#/adapters/jarvisPort";
-
-export type { ScriptedJarvisDeps };
+import type { JarvisPort } from "@rtc/core-api";
+import { ScriptedJarvisEngine } from "@rtc/shared";
 
 /**
  * Thin client-core shim over the transport-neutral `ScriptedJarvisEngine`

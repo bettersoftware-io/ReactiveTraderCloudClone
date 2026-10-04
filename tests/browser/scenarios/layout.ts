@@ -1,7 +1,10 @@
-import type { FloatBox, SashGripSize } from "../page-objects/contracts/Layout";
-import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences";
-import { TESTIDS } from "../page-objects/contracts/testids";
-import type { TestContext } from "../testContext";
+import type {
+  FloatBox,
+  SashGripSize,
+} from "../page-objects/contracts/Layout.ts";
+import type { PrefsLayoutEngine } from "../page-objects/contracts/Preferences.ts";
+import { TESTIDS } from "../page-objects/contracts/testids.ts";
+import type { TestContext } from "../testContext.ts";
 import {
   assertEquals,
   assertFalse,
@@ -10,8 +13,8 @@ import {
   assertLte,
   assertNotEqual,
   assertTrue,
-} from "./assert";
-import * as common from "./common";
+} from "./assert.ts";
+import * as common from "./common.ts";
 
 // Drag the first splitter boundary a healthy distance along its axis; large
 // enough that the resulting size-fraction change clears the assertion margin

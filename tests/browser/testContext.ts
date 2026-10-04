@@ -1,4 +1,4 @@
-import type { PageObjects } from "./page-objects/contracts";
+import type { PageObjects } from "./page-objects/contracts/index.ts";
 
 /**
  * Per-scenario typed scratchpad. A fresh instance is constructed for every

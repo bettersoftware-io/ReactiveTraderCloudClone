@@ -5,11 +5,15 @@ import type {
   PrefsChartSubstrate,
   PrefsCoreImpl,
   PrefsLayoutEngine,
-} from "../contracts/Preferences";
-import { TESTIDS } from "../contracts/testids";
+} from "../contracts/Preferences.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightPreferences implements PreferencesPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async open(): Promise<void> {
     await this.page.getByTestId(TESTIDS.prefs.accountToggle).click();

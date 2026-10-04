@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 
-import type { ActivityEntry } from "@rtc/client-core";
+import type { ActivityEntry } from "@rtc/core-api";
 import { Direction, TradeStatus } from "@rtc/domain";
 
 import { formatNotional, formatRate } from "./blotterColumns";

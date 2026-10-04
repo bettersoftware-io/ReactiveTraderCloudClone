@@ -1,9 +1,9 @@
 import { catchError, mergeMap, NEVER, type Observable, of } from "rxjs";
 
+import type { SessionStore, StoredSession } from "@rtc/core-api";
 import type { AuthOutcome, AuthPort } from "@rtc/domain";
 
 import type { DataSource, DataSourceStore } from "./dataSource.js";
-import type { SessionStore, StoredSession } from "./sessionStore.js";
 
 export interface RoutingAuthPortDeps {
   /** Verifies the committed demo roster IN THE BROWSER (an `AuthSimulator`). */

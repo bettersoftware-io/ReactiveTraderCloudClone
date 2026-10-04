@@ -1,10 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
 
-import type { ThemeTogglePO } from "../contracts/ThemeToggle";
-import { TESTIDS } from "../contracts/testids";
+import type { ThemeTogglePO } from "../contracts/ThemeToggle.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightThemeToggle implements ThemeTogglePO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private locator(): Locator {
     return this.page.getByTestId(TESTIDS.shell.themeToggle);

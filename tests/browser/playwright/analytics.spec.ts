@@ -1,7 +1,7 @@
-import * as analytics from "../scenarios/analytics";
-import * as theme from "../scenarios/theme";
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as analytics from "../scenarios/analytics.ts";
+import * as theme from "../scenarios/theme.ts";
+import { test } from "./_context.ts";
+import { withFxWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("Analytics panel", () => {
   withFxWorkspaceOpen();

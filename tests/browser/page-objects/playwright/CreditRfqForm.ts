@@ -1,12 +1,16 @@
 import { expect, type Page } from "@playwright/test";
 
-import type { CreditRfqFormPO } from "../contracts/CreditRfqForm";
-import { TESTIDS } from "../contracts/testids";
+import type { CreditRfqFormPO } from "../contracts/CreditRfqForm.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 const RFQ_ID_PATTERN = /RFQ ID:\s*(\d+)/;
 
 export class PlaywrightCreditRfqForm implements CreditRfqFormPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async waitForSendButton(timeoutMs: number): Promise<void> {
     await expect(this.page.getByTestId(TESTIDS.credit.newRfq.send)).toBeVisible(

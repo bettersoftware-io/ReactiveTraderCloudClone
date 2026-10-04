@@ -29,6 +29,8 @@
       "@rtc/shared/*": ["packages/shared/src/*"],
       "@rtc/client-core": ["packages/client-core/src/index.ts"],
       "@rtc/client-core/*": ["packages/client-core/src/*"],
+      "@rtc/client-core-rxjs": ["packages/client-core-rxjs/src/index.ts"],
+      "@rtc/client-core-rxjs/*": ["packages/client-core-rxjs/src/*"],
       "@rtc/client-core-async": ["packages/client-core-async/src/index.ts"],
       "@rtc/client-core-async/*": ["packages/client-core-async/src/*"],
       "@rtc/client-core-effect": ["packages/client-core-effect/src/index.ts"],

@@ -44,7 +44,7 @@ import {
   MAX_DOCKED_PANELS,
   MAX_LIVE_PANELS,
   UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import type { PriceTick } from "@rtc/domain";
 
 afterEach(() => {

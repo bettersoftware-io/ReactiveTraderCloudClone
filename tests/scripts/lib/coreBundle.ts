@@ -17,7 +17,7 @@
  */
 
 const CORE_MARKERS = {
-  rxjs: "@rtc/client-core:brand",
+  rxjs: "@rtc/client-core-rxjs:brand",
   async: "@rtc/client-core-async:brand",
   effect: "@rtc/client-core-effect:brand",
 } as const;

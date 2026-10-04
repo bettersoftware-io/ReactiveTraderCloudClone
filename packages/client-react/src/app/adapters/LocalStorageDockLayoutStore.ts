@@ -1,4 +1,4 @@
-import type { DockLayoutStore } from "@rtc/client-core";
+import type { DockLayoutStore } from "@rtc/core-api";
 
 /**
  * localStorage-backed DockLayoutStore, one key per tab. Modelled on

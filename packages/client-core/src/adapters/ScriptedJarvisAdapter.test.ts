@@ -8,12 +8,9 @@ import type {
   PricingPort,
   ReferenceDataPort,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, ScriptedJarvisDeps } from "@rtc/shared";
 
-import {
-  ScriptedJarvisAdapter,
-  type ScriptedJarvisDeps,
-} from "./ScriptedJarvisAdapter";
+import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 
 describe("ScriptedJarvisAdapter (JarvisPort pass-through over ScriptedJarvisEngine)", () => {
   it("PASS-THROUGH: a scripted panel event reaches the adapter's ask() output unchanged", async () => {

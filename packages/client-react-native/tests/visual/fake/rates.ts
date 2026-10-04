@@ -2,7 +2,7 @@ import type {
   NotionalView,
   TileExecutionIntents,
   TileExecutionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   type CurrencyPair,
   calculateSpread,
@@ -252,7 +252,7 @@ const TILE_EXECUTION_READY: TileExecutionResult = Object.freeze({
 });
 
 /** Format a raw notional the same way the real `NotionalMachine` does
- * (`packages/client-core/src/presenters/NotionalMachine.ts`'s
+ * (`packages/client-core-rxjs/src/presenters/NotionalMachine.ts`'s
  * `formatWithCommas`): `en-US` grouping, zero fraction digits. Deliberately
  * NOT memoized to a single frozen constant like `PRICES`/`TILE_EXECUTION_READY`
  * above — `useNotional` is called with a caller-supplied notional

@@ -1,7 +1,7 @@
 import { Then } from "@cucumber/cucumber";
 
-import * as analytics from "../scenarios/analytics";
-import type { StepContext } from "../testContext";
+import * as analytics from "../scenarios/analytics.ts";
+import type { StepContext } from "../testContext.ts";
 
 Then(
   "the analytics panel is visible within {int} seconds",

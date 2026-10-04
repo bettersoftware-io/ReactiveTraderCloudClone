@@ -61,7 +61,7 @@ a convention (see [§12. Architectural Gates](../../docs/architecture/12-archite
 
 This is what kept `@rtc/client-solid` a rewrite of `src/ui`
 only — the SolidJS port ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port))
-reused `client-core`, `react-bindings`'s sibling `solid-bindings`, and the CSS Modules verbatim
+reused `client-core-rxjs` and `client-core`, `react-bindings`'s sibling `solid-bindings`, and the CSS Modules verbatim
 precisely because gates 26–29 keep `src/ui` free of anything React- or
 RxJS-specific beyond JSX and hooks.
 
@@ -99,13 +99,15 @@ one-shot boot-splash decision (`shouldPlayBootSplash` from `@rtc/boot-splash`). 
 
 ## How it's used
 
-The only in-workspace consumer is the `tests` package, which imports the real
-`WsAdapter` for its Node-socket full-stack smoke test
-(`tests/fullstack/node-smoke.ts`):
+No package imports this one. The `tests` workspace lists it as a dependency
+because it is the application under test: the e2e suites start its dev server
+(`RTC_CLIENT_PKG` selects it or `@rtc/client-solid`), and the dependency gives
+Turborepo the build-order edge. The Node-socket full-stack smoke test
+(`tests/fullstack/node-smoke.ts`) takes the real `WsAdapter` straight from the
+adapters package:
 
 ```typescript
-import { createWsRealPorts } from "@rtc/client-core";
-import { WsAdapter } from "@rtc/client-react";
+import { createWsRealPorts, WsAdapter } from "@rtc/client-core";
 ```
 
 ## Scripts

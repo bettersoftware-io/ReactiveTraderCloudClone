@@ -17,7 +17,7 @@ import {
   instanceIdFor,
   serializeWorkspaceLayout,
   type UNSUPPORTED_SENTINEL_SPEC,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import type { EquityQuote } from "@rtc/domain";
 
 afterEach(() => {

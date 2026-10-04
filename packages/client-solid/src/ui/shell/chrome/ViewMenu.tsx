@@ -1,8 +1,8 @@
 import type { JSX } from "solid-js";
 import { createMemo, createSignal, For, Show, untrack } from "solid-js";
 
-import type { WorkspaceTab } from "@rtc/client-core";
-import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/client-core";
+import type { WorkspaceTab } from "@rtc/core-api";
+import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { LayoutPresetsSection } from "./LayoutPresetsSection";

@@ -8,7 +8,10 @@ export interface CollectedTurns<T> extends Collected<T> {
   turnCount(): number;
 }
 
-/** Subscribe, keep every emission, and count the turns they arrive in.
+/** Subscribe, keep every emission, and count the turns they arrive in. Given
+ * several streams it keeps one list and one count across all of them — what a
+ * UI component reading them all sees: values that land in the same turn, from
+ * whichever stream, cost it one render.
  *
  * A turn here is a stretch of synchronous execution: it ends at the next
  * microtask checkpoint. That is the boundary a UI batches on — React and
@@ -23,29 +26,33 @@ export interface CollectedTurns<T> extends Collected<T> {
  * Counted with a microtask per turn: the first emission of a turn queues one
  * microtask that advances the turn number, so every later emission that
  * lands before that checkpoint shares the number. */
-export function collectTurns<T>(stream: Stream<T>): CollectedTurns<T> {
+export function collectTurns<T>(
+  ...streams: readonly Stream<T>[]
+): CollectedTurns<T> {
   const values: T[] = [];
   const errors: unknown[] = [];
   const turnsSeen = new Set<number>();
   let turn = 0;
   let advanceQueued = false;
 
-  const subscription = stream.subscribe({
-    next: (value: T) => {
-      values.push(value);
-      turnsSeen.add(turn);
+  const subscriptions = streams.map((stream) => {
+    return stream.subscribe({
+      next: (value: T) => {
+        values.push(value);
+        turnsSeen.add(turn);
 
-      if (!advanceQueued) {
-        advanceQueued = true;
-        queueMicrotask(() => {
-          turn += 1;
-          advanceQueued = false;
-        });
-      }
-    },
-    error: (error: unknown) => {
-      errors.push(error);
-    },
+        if (!advanceQueued) {
+          advanceQueued = true;
+          queueMicrotask(() => {
+            turn += 1;
+            advanceQueued = false;
+          });
+        }
+      },
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
   });
 
   return {
@@ -55,7 +62,9 @@ export function collectTurns<T>(stream: Stream<T>): CollectedTurns<T> {
       return turnsSeen.size;
     },
     unsubscribe: () => {
-      subscription.unsubscribe();
+      for (const subscription of subscriptions) {
+        subscription.unsubscribe();
+      }
     },
   };
 }

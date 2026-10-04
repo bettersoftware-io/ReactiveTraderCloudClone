@@ -5,7 +5,7 @@ import type {
 } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/client-core";
+import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/core-logic";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 

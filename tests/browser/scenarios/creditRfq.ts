@@ -1,5 +1,5 @@
-import type { TestContext } from "../testContext";
-import { assertEquals, assertGte, assertTrue } from "./assert";
+import type { TestContext } from "../testContext.ts";
+import { assertEquals, assertGte, assertTrue } from "./assert.ts";
 
 /** AAPL 2.4 08/30 — id 0 in InstrumentSimulator.INSTRUMENTS_CATALOG. */
 const AAPL_INSTRUMENT_ID = 0;

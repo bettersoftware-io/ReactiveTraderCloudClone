@@ -13,8 +13,8 @@
 // credential, matching the `demo` roster identity.
 //
 // All assertions delegate to scenario helpers — gates 9-11 compliant.
-import * as login from "../scenarios/login";
-import { test } from "./_context";
+import * as login from "../scenarios/login.ts";
+import { test } from "./_context.ts";
 
 test.describe("Login form", () => {
   test("signs in with demo/demo and reaches the app shell", async ({ ctx }) => {

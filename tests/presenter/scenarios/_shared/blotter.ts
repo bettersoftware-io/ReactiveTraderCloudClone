@@ -1,5 +1,5 @@
 // tests/presenter/scenarios/_shared/blotter.ts
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 export async function expectBlotterVisible(w: PresenterWorld): Promise<void> {
   // At presenter level, blotter is "visible" if trades$ emits (the observable exists).

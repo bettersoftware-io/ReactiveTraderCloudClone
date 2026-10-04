@@ -1,5 +1,5 @@
 import { Effect, Exit, Layer, ManagedRuntime, Option, Scope } from "effect";
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, ReplaySubject, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Stream } from "@rtc/core-api";
@@ -145,13 +145,10 @@ describe("conflatedFold", () => {
 
   it("a burst driven in the SAME turn as the subscribe is not lost to the flag: the flag is subscribed first", async () => {
     // What the contract's FX suites actually drive — no settle between the
-    // subscribe and the first tick. Call ORDER of `fromPort(calm$)` before
-    // `fromPort(source)` is NOT what saves this: `Stream.merge` gives no
-    // ordering guarantee across its two sources and, measured, drains the
-    // tick queue first. What actually saves it is `peekCurrent(calm$)`,
-    // read synchronously into the fold's seed state before the merged
-    // stream is even run — so the flag's current value is already known
-    // when the first tick is folded, regardless of merge ordering.
+    // subscribe and the first tick. Both ports feed ONE queue
+    // (`fromPort.merged`), the flag subscribed first, so the value a
+    // replay-current flag emits during its subscribe is queued ahead of
+    // every tick and folded before them.
     const source = new Subject<number>();
     const calm = new BehaviorSubject<boolean>(false);
     const seen = collect(
@@ -162,6 +159,25 @@ describe("conflatedFold", () => {
     source.next(1);
     source.next(2);
     source.next(3);
+    await settle();
+    expect(seen).toEqual([1, 2, 3]);
+  });
+
+  it("a source that REPLAYS on subscribe is not lost to the flag either: the flag's value is queued ahead of the replay", async () => {
+    // The pricing simulator replays its recent ticks during `subscribe`. If
+    // the source were subscribed before the flag, that replay would sit in
+    // the queue ahead of the flag's value and be dropped as "before the
+    // flag spoke" — an FX tile would open with an empty sparkline.
+    const source = new ReplaySubject<number>();
+    source.next(1);
+    source.next(2);
+    source.next(3);
+    const calm = new BehaviorSubject<boolean>(false);
+    const seen = collect(
+      conflatedFold(useHost(), source, calm, MS, () => {
+        return Option.none<number>();
+      }),
+    );
     await settle();
     expect(seen).toEqual([1, 2, 3]);
   });

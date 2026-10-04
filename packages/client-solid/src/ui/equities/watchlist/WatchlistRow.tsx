@@ -6,7 +6,7 @@ import {
   Show,
 } from "solid-js";
 
-import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
+import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./WatchlistRow.module.css";

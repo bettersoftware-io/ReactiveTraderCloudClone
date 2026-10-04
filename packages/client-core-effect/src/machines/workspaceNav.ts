@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Scope } from "effect";
 
 import type {
   Machine,
@@ -7,7 +7,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 
-import { createChildHost, type EffectHost } from "#/bridge/out";
+import { closeScope, createChildHost, type EffectHost } from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
 /** The app's active workspace tab — a warm singleton over a
@@ -54,7 +54,7 @@ export function createWorkspaceNavMachine(
     },
     dispose: () => {
       markDisposed();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }

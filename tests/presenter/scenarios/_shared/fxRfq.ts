@@ -1,5 +1,5 @@
 // tests/presenter/scenarios/_shared/fxRfq.ts
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 // Notional input is UI state; the simulator's getRfqQuote doesn't gate on notional.
 // At presenter level this is recorded but not used for the assertion.

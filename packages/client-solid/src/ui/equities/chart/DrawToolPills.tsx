@@ -1,6 +1,6 @@
 import { For, type JSX } from "solid-js";
 
-import type { EqDrawTool } from "@rtc/client-core";
+import type { EqDrawTool } from "@rtc/core-api";
 
 import styles from "./TimeframePills.module.css";
 

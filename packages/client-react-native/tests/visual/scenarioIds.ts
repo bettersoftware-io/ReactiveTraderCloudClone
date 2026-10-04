@@ -2,7 +2,7 @@
  * The visual-harness scenario ids — the pure, Node-safe source of truth the
  * `simctl` / Maestro runners iterate.
  *
- * Kept free of ANY React Native import: the tsx/Node runners load this file
+ * Kept free of ANY React Native import: the Node runners load this file
  * directly, whereas importing the full `scenarios.tsx` registry pulls RN leaf
  * components (Blotter, ConnectionBanner, …) that esbuild cannot transform
  * outside Metro (react-native's flow-typed `index.js` throws

@@ -108,7 +108,7 @@ describe("createCandleSeriesPresenter", () => {
   //
   // What lands in period 2's series once it does publish: this MATCHES the
   // RxJS `CandleSeriesPresenter`, checked directly against its source
-  // (`packages/client-core/src/presenters/CandleSeriesPresenter.ts`) — its
+  // (`packages/client-core-rxjs/src/presenters/CandleSeriesPresenter.ts`) — its
   // `older$` is one BehaviorSubject that survives across periods; a fresh
   // cycle's `defer` only `.next([])`s its VALUE, and the stale page's own
   // `next` handler still runs `older$.next([...page, ...older$.value])`
@@ -187,7 +187,7 @@ describe("createCandleSeriesPresenter", () => {
   // still in the gap: a second `loadOlder()` call, with nobody subscribed,
   // anchors on whatever `state.latestFirst` currently holds. RxJS and
   // Effect leave the anchor alone in this window (checked directly against
-  // `packages/client-core/src/presenters/CandleSeriesPresenter.ts` — its
+  // `packages/client-core-rxjs/src/presenters/CandleSeriesPresenter.ts` — its
   // `error`/`complete` handlers never touch `older$`/`latestFirst` off a
   // stale subscription — and
   // `packages/client-core-effect/src/presenters/candleSeries.ts`, whose

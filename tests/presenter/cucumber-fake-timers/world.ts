@@ -10,12 +10,12 @@ import {
   timeout,
 } from "rxjs";
 
-import type { AwaitHelpers } from "../scenarios/_await";
-import type { PresenterCtx } from "../scenarios/_buildApp";
+import type { AwaitHelpers } from "../scenarios/_await.ts";
+import type { PresenterCtx } from "../scenarios/_buildApp.ts";
 import {
   newScratchpad,
   type PresenterScratchpad,
-} from "../scenarios/_shared/common";
+} from "../scenarios/_shared/common.ts";
 
 export class FakePresenterWorld extends World implements AwaitHelpers {
   ctx!: PresenterCtx;

@@ -35,9 +35,9 @@ Worked example: `PositionPort` (the equities position book) — a small, recentl
 4. `packages/domain/src/simulators/index.ts` — export the simulator from the barrel.
 5. `packages/domain/src/ports/__contracts__/<Name>PortContract.ts` (+ a `.smoke.test.ts` peer) — a parameterised happy-path suite runnable against both the simulator and the WsReal adapter.
 6. `packages/client-core/src/adapters/portFactory.ts` — three edits in one file: add the port to the aggregate `Ports` type, wire the simulator into `createSimulatorPorts`, and add a `create<Name>Port(ws)` WsReal factory that sends a subscribe message and listens for the matching stream message (see recipe 3 for that message's own route).
-7. `packages/client-core/src/presenters/<Name>Presenter.ts` — a thin RxJS wrapper turning the port into presenter state (`PositionsPresenter` is a short constructor taking the port).
-8. `packages/client-core/src/presenters/index.ts` — export it.
-9. `packages/client-core/src/composition.ts` — instantiate the presenter inside `createApp`, wired to the new port.
+7. `packages/client-core-rxjs/src/presenters/<Name>Presenter.ts` — a thin RxJS wrapper turning the port into presenter state (`PositionsPresenter` is a short constructor taking the port).
+8. `packages/client-core-rxjs/src/presenters/index.ts` — export it.
+9. `packages/client-core-rxjs/src/composition.ts` — instantiate the presenter inside `createApp`, wired to the new port.
 10. *(only if server-backed)* `packages/server/src/services/serviceContainer.ts` — construct the simulator/service on the server side and expose it on the services container.
 11. *(only if server-backed)* a new effect in `packages/server/src/effects/<domain>.effects.ts` — this is recipe 3's territory.
 
@@ -125,7 +125,7 @@ A new presenter, machine factory or command is not a `client-core` change any mo
 1. `packages/core-api/src/app.ts` (a presenter or command: the `Presenters` / `AppCommands` interfaces) or `packages/core-api/src/machine.ts` (a machine: `MachineFactories`), plus the member's own interface under `packages/core-api/src/presenters/` or `machines/`. Types only — gate 42 fails on any runtime export.
 2. *(if there is a pure rule)* `packages/core-logic/src/` — the fold or view derivation, written once and imported by all three cores.
 3. The contract suite — recipe 7.
-4. `packages/client-core/src/presenters/<Name>Presenter.ts` + its wiring in `createApp` (`packages/client-core/src/composition.ts`) — the RxJS core first, suite green.
+4. `packages/client-core-rxjs/src/presenters/<Name>Presenter.ts` + its wiring in `createApp` (`packages/client-core-rxjs/src/composition.ts`) — the RxJS core first, suite green.
 5. `packages/client-core-async/src/presenters/` (or `machines/`) + `packages/client-core-async/src/composition.ts` — the async core, suite green.
 6. `packages/client-core-effect/src/presenters/` (or `machines/`) + `packages/client-core-effect/src/composition.ts` (and `layers.ts` if the member is a `Layer`) — the Effect core, suite green.
 7. Both bindings — `packages/react-bindings/src/createViewModel.ts` and `packages/solid-bindings/src/createViewModel.ts` (recipe 8).
@@ -144,7 +144,7 @@ A new presenter, machine factory or command is not a `client-core` change any mo
 1. `packages/core-contract/src/suites/<member>.ts` — export a `describe<Name>Contract` suite that subscribes to the member and drives the scripted ports (`describePositionsContract` in `suites/positions.ts` is a short model).
 2. `packages/core-contract/src/registry.ts` — import it and set the member's key in `CONTRACT_SUITES` (e.g. `"presenters.positions": describePositionsContract`). The record is exhaustive over `Presenters` / `MachineFactories` / `AppCommands`, so a new member with no entry is a compile error; an entry left `null` must also be listed in `PENDING_SUITES`, which `registry.test.ts` checks for drift.
 3. *(if the member reads a port the harness cannot yet drive)* `packages/core-contract/src/harness/scriptedPorts.ts` — add the Subject-backed port and an intent-named driver method; one-shot calls go through `createPendingQueue` (`harness/pendingQueue.ts`).
-4. Nothing to add per core: each core's runner (`packages/client-core/src/composition.coreContract.test.ts`, `src/coreContract.test.ts` in each alternative core) calls `describeCoreContract`, which walks the whole registry.
+4. Nothing to add per core: each core's runner (`packages/client-core-rxjs/src/composition.coreContract.test.ts`, `src/coreContract.test.ts` in each alternative core) calls `describeCoreContract`, which walks the whole registry.
 
 **Change-impact checklist**
 

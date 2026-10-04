@@ -260,7 +260,7 @@ The same story in motion (animated SVG, renders live on GitHub) -- one tick, one
 And in code -- these are the real files, trimmed:
 
 ```typescript
-// 1 — BUSINESS LOGIC. packages/client-core/src/presenters/PriceStreamPresenter.ts
+// 1 — BUSINESS LOGIC. packages/client-core-rxjs/src/presenters/PriceStreamPresenter.ts
 //     A plain class of RxJS streams. No React, no hooks, no components.
 export class PriceStreamPresenter {
   private readonly cache = new Map<string, Observable<Price>>();

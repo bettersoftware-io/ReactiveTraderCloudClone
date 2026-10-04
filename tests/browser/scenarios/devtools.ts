@@ -1,6 +1,6 @@
-import type { InspectorPO } from "../page-objects/contracts/Inspector";
-import type { TestContext } from "../testContext";
-import * as common from "./common";
+import type { InspectorPO } from "../page-objects/contracts/Inspector.ts";
+import type { TestContext } from "../testContext.ts";
+import * as common from "./common.ts";
 
 /** Narrow `ctx.po.inspector` (optional on the shared contract — Playwright-only)
  *  to a present PO, failing loudly under a driver that does not provide it. */

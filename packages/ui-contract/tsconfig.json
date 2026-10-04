@@ -13,9 +13,11 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../client-core" },
+    { "path": "../client-core-rxjs" },
     { "path": "../core-api" },
     { "path": "../domain" },
-    { "path": "../motion-core" }
+    { "path": "../motion-core" },
+    { "path": "../core-logic" },
+    { "path": "../shared" }
   ]
 }

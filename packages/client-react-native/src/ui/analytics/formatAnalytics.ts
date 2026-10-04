@@ -6,7 +6,7 @@
  *
  * WHY THESE ARE NOT THE SHARED `@rtc/domain` HELPERS. `formatPnlHeadline` /
  * `formatPnlK` render the WEB design's figures — `+$9.7k`, `+12k` — and the
- * web presenter (`client-core/src/presenters/composePanelStream.ts`) plus both
+ * web presenter (`client-core-rxjs/src/presenters/composePanelStream.ts`) plus both
  * web clients read them. The mobile design asks for different figures from the
  * same numbers: a fully grouped headline (`+$29,672`), a two-decimal `M` /
  * one-decimal `K` compact form, and an unsigned variant for the bubbles.

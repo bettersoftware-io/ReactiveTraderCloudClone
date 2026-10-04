@@ -1,7 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 
-import * as fxTrading from "../scenarios/fxTrading";
-import type { StepContext } from "../testContext";
+import * as fxTrading from "../scenarios/fxTrading.ts";
+import type { StepContext } from "../testContext.ts";
 
 When(
   "the trader clicks buy on the first tile",

@@ -1,10 +1,8 @@
 import { ATTACHED_FX_BLOB } from "@ui-visual-shared/attachedFxBlob";
 import { type ReactElement, useRef } from "react";
 
-import {
-  type DockLayoutStore,
-  InMemoryDockLayoutStore,
-} from "@rtc/client-core";
+import type { DockLayoutStore } from "@rtc/core-api";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

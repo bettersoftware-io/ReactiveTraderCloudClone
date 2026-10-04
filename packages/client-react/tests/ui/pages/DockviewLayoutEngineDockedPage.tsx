@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
-import type { DockLayoutStore, PanelId } from "@rtc/client-core";
+import type { DockLayoutStore, PanelId } from "@rtc/core-api";
 
 import { DockviewLayoutEngine } from "#/ui/shell/layout/dockview/DockviewLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

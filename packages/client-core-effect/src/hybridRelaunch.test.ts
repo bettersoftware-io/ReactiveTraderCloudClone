@@ -2,13 +2,13 @@ import { NEVER, type Observable, Subject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  type AppPorts,
   createRoutingAuthPort,
   createSimulatorPorts,
   InMemoryDataSourceStore,
   InMemorySessionStore,
   pairConnectionPorts,
 } from "@rtc/client-core";
+import type { AppPorts } from "@rtc/core-api";
 import { withFakeClock } from "@rtc/core-contract";
 import {
   type AuthOutcome,

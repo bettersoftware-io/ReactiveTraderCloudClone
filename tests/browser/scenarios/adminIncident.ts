@@ -3,9 +3,9 @@
 // Driver-agnostic scenario helpers for the Admin incident injection flow.
 // Consume through the WorkspacePO + ConnectionOverlayPO contracts only —
 // no direct page.* or ctx.po.* in native Playwright test bodies (gates 10/11).
-import { TESTIDS } from "../page-objects/contracts/testids";
-import type { TestContext } from "../testContext";
-import * as connection from "./connection";
+import { TESTIDS } from "../page-objects/contracts/testids.ts";
+import type { TestContext } from "../testContext.ts";
+import * as connection from "./connection.ts";
 
 /** Navigate to the Admin tab (workspace must already be open). */
 export async function navigateToAdmin(ctx: TestContext): Promise<void> {

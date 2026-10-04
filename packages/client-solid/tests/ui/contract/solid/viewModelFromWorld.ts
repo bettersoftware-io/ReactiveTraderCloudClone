@@ -18,7 +18,28 @@ import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
 import type { Accessor } from "solid-js";
 import { createSignal } from "solid-js";
 
+import {
+  CandleSeriesPresenter,
+  createBootSequenceMachine,
+  createJarvisDemoMachine,
+  createJarvisDriverMachine,
+  createJarvisMachine,
+  createJarvisPanelsMachine,
+  createLayoutMachine,
+  createLayoutPresets,
+  createNotionalMachine,
+  createOrderTicketMachine,
+  createRfqCountdownMachine,
+  createRfqTileMachine,
+  createRowHighlightMachine,
+  createStaleFlagMachine,
+  createTileExecutionMachine,
+  createWorkspaceNavMachine,
+  createWorkspacePersistenceWriter,
+  JarvisPanelsPresenter,
+} from "@rtc/client-core-rxjs";
 import type {
+  CoreImpl,
   DockLayoutStore,
   DriveOutcome,
   JarvisDemoMachineHandle,
@@ -36,42 +57,22 @@ import type {
   Machine,
   PanelData,
   PanelInstance,
+  RfqCountdownSeed,
   RfqSubmissionState,
   SaveLayoutPresetOptions,
   TicketSubmissionState,
-  WorkspaceDock,
-  WorkspaceDockPanels,
   WorkspaceNavIntents,
   WorkspaceNavState,
   WorkspaceTab,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
-  createLayoutPresets,
   createWorkspaceDock,
-  createWorkspacePersistenceWriter,
   InMemoryDockLayoutStore,
   InMemoryLayoutPresetStore,
-} from "@rtc/client-core";
-import {
-  CandleSeriesPresenter,
-  createBootSequenceMachine,
-  createJarvisDemoMachine,
-  createJarvisDriverMachine,
-  createJarvisMachine,
-  createJarvisPanelsMachine,
-  createLayoutMachine,
-  createNotionalMachine,
-  createOrderTicketMachine,
-  createRfqCountdownMachine,
-  createRfqTileMachine,
-  createRowHighlightMachine,
-  createStaleFlagMachine,
-  createTileExecutionMachine,
-  createWorkspaceNavMachine,
-  JarvisPanelsPresenter,
-} from "@rtc/client-core/core";
-import type { CoreImpl, RfqCountdownSeed } from "@rtc/core-api";
+  type WorkspaceDock,
+  type WorkspaceDockPanels,
+} from "@rtc/core-logic";
 import type {
   AmbientStyle,
   Candle,

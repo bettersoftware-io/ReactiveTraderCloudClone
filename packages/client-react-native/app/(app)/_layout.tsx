@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import type { SessionStore } from "@rtc/client-core";
+import type { SessionStore } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 
 import { AppRoot } from "#/app/AppRoot";

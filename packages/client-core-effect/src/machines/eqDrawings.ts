@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { Effect, Scope, SubscriptionRef } from "effect";
 
 import type {
   EqDrawing,
@@ -14,6 +14,7 @@ import {
 } from "@rtc/core-logic";
 
 import {
+  closeScope,
   createChildHost,
   type EffectHost,
   refToWarmStateStream,
@@ -69,7 +70,7 @@ export function createEqDrawingsMachine(
     // that the very next intent is ignored, and closing the scope is a
     // forked effect.
     markDisposed();
-    Effect.runFork(Scope.close(host.scope, Exit.void));
+    closeScope(host.scope);
   }
 
   return {

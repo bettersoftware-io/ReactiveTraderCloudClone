@@ -6,7 +6,7 @@ import type {
   RfqState as RfqTileState,
   TicketSubmissionIntents,
   TicketSubmissionState,
-} from "@rtc/client-core";
+} from "@rtc/core-api";
 import {
   DEALERS_CATALOG,
   type Dealer,

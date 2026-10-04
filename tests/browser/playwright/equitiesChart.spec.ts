@@ -10,9 +10,9 @@
 //
 // All assertions delegate to scenario helpers — gates 9-11 compliant (no raw
 // driver handles or page-object access in this file).
-import * as common from "../scenarios/common";
-import * as equitiesChart from "../scenarios/equitiesChart";
-import { test } from "./_context";
+import * as common from "../scenarios/common.ts";
+import * as equitiesChart from "../scenarios/equitiesChart.ts";
+import { test } from "./_context.ts";
 
 test.describe("Equities chart", () => {
   test("panning away freezes the window; BACK TO LIVE resumes following", async ({

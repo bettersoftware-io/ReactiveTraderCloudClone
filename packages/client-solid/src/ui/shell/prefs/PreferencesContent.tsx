@@ -1,12 +1,8 @@
 import type { Accessor, JSX } from "solid-js";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
-import {
-  formatBrainHint,
-  formatGateHint,
-  type JarvisState,
-} from "@rtc/client-core";
-import type { CoreImpl, CoreSelection } from "@rtc/core-api";
+import type { CoreImpl, CoreSelection, JarvisState } from "@rtc/core-api";
+import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
 import type {
   AmbientStyle,
   ChartSubstrate,

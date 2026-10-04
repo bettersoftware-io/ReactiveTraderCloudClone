@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { createMemo, createSignal, For, untrack } from "solid-js";
 
-import type { ColumnFilter } from "@rtc/client-core";
+import type { ColumnFilter } from "@rtc/core-logic";
 
 import styles from "./SetFilter.module.css";
 

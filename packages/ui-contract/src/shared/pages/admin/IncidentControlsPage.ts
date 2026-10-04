@@ -1,7 +1,7 @@
 import { fireEvent, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { IncidentKind } from "@rtc/client-core";
+import type { IncidentKind } from "@rtc/core-api";
 
 /**
  * Page object for IncidentControls. Clicks the inject buttons and the Clear

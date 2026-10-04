@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type { LayoutState, WorkspaceTab } from "@rtc/core-api";
 import type { PanelSpecV1 } from "@rtc/shared";
 
-import type { WorkspaceTab } from "../defaultLayoutPort";
 import { createDefaultLayoutPort } from "../defaultLayoutPort";
 import { dockedLeafIds, insertDockedLeaf } from "../dockColumn";
-import type { LayoutState } from "../layoutPort";
 import type {
   PersistedTabLayout,
   WorkspaceLayoutV1,

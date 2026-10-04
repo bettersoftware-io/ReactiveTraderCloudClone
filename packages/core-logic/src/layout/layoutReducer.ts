@@ -1,14 +1,15 @@
-import {
-  dockedLeafIds,
-  insertDockedLeaf,
-  removeDockedLeaf,
-} from "#/layout/dockColumn";
 import type {
   LayoutNode,
   LayoutPanelInstance,
   LayoutState,
   PanelId,
-} from "#/layout/layoutPort";
+} from "@rtc/core-api";
+
+import {
+  dockedLeafIds,
+  insertDockedLeaf,
+  removeDockedLeaf,
+} from "#/layout/dockColumn";
 import { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
 
 /** The layout machine's pure half (pluggable-core slice 7): its event

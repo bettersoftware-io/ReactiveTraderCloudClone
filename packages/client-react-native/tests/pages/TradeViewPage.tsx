@@ -1,7 +1,7 @@
 // packages/client-react-native/tests/pages/TradeViewPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 import type {
   Candle,
   EquityInstrument,

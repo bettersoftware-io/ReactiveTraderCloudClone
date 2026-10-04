@@ -1,10 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
 
-import type { FooterPO } from "../contracts/Footer";
-import { TESTIDS } from "../contracts/testids";
+import type { FooterPO } from "../contracts/Footer.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightFooter implements FooterPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private locator(): Locator {
     return this.page.getByTestId(TESTIDS.connection.status);

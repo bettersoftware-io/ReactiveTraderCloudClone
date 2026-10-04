@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, it, vi } from "vitest";
 import {
   buildIncidentPresenterApp,
   type IncidentPresenterCtx,
-} from "../scenarios/_buildApp";
-import * as incident from "../scenarios/_shared/adminIncident";
+} from "../scenarios/_buildApp.ts";
+import * as incident from "../scenarios/_shared/adminIncident.ts";
 
 describe("@presenter Feature: Admin incident injection breaks the live connection", () => {
   beforeEach(() => {

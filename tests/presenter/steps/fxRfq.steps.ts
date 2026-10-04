@@ -1,8 +1,8 @@
 // tests/presenter/steps/fxRfq.steps.ts
 import { Then, When } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as rfq from "../scenarios/_shared/fxRfq";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as rfq from "../scenarios/_shared/fxRfq.ts";
 
 When(
   "the trader sets the first tile notional to {string}",

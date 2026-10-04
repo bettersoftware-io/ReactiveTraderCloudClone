@@ -1,10 +1,14 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-import type { EquitiesWatchlistPO } from "../contracts/EquitiesWatchlist";
-import { TESTIDS } from "../contracts/testids";
+import type { EquitiesWatchlistPO } from "../contracts/EquitiesWatchlist.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightEquitiesWatchlist implements EquitiesWatchlistPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   private firstRow(): Locator {
     return this.page

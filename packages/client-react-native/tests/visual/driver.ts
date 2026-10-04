@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { ThemeMode, ThemeSkin } from "@rtc/domain";
 
-import type { SkinOverride } from "./skinOverride";
+import type { SkinOverride } from "./skinOverride.ts";
 
 /** One capturable surface: a pinned skin×mode leaf composed under
  * `VisualScenarioHost` (see `VisualScenarioHost.tsx`). `build()` returns the

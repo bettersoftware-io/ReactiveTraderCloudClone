@@ -1,4 +1,4 @@
-import { Effect, Exit, Fiber, Scope, SubscriptionRef } from "effect";
+import { Effect, SubscriptionRef } from "effect";
 
 import type {
   BootSequenceIntents,
@@ -8,7 +8,12 @@ import type {
 import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 
-import { createDetachedHost, refToWarmStateStream } from "#/bridge/out";
+import {
+  closeScope,
+  createDetachedHost,
+  interruptFiber,
+  refToWarmStateStream,
+} from "#/bridge/out";
 
 export interface BootMachineDeps {
   /** The variant this boot plays. */
@@ -83,7 +88,7 @@ export function createBootMachine(
           return;
         }
 
-        Effect.runFork(Fiber.interrupt(rampFiber));
+        interruptFiber(rampFiber);
         host.runtime.runSync(
           SubscriptionRef.set(ref, { variant, progress: 100, done: true }),
         );
@@ -93,7 +98,7 @@ export function createBootMachine(
     dispose: () => {
       disposed = true;
       warm.release();
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }

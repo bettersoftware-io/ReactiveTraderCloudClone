@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { StoredSession } from "@rtc/client-core";
+import type { StoredSession } from "@rtc/core-api";
 import type { SessionUser } from "@rtc/domain";
 
 import {

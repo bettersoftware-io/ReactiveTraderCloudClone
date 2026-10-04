@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import * as blotter from "../scenarios/_shared/blotter";
-import * as fx from "../scenarios/_shared/fxLiveRates";
-import * as trading from "../scenarios/_shared/fxTrading";
+import * as blotter from "../scenarios/_shared/blotter.ts";
+import * as fx from "../scenarios/_shared/fxLiveRates.ts";
+import * as trading from "../scenarios/_shared/fxTrading.ts";
 import {
   buildWorld,
   teardownWorld,
   type VitestPlainPresenterWorld,
-} from "./_world";
+} from "./_world.ts";
 
 describe("@presenter Feature: FX trading", () => {
   beforeEach(() => {

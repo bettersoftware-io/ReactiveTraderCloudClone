@@ -4,14 +4,15 @@ import type { World } from "@ui-contract/harness/world";
 import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { LayoutPresetEntry, StoredLayoutPreset } from "@rtc/client-core";
 import {
   createDefaultLayoutPort,
   LAYOUT_PRESET_VERSION,
+  type LayoutPresetEntry,
   MAX_LAYOUT_PRESETS,
+  type StoredLayoutPreset,
   serializeLayoutPresetList,
   UNREADABLE_LIST_ID,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 
 /**
  * The View menu's LAYOUTS section (Phase 6b saved layouts) — the ONE

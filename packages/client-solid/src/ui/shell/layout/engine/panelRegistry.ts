@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 
-import type { PanelId } from "@rtc/client-core";
+import type { PanelId } from "@rtc/core-api";
 
 /** Maps a panel id to the module root that fills it. The app references panels
  * only by id; this registry is the single id→component map (Task 13+ wires the

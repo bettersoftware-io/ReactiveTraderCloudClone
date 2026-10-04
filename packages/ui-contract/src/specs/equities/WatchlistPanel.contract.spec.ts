@@ -8,7 +8,7 @@ import {
 } from "@ui-contract/mount";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { MAX_PANEL_INSTANCES } from "@rtc/client-core";
+import { MAX_PANEL_INSTANCES } from "@rtc/core-logic";
 import type { EquityInstrument, EquityQuote } from "@rtc/domain";
 
 afterEach(() => {

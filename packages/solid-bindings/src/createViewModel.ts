@@ -4,12 +4,12 @@ import type { Accessor } from "solid-js";
 
 import type {
   ActivityEntry,
-  AdminJarvisUsagePayload,
   AnimationIntent,
   AppCommands,
   AuthViewState,
   BootSequenceIntents,
   BootSequenceState,
+  CoreSelection,
   DockLayoutStore,
   EqChartType,
   EqDrawing,
@@ -52,8 +52,7 @@ import type {
   WorkspaceNavIntents,
   WorkspaceNavState,
   WorkspaceTab,
-} from "@rtc/client-core";
-import type { CoreSelection } from "@rtc/core-api";
+} from "@rtc/core-api";
 import {
   type AmbientStyle,
   type Candle,
@@ -112,6 +111,7 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
+import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import { type MaybeAccessor, toKeyedSignal, toSignal } from "#/toSignal";
 import { useMachine } from "#/useMachine";

@@ -20,9 +20,9 @@
 // stored value would be indistinguishable from "that's just the build
 // default" in the async job. `pickDistinctCores` derives all three from
 // whatever this run's build default actually is.
-import { reloadPage } from "../scenarios/common";
-import * as coreSwitch from "../scenarios/coreSwitch";
-import { test } from "./_context";
+import { reloadPage } from "../scenarios/common.ts";
+import * as coreSwitch from "../scenarios/coreSwitch.ts";
+import { test } from "./_context.ts";
 
 test.describe("Application core switch", () => {
   test("?core= override, Preferences save + navigate, reload persistence, unknown ?core= ignored", async ({

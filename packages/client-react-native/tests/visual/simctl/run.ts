@@ -2,14 +2,14 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { argv, env, exit } from "node:process";
 
-import type { VisualDriver } from "../driver";
-import { SCENARIO_IDS } from "../scenarioIds";
-import { resolveBootedUdid } from "../shared/bootedUdid";
-import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab";
-import { compareToGolden, toleranceFor } from "../shared/diff";
-import { goldenPath } from "../shared/goldens";
-import { parseSkinFlag, type SkinOverride } from "../skinOverride";
-import { createSimctlDriver } from "./capture";
+import type { VisualDriver } from "../driver.ts";
+import { SCENARIO_IDS } from "../scenarioIds.ts";
+import { resolveBootedUdid } from "../shared/bootedUdid.ts";
+import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
+import { compareToGolden, toleranceFor } from "../shared/diff.ts";
+import { goldenPath } from "../shared/goldens.ts";
+import { parseSkinFlag, type SkinOverride } from "../skinOverride.ts";
+import { createSimctlDriver } from "./capture.ts";
 
 const SCRATCH_FLAG = "--scratch";
 const SKIN_FLAG = "--skin=";
@@ -37,7 +37,7 @@ interface RunOptions {
  * Any bare (non-flag) args filter which scenario ids run — useful when
  * debugging a single scenario instead of the full suite, e.g.:
  *
- *   tsx tests/visual/simctl/run.ts blotter/seeded
+ *   node tests/visual/simctl/run.ts blotter/seeded
  *
  * `--scratch[=<dir>]` captures the (optionally filtered) scenarios to a
  * directory OUTSIDE the golden tree instead of diffing/updating goldens —
@@ -45,15 +45,15 @@ interface RunOptions {
  * committed baseline. Defaults to `RTC_VISUAL_SCRATCH` or
  * `/tmp/rtc-visual-scratch`, e.g.:
  *
- *   tsx tests/visual/simctl/run.ts --scratch blotter/seeded shell/appearance
- *   tsx tests/visual/simctl/run.ts --scratch=/path/to/dir blotter/seeded
+ *   node tests/visual/simctl/run.ts --scratch blotter/seeded shell/appearance
+ *   node tests/visual/simctl/run.ts --scratch=/path/to/dir blotter/seeded
  *
  * `--skin=<skin>:<mode>` (with `--scratch` only) re-shoots the scenarios in
  * another skin×mode than the one each pins — the sign-off sweep across all 6
  * themes × dark/light. Files land as `<id>@<skin>-<mode>.png`. Refused without
  * `--scratch`: a golden is only ever captured or compared in its pinned cell.
  *
- *   tsx tests/visual/simctl/run.ts --scratch --skin=neon:light rates/tiles
+ *   node tests/visual/simctl/run.ts --scratch --skin=neon:light rates/tiles
  *
  * Config via env: `RTC_VISUAL_UDID` (defaults to the booted simulator's real
  * UDID, resolved via `simctl` — NOT the literal `"booted"` alias, which `idb`

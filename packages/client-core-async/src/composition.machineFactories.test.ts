@@ -11,7 +11,7 @@ import { createMachineFactories } from "#/composition";
 // in which stream they read. These tests assert WHICH presenter member each
 // factory reaches for, not what the resulting machine does; the machines
 // have their own tests. The RxJS precedent is
-// `packages/client-core/src/composition.machineFactories.test.ts`.
+// `packages/client-core-rxjs/src/composition.machineFactories.test.ts`.
 
 describe("nativeMachines — wiring", () => {
   beforeEach(() => {

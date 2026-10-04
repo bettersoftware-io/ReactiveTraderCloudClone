@@ -1,7 +1,7 @@
 # @rtc/client-react-native
 
 React Native (Expo Router) client for ReactiveTraderCloudClone. Consumes the
-framework-neutral `@rtc/client-core` verbatim; only the leaf UI + platform
+framework-neutral `@rtc/client-core-rxjs` verbatim; only the leaf UI + platform
 adapters are RN-specific. See `docs/superpowers/specs/2026-06-29-react-native-expo-client-design.md`.
 
 Runs on **Expo SDK 57 / React Native 0.86** (see
@@ -10,7 +10,7 @@ Runs on **Expo SDK 57 / React Native 0.86** (see
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ Interface Adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-core`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
+| **Runtime deps** | `@rtc/client-core`, `@rtc/client-core-rxjs`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/devtools-core`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/react-bindings`, `expo`, `expo-router`, `expo-constants`, `expo-dev-client`, `expo-font`, `expo-linking`, `expo-status-bar`, `@expo-google-fonts/*`, `@react-native-async-storage/async-storage`, `react`, `react-dom`, `react-native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-svg`, `react-native-reanimated`, `react-native-worklets`, `@shopify/react-native-skia`, `rxjs`, and more (`package.json` `dependencies`; `@rtc/devtools-relay` is a devDependency). Unlike the web clients, it always runs the default RxJS core -- there is no load-time core selection on native |
 | **Consumed by** | Nothing in-workspace — it is a leaf app; unlike `client-react` it is *not* a `tests` workspace dependency (`tests/package.json` lists `@rtc/client-react` but not this package) |
 | **Must never import** | Gates 30–33 in [§12 Architectural Gates](../../docs/architecture/12-architectural-gates.md) mechanically enforce this in `client-react-native/src/ui` — the RN counterpart of gates 26–29 on `client-react/src/ui`: no `rxjs`/`@react-rxjs`/`@rx-state` (30), no `localStorage`/`AsyncStorage` (31), no `fetch`/`expo-constants`/env reads (32), no `setTimeout`/`setInterval` (33). `rxjs` is a real dependency, but it appears only in `src/app/adapters` — e.g. `AppearanceColorSchemeAdapter.prefersDark$()` returns an `Observable<boolean>`. |
 
@@ -47,7 +47,7 @@ segment shorter here because Expo Router reserves the bare `app/` name.
 
 The screen streams live FX spot tiles from the deployed Fly server by
 default (`extra.serverUrl` in `app.config.ts`, no env needed) — real
-`WsAdapter` transport, the same `@rtc/client-core` composition the web
+`WsAdapter` transport, the same `@rtc/client-core-rxjs` composition the web
 client uses. A **Simulator** switch in the toolbar flips to the in-process
 simulator ports (no network, deterministic ticks) without changing any
 other wiring: same presenters, same UI, different ports.
@@ -155,8 +155,10 @@ Expo Go then opens it from there.
 pnpm demo:publish:ios      # from the repo root; builds, then publishes to branch "demo"
 ```
 
-On the phone: Expo Go → **rtc-mobile** under Projects → branch **demo** → the
-newest update. Sign in with `demo` / `mcdc2026`.
+On the phone: open Expo Go and tap **rtc-mobile** under Projects. It opens the
+newest published build directly — there is no branch or update to pick (seen on
+Expo Go 57, 2026-10-04). Close the app fully first if it is already open, or it
+keeps running the build it has. Sign in with `demo` / `mcdc2026`.
 
 - The published build talks to the deployed server (`wss://rtc-clone-server.fly.dev`,
   the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
@@ -245,6 +247,28 @@ CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 | **Your own iPhone** (physical) | `expo run:ios --device` — cabled, signed with a **free** Apple ID (Xcode Personal Team) | Free, but **7-day** expiry + must be cabled |
 | **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
 | **iOS Expo Go** (App Store) | `expo start --go`, scan the QR — see "A real iPhone" above. No developer mode, no Apple account; runs only while the Mac serves it | Free |
+
+### Running an EAS cloud build
+
+```bash
+cd packages/client-react-native
+pnpm dlx eas-cli@24.10.0 build -p android --profile preview
+```
+
+Run it in your own terminal: the first build asks whether to generate an
+Android signing key. Two things in the repo exist only for this:
+
+- **`.easignore`** (repo root). EAS archives the whole repository, does not
+  read `.git/info/exclude`, and has a 2.0 GB limit. Without the file the
+  archive was 3.3 GB (other checkouts under `.claude/worktrees`, docs,
+  goldens); with it, 377 MB. It replaces `.gitignore` for the upload, so its
+  first block mirrors that file and must be kept in step with it.
+- **`eas-build-post-install`** (this package's scripts). The app resolves
+  `@rtc/*` to each library's built `dist/`, which is never uploaded, so the
+  hook builds the libraries the app depends on after `pnpm install`.
+
+As of 2026-10-04 no cloud build has completed, so the `node: 26.10.0` pin in
+`eas.json` and the hook are untested on Expo's servers.
 
 ### Why iOS-on-a-real-device costs money
 
@@ -375,7 +399,7 @@ breaks `expo prebuild`).
 ## How it's used
 
 This package is a leaf app — nothing else in the workspace imports it — so
-"how it's used" means how *it* consumes `@rtc/client-core` and
+"how it's used" means how *it* consumes `@rtc/client-core-rxjs`, `@rtc/client-core` and
 `@rtc/react-bindings`. `app/_layout.tsx` mounts the composition root exactly
 once around the tab navigator:
 
@@ -386,7 +410,7 @@ once around the tab navigator:
 ```
 
 `AppRoot` (`src/app/AppRoot.tsx`) then does the actual composition-root work,
-verbatim against the same `@rtc/client-core` / `@rtc/react-bindings` APIs the
+verbatim against the same `@rtc/client-core-rxjs` / `@rtc/react-bindings` APIs the
 web client uses:
 
 ```tsx

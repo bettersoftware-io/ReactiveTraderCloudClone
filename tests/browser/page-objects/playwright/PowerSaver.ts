@@ -1,13 +1,20 @@
 import type { Page } from "@playwright/test";
 
-import type { MotionSample, MotionSampleOptions } from "#/browser/motionProbe";
-import { sampleMotion } from "#/browser/motionProbe";
+import type {
+  MotionSample,
+  MotionSampleOptions,
+} from "#/browser/motionProbe.ts";
+import { sampleMotion } from "#/browser/motionProbe.ts";
 
-import type { PowerSaverPO } from "../contracts/PowerSaver";
-import { TESTIDS } from "../contracts/testids";
+import type { PowerSaverPO } from "../contracts/PowerSaver.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 export class PlaywrightPowerSaver implements PowerSaverPO {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async click(): Promise<void> {
     await this.page.getByTestId(TESTIDS.shell.powerSaverToggle).click();

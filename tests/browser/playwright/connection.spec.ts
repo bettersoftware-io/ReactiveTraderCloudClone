@@ -1,6 +1,6 @@
-import * as connection from "../scenarios/connection";
-import { test } from "./_context";
-import { withWorkspaceOpen } from "./_openWorkspace";
+import * as connection from "../scenarios/connection.ts";
+import { test } from "./_context.ts";
+import { withWorkspaceOpen } from "./_openWorkspace.ts";
 
 // The @presenter "gateway disconnect ... reconnecting" scenario in
 // specs/connection.feature is intentionally NOT mirrored here: a gateway

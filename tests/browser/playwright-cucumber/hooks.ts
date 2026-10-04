@@ -8,10 +8,10 @@ import {
 } from "@cucumber/cucumber";
 import { type Browser, chromium } from "@playwright/test";
 
-import { type DevServerHandle, startDevServer } from "#/scripts/devServer";
+import { type DevServerHandle, startDevServer } from "#/scripts/devServer.ts";
 
-import { classifyBrowserTeardown } from "./teardownPolicy";
-import type { PlaywrightWorld } from "./world";
+import { classifyBrowserTeardown } from "./teardownPolicy.ts";
+import type { PlaywrightWorld } from "./world.ts";
 
 // Extend the step timeout to 30 s so that multi-step scenarios (e.g. buy
 // N times with confirmation dismissals) have room to finish under Playwright.

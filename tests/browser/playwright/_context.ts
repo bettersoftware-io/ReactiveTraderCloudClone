@@ -6,14 +6,14 @@ import {
   JARVIS_NARRATOR_OFF_VALUE,
   JARVIS_NARRATOR_STORAGE_KEY,
   seedLocalStorageItem,
-} from "../authSeed";
+} from "../authSeed.ts";
 import {
   FIRST_DOCK_RENDER_ARM_KEY,
   installFirstDockRenderRecorder,
-} from "../firstDockRenderRecorder";
-import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory";
-import type { TestContext } from "../testContext";
-import { Scratchpad } from "../testContext";
+} from "../firstDockRenderRecorder.ts";
+import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory.ts";
+import type { TestContext } from "../testContext.ts";
+import { Scratchpad } from "../testContext.ts";
 
 interface TestFixtures {
   ctx: TestContext;

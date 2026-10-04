@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 import type { OrderSide } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 

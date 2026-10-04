@@ -1,13 +1,13 @@
-import type { TestContext } from "../testContext";
+import type { TestContext } from "../testContext.ts";
 import {
   assertContains,
   assertEquals,
   assertFalse,
   assertGreaterThanZero,
   assertTrue,
-} from "./assert";
-import * as common from "./common";
-import { dragPanelTabOntoRates } from "./layout";
+} from "./assert.ts";
+import * as common from "./common.ts";
+import { dragPanelTabOntoRates } from "./layout.ts";
 
 const QUOTE_REPLY_FRAGMENT = "EURUSD is trading at";
 

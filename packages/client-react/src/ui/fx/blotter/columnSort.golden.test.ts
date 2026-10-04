@@ -13,7 +13,7 @@
 // pinned original-codebase ground truth.
 import { describe, expect, it } from "vitest";
 
-import { nextSortDirection, type SortState } from "@rtc/client-core";
+import { nextSortDirection, type SortState } from "@rtc/core-logic";
 import type { Trade } from "@rtc/domain";
 
 import { loadGolden } from "#tests/ui/__golden__/loadGolden";

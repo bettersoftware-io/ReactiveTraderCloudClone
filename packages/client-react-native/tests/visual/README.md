@@ -61,7 +61,7 @@ RTC_VISUAL_UDID=<iphone17-udid> RTC_VISUAL_METRO_PORT=8083 RTC_VISUAL_IDB=$(comm
 … pnpm --filter @rtc/client-react-native test:rn:visual:simctl:update   # regenerate
 
 # Tier 2 — Maestro (a11y-driven; no blind taps). Regenerate flows first if SCENARIO_IDS changed:
-tsx tests/visual/maestro/generateFlows.ts
+node tests/visual/maestro/generateFlows.ts
 PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
   pnpm --filter @rtc/client-react-native test:rn:visual:maestro          # verify vs goldens
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update   # regenerate
@@ -78,7 +78,7 @@ The fix (`simctl/capture.ts`) makes the driver refuse to guess:
 
 If you hit a `FAIL` on this tier, re-run first — if it now throws a "never reached `visual-ready`"/"looks like the launcher" error instead of reporting a diff percentage, that's a capture problem (Metro/sim/dev-client state), not a regression; only trust a diff percentage as a real signal once the capture completes cleanly.
 
-Debugging a single scenario without touching goldens: `tsx tests/visual/simctl/run.ts --scratch <id>` writes the current render to `RTC_VISUAL_SCRATCH` (default `/tmp/rtc-visual-scratch`) instead of diffing/updating — see the flag docs in `simctl/run.ts`.
+Debugging a single scenario without touching goldens: `node tests/visual/simctl/run.ts --scratch <id>` writes the current render to `RTC_VISUAL_SCRATCH` (default `/tmp/rtc-visual-scratch`) instead of diffing/updating — see the flag docs in `simctl/run.ts`.
 
 See **`BAKEOFF.md`** for the full three-tier comparison (owl is not viable on SDK 57 / RN 0.86 / React 19 / new-arch), the injected-paint-bug detection proof, and known capture artifacts (status-bar clock, dev-tools gear).
 
@@ -87,7 +87,7 @@ See **`BAKEOFF.md`** for the full three-tier comparison (owl is not viable on SD
 Every scenario pins one skin×mode, because a golden has to reproduce itself — which leaves ten of the twelve cells with no capture at all. `--skin=<skin>:<mode>` re-shoots scenarios in another cell, to a scratch directory only:
 
 ```bash
-tsx tests/visual/simctl/run.ts --scratch=/tmp/skins --skin=neon:light rates/grid credit/rfq-tiles
+node tests/visual/simctl/run.ts --scratch=/tmp/skins --skin=neon:light rates/grid credit/rfq-tiles
 # → /tmp/skins/rates_grid@neon-light.png, /tmp/skins/credit_rfq-tiles@neon-light.png
 ```
 

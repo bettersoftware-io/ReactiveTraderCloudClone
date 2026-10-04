@@ -2,7 +2,7 @@ import { fireEvent, waitFor, within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { ThroughputView } from "@rtc/client-core";
+import type { ThroughputView } from "@rtc/core-api";
 
 /**
  * Page object for the AdminPanel throughput control. The panel is dumb: it reads

@@ -1,0 +1,560 @@
+import { EMPTY, Observable, of, Subject } from "rxjs";
+import { describe, expect, it } from "vitest";
+
+import type { PanelData } from "@rtc/core-api";
+import {
+  MAX_LIVE_PANELS,
+  type PanelStreamDeps,
+  UNSUPPORTED_SENTINEL_SPEC,
+} from "@rtc/core-logic";
+import type {
+  AnalyticsPort,
+  BlotterPort,
+  PriceTick,
+  PricingPort,
+  ReferenceDataPort,
+} from "@rtc/domain";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
+
+import { createJarvisPanelsMachine } from "./JarvisPanelsMachine.js";
+import { JarvisPanelsPresenter } from "./JarvisPanelsPresenter.js";
+
+describe("JarvisPanelsPresenter", () => {
+  it("projects live machine panels into JarvisPanelVm rows (title/rationale/status/vizKind)", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const deps = createDeps();
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    const spec = createSpec({
+      title: "GBP Vol",
+      rationale: "Because sir",
+      source: { kind: "blotter" },
+      viz: { kind: "table" },
+    });
+    events$.next({ type: "panel", panelId: "p1", spec });
+
+    const rows = latest(presenter.panels$);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      panelId: "p1",
+      title: "GBP Vol",
+      rationale: "Because sir",
+      status: "live",
+      vizKind: "table",
+    });
+  });
+
+  it("a structurally-identical-but-different-reference spec stays 'live' — only the machine's actual sentinel (by reference) is 'unsupported'", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const deps = createDeps();
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    events$.next({
+      type: "panel",
+      panelId: "looks-like-sentinel",
+      spec: createUnsupportedSentinelLike(),
+    });
+
+    const row = latest(presenter.panels$).find((r) => {
+      return r.panelId === "looks-like-sentinel";
+    });
+    expect(row?.status).toBe("live");
+  });
+
+  it("an unsupported panel's data$ is EMPTY", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const deps = createDeps();
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    events$.next({
+      type: "panel",
+      panelId: "bad",
+      spec: UNSUPPORTED_SENTINEL_SPEC,
+    });
+
+    const row = latest(presenter.panels$).find((r) => {
+      return r.panelId === "bad";
+    });
+    expect(row?.status).toBe("unsupported");
+    expect(row?.data$).toBe(EMPTY);
+  });
+
+  it("dismissing a panel unsubscribes its underlying port streams (the ws-effects #171 lesson)", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: track.ticks$ }),
+    });
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    const spec = createSpec({
+      source: { kind: "fxTicks", symbols: ["EURUSD"] },
+      viz: { kind: "line" },
+    });
+    events$.next({ type: "panel", panelId: "p1", spec });
+
+    expect(track.subscribeCount).toBe(1);
+    expect(track.unsubscribeCount).toBe(0);
+
+    presenter.dismissPanel("p1");
+
+    expect(track.unsubscribeCount).toBe(1);
+  });
+
+  it("FIFO-evicting a panel at MAX_LIVE_PANELS also unsubscribes its port streams", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EVICTME: track.ticks$ }),
+    });
+    // Constructed for its side-effecting warm subscription; this test only
+    // asserts on the fake port spy below, never on the presenter directly.
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+    expect(presenter.panels$).toBeDefined();
+
+    events$.next({
+      type: "panel",
+      panelId: "evict-me",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["EVICTME"] },
+        viz: { kind: "line" },
+      }),
+    });
+    expect(track.unsubscribeCount).toBe(0);
+
+    // Spawn MAX_LIVE_PANELS more distinct panels — the (MAX_LIVE_PANELS+1)th
+    // live panel overall evicts "evict-me" (index 0) FIFO.
+    for (let i = 0; i < MAX_LIVE_PANELS; i += 1) {
+      events$.next({
+        type: "panel",
+        panelId: `filler-${i}`,
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
+      });
+    }
+
+    expect(track.unsubscribeCount).toBe(1);
+  });
+
+  it("editing a panel's spec (restyle) tears down the old interpretation and starts a fresh one", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const trackA = createInstrumentedTicks();
+    const trackB = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
+    });
+    // Constructed for its side-effecting warm subscription; this test only
+    // asserts on the fake port spies below, never on the presenter directly.
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+    expect(presenter.panels$).toBeDefined();
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["SYMA"] },
+        viz: { kind: "line" },
+      }),
+    });
+    expect(trackA.subscribeCount).toBe(1);
+    expect(trackA.unsubscribeCount).toBe(0);
+    expect(trackB.subscribeCount).toBe(0);
+
+    // Same panelId, a NEW spec object (a restylePanel-style edit) — morphed
+    // in place by the machine, not a fresh spawn.
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["SYMB"] },
+        viz: { kind: "table" },
+      }),
+    });
+
+    expect(trackA.unsubscribeCount).toBe(1);
+    expect(trackB.subscribeCount).toBe(1);
+  });
+
+  it("multiple concurrent readers of the same live panel's data$ still cost the source ports exactly one subscription", async () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const track = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ EURUSD: track.ticks$ }),
+    });
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["EURUSD"] },
+        viz: { kind: "line" },
+      }),
+    });
+
+    const row = latest(presenter.panels$).find((r) => {
+      return r.panelId === "p1";
+    });
+    expect(row).toBeDefined();
+
+    const subA = row?.data$.subscribe();
+    const subB = row?.data$.subscribe();
+    // The presenter's own warm hold plus these two readers all share the
+    // ONE composePanelStream subscription (shareReplay).
+    expect(track.subscribeCount).toBe(1);
+
+    subA?.unsubscribe();
+    subB?.unsubscribe();
+    // The presenter's own warm hold is still live — a UI reader unmounting
+    // must not tear down a still-live panel's port stream.
+    expect(track.unsubscribeCount).toBe(0);
+  });
+
+  it("panelData$ caches one stream per panelId — a repeat call returns the same Observable", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+    const first = presenter.panelData$("p1");
+    const second = presenter.panelData$("p1");
+    expect(second).toBe(first);
+  });
+
+  it("panelData$ returns distinct cached streams for distinct panelIds", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+    const a = presenter.panelData$("p1");
+    const b = presenter.panelData$("p2");
+    expect(b).not.toBe(a);
+  });
+
+  it("panelData$ emits null for an id with no live panel (never spawned, or unsupported)", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+    expect(latest(presenter.panelData$("never-spawned"))).toBeNull();
+
+    events$.next({
+      type: "panel",
+      panelId: "bad",
+      spec: UNSUPPORTED_SENTINEL_SPEC,
+    });
+    expect(latest(presenter.panelData$("bad"))).toBeNull();
+  });
+
+  it("panelData$ relays the live panel's resolved PanelData, keyed by panelId", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+    });
+
+    expect(latest(presenter.panelData$("p1"))).toMatchObject({
+      kind: "table",
+    });
+  });
+
+  it("panelData$ switches to the new panel's data after a dismiss + respawn under the same id — never replays the torn-down panel's last frame", () => {
+    const events$ = new Subject<JarvisEvent>();
+    const machine = createJarvisPanelsMachine(events$);
+    const trackA = createInstrumentedTicks();
+    const trackB = createInstrumentedTicks();
+    const deps = createDeps({
+      pricing: createFakePricing({ SYMA: trackA.ticks$, SYMB: trackB.ticks$ }),
+    });
+    const presenter = new JarvisPanelsPresenter(machine, deps);
+
+    // Subscribed once, up front — the same Observable reference is read
+    // across the whole dismiss+respawn cycle below (mirrors how a UI reader
+    // that mounted before the respawn would keep reading it).
+    const dataFeed = presenter.panelData$("p1");
+    expect(latest(dataFeed)).toBeNull();
+
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["SYMA"] },
+        viz: { kind: "line" },
+      }),
+    });
+    const first = latest(dataFeed) as LinePanelData;
+    expect(first.kind).toBe("line");
+    expect(first.series[0]?.label).toBe("SYMA");
+
+    presenter.dismissPanel("p1");
+    expect(latest(dataFeed)).toBeNull();
+
+    // A brand-new panel spawned under the SAME id, sourcing a different
+    // symbol — proves the cached stream re-resolves rather than sticking to
+    // whatever "p1" used to mean.
+    events$.next({
+      type: "panel",
+      panelId: "p1",
+      spec: createSpec({
+        source: { kind: "fxTicks", symbols: ["SYMB"] },
+        viz: { kind: "line" },
+      }),
+    });
+    const second = latest(dataFeed) as LinePanelData;
+    expect(second.kind).toBe("line");
+    expect(second.series[0]?.label).toBe("SYMB");
+  });
+
+  describe("docked panels", () => {
+    it("a JarvisPanelVm row's docked field mirrors the machine state (false for a fresh wire spawn)", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
+      });
+
+      const row = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(row?.docked).toBe(false);
+    });
+
+    // The presenter deliberately does NOT re-export dockPanel/undockPanel —
+    // docking is only half a panels-machine operation (the layout leaf and
+    // the tab attribution are composition's half), so a same-named pair on
+    // the UI seam would dock with neither. The VM row still has to mirror
+    // the machine's own intents, which is what this pins.
+    it("the VM row's docked field mirrors the MACHINE's dock/undock intents", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
+      });
+
+      machine.dockPanel("p1");
+      const dockedRow = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(dockedRow?.docked).toBe(true);
+
+      machine.undockPanel("p1");
+      const undockedRow = latest(presenter.panels$).find((r) => {
+        return r.panelId === "p1";
+      });
+      expect(undockedRow?.docked).toBe(false);
+    });
+
+    it("re-exports restoreDockedPanel from the machine, appending a docked live row", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+      presenter.restoreDockedPanel(
+        "r1",
+        createSpec({ source: { kind: "blotter" }, viz: { kind: "table" } }),
+      );
+
+      const row = latest(presenter.panels$).find((r) => {
+        return r.panelId === "r1";
+      });
+      expect(row).toMatchObject({
+        panelId: "r1",
+        status: "live",
+        docked: true,
+      });
+    });
+
+    it("dockedPanels$ and floatingPanels$ split panels$ rows by the docked flag", () => {
+      const events$ = new Subject<JarvisEvent>();
+      const machine = createJarvisPanelsMachine(events$);
+      const presenter = new JarvisPanelsPresenter(machine, createDeps());
+
+      events$.next({
+        type: "panel",
+        panelId: "p1",
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
+      });
+      events$.next({
+        type: "panel",
+        panelId: "p2",
+        spec: createSpec({
+          source: { kind: "blotter" },
+          viz: { kind: "table" },
+        }),
+      });
+      machine.dockPanel("p1");
+
+      expect(
+        latest(presenter.dockedPanels$).map((r) => {
+          return r.panelId;
+        }),
+      ).toEqual(["p1"]);
+      expect(
+        latest(presenter.floatingPanels$).map((r) => {
+          return r.panelId;
+        }),
+      ).toEqual(["p2"]);
+    });
+  });
+});
+
+// A named tag (rather than an inline `{ kind: "line" }` literal) so
+// `Extract<PanelData, ...>` never takes an inline object type argument — the
+// repo's `no-restricted-syntax` bans that even inside a type alias (mirrors
+// JarvisMachine.ts's `ConfirmRequestTag`).
+interface LineKindTag {
+  readonly kind: "line";
+}
+type LinePanelData = Extract<PanelData, LineKindTag>;
+
+function createSpec(
+  overrides: Partial<PanelSpecV1> & Pick<PanelSpecV1, "source" | "viz">,
+): PanelSpecV1 {
+  return { v: 1, title: "Test panel", transforms: [], ...overrides };
+}
+
+/** Structurally identical to the machine's real `UNSUPPORTED_SENTINEL_SPEC`
+ * but a DIFFERENT object reference — used to prove the machine's
+ * by-reference detection, per its doc, before driving the real sentinel. */
+function createUnsupportedSentinelLike(): PanelSpecV1 {
+  return {
+    v: 1,
+    title: "Unsupported panel",
+    source: { kind: "blotter" },
+    transforms: [],
+    viz: { kind: "table" },
+  };
+}
+
+function createFakeReferenceData(): ReferenceDataPort {
+  return {
+    getCurrencyPairs: () => {
+      return of([]);
+    },
+  };
+}
+
+function createFakePricing(
+  overrides: Partial<Record<string, Observable<PriceTick>>> = {},
+): PricingPort {
+  return {
+    getPriceUpdates: (symbol: string) => {
+      return overrides[symbol] ?? EMPTY;
+    },
+    getPriceHistory: () => {
+      return of([]);
+    },
+    getRfqQuote: () => {
+      return EMPTY;
+    },
+  };
+}
+
+function createFakeBlotter(): BlotterPort {
+  return {
+    getTradeStream: () => {
+      return of([]);
+    },
+  };
+}
+
+function createFakeAnalytics(): AnalyticsPort {
+  return {
+    getAnalytics: () => {
+      return EMPTY;
+    },
+  };
+}
+
+function createDeps(overrides: Partial<PanelStreamDeps> = {}): PanelStreamDeps {
+  return {
+    referenceData: createFakeReferenceData(),
+    pricing: createFakePricing(),
+    blotter: createFakeBlotter(),
+    analytics: createFakeAnalytics(),
+    ...overrides,
+  };
+}
+
+/** A `createInstrumentedTicks()` result: a never-completing price-tick source
+ * (mirrors a real live feed) alongside live subscribe/unsubscribe counters —
+ * the spy this class's teardown contract is checked against. */
+interface InstrumentedTicks {
+  readonly ticks$: Observable<PriceTick>;
+  readonly subscribeCount: number;
+  readonly unsubscribeCount: number;
+}
+
+function createInstrumentedTicks(): InstrumentedTicks {
+  const tracker = { subscribeCount: 0, unsubscribeCount: 0 };
+  const ticks$ = new Observable<PriceTick>((subscriber) => {
+    tracker.subscribeCount += 1;
+    subscriber.next({
+      symbol: "X",
+      bid: 0,
+      ask: 0,
+      mid: 0,
+      valueDate: "2026-08-04",
+      creationTimestamp: 0,
+    });
+
+    return (): void => {
+      tracker.unsubscribeCount += 1;
+    };
+  });
+  return {
+    ticks$,
+    get subscribeCount(): number {
+      return tracker.subscribeCount;
+    },
+    get unsubscribeCount(): number {
+      return tracker.unsubscribeCount;
+    },
+  };
+}
+
+/** Synchronous "current value" read of a warm, replaying Observable
+ * (`panels$` always has a current value once the machine has processed at
+ * least one event, per JarvisPanelsMachine's own warm-subscription doc). */
+function latest<T>(source: Observable<T>): T {
+  let value: T | undefined;
+  const sub = source.subscribe((v) => {
+    value = v;
+  });
+  sub.unsubscribe();
+
+  if (value === undefined) {
+    throw new Error("expected a synchronous current value");
+  }
+
+  return value;
+}

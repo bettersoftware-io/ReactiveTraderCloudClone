@@ -1,8 +1,8 @@
-import * as fxLiveRates from "../scenarios/fxLiveRates";
-import * as fxRfq from "../scenarios/fxRfq";
-import * as fxTrading from "../scenarios/fxTrading";
-import { test } from "./_context";
-import { withFxWorkspaceOpen } from "./_openWorkspace";
+import * as fxLiveRates from "../scenarios/fxLiveRates.ts";
+import * as fxRfq from "../scenarios/fxRfq.ts";
+import * as fxTrading from "../scenarios/fxTrading.ts";
+import { test } from "./_context.ts";
+import { withFxWorkspaceOpen } from "./_openWorkspace.ts";
 
 test.describe("FX RFQ flow", () => {
   withFxWorkspaceOpen();

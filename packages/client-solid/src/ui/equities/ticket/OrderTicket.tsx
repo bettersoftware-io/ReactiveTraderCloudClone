@@ -8,7 +8,7 @@ import {
   Switch,
 } from "solid-js";
 
-import type { OrderTicketIntents, OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketIntents, OrderTicketState } from "@rtc/core-api";
 import type {
   EquityOrder,
   EquityQuote,

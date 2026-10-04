@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { RfqState, RfqTileIntents } from "@rtc/client-core";
+import type { RfqState, RfqTileIntents } from "@rtc/core-api";
 import {
   type CurrencyPair,
   Direction,

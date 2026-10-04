@@ -1,7 +1,7 @@
 import { fireEvent, waitFor, within } from "@testing-library/dom";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { EqPaneId } from "@rtc/client-core";
+import type { EqPaneId } from "@rtc/core-api";
 
 import { STUB_RECT } from "./CandleChartPage";
 

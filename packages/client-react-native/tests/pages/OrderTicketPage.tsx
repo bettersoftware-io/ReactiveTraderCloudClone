@@ -1,7 +1,7 @@
 // packages/client-react-native/tests/pages/OrderTicketPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { OrderTicket } from "#/ui/equities/trade/OrderTicket";

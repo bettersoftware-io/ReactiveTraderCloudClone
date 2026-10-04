@@ -42,6 +42,7 @@
   "references": [
     { "path": "../domain" },
     { "path": "../client-core" },
+    { "path": "../client-core-rxjs" },
     { "path": "../motion-core" },
     { "path": "../solid-bindings" }
   ]

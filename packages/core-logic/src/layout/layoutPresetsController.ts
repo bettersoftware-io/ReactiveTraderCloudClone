@@ -48,9 +48,9 @@ import type {
   SaveLayoutPresetOptions,
   SaveLayoutPresetResult,
   Stream,
+  WorkspaceTab,
 } from "@rtc/core-api";
 
-import type { WorkspaceTab } from "#/layout/defaultLayoutPort";
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
 import type {
   LayoutPresetEntry,

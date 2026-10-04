@@ -1,5 +1,5 @@
-import * as common from "../scenarios/common";
-import { test } from "./_context";
+import * as common from "../scenarios/common.ts";
+import { test } from "./_context.ts";
 
 export function withWorkspaceOpen(): void {
   test.beforeEach(({ ctx }) => {

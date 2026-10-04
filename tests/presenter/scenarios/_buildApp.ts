@@ -2,14 +2,9 @@
 
 import { merge, Subject } from "rxjs";
 
-import {
-  type App,
-  type AppPorts,
-  type ConnectionIntentsPort,
-  createSimulatorPorts,
-  InMemorySessionStore,
-} from "@rtc/client-core";
-import { createApp } from "@rtc/client-core/core";
+import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import { createApp } from "@rtc/client-core-rxjs";
+import type { App, AppPorts, ConnectionIntentsPort } from "@rtc/core-api";
 import {
   AuthSimulator,
   type ConnectionEvent,

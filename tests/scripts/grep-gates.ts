@@ -742,6 +742,20 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkFlyDeclaresConnectionHardLimit,
   },
+  {
+    // The Effect core's fibers run on its own turn scheduler, and a scope it
+    // closes from plain code must release its port subscriptions first —
+    // both live in `bridge/out.ts` (`runnerFor`, `interruptFiber`,
+    // `closeScope`). A bare `Effect.runFork(Scope.close(…))` skips the
+    // release: a disposed stale-flag machine folded two more connection
+    // events that way (2026-10-04). Presenters and machines run effects
+    // through a host's runner or those helpers, never through the global
+    // `Effect.run*`.
+    name: "49. The Effect core runs effects through its bridge, never the global Effect.run* (turn scheduler + synchronous port release)",
+    pattern: "Effect\\.run(Fork|Sync|SyncExit|Promise|PromiseExit|Callback)\\(",
+    paths: ["../packages/client-core-effect/src/"],
+    excludes: ["/bridge/", ".test."],
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {

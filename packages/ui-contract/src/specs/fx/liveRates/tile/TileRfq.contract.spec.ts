@@ -3,7 +3,7 @@ import { mount } from "@ui-contract/mount";
 import type { RfqStateLike } from "@ui-contract/pages/fx/liveRates/tile/TileRfqPage";
 import { describe, expect, it } from "vitest";
 
-import type { RfqQuote, RfqState } from "@rtc/client-core";
+import type { RfqQuote, RfqState } from "@rtc/core-api";
 import {
   type CurrencyPair,
   Direction,

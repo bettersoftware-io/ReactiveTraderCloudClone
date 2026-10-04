@@ -8,7 +8,7 @@ import {
 import type { Accessor } from "solid-js";
 import { vi } from "vitest";
 
-import type { LayoutState } from "@rtc/client-core";
+import type { LayoutState } from "@rtc/core-api";
 
 import type { InhouseLayoutEngineProps } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";

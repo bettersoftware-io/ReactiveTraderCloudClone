@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactElement } from "react";
 
-import { latencyBuckets } from "@rtc/client-core";
+import { latencyBuckets } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import styles from "./LatencyHistogram.module.css";

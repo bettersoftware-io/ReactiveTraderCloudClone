@@ -1,12 +1,11 @@
 import { batch, createSignal } from "solid-js";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import type { DockLayoutStore, PanelId } from "@rtc/core-api";
 import {
   createDefaultLayoutPort,
-  type DockLayoutStore,
   InMemoryDockLayoutStore,
-  type PanelId,
-} from "@rtc/client-core";
+} from "@rtc/core-logic";
 import { createDockEngine, DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

@@ -2,7 +2,7 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { JarvisEvent } from "@rtc/client-core";
+import type { JarvisEvent } from "@rtc/shared";
 
 /**
  * Page object for the header J.A.R.V.I.S orb (`JarvisOrb`, Task 7). Hook-

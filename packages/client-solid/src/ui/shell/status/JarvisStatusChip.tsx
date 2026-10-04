@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
-import type { JarvisState } from "@rtc/client-core";
+import type { JarvisState } from "@rtc/core-api";
 import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 

@@ -1,8 +1,8 @@
 // tests/presenter/steps/analytics.steps.ts
 import { Then } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as analytics from "../scenarios/_shared/analytics";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as analytics from "../scenarios/_shared/analytics.ts";
 
 Then(
   "the analytics panel is visible within {int} seconds",

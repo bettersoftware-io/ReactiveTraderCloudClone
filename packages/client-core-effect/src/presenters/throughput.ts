@@ -1,4 +1,4 @@
-import { Effect, Fiber, Scope, SubscriptionRef } from "effect";
+import { Effect, type Fiber, Scope, SubscriptionRef } from "effect";
 
 import type {
   ThroughputMessage,
@@ -16,6 +16,7 @@ import {
 import {
   createChildHost,
   type EffectHost,
+  interruptFiber,
   refToStateStream,
   setRefIfChanged,
 } from "#/bridge/out";
@@ -139,7 +140,7 @@ export function createThroughputPresenter(
     );
 
     if (debounce !== null) {
-      Effect.runFork(Fiber.interrupt(debounce));
+      interruptFiber(debounce);
     }
 
     // The interrupt above is delivered asynchronously; an older timer due

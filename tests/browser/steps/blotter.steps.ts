@@ -1,7 +1,7 @@
 import { Then, When } from "@cucumber/cucumber";
 
-import * as blotter from "../scenarios/blotter";
-import type { StepContext } from "../testContext";
+import * as blotter from "../scenarios/blotter.ts";
+import type { StepContext } from "../testContext.ts";
 
 When(
   "the trader clicks the first blotter header",

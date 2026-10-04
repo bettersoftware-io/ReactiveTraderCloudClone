@@ -1,8 +1,9 @@
 export * from "#/adapters/authDeps";
-export * from "#/adapters/dockLayoutStore";
 export * from "#/adapters/InMemoryDockLayoutStore";
 export * from "#/adapters/InMemoryLayoutPresetStore";
-export * from "#/adapters/layoutPresetStore";
+export * from "#/admin/adminKpisVm";
+export * from "#/blotter/columnSort";
+export * from "#/blotter/filterState";
 export * from "#/layout/defaultLayoutPort";
 // The design-width constant is public because the Dockview bridges
 // (client-react, client-solid) need the SAME 360px pin a seeded rail's
@@ -15,14 +16,16 @@ export {
   dockedLeafIds,
   insertDockedLeaf,
 } from "#/layout/dockColumn";
-export * from "#/layout/layoutPort";
 export * from "#/layout/layoutPresetCodec";
 export * from "#/layout/layoutPresetsController";
 export * from "#/layout/layoutReducer";
+export * from "#/layout/lockedWidth";
+export * from "#/layout/maximizeBoundary";
 // The instance id/cap pair is public (both web clients' watchlist + Dockview
 // bridge read them); the namespace predicate stays internal to the layout
 // rules' own id-collision guard.
 export { instanceIdFor, MAX_PANEL_INSTANCES } from "#/layout/panelInstances";
+export * from "#/layout/visibleRoot";
 export * from "#/layout/workspaceDock";
 // Public for the ui-contract fixtures: each web client's
 // `viewModelFromWorld.ts` reproduces composition.ts's dock/undock/persist
@@ -41,7 +44,6 @@ export * from "#/presenters/jarvisDemoScript";
 export * from "#/presenters/jarvisDriveCommands";
 export * from "#/presenters/jarvisGuideCatalog";
 export * from "#/presenters/jarvisPanelsFolds";
-export * from "#/presenters/machine";
 export * from "#/presenters/narratorGate";
 export * from "#/presenters/notionalView";
 export * from "#/presenters/orderTicketFold";

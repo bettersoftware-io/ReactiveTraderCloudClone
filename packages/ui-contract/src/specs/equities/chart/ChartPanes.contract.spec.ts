@@ -27,7 +27,7 @@ import type { ChartPanelPage } from "@ui-contract/pages/equities/chart/ChartPane
 import type { EqChartHeadPage } from "@ui-contract/pages/equities/chart/EqChartHeadPage";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { EqPaneId } from "@rtc/client-core";
+import type { EqPaneId } from "@rtc/core-api";
 import type { Candle, EquityInstrument, EquityQuote } from "@rtc/domain";
 
 import { candleAt, generateCandles } from "./candleFixture";

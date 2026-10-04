@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import type { PanelId } from "@rtc/client-core";
+import type { PanelId } from "@rtc/core-api";
 
 /** Maps a panel id to the module root that fills it. The app references panels
  * only by id; this registry is the single id→component map (Task 5 wires the

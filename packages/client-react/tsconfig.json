@@ -47,6 +47,7 @@
     { "path": "../domain" },
     { "path": "../shared" },
     { "path": "../client-core" },
+    { "path": "../client-core-rxjs" },
     { "path": "../react-bindings" }
   ]
 }

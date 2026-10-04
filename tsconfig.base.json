@@ -13,5 +13,8 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true
+  },
+  "tsc-alias": {
+    "resolveFullPaths": true
   }
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createApp } from "@rtc/client-core/core";
+import { createApp } from "@rtc/client-core-rxjs";
 import {
   type ConnectionEvent,
   ConnectionStatus,

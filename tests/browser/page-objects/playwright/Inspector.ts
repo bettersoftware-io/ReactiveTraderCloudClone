@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
-import type { InspectorPO } from "../contracts/Inspector";
-import { TESTIDS } from "../contracts/testids";
+import type { InspectorPO } from "../contracts/Inspector.ts";
+import { TESTIDS } from "../contracts/testids.ts";
 
 /**
  * Playwright impl of {@link InspectorPO}. Constructed with the PRIMARY app page;
@@ -13,7 +13,11 @@ import { TESTIDS } from "../contracts/testids";
 export class PlaywrightInspector implements InspectorPO {
   private inspectorPage: Page | undefined;
 
-  constructor(private readonly appPage: Page) {}
+  private readonly appPage: Page;
+
+  constructor(appPage: Page) {
+    this.appPage = appPage;
+  }
 
   private page(): Page {
     if (this.inspectorPage === undefined) {

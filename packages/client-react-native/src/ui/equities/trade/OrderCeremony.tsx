@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
-import type { OrderTicketState } from "@rtc/client-core";
+import type { OrderTicketState } from "@rtc/core-api";
 
 import { playOutcomeHaptic } from "#/ui/haptics/playOutcomeHaptic";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";

@@ -9,7 +9,7 @@ import { firstValueFrom } from "rxjs";
 
 import type { Direction, ExecutionStatus } from "@rtc/domain";
 
-import type { PresenterWorld } from "../_world";
+import type { PresenterWorld } from "../_world.ts";
 
 const DIR_BUY = "Buy" as unknown as Direction;
 const DIR_SELL = "Sell" as unknown as Direction;

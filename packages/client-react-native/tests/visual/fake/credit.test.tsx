@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import type { RfqCountdownSeed } from "@rtc/client-core";
+import type { RfqCountdownSeed } from "@rtc/core-api";
 import { type CurrencyPair, Direction } from "@rtc/domain";
 
 import { creditSlice } from "./credit";

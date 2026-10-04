@@ -1,4 +1,4 @@
-import { Effect, Fiber, Scope } from "effect";
+import { Effect, type Fiber, Scope } from "effect";
 
 import type {
   JarvisDemoMachineHandle,
@@ -18,7 +18,7 @@ import {
 import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
 import type { JarvisEvent } from "@rtc/shared";
 
-import { createChildHost, type EffectHost } from "#/bridge/out";
+import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
 import { createSyncRef } from "#/presenters/syncRef";
 
 export interface JarvisDemoDeps {
@@ -95,7 +95,7 @@ export function createJarvisDemo(
         unlistenEvents();
 
         if (decline !== null) {
-          Effect.runFork(Fiber.interrupt(decline));
+          interruptFiber(decline);
           decline = null;
         }
       }
@@ -226,7 +226,7 @@ export function createJarvisDemo(
       run.stopped = true;
 
       if (run.fiber !== null) {
-        Effect.runFork(Fiber.interrupt(run.fiber));
+        interruptFiber(run.fiber);
       }
     }
 

@@ -1,9 +1,10 @@
-import { Duration, Effect, Exit, Scope, SubscriptionRef } from "effect";
+import { Duration, Effect, SubscriptionRef } from "effect";
 
 import type { ReadOnlyMachine } from "@rtc/core-api";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
 
 import {
+  closeScope,
   createDetachedHost,
   refToStateStream,
   setRefIfChanged,
@@ -35,7 +36,7 @@ export function createRowHighlightMachine(
     state$: refToStateStream(host, ref),
     intents: {},
     dispose: () => {
-      Effect.runFork(Scope.close(host.scope, Exit.void));
+      closeScope(host.scope);
     },
   };
 }

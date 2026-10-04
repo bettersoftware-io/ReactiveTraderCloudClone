@@ -1,8 +1,8 @@
 // tests/presenter/steps/fxLiveRates.steps.ts
 import { Then, When } from "@cucumber/cucumber";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as fx from "../scenarios/_shared/fxLiveRates";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as fx from "../scenarios/_shared/fxLiveRates.ts";
 
 Then(
   "a price tile is visible within {int} seconds",

@@ -87,7 +87,7 @@ export function AppearanceScreen({
   // cycle() re-reads the live persisted preference on every call (not a
   // captured render value), so firing it synchronously N times in a row
   // still lands on the true target — guarded directly by
-  // packages/client-core/src/presenters/__tests__/ThemePreferencePresenter.test.ts
+  // packages/client-core-rxjs/src/presenters/__tests__/ThemePreferencePresenter.test.ts
   // ("cycle advances dark → light → system → dark from the live current
   // value"); `cyclesToReach` here only computes the step count.
   function jumpToMode(target: ThemeModePreference): void {

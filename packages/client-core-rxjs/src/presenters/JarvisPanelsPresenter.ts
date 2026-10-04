@@ -1,0 +1,255 @@
+import { EMPTY, type Observable, of, type Subscription } from "rxjs";
+import { map, shareReplay, switchMap } from "rxjs/operators";
+
+import type {
+  JarvisPanelsMachineHandle,
+  JarvisPanelsPresenter as JarvisPanelsPresenterApi,
+  JarvisPanelVm,
+  PanelData,
+  PanelInstance,
+} from "@rtc/core-api";
+import type { PanelStreamDeps } from "@rtc/core-logic";
+import type { PanelSpecV1 } from "@rtc/shared";
+
+import { composePanelStream } from "./composePanelStream.js";
+
+/** Title shown for a panel the render adapter (Task 4) substituted with
+ * `UNSUPPORTED_SENTINEL_SPEC` — the VM never touches that sentinel's own
+ * `.title` directly (see `JarvisPanelsMachine`'s doc on why `spec` is
+ * nulled for `"unsupported"` instances), so this is its own small constant. */
+const UNSUPPORTED_TITLE = "Unsupported panel";
+
+/** One `composePanelStream(spec, deps)` result kept warm per live panelId,
+ * so N `JarvisPanelVm.data$` readers (and the presenter's own keep-warm
+ * subscription below) share exactly one port subscription — and so that
+ * subscription is provably torn down when the panel goes away, rather than
+ * relying on every UI reader happening to unmount. */
+interface PanelCacheEntry {
+  readonly spec: PanelSpecV1;
+  readonly data$: Observable<PanelData>;
+  readonly warm: Subscription;
+}
+
+function buildPanelVm(
+  panel: PanelInstance,
+  cache: Map<string, PanelCacheEntry>,
+): JarvisPanelVm {
+  if (panel.status === "unsupported" || !panel.spec) {
+    return {
+      panelId: panel.panelId,
+      title: UNSUPPORTED_TITLE,
+      rationale: null,
+      status: "unsupported",
+      vizKind: null,
+      data$: EMPTY,
+      docked: panel.docked,
+    };
+  }
+
+  const spec = panel.spec;
+  return {
+    panelId: panel.panelId,
+    title: spec.title,
+    rationale: spec.rationale ?? null,
+    status: "live",
+    vizKind: spec.viz.kind,
+    data$: cache.get(panel.panelId)?.data$ ?? EMPTY,
+    docked: panel.docked,
+  };
+}
+
+/** Implements `JarvisPanelsPresenter` (`@rtc/core-api`) — see the interface
+ * for the contract.
+ *
+ * Session-lifetime singleton, constructed once at composition (mirrors
+ * `JarvisPanelsMachine`'s own doc) — NOT per overlay mount.
+ *
+ * Ownership of each live panel's port subscription: this presenter keeps ONE
+ * warm subscription per live `panelId` (a plain `.subscribe()` on
+ * `composePanelStream`'s already-shareReplayed stream, held in `cache`),
+ * independent of whatever the UI is currently rendering. A panel's cache
+ * entry — and that warm subscription — is torn down the moment its
+ * `panelId` stops being `"live"` in machine state (dismissed via
+ * `dismissPanel`, or FIFO-evicted at `MAX_LIVE_PANELS`): with
+ * `composePanelStream`'s `shareReplay({ refCount: true })`, releasing this
+ * one warm hold drops the shared subscriber count to zero (assuming no UI
+ * reader is *also* independently subscribed at that instant — the overlay
+ * unmounts alongside dismissal), which cascades all the way down to
+ * unsubscribing the underlying domain-port streams (the ws-effects #171
+ * lesson: a live subscription must actually go away, not just go unused).
+ * On a spec *edit* (same `panelId`, new `viz`/transform via a restylePanel
+ * turn) the stale entry is torn down and replaced the same way, so a
+ * restyled panel never keeps its old interpretation running underneath the
+ * new one.
+ *
+ * The dock/undock half this presenter deliberately omits (see the
+ * interface's doc) lives in `composition.ts`
+ * (`dockPanelIntoWorkspace`/`undockPanelFromWorkspace`, exposed as
+ * `Presenters.dockPanel`/`undockPanel`); composition holds the
+ * `JarvisPanelsMachineHandle` directly for that half.
+ */
+export class JarvisPanelsPresenter implements JarvisPanelsPresenterApi {
+  private readonly cache = new Map<string, PanelCacheEntry>();
+
+  /** One multiplexed `panelData$(panelId)` result kept per distinct id ever
+   * asked for — mirrors `DepthPresenter.depth$`'s Map-cached `shareReplay`
+   * idiom (a repeat call returns the SAME Observable, one shared
+   * subscription for however many UI readers). Unlike `DepthPresenter`'s
+   * key (a currency symbol, whose underlying port stream identity never
+   * changes), a `panelId` CAN be dismissed and later reused by a brand-new
+   * `PanelInstance` — so the cached stream itself stays a `switchMap` over
+   * `panels$` rather than a frozen reference to one `PanelCacheEntry.data$`,
+   * so a respawn under the same id is picked up on the next `panels$`
+   * emission rather than replaying the old (torn-down) panel's last frame. */
+  private readonly panelDataCache = new Map<
+    string,
+    Observable<PanelData | null>
+  >();
+
+  readonly panels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** `panels$`, filtered to the docked subset — what the engine's dynamic
+   * registry (Task 5+) consumes. */
+  readonly dockedPanels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** `panels$`, filtered to the floating (`!docked`) subset — what the
+   * overlay layer consumes. */
+  readonly floatingPanels$: Observable<readonly JarvisPanelVm[]>;
+
+  /** The RAW dismissal — it drops the panel from the roster and nothing
+   * else. A DOCKED panel dismissed this way leaves its leaf behind in the
+   * layout tree, so the UI seam is `Presenters.dismissPanel` (composition's
+   * `dismissPanelFromWorkspace`), which detaches the leaf first. This member
+   * stays for the floating-only callers that predate docking. */
+  readonly dismissPanel: (panelId: string) => void;
+
+  /** Boot-time rehydration only, and composition-only: it appends a docked
+   * panel with no matching layout leaf, which is correct exactly once — when
+   * the leaf is already in the tree the persisted payload seeded. */
+  readonly restoreDockedPanel: (panelId: string, spec: PanelSpecV1) => void;
+
+  /** The presenter's own keep-warm subscription on the machine's state —
+   * held so `dispose()` can release it. */
+  private readonly sync: Subscription;
+
+  constructor(machine: JarvisPanelsMachineHandle, deps: PanelStreamDeps) {
+    this.dismissPanel = machine.dismissPanel;
+    this.restoreDockedPanel = machine.restoreDockedPanel;
+
+    this.panels$ = machine.state$.pipe(
+      map((s) => {
+        return s.panels.map((panel) => {
+          return buildPanelVm(panel, this.cache);
+        });
+      }),
+    );
+
+    this.dockedPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return row.docked;
+        });
+      }),
+    );
+
+    this.floatingPanels$ = this.panels$.pipe(
+      map((rows) => {
+        return rows.filter((row) => {
+          return !row.docked;
+        });
+      }),
+    );
+
+    // Own warm subscription — kept alive for the whole presenter lifetime,
+    // independent of panels$'s own subscriber count, so a live panel's port
+    // streams flow (and get released on dismiss/eviction/edit) whether or
+    // not any UI component is currently mounted to read them. See the class
+    // doc above for the full teardown contract.
+    this.sync = machine.state$.subscribe((s) => {
+      this.syncCache(s.panels, deps);
+    });
+  }
+
+  /** Ends the presenter's session: stops following the machine and releases
+   * every live panel's warm hold — and with it each panel's port streams.
+   * Composition-only (`app.dispose()`); not part of the `@rtc/core-api`
+   * interface, since no UI consumer owns this singleton's lifetime. */
+  dispose(): void {
+    this.sync.unsubscribe();
+
+    for (const entry of this.cache.values()) {
+      entry.warm.unsubscribe();
+    }
+
+    this.cache.clear();
+  }
+
+  /** Live-resolved data for one desk panel, keyed by `panelId` — the
+   * plain-value bridge a UI binding hook (`useJarvisPanelData` in both
+   * react-bindings and solid-bindings) reads instead of touching
+   * `JarvisPanelVm.data$` (a raw `Observable`) directly. `null` while the
+   * panel is unknown/unsupported/gone; otherwise the SAME `data$` this
+   * class's `panels$` VM row already exposes for that id — reusing the
+   * existing per-panel stream cache above rather than standing up a second
+   * one. See the class-level `panelDataCache` doc for why this is a
+   * `switchMap` over `panels$`, not a frozen snapshot. */
+  panelData$(panelId: string): Observable<PanelData | null> {
+    const cached = this.panelDataCache.get(panelId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const stream = this.panels$.pipe(
+      switchMap((panels) => {
+        const panel = panels.find((p) => {
+          return p.panelId === panelId;
+        });
+        return panel && panel.status === "live" ? panel.data$ : of(null);
+      }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.panelDataCache.set(panelId, stream);
+    return stream;
+  }
+
+  private syncCache(
+    panels: readonly PanelInstance[],
+    deps: PanelStreamDeps,
+  ): void {
+    const liveIds = new Set(
+      panels
+        .filter((p) => {
+          return p.status === "live";
+        })
+        .map((p) => {
+          return p.panelId;
+        }),
+    );
+
+    for (const [panelId, entry] of this.cache) {
+      if (!liveIds.has(panelId)) {
+        entry.warm.unsubscribe();
+        this.cache.delete(panelId);
+      }
+    }
+
+    for (const panel of panels) {
+      if (panel.status !== "live" || !panel.spec) {
+        continue;
+      }
+
+      const existing = this.cache.get(panel.panelId);
+
+      if (existing && existing.spec === panel.spec) {
+        continue;
+      }
+
+      existing?.warm.unsubscribe();
+
+      const data$ = composePanelStream(panel.spec, deps);
+      const warm = data$.subscribe();
+      this.cache.set(panel.panelId, { spec: panel.spec, data$, warm });
+    }
+  }
+}

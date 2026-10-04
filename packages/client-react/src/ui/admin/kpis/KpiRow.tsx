@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { kpisVm } from "@rtc/client-core";
+import { kpisVm } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { KpiCard } from "./KpiCard";

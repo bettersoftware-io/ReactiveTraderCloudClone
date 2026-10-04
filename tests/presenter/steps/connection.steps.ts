@@ -10,8 +10,8 @@ import { filter } from "rxjs";
 
 import type { ConnectionStatus } from "@rtc/domain";
 
-import type { PresenterWorld } from "../cucumber-fake-timers/world";
-import * as conn from "../scenarios/_shared/connection";
+import type { PresenterWorld } from "../cucumber-fake-timers/world.ts";
+import * as conn from "../scenarios/_shared/connection.ts";
 
 // A footer label maps to a FAMILY of statuses (e.g. "Disconnected" covers
 // DISCONNECTED / IDLE / OFFLINE). The shared _shared/connection helper only

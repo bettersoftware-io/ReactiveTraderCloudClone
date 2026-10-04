@@ -1,11 +1,8 @@
 import { createSignal } from "solid-js";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  type DockLayoutStore,
-  InMemoryDockLayoutStore,
-  type PanelId,
-} from "@rtc/client-core";
+import type { DockLayoutStore, PanelId } from "@rtc/core-api";
+import { InMemoryDockLayoutStore } from "@rtc/core-logic";
 import { DOCK_BLOB_VERSION } from "@rtc/layout-dockview";
 
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";

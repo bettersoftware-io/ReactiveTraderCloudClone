@@ -1,4 +1,4 @@
-import { Effect, Exit, ManagedRuntime, Scope } from "effect";
+import { Effect, ManagedRuntime } from "effect";
 
 import type {
   App,
@@ -17,6 +17,7 @@ import type {
 } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
+import { closeScopeAndWait } from "#/bridge/out";
 import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";
@@ -91,7 +92,7 @@ export function composeApp(ports: AppPorts): ComposedApp {
     // so calling `dispose()` twice is safe.
     dispose: async () => {
       try {
-        await Effect.runPromise(Scope.close(host.scope, Exit.void));
+        await closeScopeAndWait(host.scope);
       } finally {
         await runtime.dispose();
       }

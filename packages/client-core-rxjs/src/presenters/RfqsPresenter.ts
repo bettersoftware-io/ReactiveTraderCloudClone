@@ -1,0 +1,272 @@
+import { type DefaultedStateObservable, state } from "@rx-state/core";
+import {
+  catchError,
+  concat,
+  distinctUntilChanged,
+  map,
+  merge,
+  type Observable,
+  of,
+  Subject,
+  shareReplay,
+  switchMap,
+  tap,
+  timer,
+} from "rxjs";
+
+import type {
+  Machine,
+  RfqSubmissionIntents,
+  RfqSubmissionState,
+  RfqsPresenter as RfqsPresenterApi,
+  TicketSubmissionIntents,
+  TicketSubmissionState,
+} from "@rtc/core-api";
+import { shallowArrayEquals } from "@rtc/core-logic";
+import {
+  type CreateRfqInput,
+  CreateRfqUseCase,
+  type Quote,
+  type QuoteRequest,
+  RFQ_REDIRECT_DELAY_MS,
+  type Rfq,
+  type RfqEvent,
+  type RfqStreamState,
+  WorkflowEventStreamUseCase,
+  type WorkflowPort,
+} from "@rtc/domain";
+
+import { warmReplay } from "./warmReplay.js";
+
+/** Presenter-local alias of the domain cadence, so the machine reads as it
+ * always has. */
+const REDIRECT_DELAY_MS: number = RFQ_REDIRECT_DELAY_MS;
+
+interface SubmitCommand {
+  input: CreateRfqInput;
+  onRedirect: (rfqId: number) => void;
+}
+
+export class RfqsPresenter implements RfqsPresenterApi {
+  private readonly state$: Observable<RfqStreamState>;
+
+  readonly rfqs$: Observable<readonly Rfq[]>;
+
+  readonly allQuotes$: Observable<ReadonlyMap<number, Quote>>;
+
+  /** Raw RfqEvent stream — a second subscription to the one
+   * `workflow.events()` Observable, for the AnimationDirector (expiry/fill
+   * intents). The start-of-world snapshot contains only
+   * rfqCreated/quoteCreated, so no spurious animation intents fire on
+   * connect. WorkflowEventStreamUseCase's state fold is the other
+   * subscriber. */
+  readonly events$: Observable<RfqEvent>;
+
+  private readonly quotesByRfqCache = new Map<
+    number,
+    Observable<readonly Quote[]>
+  >();
+
+  /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
+   * releases both held `workflow.events()` subscriptions — see `warmReplay`. */
+  constructor(
+    private readonly workflow: WorkflowPort,
+    disposed$: Observable<unknown>,
+  ) {
+    // state$ holds the workflow WS subscription that rfqs$/allQuotes$/
+    // quotesForRfq$ all derive from → warm across tab remounts (singleton per
+    // connection), so those derived streams re-read its buffer on remount
+    // without re-subscribing the wire.
+    // The port is CALLED once (portDiscipline); its Observable is
+    // subscribed twice, below — the same wire traffic as two calls, since a
+    // port stream subscribes on subscribe, not on call.
+    const events = workflow.events();
+    this.state$ = new WorkflowEventStreamUseCase({
+      events: () => {
+        return events;
+      },
+    })
+      .execute()
+      .pipe(warmReplay(disposed$));
+    this.rfqs$ = this.state$.pipe(
+      map((s) => {
+        return Array.from(s.rfqs.values());
+      }),
+      distinctUntilChanged(shallowArrayEquals),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.allQuotes$ = this.state$.pipe(
+      map((s) => {
+        return s.quotes;
+      }),
+      distinctUntilChanged(),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    // Second, independent subscription (raw events for animation signals) →
+    // also warm, so it isn't re-subscribed on remount.
+    this.events$ = events.pipe(warmReplay(disposed$));
+  }
+
+  quotesForRfq$(rfqId: number): Observable<readonly Quote[]> {
+    const cached = this.quotesByRfqCache.get(rfqId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const stream = this.state$.pipe(
+      map((s) => {
+        return Array.from(s.quotes.values()).filter((q) => {
+          return q.rfqId === rfqId;
+        });
+      }),
+      distinctUntilChanged(shallowArrayEquals),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.quotesByRfqCache.set(rfqId, stream);
+    return stream;
+  }
+
+  createRfq(input: CreateRfqInput): Observable<number> {
+    return new CreateRfqUseCase(this.workflow).execute(input);
+  }
+
+  acceptQuote(quoteId: number): Observable<void> {
+    return this.workflow.accept(quoteId);
+  }
+
+  cancelRfq(rfqId: number): Observable<void> {
+    return this.workflow.cancelRfq(rfqId);
+  }
+
+  passQuote(quoteId: number): Observable<void> {
+    return this.workflow.pass(quoteId);
+  }
+
+  quoteRfq(request: QuoteRequest): Observable<void> {
+    return this.workflow.quote(request);
+  }
+
+  /** Per-mount machine for NewRfqForm's create→confirm→redirect flow. submit()
+   * goes editing→submitting, calls the internal create-RFQ Observable, and on
+   * success goes confirmed{rfqId} then fires onRedirect after REDIRECT_DELAY_MS.
+   * dispose() cancels a pending redirect timer if torn down before it fires. */
+  createSubmission(): Machine<RfqSubmissionState, RfqSubmissionIntents> {
+    const submit$ = new Subject<SubmitCommand>();
+
+    const EDITING: RfqSubmissionState = { status: "editing" };
+    const SUBMITTING: RfqSubmissionState = { status: "submitting" };
+
+    const runs$ = submit$.pipe(
+      switchMap(({ input, onRedirect }) => {
+        return concat(
+          of(SUBMITTING),
+          this.createRfq(input).pipe(
+            switchMap((rfqId) => {
+              return merge(
+                of<RfqSubmissionState>({ status: "confirmed", rfqId }),
+                // Redirect after the delay, then return to editing. The docked
+                // form is never unmounted (unlike the old tabbed workspace,
+                // which reset by unmounting on tab-switch), so the machine
+                // itself must hand the form back an empty editing state once
+                // the redirect window elapses — otherwise it dead-ends on the
+                // confirmation card forever. The redirect timer is cancelled
+                // when warm.unsubscribe() (in dispose()) tears down the
+                // subscription chain — NOT by submit$ completing, since
+                // switchMap does not unsubscribe its current inner observable
+                // when the source completes.
+                timer(REDIRECT_DELAY_MS).pipe(
+                  tap(() => {
+                    return onRedirect(rfqId);
+                  }),
+                  map((): RfqSubmissionState => {
+                    return EDITING;
+                  }),
+                ),
+              );
+            }),
+            // A failed create returns to editing so the user can retry.
+            catchError(() => {
+              return of(EDITING);
+            }),
+          ),
+        );
+      }),
+    );
+
+    const state$: DefaultedStateObservable<RfqSubmissionState> = state(
+      runs$,
+      EDITING,
+    );
+    const warm = state$.subscribe();
+
+    return {
+      state$,
+      intents: {
+        submit: (
+          input: CreateRfqInput,
+          onRedirect: (rfqId: number) => void,
+        ): void => {
+          submit$.next({ input, onRedirect });
+        },
+      },
+      dispose: (): void => {
+        submit$.complete();
+        warm.unsubscribe();
+      },
+    };
+  }
+
+  /** Per-mount machine for TradeTicket's submit-price / pass flow. Either intent
+   * runs the corresponding internal Observable and, on success, flips
+   * submitted:true (mirroring the component's old `setSubmitted(true)` after the
+   * awaited command resolved). dispose() tears the subscription down. */
+  createTicketSubmission(): Machine<
+    TicketSubmissionState,
+    TicketSubmissionIntents
+  > {
+    const action$ = new Subject<Observable<void>>();
+
+    const NOT_SUBMITTED: TicketSubmissionState = { submitted: false };
+    const SUBMITTED: TicketSubmissionState = { submitted: true };
+
+    // Each action runs its command; success flips submitted:true. takeUntil is
+    // unnecessary — these are one-shot commands — but a failed command leaves
+    // submitted:false so the user can retry (matching the component, which only
+    // set submitted after a resolved await).
+    const runs$ = action$.pipe(
+      switchMap((command$) => {
+        return command$.pipe(
+          map((): TicketSubmissionState => {
+            return SUBMITTED;
+          }),
+          catchError(() => {
+            return of(NOT_SUBMITTED);
+          }),
+        );
+      }),
+    );
+
+    const state$: DefaultedStateObservable<TicketSubmissionState> = state(
+      runs$,
+      NOT_SUBMITTED,
+    );
+    const warm = state$.subscribe();
+
+    return {
+      state$,
+      intents: {
+        submitPrice: (quoteId: number, price: number): void => {
+          action$.next(this.quoteRfq({ quoteId, price }));
+        },
+        pass: (quoteId: number): void => {
+          action$.next(this.passQuote(quoteId));
+        },
+      },
+      dispose: (): void => {
+        action$.complete();
+        warm.unsubscribe();
+      },
+    };
+  }
+}
