@@ -167,7 +167,13 @@ export function createInMemoryAccountDirectory(
       const credential = entry?.credential ?? null;
       // One hash whether or not a password exists: an unknown address and an
       // account with none yet cost and answer the same as a wrong password.
-      const candidate = await hash(password, credential?.salt ?? dummySalt);
+      let candidate: Buffer;
+
+      try {
+        candidate = await hash(password, credential?.salt ?? dummySalt);
+      } catch {
+        return { outcome: "unavailable" };
+      }
 
       if (
         entry === undefined ||

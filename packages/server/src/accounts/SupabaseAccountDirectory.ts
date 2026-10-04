@@ -72,8 +72,8 @@ type CodeAndPassword =
 /**
  * The account directory over Supabase's REST endpoints — Auth for
  * credentials and codes, PostgREST for the `profiles` table — with plain
- * `fetch`. Supabase's own session tokens are used inside one call and
- * dropped; nothing here is ever sent to a browser. A timeout, a network
+ * `fetch`. Supabase's own session tokens are used inside one call and then
+ * logged out; nothing here is ever sent to a browser. A timeout, a network
  * failure or any 5xx (540 is a paused project) is `unavailable`.
  */
 export function createSupabaseAccountDirectory(
@@ -144,9 +144,30 @@ export function createSupabaseAccountDirectory(
   }
 
   /**
+   * Ends a Supabase session the server opened (a password grant or a
+   * verified code), so a confirmed account cannot grow Supabase's session
+   * and refresh-token tables at the sign-in rate. Bounded by the same
+   * timeout; its outcome is ignored and it never throws — a failed logout
+   * never changes the answer.
+   */
+  async function closeSession(accessToken: string): Promise<void> {
+    try {
+      await call({
+        method: "POST",
+        path: "/auth/v1/logout?scope=local",
+        bearer: accessToken,
+      });
+    } catch {
+      // Ignored by design: see above.
+    }
+  }
+
+  /**
    * Verifies an emailed code; on success Supabase answers with that user's
    * session, which then sets the password (`PUT /auth/v1/user`). The session
-   * is used for this one call and dropped.
+   * is used for this one call and logged out. A 429 on the verify is
+   * Supabase throttling us, not a verdict on the code, so it reads as
+   * unreachable (never a wrong code, which would strike the caller).
    */
   async function setPasswordWithCode(
     type: string,
@@ -162,7 +183,10 @@ export function createSupabaseAccountDirectory(
       callerIp,
     });
 
-    if (verified.kind === "unreachable") {
+    if (
+      verified.kind === "unreachable" ||
+      (verified.kind === "refused" && verified.status === 429)
+    ) {
       return { step: "code-unreachable" };
     }
 
@@ -183,6 +207,8 @@ export function createSupabaseAccountDirectory(
       bearer: session,
       callerIp,
     });
+
+    await closeSession(session);
 
     return { step: "password-answered", reply };
   }
@@ -214,8 +240,13 @@ export function createSupabaseAccountDirectory(
         return "rejected-email";
       }
 
-      // `over_email_send_rate_limit` fires only for an address that already
-      // has a user record, so it must read as `sent`, like an existing one.
+      // `over_email_send_rate_limit` comes back in two cases: Supabase's
+      // per-address resend limit for an address that already has a user
+      // record, and the project-wide email allowance being spent. The two
+      // are indistinguishable, and answering anything but `sent` to the
+      // first would reveal a registration, so both read as `sent`. The
+      // server's own hourly send fuse (`EMAIL_SENDS_PER_HOUR_MAX`, set below
+      // the project's limit) is what keeps the second from being silent.
       // `weak_password` is about OUR random password — a store whose policy
       // refuses it is misconfigured — so it falls through to `unavailable`.
       return reply.errorCode === "user_already_exists" ||
@@ -296,6 +327,12 @@ export function createSupabaseAccountDirectory(
         return { outcome: reply.status === 429 ? "unavailable" : "invalid" };
       }
 
+      const accessToken = readString(reply.body, "access_token");
+
+      if (accessToken !== null) {
+        await closeSession(accessToken);
+      }
+
       const accountId = readString(readField(reply.body, "user"), "id");
 
       return accountId === null
@@ -336,11 +373,22 @@ export function createSupabaseAccountDirectory(
         return "unavailable";
       }
 
-      if (result.reply.kind === "unreachable") {
+      const { reply } = result;
+
+      // A throttled update says nothing about the password, so it is not
+      // `rejected` (which tells the user to choose another).
+      if (
+        reply.kind === "unreachable" ||
+        (reply.kind === "refused" && reply.status === 429)
+      ) {
         return "unavailable";
       }
 
-      return result.reply.kind === "ok" ? "changed" : "rejected";
+      // The code is spent either way; `same_password` means the password
+      // already is what the user asked for.
+      return reply.kind === "ok" || reply.errorCode === "same_password"
+        ? "changed"
+        : "rejected";
     },
 
     async findAccount(accountId: string): Promise<AccountLookup> {
@@ -443,7 +491,10 @@ function readString(value: unknown, field: string): string | null {
 }
 
 /** Supabase Auth answers `{error_code}` today; its token endpoint used to
- * answer OAuth-style `{error, error_description}`. Both are read. */
+ * answer OAuth-style `{error, error_description}`. Both are read. This relies
+ * on Supabase's DEFAULT error shape: sending an `X-Supabase-Api-Version`
+ * header would move the code elsewhere, and every refusal would then read
+ * as `unknown` — that is, as unavailable. */
 function readErrorCode(body: unknown): string {
   const code = readString(body, "error_code");
 

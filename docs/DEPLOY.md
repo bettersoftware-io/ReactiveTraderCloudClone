@@ -130,10 +130,11 @@ Supabase moves them.
    forwarding. The server sends each caller's IP as `Sb-Forwarded-For`, so
    Supabase's per-IP limits apply to each visitor rather than to the
    server's one address. *Done:* the setting is on.
-7. **Sessions.** Every sign-in through the server leaves a Supabase session
-   row that the server never revokes. If your plan offers a session time-box
-   (Authentication → Sessions), set one, so that table stays small;
-   otherwise it stays an open follow-up in [`STATUS.md`](STATUS.md).
+7. **Sessions.** Every sign-in and every verified code through the server
+   opens a Supabase session, which the server logs out (`scope=local`) as
+   soon as it has used it. A logout that fails is ignored, so a session can
+   still be left behind now and then; if your plan offers a session time-box
+   (Authentication → Sessions), set one as a backstop.
 8. **Secret key** (Project Settings → API Keys): create a **secret** key
    (`sb_secret_…`). It bypasses row-level security: it goes only into the
    probe's shell and the Fly secret below, never into a client, a file or a

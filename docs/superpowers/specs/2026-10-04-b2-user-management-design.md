@@ -489,7 +489,7 @@ Monday and Thursday at 07:17 UTC and fails only on `down`.
 | Registration closed or over the daily cap | `403 registration_closed`; the form says sign-up is paused. |
 | Account deleted while signed in | Sockets closed at deletion; the token fails the upgrade re-check afterwards. *Amended 2026-10-04:* in B2a, sockets are not closed (B2c); the next upgrade is refused once the cached status expires. |
 | Server restart mid-flow | Every flow is stateless on our side; the state is in Supabase. |
-| Every Supabase sign-in | *Amended 2026-10-04:* each password check — and each verified code — creates a Supabase session row that the server uses within the one request, drops and never revokes. A session time-box in the project's Auth settings (or a later revocation follow-up) keeps that table small. |
+| Every Supabase sign-in | *Amended 2026-10-04:* each password check — and each verified code — creates a Supabase session row that the server uses within the one request ~~, drops and never revokes. A session time-box in the project's Auth settings (or a later revocation follow-up) keeps that table small~~. *Amended 2026-10-04 (final review):* and then logs out with `POST /auth/v1/logout?scope=local`, so a confirmed account cannot grow the session and refresh-token tables at the sign-in rate; a failed logout is ignored and never changes the answer, so a session time-box stays a useful backstop. |
 
 ## 7. Client (stage B2b)
 
@@ -633,7 +633,7 @@ None of this happens on its own, and none of it is done by the implementation.
 | Before B2a deploys | Paste the two email templates from `supabase/templates/`; set the password minimum to 12 in Supabase's settings |
 | Before B2a deploys | *Amended 2026-10-04.* Keep the **phone** and **anonymous** sign-in providers disabled (`profiles.email` is `not null`, so such a user breaks the profile trigger); keep the project URL private and do not hand out the publishable key — a direct `/auth/v1/signup` bypasses the server's rules, though such an account still needs approval and cannot read `profiles` |
 | Before B2a deploys | *Amended 2026-10-04.* Enable IP address forwarding in the project's Auth rate-limit settings, so `Sb-Forwarded-For` is honoured |
-| Before B2a deploys | *Amended 2026-10-04.* If your plan offers it, set a session time-box in the project's Auth settings: every sign-in leaves a Supabase session row the server never revokes (§6) |
+| Before B2a deploys | *Amended 2026-10-04.* If your plan offers it, set a session time-box in the project's Auth settings: *amended 2026-10-04 (final review):* the server logs out each session it opens, but ignores a failed logout, so the time-box is a backstop (§6) |
 | Before B2a deploys | *Amended 2026-10-04.* Run `pnpm --filter @rtc/server accounts:probe` with `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `PROBE_EMAIL_DOMAIN` (a domain you control or a test inbox; the probe sends one real confirmation email there) and see `PASS`. It prints the id of each account it creates and deletes |
 | Before B2a deploys | *Amended 2026-10-04.* Make sure `AUTH_SECRET` is at least 32 characters and no `AUTH_USERS` username contains `@`; the server refuses to start otherwise (§5.8) |
 | Before B2a deploys | `flyctl secrets set SUPABASE_URL=… SUPABASE_SECRET_KEY=…` |

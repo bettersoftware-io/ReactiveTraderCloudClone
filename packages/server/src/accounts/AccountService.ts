@@ -274,16 +274,18 @@ export function createAccountService(
     request: ResetPasswordRequestDto,
     callerIp: string,
   ): Promise<ResetPasswordOutcome> {
-    const violation = findPasswordViolation(request.password);
-
-    if (violation !== null) {
-      return { outcome: "invalid", rule: violation.id };
-    }
-
+    // Confirmation's order: the address and the code's shape first, then
+    // the password rule — so both endpoints answer a malformed request alike.
     const email = readEmail(request.email);
 
     if (email === null || !isConfirmationCode(request.code)) {
       return { outcome: "invalid_code" };
+    }
+
+    const violation = findPasswordViolation(request.password);
+
+    if (violation !== null) {
+      return { outcome: "invalid", rule: violation.id };
     }
 
     if (!options.codeEntryLimiter.hit(email, options.now())) {

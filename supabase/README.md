@@ -35,8 +35,9 @@ of October 2026; Supabase moves them.
    (`Sb-Forwarded-For`), so Supabase limits each visitor, not our server's
    one address.
 7. **Authentication → Sessions:** if your plan offers a session time-box, set
-   one. Every sign-in through the server leaves a session row the server
-   never revokes.
+   one as a backstop. The server logs out each session it opens (a sign-in
+   or a verified code) right after using it, but ignores a logout that
+   fails, so an occasional session row can still be left behind.
 8. **Project Settings → API Keys:** create a **secret** key (`sb_secret_…`).
    It never goes on a command line, into a file or into a client: the probe
    and the Fly secret take it from a shell variable read at a prompt

@@ -91,7 +91,13 @@ export interface AccountDirectory {
     password: string,
     callerIp: string,
   ): Promise<ResetOutcome>;
+  /** Must be bounded in time (a timeout reads as `unavailable`): the status
+   * cache shares ONE in-flight lookup per account, so a lookup that never
+   * settles would hold every upgrade for that account. */
   findAccount(accountId: string): Promise<AccountLookup>;
+  /** Must include every sign-up this directory has already answered — the
+   * service adds to the count only the sign-ups still in flight and those
+   * answered while the count was being read. */
   countRegistrationsSince(sinceMs: number): Promise<RegistrationCount>;
   ping(): Promise<boolean>;
 }

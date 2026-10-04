@@ -185,7 +185,9 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
       expect(
         await createDirectory(fake).confirmEmail("ann@desk.io", "1", "pw", IP),
       ).toBe("confirmed_unset");
-      expect(fake.requests).toHaveLength(2);
+      expect(fake.requests[1]?.url).toBe(
+        "https://proj.supabase.co/auth/v1/user",
+      );
     },
   );
 
@@ -281,13 +283,175 @@ describe("SupabaseAccountDirectory — codes and passwords", () => {
   it("a refused new password is rejected", async () => {
     const fake = createFakeFetch([
       createReply(200, { access_token: "recovery-token" }),
-      createReply(422, { error_code: "same_password" }),
+      createReply(422, { error_code: "weak_password" }),
     ]);
 
     expect(
       await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
     ).toBe("rejected");
   });
+
+  it("a reset refused as the same password is changed: the password already is what was asked", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "recovery-token" }),
+      createReply(422, { error_code: "same_password" }),
+    ]);
+
+    expect(
+      await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
+    ).toBe("changed");
+  });
+});
+
+describe("SupabaseAccountDirectory — Supabase throttling", () => {
+  it.each([
+    [
+      "confirmEmail",
+      (d: AccountDirectory): Promise<unknown> => {
+        return d.confirmEmail("ann@desk.io", "12345678", "pw", IP);
+      },
+    ],
+    [
+      "resetPassword",
+      (d: AccountDirectory): Promise<unknown> => {
+        return d.resetPassword("ann@desk.io", "12345678", "pw", IP);
+      },
+    ],
+  ])(
+    "%s: a 429 on the verify is unavailable, never a wrong code",
+    async (_name: string, run: Run) => {
+      const fake = createFakeFetch([
+        createReply(429, { error_code: "over_request_rate_limit" }),
+      ]);
+
+      expect(await run(createDirectory(fake))).toBe("unavailable");
+      expect(fake.requests).toHaveLength(1);
+    },
+  );
+
+  it("a reset whose password update is throttled is unavailable, not rejected", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "recovery-token" }),
+      createReply(429, { error_code: "over_request_rate_limit" }),
+    ]);
+
+    expect(
+      await createDirectory(fake).resetPassword("ann@desk.io", "1", "pw", IP),
+    ).toBe("unavailable");
+  });
+
+  it("a confirmation whose password update is throttled is confirmed_unset", async () => {
+    const fake = createFakeFetch([
+      createReply(200, { access_token: "confirm-token" }),
+      createReply(429, { error_code: "over_request_rate_limit" }),
+    ]);
+
+    expect(
+      await createDirectory(fake).confirmEmail("ann@desk.io", "1", "pw", IP),
+    ).toBe("confirmed_unset");
+  });
+});
+
+describe("SupabaseAccountDirectory — sessions are closed", () => {
+  it("a successful password check logs its session out (scope=local)", async () => {
+    const fake = createFakeFetch([
+      createReply(200, {
+        access_token: "grant-token",
+        user: { id: ACCOUNT_ID },
+      }),
+      new Response(null, { status: 204 }),
+    ]);
+
+    await createDirectory(fake).checkPassword("ann@desk.io", "pw", IP);
+
+    expectLogout(fake.requests[1], "grant-token");
+  });
+
+  it.each([
+    [
+      "a confirmation",
+      "confirm-token",
+      (d: AccountDirectory): Promise<unknown> => {
+        return d.confirmEmail("ann@desk.io", "1", "pw", IP);
+      },
+    ],
+    [
+      "a reset",
+      "recovery-token",
+      (d: AccountDirectory): Promise<unknown> => {
+        return d.resetPassword("ann@desk.io", "1", "pw", IP);
+      },
+    ],
+  ])(
+    "%s logs out the session its verified code returned",
+    async (_name: string, token: string, run: Run) => {
+      const fake = createFakeFetch([
+        createReply(200, { access_token: token }),
+        createReply(200, {}),
+        new Response(null, { status: 204 }),
+      ]);
+
+      await run(createDirectory(fake));
+
+      expect(fake.requests).toHaveLength(3);
+      expectLogout(fake.requests[2], token);
+    },
+  );
+
+  it("a refused password check opens no session, so nothing is logged out", async () => {
+    const fake = createFakeFetch([
+      createReply(400, { error_code: "invalid_credentials" }),
+    ]);
+
+    await createDirectory(fake).checkPassword("ann@desk.io", "pw", IP);
+
+    expect(fake.requests).toHaveLength(1);
+  });
+
+  it.each([
+    ["a 500", [createReply(500, {})]],
+    ["a thrown fetch", []],
+  ])(
+    "a logout that meets %s leaves every outcome unchanged",
+    async (_name: string, logoutReplies: readonly Response[]) => {
+      const grant = createFakeFetch([
+        createReply(200, { access_token: "t", user: { id: ACCOUNT_ID } }),
+        ...logoutReplies,
+      ]);
+
+      const confirm = createFakeFetch([
+        createReply(200, { access_token: "t" }),
+        createReply(200, {}),
+        ...logoutReplies,
+      ]);
+
+      const reset = createFakeFetch([
+        createReply(200, { access_token: "t" }),
+        createReply(200, {}),
+        ...logoutReplies,
+      ]);
+
+      expect(
+        await createDirectory(grant).checkPassword("ann@desk.io", "pw", IP),
+      ).toEqual({ outcome: "match", accountId: ACCOUNT_ID });
+      expect(
+        await createDirectory(confirm).confirmEmail(
+          "ann@desk.io",
+          "1",
+          "pw",
+          IP,
+        ),
+      ).toBe("confirmed");
+      expect(
+        await createDirectory(reset).resetPassword(
+          "ann@desk.io",
+          "1",
+          "pw",
+          IP,
+        ),
+      ).toBe("changed");
+    },
+  );
 });
 
 describe("SupabaseAccountDirectory — profiles", () => {
@@ -521,6 +685,19 @@ describe("SupabaseAccountDirectory — hardening", () => {
     );
   });
 });
+
+function expectLogout(
+  request: RecordedRequest | undefined,
+  token: string,
+): void {
+  expect(request?.url).toBe(
+    "https://proj.supabase.co/auth/v1/logout?scope=local",
+  );
+  expect(request?.method).toBe("POST");
+  expect(request?.headers.Authorization).toBe(`Bearer ${token}`);
+  expect(request?.headers.apikey).toBe("sb_secret_test");
+  expect(request?.signal).toBeInstanceOf(AbortSignal);
+}
 
 interface RecordedRequest {
   readonly url: string;

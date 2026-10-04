@@ -344,6 +344,29 @@ describe("AccountService codes and resets", () => {
     expect(await service.requestReset("nope", IP)).toBe("invalid");
   });
 
+  it("a reset refuses a malformed code before the password rule, without asking the directory", async () => {
+    const { service, directory } = createService();
+    const reset = vi.spyOn(directory, "resetPassword");
+
+    expect(
+      await service.resetPassword(
+        { email: "trader@rtc.test", code: "12ab", password: "weak" },
+        IP,
+      ),
+    ).toEqual({ outcome: "invalid_code" });
+    expect(
+      await service.resetPassword(
+        {
+          email: "not-an-email",
+          code: DEV_CONFIRMATION_CODE,
+          password: "weak",
+        },
+        IP,
+      ),
+    ).toEqual({ outcome: "invalid_code" });
+    expect(reset).not.toHaveBeenCalled();
+  });
+
   it("a reset enforces the password rule before the directory is asked", async () => {
     const { service, directory } = createService();
     const reset = vi.spyOn(directory, "resetPassword");

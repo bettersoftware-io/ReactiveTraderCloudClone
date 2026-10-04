@@ -258,6 +258,20 @@ describe("InMemoryAccountDirectory", () => {
     ).toBe("match");
   });
 
+  it("a password check whose hash fails is unavailable, not a rejection", async () => {
+    const hash = createSwitchableHash();
+    const directory = createDirectory(hash.hash);
+
+    hash.failing = true;
+
+    await expect(
+      directory.checkPassword("trader@rtc.test", DEV_ACCOUNT_PASSWORD, IP),
+    ).resolves.toEqual({ outcome: "unavailable" });
+    await expect(
+      directory.checkPassword("nobody@desk.io", DEV_ACCOUNT_PASSWORD, IP),
+    ).resolves.toEqual({ outcome: "unavailable" });
+  });
+
   it("requesting a reset for an unknown address still answers `sent`", async () => {
     expect(await createDirectory().requestReset("nobody@desk.io", IP)).toBe(
       "sent",

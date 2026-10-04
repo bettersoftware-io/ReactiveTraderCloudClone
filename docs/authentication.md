@@ -443,7 +443,8 @@ that way; B2b gives each its own message.
 
 Only `@rtc/server` knows the account store exists. No Supabase URL, key or
 SDK is in a client, in `@rtc/shared` or in `@rtc/domain`, and Supabase's own
-session tokens are used inside one server request and dropped.
+session tokens are used inside one server request and then logged out
+(`POST /auth/v1/logout?scope=local`; a failed logout is ignored).
 
 ### 7.1 Three modes
 
