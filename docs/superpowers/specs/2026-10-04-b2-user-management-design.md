@@ -423,7 +423,9 @@ strike of weight 1 (`code-failed`).
 - *Amended 2026-10-04 (approved text: "`SUPABASE_URL` unset →
   `InMemoryAccountDirectory`").* `RTC_DEV_ACCOUNTS=1` → `InMemoryAccountDirectory`,
   **never** `SUPABASE_URL` being unset (that is `disabled`), and refused when
-  `FLY_APP_NAME` is set. Its confirmation code is the fixed `00000000`, and it
+  `FLY_APP_NAME` is set (*amended 2026-10-04, final review:* or
+  `RTC_DEPLOYED`, which the server's container image sets, so the refusal
+  does not depend on the host being Fly). Its confirmation code is the fixed `00000000`, and it
   seeds one account per status, admin included, whose password is committed
   (dev-only, like `mcdc2026`). The `dev:ws` / `dev:*:fs` scripts and the
   full-stack smoke run on it (details below).
@@ -463,7 +465,9 @@ The server refuses to start — before it listens, and without echoing any
 value — when:
 
 - `RTC_DEV_ACCOUNTS=1` and `FLY_APP_NAME` are both set (Fly sets the latter
-  on every machine);
+  on every machine) — *amended 2026-10-04 (final review):* or
+  `RTC_DEV_ACCOUNTS=1` and `RTC_DEPLOYED` (the container image sets it,
+  whatever the host);
 - `RTC_DEV_ACCOUNTS=1` and `SUPABASE_URL` are both set;
 - `SUPABASE_URL` is set without `SUPABASE_SECRET_KEY`, or the reverse, or
   `SUPABASE_URL` is not an `https://` URL;

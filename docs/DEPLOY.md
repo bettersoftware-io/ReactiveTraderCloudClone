@@ -204,9 +204,9 @@ Supabase moves them.
     - `REGISTRATION_OPEN` is anything but `true` or `false`;
     - an `AUTH_USERS` username contains `@`, or `AUTH_USERS` is set with an
       empty `AUTH_SECRET`;
-    - `RTC_DEV_ACCOUNTS=1` is set (Fly sets `FLY_APP_NAME` on every machine,
-      and the dev directory is refused there), or set together with
-      `SUPABASE_URL`.
+    - `RTC_DEV_ACCOUNTS=1` is set (Fly sets `FLY_APP_NAME` on every machine
+      and the image sets `RTC_DEPLOYED=1`, and the dev directory is refused
+      when either is), or set together with `SUPABASE_URL`.
 13. **Make yourself the administrator.** Register, confirm and sign in with
     `curl` (B2b adds the screens; the password goes into your shell history
     unless the line starts with a space):

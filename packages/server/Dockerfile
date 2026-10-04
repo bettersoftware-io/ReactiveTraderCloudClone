@@ -36,6 +36,10 @@ USER node
 
 ENV PORT=4000
 ENV HOSTNAME=0.0.0.0
+# Marks every container built from this image as deployed, whatever the host:
+# the server then refuses the dev account directory (RTC_DEV_ACCOUNTS=1),
+# whose fixed code and committed admin password must never be reachable.
+ENV RTC_DEPLOYED=1
 EXPOSE 4000
 
 CMD ["node", "packages/server/dist/index.js"]

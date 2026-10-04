@@ -169,6 +169,27 @@ describe("resolveAccountsMode", () => {
       });
     }).toThrow("RTC_DEV_ACCOUNTS is refused on a deployed machine");
   });
+
+  it("refuses the dev directory in the container image, whatever the host (RTC_DEPLOYED)", () => {
+    expect(() => {
+      return resolveAccountsMode({
+        RTC_DEV_ACCOUNTS: "1",
+        AUTH_SECRET: createSecret(),
+        RTC_DEPLOYED: "1",
+      });
+    }).toThrow("RTC_DEV_ACCOUNTS is refused on a deployed machine");
+  });
+
+  it("reads an empty deployment marker as unset", () => {
+    expect(
+      resolveAccountsMode({
+        RTC_DEV_ACCOUNTS: "1",
+        AUTH_SECRET: createSecret(),
+        RTC_DEPLOYED: "",
+        FLY_APP_NAME: "",
+      }),
+    ).toEqual({ kind: "in-memory" });
+  });
 });
 
 describe("createAccountDirectory", () => {

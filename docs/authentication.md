@@ -306,7 +306,7 @@ password `Mcdc2026!desk` and its fixed confirmation code `00000000`
 (`packages/server/src/accounts/devAccounts.ts` and
 `InMemoryAccountDirectory.ts`, [§7.7](#77-dev-accounts)). They can never work on
 a deployed server: the server refuses to start with the in-memory directory
-when `FLY_APP_NAME` is set.
+when `FLY_APP_NAME` or `RTC_DEPLOYED` is set.
 
 What still stays **out of version control** is the thing that actually protects
 the deployed app: the server's **`AUTH_SECRET`** — the HMAC key that signs and
@@ -464,9 +464,10 @@ mode as `Accounts: <supabase|in-memory|disabled>`.
 **The server will not start** (it throws before listening, and never echoes
 a value) if:
 
-- `RTC_DEV_ACCOUNTS=1` and `FLY_APP_NAME` are both set — Fly sets
-  `FLY_APP_NAME` on every machine, so the dev directory can never run
-  deployed;
+- `RTC_DEV_ACCOUNTS=1` and `FLY_APP_NAME` or `RTC_DEPLOYED` is set (non-empty)
+  — Fly sets `FLY_APP_NAME` on every machine, and the server's container
+  image (`packages/server/Dockerfile`) sets `RTC_DEPLOYED=1` whatever host
+  runs it, so the dev directory can never run deployed;
 - `RTC_DEV_ACCOUNTS=1` and `SUPABASE_URL` are both set;
 - `SUPABASE_SECRET_KEY` is set without `SUPABASE_URL`, or `SUPABASE_URL`
   without `SUPABASE_SECRET_KEY`;

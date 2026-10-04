@@ -23,7 +23,8 @@ interface AccountDirectoryDeps {
  * Which account store this process uses. Three modes, and the dev one is
  * NEVER a default: it accepts a fixed code and seeds an admin with a
  * committed password, so it must be asked for by name and is refused on a
- * deployed machine (Fly sets `FLY_APP_NAME` on every one). Throws at startup
+ * deployed machine: Fly sets `FLY_APP_NAME` on every one, and the server's
+ * container image sets `RTC_DEPLOYED=1` whatever host runs it. Throws at startup
  * on a half-configured or ambiguous environment, the way `AuthService`
  * refuses `AUTH_USERS` without `AUTH_SECRET` — and on an empty or short
  * `AUTH_SECRET` in either account mode, since an account token signed with
@@ -60,7 +61,7 @@ export function resolveAccountsMode(env: NodeJS.ProcessEnv): AccountsMode {
   }
 
   if (devAccounts) {
-    if (env.FLY_APP_NAME) {
+    if (env.FLY_APP_NAME || env.RTC_DEPLOYED) {
       throw new Error("RTC_DEV_ACCOUNTS is refused on a deployed machine");
     }
 

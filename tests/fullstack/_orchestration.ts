@@ -68,12 +68,13 @@ export function startServer(
         // The in-memory account directory (fixed code, seeded accounts) —
         // see packages/server/src/accounts/devAccounts.ts.
         RTC_DEV_ACCOUNTS: "1",
-        // A shell that exports the Supabase pair (or FLY_APP_NAME) would
-        // make this server refuse to start: `resolveAccountsMode` reads an
-        // empty value as unset, so blank them.
+        // A shell that exports the Supabase pair (or FLY_APP_NAME, or
+        // RTC_DEPLOYED) would make this server refuse to start:
+        // `resolveAccountsMode` reads an empty value as unset, so blank them.
         SUPABASE_URL: "",
         SUPABASE_SECRET_KEY: "",
         FLY_APP_NAME: "",
+        RTC_DEPLOYED: "",
         RTC_JARVIS_FAKE: "1",
         ...extraEnv,
       },
