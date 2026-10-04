@@ -19,6 +19,7 @@ import { useViewModel } from "@rtc/react-bindings";
 import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
 import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
 import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
+import { BUILD_STAMP } from "#/ui/shell/buildStamp";
 import { LockEmblem } from "#/ui/shell/lock/LockEmblem";
 import { FONT_ORBITRON_WORDMARK } from "#/ui/theme/fontFamilies";
 import { labelStyle } from "#/ui/theme/labelStyle";
@@ -149,6 +150,12 @@ export function LoginScreen({
             onValueChange={onToggleSimulator}
           />
         </View>
+
+        {BUILD_STAMP !== null ? (
+          <Text testID="login-build" style={styles.build}>
+            BUILD {BUILD_STAMP.commit} · {BUILD_STAMP.builtAt}
+          </Text>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -174,6 +181,7 @@ interface LoginScreenStyles {
   submitLabelDisabled: TextStyle;
   simRow: ViewStyle;
   simLabel: TextStyle;
+  build: TextStyle;
 }
 
 // Every value below is `LockScreen`'s (title / subtitle / input / error) or
@@ -261,6 +269,12 @@ function makeStyles(t: RnTheme): LoginScreenStyles {
     simLabel: {
       color: t.textMuted,
       ...labelStyle(t, 8.5, 2),
+    },
+    // Present only in a published build; a development run prints nothing.
+    build: {
+      color: t.textMuted,
+      marginTop: 14,
+      ...labelStyle(t, 8, 1.5),
     },
   });
 }

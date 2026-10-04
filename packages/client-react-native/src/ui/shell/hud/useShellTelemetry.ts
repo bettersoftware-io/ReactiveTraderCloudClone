@@ -8,6 +8,8 @@ import {
 
 import { computeFps, fpsTone, type MetricTone } from "@rtc/motion-core";
 
+import { BUILD_STAMP } from "#/ui/shell/buildStamp";
+
 import { ShellTelemetryContext } from "./ShellTelemetryContext";
 
 /** HUD status-strip telemetry. FPS is a live rolling-window meter (Reanimated
@@ -104,7 +106,10 @@ export function useShellTelemetry(): ShellTelemetry {
     fpsTone: fpsTone(fps),
     latencyMs: SEED_LATENCY_MS,
     clock: SHELL_CLOCK,
-    build: BUILD_TAG,
+    // A published build prints the commit it was bundled from, so the strip
+    // answers "which build is this?" on every screen. The frozen (harness)
+    // branch above keeps the static tag: a golden must not carry a commit.
+    build: BUILD_STAMP?.commit ?? BUILD_TAG,
   };
 }
 

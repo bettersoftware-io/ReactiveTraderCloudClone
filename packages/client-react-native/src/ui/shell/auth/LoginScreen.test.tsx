@@ -1,5 +1,6 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 
+import type { BuildStamp } from "#/ui/shell/buildStamp";
 import { loginScreenPage } from "#tests/pages/LoginScreenPage";
 
 afterEach(() => {
@@ -16,6 +17,24 @@ test("typing credentials then pressing AUTHENTICATE calls login with them", asyn
 
   expect(login).toHaveBeenCalledTimes(1);
   expect(login).toHaveBeenCalledWith("trader1", "s3cret");
+});
+
+// A development run has no stamp, and half a line would read as a fact.
+test("prints no build line when the bundle carries no stamp", async () => {
+  mockStamp = null;
+  await page.mount("unauthenticated", () => {});
+
+  expect(page.exists("login-build")).toBe(false);
+});
+
+// The answer to "which published build is this?", readable before signing in.
+test("prints the commit and publish time of a published build", async () => {
+  mockStamp = { commit: "f0482c5", builtAt: "2026-10-04T15:20Z" };
+  await page.mount("unauthenticated", () => {});
+
+  expect(
+    page.hasTextContent("login-build", "BUILD f0482c5 · 2026-10-04T15:20Z"),
+  ).toBe(true);
 });
 
 test("renders the seeded error message", async () => {
@@ -82,3 +101,13 @@ test("toggling the sim switch calls onToggleSimulator with the new value", async
 });
 
 const page = loginScreenPage();
+
+let mockStamp: BuildStamp | null = null;
+
+jest.mock("#/ui/shell/buildStamp", () => {
+  return {
+    get BUILD_STAMP(): BuildStamp | null {
+      return mockStamp;
+    },
+  };
+});

@@ -13,6 +13,7 @@ import { ViewModelProvider } from "@rtc/react-bindings";
 
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
+import { matchesTextExactly } from "#tests/pages/support/textContent";
 
 type LoginStatus = "unauthenticated" | "authenticating" | "authenticated";
 
@@ -76,6 +77,7 @@ export interface LoginScreenPage {
   ): Promise<void>;
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
+  hasTextContent(testId: string, text: string): boolean;
   errorText(): TextChildren;
   submitLabel(): TextChildren;
   /** The flattened `opacity` of a node, `undefined` when it sets none. */
@@ -115,6 +117,9 @@ export function loginScreenPage(): LoginScreenPage {
     },
     exists(testId: string): boolean {
       return screen.queryByTestId(testId) != null;
+    },
+    hasTextContent(testId: string, text: string): boolean {
+      return matchesTextExactly(screen.getByTestId(testId), text);
     },
     errorText(): TextChildren {
       return screen.getByTestId("login-error").props.children as TextChildren;
