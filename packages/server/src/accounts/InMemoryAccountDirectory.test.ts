@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import type { AccountDirectory } from "./AccountDirectory.js";
-import { DEV_ACCOUNT_PASSWORD, DEV_ACCOUNT_SEEDS } from "./devAccounts.js";
+import type { AccountDirectory } from "#/accounts/AccountDirectory";
+import {
+  DEV_ACCOUNT_PASSWORD,
+  DEV_ACCOUNT_SEEDS,
+} from "#/accounts/devAccounts";
 import {
   createInMemoryAccountDirectory,
   DEV_CONFIRMATION_CODE,
-} from "./InMemoryAccountDirectory.js";
+} from "#/accounts/InMemoryAccountDirectory";
 
 describe("InMemoryAccountDirectory", () => {
   it("a new sign-up is unconfirmed until the code is entered", async () => {
@@ -154,6 +157,104 @@ describe("InMemoryAccountDirectory", () => {
         },
       },
     );
+  });
+
+  it("two overlapping sign-ups for one address keep the first, whole", async () => {
+    const directory = createDirectory();
+    const [first, second] = await Promise.all([
+      directory.signUp(createSignUp("ann@desk.io"), IP),
+      directory.signUp(
+        {
+          email: "ann@desk.io",
+          displayName: "Mallory",
+          password: "Other2026!x",
+        },
+        IP,
+      ),
+    ]);
+
+    expect([first, second]).toEqual(["sent", "sent"]);
+
+    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
+
+    expect(check.outcome).toBe("match");
+    expect(
+      (await directory.checkPassword("ann@desk.io", "Other2026!x", IP)).outcome,
+    ).toBe("invalid");
+
+    if (check.outcome !== "match") {
+      throw new Error("expected a match");
+    }
+
+    const found = await directory.findAccount(check.accountId);
+
+    expect(found.outcome === "found" && found.account.displayName).toBe(
+      "Ann Lee",
+    );
+  });
+
+  it("an existing address keeps its display name after a repeat sign-up", async () => {
+    const directory = createDirectory();
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+    await directory.confirmEmail("ann@desk.io", DEV_CONFIRMATION_CODE, IP);
+    await directory.signUp(
+      { email: "ann@desk.io", displayName: "Mallory", password: "Other2026!x" },
+      IP,
+    );
+    const check = await directory.checkPassword("ann@desk.io", PASSWORD, IP);
+
+    if (check.outcome !== "match") {
+      throw new Error("expected a match");
+    }
+
+    const found = await directory.findAccount(check.accountId);
+
+    expect(found.outcome === "found" && found.account.displayName).toBe(
+      "Ann Lee",
+    );
+  });
+
+  it("the seeded blocked account matches its password; the directory only reports `blocked`", async () => {
+    const directory = createDirectory();
+    const check = await directory.checkPassword(
+      "blocked@rtc.test",
+      DEV_ACCOUNT_PASSWORD,
+      IP,
+    );
+
+    expect(check.outcome).toBe("match");
+
+    if (check.outcome !== "match") {
+      throw new Error("expected a match");
+    }
+
+    const found = await directory.findAccount(check.accountId);
+
+    expect(found.outcome === "found" && found.account.status).toBe("blocked");
+  });
+
+  it("resending a code answers `sent` for a known and an unknown address", async () => {
+    const directory = createDirectory();
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+
+    expect(await directory.resendCode("ann@desk.io", IP)).toBe("sent");
+    expect(await directory.resendCode("nobody@desk.io", IP)).toBe("sent");
+  });
+
+  it("confirming with the right code is `invalid_code` for an unknown or already confirmed address", async () => {
+    const directory = createDirectory();
+
+    expect(
+      await directory.confirmEmail("nobody@desk.io", DEV_CONFIRMATION_CODE, IP),
+    ).toBe("invalid_code");
+    expect(
+      await directory.confirmEmail(
+        "trader@rtc.test",
+        DEV_CONFIRMATION_CODE,
+        IP,
+      ),
+    ).toBe("invalid_code");
   });
 
   it("counts registrations since a moment, seeds excluded by their age", async () => {

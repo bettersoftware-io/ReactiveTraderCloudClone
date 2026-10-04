@@ -55,6 +55,7 @@ export function createInMemoryAccountDirectory(
   options: InMemoryDirectoryOptions,
 ): AccountDirectory {
   const byEmail = new Map<string, Entry>();
+  const signingUp = new Set<string>();
   const dummySalt = createSalt();
 
   for (const seed of options.seeds) {
@@ -89,25 +90,33 @@ export function createInMemoryAccountDirectory(
     kind: "in-memory",
 
     async signUp(input: SignUpInput): Promise<SignUpOutcome> {
-      if (byEmail.has(input.email)) {
+      // The address is claimed synchronously, before the hash is awaited, so
+      // of two overlapping sign-ups the one that STARTED first wins, whole.
+      if (byEmail.has(input.email) || signingUp.has(input.email)) {
         return "sent";
       }
 
-      const salt = createSalt();
+      signingUp.add(input.email);
 
-      byEmail.set(input.email, {
-        id: randomUUID(),
-        email: input.email,
-        displayName: input.displayName,
-        access: "user",
-        createdAt: options.now(),
-        salt,
-        digest: await hashPassword(input.password, salt),
-        confirmed: false,
-        approved: false,
-        blocked: false,
-        resetRequested: false,
-      });
+      try {
+        const salt = createSalt();
+
+        byEmail.set(input.email, {
+          id: randomUUID(),
+          email: input.email,
+          displayName: input.displayName,
+          access: "user",
+          createdAt: options.now(),
+          salt,
+          digest: await hashPassword(input.password, salt),
+          confirmed: false,
+          approved: false,
+          blocked: false,
+          resetRequested: false,
+        });
+      } finally {
+        signingUp.delete(input.email);
+      }
 
       return "sent";
     },

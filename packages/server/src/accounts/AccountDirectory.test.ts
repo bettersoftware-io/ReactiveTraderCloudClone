@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveAccountStatus } from "./AccountDirectory.js";
+import { deriveAccountStatus } from "#/accounts/AccountDirectory";
 
 describe("deriveAccountStatus", () => {
   it("is active only when confirmed, approved and not blocked", () => {
