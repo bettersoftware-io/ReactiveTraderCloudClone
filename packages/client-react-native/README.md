@@ -155,8 +155,10 @@ Expo Go then opens it from there.
 pnpm demo:publish:ios      # from the repo root; builds, then publishes to branch "demo"
 ```
 
-On the phone: Expo Go → **rtc-mobile** under Projects → branch **demo** → the
-newest update. Sign in with `demo` / `mcdc2026`.
+On the phone: open Expo Go and tap **rtc-mobile** under Projects. It opens the
+newest published build directly — there is no branch or update to pick (seen on
+Expo Go 57, 2026-10-04). Close the app fully first if it is already open, or it
+keeps running the build it has. Sign in with `demo` / `mcdc2026`.
 
 - The published build talks to the deployed server (`wss://rtc-clone-server.fly.dev`,
   the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
