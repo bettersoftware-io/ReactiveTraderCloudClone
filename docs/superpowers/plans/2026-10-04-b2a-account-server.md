@@ -10,6 +10,8 @@
 
 **Spec:** [../specs/2026-10-04-b2-user-management-design.md](../specs/2026-10-04-b2-user-management-design.md) — §5 (server), §6 (failure modes), §9 (privacy), §10 (testing), §12 (the user's steps). This plan amends three points of it in Task 11.
 
+**Rulings:** [2026-10-04-b2a-account-server-rulings.md](2026-10-04-b2a-account-server-rulings.md) — what the controller decided while executing this plan, including the places where the code as built departs from the code blocks below (the registration flow above all: a sign-up carries no password, the confirmation request does).
+
 ## Scope of B2a
 
 In: domain validation rules, DTOs, token claims, the directory port and its three implementations, the policy service, six endpoints (five new plus `/login`), the upgrade re-check, `/health/accounts`, the keep-alive workflow, the migration, email templates, a live probe script, the privacy notice and docs.
