@@ -29,7 +29,7 @@ const RealDate: DateConstructor = Date;
 // interfere with React's own time-slicing.
 // A class EXPRESSION (not a top-level class declaration) so this small local
 // double doesn't need its own one-class-per-file `FrozenDate.ts` — see
-// eslint-rules/class-filename-match.mjs (only flags ClassDeclaration).
+// eslint-rules/class-filename-match.mts (only flags ClassDeclaration).
 // Typed as construct-signature + the one static we define — NOT DateConstructor,
 // whose bare-call signature `(): string` a class can never satisfy; the final
 // assignment to globalThis.Date carries the cast instead.

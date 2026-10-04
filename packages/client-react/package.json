@@ -16,7 +16,7 @@
     "#tests/*": "./tests/*"
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.types.json --noCheck && tsc-alias -p tsconfig.types.json && node ../../scripts/check-dist.mjs",
+    "build": "vite build && tsc -p tsconfig.types.json --noCheck && tsc-alias -p tsconfig.types.json && node ../../scripts/check-dist.mts",
     "build-types": "tsc -p tsconfig.types.json --noCheck",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.ui-visual.json && tsc --noEmit -p tsconfig.ui-contract.json",
     "test": "vitest run",
@@ -70,18 +70,18 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
-    "@vitest/browser": "4.1.11",
-    "@vitest/browser-playwright": "4.1.11",
-    "@vitest/coverage-istanbul": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/browser": "5.0.3",
+    "@vitest/browser-playwright": "5.0.3",
+    "@vitest/coverage-istanbul": "^5.0.3",
+    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/ui": "^5.0.3",
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.60.0",
     "tsc-alias": "1.9.5",
     "tsx": "^4",
     "vite": "^8",
-    "vitest": "^4.1.10",
-    "vitest-browser-react": "^2.2.0"
+    "vitest": "^5.0.3",
+    "vitest-browser-react": "^2.3.0"
   }
 }

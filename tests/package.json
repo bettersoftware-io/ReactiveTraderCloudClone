@@ -17,9 +17,9 @@
     "perf:motion-audit:solid": "RTC_CLIENT_PKG=@rtc/client-solid tsx scripts/with-server.ts tsx scripts/motion-audit.ts",
     "port:free": "tsx scripts/free-port.ts",
     "test:browser:playwright": "tsx scripts/with-server.ts playwright test --config browser/playwright/playwright.config.ts",
-    "test:browser:playwright-cucumber": "NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.js",
-    "test:browser:playwright-cucumber:headed": "PWCUCUMBER_HEADED=1 NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.js",
-    "test:browser:playwright-cucumber:solid": "RTC_CLIENT_PKG=@rtc/client-solid NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.js",
+    "test:browser:playwright-cucumber": "NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.mts",
+    "test:browser:playwright-cucumber:headed": "PWCUCUMBER_HEADED=1 NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.mts",
+    "test:browser:playwright-cucumber:solid": "RTC_CLIENT_PKG=@rtc/client-solid NODE_OPTIONS='--import tsx/esm' tsx scripts/with-server.ts cucumber-js --config browser/playwright-cucumber/cucumber.mts",
     "test:browser:playwright:headed": "tsx scripts/with-server.ts playwright test --headed --config browser/playwright/playwright.config.ts",
     "test:browser:playwright:solid": "RTC_CLIENT_PKG=@rtc/client-solid tsx scripts/with-server.ts playwright test --config browser/playwright/playwright.config.ts",
     "test:browser:playwright:ui": "tsx scripts/with-server.ts playwright test --ui --config browser/playwright/playwright.config.ts",
@@ -31,7 +31,7 @@
     "test:fullstack:node": "tsx fullstack/node-smoke.ts",
     "test:hooks": "vitest run browser/playwright-cucumber",
     "test:pages": "vitest run scripts/pages",
-    "test:presenter:cucumber-fake-timers": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber-fake-timers/cucumber.js",
+    "test:presenter:cucumber-fake-timers": "NODE_OPTIONS='--import tsx/esm' cucumber-js --config presenter/cucumber-fake-timers/cucumber.mts",
     "test:presenter:vitest-fake-timers": "vitest run --config presenter/vitest-fake-timers/vitest.config.ts",
     "test:report": "vitest run scripts/lib",
     "typecheck": "tsc --noEmit",
@@ -56,12 +56,12 @@
     "@types/pngjs": "^6.0.5",
     "@types/ws": "^8.18.1",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/ui": "^5.0.3",
     "istanbul-lib-coverage": "^3.2.2",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
     "tsx": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }

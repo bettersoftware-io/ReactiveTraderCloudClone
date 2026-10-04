@@ -2,7 +2,7 @@
 
 A function's own name must state its **effect** — what it does, to what —
 never the occasion that triggers it. `rtc/name-functions-by-effect`
-(`eslint-rules/name-functions-by-effect.mjs`) enforces this on every
+(`eslint-rules/name-functions-by-effect.mts`) enforces this on every
 `.ts`/`.tsx` file in the repo: `handleClick`, `onMessage`, `processClick` and
 `frameCallback` (when the binding holds a function) all fail CI.
 
@@ -106,4 +106,4 @@ cover power-saver Freeze, and was renamed to `dismissOnJumpCut`.
 
 - Design: [`docs/superpowers/specs/2026-07-26-name-functions-by-effect-design.md`](superpowers/specs/2026-07-26-name-functions-by-effect-design.md)
 - Architecture writeup: [§17](architecture/17-web-client-up-close.md)
-- The rule itself: `eslint-rules/name-functions-by-effect.mjs`
+- The rule itself: `eslint-rules/name-functions-by-effect.mts`

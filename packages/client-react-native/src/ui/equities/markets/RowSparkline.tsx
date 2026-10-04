@@ -15,7 +15,7 @@ import { useTheme } from "#/ui/theme/useTheme";
  * by `sparklinePoints` (via `buildRowSparkPath`) and stroked as a plain Skia
  * path — computed as a derived value on the JS thread during the ordinary
  * re-render (compiler-memoized, ADR-003; verified via
- * `scripts/react-compiler-healthcheck.mjs`, `path` tracked — the compiler
+ * `scripts/react-compiler-healthcheck.mts`, `path` tracked — the compiler
  * fuses `svgPath`'s computation into the same memo block as the
  * `Skia.Path.MakeFromSVGString` call it feeds, keyed on `history`), not the
  * `createPicture` recorder `CoreScene` uses for clock-driven geometry.

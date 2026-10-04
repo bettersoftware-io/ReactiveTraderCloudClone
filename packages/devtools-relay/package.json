@@ -18,7 +18,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mjs",
+    "build": "tsc --build && tsc-alias -p tsconfig.json && node ../../scripts/check-dist.mts",
     "typecheck": "tsc --noEmit --tsBuildInfoFile .turbo/typecheck.tsbuildinfo",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -35,6 +35,6 @@
     "@types/ws": "^8.18.1",
     "tsc-alias": "1.9.5",
     "tsx": "^4",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.3"
   }
 }

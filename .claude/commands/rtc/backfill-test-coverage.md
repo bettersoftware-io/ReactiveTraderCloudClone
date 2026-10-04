@@ -8,7 +8,7 @@ Find and close per-file test-coverage gaps. Optional filter: `$ARGUMENTS`.
 
 ## Coverage data already on disk
 
-!`node scripts/coverage-gaps.mjs --limit 5 2>&1 | tail -12; echo "---"; find packages -path '*/coverage/coverage-final.json' -newermt '-1 day' 2>/dev/null | wc -l | xargs echo "tier files written in the last 24h:"`
+!`node scripts/coverage-gaps.mts --limit 5 2>&1 | tail -12; echo "---"; find packages -path '*/coverage/coverage-final.json' -newermt '-1 day' 2>/dev/null | wc -l | xargs echo "tier files written in the last 24h:"`
 
 ## Other sessions may be doing this already
 

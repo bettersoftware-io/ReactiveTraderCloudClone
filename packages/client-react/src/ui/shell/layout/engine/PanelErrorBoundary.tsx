@@ -25,7 +25,7 @@ interface PanelErrorBoundaryState {
  * A class component is the only React primitive that can implement this
  * (there is no hook equivalent as of React 19) — the sanctioned exception to
  * this codebase's function-component convention; see
- * `rtc/class-filename-match` and `max-classes-per-file` in eslint.config.mjs.
+ * `rtc/class-filename-match` and `max-classes-per-file` in eslint.config.mts.
  *
  * React's error-boundary mechanism catches errors thrown during a
  * descendant's render AND its passive effects (the latter is exactly how the

@@ -1,0 +1,133 @@
+// Guards the pinned Playwright container image tag against silent drift.
+// The image `mcr.microsoft.com/playwright:<tag>` is referenced verbatim in
+// several places — the container-based CI workflows and the local
+// golden-in-container runner — because there is no single build-time constant
+// they can all import (GitHub Actions `container:` takes a literal string, and
+// the runner script is a standalone zero-dep ESM file). A "keep in sync"
+// comment is the only thing coupling them today, so a bump applied to one file
+// but not the others would diverge silently. This check reads every known
+// reference, extracts each file's tag, and fails if any file is missing the
+// reference or if the tags disagree — so the pin can only ever move in lockstep.
+//
+// Adding a NEW file that references the image? Add it to `FILES` below (a new
+// divergent reference is otherwise invisible to this guard, and that omission
+// is what review catches). Note: `.github/workflows/update-visual-goldens.yml`
+// is only ever READ here — never written by this script.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// Every file that references the pinned Playwright container image. Each must
+// contain exactly the same `mcr.microsoft.com/playwright:<tag>` string.
+const FILES = [
+  ".github/workflows/visual.yml",
+  ".github/workflows/coverage-report.yml",
+  ".github/workflows/update-visual-goldens.yml",
+  "scripts/goldens-in-container.mts",
+];
+
+interface TagReference {
+  readonly file: string;
+  readonly tag: string | null;
+}
+
+const IMAGE_TAG = /mcr\.microsoft\.com\/playwright:([^\s"'`]+)/;
+
+/** Extract the Playwright image tag referenced in a file, or `null` if the
+ * file does not reference the image at all. */
+function tagIn(relPath: string): string | null {
+  const source = readFileSync(join(process.cwd(), relPath), "utf8");
+  const match = source.match(IMAGE_TAG);
+
+  return match === null ? null : match[1];
+}
+
+const found = FILES.map((file): TagReference => {
+  return { file, tag: tagIn(file) };
+});
+
+const missing = found.filter((entry): boolean => {
+  return entry.tag === null;
+});
+
+if (missing.length > 0) {
+  console.error(
+    "check-image-tag-drift: expected a `mcr.microsoft.com/playwright:<tag>` " +
+      "reference in every listed file, but it is missing from:\n" +
+      missing
+        .map((entry): string => {
+          return `  ${entry.file}`;
+        })
+        .join("\n"),
+  );
+  process.exit(1);
+}
+
+const tags = new Set(
+  found.map((entry): string | null => {
+    return entry.tag;
+  }),
+);
+
+if (tags.size !== 1) {
+  console.error(
+    "check-image-tag-drift: the pinned Playwright container image tag has " +
+      "drifted — every reference must use the SAME tag. Found:\n" +
+      found
+        .map((entry): string => {
+          return `  ${entry.file} → ${entry.tag}`;
+        })
+        .join("\n"),
+  );
+  process.exit(1);
+}
+
+// Lockstep between the FILES is necessary but not sufficient: the image must
+// also carry the browser builds the INSTALLED playwright expects, or every
+// container-based run dies at `browserType.launch: Executable doesn't exist`.
+// That is exactly what happened when Renovate bumped playwright 1.61.1 →
+// 1.63.0 (#695) while the image stayed at v1.61.0-noble — this gate was green
+// because the four references still agreed with each other. So also compare
+// the tag against the version pnpm-lock.yaml resolves for `playwright`.
+// Major.minor only: browser builds move per minor (the v1.61.0 image served
+// npm 1.61.1), so a patch skew is fine and must not fail the gate.
+const [tag]: Set<string | null> = tags;
+const lock = readFileSync(join(process.cwd(), "pnpm-lock.yaml"), "utf8");
+const lockVersions = new Set(
+  [...lock.matchAll(/^ {2}playwright@(\d+\.\d+)\.\d+:$/gm)].map(
+    (match): string => {
+      return match[1];
+    },
+  ),
+);
+const tagMatch = tag === null ? null : tag.match(/^v(\d+\.\d+)\.\d+-/);
+const tagMinor: string | null = tagMatch === null ? null : tagMatch[1];
+
+if (lockVersions.size !== 1 || tagMinor === null) {
+  console.error(
+    "check-image-tag-drift: could not compare the image tag against the " +
+      `lockfile — tag ${tag} vs lockfile playwright version(s) ` +
+      `[${[...lockVersions].join(", ")}]. One resolved playwright version ` +
+      "and a v<semver>-<distro> tag are expected.",
+  );
+  process.exit(1);
+}
+
+const [lockMinor]: Set<string> = lockVersions;
+
+if (lockMinor !== tagMinor) {
+  console.error(
+    "check-image-tag-drift: the pinned container image " +
+      `(playwright:${tag}) does not match the installed playwright ` +
+      `${lockMinor}.x from pnpm-lock.yaml — the image would be missing the ` +
+      "browser builds this playwright expects. Bump the tag in every file " +
+      "listed in FILES (or realign the dependency).",
+  );
+  process.exit(1);
+}
+
+console.log(
+  `check-image-tag-drift: all ${found.length} references agree on ` +
+    `mcr.microsoft.com/playwright:${tag}, matching the installed ` +
+    `playwright ${lockMinor}.x`,
+);

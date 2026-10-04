@@ -130,7 +130,7 @@ language js
       closes that gap.
 - [x] **no-chained-use-hooks** *(added 2026-06-26)* — forbid chaining off
       `useHooks()` (`useHooks().useX()`). Selector
-      `MemberExpression[object.callee.name='useHooks']` in `eslint.config.mjs`.
+      `MemberExpression[object.callee.name='useHooks']` in `eslint.config.mts`.
       *Validated: flagged all 10 surviving chained callsites red, then green
       after converting each to `const { useX } = useHooks(); useX(args)`.*
       Together the two rules force the destructure-first idiom with no escape
@@ -211,7 +211,7 @@ architecture rule engine (forbid layer violations, orphans).
   enhanced-resolve.
 - Monorepo-aware, graphviz output, actively maintained.
 
-**Cost:** a `.dependency-cruiser.cjs` config (acceptable — we codify architecture
+**Cost:** a `.dependency-cruiser.mts` config (acceptable — we codify architecture
 anyway).
 
 ### 🔑 Critical finding (2026-06-22): we have ZERO real cycles

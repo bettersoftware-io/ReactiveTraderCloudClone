@@ -71,7 +71,7 @@ workstream measured, and `docs/STATUS.md` for what it deliberately deferred.
    `useCallback` did.
 
 3. **Add the compiler's lint half.** `eslint-plugin-react-hooks@7`
-   (`recommended-latest` flat preset) is wired into `eslint.config.mjs`, scoped
+   (`recommended-latest` flat preset) is wired into `eslint.config.mts`, scoped
    to `packages/client-react/src/**/*.{ts,tsx}` — exactly the source the
    compiler compiles (not tests, which never go through the Babel transform).
    The preset bundles `rules-of-hooks`, `exhaustive-deps`, and the granular
@@ -102,7 +102,7 @@ workstream measured, and `docs/STATUS.md` for what it deliberately deferred.
    `eslint-plugin-react-hooks` block from Decision item 3. A new
    `no-restricted-imports` rule bans importing `useMemo`/`useCallback`/`memo`
    from `react` across `client-react/src`, `client-react-native/{src,app}`, and
-   `devtools-app/src`. `pnpm check:compiler` (`scripts/react-compiler-healthcheck.mjs`,
+   `devtools-app/src`. `pnpm check:compiler` (`scripts/react-compiler-healthcheck.mts`,
    wired into `ci.yml` and `/rtc:gauntlet`'s fast tier) asserts every
    de-memoized file still compiles `OPTIMIZED` — the narrow anti-rot gate that
    would have caught this ADR's original, unmeasured coverage assumption. One

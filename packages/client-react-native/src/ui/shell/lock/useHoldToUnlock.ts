@@ -62,7 +62,7 @@ export const DECAY_MS = 260;
  * mutation isn't lexically inside "render" scope; only the *call* to a plain
  * function is, which `react-hooks/immutability` doesn't flag (mirrors this
  * file's other ref-mutation idiom, which relies on `react-hooks/refs` being
- * off for RN — see `eslint.config.mjs`).
+ * off for RN — see `eslint.config.mts`).
  *
  * No UI-side timers: timing is `react-native-gesture-handler`'s native
  * `minDuration` plus Reanimated's `withTiming`, not a JS-side interval.
@@ -91,7 +91,7 @@ export function useHoldToUnlock({
 
   // These two `useMemo`s are NOT caching — they carry semantics the React
   // Compiler cannot supply, and this repo's memo ban does not apply to them.
-  // (See `scripts/react-compiler-healthcheck.mjs`, where this file is a
+  // (See `scripts/react-compiler-healthcheck.mts`, where this file is a
   // documented exclusion, not a tracked/expected-optimized entry.) The chain,
   // measured against `babel-plugin-react-compiler@1.0.0` while attempting the
   // exact refactor this comment replaces:
