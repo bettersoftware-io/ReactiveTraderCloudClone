@@ -39,6 +39,10 @@ export function repointImports(
   let moved = 0;
 
   for (const node of source.statements) {
+    if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) {
+      continue;
+    }
+
     const from = moduleOf(node);
 
     if (from === undefined) {
@@ -47,11 +51,18 @@ export function repointImports(
 
     const targets = map[from];
     const specs = namedSpecs(node);
+    const obstacle =
+      specs === undefined
+        ? "only named imports and re-exports are supported"
+        : findLossyRewrite(source, node);
 
-    if (specs === undefined) {
+    // A declaration that cannot be re-rendered faithfully is never touched:
+    // reported when it is one this run was asked to repoint, and passed over
+    // as a merge target otherwise.
+    if (specs === undefined || obstacle !== undefined) {
       if (targets !== undefined) {
         problems.push(
-          `${fileName}: cannot repoint \`${node.getText(source)}\` — only named imports and re-exports are supported`,
+          `${fileName}: cannot repoint \`${node.getText(source)}\` — ${obstacle}`,
         );
       }
 
@@ -94,13 +105,13 @@ export function repointImports(
       continue;
     }
 
-    host.staying = [
+    host.staying = dedupe([
       ...host.staying,
       ...duplicates.flatMap((duplicate) => {
         return duplicate.staying;
       }),
       ...arriving,
-    ];
+    ]);
     host.loses = true;
 
     for (const duplicate of duplicates) {
@@ -199,6 +210,56 @@ function toSpec(
     alias: element.propertyName === undefined ? undefined : element.name.text,
     isType: typeOnly || element.isTypeOnly,
   };
+}
+
+/** Why re-rendering `node` from its specifiers would lose something, if it
+ * would: `render` writes the names and the module, nothing else. */
+function findLossyRewrite(
+  source: ts.SourceFile,
+  node: ts.ImportDeclaration | ts.ExportDeclaration,
+): string | undefined {
+  const text = source.text;
+  const head = text.slice(
+    node.getStart(source),
+    node.moduleSpecifier?.getStart(source),
+  );
+  const lineEnd = text.indexOf("\n", node.getEnd());
+  const tail = text.slice(
+    node.getEnd(),
+    lineEnd === -1 ? text.length : lineEnd,
+  );
+
+  if (node.attributes !== undefined) {
+    return "it has import attributes";
+  }
+
+  if (/\/[/*]/.test(head)) {
+    return "it has a comment inside it";
+  }
+
+  if (tail.trim() !== "") {
+    return "something follows it on its line";
+  }
+
+  return undefined;
+}
+
+/** One entry per binding: a name that arrives where the file already imports
+ * it is imported once, as a value if either side needs the value. */
+function dedupe(specs: readonly Spec[]): Spec[] {
+  const byBinding = new Map<string, Spec>();
+
+  for (const spec of specs) {
+    const binding = `${spec.name} as ${spec.alias ?? spec.name}`;
+    const seen = byBinding.get(binding);
+
+    byBinding.set(binding, {
+      ...spec,
+      isType: seen === undefined ? spec.isType : seen.isType && spec.isType,
+    });
+  }
+
+  return [...byBinding.values()];
 }
 
 /** The specs that move, keyed by the module each moves to. */

@@ -21,6 +21,7 @@ describe("buildHomeMap", () => {
     expect(homes.makeThing).toEqual({
       pkg: "beta",
       module: "thing.ts",
+      name: "makeThing",
       isValue: true,
     });
   });
@@ -29,6 +30,7 @@ describe("buildHomeMap", () => {
     expect(homes.Thing).toEqual({
       pkg: "beta",
       module: "thing.ts",
+      name: "Thing",
       isValue: false,
     });
   });
@@ -37,6 +39,7 @@ describe("buildHomeMap", () => {
     expect(homes.OTHER).toEqual({
       pkg: "beta",
       module: "other.ts",
+      name: "OTHER",
       isValue: true,
     });
   });
@@ -45,6 +48,16 @@ describe("buildHomeMap", () => {
     expect(homes.own).toEqual({
       pkg: "alpha",
       module: "nested/own.ts",
+      name: "own",
+      isValue: true,
+    });
+  });
+
+  it("keeps the declared name of a renamed re-export", () => {
+    expect(homes.buildThing).toEqual({
+      pkg: "beta",
+      module: "thing.ts",
+      name: "makeThing",
       isValue: true,
     });
   });
@@ -61,6 +74,7 @@ describe("buildHomeMap", () => {
     expect(Object.keys(homes).sort()).toEqual([
       "OTHER",
       "Thing",
+      "buildThing",
       "makeThing",
       "missing",
       "outside",
@@ -84,7 +98,7 @@ function createFixtureRepo(): string {
     "outside.ts": "export const outside = 3;\n",
     "packages/alpha/src/index.ts": [
       'export type { Thing } from "@fx/beta";',
-      'export { makeThing } from "@fx/beta";',
+      'export { makeThing, makeThing as buildThing } from "@fx/beta";',
       'export * from "@fx/beta/other";',
       'export * from "#/nested/own";',
       'export { outside } from "../../../outside";',

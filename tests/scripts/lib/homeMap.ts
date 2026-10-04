@@ -8,6 +8,9 @@ export interface Home {
   pkg: string;
   /** Path of the declaring module under that package's `src/`. */
   module: string;
+  /** The name it is declared under — not the export's own name when a
+   * re-export renames it (`export { x as y } from …`). */
+  name: string;
   isValue: boolean;
 }
 
@@ -61,6 +64,7 @@ export function buildHomeMap(
     homes[exported.getName()] = {
       pkg: match?.[1] ?? "",
       module: match?.[2] ?? file,
+      name: target.getName(),
       isValue: (target.flags & ts.SymbolFlags.Value) !== 0,
     };
   }

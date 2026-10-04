@@ -39,6 +39,10 @@ const map: Record<string, Record<string, string>> = flags.map === undefined
   ? {}
   : JSON.parse(readFileSync(flags.map, "utf8"));
 
+let files = 0;
+let names = 0;
+const problems: string[] = [];
+
 for (const from of flags.from) {
   const cut = from.indexOf("=");
   const specifier = from.slice(0, cut);
@@ -51,6 +55,13 @@ for (const from of flags.from) {
   )) {
     const target = targetOf(specifier, ownPkg, home);
 
+    if (target !== undefined && home.name !== name) {
+      problems.push(
+        `${entry}: \`${name}\` is \`${home.name}\` renamed — repoint its importers by hand`,
+      );
+      continue;
+    }
+
     if (
       target !== undefined &&
       (flags.onlyPkg.length === 0 || flags.onlyPkg.includes(home.pkg))
@@ -61,10 +72,6 @@ for (const from of flags.from) {
 
   map[specifier] = names;
 }
-
-let files = 0;
-let names = 0;
-const problems: string[] = [];
 
 for (const scope of flags.scope) {
   for (const file of listSourceFiles(resolve(ROOT, scope))) {
@@ -188,8 +195,8 @@ function resolveOwnModule(
   containingFile: string,
   src: string,
 ): string | undefined {
-  // A relative import may spell out the emitted extension (`./x.js`).
-  const bare = specifier.replace(/\.js$/, "");
+  // A relative import may spell out an extension (`./x.js`, `./x.ts`).
+  const bare = specifier.replace(/\.(?:js|tsx?)$/, "");
   const base = bare.startsWith("#/")
     ? join(src, bare.slice(2))
     : resolve(dirname(containingFile), bare);
@@ -209,8 +216,16 @@ function listForeignNames(module: string, pkg: string): Record<string, string> {
   const foreign: Record<string, string> = {};
 
   for (const [name, home] of Object.entries(buildHomeMap(module, ROOT))) {
-    if (home.pkg !== "" && home.pkg !== pkg) {
+    if (home.pkg === "" || home.pkg === pkg) {
+      continue;
+    }
+
+    if (home.name === name) {
       foreign[name] = `@rtc/${home.pkg}`;
+    } else {
+      problems.push(
+        `${relative(ROOT, module)}: \`${name}\` is \`${home.name}\` renamed — repoint its importers by hand`,
+      );
     }
   }
 

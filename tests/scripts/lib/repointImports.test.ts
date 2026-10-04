@@ -210,6 +210,76 @@ describe("repointImports", () => {
     );
   });
 
+  it("imports a name once when it arrives where the file already has it", () => {
+    const out = repointImports(
+      "a.ts",
+      [
+        'import type { PANEL_SPECS, WorkspaceDock } from "@rtc/core-logic";',
+        'export { PANEL_SPECS } from "@rtc/client-core";',
+        'import { PANEL_SPECS, type PANEL_SPECS as Specs } from "@rtc/client-core";',
+        "",
+      ].join("\n"),
+      MAP,
+    );
+
+    expect(out.text).toBe(
+      [
+        'import { PANEL_SPECS, type PANEL_SPECS as Specs, type WorkspaceDock } from "@rtc/core-logic";',
+        'export { PANEL_SPECS } from "@rtc/core-logic";',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it.each([
+    {
+      why: "a comment inside the braces",
+      declaration: [
+        "import {",
+        "  // why this one is here",
+        "  PANEL_SPECS,",
+        '} from "@rtc/client-core";',
+      ].join("\n"),
+    },
+    {
+      why: "a trailing comment on the declaration's line",
+      declaration: 'import { PANEL_SPECS } from "@rtc/client-core"; // keep me',
+    },
+    {
+      why: "import attributes",
+      declaration:
+        'import { PANEL_SPECS } from "@rtc/client-core" with { type: "json" };',
+    },
+  ])("reports $why and leaves the declaration alone", ({ declaration }) => {
+    const text = `${declaration}\n`;
+    const out = repointImports("a.ts", text, MAP);
+
+    expect(out.text).toBe(text);
+    expect(out.moved).toBe(0);
+    expect(out.problems).toHaveLength(1);
+  });
+
+  it("does not merge into a declaration it would have to rewrite lossily", () => {
+    const out = repointImports(
+      "a.ts",
+      [
+        'import { createWorkspaceDock } from "@rtc/core-logic"; // keep me',
+        'import { PANEL_SPECS } from "@rtc/client-core";',
+        "",
+      ].join("\n"),
+      MAP,
+    );
+
+    expect(out.text).toBe(
+      [
+        'import { createWorkspaceDock } from "@rtc/core-logic"; // keep me',
+        'import { PANEL_SPECS } from "@rtc/core-logic";',
+        "",
+      ].join("\n"),
+    );
+    expect(out.problems).toEqual([]);
+  });
+
   it("reports a namespace import and a star re-export instead of guessing", () => {
     const out = repointImports(
       "a.ts",
