@@ -5,10 +5,15 @@ import {
   CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
   CODE_ENTRY_RATE_LIMIT_MAX,
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
+  EMAIL_SENDS_PER_HOUR_MAX,
+  EMAIL_SENDS_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
   SEND_CODE_RATE_LIMIT_MAX,
   SEND_CODE_RATE_LIMIT_WINDOW_MS,
+  SEND_PER_ADDRESS_MAX,
+  SEND_PER_ADDRESS_MAX_KEYS,
+  SEND_PER_ADDRESS_WINDOW_MS,
 } from "../config/limits.js";
 import type { AccountRateLimits } from "./accountHandlers.js";
 
@@ -51,4 +56,17 @@ export function createCodeEntryLimiter(): RateLimiter {
     CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
     { maxKeys: CODE_ENTRY_PER_ADDRESS_MAX_KEYS },
   );
+}
+
+/** The per-ADDRESS send budget, shared by the three paths that send an
+ * email (the account service holds the one instance). */
+export function createSendLimiter(): RateLimiter {
+  return createRateLimiter(SEND_PER_ADDRESS_MAX, SEND_PER_ADDRESS_WINDOW_MS, {
+    maxKeys: SEND_PER_ADDRESS_MAX_KEYS,
+  });
+}
+
+/** The server-wide hourly email fuse; the service charges it under one key. */
+export function createSendFuse(): RateLimiter {
+  return createRateLimiter(EMAIL_SENDS_PER_HOUR_MAX, EMAIL_SENDS_WINDOW_MS);
 }

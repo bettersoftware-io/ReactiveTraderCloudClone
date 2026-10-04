@@ -97,6 +97,8 @@ describe("authenticateLoginRequest", () => {
         registrationOpen: true,
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
+        sendLimiter: createRateLimiter(100, 60_000),
+        sendFuse: createRateLimiter(100, 60_000),
       }),
     });
 
@@ -139,6 +141,8 @@ describe("authenticateLoginRequest", () => {
         registrationOpen: true,
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
+        sendLimiter: createRateLimiter(100, 60_000),
+        sendFuse: createRateLimiter(100, 60_000),
       }),
     });
 
@@ -370,6 +374,8 @@ function createAccounts(): AccountService {
     registrationOpen: true,
     maxRegistrationsPerDay: 100,
     codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuse: createRateLimiter(100, 60_000),
   });
 }
 

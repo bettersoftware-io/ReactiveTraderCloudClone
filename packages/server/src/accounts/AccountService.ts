@@ -20,6 +20,8 @@ import type {
 } from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
+/** The send fuse counts every email the server asks for under one key. */
+const SEND_FUSE_KEY = "all";
 
 export interface AccountServiceOptions {
   readonly directory: AccountDirectory;
@@ -30,13 +32,23 @@ export interface AccountServiceOptions {
    * shared by confirm and reset; the service never charges a request that
    * fails local validation. */
   readonly codeEntryLimiter: Pick<RateLimiter, "hit">;
+  /** Charged once per email the service asks the directory to send, keyed
+   * by the normalized address and shared by `/register`, `/resend-code` and
+   * `/request-reset`; never charged for a request that fails validation. */
+  readonly sendLimiter: Pick<RateLimiter, "hit">;
+  /** One key for the whole server: every send, whatever the address. A fuse
+   * set below the store's own email limit, so the server refuses honestly
+   * (`unavailable`) instead of the store dropping mail silently. */
+  readonly sendFuse: Pick<RateLimiter, "hit">;
 }
 
 type RegisterOutcome =
-  | { readonly outcome: "code_sent" | "closed" | "unavailable" }
+  | {
+      readonly outcome: "code_sent" | "closed" | "throttled" | "unavailable";
+    }
   | { readonly outcome: "invalid"; readonly rule: string };
 
-type SendCodeOutcome = "code_sent" | "invalid" | "unavailable";
+type SendCodeOutcome = "code_sent" | "invalid" | "throttled" | "unavailable";
 
 type ConfirmEmailOutcome =
   | {
@@ -109,6 +121,19 @@ export function createAccountService(
   /** Sign-ups answered since start; only ever grows. */
   let answered = 0;
 
+  /** The address's own budget first (`throttled`: the caller may be the
+   * owner, and a registered and an unregistered address answer alike), then
+   * the server-wide fuse (`unavailable`). */
+  function chargeSend(email: string): "allowed" | "throttled" | "unavailable" {
+    const at = options.now();
+
+    if (!options.sendLimiter.hit(email, at)) {
+      return "throttled";
+    }
+
+    return options.sendFuse.hit(SEND_FUSE_KEY, at) ? "allowed" : "unavailable";
+  }
+
   async function register(
     request: RegisterRequestDto,
     callerIp: string,
@@ -127,6 +152,12 @@ export function createAccountService(
 
     if (!isValidDisplayName(displayName)) {
       return { outcome: "invalid", rule: "display-name" };
+    }
+
+    const budget = chargeSend(email);
+
+    if (budget !== "allowed") {
+      return { outcome: budget };
     }
 
     const answeredBefore = answered;
@@ -172,6 +203,12 @@ export function createAccountService(
 
     if (email === null) {
       return "invalid";
+    }
+
+    const budget = chargeSend(email);
+
+    if (budget !== "allowed") {
+      return budget;
     }
 
     const sent = await directory.resendCode(email, callerIp);
@@ -220,6 +257,12 @@ export function createAccountService(
 
     if (email === null) {
       return "invalid";
+    }
+
+    const budget = chargeSend(email);
+
+    if (budget !== "allowed") {
+      return budget;
     }
 
     const sent = await directory.requestReset(email, callerIp);

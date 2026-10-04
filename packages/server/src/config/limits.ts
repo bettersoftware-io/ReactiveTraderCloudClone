@@ -86,6 +86,22 @@ export const CODE_ENTRY_PER_ADDRESS_WINDOW_MS = 15 * 60 * 1000;
  * per key. */
 export const CODE_ENTRY_PER_ADDRESS_MAX_KEYS = 50_000;
 
+/** B2 — emails sent per normalized address per window, one budget shared by
+ * the three paths that send one: `/register` (also for an address that
+ * already has an account), `/resend-code` and `/request-reset`. Charged only
+ * for a request that passes local validation. Over it: `429 rate_limited`,
+ * no ban strike (the caller may be the owner). Bounds mailing one victim. */
+export const SEND_PER_ADDRESS_MAX = 3;
+export const SEND_PER_ADDRESS_WINDOW_MS = 60 * 60 * 1000;
+export const SEND_PER_ADDRESS_MAX_KEYS = 50_000;
+
+/** B2 — emails sent per window across the whole server: a fuse. It must sit
+ * BELOW the Supabase project's own email rate limit, so the server answers
+ * `503 unavailable` honestly instead of the store answering "sent" and
+ * losing the mail silently (a lost sign-up looks exactly like a sent one). */
+export const EMAIL_SENDS_PER_HOUR_MAX = 25;
+export const EMAIL_SENDS_WINDOW_MS = 60 * 60 * 1000;
+
 /** B2 — registrations per day across the whole service: a fuse against a
  * scripted flood. Counted in the account store, so a restart keeps it. */
 export const MAX_REGISTRATIONS_PER_DAY = 200;

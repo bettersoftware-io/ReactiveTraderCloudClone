@@ -59,6 +59,8 @@ import {
 import {
   createAccountLimits,
   createCodeEntryLimiter,
+  createSendFuse,
+  createSendLimiter,
 } from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
 import { resolveClientIp, resolveTrustedIpHeader } from "./http/clientIp.js";
@@ -198,6 +200,8 @@ const accounts = createAccountService({
   registrationOpen: isRegistrationOpen(process.env),
   maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
   codeEntryLimiter: createCodeEntryLimiter(),
+  sendLimiter: createSendLimiter(),
+  sendFuse: createSendFuse(),
 });
 
 const accountStatus = createAccountStatusCache({

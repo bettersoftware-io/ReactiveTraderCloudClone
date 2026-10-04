@@ -14,6 +14,8 @@ import {
 import {
   createAccountLimits,
   createCodeEntryLimiter,
+  createSendFuse,
+  createSendLimiter,
 } from "#/http/accountLimits";
 
 describe("createAccountLimits", () => {
@@ -72,6 +74,26 @@ describe("createCodeEntryLimiter", () => {
   });
 });
 
+describe("createSendLimiter", () => {
+  it("allows exactly 3 sends per address per hour", () => {
+    expectBudget(createSendLimiter(), 3, 60 * 60 * 1_000);
+  });
+
+  it("holds 50,000 addresses before evicting the oldest", () => {
+    expectMaxKeys(createSendLimiter(), 3, 50_000);
+  });
+
+  it("is a fresh instance per call", () => {
+    expect(createSendLimiter()).not.toBe(createSendLimiter());
+  });
+});
+
+describe("createSendFuse", () => {
+  it("allows exactly 25 sends per hour across the whole server", () => {
+    expectBudget(createSendFuse(), 25, 60 * 60 * 1_000);
+  });
+});
+
 function exhaust(limiter: RateLimiter, max: number): void {
   for (let hit = 0; hit < max; hit += 1) {
     limiter.hit("1.2.3.4", 0);
@@ -92,4 +114,27 @@ function expectBudget(
   expect(limiter.hit("key", max)).toBe(false);
   expect(limiter.hit("key", windowMs - 1)).toBe(false);
   expect(limiter.hit("key", windowMs)).toBe(true);
+}
+
+/** A spent key stays refused while the table holds `maxKeys` keys, and is
+ * evicted (so allowed again) by the key after that. */
+function expectMaxKeys(
+  limiter: RateLimiter,
+  max: number,
+  maxKeys: number,
+): void {
+  for (let hit = 0; hit < max; hit += 1) {
+    limiter.hit("first", 0);
+  }
+
+  for (let key = 1; key < maxKeys; key += 1) {
+    limiter.hit(`key-${key}`, 1);
+  }
+
+  expect(limiter.size()).toBe(maxKeys);
+  expect(limiter.hit("first", 2)).toBe(false);
+
+  limiter.hit("one-more", 2);
+
+  expect(limiter.hit("first", 2)).toBe(true);
 }

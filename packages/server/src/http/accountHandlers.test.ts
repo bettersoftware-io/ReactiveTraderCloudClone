@@ -13,6 +13,7 @@ import {
 } from "#/accounts/InMemoryAccountDirectory";
 import { type BanList, createBanList } from "#/auth/banList";
 import { createRateLimiter, type RateLimiter } from "#/auth/rateLimit";
+import type { HttpResult } from "#/http/jsonResult";
 
 import {
   type AccountHandlerDeps,
@@ -436,6 +437,63 @@ describe("code entry per address", () => {
   });
 });
 
+describe("sending per address", () => {
+  it.each([
+    ["registerAccount", registerAccount, createRegisterBody()],
+    [
+      "resendConfirmationCode",
+      resendConfirmationCode,
+      JSON.stringify({ email: "ann@desk.io" }),
+    ],
+    [
+      "requestPasswordReset",
+      requestPasswordReset,
+      JSON.stringify({ email: "ann@desk.io" }),
+    ],
+  ])(
+    "%s answers 429 rate_limited once the address's sends are spent, with no strike",
+    async (_name: string, handler: Handler, body: string) => {
+      const banList = createBanList({
+        strikesToBan: 1,
+        strikeWindowMs: 60_000,
+        banMs: 30_000,
+        maxEntries: 10,
+      });
+
+      const deps = createDeps({
+        banList,
+        sendLimiter: createRateLimiter(1, 60_000),
+      });
+
+      expect((await handler(body, IP, deps)).status).toBe(202);
+
+      const limited = await handler(body, IP, deps);
+
+      expect(limited.status).toBe(429);
+      expect(JSON.parse(limited.body)).toEqual({ error: "rate_limited" });
+      expect(banList.isBanned(IP, 1_000)).toBe(false);
+    },
+  );
+
+  it("a blown hourly fuse answers 503 unavailable", async () => {
+    const deps = createDeps({ sendFuse: createRateLimiter(1, 60_000) });
+
+    await resendConfirmationCode(
+      JSON.stringify({ email: "ann@desk.io" }),
+      IP,
+      deps,
+    );
+    const result = await requestPasswordReset(
+      JSON.stringify({ email: "bob@desk.io" }),
+      IP,
+      deps,
+    );
+
+    expect(result.status).toBe(503);
+    expect(JSON.parse(result.body)).toEqual({ error: "unavailable" });
+  });
+});
+
 describe("limiter wiring", () => {
   it("each endpoint charges its own limiter", async () => {
     const spent = createRateLimiter(1, 60_000);
@@ -554,6 +612,12 @@ describe("enumeration and malformed bodies", () => {
   });
 });
 
+type Handler = (
+  bodyText: string,
+  ip: string,
+  deps: AccountHandlerDeps,
+) => Promise<HttpResult>;
+
 async function requestResetFor(
   deps: AccountHandlerDeps,
   email: string,
@@ -567,6 +631,8 @@ interface DepsOverrides {
   readonly limiter?: RateLimiter;
   readonly limits?: Partial<AccountRateLimits>;
   readonly codeEntryLimiter?: RateLimiter;
+  readonly sendLimiter?: RateLimiter;
+  readonly sendFuse?: RateLimiter;
   readonly registrationOpen?: boolean;
 }
 
@@ -586,6 +652,8 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       maxRegistrationsPerDay: 100,
       codeEntryLimiter:
         overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
+      sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
+      sendFuse: overrides.sendFuse ?? createRateLimiter(100, 60_000),
     }),
     banList:
       overrides.banList ??

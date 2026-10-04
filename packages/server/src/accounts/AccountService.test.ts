@@ -102,6 +102,8 @@ describe("AccountService.register", () => {
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
+      sendLimiter: createRateLimiter(100, 60_000),
+      sendFuse: createRateLimiter(100, 60_000),
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -126,6 +128,8 @@ describe("AccountService.register", () => {
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
+      sendLimiter: createRateLimiter(100, 60_000),
+      sendFuse: createRateLimiter(100, 60_000),
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -209,6 +213,8 @@ describe("AccountService.login", () => {
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
+      sendLimiter: createRateLimiter(100, 60_000),
+      sendFuse: createRateLimiter(100, 60_000),
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -233,6 +239,8 @@ describe("AccountService.login", () => {
       registrationOpen: true,
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
+      sendLimiter: createRateLimiter(100, 60_000),
+      sendFuse: createRateLimiter(100, 60_000),
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -777,11 +785,141 @@ describe("AccountService per-address code limit", () => {
   const WINDOW_MS = 60_000;
 });
 
+describe("AccountService per-address send limit", () => {
+  it.each(["register", "resendCode", "requestReset"] as const)(
+    "the fourth send for one address within the hour is throttled when %s makes it, and the directory is not called",
+    async (path: SendPath) => {
+      const { service, directory } = createService({
+        sendLimiter: createRateLimiter(3, HOUR_MS),
+      });
+
+      await service.register(createRegistration(), IP);
+      await service.resendCode("ann@desk.io", IP);
+      await service.requestReset("ann@desk.io", IP);
+
+      const calls = spyOnSends(directory);
+
+      expect(await sendVia(service, path, "ann@desk.io")).toBe("throttled");
+      expect(calls()).toBe(0);
+    },
+  );
+
+  it("a throttled registration is refused before the daily cap is counted", async () => {
+    const { service, directory } = createService({
+      sendLimiter: createRateLimiter(1, HOUR_MS),
+    });
+
+    await service.resendCode("ann@desk.io", IP);
+    const count = vi.spyOn(directory, "countRegistrationsSince");
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "throttled",
+    });
+    expect(count).not.toHaveBeenCalled();
+  });
+
+  it("differently spelled addresses share one budget", async () => {
+    const { service } = createService({
+      sendLimiter: createRateLimiter(1, HOUR_MS),
+    });
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
+    expect(await service.requestReset("  ANN@Desk.io ", IP)).toBe("throttled");
+  });
+
+  it("an invalid request, or a closed registration, spends nothing", async () => {
+    const hit = vi.fn((): boolean => {
+      return true;
+    });
+
+    const { service } = createService({
+      sendLimiter: {
+        hit,
+        size: (): number => {
+          return 0;
+        },
+      },
+    });
+
+    const closed = createService({
+      registrationOpen: false,
+      sendLimiter: {
+        hit,
+        size: (): number => {
+          return 0;
+        },
+      },
+    }).service;
+
+    await service.resendCode("nope", IP);
+    await service.requestReset("nope", IP);
+    await service.register({ ...createRegistration(), email: "nope" }, IP);
+    await service.register({ ...createRegistration(), displayName: "A" }, IP);
+    await closed.register(createRegistration(), IP);
+
+    expect(hit).not.toHaveBeenCalled();
+  });
+
+  it("the window passing restores the budget", async () => {
+    let at = 2 * 24 * 60 * 60 * 1_000;
+    const { service } = createService({
+      now: (): number => {
+        return at;
+      },
+      sendLimiter: createRateLimiter(1, HOUR_MS),
+    });
+
+    await service.resendCode("ann@desk.io", IP);
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("throttled");
+
+    at += HOUR_MS;
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
+  });
+
+  it("answers the same for a registered and an unregistered address", async () => {
+    const { service } = createService({
+      sendLimiter: createRateLimiter(1, HOUR_MS),
+    });
+
+    await service.requestReset("trader@rtc.test", IP);
+    await service.requestReset("nobody@desk.io", IP);
+
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe("throttled");
+    expect(await service.requestReset("nobody@desk.io", IP)).toBe("throttled");
+  });
+
+  it("the hourly fuse answers unavailable on the 26th send across different addresses, without a directory call", async () => {
+    const { service, directory } = createService({
+      sendFuse: createRateLimiter(25, HOUR_MS),
+    });
+    const calls = spyOnSends(directory);
+
+    for (let n = 0; n < 25; n += 1) {
+      expect(await service.resendCode(`n${n}@desk.io`, IP)).toBe("code_sent");
+    }
+
+    expect(calls()).toBe(25);
+    expect(await service.requestReset("late@desk.io", IP)).toBe("unavailable");
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "later@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "unavailable" });
+    expect(calls()).toBe(25);
+  });
+
+  const HOUR_MS = 60 * 60 * 1_000;
+});
+
 interface ServiceOverrides {
   readonly registrationOpen?: boolean;
   readonly maxRegistrationsPerDay?: number;
   readonly now?: () => number;
   readonly codeEntryLimiter?: RateLimiter;
+  readonly sendLimiter?: RateLimiter;
+  readonly sendFuse?: RateLimiter;
 }
 
 interface ServiceFixture {
@@ -803,6 +941,8 @@ function createService(overrides: ServiceOverrides = {}): ServiceFixture {
     maxRegistrationsPerDay: overrides.maxRegistrationsPerDay ?? 10,
     codeEntryLimiter:
       overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
+    sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
+    sendFuse: overrides.sendFuse ?? createRateLimiter(100, 60_000),
   });
 
   return { service, directory };
@@ -876,5 +1016,40 @@ function createDoubleService(
     registrationOpen: true,
     maxRegistrationsPerDay,
     codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuse: createRateLimiter(100, 60_000),
   });
+}
+
+type SendPath = "register" | "resendCode" | "requestReset";
+
+/** One send through the named path, read as the same small vocabulary. */
+async function sendVia(
+  service: AccountService,
+  path: SendPath,
+  email: string,
+): Promise<string> {
+  if (path === "register") {
+    return (await service.register({ email, displayName: "Ann Lee" }, IP))
+      .outcome;
+  }
+
+  return path === "resendCode"
+    ? service.resendCode(email, IP)
+    : service.requestReset(email, IP);
+}
+
+/** How many times the directory was asked to send, across all three paths. */
+function spyOnSends(directory: AccountDirectory): () => number {
+  const spies = [
+    vi.spyOn(directory, "signUp"),
+    vi.spyOn(directory, "resendCode"),
+    vi.spyOn(directory, "requestReset"),
+  ];
+
+  return (): number => {
+    return spies.reduce((total, spy) => {
+      return total + spy.mock.calls.length;
+    }, 0);
+  };
 }

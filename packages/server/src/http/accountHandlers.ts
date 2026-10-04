@@ -57,6 +57,10 @@ export async function registerAccount(
     return errorResult(403, { error: "registration_closed" });
   }
 
+  if (result.outcome === "throttled") {
+    return throttledResult();
+  }
+
   return result.outcome === "code_sent"
     ? flowResult(202, "code_sent")
     : errorResult(503, { error: "unavailable" });
@@ -239,8 +243,8 @@ function admit<T>(
   return { ok: true, dto: parsed };
 }
 
-/** The address's own code-entry budget is spent. NOT a ban strike: the
- * caller may be the address's real owner. */
+/** The address's own code-entry or send budget is spent. NOT a ban strike:
+ * the caller may be the address's real owner. */
 function throttledResult(): HttpResult {
   return errorResult(429, { error: "rate_limited" });
 }
@@ -252,10 +256,14 @@ function refuseCode(ip: string, deps: AccountHandlerDeps): HttpResult {
 }
 
 function sendCodeResult(
-  outcome: "code_sent" | "invalid" | "unavailable",
+  outcome: "code_sent" | "invalid" | "throttled" | "unavailable",
 ): HttpResult {
   if (outcome === "invalid") {
     return errorResult(400, { error: "invalid_request", rule: "email" });
+  }
+
+  if (outcome === "throttled") {
+    return throttledResult();
   }
 
   return outcome === "code_sent"

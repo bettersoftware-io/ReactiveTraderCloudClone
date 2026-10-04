@@ -7,7 +7,9 @@
  * cover each rule; this proves they are wired to real routes.
  *
  * Every request carries its own `Fly-Client-IP`, so the journey shares no
- * rate-limit bucket or strike table with the other smoke checks.
+ * rate-limit bucket or strike table with the other smoke checks. It sends at
+ * most three emails per address (`SEND_PER_ADDRESS_MAX`): two registrations
+ * for the new address, one reset request for the active seed.
  */
 import { WebSocket } from "ws";
 
