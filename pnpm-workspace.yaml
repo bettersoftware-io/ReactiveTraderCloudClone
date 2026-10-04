@@ -307,19 +307,20 @@ overrides:
   # the CI `expo export` step (ci.yml) is the only exerciser.
   #
   # (1) VERSION: pin worklets to ONE exact version, the one the direct dependency
-  # in packages/client-react-native/package.json declares (0.12.2, the 0.12.x
-  # line reanimated@4.6.0 peers on and was built against). The worklets babel
+  # in packages/client-react-native/package.json declares (0.10.1, the 0.10.x
+  # line reanimated@4.5.1 peers on and was built against — both are the versions
+  # Expo Go bundles for SDK 57, see expoGoVersions.test.ts). The worklets babel
   # plugin and the worklets runtime must be the SAME version or the transform
   # emits code the runtime mis-reads (`Cannot read properties of undefined
   # (reading 'length')` while transforming reanimated's own Easing.ts) — see the
-  # Reanimated troubleshooting guide. reanimated peers a RANGE (`0.12.x`), so a
+  # Reanimated troubleshooting guide. reanimated peers a RANGE (`0.10.x`), so a
   # natural install can float the peer to a later patch (a MISMATCH vs the
   # plugin the app installed); force the exact version everywhere so
   # plugin == runtime == the tested pair. KEEP THIS IN LOCKSTEP with the
   # package.json entry: Renovate never edits this file (see renovate.json5), so
   # a worklets bump lands here by hand or `pnpm check:versions` (syncpack) reds
   # on the split — exactly how #698 first failed.
-  react-native-worklets: 0.12.2
+  react-native-worklets: 0.10.1
   # (2) BABEL: worklets' nested babel transform (its @babel/preset-typescript@^7)
   # hard-asserts the caller's @babel/core is ^7, but worklets declares @babel/core
   # peer `*` so pnpm otherwise hands it the workspace-hoisted @babel/core@8.0.1
