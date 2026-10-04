@@ -16,6 +16,7 @@ import { createRateLimiter, type RateLimiter } from "#/auth/rateLimit";
 
 import {
   type AccountHandlerDeps,
+  type AccountRateLimits,
   confirmEmailAddress,
   registerAccount,
   requestPasswordReset,
@@ -321,10 +322,245 @@ describe("resetAccountPassword", () => {
   });
 });
 
+describe("code entry per address", () => {
+  it("bounds one address across callers: the third attempt from a third IP is 429 and never reaches the service", async () => {
+    const deps = createDeps({
+      limits: { codeEntryPerAddress: createRateLimiter(2, 60_000) },
+    });
+    const reset = vi.spyOn(deps.accounts, "resetPassword");
+    const body = createResetBody("Fresh2026!pass");
+
+    await resetAccountPassword(body, "10.0.0.1", deps);
+    await resetAccountPassword(body, "10.0.0.2", deps);
+    const third = await resetAccountPassword(body, "10.0.0.3", deps);
+
+    expect(third.status).toBe(429);
+    expect(JSON.parse(third.body)).toEqual({ error: "rate_limited" });
+    expect(reset).toHaveBeenCalledTimes(2);
+  });
+
+  it("another address from the same IP still gets through", async () => {
+    const deps = createDeps({
+      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+    });
+    const reset = vi.spyOn(deps.accounts, "resetPassword");
+    await requestResetFor(deps, "trader@rtc.test");
+    await requestResetFor(deps, "admin@rtc.test");
+
+    await resetAccountPassword(createResetBody("Fresh2026!pass"), IP, deps);
+    const other = await resetAccountPassword(
+      createResetBody("Fresh2026!pass", "admin@rtc.test"),
+      IP,
+      deps,
+    );
+
+    expect(other.status).toBe(200);
+    expect(reset).toHaveBeenCalledTimes(2);
+  });
+
+  it("spellings of one address share one budget", async () => {
+    const deps = createDeps({
+      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+    });
+
+    await resetAccountPassword(createResetBody("Fresh2026!pass"), IP, deps);
+    const respelled = await resetAccountPassword(
+      createResetBody("Fresh2026!pass", " Trader@RTC.test "),
+      IP,
+      deps,
+    );
+
+    expect(respelled.status).toBe(429);
+  });
+
+  it("confirm and reset share one budget", async () => {
+    const deps = createDeps({
+      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+    });
+    const confirm = vi.spyOn(deps.accounts, "confirmEmail");
+
+    await resetAccountPassword(
+      createResetBody("Fresh2026!pass", "ann@desk.io"),
+      IP,
+      deps,
+    );
+    const result = await confirmEmailAddress(createConfirmBody(), IP, deps);
+
+    expect(result.status).toBe(429);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("the 429 adds no strike", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+
+    const deps = createDeps({
+      banList,
+      limits: { codeEntryPerAddress: createRateLimiter(1, 60_000) },
+    });
+    await requestResetFor(deps, "trader@rtc.test");
+
+    await resetAccountPassword(createResetBody("Fresh2026!pass"), IP, deps);
+    const limited = await resetAccountPassword(
+      createResetBody("Fresh2026!pass"),
+      IP,
+      deps,
+    );
+
+    expect(limited.status).toBe(429);
+    expect(banList.isBanned(IP, 1_000)).toBe(false);
+  });
+
+  it("a malformed body is not charged to any address", async () => {
+    const limiter = createRateLimiter(1, 60_000);
+    const deps = createDeps({ limits: { codeEntryPerAddress: limiter } });
+    await requestResetFor(deps, "trader@rtc.test");
+
+    await resetAccountPassword("{nope", IP, deps);
+    const result = await resetAccountPassword(
+      createResetBody("Fresh2026!pass"),
+      IP,
+      deps,
+    );
+
+    expect(result.status).toBe(200);
+  });
+});
+
+describe("limiter wiring", () => {
+  it("each endpoint charges its own limiter", async () => {
+    const spent = createRateLimiter(1, 60_000);
+    spent.hit(IP, 1_000);
+    const emailBody = JSON.stringify({ email: "nobody@desk.io" });
+
+    const registerSpent = createDeps({ limits: { register: spent } });
+    expect(
+      (await registerAccount(createRegisterBody(), IP, registerSpent)).status,
+    ).toBe(429);
+    expect(
+      (await resendConfirmationCode(emailBody, IP, registerSpent)).status,
+    ).toBe(202);
+
+    const confirmSpent = createDeps({ limits: { confirmEmail: spent } });
+    await requestResetFor(confirmSpent, "trader@rtc.test");
+    expect(
+      (await confirmEmailAddress(createConfirmBody(), IP, confirmSpent)).status,
+    ).toBe(429);
+    expect(
+      (
+        await resetAccountPassword(
+          createResetBody("Fresh2026!pass"),
+          IP,
+          confirmSpent,
+        )
+      ).status,
+    ).toBe(200);
+
+    const resetSpent = createDeps({ limits: { resetPassword: spent } });
+    expect(
+      (
+        await resetAccountPassword(
+          createResetBody("Fresh2026!pass"),
+          IP,
+          resetSpent,
+        )
+      ).status,
+    ).toBe(429);
+    expect((await requestPasswordReset(emailBody, IP, resetSpent)).status).toBe(
+      202,
+    );
+  });
+
+  it("resend and request-reset have separate limiters", async () => {
+    const spent = createRateLimiter(1, 60_000);
+    spent.hit(IP, 1_000);
+    const body = JSON.stringify({ email: "nobody@desk.io" });
+
+    const resendSpent = createDeps({ limits: { resendCode: spent } });
+    expect((await resendConfirmationCode(body, IP, resendSpent)).status).toBe(
+      429,
+    );
+    expect((await requestPasswordReset(body, IP, resendSpent)).status).toBe(
+      202,
+    );
+
+    const requestSpent = createDeps({ limits: { requestReset: spent } });
+    expect((await requestPasswordReset(body, IP, requestSpent)).status).toBe(
+      429,
+    );
+    expect((await resendConfirmationCode(body, IP, requestSpent)).status).toBe(
+      202,
+    );
+  });
+
+  it("a banned caller with a spent limiter is told banned, not rate_limited", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+    banList.strike(IP, "login-failed", 500);
+    const spent = createRateLimiter(1, 60_000);
+    spent.hit(IP, 1_000);
+    const deps = createDeps({ banList, limits: { register: spent } });
+
+    const result = await registerAccount(createRegisterBody(), IP, deps);
+
+    expect(result.status).toBe(429);
+    expect(JSON.parse(result.body)).toEqual({ error: "banned" });
+  });
+});
+
+describe("enumeration and malformed bodies", () => {
+  it("resend-code and request-reset answer a registered and an unregistered address identically", async () => {
+    const deps = createDeps();
+    const registered = JSON.stringify({ email: "trader@rtc.test" });
+    const unregistered = JSON.stringify({ email: "nobody@desk.io" });
+
+    for (const handler of [resendConfirmationCode, requestPasswordReset]) {
+      const known = await handler(registered, IP, deps);
+      const unknown = await handler(unregistered, IP, deps);
+
+      expect(known.status).toBe(unknown.status);
+      expect(known.body).toBe(unknown.body);
+    }
+  });
+
+  it("malformed JSON answers the malformed_json body on every endpoint", async () => {
+    const deps = createDeps();
+
+    for (const handler of [
+      registerAccount,
+      resendConfirmationCode,
+      confirmEmailAddress,
+      requestPasswordReset,
+      resetAccountPassword,
+    ]) {
+      const result = await handler("{nope", IP, deps);
+
+      expect(result.status).toBe(400);
+      expect(JSON.parse(result.body)).toEqual({ error: "malformed_json" });
+    }
+  });
+});
+
+async function requestResetFor(
+  deps: AccountHandlerDeps,
+  email: string,
+): Promise<void> {
+  await deps.accounts.requestReset(email, IP);
+}
+
 interface DepsOverrides {
   readonly directory?: AccountDirectory;
   readonly banList?: BanList;
   readonly limiter?: RateLimiter;
+  readonly limits?: Partial<AccountRateLimits>;
   readonly registrationOpen?: boolean;
 }
 
@@ -357,6 +593,8 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       confirmEmail: limiter,
       requestReset: limiter,
       resetPassword: limiter,
+      codeEntryPerAddress: createRateLimiter(100, 60_000),
+      ...overrides.limits,
     },
     now: createClock(1_000),
   };
@@ -392,9 +630,12 @@ function createConfirmBody(overrides: ConfirmOverrides = {}): string {
   });
 }
 
-function createResetBody(password: string): string {
+function createResetBody(
+  password: string,
+  email: string = "trader@rtc.test",
+): string {
   return JSON.stringify({
-    email: "trader@rtc.test",
+    email,
     code: DEV_CONFIRMATION_CODE,
     password,
   });

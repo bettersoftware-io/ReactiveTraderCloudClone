@@ -1,3 +1,4 @@
+import { normalizeEmail } from "@rtc/domain";
 import {
   type AccountErrorDto,
   type AccountFlowResponseDto,
@@ -19,6 +20,8 @@ export interface AccountRateLimits {
   readonly confirmEmail: RateLimiter;
   readonly requestReset: RateLimiter;
   readonly resetPassword: RateLimiter;
+  /** Keyed by normalized email; shared by confirm and reset. */
+  readonly codeEntryPerAddress: RateLimiter;
 }
 
 export interface AccountHandlerDeps {
@@ -102,6 +105,10 @@ export async function confirmEmailAddress(
     return admitted.result;
   }
 
+  if (!chargeAddress(admitted.dto.email, deps)) {
+    return errorResult(429, { error: "rate_limited" });
+  }
+
   const result = await deps.accounts.confirmEmail(admitted.dto, ip);
 
   if (result.outcome === "invalid") {
@@ -160,6 +167,10 @@ export async function resetAccountPassword(
 
   if (!admitted.ok) {
     return admitted.result;
+  }
+
+  if (!chargeAddress(admitted.dto.email, deps)) {
+    return errorResult(429, { error: "rate_limited" });
   }
 
   const result = await deps.accounts.resetPassword(admitted.dto, ip);
@@ -229,6 +240,12 @@ function admit<T>(
   }
 
   return { ok: true, dto: parsed };
+}
+
+/** Charges one code-entry try to the address. Over the budget is NOT a ban
+ * strike: the caller may be the address's real owner. */
+function chargeAddress(email: string, deps: AccountHandlerDeps): boolean {
+  return deps.limits.codeEntryPerAddress.hit(normalizeEmail(email), deps.now());
 }
 
 function refuseCode(ip: string, deps: AccountHandlerDeps): HttpResult {

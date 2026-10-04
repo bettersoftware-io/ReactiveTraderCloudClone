@@ -65,7 +65,9 @@ export async function authenticateLoginRequest(
   }
 
   // An email address is a registered account; anything else is the roster.
-  // The demo usernames contain no `@`, so the two can never collide.
+  // They cannot collide: `parseAuthUsers` refuses a roster username that
+  // contains `@`, so the server never starts with one that this branch would
+  // make unreachable.
   if (parsed.username.includes("@")) {
     return answerAccountLogin(parsed, ip, now, deps);
   }

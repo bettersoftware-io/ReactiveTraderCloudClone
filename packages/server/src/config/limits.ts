@@ -69,6 +69,13 @@ export const SEND_CODE_RATE_LIMIT_WINDOW_MS = 60 * 60_000;
 export const CODE_ENTRY_RATE_LIMIT_MAX = 10;
 export const CODE_ENTRY_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
 
+/** B2 — `/confirm-email` and `/reset-password` per normalized email address,
+ * one budget shared by both. 5 tries per 15 minutes makes a 1-in-a-million
+ * code unguessable in its lifetime, at the cost that someone can make an
+ * address wait 15 minutes by burning its tries. */
+export const CODE_ENTRY_PER_ADDRESS_MAX = 5;
+export const CODE_ENTRY_PER_ADDRESS_WINDOW_MS = 15 * 60 * 1000;
+
 /** B2 — registrations per day across the whole service: a fuse against a
  * scripted flood. Counted in the account store, so a restart keeps it. */
 export const MAX_REGISTRATIONS_PER_DAY = 200;

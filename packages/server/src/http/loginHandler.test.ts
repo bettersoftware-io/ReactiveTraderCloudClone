@@ -69,6 +69,47 @@ describe("authenticateLoginRequest", () => {
     expect(banList.isBanned("1.2.3.4", 1_000)).toBe(false);
   });
 
+  it("refuses a registered but unconfirmed address with 403 unconfirmed and no strike", async () => {
+    const now = createClock(2 * 24 * 60 * 60 * 1_000);
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      banList,
+      accounts: createAccountService({
+        directory: createInMemoryAccountDirectory({
+          now,
+          seeds: [
+            {
+              id: "00000000-0000-4000-8000-000000000009",
+              email: "fresh@rtc.test",
+              displayName: "Fresh Guest",
+              access: "user",
+              status: "unconfirmed",
+            },
+          ],
+        }),
+        now,
+        registrationOpen: true,
+        maxRegistrationsPerDay: 100,
+      }),
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("fresh@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(403);
+    expect(JSON.parse(result.body)).toEqual({ error: "unconfirmed" });
+    expect(banList.isBanned("1.2.3.4", 1_000)).toBe(false);
+  });
+
   it("a wrong password for a registered address is 401 and a strike", async () => {
     const banList = createBanList({
       strikesToBan: 1,

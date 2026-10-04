@@ -61,6 +61,19 @@ describe("AuthService", () => {
     expect(m.size).toBe(2);
   });
 
+  it("parseAuthUsers refuses a username containing @, naming the entry by index only", () => {
+    expect(() => {
+      return parseAuthUsers("demo:x,ann@desk:hunter2");
+    }).toThrow('AUTH_USERS: a roster username must not contain "@" (entry 2)');
+
+    try {
+      parseAuthUsers("ann@desk:hunter2");
+    } catch (error) {
+      expect(String(error)).not.toContain("ann@desk");
+      expect(String(error)).not.toContain("hunter2");
+    }
+  });
+
   it("throws when constructed with an empty secret but configured users", () => {
     expect(() => {
       return new AuthService({
