@@ -27,6 +27,14 @@ test("does not auto-login on mount; auth state stays unauthenticated", async () 
   expect(page.authStatus()).toBe("unauthenticated");
 });
 
+// The UI may not read `process.env` (grep gate 32), so the stamp reaches the
+// status strip and the sign-in screen only if AppRoot hands it down. Without
+// this the two would silently print nothing on a published build.
+test("hands the build stamp it read down to the UI", async () => {
+  await page.mountBuildStampProbe();
+  expect(page.buildStampText()).toBe("f0482c5|2026-10-04T15:20Z");
+});
+
 // AsyncStorage has no native module under jest, so importing the real one
 // throws at require time. Stub the two methods the preferences adapter uses
 // (getItem/setItem) so the simulator composition builds without a native host.
@@ -72,3 +80,9 @@ jest.mock("#/app/devtools/nativeDevtoolsHub", () => {
 });
 
 const page = appRootPage();
+
+jest.mock("#/app/readBuildStamp", () => {
+  return {
+    BUILD_STAMP: { commit: "f0482c5", builtAt: "2026-10-04T15:20Z" },
+  };
+});

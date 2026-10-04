@@ -8,6 +8,8 @@ import {
 
 import { computeFps, fpsTone, type MetricTone } from "@rtc/motion-core";
 
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
+
 import { ShellTelemetryContext } from "./ShellTelemetryContext";
 
 /** HUD status-strip telemetry. FPS is a live rolling-window meter (Reanimated
@@ -30,6 +32,7 @@ import { ShellTelemetryContext } from "./ShellTelemetryContext";
  * renders and are the sanctioned way to mutate state from a worklet. */
 export function useShellTelemetry(): ShellTelemetry {
   const frozenTelemetry = useContext(ShellTelemetryContext);
+  const buildStamp = useContext(BuildStampContext);
   const [fps, setFps] = useState(SEED_FPS);
   const framesSv = useSharedValue(0);
   const windowStartSv = useSharedValue(0);
@@ -104,7 +107,10 @@ export function useShellTelemetry(): ShellTelemetry {
     fpsTone: fpsTone(fps),
     latencyMs: SEED_LATENCY_MS,
     clock: SHELL_CLOCK,
-    build: BUILD_TAG,
+    // A published build prints the commit it was bundled from, so the strip
+    // answers "which build is this?" on every screen. The frozen (harness)
+    // branch above keeps the static tag: a golden must not carry a commit.
+    build: buildStamp?.commit ?? BUILD_TAG,
   };
 }
 

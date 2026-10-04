@@ -3,6 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react-native";
 import type { JSX } from "react";
 import { Text } from "react-native";
 
+import { BuildStampContext } from "#/ui/shell/BuildStampContext";
+import type { BuildStamp } from "#/ui/shell/buildStamp";
 import { ShellTelemetryContext } from "#/ui/shell/hud/ShellTelemetryContext";
 import { useShellTelemetry } from "#/ui/shell/hud/useShellTelemetry";
 import { textContentOf } from "#tests/pages/support/textContent";
@@ -13,7 +15,10 @@ interface FrozenTelemetryFixture {
 }
 
 export interface UseShellTelemetryPage {
-  mount(frozen: FrozenTelemetryFixture | null): Promise<void>;
+  mount(
+    frozen: FrozenTelemetryFixture | null,
+    buildStamp?: BuildStamp | null,
+  ): Promise<void>;
   unmountAll(): Promise<void>;
   /** The probe's rendered `fps|latencyMs|clock|build` string — `null` only
    * if the probe never rendered at all. The spec owns the expected literal,
@@ -25,7 +30,10 @@ export interface UseShellTelemetryPage {
 /** The framework surface for `useShellTelemetry.test.tsx`. */
 export function shellTelemetryPage(): UseShellTelemetryPage {
   return {
-    async mount(frozen: FrozenTelemetryFixture | null): Promise<void> {
+    async mount(
+      frozen: FrozenTelemetryFixture | null,
+      buildStamp: BuildStamp | null = null,
+    ): Promise<void> {
       // Probe lives nested inside `mount` (not at module scope) so this
       // module has no unexported top-level component — satisfies Biome's
       // `useComponentExportOnlyModules`.
@@ -36,15 +44,12 @@ export function shellTelemetryPage(): UseShellTelemetryPage {
         );
       }
 
-      if (frozen === null) {
-        await render(<Probe />);
-        return;
-      }
-
       await render(
-        <ShellTelemetryContext.Provider value={frozen}>
-          <Probe />
-        </ShellTelemetryContext.Provider>,
+        <BuildStampContext.Provider value={buildStamp}>
+          <ShellTelemetryContext.Provider value={frozen}>
+            <Probe />
+          </ShellTelemetryContext.Provider>
+        </BuildStampContext.Provider>,
       );
     },
     async unmountAll(): Promise<void> {
