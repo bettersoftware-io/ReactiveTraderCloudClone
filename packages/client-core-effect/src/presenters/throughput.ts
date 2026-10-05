@@ -1,4 +1,4 @@
-import { Effect, type Fiber, Scope, SubscriptionRef } from "effect";
+import { Effect, type Fiber, Scope } from "effect";
 
 import type {
   ThroughputMessage,
@@ -13,14 +13,9 @@ import {
   THROUGHPUT_MESSAGE_DISMISS_MS,
 } from "@rtc/domain";
 
-import {
-  createChildHost,
-  type EffectHost,
-  interruptFiber,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 const INITIAL: ThroughputView = {
@@ -30,7 +25,7 @@ const INITIAL: ThroughputView = {
 };
 
 /** The admin throughput control — the async core's shape over a
- * `SubscriptionRef`. The port METHOD is called once, here; the load is run
+ * `SyncRef`. The port METHOD is called once, here; the load is run
  * on the first subscriber and lands `{ value, loading: false }`, or the
  * default on failure. `setValue` echoes the value at once and restarts a
  * debounce fiber; when `THROUGHPUT_DEBOUNCE_MS` of quiet elapses, the write
@@ -46,7 +41,7 @@ export function createThroughputPresenter(
   admin: AdminPort,
 ): ThroughputPresenter {
   const host = createChildHost(parent);
-  const ref = host.runtime.runSync(SubscriptionRef.make(INITIAL));
+  const ref = createSyncRef(INITIAL);
   const writes = createRunSlot(host, ref);
   const load$ = admin.getThroughput();
   let debounce: Fiber.RuntimeFiber<void> | null = null;
@@ -77,12 +72,12 @@ export function createThroughputPresenter(
     host.runtime.runFork(
       rpc(load$).pipe(
         Effect.flatMap((value) => {
-          return setRefIfChanged(ref, (view) => {
+          return ref.write((view) => {
             return { ...view, value, loading: false };
           });
         }),
         Effect.catchAll(() => {
-          return setRefIfChanged(ref, (view) => {
+          return ref.write((view) => {
             return { ...view, value: DEFAULT_THROUGHPUT, loading: false };
           });
         }),
@@ -133,11 +128,9 @@ export function createThroughputPresenter(
       return;
     }
 
-    host.runtime.runSync(
-      setRefIfChanged(ref, (view) => {
-        return { ...view, value };
-      }),
-    );
+    ref.set((view) => {
+      return { ...view, value };
+    });
 
     if (debounce !== null) {
       interruptFiber(debounce);
@@ -166,7 +159,7 @@ export function createThroughputPresenter(
   }
 
   return {
-    state$: refToStateStream(host, ref, startLoadOnce),
+    state$: ref.stateStream(startLoadOnce),
     setValue,
   };
 }

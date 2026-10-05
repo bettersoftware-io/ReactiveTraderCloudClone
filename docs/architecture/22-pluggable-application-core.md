@@ -181,8 +181,8 @@ to reproduce them explicitly:
    `state$` emit on subscribe, synchronously — `toSignal` throws otherwise,
    and `readPreferenceNow` / `ThemePreferencePresenter.cycle()` both read
    synchronously. The async core's `Store` is replay-current by
-   construction; the Effect core's `refToStateStream` re-reads the
-   `SubscriptionRef` per subscription rather than caching a value from
+   construction; the Effect core's `SyncRef.stateStream()` re-reads the
+   cell per subscription rather than caching a value from
    construction time (a value cached once would go stale across a
    cold → warm cycle); a `sharedFold` whose port has not emitted yet starts
    a SEEDLESS period and delivers nothing until the first value, as
@@ -347,12 +347,14 @@ core; slice 3 added the credit shapes to the same list:
 - **Machines** (`staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`,
   `tileExecution`): `createMachineFactories(presenters)` has no app handle,
   so a machine owns its lifetime — a `Store` plus an `AbortController`
-  (async), a `SubscriptionRef` under a detached host with its own `Scope`
-  (Effect); `dispose()` aborts or closes it. The tile execution is the
+  (async), a `SyncRef` under a detached host with its own `Scope`
+  (Effect; a plain cell, never Effect's `SubscriptionRef`, which reaches a
+  subscriber a fiber step late — grep gate 50); `dispose()` aborts or
+  closes it. The tile execution is the
   spec's sketch in both: one run per `execute()`, cancelled by the next
   `execute()`, by `dismiss()` and by `dispose()`; a `race` between the RPC
   and the timeout; a too-long marker that a terminal state ignores. A
-  machine's source failure has no channel on a `Store`/`SubscriptionRef`
+  machine's source failure has no channel on a `Store`/`SyncRef`
   and is rethrown out of band (`reportAsync` / `reportOutOfBand`); the
   RxJS `state()` would error `state$` — uncontracted, nothing observes it.
   When the execution timeout wins, the Effect machine releases the
@@ -419,7 +421,7 @@ core; slice 3 added the credit shapes to the same list:
   bridge export (`Stream.unwrapScoped`) for `place()`; `orders$` there
   supersedes its own query with `Stream.flatMap(…, { switch: true })`
   inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
-  two singletons warm through `refToWarmStateStream`, and grows the Layer
+  two singletons warm through `SyncRef.warm()`, and grows the Layer
   graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). A
   `Scope.addFinalizer` on each Effect singleton's child scope marks it
   disposed and releases its keep-warm, so `app.dispose()` and the

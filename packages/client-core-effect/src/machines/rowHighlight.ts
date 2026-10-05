@@ -1,14 +1,10 @@
-import { Duration, Effect, SubscriptionRef } from "effect";
+import { Duration, Effect } from "effect";
 
 import type { ReadOnlyMachine } from "@rtc/core-api";
 import { BLOTTER_ROW_HIGHLIGHT_MS } from "@rtc/domain";
 
-import {
-  closeScope,
-  createDetachedHost,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { closeScope, createDetachedHost } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 /** `isNew` at once, then `false` after `BLOTTER_ROW_HIGHLIGHT_MS` on a fiber
  * forked into the machine's scope; `dispose()` closes the scope, which
@@ -17,13 +13,13 @@ export function createRowHighlightMachine(
   isNew: boolean,
 ): ReadOnlyMachine<boolean> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(SubscriptionRef.make(isNew));
+  const ref = createSyncRef(isNew);
 
   if (isNew) {
     host.runtime.runFork(
       Effect.sleep(Duration.millis(BLOTTER_ROW_HIGHLIGHT_MS)).pipe(
         Effect.andThen(
-          setRefIfChanged(ref, () => {
+          ref.write(() => {
             return false;
           }),
         ),
@@ -33,7 +29,7 @@ export function createRowHighlightMachine(
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {},
     dispose: () => {
       closeScope(host.scope);

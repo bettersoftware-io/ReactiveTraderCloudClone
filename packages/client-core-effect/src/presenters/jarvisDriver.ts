@@ -17,7 +17,7 @@ import {
   createHotStream,
   type EffectHost,
 } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisDriverDeps {
   /** Every Jarvis turn event, heard synchronously. */
@@ -50,7 +50,7 @@ export function createJarvisDriver(
   deps: JarvisDriverDeps,
 ): NativeJarvisDriver {
   const host = createChildHost(parent);
-  const ref = createSyncRef<JarvisDriverState>(host, { lastBatch: [] });
+  const ref = createSyncRef<JarvisDriverState>({ lastBatch: [] });
   const outcomes = createHotStream<DriveOutcome>();
   const batches = host.runtime.runSync(Queue.unbounded<DriveBatchV1>());
 

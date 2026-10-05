@@ -22,7 +22,7 @@ import {
 } from "@rtc/domain";
 
 import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisDemoDeps {
   readonly jarvisStateNow: () => JarvisState;
@@ -61,7 +61,7 @@ export function createJarvisDemo(
   deps: JarvisDemoDeps,
 ): JarvisDemoMachineHandle {
   const host = createChildHost(parent);
-  const ref = createSyncRef<JarvisDemoState>(host, JARVIS_DEMO_INITIAL_STATE);
+  const ref = createSyncRef<JarvisDemoState>(JARVIS_DEMO_INITIAL_STATE);
   let active: DemoRun | null = null;
   let closedByDemo = false;
 

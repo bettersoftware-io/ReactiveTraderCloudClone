@@ -9,7 +9,7 @@ import {
   listenToStateStream,
   reportOutOfBand,
 } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 /** What `usage$` carries: a snapshot, or `null` before the first. */
 type UsageSnapshot = ObservedValueOf<JarvisUsagePresenter["usage$"]>;
@@ -25,7 +25,7 @@ export function createJarvisUsagePresenter(
   host: EffectHost,
   port: JarvisUsagePort,
 ): JarvisUsagePresenter {
-  const ref = createSyncRef<UsageSnapshot>(host, null);
+  const ref = createSyncRef<UsageSnapshot>(null);
   let opened = false;
 
   function openPortOnce(): void {

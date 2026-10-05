@@ -1,4 +1,4 @@
-import { Duration, Effect, Either, SubscriptionRef } from "effect";
+import { Duration, Effect, Either } from "effect";
 
 import type {
   Machine,
@@ -8,8 +8,9 @@ import type {
 } from "@rtc/core-api";
 import { type CreateRfqInput, RFQ_REDIRECT_DELAY_MS } from "@rtc/domain";
 
-import { createDetachedHost, refToStateStream } from "#/bridge/out";
+import { createDetachedHost } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface RfqSubmissionDeps {
@@ -76,19 +77,17 @@ function runSubmit(
  * externally visible step — `onRedirect` as much as a state write — runs
  * through `run.guarded`, so that promise rests on the run token
  * `createRunSlot` owns and not only on when Effect chooses to deliver an
- * interrupt. The RxJS machine's shape on a `SubscriptionRef` under a
+ * interrupt. The RxJS machine's shape on a `SyncRef` under a
  * detached host, with `createRunSlot` owning the run token and fiber. */
 export function createRfqSubmissionMachine(
   deps: RfqSubmissionDeps,
 ): Machine<RfqSubmissionState, RfqSubmissionIntents> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<RfqSubmissionState>(EDITING),
-  );
+  const ref = createSyncRef<RfqSubmissionState>(EDITING);
   const slot = createRunSlot(host, ref);
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       submit: (input: CreateRfqInput, onRedirect: (rfqId: number) => void) => {
         if (slot.isDisposed()) {

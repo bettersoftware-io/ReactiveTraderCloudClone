@@ -35,12 +35,12 @@ import {
   type WarmStateStream,
 } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 import { createLayoutMachine } from "#/machines/layout";
 import {
   createJarvisPanelsMachine,
   createJarvisPanelsPresenter,
 } from "#/presenters/jarvisPanels";
-import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
 
 /** The twelve workspace members this core owns natively (pluggable-core
  * slice 7, wave 1). */
@@ -93,8 +93,8 @@ export interface NativeWorkspaceDeps {
 /** The workspace on the Effect core: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
  * `@rtc/core-logic`, wired to `SyncRef`-backed layout machines and panels
- * roster — `SubscriptionRef`s committed with `runSync`, their in-core mirrors
- * notified synchronously (the workspace's synchronous-fold contract) — with
+ * roster — committed synchronously, their in-core mirrors notified in the
+ * same tick (the workspace's synchronous-fold contract) — with
  * the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`, the presets
  * lists) as warm refs and the persistence debounce as an `Effect.sleep`
  * fiber. Everything lives on a CHILD of the app host: its scope's close (the
@@ -140,8 +140,8 @@ export function createNativeWorkspace(
   track(jarvisPanels.release);
   const dockLayoutStore =
     ports.dockLayoutStore ?? new InMemoryDockLayoutStore();
-  const membership = createSyncRef(host, 0);
-  const resets = createSyncRef(host, 0);
+  const membership = createSyncRef(0);
+  const resets = createSyncRef(0);
   const resets$ = resets.warm();
   track(resets$.release);
   const handles = new Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>();
@@ -214,7 +214,6 @@ export function createNativeWorkspace(
     }
 
     const machine = createLayoutMachine(
-      host,
       createDefaultLayoutPort(tab).initial,
       dock.seedFor(tab),
     );
@@ -276,7 +275,7 @@ export function createNativeWorkspace(
       return existing.state$;
     }
 
-    const ids = createSyncRef<readonly string[]>(host, currentDockedIds(tab));
+    const ids = createSyncRef<readonly string[]>(currentDockedIds(tab));
 
     function recompute(): void {
       const next = currentDockedIds(tab);
@@ -307,7 +306,7 @@ export function createNativeWorkspace(
       dockedPanelIdsNow: dock.dockedPanelIdsNow,
       rebuildLiveEngine: bumpResets,
     },
-    createRefSummaryChannel(host, track),
+    createRefSummaryChannel(track),
   );
 
   function livePanelIdsNow(): readonly string[] {
@@ -420,7 +419,6 @@ interface SummaryEntry {
 
 /** The presets summaries as one warm ref per tab. */
 function createRefSummaryChannel(
-  host: EffectHost,
   track: (release: () => void) => void,
 ): PresetSummaryChannel {
   const byTab = new Map<WorkspaceTab, SummaryEntry>();
@@ -435,7 +433,7 @@ function createRefSummaryChannel(
       return existing;
     }
 
-    const ref = createSyncRef(host, initial());
+    const ref = createSyncRef(initial());
     const entry = { ref, warm: ref.warm() };
     track(entry.warm.release);
     byTab.set(tab, entry);
