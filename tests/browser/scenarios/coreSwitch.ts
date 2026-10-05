@@ -16,9 +16,10 @@ const BLOTTER_PANEL_ID = "fx-blotter";
 // blotter can only mean THIS trade survived the swap.
 const TRADE_NOTIONAL = "1234567";
 
-// How long a swap may take to land: load the next core's chunk (a dev-server
-// transform on its first request), compose it, mount the UI. Matches the
-// budget `expectBootedCoreImpl` gets for a full page load.
+// How long a swap may take to land: fetch the next core's lazy chunk (from
+// the served production build; a dev-server transform on its first request
+// under RTC_E2E_SERVE=dev), compose it, mount the UI. Matches the budget
+// `expectBootedCoreImpl` gets for a full page load.
 const SWAP_TIMEOUT_MS = 10_000;
 
 // Once `data-core-impl` has flipped, the swapped composition is mounted:
@@ -175,6 +176,9 @@ export async function expectSwappedInPlace(
 
   await expectTradeInBlotter(ctx);
   await expectDeskLayout(ctx);
+  // The first price before the baseline: a tile going from its placeholder
+  // to its first price is not a tick.
+  await ctx.po.liveRatesTile.waitForFirstTileLiveRate(PRICE_TICK_TIMEOUT_MS);
   await ctx.po.liveRatesTile.waitFirstTilePriceChange(PRICE_TICK_TIMEOUT_MS);
 }
 

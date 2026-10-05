@@ -154,6 +154,7 @@ export class PlaywrightWorkspace implements WorkspacePO {
     });
     await expect(this.page.getByTestId(TESTIDS.auth.loginScreen)).toHaveCount(
       0,
+      { timeout: timeoutMs },
     );
   }
 

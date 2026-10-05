@@ -26,6 +26,17 @@ import type {
   Stream,
 } from "@rtc/core-api";
 import {
+  type AppToInspector,
+  createInMemoryDuplexPair,
+  DevtoolsHub,
+  InspectorClient,
+  type InspectorState,
+  InspectorStore,
+  type InspectorToApp,
+  instrumentMachineFactories,
+  instrumentPresenters,
+} from "@rtc/devtools-core";
+import {
   type ConnectionEvent,
   ConnectionStatus,
   type CurrencyPair,
@@ -34,6 +45,7 @@ import {
   type Price,
 } from "@rtc/domain";
 
+import { JARVIS_NARRATOR_STORAGE_KEY } from "./adapters/LocalStoragePreferencesAdapter";
 import { buildBrowserPorts } from "./buildBrowserPorts";
 import {
   type Composition,
@@ -41,6 +53,7 @@ import {
   type CoreHostState,
   createCoreHost,
 } from "./coreHost";
+import { PRESENTER_MANIFEST } from "./devtools/presenterManifest";
 
 /** Every ordered pair of distinct cores. */
 const PAIRS: readonly (readonly [CoreImpl, CoreImpl])[] = [
@@ -270,17 +283,118 @@ describe("hot swap over the real browser ports", () => {
       expect({ impl, live: tally.live() }).toEqual({ impl, live: baseline });
     }
   });
+
+  // An attached inspector makes the devtools hub a consumer of every observed
+  // stream, and the host disposes the old core BEFORE it ends the hub's
+  // composition: the hub is the one consumer still attached when `dispose()`
+  // runs. It lets go in the same synchronous step, so nothing may stay open.
+  // Each core is compared with itself composed over fresh ports under a
+  // live hub, not with the other cores: what a held stream opens on the
+  // ports differs per core (the Effect core subscribes `themeMode$` once
+  // per theme stream, the other two share one subscription).
+  //
+  // The proactive narrator is switched off: it asks Jarvis when the simulated
+  // prices (random) look anomalous, and an ask in flight is a port
+  // subscription that comes and goes on its own.
+  it("5. with an inspector attached, five swaps leave no port subscription behind and the inspector shows one composition", async () => {
+    localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");
+    const tally = createTalliedPorts(buildBrowserPorts());
+    const inspector = createLiveInspector();
+    const harness = createHostHarness(tally.ports, "rxjs", {
+      devtools: inspector.hub,
+    });
+    await signIn(harness.current());
+    const pair = await waitForFirstPair(harness.current());
+    const fresh: Record<CoreImpl, InspectedFootprint> = {
+      rxjs: await measureFreshFootprint("rxjs", pair),
+      async: await measureFreshFootprint("async", pair),
+      effect: await measureFreshFootprint("effect", pair),
+    };
+
+    // Positive witnesses: a live hub holds the composition's streams, which
+    // keeps port subscriptions open that a composition nobody watches does
+    // not hold; the warm set adds per-key streams the hub then keeps.
+    expect(inspector.state().connected).toBe(true);
+    expect(fresh.rxjs.idle.streams.length).toBeGreaterThan(0);
+    expect(
+      Object.keys(gainedOver(fresh.rxjs.unobserved, fresh.rxjs.idle.live))
+        .length,
+    ).toBeGreaterThanOrEqual(MIN_WARMED_METHODS);
+    expect(fresh.rxjs.warmed.streams.length).toBeGreaterThan(
+      fresh.rxjs.idle.streams.length,
+    );
+    expect(
+      Object.keys(gainedOver(fresh.rxjs.idle.live, fresh.rxjs.warmed.live))
+        .length,
+    ).toBeGreaterThanOrEqual(1);
+
+    await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+    expect(readFootprint("rxjs", tally, inspector)).toEqual({
+      impl: "rxjs",
+      ...fresh.rxjs.idle,
+    });
+    await release(await warm(harness.current(), pair));
+    expect(readFootprint("rxjs", tally, inspector)).toEqual({
+      impl: "rxjs",
+      ...fresh.rxjs.warmed,
+    });
+
+    const route: readonly CoreImpl[] = [
+      "async",
+      "effect",
+      "rxjs",
+      "effect",
+      "async",
+    ];
+
+    for (const impl of route) {
+      const machinesBefore = inspector.liveMachineIds();
+      expect(machinesBefore.length).toBeGreaterThan(0);
+
+      await swapAndSettle(harness.host, impl);
+      await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+
+      // Everything the old composition held, and the hub on its behalf, is
+      // closed, and the inspector lists none of the old core's per-key
+      // streams: the page is what this core is over fresh ports.
+      expect(readFootprint(impl, tally, inspector)).toEqual({
+        impl,
+        ...fresh[impl].idle,
+      });
+      // None of the old composition's machines is live.
+      const machinesAfter = inspector.liveMachineIds();
+      expect(machinesAfter).toHaveLength(machinesBefore.length);
+      expect(
+        machinesAfter.filter((id) => {
+          return machinesBefore.includes(id);
+        }),
+      ).toEqual([]);
+
+      await release(await warm(harness.current(), pair));
+      expect(readFootprint(impl, tally, inspector)).toEqual({
+        impl,
+        ...fresh[impl].warmed,
+      });
+    }
+  });
 });
 
 /** Every app composed by a test, disposed in `afterEach`. The host has
  * already disposed all but the running one; `App.dispose()` is idempotent. */
 const composedApps: App[] = [];
 
+/** Every inspector a test attached, detached in `afterEach`. */
+const liveInspectors: LiveInspector[] = [];
+
 async function disposeAll(): Promise<void> {
   const apps = composedApps.splice(0);
 
   for (const app of apps) {
     await app.dispose();
+  }
+
+  for (const inspector of liveInspectors.splice(0)) {
+    inspector.detach();
   }
 }
 
@@ -292,16 +406,22 @@ interface HostHarness {
 interface HostHarnessOptions {
   /** Runs when the host starts loading the next core: the swap has begun. */
   readonly beforeLoad?: () => void;
+  /** When set, every composition is instrumented into this hub with the
+   * real decorators and the host ends the hub's composition, as `main.tsx`
+   * wires it. Unset, both are pass-throughs. */
+  readonly devtools?: DevtoolsHub;
 }
 
 /** A started host over `ports` with no-op UI effects: `mount` keeps the
- * composition, every other effect does nothing, and time is the fake clock. */
+ * composition, every other effect does nothing (devtools too, unless
+ * `options.devtools` is set), and time is the fake clock. */
 function createHostHarness(
   ports: AppPorts,
   initial: CoreImpl,
   options: HostHarnessOptions = {},
 ): HostHarness {
   let mounted: Composition | null = null;
+  const hub = options.devtools;
 
   const host = createCoreHost({
     ports,
@@ -311,12 +431,30 @@ function createHostHarness(
       return Promise.resolve(trackApps(CORES[impl]));
     },
     instrument: (core: CoreFactory, app: App) => {
+      if (hub === undefined) {
+        return {
+          presenters: app.presenters,
+          machineFactories: core.createMachineFactories(app.presenters),
+        };
+      }
+
+      const presenters = instrumentPresenters(
+        app.presenters,
+        PRESENTER_MANIFEST,
+        hub,
+      );
+
       return {
-        presenters: app.presenters,
-        machineFactories: core.createMachineFactories(app.presenters),
+        presenters,
+        machineFactories: instrumentMachineFactories(
+          core.createMachineFactories(presenters),
+          hub,
+        ),
       };
     },
-    endComposition: () => {},
+    endComposition: () => {
+      hub?.endComposition();
+    },
     mount: (composition: Composition): void => {
       mounted = composition;
     },
@@ -367,6 +505,131 @@ function trackApps(core: CoreFactory): CoreFactory {
     },
     createMachineFactories: core.createMachineFactories,
   };
+}
+
+interface LiveInspector {
+  readonly hub: DevtoolsHub;
+  /** What the inspector panel would render right now. */
+  state(): InspectorState;
+  /** The ids of the streams the inspector lists, sorted. */
+  streamIds(): readonly string[];
+  /** The ids of the machines the inspector lists as not disposed, sorted. */
+  liveMachineIds(): readonly string[];
+  detach(): void;
+}
+
+/** A real devtools hub with a real inspector attached over an in-memory
+ * channel: the hub is live (subscribed to everything registered with it)
+ * from this call on, and the store folds what the hub sends. */
+function createLiveInspector(): LiveInspector {
+  const [appSide, panelSide] = createInMemoryDuplexPair<
+    AppToInspector,
+    InspectorToApp
+  >();
+  const hub = new DevtoolsHub({ appId: "swap-test" });
+  hub.attachTransport(appSide);
+  const store = new InspectorStore({ coalesce: false });
+  const client = new InspectorClient(panelSide, store);
+  client.start();
+
+  const inspector: LiveInspector = {
+    hub,
+    state: () => {
+      return store.getSnapshot();
+    },
+    streamIds: () => {
+      return store
+        .getSnapshot()
+        .streams.map((row) => {
+          return row.streamId;
+        })
+        .sort();
+    },
+    liveMachineIds: () => {
+      return store
+        .getSnapshot()
+        .machines.filter((row) => {
+          return !row.disposed;
+        })
+        .map((row) => {
+          return row.machineId;
+        })
+        .sort();
+    },
+    detach: () => {
+      client.dispose();
+      hub.dispose();
+    },
+  };
+  liveInspectors.push(inspector);
+  return inspector;
+}
+
+/** What a composition holds open and what the inspector lists for it. */
+interface Footprint {
+  readonly live: LiveSubscriptions;
+  readonly streams: readonly string[];
+}
+
+/** A footprint with the core it was read on, so a failed comparison names
+ * the core. */
+interface NamedFootprint extends Footprint {
+  readonly impl: CoreImpl;
+}
+
+interface InspectedFootprint {
+  /** The ports of the same core with no inspector attached. */
+  readonly unobserved: LiveSubscriptions;
+  /** Signed in, nothing else subscribed: what the hub alone holds. */
+  readonly idle: Footprint;
+  /** After the warm set was opened and released again. */
+  readonly warmed: Footprint;
+}
+
+function readFootprint(
+  impl: CoreImpl,
+  tally: TalliedPorts,
+  inspector: LiveInspector,
+): NamedFootprint {
+  return { impl, live: tally.live(), streams: inspector.streamIds() };
+}
+
+/** The footprint of `impl` composed over fresh ports under a live hub of
+ * its own — the page a reload would give, signed in through the session the
+ * test's first composition stored. Everything it built is disposed again. */
+async function measureFreshFootprint(
+  impl: CoreImpl,
+  pair: CurrencyPair,
+): Promise<InspectedFootprint> {
+  const firstOwnApp = composedApps.length;
+  const bare = createTalliedPorts(buildBrowserPorts());
+  const unobservedHost = createHostHarness(bare.ports, impl);
+  await signedIn(unobservedHost.current());
+  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+  const unobserved = bare.live();
+
+  const tally = createTalliedPorts(buildBrowserPorts());
+  const inspector = createLiveInspector();
+  const harness = createHostHarness(tally.ports, impl, {
+    devtools: inspector.hub,
+  });
+  await signedIn(harness.current());
+  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+  const idle = { live: tally.live(), streams: inspector.streamIds() };
+  await release(await warm(harness.current(), pair));
+  const warmed = { live: tally.live(), streams: inspector.streamIds() };
+
+  for (const app of composedApps.splice(firstOwnApp)) {
+    await app.dispose();
+  }
+
+  inspector.detach();
+  return { unobserved, idle, warmed };
+}
+
+/** Waits for a composition that resumes a stored session to be signed in. */
+async function signedIn(app: Composition): Promise<void> {
+  await waitFor(app.presenters.auth.state$, isAuthenticated, "resumed sign-in");
 }
 
 function delayBy(ms: number): Promise<void> {

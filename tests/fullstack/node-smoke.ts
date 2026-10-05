@@ -23,7 +23,11 @@ import {
   WsConnectionEventsAdapter,
 } from "@rtc/client-adapters";
 import type { AppPorts, CoreFactory, JarvisAvailability } from "@rtc/core-api";
-import { type Direction, PreferencesSimulator } from "@rtc/domain";
+import {
+  ConnectionStatus,
+  type Direction,
+  PreferencesSimulator,
+} from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.ts";
 import { loginForToken } from "./loginForToken.ts";
@@ -500,7 +504,7 @@ async function runHotSwapSmoke(): Promise<void> {
         await firstValueFrom(
           app.presenters.connection.status$.pipe(
             filter((s) => {
-              return String(s).toLowerCase() === "connected";
+              return s === ConnectionStatus.CONNECTED;
             }),
             timeout({ first: FIRST_VALUE_TIMEOUT_MS }),
           ),
