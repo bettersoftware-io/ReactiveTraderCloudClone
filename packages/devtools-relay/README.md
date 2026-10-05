@@ -29,7 +29,7 @@ Event/State/Diff/Machine context pane and Clear.
     RTC_DEVTOOLS_RELAY_PORT=9999 pnpm dev:devtools:relay
     pnpm --filter @rtc/devtools-relay dev 8123   # positional port arg
 
-Then boot a dev RN build (`pnpm dev:ios`) and open the panel in a browser at
+Then boot a dev RN build (`pnpm dev:ios` or `pnpm dev:android`) and open the panel in a browser at
 `http://localhost:5280/?relay=ws://localhost:8790` (standalone dev server) or
 the deployed `/devtools/?relay=...`. The panels show the mobile client live;
 backgrounding the app flips the panel to "disconnected" (relay socket drop +
