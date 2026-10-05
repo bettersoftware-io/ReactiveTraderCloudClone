@@ -1443,6 +1443,12 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.63.0
+      '@rtc/client-core-async':
+        specifier: workspace:*
+        version: link:../packages/client-core-async
+      '@rtc/client-core-effect':
+        specifier: workspace:*
+        version: link:../packages/client-core-effect
       '@sinonjs/fake-timers':
         specifier: ^15.0.0
         version: 15.4.0
