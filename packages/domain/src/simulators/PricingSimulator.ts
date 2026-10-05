@@ -5,6 +5,7 @@ import {
   map,
   Observable,
   of,
+  share,
   throwError,
   timer,
 } from "rxjs";
@@ -110,6 +111,8 @@ export function rfqResponseDelayMs(rand: number): number {
 export class PricingSimulator implements PricingPort {
   private readonly pairs = new Map<string, PairState>();
 
+  private readonly liveTicks = new Map<string, Observable<PriceTick>>();
+
   private readonly pinAtMs: number | undefined;
 
   /**
@@ -199,55 +202,82 @@ export class PricingSimulator implements PricingPort {
         return of(createTick(symbol, pairState, at, at));
       }
 
-      const live$ = new Observable<PriceTick>((subscriber) => {
-        let timeoutId: ReturnType<typeof setTimeout>;
-
-        function scheduleNext(): void {
-          timeoutId = setTimeout(() => {
-            // Episode state is advanced only on the LIVE path — the one
-            // and only trigger source for the proactive narrator's
-            // anomaly detector (see pricingAnomalyEpisode.ts). Seeded
-            // history and RFQ quotes never call this.
-            pairState.episode = advanceEpisode(
-              pairState.episode,
-              Math.random,
-              DEFAULT_EPISODE_CONFIG,
-            );
-            const stepMultiplier = burstStepMultiplier(pairState.episode);
-            const signBias = burstSignBias(pairState.episode);
-            pairState.mid = applyRandomWalk(
-              pairState,
-              Math.random,
-              stepMultiplier,
-              signBias,
-            );
-            const now = Date.now();
-            const tick = createTick(
-              symbol,
-              pairState,
-              now,
-              now,
-              spreadFactor(pairState.episode),
-            );
-            pairState.history.push(tick);
-
-            if (pairState.history.length > PRICE_HISTORY_SIZE) {
-              pairState.history.shift();
-            }
-
-            subscriber.next(tick);
-            scheduleNext();
-          }, tickInterval());
-        }
-
-        scheduleNext();
-
-        return (): void => {
-          clearTimeout(timeoutId);
-        };
-      });
-      return concat(from(state.history), live$);
+      return concat(from(state.history), this.liveTicksOf(symbol, pairState));
     });
+  }
+
+  /**
+   * One symbol's live walk, shared by every subscriber: the first one starts
+   * the `setTimeout` loop, later ones join it, and it stops when the last
+   * one leaves. The loop mutates the pair's state, so a loop per subscriber
+   * would advance the pair once per subscriber — two readers of one symbol
+   * (a tile's price and its sparkline) doubled its tick rate, and each saw
+   * only every other step, so the moves it saw were twice the size the
+   * replayed history taught it to expect. That alone tripped the narrator's
+   * 3σ detector about ten seconds into every session. The WS server keeps
+   * the same rule with a refcount per symbol (`keyedStream`).
+   */
+  private liveTicksOf(
+    symbol: string,
+    pairState: PairState,
+  ): Observable<PriceTick> {
+    const shared = this.liveTicks.get(symbol);
+
+    if (shared) {
+      return shared;
+    }
+
+    const live$ = new Observable<PriceTick>((subscriber) => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      function scheduleNext(): void {
+        timeoutId = setTimeout(() => {
+          // Episode state is advanced only on the LIVE path — the one
+          // and only trigger source for the proactive narrator's
+          // anomaly detector (see pricingAnomalyEpisode.ts). Seeded
+          // history and RFQ quotes never call this.
+          pairState.episode = advanceEpisode(
+            pairState.episode,
+            Math.random,
+            DEFAULT_EPISODE_CONFIG,
+          );
+          const stepMultiplier = burstStepMultiplier(pairState.episode);
+          const signBias = burstSignBias(pairState.episode);
+          pairState.mid = applyRandomWalk(
+            pairState,
+            Math.random,
+            stepMultiplier,
+            signBias,
+          );
+          const now = Date.now();
+          const tick = createTick(
+            symbol,
+            pairState,
+            now,
+            now,
+            spreadFactor(pairState.episode),
+          );
+          pairState.history.push(tick);
+
+          if (pairState.history.length > PRICE_HISTORY_SIZE) {
+            pairState.history.shift();
+          }
+
+          subscriber.next(tick);
+          scheduleNext();
+        }, tickInterval());
+      }
+
+      scheduleNext();
+
+      return (): void => {
+        clearTimeout(timeoutId);
+      };
+    });
+
+    const live = live$.pipe(share());
+    this.liveTicks.set(symbol, live);
+    return live;
   }
 
   /**
