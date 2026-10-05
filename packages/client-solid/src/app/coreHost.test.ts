@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("createCoreHost", () => {
-  it("1. start() composes the initial core once over the given ports, mounts generation 1, publishes its impl", () => {
+  it("1. start() composes the initial core once over the given ports, mounts generation 1, publishes its impl", async () => {
     const harness = createHarness();
 
     harness.start();
@@ -43,6 +43,12 @@ describe("createCoreHost", () => {
       phase: "covering",
       from: "rxjs",
       to: "effect",
+    });
+    await vi.waitFor(() => {
+      expect(harness.states.at(-1)).toEqual({
+        phase: "running",
+        impl: "effect",
+      });
     });
   });
 
@@ -175,6 +181,8 @@ describe("createCoreHost", () => {
     expect(harness.mounted).toHaveLength(1);
     expect(harness.publish).toHaveBeenCalledTimes(1);
     expect(harness.persist).not.toHaveBeenCalled();
+    expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    expect(harness.warnings).toEqual([]);
   });
 
   it("8. a rejected old.dispose() is logged as a warning and the swap completes", async () => {
@@ -266,6 +274,178 @@ describe("createCoreHost", () => {
 
     expect(harness.infos).toEqual(["[core] swapped rxjs to effect"]);
   });
+
+  describe("a throw after the unmount ends in onFatal; swapTo never rejects", () => {
+    it.each([
+      ["nextMacrotask", "macrotask"],
+      ["the first endComposition", "endComposition#1"],
+    ])(
+      "%s throws → onFatal once, the old core disposed, nothing composed",
+      async (_step, fault) => {
+        const harness = createHarness();
+        harness.start();
+        const error = new Error("boom");
+        harness.faults.set(fault, error);
+
+        await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+        expect(harness.onFatal).toHaveBeenCalledTimes(1);
+        expect(harness.onFatal).toHaveBeenCalledWith(error);
+        expect(harness.log.filter(isDispose)).toEqual(["dispose:rxjs"]);
+        expect(harness.log).not.toContain("createApp:effect");
+        expect(harness.mounted).toHaveLength(1);
+        expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+      },
+    );
+
+    it("mount of the new composition throws → onFatal once, the unmounted app disposed", async () => {
+      const harness = createHarness();
+      harness.start();
+      const error = new Error("render failed");
+      harness.faults.set("mount:2", error);
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.onFatal).toHaveBeenCalledWith(error);
+      expect(harness.log.filter(isDispose)).toEqual([
+        "dispose:rxjs",
+        "dispose:effect",
+      ]);
+      expect(harness.publish).toHaveBeenCalledTimes(1);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+
+    it("mount of the fallback throws → onFatal once, the fallback app disposed", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.cores.effect.createError = new Error("effect broke");
+      const error = new Error("render failed");
+      harness.faults.set("mount:2", error);
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.onFatal).toHaveBeenCalledWith(error);
+      expect(harness.log.filter(isDispose)).toEqual([
+        "dispose:rxjs",
+        "dispose:rxjs",
+      ]);
+      expect(harness.warnings).toEqual([]);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+
+    it("the second endComposition (fallback path) throws → onFatal once, no fallback composed", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.cores.effect.createError = new Error("effect broke");
+      const error = new Error("hub broke");
+      harness.faults.set("endComposition#2", error);
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.onFatal).toHaveBeenCalledWith(error);
+      expect(harness.log.filter(isCreateApp)).toEqual([
+        "createApp:rxjs",
+        "createApp:effect",
+      ]);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+  });
+
+  describe("a throw while a core is mounted is a warning, never onFatal", () => {
+    it("before the unmount (the cover's sleep throws) → the page stays on the old core", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.faults.set("cover", new Error("no clock"));
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).not.toHaveBeenCalled();
+      expect(harness.unmount).not.toHaveBeenCalled();
+      expect(harness.warnings).toEqual([
+        "[core] could not switch to the effect core, staying on rxjs: no clock",
+      ]);
+      expect(harness.failures.at(-1)).toBe(
+        "Could not switch to the effect core: no clock",
+      );
+      expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
+    });
+
+    it("after the mount (publish throws) → the swap finishes", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.faults.set("publish:effect", new Error("no html"));
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).not.toHaveBeenCalled();
+      expect(harness.warnings).toEqual([
+        "[core] publishing effect failed: no html",
+      ]);
+      expect(harness.log.slice(-3)).toEqual([
+        "persist:effect",
+        "stripCoreParam",
+        "lift",
+      ]);
+      expect(harness.states.at(-1)).toEqual({
+        phase: "running",
+        impl: "effect",
+      });
+    });
+  });
+
+  describe("an app lost to a throwing instrument is disposed", () => {
+    it("the new core's instrument throws → its app is disposed, then the previous core is recomposed", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.cores.effect.instrumentError = new Error("decorator broke");
+      harness.log.length = 0;
+
+      await harness.host.swapTo("effect");
+
+      expect(harness.log).toEqual([
+        "cover",
+        "load",
+        "unmount",
+        "macrotask",
+        "dispose:rxjs",
+        "endComposition",
+        "createApp:effect",
+        "dispose:effect",
+        "endComposition",
+        "createApp:rxjs",
+        "mount:2",
+        "publish:rxjs",
+        "lift",
+      ]);
+      expect(harness.failures.at(-1)).toBe(
+        "The effect core failed to start: decorator broke",
+      );
+      expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
+    });
+
+    it("the fallback's instrument throws too → its app is disposed and onFatal has that error", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.cores.effect.instrumentError = new Error("decorator broke");
+      const second = new Error("decorator broke again");
+      harness.cores.rxjs.instrumentError = second;
+
+      await harness.host.swapTo("effect");
+
+      expect(harness.log.filter(isDispose)).toEqual([
+        "dispose:rxjs",
+        "dispose:effect",
+        "dispose:rxjs",
+      ]);
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.onFatal).toHaveBeenCalledWith(second);
+      expect(harness.mounted).toHaveLength(1);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+  });
 });
 
 interface FakeCore {
@@ -278,6 +458,8 @@ interface FakeCore {
   createError: Error | null;
   /** When set, every later `dispose()` rejects with it. */
   disposeError: Error | null;
+  /** When set, the harness's `instrument` throws it for this core. */
+  instrumentError: Error | null;
 }
 
 interface HarnessOptions {
@@ -300,6 +482,9 @@ interface Harness {
    * (reachable only through a mounted composition). */
   readonly start: () => void;
   readonly log: string[];
+  /** A log entry (`"mount:2"`) or its nth occurrence (`"endComposition#2"`)
+   * mapped to the error the matching fake throws once it has logged. */
+  readonly faults: Map<string, Error>;
   readonly cores: Record<CoreImpl, FakeCore>;
   /** Overrides `load`'s answer per impl; absent means the fake core. */
   readonly loadResults: Partial<Record<CoreImpl, Promise<CoreFactory>>>;
@@ -337,10 +522,24 @@ async function walkPhases(loadMs: number): Promise<string[]> {
 
 function createHarness(options: HarnessOptions = {}): Harness {
   const log: string[] = [];
+  const faults = new Map<string, Error>();
+
+  function record(entry: string): void {
+    log.push(entry);
+    const occurrence = log.filter((logged) => {
+      return logged === entry;
+    }).length;
+    const fault = faults.get(`${entry}#${occurrence}`) ?? faults.get(entry);
+
+    if (fault !== undefined) {
+      throw fault;
+    }
+  }
+
   const cores: Record<CoreImpl, FakeCore> = {
-    rxjs: createFakeCore("rxjs", log),
-    async: createFakeCore("async", log),
-    effect: createFakeCore("effect", log),
+    rxjs: createFakeCore("rxjs", record),
+    async: createFakeCore("async", record),
+    effect: createFakeCore("effect", record),
   };
   const loadResults: Partial<Record<CoreImpl, Promise<CoreFactory>>> = {};
   const mounted: Composition[] = [];
@@ -349,7 +548,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
   const timed = options.timed;
 
   const load = vi.fn((impl: CoreImpl): Promise<CoreFactory> => {
-    log.push("load");
+    record("load");
     const override = loadResults[impl];
 
     if (override !== undefined) {
@@ -368,20 +567,20 @@ function createHarness(options: HarnessOptions = {}): Harness {
   });
 
   const unmount = vi.fn((): void => {
-    log.push("unmount");
+    record("unmount");
   });
 
   const publish = vi.fn((impl: CoreImpl): void => {
-    log.push(`publish:${impl}`);
+    record(`publish:${impl}`);
   });
 
   const persist = vi.fn((impl: CoreImpl): boolean => {
-    log.push(`persist:${impl}`);
+    record(`persist:${impl}`);
     return options.persisted ?? true;
   });
 
   const stripCoreParam = vi.fn((): void => {
-    log.push("stripCoreParam");
+    record("stripCoreParam");
   });
   const onFatal = vi.fn((_error: unknown): void => {});
 
@@ -390,16 +589,24 @@ function createHarness(options: HarnessOptions = {}): Harness {
     initial: { impl: "rxjs", core: cores.rxjs.core },
     load,
     instrument: (core: CoreFactory, app: App) => {
+      const fake = Object.values(cores).find((candidate) => {
+        return candidate.core === core;
+      });
+
+      if (fake?.instrumentError) {
+        throw fake.instrumentError;
+      }
+
       return {
         presenters: app.presenters,
         machineFactories: core.createMachineFactories(app.presenters),
       };
     },
     endComposition: () => {
-      log.push("endComposition");
+      record("endComposition");
     },
     mount: (composition: Composition): void => {
-      log.push(`mount:${composition.generation}`);
+      record(`mount:${composition.generation}`);
       mounted.push(composition);
     },
     unmount,
@@ -416,11 +623,11 @@ function createHarness(options: HarnessOptions = {}): Harness {
     cover: COVER,
     sleep: (ms: number): Promise<void> => {
       if (ms === COVER.enterMs) {
-        log.push("cover");
+        record("cover");
       }
 
       if (ms === COVER.exitMs) {
-        log.push("lift");
+        record("lift");
       }
 
       if (timed !== undefined) {
@@ -432,7 +639,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
       return Promise.resolve();
     },
     nextMacrotask: () => {
-      log.push("macrotask");
+      record("macrotask");
 
       if (timed !== undefined) {
         return new Promise((resolve) => {
@@ -453,6 +660,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
 
   return {
     host,
+    faults,
     start: () => {
       host.start();
       mounted[0]?.coreSelection.failure$.subscribe((failure) => {
@@ -476,15 +684,19 @@ function createHarness(options: HarnessOptions = {}): Harness {
   };
 }
 
-function createFakeCore(impl: CoreImpl, log: string[]): FakeCore {
+function createFakeCore(
+  impl: CoreImpl,
+  record: (entry: string) => void,
+): FakeCore {
   const fake: FakeCore = {
     received: [],
     splashDecisions: [],
     createError: null,
     disposeError: null,
+    instrumentError: null,
     core: {
       createApp: (ports: AppPorts): App => {
-        log.push(`createApp:${impl}`);
+        record(`createApp:${impl}`);
 
         if (fake.createError !== null) {
           throw fake.createError;
@@ -497,7 +709,7 @@ function createFakeCore(impl: CoreImpl, log: string[]): FakeCore {
           ports,
           commands: {} as AppCommands,
           dispose: () => {
-            log.push(`dispose:${impl}`);
+            record(`dispose:${impl}`);
             return fake.disposeError === null
               ? Promise.resolve()
               : Promise.reject(fake.disposeError);
@@ -545,4 +757,8 @@ function createDeferred<T>(): Deferred<T> {
 
 function isCreateApp(entry: string): boolean {
   return entry.startsWith("createApp:");
+}
+
+function isDispose(entry: string): boolean {
+  return entry.startsWith("dispose:");
 }

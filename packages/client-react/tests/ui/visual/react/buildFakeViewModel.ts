@@ -1,4 +1,4 @@
-import { state } from "@rx-state/core";
+import { state as toStateStream } from "@rx-state/core";
 
 import {
   createDefaultLayoutPort,
@@ -713,7 +713,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         current: "rxjs",
         options: CORE_OPTIONS,
         select: noop,
-        failure$: state(new BehaviorSubject<string | null>(null), null),
+        failure$: toStateStream(new BehaviorSubject<string | null>(null), null),
       };
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
