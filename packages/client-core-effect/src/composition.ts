@@ -83,14 +83,18 @@ export function composeApp(ports: AppPorts): ComposedApp {
       ports.connectionIntents,
       family.workspace.reportDetachedPanels,
     ),
-    // The host scope first — it interrupts every fiber still running (each
-    // fold period, retained singleton and the Jarvis family's child hosts
-    // are forked from it) — then the runtime, closing the Layer scope the
-    // host's is a child of (a no-op by then). The runtime dispose sits in a
-    // `finally` so a failed scope close cannot skip it; both are idempotent,
-    // so calling `dispose()` twice is safe.
+    // A layout change still inside the persistence debounce is written
+    // first, while the layout state it reads is live (a hot swap must keep
+    // it; the scope's close would interrupt it away). Then the host scope —
+    // it interrupts every fiber still running (each fold period, retained
+    // singleton and the Jarvis family's child hosts are forked from it) —
+    // then the runtime, closing the Layer scope the host's is a child of (a
+    // no-op by then). The runtime dispose sits in a `finally` so a failed
+    // scope close cannot skip it; all three are idempotent, so calling
+    // `dispose()` twice is safe.
     dispose: async () => {
       try {
+        family.workspace.writePendingLayout();
         await closeScopeAndWait(host.scope);
       } finally {
         await runtime.dispose();
