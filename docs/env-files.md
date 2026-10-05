@@ -96,7 +96,8 @@ Per-developer, git-ignored. Keys:
   it per mode: `pnpm dev:ios:sim` (empty → simulator), `pnpm dev:ios:ws:local`
   (`ws://localhost:4000`, needs a local `pnpm dev:ws`), `pnpm dev:ios:ws:remote`
   (the deployed endpoint), `pnpm dev:ios:fs` (starts the local server + the app
-  together). Bare `pnpm dev:ios` aliases `:sim`. The mapping into
+  together). Bare `pnpm dev:ios` aliases `:sim`. `pnpm dev:android*` has the same
+  five scripts for an Android emulator. The mapping into
   `extra.serverUrl` is guarded by `app.config.test.ts` (it was silently dropped
   once, stranding the app in simulator mode regardless of this var).
 
@@ -108,7 +109,7 @@ Flow: `app.config.ts` reads these into `extra.devAuth` / `extra.serverUrl` →
 
 > ⚠️ **`EXPO_PUBLIC_*` is inlined into the JS bundle when Metro starts** — it is
 > not hot-reloaded. After editing this file you must **restart Metro**
-> (`pnpm dev:ios`); an in-app reload against the running Metro keeps the old
+> (`pnpm dev:ios` or `pnpm dev:android`); an in-app reload against the running Metro keeps the old
 > value. This is the most common "I updated the credential but it still won't
 > connect" trap.
 

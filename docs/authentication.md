@@ -252,7 +252,7 @@ server's own `AUTH_USERS`. Vercel itself never sees or stores a credential.
 
 `EXPO_PUBLIC_*` variables are inlined into the JS bundle at Metro start, not
 hot-reloaded — after editing `.env` you must restart Metro
-(`pnpm dev:ios`), not just reload in-app.
+(`pnpm dev:ios` or `pnpm dev:android`), not just reload in-app.
 
 ### Local web dev (`pnpm dev`, simulator mode)
 

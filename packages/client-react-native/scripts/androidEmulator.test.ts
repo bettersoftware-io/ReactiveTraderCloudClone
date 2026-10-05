@@ -4,6 +4,8 @@ import {
   chooseVirtualDevice,
   listRunningEmulators,
   listVirtualDevices,
+  readInstalledBuildKind,
+  readLocalServerPort,
 } from "./androidEmulator.ts";
 
 test("finds a running emulator in adb's device list", () => {
@@ -54,4 +56,43 @@ test("a named device that does not exist chooses nothing", () => {
 
 test("no virtual devices chooses nothing", () => {
   expect(chooseVirtualDevice([], undefined)).toBeNull();
+});
+
+test("a build whose flags include DEBUGGABLE is the dev build", () => {
+  expect(
+    readInstalledBuildKind(
+      "    flags=0x0\n    flags=[ DEBUGGABLE HAS_CODE ALLOW_BACKUP ]\n",
+    ),
+  ).toBe("debug");
+});
+
+test("a build without DEBUGGABLE is a release build", () => {
+  expect(
+    readInstalledBuildKind("    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]\n"),
+  ).toBe("release");
+});
+
+test("no flags line means the app is not installed", () => {
+  expect(
+    readInstalledBuildKind("Unable to find package: io.example.app\n"),
+  ).toBeNull();
+});
+
+test("a server on this machine needs its port forwarded", () => {
+  expect(readLocalServerPort("ws://localhost:4000")).toBe(4000);
+  expect(readLocalServerPort("ws://127.0.0.1:4100")).toBe(4100);
+});
+
+test("a local server with no port uses the scheme's default", () => {
+  expect(readLocalServerPort("ws://localhost")).toBe(80);
+  expect(readLocalServerPort("wss://localhost")).toBe(443);
+});
+
+// Simulator mode (empty), the deployed server, and a value that is not a URL:
+// none of them is reached through the Mac's localhost.
+test("nothing is forwarded for simulator mode or a remote server", () => {
+  expect(readLocalServerPort("")).toBeNull();
+  expect(readLocalServerPort(undefined)).toBeNull();
+  expect(readLocalServerPort("wss://rtc-clone-server.fly.dev")).toBeNull();
+  expect(readLocalServerPort("not a url")).toBeNull();
 });
