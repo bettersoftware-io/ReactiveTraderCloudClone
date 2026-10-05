@@ -4,10 +4,11 @@ import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
 import { createTick, createTrade, EURUSD } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
-import { CONSTRUCTION_TIME_PORT_METHODS } from "#/suites/portDiscipline";
 import { everySessionStream, signIn } from "#/suites/sessionKit";
 
 const NOW: number = 1_800_000_000_000;
+/** The port methods `portDiscipline` pins at one construction-time call. */
+const MIN_COUNTED_METHODS: number = 20;
 const SEED = { transport: true, countPortStreams: true } as const;
 
 /** A hot swap composes a second core over the SAME port objects after the
@@ -41,8 +42,9 @@ export function describeRecompositionContract(
             "connect",
           ]);
           auth.unsubscribe();
-          // The first composition's transport gate went with it: signing
-          // out of the DISPOSED app must not reach the shared transport.
+          // Deliberately on the DISPOSED first app: a gate its dispose left
+          // subscribed would still see this logout and disconnect the
+          // transport the second composition now owns.
           h.app.presenters.auth.logout();
           await clock.settle();
           expect(h.driver.transportCalls()).toEqual([
@@ -61,26 +63,25 @@ export function describeRecompositionContract(
         const h = makeHarness(SEED);
 
         try {
-          const first = CONSTRUCTION_TIME_PORT_METHODS.map((name) => {
-            return h.driver.portCalls(name);
-          });
-
-          for (const [
-            index,
-            name,
-          ] of CONSTRUCTION_TIME_PORT_METHODS.entries()) {
-            // A positive witness: a name nothing called would pass `0 === 0`.
-            expect(first[index], name).toBeGreaterThanOrEqual(1);
-          }
+          await clock.settle();
+          const first = h.driver.portCallCounts();
+          const names = Object.keys(first);
+          // A positive witness: `portDiscipline` pins 20 construction-time
+          // port methods today, so a snapshot smaller than that means the
+          // counters were bypassed, not that nothing needs doubling.
+          expect(names.length).toBeGreaterThanOrEqual(MIN_COUNTED_METHODS);
 
           await h.recompose();
           await clock.settle();
+          const second = h.driver.portCallCounts();
 
-          for (const [
-            index,
-            name,
-          ] of CONSTRUCTION_TIME_PORT_METHODS.entries()) {
-            expect(h.driver.portCalls(name), name).toBe(first[index] * 2);
+          // Every method the first composition called, the second called
+          // exactly as often; none appeared that the first never called.
+          expect(Object.keys(second).sort()).toEqual(names.sort());
+
+          for (const name of names) {
+            expect(first[name], name).toBeGreaterThanOrEqual(1);
+            expect(second[name], name).toBe(first[name] * 2);
           }
         } finally {
           await h.teardown();

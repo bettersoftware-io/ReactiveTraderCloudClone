@@ -266,6 +266,10 @@ export interface ScriptedDriver {
   /** How many times the core has invoked this port method since the harness
    * was built — the "called once, at construction" discipline's witness. */
   portCalls(method: PortMethodName): number;
+  /** A snapshot copy of every port method the core has called so far and
+   * how often — `portCalls` for each name at once, so a suite need not list
+   * the names. A method never called is absent. */
+  portCallCounts(): Readonly<Record<string, number>>;
   /** Push one raw tick into `pricing.getPriceUpdates(tick.symbol)`. A tick
    * for a symbol nobody has subscribed reaches nobody. */
   tickPrice(tick: PriceTick): void;
@@ -996,6 +1000,9 @@ export function scriptPorts(
       },
       portCalls: (method: PortMethodName) => {
         return calls.get(method) ?? 0;
+      },
+      portCallCounts: () => {
+        return Object.fromEntries(calls);
       },
       tickPrice: (tick: PriceTick) => {
         prices.get(tick.symbol)?.next(tick);

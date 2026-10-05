@@ -4,34 +4,7 @@ import { ROSTER } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
-import type { PortMethodName } from "#/harness/scriptedPorts";
 import { settle } from "#/harness/settle";
-
-/** The port methods each core obtains exactly once, at construction — the
- * names the cases below pin one by one. The `recomposition` suite reads the
- * same list to prove a second composition obtains each of them once too. */
-export const CONSTRUCTION_TIME_PORT_METHODS: readonly PortMethodName[] = [
-  "themeMode$",
-  "colorScheme.prefersDark$",
-  "eqWatchlistSort$",
-  "bootVariant$",
-  "connectionEvents.events",
-  "referenceData.getCurrencyPairs",
-  "blotter.getTradeStream",
-  "analytics.getAnalytics",
-  "workflow.events",
-  "dealers.getDealers",
-  "instruments.getInstruments",
-  "marketData.watchlist",
-  "positions.positions",
-  "telemetry.throughput$",
-  "telemetry.latency$",
-  "telemetry.errorRate$",
-  "serviceHealth.topology$",
-  "eventLog.events$",
-  "sessions.sessions$",
-  "admin.getThroughput",
-];
 
 /** Every port method is called at construction only, in every core. A
  * synchronous read (`cycle()`, `current()`) reads through a fresh
