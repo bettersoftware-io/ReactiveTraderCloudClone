@@ -1,6 +1,7 @@
 # Language-neutral core contract (scenarios as data) — design
 
-**Date:** 2026-10-05 · **Status:** design agreed in conversation, awaiting review of this document
+**Date:** 2026-10-05 · **Status:** approved 2026-10-05; amended the same day by the plan's classification of the 66 cases (the `lookup` step, the `pattern` matcher, author-declared `time`, schema-backed parsing)
+**Plan:** [the implementation plan](../plans/2026-10-05-language-neutral-core-contract.md)
 **Workstream:** native mobile experiment, step 1 of 3.
 **Builds on:** [the pluggable application core](../../architecture/22-pluggable-application-core.md) (§22) and its behavioural tier, `@rtc/core-contract`.
 
@@ -140,12 +141,12 @@ file carries every field of each value.
       "touches": ["presenters.priceStream"],
       "steps": [
         { "step": "subscribe", "as": "c",
-          "stream": "presenters.priceStream.price$", "args": [{ "symbol": "EURUSD", "ratePrecision": 5, "pipsPosition": 4 }] },
+          "from": { "stream": "presenters.priceStream.price$", "args": [{ "symbol": "EURUSD", "ratePrecision": 5, "pipsPosition": 4 }] } },
         { "step": "expect", "read": { "collector": "c", "field": "values" }, "equals": [] },
         { "step": "drive", "verb": "tickPrice", "args": [{ "symbol": "EURUSD", "bid": 1.09995, "ask": 1.10005, "mid": 1.1, "valueDate": "2026-01-03", "creationTimestamp": 0 }] },
         { "step": "settle" },
         { "step": "expect", "read": { "collector": "c", "field": "values" },
-          "path": "[*]", "pick": ["mid", "movementType"],
+          "pick": ["mid", "movementType"],
           "equals": [[1.1, "NONE"]] }
       ]
     }
@@ -160,7 +161,7 @@ Scenario-level fields:
 | `name` | Unique within the member. Every runner uses it as the test name. |
 | `touches` | The contract members the steps reach. Derived by the emitter, never written by hand. |
 | `seed` | Optional. State the world must hold before the app is composed (today's `HarnessSeed`). |
-| `time` | `"virtual"` when the scenario uses `advance` or `now`; absent otherwise. |
+| `time` | `"virtual"` when the scenario runs on a clock the runner controls. Declared by the author; required when the scenario uses `advance` or `now`. |
 | `now` | Optional, virtual time only. The wall clock in epoch milliseconds at composition. |
 
 The app is composed at the start of every scenario and torn down at its
@@ -174,7 +175,8 @@ end, whatever happened. Teardown is the runner's job and is not a step.
 | `call` | `target`, `args` | Call a presenter method, a command, or a machine intent. |
 | `machine` | `as`, `factory`, `args` | Create a machine instance under an alias. |
 | `dispose` | `of` | Dispose a machine. |
-| `subscribe` | `as`, `stream`, `args?`, `countTurns?` | Start collecting a stream's values and errors under an alias. |
+| `lookup` | `as`, `stream`, `args?` | Name a stream under an alias without subscribing to it. |
+| `subscribe` | `as`, `from`, `countTurns?` | Start collecting a stream's values and errors under an alias. `from` is a stream reference. |
 | `unsubscribe` | `of` | Stop collecting. |
 | `settle` | | Let everything the core has scheduled that needs no passage of time finish. |
 | `advance` | `ms`, `note?` | Move virtual time forward and run everything that falls due, in order. |
@@ -186,6 +188,12 @@ A `target` or `stream` is a dotted path whose first segment is
 (`presenters.auth.login`, `m.intents.execute`, `m.state$`,
 `driver.connectionEvents$`).
 
+A stream reference is either inline, `{ "stream": path, "args"?: [...] }`,
+or `{ "ref": alias }` for a stream an earlier `lookup` step named. `lookup`
+exists because one case asserts that nothing happens between obtaining a
+stream and subscribing to it (`execution`: "the port sees a request only
+once the result is subscribed").
+
 An `expect` reads one of three things:
 
 - `{ "collector": "c", "field": "values" | "errors" | "turns" }`
@@ -194,12 +202,14 @@ An `expect` reads one of three things:
   same stream object
 
 and applies exactly one matcher: `equals` (deep equality), `matches` (every
-key in the literal is present and deeply equal; extra keys are allowed) or
-`length`.
+key in the literal is present and deeply equal; extra keys are allowed),
+`length`, or `pattern` (the value is a string matching a regular
+expression; one `blotter` case checks a clock stamp this way).
 
-**The vocabulary grows only on evidence.** The plan's first task classifies
-all 66 cases against this table. A step kind or matcher is added only when
-a named case needs it.
+**The vocabulary grows only on evidence.** All 66 cases were classified
+against this table while the plan was written. A step kind or matcher is
+added only when a named case needs it; `lookup` and `pattern` were added
+that way.
 
 **Steps between two waits run in one turn.** A runner must not yield
 between steps except at `settle` and `advance`. Several contract cases
@@ -231,8 +241,9 @@ The same `{ "$error": … }` form carries an error into a `drive` step
 (`failPrice`); the runner turns it into its native error.
 
 **Projection.** `path` is a small grammar: `.name`, `[n]`, `[-1]` and
-`[*]`. `pick` is a list of paths applied to each element, giving a tuple
-per element.
+`[*]` (which maps the rest of the path over an array). `pick` is a list of
+paths applied to each element of an array, or to a single value, giving a
+tuple per element.
 
 **Two rules against silent passes:**
 
@@ -274,16 +285,20 @@ argument type is a compile error. It records steps and executes nothing:
 
 ```ts
 scenario("each tick is enriched with movement against the previous mid", (s) => {
-  const c = s.subscribe(s.presenters.priceStream.price$(EURUSD));
-  c.expect("values").equals([]);
+  const c = s.subscribe(s.stream.presenters.priceStream.price$(EURUSD));
+  c.values.equals([]);
   s.drive.tickPrice(createTick("EURUSD", 1.1));
   s.settle();
-  c.expect("values", { path: "[*]", pick: ["mid", "movementType"] })
-    .equals([[1.1, PriceMovementType.NONE]]);
+  c.values.pick("mid", "movementType").equals([[1.1, PriceMovementType.NONE]]);
 });
 ```
 
-Paths inside `path` and `pick` are plain strings. They are checked when the
+The builder separates what names a stream (`s.stream.…`, which records
+nothing) from what acts (`s.call.…`, `s.drive.…`), because at run time a
+recorded call cannot tell the two apart. Scenario options (`time`, `now`,
+`seed`) are given by a first call, `s.given({...})`.
+
+Paths inside `at(...)` and `pick(...)` are plain strings. They are checked when the
 scenario is replayed, by the rule that an unresolved path fails.
 
 The cost of this choice is that adding a scenario needs the TypeScript
@@ -307,14 +322,20 @@ The drift test runs wherever `pnpm test` runs, which is CI and
 existing pattern for this and needs no new CI step.)
 
 Schema validation needs a validator. The repo has none today, so `ajv`
-becomes a dev dependency of `@rtc/core-contract`.
+becomes a dependency of `@rtc/core-contract`. It is a runtime dependency
+of that (dev-only) package, because the parser every runner uses validates
+with the schema rather than with a second, hand-written definition.
+
+The regenerate command builds the package first and runs the emitter from
+`dist`, since the source uses `#/` imports that plain `node` cannot
+resolve.
 
 ### 7. The TypeScript runner
 
 `CONTRACT_SUITES` points each converted member at `scenarioSuite(member)`.
-That suite reads the member's JSON **from disk**, parses it strictly (an
-unknown step kind or an unknown key is an error) and interprets each
-scenario against a `CoreHarness`. It does not import the authored
+That suite reads the member's JSON **from disk**, validates it against the
+schema (an unknown step kind or an unknown key is an error) and interprets
+each scenario against a `CoreHarness`. It does not import the authored
 TypeScript, so the three cores replay the same bytes a Swift runner will
 read.
 
@@ -334,6 +355,19 @@ for that member.
 **Stop rule:** if the classification puts more than 6 of the 66 cases (10%)
 in the TypeScript-only set, work stops before any rewrite and the
 vocabulary is revisited with the user.
+
+**Result (2026-10-05):** 2 residue cases, and 68 scenarios from the 66
+cases.
+
+- `currencyPairs` asserts that the emitted roster is the very object the
+  port delivered. Reference identity of a value has no meaning in JSON
+  space; the scenario asserts deep equality and the identity check stays in
+  vitest.
+- `transportGate` asserts that `app.ports.transport` is the transport the
+  app was given. That is the shape of the TypeScript `App` object, not
+  behaviour a subscriber observes.
+- Two `auth` cases each build two apps. A scenario has one, so each becomes
+  two scenarios.
 
 ### 9. The Gherkin rendering
 
@@ -375,13 +409,14 @@ delivery).
 | `encode.ts` | Canonical encoding of observed values; decoding of `$error` arguments. | `format` |
 | `path.ts` | Parses and applies `path` / `pick`. | nothing |
 | `builder.ts` | The typed recording builder. | `format`, `@rtc/core-api` types |
-| `parse.ts` | Strict JSON → `format` types. | `format` |
+| `parse.ts` | Reads a scenario file and validates it against the schema. | `format`, `ajv` |
 | `interpret.ts` | Runs one parsed scenario against a `CoreHarness`. | `parse`, `encode`, `path`, the harness |
 | `suite.ts` | `scenarioSuite(member)`: reads the file, declares one vitest case per scenario. | `interpret` |
-| `render.ts` + `phrases.ts` | Scenario → Gherkin text. | `format` |
-| `emit.ts` | All authored scenarios → a map of file name to content. | `builder`, `render` |
+| `render.ts` + `phrases.ts` | Scenario → Gherkin text, and the phrase table it needs. | `format` |
+| `emit.ts` | All authored scenarios → a map of file name to content; and the drift comparison. | `render` |
+| `write.ts` | Writes the emitted files. Run from `dist`. | `emit` |
 
-Each unit except `suite.ts` is pure and has its own unit tests. The
+Each unit except `suite.ts` and `write.ts` has its own unit tests. The
 interpreter's tests run against a small fake harness, not a real core.
 
 `@rtc/core-contract` keeps its dependency rule: `@rtc/core-api`,
@@ -413,17 +448,17 @@ suites and must pass after every batch.
 
 ## Delivery
 
-Three reviewable units, in order:
+Two pull requests, in order:
 
-1. **Machinery and pilot.** The classification of all 66 cases; the units
-   in §10; the drift test and schema; one member converted end to end:
-   `presenters.priceStream`, because it alone exercises virtual time, turn
-   counts and identity.
-2. **The remaining 12 members**, in batches, each with its kill table.
-3. **Documentation.** The `@rtc/core-contract` README; a format reference
-   (`packages/core-contract/scenarios/README.md`) written for someone
-   implementing a runner in another language; architecture §22; `CLAUDE.md`
-   where it describes the contract tier; `docs/STATUS.md`.
+1. **Machinery and pilot.** The units in §10; the drift test and schema;
+   one member converted end to end: `presenters.priceStream`, because it
+   alone exercises virtual time, turn counts and identity; the format
+   reference (`packages/core-contract/scenarios/README.md`), written for
+   someone implementing a runner in another language; the
+   `@rtc/core-contract` README.
+2. **The remaining 12 members**, in three batches, each with its kill
+   tables; then architecture §22, `CLAUDE.md` where it describes the
+   contract tier, and `docs/STATUS.md`.
 
 ## Risks
 
