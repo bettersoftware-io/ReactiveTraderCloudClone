@@ -9,7 +9,7 @@ import {
   withLatestFrom,
 } from "rxjs";
 
-import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/domain";
+import type { JarvisUsage, JarvisUsageSnapshot } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import { out, stream, type WsEffect } from "@rtc/ws-effects";
 
@@ -21,7 +21,7 @@ function buildPayload(
   ctx: Ctx,
   snapshot: JarvisUsageSnapshot,
   gate: JarvisGateState,
-): AdminJarvisUsagePayload {
+): JarvisUsage {
   const { budgetUsd, softRatio } = ctx.jarvisGate.config;
 
   return {
@@ -93,18 +93,17 @@ const jarvisUsage$: WsEffect<Ctx> = stream(
       }),
     );
 
-    const transitions$: Observable<AdminJarvisUsagePayload> =
-      ctx.jarvisGate.state$.pipe(
-        skip(1),
-        switchMap((gate) => {
-          return ctx.usageMeter.snapshot$.pipe(
-            take(1),
-            map((snapshot) => {
-              return buildPayload(ctx, snapshot, gate);
-            }),
-          );
-        }),
-      );
+    const transitions$: Observable<JarvisUsage> = ctx.jarvisGate.state$.pipe(
+      skip(1),
+      switchMap((gate) => {
+        return ctx.usageMeter.snapshot$.pipe(
+          take(1),
+          map((snapshot) => {
+            return buildPayload(ctx, snapshot, gate);
+          }),
+        );
+      }),
+    );
 
     return merge(routine$, transitions$).pipe(
       map((payload) => {

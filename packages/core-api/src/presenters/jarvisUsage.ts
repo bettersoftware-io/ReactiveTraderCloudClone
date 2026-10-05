@@ -1,4 +1,4 @@
-import type { AdminJarvisUsagePayload } from "@rtc/domain";
+import type { JarvisUsage } from "@rtc/domain";
 
 import type { Stream } from "#/stream";
 
@@ -11,5 +11,5 @@ import type { Stream } from "#/stream";
  * instead of stale-looking zeros.
  */
 export interface JarvisUsagePresenter {
-  readonly usage$: Stream<AdminJarvisUsagePayload | null>;
+  readonly usage$: Stream<JarvisUsage | null>;
 }

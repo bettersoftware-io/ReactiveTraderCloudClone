@@ -7,7 +7,6 @@ import type {
   StoredSession,
 } from "@rtc/core-api";
 import {
-  type AdminJarvisUsagePayload,
   AuthSimulator,
   type Candle,
   type ConnectionEvent,
@@ -22,6 +21,7 @@ import {
   type EquityQuote,
   type Instrument,
   type JarvisEvent,
+  type JarvisUsage,
   type LogEvent,
   type MetricSample,
   type PlaceOrderRequest,
@@ -992,7 +992,7 @@ function createAvailability(available: boolean): JarvisAvailability {
   };
 }
 
-function createUsagePayload(): AdminJarvisUsagePayload {
+function createUsagePayload(): JarvisUsage {
   return { windowStartMs: 1, windowEndMs: 2, currentWindow: [], sinceBoot: [] };
 }
 

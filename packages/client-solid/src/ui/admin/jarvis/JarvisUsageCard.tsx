@@ -21,7 +21,7 @@ import styles from "./JarvisUsageCard.module.css";
  * in scope per this card's spec), so there's nothing to flag either way.
  *
  * `windowEndMs === 0` is the snapshot's own "no turn recorded yet" sentinel
- * (see `AdminJarvisUsagePayload`'s doc) — rendered as "—" rather than the
+ * (see `JarvisUsageSnapshot`'s doc) — rendered as "—" rather than the
  * misleading epoch-zero clock read `clock(0)` would otherwise print.
  *
  * The budget-gate envelope fields (`budgetUsd`/`softBudgetUsd`/

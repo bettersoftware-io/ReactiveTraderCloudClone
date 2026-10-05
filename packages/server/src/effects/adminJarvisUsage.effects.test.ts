@@ -1,7 +1,7 @@
 import { BehaviorSubject, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/domain";
+import type { JarvisUsage, JarvisUsageSnapshot } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
@@ -137,7 +137,7 @@ describe("admin jarvis usage effects", () => {
       });
 
       expect(sent).toHaveLength(1);
-      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      const payload = sent[0]?.payload as JarvisUsage;
       expect(payload.budgetUsd).toBe(2);
       expect(payload.softBudgetUsd).toBe(1.6);
       expect(payload.spentWindowUsd).toBeCloseTo(0.3, 10);
@@ -155,7 +155,7 @@ describe("admin jarvis usage effects", () => {
       });
 
       expect(sent).toHaveLength(1);
-      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      const payload = sent[0]?.payload as JarvisUsage;
       expect(payload.budgetUsd).toBeNull();
       expect(payload.softBudgetUsd).toBeNull();
       expect(payload.gateLevel).toBe("none");
@@ -177,7 +177,7 @@ describe("admin jarvis usage effects", () => {
       });
 
       expect(sent).toHaveLength(1);
-      const payload = sent[0]?.payload as AdminJarvisUsagePayload;
+      const payload = sent[0]?.payload as JarvisUsage;
       expect(payload.gateLevel).toBe("hard");
       expect(payload.budgetUsd).toBe(2);
       expect(payload.softBudgetUsd).toBe(1.6);
@@ -211,9 +211,7 @@ describe("admin jarvis usage effects", () => {
         throw new Error("expected the throttle's leading emission on the wire");
       }
 
-      expect((leading.payload as AdminJarvisUsagePayload).gateLevel).toBe(
-        "none",
-      );
+      expect((leading.payload as JarvisUsage).gateLevel).toBe("none");
 
       // Still well inside the throttle window (no leading edge available,
       // trailing not due for another second) — record $1.50 in one shot:
@@ -237,7 +235,7 @@ describe("admin jarvis usage effects", () => {
       // spentWindowUsd:0}` (the bug: a stale snapshot cached before the
       // recordTokens that caused the very flip being reported).
       expect(sent).toHaveLength(2);
-      const transitionFrame = sent[1]?.payload as AdminJarvisUsagePayload;
+      const transitionFrame = sent[1]?.payload as JarvisUsage;
       expect(transitionFrame.gateLevel).toBe("hard");
       expect(transitionFrame.spentWindowUsd).toBeCloseTo(1.5, 10);
 
@@ -246,7 +244,7 @@ describe("admin jarvis usage effects", () => {
       // consistent with the same fresh pairing, never the stale one.
       vi.advanceTimersByTime(500);
       expect(sent).toHaveLength(3);
-      const trailingFrame = sent[2]?.payload as AdminJarvisUsagePayload;
+      const trailingFrame = sent[2]?.payload as JarvisUsage;
       expect(trailingFrame.gateLevel).toBe("hard");
       expect(trailingFrame.spentWindowUsd).toBeCloseTo(1.5, 10);
     });
@@ -295,9 +293,7 @@ function harnessFor(
 /** The enriched payload the effect produces over `UNGATED_CONFIG`, for the
  * pre-existing throttle-behavior tests above (which predate the budget-gate
  * envelope and only assert the snapshot fields carry through unchanged). */
-function ungatedPayload(
-  snapshot: JarvisUsageSnapshot,
-): AdminJarvisUsagePayload {
+function ungatedPayload(snapshot: JarvisUsageSnapshot): JarvisUsage {
   return {
     ...snapshot,
     budgetUsd: null,
