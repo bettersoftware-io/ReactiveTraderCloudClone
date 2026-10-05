@@ -81,7 +81,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.60.0",
-    "tsc-alias": "1.9.5",
+    "tsc-alias": "1.9.7",
     "vite": "^8",
     "vitest": "^5.0.3",
     "vitest-browser-react": "^2.3.0"
