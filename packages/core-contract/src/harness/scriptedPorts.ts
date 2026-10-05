@@ -307,6 +307,10 @@ export interface ScriptedDriver {
   /** Push one raw tick into `pricing.getPriceUpdates(tick.symbol)`. A tick
    * for a symbol nobody has subscribed reaches nobody. */
   tickPrice(tick: PriceTick): void;
+  /** Make every LATER `getPriceUpdates(symbol)` subscription start with
+   * these ticks, delivered synchronously inside its `subscribe` — what the
+   * pricing simulator does with its 50 historical ticks. */
+  replayPricesOnSubscribe(symbol: string, ticks: readonly PriceTick[]): void;
   /** Error that symbol's price stream — terminal for its current subscribers;
    * the next `getPriceUpdates(symbol)` subscription gets a fresh Subject. */
   failPrice(symbol: string, error: unknown): void;
@@ -536,6 +540,7 @@ export function scriptPorts(
     calls,
   );
   const prices = new Map<string, Subject<PriceTick>>();
+  const priceReplays = new Map<string, readonly PriceTick[]>();
   const pairs$ = new Subject<readonly CurrencyPair[]>();
   const trades$ = new Subject<readonly Trade[]>();
   const position$ = new Subject<PositionUpdates>();
@@ -705,7 +710,15 @@ export function scriptPorts(
     // Deferred so each SUBSCRIPTION resolves the live Subject: after a
     // `failPrice` the replacement is what a fresh warm period gets.
     getPriceUpdates: (symbol: string): Observable<PriceTick> => {
-      return keyedStream(prices, symbol);
+      const live = keyedStream(prices, symbol);
+
+      return new Observable<PriceTick>((subscriber) => {
+        for (const tick of priceReplays.get(symbol) ?? []) {
+          subscriber.next(tick);
+        }
+
+        return live.subscribe(subscriber);
+      });
     },
     getPriceHistory: (symbol: string): Observable<readonly PriceTick[]> => {
       return base.pricing.getPriceHistory(symbol);
@@ -1052,6 +1065,12 @@ export function scriptPorts(
       },
       tickPrice: (tick: PriceTick) => {
         prices.get(tick.symbol)?.next(tick);
+      },
+      replayPricesOnSubscribe: (
+        symbol: string,
+        ticks: readonly PriceTick[],
+      ) => {
+        priceReplays.set(symbol, ticks);
       },
       failPrice: (symbol: string, error: unknown) => {
         prices.get(symbol)?.error(error);

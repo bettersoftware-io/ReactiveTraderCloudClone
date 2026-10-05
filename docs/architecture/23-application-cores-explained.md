@@ -576,7 +576,8 @@ the precise versions.
 | 7 | **Each port method is called once, at construction.** | A port call can open a subscription on the server; calling it twice doubles the load. |
 | 8 | **Values that arrive together are delivered together.** | The screen redraws once per turn. Fifty prices in one turn is one redraw; fifty prices in fifty turns is fifty. |
 | 9 | **Everything one event causes is delivered in the same turn.** | A price and the flash it causes must redraw the tile once, not once each. |
-| 10 | **A core can start on ports another core has already used.** | The web clients swap cores without a reload. The new core gets the old one's socket and session, and must carry on from them. |
+| 10 | **What a port replays on subscribe arrives in the subscribing turn.** | A tile that mounts must paint its price and its chart in one redraw, not two. |
+| 11 | **A core can start on ports another core has already used.** | The web clients swap cores without a reload. The new core gets the old one's socket and session, and must carry on from them. |
 
 Promise 1 is the one that shapes the bridges most:
 
@@ -678,6 +679,25 @@ The lesson for both: **when two things only work because one is slower than
 the other, it is a race, even if it has never failed.** Look for the
 ordering the code actually guarantees, not the one it happens to have.
 
+### Promise 10: a replay arrives with the subscribe
+
+A tile reads its price and its price history. When it mounts, it subscribes
+both, one after the other. The price is usually running already, because
+the animation director reads it too, so the tile gets the current price
+inside its `subscribe` call. The history is not running yet: subscribing it
+opens the port, and the port replays its recent ticks at once.
+
+In RxJS those replayed ticks pass through the operators and reach the tile
+inside the same `subscribe` call. In the Effect core they went into a queue
+for a fiber, and the fiber ran one microtask later. By then the tile had
+already redrawn with its price. Each tile drew twice when it appeared.
+
+The Effect core now lets its fibers run before `subscribe` returns
+(`turnScheduler.settle()`, called by `sharedFold`). The rule for any core:
+**a subscriber that is handed one value synchronously will redraw at the
+next microtask, so everything else its subscribes cause must be delivered
+before that.**
+
 ### What a value costs in the Effect core
 
 Getting the turns right fixed what the screen does. The same profiling also
@@ -703,12 +723,36 @@ most of it.
   workspace already used one, because its state must be readable right
   after it is written; now every machine and presenter does, and a gate
   keeps `SubscriptionRef` out of the package.
+- **A stream per currency pair, merged.** The animation director and the
+  narrator both follow the price of every pair in the roster. Each built one
+  Effect stream per pair and merged them, behind a "switch" for when the
+  roster changes: three or four fiber steps per tick, each. Now the bridge
+  subscribes the roster's pairs itself and puts every price into one queue
+  (`switchedPortEvents`): one step per tick.
+- **A fold per reader, only to drop most values.** Each tile asked the
+  director for "the intents for my tile", and got a fold of its own that
+  read every intent and kept one in nine. Now it gets a filtered view of the
+  director's one stream (`filterStream`): no fiber at all.
 
 The first two took the first two seconds of the FX screen from about 2,900
 fiber steps to about 1,000, and steady state from about 7,500 per six
 seconds to about 2,000. The third took the first two seconds to about 700.
-When you write a new Effect member: keep its state in a `SyncRef`, fold
-several ports with `fromPort.merged`, and let `sharedFold` do the sharing.
+The last two took steady state to about 520 (measured on a production
+build, where the first two seconds went from about 530 steps to about 160).
+
+When you write a new Effect member:
+
+- keep its state in a `SyncRef`;
+- fold several ports with `fromPort.merged`, and a changing set of ports
+  with `switchedPortEvents` inside it;
+- let `sharedFold` do the sharing, and give a reader that wants only part
+  of a shared stream a `filterStream`, not a fold of its own.
+
+What is left is the price of the library itself. On a production build the
+Effect core's chunk takes about 25 ms to load and evaluate against about
+6 ms for the other two (it is 235 KB, most of it `effect`), and building
+the Layer graph takes about 15 ms where the other cores' plain construction
+takes 3. Both happen once, at start-up.
 
 ### Promise 10: the ports were used before
 

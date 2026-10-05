@@ -284,7 +284,7 @@ This mechanism has never had a maintained doc of its own — it lives entirely
 in source comments until this chapter. One environment variable
 re-parameterizes which client's dev server the shared e2e suites drive.
 
-`tests/scripts/devServer.ts:26-33`:
+`tests/scripts/clientServer.ts:26-33`:
 
 ```ts
 // Which client package's dev server to spawn. Defaults to the web React
@@ -296,7 +296,7 @@ export const CLIENT_PKG: string =
   process.env.RTC_CLIENT_PKG ?? "@rtc/client-react";
 ```
 
-...consumed by the spawn call in the same file (`tests/scripts/devServer.ts:79`):
+...consumed by the spawn call in the same file (`tests/scripts/clientServer.ts:79`):
 
 ```ts
 const child = spawn("pnpm", ["--filter", CLIENT_PKG, "dev"], {
@@ -337,7 +337,7 @@ flowchart TB
     RA["run-all.ts — 7 concurrent suites<br/>(5 on the PR gate; 2 parked weekly)"]
     RA -- "RTC_CLIENT_PKG unset<br/>ports 3001-3002" --> PWR["playwright / cucumber configs"]
     RA -- "RTC_CLIENT_PKG=@rtc/client-solid<br/>ports 3003-3004" --> PWS["same config files<br/>(-solid report suffix)"]
-    PWR --> DS["devServer.ts<br/>spawn: pnpm --filter CLIENT_PKG dev"]
+    PWR --> DS["clientServer.ts<br/>spawn: pnpm --filter CLIENT_PKG dev"]
     PWS --> DS
     DS --> APPR["client-react Vite"]
     DS --> APPS["client-solid Vite"]
