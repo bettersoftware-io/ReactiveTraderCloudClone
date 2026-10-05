@@ -182,7 +182,8 @@ restarts today.
 `globalPassThroughEnv` (`turbo.json`), the same list `RTC_JARVIS_FAKE`
 already sits in — without that entry turbo's strict env mode would strip
 them silently in the turbo-routed `dev:*:fs` scripts (`dev:react:fs`,
-`dev:solid:fs`, `dev:ios:fs`, each a `turbo run dev`), the same trap
+`dev:solid:fs`, `dev:ios:fs`, each a `turbo run dev`; and `dev:android:fs`,
+which runs the server's `dev` task beside the app's `dev:android`), the same trap
 `CLAUDE.md` documents for `VITE_SERVER_URL`. `dev:ws` itself never goes
 through turbo — it's a plain `pnpm --filter @rtc/server dev` (tsx watch) —
 so this passthrough entry doesn't affect it either way:

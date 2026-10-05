@@ -74,6 +74,12 @@
       "cache": false,
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
     },
+    "dev:android": {
+      "cache": false,
+      "persistent": true,
+      "env": ["EXPO_PUBLIC_SERVER_URL"],
+      "passThroughEnv": ["JAVA_HOME", "ANDROID_HOME", "RTC_ANDROID_AVD"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
