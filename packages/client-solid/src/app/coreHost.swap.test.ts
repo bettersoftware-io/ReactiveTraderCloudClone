@@ -336,8 +336,9 @@ describe("hot swap over the real browser ports", () => {
     expect(inspector.state().connected).toBe(true);
     expect(fresh.rxjs.idle.streams.length).toBeGreaterThan(0);
     expect(
-      Object.keys(gainedOver(fresh.rxjs.unobserved, fresh.rxjs.idle.live))
-        .length,
+      Object.keys(
+        gainedOver(await measureUnobservedPorts("rxjs"), fresh.rxjs.idle.live),
+      ).length,
     ).toBeGreaterThanOrEqual(MIN_WARMED_METHODS);
     expect(fresh.rxjs.warmed.streams.length).toBeGreaterThan(
       fresh.rxjs.idle.streams.length,
@@ -347,12 +348,12 @@ describe("hot swap over the real browser ports", () => {
         .length,
     ).toBeGreaterThanOrEqual(1);
 
-    await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+    await settleSignedIn(harness.current());
     expect(readFootprint("rxjs", tally, inspector)).toEqual({
       impl: "rxjs",
       ...fresh.rxjs.idle,
     });
-    await release(await warm(harness.current(), pair));
+    await warmAndRelease(harness.current(), pair);
     expect(readFootprint("rxjs", tally, inspector)).toEqual({
       impl: "rxjs",
       ...fresh.rxjs.warmed,
@@ -371,7 +372,7 @@ describe("hot swap over the real browser ports", () => {
       expect(machinesBefore.length).toBeGreaterThan(0);
 
       await swapAndSettle(harness.host, impl);
-      await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+      await settleSignedIn(harness.current());
 
       // Everything the old composition held, and the hub on its behalf, is
       // closed, and the inspector lists none of the old core's per-key
@@ -389,7 +390,7 @@ describe("hot swap over the real browser ports", () => {
         }),
       ).toEqual([]);
 
-      await release(await warm(harness.current(), pair));
+      await warmAndRelease(harness.current(), pair);
       expect(readFootprint(impl, tally, inspector)).toEqual({
         impl,
         ...fresh[impl].warmed,
@@ -603,8 +604,6 @@ interface NamedFootprint extends Footprint {
 }
 
 interface InspectedFootprint {
-  /** The ports of the same core with no inspector attached. */
-  readonly unobserved: LiveSubscriptions;
   /** Signed in, nothing else subscribed: what the hub alone holds. */
   readonly idle: Footprint;
   /** After the warm set was opened and released again. */
@@ -627,21 +626,14 @@ async function measureFreshFootprint(
   pair: CurrencyPair,
 ): Promise<InspectedFootprint> {
   const firstOwnApp = composedApps.length;
-  const bare = createTalliedPorts(buildBrowserPorts());
-  const unobservedHost = createHostHarness(bare.ports, impl);
-  await signedIn(unobservedHost.current());
-  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
-  const unobserved = bare.live();
-
   const tally = createTalliedPorts(buildBrowserPorts());
   const inspector = createLiveInspector();
   const harness = createHostHarness(tally.ports, impl, {
     devtools: inspector.hub,
   });
-  await signedIn(harness.current());
-  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+  await settleSignedIn(harness.current());
   const idle = { live: tally.live(), streams: inspector.streamIds() };
-  await release(await warm(harness.current(), pair));
+  await warmAndRelease(harness.current(), pair);
   const warmed = { live: tally.live(), streams: inspector.streamIds() };
 
   for (const app of composedApps.splice(firstOwnApp)) {
@@ -649,12 +641,42 @@ async function measureFreshFootprint(
   }
 
   inspector.detach();
-  return { unobserved, idle, warmed };
+  return { idle, warmed };
 }
 
-/** Waits for a composition that resumes a stored session to be signed in. */
-async function signedIn(app: Composition): Promise<void> {
+/** What `impl` holds open on fresh ports, signed in, with no inspector
+ * attached and nothing subscribed. The app is disposed again. */
+async function measureUnobservedPorts(
+  impl: CoreImpl,
+): Promise<LiveSubscriptions> {
+  const firstOwnApp = composedApps.length;
+  const tally = createTalliedPorts(buildBrowserPorts());
+  await settleSignedIn(createHostHarness(tally.ports, impl).current());
+  const live = tally.live();
+
+  for (const app of composedApps.splice(firstOwnApp)) {
+    await app.dispose();
+  }
+
+  return live;
+}
+
+/** Opens the warm set and releases it again, settling for `SETTLE_MS` after
+ * each: what stays open afterwards is what the hub keeps. */
+async function warmAndRelease(
+  app: Composition,
+  pair: CurrencyPair,
+): Promise<void> {
+  await release(await warm(app, pair, SETTLE_MS), SETTLE_MS);
+}
+
+/** Waits until a composition that resumes a stored session is signed in and
+ * has loaded its currency pairs (its price subscriptions follow them), then
+ * for `SETTLE_MS` more: the state a footprint is read in. */
+async function settleSignedIn(app: Composition): Promise<void> {
   await waitFor(app.presenters.auth.state$, isAuthenticated, "resumed sign-in");
+  await waitForFirstPair(app);
+  await vi.advanceTimersByTimeAsync(SETTLE_MS);
 }
 
 function delayBy(ms: number): Promise<void> {
@@ -858,6 +880,7 @@ function withQuietPrices(ports: AppPorts): AppPorts {
 async function warm(
   app: Composition,
   pair: CurrencyPair,
+  settleMs: number = OBSERVE_MS,
 ): Promise<readonly Subscription[]> {
   const presenters = app.presenters;
   const symbol = pair.symbol;
@@ -886,16 +909,19 @@ async function warm(
     presenters.sessions.sessions$.subscribe(() => {}),
     presenters.jarvisUsage.usage$.subscribe(() => {}),
   ];
-  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+  await vi.advanceTimersByTimeAsync(settleMs);
   return subscriptions;
 }
 
-async function release(subscriptions: readonly Subscription[]): Promise<void> {
+async function release(
+  subscriptions: readonly Subscription[],
+  settleMs: number = OBSERVE_MS,
+): Promise<void> {
   for (const subscription of subscriptions) {
     subscription.unsubscribe();
   }
 
-  await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+  await vi.advanceTimersByTimeAsync(settleMs);
 }
 
 /** The `port.method` entries of `warmed` that hold more live subscriptions
@@ -1103,6 +1129,11 @@ const BUDGET_MS = 20_000;
 
 /** How long a connection status is recorded for a comparison. */
 const OBSERVE_MS = 2_000;
+
+/** How long case 5 lets a composition under a live hub settle before it
+ * reads a footprint: several hub flushes (one every 33 ms). Short, because
+ * the hub keeps every simulator stream warm for as long as the clock runs. */
+const SETTLE_MS = 250;
 
 /** How many distinct port methods the warm set must add subscriptions to. */
 const MIN_WARMED_METHODS = 3;
