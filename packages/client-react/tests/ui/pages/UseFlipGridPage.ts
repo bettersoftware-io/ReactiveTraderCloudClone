@@ -1,10 +1,10 @@
 import { cleanup, renderHook } from "@testing-library/react";
 
-import type {
-  FlipGridApi,
-  FlipGridOptions,
+import {
+  type FlipGridApi,
+  type FlipGridOptions,
+  useFlipGrid,
 } from "#/ui/shell/motion/useFlipGrid";
-import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 interface HookProps {
   dep: string;

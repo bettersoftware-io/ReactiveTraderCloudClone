@@ -38,8 +38,12 @@
 // against a style the component is expected to have rendered, so an absent one
 // is a broken test, not a legitimate reading — and the throw names the node,
 // which `expected undefined to be 56` would not.
-import type { ImageStyle, TextStyle, ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
+import {
+  type ImageStyle,
+  StyleSheet,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 
 type StyleLike = ViewStyle | TextStyle | ImageStyle;
 

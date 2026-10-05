@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, untrack } from "solid-js";
+import { createMemo, type JSX, untrack } from "solid-js";
 
 import styles from "./RfqCountdown.module.css";
 

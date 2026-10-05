@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useRef } from "react";
+import { type ReactElement, useRef } from "react";
 
 import { EmptyRfqs } from "#/credit/Rfqs/EmptyRfqs";
 import { RfqCard } from "#/credit/Rfqs/RfqCard";

@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For } from "solid-js";
+import { createMemo, For, type JSX } from "solid-js";
 
 import { ADAPTIVE_BANK_NAME, type Dealer } from "@rtc/domain";
 

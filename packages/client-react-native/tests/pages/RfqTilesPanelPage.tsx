@@ -1,7 +1,6 @@
 // packages/client-react-native/tests/pages/RfqTilesPanelPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 
 import type {
   CreditRfqFilter,

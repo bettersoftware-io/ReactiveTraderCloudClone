@@ -7,8 +7,7 @@ import {
   Skia,
   vec,
 } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 import type { HistoricPosition } from "@rtc/domain";

@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  Candle,
-  CandleTimeframe,
-  DepthBook,
-  DepthLevel,
-  EquityInstrument,
-  EquityOrder,
-  EquityPosition,
-  EquityQuote,
-  OrderSide,
-  OrderStatus,
-  OrderType,
+import {
+  CANDLE_TIMEFRAMES,
+  type Candle,
+  type CandleTimeframe,
+  type DepthBook,
+  type DepthLevel,
+  type EquityInstrument,
+  type EquityOrder,
+  type EquityPosition,
+  type EquityQuote,
+  type OrderSide,
+  type OrderStatus,
+  type OrderType,
 } from "./index.js";
-import { CANDLE_TIMEFRAMES } from "./index.js";
 
 describe("equities entities", () => {
   it("compose a working order across the full lifecycle vocabulary", () => {

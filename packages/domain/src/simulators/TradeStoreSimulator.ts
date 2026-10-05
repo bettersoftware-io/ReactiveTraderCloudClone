@@ -1,10 +1,10 @@
 import { concat, defer, type Observable, of, Subject } from "rxjs";
 
-import type { Trade } from "../fx/trade.js";
 import {
   Direction,
   isoDaysFromNow,
   SPOT_VALUE_DATE_OFFSET_DAYS,
+  type Trade,
   TradeStatus,
 } from "../fx/trade.js";
 import type { BlotterPort } from "../ports/blotterPort.js";

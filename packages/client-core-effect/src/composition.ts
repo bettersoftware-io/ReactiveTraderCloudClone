@@ -16,8 +16,7 @@ import type {
   PlaceOrderRequest,
 } from "@rtc/domain";
 
-import type { EffectHost } from "#/bridge/out";
-import { closeScopeAndWait } from "#/bridge/out";
+import { closeScopeAndWait, type EffectHost } from "#/bridge/out";
 import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
 import { buildAppLayer, nativePresentersEffect } from "#/layers";

@@ -31,8 +31,7 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import type { PaneVm } from "./ChartPlot";
-import { ChartPlot } from "./ChartPlot";
+import { ChartPlot, type PaneVm } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
 import {
   type ChartGestures,

@@ -1,8 +1,12 @@
-import type { RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import type { BootVariant } from "#/shell/Boot/bootDraw";
-import { drawBoot } from "#/shell/Boot/bootDraw";
+import { type BootVariant, drawBoot } from "#/shell/Boot/bootDraw";
 import { useTheme } from "#/theme/useTheme";
 
 const VARIANT_KEY = "rt_bootSeq";

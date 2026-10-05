@@ -1,8 +1,7 @@
 import { state } from "@rx-state/core";
 import { renderHook } from "@solidjs/testing-library";
 import { BehaviorSubject } from "rxjs";
-import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { Machine } from "@rtc/core-api";
 

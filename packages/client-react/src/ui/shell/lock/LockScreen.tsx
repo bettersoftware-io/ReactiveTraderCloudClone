@@ -1,5 +1,9 @@
-import type { ChangeEvent, FormEvent, ReactElement } from "react";
-import { useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactElement,
+  useState,
+} from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 

@@ -20,8 +20,7 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import type { PaneVm } from "#/ui/equities/chart/ChartPlot";
-import { ChartPlot } from "#/ui/equities/chart/ChartPlot";
+import { ChartPlot, type PaneVm } from "#/ui/equities/chart/ChartPlot";
 
 /**
  * Golden-only composite scenario for the canvas substrate (Task 6, spec

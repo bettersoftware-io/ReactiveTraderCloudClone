@@ -7,13 +7,13 @@ import type {
   LoginWaitCycle,
   StoredSession,
 } from "@rtc/core-api";
-import type {
-  AuthOutcome,
-  AuthPort,
-  LoginWaitVariant,
-  SessionUser,
+import {
+  type AuthOutcome,
+  type AuthPort,
+  DEFAULT_LOGIN_WAIT_VARIANT,
+  type LoginWaitVariant,
+  type SessionUser,
 } from "@rtc/domain";
-import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import { AuthPresenter } from "../AuthPresenter";
 

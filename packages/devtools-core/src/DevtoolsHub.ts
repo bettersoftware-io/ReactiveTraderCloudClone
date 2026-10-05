@@ -1,20 +1,20 @@
 import type { Observable, Subscription } from "rxjs";
 
-import type {
-  AppToInspector,
-  DevtoolsErrorEvent,
-  DevtoolsEvent,
-  MachineCreatedEvent,
-  MachineDisposedEvent,
-  MachineIntentEvent,
-  MachineStateEvent,
-  SnapshotMachine,
-  SnapshotStream,
-  StreamEmissionEvent,
-  StreamRegisteredEvent,
-  WireEvent,
+import {
+  type AppToInspector,
+  type DevtoolsErrorEvent,
+  type DevtoolsEvent,
+  type MachineCreatedEvent,
+  type MachineDisposedEvent,
+  type MachineIntentEvent,
+  type MachineStateEvent,
+  PROTOCOL_VERSION,
+  type SnapshotMachine,
+  type SnapshotStream,
+  type StreamEmissionEvent,
+  type StreamRegisteredEvent,
+  type WireEvent,
 } from "./protocol";
-import { PROTOCOL_VERSION } from "./protocol";
 import { serializeValue } from "./serialize";
 import type { DevtoolsTransport } from "./transport";
 

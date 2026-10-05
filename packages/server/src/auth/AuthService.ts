@@ -4,8 +4,7 @@ import { promisify } from "node:util";
 import { findRosterUser } from "@rtc/domain";
 import type { SessionUserDto } from "@rtc/shared";
 
-import type { VerifiedToken } from "./token.js";
-import { signToken, verifyToken } from "./token.js";
+import { signToken, type VerifiedToken, verifyToken } from "./token.js";
 
 export { parseAuthUsers } from "./loadUsers.js";
 

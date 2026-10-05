@@ -1,6 +1,9 @@
 import { navigatorWindowStyleFromScene } from "./chartCssVars.js";
-import type { ChartPoint, ChartVarStyle } from "./chartScene.js";
-import { navigatorWindowScene } from "./chartScene.js";
+import {
+  type ChartPoint,
+  type ChartVarStyle,
+  navigatorWindowScene,
+} from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 
 /** The candle fields the navigator vm reads — a structural subset of

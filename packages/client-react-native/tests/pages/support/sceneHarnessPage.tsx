@@ -14,8 +14,7 @@ import {
   render,
   screen,
 } from "@testing-library/react-native";
-import type { ComponentType, ReactElement } from "react";
-import { createElement } from "react";
+import { type ComponentType, createElement, type ReactElement } from "react";
 
 /** The shape of the resolved props the mocked Skia/Reanimated primitives
  * expose on their host node under jest — see `jest.setup.ts`'s Skia mock. */

@@ -9,8 +9,7 @@ import { Nav } from "#/shell/Header/Nav";
 import { Notifications } from "#/shell/Header/Notifications";
 import { StatusPills } from "#/shell/Header/StatusPills";
 import { ThemePicker } from "#/shell/Header/ThemePicker";
-import type { Tab } from "#/shell/Header/useMenus";
-import { useMenus } from "#/shell/Header/useMenus";
+import { type Tab, useMenus } from "#/shell/Header/useMenus";
 
 export interface HeaderProps {
   tab: Tab;

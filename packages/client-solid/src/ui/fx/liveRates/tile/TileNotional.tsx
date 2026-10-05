@@ -1,5 +1,4 @@
-import type { Accessor, JSX } from "solid-js";
-import { createMemo, Show } from "solid-js";
+import { type Accessor, createMemo, type JSX, Show } from "solid-js";
 
 import type { NotionalIntents, NotionalView } from "@rtc/core-api";
 

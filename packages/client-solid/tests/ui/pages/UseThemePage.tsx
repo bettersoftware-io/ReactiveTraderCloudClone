@@ -1,8 +1,7 @@
 import { render, renderHook } from "@solidjs/testing-library";
 import type { JSX } from "solid-js";
 
-import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 import { useTheme } from "#/ui/shell/theme/useTheme";

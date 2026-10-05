@@ -5,15 +5,13 @@ import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "../defaultLayoutPort";
 import { dockedLeafIds, insertDockedLeaf } from "../dockColumn";
-import type {
-  LayoutPresetEntry,
-  StoredLayoutPreset,
-} from "../layoutPresetCodec";
 import {
   DEFAULT_LAYOUT_PRESET_NAME,
   LAYOUT_PRESET_VERSION,
+  type LayoutPresetEntry,
   MAX_LAYOUT_PRESET_NAME_LENGTH,
   parseLayoutPresetList,
+  type StoredLayoutPreset,
   serializeLayoutPresetList,
   summarizeLayoutPresets,
   UNREADABLE_LIST_ID,

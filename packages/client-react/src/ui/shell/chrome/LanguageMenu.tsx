@@ -2,8 +2,7 @@
 // The language list below is a fixed, uncontrolled list (Reactive Trader.dc.html:790):
 // there is no i18n backend, so picking a language does nothing but relabel the
 // trigger — presence only.
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import styles from "./HeaderChrome.module.css";
 

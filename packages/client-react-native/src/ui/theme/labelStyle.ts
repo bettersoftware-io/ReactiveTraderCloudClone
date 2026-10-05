@@ -1,8 +1,7 @@
 import type { TextStyle } from "react-native";
 
 import type { RnTheme } from "#/ui/theme/tokens";
-import type { FontWeightKey } from "#/ui/theme/weightedFont";
-import { weightedFont } from "#/ui/theme/weightedFont";
+import { type FontWeightKey, weightedFont } from "#/ui/theme/weightedFont";
 
 /** The design's small mono label recipe — the tracked, mono-faced type that
  * heads a section, names a chip, or fills a status cell — as one style

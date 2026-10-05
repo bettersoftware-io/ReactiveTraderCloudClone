@@ -1,6 +1,5 @@
 // packages/client-react-native/src/ui/shell/hud/HexReticleLogo.tsx
-import type { JSX } from "react";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { StyleSheet, type ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,

@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, type JSX, Show } from "solid-js";
 
 import { type LatBarVm, latencyBuckets } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";

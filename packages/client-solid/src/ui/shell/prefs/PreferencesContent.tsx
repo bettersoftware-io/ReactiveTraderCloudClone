@@ -1,24 +1,28 @@
-import type { Accessor, JSX } from "solid-js";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import {
+  type Accessor,
+  createMemo,
+  createSignal,
+  For,
+  type JSX,
+  Show,
+} from "solid-js";
 
 import type { CoreImpl, CoreSelection, JarvisState } from "@rtc/core-api";
 import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
-import type {
-  AmbientStyle,
-  ChartSubstrate,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  PowerSaverLevel,
-} from "@rtc/domain";
 import {
+  type AmbientStyle,
+  type ChartSubstrate,
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type LayoutEngine,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type PowerSaverLevel,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 

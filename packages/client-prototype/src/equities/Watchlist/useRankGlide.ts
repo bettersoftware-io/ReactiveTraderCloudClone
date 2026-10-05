@@ -1,5 +1,4 @@
-import type { RefObject } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 
 // Watchlist-only rank glide (PROTO dc.html ~879-892): unlike the generic FLIP
 // glide in useFlip.ts (translate only, keyed on DOM position deltas), a

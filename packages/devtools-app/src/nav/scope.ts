@@ -1,7 +1,10 @@
 import type { InspectorState } from "@rtc/devtools-core";
 
-import type { FamilyFilterState, SourcePill } from "#/timeline/timelineModel";
-import { ALL_FAMILIES_ON } from "#/timeline/timelineModel";
+import {
+  ALL_FAMILIES_ON,
+  type FamilyFilterState,
+  type SourcePill,
+} from "#/timeline/timelineModel";
 
 /** The inspector's single selection — what the navigation tree has picked
  * (spec §3.2). Presenter = a store, its streams = slices; machines and the

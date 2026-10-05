@@ -1,5 +1,4 @@
-import type { Accessor } from "solid-js";
-import { createSignal, onCleanup, useContext } from "solid-js";
+import { type Accessor, createSignal, onCleanup, useContext } from "solid-js";
 
 import { computeFps, formatHeapMb, fpsTone } from "@rtc/motion-core";
 

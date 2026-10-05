@@ -1,5 +1,4 @@
-import type { Observable } from "rxjs";
-import { Subject } from "rxjs";
+import { type Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";

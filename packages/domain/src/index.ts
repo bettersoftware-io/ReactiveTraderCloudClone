@@ -1,22 +1,21 @@
 // Auth
 
 export { DEFAULT_AUTH_TTL_MS } from "./auth/authTtl.js";
-export type { DemoAccount } from "./auth/demoAccounts.js";
 export {
+  type DemoAccount,
   listDemoAccounts,
   sharedDemoPassword,
 } from "./auth/demoAccounts.js";
-export type { RosterEntry } from "./auth/roster.js";
-export { findRosterUser, ROSTER } from "./auth/roster.js";
+export { findRosterUser, ROSTER, type RosterEntry } from "./auth/roster.js";
 export type { SessionUser } from "./auth/sessionUser.js";
 
 // FX
 
 // FX
 
-export type { CurrencyPositionNode } from "./analytics/aggregatePositions.js";
 export {
   aggregatePositionsByCurrency,
+  type CurrencyPositionNode,
   POSITION_MAX_RADIUS,
   POSITION_MIN_RADIUS,
 } from "./analytics/aggregatePositions.js";
@@ -25,14 +24,16 @@ export {
   formatPnlK,
 } from "./analytics/formatPnlHeadline.js";
 export { formatPnlValue } from "./analytics/formatPnlValue.js";
-export type { Scale } from "./analytics/formatScale.js";
 export {
   formatPrecise2,
   formatWithScale,
+  type Scale,
   scaleNumber,
 } from "./analytics/formatScale.js";
-export type { CurrencyExposure } from "./analytics/netExposure.js";
-export { netExposureByCurrency } from "./analytics/netExposure.js";
+export {
+  type CurrencyExposure,
+  netExposureByCurrency,
+} from "./analytics/netExposure.js";
 // Analytics
 export type {
   CurrencyPairPosition,
@@ -41,32 +42,32 @@ export type {
 } from "./analytics/position.js";
 // Boot
 export { BOOT_DURATION_MS, BOOT_TICK_MS } from "./boot/bootCadence.js";
-export type {
-  ConnectionEvent,
-  GatewayStatus,
-} from "./connection/connectionStatus.js";
 // Connection
 export {
+  type ConnectionEvent,
   ConnectionStatus,
+  type GatewayStatus,
   IDLE_TIMEOUT_MS,
   mapGatewayStatus,
   nextConnectionStatus,
   RECONNECT_INTERVAL_MS,
 } from "./connection/connectionStatus.js";
 export type { CreditTrade } from "./credit/creditTrade.js";
-export type { Dealer } from "./credit/dealer.js";
-export { ADAPTIVE_BANK_NAME } from "./credit/dealer.js";
+export { ADAPTIVE_BANK_NAME, type Dealer } from "./credit/dealer.js";
 // Credit
 export type { Instrument } from "./credit/instrument.js";
-export type { Quote, QuoteState } from "./credit/quote.js";
-export { validQuoteTransitions } from "./credit/quote.js";
-export type { Rfq } from "./credit/rfq.js";
+export {
+  type Quote,
+  type QuoteState,
+  validQuoteTransitions,
+} from "./credit/quote.js";
 export {
   applyMaximum,
   CREDIT_MAX_QUANTITY_INPUT,
   CREDIT_QUANTITY_MULTIPLIER,
   CREDIT_RFQ_EXPIRY_SECONDS,
   RFQ_REDIRECT_DELAY_MS,
+  type Rfq,
   RfqState,
 } from "./credit/rfq.js";
 // Equities
@@ -80,9 +81,10 @@ export type {
   OrderType,
 } from "./equities/order.js";
 export type { EquityPosition } from "./equities/position.js";
-export type { EquityQuote } from "./equities/quote.js";
-export { EQUITY_PRICE_HISTORY_SIZE } from "./equities/quote.js";
-export type { CandleTimeframe } from "./equities/timeframe.js";
+export {
+  EQUITY_PRICE_HISTORY_SIZE,
+  type EquityQuote,
+} from "./equities/quote.js";
 export {
   CANDLE_DEFAULT_VISIBLE,
   CANDLE_HISTORY_DEPTH_MAX,
@@ -90,33 +92,37 @@ export {
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,
   CANDLE_HISTORY_TOTAL,
   CANDLE_TIMEFRAMES,
+  type CandleTimeframe,
 } from "./equities/timeframe.js";
-export type { CurrencyCategory } from "./fx/currencyFilter.js";
 export {
   CURRENCY_CATEGORIES,
+  type CurrencyCategory,
   matchesCurrencyFilter,
 } from "./fx/currencyFilter.js";
-export type { CurrencyPair } from "./fx/currencyPair.js";
-export { deriveBaseTerm, KNOWN_CURRENCY_PAIRS } from "./fx/currencyPair.js";
-export type { NotionalParseResult } from "./fx/notional.js";
+export {
+  type CurrencyPair,
+  deriveBaseTerm,
+  KNOWN_CURRENCY_PAIRS,
+} from "./fx/currencyPair.js";
 export {
   DEFAULT_NOTIONAL,
   isRfqRequired,
   MAX_NOTIONAL,
+  type NotionalParseResult,
   parseNotional,
   RFQ_THRESHOLD,
   validateNotional,
 } from "./fx/notional.js";
-export type { Price, PriceTick } from "./fx/price.js";
 export {
   calculateSpread,
   detectMovement,
   PRICE_CONFLATION_MS,
   PRICE_HISTORY_CONFLATION_MS,
   PRICE_HISTORY_SIZE,
+  type Price,
   PriceMovementType,
+  type PriceTick,
 } from "./fx/price.js";
-export type { ExecutionRequest, Trade } from "./fx/trade.js";
 export {
   ACTIVITY_FEED_CAP,
   BLOTTER_ROW_HIGHLIGHT_MS,
@@ -124,28 +130,23 @@ export {
   Direction,
   deriveDealtCurrency,
   EXECUTION_TIMEOUT_MS,
+  type ExecutionRequest,
   ExecutionStatus,
   REJECTED_DISPLAY_MS,
   RFQ_COUNTDOWN_INTERVAL_MS,
   RFQ_TIMEOUT_MS,
   TOO_LONG_THRESHOLD_MS,
+  type Trade,
   TradeStatus,
 } from "./fx/trade.js";
 // Jarvis
-export type {
-  AnomalyDetectorConfig,
-  AnomalyEvent,
-} from "./jarvis/anomalyDetector.js";
 export {
+  type AnomalyDetectorConfig,
+  type AnomalyEvent,
   createAnomalyDetector,
   DEFAULT_ANOMALY_CONFIG,
   detectAnomalies,
 } from "./jarvis/anomalyDetector.js";
-export type {
-  DriveBatchV1,
-  DriveCommandV1,
-  DriveTab,
-} from "./jarvis/driveCommand.js";
 export {
   DRIVE_CHART_TYPES,
   DRIVE_COMMAND_KINDS,
@@ -156,6 +157,9 @@ export {
   DRIVE_SKINS,
   DRIVE_TABS,
   DRIVE_TIMEFRAMES,
+  type DriveBatchV1,
+  type DriveCommandV1,
+  type DriveTab,
 } from "./jarvis/driveCommand.js";
 export {
   DEMO_STEP_BEAT_MS,
@@ -177,14 +181,6 @@ export type {
   JarvisUsage,
   JarvisUsageSnapshot,
 } from "./jarvis/jarvisUsage.js";
-export type {
-  PanelAnnotation,
-  PanelAnnotationTone,
-  PanelSource,
-  PanelSpecV1,
-  PanelTransform,
-  PanelViz,
-} from "./jarvis/panelSpec.js";
 export {
   PANEL_ANNOTATION_KINDS,
   PANEL_ANNOTATION_TONES,
@@ -192,6 +188,12 @@ export {
   PANEL_TOPN_BY_VALUES,
   PANEL_TRANSFORM_KINDS,
   PANEL_VIZ_KINDS,
+  type PanelAnnotation,
+  type PanelAnnotationTone,
+  type PanelSource,
+  type PanelSpecV1,
+  type PanelTransform,
+  type PanelViz,
 } from "./jarvis/panelSpec.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
@@ -222,31 +224,14 @@ export type {
 // NOTE: `workspaceLayoutV1` (see PreferencesPort) has no type alias or
 // DEFAULT_*/roster constant to barrel here — see preferences.ts's block
 // comment above ChartSubstrate for why.
-export type {
-  AmbientStyle,
-  BootVariant,
-  ChartSubstrate,
-  CreditRfqFilter,
-  EqBlotterView,
-  EqWatchlistSort,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  JarvisSkin,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  LoginWaitVariant,
-  PowerSaverLevel,
-  ThemeMode,
-  ThemeModePreference,
-  ThemeSkin,
-  ViewMode,
-} from "./preferences/preferences.js";
 export {
   AMBIENT_STYLES,
+  type AmbientStyle,
   BOOT_VARIANTS,
+  type BootVariant,
   CHART_SUBSTRATES,
+  type ChartSubstrate,
+  type CreditRfqFilter,
   DEFAULT_AMBIENT_STYLE,
   DEFAULT_ANIMATED_BACKGROUND,
   DEFAULT_BOOT_VARIANT,
@@ -269,6 +254,8 @@ export {
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
   EQ_WATCHLIST_SORTS,
+  type EqBlotterView,
+  type EqWatchlistSort,
   isJarvisBrain,
   isJarvisEffort,
   isJarvisNarratorPreference,
@@ -278,29 +265,33 @@ export {
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,
   JARVIS_SKINS,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type JarvisSkin,
   LAYOUT_ENGINES,
+  type LayoutEngine,
   LOGIN_WAIT_DELAY_MS,
   LOGIN_WAIT_DELAYS,
   LOGIN_WAIT_STYLES,
   LOGIN_WAIT_VARIANTS,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type LoginWaitVariant,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
   POWER_SAVER_LEVELS,
+  type PowerSaverLevel,
   resolveThemeMode,
   THEME_MODE_PREFERENCES,
   THEME_MODES,
   THEME_SKINS,
+  type ThemeMode,
+  type ThemeModePreference,
+  type ThemeSkin,
+  type ViewMode,
 } from "./preferences/preferences.js";
-export type {
-  EquityOrderDeps,
-  FillEvent,
-  MetricControl,
-  OrderListener,
-  Perturbation,
-  PreferencesSeed,
-  TradeListener,
-} from "./simulators/index.js";
 // Simulators (in-memory port implementations)
 export {
   AnalyticsSimulator,
@@ -313,15 +304,21 @@ export {
   DealerSimulator,
   type DevCredentials,
   EquityMarketDataSimulator,
+  type EquityOrderDeps,
   EquityOrderSimulator,
   EquityPositionSimulator,
   ErrorRateSimulator,
   EventLogSimulator,
   ExecutionSimulator,
+  type FillEvent,
   gbmStep,
   INSTRUMENTS_CATALOG,
   InstrumentSimulator,
   LatencySimulator,
+  type MetricControl,
+  type OrderListener,
+  type Perturbation,
+  type PreferencesSeed,
   PreferencesSimulator,
   PricingSimulator,
   ReferenceDataSimulator,
@@ -330,6 +327,7 @@ export {
   SessionSimulator,
   TelemetrySimulator,
   ThroughputSimulator,
+  type TradeListener,
   TradeStoreSimulator,
 } from "./simulators/index.js";
 // Telemetry
@@ -351,27 +349,25 @@ export type {
   ServiceStatus,
   ServiceTopology,
 } from "./telemetry/topology.js";
-export type {
-  CreateRfqInput,
-  ExecuteTradeInput,
-  ExecuteTradeResult,
-  RfqStreamState,
-} from "./usecases/index.js";
 // Use Cases
 export {
   AnalyticsUseCase,
   ConnectionStatusUseCase,
+  type CreateRfqInput,
   CreateRfqUseCase,
   CurrencyPairsUseCase,
   createEmptyRfqStreamState,
   DealersUseCase,
   EquityPriceHistoryUseCase,
+  type ExecuteTradeInput,
+  type ExecuteTradeResult,
   ExecuteTradeUseCase,
   InstrumentsUseCase,
   PriceHistoryUseCase,
   PriceStreamUseCase,
   RFQ_DEFAULT_EXPIRY_SECS,
   RfqQuoteUseCase,
+  type RfqStreamState,
   reduceRfqEvent,
   TradeBlotterUseCase,
   WorkflowEventStreamUseCase,

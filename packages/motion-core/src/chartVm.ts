@@ -1,24 +1,27 @@
 import { chartVmFromScene, volumeBarsFromScene } from "./chartCssVars.js";
-import type {
-  ChartCandle,
-  ChartPoint,
-  ChartScale,
-  ChartVarStyle,
-  ChartVmOptions,
+import {
+  type ChartCandle,
+  type ChartPoint,
+  type ChartScale,
+  type ChartVarStyle,
+  type ChartVmOptions,
+  chartScene,
+  volumeScene,
 } from "./chartScene.js";
-import { chartScene, volumeScene } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 
-export type {
-  ChartCandle,
-  ChartCompareInput,
-  ChartKind,
-  ChartPoint,
-  ChartScale,
-  ChartVarStyle,
-  ChartVmOptions,
+export {
+  type ChartCandle,
+  type ChartCompareInput,
+  type ChartKind,
+  type ChartPoint,
+  type ChartScale,
+  type ChartVarStyle,
+  type ChartVmOptions,
+  formatTimeLabel,
+  Y_SPAN,
+  Y_TOP,
 } from "./chartScene.js";
-export { formatTimeLabel, Y_SPAN, Y_TOP } from "./chartScene.js";
 
 /** A time-axis tick, keyed to the series index it labels (stable while
  * panning) rather than to its position within the current viewport. */

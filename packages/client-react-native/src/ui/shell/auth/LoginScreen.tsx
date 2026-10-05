@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useContext, useState } from "react";
+import { type JSX, useContext, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,

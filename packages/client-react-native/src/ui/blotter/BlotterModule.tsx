@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import {
   FlatList,
   type ListRenderItemInfo,

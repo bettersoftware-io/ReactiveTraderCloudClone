@@ -1,14 +1,14 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
-import type {
-  DiffEntry,
-  InspectorState,
-  LogRow,
-  MachineRow,
-  SerializedValue,
+import {
+  type DiffEntry,
+  diffSerialized,
+  type InspectorState,
+  type LogRow,
+  type MachineRow,
+  type SerializedValue,
+  serializeValue,
 } from "@rtc/devtools-core";
-import { diffSerialized, serializeValue } from "@rtc/devtools-core";
 
 import type { Scope } from "#/nav/scope";
 import { formatLogTime } from "#/panels/formatLogTime";

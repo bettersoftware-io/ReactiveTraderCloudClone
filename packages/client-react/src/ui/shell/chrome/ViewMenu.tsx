@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import type { WorkspaceTab } from "@rtc/core-api";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/core-logic";

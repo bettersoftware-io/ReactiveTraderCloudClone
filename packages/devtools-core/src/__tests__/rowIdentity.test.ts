@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { InspectorStore } from "../InspectorStore";
-import type { DevtoolsEvent } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
+import { type DevtoolsEvent, PROTOCOL_VERSION } from "../protocol";
 
 describe("InspectorStore identity-stable rows", () => {
   it("reuses a stream row object when its fields are unchanged, new object when they change", () => {

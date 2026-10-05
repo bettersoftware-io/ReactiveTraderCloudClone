@@ -10,8 +10,7 @@
 // the <title> tag is deliberately ignored (exports store a slide sentence there).
 // The folder name supplies the date. Decks are listed newest-first.
 
-import type { Dirent } from "node:fs";
-import { readdirSync, writeFileSync } from "node:fs";
+import { type Dirent, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 

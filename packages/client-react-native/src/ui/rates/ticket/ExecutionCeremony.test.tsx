@@ -1,7 +1,11 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 
-import type { Trade } from "@rtc/domain";
-import { Direction, ExecutionStatus, TradeStatus } from "@rtc/domain";
+import {
+  Direction,
+  ExecutionStatus,
+  type Trade,
+  TradeStatus,
+} from "@rtc/domain";
 
 import { executionCeremonyPage } from "#tests/pages/ExecutionCeremonyPage";
 

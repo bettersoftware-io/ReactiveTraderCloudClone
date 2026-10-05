@@ -30,27 +30,34 @@ export type {
   CurrencyPairUpdateDto,
   ReferenceDataMessage,
 } from "./fx/referenceDataDto.js";
-export type { DeskPanelInfo } from "./jarvis/deskPanels.js";
-export { DESK_PANEL_ROSTER } from "./jarvis/deskPanels.js";
+export { DESK_PANEL_ROSTER, type DeskPanelInfo } from "./jarvis/deskPanels.js";
 // Jarvis
-export type { DriveBatchParseResult } from "./jarvis/driveCommand.js";
 export {
   DRIVE_COMMAND_JSON_SCHEMA,
+  type DriveBatchParseResult,
   MAX_DRIVE_COMMANDS,
   parseDriveBatch,
 } from "./jarvis/driveCommand.js";
-export type { JarvisIntent, JarvisTradeIntent } from "./jarvis/jarvisIntent.js";
-export { matchJarvisIntent } from "./jarvis/jarvisIntent.js";
+export {
+  type JarvisIntent,
+  type JarvisTradeIntent,
+  matchJarvisIntent,
+} from "./jarvis/jarvisIntent.js";
 export type {
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
 } from "./jarvis/jarvisPayloads.js";
-export type { ParsePanelSpecResult } from "./jarvis/panelSpec.js";
-export { PANEL_SPEC_JSON_SCHEMA, parsePanelSpec } from "./jarvis/panelSpec.js";
-export type { ScriptedJarvisDeps } from "./jarvis/ScriptedJarvisEngine.js";
-export { ScriptedJarvisEngine } from "./jarvis/ScriptedJarvisEngine.js";
+export {
+  PANEL_SPEC_JSON_SCHEMA,
+  type ParsePanelSpecResult,
+  parsePanelSpec,
+} from "./jarvis/panelSpec.js";
+export {
+  type ScriptedJarvisDeps,
+  ScriptedJarvisEngine,
+} from "./jarvis/ScriptedJarvisEngine.js";
 export * from "./protocol/auth.js";
 export { CLIENT_MSG, SERVER_MSG } from "./protocol/messages.js";
 export type { RpcResponse } from "./protocol/rpc.js";

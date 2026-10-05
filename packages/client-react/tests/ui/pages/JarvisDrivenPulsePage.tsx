@@ -1,8 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/react-bindings";
 
 import { useJarvisDrivenPulse } from "#/ui/shell/jarvis/useJarvisDrivenPulse";
 

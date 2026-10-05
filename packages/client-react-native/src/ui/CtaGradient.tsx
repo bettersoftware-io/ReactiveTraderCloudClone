@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useId } from "react";
+import { type JSX, useId } from "react";
 import { StyleSheet, type ViewStyle } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 

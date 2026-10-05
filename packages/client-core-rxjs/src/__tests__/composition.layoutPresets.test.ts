@@ -14,13 +14,13 @@ import type {
   SaveLayoutPresetResult,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
   InMemoryLayoutPresetStore,
   LAYOUT_PRESET_VERSION,
   parseLayoutPresetList,
+  type StoredLayoutPreset,
 } from "@rtc/core-logic";
 import {
   AuthSimulator,

@@ -15,8 +15,7 @@ import {
   throwError,
 } from "rxjs";
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
-import type { Accessor } from "solid-js";
-import { createSignal } from "solid-js";
+import { type Accessor, createSignal } from "solid-js";
 
 import {
   CandleSeriesPresenter,
@@ -73,43 +72,40 @@ import {
   type WorkspaceDock,
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
-import type {
-  AmbientStyle,
-  Candle,
-  CandleTimeframe,
-  ChartSubstrate,
-  CreateRfqInput,
-  CreditRfqFilter,
-  CurrencyPair,
-  DepthBook,
-  EqBlotterView,
-  EquityQuote,
-  EqWatchlistSort,
-  ExecuteTradeInput,
-  ExecuteTradeResult,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  JarvisSkin,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  MarketDataPort,
-  PanelSpecV1,
-  PlaceOrderRequest,
-  PowerSaverLevel,
-  RfqQuoteResult,
-  ThemeSkin,
-  ViewMode,
-} from "@rtc/domain";
 import {
+  type AmbientStyle,
+  type Candle,
+  type CandleTimeframe,
+  type ChartSubstrate,
+  type CreateRfqInput,
+  type CreditRfqFilter,
+  type CurrencyPair,
+  type DepthBook,
+  type EqBlotterView,
+  type EquityQuote,
+  type EqWatchlistSort,
+  type ExecuteTradeInput,
+  type ExecuteTradeResult,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type JarvisSkin,
+  type LayoutEngine,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type MarketDataPort,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
+  type PanelSpecV1,
+  type PlaceOrderRequest,
+  type PowerSaverLevel,
+  type RfqQuoteResult,
   resolveThemeMode,
+  type ThemeSkin,
+  type ViewMode,
 } from "@rtc/domain";
-import type { ViewModel } from "@rtc/solid-bindings";
-import { useMachine } from "@rtc/solid-bindings";
+import { useMachine, type ViewModel } from "@rtc/solid-bindings";
 import {
   type MaybeAccessor,
   toKeyedSignal,

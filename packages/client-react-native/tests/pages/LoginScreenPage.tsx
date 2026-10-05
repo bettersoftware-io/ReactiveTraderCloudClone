@@ -8,8 +8,7 @@ import {
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
 import type { LoginWaitVariant } from "@rtc/domain";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
 import { BuildStampContext } from "#/ui/shell/BuildStampContext";

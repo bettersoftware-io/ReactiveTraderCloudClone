@@ -3,8 +3,7 @@ import {
   JetBrainsMono_700Bold,
 } from "@expo-google-fonts/jetbrains-mono";
 import { Canvas, useFont } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
 
 import type { CurrencyPairPosition } from "@rtc/domain";

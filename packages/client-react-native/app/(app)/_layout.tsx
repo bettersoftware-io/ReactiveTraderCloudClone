@@ -1,7 +1,6 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Slot } from "expo-router";
-import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 

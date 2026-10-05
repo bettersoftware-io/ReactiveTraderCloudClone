@@ -1,5 +1,4 @@
-import type { JSX, ParentProps } from "solid-js";
-import { untrack } from "solid-js";
+import { type JSX, type ParentProps, untrack } from "solid-js";
 
 import type { CoreFactory, CoreSelection } from "@rtc/core-api";
 import {

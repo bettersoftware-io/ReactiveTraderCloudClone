@@ -3,13 +3,15 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import type {
-  ChartCandle,
-  ChartScene,
-  CrosshairScene,
-  SceneCandle,
+import {
+  type ChartCandle,
+  type ChartScene,
+  type CrosshairScene,
+  chartScene,
+  crosshairScene,
+  type SceneCandle,
+  volumeScene,
 } from "./chartScene.js";
-import { chartScene, crosshairScene, volumeScene } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 import {
   type Canvas2D,
@@ -22,8 +24,11 @@ import {
   type OverlayLine,
   type PlotCanvasScene,
 } from "./drawChartScene.js";
-import type { Drawing, DrawingSceneItem } from "./drawingScene.js";
-import { drawingScene } from "./drawingScene.js";
+import {
+  type Drawing,
+  type DrawingSceneItem,
+  drawingScene,
+} from "./drawingScene.js";
 import { paneScene } from "./paneScene.js";
 
 const BUCKET_MS = 60_000;

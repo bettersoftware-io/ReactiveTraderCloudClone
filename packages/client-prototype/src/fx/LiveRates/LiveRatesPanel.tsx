@@ -1,15 +1,11 @@
-import type { ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 
 import { META, ORDER, parseNotional, RFQ_THRESHOLD } from "#/fx/fxData";
-import type { Filter } from "#/fx/LiveRates/FilterChips";
-import { FilterChips } from "#/fx/LiveRates/FilterChips";
+import { type Filter, FilterChips } from "#/fx/LiveRates/FilterChips";
 import styles from "#/fx/LiveRates/LiveRatesPanel.module.css";
-import type { TileVm } from "#/fx/LiveRates/RateTile";
-import { RateTile } from "#/fx/LiveRates/RateTile";
+import { RateTile, type TileVm } from "#/fx/LiveRates/RateTile";
 import { TileExecOverlay } from "#/fx/LiveRates/TileExecOverlay";
-import type { WatchRow } from "#/fx/LiveRates/WatchlistView";
-import { WatchlistView } from "#/fx/LiveRates/WatchlistView";
+import { WatchlistView, type WatchRow } from "#/fx/LiveRates/WatchlistView";
 import type { PairMeta, Sym, TileState } from "#/fx/types";
 import type { RatesApi } from "#/fx/useFxRates";
 import { useFlip } from "#/motion/useFlip";

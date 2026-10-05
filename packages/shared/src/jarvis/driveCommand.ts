@@ -15,7 +15,6 @@
  * two descriptions of "what kinds exist" cannot drift apart.
  */
 
-import type { DriveBatchV1, DriveCommandV1 } from "@rtc/domain";
 import {
   DRIVE_CHART_TYPES,
   DRIVE_COMMAND_KINDS,
@@ -26,6 +25,8 @@ import {
   DRIVE_SKINS,
   DRIVE_TABS,
   DRIVE_TIMEFRAMES,
+  type DriveBatchV1,
+  type DriveCommandV1,
 } from "@rtc/domain";
 
 export type DriveBatchParseResult =

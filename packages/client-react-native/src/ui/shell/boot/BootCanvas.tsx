@@ -1,10 +1,12 @@
 // packages/client-react-native/src/ui/shell/boot/BootCanvas.tsx
 import { Canvas } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useContext, useEffect, useRef } from "react";
+import { type JSX, useContext, useEffect, useRef } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
-import type { FrameInfo } from "react-native-reanimated";
-import { useFrameCallback, useSharedValue } from "react-native-reanimated";
+import {
+  type FrameInfo,
+  useFrameCallback,
+  useSharedValue,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { BootVariant } from "@rtc/domain";
