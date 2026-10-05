@@ -287,12 +287,15 @@ export function createApp(ports: AppPorts): App {
       ports.connectionIntents,
       family.workspace.reportDetachedPanels,
     ),
-    // Idempotent: a second abort is a no-op. The Jarvis presenter is
-    // disposed first — its in-flight turn may still be draining a relay
+    // Idempotent: a second abort is a no-op. A layout change still inside
+    // the persistence debounce is written first, while the layout state it
+    // reads is live (a hot swap must keep it). The Jarvis presenter is
+    // disposed next — its in-flight turn may still be draining a relay
     // `lifetime` owns — and the abort sits in a `finally`, so a throwing
     // dispose cannot leave every port held.
     dispose: async () => {
       try {
+        family.workspace.writePendingLayout();
         family.jarvis.dispose();
       } finally {
         lifetime.abort();

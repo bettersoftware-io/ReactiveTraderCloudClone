@@ -42,6 +42,34 @@ describe("createWorkspacePersistenceWriter", () => {
     expect(h.writes).toHaveLength(2);
   });
 
+  it("releasing it writes a kick still inside the debounce, once", () => {
+    const h = harness(null);
+    h.setLayouts(new Map([["fx", withDocked("fx", [])]]));
+
+    h.kick();
+    expect(h.writes).toHaveLength(0);
+
+    h.release();
+    expect(h.writes).toHaveLength(1);
+    h.flush();
+    expect(h.writes).toHaveLength(1);
+  });
+
+  it("releasing it after the debounce wrote, or before any kick, writes nothing", () => {
+    const idle = harness(null);
+    idle.release();
+    expect(idle.writes).toHaveLength(0);
+
+    const h = harness(null);
+    h.setLayouts(new Map([["fx", withDocked("fx", [])]]));
+    h.kick();
+    h.flush();
+    expect(h.writes).toHaveLength(1);
+
+    h.release();
+    expect(h.writes).toHaveLength(1);
+  });
+
   it("persists a docked panel under the tab it was docked into, not the tab it is read from", () => {
     const h = harness(null);
     h.setLayouts(new Map([["equities", withDocked("equities", ["jarvis-1"])]]));
@@ -246,6 +274,8 @@ function placement(panelId: string, tab: WorkspaceTab): DockedPanelPlacement {
 interface Harness {
   readonly kick: () => void;
   readonly flush: () => void;
+  /** Unsubscribes the writer, as `app.dispose()` does. */
+  readonly release: () => void;
   readonly writes: readonly string[];
   readonly stored: () => string | null;
   readonly setLayouts: (next: ReadonlyMap<WorkspaceTab, LayoutState>) => void;
@@ -260,7 +290,7 @@ function harness(seed: string | null): Harness {
   let layouts: ReadonlyMap<WorkspaceTab, LayoutState> = new Map();
   let docked: readonly DockedPanelPlacement[] = [];
 
-  createWorkspacePersistenceWriter({
+  const writer = createWorkspacePersistenceWriter({
     kick$,
     readStoredLayout: () => {
       return stored;
@@ -284,6 +314,9 @@ function harness(seed: string | null): Harness {
     },
     flush: () => {
       scheduler.flush();
+    },
+    release: () => {
+      writer.unsubscribe();
     },
     writes,
     stored: () => {
