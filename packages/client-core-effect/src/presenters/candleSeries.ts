@@ -1,4 +1,4 @@
-import { Effect, Option, Queue, Stream, SubscriptionRef } from "effect";
+import { Effect, Option, Queue, Stream } from "effect";
 
 import type {
   CandleSeriesPresenter,
@@ -17,22 +17,21 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
-  refToStateStream,
-  setRefIfChanged,
   sharedFold,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 
 const DEFAULT_TIMEFRAME: CandleTimeframe = "1D";
 
 /** Per-(symbol|timeframe) backfill state. The two flags are presenter-owned
  * CELLS — replay-current across warm periods, which is why they are
- * `SubscriptionRef`s streamed through `refToStateStream` rather than folds;
+ * `SyncRef`s rather than folds;
  * everything else is plain mutable state the key's period and `loadOlder`
  * share. */
 interface Backfill {
-  readonly loading: SubscriptionRef.SubscriptionRef<boolean>;
-  readonly exhausted: SubscriptionRef.SubscriptionRef<boolean>;
+  readonly loading: SyncRef<boolean>;
+  readonly exhausted: SyncRef<boolean>;
   /** The two cells as streams, built ONCE with the refs: `loadingOlder$`
    * and `historyExhausted$` hand back the same instance per key, as the
    * RxJS core's `BehaviorSubject`s do. */
@@ -80,13 +79,13 @@ export function createCandleSeriesPresenter(
       return existing;
     }
 
-    const loading = host.runtime.runSync(SubscriptionRef.make(false));
-    const exhausted = host.runtime.runSync(SubscriptionRef.make(false));
+    const loading = createSyncRef(false);
+    const exhausted = createSyncRef(false);
     const created: Backfill = {
       loading,
       exhausted,
-      loading$: refToStateStream(host, loading),
-      exhausted$: refToStateStream(host, exhausted),
+      loading$: loading.stateStream(),
+      exhausted$: exhausted.stateStream(),
       older: [],
       latestFirst: null,
       inFlight: false,
@@ -113,7 +112,7 @@ export function createCandleSeriesPresenter(
       }
 
       return page.length < CANDLE_HISTORY_PAGE
-        ? setRefIfChanged(state.exhausted, () => {
+        ? state.exhausted.write(() => {
             return true;
           })
         : Effect.void;
@@ -129,10 +128,7 @@ export function createCandleSeriesPresenter(
     // an empty series, synchronously, and never a port call (the equities
     // market-data simulator throws for an unknown symbol).
     if (symbol === "") {
-      return refToStateStream(
-        host,
-        host.runtime.runSync(SubscriptionRef.make<readonly Candle[]>([])),
-      );
+      return createSyncRef<readonly Candle[]>([]).stateStream();
     }
 
     const base$ = marketData.candles(symbol, timeframe);
@@ -150,11 +146,9 @@ export function createCandleSeriesPresenter(
         state.older = [];
         state.latestFirst = null;
         state.nudges = nudges;
-        host.runtime.runSync(
-          setRefIfChanged(state.exhausted, () => {
-            return false;
-          }),
-        );
+        state.exhausted.set(() => {
+          return false;
+        });
         const events = Stream.merge(
           fromPort(base$).pipe(
             Stream.map((base): SeriesEvent => {
@@ -199,38 +193,40 @@ export function createCandleSeriesPresenter(
     // synchronously: every consumer reads it after a settle, and one writer
     // per cell keeps the ordering against `ensuring`'s clear obvious.
     host.runtime.runFork(
-      setRefIfChanged(state.loading, () => {
-        return true;
-      }).pipe(
-        Effect.andThen(
-          rpc(
-            marketData.candleHistory(
-              symbol,
-              timeframe,
-              anchor.time,
-              CANDLE_HISTORY_PAGE,
+      state.loading
+        .write(() => {
+          return true;
+        })
+        .pipe(
+          Effect.andThen(
+            rpc(
+              marketData.candleHistory(
+                symbol,
+                timeframe,
+                anchor.time,
+                CANDLE_HISTORY_PAGE,
+              ),
             ),
           ),
-        ),
-        Effect.matchEffect({
-          onFailure: () => {
-            return Effect.sync(() => {
-              state.lastErrorAtMs = now();
-            });
-          },
-          onSuccess: (page: readonly Candle[]) => {
-            return recordPage(state, page);
-          },
-        }),
-        Effect.ensuring(
-          Effect.suspend(() => {
-            state.inFlight = false;
-            return setRefIfChanged(state.loading, () => {
-              return false;
-            });
+          Effect.matchEffect({
+            onFailure: () => {
+              return Effect.sync(() => {
+                state.lastErrorAtMs = now();
+              });
+            },
+            onSuccess: (page: readonly Candle[]) => {
+              return recordPage(state, page);
+            },
           }),
+          Effect.ensuring(
+            Effect.suspend(() => {
+              state.inFlight = false;
+              return state.loading.write(() => {
+                return false;
+              });
+            }),
+          ),
         ),
-      ),
       { scope: host.scope },
     );
   }
@@ -258,11 +254,7 @@ export function createCandleSeriesPresenter(
       const state = backfillFor(`${symbol}|${timeframe}`);
       const anchor = state.latestFirst;
 
-      if (
-        state.inFlight ||
-        host.runtime.runSync(SubscriptionRef.get(state.exhausted)) ||
-        anchor === null
-      ) {
+      if (state.inFlight || state.exhausted.get() || anchor === null) {
         return;
       }
 

@@ -34,13 +34,14 @@ interface StreamEntry {
 interface MachineEntry {
   machineKind: string;
   args: readonly unknown[];
-  state$: Observable<unknown>;
+  /** Dropped on disposal so the hub never keeps a disposed core reachable. */
+  state$: Observable<unknown> | null;
   sub: Subscription | null;
   lastState: unknown;
   hasState: boolean;
   disposed: boolean;
   createdAt: number;
-  /** The wrapped intents map (the ones tapped for `machine:intent`), stored so
+  /** The wrapped intents map (dropped on disposal, like `state$`) (the ones tapped for `machine:intent`), stored so
    * the dev-only inbound handler can invoke one by name. Populated by reference
    * by the instrumentation right after machineCreated returns. */
   intents?: Readonly<Record<string, unknown>>;
@@ -52,6 +53,12 @@ interface Pending {
 }
 
 const MAX_DISPOSED_RETAINED = 500;
+
+const SUPERSEDED_BY_SNAPSHOT: ReadonlySet<DevtoolsEvent["kind"]> = new Set([
+  "stream:registered",
+  "machine:created",
+  "machine:disposed",
+]);
 
 /** Central collector. Dormant = subscribed to nothing; registries only.
  * Live (after an inspector hello) = subscribed to every registered stream and
@@ -81,6 +88,8 @@ export class DevtoolsHub {
   private nextMachineId = 1;
 
   private isLive = false;
+
+  private resnapshotDue = false;
 
   private seq = 0;
 
@@ -133,7 +142,12 @@ export class DevtoolsHub {
           const entry = this.machines.get(msg.machineId);
           const intent = entry?.intents?.[msg.name];
 
-          if (typeof intent === "function") {
+          if (entry?.disposed) {
+            this.reportError(
+              "intent:invoke",
+              new Error(`machine "${msg.machineId}" is disposed`),
+            );
+          } else if (typeof intent === "function") {
             (intent as (...intentArgs: readonly unknown[]) => unknown)(
               ...msg.args,
             );
@@ -246,8 +260,11 @@ export class DevtoolsHub {
       }
 
       entry.disposed = true;
-      entry.sub?.unsubscribe();
+      entry.state$ = null;
+      entry.intents = undefined;
+      const sub = entry.sub;
       entry.sub = null;
+      sub?.unsubscribe();
       this.disposedOrder.push(machineId);
 
       if (this.disposedOrder.length > MAX_DISPOSED_RETAINED) {
@@ -295,6 +312,35 @@ export class DevtoolsHub {
     } catch {
       // deliberately unreachable-in-practice; never rethrow toward the app
     }
+  }
+
+  /** Ends the composition whose presenters and machines are registered: every
+   * stream is unsubscribed and forgotten, so the next `registerStream` with
+   * the same id takes the new composition's source, and every machine still
+   * live is reported disposed. An attached inspector gets a fresh welcome +
+   * snapshot on the next flush; anything registered after that arrives as
+   * ordinary events. Call it between disposing the old composition and
+   * composing the next: a registration or machine the OLD composition makes
+   * after this call is adopted as the new composition's own. */
+  endComposition(): void {
+    for (const entry of this.streams.values()) {
+      try {
+        entry.sub?.unsubscribe();
+      } catch (error) {
+        this.reportError("endComposition", error);
+      }
+    }
+
+    this.streams.clear();
+    this.pendingStreams.clear();
+
+    for (const [machineId, entry] of this.machines) {
+      if (!entry.disposed) {
+        this.machineDisposed(machineId);
+      }
+    }
+
+    this.resnapshotDue = this.isLive;
   }
 
   dispose(): void {
@@ -378,6 +424,7 @@ export class DevtoolsHub {
     }
 
     this.isLive = false;
+    this.resnapshotDue = false;
 
     if (this.flushTimer !== null) {
       clearInterval(this.flushTimer);
@@ -425,6 +472,10 @@ export class DevtoolsHub {
   }
 
   private subscribeMachine(machineId: string, entry: MachineEntry): void {
+    if (entry.state$ === null) {
+      return;
+    }
+
     entry.sub = entry.state$.subscribe({
       next: (state: unknown): void => {
         entry.lastState = state;
@@ -473,6 +524,11 @@ export class DevtoolsHub {
     // The synchronous first emissions became the snapshot — don't re-send them.
     this.pendingStreams.clear();
     this.pendingMachineStates.clear();
+    // The snapshot supersedes every lifecycle event queued so far (a replayed
+    // `machine:created` would overwrite the machine's snapshot state with null).
+    this.pendingDiscrete = this.pendingDiscrete.filter((ev) => {
+      return !SUPERSEDED_BY_SNAPSHOT.has(ev.kind);
+    });
     this.send({
       kind: "welcome",
       v: PROTOCOL_VERSION,
@@ -483,6 +539,11 @@ export class DevtoolsHub {
   }
 
   private flush(): void {
+    if (this.resnapshotDue) {
+      this.resnapshotDue = false;
+      this.sendWelcomeAndSnapshot();
+    }
+
     if (
       this.pendingStreams.size === 0 &&
       this.pendingMachineStates.size === 0 &&

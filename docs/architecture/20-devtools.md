@@ -220,6 +220,22 @@ registers a stream, asserts `source$.observed === false`, pushes an emission,
 and asserts nothing was sent or buffered — then sends `hello` and asserts the
 subscription (and the welcome/snapshot pair) appear only at that point.
 
+**Ending a composition.** The hub outlives any one application core: the hot
+swap disposes the running core and composes another in the same page.
+`endComposition()` is the call it makes between `dispose()` and the next
+`createApp`. It unsubscribes and forgets every registered stream, so the new
+core's `registerStream` with the same id takes the new source. It reports every
+machine still live as disposed. If an inspector is attached, the hub sends a
+fresh welcome and snapshot on the next flush, and the inspector replaces what
+it held; anything registered after that flush arrives as ordinary events. Any
+snapshot, including the one a repeated `hello` triggers, supersedes the
+lifecycle events queued before it, and a disposed
+machine's state stream and intents are released, so the hub keeps nothing of
+the old core alive. A dormant hub just forgets, and the next `hello` sees only
+the new composition. The call belongs between the two steps: a registration the
+old core makes after it is adopted as the new core's own. No protocol message
+is added.
+
 ### 20.4 Protocol
 
 Versioned, JSON-serializable envelopes, mirroring the app's own

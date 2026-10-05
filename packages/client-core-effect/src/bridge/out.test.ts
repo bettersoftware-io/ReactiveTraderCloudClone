@@ -9,7 +9,6 @@ import {
   Queue,
   Scope,
   Stream,
-  SubscriptionRef,
 } from "effect";
 import { BehaviorSubject, Subject, type Subscription } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -27,12 +26,9 @@ import {
   interruptFiber,
   listenToStateStream,
   portEvents,
-  refToStateStream,
-  refToWarmStateStream,
   reportOutOfBand,
   type SharedFold,
   scopedPortStream,
-  setRefIfChanged,
   sharedFold,
   streamToStream,
 } from "#/bridge/out";
@@ -234,61 +230,6 @@ describe("bridge/out", () => {
     }
 
     expect(rejections).toEqual([]);
-  });
-
-  it("refToStateStream() carries the current value synchronously, then changes", async () => {
-    const host = useHost();
-    const ref = await host.runtime.runPromise(SubscriptionRef.make(5));
-    const seen: number[] = [];
-    const sub = refToStateStream(host, ref).subscribe((v: number) => {
-      seen.push(v);
-    });
-    expect(seen).toEqual([5]);
-    await host.runtime.runPromise(SubscriptionRef.set(ref, 6));
-    await tick();
-    expect(seen).toEqual([5, 6]);
-    sub.unsubscribe();
-  });
-
-  it("refToStateStream() observes a set made while it is still cold", async () => {
-    const host = useHost();
-    const ref = await host.runtime.runPromise(SubscriptionRef.make(5));
-    const stream = refToStateStream(host, ref);
-    // Nobody has subscribed yet — the value must still be read per
-    // subscription, not frozen at construction.
-    await host.runtime.runPromise(SubscriptionRef.set(ref, 6));
-    const seen: number[] = [];
-    const sub = stream.subscribe((v: number) => {
-      seen.push(v);
-    });
-    expect(seen).toEqual([6]);
-    await tick();
-    expect(seen).toEqual([6]);
-    sub.unsubscribe();
-  });
-
-  it("refToStateStream() re-reads the ref on every cold → warm cycle", async () => {
-    const host = useHost();
-    const ref = await host.runtime.runPromise(SubscriptionRef.make(5));
-    const stream = refToStateStream(host, ref);
-
-    const first: number[] = [];
-    const firstSub = stream.subscribe((v: number) => {
-      first.push(v);
-    });
-    expect(first).toEqual([5]);
-    firstSub.unsubscribe();
-
-    await host.runtime.runPromise(SubscriptionRef.set(ref, 7));
-
-    const second: number[] = [];
-    const secondSub = stream.subscribe((v: number) => {
-      second.push(v);
-    });
-    expect(second).toEqual([7]);
-    await tick();
-    expect(second).toEqual([7]);
-    secondSub.unsubscribe();
   });
 
   it("sharedFold() hands the seed to the first subscriber synchronously", () => {
@@ -942,22 +883,6 @@ describe("bridge/out", () => {
     await host.runtime.dispose();
   });
 
-  it("refToStateStream runs onSubscribe on each zero-to-one subscriber transition, not per subscriber", async () => {
-    const host = useHost();
-    const ref = Effect.runSync(SubscriptionRef.make(1));
-    let starts = 0;
-    const state$ = refToStateStream(host, ref, () => {
-      starts += 1;
-    });
-    const a = state$.subscribe(() => {});
-    const b = state$.subscribe(() => {});
-    expect(starts).toBe(1);
-    a.unsubscribe();
-    b.unsubscribe();
-    state$.subscribe(() => {}).unsubscribe();
-    expect(starts).toBe(2);
-  });
-
   it("sharedFold({ retain: true }) keeps the period across zero subscribers and ends it with the host scope", async () => {
     const host = useHost();
     const subject = new BehaviorSubject<number>(1);
@@ -987,30 +912,6 @@ describe("bridge/out", () => {
     await Effect.runPromise(Scope.close(host.scope, Exit.void));
     await tick();
     expect(subject.observed).toBe(false);
-  });
-
-  it("setRefIfChanged publishes a changed value and skips an Object.is-equal one", async () => {
-    const host = useHost();
-    const ref = host.runtime.runSync(SubscriptionRef.make(1));
-    const seen: number[] = [];
-    const sub = refToStateStream(host, ref).subscribe((v: number) => {
-      seen.push(v);
-    });
-    await tick();
-    host.runtime.runSync(
-      setRefIfChanged(ref, () => {
-        return 1;
-      }),
-    );
-    host.runtime.runSync(
-      setRefIfChanged(ref, () => {
-        return 2;
-      }),
-    );
-    await tick();
-    await tick();
-    expect(seen).toEqual([1, 2]);
-    sub.unsubscribe();
   });
 
   it("fromPortIn(scope) subscribes at once and the scope's close releases it", async () => {
@@ -1436,32 +1337,6 @@ describe("bridge/out", () => {
     // `app.dispose()` must not die on a disposed managed runtime.
     expect(child.runtime.runSync(Effect.succeed(9))).toBe(9);
     await Effect.runPromise(Scope.close(parent.scope, Exit.void));
-  });
-
-  it("refToWarmStateStream() keeps a cold getValue() current, and release() is idempotent", async () => {
-    const host = useHost();
-    const ref = host.runtime.runSync(SubscriptionRef.make(1));
-    // The contrast that makes the claim non-vacuous: a plain
-    // `refToStateStream` with nobody subscribed hands back its
-    // construction-time value however far the ref has moved.
-    const cold = refToStateStream(host, ref);
-    const warm = refToWarmStateStream(host, ref);
-    host.runtime.runSync(
-      setRefIfChanged(ref, () => {
-        return 2;
-      }),
-    );
-    await tick();
-    expect(cold.getValue()).toBe(1);
-    expect(warm.state$.getValue()).toBe(2);
-    warm.release();
-    warm.release();
-    const seen: number[] = [];
-    const sub = warm.state$.subscribe((value: number) => {
-      seen.push(value);
-    });
-    expect(seen).toEqual([2]);
-    sub.unsubscribe();
   });
 
   const hosts: TestHost[] = [];

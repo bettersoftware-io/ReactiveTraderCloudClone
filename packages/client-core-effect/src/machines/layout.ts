@@ -10,8 +10,7 @@ import {
   layoutStaticIds,
 } from "@rtc/core-logic";
 
-import type { EffectHost } from "#/bridge/out";
-import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 
 /** One tab's layout machine: a `SyncRef` folded by the SHARED layout
  * reducer (`@rtc/core-logic`'s `createLayoutReducer` — the RxJS core folds
@@ -25,12 +24,11 @@ export interface LayoutMachine extends Machine<LayoutState, LayoutIntents> {
 }
 
 export function createLayoutMachine(
-  host: EffectHost,
   initial: LayoutState,
   seed: LayoutState | undefined,
 ): LayoutMachine {
   const reduce = createLayoutReducer(initial, layoutStaticIds(initial));
-  const ref = createSyncRef<LayoutState>(host, seed ?? initial);
+  const ref = createSyncRef<LayoutState>(seed ?? initial);
   const warm = ref.warm();
   let disposed = false;
 

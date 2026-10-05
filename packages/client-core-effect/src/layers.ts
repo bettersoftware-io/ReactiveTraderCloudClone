@@ -547,8 +547,8 @@ const WorkspaceNavLive = presenterLayer(WorkspaceNavTag, (host) => {
   return createWorkspaceNavMachine(host);
 });
 
-const BootGateLive = presenterLayer(BootGateTag, (host, ports) => {
-  return createBootGatePresenter(host, ports.bootSplash?.shouldPlay() ?? true);
+const BootGateLive = presenterLayer(BootGateTag, (_host, ports) => {
+  return createBootGatePresenter(ports.bootSplash?.shouldPlay() ?? true);
 });
 
 const AuthLive = presenterLayer(AuthTag, (host, ports) => {

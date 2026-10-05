@@ -38,7 +38,7 @@ describe("createConnectionPresenter (effect)", () => {
     await tick();
     await tick();
     // The RxJS core would re-emit CONNECTED for the ignored event; the
-    // SubscriptionRef fold does not — the difference §22 records.
+    // Effect core's fold does not — the difference §22 records.
     expect(seen).toEqual([
       ConnectionStatus.CONNECTING,
       ConnectionStatus.CONNECTED,

@@ -1,18 +1,18 @@
-import { Cause, Effect, type Fiber, type SubscriptionRef } from "effect";
+import { Cause, Effect, type Fiber } from "effect";
 
 import {
   closeScope,
   type EffectHost,
   interruptFiber,
   reportOutOfBand,
-  setRefIfChanged,
 } from "#/bridge/out";
+import type { SyncRef } from "#/bridge/syncRef";
 
 /** What a run acts through: a write to the ref, or any other externally
  * visible step, both guarded on the run token so a run superseded a
  * fiber-step ago cannot act on behalf of its successor. */
 export interface Run<S> {
-  /** `setRefIfChanged`, skipped once this run is no longer the live one. */
+  /** A write to the ref, skipped once this run is no longer the live one. */
   write(next: (current: S) => S): Effect.Effect<void>;
   /** `step`, skipped once this run is no longer the live one — for an
    * effect the world can see that is not a state write. */
@@ -45,7 +45,7 @@ export interface RunSlot<S> {
  * no error channel (slice 2 ruling 8). */
 export function createRunSlot<S>(
   host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
+  ref: SyncRef<S>,
 ): RunSlot<S> {
   let active: object | null = null;
   let activeFiber: Fiber.RuntimeFiber<void> | null = null;
@@ -79,7 +79,7 @@ export function createRunSlot<S>(
       const run: Run<S> = {
         guarded,
         write: (next: (current: S) => S) => {
-          return guarded(setRefIfChanged(ref, next));
+          return guarded(ref.write(next));
         },
       };
       activeFiber = host.runtime.runFork(

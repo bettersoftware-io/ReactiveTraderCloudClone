@@ -92,8 +92,10 @@ Rationale: an "async core" that reaches for `shareReplay` inside its own
 machines is RxJS with extra steps, not a second implementation of the
 timing guarantees. The bridge directory is the one place allowed to
 construct a `new Observable` or call `state()`; everything past it is native
-to the core's own paradigm (a `Store`/`Topic` pair for async-await,
-`Stream`/`SubscriptionRef` for Effect).
+to the core's own paradigm (a `Store`/`Topic` pair for async-await;
+`Stream`, fibers and `Scope` for Effect, whose state cell is the bridge's
+own `SyncRef` since 2026-10-05 — "State in a `SyncRef`" under
+Consequences).
 
 ## Decision 4 — strangler with a parity manifest
 
@@ -1275,8 +1277,38 @@ every fiber step on the FX screen, after the effect-core e2e job ran slow.
 Measured on the React client (FX screen, nine tiles): scheduler tasks in the
 first two seconds 2,900 → 1,000 and per six seconds of steady state 7,500 →
 2,000; tile renders in steady state from 45% above the RxJS core to level
-with it. Machine state still reaches its subscribers through
-`refToStateStream`'s watcher fiber; see `docs/STATUS.md`.
+with it. Machine state followed a day later — the next block.
+
+**State in a `SyncRef` (2026-10-05).** The last `SubscriptionRef`s in the
+Effect core — thirteen machines, and the `bootGate`, `auth`, `throughput`
+and `candleSeries` presenters — moved to `SyncRef` (`bridge/syncRef.ts`),
+the plain cell the workspace and Jarvis members have used since slice 7. It
+has `get`, a synchronous `set` that drops an `Object.is`-equal value and
+calls its listeners before it returns, `write` (the same commit as an
+Effect, for a fiber's steps), and `stateStream()` / `warm()`.
+`refToStateStream`, `refToWarmStateStream` and `setRefIfChanged` are gone,
+and grep gate 50 keeps `SubscriptionRef` out of the package.
+
+- **Why.** A `SubscriptionRef` reaches a subscriber through `ref.changes`,
+  which takes a fiber per subscriber to read: a step after the commit, and
+  a third of the fiber time that was left at start-up. Measured on the
+  React client, alternating with `main` on one machine: scheduler tasks in
+  the FX screen's first two seconds about 1,000 → about 700, time in fibers
+  57 → 37 ms, the page busy about 35 ms less (503–528 → 468–489 ms, against
+  351–364 ms on the RxJS core). Steady state did not move, as predicted:
+  machine state rarely changes there. It also leaves one kind of state cell
+  where there were two.
+- **What changes for a subscriber.** A machine's `state$` subscriber is
+  called from inside the write — the intent, or the fiber step that wrote —
+  as an RxJS `BehaviorSubject`'s is, where it used to be called on a later
+  fiber step of the same turn. No contract case had to change; two unit
+  tests that waited a tick for the state now assert it without waiting.
+- **What it gives up.** This is the one primitive the Effect core writes
+  for itself where `effect` ships one (Decision 3's "native to the core's
+  own paradigm"). A member's state is no longer an Effect value: a fiber
+  cannot follow it as a `Stream` through `ref.changes`. Nothing in the core
+  did. Fibers, `Stream`, `Scope`, `Layer` and interruption are untouched,
+  and those are where this core differs from the other two.
 
 ## Follow-ups
 
