@@ -190,7 +190,7 @@ const config: IConfiguration = {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core-rxjs (the core its harness composes), core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core-rxjs (the core its harness composes), core-api/core-logic/domain/motion-core, never on a concrete client, a binding, the wire package (@rtc/shared), or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
@@ -202,11 +202,11 @@ const config: IConfiguration = {
       name: "core-api-stays-inner",
       severity: "error",
       comment:
-        "@rtc/core-api is the types-only application-core contract — it may import only domain/shared (types), never a core, a binding, a client, or the server.",
+        "@rtc/core-api is the types-only application-core contract — it may import only the domain, never the wire package (@rtc/shared), a core, a binding, a client, or the server. This graph sees value edges only; a TYPE import of @rtc/shared is stopped by the package not listing it (tests/scripts/lib/packageSurfaces.test.ts pins the manifest).",
       from: { path: "^packages/core-api/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(core-api|domain|shared)/",
+        pathNot: "^packages/(core-api|domain)/",
       },
     },
     {
@@ -295,10 +295,10 @@ const config: IConfiguration = {
       },
     },
     {
-      name: "ui-takes-wire-types-only",
+      name: "ui-never-imports-shared",
       severity: "error",
       comment:
-        "The UI side — the three clients, both bindings and the UI contract — may NAME a wire DTO type from @rtc/shared (the Jarvis event and usage types that @rtc/core-api's own interfaces carry), but never import a VALUE from it: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, out of the UI's bundle. Type-only edges are invisible to this graph (tsPreCompilationDeps:false), so every edge this rule sees is a value edge.",
+        "The UI side — the three clients, both bindings and the UI contract — never imports @rtc/shared: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, out of the UI's bundle. What the UI renders (Jarvis events, panel specs, drive commands, usage) is domain vocabulary and comes from @rtc/domain. Type-only edges are invisible to this graph (tsPreCompilationDeps:false), so this rule catches a VALUE import; a TYPE import is stopped by these packages not listing @rtc/shared (tests/scripts/lib/packageSurfaces.test.ts pins the manifests), which leaves the typecheck unable to resolve it.",
       from: {
         path: "^packages/(client-react|client-solid|client-react-native|react-bindings|solid-bindings|ui-contract)/",
       },

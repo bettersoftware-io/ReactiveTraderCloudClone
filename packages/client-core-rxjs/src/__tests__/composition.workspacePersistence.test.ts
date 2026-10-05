@@ -24,9 +24,10 @@ import {
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  type JarvisEvent,
+  type PanelSpecV1,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createApp } from "#/composition";
 

@@ -1,9 +1,6 @@
 import type { JarvisToolDefinition } from "@rtc/agent-tools";
-import {
-  PANEL_SPEC_JSON_SCHEMA,
-  type PanelSpecV1,
-  parsePanelSpec,
-} from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
+import { PANEL_SPEC_JSON_SCHEMA, parsePanelSpec } from "@rtc/shared";
 
 export const RENDER_PANEL_TOOL_NAME = "render_panel";
 

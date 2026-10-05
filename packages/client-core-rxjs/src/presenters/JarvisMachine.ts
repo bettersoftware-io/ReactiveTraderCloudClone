@@ -44,9 +44,9 @@ import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 export interface JarvisDeps {
   port: JarvisPort;

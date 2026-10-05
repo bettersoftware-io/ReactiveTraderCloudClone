@@ -33,9 +33,11 @@ import { cleanupMounted, createWorld, mountWith } from "@ui-contract/mount";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EqWorkspaceState } from "@rtc/core-api";
-import type { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
-import { DRIVE_STAGGER_MS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DRIVE_STAGGER_MS,
+  type DriveBatchV1,
+  type PanelSpecV1,
+} from "@rtc/domain";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -467,29 +469,9 @@ describe("JarvisDriver", () => {
   });
 });
 
-/** No public export of `DriveBatchV1` reaches `@rtc/ui-contract` (it lives in
- * `@rtc/shared`, which this package lists for three Jarvis wire types only),
- * so this borrows the type structurally off the already-exported
- * `JarvisEvent`'s own `"command"` variant — the identical trick
- * `JarvisPanelLayer.contract.spec.ts` uses to borrow `PanelSpecV1` off
- * `UNSUPPORTED_SENTINEL_SPEC` — instead of widening any package's public
- * surface just for test literals. Named-tag `Extract` (not an inline object
- * type argument), per this repo's `no-restricted-syntax` ban — the same
- * `CommandEventTag` idiom `JarvisDriverMachine.ts` itself uses. */
-interface CommandEventTag {
-  readonly type: "command";
-}
-
-type DriveBatchV1 = Extract<JarvisEvent, CommandEventTag>["batch"];
-
 /** The panel the pinned-panel scenarios drive — an `analytics`-sourced table,
  * the cheapest spec whose body mounts without any seeded World data. */
 const DRIVEN_PANEL_ID = "panel-desk-positions";
-
-/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract` — same
- * borrow-the-type-off-an-exported-const trick this file already uses for
- * `DriveBatchV1`, and `JarvisPanelLayer.contract.spec.ts` for its own specs. */
-type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   v: 1,

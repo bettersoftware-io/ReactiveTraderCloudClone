@@ -1,13 +1,18 @@
 import { NEVER, type Observable, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { PanelData, PanelInstance } from "@rtc/core-api";
+import type { PanelData } from "@rtc/core-api";
 import {
   type PanelStreamDeps,
   UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import type { PositionUpdates, PriceTick, Trade } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type {
+  JarvisEvent,
+  PanelSpecV1,
+  PositionUpdates,
+  PriceTick,
+  Trade,
+} from "@rtc/domain";
 
 import {
   createJarvisPanelsMachine,
@@ -131,7 +136,7 @@ describe("jarvisPanels (async)", () => {
       createPanelEvent("odd", {
         v: 1,
         title: "Odd",
-        source: { kind: "no-such-source" } as unknown as PanelSpec["source"],
+        source: { kind: "no-such-source" } as unknown as PanelSpecV1["source"],
         transforms: [],
         viz: { kind: "table" },
       }),
@@ -237,12 +242,12 @@ function createFixture(
 
 function createPanelEvent(
   panelId: string,
-  spec: PanelSpec = createAnalyticsSpec("P&L"),
+  spec: PanelSpecV1 = createAnalyticsSpec("P&L"),
 ): JarvisEvent {
   return { type: "panel", panelId, spec };
 }
 
-function createAnalyticsSpec(title: string): PanelSpec {
+function createAnalyticsSpec(title: string): PanelSpecV1 {
   return {
     v: 1,
     title,
@@ -305,8 +310,6 @@ function collectData(
 function isData(value: PanelData | null): value is PanelData {
   return value !== null;
 }
-
-type PanelSpec = NonNullable<PanelInstance["spec"]>;
 
 function createNever(): Observable<never> {
   return NEVER;

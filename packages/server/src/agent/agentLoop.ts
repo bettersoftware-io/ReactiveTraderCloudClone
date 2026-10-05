@@ -5,8 +5,9 @@ import {
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
 } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 import type { ServiceContainer } from "../services/serviceContainer.js";
 import { ScriptedAgentLoop } from "./ScriptedAgentLoop.js";

@@ -4,7 +4,7 @@ import type {
   JarvisUsagePort,
   JarvisUsagePresenter as JarvisUsagePresenterApi,
 } from "@rtc/core-api";
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
+import type { AdminJarvisUsagePayload } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
 

@@ -25,6 +25,7 @@ import type {
 } from "@rtc/core-api";
 import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
+  type AdminJarvisUsagePayload,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -61,6 +62,7 @@ import {
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisNarratorPreference,
   type JarvisSkin,
   type LayoutEngine,
@@ -85,7 +87,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import type { AdminJarvisUsagePayload, JarvisEvent } from "@rtc/shared";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */

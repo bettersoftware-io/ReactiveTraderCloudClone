@@ -1,4 +1,4 @@
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
+import type { AdminJarvisUsagePayload } from "@rtc/domain";
 
 import type { Stream } from "#/stream";
 

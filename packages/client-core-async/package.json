@@ -28,7 +28,6 @@
     "@rtc/core-api": "workspace:*",
     "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "rxjs": "^7.8"
   },

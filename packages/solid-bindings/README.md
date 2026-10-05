@@ -5,7 +5,7 @@ The Solid↔RxJS bridge — the parallel sibling of `@rtc/react-bindings`, trans
 | | |
 |---|---|
 | **Ring** | ③ Interface Adapters — ViewModel bridge (see `docs/architecture/01-overview.md` §1.3.1) |
-| **Runtime deps** | `@rtc/core-api`, `@rtc/domain`, `@rtc/shared` (types only), `@rx-state/core`, `rxjs`, `solid-js` (`@rtc/client-core-rxjs` and `@rtc/client-adapters` are devDependencies, for tests) — the only package in the repo permitted to depend on both Solid and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
+| **Runtime deps** | `@rtc/core-api`, `@rtc/domain`, `@rx-state/core`, `rxjs`, `solid-js` (`@rtc/client-core-rxjs` and `@rtc/client-adapters` are devDependencies, for tests) — the only package in the repo permitted to depend on both Solid and the core's RxJS streams (`docs/architecture/06-package-dependencies.md`) |
 | **Consumed by** | `client-solid` (the only client on this bridge) |
 | **Must never import** | `client-solid`, `client-react`, `client-react-native`, `server` — the dependency direction is one-way (solid-bindings sits below its client in the build order), mirroring `react-bindings`' own boundary |
 

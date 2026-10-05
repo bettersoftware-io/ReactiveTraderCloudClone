@@ -1,10 +1,10 @@
-import type { JarvisBrain } from "@rtc/domain";
-
+import type { JarvisBrain } from "../preferences/preferences.js";
 import type { JarvisGateLevel } from "./jarvisEvent.js";
 
 /**
- * Jarvis token-usage wire vocabulary — `SERVER_MSG.ADMIN_JARVIS_USAGE`
- * payload, sent in reply to `CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE`.
+ * Jarvis token usage, as the admin usage card shows it. It also travels
+ * unchanged as the `SERVER_MSG.ADMIN_JARVIS_USAGE` payload, sent in reply to
+ * `CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE`.
  *
  * Per-brain usage totals over two windows: `currentWindow` (the live
  * rate-limit window) and `sinceBoot` (cumulative since server start).

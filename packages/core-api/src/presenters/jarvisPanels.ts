@@ -1,4 +1,4 @@
-import type { PanelSpecV1, PanelViz } from "@rtc/shared";
+import type { PanelSpecV1, PanelViz } from "@rtc/domain";
 
 import type { PanelStatus } from "#/machines/jarvisPanels";
 import type { PanelData } from "#/panelStream";

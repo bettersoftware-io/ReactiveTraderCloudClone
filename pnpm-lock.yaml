@@ -358,9 +358,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -398,9 +395,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -441,9 +435,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -457,6 +448,9 @@ importers:
       '@rtc/core-contract':
         specifier: workspace:*
         version: link:../core-contract
+      '@rtc/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@types/node':
         specifier: ^26.2.0
         version: 26.6.4
@@ -557,9 +551,6 @@ importers:
       '@rtc/react-bindings':
         specifier: workspace:*
         version: link:../react-bindings
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -868,9 +859,6 @@ importers:
       '@rtc/motion-core':
         specifier: workspace:*
         version: link:../motion-core
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rtc/solid-bindings':
         specifier: workspace:*
         version: link:../solid-bindings
@@ -938,9 +926,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -1214,9 +1199,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       react:
         specifier: ^19.2.3
         version: 19.3.0
@@ -1328,9 +1310,6 @@ importers:
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@rx-state/core':
         specifier: ^0.1.4
         version: 0.1.4(rxjs@7.8.2)
@@ -1383,9 +1362,6 @@ importers:
       '@rtc/motion-core':
         specifier: workspace:*
         version: link:../motion-core
-      '@rtc/shared':
-        specifier: workspace:*
-        version: link:../shared
       rxjs:
         specifier: ^7.8
         version: 7.8.2

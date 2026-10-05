@@ -25,9 +25,9 @@ import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";

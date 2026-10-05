@@ -12,8 +12,7 @@
     { "path": "../client-adapters" },
     { "path": "../client-core-rxjs" },
     { "path": "../core-api" },
-    { "path": "../domain" },
-    { "path": "../shared" }
+    { "path": "../domain" }
   ],
   "include": ["src"]
 }

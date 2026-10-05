@@ -7,6 +7,7 @@ import type {
   StoredSession,
 } from "@rtc/core-api";
 import {
+  type AdminJarvisUsagePayload,
   AuthSimulator,
   type Candle,
   type ConnectionEvent,
@@ -20,6 +21,7 @@ import {
   type EquityPosition,
   type EquityQuote,
   type Instrument,
+  type JarvisEvent,
   type LogEvent,
   type MetricSample,
   type PlaceOrderRequest,
@@ -49,7 +51,6 @@ import {
   EURUSD,
   MSFT,
 } from "#/harness/fixtures";
-import type { JarvisEvent, JarvisUsagePayload } from "#/harness/jarvisTypes";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
 describe("scriptPorts port-call counting", () => {
@@ -991,7 +992,7 @@ function createAvailability(available: boolean): JarvisAvailability {
   };
 }
 
-function createUsagePayload(): JarvisUsagePayload {
+function createUsagePayload(): AdminJarvisUsagePayload {
   return { windowStartMs: 1, windowEndMs: 2, currentWindow: [], sinceBoot: [] };
 }
 

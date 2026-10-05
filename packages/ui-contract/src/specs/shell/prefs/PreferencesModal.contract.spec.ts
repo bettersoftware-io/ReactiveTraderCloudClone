@@ -12,9 +12,8 @@ import {
   createDefaultLayoutPort,
   formatGateResetTime,
   parseWorkspaceLayout,
-  type UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import { JARVIS_BRAINS } from "@rtc/domain";
+import { JARVIS_BRAINS, type PanelSpecV1 } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -682,11 +681,6 @@ describe("PreferencesModal — reset workspace layout", () => {
 /** The panel the reset scenario pins — an `analytics`-sourced table, the
  * cheapest spec whose body mounts without any seeded World data. */
 const RESET_PANEL_ID = "panel-desk-positions";
-
-/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
- * borrows the type off the one already-exported `PanelSpecV1`-typed const —
- * the same trick `JarvisPanelLayer.contract.spec.ts` uses. */
-type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   v: 1,

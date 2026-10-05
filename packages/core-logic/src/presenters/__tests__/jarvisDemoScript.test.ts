@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { JarvisDemoStep, JarvisEntry, JarvisState } from "@rtc/core-api";
-import { Direction } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import { Direction, type JarvisEvent } from "@rtc/domain";
 
 import { JARVIS_INITIAL_STATE } from "#/presenters/jarvisController";
 import { createDemoStepWatch } from "#/presenters/jarvisDemoScript";

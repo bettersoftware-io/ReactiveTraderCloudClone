@@ -10,11 +10,12 @@ import {
 import type {
   AnalyticsPort,
   BlotterPort,
+  JarvisEvent,
+  PanelSpecV1,
   PriceTick,
   PricingPort,
   ReferenceDataPort,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createJarvisPanelsMachine } from "./JarvisPanelsMachine.js";
 import { JarvisPanelsPresenter } from "./JarvisPanelsPresenter.js";

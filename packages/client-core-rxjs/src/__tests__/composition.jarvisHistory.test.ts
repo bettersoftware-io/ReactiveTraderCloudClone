@@ -43,9 +43,10 @@ import {
   AuthSimulator,
   ConnectionEventsSimulator,
   JARVIS_GREETING,
+  type JarvisHistoryEntry,
   PreferencesSimulator,
 } from "@rtc/domain";
-import { CLIENT_MSG, type JarvisHistoryEntry, SERVER_MSG } from "@rtc/shared";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { createApp } from "#/composition";
 

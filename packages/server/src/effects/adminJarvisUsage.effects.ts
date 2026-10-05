@@ -9,7 +9,7 @@ import {
   withLatestFrom,
 } from "rxjs";
 
-import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/shared";
+import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import { out, stream, type WsEffect } from "@rtc/ws-effects";
 

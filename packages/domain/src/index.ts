@@ -141,6 +141,22 @@ export {
   DEFAULT_ANOMALY_CONFIG,
   detectAnomalies,
 } from "./jarvis/anomalyDetector.js";
+export type {
+  DriveBatchV1,
+  DriveCommandV1,
+  DriveTab,
+} from "./jarvis/driveCommand.js";
+export {
+  DRIVE_CHART_TYPES,
+  DRIVE_COMMAND_KINDS,
+  DRIVE_INDICATORS,
+  DRIVE_LAYOUT_OPS,
+  DRIVE_PANES,
+  DRIVE_POWER_LEVELS,
+  DRIVE_SKINS,
+  DRIVE_TABS,
+  DRIVE_TIMEFRAMES,
+} from "./jarvis/driveCommand.js";
 export {
   DEMO_STEP_BEAT_MS,
   DEMO_STEP_TIMEOUT_MS,
@@ -150,6 +166,33 @@ export {
   MAX_NARRATIONS_PER_SESSION,
   NARRATION_COOLDOWN_MS,
 } from "./jarvis/jarvisConstants.js";
+export type {
+  JarvisAvailabilityGate,
+  JarvisEvent,
+  JarvisGateLevel,
+  JarvisHistoryEntry,
+} from "./jarvis/jarvisEvent.js";
+export type {
+  AdminJarvisUsagePayload,
+  JarvisBrainUsageRow,
+  JarvisUsageSnapshot,
+} from "./jarvis/jarvisUsage.js";
+export type {
+  PanelAnnotation,
+  PanelAnnotationTone,
+  PanelSource,
+  PanelSpecV1,
+  PanelTransform,
+  PanelViz,
+} from "./jarvis/panelSpec.js";
+export {
+  PANEL_ANNOTATION_KINDS,
+  PANEL_ANNOTATION_TONES,
+  PANEL_SOURCE_KINDS,
+  PANEL_TOPN_BY_VALUES,
+  PANEL_TRANSFORM_KINDS,
+  PANEL_VIZ_KINDS,
+} from "./jarvis/panelSpec.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
 export type { AuthOutcome, AuthPort } from "./ports/authPort.js";

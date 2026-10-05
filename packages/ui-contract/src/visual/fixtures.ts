@@ -28,6 +28,7 @@ import {
   type Instrument,
   JARVIS_BRAINS,
   JARVIS_GREETING,
+  type JarvisUsageSnapshot,
   type LogEvent,
   listDemoAccounts,
   type MetricSample,
@@ -45,7 +46,6 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import type { JarvisUsageSnapshot } from "@rtc/shared";
 
 import { type AppData, makeAppData } from "./appData";
 

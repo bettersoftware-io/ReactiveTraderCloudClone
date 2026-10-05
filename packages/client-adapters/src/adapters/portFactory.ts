@@ -2,6 +2,7 @@ import { defer, map, Observable, of } from "rxjs";
 
 import type { IWsAdapter, SessionStore, TransportPorts } from "@rtc/core-api";
 import {
+  type AdminJarvisUsagePayload,
   type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
@@ -58,7 +59,6 @@ import {
   type WorkflowPort,
 } from "@rtc/domain";
 import type {
-  AdminJarvisUsagePayload,
   AnalyticsDto,
   BlotterMessage,
   DealerEvent,

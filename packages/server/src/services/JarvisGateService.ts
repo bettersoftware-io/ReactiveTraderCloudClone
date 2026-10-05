@@ -10,7 +10,7 @@ import {
   timer,
 } from "rxjs";
 
-import type { JarvisGateLevel } from "@rtc/shared";
+import type { JarvisGateLevel } from "@rtc/domain";
 
 import { computeGateLevel, type JarvisGateConfig } from "./jarvisGate.js";
 import type { UsageMeter } from "./UsageMeter.js";

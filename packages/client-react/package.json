@@ -54,7 +54,6 @@
     "@rtc/layout-dockview": "workspace:*",
     "@rtc/motion-core": "workspace:*",
     "@rtc/react-bindings": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "motion": "^13.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { CLIENT_MSG, type JarvisUsageSnapshot, SERVER_MSG } from "@rtc/shared";
+import type { JarvisUsageSnapshot } from "@rtc/domain";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import { WsJarvisUsageAdapter } from "./WsJarvisUsageAdapter";

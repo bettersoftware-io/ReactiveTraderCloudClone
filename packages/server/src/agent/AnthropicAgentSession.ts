@@ -16,13 +16,14 @@ import type {
   JarvisConfirmDetails,
   JarvisToolDefinition,
 } from "@rtc/agent-tools";
-import { DEFAULT_JARVIS_BRAIN, DEFAULT_JARVIS_EFFORT } from "@rtc/domain";
-import type {
-  DriveBatchV1,
-  JarvisEvent,
-  JarvisHistoryEntry,
-  PanelSpecV1,
-} from "@rtc/shared";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  DEFAULT_JARVIS_EFFORT,
+  type DriveBatchV1,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+  type PanelSpecV1,
+} from "@rtc/domain";
 
 import type { UsageMeter } from "../services/UsageMeter.js";
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";

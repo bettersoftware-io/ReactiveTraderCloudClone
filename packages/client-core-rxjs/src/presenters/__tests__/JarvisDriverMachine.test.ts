@@ -11,10 +11,11 @@ import type {
 import { createDefaultLayoutPort, MAX_DOCKED_PANELS } from "@rtc/core-logic";
 import {
   DRIVE_STAGGER_MS,
+  type DriveCommandV1,
+  type JarvisEvent,
   type PowerSaverLevel,
   type ThemeSkin,
 } from "@rtc/domain";
-import type { DriveCommandV1, JarvisEvent } from "@rtc/shared";
 
 import { createEqWorkspaceMachine } from "../EqWorkspaceMachine";
 import {

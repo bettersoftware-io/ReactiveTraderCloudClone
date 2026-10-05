@@ -2,8 +2,11 @@ import { NEVER, of, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import type { JarvisPort, JarvisState } from "@rtc/core-api";
-import { Direction, JARVIS_CONFIRM_TIMEOUT_MS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  Direction,
+  JARVIS_CONFIRM_TIMEOUT_MS,
+  type JarvisEvent,
+} from "@rtc/domain";
 
 import { createJarvisMachine } from "#/presenters/jarvis";
 

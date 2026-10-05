@@ -80,7 +80,7 @@ flowchart TB
     core --> coreLogic
     coreLogic --> coreApi
     core --> domain
-    core --> shared
+    core -->|"through the adapters"| shared
     core -. WebSocket JSON .-> server
     server -->|"composes effects"| wsEffects
     server -->|"Jarvis tools · /mcp"| agentTools

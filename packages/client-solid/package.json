@@ -40,7 +40,6 @@
     "@rtc/domain": "workspace:*",
     "@rtc/layout-dockview": "workspace:*",
     "@rtc/motion-core": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "@rtc/solid-bindings": "workspace:*",
     "rxjs": "^7.8",
     "solid-js": "^1.9.14"

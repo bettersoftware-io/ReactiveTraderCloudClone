@@ -5,10 +5,11 @@ import type {
   AnalyticsPort,
   BlotterPort,
   ExecutionPort,
+  JarvisEvent,
   PricingPort,
   ReferenceDataPort,
 } from "@rtc/domain";
-import type { JarvisEvent, ScriptedJarvisDeps } from "@rtc/shared";
+import type { ScriptedJarvisDeps } from "@rtc/shared";
 
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 

@@ -8,7 +8,7 @@ import {
   MAX_LIVE_PANELS,
   UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/domain";
 
 import { createJarvisPanelsMachine } from "../JarvisPanelsMachine";
 

@@ -4,14 +4,10 @@ import type {
   Stream,
   WorkspaceTab,
 } from "@rtc/core-api";
+import type { DriveCommandV1, JarvisEvent, PanelSpecV1 } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { CoreHarness } from "#/harness/harness";
-import type {
-  DriveCommand,
-  JarvisEvent,
-  PanelSpec,
-} from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
 
 /* Shared by the slice-7 workspace suites: spawning desk panels through the
@@ -34,7 +30,7 @@ import { settle } from "#/harness/settle";
  * `clock.settle` inside `withFakeClock`. */
 export type Pause = () => Promise<void>;
 
-export const PANEL_SPEC: PanelSpec = {
+export const PANEL_SPEC: PanelSpecV1 = {
   v: 1,
   title: "P&L overview",
   rationale: "Your book at a glance",
@@ -44,7 +40,7 @@ export const PANEL_SPEC: PanelSpec = {
 };
 
 /** A desk panel reading live EURUSD ticks — its data follows the price port. */
-export const FX_TICKS_SPEC: PanelSpec = {
+export const FX_TICKS_SPEC: PanelSpecV1 = {
   v: 1,
   title: "EURUSD ticks",
   source: { kind: "fxTicks", symbols: ["EURUSD"] },
@@ -54,7 +50,7 @@ export const FX_TICKS_SPEC: PanelSpec = {
 
 export function createPanelEvent(
   panelId: string,
-  spec: PanelSpec = PANEL_SPEC,
+  spec: PanelSpecV1 = PANEL_SPEC,
 ): JarvisEvent {
   return { type: "panel", panelId, spec };
 }
@@ -90,7 +86,7 @@ export async function spawnPanels(
  * staggers them; the caller advances time. */
 export async function driveBatch(
   h: CoreHarness,
-  commands: readonly DriveCommand[],
+  commands: readonly DriveCommandV1[],
   pause: Pause = settle,
 ): Promise<void> {
   await replyToTurn(h, [{ type: "command", batch: { v: 1, commands } }], pause);

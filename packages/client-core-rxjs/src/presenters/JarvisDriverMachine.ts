@@ -28,8 +28,7 @@ import {
   type DriveCommandDeps,
   driveStaggerMs,
 } from "@rtc/core-logic";
-import type { PowerSaverLevel, ThemeSkin } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, PowerSaverLevel, ThemeSkin } from "@rtc/domain";
 
 export interface JarvisDriverDeps {
   /** Every reply-turn event, already guarded (`catchError(() => EMPTY)` at

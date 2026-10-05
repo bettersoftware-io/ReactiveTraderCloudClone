@@ -16,9 +16,10 @@ import {
   AuthSimulator,
   ConnectionEventsSimulator,
   DRIVE_STAGGER_MS,
+  type JarvisEvent,
+  type PanelSpecV1,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createApp, createMachineFactories } from "#/composition";
 

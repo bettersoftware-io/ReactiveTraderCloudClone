@@ -308,7 +308,8 @@ UI-contract fixtures use.
 ## Consequences
 
 - Four new packages join the graph: `@rtc/core-api` (types-only, innermost
-  after `domain`/`shared`), `@rtc/core-contract` (dev-only, depends on
+  after `domain`/`shared`; since 2026-10-05 it names `domain` alone, the
+  Jarvis vocabulary having moved there), `@rtc/core-contract` (dev-only, depends on
   `core-api` + `domain` + `rxjs` only — **never** `client-core`, to avoid a
   build-order cycle with the RxJS core's own contract runner living inside
   `client-core`), `@rtc/client-core-async`, `@rtc/client-core-effect`.

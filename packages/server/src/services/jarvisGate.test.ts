@@ -1,7 +1,7 @@
 import { BehaviorSubject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisUsageSnapshot } from "@rtc/shared";
+import type { JarvisUsageSnapshot } from "@rtc/domain";
 
 import { JarvisGateService } from "./JarvisGateService.js";
 import {

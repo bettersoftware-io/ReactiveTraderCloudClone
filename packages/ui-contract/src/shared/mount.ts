@@ -18,6 +18,7 @@ import type {
   EquityQuote,
   JarvisBrain,
   JarvisEffort,
+  JarvisEvent,
   JarvisNarratorPreference,
   LayoutEngine,
   LogEvent,
@@ -34,7 +35,6 @@ import type {
   ThemeSkin,
   ViewMode,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import { getDriver, type MountedRoot } from "./harness/activeDriver";
 import type {

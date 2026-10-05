@@ -6,11 +6,11 @@ import {
   JARVIS_GREETING,
   JARVIS_NARRATION_PREFIX,
   JARVIS_SKINS,
+  type JarvisEvent,
 } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
-import type { JarvisEvent } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
 import { describeJarvisAvailabilityCases } from "#/suites/jarvisAvailability";
 import { describeJarvisConfirmationCases } from "#/suites/jarvisConfirmation";

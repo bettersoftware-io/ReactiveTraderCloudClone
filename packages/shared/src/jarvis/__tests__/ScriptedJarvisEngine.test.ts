@@ -2,6 +2,7 @@ import { NEVER, type Observable, of } from "rxjs";
 import { delay } from "rxjs/operators";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { JarvisEvent } from "@rtc/domain";
 import {
   type AnalyticsPort,
   type BlotterPort,
@@ -18,7 +19,6 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { JarvisEvent } from "../jarvisEvent.js";
 import { parsePanelSpec } from "../panelSpec.js";
 import {
   SCRIPTED_VOL_WORKSPACE_BATCH,
