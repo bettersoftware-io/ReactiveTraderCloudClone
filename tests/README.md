@@ -183,7 +183,11 @@ source-mapped modules, or to check a dev-only behaviour.
 The build is made with the same variables the dev server gets
 (`VITE_DEV_AUTH`, `VITE_CORE_IMPL`), plus an empty `VITE_DEMO_AUTH`: a
 production build would otherwise take its roster from `.env.production`,
-where `demo`'s password is not the one the login spec types. Workspace
+where `demo`'s password is not the one the login spec types. It also gets
+`VITE_NARRATOR_TEST_SEAM=1`, which keeps the `?narratorThresholds=test` seam
+in the bundle; a real production build compiles that seam out, and the
+narrator spec cannot wait for a natural anomaly (about one per symbol every
+14 minutes). Workspace
 libraries are read from their `dist` in both modes, so `turbo run test:e2e`
 builds them first either way.
 

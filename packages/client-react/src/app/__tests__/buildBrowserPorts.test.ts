@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "@rtc/client-core-rxjs";
 import {
@@ -98,14 +98,14 @@ describe("buildBrowserPorts (simulator branch)", () => {
   });
 });
 
-// The dev-only NarratorMachine threshold seam (Task 9): `import.meta.env.DEV`
-// is `true` under vitest (unset MODE defaults away from "production"), so
-// only the `?narratorThresholds=test` query param varies here — the DEV
-// half of the gate is exercised structurally (this file couldn't run at all
-// under a real production build, where the whole branch is compiled away).
-describe("buildBrowserPorts — narratorConfig (dev-only ?narratorThresholds=test seam)", () => {
+// The NarratorMachine threshold seam. `import.meta.env.DEV` is `true` under
+// vitest, so the first four cases vary only the query param; the last two
+// stub DEV off to stand in for a production build, with and without the
+// variable the e2e harness builds with.
+describe("buildBrowserPorts — narratorConfig (the ?narratorThresholds=test seam)", () => {
   afterEach(() => {
     setSearch("");
+    vi.unstubAllEnvs();
   });
 
   it("omits narratorConfig when the query param is absent", () => {
@@ -135,6 +135,21 @@ describe("buildBrowserPorts — narratorConfig (dev-only ?narratorThresholds=tes
     setSearch("?narratorThresholds=production");
     const ports = buildBrowserPorts();
     expect(ports.narratorConfig).toBeUndefined();
+  });
+
+  it("a production build ignores the query param", () => {
+    vi.stubEnv("DEV", false);
+    setSearch("?narratorThresholds=test");
+    const ports = buildBrowserPorts();
+    expect(ports.narratorConfig).toBeUndefined();
+  });
+
+  it("a production build made with VITE_NARRATOR_TEST_SEAM=1 honours the query param, and only then", () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_NARRATOR_TEST_SEAM", "1");
+    expect(buildBrowserPorts().narratorConfig).toBeUndefined();
+    setSearch("?narratorThresholds=test");
+    expect(buildBrowserPorts().narratorConfig?.minWindowFill).toBe(4);
   });
 });
 

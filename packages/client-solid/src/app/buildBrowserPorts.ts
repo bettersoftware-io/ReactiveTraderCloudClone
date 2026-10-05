@@ -66,7 +66,7 @@ function parseDevAuth(raw: string | undefined): Record<string, string> {
 }
 
 /** Relaxed `NarratorMachine` detector thresholds for the `?narratorThresholds=test`
- * dev/e2e seam — see `devNarratorConfig`'s doc for when this actually applies. */
+ * dev/e2e seam — see `seamNarratorConfig`'s doc for when this actually applies. */
 const TEST_NARRATOR_CONFIG: Partial<AnomalyDetectorConfig> = {
   windowSize: 8,
   minWindowFill: 4,
@@ -75,20 +75,24 @@ const TEST_NARRATOR_CONFIG: Partial<AnomalyDetectorConfig> = {
 };
 
 /**
- * Dev-only override for `NarratorMachine`'s anomaly-detector thresholds:
- * `PricingSimulator`'s natural anomaly episodes are rare by design (~14 min
- * expected interval per symbol — see `pricingAnomalyEpisode.ts`), so an e2e
- * run (or a human) that wants to exercise the proactive narrator on demand
- * needs a way to force near-guaranteed crossings instead of waiting one out.
+ * Override for `NarratorMachine`'s anomaly-detector thresholds, for a dev
+ * server and for the build the e2e harness makes. `PricingSimulator`'s
+ * anomaly episodes are rare by design (about one per symbol every 14 minutes —
+ * see `pricingAnomalyEpisode.ts`), so an e2e run, or a person, that wants to
+ * see the proactive narrator needs a way to force a crossing instead of
+ * waiting one out.
  *
- * Gated on BOTH `import.meta.env.DEV` (a compile-time literal Vite
- * dead-code-eliminates from a production build, so this whole branch —
- * including the relaxed thresholds themselves — never ships) AND an
- * explicit `?narratorThresholds=test` query param, so it can never activate
- * outside a local/dev server even if the DEV guard were somehow bypassed.
+ * Two conditions, both required:
+ *
+ * - The bundle carries the seam at all. `import.meta.env.DEV` and
+ *   `import.meta.env.VITE_NARRATOR_TEST_SEAM` are both replaced with literals
+ *   at build time, so a production build made without the variable has this
+ *   whole branch, relaxed thresholds included, removed as dead code. Only
+ *   `tests/scripts/clientServer.ts` sets the variable; no deploy does.
+ * - The page asked for it with `?narratorThresholds=test`.
  */
-function devNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
-  if (!import.meta.env.DEV) {
+function seamNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
+  if (!import.meta.env.DEV && import.meta.env.VITE_NARRATOR_TEST_SEAM !== "1") {
     return undefined;
   }
 
@@ -114,7 +118,7 @@ export function buildBrowserPorts(
 ): AppPorts {
   const url = import.meta.env.VITE_SERVER_URL;
   const demoRoster = parseDevAuth(import.meta.env.VITE_DEMO_AUTH);
-  const narratorConfig = devNarratorConfig();
+  const narratorConfig = seamNarratorConfig();
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
   // localStorage-backed session store (parity with client-react): the AuthGate
