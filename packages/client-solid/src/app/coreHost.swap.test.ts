@@ -11,7 +11,7 @@
  * macrotask waits, and every core's scheduling all follow them, so each wait
  * below advances the clock in steps until the awaited value is seen.
  */
-import { isObservable, Observable, type Subscription } from "rxjs";
+import { isObservable, NEVER, Observable, type Subscription } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { asyncCore } from "@rtc/client-core-async";
@@ -43,6 +43,7 @@ import {
   Direction,
   IDLE_TIMEOUT_MS,
   type Price,
+  type PricingPort,
 } from "@rtc/domain";
 
 import { JARVIS_NARRATOR_STORAGE_KEY } from "./adapters/LocalStoragePreferencesAdapter";
@@ -201,10 +202,17 @@ describe("hot swap over the real browser ports", () => {
     },
   );
 
+  // The FX prices are quiet here, on the swapped ports and on the fresh
+  // ones: idling out takes fifteen minutes, in which the price simulator
+  // would tick some 16,000 times through every fold of the core, and the
+  // case is about connection events, not prices.
   it.each(ROTATION)(
     "3. %s → %s with a reconnect intent in flight: no connection event from before the swap reaches the new core, and its connection matches fresh ports",
     async (from, to) => {
-      const ledger = createConnectionLedger(buildBrowserPorts());
+      const ledger = createConnectionLedger(
+        withQuietPrices(buildBrowserPorts()),
+      );
+
       const harness = createHostHarness(ledger.ports, from, {
         beforeLoad: ledger.markSwapStart,
       });
@@ -240,14 +248,21 @@ describe("hot swap over the real browser ports", () => {
       expect(ledger.lateEvents().map(typeOf)).toContain("gatewayConnected");
       expect(ledger.lateEvents().map(typeOf)).not.toContain("reconnect");
 
-      const fresh = await recordFreshStatuses(to);
+      const fresh = await recordFreshStatuses(
+        to,
+        withQuietPrices(buildBrowserPorts()),
+      );
 
       expect(swapped.length).toBeGreaterThan(0);
       expect(swapped).toEqual(fresh);
     },
   );
 
+  // The proactive narrator is switched off: it asks Jarvis when the simulated
+  // prices (random) look anomalous, and an ask in flight is a port
+  // subscription that comes and goes on its own.
   it("4. five swaps around the three cores leave no port subscription behind, method by method", async () => {
+    localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");
     const tally = createTalliedPorts(buildBrowserPorts());
     const harness = createHostHarness(tally.ports, "rxjs");
     await signIn(harness.current());
@@ -292,10 +307,7 @@ describe("hot swap over the real browser ports", () => {
   // live hub, not with the other cores: what a held stream opens on the
   // ports differs per core (the Effect core subscribes `themeMode$` once
   // per theme stream, the other two share one subscription).
-  //
-  // The proactive narrator is switched off: it asks Jarvis when the simulated
-  // prices (random) look anomalous, and an ask in flight is a port
-  // subscription that comes and goes on its own.
+  // The narrator is off, as in case 4.
   it("5. with an inspector attached, five swaps leave no port subscription behind and the inspector shows one composition", async () => {
     localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");
     const tally = createTalliedPorts(buildBrowserPorts());
@@ -803,10 +815,29 @@ async function recordStatusesFor(
  * reload would give, signed in through the session the swap kept. */
 async function recordFreshStatuses(
   impl: CoreImpl,
+  ports: AppPorts = buildBrowserPorts(),
 ): Promise<readonly ConnectionStatus[]> {
-  const app = trackApps(CORES[impl]).createApp(buildBrowserPorts());
+  const app = trackApps(CORES[impl]).createApp(ports);
   await waitFor(app.presenters.auth.state$, isAuthenticated, "fresh sign-in");
   return recordStatusesFor(app.presenters.connection.status$);
+}
+
+/** `ports` whose FX prices never tick: a price stream stays open and
+ * silent. History and RFQ quotes are the simulator's own. */
+function withQuietPrices(ports: AppPorts): AppPorts {
+  const pricing: PricingPort = {
+    getPriceUpdates: () => {
+      return NEVER;
+    },
+    getPriceHistory: (symbol: string) => {
+      return ports.pricing.getPriceHistory(symbol);
+    },
+    getRfqQuote: (symbol: string, pipsPosition: number) => {
+      return ports.pricing.getRfqQuote(symbol, pipsPosition);
+    },
+  };
+
+  return { ...ports, pricing };
 }
 
 /** The fixed stream set the leak witness opens on each composition: one
