@@ -27,8 +27,13 @@ import {
   undockPanelInState,
   unknownSourceFrame,
 } from "@rtc/core-logic";
-import { AnalyticsUseCase, TradeBlotterUseCase } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  AnalyticsUseCase,
+  type JarvisEvent,
+  type PanelSource,
+  type PanelSpecV1,
+  TradeBlotterUseCase,
+} from "@rtc/domain";
 
 import {
   type EffectHost,
@@ -42,11 +47,6 @@ import {
 } from "#/bridge/out";
 import { peekCurrent } from "#/bridge/peek";
 import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
-
-/** A desk panel's spec — `@rtc/shared`'s `PanelSpecV1`, which this package
- * does not depend on. */
-type PanelSpecV1 = NonNullable<PanelInstance["spec"]>;
-type PanelSource = PanelSpecV1["source"];
 
 /** The desk-panels roster: a `SyncRef` folded by the SHARED folds
  * (`@rtc/core-logic`'s `jarvisPanelsFolds`), fed the `panel` events of the

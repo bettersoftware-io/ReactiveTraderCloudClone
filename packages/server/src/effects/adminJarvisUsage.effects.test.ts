@@ -1,7 +1,7 @@
 import { BehaviorSubject, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/shared";
+import type { AdminJarvisUsagePayload, JarvisUsageSnapshot } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound, Socket } from "@rtc/ws-effects";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";

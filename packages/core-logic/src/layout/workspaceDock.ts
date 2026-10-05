@@ -27,6 +27,7 @@ import type {
   PanelInstance,
   WorkspaceTab,
 } from "@rtc/core-api";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { isPanelInstanceId } from "./panelInstances";
@@ -95,7 +96,7 @@ export interface WorkspaceDockPanels {
   undock(panelId: string): void;
   /** The RAW dismissal (roster only). */
   dismiss(panelId: string): void;
-  restore(panelId: string, spec: NonNullable<PanelInstance["spec"]>): void;
+  restore(panelId: string, spec: PanelSpecV1): void;
 }
 
 export interface WorkspaceDockDeps {

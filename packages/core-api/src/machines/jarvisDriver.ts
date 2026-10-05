@@ -1,4 +1,4 @@
-import type { DriveCommandV1 } from "@rtc/shared";
+import type { DriveCommandV1 } from "@rtc/domain";
 
 import type { StateStream, Stream } from "#/stream";
 

@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_JARVIS_BRAIN, JARVIS_BRAINS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  JARVIS_BRAINS,
+  type JarvisEvent,
+} from "@rtc/domain";
 
 import {
   createServices,

@@ -68,8 +68,8 @@
  * This is otherwise dependency-free (no other `@rtc/*` import): the
  * `CLIENT_MSG` / `SERVER_MSG` / `JarvisEvent` wire vocabulary below is a
  * narrow, hand-mirrored slice of packages/shared/src/protocol/messages.ts
- * and packages/shared/src/jarvis/jarvisEvent.ts, so this script never needs
- * `@rtc/shared` built first — see those files if the two drift.
+ * and packages/domain/src/jarvis/jarvisEvent.ts, so this script never needs
+ * `@rtc/shared` or `@rtc/domain` built first — see those files if the two drift.
  * `parsePanelSpec` / `parseDriveBatch` are the deliberate exceptions:
  * panel/batch-shape validation is exactly the kind of logic that must NOT
  * be re-hand-rolled a second time here (see `panelSpec.ts`'s own doc

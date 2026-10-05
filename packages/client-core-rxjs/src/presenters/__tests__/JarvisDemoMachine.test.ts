@@ -11,9 +11,9 @@ import {
   DEMO_STEP_TIMEOUT_MS,
   Direction,
   JARVIS_BRAINS,
+  type JarvisEvent,
   type PowerSaverLevel,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import {
   createJarvisDemoMachine,

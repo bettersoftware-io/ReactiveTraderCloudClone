@@ -54,6 +54,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import {
+  type AdminJarvisUsagePayload,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -111,7 +112,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import { type MaybeAccessor, toKeyedSignal, toSignal } from "#/toSignal";
 import { useMachine } from "#/useMachine";

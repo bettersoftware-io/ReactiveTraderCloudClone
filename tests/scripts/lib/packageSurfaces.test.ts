@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -34,6 +35,29 @@ describe("package entry points export only names the package declares", () => {
   );
 });
 
+/** The contract and the UI side speak the domain's vocabulary, never the
+ * wire's. dependency-cruiser sees only value edges, so a type-only import of
+ * `@rtc/shared` would pass it; what stops one is that these packages do not
+ * list `@rtc/shared`, which leaves the typecheck unable to resolve it. This
+ * pins the manifests, so the edge cannot come back by adding a dependency. */
+describe("the contract and the UI side do not depend on the wire package", () => {
+  it.each(createWireFreePackages())("%s", (pkg) => {
+    const manifest: Manifest = JSON.parse(
+      readFileSync(resolve(REPO, "packages", pkg, "package.json"), "utf8"),
+    );
+
+    const listed = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+      ...manifest.peerDependencies,
+    };
+
+    // Positive witness: the manifest was read and lists workspace packages.
+    expect(Object.keys(listed)).toContain("@rtc/domain");
+    expect(Object.keys(listed)).not.toContain("@rtc/shared");
+  });
+});
+
 /** Each case builds a TypeScript program over a package's whole source: about
  * half a second on an idle machine, several on a loaded CI runner. This is
  * CPU work, not a wait, so the budget is simply generous. */
@@ -41,14 +65,21 @@ const TYPE_CHECKER_TIMEOUT_MS = 60_000;
 
 const REPO = resolve(import.meta.dirname, "../../..");
 
+interface Manifest {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
 interface Entry {
   pkg: string;
   entry: string;
 }
 
 /** Every entry point of an implementation package: the three application
- * cores, the adapters and the rules the cores share. A function, not a
- * constant, because `it.each` reads it while the cases are being collected. */
+ * cores, the adapters, the rules the cores share and the wire package. A
+ * function, not a constant, because `it.each` reads it while the cases are
+ * being collected. */
 function createEntries(): readonly Entry[] {
   return [
     { pkg: "client-adapters", entry: "src/index.ts" },
@@ -57,5 +88,19 @@ function createEntries(): readonly Entry[] {
     { pkg: "client-core-async", entry: "src/index.ts" },
     { pkg: "client-core-effect", entry: "src/index.ts" },
     { pkg: "core-logic", entry: "src/index.ts" },
+    { pkg: "shared", entry: "src/index.ts" },
+  ];
+}
+
+/** `@rtc/core-api`, and every package on the UI's side of it. */
+function createWireFreePackages(): readonly string[] {
+  return [
+    "core-api",
+    "react-bindings",
+    "solid-bindings",
+    "client-react",
+    "client-solid",
+    "client-react-native",
+    "ui-contract",
   ];
 }

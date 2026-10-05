@@ -58,7 +58,8 @@ flowchart TB
 ```
 
 `@rtc/core-api` is types-only (grep gate 42 enforces no runtime export) and
-sits inside `domain`/`shared`, alongside the innermost packages. It holds the
+sits just outside `domain`, alongside the innermost packages, and names
+no wire type. It holds the
 `Stream<T>` / `StateStream<S>` aliases, one interface per presenter, every
 machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 `Presenters` / `AppCommands` / `AppPorts` / `App`, and `CoreFactory` — the

@@ -9,8 +9,7 @@ import {
   type DriveCommandDeps,
   driveStaggerMs,
 } from "@rtc/core-logic";
-import type { PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { DriveBatchV1, JarvisEvent, PowerSaverLevel } from "@rtc/domain";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";
@@ -28,12 +27,6 @@ export interface JarvisDriverDeps {
   readonly commands: DriveCommandDeps;
   /** The power-saver level now — read before each later command. */
   readonly powerSaverLevel: () => PowerSaverLevel;
-}
-
-type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
-
-interface CommandTag {
-  readonly type: "command";
 }
 
 /**
@@ -57,7 +50,7 @@ export function createJarvisDriver(
   const releaseOutcomes = outcomes.subscribe(() => {
     // held open for the driver's life, like the RxJS Subject
   });
-  const batches: DriveBatch[] = [];
+  const batches: DriveBatchV1[] = [];
   let draining = false;
 
   async function drainBatches(): Promise<void> {

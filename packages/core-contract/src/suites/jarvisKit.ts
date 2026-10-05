@@ -3,12 +3,11 @@ import type {
   JarvisEntry,
   JarvisState,
 } from "@rtc/core-api";
-import { Direction, type PriceTick } from "@rtc/domain";
+import { Direction, type JarvisEvent, type PriceTick } from "@rtc/domain";
 
 import type { FakeClock } from "#/harness/clock";
 import { createTick, EURUSD } from "#/harness/fixtures";
 import type { CoreHarness } from "#/harness/harness";
-import type { JarvisEvent } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
 import { type Pause, readLatest } from "#/suites/workspaceKit";
 

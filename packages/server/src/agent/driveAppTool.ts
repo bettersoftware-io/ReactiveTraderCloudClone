@@ -1,9 +1,6 @@
 import type { JarvisToolDefinition } from "@rtc/agent-tools";
-import {
-  DRIVE_COMMAND_JSON_SCHEMA,
-  type DriveBatchV1,
-  parseDriveBatch,
-} from "@rtc/shared";
+import type { DriveBatchV1 } from "@rtc/domain";
+import { DRIVE_COMMAND_JSON_SCHEMA, parseDriveBatch } from "@rtc/shared";
 
 export const DRIVE_APP_TOOL_NAME = "drive_app";
 

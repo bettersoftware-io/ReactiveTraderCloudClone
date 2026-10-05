@@ -45,7 +45,6 @@
   ],
   "references": [
     { "path": "../domain" },
-    { "path": "../shared" },
     { "path": "../client-adapters" },
     { "path": "../client-core-rxjs" },
     { "path": "../react-bindings" }

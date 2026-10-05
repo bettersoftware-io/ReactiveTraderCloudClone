@@ -17,11 +17,11 @@ import type {
 } from "@rtc/core-api";
 import {
   DRIVE_STAGGER_MS,
+  type DriveCommandV1,
   MAX_DOCKED_PANELS,
   type PowerSaverLevel,
   type ThemeSkin,
 } from "@rtc/domain";
-import type { DriveCommandV1 } from "@rtc/shared";
 
 /** Everything a command touches, read and written SYNCHRONOUSLY — each core
  * adapts its own streams to these readers. See `JarvisDriverDeps`'s doc

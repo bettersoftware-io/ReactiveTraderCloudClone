@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import {
   buildRenderPanelTool,

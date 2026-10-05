@@ -24,8 +24,7 @@ import {
   type PresetSummaryChannel,
   writeWorkspaceLayout,
 } from "@rtc/core-logic";
-import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import { type JarvisEvent, WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 import { peek, relay } from "#/bridge/in";
 import { storeToWarmStateStream, type WarmStateStream } from "#/bridge/out";

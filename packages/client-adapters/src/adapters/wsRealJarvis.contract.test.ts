@@ -2,15 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { JarvisAvailability } from "@rtc/core-api";
 import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
-import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
 import {
-  CLIENT_MSG,
+  DEFAULT_JARVIS_BRAIN,
+  Direction,
   type DriveBatchV1,
+  JARVIS_BRAINS,
   type JarvisEvent,
   type JarvisHistoryEntry,
   type PanelSpecV1,
-  SERVER_MSG,
-} from "@rtc/shared";
+} from "@rtc/domain";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { FakeWsAdapter } from "./__tests__/FakeWsAdapter";
 import {

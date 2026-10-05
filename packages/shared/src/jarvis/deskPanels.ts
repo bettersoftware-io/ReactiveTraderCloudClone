@@ -1,4 +1,4 @@
-import type { DriveTab } from "./driveCommand.js";
+import type { DriveTab } from "@rtc/domain";
 
 /** One desk panel a `layout` drive command can target. */
 export interface DeskPanelInfo {

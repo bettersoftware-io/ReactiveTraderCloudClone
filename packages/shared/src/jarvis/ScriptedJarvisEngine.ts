@@ -15,6 +15,7 @@ import {
   timeout,
 } from "rxjs/operators";
 
+import type { DriveBatchV1, JarvisEvent, PanelSpecV1 } from "@rtc/domain";
 import {
   type AnalyticsPort,
   AnalyticsUseCase,
@@ -35,12 +36,8 @@ import {
 } from "@rtc/domain";
 import { SPEECH_CHUNK_INTERVAL_MS, speechChunks } from "@rtc/motion-core";
 
-import type { JarvisEvent } from "#/jarvis/jarvisEvent.js";
-
-import type { DriveBatchV1 } from "./driveCommand.js";
 import type { JarvisTradeIntent } from "./jarvisIntent.js";
 import { matchJarvisIntent } from "./jarvisIntent.js";
-import type { PanelSpecV1 } from "./panelSpec.js";
 
 const SNAPSHOT_TIMEOUT_MS = 2_000;
 const SNAPSHOT_ERROR_MESSAGE =

@@ -11,14 +11,18 @@ import {
   switchMap,
 } from "rxjs";
 
-import { isJarvisBrain, isJarvisEffort, type JarvisBrain } from "@rtc/domain";
+import {
+  isJarvisBrain,
+  isJarvisEffort,
+  type JarvisBrain,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+} from "@rtc/domain";
 import type {
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
-  JarvisEvent,
-  JarvisHistoryEntry,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
@@ -35,8 +39,8 @@ import type { JarvisGateState } from "../services/JarvisGateService.js";
 import { applyGateToOffer, type GatedOffer } from "../services/jarvisGate.js";
 import type { Ctx } from "./context.js";
 
-/** SERVER_MSG for each `JarvisEvent` variant — the wire rule documented on
- * `JarvisEvent` (see `#/jarvis/jarvisEvent`): the payload IS the variant
+/** SERVER_MSG for each `JarvisEvent` variant — the wire rule documented in
+ * `@rtc/shared`'s `jarvis/jarvisPayloads.ts`: the payload IS the variant
  * minus its `type` discriminant plus a correlating `turnId`, so only the
  * message type itself needs a lookup. */
 const WIRE_TYPE_BY_EVENT: Record<JarvisEvent["type"], string> = {

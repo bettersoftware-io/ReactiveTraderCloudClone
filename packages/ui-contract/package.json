@@ -20,7 +20,6 @@
     "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/motion-core": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "rxjs": "^7.8"
   },
   "devDependencies": {

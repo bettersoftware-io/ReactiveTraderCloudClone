@@ -1,8 +1,11 @@
 import type { ReactElement } from "react";
 
-import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
+import {
+  type AdminJarvisUsagePayload,
+  JARVIS_BRAIN_LABELS,
+  type JarvisBrainUsageRow,
+} from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import styles from "./JarvisUsageCard.module.css";
 
@@ -112,11 +115,6 @@ interface UsageSectionProps {
   title: string;
   rows: readonly JarvisBrainUsageRow[];
 }
-
-/** One per-brain usage row, as carried by both `AdminJarvisUsagePayload`
- * windows — referenced structurally off the payload type, so this file
- * names one wire type from `@rtc/shared` rather than two. */
-type JarvisBrainUsageRow = AdminJarvisUsagePayload["currentWindow"][number];
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");

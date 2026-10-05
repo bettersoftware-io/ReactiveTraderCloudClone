@@ -7,17 +7,15 @@
 import type { PanelData, PanelPoint, PanelTone } from "@rtc/core-api";
 import {
   formatPnlHeadline,
+  type PanelAnnotation,
+  type PanelSpecV1,
+  type PanelTransform,
+  type PanelViz,
   type PositionUpdates,
   type PriceTick,
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import type {
-  PanelAnnotation,
-  PanelSpecV1,
-  PanelTransform,
-  PanelViz,
-} from "@rtc/shared";
 
 /** In-memory safety cap on any one series' accumulated point count — applied
  * where points ACCUMULATE over an unbounded live stream (`fxTicks`) or get

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import type { AdminJarvisUsagePayload } from "@rtc/domain";
+
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
-import type { JarvisUsagePayload } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
 
 /** `presenters.jarvisUsage` — the admin surface's Jarvis spend: null until
@@ -52,6 +53,6 @@ export function describeJarvisUsageContract(
   });
 }
 
-function createUsage(windowEndMs: number): JarvisUsagePayload {
+function createUsage(windowEndMs: number): AdminJarvisUsagePayload {
   return { windowStartMs: 0, windowEndMs, currentWindow: [], sinceBoot: [] };
 }

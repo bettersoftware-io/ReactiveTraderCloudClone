@@ -20,16 +20,16 @@ import {
   DEFAULT_JARVIS_BRAIN,
   isJarvisBrain,
   JARVIS_BRAINS,
+  type JarvisAvailabilityGate,
   type JarvisBrain,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
 } from "@rtc/domain";
 import type {
-  JarvisAvailabilityGate,
   JarvisAvailabilityPayload,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
-  JarvisEvent,
-  JarvisHistoryEntry,
 } from "@rtc/shared";
 import {
   CLIENT_MSG,
@@ -89,7 +89,7 @@ interface ErrorTag {
 
 /** Every turn-scoped `SERVER_MSG.JARVIS_*` payload carries `turnId` alongside
  * the `JarvisEvent` variant's own remaining fields (see the wire rule
- * documented on `JarvisEvent` in `#/jarvis/jarvisEvent`) — the listeners
+ * documented in `@rtc/shared`'s `jarvis/jarvisPayloads.ts`) — the listeners
  * below filter on it before stripping it back off. */
 type DeltaFramePayload = Omit<Extract<JarvisEvent, DeltaTag>, "type"> & {
   readonly turnId: string;

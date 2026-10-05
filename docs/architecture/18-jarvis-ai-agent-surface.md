@@ -327,7 +327,7 @@ Every turn-scoped `server → client` payload obeys one rule: it **is** the matc
 `JarvisEvent` variant minus its `type` discriminant (the message type carries the
 discriminant), **plus** a `turnId` correlating it to the client-generated turn.
 `JARVIS_AVAILABILITY` is the one non-turn-scoped frame and carries no `turnId`.
-See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of all of it.
+`JarvisEvent` itself is domain vocabulary (`@rtc/domain`'s `src/jarvis/jarvisEvent.ts`); the wire rule and the client-to-server payloads are in `@rtc/shared`'s `src/jarvis/jarvisPayloads.ts`.
 
 | Direction | Message | Payload |
 |---|---|---|
@@ -478,7 +478,8 @@ against a brain whose output is already deterministic.
 
 The scripted engine did not get reimplemented server-side. It **moved** —
 `ScriptedJarvisAdapter`'s body relocated verbatim to `@rtc/shared`
-(`src/jarvis/`: `jarvisEvent.ts`, `jarvisIntent.ts`, `ScriptedJarvisEngine.ts`),
+(`src/jarvis/`: `jarvisIntent.ts`, `ScriptedJarvisEngine.ts`; the `JarvisEvent`
+union it emits has lived in `@rtc/domain` since 2026-10-05),
 where both a client and the server can reach it. `@rtc/shared` is the right home
 for the same reason the `CLIENT_MSG`/`SERVER_MSG` envelopes live there: it is the
 one package **both sides of the wire already depend on**, and it is transport-neutral
@@ -490,7 +491,7 @@ where "vocabulary both processes agree on" lives, and the brain is exactly that.
 
 ```mermaid
 flowchart TD
-    ENG["@rtc/shared · src/jarvis/<br/>ScriptedJarvisEngine<br/>+ JarvisEvent + jarvisIntent"]
+    ENG["@rtc/shared · src/jarvis/<br/>ScriptedJarvisEngine<br/>+ jarvisIntent"]
 
     C1["client-adapters<br/>ScriptedJarvisAdapter<br/>(sim mode)"]
     C2["server<br/>ScriptedAgentLoop<br/>(RTC_JARVIS_FAKE=1)"]
@@ -1502,7 +1503,8 @@ deferred, recorded at the end of this section.
 
 ### The vocabulary: `PanelSpecV1`, a closed grammar validated at both ends
 
-`packages/shared/src/jarvis/panelSpec.ts` defines `PanelSpecV1` — title,
+`packages/domain/src/jarvis/panelSpec.ts` defines `PanelSpecV1` (its parser and
+JSON Schema stay in `packages/shared/src/jarvis/panelSpec.ts`) — title,
 optional `rationale`, one `PanelSource` (`fxTicks` / `priceHistory` /
 `analytics` / `blotter`), ≤4 `PanelTransform`s (`window` / `returns` /
 `rollingVol` / `spread` / `topN`) applied in order, one `PanelViz` (`line` /
@@ -1772,8 +1774,9 @@ for the narrative; this section is the engineering receipt.
 
 ### `DriveCommand` v1 — a second closed vocabulary, `PanelSpec`'s sibling
 
-`packages/shared/src/jarvis/driveCommand.ts` follows §18.16's `PanelSpecV1`
-doctrine exactly, down to the file layout: ten command kinds
+`packages/domain/src/jarvis/driveCommand.ts` (vocabulary) and
+`packages/shared/src/jarvis/driveCommand.ts` (parser, JSON Schema) follow
+§18.16's `PanelSpecV1` doctrine exactly, down to the file layout: ten command kinds
 (`switchTab`, `layout`, `eqSelect`, `eqTimeframe`, `eqChartType`,
 `eqIndicator`, `eqPane`, `setTheme`, `setPowerSaver`, `dismissPanel`), each a
 discriminated-union variant over literal unions mirroring real app types

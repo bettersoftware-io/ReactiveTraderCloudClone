@@ -146,7 +146,7 @@ flowchart TB
   end
   nodeb["node:* built-ins"]:::ext
 
-  %% --- allowed inward imports (edges 0-24; keep order — linkStyle indices depend on it) ---
+  %% --- allowed inward imports (edges 0-23; keep order — linkStyle indices depend on it) ---
   clients --> bindings
   clients --> cores
   clients --> api
@@ -162,7 +162,6 @@ flowchart TB
   cores --> domain
   logic --> api
   logic --> shared
-  api --> shared
   api --> domain
   shared --> domain
   tiers --> cores
@@ -173,7 +172,7 @@ flowchart TB
   srv --> shared
   agent --> domain
 
-  %% --- forbidden crossings (edges 25-30), each tagged with the rule that rejects it ---
+  %% --- forbidden crossings (edges 24-29), each tagged with the rule that rejects it ---
   domain -. "✗ domain-stays-pure" .-x shared
   shared -. "✗ shared-no-apps" .-x srv
   clients -. "✗ client-not-server" .-x srv
@@ -199,8 +198,8 @@ flowchart TB
   style leaves fill:#45321b,stroke:#e3b341,color:#fff6e6
   style devtools fill:#45321b,stroke:#e3b341,color:#fff6e6
 
-  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 stroke:#3fb950,stroke-width:2px
-  linkStyle 25,26,27,28,29,30 stroke:#f85149,stroke-width:2px
+  linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 stroke:#3fb950,stroke-width:2px
+  linkStyle 24,25,26,27,28,29 stroke:#f85149,stroke-width:2px
 ```
 
 > **Green** solid arrows are the allowed `dependencies` edges (they only ever point inward). **Red** dashed-✗ arrows are the crossings CI rejects. A further rule, `no-circular`, isn't a single arrow -- it forbids *any* import cycle anywhere in the graph (type-only edges excluded), keeping the whole onion a strict acyclic gradient from ④ inward to ①. Edges the diagram leaves out or a grouped box hides: `core-logic` also imports `domain` directly; `server` also imports `domain` directly; `ui-contract` also imports `motion-core`, and `shared` imports it narrowly (the scripted Jarvis brain's typed-reveal pacing) -- `motion-core` is a zero-dependency leaf, so that edge cannot close a cycle; `core-contract` imports only `core-api` and `domain`; `client-react-native` takes only `client-core-rxjs` + `client-adapters`, `react-bindings`, `motion-core` and `devtools-core` from those boxes, while both web clients take all three cores (the alternative two as lazy chunks, [§22](22-pluggable-application-core.md#selection-at-load-time)). Inside the devtools box, `devtools-extension` → `devtools-app` → `devtools-core`, and none of the four imports `domain`. (`@rtc/client-prototype` is omitted: as a design island with no `@rtc/*` deps it has no edges to show.)

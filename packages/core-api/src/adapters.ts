@@ -1,15 +1,13 @@
 import type {
+  AdminJarvisUsagePayload,
   ConnectionEvent,
+  JarvisAvailabilityGate,
   JarvisBrain,
   JarvisEffort,
-  SessionUser,
-} from "@rtc/domain";
-import type {
-  AdminJarvisUsagePayload,
-  JarvisAvailabilityGate,
   JarvisEvent,
   JarvisHistoryEntry,
-} from "@rtc/shared";
+  SessionUser,
+} from "@rtc/domain";
 
 import type { Stream } from "#/stream";
 

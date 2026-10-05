@@ -12,7 +12,7 @@ import {
   serializeWorkspaceLayout,
   type WorkspaceLayoutV1,
 } from "@rtc/core-logic";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createWorkspacePersistenceWriter } from "../workspacePersistenceWriter";
 

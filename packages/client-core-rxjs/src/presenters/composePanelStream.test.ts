@@ -7,6 +7,7 @@ import {
   type AnalyticsPort,
   type BlotterPort,
   Direction,
+  type PanelSpecV1,
   type PositionUpdates,
   type PriceTick,
   type PricingPort,
@@ -14,7 +15,6 @@ import {
   type Trade,
   TradeStatus,
 } from "@rtc/domain";
-import type { PanelSpecV1 } from "@rtc/shared";
 
 import { composePanelStream } from "./composePanelStream";
 

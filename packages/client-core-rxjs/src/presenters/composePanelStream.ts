@@ -18,11 +18,12 @@ import {
   type AnalyticsPort,
   AnalyticsUseCase,
   type BlotterPort,
+  type PanelSource,
+  type PanelSpecV1,
   type PriceTick,
   type PricingPort,
   TradeBlotterUseCase,
 } from "@rtc/domain";
-import type { PanelSource, PanelSpecV1 } from "@rtc/shared";
 
 function accumulatePoints$(
   ticks$: Observable<PriceTick>,

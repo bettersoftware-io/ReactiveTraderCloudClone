@@ -25,6 +25,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import type {
+  AdminJarvisUsagePayload,
   AdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
@@ -49,6 +50,8 @@ import type {
   ExecutionRequest,
   Instrument,
   InstrumentPort,
+  JarvisEvent,
+  JarvisHistoryEntry,
   LogEvent,
   MarketDataPort,
   MetricControl,
@@ -75,11 +78,6 @@ import type {
 } from "@rtc/domain";
 import { DEFAULT_LOGIN_WAIT_VARIANT, type LoginWaitVariant } from "@rtc/domain";
 
-import type {
-  JarvisEvent,
-  JarvisHistoryEntry,
-  JarvisUsagePayload,
-} from "#/harness/jarvisTypes";
 import { createPendingQueue } from "#/harness/pendingQueue";
 import { countEveryPortStream, createTally } from "#/harness/portTally";
 
@@ -422,7 +420,7 @@ export interface ScriptedDriver {
    * when no core has called `jarvis.setHistorySource`. */
   jarvisHistory(): readonly JarvisHistoryEntry[] | null;
   /** Push the next `jarvisUsage.usage$()` snapshot. */
-  pushJarvisUsage(payload: JarvisUsagePayload): void;
+  pushJarvisUsage(payload: AdminJarvisUsagePayload): void;
   /** Subscriptions to anything `jarvis.availability$()` returned. On the
    * real WS adapter EACH one is a fresh server request, so this — not the
    * call count — is what "asked once" means. */
@@ -525,7 +523,7 @@ export function scriptPorts(
     availability$.next(seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY);
   }
 
-  const usage$ = new Subject<JarvisUsagePayload>();
+  const usage$ = new Subject<AdminJarvisUsagePayload>();
   let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
   let availabilitySubscriptions = 0;
   let usageSubscriptions = 0;
@@ -892,7 +890,7 @@ export function scriptPorts(
 
   const jarvisUsage = countCalls<JarvisUsagePort>(
     {
-      usage$: (): Observable<JarvisUsagePayload> => {
+      usage$: (): Observable<AdminJarvisUsagePayload> => {
         return defer(() => {
           usageSubscriptions += 1;
           return usage$;
@@ -1160,7 +1158,7 @@ export function scriptPorts(
       jarvisHistory: () => {
         return historySource === null ? null : historySource();
       },
-      pushJarvisUsage: (payload: JarvisUsagePayload) => {
+      pushJarvisUsage: (payload: AdminJarvisUsagePayload) => {
         usage$.next(payload);
       },
       jarvisAvailabilitySubscriptions: () => {

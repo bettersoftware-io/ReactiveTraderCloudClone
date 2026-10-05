@@ -95,6 +95,7 @@ import type {
   LoginWaitDelay,
   LoginWaitStyle,
   MarketDataPort,
+  PanelSpecV1,
   PlaceOrderRequest,
   PowerSaverLevel,
   RfqQuoteResult,
@@ -418,7 +419,7 @@ function getWorkspaceDock(world: World): WorkspaceDock {
     dismiss: (panelId: string) => {
       panelsMachineFor(world).dismissPanel(panelId);
     },
-    restore: (panelId: string, spec: NonNullable<PanelInstance["spec"]>) => {
+    restore: (panelId: string, spec: PanelSpecV1) => {
       panelsMachineFor(world).restoreDockedPanel(panelId, spec);
     },
   };

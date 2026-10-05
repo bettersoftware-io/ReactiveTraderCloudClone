@@ -16,9 +16,8 @@ import {
   createDefaultLayoutPort,
   instanceIdFor,
   serializeWorkspaceLayout,
-  type UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import type { EquityQuote } from "@rtc/domain";
+import type { EquityQuote, PanelSpecV1 } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -683,11 +682,6 @@ const ANALYTICS_SEED = {
   ],
   history: [],
 };
-
-/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
- * borrows the type off the one already-exported `PanelSpecV1`-typed const —
- * the identical trick `JarvisPanelLayer.contract.spec.ts` uses. */
-type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   v: 1,

@@ -45,7 +45,7 @@ import {
   MAX_LIVE_PANELS,
   UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import type { PriceTick } from "@rtc/domain";
+import type { PanelSpecV1, PriceTick } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -485,13 +485,6 @@ describe("JarvisPanelLayer pinning", () => {
     expect(app.panels.panelIds()).toEqual(["panel-5"]);
   });
 });
-
-/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract` (it isn't a
- * runtime dependency of `@rtc/shared`, and no package it does import
- * re-exports the type by name), so this borrows the type off the one
- * already-exported `PanelSpecV1`-typed const instead of widening any
- * package's public surface just for test literals. */
-type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 /** A deterministic, mildly-wiggling PriceTick series — enough for
  * `rollingVol` to emit non-degenerate (nonzero-variance) points. */

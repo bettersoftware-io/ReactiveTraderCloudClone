@@ -1,4 +1,5 @@
-import { DESK_PANEL_ROSTER, PANEL_VIZ_KINDS } from "@rtc/shared";
+import { PANEL_VIZ_KINDS } from "@rtc/domain";
+import { DESK_PANEL_ROSTER } from "@rtc/shared";
 
 /** Comma-joined panel-viz roster the prompt's panel section quotes —
  * derived from the shared `const` array (never a hand-typed list) so a new

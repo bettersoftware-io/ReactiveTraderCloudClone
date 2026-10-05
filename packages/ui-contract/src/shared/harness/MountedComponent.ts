@@ -9,6 +9,7 @@ import type {
   EquityInstrument,
   EquityOrder,
   EquityQuote,
+  JarvisEvent,
   LogEvent,
   MetricSample,
   Price,
@@ -17,7 +18,6 @@ import type {
   ServiceTopology,
   SessionInfo,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import type { CommandLog, HookValues, MetricsView } from "./world";
 

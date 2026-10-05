@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { WorkspaceTab } from "@rtc/core-api";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "../defaultLayoutPort";
 import { dockedLeafIds, insertDockedLeaf } from "../dockColumn";

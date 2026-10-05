@@ -1,15 +1,19 @@
 import { type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  Direction,
+  type DriveBatchV1,
+  JARVIS_BRAINS,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+  type PanelSpecV1,
+} from "@rtc/domain";
 import type {
-  DriveBatchV1,
   JarvisCancelPayload,
   JarvisChatPayload,
   JarvisConfirmPayload,
-  JarvisEvent,
-  JarvisHistoryEntry,
-  PanelSpecV1,
 } from "@rtc/shared";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import type { Inbound, Outbound } from "@rtc/ws-effects";

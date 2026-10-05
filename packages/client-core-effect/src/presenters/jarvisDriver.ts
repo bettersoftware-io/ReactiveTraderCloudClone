@@ -10,8 +10,7 @@ import {
   type DriveCommandDeps,
   driveStaggerMs,
 } from "@rtc/core-logic";
-import type { PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { DriveBatchV1, JarvisEvent, PowerSaverLevel } from "@rtc/domain";
 
 import {
   createChildHost,
@@ -28,12 +27,6 @@ export interface JarvisDriverDeps {
   /** The power-saver level now — read before each later command. */
   readonly powerSaverLevel: () => PowerSaverLevel;
 }
-
-interface CommandTag {
-  readonly type: "command";
-}
-
-type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
 
 /**
  * `presenters.jarvisDriver` on the Effect core: the shared interpreter
@@ -59,9 +52,9 @@ export function createJarvisDriver(
   const host = createChildHost(parent);
   const ref = createSyncRef<JarvisDriverState>(host, { lastBatch: [] });
   const outcomes = createHotStream<DriveOutcome>();
-  const batches = host.runtime.runSync(Queue.unbounded<DriveBatch>());
+  const batches = host.runtime.runSync(Queue.unbounded<DriveBatchV1>());
 
-  function applyBatch(batch: DriveBatch): Effect.Effect<void> {
+  function applyBatch(batch: DriveBatchV1): Effect.Effect<void> {
     return Effect.sync(() => {
       ref.set(() => {
         return { lastBatch: [] };

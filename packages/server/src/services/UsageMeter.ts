@@ -1,7 +1,11 @@
 import { BehaviorSubject, type Observable } from "rxjs";
 
-import { JARVIS_BRAINS, type JarvisBrain } from "@rtc/domain";
-import type { JarvisBrainUsageRow, JarvisUsageSnapshot } from "@rtc/shared";
+import {
+  JARVIS_BRAINS,
+  type JarvisBrain,
+  type JarvisBrainUsageRow,
+  type JarvisUsageSnapshot,
+} from "@rtc/domain";
 
 /** Rolling rate-limit window Jarvis usage is bucketed into: 5 hours. */
 export const JARVIS_USAGE_WINDOW_MS = 18_000_000; // 5h

@@ -23,7 +23,7 @@ Entity slices, one per business/cross-cutting concern, plus the ring-crossing fo
 | `src/preferences/` | User preference types & defaults — theme mode/skin, view mode, boot variant, blotter/watchlist view state |
 | `src/auth/` | Auth entities — the public demo `ROSTER` (`roster.ts`), `SessionUser`, `DEFAULT_AUTH_TTL_MS` |
 | `src/boot/` | `bootCadence.ts` — the boot splash's `BOOT_DURATION_MS` / `BOOT_TICK_MS`, here so `@rtc/core-contract` can assert them |
-| `src/jarvis/` | Jarvis domain rules — copy/caps/cadences (`jarvisConstants.ts`) and the pricing `anomalyDetector` (the `JarvisBrain` roster lives in `src/preferences/preferences.ts`) |
+| `src/jarvis/` | Jarvis domain rules — copy/caps/cadences (`jarvisConstants.ts`), the pricing `anomalyDetector`, and the vocabulary a brain emits and the UIs render: turn events (`jarvisEvent.ts`), panel specs (`panelSpec.ts`), drive commands (`driveCommand.ts`) and token usage (`jarvisUsage.ts`). Their parsers and JSON Schemas are in `@rtc/shared` (the `JarvisBrain` roster lives in `src/preferences/preferences.ts`) |
 | `src/workspace/` | `workspaceLimits.ts` — the workspace's panel caps and cadences |
 | `src/telemetry/` | Admin/ops entities — `LogEvent`, `MetricSample`, `SessionInfo`, `ServiceTopology`, the `mulberry32` PRNG |
 | `src/ports/` | Port interfaces — the dependency-inverted boundaries every adapter (simulator or `WsAdapter`-backed) implements. Inventory below. |
