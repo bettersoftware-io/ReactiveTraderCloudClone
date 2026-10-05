@@ -1,4 +1,4 @@
-import { Effect, Scope, SubscriptionRef } from "effect";
+import { Effect, Scope } from "effect";
 
 import type {
   EqDrawing,
@@ -13,16 +13,11 @@ import {
   reduceEqDrawings,
 } from "@rtc/core-logic";
 
-import {
-  closeScope,
-  createChildHost,
-  type EffectHost,
-  refToWarmStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { closeScope, createChildHost, type EffectHost } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 /** The chart-annotation singleton: the imported fold over a
- * `SubscriptionRef`, kept warm for the app's lifetime so a cold
+ * `SyncRef`, kept warm for the app's lifetime so a cold
  * `getValue()` between one panel unmounting and the next mounting still
  * reads the live tool and drawing set. A CHILD host, not a detached one:
  * `app.dispose()` ends it, while an intent arriving after that still runs
@@ -31,10 +26,8 @@ export function createEqDrawingsMachine(
   parent: EffectHost,
 ): Machine<EqDrawingsState, EqDrawingsIntents> {
   const host = createChildHost(parent);
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<EqDrawingsState>(INITIAL_EQ_DRAWINGS_STATE),
-  );
-  const warm = refToWarmStateStream(host, ref);
+  const ref = createSyncRef<EqDrawingsState>(INITIAL_EQ_DRAWINGS_STATE);
+  const warm = ref.warm();
   let disposed = false;
 
   /** Idempotent, and reached from BOTH ends of the machine's lifetime —
@@ -46,22 +39,19 @@ export function createEqDrawingsMachine(
 
   // `app.dispose()` closes the app host's scope, and this machine's is a
   // CHILD of it, so that close has to dispose the machine too. Without this
-  // finalizer the singleton freezes instead: the keep-warm fiber is
-  // interrupted while `disposed` is still false, so every later intent
-  // writes a ref nobody will ever hear and the RxJS keep-warm subscription
-  // is never released. The async twin converges the same two ends through
-  // its `lifetime` abort listener.
+  // finalizer the singleton outlives its app instead: `disposed` is still
+  // false, so every later intent keeps writing the ref, and the RxJS
+  // keep-warm subscription is never released. The async twin converges the
+  // same two ends through its `lifetime` abort listener.
   host.runtime.runSync(
     Scope.addFinalizer(host.scope, Effect.sync(markDisposed)),
   );
 
   function apply(event: EqDrawingsEvent): void {
     if (!disposed) {
-      host.runtime.runSync(
-        setRefIfChanged(ref, (state) => {
-          return reduceEqDrawings(state, event);
-        }),
-      );
+      ref.set((state) => {
+        return reduceEqDrawings(state, event);
+      });
     }
   }
 

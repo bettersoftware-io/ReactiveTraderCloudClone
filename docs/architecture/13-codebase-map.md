@@ -167,7 +167,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The third application core, on Effect-TS: a `Layer` graph run by a `ManagedRuntime`, with `Stream` / `SubscriptionRef` at the edge (`src/bridge/`) and native implementations of every `core-api` member. |
+| **What it is** | The third application core, on Effect-TS: a `Layer` graph run by a `ManagedRuntime`, with `Stream` and the `SyncRef` state cell at the edge (`src/bridge/`) and native implementations of every `core-api` member. |
 | **Ring** | ③ Interface Adapters -- presenters and machines, like `client-core-rxjs` |
 | **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `effect`, `rxjs`, `@rx-state/core` (`packages/client-core-effect/package.json` `dependencies`) |
 | **Consumed by** | `client-react`, `client-solid` -- as a lazy chunk, loaded only when chosen |
@@ -459,7 +459,7 @@ src/
 ```
 src/
 ├── composition.ts layers.ts services.ts commands.ts   Layer graph over a ManagedRuntime
-├── bridge/           rxjs ↔ Stream / SubscriptionRef (in.ts · out.ts · peek.ts · rpc.ts)
+├── bridge/           rxjs ↔ Stream, and the SyncRef state cell (in.ts · out.ts · syncRef.ts · peek.ts · rpc.ts)
 └── presenters/ machines/   native members (machines/runSlot.ts = createRunSlot)
 ```
 

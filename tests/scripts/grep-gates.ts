@@ -756,6 +756,20 @@ const GATES: Gate[] = [
     paths: ["../packages/client-core-effect/src/"],
     excludes: ["/bridge/", ".test."],
   },
+  {
+    // State the Effect core owns lives in a `SyncRef` (`bridge/syncRef.ts`):
+    // a write reaches every subscriber before it returns. A
+    // `SubscriptionRef` reaches one through `ref.changes`, which takes a
+    // fiber per subscriber to read — a step after the commit, and a third of
+    // the fiber time left at start-up when the machines were moved off it
+    // (2026-10-05). The pattern is the IMPORT, in its three spellings, so a
+    // comment that names the type does not trip it.
+    name: "50. The Effect core keeps its state in a SyncRef, never an Effect SubscriptionRef (a fiber per subscriber, a step late)",
+    pattern:
+      'from "effect/SubscriptionRef"|import \\{[^}]*\\bSubscriptionRef\\b|^\\s*(type )?SubscriptionRef,?\\s*$',
+    paths: ["../packages/client-core-effect/src/"],
+    excludes: [".test."],
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {

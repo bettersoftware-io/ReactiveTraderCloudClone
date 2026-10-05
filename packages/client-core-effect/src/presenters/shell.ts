@@ -1,4 +1,4 @@
-import { Cause, Effect, Option, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Option, Stream } from "effect";
 
 import type {
   AnimationDirector,
@@ -33,35 +33,31 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
-  refToStateStream,
   reportOutOfBand,
   scopedPortStream,
-  setRefIfChanged,
   sharedFold,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 
-/** Whether the boot splash shows: a SubscriptionRef seeded once from the
+/** Whether the boot splash shows: a `SyncRef` seeded once from the
  * platform's decision. `visible` reads it synchronously; `visible$` replays
- * it to each subscriber and follows it on a fiber. */
+ * it to each subscriber and follows every change. */
 export function createBootGatePresenter(
-  host: EffectHost,
   initiallyVisible: boolean,
 ): BootGatePresenter {
-  const ref = host.runtime.runSync(SubscriptionRef.make(initiallyVisible));
+  const ref = createSyncRef(initiallyVisible);
 
   function write(visible: boolean): void {
-    host.runtime.runSync(
-      setRefIfChanged(ref, () => {
-        return visible;
-      }),
-    );
+    ref.set(() => {
+      return visible;
+    });
   }
 
   return {
-    visible$: refToStateStream(host, ref),
+    visible$: ref.stateStream(),
     get visible(): boolean {
-      return host.runtime.runSync(SubscriptionRef.get(ref));
+      return ref.get();
     },
     reboot: () => {
       write(true);
@@ -82,7 +78,7 @@ const SIGNED_OUT: AuthViewState = {
 };
 
 /** The login / lock / unlock / logout lifecycle over `createAuthDeps(ports, authDepsPrimitives)`
- * — the RxJS `AuthPresenter`'s transitions over a SubscriptionRef. The
+ * — the RxJS `AuthPresenter`'s transitions over a `SyncRef`. The
  * session is resumed at construction from the store; each login or unlock is
  * one `auth.login` call, run as a fiber in a child of the app host's scope,
  * so `app.dispose()` drops an outcome still in flight. */
@@ -106,10 +102,10 @@ export function createAuthPresenter(
     return SIGNED_OUT;
   }
 
-  const ref = host.runtime.runSync(SubscriptionRef.make(resume()));
+  const ref = createSyncRef(resume());
 
   function update(next: (view: AuthViewState) => AuthViewState): void {
-    host.runtime.runSync(setRefIfChanged(ref, next));
+    ref.set(next);
   }
 
   function pickWaitVariant(): LoginWaitVariant {
@@ -202,7 +198,7 @@ export function createAuthPresenter(
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     login: (username: string, password: string) => {
       update(() => {
         return {

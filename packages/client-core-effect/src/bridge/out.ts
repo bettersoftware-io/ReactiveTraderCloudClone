@@ -10,9 +10,8 @@ import {
   Runtime,
   Scope,
   Stream,
-  SubscriptionRef,
 } from "effect";
-import { filter, Observable, type Subscriber } from "rxjs";
+import { Observable, type Subscriber } from "rxjs";
 
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
 
@@ -181,26 +180,6 @@ export interface WarmStateStream<S> {
   release(): void;
 }
 
-/** `refToStateStream` held warm by a subscription of its own, for an
- * app-lifetime singleton — see that function's doc: a COLD `getValue()`
- * hands back the construction-time value however stale, and that is what
- * React's `useStateObservable` reads on a first render. The RxJS singletons
- * hold the same internal subscription for the same reason. */
-export function refToWarmStateStream<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
-): WarmStateStream<S> {
-  const state$ = refToStateStream(host, ref);
-  const warm = state$.subscribe();
-
-  return {
-    state$,
-    release: () => {
-      warm.unsubscribe();
-    },
-  };
-}
-
 /** A state stream over a synchronous `listen` — NOT held warm: `listen`
  * runs on the first subscriber only (a lazily opened source, e.g. a port the
  * app should reach only once someone reads it), and the current value
@@ -331,24 +310,6 @@ export function emptyStream<T>(): CoreStream<T> {
   });
 }
 
-/** `SubscriptionRef.set` that publishes only a changed value: a
- * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
- * machine's `state$` promises `distinctUntilChanged`. The same guard
- * `sharedFold`'s `update` applies, for a ref a machine owns directly. */
-export function setRefIfChanged<S>(
-  ref: SubscriptionRef.SubscriptionRef<S>,
-  next: (current: S) => S,
-): Effect.Effect<void> {
-  return SubscriptionRef.get(ref).pipe(
-    Effect.flatMap((current) => {
-      const value = next(current);
-      return Object.is(value, current)
-        ? Effect.void
-        : SubscriptionRef.set(ref, value);
-    }),
-  );
-}
-
 /** A `FromPort` bound to a scope that is not a fold period's — a machine's
  * own. Same rule as the period-scoped one: call it once per port per scope;
  * the subscription exists from the moment it returns and the scope's close
@@ -359,7 +320,7 @@ export function fromPortIn(scope: Scope.Scope): FromPort {
 
 /** Rethrow a cause on a macrotask, outside every fiber — the Effect twin of
  * the async core's `reportAsync`, for a machine whose source failed and
- * whose `SubscriptionRef` has no error channel (slice 2 ruling 8). */
+ * whose ref has no error channel (slice 2 ruling 8). */
 export function reportOutOfBand(cause: Cause.Cause<unknown>): void {
   setTimeout(() => {
     throw Cause.squash(cause);
@@ -414,57 +375,6 @@ export function streamToStream<T, E>(
       interruptFiber(fiber);
     };
   });
-}
-
-/** A SubscriptionRef as a warm StateStream.
- *
- * The current value is read PER SUBSCRIPTION, not once at construction:
- * `@rx-state/core`'s `StateObservable` subscribes its source lazily and, at
- * refCount 0, drops `currentValue` and unsubscribes — so a value captured at
- * construction would be re-emitted, stale, on every cold → warm cycle, and
- * any `set` made before the first subscriber would be invisible.
- *
- * `ref.changes` REPLAYS the current value to each subscriber, which would
- * duplicate the seed we just emitted. The replayed head is therefore dropped
- * only when it is `Object.is`-equal to that seed — never blindly: if a `set`
- * lands between the read and the fiber's subscribe, the head carries the NEW
- * value and must be delivered. */
-export function refToStateStream<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
-  onSubscribe: () => void = () => {},
-): StateStream<S> {
-  function readCurrent(): S {
-    return host.runtime.runSync(SubscriptionRef.get(ref));
-  }
-
-  // `onSubscribe` runs on each zero-to-one subscriber transition
-  // (`@rx-state/core` shares this source) — how a presenter starts a lazy
-  // load on its first subscriber, as the RxJS core's `state()` does.
-  const perSubscription = new Observable<S>((subscriber) => {
-    onSubscribe();
-    const seed = readCurrent();
-    subscriber.next(seed);
-
-    return streamToStream(host, ref.changes)
-      .pipe(
-        filter((value, index) => {
-          return index > 0 || !Object.is(value, seed);
-        }),
-      )
-      .subscribe(subscriber);
-  });
-
-  // `state()` requires a default — there is no single-argument overload. It
-  // is read once, at construction, and is observable ONLY through a COLD
-  // `getValue()` (no subscriber yet), which hands back that construction-time
-  // value however stale the ref has since become. No SUBSCRIBER ever sees it:
-  // `StateObservable` emits its default only when the source has NOT already
-  // emitted by the end of `source$.subscribe(...)`, and `perSubscription`
-  // always emits synchronously there — every subscription re-reads the ref.
-  // The cold → warm test pins that, by seeing the ref's latest value rather
-  // than this one.
-  return state(perSubscription, readCurrent());
 }
 
 /** How a `sharedFold` producer writes its state: apply `next` to the

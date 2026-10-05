@@ -49,7 +49,7 @@ import {
   listenToStream,
   reportOutOfBand,
 } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisMachineDeps {
   readonly port: JarvisPort;
@@ -99,7 +99,7 @@ export function createJarvisMachine(
   const host = createChildHost(parent);
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const controller = createJarvisController();
-  const ref = createSyncRef<JarvisState>(host, JARVIS_INITIAL_STATE);
+  const ref = createSyncRef<JarvisState>(JARVIS_INITIAL_STATE);
   const events = createHotStream<JarvisEvent>();
   let countdown: Fiber.RuntimeFiber<void> | null = null;
   let closed = false;

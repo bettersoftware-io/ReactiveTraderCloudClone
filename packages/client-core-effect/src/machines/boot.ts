@@ -1,4 +1,4 @@
-import { Effect, SubscriptionRef } from "effect";
+import { Effect } from "effect";
 
 import type {
   BootSequenceIntents,
@@ -8,12 +8,8 @@ import type {
 import { bootProgress, nextBootVariant } from "@rtc/core-logic";
 import { BOOT_TICK_MS, type BootVariant } from "@rtc/domain";
 
-import {
-  closeScope,
-  createDetachedHost,
-  interruptFiber,
-  refToWarmStateStream,
-} from "#/bridge/out";
+import { closeScope, createDetachedHost, interruptFiber } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface BootMachineDeps {
   /** The variant this boot plays. */
@@ -34,14 +30,12 @@ export function createBootMachine(
   const { variant } = deps;
   deps.advance(nextBootVariant(variant));
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<BootSequenceState>({
-      variant,
-      progress: 0,
-      done: false,
-    }),
-  );
-  const warm = refToWarmStateStream(host, ref);
+  const ref = createSyncRef<BootSequenceState>({
+    variant,
+    progress: 0,
+    done: false,
+  });
+  const warm = ref.warm();
   let finished = false;
   let disposed = false;
 
@@ -64,10 +58,8 @@ export function createBootMachine(
       }
 
       const progress = bootProgress(tick);
-      yield* SubscriptionRef.set(ref, {
-        variant,
-        progress,
-        done: progress >= 100,
+      yield* ref.write(() => {
+        return { variant, progress, done: progress >= 100 };
       });
 
       if (progress >= 100) {
@@ -89,9 +81,9 @@ export function createBootMachine(
         }
 
         interruptFiber(rampFiber);
-        host.runtime.runSync(
-          SubscriptionRef.set(ref, { variant, progress: 100, done: true }),
-        );
+        ref.set(() => {
+          return { variant, progress: 100, done: true };
+        });
         finish();
       },
     },

@@ -23,8 +23,8 @@ import { settle } from "#/harness/settle";
  * `save` straight after a `maximize` must store the maximized tree). Only
  * DELIVERY to a subscriber may be scheduled — which is why every stream read
  * here goes through `readLatest`, after a pause. A core that folds on a
- * fiber must still commit the new state synchronously (the Effect core:
- * `SubscriptionRef` updates via `runSync`). */
+ * fiber must still commit the new state synchronously (the Effect core
+ * keeps it in a `SyncRef`, written before the intent returns). */
 
 /** Lets the core's scheduled deliveries land — `settle` on real timers,
  * `clock.settle` inside `withFakeClock`. */

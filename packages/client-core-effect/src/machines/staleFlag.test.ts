@@ -66,10 +66,10 @@ describe("createStaleFlagMachine", () => {
     const m = createStaleFlagMachine({ status$, value$ });
     const subscription = m.state$.subscribe();
     await tick();
-    // The order `useMachine` tears down in. The unsubscribe leaves a watcher
-    // fiber ending in the machine's scope, and the scope's close waits for
-    // it before it reaches the fold fiber — the window in which a disposed
-    // machine once folded these two events.
+    // The order `useMachine` tears down in. Closing a scope is a forked
+    // effect — it interrupts the fold fiber, and only then unsubscribes the
+    // ports — which is the window a disposed machine once folded these two
+    // events in.
     subscription.unsubscribe();
     m.dispose();
     expect(status$.observed).toBe(false);

@@ -254,7 +254,7 @@ all 75 are implemented natively in all three cores.
 | Package | `@rtc/client-core-rxjs` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
 | Style | operators over `Observable` | `async`/`await`, callbacks, `AsyncIterable` | `Effect`, `Stream`, fibers |
 | A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `Scope` |
-| A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SubscriptionRef<S>` |
+| A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SyncRef<S>` (`bridge/syncRef.ts`) |
 | Cancelling work | `unsubscribe()`, `switchMap`, `takeUntil` | `AbortController` / `AbortSignal` | `Fiber.interrupt`, closing a `Scope` |
 | Waiting | `timer()` | `sleep(ms, signal)` | `Effect.sleep` |
 | One-shot call to a port | the port's `Observable`, as is | `once(port(...), signal)` → `Promise` | `rpc(port(...))` → `Effect` |
@@ -369,14 +369,14 @@ flowchart TD
   subgraph native["Native — Effect"]
     effect["Effect#lt;T#gt;"]
     stream["Stream#lt;T#gt;"]
-    ref["SubscriptionRef#lt;S#gt;"]
+    ref["SyncRef#lt;S#gt;"]
     value["a plain value"]
   end
 
   subgraph outb["bridge/out.ts — wrap"]
     s2s["streamToStream()"]
     fold["sharedFold()"]
-    r2s["refToStateStream()"]
+    r2s["ref.stateStream()"]
   end
 
   ui["Stream#lt;T#gt; · StateStream#lt;S#gt;"]
@@ -401,7 +401,7 @@ flowchart TD
 | in | `fromPort.merged([...])` | several `Observable`s | one Effect `Stream` of events | folding two or more ports together, in the order they emitted |
 | in | `peek(source, fallback)` | `Observable` | the current value, read at once | seeding, synchronous reads |
 | out | `sharedFold(host, { seed, run })` | a seed and a producer | `Stream` (shared, replays the latest) | every shared stream |
-| out | `refToStateStream(host, ref)` | `SubscriptionRef` | `StateStream` | every machine's `state$` |
+| out | `ref.stateStream()` / `ref.warm()` | `SyncRef` | `StateStream` | every machine's `state$` |
 | out | `streamToStream(host, stream)` | Effect `Stream` | `Stream` | one-shot results and plain streams |
 | out | `scopedPortStream(...)` | a per-call port stream | `Stream` | an order's lifecycle updates |
 
@@ -583,7 +583,7 @@ Promise 1 is the one that shapes the bridges most:
 sequenceDiagram
   participant B as Binding
   participant O as bridge/out
-  participant C as State cell<br/>(Store or SubscriptionRef)
+  participant C as State cell<br/>(Store or SyncRef)
 
   B->>O: subscribe(observer)
   O->>C: read the current value
@@ -680,7 +680,7 @@ ordering the code actually guarantees, not the one it happens to have.
 ### What a value costs in the Effect core
 
 Getting the turns right fixed what the screen does. The same profiling also
-showed how much work each value took, and two habits were responsible for
+showed how much work each value took, and three habits were responsible for
 most of it.
 
 - **A fiber per subscriber, only to pass values on.** A shared stream kept
@@ -694,11 +694,20 @@ most of it.
   `fromPort.merged([...])`, which puts both ports into one queue. It is
   cheaper, and the events also keep the order they were emitted in, which
   `Stream.merge` never promised.
+- **A fiber per subscriber of a machine's state, too.** A machine kept its
+  state in Effect's `SubscriptionRef`. That type reaches a subscriber the
+  same way a shared stream used to: through a fiber that reads
+  `ref.changes`. State now lives in a `SyncRef`, a plain cell that calls its
+  subscribers from inside the write, as an RxJS `BehaviorSubject` does. The
+  workspace already used one, because its state must be readable right
+  after it is written; now every machine and presenter does, and a gate
+  keeps `SubscriptionRef` out of the package.
 
-Together they took the first two seconds of the FX screen from about 2,900
+The first two took the first two seconds of the FX screen from about 2,900
 fiber steps to about 1,000, and steady state from about 7,500 per six
-seconds to about 2,000. When you write a new Effect member: fold several
-ports with `fromPort.merged`, and let `sharedFold` do the sharing.
+seconds to about 2,000. The third took the first two seconds to about 700.
+When you write a new Effect member: keep its state in a `SyncRef`, fold
+several ports with `fromPort.merged`, and let `sharedFold` do the sharing.
 
 ## A command that can be cancelled
 

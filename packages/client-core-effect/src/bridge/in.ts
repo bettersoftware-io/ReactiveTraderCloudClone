@@ -246,11 +246,12 @@ function holdForSynchronousRelease(
  * subscribed and the fold fiber is still running: an event emitted in that
  * window is received and folded.
  *
- * MEASURED 2026-10-04: a stale-flag machine whose `state$` had just been
- * unsubscribed (its watcher fiber is the newest in the scope, so the close
- * waits on it first) folded two connection events emitted after `dispose()`.
- * It had passed until then only because `Stream.merge` took longer to carry
- * an event than the close took to reach the fold fiber. Released here, an
+ * MEASURED 2026-10-04, when each `state$` subscriber still had a fiber of
+ * its own in the machine's scope: a stale-flag machine whose `state$` had
+ * just been unsubscribed (that fiber was the newest in the scope, so the
+ * close waited on it first) folded two connection events emitted after
+ * `dispose()`. It had passed until then only because `Stream.merge` took
+ * longer to carry an event than the close took to reach the fold fiber. Released here, an
  * event emitted after the close began is never received at all. */
 export function releasePorts(scope: Scope.Scope): void {
   const held = portsOf.get(scope);

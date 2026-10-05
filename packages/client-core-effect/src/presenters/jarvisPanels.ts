@@ -46,7 +46,7 @@ import {
   sharedFold,
 } from "#/bridge/out";
 import { peekCurrent } from "#/bridge/peek";
-import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 
 /** The desk-panels roster: a `SyncRef` folded by the SHARED folds
  * (`@rtc/core-logic`'s `jarvisPanelsFolds`), fed the `panel` events of the
@@ -67,7 +67,7 @@ export function createJarvisPanelsMachine(
   host: EffectHost,
   events$: CoreStream<JarvisEvent>,
 ): JarvisPanelsMachine {
-  const ref = createSyncRef<JarvisPanelsState>(host, { panels: [] });
+  const ref = createSyncRef<JarvisPanelsState>({ panels: [] });
 
   function foldPanels(
     step: (panels: readonly PanelInstance[]) => readonly PanelInstance[],
@@ -149,9 +149,9 @@ export function createJarvisPanelsPresenter(
 ): OwnedJarvisPanelsPresenter {
   const cache = new Map<string, PanelCacheEntry>();
   const panelDataCache = new Map<string, CoreStream<PanelData | null>>();
-  const rows = createSyncRef<readonly JarvisPanelVm[]>(host, []);
-  const docked = createSyncRef<readonly JarvisPanelVm[]>(host, []);
-  const floating = createSyncRef<readonly JarvisPanelVm[]>(host, []);
+  const rows = createSyncRef<readonly JarvisPanelVm[]>([]);
+  const docked = createSyncRef<readonly JarvisPanelVm[]>([]);
+  const floating = createSyncRef<readonly JarvisPanelVm[]>([]);
 
   const unlisten = machine.ref.listen((state) => {
     syncCache(state.panels);

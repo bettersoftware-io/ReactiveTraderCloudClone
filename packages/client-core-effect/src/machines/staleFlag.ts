@@ -1,4 +1,4 @@
-import { Cause, Effect, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Stream } from "effect";
 
 import type { Stream as CoreStream, ReadOnlyMachine } from "@rtc/core-api";
 import {
@@ -14,10 +14,9 @@ import {
   createDetachedHost,
   fromPortIn,
   portEvents,
-  refToStateStream,
   reportOutOfBand,
-  setRefIfChanged,
 } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface StaleFlagDeps<T> {
   status$: CoreStream<ConnectionStatus>;
@@ -26,8 +25,9 @@ export interface StaleFlagDeps<T> {
 
 /** The stale-flag fold (the RxJS core's reducer, imported) as
  * `Stream.runFoldEffect` over both sources as one stream of events
- * (`fromPort.merged`: one queue, in emission order), writing the flag through
- * `setRefIfChanged` (the `distinctUntilChanged`). Both ports are subscribed
+ * (`fromPort.merged`: one queue, in emission order), writing the flag to a
+ * `SyncRef` (an unchanged write is dropped — the `distinctUntilChanged`).
+ * Both ports are subscribed
  * at once through the machine's own `fromPortIn` — warm from creation, as
  * the RxJS `state$.subscribe()` is — and released when `dispose()` closes
  * the scope. A source failure has no channel on a ref: the machine's scope
@@ -36,7 +36,7 @@ export function createStaleFlagMachine<T>(
   deps: StaleFlagDeps<T>,
 ): ReadOnlyMachine<boolean> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(SubscriptionRef.make(false));
+  const ref = createSyncRef(false);
   const fromPort = fromPortIn(host.scope);
   const events = fromPort.merged<StaleFlagEvent<T>>([
     portEvents(deps.status$, (status: ConnectionStatus) => {
@@ -57,9 +57,11 @@ export function createStaleFlagMachine<T>(
       createStaleFlagAcc<T>(),
       (acc: StaleFlagAcc<T>, event) => {
         const next = reduceStaleFlag(acc, event);
-        return setRefIfChanged(ref, () => {
-          return next.stale;
-        }).pipe(Effect.as(next));
+        return ref
+          .write(() => {
+            return next.stale;
+          })
+          .pipe(Effect.as(next));
       },
     ).pipe(
       Effect.catchAllCause((cause) => {
@@ -75,7 +77,7 @@ export function createStaleFlagMachine<T>(
   );
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {},
     dispose: close,
   };
