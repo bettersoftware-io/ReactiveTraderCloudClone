@@ -78,6 +78,20 @@ describe("scriptPorts port-call counting", () => {
     teardown();
   });
 
+  it("failNextWorkspaceLayoutWrite: the next write throws, is counted, stores nothing; the one after writes", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const failure = new Error("storage full");
+    driver.failNextWorkspaceLayoutWrite(failure);
+    expect(() => {
+      ports.preferences.setWorkspaceLayout("first");
+    }).toThrow(failure);
+    expect(driver.storedWorkspaceLayout()).toBe(null);
+    ports.preferences.setWorkspaceLayout("second");
+    expect(driver.storedWorkspaceLayout()).toBe("second");
+    expect(driver.portCallCounts().setWorkspaceLayout).toBe(2);
+    teardown();
+  });
+
   it("forwards the call to the real port with its own `this`", () => {
     const { ports, teardown } = scriptPorts(createBasePorts());
     ports.preferences.setThemeMode("light");
