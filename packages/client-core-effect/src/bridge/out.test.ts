@@ -10,7 +10,12 @@ import {
   Scope,
   Stream,
 } from "effect";
-import { BehaviorSubject, Subject, type Subscription } from "rxjs";
+import {
+  BehaviorSubject,
+  ReplaySubject,
+  Subject,
+  type Subscription,
+} from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -22,6 +27,7 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  filterStream,
   fromPortIn,
   interruptFiber,
   listenToStateStream,
@@ -522,6 +528,94 @@ describe("bridge/out", () => {
     await tick();
     expect(second).toEqual([20, 21]);
     secondSub.unsubscribe();
+  });
+
+  it("sharedFold() a port that replays on subscribe: the producer folds the replay before subscribe returns", async () => {
+    const replaying = new ReplaySubject<number>(3);
+    replaying.next(1);
+    replaying.next(2);
+    replaying.next(3);
+    // A detached host: its fibers are on the turn scheduler, as the app's
+    // are (`useHost()` builds a plain `ManagedRuntime`, which is not).
+    const host = createDetachedHost();
+    const stream = sharedFold<number>(host, {
+      seed: () => {
+        return Option.none();
+      },
+      run: (update: FoldUpdate<number>, fromPort: FromPort) => {
+        return fromPort(replaying).pipe(
+          Stream.runForEach((value: number) => {
+            return update((sum) => {
+              return (
+                Option.getOrElse(sum, () => {
+                  return 0;
+                }) + value
+              );
+            });
+          }),
+        );
+      },
+    });
+    const seen: number[] = [];
+    const sub = stream.subscribe((value: number) => {
+      seen.push(value);
+    });
+    // No tick: a UI handed another stream's value synchronously renders at
+    // the next microtask, and this replay must be in that same render.
+    expect(seen).toEqual([1, 3, 6]);
+    sub.unsubscribe();
+    await Effect.runPromise(Scope.close(host.scope, Exit.void));
+  });
+
+  it("filterStream() passes on what the predicate accepts — including the source's replay to a newcomer, only when it matches", () => {
+    const source = new BehaviorSubject(2);
+    const even = filterStream(source, (value: number) => {
+      return value % 2 === 0;
+    });
+    const seen: number[] = [];
+    const sub = even.subscribe((value: number) => {
+      seen.push(value);
+    });
+    source.next(3);
+    source.next(4);
+    expect(seen).toEqual([2, 4]);
+
+    source.next(5);
+    const late: number[] = [];
+    const lateSub = even.subscribe((value: number) => {
+      late.push(value);
+    });
+    expect(late).toEqual([]);
+    sub.unsubscribe();
+    lateSub.unsubscribe();
+    expect(source.observed).toBe(false);
+  });
+
+  it("filterStream() passes the source's failure and its completion through", () => {
+    const failing = new Subject<number>();
+    const errors: unknown[] = [];
+    filterStream(failing, () => {
+      return true;
+    }).subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    const failure = new Error("source");
+    failing.error(failure);
+    expect(errors).toEqual([failure]);
+
+    const ending = new Subject<number>();
+    let completed = false;
+    filterStream(ending, () => {
+      return true;
+    }).subscribe({
+      complete: () => {
+        completed = true;
+      },
+    });
+    ending.complete();
+    expect(completed).toBe(true);
   });
 
   it("sharedFold() with a None seed delivers nothing until the first write, then replays it", async () => {

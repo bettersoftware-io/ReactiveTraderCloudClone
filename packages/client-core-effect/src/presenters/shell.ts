@@ -33,9 +33,12 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  filterStream,
+  type PortEvents,
+  portEvents,
   reportOutOfBand,
-  scopedPortStream,
   sharedFold,
+  switchedPortEvents,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
 import { createSyncRef } from "#/bridge/syncRef";
@@ -249,30 +252,31 @@ export interface AnimationDirectorSources {
   readonly equityFills$: CoreStream<EquityFillSignal>;
 }
 
-/** Ticks for one roster: each pair's price stream (scoped, so a roster
- * switch releases it), paired with its previous mid — the first price only
- * primes it, the RxJS `pairwise`. */
-function ticksFor(
+/** Ticks for the latest roster, as one source of the director's merged
+ * stream: each pair's price against its previous mid — the first price of a
+ * pair only primes it, the RxJS `pairwise`. The previous mid lives in the
+ * group's own closure, so a roster switch starts every pair afresh. */
+function ticksOfLatestRoster(
   sources: AnimationDirectorSources,
-  pairs: readonly CurrencyPair[],
-): Stream.Stream<AnimationIntent, unknown> {
-  return Stream.mergeAll(
-    pairs.map((pair) => {
-      return scopedPortStream(() => {
-        return sources.priceFor(pair);
-      }).pipe(
-        Stream.zipWithPrevious,
-        Stream.filterMap(([previous, price]) => {
-          return Option.map(previous, (prior): AnimationIntent => {
+): PortEvents<Option.Option<AnimationIntent>> {
+  return switchedPortEvents(
+    sources.pairs$,
+    (pairs: readonly CurrencyPair[]) => {
+      return pairs.map((pair) => {
+        let prior: Option.Option<number> = Option.none();
+
+        return portEvents(sources.priceFor(pair), (price: Price) => {
+          const tick = Option.map(prior, (mid): AnimationIntent => {
             return {
               target: `tile:${pair.symbol}`,
-              kind: price.mid >= prior.mid ? "tickUp" : "tickDown",
+              kind: price.mid >= mid ? "tickUp" : "tickDown",
             };
           });
-        }),
-      );
-    }),
-    { concurrency: "unbounded" },
+          prior = Option.some(price.mid);
+          return tick;
+        });
+      });
+    },
   );
 }
 
@@ -290,62 +294,67 @@ export function createAnimationDirector(
       return Option.none();
     },
     run: (update: FoldUpdate<AnimationIntent>, fromPort: FromPort) => {
-      const intents: Stream.Stream<AnimationIntent, unknown> = Stream.mergeAll(
-        [
-          fromPort(sources.pairs$).pipe(
-            Stream.flatMap(
-              (pairs) => {
-                return ticksFor(sources, pairs);
-              },
-              { switch: true },
-            ),
-          ),
-          fromPort(sources.executions$).pipe(
-            Stream.map(({ symbol, status }): AnimationIntent => {
-              return {
-                target: `tile:${symbol}`,
-                kind: status === ExecutionStatus.Done ? "fill" : "reject",
-              };
-            }),
-          ),
-          fromPort(sources.rfqEvents$).pipe(
-            Stream.filterMap((event): Option.Option<AnimationIntent> => {
-              if (
-                event.type === "rfqClosed" &&
-                event.payload.state === RfqState.Expired
-              ) {
-                return Option.some({
-                  target: `rfq:${event.payload.id}`,
-                  kind: "expiry",
-                });
-              }
+      // The connection status current at subscribe is not a change: the
+      // first value this period hears from that port is dropped (the RxJS
+      // `skip(1)`).
+      let statusSeen = false;
+      const intents = fromPort.merged<Option.Option<AnimationIntent>>([
+        ticksOfLatestRoster(sources),
+        portEvents(sources.executions$, ({ symbol, status }) => {
+          return Option.some<AnimationIntent>({
+            target: `tile:${symbol}`,
+            kind: status === ExecutionStatus.Done ? "fill" : "reject",
+          });
+        }),
+        portEvents(
+          sources.rfqEvents$,
+          (event): Option.Option<AnimationIntent> => {
+            if (
+              event.type === "rfqClosed" &&
+              event.payload.state === RfqState.Expired
+            ) {
+              return Option.some({
+                target: `rfq:${event.payload.id}`,
+                kind: "expiry",
+              });
+            }
 
-              if (event.type === "quoteAccepted") {
-                return Option.some({
-                  target: `rfq:${event.payload.rfqId}`,
-                  kind: "fill",
-                });
-              }
+            if (event.type === "quoteAccepted") {
+              return Option.some({
+                target: `rfq:${event.payload.rfqId}`,
+                kind: "fill",
+              });
+            }
 
+            return Option.none();
+          },
+        ),
+        portEvents(
+          sources.connectionStatus$,
+          (): Option.Option<AnimationIntent> => {
+            if (!statusSeen) {
+              statusSeen = true;
               return Option.none();
-            }),
-          ),
-          fromPort(sources.connectionStatus$).pipe(
-            Stream.drop(1),
-            Stream.map((): AnimationIntent => {
-              return { target: "banner:connection", kind: "connectionChange" };
-            }),
-          ),
-          fromPort(sources.equityFills$).pipe(
-            Stream.map(({ symbol }): AnimationIntent => {
-              return { target: `ticket:${symbol}`, kind: "fill" };
-            }),
-          ),
-        ],
-        { concurrency: "unbounded" },
-      );
+            }
+
+            return Option.some({
+              target: "banner:connection",
+              kind: "connectionChange",
+            });
+          },
+        ),
+        portEvents(sources.equityFills$, ({ symbol }) => {
+          return Option.some<AnimationIntent>({
+            target: `ticket:${symbol}`,
+            kind: "fill",
+          });
+        }),
+      ]);
 
       return intents.pipe(
+        Stream.filterMap((intent) => {
+          return intent;
+        }),
         Stream.runForEach((intent) => {
           return update(() => {
             return intent;
@@ -357,22 +366,8 @@ export function createAnimationDirector(
 
   return {
     intentsFor: (target: string) => {
-      return sharedFold<AnimationIntent>(host, {
-        seed: () => {
-          return Option.none();
-        },
-        run: (update: FoldUpdate<AnimationIntent>, fromPort: FromPort) => {
-          return fromPort(all).pipe(
-            Stream.filter((intent) => {
-              return intent.target === target;
-            }),
-            Stream.runForEach((intent) => {
-              return update(() => {
-                return intent;
-              });
-            }),
-          );
-        },
+      return filterStream(all, (intent: AnimationIntent) => {
+        return intent.target === target;
       });
     },
   };
