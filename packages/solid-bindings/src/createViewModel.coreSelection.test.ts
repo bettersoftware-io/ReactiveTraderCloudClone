@@ -4,6 +4,8 @@
 //   exposes it back out as useCoreSelection(). Solid twin of react-bindings'
 //   createViewModel.coreSelection.test.ts.
 
+import { state } from "@rx-state/core";
+import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -33,6 +35,7 @@ describe("createViewModel — core selection", () => {
       current: "async",
       options: [{ impl: "async", label: "async/await", description: "d" }],
       select: vi.fn(),
+      failure$: state(new BehaviorSubject<string | null>(null), null),
     };
 
     const vm = createViewModel(presenters, machines, commands, {

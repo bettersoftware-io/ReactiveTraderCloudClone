@@ -96,7 +96,7 @@ import type {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
-import type { Stream } from "#/stream";
+import type { StateStream, Stream } from "#/stream";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -423,4 +423,7 @@ export interface CoreSelection {
   readonly current: CoreImpl;
   readonly options: readonly CoreOption[];
   select(impl: CoreImpl): void;
+  /** Why the last `select` left the page on `current`, or null. A stream
+   * because the host reports it while the same tree is still mounted. */
+  readonly failure$: StateStream<string | null>;
 }

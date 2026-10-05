@@ -551,6 +551,9 @@ importers:
       '@rtc/react-bindings':
         specifier: workspace:*
         version: link:../react-bindings
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -862,6 +865,9 @@ importers:
       '@rtc/solid-bindings':
         specifier: workspace:*
         version: link:../solid-bindings
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -878,9 +884,6 @@ importers:
       '@rtc/ui-contract':
         specifier: workspace:*
         version: link:../ui-contract
-      '@rx-state/core':
-        specifier: ^0.1.4
-        version: 0.1.4(rxjs@7.8.2)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.15)

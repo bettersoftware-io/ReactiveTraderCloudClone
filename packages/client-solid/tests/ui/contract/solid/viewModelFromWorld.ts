@@ -1805,6 +1805,7 @@ export function solidViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
+        failure$: state(new BehaviorSubject<string | null>(null), null),
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);

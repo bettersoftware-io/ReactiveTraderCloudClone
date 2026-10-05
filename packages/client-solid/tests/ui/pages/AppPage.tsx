@@ -1,3 +1,4 @@
+import { state } from "@rx-state/core";
 import {
   cleanup,
   fireEvent,
@@ -5,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@solidjs/testing-library";
+import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
@@ -20,6 +22,7 @@ const coreSelection: CoreSelection = {
   current: "rxjs",
   options: [],
   select: (): void => {},
+  failure$: state(new BehaviorSubject<string | null>(null), null),
 };
 
 interface WaitForOptions {

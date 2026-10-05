@@ -1,3 +1,4 @@
+import { state } from "@rx-state/core";
 import {
   CORE_OPTIONS_FOR_TESTS,
   type JarvisWorld,
@@ -1861,6 +1862,7 @@ export function reactViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
+        failure$: state(new BehaviorSubject<string | null>(null), null),
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);

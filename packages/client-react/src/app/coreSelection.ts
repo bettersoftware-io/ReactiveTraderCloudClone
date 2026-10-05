@@ -1,3 +1,6 @@
+import { state } from "@rx-state/core";
+import { BehaviorSubject } from "rxjs";
+
 import type {
   CoreFactory,
   CoreImpl,
@@ -310,6 +313,7 @@ export function createCoreSelection(deps: CoreSelectionDeps): CoreSelection {
   return {
     current: deps.current,
     options: CORE_OPTIONS,
+    failure$: state(new BehaviorSubject<string | null>(null), null),
     select: (impl: CoreImpl): void => {
       if (impl === deps.current) {
         return;

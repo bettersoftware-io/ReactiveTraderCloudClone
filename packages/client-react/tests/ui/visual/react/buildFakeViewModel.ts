@@ -1,3 +1,5 @@
+import { state } from "@rx-state/core";
+
 import {
   createDefaultLayoutPort,
   InMemoryDockLayoutStore,
@@ -67,7 +69,7 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 
 import type { AppData } from "@ui-visual-shared/appData";
 import { useState } from "react";
-import { EMPTY } from "rxjs";
+import { BehaviorSubject, EMPTY } from "rxjs";
 
 import { createLayoutMachine } from "@rtc/client-core-rxjs";
 import type {
@@ -707,7 +709,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // selection so the row renders pixel-identically to a real build's
     // default — no scenario ever clicks it, so select() is inert.
     useCoreSelection: (): CoreSelection => {
-      return { current: "rxjs", options: CORE_OPTIONS, select: noop };
+      return {
+        current: "rxjs",
+        options: CORE_OPTIONS,
+        select: noop,
+        failure$: state(new BehaviorSubject<string | null>(null), null),
+      };
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
     // so every scenario but login/demo-hint renders the plain live form.
