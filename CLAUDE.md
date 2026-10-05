@@ -16,7 +16,7 @@ Monorepo with pnpm workspaces + Turborepo; twenty-six packages plus the `tests` 
 pnpm build       # Topological: domain → shared → client + server
 pnpm typecheck   # tsc --noEmit in all packages, then the tooling program (scripts, lint rules, root configs)
 pnpm test        # vitest run in all packages
-pnpm test:e2e    # Gherkin/Playwright e2e suites under tests/ against the web clients
+pnpm test:e2e    # Gherkin/Playwright e2e suites under tests/ against the web clients — the Playwright suites drive a production build (RTC_E2E_SERVE=dev puts them on the dev server), the Gherkin suites the dev server
 pnpm dev         # Alias of `dev:react` — @rtc/client-react in simulator mode (no server); sign in with a committed demo account (see below)
 pnpm dev:ws      # @rtc/server only — native WS + login on ws://localhost:4000 (tsx watch)
 pnpm dev:watch   # Rebuild-watch every pure-TS library (domain, shared, ws-effects, motion-core, ui-contract, devtools-core, core-api, core-logic, core-contract, client-core-async, client-core-effect) — run alongside a client to hot-rebuild lib edits

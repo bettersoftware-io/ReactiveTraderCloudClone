@@ -494,7 +494,7 @@ live, not hypothetical:
 
 - `RTC_CLIENT_PKG` (default `@rtc/client-react`) is the one env var that
   re-targets which client's dev server the shared suites drive —
-  `tests/scripts/devServer.ts`'s `CLIENT_PKG` constant reads it and hands the
+  `tests/scripts/clientServer.ts`'s `CLIENT_PKG` constant reads it and hands the
   value straight to `spawn("pnpm", ["--filter", CLIENT_PKG, "dev"])`.
 - `run-all.ts` adds two Solid entries to the concurrent pool —
   `test:browser:playwright:solid` and `test:browser:playwright-cucumber:solid`
@@ -508,7 +508,7 @@ live, not hypothetical:
   `mcdc2026` demo roster. The mechanism stays wired for any future genuine
   port gap.
 
-Deep dive on the full mechanism — env var → `devServer.ts` → `run-all.ts`
+Deep dive on the full mechanism — env var → `clientServer.ts` → `run-all.ts`
 wiring, plus the two real incidents this cross-framework net has caught:
 [§21 Mechanism 3 — e2e via RTC_CLIENT_PKG](../docs/architecture/21-cross-framework-testing.md#mechanism-3--e2e-via-rtc_client_pkg).
 
