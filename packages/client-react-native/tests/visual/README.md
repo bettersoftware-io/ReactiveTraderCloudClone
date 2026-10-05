@@ -163,6 +163,31 @@ dev-bundle curl to `/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true`
 (a clean bundle is >100 KB and contains no `Babel plugin exception`). This is
 the RN analogue of CLAUDE.md's Vite "blank screen = stale pre-bundle" note.
 
+## Reading a run's verdicts
+
+Each scenario prints one line. Only `FAIL` is a visual regression:
+
+| line | meaning |
+|---|---|
+| `pass     <id>  (0.0000%)` | the capture matches its golden |
+| `FAIL     <id>  (n%)` | the capture differs from its golden by that share of pixels |
+| `NO GOLDEN <id>` | there is no golden to compare against. Maestro has goldens for 3 of the scenarios (the rest are deliberately deferred — see `docs/STATUS.md`), so a full Maestro run prints this for the others and exits 1 |
+| `SIZE     <id>` | the capture and its golden have different dimensions (a different device or mask) |
+
+`NO GOLDEN` and `SIZE` used to print as `FAIL … (100.0000%)`, which read as a
+total regression.
+
+## Maestro flows start from a dead app
+
+Every generated flow begins with `stopApp`. Left running from the previous
+flow, the app reloads its bundle when the flow opens the dev-client link, and
+Maestro's next accessibility query walks the view tree while it is being torn
+down: the app dies with a malloc heap-corruption trap under UIAccessibility's
+snapshot. Nothing relaunches it, so the `login-screen` wait times out — and
+because the crash leaves the app dead, the next flow passes. The symptom was
+exactly every other flow failing (13 of 26, one crash report each, measured
+2026-10-04).
+
 ## Metro under `CI=1` does not watch files
 
 Metro started with `CI=1` (useful for an unattended run: no interactive

@@ -22,6 +22,18 @@ describe("flowYaml", () => {
     expect(yaml).toContain("takeScreenshot: shots/blotter_seeded");
   });
 
+  it("stops the app before the dev-client link, so every flow cold-launches", () => {
+    const yaml = flowYaml("blotter/seeded");
+    const commands = yaml.split("\n").filter((line) => {
+      return line.startsWith("- ");
+    });
+
+    // The FIRST command, ahead of the link: a running app reloads its bundle
+    // on that link and crashes under Maestro's next accessibility query.
+    expect(commands[0]).toBe("- stopApp");
+    expect(commands[1]).toBe("- openLink:");
+  });
+
   it("flattens slashes in the screenshot name for every registered id", () => {
     for (const id of SCENARIO_IDS) {
       const yaml = flowYaml(id);

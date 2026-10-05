@@ -1,6 +1,6 @@
 import { type BuildStamp, parseBuildStamp } from "#/ui/shell/buildStamp";
 
-/** The stamp `pnpm demo:publish:ios` bakes into a published bundle, or `null`.
+/** The stamp `pnpm demo:ios:publish` bakes into a published bundle, or `null`.
  *
  * The two reads MUST stay literal `process.env.EXPO_PUBLIC_*` member
  * expressions: that exact shape is what Metro replaces at bundle time. Reading
