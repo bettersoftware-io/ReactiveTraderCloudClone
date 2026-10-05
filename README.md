@@ -334,6 +334,7 @@ pnpm dev:solid          # the SolidJS client instead          → http://localho
 pnpm dev:react:fs       # full stack: WebSocket server + React client
 pnpm dev:react:effect   # React client on the Effect-TS core (also :async, and dev:solid:*)
 pnpm dev:ios            # React Native client on the iOS simulator
+pnpm dev:android        # React Native client in an Android emulator
 pnpm dev:devtools       # the state inspector
 ```
 

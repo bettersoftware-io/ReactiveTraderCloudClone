@@ -96,7 +96,8 @@ Per-developer, git-ignored. Keys:
   it per mode: `pnpm dev:ios:sim` (empty → simulator), `pnpm dev:ios:ws:local`
   (`ws://localhost:4000`, needs a local `pnpm dev:ws`), `pnpm dev:ios:ws:remote`
   (the deployed endpoint), `pnpm dev:ios:fs` (starts the local server + the app
-  together). Bare `pnpm dev:ios` aliases `:sim`. The mapping into
+  together). Bare `pnpm dev:ios` aliases `:sim`. `pnpm dev:android*` has the same
+  five scripts for an Android emulator. The mapping into
   `extra.serverUrl` is guarded by `app.config.test.ts` (it was silently dropped
   once, stranding the app in simulator mode regardless of this var).
 
