@@ -10,6 +10,7 @@ import type {
   InspectorToApp,
   MachineStateEvent,
   SnapshotMachine,
+  SnapshotStream,
 } from "../protocol";
 
 describe("DevtoolsHub", () => {
@@ -519,10 +520,14 @@ describe("DevtoolsHub", () => {
       expect(countOfKind(sent, "snapshot")).toBe(1);
     });
 
-    it("reports every live machine disposed, and an already disposed one only once", () => {
+    it("reports every live machine disposed in the re-snapshot, and releases the old core's state$ and intents", () => {
       const { hub, sent, inbound$ } = createHarness();
-      const gone = hub.machineCreated("a", [], new Subject<number>());
-      const live1 = hub.machineCreated("b", [], new Subject<number>());
+      const goneState$ = new Subject<number>();
+      const gone = hub.machineCreated("a", [], goneState$);
+      const liveState$ = new Subject<number>();
+      const live1 = hub.machineCreated("b", [], liveState$, {
+        poke: (): void => {},
+      });
       const live2 = hub.machineCreated("c", [], new Subject<number>());
       inbound$.next({ kind: "hello", v: 1 });
       hub.machineDisposed(gone);
@@ -532,18 +537,78 @@ describe("DevtoolsHub", () => {
       hub.endComposition();
       vi.advanceTimersByTime(100);
 
-      const disposedIds = sent
-        .slice(before)
-        .flatMap((m) => {
+      const after = sent.slice(before);
+      const snap = after.find((m) => {
+        return m.kind === "snapshot";
+      });
+      expect(
+        snapshotMachines(snap)?.map((m) => {
+          return [m.machineId, m.disposed];
+        }),
+      ).toEqual([
+        [gone, true],
+        [live1, true],
+        [live2, true],
+      ]);
+      // the snapshot supersedes the per-machine events: no duplicate report
+      expect(
+        after.flatMap((m) => {
           return batchEvents(m) ?? [];
-        })
-        .filter((ev) => {
-          return ev.kind === "machine:disposed";
-        })
-        .map((ev) => {
-          return ev.machineId;
-        });
-      expect(disposedIds).toEqual([live1, live2]);
+        }),
+      ).toEqual([]);
+      // nothing of the disposed core stays reachable through the hub
+      expect(liveState$.observed).toBe(false);
+    });
+
+    it("rejects an intent:invoke aimed at a machine of the ended composition", () => {
+      const inbound$ = new Subject<InspectorToApp>();
+      const sent: AppToInspector[] = [];
+      const hub = new DevtoolsHub({ appId: "test-app", dev: true });
+      hub.attachTransport({
+        send: (m: AppToInspector): void => {
+          sent.push(m);
+        },
+        inbound$,
+        dispose: (): void => {},
+      });
+      const poke = vi.fn();
+      const id = hub.machineCreated("b", [], new Subject<number>(), { poke });
+      inbound$.next({ kind: "hello", v: 1 });
+      hub.endComposition();
+
+      inbound$.next({
+        kind: "intent:invoke",
+        machineId: id,
+        name: "poke",
+        args: [],
+      });
+      vi.advanceTimersByTime(100);
+
+      expect(poke).not.toHaveBeenCalled();
+      const error = batchEvents(findLastBatch(sent))?.find((ev) => {
+        return ev.kind === "devtools:error";
+      });
+      expect(error).toMatchObject({ context: "intent:invoke" });
+      expect((error as DevtoolsErrorEvent).message).toContain("disposed");
+    });
+
+    it("stays exception-safe when an old source's teardown throws, and still forgets every stream", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      hub.registerStream("x", subscriptionThatThrowsOnUnsubscribe());
+      inbound$.next({ kind: "hello", v: 1 });
+
+      expect(() => {
+        hub.endComposition();
+      }).not.toThrow();
+
+      const newSubject = new Subject<number>();
+      hub.registerStream("x", newSubject);
+      expect(newSubject.observed).toBe(true);
+      vi.advanceTimersByTime(100);
+      const error = batchEvents(findLastBatch(sent))?.find((ev) => {
+        return ev.kind === "devtools:error";
+      });
+      expect(error).toMatchObject({ context: "endComposition" });
     });
 
     it("sends a live inspector welcome then snapshot on the next flush, listing only the new composition's streams", () => {
@@ -571,11 +636,14 @@ describe("DevtoolsHub", () => {
       expect(ids).toEqual(["new.a"]);
     });
 
-    it("sends nothing with no inspector attached, and is a no-op on an empty hub", () => {
+    it("sends nothing with no inspector attached, and an empty hub then welcomes an empty snapshot", () => {
+      const empty = createHarness();
+      empty.hub.endComposition();
+      empty.inbound$.next({ kind: "hello", v: 1 });
+      expect(snapshotStreams(lastOfKind(empty.sent, "snapshot"))).toEqual([]);
+      expect(snapshotMachines(lastOfKind(empty.sent, "snapshot"))).toEqual([]);
+
       const { hub, sent, inbound$ } = createHarness();
-      expect(() => {
-        hub.endComposition();
-      }).not.toThrow();
       hub.registerStream("x", new Subject<number>());
       hub.endComposition();
       vi.advanceTimersByTime(100);
@@ -630,6 +698,17 @@ describe("DevtoolsHub", () => {
             return r.machineId;
           }),
       ).toEqual([newMachine]);
+      // the new composition's first values survive the re-snapshot flush
+      expect(
+        state.machines.find((r) => {
+          return r.machineId === newMachine;
+        })?.state,
+      ).toBe("t");
+      expect(
+        state.streams.find((r) => {
+          return r.streamId === "new.stream";
+        })?.lastValue,
+      ).toBe(2);
     });
   });
 });
@@ -662,6 +741,16 @@ function batchEvents(
   }
 
   return msg.events;
+}
+
+function snapshotStreams(
+  msg: AppToInspector | undefined,
+): readonly SnapshotStream[] | undefined {
+  if (msg?.kind !== "snapshot") {
+    return undefined;
+  }
+
+  return msg.streams;
 }
 
 function snapshotMachines(

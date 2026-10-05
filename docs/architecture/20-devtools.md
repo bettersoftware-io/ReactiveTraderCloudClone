@@ -226,10 +226,14 @@ swap disposes the running core and composes another in the same page.
 `createApp`. It unsubscribes and forgets every registered stream, so the new
 core's `registerStream` with the same id takes the new source. It reports every
 machine still live as disposed. If an inspector is attached, the hub sends a
-fresh welcome and snapshot on the next flush, after the new core has
-registered, and the inspector replaces what it held. A dormant hub just
-forgets, and the next `hello` sees only the new composition. No protocol
-message is added.
+fresh welcome and snapshot on the next flush, and the inspector replaces what
+it held; anything registered after that flush arrives as ordinary events. The
+snapshot supersedes the lifecycle events queued before it, and a disposed
+machine's state stream and intents are released, so the hub keeps nothing of
+the old core alive. A dormant hub just forgets, and the next `hello` sees only
+the new composition. The call belongs between the two steps: a registration the
+old core makes after it is adopted as the new core's own. No protocol message
+is added.
 
 ### 20.4 Protocol
 
