@@ -337,3 +337,19 @@ must not know what gets attached — but a concrete handler must be named for
 its effect, even when the body is one line. The doc covers the full
 slot-vs-handler doctrine (the `<Car>` example, the property-vs-method syntax
 consequence), the name-decay rule, and the two known limits.
+
+## Import Statements
+
+A file names a module in **one** import statement. When it needs both types and
+values from that module, the types ride in the same statement with an inline
+`type` — `import { type Trade, executeTrade } from "@rtc/domain"` — never as a
+separate `import type { … }` block beside the value import
+(`rtc/one-import-per-module`, every `.ts`/`.tsx`/`.mts` file, autofixable with
+`eslint --fix`). Re-exports (`export … from`) follow the same rule as their own
+group. A statement that names **only** types stays `import type { … }`: under
+`verbatimModuleSyntax` an `import { type A }` survives as a runtime import of
+the module, which here could pull a lazy application core into the eager
+bundle. That half is Biome's `useImportType` / `useExportType`. A namespace
+import (`import * as`) beside named ones is exempt — the syntax has no single
+statement for the pair. The rule's header (`eslint-rules/one-import-per-module.mts`)
+lists what it reports without a fix.
