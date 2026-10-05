@@ -3,7 +3,8 @@
 Three candidate tiers were evaluated for on-device iOS visual verification of
 `@rtc/client-react-native`, all sharing one harness (`VisualScenarioHost` +
 the `__visual/<id>` dev-only route) and one diff core (`shared/diff.ts`,
-`pixelmatch`, 6% mismatched-pixel tolerance). This records what each tier is,
+`pixelmatch`; the bar is exact reproduction since 2026-08, 6% during the
+original spike). This records what each tier is,
 how it scored, and where the comparison currently stands.
 
 All three drive the **same** isolated scenarios and compare against the **same**
@@ -11,38 +12,83 @@ committed goldens under `__screenshots__/<pin>/<tier>/`; they differ only in how
 they navigate the device and take the shot. Measured on the pinned device
 `ios-iphone17-26` (iPhone 17 / iOS 26.x). **Never CI** — iOS pixels need a Mac.
 
-## Status: UNFINISHED, not decided (as of 2026-08-06)
+## Status: the iOS comparison is DONE at full coverage; Android is not (2026-10-05)
 
-**No tier has been chosen, because no two tiers have been compared at
-comparable coverage.** Read every conclusion below against its evidentiary
-base:
+The gate this file used to name — the mobile UI's visual fidelity settling —
+lifted on 2026-10-04 (all 12 skins signed off), so both viable tiers were
+captured at full coverage and measured on the same day, the same simulator and
+the same commit.
 
-| | what was actually measured |
+| | what was measured |
 |---|---|
-| Scenarios | **3** of the 18 that exist today (`blotter/seeded`, `shell/appearance`, `shell/connection-banner`) |
+| Scenarios | **all 26**, on both tiers |
 | Devices | 1 (`ios-iphone17-26`) |
-| Platforms | iOS only — **no Android run at all**, though Maestro's whole case is that it is cross-platform |
-| Duration | a single sitting, not sustained use |
-| Regressions caught | 1 injected paint bug, plus 1 real regression the suite **missed** (#147) |
+| Platforms | iOS only — **still no Android run**, though Maestro's whole case is that it is cross-platform |
+| Repetitions | **5 full runs per tier** (130 scenario runs each), back to back |
+| Regressions | 1 injected (the #147 shadow-clip), run once through each tier |
 
-That is a **viability spike** — enough to establish which tiers can run here,
-and nothing like enough to rank them. The contrast worth holding onto is the
-web suite's Playwright-vs-Cypress bake-off, which ran both frameworks over the
-same specs for months before Cypress was retired
-([`docs/test-bakeoff-outcome.md`](../../../../docs/test-bakeoff-outcome.md));
-that is what a decision's worth of evidence looks like.
+### Results
 
-Meanwhile the golden sets are lopsided — **simctl has all 18, Maestro has the
-3 from the spike, owl has none** — so the tiers cannot be compared even in
-principle right now. Running the Maestro tier today reports **15 failures at
-100%**, because `compareToGolden` returns `ratio: 1` for an absent golden
-rather than throwing; that is a missing baseline, not a regression.
+| | simctl | Maestro |
+|---|---|---|
+| Scenario runs passing | 130 / 130 | 130 / 130 |
+| Worst diff across all runs | 0.0000% | 0.0000% |
+| Aborted runs | 0 | 0 |
+| App crashes | 0 | 0 |
+| Wall-clock per full run | **175–181 s** (~6.8 s a scenario) | **488–495 s** (~18.8 s a scenario) |
 
-**Deliberately not fixed yet.** Capturing the other 15 Maestro goldens would
-mean re-capturing them on every visual-fidelity change still in flight — churn,
-not a baseline. The plan is to finish the comparison **after the mobile UI's
-visual fidelity settles**: capture all tiers at full coverage at that point,
-then decide. Until then all three stay on the table and nothing is retired.
+Both tiers reproduce their goldens exactly. **Maestro takes 2.8× as long**,
+because every flow cold-launches the app (see the `stopApp` note in the README:
+a warm relaunch crashes the app under Maestro's accessibility query).
+
+**The two tiers agree on what the app renders.** Comparing each Maestro golden
+to the simctl golden of the same scenario: **21 of 26 are pixel-identical**, and
+the other five (`shell/connection-banner`, `boot/core`, `boot/laser`,
+`boot/docking`, `boot/topo`) differ only under the device mask — the Dynamic
+Island and rounded corners that simctl's `--mask=black` paints and Maestro's
+screenshot does not. The differing pixels are app content showing through
+there (a light background, a laser line crossing the island), not a different
+render.
+
+**Both catch the #147 shadow-clip — the regression the spike's suite missed.**
+With `overflow: "hidden"` re-injected on `SurfaceCard`, both tiers failed the
+same four scenarios (`analytics/dashboard`, `credit/rfq-tiles`,
+`credit/sell-side`, `equities/trade`) at **0.0002%–0.0011%** of pixels. That is
+catchable only because the bar is now exact reproduction; under the spike's 6%
+tolerance every one of them would have passed.
+
+### Incidents — the flake evidence
+
+Neither tier flaked inside the five measured runs. Across the two days of this
+session, counting every full run:
+
+- **simctl, 8 full runs: 3 incidents.** One run aborted when
+  `idb ui describe-all` timed out. Twice `credit/new-rfq` failed at **0.1147%**
+  — the identical figure both times, once on a clean tree and once during the
+  injected-bug run (where Maestro passed that scenario), and it passed at
+  0.0000% on immediate re-runs. An identical ratio means one specific alternate
+  frame, not noise: simctl shoots after a fixed settle delay, and that scenario
+  is evidently sometimes not settled. **Not diagnosed.**
+- **Maestro, 9 full runs since the `stopApp` fix: 0 incidents.** Before that
+  fix it failed every other flow (see the README).
+
+Small numbers, so read them as a direction, not a rate: the one tier that
+waits for a ready marker has had no capture-side incident, and the one that
+waits a fixed time has.
+
+### What this does and does not settle
+
+It settles the iOS question the spike could not: both tiers are viable at full
+coverage, they agree pixel for pixel, and both catch the bug class the suite
+exists for. simctl is faster; Maestro is steadier and is the only route to
+Android.
+
+It does **not** settle whether to retire a tier. On iOS they now duplicate each
+other exactly, so keeping both costs a second set of 26 goldens to re-pin on
+every visual change. Retiring simctl leaves the slower tier; retiring Maestro
+leaves the one with capture incidents and closes the door on Android. That is a
+maintainer decision, and the Android leg — never run — is the evidence it is
+still missing.
 
 ## Scoreboard
 
@@ -59,7 +105,9 @@ then decide. Until then all three stay on the table and nothing is retired.
 | Caught blatant paint bug | ✅ 67.92% | ✅ 67.92% | — |
 | Android-portable | ❌ Apple-only | ✅ cross-platform | ❌ (owl is iOS/Android but dead here) |
 | Device-pin coupling | **high** (re-measure tap px per pin) | low (a11y ids are pin-agnostic) | — |
-| Goldens committed | **25** (all scenarios) | **3** (the spike's sample; re-pinned 2026-10-02) | 0 |
+| Goldens committed | **26** (all scenarios) | **26** (all scenarios, since 2026-10-05) | 0 |
+| Wall-clock, all 26 scenarios | **~177 s** | **~490 s** | — |
+| Self-reproduces at full coverage | 130 / 130 at 0.0000% | 130 / 130 at 0.0000% | — |
 | Runner pins the device | ✅ `RTC_VISUAL_UDID` (default: the single booted sim) | ✅ **since 2026-10-02** — same variable, passed as `maestro --udid` | — |
 | Runnable on this Mac today | ✅ | ✅ **since 2026-08-08** (openjdk@21) | ❌ |
 | Dev-menu gear hidden | ✅ since 2026-08-05 | ✅ **since 2026-10-02** (3 goldens re-pinned gear-free) | — |
@@ -343,15 +391,18 @@ visual fidelity settling.
    UDID, passes `maestro --udid`, and hides the dev-menu gear around the run.
 2. ~~**Install a JDK**~~ — **DONE 2026-08-08**, `openjdk@21`. See the floor-vs-pin
    section above for why 21 and not the newest.
-3. **Capture every tier at full scenario coverage, then judge** — once the
-   mobile UI's visual fidelity has stabilised, so goldens are captured against
-   a UI that has stopped moving. Compare on wall-clock, flake rate across
-   repeated runs, and what each tier catches — *not* on the spike's numbers.
-4. **Add an inset-3D-card scenario** so the suite can actually catch the #147
-   shadow-clip class (see the injected-bug findings above). This is a gap in
-   the *scenario matrix*, and it handicaps every tier equally — worth closing
-   before the comparison, so all three are judged on a matrix that can catch
-   the bug class the suite was built for.
+3. ~~**Capture every tier at full scenario coverage, then judge**~~ — **DONE
+   for iOS 2026-10-05**; results in the Status section above. The judgement
+   itself (keep both, or retire one) is left to the maintainer.
+4. ~~**Add an inset-3D-card scenario**~~ — **DONE**: the matrix now has
+   inset-card scenarios, and the #147 shadow-clip is caught by both tiers.
+5. **Run the Android leg.** Maestro's case rests on being cross-platform and it
+   has never taken an Android shot here. It needs an Android **dev** build (the
+   harness is inert outside `__DEV__`, so the preview APK cannot be used) and
+   an `android-*` golden set.
+6. **Diagnose simctl's `credit/new-rfq` alternate frame** (0.1147%, twice in 8
+   runs) — or replace its fixed settle delay with the `visual-ready` marker
+   Maestro already waits for.
 
 Tracked in [`docs/rn-open-items.md`](../../../../docs/rn-open-items.md) and
 [`docs/STATUS.md`](../../../../docs/STATUS.md).

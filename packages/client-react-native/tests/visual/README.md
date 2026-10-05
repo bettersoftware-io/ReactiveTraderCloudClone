@@ -171,7 +171,7 @@ Each scenario prints one line. Only `FAIL` is a visual regression:
 |---|---|
 | `pass     <id>  (0.0000%)` | the capture matches its golden |
 | `FAIL     <id>  (n%)` | the capture differs from its golden by that share of pixels |
-| `NO GOLDEN <id>` | there is no golden to compare against. Maestro has goldens for 3 of the scenarios (the rest are deliberately deferred — see `docs/STATUS.md`), so a full Maestro run prints this for the others and exits 1 |
+| `NO GOLDEN <id>` | there is no golden to compare against — a scenario added without capturing one. Both tiers have a golden for every scenario, so this should not appear; it exits 1 |
 | `SIZE     <id>` | the capture and its golden have different dimensions (a different device or mask) |
 
 `NO GOLDEN` and `SIZE` used to print as `FAIL … (100.0000%)`, which read as a
