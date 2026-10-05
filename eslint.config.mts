@@ -14,6 +14,7 @@ import { newspaperOrder } from "./eslint-rules/newspaper-order.mts";
 import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mts";
 import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mts";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mts";
+import { oneImportPerModule } from "./eslint-rules/one-import-per-module.mts";
 import { pageObjectsOwnTheirComponent } from "./eslint-rules/page-objects-own-their-component.mts";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -163,6 +164,7 @@ const rtcPlugin: TSESLint.FlatConfig.Plugin = {
     "name-fixture-factories": nameFixtureFactories,
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
     "no-minified-json-literal": noMinifiedJsonLiteral,
+    "one-import-per-module": oneImportPerModule,
     "json-fixtures-in-factories": jsonFixturesInFactories,
     "page-objects-own-their-component": pageObjectsOwnTheirComponent,
   },
@@ -635,6 +637,17 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // A file names a module in ONE import statement: types ride beside the
+    // values with an inline `type`, never in a separate `import type` block.
+    // Re-exports follow the same rule. Repo-wide and autofixable. The other
+    // half — a statement naming ONLY types stays `import type` — is Biome's
+    // `useImportType` / `useExportType`; read the rule header for why the two
+    // need each other under `verbatimModuleSyntax`.
+    files: ["**/*.{ts,tsx,mts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/one-import-per-module": "error" },
   },
   {
     // A page object CONSTRUCTS the component it is named for; its published
