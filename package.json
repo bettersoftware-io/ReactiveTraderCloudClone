@@ -84,9 +84,9 @@
     "mutation-check": "node scripts/mutation-check.mts",
     "lint:dead": "knip",
     "check:deps": "depcruise --config .dependency-cruiser.mts packages tests",
-    "lint:eslint": "eslint .",
-    "lint:eslint:types": "eslint . --config eslint.config.typed.mts",
-    "lint:css": "stylelint \"packages/*/src/**/*.css\"",
+    "lint:eslint": "eslint . --max-warnings 0",
+    "lint:eslint:types": "eslint . --config eslint.config.typed.mts --max-warnings 0",
+    "lint:css": "stylelint \"packages/*/src/**/*.css\" --max-warnings 0",
     "visual:jitter": "pnpm --filter @rtc/tests visual:jitter",
     "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live",
     "visual:engine-parity": "pnpm --filter @rtc/tests visual:engine-parity"
