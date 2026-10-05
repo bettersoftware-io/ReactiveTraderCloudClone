@@ -744,7 +744,10 @@ When you write a new Effect member:
 
 - keep its state in a `SyncRef`;
 - fold several ports with `fromPort.merged`, and a changing set of ports
-  with `switchedPortEvents` inside it;
+  with `switchedPortEvents` inside it — never with an Effect combinator such
+  as `Stream.merge`, `flatMap` or `zipLatest`, which a gate now rejects
+  outside the bridge (use `latestOfEach` where you would have written
+  `combineLatest`, and `firstPortEvent` for a one-shot query);
 - let `sharedFold` do the sharing, and give a reader that wants only part
   of a shared stream a `filterStream`, not a fold of its own.
 

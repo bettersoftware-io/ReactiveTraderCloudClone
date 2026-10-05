@@ -24,7 +24,10 @@ import {
 import { turnScheduler } from "#/bridge/turnScheduler";
 
 export {
+  firstPortEvent,
+  latestOfEach,
   leavingOnFailure,
+  oneEvent,
   type PortEvents,
   portEvents,
   switchedPortEvents,
@@ -327,6 +330,48 @@ export function filterStream<T>(
         if (keep(value)) {
           subscriber.next(value);
         }
+      },
+      error: (error: unknown) => {
+        subscriber.error(error);
+      },
+      complete: () => {
+        subscriber.complete();
+      },
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
+}
+
+/** A view of `source` through `project`, passing a projection on only when
+ * it differs from the previous one (`Object.is`) — the RxJS
+ * `source.pipe(map(project), distinctUntilChanged())`. Each subscriber
+ * compares against what IT last heard.
+ *
+ * For the selector of a `switchedPortEvents`: a group that should be
+ * reopened only when what selects it changed, not on every value of the
+ * stream it is read from. */
+export function projectedChanges<T, K>(
+  source: CoreStream<T>,
+  project: (value: T) => K,
+): CoreStream<K> {
+  return new Observable<K>((subscriber) => {
+    let heard = false;
+    let last: K | undefined;
+
+    const subscription = source.subscribe({
+      next: (value: T) => {
+        const projected = project(value);
+
+        if (heard && Object.is(projected, last)) {
+          return;
+        }
+
+        heard = true;
+        last = projected;
+        subscriber.next(projected);
       },
       error: (error: unknown) => {
         subscriber.error(error);

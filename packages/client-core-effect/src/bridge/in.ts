@@ -126,6 +126,140 @@ export function portEvents<A, E>(
   };
 }
 
+/** A port's FIRST value as a source of a merged stream, then its end: the
+ * one-shot query shape (`rpc`, as plain subscription management). The port
+ * is released as soon as it has answered. One that completes without a
+ * value fails the stream, as `rpc` does. */
+export function firstPortEvent<A, E>(
+  source: Observable<A>,
+  toEvent: (value: A) => E,
+): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      let subscription: Unsubscribable | undefined;
+      let settled = false;
+
+      // A synchronous source answers DURING `subscribe`, before the holder
+      // below is assigned: the release then happens after it returns.
+      function settle(): void {
+        settled = true;
+        subscription?.unsubscribe();
+      }
+
+      subscription = source.subscribe({
+        next: (value: A) => {
+          if (!settled) {
+            settle();
+            sink.emit(toEvent(value));
+            sink.end();
+          }
+        },
+        error: (error: unknown) => {
+          if (!settled) {
+            settle();
+            sink.fail(error);
+          }
+        },
+        complete: () => {
+          if (!settled) {
+            settle();
+            sink.fail(
+              new Error("firstPortEvent: source completed without a value"),
+            );
+          }
+        },
+      });
+
+      if (settled) {
+        subscription.unsubscribe();
+      }
+
+      return {
+        unsubscribe: settle,
+      };
+    },
+  };
+}
+
+/** One event, then the end: the constant member of a group (the RxJS
+ * `of(event)`). */
+export function oneEvent<E>(event: E): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      sink.emit(event);
+      sink.end();
+
+      return {
+        unsubscribe: () => {},
+      };
+    },
+  };
+}
+
+/** The LATEST event of every member, as one source of a merged stream: an
+ * array in the members' order, emitted each time one of them emits, from the
+ * moment every member has emitted once — the RxJS `combineLatest`, as plain
+ * subscription management.
+ *
+ * It ends when every member has ended and fails as soon as one does. No
+ * members at all is an immediate end, as `combineLatest([])` is.
+ *
+ * Why not `Stream.zipLatestAll` over a stream per port: a fiber per port and
+ * a hand-over per value, as `Stream.merge` (see `fromObservables`). */
+export function latestOfEach<E>(
+  members: readonly PortEvents<E>[],
+): PortEvents<readonly E[]> {
+  return {
+    subscribe: (sink: EventSink<readonly E[]>) => {
+      const latest: E[] = [];
+      const seen = members.map(() => {
+        return false;
+      });
+      let missing = members.length;
+      let live = members.length;
+
+      if (members.length === 0) {
+        sink.end();
+      }
+
+      const subscriptions = members.map((member, index) => {
+        return member.subscribe({
+          emit: (event: E) => {
+            latest[index] = event;
+
+            if (!seen[index]) {
+              seen[index] = true;
+              missing -= 1;
+            }
+
+            if (missing === 0) {
+              sink.emit([...latest]);
+            }
+          },
+          fail: (error: unknown) => {
+            sink.fail(error);
+          },
+          end: () => {
+            live -= 1;
+
+            if (live === 0) {
+              sink.end();
+            }
+          },
+        });
+      });
+
+      return {
+        unsubscribe: () => {
+          for (const each of subscriptions) {
+            each.unsubscribe();
+          }
+        },
+      };
+    },
+  };
+}
+
 /** A GROUP of ports that follows a selector, as one source of a merged
  * stream: the ports `open` returns for the selector's LATEST value. A new
  * value releases the previous group's ports, then opens the next group —
