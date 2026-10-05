@@ -3,10 +3,16 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { assertDepsServedLean, LEAN_DEPS_ENV } from "./lib/leanDeps.ts";
+import { resolveServeMode, type ServeMode } from "./lib/serveMode.ts";
 
-export interface DevServerHandle {
-  /** The port the dev server actually bound (may differ from the preferred one). */
+/** The server a browser suite drives: the client's production build behind
+ * `vite preview`, or its Vite dev server (`lib/serveMode.ts` says which, and
+ * why the build is the default). */
+export interface ClientServerHandle {
+  /** The port the server actually bound (may differ from the preferred one). */
   readonly port: number;
+  /** What it serves; `null` for a server this process only adopted. */
+  readonly mode: ServeMode | null;
   stop(): Promise<void>;
 }
 
@@ -34,6 +40,84 @@ export const CLIENT_PKG: string =
   process.env.RTC_CLIENT_PKG ?? "@rtc/client-react";
 // Resolve the monorepo root (two levels up from tests/scripts/)
 const MONOREPO_ROOT = join(fileURLToPath(import.meta.url), "..", "..", "..");
+const CLIENT_DIR = join(
+  MONOREPO_ROOT,
+  "packages",
+  CLIENT_PKG.replace("@rtc/", ""),
+);
+// The package's own Vite, run directly: a `pnpm exec` wrapper would be one
+// more process between this one and the server it has to stop.
+const VITE_BIN = join(CLIENT_DIR, "node_modules", ".bin", "vite");
+
+/** What every client server the harness starts is given, dev or built.
+ * VITE_DEV_AUTH seeds a simulator-mode credential (demo/demo, matching the
+ * `demo` roster identity — see packages/domain/src/auth/roster.ts) so the
+ * login-form e2e spec (browser/playwright/login.spec.ts) can drive the real
+ * LoginScreen. Every OTHER browser spec seeds an authenticated session
+ * directly (see tests/browser/authSeed.ts) and never touches this form, so
+ * the value is unused there. Both clients read it identically through their
+ * own `parseDevAuth` helper in buildBrowserPorts.ts. NODE_OPTIONS is emptied
+ * so Vite does not inherit the parent's loader options. */
+function clientEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    NODE_OPTIONS: "",
+    VITE_DEV_AUTH: '{"demo":"demo"}',
+    VITE_CORE_IMPL: process.env.RTC_CORE_IMPL ?? "",
+  };
+}
+
+/** Where this run's build of the client goes: one directory per client and
+ * core, under node_modules so no linter, formatter or git ever sees it. */
+function buildOutDir(): string {
+  return join(
+    MONOREPO_ROOT,
+    "tests",
+    "node_modules",
+    ".cache",
+    "rtc-e2e",
+    `${CLIENT_PKG.replace("@rtc/", "")}-${process.env.RTC_CORE_IMPL || "rxjs"}`,
+  );
+}
+
+/** `vite build` the client into `outDir`. VITE_DEMO_AUTH is emptied: a
+ * production build reads its demo roster from the committed
+ * `.env.production`, where `demo`'s password is not the `demo` the login spec
+ * types — the roster this run uses is VITE_DEV_AUTH's, as on the dev server. */
+function buildClient(outDir: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      VITE_BIN,
+      ["build", "--outDir", outDir, "--emptyOutDir"],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: CLIENT_DIR,
+        env: { ...clientEnv(), VITE_DEMO_AUTH: "" },
+      },
+    );
+    let log = "";
+
+    function capture(d: Buffer): void {
+      log = (log + d.toString()).slice(-4000);
+    }
+
+    child.stdout.on("data", capture);
+    child.stderr.on("data", capture);
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          `vite build of ${CLIENT_PKG} exited with code ${code}\n--- build output ---\n${log}`,
+        ),
+      );
+    });
+  });
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => {
@@ -87,35 +171,8 @@ interface SpawnedServer {
   getLog(): string;
 }
 
-function spawnDevServer(preferredPort: number): SpawnedServer {
-  const child = spawn("pnpm", ["--filter", CLIENT_PKG, "dev"], {
-    // Capture output so we can read the actual bound port from Vite's banner and
-    // surface startup failures in the thrown message (not a blind timeout).
-    stdio: ["ignore", "pipe", "pipe"],
-    // Detached → the child leads its own process group, so stop() can kill the
-    // whole group. The child is a `pnpm` wrapper that spawns Vite as its own
-    // child; signalling only the wrapper leaves Vite orphaned on the port.
-    detached: true,
-    cwd: MONOREPO_ROOT,
-    // PORT is the preferred port; Vite auto-increments if taken (we parse the
-    // real one). Omit NODE_OPTIONS so Vite doesn't inherit the parent's loader options.
-    // VITE_DEV_AUTH seeds a simulator-mode dev credential (demo/demo, matching
-    // the `demo` roster identity — see packages/domain/src/auth/roster.ts) so
-    // the login-form e2e spec (browser/playwright/login.spec.ts) can drive the
-    // real LoginScreen. Every OTHER browser spec seeds an authenticated
-    // session directly (see tests/browser/authSeed.ts) and never touches this
-    // form, so the value is unused there. Both clients read it identically via
-    // `import.meta.env.VITE_DEV_AUTH` through their own `parseDevAuth` helper
-    // in buildBrowserPorts.ts — client-react and client-solid alike.
-    env: {
-      ...process.env,
-      PORT: String(preferredPort),
-      NODE_OPTIONS: "",
-      VITE_DEV_AUTH: '{"demo":"demo"}',
-      VITE_CORE_IMPL: process.env.RTC_CORE_IMPL ?? "",
-      ...LEAN_DEPS_ENV,
-    },
-  });
+/** Follow a spawned server's output, for its port and for diagnostics. */
+function followOutput(child: ChildProcess): SpawnedServer {
   let log = "";
 
   function capture(d: Buffer): void {
@@ -130,6 +187,55 @@ function spawnDevServer(preferredPort: number): SpawnedServer {
       return log;
     },
   };
+}
+
+function spawnDevServer(preferredPort: number): SpawnedServer {
+  return followOutput(
+    spawn("pnpm", ["--filter", CLIENT_PKG, "dev"], {
+      // Capture output so we can read the actual bound port from Vite's banner
+      // and surface startup failures in the thrown message (not a blind
+      // timeout).
+      stdio: ["ignore", "pipe", "pipe"],
+      // Detached → the child leads its own process group, so stop() can kill
+      // the whole group. The child is a `pnpm` wrapper that spawns Vite as its
+      // own child; signalling only the wrapper leaves Vite orphaned on the
+      // port.
+      detached: true,
+      cwd: MONOREPO_ROOT,
+      // PORT is the preferred port; Vite auto-increments if taken (we parse
+      // the real one).
+      env: { ...clientEnv(), PORT: String(preferredPort), ...LEAN_DEPS_ENV },
+    }),
+  );
+}
+
+/** `vite preview` over a finished build. It prints the same "Local:" banner
+ * as the dev server and moves to the next free port the same way, so the
+ * readiness wait below serves both. */
+function spawnPreviewServer(
+  preferredPort: number,
+  outDir: string,
+): SpawnedServer {
+  return followOutput(
+    spawn(
+      VITE_BIN,
+      [
+        "preview",
+        "--outDir",
+        outDir,
+        "--port",
+        String(preferredPort),
+        "--host",
+        "127.0.0.1",
+      ],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: true,
+        cwd: CLIENT_DIR,
+        env: clientEnv(),
+      },
+    ),
+  );
 }
 
 function makeStop(child: ChildProcess): () => Promise<void> {
@@ -177,14 +283,14 @@ async function awaitReady(
 ): Promise<number> {
   let exitMsg: string | null = null;
   server.child.once("exit", (code, signal) => {
-    exitMsg = `dev server process exited early (code=${code}, signal=${signal})`;
+    exitMsg = `client server process exited early (code=${code}, signal=${signal})`;
   });
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
     if (exitMsg) {
       throw new Error(
-        `${exitMsg}\n--- dev server output ---\n${server.getLog()}`,
+        `${exitMsg}\n--- client server output ---\n${server.getLog()}`,
       );
     }
 
@@ -198,12 +304,12 @@ async function awaitReady(
   }
 
   throw new Error(
-    `dev server did not report a ready port within ${timeoutMs}ms\n` +
-      `--- dev server output ---\n${server.getLog()}`,
+    `client server did not report a ready port within ${timeoutMs}ms\n` +
+      `--- client server output ---\n${server.getLog()}`,
   );
 }
 
-export async function startDevServer(): Promise<DevServerHandle> {
+export async function startClientServer(): Promise<ClientServerHandle> {
   // Reuse path: the orchestrating runner (with-server.ts) already started one
   // server and flagged sharing as intentional, passing its actual port down as
   // RTC_DEV_PORT. Cucumber's per-worker hooks land here — adopt that server.
@@ -211,17 +317,37 @@ export async function startDevServer(): Promise<DevServerHandle> {
     process.env[SHARED_DEV_SERVER_ENV] === "1" &&
     (await pingPort(DEV_PORT))
   ) {
-    return { port: DEV_PORT, stop: async () => {} };
+    return { port: DEV_PORT, mode: null, stop: async () => {} };
   }
+
+  const mode = resolveServeMode(process.env);
 
   // Otherwise start our own. Vite picks the first free port at/after the
   // preferred one and tells us which; we read it back rather than guessing.
-  const server = spawnDevServer(DEV_PORT);
+  if (mode === "build") {
+    const outDir = buildOutDir();
+    await buildClient(outDir);
+    return untilReady(spawnPreviewServer(DEV_PORT, outDir), mode, async () => {
+      // Nothing to assert: a build has no dependency pre-bundle to keep lean.
+    });
+  }
 
+  return untilReady(spawnDevServer(DEV_PORT), mode, (port: number) => {
+    return assertDepsServedLean(`http://127.0.0.1:${port}`, fetchText);
+  });
+}
+
+/** The handle of `server` once it answers and `check` has passed; a server
+ * that fails either is stopped before the error is rethrown. */
+async function untilReady(
+  server: SpawnedServer,
+  mode: ServeMode,
+  check: (port: number) => Promise<void>,
+): Promise<ClientServerHandle> {
   try {
     const port = await awaitReady(server, 30_000);
-    await assertDepsServedLean(`http://127.0.0.1:${port}`, fetchText);
-    return { port, stop: makeStop(server.child) };
+    await check(port);
+    return { port, mode, stop: makeStop(server.child) };
   } catch (err) {
     await makeStop(server.child)();
     throw err;

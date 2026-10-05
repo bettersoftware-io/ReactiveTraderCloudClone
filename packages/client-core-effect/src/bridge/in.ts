@@ -126,6 +126,129 @@ export function portEvents<A, E>(
   };
 }
 
+/** A GROUP of ports that follows a selector, as one source of a merged
+ * stream: the ports `open` returns for the selector's LATEST value. A new
+ * value releases the previous group's ports, then opens the next group —
+ * the RxJS `selector$.pipe(switchMap((key) => merge(...open(key))))`, done
+ * as plain subscription management so every member feeds the merged
+ * stream's one queue.
+ *
+ * `open` runs once per selector value, so state it closes over is fresh per
+ * group: a "previous value" kept there starts empty after every switch (the
+ * RxJS `pairwise` inside a `switchMap`).
+ *
+ * A member that completes leaves its group; one that fails fails the whole
+ * stream (wrap it in `leavingOnFailure` to make it leave instead). The
+ * source ends when the selector has completed and its last group has no
+ * member left.
+ *
+ * Why not `Stream.flatMap(…, { switch: true })` over `Stream.mergeAll` of a
+ * stream per port: that is a fiber per port and a hand-over per value at
+ * each merge. MEASURED 2026-10-05 (React client, nine FX pairs, 6 s of
+ * steady state): the animation director and the Jarvis narrator, each
+ * following the roster's prices that way, ran 812 of the core's 1,143
+ * scheduler tasks — four and three per tick. */
+export function switchedPortEvents<K, E>(
+  selector: Observable<K>,
+  open: (key: K) => readonly PortEvents<E>[],
+): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      let group: readonly Unsubscribable[] = [];
+      let groupNumber = 0;
+      let liveMembers = 0;
+      let selectorEnded = false;
+
+      function releaseGroup(): void {
+        const released = group;
+        group = [];
+        liveMembers = 0;
+
+        for (const member of released) {
+          member.unsubscribe();
+        }
+      }
+
+      function endWhenDone(): void {
+        if (selectorEnded && liveMembers === 0) {
+          sink.end();
+        }
+      }
+
+      const selection = selector.subscribe({
+        next: (key: K) => {
+          releaseGroup();
+          groupNumber += 1;
+          const mine = groupNumber;
+          const members = open(key);
+          liveMembers = members.length;
+          const opened = members.map((member) => {
+            return member.subscribe({
+              emit: (event: E) => {
+                sink.emit(event);
+              },
+              fail: (error: unknown) => {
+                sink.fail(error);
+              },
+              end: () => {
+                liveMembers -= 1;
+                endWhenDone();
+              },
+            });
+          });
+
+          // A member that made the selector emit again while this group was
+          // still opening: the newer group is the live one, this one goes.
+          if (mine === groupNumber) {
+            group = opened;
+            return;
+          }
+
+          for (const member of opened) {
+            member.unsubscribe();
+          }
+        },
+        error: (error: unknown) => {
+          releaseGroup();
+          sink.fail(error);
+        },
+        complete: () => {
+          selectorEnded = true;
+          endWhenDone();
+        },
+      });
+
+      return {
+        unsubscribe: () => {
+          selection.unsubscribe();
+          releaseGroup();
+        },
+      };
+    },
+  };
+}
+
+/** `source`, leaving quietly when it fails: its failure becomes its end.
+ * For a member of a group whose others must carry on (the narrator: one
+ * pair's failing price stream silences that pair until the next roster). */
+export function leavingOnFailure<E>(source: PortEvents<E>): PortEvents<E> {
+  return {
+    subscribe: (sink: EventSink<E>) => {
+      return source.subscribe({
+        emit: (event: E) => {
+          sink.emit(event);
+        },
+        fail: () => {
+          sink.end();
+        },
+        end: () => {
+          sink.end();
+        },
+      });
+    },
+  };
+}
+
 /** Several ports as ONE stream: `fromObservable` for more than one source,
  * all feeding the same queue. Everything `fromObservable` says holds — the
  * ports are subscribed synchronously, in the order given, as a side effect

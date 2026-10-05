@@ -8,7 +8,10 @@ import {
 } from "@cucumber/cucumber";
 import { type Browser, chromium } from "@playwright/test";
 
-import { type DevServerHandle, startDevServer } from "#/scripts/devServer.ts";
+import {
+  type ClientServerHandle,
+  startClientServer,
+} from "#/scripts/clientServer.ts";
 
 import { classifyBrowserTeardown } from "./teardownPolicy.ts";
 import type { PlaywrightWorld } from "./world.ts";
@@ -18,10 +21,10 @@ import type { PlaywrightWorld } from "./world.ts";
 setDefaultTimeout(30_000);
 
 let browser: Browser | undefined;
-let dev: DevServerHandle | undefined;
+let dev: ClientServerHandle | undefined;
 
 BeforeAll({ timeout: 60_000 }, async () => {
-  dev = await startDevServer();
+  dev = await startClientServer();
   // PWCUCUMBER_HEADED (set by the :headed script) launches a visible browser
   // with slowMo so the scenario can be watched live. cucumber-js has no UI
   // mode, so a headed browser is the real-time view.
@@ -46,7 +49,7 @@ AfterAll({ timeout: 60_000 }, async () => {
   await closeBrowserOrReportLeak();
   // Usually already a no-op: with-server.ts starts one shared dev server and
   // flags it via RTC_DEV_SERVER_SHARED, so each cucumber worker's
-  // startDevServer() adopts it and returns a no-op stop(). It only does real
+  // startClientServer() adopts it and returns a no-op stop(). It only does real
   // work when this suite is run directly, without that wrapper — and makeStop()
   // escalates to SIGKILL on its own after 5 s, so the budget here is a backstop
   // for a process that ignores even that.

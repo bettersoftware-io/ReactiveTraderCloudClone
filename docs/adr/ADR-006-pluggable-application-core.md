@@ -1157,7 +1157,10 @@ their natives arrive, not descriptions of shipped sibling behaviour.
 - **Recorded, uncontracted:** the unsupported-sentinel panel path (the
   sentinel is minted by the adapters); a sibling's persist writer stops at
   `app.dispose()` — a pending write is dropped and no later change writes —
-  where the RxJS writer never unsubscribes. (A panel whose data port FAILED
+  where the RxJS writer never unsubscribes. *(Superseded 2026-10-05: all
+  three cores' `dispose()` writes a pending change and nothing after it — see
+  the `dispose` contract suite, `packages/core-contract/src/suites/dispose.ts`.)*
+  (A panel whose data port FAILED
   used to stay attached in the async core; after the wave both siblings
   propagate the error to `panelData$` subscribers, as RxJS does.)
 
@@ -1306,6 +1309,42 @@ and grep gate 50 keeps `SubscriptionRef` out of the package.
   cannot follow it as a `Stream` through `ref.changes`. Nothing in the core
   did. Fibers, `Stream`, `Scope`, `Layer` and interruption are untouched,
   and those are where this core differs from the other two.
+
+**The last measured costs of the Effect core (2026-10-05).** Three more
+changes to its `bridge/`, found by timing fibers by where they were forked,
+and two costs measured and accepted.
+
+- **A fold settles before its `subscribe` returns** (`turnScheduler.settle()`
+  in `sharedFold`). What a port replays on subscribe is queued for the
+  fold's fiber, which ran a microtask later — after a UI already handed
+  another stream's value had rendered. Each FX tile rendered once for its
+  price and again for its history at start-up. Contract: "a tile mounting
+  on a price that is already warm hears that price and the history the port
+  replays in one turn" (§22 guarantee 7).
+- **A changing set of ports is one group in the merged queue**
+  (`switchedPortEvents`), not `Stream.flatMap(…, { switch: true })` over a
+  `Stream.mergeAll` of a stream per port. The animation director and the
+  narrator follow the roster's prices that way; together they were 812 of
+  the 1,143 scheduler tasks of six seconds of steady state.
+- **`animationDirector.intentsFor(target)` is a filtered view**
+  (`filterStream`) of the director's one stream, as in the RxJS core, not a
+  fold per target that every intent wakes.
+
+Measured on a production build of the React client, alternating with `main`
+on a quiet machine (medians of six rounds; RxJS core in brackets): scheduler
+tasks in the FX screen's first two seconds 526 → 158 and per six seconds of
+steady state 1,974 → 516; time in fibers 30 → 17 ms and 61 → 29 ms; tile
+renders in the first two seconds 55 → 49 (48); the page busy 285 → 275 ms
+(232) in the first two seconds and 416 → 371 ms (345) per six seconds.
+
+Two costs are the library's own and stay: the Effect core's chunk takes
+about 25 ms to load and evaluate against about 6 ms for the other cores
+(235 KB, most of it `effect`), and building the Layer graph of about 45 services
+takes about 15 ms where the other cores construct the same presenters in 3.
+One Layer holding every presenter would cost about half of that; the graph
+is the composition root this ADR chose (one service per presenter,
+memoised by reference), and under 10 ms once at start-up does not buy
+changing it.
 
 ## Follow-ups
 
