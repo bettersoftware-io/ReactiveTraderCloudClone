@@ -2,15 +2,15 @@
 import { spawn } from "node:child_process";
 
 import {
-  type DevServerHandle,
+  type ClientServerHandle,
   SHARED_DEV_SERVER_ENV,
-  startDevServer,
-} from "./devServer.ts";
+  startClientServer,
+} from "./clientServer.ts";
 import { adoptCoreImpl } from "./lib/coreImpl.ts";
 import { dropArgSeparator } from "./lib/forwardedArgs.ts";
 
 // Standalone browser runs (e.g. test:browser:playwright) enter here without
-// run-all.ts; resolve the core the same way before the dev server starts.
+// run-all.ts; resolve the core the same way before the client server starts.
 adoptCoreImpl(process.env);
 
 const [cmd, ...args] = dropArgSeparator(process.argv.slice(2));
@@ -20,14 +20,15 @@ if (!cmd) {
   process.exit(2);
 }
 
-// Start the one dev server this runner owns. It may land on a later port than
+// Start the one client server this runner owns (the client's build behind
+// `vite preview`, or its dev server — RTC_E2E_SERVE, see lib/serveMode.ts). It may land on a later port than
 // the preferred RTC_DEV_PORT (taken ports get skipped), so pass the ACTUAL port
 // down to the child as RTC_DEV_PORT — that's what the test runner reads for its
 // baseURL — and set the shared flag so the child (and any of its own workers,
 // e.g. cucumber's per-worker BeforeAll hooks) reuse this server instead of
 // starting their own. The flag is set only in the child env, never ours.
-const dev: DevServerHandle = await startDevServer();
-console.log(`[with-server] dev server ready on :${dev.port}`);
+const dev: ClientServerHandle = await startClientServer();
+console.log(`[with-server] ${dev.mode} server ready on :${dev.port}`);
 
 let code = 1;
 
@@ -49,7 +50,7 @@ try {
     });
   });
 } finally {
-  // Always tear the dev server down — even if the child throws/exits abnormally
+  // Always tear the server down — even if the child throws/exits abnormally
   // — so a failed suite never leaves an orphaned Vite holding the port.
   await dev.stop();
 }

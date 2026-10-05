@@ -4,8 +4,10 @@
  *
  * Runs every suite concurrently and aggregates the results. The suites are
  * mutually independent once each owns its own resources:
- *   - Browser suites each start their OWN dev server (via with-server) on a
- *     distinct port (RTC_DEV_PORT = 3001..), so they never share app state.
+ *   - Browser suites each start their OWN client server (via with-server) on
+ *     a distinct port (RTC_DEV_PORT = 3001..), so they never share app state:
+ *     the client's production build for the Playwright suites, its dev server
+ *     for the Gherkin ones (RTC_E2E_SERVE — see lib/serveMode.ts).
  *   - The presenter suite runs against in-process simulators — no server at all.
  *   - Full-stack smokes boot their own real server (and client) on dedicated
  *     ports (4123/4124/3100 for node/browser, 4125/3101 for hybrid).
@@ -143,7 +145,7 @@ function runSuite(suite: Suite): Promise<Result> {
   const chunks: Buffer[] = [];
   const port = suite.env?.RTC_DEV_PORT;
   // RTC_DEV_PORT is the PREFERRED port; the suite bumps to the next free one if
-  // it's taken (see devServer.ts) and logs the actual port via with-server.
+  // it's taken (see clientServer.ts) and logs the actual port via with-server.
   console.log(`▶ ${suite.script}${port ? `  (prefers :${port})` : ""}`);
 
   return new Promise<Result>((resolve) => {
