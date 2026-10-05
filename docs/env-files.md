@@ -109,7 +109,7 @@ Flow: `app.config.ts` reads these into `extra.devAuth` / `extra.serverUrl` →
 
 > ⚠️ **`EXPO_PUBLIC_*` is inlined into the JS bundle when Metro starts** — it is
 > not hot-reloaded. After editing this file you must **restart Metro**
-> (`pnpm dev:ios`); an in-app reload against the running Metro keeps the old
+> (`pnpm dev:ios` or `pnpm dev:android`); an in-app reload against the running Metro keeps the old
 > value. This is the most common "I updated the credential but it still won't
 > connect" trap.
 

@@ -105,7 +105,7 @@ compile the dev build, install it in an emulator and start Metro. See
 <details>
 <summary>Force deterministic simulator data without tapping the toggle</summary>
 
-`pnpm dev:ios:sim` already does this — it sets `EXPO_PUBLIC_SERVER_URL=` (empty),
+`pnpm dev:ios:sim` (and `pnpm dev:android:sim`) already does this — it sets `EXPO_PUBLIC_SERVER_URL=` (empty),
 and `buildNativePorts` takes the in-process simulator branch whenever `serverUrl`
 is empty. To force it from a raw Metro start instead (empty string survives
 because `EXPO_PUBLIC_*` is inlined at bundle time and `??` only catches
@@ -228,7 +228,7 @@ WS connect / disconnect / rejected upgrade (server README →
 The client uses `react-native-reanimated`, `@shopify/react-native-skia`,
 `react-native-gesture-handler`, `expo-blur`, `expo-haptics`, and `expo-sensors`.
 Because these are native modules, adding or upgrading them requires rebuilding
-the dev client (`pnpm dev:ios`) — a JS reload is not enough.
+the dev client (`pnpm dev:ios`, `pnpm dev:android`) — a JS reload is not enough.
 
 **Diagnostic:** launch with `EXPO_PUBLIC_MOTION_PROBE=1 pnpm dev:ios` to render a
 flag-gated probe (`src/ui/_probe/MotionProbe.tsx`) — a pulsing Skia circle that
@@ -241,14 +241,16 @@ device. It never appears in a normal run.
 
 This app is wired for **free-path distribution** — no paid Apple Developer
 account. `eas.json` carries exactly two build profiles (`development` dev-client
-and `preview` Android APK) and no EAS Update / OTA (`updates: { enabled: false }`
-in `app.config.ts`; the `eas.projectId` is already set in `extra`). Run the EAS
+and `preview` Android APK). EAS Update is on since 2026-10-04, for the
+published Expo Go demo only (`pnpm demo:ios:publish`, branch `demo` — see
+"A real iPhone" above); the `eas.projectId` is set in `extra`. Run the EAS
 CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 
 | Target | How | Cost |
 |---|---|---|
 | **iOS Simulator** (Mac) | `expo run:ios` (dev build) — see above | Free |
-| **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `eas build -p android --profile preview` → share the link | Free |
+| **Android emulator** (Mac) | `pnpm dev:android` (dev build) — see [Developing against Android](#developing-against-android) | Free |
+| **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `pnpm preview:android:build` → share the link, or `pnpm preview:android:run` for an emulator | Free |
 | **Your own iPhone** (physical) | `expo run:ios --device` — cabled, signed with a **free** Apple ID (Xcode Personal Team) | Free, but **7-day** expiry + must be cabled |
 | **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
 | **iOS Expo Go** (App Store) | `expo start --go`, scan the QR — see "A real iPhone" above. No developer mode, no Apple account; runs only while the Mac serves it | Free |
@@ -419,7 +421,7 @@ EXPO_PUBLIC_DEV_AUTH='{"astark":"mcdc2026","demo":"mcdc2026"}' pnpm --filter @rt
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` selects the WS endpoint
 (defaults to `wss://rtc-clone-server.fly.dev`; empty string → the in-process
 simulator branch). You normally don't set it by hand — the `pnpm dev:ios:*`
-scripts do (see [Running the app](#running-the-app)).
+and `pnpm dev:android:*` scripts do (see [Running the app](#running-the-app)).
 
 > ⚠️ **Two caveats.**
 > 1. `.env` is git-ignored on purpose — **never commit a real credential**.
