@@ -122,7 +122,7 @@ describe("createApp().dispose — the Jarvis demo run", () => {
 });
 
 describe("createApp().dispose — the debounced workspace writer", () => {
-  it("a layout write still pending at dispose never lands", async () => {
+  it("a layout write still pending at dispose lands at dispose, and no timer writes after it", async () => {
     vi.useFakeTimers();
 
     try {
@@ -135,11 +135,14 @@ describe("createApp().dispose — the debounced workspace writer", () => {
         // A positive witness first: a change writes once the debounce lapses.
         layout.intents.maximize(first);
         await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS);
-        const written = driver.storedWorkspaceLayout();
-        expect(written).not.toBeNull();
+        expect(driver.storedWorkspaceLayout()).toContain(
+          `"maximized":"${first}"`,
+        );
 
         layout.intents.maximize(second);
         await app.dispose();
+        const written = driver.storedWorkspaceLayout();
+        expect(written).toContain(`"maximized":"${second}"`);
         await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS);
         expect(driver.storedWorkspaceLayout()).toBe(written);
       } finally {

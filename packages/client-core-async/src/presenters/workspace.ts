@@ -74,6 +74,10 @@ export interface NativeWorkspace {
   readonly drive: WorkspaceDriveDeps;
   /** `AppCommands.reportDetachedPanels`. */
   reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
+  /** Writes a layout change still inside the persistence debounce, now —
+   * `app.dispose()` calls it before `lifetime` aborts, while the layout
+   * state it reads is still live. No pending change, no write. */
+  writePendingLayout(): void;
 }
 
 export interface NativeWorkspaceDeps {
@@ -331,12 +335,17 @@ export function createNativeWorkspace(
       detachedPanelIds: dock.detachedPanelIds,
     },
     reportDetachedPanels: dock.reportDetachedPanels,
+    writePendingLayout: persist.writePending,
   };
 }
 
 interface PersistDebounce {
   /** (Re)start the quiet window; the write runs once it elapses. */
   kick(): void;
+  /** End an open quiet window early and write now; with none open, do
+   * nothing. A hot swap disposes the core inside the window, and a bare
+   * abort would drop the change. */
+  writePending(): void;
 }
 
 /** The writer's debounce: each kick aborts the pending
@@ -385,6 +394,15 @@ function createPersistDebounce(
           }
         },
       );
+    },
+    writePending: () => {
+      if (pending === null || lifetime.aborted) {
+        return;
+      }
+
+      pending.abort();
+      pending = null;
+      write();
     },
   };
 }

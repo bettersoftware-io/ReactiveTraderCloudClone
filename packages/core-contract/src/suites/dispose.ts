@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ROSTER, type RosterEntry } from "@rtc/domain";
+import {
+  ROSTER,
+  type RosterEntry,
+  WORKSPACE_PERSIST_DEBOUNCE_MS,
+} from "@rtc/domain";
 
 import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
@@ -9,6 +13,8 @@ import { everySessionStream, signIn } from "#/suites/sessionKit";
 import {
   createPanelEvent,
   FX_TICKS_SPEC,
+  leafIds,
+  readLayout,
   replyToTurn,
 } from "#/suites/workspaceKit";
 
@@ -23,7 +29,11 @@ const DEMO: RosterEntry = ROSTER[0];
  * spawns a live price panel and docks it, then one warm period on 39
  * port-backed presenter streams a mounted workspace reads — so what dispose
  * must release is whatever that session left the app holding, not only what
- * composition alone opens. */
+ * composition alone opens. Ending the app must not lose state either: a
+ * workspace-layout change still inside the persistence debounce is written
+ * by `dispose()` (a hot swap disposes the core seconds after a drag), never
+ * a layout a reset already discarded, and with nothing pending nothing is
+ * written. */
 export function describeDisposeContract(
   label: string,
   makeHarness: MakeHarness,
@@ -122,6 +132,110 @@ export function describeDisposeContract(
           h.app.presenters.auth.logout();
           await clock.settle();
           expect(h.driver.transportCalls()).toEqual(["connect"]);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("dispose() writes a workspace-layout change still inside the persistence debounce", async () => {
+      await withFakeClock(async (clock) => {
+        const h1 = makeHarness();
+        let stored: string | null = null;
+        let maximized = "";
+
+        try {
+          const { intents } = h1.app.presenters.layoutFor("fx");
+          [maximized] = leafIds(
+            (await readLayout(h1, "fx", clock.settle)).root,
+          );
+          intents.maximize(maximized);
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS - 1);
+          // A positive witness first: the debounce has not written yet, so
+          // whatever lands below is dispose()'s own write.
+          expect(h1.driver.storedWorkspaceLayout()).toBe(null);
+          await h1.app.dispose();
+          stored = h1.driver.storedWorkspaceLayout();
+        } finally {
+          await h1.teardown();
+        }
+
+        expect(stored).not.toBe(null);
+        const h2 = makeHarness({ workspaceLayout: stored });
+
+        try {
+          expect((await readLayout(h2, "fx", clock.settle)).maximized).toBe(
+            maximized,
+          );
+        } finally {
+          await h2.teardown();
+        }
+      });
+    });
+
+    it("dispose() inside the debounce after a reset does not write back the pre-reset layout", async () => {
+      await withFakeClock(async (clock) => {
+        const h1 = makeHarness();
+        let stored: string | null = null;
+
+        try {
+          const { intents } = h1.app.presenters.layoutFor("fx");
+          const [a] = leafIds((await readLayout(h1, "fx", clock.settle)).root);
+          // The change the reset discards is still inside the debounce when
+          // the reset lands, so the write dispose() makes is the first one
+          // after it: it must carry the reset's layout, not this change.
+          intents.maximize(a);
+          await clock.settle();
+          expect((await readLayout(h1, "fx", clock.settle)).maximized).toBe(a);
+          h1.app.presenters.resetWorkspaceLayout();
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS - 1);
+          // A positive witness first: nothing has been written yet, so what
+          // is stored below is dispose()'s own write (or none).
+          expect(h1.driver.storedWorkspaceLayout()).toBe(null);
+          await h1.app.dispose();
+          stored = h1.driver.storedWorkspaceLayout();
+        } finally {
+          await h1.teardown();
+        }
+
+        expect(stored ?? "").not.toContain('"maximized":"');
+        const h2 = makeHarness({ workspaceLayout: stored });
+
+        try {
+          expect((await readLayout(h2, "fx", clock.settle)).maximized).toBe(
+            null,
+          );
+        } finally {
+          await h2.teardown();
+        }
+      });
+    });
+
+    it("dispose() with no layout change pending writes nothing", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness();
+
+        try {
+          const { intents } = h.app.presenters.layoutFor("fx");
+          const [a] = leafIds((await readLayout(h, "fx", clock.settle)).root);
+          intents.maximize(a);
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          expect(h.driver.storedWorkspaceLayout()).toContain(
+            `"maximized":"${a}"`,
+          );
+          const writes = collect(h.app.ports.preferences.workspaceLayout$());
+          const baseline = writes.values.length;
+          // The port drops a write of the value it already holds, so the
+          // stored value is moved away from the live layout first: any write
+          // dispose() made would land as a new value. It is also the positive
+          // witness that the counter sees a write at all.
+          h.app.ports.preferences.setWorkspaceLayout(null);
+          expect(writes.values.length).toBe(baseline + 1);
+          await h.app.dispose();
+          await clock.settle();
+          expect(writes.values.length).toBe(baseline + 1);
+          expect(h.driver.storedWorkspaceLayout()).toBe(null);
+          writes.unsubscribe();
         } finally {
           await h.teardown();
         }
