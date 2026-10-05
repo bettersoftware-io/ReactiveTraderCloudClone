@@ -63,7 +63,8 @@ flowchart TD
 - [`react-vs-solid-performance.md`](react-vs-solid-performance.md) — measured
   runtime cost of the React and Solid clients (verdict: parity).
 - [`lint-warnings.md`](lint-warnings.md) — the generated lint-warnings ledger
-  (do not edit by hand; `pnpm sync:lint-warnings`).
+  (do not edit by hand; `pnpm sync:lint-warnings`). Dormant since 2026-10-06:
+  a lint warning now fails the build, so it reads zero.
 - [`rn-styling.md`](rn-styling.md) — the native equivalent of the web clients'
   CSS-Modules styling rule.
 - [`rn-open-items.md`](rn-open-items.md) — every known gap and follow-up in the

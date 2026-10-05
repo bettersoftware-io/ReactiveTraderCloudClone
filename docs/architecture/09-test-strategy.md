@@ -182,8 +182,8 @@ import React, RxJS, or Playwright internals") applies to the co-located
 `src/**` unit tier too, enforced by `rtc/no-framework-calls-in-specs`:
 specs call semantic methods on page modules under the package's
 `tests/**/pages/`; those modules are the only test files importing
-`@testing-library/*`. Rollout state and per-package backlog:
-[`docs/lint-warnings.md`](../lint-warnings.md). Design:
+`@testing-library/*`. The rule is an error in every covered tree (the
+migration backlog reached zero on 2026-09-04). Design:
 [page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
 
 **A page object must also CONSTRUCT the component it is named for**, not accept

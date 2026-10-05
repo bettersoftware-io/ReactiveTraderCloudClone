@@ -55,7 +55,6 @@ otherwise one line ("all N CI steps mapped").
 | Architecture + supply-chain gates (grep gates + pnpm audit --prod) | fast |
 | Typecheck | full |
 | Tests (unit) | full |
-| Lint-warnings ledger drift (docs/lint-warnings.md) | full |
 | ESLint (type-aware rules) | full |
 | UI contract coverage gate (≥95%) | full |
 | UI contract coverage gate — solid (≥95%, branches ≥85%) | full |
@@ -92,7 +91,7 @@ even if one fails — a single command's failure is not a reason to skip the res
 
 ```bash
 pnpm exec biome ci --error-on-warnings . # format + import-sort + lint (warnings fail too)
-pnpm lint:eslint                        # AST rules
+pnpm lint:eslint                        # AST rules (warnings fail too: --max-warnings 0)
 pnpm test:rules                         # custom rule RuleTester suite
 pnpm lint:css                           # stylelint
 pnpm lint:actions                       # actionlint
@@ -126,7 +125,6 @@ Everything above, then:
 ```bash
 pnpm typecheck
 pnpm test                                                   # unit, the long pole (~2.5 min)
-pnpm check:lint-warnings-drift                              # re-runs ESLint; slower than it looks
 pnpm lint:eslint:types                                      # type-aware rules
 pnpm --filter @rtc/client-react test:ui:contract:coverage   # ≥95%
 pnpm --filter @rtc/client-solid test:ui:contract:coverage   # ≥95%, branches ≥85%
