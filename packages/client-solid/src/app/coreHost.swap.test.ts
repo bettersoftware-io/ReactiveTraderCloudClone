@@ -82,12 +82,19 @@ describe("hot swap over the real browser ports", () => {
     localStorage.clear();
   });
 
+  // Every case ends with no host warning and no fatal: the host swallows a
+  // throw from `warn` and `onFatal`, so a harness that threw from them would
+  // be silent. A case that expects one must take it out of the record first.
   afterEach(async () => {
+    const warnings = hostWarnings.splice(0);
+    const fatals = hostFatals.splice(0);
     await disposeAll();
     vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
     localStorage.clear();
+
+    expect({ warnings, fatals }).toEqual({ warnings: [], fatals: [] });
   });
 
   it.each(PAIRS)(
@@ -395,6 +402,12 @@ describe("hot swap over the real browser ports", () => {
  * already disposed all but the running one; `App.dispose()` is idempotent. */
 const composedApps: App[] = [];
 
+/** Every `[core]` warning a host of the running test logged, and every
+ * error one handed to `onFatal`; `afterEach` asserts both are empty. */
+const hostWarnings: string[] = [];
+
+const hostFatals: unknown[] = [];
+
 /** Every inspector a test attached, detached in `afterEach`. */
 const liveInspectors: LiveInspector[] = [];
 
@@ -480,10 +493,10 @@ function createHostHarness(
     stripCoreParam: () => {},
     info: () => {},
     warn: (message: string): void => {
-      throw new Error(`unexpected host warning: ${message}`);
+      hostWarnings.push(message);
     },
     onFatal: (error: unknown): void => {
-      throw error;
+      hostFatals.push(error);
     },
     cover: { enterMs: 0, holdMs: 0, exitMs: 0 },
     sleep: delayBy,
