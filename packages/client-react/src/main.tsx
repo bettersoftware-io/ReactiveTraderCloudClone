@@ -17,8 +17,6 @@ import "@fontsource/jetbrains-mono/700.css";
 import "@fontsource/orbitron/700.css";
 import "@fontsource/orbitron/800.css";
 import { StrictMode } from "react";
-import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
 
 import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
 import {
@@ -49,6 +47,7 @@ import {
 } from "./app/coreSelection";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
+import { createReactTreeMount } from "./app/reactTreeMount";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -122,7 +121,9 @@ void runBoot(
   }),
   ({ impl, core, source }) => {
     console.info(formatBootedMessage(impl, source));
-    const root = createRoot(rootEl);
+    // A tree that fails its first render makes `mount` throw (React 19 does
+    // not), so a swap onto a core whose UI cannot render ends in `onFatal`.
+    const tree = createReactTreeMount(rootEl);
 
     // The host owns the ports (built once per page) and every composition;
     // a Preferences core choice swaps the core in place, with no reload.
@@ -135,21 +136,15 @@ void runBoot(
         devtoolsHub.endComposition();
       },
       mount: (composition: Composition): void => {
-        flushSync(() => {
-          root.render(
-            <StrictMode>
-              <AppRoot key={composition.generation} composition={composition}>
-                <App />
-              </AppRoot>
-            </StrictMode>,
-          );
-        });
+        tree.mount(
+          <StrictMode>
+            <AppRoot key={composition.generation} composition={composition}>
+              <App />
+            </AppRoot>
+          </StrictMode>,
+        );
       },
-      unmount: () => {
-        flushSync(() => {
-          root.render(null);
-        });
-      },
+      unmount: tree.unmount,
       publish: (next: CoreImpl): void => {
         document.documentElement.dataset.coreImpl = next;
       },
@@ -172,7 +167,7 @@ void runBoot(
       onFatal: (error: unknown): void => {
         // No core is composed: drop whatever the root still holds, then show
         // the boot-error screen in its place.
-        root.unmount();
+        tree.destroy();
         renderBootError(rootEl, error, reloadOntoDefaultCore);
       },
       cover: NO_COVER,

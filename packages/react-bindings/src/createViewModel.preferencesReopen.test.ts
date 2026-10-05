@@ -20,20 +20,27 @@ import {
 import { createViewModel } from "#/createViewModel";
 
 describe("createViewModel — Preferences reopen", () => {
-  it("hands over the host's one-shot signal: true once, then false", () => {
+  it("takes the host's own one-shot: the host's state is consumed, not a copy", () => {
     const { presenters, machines, commands } = createHooksInputs();
-    let pending = true;
+    const host = createOneShot();
 
-    const vm = createViewModel(presenters, machines, commands, {
-      takePreferencesReopen: (): boolean => {
-        const reopen = pending;
-        pending = false;
-        return reopen;
-      },
-    });
+    const vm = createViewModel(presenters, machines, commands, host);
 
     expect(vm.takePreferencesReopen?.()).toBe(true);
+    expect(host.peekPreferencesReopen()).toBe(false);
     expect(vm.takePreferencesReopen?.()).toBe(false);
+  });
+
+  it("peeks at the host's one-shot without consuming it", () => {
+    const { presenters, machines, commands } = createHooksInputs();
+    const host = createOneShot();
+
+    const vm = createViewModel(presenters, machines, commands, host);
+
+    expect(vm.peekPreferencesReopen?.()).toBe(true);
+    expect(vm.peekPreferencesReopen?.()).toBe(true);
+    expect(host.takePreferencesReopen()).toBe(true);
+    expect(vm.peekPreferencesReopen?.()).toBe(false);
   });
 
   it("never reopens when the host supplies no signal", () => {
@@ -41,9 +48,32 @@ describe("createViewModel — Preferences reopen", () => {
 
     const vm = createViewModel(presenters, machines, commands);
 
+    expect(vm.peekPreferencesReopen?.()).toBe(false);
     expect(vm.takePreferencesReopen?.()).toBe(false);
   });
 });
+
+interface OneShot {
+  takePreferencesReopen(): boolean;
+  peekPreferencesReopen(): boolean;
+}
+
+/** A host's armed one-shot, as the core host builds it for the composition
+ * a swap produced. */
+function createOneShot(): OneShot {
+  let pending = true;
+
+  return {
+    takePreferencesReopen: (): boolean => {
+      const reopen = pending;
+      pending = false;
+      return reopen;
+    },
+    peekPreferencesReopen: (): boolean => {
+      return pending;
+    },
+  };
+}
 
 interface HooksInputs {
   presenters: Presenters;

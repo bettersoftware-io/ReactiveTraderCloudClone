@@ -36,7 +36,20 @@ import styles from "./HeaderChrome.module.css";
 export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   // Local view-state only (which UI panel is open) — not business logic, so a
   // plain createSignal is correct here, no port involved.
-  const [prefsOpen, setPrefsOpen] = createSignal(false);
+  //
+  // It starts open when the shell's one-shot says this composition came from
+  // a core swap: read with the pure `peek`, and TAKEN once this header has
+  // mounted — the same two-step shell API as client-react's header. A later
+  // mount (AuthGate after sign-in) peeks `false` — the signal is the
+  // composition's, not the header's.
+  const { peekPreferencesReopen, takePreferencesReopen } = useViewModel();
+  const [prefsOpen, setPrefsOpen] = createSignal(
+    peekPreferencesReopen?.() === true,
+  );
+
+  onMount(() => {
+    takePreferencesReopen?.();
+  });
 
   function openPrefsModal(): void {
     setPrefsOpen(true);
@@ -45,15 +58,6 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   function closePrefsModal(): void {
     setPrefsOpen(false);
   }
-
-  // Taken once per mount; a later mount (AuthGate after sign-in) takes
-  // `false` — the signal is the composition's, not the header's.
-  const { takePreferencesReopen } = useViewModel();
-  onMount(() => {
-    if (takePreferencesReopen?.() === true) {
-      openPrefsModal();
-    }
-  });
 
   // Driven-pulse cue (Task 10/11): flashes the nav rail for one CSS
   // animation cycle when Jarvis's drive-the-app interpreter applies a

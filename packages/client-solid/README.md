@@ -13,7 +13,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, then `runBoot(bootCore(...))` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`) -- then the core host (`src/app/coreHost.ts`) builds the ports once and renders `<AppRoot composition><App /></AppRoot>`, swapping the core in place when Preferences picks another |
+| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, then `runBoot(bootCore(...))` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`) -- then hands the loaded core and the page's ports (`buildBrowserPorts()`, built once) to the core host (`src/app/coreHost.ts`), which renders `<AppRoot composition><App /></AppRoot>`, swapping the core in place when Preferences picks another |
 | `src/AppRoot.tsx` | UI root of one composition — builds the `ViewModel` from the host's composition and supplies `ViewModelProvider` + theme + `BootGate` |
 | `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, local storage, `fetch`/`import.meta.env` |
 | `src/app/adapters/` | `LocalStoragePreferencesAdapter`, `BrowserConnectionEventsAdapter` |

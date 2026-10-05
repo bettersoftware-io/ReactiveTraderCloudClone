@@ -8,7 +8,6 @@ import type {
   AuthViewState,
   BootSequenceIntents,
   BootSequenceState,
-  CoreImpl,
   CoreSelection,
   DockLayoutStore,
   EqChartType,
@@ -349,6 +348,8 @@ export interface ViewModelShell {
    * header opens Preferences again on the new core. Omitted by a host that
    * never swaps (RN). */
   readonly takePreferencesReopen?: () => boolean;
+  /** What `takePreferencesReopen` would answer, without consuming it. */
+  readonly peekPreferencesReopen?: () => boolean;
 }
 
 /** The core switch as the Preferences row reads it (web only): the shell's
@@ -610,6 +611,10 @@ export interface ViewModel {
    * Optional so a hand-built ViewModel (RN's visual fake) may omit it;
    * `createViewModel` always supplies it. */
   takePreferencesReopen?: () => boolean;
+  /** Not a hook: what `takePreferencesReopen` would answer, without
+   * consuming it — a pure read, safe in a render React may throw away. Read
+   * it to decide, take it once committed. Optional like its sibling. */
+  peekPreferencesReopen?: () => boolean;
 }
 
 export function createViewModel(
@@ -622,6 +627,9 @@ export function createViewModel(
   const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
   const takePreferencesReopen =
     shell?.takePreferencesReopen ?? declinePreferencesReopen;
+
+  const peekPreferencesReopen =
+    shell?.peekPreferencesReopen ?? declinePreferencesReopen;
 
   const [useCoreSelectionFailure] = bind(
     coreSelection?.failure$ ?? of(null),
@@ -1577,9 +1585,7 @@ export function createViewModel(
       return {
         current: coreSelection.current,
         options: coreSelection.options,
-        select: (impl: CoreImpl): void => {
-          coreSelection.select(impl);
-        },
+        select: coreSelection.select,
         failure,
       };
     },
@@ -1587,6 +1593,7 @@ export function createViewModel(
       return demoAccounts;
     },
     takePreferencesReopen,
+    peekPreferencesReopen,
   };
 }
 

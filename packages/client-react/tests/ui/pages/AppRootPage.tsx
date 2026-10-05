@@ -1,12 +1,13 @@
 import { state } from "@rx-state/core";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import { StrictMode } from "react";
+import { StrictMode, Suspense } from "react";
 import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
@@ -16,6 +17,8 @@ import { AppRoot } from "#/AppRoot";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import type { Composition } from "#/app/coreHost";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
+
+import { Suspender } from "./Suspender";
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
  * so there is no runtime switch to exercise here. */
@@ -35,6 +38,11 @@ export interface AppRootPage {
    * `StrictMode`, as `main.tsx` does, on the composition a core swap
    * produced: its shell's one-shot "reopen Preferences" is armed. */
   mountHeaderAfterCoreSwap(): void;
+  /** As `mountHeaderAfterCoreSwap`, with a Suspense boundary above the
+   * header and a sibling that suspends on its first render, so React throws
+   * the header's first render away and renders it again once the sibling's
+   * data arrives. Returns the function that delivers that data. */
+  mountHeaderAfterCoreSwapBesideSuspender(): () => void;
   unmountAll(): void;
   exists(testId: string): boolean;
   /** The demo-account rows' usernames, top to bottom; empty when the login
@@ -44,6 +52,9 @@ export interface AppRootPage {
   pickDemoAccount(username: string): void;
   /** Click AUTHENTICATE. */
   submitLogin(): void;
+  /** Click AUTHENTICATE inside an awaited `act`, for a tree that suspends
+   * once signed in (a synchronous `act` cannot wait out a suspension). */
+  submitLoginAwaitingSuspense(): Promise<void>;
   /** Runs `assertion` until it stops throwing — the spec supplies the
    * assertion, this page owns the polling mechanic. */
   waitFor(assertion: () => void): Promise<void>;
@@ -58,6 +69,27 @@ export function appRootPage(): AppRootPage {
           <div data-testid="app-children" />
         </AppRoot>,
       );
+    },
+    mountHeaderAfterCoreSwapBesideSuspender(): () => void {
+      let resolve: (value: string) => void = noValue;
+      const promise = new Promise<string>((settle) => {
+        resolve = settle;
+      });
+
+      render(
+        <StrictMode>
+          <AppRoot composition={createComposition(true)}>
+            <Suspense fallback={<div data-testid="suspense-fallback" />}>
+              <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
+              <Suspender data={promise} />
+            </Suspense>
+          </AppRoot>
+        </StrictMode>,
+      );
+
+      return () => {
+        resolve("ready");
+      };
     },
     mountHeaderAfterCoreSwap(): void {
       render(
@@ -93,6 +125,12 @@ export function appRootPage(): AppRootPage {
     submitLogin(): void {
       fireEvent.click(screen.getByTestId("login-submit"));
     },
+    async submitLoginAwaitingSuspense(): Promise<void> {
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("login-submit"));
+        await Promise.resolve();
+      });
+    },
     waitFor(assertion: () => void): Promise<void> {
       return waitFor(assertion);
     },
@@ -100,6 +138,8 @@ export function appRootPage(): AppRootPage {
 }
 
 function selectNoTab(): void {}
+
+function noValue(_value: string): void {}
 
 /** A composition the core host would build for the RxJS core over the
  * page's real `buildBrowserPorts()` — built at mount time, after a spec has
@@ -121,6 +161,9 @@ function createComposition(reopenPreferences: boolean): Composition {
       const reopen = reopenPending;
       reopenPending = false;
       return reopen;
+    },
+    peekPreferencesReopen: () => {
+      return reopenPending;
     },
   };
 }

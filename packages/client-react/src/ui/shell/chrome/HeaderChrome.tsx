@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -40,17 +40,22 @@ export function HeaderChrome({
   // Local view-state only (which UI panel is open) — not business logic, so a
   // plain useState is correct here, no port involved.
   //
-  // It starts open when the shell's one-shot says this composition came from a
-  // core swap. Taken in the lazy initializer, which runs once per mount:
-  // StrictMode calls it a second time but keeps the FIRST answer (the one
-  // that took the `true`), and its effect re-run never touches state. A later
-  // mount (AuthGate after sign-in) takes `false` — the signal is the
-  // composition's, not the header's. (An effect calling setState would also
-  // work, but `react-hooks/set-state-in-effect` rejects it.)
-  const { takePreferencesReopen } = useViewModel();
+  // It starts open when the shell's one-shot says this composition came from
+  // a core swap. The initializer only PEEKS — a pure read, because React may
+  // run this render and throw it away (a Suspense boundary, an error retry, a
+  // discarded concurrent render) and then call the initializer again. The
+  // one-shot is TAKEN in an effect, i.e. only once this header has
+  // committed; StrictMode's effect replay takes it a second time, which is
+  // harmless. A later mount (AuthGate after sign-in) peeks `false` — the
+  // signal is the composition's, not the header's.
+  const { peekPreferencesReopen, takePreferencesReopen } = useViewModel();
   const [prefsOpen, setPrefsOpen] = useState(() => {
-    return takePreferencesReopen?.() === true;
+    return peekPreferencesReopen?.() === true;
   });
+
+  useEffect(() => {
+    takePreferencesReopen?.();
+  }, [takePreferencesReopen]);
 
   // Driven-pulse cue (Task 10): flashes the nav rail for one CSS animation
   // cycle when Jarvis's drive-the-app interpreter applies a command — see

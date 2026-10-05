@@ -245,6 +245,22 @@ describe("createCoreHost", () => {
     expect(recomposed?.takePreferencesReopen()).toBe(true);
   });
 
+  it("11b. peekPreferencesReopen() reads the one-shot without consuming it", async () => {
+    const harness = createHarness();
+    harness.start();
+    const [boot] = harness.mounted;
+
+    expect(boot?.peekPreferencesReopen()).toBe(false);
+
+    await harness.host.swapTo("effect");
+    const swapped = harness.mounted.at(-1);
+
+    expect(swapped?.peekPreferencesReopen()).toBe(true);
+    expect(swapped?.peekPreferencesReopen()).toBe(true);
+    expect(swapped?.takePreferencesReopen()).toBe(true);
+    expect(swapped?.peekPreferencesReopen()).toBe(false);
+  });
+
   it("12. state$ walks the phases, and the hold is measured from the end of covering", async () => {
     vi.useFakeTimers();
 

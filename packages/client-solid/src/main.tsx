@@ -23,7 +23,6 @@ import "@fontsource/orbitron/800.css";
 // (the package's export map falls back to `index_noop.js` once the plugin
 // isn't intercepting the specifier), so it's safe to leave unguarded here.
 import "solid-devtools";
-import { render } from "solid-js/web";
 
 import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
 import {
@@ -54,6 +53,7 @@ import {
 } from "./app/coreSelection";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
+import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -127,13 +127,9 @@ void runBoot(
   }),
   ({ impl, core, source }) => {
     console.info(formatBootedMessage(impl, source));
-    // The disposer of the mounted tree, or null while nothing is mounted.
-    let disposeTree: (() => void) | null = null;
-
-    function disposeMountedTree(): void {
-      disposeTree?.();
-      disposeTree = null;
-    }
+    // A tree that fails its first render is disposed before `mount` throws,
+    // so a swap onto a core whose UI cannot render leaks no reactive root.
+    const tree = createSolidTreeMount(rootEl);
 
     // The host owns the ports (built once per page) and every composition;
     // a Preferences core choice swaps the core in place, with no reload.
@@ -146,15 +142,15 @@ void runBoot(
         devtoolsHub.endComposition();
       },
       mount: (composition: Composition): void => {
-        disposeTree = render(() => {
+        tree.mount(() => {
           return (
             <AppRoot composition={composition}>
               <App />
             </AppRoot>
           );
-        }, rootEl);
+        });
       },
-      unmount: disposeMountedTree,
+      unmount: tree.unmount,
       publish: (next: CoreImpl): void => {
         document.documentElement.dataset.coreImpl = next;
       },
@@ -177,7 +173,7 @@ void runBoot(
       onFatal: (error: unknown): void => {
         // No core is composed: drop whatever the root still holds, then show
         // the boot-error screen in its place.
-        disposeMountedTree();
+        tree.destroy();
         renderBootError(rootEl, error, reloadOntoDefaultCore);
       },
       cover: NO_COVER,

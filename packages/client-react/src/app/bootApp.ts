@@ -77,8 +77,10 @@ export function formatBootedMessage(
 /**
  * Runs a resolved `bootCore()` promise through `onBooted`, routing to
  * `onError` a rejection from EITHER stage: the initial core load (`boot`
- * itself rejecting), or an exception thrown inside `onBooted` (e.g.
- * the core host's first `createApp`/render blowing up). `.then(onBooted).catch(onError)`
+ * itself rejecting), or an exception thrown inside `onBooted` (e.g. the
+ * core host's first `createApp` throwing, or its first render failing —
+ * each client's tree mount rethrows a failed first render, since React 19's
+ * `root.render` does not). `.then(onBooted).catch(onError)`
  * is used rather than `boot.then(onBooted, onError)` deliberately: the
  * two-argument form's `onError` only ever sees `boot`'s OWN rejection — a
  * throw inside `onBooted` produces a NEW rejected promise `onError` never

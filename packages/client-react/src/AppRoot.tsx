@@ -42,6 +42,9 @@ export function AppRoot({ composition, children }: AppRootProps): ReactElement {
         takePreferencesReopen: () => {
           return composition.takePreferencesReopen();
         },
+        peekPreferencesReopen: () => {
+          return composition.peekPreferencesReopen();
+        },
       },
     );
   }

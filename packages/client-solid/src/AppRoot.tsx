@@ -42,6 +42,9 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
       takePreferencesReopen: () => {
         return composition.takePreferencesReopen();
       },
+      peekPreferencesReopen: () => {
+        return composition.peekPreferencesReopen();
+      },
     },
   );
 

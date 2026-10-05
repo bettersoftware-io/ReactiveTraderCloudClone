@@ -1876,5 +1876,8 @@ export function reactViewModel(world: World): ViewModel {
     takePreferencesReopen: () => {
       return world.takePreferencesReopen();
     },
+    peekPreferencesReopen: () => {
+      return world.peekPreferencesReopen();
+    },
   };
 }

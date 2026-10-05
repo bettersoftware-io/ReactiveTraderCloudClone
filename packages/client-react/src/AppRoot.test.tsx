@@ -70,6 +70,25 @@ describe("AppRoot (Preferences after a core swap)", () => {
     });
     expect(page.exists("prefs-modal")).toBe(true);
   });
+
+  it("keeps the reopen when React throws the header's first render away (Suspense)", async () => {
+    vi.stubEnv("VITE_SERVER_URL", "");
+    vi.stubEnv("VITE_DEV_AUTH", createDevAuth());
+    const deliver = page.mountHeaderAfterCoreSwapBesideSuspender();
+
+    page.pickDemoAccount("demo");
+    await page.submitLoginAwaitingSuspense();
+    await page.waitFor(() => {
+      expect(page.exists("suspense-fallback")).toBe(true);
+    });
+
+    deliver();
+
+    await page.waitFor(() => {
+      expect(page.exists("suspender")).toBe(true);
+    });
+    expect(page.exists("prefs-modal")).toBe(true);
+  });
 });
 
 const page = appRootPage();

@@ -650,6 +650,8 @@ export interface World {
    * `preferencesReopen: true`), false on every later call — the real core
    * host's semantics for the composition a swap produced. */
   takePreferencesReopen(): boolean;
+  /** What `takePreferencesReopen()` would answer, without consuming it. */
+  peekPreferencesReopen(): boolean;
   /** The demo sign-ins backing useDemoAccounts (drives LoginScreen's
    * demo-accounts hint). A plain value, not a subject: the real shell reads
    * it once at composition. Defaults to none — a plain live build. */
@@ -1172,6 +1174,9 @@ export function createWorld(seeds: WorldSeeds = {}): World {
       const reopen = preferencesReopenPending;
       preferencesReopenPending = false;
       return reopen;
+    },
+    peekPreferencesReopen: (): boolean => {
+      return preferencesReopenPending;
     },
     demoAccounts,
     jarvisSkin,

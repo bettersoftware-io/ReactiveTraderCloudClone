@@ -37,6 +37,9 @@ export interface Composition {
   readonly coreSelection: CoreSelection;
   /** True exactly once, for the composition a swap produced. */
   takePreferencesReopen(): boolean;
+  /** What `takePreferencesReopen()` would answer, without consuming it: a
+   * pure read a UI may repeat during a render it might not commit. */
+  peekPreferencesReopen(): boolean;
 }
 
 type CoreSwapPhase = "covering" | "loading" | "handover" | "revealing";
@@ -182,6 +185,9 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
         const reopen = reopenPending;
         reopenPending = false;
         return reopen;
+      },
+      peekPreferencesReopen: (): boolean => {
+        return reopenPending;
       },
     };
   }

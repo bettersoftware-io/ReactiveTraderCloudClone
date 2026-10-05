@@ -152,5 +152,8 @@ function createComposition(): Composition {
     takePreferencesReopen: () => {
       return false;
     },
+    peekPreferencesReopen: () => {
+      return false;
+    },
   };
 }
