@@ -58,6 +58,9 @@ export interface NarratorDeps {
    * (the #171 tick-acceleration family, reintroduced in a new spot). Going
    * through the injected, cached `priceFor` instead means every caller for
    * the same symbol shares the ONE underlying subscription.
+   * (Since 2026-10-05 `PricingSimulator` shares one walk per symbol itself,
+   * so a direct subscription no longer accelerates it; a port is still free
+   * to be cold, and the WS port sends a subscribe frame per subscription.)
    *
    * Two consequences, both accepted:
    * - This machine's own permanent subscription (see `createNarratorMachine`'s
@@ -89,8 +92,9 @@ export interface NarratorDeps {
    * identical injection idiom. */
   readonly scheduler?: SchedulerLike;
   /** Overrides `DEFAULT_ANOMALY_CONFIG` — composition threads this from the
-   * dev-only `?narratorThresholds=test` seam (both web clients'
-   * `buildBrowserPorts.ts`), `undefined` in production. */
+   * `?narratorThresholds=test` seam (both web clients'
+   * `buildBrowserPorts.ts`; a dev server or the e2e build only), `undefined`
+   * in production. */
   readonly config?: Partial<AnomalyDetectorConfig>;
 }
 

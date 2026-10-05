@@ -5,8 +5,8 @@ export interface WorkspacePO {
   openAdmin(): Promise<void>;
   openEquities(): Promise<void>;
   /**
-   * Navigate to "/" with the dev-only `?narratorThresholds=test` query param
-   * (see `buildBrowserPorts.ts`'s `devNarratorConfig`) — relaxes
+   * Navigate to "/" with the `?narratorThresholds=test` query param
+   * (see `buildBrowserPorts.ts`'s `seamNarratorConfig`) — relaxes
    * `NarratorMachine`'s anomaly-detector thresholds so a proactive narration
    * fires within seconds of live sim ticks instead of the simulator's
    * natural ~14 min expected interval.

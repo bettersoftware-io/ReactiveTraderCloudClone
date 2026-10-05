@@ -1994,7 +1994,15 @@ price-driven surface reads through — never a fresh direct `PricingPort` call,
 because the simulator's live tick stream is cold per subscription and a
 second independent subscription to the same symbol would double its
 effective tick rate (the #171 tick-acceleration family, reintroduced in a
-new spot if this were gotten wrong). A surviving anomaly must clear three
+new spot if this were gotten wrong). That hazard was real until 2026-10-05:
+a tile's sparkline (`PriceHistoryUseCase`) subscribed the port beside the
+tile's price, so every symbol on screen walked twice per interval, each
+reader saw every other step, and those double-size moves crossed 3σ against
+the single-step history the port replays — the narrator spoke about ten
+seconds into every session. `PricingSimulator` now runs one shared walk per
+symbol however many subscribers it has, as the WS server always did; the
+narrator still reads the shared presenter stream, for the conflation rule
+and to hold one WS subscription. A surviving anomaly must clear three
 gates, all folded by **one** `scan` sitting outside `pairs$`'s `switchMap`
 (deliberately — nesting the gate inside would let a `pairs$` re-emission
 silently reset the session cap): the `JarvisNarrator` preference reads `"on"`

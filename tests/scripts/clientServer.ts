@@ -83,7 +83,10 @@ function buildOutDir(): string {
 /** `vite build` the client into `outDir`. VITE_DEMO_AUTH is emptied: a
  * production build reads its demo roster from the committed
  * `.env.production`, where `demo`'s password is not the `demo` the login spec
- * types — the roster this run uses is VITE_DEV_AUTH's, as on the dev server. */
+ * types — the roster this run uses is VITE_DEV_AUTH's, as on the dev server.
+ * VITE_NARRATOR_TEST_SEAM keeps the `?narratorThresholds=test` seam in the
+ * bundle (a production build otherwise compiles it out): the narrator spec
+ * cannot wait for a natural anomaly, about one per symbol every 14 minutes. */
 function buildClient(outDir: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const child = spawn(
@@ -92,7 +95,11 @@ function buildClient(outDir: string): Promise<void> {
       {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: CLIENT_DIR,
-        env: { ...clientEnv(), VITE_DEMO_AUTH: "" },
+        env: {
+          ...clientEnv(),
+          VITE_DEMO_AUTH: "",
+          VITE_NARRATOR_TEST_SEAM: "1",
+        },
       },
     );
     let log = "";
