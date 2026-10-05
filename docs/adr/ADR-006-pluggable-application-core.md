@@ -1329,6 +1329,18 @@ and two costs measured and accepted.
 - **`animationDirector.intentsFor(target)` is a filtered view**
   (`filterStream`) of the director's one stream, as in the RxJS core, not a
   fold per target that every intent wakes.
+- **No member joins streams with an Effect combinator any more** (grep gate
+  51, 2026-10-05). The last four that did were moved onto the merged queue:
+  `themePreference` (`zipLatest` of two ports), `candleSeries` (`merge` of a
+  port and a queue), `ordersBlotter` (`merge` + `flatMap` with `switch` over
+  a `PubSub`) and `jarvisPanels` (`flatMap` with `switch`, and
+  `zipLatestAll` of a port per symbol). The bridge gained what they needed:
+  `latestOfEach` (the RxJS `combineLatest`), `firstPortEvent` (a one-shot
+  query as a group member), `oneEvent` and the `projectedChanges` view.
+  None was on the FX screen's hot path, so this was done for the rule, not
+  for a measured gain: a rule a gate enforces, where it had been prose. One
+  behaviour improved on the way — the orders blotter can no longer lose a
+  refresh published in the microtasks after its first subscribe.
 
 Measured on a production build of the React client, alternating with `main`
 on a quiet machine (medians of six rounds; RxJS core in brackets): scheduler

@@ -9,9 +9,12 @@ import {
 import { describe, expect, it } from "vitest";
 
 import {
+  firstPortEvent,
   fromObservable,
   fromObservables,
+  latestOfEach,
   leavingOnFailure,
+  oneEvent,
   type PortEvents,
   portEvents,
   releasePorts,
@@ -432,6 +435,133 @@ describe("bridge/in", () => {
     expect(chunks).toEqual([[1, 2, 3]]);
   });
 
+  it("firstPortEvent() emits the port's first value, ends, and releases the port — later values are not heard", () => {
+    const source = new Subject<number>();
+    const heard = listenTo(firstPortEvent(source, double));
+
+    expect(source.observed).toBe(true);
+    source.next(1);
+    expect(source.observed).toBe(false);
+    source.next(2);
+
+    expect(heard.log).toEqual(["emit 2", "end"]);
+  });
+
+  it("firstPortEvent() takes one value from a port that answers during subscribe, and no more", () => {
+    const heard = listenTo(firstPortEvent(of(1, 2, 3), double));
+
+    expect(heard.log).toEqual(["emit 2", "end"]);
+  });
+
+  it("firstPortEvent() fails with the port's error, and fails when the port completes without a value", () => {
+    const failing = listenTo(
+      firstPortEvent(
+        throwError(() => {
+          return new Error("boom");
+        }),
+        double,
+      ),
+    );
+    const silent = new Subject<number>();
+    const empty = listenTo(firstPortEvent(silent, double));
+    silent.complete();
+
+    expect(failing.log).toEqual(["fail boom"]);
+    expect(empty.log).toEqual([
+      "fail firstPortEvent: source completed without a value",
+    ]);
+  });
+
+  it("firstPortEvent() releases the port when it is unsubscribed before the answer, and says nothing after", () => {
+    const source = new Subject<number>();
+    const heard = listenTo(firstPortEvent(source, double));
+
+    heard.subscription.unsubscribe();
+    expect(source.observed).toBe(false);
+    source.next(1);
+
+    expect(heard.log).toEqual([]);
+  });
+
+  it("oneEvent() emits its event and ends", () => {
+    const heard = listenTo(oneEvent(null));
+
+    expect(heard.log).toEqual(["emit null", "end"]);
+  });
+
+  it("latestOfEach() emits the latest of every member, in the members' order, once each has emitted — then on every emission", () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const heard = listenTo(
+      latestOfEach([portEvents(first, double), portEvents(second, double)]),
+    );
+
+    first.next(1);
+    first.next(2);
+    expect(heard.log).toEqual([]);
+    second.next(10);
+    first.next(3);
+
+    expect(heard.log).toEqual(["emit [4,20]", "emit [6,20]"]);
+  });
+
+  it("latestOfEach() hands out a fresh array each time — a reader that keeps one does not see it change", () => {
+    const first = new BehaviorSubject(1);
+    const second = new BehaviorSubject(2);
+    const kept: (readonly number[])[] = [];
+    latestOfEach([
+      portEvents(first, double),
+      portEvents(second, double),
+    ]).subscribe({
+      emit: (latest: readonly number[]) => {
+        kept.push(latest);
+      },
+      fail: () => {},
+      end: () => {},
+    });
+
+    first.next(5);
+
+    expect(kept).toEqual([
+      [2, 4],
+      [10, 4],
+    ]);
+  });
+
+  it("latestOfEach() ends when every member has ended, fails as soon as one fails, and ends at once with no members", () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const ending = listenTo(
+      latestOfEach([portEvents(first, double), portEvents(second, double)]),
+    );
+    first.complete();
+    expect(ending.log).toEqual([]);
+    second.complete();
+
+    const third = new Subject<number>();
+    const failing = listenTo(
+      latestOfEach([portEvents(third, double), portEvents(of(1), double)]),
+    );
+    third.error(new Error("boom"));
+
+    expect(ending.log).toEqual(["end"]);
+    expect(failing.log).toEqual(["fail boom"]);
+    expect(listenTo(latestOfEach<number>([])).log).toEqual(["end"]);
+  });
+
+  it("latestOfEach() releases every member when it is unsubscribed", () => {
+    const first = new Subject<number>();
+    const second = new Subject<number>();
+    const heard = listenTo(
+      latestOfEach([portEvents(first, double), portEvents(second, double)]),
+    );
+
+    heard.subscription.unsubscribe();
+
+    expect(first.observed).toBe(false);
+    expect(second.observed).toBe(false);
+  });
+
   it("releasePorts() unsubscribes every port of the scope before it returns, and leaves another scope's alone", () => {
     const first = new Subject<number>();
     const second = new Subject<number>();
@@ -477,13 +607,17 @@ interface Heard {
   subscription: Unsubscribable;
 }
 
+function double(value: number): number {
+  return value * 2;
+}
+
 /** Subscribe a merged-stream source by hand and log what it tells its
  * sink — no stream, no fiber, so every assertion is synchronous. */
-function listenTo(source: PortEvents<number>): Heard {
+function listenTo<E>(source: PortEvents<E>): Heard {
   const log: string[] = [];
   const subscription = source.subscribe({
-    emit: (event: number) => {
-      log.push(`emit ${event}`);
+    emit: (event: E) => {
+      log.push(`emit ${JSON.stringify(event)}`);
     },
     fail: (error: unknown) => {
       log.push(
