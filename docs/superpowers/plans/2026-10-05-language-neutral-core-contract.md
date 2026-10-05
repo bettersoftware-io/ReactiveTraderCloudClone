@@ -111,9 +111,9 @@ packages/core-contract/
     priceStream.ts   authored scenarios for presenters.priceStream
 ```
 
-The work ships as two PRs. **PR A** (Tasks 1–9): machinery, pilot, format reference, plus this plan and the spec. **PR B** (Tasks 10–13): the other 12 members and the architecture docs, on a fresh worktree after PR A merges.
+The work ships as two PRs. **PR A** (Tasks 1–9): machinery, pilot, format reference. **PR B** (Tasks 10–13): the other 12 members and the architecture docs, on a fresh worktree after PR A merges.
 
-All commands run from the worktree root: `/Users/csx/workarea/dev/github.com/bettersoftware-io/ReactiveTraderCloudClone/.claude/worktrees/native-core-contract`. It is already installed and built.
+This plan and its spec landed on `main` on their own (docs-only) when the work was parked on 2026-10-05, so PR A carries code only. Start PR A on a fresh worktree: `./scripts/new-worktree.sh native-core-contract --ready`, prove it with `pnpm --filter @rtc/core-contract test`, and run every command from that worktree's root.
 
 ---
 
