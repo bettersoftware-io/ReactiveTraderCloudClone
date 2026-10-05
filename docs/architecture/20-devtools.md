@@ -227,8 +227,9 @@ swap disposes the running core and composes another in the same page.
 core's `registerStream` with the same id takes the new source. It reports every
 machine still live as disposed. If an inspector is attached, the hub sends a
 fresh welcome and snapshot on the next flush, and the inspector replaces what
-it held; anything registered after that flush arrives as ordinary events. The
-snapshot supersedes the lifecycle events queued before it, and a disposed
+it held; anything registered after that flush arrives as ordinary events. Any
+snapshot, including the one a repeated `hello` triggers, supersedes the
+lifecycle events queued before it, and a disposed
 machine's state stream and intents are released, so the hub keeps nothing of
 the old core alive. A dormant hub just forgets, and the next `hello` sees only
 the new composition. The call belongs between the two steps: a registration the

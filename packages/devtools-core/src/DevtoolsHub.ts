@@ -524,6 +524,11 @@ export class DevtoolsHub {
     // The synchronous first emissions became the snapshot — don't re-send them.
     this.pendingStreams.clear();
     this.pendingMachineStates.clear();
+    // The snapshot supersedes every lifecycle event queued so far (a replayed
+    // `machine:created` would overwrite the machine's snapshot state with null).
+    this.pendingDiscrete = this.pendingDiscrete.filter((ev) => {
+      return !SUPERSEDED_BY_SNAPSHOT.has(ev.kind);
+    });
     this.send({
       kind: "welcome",
       v: PROTOCOL_VERSION,
@@ -537,11 +542,6 @@ export class DevtoolsHub {
     if (this.resnapshotDue) {
       this.resnapshotDue = false;
       this.sendWelcomeAndSnapshot();
-      // The snapshot supersedes every lifecycle event queued so far (a replayed
-      // `machine:created` would overwrite the machine's snapshot state with null).
-      this.pendingDiscrete = this.pendingDiscrete.filter((ev) => {
-        return !SUPERSEDED_BY_SNAPSHOT.has(ev.kind);
-      });
     }
 
     if (

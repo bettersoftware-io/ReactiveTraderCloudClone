@@ -480,6 +480,25 @@ describe("DevtoolsHub", () => {
 
     expect(hub.live).toBe(true);
   });
+  it("a re-hello does not reset a machine created since the last flush to a null state in the inspector", () => {
+    const { hub, sent, inbound$ } = createHarness();
+    inbound$.next({ kind: "hello", v: 1 });
+    const id = hub.machineCreated("m", [], new BehaviorSubject("warm"));
+
+    inbound$.next({ kind: "hello", v: 1 }); // before the next flush
+    vi.advanceTimersByTime(100);
+
+    const store = new InspectorStore({ coalesce: false });
+    sent.forEach((m) => {
+      store.apply(m);
+    });
+    expect(
+      store.getSnapshot().machines.find((r) => {
+        return r.machineId === id;
+      })?.state,
+    ).toBe("warm");
+  });
+
   describe("endComposition", () => {
     it("lets a live hub take the next composition's source for an id it already knew", () => {
       const { hub, sent, inbound$ } = createHarness();
