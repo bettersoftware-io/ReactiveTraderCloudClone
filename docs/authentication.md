@@ -324,7 +324,7 @@ whose server roster is `demo:demo`, while the bundle's demo entry is
 ### 6.1 Composition
 
 The client composes its ports once per page load, before the login screen
-(`AppRoot` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
+(`main.tsx` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
 **at load**, from a stored choice, exactly as the load-time core switch does
 (ADR-006 Decision 6):
 

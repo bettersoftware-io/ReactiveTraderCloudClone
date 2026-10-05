@@ -419,7 +419,9 @@ Three smaller rules complete the swap:
   saved as a successful swap. In Solid, `src/app/solidTreeMount.ts` disposes
   a partly built root when `render` throws.
 
-**Failures.** Nothing falls back silently, and `swapTo` never rejects.
+**Failures.** Nothing falls back silently, and `swapTo` never rejects: a
+`warn` that throws is swallowed, and an `onFatal` that throws becomes a
+warning.
 The rule behind the table: between the unmount and a successful mount
 nothing is on screen, so a throw there is fatal; before the unmount or
 after the mount the page still has a working core, so a throw there is a
@@ -430,15 +432,16 @@ warning.
 | The cover's entry step, before the load | The swap is abandoned. The old core keeps running, `failure$` carries the reason, a `[core]` warning is logged. |
 | The chunk load | The old core keeps running. Nothing is unmounted or saved. `failure$` carries the reason, a `[core]` warning is logged, the cover lifts. |
 | `createApp` (or the devtools `instrument`) of the new core | An app that was created is disposed. The **previous** core is composed again over the same ports and mounted. `failure$` carries the reason, `data-core-impl` names the previous core, and the saved choice is untouched. |
-| The previous core fails too, or anything else between the unmount and a successful mount (the mount itself included) | Every app that is composed but not mounted is disposed. `onFatal` is called once and shows the boot-error screen. `state$` ends at `fatal`, nothing claims to be composed, and later `swapTo` calls do nothing. |
+| The previous core fails too, or anything else between the unmount and a successful mount (the mount itself included) | Every app that is composed but not mounted is disposed. `onFatal` is called once and shows the boot-error screen. When the new core's failure led to it, that first error is logged as a `[core]` warning. `state$` ends at `fatal`, nothing claims to be composed, and later `swapTo` calls do nothing. |
 | `old.dispose()` rejects | A `[core]` warning; the swap continues, since the old tree is already gone. |
 | A step after a successful mount (`publish`, the console line, saving, stripping `?core=`, lifting the cover) | A `[core]` warning; the steps after it still run. |
 | Saving returns false (storage blocked or full) | A `[core]` warning that the choice will not survive a reload; the swap stands. |
 | A second `swapTo` during a swap, or `swapTo(current)` | Nothing. |
+| The boot composition cannot be composed or mounted (`start()`) | The composed app is disposed, `state$` says `fatal`, and `start()` throws. The entry file destroys the tree and shows the boot-error screen. |
 
 **What the cores owe a swap.** Two contract obligations, run against all
 three cores in `@rtc/core-contract` (#953); [§22](../architecture/22-pluggable-application-core.md)
-states them precisely (guarantee 7 and the `dispose` rule). A core can be
+states them precisely (guarantee 8 and the `dispose` rule). A core can be
 composed over ports another composition used: the `recomposition` suite.
 And `dispose()` writes a workspace-layout change still inside the
 persistence debounce, which all three cores used to drop: a swap seconds

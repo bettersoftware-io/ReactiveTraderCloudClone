@@ -114,7 +114,7 @@ rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 ```mermaid
 flowchart TD
   url["<b>?core=</b> URL parameter<br/>this load only — never written to storage,<br/>so a shared link keeps the visitor's saved choice"]
-  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the Preferences row's select()"]
+  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the core host after a successful swap"]
   build["<b>VITE_CORE_IMPL</b><br/>the build DEFAULT — the knob every dev:* / e2e<br/>script sets, no longer what gets bundled"]
   fallback["<b>rxjs</b>"]
   fail["throws — a developer error, fail-closed"]
@@ -165,7 +165,7 @@ socket and the layout carry over. A swap that fails leaves the page on a
 working core and reports why through `failure$`, shown inline in the
 Preferences row; only a failure with nothing mounted ends on the boot-error
 screen. The step order and the failure table are in Decision 7. What the
-cores owe a swap is [guarantee 7](#three-timing-guarantees) and the `dispose`
+cores owe a swap is [guarantee 8](#three-timing-guarantees) and the `dispose`
 rule under [Failure, teardown and port discipline](#failure-teardown-and-port-discipline).
 
 `turbo.json` declares `VITE_CORE_IMPL` on the `dev` and `build` tasks' `env`
@@ -333,7 +333,14 @@ explicitly (residual sweep, 2026-09-19):
    refcounted presenter, or calling a machine factory, re-opens its ports:
    uncontracted, and no production code does it. The one caller of
    `app.dispose()`, the web clients' core host, unmounts the UI and waits a
-   macrotask first, so no consumer still holds a stream when it runs.
+   macrotask first, so no UI consumer still holds a stream when it runs.
+   One consumer can still be attached: with an inspector connected, the
+   devtools hub is subscribed to every observed stream, and the host ends
+   the hub's composition (`endComposition()`) right after `dispose()`
+   resolves, in the same synchronous step. The hub lets go there, and the
+   refcounted streams then release their ports. `coreHost.swap.test.ts`
+   case 5 pins it with a real hub and inspector: after each swap the ports
+   hold what the same core holds over fresh ports.
    Measured on that uncontracted case (2026-10-05): with a consumer still
    holding `connection.status$`, `dispose()` leaves its port subscription
    open on the RxJS and async cores and closes it on the Effect core; it is
@@ -549,7 +556,7 @@ commands). Four cross-member suites sit beside the registry, witnessing
 properties of the whole composition: `portDiscipline`, (slice 8)
 `transportGate`, `dispose` (ADR-006 Follow-up 6: after a signed-in
 session, no port stream stays subscribed; since 2026-10-05 also the flushed
-layout write), and `recomposition` (2026-10-05, guarantee 7: a core
+layout write), and `recomposition` (2026-10-05, guarantee 8: a core
 composed a second time over ports a first composition used). Adding a
 member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall

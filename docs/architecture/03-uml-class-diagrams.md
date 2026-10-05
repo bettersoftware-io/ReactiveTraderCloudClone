@@ -598,7 +598,7 @@ flowchart TB
     end
 
     subgraph roots["Composition roots (one per client)"]
-        webRoot["client-react AppRoot.tsx<br/>core.createApp(buildBrowserPorts())"]
+        webRoot["client-react main.tsx + core host + AppRoot.tsx<br/>core.createApp(ports), then createViewModel"]
         rnRoot["client-react-native AppRoot.tsx<br/>createApp(buildNativePorts())"]
     end
 
@@ -621,7 +621,7 @@ flowchart TB
     VMtype -.implemented by.-> worldVm
 ```
 
-`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `AppRoot.tsx` calling `core.createApp(buildBrowserPorts())`, and the `consumers` subgraph for `client-solid`'s own `src/ui` components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
+`@rtc/solid-bindings` mirrors this diagram shape exactly, one level over: swap the `bindings` subgraph for `@rtc/solid-bindings` (Solid's `useMachine` uses `onCleanup` in place of the microtask-deferred dispose), the `roots` subgraph for `client-solid`'s own `main.tsx`, core host and `AppRoot.tsx` (the host calls `core.createApp(ports)`, `AppRoot` calls `createViewModel`), and the `consumers` subgraph for `client-solid`'s own `src/ui` components. It is omitted from the diagram above only because it is a second, structurally identical instance, not a variant.
 
 How the pieces divide the work inside `createViewModel`:
 
@@ -633,7 +633,7 @@ How the pieces divide the work inside `createViewModel`:
 
 Three properties make this a real seam rather than a service locator:
 
-1. **Constructed once, before the tree.** Each client's `AppRoot` builds ports → `createApp` → `createViewModel` in a lazy `useRef` (surviving StrictMode double-invoke) and supplies it via `ViewModelProvider`. No per-render injection, no re-wiring on re-render.
+1. **Constructed once, before the tree.** On RN, `AppRoot` builds ports → `createApp` → `createViewModel` in a lazy `useRef` (surviving StrictMode double-invoke). On the web, `main.tsx` builds the ports and the core host calls `createApp` outside the framework, once per composition; `AppRoot` then builds only the ViewModel (in a lazy `useRef` in React). Each `AppRoot` supplies it via `ViewModelProvider`. No per-render injection, no re-wiring on re-render.
 2. **The interface is the portability contract.** The `ViewModel` type is implemented by the production factory *and* by two test harnesses (`buildFakeViewModel` for visual goldens, `viewModelFromWorld` for UI contract tests -- each client keeps its own pair under `tests/ui/`, next to the swap-trio that mounts the shared `@rtc/ui-contract` specs; the RN client has its own `buildFakeViewModel` under `tests/visual/`). `@rtc/client-solid` implements the same member list over Solid signals, via `@rtc/solid-bindings`.
 3. **Nothing else crosses.** Injecting JSX or components through the ViewModel is forbidden (it would have broken the SolidJS port, per ADR-004); the UI cannot reach presenters, ports, or Observables directly (gates 26--29).
 

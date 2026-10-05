@@ -754,7 +754,7 @@ Effect core's chunk takes about 25 ms to load and evaluate against about
 the Layer graph takes about 15 ms where the other cores' plain construction
 takes 3. Both happen once, at start-up.
 
-### Promise 10: the ports were used before
+### Promise 11: the ports were used before
 
 Until 2026-10-05 a core in the browser always started on a fresh page. It
 built its presenters over ports nobody had touched, and it was thrown away
@@ -885,7 +885,7 @@ happens with no visible cover; a short overlay over the swap is the
 workstream's remaining step.
 [ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)
 has the exact step order and the failure table, and
-[promise 10](#promise-10-the-ports-were-used-before) what it asks of a core.
+[promise 11](#promise-11-the-ports-were-used-before) what it asks of a core.
 
 React Native is not part of this: it always runs the RxJS core.
 
