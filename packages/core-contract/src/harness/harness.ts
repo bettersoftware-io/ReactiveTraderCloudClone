@@ -6,6 +6,9 @@ export interface CoreHarness {
   app: App;
   machines: MachineFactories;
   driver: ScriptedDriver;
+  /** Disposes the running app and composes a new one over the SAME ports,
+   * as a hot swap does. Resolves to the new app; `teardown` disposes it. */
+  recompose(): Promise<App>;
   teardown(): Promise<void>;
 }
 
