@@ -538,9 +538,10 @@ export default tseslint.config(
     // pages/contract/visual chokepoints below, plus the occasional
     // non-UI spec (e.g. client-solid's `tests/parity/cssParity.test.ts`,
     // a filesystem check with no testing-library import, so the rule is
-    // silent on it either way) — this WARNs, rather than leaving the tree
+    // silent on it either way) — this reports, rather than leaving the tree
     // fully ungoverned, if a future spec lands directly under `tests/**`
-    // outside those chokepoints. client-prototype is out of scope (abandoned
+    // outside those chokepoints. An error since 2026-10-05, when
+    // `--max-warnings 0` made every warning fail the lint step anyway. client-prototype is out of scope (abandoned
     // reference port), and the bindings packages' renderHook specs stay out
     // until a harness exists for them.
     files: [
@@ -562,7 +563,7 @@ export default tseslint.config(
       "**/*.testHelpers.*",
     ],
     plugins: { rtc: rtcPlugin },
-    rules: { "rtc/no-framework-calls-in-specs": "warn" },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
   {
     // devtools-app is migrated (Wave A of the page-object-isolation plan):
@@ -801,7 +802,7 @@ export default tseslint.config(
     // real components.
     files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
     rules: {
-      "solid/reactivity": ["warn", { customReactiveFunctions: ["/^mount/"] }],
+      "solid/reactivity": ["error", { customReactiveFunctions: ["/^mount/"] }],
     },
   },
   prettier,
