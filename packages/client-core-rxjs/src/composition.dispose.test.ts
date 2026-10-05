@@ -20,13 +20,7 @@ import {
 import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type { JarvisDemoState, StoredSession } from "@rtc/core-api";
 import { collect, scriptPorts } from "@rtc/core-contract";
-import { LAYOUT_PANEL_IDS } from "@rtc/core-logic";
-import {
-  AuthSimulator,
-  PreferencesSimulator,
-  ROSTER,
-  WORKSPACE_PERSIST_DEBOUNCE_MS,
-} from "@rtc/domain";
+import { AuthSimulator, PreferencesSimulator, ROSTER } from "@rtc/domain";
 
 import { createApp } from "#/composition";
 
@@ -112,39 +106,6 @@ describe("createApp().dispose — the Jarvis demo run", () => {
         await app.dispose();
         await vi.advanceTimersByTimeAsync(0);
         expect(vi.getTimerCount()).toBe(0);
-      } finally {
-        teardown();
-      }
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-describe("createApp().dispose — the debounced workspace writer", () => {
-  it("a layout write still pending at dispose lands at dispose, and no timer writes after it", async () => {
-    vi.useFakeTimers();
-
-    try {
-      const { ports, driver, teardown } = scriptPorts(createBasePorts());
-      const app = createApp(ports);
-
-      try {
-        const [first, second] = LAYOUT_PANEL_IDS.fx;
-        const layout = app.presenters.layoutFor("fx");
-        // A positive witness first: a change writes once the debounce lapses.
-        layout.intents.maximize(first);
-        await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS);
-        expect(driver.storedWorkspaceLayout()).toContain(
-          `"maximized":"${first}"`,
-        );
-
-        layout.intents.maximize(second);
-        await app.dispose();
-        const written = driver.storedWorkspaceLayout();
-        expect(written).toContain(`"maximized":"${second}"`);
-        await vi.advanceTimersByTimeAsync(WORKSPACE_PERSIST_DEBOUNCE_MS);
-        expect(driver.storedWorkspaceLayout()).toBe(written);
       } finally {
         teardown();
       }

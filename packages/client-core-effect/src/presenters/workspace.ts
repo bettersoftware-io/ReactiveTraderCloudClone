@@ -1,4 +1,4 @@
-import { Effect, type Fiber, Scope } from "effect";
+import { Cause, Effect, type Fiber, Scope } from "effect";
 
 import type {
   AppPorts,
@@ -32,6 +32,7 @@ import {
   createChildHost,
   type EffectHost,
   interruptFiber,
+  reportOutOfBand,
   type WarmStateStream,
 } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
@@ -431,12 +432,21 @@ function createPersistDebounce(
         return;
       }
 
+      // Always true when `unwritten` is: the check only narrows the type.
       if (pending !== null) {
         interruptFiber(pending);
       }
 
       unwritten = false;
-      write();
+
+      // `app.dispose()` calls this first: a write that throws (full or
+      // blocked storage) is reported out of band, never thrown into
+      // dispose, whose scope close releases the ports.
+      try {
+        write();
+      } catch (error: unknown) {
+        reportOutOfBand(Cause.die(error));
+      }
     },
   };
 }

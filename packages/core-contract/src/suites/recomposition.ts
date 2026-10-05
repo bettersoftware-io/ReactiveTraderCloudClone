@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { App } from "@rtc/core-api";
+
 import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
 import { createTick, createTrade, EURUSD } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
-import { everySessionStream, signIn } from "#/suites/sessionKit";
+import { everySessionStream, NOW, signIn } from "#/suites/sessionKit";
 
-const NOW: number = 1_800_000_000_000;
-/** The port methods `portDiscipline` pins at one construction-time call. */
-const MIN_COUNTED_METHODS: number = 20;
+/** Port-qualified (`port.method`) names a first composition calls — every
+ * counted port but `preferences`, whose methods are counted unprefixed.
+ * 19 on all three cores, measured 2026-10-05; the floor guards the non-preference counters,
+ * which the 21 preference readers alone could otherwise stand in for. */
+const MIN_COUNTED_PORT_METHODS: number = 19;
 const SEED = { transport: true, countPortStreams: true } as const;
 
 /** A hot swap composes a second core over the SAME port objects after the
@@ -66,10 +70,14 @@ export function describeRecompositionContract(
           await clock.settle();
           const first = h.driver.portCallCounts();
           const names = Object.keys(first);
-          // A positive witness: `portDiscipline` pins 20 construction-time
-          // port methods today, so a snapshot smaller than that means the
-          // counters were bypassed, not that nothing needs doubling.
-          expect(names.length).toBeGreaterThanOrEqual(MIN_COUNTED_METHODS);
+          // A positive witness: the non-preference ports were counted, so a
+          // snapshot short of the measured count means those counters were
+          // bypassed, not that nothing needs doubling.
+          expect(
+            names.filter((name) => {
+              return name.includes(".");
+            }).length,
+          ).toBeGreaterThanOrEqual(MIN_COUNTED_PORT_METHODS);
 
           await h.recompose();
           await clock.settle();
@@ -157,7 +165,12 @@ export function describeRecompositionContract(
 
         try {
           const before = collect(h.app.presenters.themePreference.mode$);
+          await clock.settle();
           const initial = before.values.at(-1);
+          // Read after a settle, so a core whose `mode$` replays
+          // asynchronously cannot leave `initial` undefined and the witness
+          // below vacuous.
+          expect(initial).toBeDefined();
           h.app.presenters.themePreference.cycle();
           await clock.settle();
           const cycled = before.values.at(-1);
@@ -178,7 +191,7 @@ export function describeRecompositionContract(
 
 /** Warm every session stream of `app`; the returned function releases them. */
 async function warmSession(
-  app: Parameters<typeof everySessionStream>[0],
+  app: App,
   settle: () => Promise<void>,
 ): Promise<() => void> {
   const warm = everySessionStream(app).map((stream) => {

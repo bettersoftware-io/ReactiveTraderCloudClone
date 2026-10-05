@@ -238,6 +238,40 @@ function countCalls<P extends object>(
   });
 }
 
+/** An armed write failure: what the next write throws. Boxed, so even an
+ * `undefined` thrown value reads as armed. */
+interface ScriptedFailure {
+  readonly error: unknown;
+}
+
+/** Wrap the preferences port so `setWorkspaceLayout` throws whatever
+ * `takeFailure` hands it (once per armed failure) instead of writing. A
+ * Proxy for the same reason as `countCalls`. */
+function createFailableWorkspaceLayoutWrites<P extends object>(
+  port: P,
+  takeFailure: () => ScriptedFailure | null,
+): P {
+  return new Proxy(port, {
+    get: (target: P, property: string | symbol, receiver: unknown) => {
+      const value = Reflect.get(target, property, receiver);
+
+      if (property !== "setWorkspaceLayout" || typeof value !== "function") {
+        return value;
+      }
+
+      return (...args: unknown[]) => {
+        const failure = takeFailure();
+
+        if (failure !== null) {
+          throw failure.error;
+        }
+
+        return Reflect.apply(value, target, args);
+      };
+    },
+  });
+}
+
 /** `driver.connectionIntentCalls()`: calls per `connectionIntents` method. */
 interface ConnectionIntentCalls {
   reconnect: number;
@@ -440,6 +474,10 @@ export interface ScriptedDriver {
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
+  /** The core's next `preferences.setWorkspaceLayout` call throws `error`
+   * and stores nothing — full or blocked storage. Only that one call; the
+   * call is still counted (`portCallCounts`). */
+  failNextWorkspaceLayoutWrite(error: unknown): void;
   /** The dock-layout blob `ports.dockLayoutStore` holds for `tab` (null
    * when the harness supplied no store). */
   dockLayout(tab: WorkspaceTab): string | null;
@@ -488,7 +526,15 @@ export function scriptPorts(
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
   const calls = new Map<string, number>();
-  const preferences = countCalls(base.preferences, calls);
+  let workspaceLayoutWriteFailure: ScriptedFailure | null = null;
+  const preferences = countCalls(
+    createFailableWorkspaceLayoutWrites(base.preferences, () => {
+      const failure = workspaceLayoutWriteFailure;
+      workspaceLayoutWriteFailure = null;
+      return failure;
+    }),
+    calls,
+  );
   const prices = new Map<string, Subject<PriceTick>>();
   const pairs$ = new Subject<readonly CurrencyPair[]>();
   const trades$ = new Subject<readonly Trade[]>();
@@ -1183,6 +1229,9 @@ export function scriptPorts(
         }
 
         return portTally.live;
+      },
+      failNextWorkspaceLayoutWrite: (error: unknown) => {
+        workspaceLayoutWriteFailure = { error };
       },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];

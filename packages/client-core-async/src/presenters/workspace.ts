@@ -402,7 +402,15 @@ function createPersistDebounce(
 
       pending.abort();
       pending = null;
-      write();
+
+      // `app.dispose()` calls this first: a write that throws (full or
+      // blocked storage) is reported like any other async failure, never
+      // thrown into dispose, whose remaining steps release the ports.
+      try {
+        write();
+      } catch (error: unknown) {
+        reportAsync(error);
+      }
     },
   };
 }

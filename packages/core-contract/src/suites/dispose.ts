@@ -1,15 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  ROSTER,
-  type RosterEntry,
-  WORKSPACE_PERSIST_DEBOUNCE_MS,
-} from "@rtc/domain";
+import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
-import type { MakeHarness } from "#/harness/harness";
-import { everySessionStream, signIn } from "#/suites/sessionKit";
+import type { CoreHarness, MakeHarness } from "#/harness/harness";
+import { DEMO, everySessionStream, NOW, signIn } from "#/suites/sessionKit";
 import {
   createPanelEvent,
   FX_TICKS_SPEC,
@@ -17,9 +13,6 @@ import {
   readLayout,
   replyToTurn,
 } from "#/suites/workspaceKit";
-
-const NOW: number = 1_800_000_000_000;
-const DEMO: RosterEntry = ROSTER[0];
 
 /** `app.dispose()` releases everything the composition holds: after it, no
  * stream any port method returned has a live subscription, and nothing the
@@ -32,8 +25,11 @@ const DEMO: RosterEntry = ROSTER[0];
  * composition alone opens. Ending the app must not lose state either: a
  * workspace-layout change still inside the persistence debounce is written
  * by `dispose()` (a hot swap disposes the core seconds after a drag), never
- * a layout a reset already discarded, and with nothing pending nothing is
- * written. */
+ * a layout a reset already discarded, nothing writes after `dispose()`
+ * resolves, and with nothing pending nothing is written. And `dispose()`
+ * never throws past a step that releases ports: a step that fails (a
+ * storage write that throws) is reported through the core's own error
+ * channel and the release goes on. */
 export function describeDisposeContract(
   label: string,
   makeHarness: MakeHarness,
@@ -149,13 +145,22 @@ export function describeDisposeContract(
           [maximized] = leafIds(
             (await readLayout(h1, "fx", clock.settle)).root,
           );
+          const before = countLayoutWrites(h1);
           intents.maximize(maximized);
           await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS - 1);
           // A positive witness first: the debounce has not written yet, so
           // whatever lands below is dispose()'s own write.
           expect(h1.driver.storedWorkspaceLayout()).toBe(null);
+          expect(countLayoutWrites(h1)).toBe(before);
           await h1.app.dispose();
           stored = h1.driver.storedWorkspaceLayout();
+          // Exactly one write since the change, and none after dispose()
+          // resolves: a late write from the old window would land after the
+          // next core owns the layout. Counted on the port, so an identical
+          // rewrite shows too.
+          expect(countLayoutWrites(h1)).toBe(before + 1);
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          expect(countLayoutWrites(h1)).toBe(before + 1);
         } finally {
           await h1.teardown();
         }
@@ -218,24 +223,56 @@ export function describeDisposeContract(
         try {
           const { intents } = h.app.presenters.layoutFor("fx");
           const [a] = leafIds((await readLayout(h, "fx", clock.settle)).root);
+          const before = countLayoutWrites(h);
           intents.maximize(a);
           await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          // A positive witness first: the debounced write landed and the
+          // counter saw it, so an unchanged count below is dispose() writing
+          // nothing, not a counter nobody fed.
           expect(h.driver.storedWorkspaceLayout()).toContain(
             `"maximized":"${a}"`,
           );
-          const writes = collect(h.app.ports.preferences.workspaceLayout$());
-          const baseline = writes.values.length;
-          // The port drops a write of the value it already holds, so the
-          // stored value is moved away from the live layout first: any write
-          // dispose() made would land as a new value. It is also the positive
-          // witness that the counter sees a write at all.
-          h.app.ports.preferences.setWorkspaceLayout(null);
-          expect(writes.values.length).toBe(baseline + 1);
+          expect(countLayoutWrites(h)).toBe(before + 1);
           await h.app.dispose();
+          await clock.advance(WORKSPACE_PERSIST_DEBOUNCE_MS);
+          expect(countLayoutWrites(h)).toBe(before + 1);
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a pending layout write that throws neither rejects dispose() nor stops its release, and is reported", async () => {
+      await withFakeClock(async (clock) => {
+        const h = makeHarness({ countPortStreams: true });
+        const failure = new Error("scripted: storage is full");
+
+        try {
+          const { intents } = h.app.presenters.layoutFor("fx");
+          const [a] = leafIds((await readLayout(h, "fx", clock.settle)).root);
+          // A Jarvis turn left open: each core releases its ask in a step
+          // AFTER the layout write, so a throw that skipped the rest of
+          // dispose() would leave it subscribed.
+          h.app.presenters.jarvis.intents.send("still thinking");
+          intents.maximize(a);
           await clock.settle();
-          expect(writes.values.length).toBe(baseline + 1);
+          // A positive witness first: the app holds port streams, and the
+          // layout change is still unwritten.
+          expect(h.driver.pendingAsks()).toEqual(["still thinking"]);
+          expect(h.driver.livePortSubscriptions()).toBeGreaterThan(0);
           expect(h.driver.storedWorkspaceLayout()).toBe(null);
-          writes.unsubscribe();
+          h.driver.failNextWorkspaceLayoutWrite(failure);
+          const before = countLayoutWrites(h);
+          await expect(h.app.dispose()).resolves.toBeUndefined();
+          // The write was attempted, and failed.
+          expect(countLayoutWrites(h)).toBe(before + 1);
+          expect(h.driver.storedWorkspaceLayout()).toBe(null);
+          // Each core reports it as an uncaught error on a later macrotask
+          // (the channel its debounced write already uses), which the fake
+          // clock rethrows from the tick that runs it — not swallowed.
+          await expect(clock.settle()).rejects.toBe(failure);
+          await clock.settle();
+          expect(h.driver.livePortSubscriptions()).toBe(0);
         } finally {
           await h.teardown();
         }
@@ -253,4 +290,10 @@ export function describeDisposeContract(
       }
     });
   });
+}
+
+/** The core's `preferences.setWorkspaceLayout` calls so far — every call,
+ * an identical rewrite or a throwing one included. */
+function countLayoutWrites(h: CoreHarness): number {
+  return h.driver.portCallCounts().setWorkspaceLayout ?? 0;
 }

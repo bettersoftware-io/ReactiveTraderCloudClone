@@ -55,10 +55,30 @@ export function createWorkspacePersistenceWriter(
     .subscribe(writeLayoutNow);
 
   subscription.add(() => {
-    if (pending) {
+    if (!pending) {
+      return;
+    }
+
+    // A write that throws here (full or blocked storage) would surface as
+    // an `UnsubscriptionError` from `held.unsubscribe()` and skip the rest
+    // of `app.dispose()` — every machine and port hold after it. It is
+    // reported the way RxJS reports an error a subscriber callback throws
+    // (the debounced write's channel): rethrown on a later macrotask.
+    try {
       writeLayoutNow();
+    } catch (error: unknown) {
+      reportOnMacrotask(error);
     }
   });
 
   return subscription;
+}
+
+/** Rethrow `error` outside every call stack, where the host's uncaught-error
+ * handling sees it — RxJS's own `reportUnhandledError`, which it does not
+ * export. */
+function reportOnMacrotask(error: unknown): void {
+  setTimeout(() => {
+    throw error;
+  }, 0);
 }

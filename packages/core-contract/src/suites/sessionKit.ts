@@ -4,9 +4,16 @@ import { ROSTER, type RosterEntry } from "@rtc/domain";
 import { EURUSD, GBPUSD, MSFT } from "#/harness/fixtures";
 import type { ScriptedDriver } from "#/harness/scriptedPorts";
 
-const NOW: number = 1_800_000_000_000;
-const DEMO: RosterEntry = ROSTER[0];
+/** The wall clock a session suite pins with `vi.setSystemTime(NOW)` — and
+ * must: `signIn`'s login reply expires at `NOW + 60_000`, not one minute
+ * after the real clock, so only a pinned clock gives the session the
+ * one-minute life a case reasons about. */
+export const NOW: number = 1_800_000_000_000;
+/** The roster account `signIn` signs in as. */
+export const DEMO: RosterEntry = ROSTER[0];
 
+/** Sign in as `DEMO` through `presenters.auth`; the reply expires at
+ * `NOW + 60_000`, so the caller pins the clock to `NOW` first. */
 export async function signIn(
   app: App,
   resolveLogin: ScriptedDriver["resolveLogin"],
