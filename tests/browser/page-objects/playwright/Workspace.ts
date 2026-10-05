@@ -10,6 +10,13 @@ import { TESTIDS } from "../contracts/testids.ts";
 import type { WorkspacePO } from "../contracts/Workspace.ts";
 import { navigateAndAwaitMount } from "./appMount.ts";
 
+/** The page globals the swap witnesses keep on `window`. */
+interface WitnessWindow extends Window {
+  __hotSwapMark?: number;
+  __loginScreenSeen?: boolean;
+  __loginWatchFrames?: number;
+}
+
 export class PlaywrightWorkspace implements WorkspacePO {
   private readonly page: Page;
 
@@ -76,6 +83,77 @@ export class PlaywrightWorkspace implements WorkspacePO {
         return !url.searchParams.has("core");
       },
       { timeout: timeoutMs },
+    );
+  }
+
+  async setNavigationMark(): Promise<void> {
+    await this.page.evaluate(() => {
+      (window as WitnessWindow).__hotSwapMark = 1;
+    });
+  }
+
+  async navigationMark(): Promise<number | undefined> {
+    return await this.page.evaluate(() => {
+      return (window as WitnessWindow).__hotSwapMark;
+    });
+  }
+
+  async watchForLoginScreen(): Promise<void> {
+    await this.page.evaluate((loginTestId) => {
+      // Self-contained: Playwright ships only this function's source text.
+      // Sampled once per animation frame, i.e. at every chance the browser
+      // has to paint, so a login screen that is ON SCREEN for even one frame
+      // counts. Deliberately not a MutationObserver: the React client commits
+      // the login screen and removes it again within one task, before any
+      // paint, on every composition (each boot on all three cores, and each
+      // swap) — react-bindings' `bind` serves its "unauthenticated" default
+      // on the first render — and that never reaches the screen.
+      const win = window as WitnessWindow;
+      const selector = `[data-testid="${loginTestId}"]`;
+      win.__loginScreenSeen = false;
+      win.__loginWatchFrames = 0;
+
+      function sample(): void {
+        win.__loginWatchFrames = (win.__loginWatchFrames ?? 0) + 1;
+
+        if (document.querySelector(selector) !== null) {
+          win.__loginScreenSeen = true;
+        }
+
+        requestAnimationFrame(sample);
+      }
+
+      requestAnimationFrame(sample);
+    }, TESTIDS.auth.loginScreen);
+  }
+
+  async loginScreenSeen(): Promise<boolean> {
+    const { seen, frames } = await this.page.evaluate(() => {
+      const win = window as WitnessWindow;
+      return { seen: win.__loginScreenSeen, frames: win.__loginWatchFrames };
+    });
+
+    if (seen === undefined || frames === undefined) {
+      throw new Error(
+        "loginScreenSeen: no watch on this document — call watchForLoginScreen first (a navigation discards it)",
+      );
+    }
+
+    if (frames === 0) {
+      throw new Error(
+        "loginScreenSeen: the watch has not sampled a single frame, so it cannot say what was on screen",
+      );
+    }
+
+    return seen;
+  }
+
+  async waitSignedIn(timeoutMs: number): Promise<void> {
+    await expect(this.page.getByTestId(TESTIDS.shell.header)).toBeVisible({
+      timeout: timeoutMs,
+    });
+    await expect(this.page.getByTestId(TESTIDS.auth.loginScreen)).toHaveCount(
+      0,
     );
   }
 

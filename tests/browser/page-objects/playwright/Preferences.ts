@@ -42,6 +42,15 @@ export class PlaywrightPreferences implements PreferencesPO {
     await this.page.getByTestId(TESTIDS.prefs.coreImplSegment(value)).click();
   }
 
+  async waitCoreImplSelected(
+    value: PrefsCoreImpl,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.prefs.coreImplSegment(value)),
+    ).toHaveAttribute("aria-pressed", "true", { timeout: timeoutMs });
+  }
+
   async close(): Promise<void> {
     await this.page.getByTestId(TESTIDS.prefs.done).click();
   }
