@@ -1,12 +1,9 @@
-// TDD — RED: written before ViewModelShell/useCoreSelection existed.
-//   pnpm --filter @rtc/solid-bindings test coreSelection  → FAIL (property missing / extra 4th arg rejected)
-// GREEN: createViewModel accepts an optional ViewModelShell 4th arg and
-//   exposes it back out as useCoreSelection(). Solid twin of react-bindings'
-//   createViewModel.coreSelection.test.ts.
+// Solid twin of react-bindings' createViewModel.coreSelection.test.ts.
 
 import { state } from "@rx-state/core";
+import { renderHook } from "@solidjs/testing-library";
 import { BehaviorSubject } from "rxjs";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 import {
   createSimulatorPorts,
@@ -31,18 +28,39 @@ import { createViewModel } from "#/createViewModel";
 describe("createViewModel — core selection", () => {
   it("exposes the host's core selection", () => {
     const { presenters, machines, commands } = createHooksInputs();
-    const selection: CoreSelection = {
-      current: "async",
-      options: [{ impl: "async", label: "async/await", description: "d" }],
-      select: vi.fn(),
-      failure$: state(new BehaviorSubject<string | null>(null), null),
-    };
+    const { selection } = createSelection();
 
     const vm = createViewModel(presenters, machines, commands, {
       coreSelection: selection,
     });
 
-    expect(vm.useCoreSelection()).toBe(selection);
+    const { result } = renderHook(() => {
+      return vm.useCoreSelection();
+    });
+
+    expect(result?.current).toBe("async");
+    expect(result?.options).toBe(selection.options);
+    result?.select("effect");
+    expect(selection.select).toHaveBeenCalledExactlyOnceWith("effect");
+  });
+
+  it("follows the host's failure stream: a reason, then null again", () => {
+    const { presenters, machines, commands } = createHooksInputs();
+    const { selection, failures } = createSelection();
+
+    const vm = createViewModel(presenters, machines, commands, {
+      coreSelection: selection,
+    });
+
+    const { result } = renderHook(() => {
+      return vm.useCoreSelection();
+    });
+
+    expect(result?.failure()).toBeNull();
+    failures.next("chunk gone");
+    expect(result?.failure()).toBe("chunk gone");
+    failures.next(null);
+    expect(result?.failure()).toBeNull();
   });
 
   it("reports no core selection when the host supplies none", () => {
@@ -53,6 +71,25 @@ describe("createViewModel — core selection", () => {
     expect(vm.useCoreSelection()).toBeNull();
   });
 });
+
+interface Selection {
+  readonly selection: CoreSelection & { readonly select: Mock };
+  readonly failures: BehaviorSubject<string | null>;
+}
+
+function createSelection(): Selection {
+  const failures = new BehaviorSubject<string | null>(null);
+
+  return {
+    failures,
+    selection: {
+      current: "async",
+      options: [{ impl: "async", label: "async/await", description: "d" }],
+      select: vi.fn(),
+      failure$: state(failures, null),
+    },
+  };
+}
 
 interface HooksInputs {
   presenters: Presenters;

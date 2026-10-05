@@ -8,6 +8,7 @@ import {
   AnimationProbe,
   AppShell,
   AuthGate,
+  AuthGatedHeaderChrome,
   BlotterHeader,
   BlotterRow,
   BootGate,
@@ -780,6 +781,21 @@ export const registry = new Map<AnyToken, ElementFor>([
             (p().onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
           }
         />
+      );
+    },
+  ],
+  [
+    AuthGatedHeaderChrome,
+    (p: Accessor<Record<string, unknown>>): JSX.Element => {
+      return (
+        <AuthGateComponent>
+          <HeaderChromeComponent
+            activeTab={(p().activeTab as WorkspaceTab) ?? "fx"}
+            onTabChange={
+              (p().onTabChange as (t: WorkspaceTab) => void) ?? ((): void => {})
+            }
+          />
+        </AuthGateComponent>
       );
     },
   ],

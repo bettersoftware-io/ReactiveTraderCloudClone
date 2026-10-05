@@ -16,7 +16,8 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 /** End-to-end proof that the composition-root wiring (createApp →
- * instrumentPresenters → instrumentMachineFactories, exactly as AppRoot does)
+ * instrumentPresenters → instrumentMachineFactories, exactly as main.tsx's
+ * `instrumentComposition` does for the core host)
  * feeds a real DevtoolsHub, and that an InspectorStore driven by an
  * InspectorClient over an in-memory duplex pair observes the app's streams and
  * machines. A FRESH local hub is used (never the module singleton) so each

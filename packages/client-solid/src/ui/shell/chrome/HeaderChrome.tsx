@@ -1,4 +1,6 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import { createSignal, type JSX, onMount, Show } from "solid-js";
+
+import { useViewModel } from "@rtc/solid-bindings";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
@@ -23,6 +25,9 @@ import styles from "./HeaderChrome.module.css";
  * Trader.dc.html:107-217) to CSS-module markup with `var(--token)` colours.
  * The Preferences modal opens from the account menu's ⚙ Preferences row
  * (prototype parity — no standalone gear button); its open state lives here.
+ * It also opens once on mount when the shell's one-shot
+ * `takePreferencesReopen()` says this composition came from a core swap, so
+ * the user lands back where they chose the core.
  *
  * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs —
  * one NavTab component each (see NavTab.tsx for the testid/data-active
@@ -40,6 +45,15 @@ export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   function closePrefsModal(): void {
     setPrefsOpen(false);
   }
+
+  // Taken once per mount; a later mount (AuthGate after sign-in) takes
+  // `false` — the signal is the composition's, not the header's.
+  const { takePreferencesReopen } = useViewModel();
+  onMount(() => {
+    if (takePreferencesReopen?.() === true) {
+      openPrefsModal();
+    }
+  });
 
   // Driven-pulse cue (Task 10/11): flashes the nav rail for one CSS
   // animation cycle when Jarvis's drive-the-app interpreter applies a

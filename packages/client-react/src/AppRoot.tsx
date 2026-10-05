@@ -1,60 +1,48 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
-import type { CoreFactory, CoreSelection } from "@rtc/core-api";
-import {
-  instrumentMachineFactories,
-  instrumentPresenters,
-} from "@rtc/devtools-core";
 import {
   createViewModel,
   type ViewModel,
   ViewModelProvider,
 } from "@rtc/react-bindings";
 
-import { buildBrowserPorts, readDemoAccounts } from "#/app/buildBrowserPorts";
-import { devtoolsHub } from "#/app/devtools/devtoolsHub";
-import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
+import { readDemoAccounts } from "#/app/buildBrowserPorts";
+import type { Composition } from "#/app/coreHost";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
 import { PowerSaverRoot } from "./ui/shell/power/PowerSaverRoot";
 import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 
-/** The app's composition root, as a component. Builds the presenters and the
- * ViewModel exactly once and supplies the whole provider stack (ViewModel +
- * theme) to the tree — replacing the module-level singletons that used to live
- * in main.tsx, so the wiring's lifetime is owned by this component rather than
- * module load (which makes it straightforward to host multiple/independent
- * roots in tests). ThemeProvider nests inside ViewModelProvider because it reads
- * the theme preference through the ViewModel seam.
+/** The UI root of one composition. The core host (`app/coreHost.ts`) owns
+ * the ports and composes the core — exactly once per composition, outside
+ * React — and mounts this component with the result; a core swap unmounts it
+ * and mounts a fresh one (keyed by `composition.generation`). This component
+ * only builds the ViewModel from the composition and supplies the whole
+ * provider stack (ViewModel + theme) to the tree. ThemeProvider nests inside
+ * ViewModelProvider because it reads the theme preference through the
+ * ViewModel seam.
  *
- * The build runs in a lazy ref, not useState/useMemo: React StrictMode
- * double-invokes the render body (and state/memo initializers) in dev to
- * surface impurity, which would construct — and discard — a second App with its
- * own presenters and transport wiring. A ref cell is shared across both
- * invocations of the mount, so `createApp()` runs exactly once. */
-export function AppRoot({
-  core,
-  coreSelection,
-  children,
-}: AppRootProps): ReactElement {
+ * The ViewModel is built in a lazy ref, not useState/useMemo: React
+ * StrictMode double-invokes the render body (and state/memo initializers) in
+ * dev, which would bind — and discard — a second ViewModel over the same
+ * presenters. A ref cell is shared across both invocations of the mount, so
+ * `createViewModel()` runs exactly once per mount. */
+export function AppRoot({ composition, children }: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
 
   if (viewModelRef.current === null) {
-    const { presenters, commands } = core.createApp(buildBrowserPorts());
-    const instrumented = instrumentPresenters(
-      presenters,
-      PRESENTER_MANIFEST,
-      devtoolsHub,
-    );
     viewModelRef.current = createViewModel(
-      instrumented,
-      instrumentMachineFactories(
-        core.createMachineFactories(instrumented),
-        devtoolsHub,
-      ),
-      commands,
-      { coreSelection, demoAccounts: readDemoAccounts() },
+      composition.presenters,
+      composition.machineFactories,
+      composition.commands,
+      {
+        coreSelection: composition.coreSelection,
+        demoAccounts: readDemoAccounts(),
+        takePreferencesReopen: () => {
+          return composition.takePreferencesReopen();
+        },
+      },
     );
   }
 
@@ -77,7 +65,6 @@ export function AppRoot({
 }
 
 interface AppRootProps {
-  core: CoreFactory;
-  coreSelection: CoreSelection;
+  composition: Composition;
   children: ReactNode;
 }

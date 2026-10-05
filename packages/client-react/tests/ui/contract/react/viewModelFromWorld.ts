@@ -1,4 +1,3 @@
-import { state as toStateStream } from "@rx-state/core";
 import {
   CORE_OPTIONS_FOR_TESTS,
   type JarvisWorld,
@@ -1853,6 +1852,7 @@ export function reactViewModel(world: World): ViewModel {
       };
     },
     useCoreSelection: () => {
+      const failure = useSubject(world.coreSelectionFailure);
       const current = world.coreImpl.getValue();
 
       if (current === null) {
@@ -1862,7 +1862,7 @@ export function reactViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
-        failure$: toStateStream(new BehaviorSubject<string | null>(null), null),
+        failure,
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);
@@ -1872,6 +1872,9 @@ export function reactViewModel(world: World): ViewModel {
     },
     useDemoAccounts: () => {
       return world.demoAccounts;
+    },
+    takePreferencesReopen: () => {
+      return world.takePreferencesReopen();
     },
   };
 }

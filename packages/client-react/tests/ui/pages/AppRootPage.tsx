@@ -6,12 +6,16 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
 
 import { AppRoot } from "#/AppRoot";
+import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import type { Composition } from "#/app/coreHost";
+import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
  * so there is no runtime switch to exercise here. */
@@ -23,10 +27,14 @@ const coreSelection: CoreSelection = {
 };
 
 export interface AppRootPage {
-  /** Mounts the REAL composition root (`AppRoot` →
-   * `createApp(buildBrowserPorts())`) around a marker child, so "the app
-   * rendered" is one testid rather than the whole workspace. */
+  /** Mounts the REAL UI root (`AppRoot`) on a boot composition over
+   * `buildBrowserPorts()`, around a marker child, so "the app rendered" is
+   * one testid rather than the whole workspace. */
   mount(): void;
+  /** Mounts the header (not the whole App) under `AppRoot` inside
+   * `StrictMode`, as `main.tsx` does, on the composition a core swap
+   * produced: its shell's one-shot "reopen Preferences" is armed. */
+  mountHeaderAfterCoreSwap(): void;
   unmountAll(): void;
   exists(testId: string): boolean;
   /** The demo-account rows' usernames, top to bottom; empty when the login
@@ -46,9 +54,18 @@ export function appRootPage(): AppRootPage {
   return {
     mount(): void {
       render(
-        <AppRoot core={rxjsCore} coreSelection={coreSelection}>
+        <AppRoot composition={createComposition(false)}>
           <div data-testid="app-children" />
         </AppRoot>,
+      );
+    },
+    mountHeaderAfterCoreSwap(): void {
+      render(
+        <StrictMode>
+          <AppRoot composition={createComposition(true)}>
+            <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
+          </AppRoot>
+        </StrictMode>,
       );
     },
     unmountAll(): void {
@@ -78,6 +95,32 @@ export function appRootPage(): AppRootPage {
     },
     waitFor(assertion: () => void): Promise<void> {
       return waitFor(assertion);
+    },
+  };
+}
+
+function selectNoTab(): void {}
+
+/** A composition the core host would build for the RxJS core over the
+ * page's real `buildBrowserPorts()` — built at mount time, after a spec has
+ * stubbed the env the ports read. Uninstrumented: no devtools here.
+ * `reopenPreferences` arms the shell's one-shot, as the host does for the
+ * composition a swap produced. */
+function createComposition(reopenPreferences: boolean): Composition {
+  const app = rxjsCore.createApp(buildBrowserPorts());
+  let reopenPending = reopenPreferences;
+
+  return {
+    impl: "rxjs",
+    generation: 1,
+    presenters: app.presenters,
+    machineFactories: rxjsCore.createMachineFactories(app.presenters),
+    commands: app.commands,
+    coreSelection,
+    takePreferencesReopen: () => {
+      const reopen = reopenPending;
+      reopenPending = false;
+      return reopen;
     },
   };
 }

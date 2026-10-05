@@ -25,7 +25,7 @@ import type {
   StateStream,
 } from "@rtc/core-api";
 
-import { CORE_OPTIONS } from "./coreSelection";
+import { createCoreSelection } from "./coreSelection";
 
 export interface Composition {
   readonly impl: CoreImpl;
@@ -39,7 +39,7 @@ export interface Composition {
   takePreferencesReopen(): boolean;
 }
 
-export type CoreSwapPhase = "covering" | "loading" | "handover" | "revealing";
+type CoreSwapPhase = "covering" | "loading" | "handover" | "revealing";
 
 export type CoreHostState =
   | { readonly phase: "running"; readonly impl: CoreImpl }
@@ -171,14 +171,13 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       presenters: instrumented.presenters,
       machineFactories: instrumented.machineFactories,
       commands: app.commands,
-      coreSelection: {
+      coreSelection: createCoreSelection({
         current: impl,
-        options: CORE_OPTIONS,
-        select: (next: CoreImpl): void => {
+        swapTo: (next: CoreImpl): void => {
           void swapTo(next);
         },
         failure$,
-      },
+      }),
       takePreferencesReopen: (): boolean => {
         const reopen = reopenPending;
         reopenPending = false;

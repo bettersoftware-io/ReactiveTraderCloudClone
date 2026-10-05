@@ -1,5 +1,3 @@
-import { state as toStateStream } from "@rx-state/core";
-
 import {
   createDefaultLayoutPort,
   InMemoryDockLayoutStore,
@@ -69,12 +67,11 @@ const DEFAULT_JARVIS_STATE_FOR_FIXTURES: JarvisState = {
 
 import type { AppData } from "@ui-visual-shared/appData";
 import { useState } from "react";
-import { BehaviorSubject, EMPTY } from "rxjs";
+import { EMPTY } from "rxjs";
 
 import { createLayoutMachine } from "@rtc/client-core-rxjs";
 import type {
   BootSequenceState,
-  CoreSelection,
   JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
@@ -85,7 +82,7 @@ import type {
   RfqCountdownSeed,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { ViewModel } from "@rtc/react-bindings";
+import type { CoreSelectionView, ViewModel } from "@rtc/react-bindings";
 
 import { CORE_OPTIONS } from "#/app/coreSelection";
 
@@ -708,12 +705,12 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Preferences' "Application core" row (Task 5): a static "RxJS selected"
     // selection so the row renders pixel-identically to a real build's
     // default — no scenario ever clicks it, so select() is inert.
-    useCoreSelection: (): CoreSelection => {
+    useCoreSelection: (): CoreSelectionView => {
       return {
         current: "rxjs",
         options: CORE_OPTIONS,
         select: noop,
-        failure$: toStateStream(new BehaviorSubject<string | null>(null), null),
+        failure: null,
       };
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,

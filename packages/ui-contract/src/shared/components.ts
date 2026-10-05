@@ -447,6 +447,16 @@ export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
   },
 );
 
+/** `HeaderChrome` mounted under the real `AuthGate`, as `AppRoot` mounts it:
+ * signing out unmounts the header and signing in mounts a fresh one, within
+ * the same ViewModel (one composition). */
+export const AuthGatedHeaderChrome = component<
+  HeaderChromeProps,
+  HeaderChromePage
+>((ctx) => {
+  return new HeaderChromePage(ctx);
+});
+
 /** The full `App` shell, mounted whole (Task 12/P5) — see `JarvisDriverPage`'s
  * own doc for why this is the one page object that mounts production's
  * top-level composition rather than a leaf/synthetic composite. */

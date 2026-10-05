@@ -12,6 +12,8 @@ import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
 
 import { AppRoot } from "#/AppRoot";
+import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import type { Composition } from "#/app/coreHost";
 import { App } from "#/ui/App";
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
@@ -59,8 +61,8 @@ export interface AppPage {
   waitFor(assertion: () => void, options?: WaitForOptions): Promise<void>;
 }
 
-/** The framework surface for `App.test.tsx` — the real composition root
- * (`AppRoot` → `createApp(buildBrowserPorts())` → simulator ports), so this
+/** The framework surface for `App.test.tsx` — the real UI root (`AppRoot`)
+ * on a boot composition over `buildBrowserPorts()` (simulator ports), so this
  * page owns render/fireEvent/waitFor mechanics only; no fakes cross this
  * seam. */
 export function appPage(): AppPage {
@@ -68,7 +70,7 @@ export function appPage(): AppPage {
     mount(): void {
       render(() => {
         return (
-          <AppRoot core={rxjsCore} coreSelection={coreSelection}>
+          <AppRoot composition={createComposition()}>
             <App />
           </AppRoot>
         );
@@ -132,4 +134,23 @@ export function appPage(): AppPage {
 
 function findDemoAccountRows(): HTMLElement[] {
   return screen.queryAllByTestId("login-demo-account");
+}
+
+/** The boot composition the core host would build for the RxJS core over
+ * the page's real `buildBrowserPorts()` — built at mount time, after a spec
+ * has stubbed the env the ports read. Uninstrumented: no devtools here. */
+function createComposition(): Composition {
+  const app = rxjsCore.createApp(buildBrowserPorts());
+
+  return {
+    impl: "rxjs",
+    generation: 1,
+    presenters: app.presenters,
+    machineFactories: rxjsCore.createMachineFactories(app.presenters),
+    commands: app.commands,
+    coreSelection,
+    takePreferencesReopen: () => {
+      return false;
+    },
+  };
 }

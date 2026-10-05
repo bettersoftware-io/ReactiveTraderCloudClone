@@ -17,7 +17,14 @@ import "@fontsource/jetbrains-mono/700.css";
 import "@fontsource/orbitron/700.css";
 import "@fontsource/orbitron/800.css";
 import { StrictMode } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
+
+import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
+import {
+  instrumentMachineFactories,
+  instrumentPresenters,
+} from "@rtc/devtools-core";
 
 import { AppRoot } from "./AppRoot";
 import {
@@ -26,13 +33,22 @@ import {
   renderBootError,
   runBoot,
 } from "./app/bootApp";
+import { buildBrowserPorts } from "./app/buildBrowserPorts";
+import {
+  type Composition,
+  type CoverTimings,
+  createCoreHost,
+} from "./app/coreHost";
 import {
   clearCoreChoice,
-  createCoreSelection,
   defaultCoreResetHref,
   loadCore,
   safeLocalStorage,
+  saveCoreChoice,
+  urlWithoutCoreParam,
 } from "./app/coreSelection";
+import { devtoolsHub } from "./app/devtools/devtoolsHub";
+import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -45,6 +61,9 @@ if (!rootEl) {
 
 const storage = safeLocalStorage();
 
+/** No swap overlay yet: a swap covers, holds and reveals in zero time. */
+const NO_COVER: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
+
 /** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
  * value, or a storage read/write/clear failure) so it's diagnosable from the
  * console rather than silently swallowed. */
@@ -52,8 +71,47 @@ function warnCore(message: string): void {
   console.warn(`[core] ${message}`);
 }
 
+/** Clears the stored choice and reloads onto the RxJS core — the boot-error
+ * screen's "Load the default core" action. */
+function reloadOntoDefaultCore(): void {
+  clearCoreChoice(storage, warnCore);
+  location.assign(defaultCoreResetHref(location.href));
+}
+
+/** Applies the devtools decorators to one composition (the core host calls
+ * this once per `createApp`). */
+function instrumentComposition(
+  core: CoreFactory,
+  app: CoreApp,
+): Pick<Composition, "presenters" | "machineFactories"> {
+  const presenters = instrumentPresenters(
+    app.presenters,
+    PRESENTER_MANIFEST,
+    devtoolsHub,
+  );
+
+  return {
+    presenters,
+    machineFactories: instrumentMachineFactories(
+      core.createMachineFactories(presenters),
+      devtoolsHub,
+    ),
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function waitForNextMacrotask(): Promise<void> {
+  return sleep(0);
+}
+
 // Fire-and-forget by design: runBoot routes every rejection (core load or
-// render) to renderBootError, so there is nothing left to handle here.
+// the host's first composition) to renderBootError, so there is nothing left
+// to handle here.
 void runBoot(
   bootCore({
     href: location.href,
@@ -63,32 +121,68 @@ void runBoot(
     load: loadCore,
   }),
   ({ impl, core, source }) => {
-    document.documentElement.dataset.coreImpl = impl;
     console.info(formatBootedMessage(impl, source));
-    const coreSelection = createCoreSelection({
-      current: impl,
-      storage,
-      warn: warnCore,
-      href: () => {
-        return location.href;
+    const root = createRoot(rootEl);
+
+    // The host owns the ports (built once per page) and every composition;
+    // a Preferences core choice swaps the core in place, with no reload.
+    const host = createCoreHost({
+      ports: buildBrowserPorts(),
+      initial: { impl, core },
+      load: loadCore,
+      instrument: instrumentComposition,
+      endComposition: () => {
+        devtoolsHub.endComposition();
       },
-      navigate: (href: string): void => {
-        location.assign(href);
+      mount: (composition: Composition): void => {
+        flushSync(() => {
+          root.render(
+            <StrictMode>
+              <AppRoot key={composition.generation} composition={composition}>
+                <App />
+              </AppRoot>
+            </StrictMode>,
+          );
+        });
       },
+      unmount: () => {
+        flushSync(() => {
+          root.render(null);
+        });
+      },
+      publish: (next: CoreImpl): void => {
+        document.documentElement.dataset.coreImpl = next;
+      },
+      persist: (next: CoreImpl): boolean => {
+        return saveCoreChoice(storage, next, warnCore);
+      },
+      stripCoreParam: () => {
+        history.replaceState(
+          history.state,
+          "",
+          urlWithoutCoreParam(location.href),
+        );
+      },
+      info: (message: string): void => {
+        console.info(message);
+      },
+      warn: (message: string): void => {
+        console.warn(message);
+      },
+      onFatal: (error: unknown): void => {
+        // No core is composed: drop whatever the root still holds, then show
+        // the boot-error screen in its place.
+        root.unmount();
+        renderBootError(rootEl, error, reloadOntoDefaultCore);
+      },
+      cover: NO_COVER,
+      sleep,
+      nextMacrotask: waitForNextMacrotask,
     });
 
-    createRoot(rootEl).render(
-      <StrictMode>
-        <AppRoot core={core} coreSelection={coreSelection}>
-          <App />
-        </AppRoot>
-      </StrictMode>,
-    );
+    host.start();
   },
   (error: unknown) => {
-    renderBootError(rootEl, error, () => {
-      clearCoreChoice(storage, warnCore);
-      location.assign(defaultCoreResetHref(location.href));
-    });
+    renderBootError(rootEl, error, reloadOntoDefaultCore);
   },
 );

@@ -15,8 +15,8 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports, then `runBoot(bootCore(...))` -- resolves which application core to load (`?core=` URL parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build default, then `rxjs`) and mounts `<AppRoot core coreSelection><App /></AppRoot>` into `#root` |
-| `src/AppRoot.tsx` | Composition root component — builds the app exactly once from the chosen core (lazy `useRef`, StrictMode-safe), wraps it in devtools instrumentation, and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
+| `src/main.tsx` | Entry point: font imports, then `runBoot(bootCore(...))` -- resolves which application core to load (`?core=` URL parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build default, then `rxjs`), then hands the loaded core to the core host (`src/app/coreHost.ts`), which builds the ports once and mounts `<AppRoot composition><App /></AppRoot>` into `#root` — and swaps the core in place when Preferences picks another |
+| `src/AppRoot.tsx` | UI root of one composition — builds the `ViewModel` once from the host's composition (lazy `useRef`, StrictMode-safe) and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
 | `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, `localStorage`, `fetch`/`import.meta.env` |
 | `src/app/adapters/` | `BrowserConnectionEventsAdapter`, `LocalStoragePreferencesAdapter`, the `LocalStorage*` layout/session stores |
 | `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
@@ -39,7 +39,7 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 ## Where to start reading
 
 1. `src/main.tsx` — the entry point; shows exactly what gets mounted and in what order (fonts, `AppRoot`, `App`)
-2. `src/AppRoot.tsx` — the composition root; where the chosen core's `createApp`/`createMachineFactories` meet React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
+2. `src/app/coreHost.ts` then `src/AppRoot.tsx` — where the chosen core is composed over the page's ports (the host, framework-free) and meets React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
 3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring, the browser-specific half of composition
 4. `src/ui/App.tsx` — the dumb top-level UI tree: `AmbientBackground`, `HeaderChrome`, the per-tab layout engine (`DockviewLayoutEngine` or `InhouseLayoutEngine`, by preference), `StatusBar`, `ConnectionOverlay`, `LockScreen`, `JarvisOverlay`, `JarvisPanelLayer`
 
@@ -85,11 +85,12 @@ the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-mu
 
 `src/app/` is where this package plugs the framework-free application core
 into the browser. `main.tsx` first resolves and loads the core (`bootCore`),
-then `src/AppRoot.tsx` calls `core.createApp(buildBrowserPorts())` once
-(via a lazy `useRef`, StrictMode-safe) to get `{ presenters, commands }`, wraps
-them in the devtools decorators, and uses `createViewModel` from
-`@rtc/react-bindings` to build the `ViewModel` the whole `src/ui` tree
-consumes through `useViewModel()`. `src/app/buildBrowserPorts.ts` builds the
+then the core host (`src/app/coreHost.ts`) calls
+`core.createApp(buildBrowserPorts())` — the ports built once per page — and
+wraps `{ presenters, commands }` in the devtools decorators; `src/AppRoot.tsx`
+uses `createViewModel` from `@rtc/react-bindings` to build the `ViewModel` the
+whole `src/ui` tree consumes through `useViewModel()`. A core picked in
+Preferences is swapped in place by the host, over the same ports. `src/app/buildBrowserPorts.ts` builds the
 `AppPorts` that composition needs: real `WsAdapter`/`WsReal*` ports when
 `VITE_SERVER_URL` is set, in-process simulator ports otherwise, plus the
 browser-only adapters (`BrowserConnectionEventsAdapter`,
