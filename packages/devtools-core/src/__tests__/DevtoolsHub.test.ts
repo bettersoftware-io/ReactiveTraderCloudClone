@@ -2,6 +2,7 @@ import { BehaviorSubject, type Observable, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";
+import { InspectorStore } from "../InspectorStore";
 import type {
   AppToInspector,
   DevtoolsErrorEvent,
@@ -478,6 +479,159 @@ describe("DevtoolsHub", () => {
 
     expect(hub.live).toBe(true);
   });
+  describe("endComposition", () => {
+    it("lets a live hub take the next composition's source for an id it already knew", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      const oldSubject = new Subject<number>();
+      hub.registerStream("x", oldSubject);
+      inbound$.next({ kind: "hello", v: 1 });
+      expect(oldSubject.observed).toBe(true);
+
+      hub.endComposition();
+      expect(oldSubject.observed).toBe(false);
+
+      const newSubject = new Subject<number>();
+      hub.registerStream("x", newSubject);
+      expect(newSubject.observed).toBe(true);
+      vi.advanceTimersByTime(40); // the re-snapshot flush
+      newSubject.next(7);
+      vi.advanceTimersByTime(40);
+      const emission = batchEvents(findLastBatch(sent))?.find((ev) => {
+        return ev.kind === "stream:emission";
+      });
+      expect(emission).toMatchObject({ streamId: "x", value: 7 });
+    });
+
+    it("on a dormant hub, a later hello subscribes only the new registrations and welcomes once", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      const oldSubject = new Subject<number>();
+      hub.registerStream("x", oldSubject);
+
+      hub.endComposition();
+      const newSubject = new Subject<number>();
+      hub.registerStream("x", newSubject);
+      inbound$.next({ kind: "hello", v: 1 });
+      vi.advanceTimersByTime(100);
+
+      expect(oldSubject.observed).toBe(false);
+      expect(newSubject.observed).toBe(true);
+      expect(countOfKind(sent, "welcome")).toBe(1);
+      expect(countOfKind(sent, "snapshot")).toBe(1);
+    });
+
+    it("reports every live machine disposed, and an already disposed one only once", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      const gone = hub.machineCreated("a", [], new Subject<number>());
+      const live1 = hub.machineCreated("b", [], new Subject<number>());
+      const live2 = hub.machineCreated("c", [], new Subject<number>());
+      inbound$.next({ kind: "hello", v: 1 });
+      hub.machineDisposed(gone);
+      vi.advanceTimersByTime(40);
+      const before = sent.length;
+
+      hub.endComposition();
+      vi.advanceTimersByTime(100);
+
+      const disposedIds = sent
+        .slice(before)
+        .flatMap((m) => {
+          return batchEvents(m) ?? [];
+        })
+        .filter((ev) => {
+          return ev.kind === "machine:disposed";
+        })
+        .map((ev) => {
+          return ev.machineId;
+        });
+      expect(disposedIds).toEqual([live1, live2]);
+    });
+
+    it("sends a live inspector welcome then snapshot on the next flush, listing only the new composition's streams", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      hub.registerStream("old.a", new BehaviorSubject(1));
+      hub.registerStream("old.b", new BehaviorSubject(2));
+      inbound$.next({ kind: "hello", v: 1 });
+      const before = sent.length;
+
+      hub.endComposition();
+      hub.registerStream("new.a", new BehaviorSubject(3));
+      expect(sent.length).toBe(before);
+      vi.advanceTimersByTime(40);
+
+      const after = sent.slice(before);
+      expect(after[0]?.kind).toBe("welcome");
+      expect(after[1]?.kind).toBe("snapshot");
+      const snap = after[1];
+      const ids =
+        snap?.kind === "snapshot"
+          ? snap.streams.map((s) => {
+              return s.streamId;
+            })
+          : [];
+      expect(ids).toEqual(["new.a"]);
+    });
+
+    it("sends nothing with no inspector attached, and is a no-op on an empty hub", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      expect(() => {
+        hub.endComposition();
+      }).not.toThrow();
+      hub.registerStream("x", new Subject<number>());
+      hub.endComposition();
+      vi.advanceTimersByTime(100);
+      expect(sent).toEqual([]);
+      expect(hub.live).toBe(false);
+
+      inbound$.next({ kind: "hello", v: 1 });
+      vi.advanceTimersByTime(100);
+      expect(countOfKind(sent, "welcome")).toBe(1);
+    });
+
+    it("leaves an InspectorStore with no stream and no live machine from the first composition", () => {
+      const { hub, sent, inbound$ } = createHarness();
+      hub.registerStream("old.stream", new BehaviorSubject(1));
+      hub.machineCreated("oldMachine", [], new BehaviorSubject("s"));
+      inbound$.next({ kind: "hello", v: 1 });
+      const store = new InspectorStore({ coalesce: false });
+      sent.forEach((m) => {
+        store.apply(m);
+      });
+      expect(
+        store.getSnapshot().streams.map((r) => {
+          return r.streamId;
+        }),
+      ).toEqual(["old.stream"]);
+      const before = sent.length;
+
+      hub.endComposition();
+      hub.registerStream("new.stream", new BehaviorSubject(2));
+      const newMachine = hub.machineCreated(
+        "newMachine",
+        [],
+        new BehaviorSubject("t"),
+      );
+      vi.advanceTimersByTime(40);
+      sent.slice(before).forEach((m) => {
+        store.apply(m);
+      });
+
+      const state = store.getSnapshot();
+      expect(
+        state.streams.map((r) => {
+          return r.streamId;
+        }),
+      ).toEqual(["new.stream"]);
+      expect(
+        state.machines
+          .filter((r) => {
+            return !r.disposed;
+          })
+          .map((r) => {
+            return r.machineId;
+          }),
+      ).toEqual([newMachine]);
+    });
+  });
 });
 
 interface Harness {
@@ -532,6 +686,15 @@ function lastOfKind(
   }
 
   return undefined;
+}
+
+function countOfKind(
+  sent: readonly AppToInspector[],
+  kind: AppToInspector["kind"],
+): number {
+  return sent.filter((m) => {
+    return m.kind === kind;
+  }).length;
 }
 
 /** An Observable whose subscribe() throws synchronously — simulates a hostile

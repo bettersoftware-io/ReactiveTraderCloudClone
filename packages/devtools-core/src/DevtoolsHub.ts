@@ -82,6 +82,8 @@ export class DevtoolsHub {
 
   private isLive = false;
 
+  private resnapshotDue = false;
+
   private seq = 0;
 
   private lastPingAt = 0;
@@ -297,6 +299,28 @@ export class DevtoolsHub {
     }
   }
 
+  /** Ends the composition whose presenters and machines are registered: every
+   * stream is unsubscribed and forgotten, so the next `registerStream` with
+   * the same id takes the new composition's source, and every machine still
+   * live is reported disposed. An attached inspector gets a fresh welcome +
+   * snapshot on the next flush, once the next composition has registered. */
+  endComposition(): void {
+    for (const entry of this.streams.values()) {
+      entry.sub?.unsubscribe();
+    }
+
+    this.streams.clear();
+    this.pendingStreams.clear();
+
+    for (const [machineId, entry] of this.machines) {
+      if (!entry.disposed) {
+        this.machineDisposed(machineId);
+      }
+    }
+
+    this.resnapshotDue = this.isLive;
+  }
+
   dispose(): void {
     this.goDormant();
     this.transportSub?.unsubscribe();
@@ -378,6 +402,7 @@ export class DevtoolsHub {
     }
 
     this.isLive = false;
+    this.resnapshotDue = false;
 
     if (this.flushTimer !== null) {
       clearInterval(this.flushTimer);
@@ -483,6 +508,11 @@ export class DevtoolsHub {
   }
 
   private flush(): void {
+    if (this.resnapshotDue) {
+      this.resnapshotDue = false;
+      this.sendWelcomeAndSnapshot();
+    }
+
     if (
       this.pendingStreams.size === 0 &&
       this.pendingMachineStates.size === 0 &&
