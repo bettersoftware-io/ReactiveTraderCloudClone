@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
 
 import {
-  type AdminJarvisUsagePayload,
   JARVIS_BRAIN_LABELS,
   type JarvisBrainUsageRow,
+  type JarvisUsage,
 } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
@@ -24,7 +24,7 @@ import styles from "./JarvisUsageCard.module.css";
  * in scope per this card's spec), so there's nothing to flag either way.
  *
  * `windowEndMs === 0` is the snapshot's own "no turn recorded yet" sentinel
- * (see `AdminJarvisUsagePayload`'s doc) — rendered as "—" rather than the
+ * (see `JarvisUsageSnapshot`'s doc) — rendered as "—" rather than the
  * misleading epoch-zero clock read `clock(0)` would otherwise print.
  *
  * The budget-gate envelope fields (`budgetUsd`/`softBudgetUsd`/
@@ -34,7 +34,7 @@ import styles from "./JarvisUsageCard.module.css";
  */
 export function JarvisUsageCard(): ReactElement {
   const { useJarvisUsage } = useViewModel();
-  const usage: AdminJarvisUsagePayload | null = useJarvisUsage();
+  const usage: JarvisUsage | null = useJarvisUsage();
 
   return (
     <div data-testid="admin-jarvis-usage-card" className={styles.card}>

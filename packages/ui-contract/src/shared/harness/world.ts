@@ -25,7 +25,6 @@ import type {
 } from "@rtc/core-api";
 import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
-  type AdminJarvisUsagePayload,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -65,6 +64,7 @@ import {
   type JarvisEvent,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
@@ -298,7 +298,7 @@ export interface AdminSeed {
    * fields (`budgetUsd`/`softBudgetUsd`/`spentWindowUsd`/`gateLevel`).
    * Defaults to null (the card's "NO USAGE DATA" placeholder), mirroring
    * `topology`'s null-until-first-push default. */
-  jarvisUsage?: AdminJarvisUsagePayload | null;
+  jarvisUsage?: JarvisUsage | null;
 }
 
 /**
@@ -472,9 +472,9 @@ export interface World {
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
-  readonly jarvisUsage$: BehaviorSubject<AdminJarvisUsagePayload | null>;
+  readonly jarvisUsage$: BehaviorSubject<JarvisUsage | null>;
   /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
-  setJarvisUsage(value: AdminJarvisUsagePayload | null): void;
+  setJarvisUsage(value: JarvisUsage | null): void;
   /** The persisted `workspaceLayoutV1` preference string (GenUI L3's pinned
    * panels) — the ONLY `string | null` preference on this World, and the one
    * every other one is not: it is both READ (each framework's
@@ -965,7 +965,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
   );
 
-  const jarvisUsage$ = new BehaviorSubject<AdminJarvisUsagePayload | null>(
+  const jarvisUsage$ = new BehaviorSubject<JarvisUsage | null>(
     adminSeed.jarvisUsage ?? null,
   );
 
@@ -1161,7 +1161,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffort,
     jarvisNarrator,
     jarvisUsage$,
-    setJarvisUsage: (value: AdminJarvisUsagePayload | null) => {
+    setJarvisUsage: (value: JarvisUsage | null) => {
       return jarvisUsage$.next(value);
     },
     workspaceLayout,

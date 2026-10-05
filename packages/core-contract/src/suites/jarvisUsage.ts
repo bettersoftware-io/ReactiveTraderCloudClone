@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdminJarvisUsagePayload } from "@rtc/domain";
+import type { JarvisUsage } from "@rtc/domain";
 
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
@@ -53,6 +53,6 @@ export function describeJarvisUsageContract(
   });
 }
 
-function createUsage(windowEndMs: number): AdminJarvisUsagePayload {
+function createUsage(windowEndMs: number): JarvisUsage {
   return { windowStartMs: 0, windowEndMs, currentWindow: [], sinceBoot: [] };
 }

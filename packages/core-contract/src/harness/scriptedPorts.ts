@@ -25,7 +25,6 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import type {
-  AdminJarvisUsagePayload,
   AdminPort,
   AnalyticsPort,
   AnomalyDetectorConfig,
@@ -52,6 +51,7 @@ import type {
   InstrumentPort,
   JarvisEvent,
   JarvisHistoryEntry,
+  JarvisUsage,
   LogEvent,
   MarketDataPort,
   MetricControl,
@@ -420,7 +420,7 @@ export interface ScriptedDriver {
    * when no core has called `jarvis.setHistorySource`. */
   jarvisHistory(): readonly JarvisHistoryEntry[] | null;
   /** Push the next `jarvisUsage.usage$()` snapshot. */
-  pushJarvisUsage(payload: AdminJarvisUsagePayload): void;
+  pushJarvisUsage(payload: JarvisUsage): void;
   /** Subscriptions to anything `jarvis.availability$()` returned. On the
    * real WS adapter EACH one is a fresh server request, so this — not the
    * call count — is what "asked once" means. */
@@ -523,7 +523,7 @@ export function scriptPorts(
     availability$.next(seed.jarvisAvailability ?? SIM_JARVIS_AVAILABILITY);
   }
 
-  const usage$ = new Subject<AdminJarvisUsagePayload>();
+  const usage$ = new Subject<JarvisUsage>();
   let historySource: (() => readonly JarvisHistoryEntry[]) | null = null;
   let availabilitySubscriptions = 0;
   let usageSubscriptions = 0;
@@ -890,7 +890,7 @@ export function scriptPorts(
 
   const jarvisUsage = countCalls<JarvisUsagePort>(
     {
-      usage$: (): Observable<AdminJarvisUsagePayload> => {
+      usage$: (): Observable<JarvisUsage> => {
         return defer(() => {
           usageSubscriptions += 1;
           return usage$;
@@ -1158,7 +1158,7 @@ export function scriptPorts(
       jarvisHistory: () => {
         return historySource === null ? null : historySource();
       },
-      pushJarvisUsage: (payload: AdminJarvisUsagePayload) => {
+      pushJarvisUsage: (payload: JarvisUsage) => {
         usage$.next(payload);
       },
       jarvisAvailabilitySubscriptions: () => {

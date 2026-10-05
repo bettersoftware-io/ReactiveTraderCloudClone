@@ -1,7 +1,7 @@
 import { filter, Observable, switchMap } from "rxjs";
 
 import type { IWsAdapter, JarvisUsagePort } from "@rtc/core-api";
-import type { AdminJarvisUsagePayload } from "@rtc/domain";
+import type { JarvisUsage } from "@rtc/domain";
 import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 /** One connection's live `SERVER_MSG.ADMIN_JARVIS_USAGE` feed: registers the
@@ -10,12 +10,10 @@ import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
  * (`adminJarvisUsage.effects.ts`) sources this from a `BehaviorSubject`, so
  * a fresh subscribe always replays the current snapshot first — this
  * adapter itself stays a plain forwarder with no local caching. */
-function createConnectionUsageStream(
-  ws: IWsAdapter,
-): Observable<AdminJarvisUsagePayload> {
-  return new Observable<AdminJarvisUsagePayload>((subscriber) => {
+function createConnectionUsageStream(ws: IWsAdapter): Observable<JarvisUsage> {
+  return new Observable<JarvisUsage>((subscriber) => {
     const unregister = ws.on(SERVER_MSG.ADMIN_JARVIS_USAGE, (payload) => {
-      subscriber.next(payload as AdminJarvisUsagePayload);
+      subscriber.next(payload as JarvisUsage);
     });
     ws.send(CLIENT_MSG.ADMIN_JARVIS_USAGE_SUBSCRIBE);
 
@@ -38,7 +36,7 @@ function createConnectionUsageStream(
 export class WsJarvisUsageAdapter implements JarvisUsagePort {
   constructor(private readonly ws: IWsAdapter) {}
 
-  usage$(): Observable<AdminJarvisUsagePayload> {
+  usage$(): Observable<JarvisUsage> {
     return this.ws.connectionEvents().pipe(
       filter((event) => {
         return event.type === "gatewayConnected";

@@ -2,7 +2,6 @@ import { defer, map, Observable, of } from "rxjs";
 
 import type { IWsAdapter, SessionStore, TransportPorts } from "@rtc/core-api";
 import {
-  type AdminJarvisUsagePayload,
   type AdminPort,
   type AnalyticsPort,
   AnalyticsSimulator,
@@ -35,6 +34,7 @@ import {
   type Instrument,
   type InstrumentPort,
   InstrumentSimulator,
+  type JarvisUsage,
   LatencySimulator,
   type MarketDataPort,
   type OrderPort,
@@ -146,7 +146,7 @@ export function createSimulatorPorts(deps: PortFactoryDeps): TransportPorts {
       instantReveal$: createInstantReveal$(deps.preferences),
     }),
     jarvisUsage: {
-      usage$(): Observable<AdminJarvisUsagePayload> {
+      usage$(): Observable<JarvisUsage> {
         return of({
           windowStartMs: 0,
           windowEndMs: 0,

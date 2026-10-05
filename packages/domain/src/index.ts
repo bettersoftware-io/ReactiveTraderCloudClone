@@ -173,8 +173,8 @@ export type {
   JarvisHistoryEntry,
 } from "./jarvis/jarvisEvent.js";
 export type {
-  AdminJarvisUsagePayload,
   JarvisBrainUsageRow,
+  JarvisUsage,
   JarvisUsageSnapshot,
 } from "./jarvis/jarvisUsage.js";
 export type {

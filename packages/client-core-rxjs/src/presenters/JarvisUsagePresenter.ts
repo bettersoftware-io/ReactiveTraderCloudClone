@@ -4,7 +4,7 @@ import type {
   JarvisUsagePort,
   JarvisUsagePresenter as JarvisUsagePresenterApi,
 } from "@rtc/core-api";
-import type { AdminJarvisUsagePayload } from "@rtc/domain";
+import type { JarvisUsage } from "@rtc/domain";
 
 import { warmReplay } from "./warmReplay.js";
 
@@ -17,7 +17,7 @@ import { warmReplay } from "./warmReplay.js";
  * subscription (`defer`), so an app whose usage presenter nobody reads never
  * touches it. */
 export class JarvisUsagePresenter implements JarvisUsagePresenterApi {
-  readonly usage$: Observable<AdminJarvisUsagePayload | null>;
+  readonly usage$: Observable<JarvisUsage | null>;
 
   /** `disposed$` emits once when the app is disposed (`app.dispose()`); it
    * releases this singleton's port subscription — see `warmReplay`. */

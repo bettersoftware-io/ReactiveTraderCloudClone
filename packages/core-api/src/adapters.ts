@@ -1,11 +1,11 @@
 import type {
-  AdminJarvisUsagePayload,
   ConnectionEvent,
   JarvisAvailabilityGate,
   JarvisBrain,
   JarvisEffort,
   JarvisEvent,
   JarvisHistoryEntry,
+  JarvisUsage,
   SessionUser,
 } from "@rtc/domain";
 
@@ -134,7 +134,7 @@ export interface JarvisAvailability {
  * no live Anthropic spend, and so no budget to report, offline).
  */
 export interface JarvisUsagePort {
-  usage$(): Stream<AdminJarvisUsagePayload>;
+  usage$(): Stream<JarvisUsage>;
 }
 
 /**

@@ -53,7 +53,6 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import {
-  type AdminJarvisUsagePayload,
   type AmbientStyle,
   type Candle,
   type CandleTimeframe,
@@ -91,6 +90,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
@@ -549,7 +549,7 @@ export interface ViewModel {
   useJarvisPreferences: () => UseJarvisPreferencesResult;
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
-  useJarvisUsage: () => AdminJarvisUsagePayload | null;
+  useJarvisUsage: () => JarvisUsage | null;
   /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
    * plus the dismiss intent (singleton, app-level). Starts empty. */
   useJarvisPanels: () => UseJarvisPanelsResult;
@@ -973,7 +973,7 @@ export function createViewModel(
 
   const [useJarvisUsageValue] = bind(
     presenters.jarvisUsage.usage$,
-    null as AdminJarvisUsagePayload | null,
+    null as JarvisUsage | null,
   );
 
   const [useJarvisPanelsValue] = bind(

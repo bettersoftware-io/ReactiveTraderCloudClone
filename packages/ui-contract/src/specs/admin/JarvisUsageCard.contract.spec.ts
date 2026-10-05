@@ -10,7 +10,7 @@ import { JarvisUsageCard } from "@ui-contract/components";
 import { cleanupMounted, mount } from "@ui-contract/mount";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { AdminJarvisUsagePayload } from "@rtc/domain";
+import type { JarvisUsage } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -137,7 +137,7 @@ describe("JarvisUsageCard", () => {
   });
 });
 
-const SNAPSHOT: AdminJarvisUsagePayload = {
+const SNAPSHOT: JarvisUsage = {
   windowStartMs: 1_700_000_000_000,
   windowEndMs: 1_700_000_600_000,
   currentWindow: [
