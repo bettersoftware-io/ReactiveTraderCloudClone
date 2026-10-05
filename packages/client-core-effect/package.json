@@ -38,7 +38,7 @@
     "@rtc/core-contract": "workspace:*",
     "@types/node": "^26.2.0",
     "@vitest/coverage-v8": "^5.0.3",
-    "tsc-alias": "1.9.5",
+    "tsc-alias": "1.9.7",
     "vitest": "^5.0.3"
   }
 }
