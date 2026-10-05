@@ -196,6 +196,41 @@ about eleven steps per value. The price and price-history folds and the
 stale-flag machines went from 4,250 scheduler tasks per six seconds to 600.
 The stream ends when every port has completed and fails as soon as one does.
 
+A source of that merged stream can also be a GROUP of ports that follows a
+selector: **`switchedPortEvents(selector$, (key) => [portEvents(…), …])`**
+carries the ports of the selector's latest value and releases the previous
+group's when it moves on — the RxJS `switchMap((key) => merge(…))`, done as
+plain subscription management so every member feeds the same queue. The
+animation director and the narrator follow the roster's prices this way.
+As `Stream.flatMap(…, { switch: true })` over a `Stream.mergeAll` of a
+stream per pair they ran 812 of the core's 1,143 scheduler tasks per six
+seconds (four and three per tick); now one each per tick. State a group
+needs — the director's "previous mid" — lives in the closure `open` builds,
+so it starts afresh with every group. `leavingOnFailure(member)` turns a
+member's failure into its leaving the group (the narrator: one failing pair
+silences only itself).
+
+Two more rules about WHEN a value arrives, both measured on the FX screen
+(2026-10-05):
+
+- **A fold's producer runs before its `subscribe` returns.** `sharedFold`
+  forks the producer and then calls `turnScheduler.settle()`: the turn,
+  taken now instead of at the next microtask. A port that replays on
+  subscribe (the pricing simulator's 50 ticks) has queued those values by
+  then, and without the settle the producer folds them a microtask later —
+  after a UI that was handed ANOTHER stream's current value synchronously
+  has already rendered. Each tile rendered once for its price and again for
+  its history: 55 tile renders in the first two seconds of a production
+  build against 48 on the RxJS core, 49 with the settle. The contract case
+  "a tile mounting on a price that is already warm hears that price and the
+  history the port replays in one turn" pins it for all three cores.
+- **A narrow view of a shared stream is a filter, not a fold.**
+  `filterStream(source, keep)` has no fiber, queue or state: its subscriber
+  is called from whatever delivers `source`. `animationDirector.intentsFor`
+  is that over the director's one stream (the RxJS core's
+  `all$.pipe(filter(…))`); as a fold per target, every intent woke a fiber
+  per mounted tile to be dropped by eight of them.
+
 Slice 4 adds three more bridge exports. `scopedPortStream(open)` is the
 lifecycle twin of `rpc`: a per-call, MULTI-value port stream whose `open()`
 runs — and whose port is subscribed — when the stream STARTS, and whose
@@ -346,8 +381,8 @@ countdown fiber; `events$` a synchronous bridge `createHotStream`),
 `jarvisDemo` (a run fiber; each step an `Effect.async` settled by the shared
 `createDemoStepWatch` over synchronous state/event listeners, raced by
 `Effect.timeoutTo`), `jarvisUsage` (lazily opened, retained) and the
-internal narrator (a switched `Stream.flatMap` over scoped per-pair
-streams). Wave 1 added the workspace —
+internal narrator (the latest roster's prices through one queue,
+`switchedPortEvents`). Wave 1 added the workspace —
 now built by the family over this core's own `jarvis.events$`: per-tab layout machines and the panels roster as `SyncRef`s
 (whose in-core mirrors hear a change synchronously — the workspace's
 sync-fold contract), each live
@@ -366,8 +401,10 @@ members: `workspaceNav`, `bootGate` and `auth` over `SyncRef`s
 (since slice 8 this core also gates `ports.transport` on its `auth`, in
 `bridge/transportGate.ts`, released with the host scope),
 the `boot` ramp as a fiber of `Effect.sleep` steps, and `animationDirector`
-— a refCounted `sharedFold` over a merged Effect `Stream` whose per-pair
-prices are `scopedPortStream`s, so a roster switch releases them. Slice 4 added eight: the five
+— a refCounted `sharedFold` over its six sources in one queue
+(`fromPort.merged`), the per-pair prices a `switchedPortEvents` group, so a
+roster switch releases them; `intentsFor(target)` is a `filterStream` view
+of it. Slice 4 added eight: the five
 equities presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two workspace singletons (`eqWorkspace`, `eqDrawings`)
 and `machines.orderTicket`. Slice 3 added eight: the

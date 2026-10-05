@@ -19,8 +19,10 @@ import {
   createChildHost,
   type EffectHost,
   fromPortIn,
+  leavingOnFailure,
+  portEvents,
   reportOutOfBand,
-  scopedPortStream,
+  switchedPortEvents,
 } from "#/bridge/out";
 
 export interface NarratorDeps {
@@ -37,8 +39,8 @@ export interface NarratorDeps {
 /**
  * The narrator on the Effect core — internal, no presenter of its own. One
  * session-wide `createAnomalyDetector` step reads the ticks of every pair
- * in the latest roster (a `Stream.flatMap` with `switch`, each pair's
- * stream scoped so a roster switch releases it); a surviving anomaly is
+ * in the latest roster (`switchedPortEvents`: one queue for all of them,
+ * and a roster switch releases the previous pairs); a surviving anomaly is
  * gated by the latest preference, then by the shared cooldown/cap gate
  * against the Effect `Clock`, and an admitted one becomes a `narrate()`
  * turn. A failing pair is dropped from the merge and silences only itself
@@ -85,25 +87,19 @@ export function createNarrator(parent: EffectHost, deps: NarratorDeps): void {
     ),
     { scope: host.scope },
   );
+  const ticks = fromPort.merged<PriceTick>([
+    switchedPortEvents(deps.pairs$, (pairs: readonly CurrencyPair[]) => {
+      return pairs.map((pair) => {
+        return leavingOnFailure(
+          portEvents(deps.priceFor(pair), (tick: PriceTick) => {
+            return tick;
+          }),
+        );
+      });
+    }),
+  ]);
   host.runtime.runFork(
-    fromPort(deps.pairs$).pipe(
-      Stream.flatMap(
-        (pairs: readonly CurrencyPair[]) => {
-          return Stream.mergeAll(
-            pairs.map((pair) => {
-              return scopedPortStream(() => {
-                return deps.priceFor(pair);
-              }).pipe(
-                Stream.catchAll(() => {
-                  return Stream.empty;
-                }),
-              );
-            }),
-            { concurrency: "unbounded" },
-          );
-        },
-        { switch: true },
-      ),
+    ticks.pipe(
       Stream.runForEach((tick: PriceTick) => {
         return Clock.currentTimeMillis.pipe(
           Effect.andThen((now: number) => {

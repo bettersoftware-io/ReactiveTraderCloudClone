@@ -256,6 +256,22 @@ to reproduce them explicitly:
    until nothing is left: ~430 renders against ~420. The `animationDirector`
    case "a tick's price and the flash it causes reach the tile in one turn"
    pins it; `collectTurns` takes several streams for exactly this.
+7. **What a port replays on subscribe arrives in the subscribing turn.** A
+   tile subscribes its price and its history in one synchronous stretch.
+   The price is usually warm already (the animation director reads it), so
+   the tile is handed its current value inside `subscribe`; the history's
+   port replays its recent ticks inside `subscribe` too. Both must reach
+   the tile before it re-renders. RxJS delivers a replay inside the
+   `subscribe` call, and the async core within the same turn. In the Effect
+   core the
+   replay is queued for the fold's fiber, which would run at the next
+   microtask — after the render the price already caused. Measured
+   2026-10-05 (production build, nine tiles): 55 tile renders in the first
+   two seconds against 48 on RxJS, each tile rendering once for its price
+   and again for its history. `sharedFold` therefore settles the core
+   before its `subscribe` returns (`turnScheduler.settle()`): 49. The
+   `priceHistory` case "a tile mounting on a price that is already warm
+   hears that price and the history the port replays in one turn" pins it.
 
 ## Failure, teardown and port discipline
 
