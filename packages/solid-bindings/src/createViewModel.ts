@@ -683,8 +683,8 @@ export interface ViewModel {
    * it. */
   takePreferencesReopen?: () => boolean;
   /** Not a hook: what `takePreferencesReopen` would answer, without
-   * consuming it — a pure read, safe in a render React may throw away. Read
-   * it to decide, take it once committed. Optional like its sibling. */
+   * consuming it — a pure read, safe to repeat. Read it for the initial
+   * signal value, take it in `onMount`. Optional like its sibling. */
   peekPreferencesReopen?: () => boolean;
 }
 

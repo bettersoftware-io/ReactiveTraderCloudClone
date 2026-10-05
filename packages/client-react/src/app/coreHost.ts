@@ -89,7 +89,8 @@ export interface CoreHostDeps {
 
 export interface CoreHost {
   readonly state$: StateStream<CoreHostState>;
-  /** Mounts the boot composition. Called once by the entry file. */
+  /** Mounts the boot composition. Called once by the entry file. Throws
+   * when it cannot be composed or mounted, leaving nothing composed. */
   start(): void;
   swapTo(impl: CoreImpl): Promise<void>;
 }
@@ -122,14 +123,20 @@ interface Handover {
  * Failures (spec §1's table): a load that rejects leaves the page on the old
  * core, still mounted; a `createApp` (or `instrument`) that throws composes
  * the previous core again; when that throws too, `onFatal` gets the second
- * error. The reason reaches the UI through `CoreSelection.failure$`.
+ * error and the first is a `[core]` warning. The reason reaches the UI
+ * through `CoreSelection.failure$`.
  *
  * Any other throw is split by whether a core is mounted. Between the unmount
  * and a successful mount nothing is on screen, so the throw ends in
  * `onFatal`, every composed-but-unmounted app is disposed and `state$` says
  * `fatal`. Before the unmount or after the mount the page keeps a working
  * core, so the throw is a `[core]` warning and the swap finishes. `swapTo`
- * never rejects, and the in-flight guard is always released.
+ * never rejects, and the in-flight guard is always released: a `warn` that
+ * throws is swallowed, and an `onFatal` that throws becomes a warning.
+ *
+ * `start()` follows the same rule for the boot composition: when composing
+ * or mounting it throws, the composed app is disposed, `state$` says `fatal`
+ * and the error is rethrown for the entry file's boot-error screen.
  */
 export function createCoreHost(deps: CoreHostDeps): CoreHost {
   const ports: AppPorts = {
@@ -227,7 +234,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     } catch (error) {
       const reason = describeError(error);
       failures.next(`Could not switch to the ${to} core: ${reason}`);
-      deps.warn(
+      warn(
         `[core] could not switch to the ${to} core, staying on ${from}: ${reason}`,
       );
       return;
@@ -238,7 +245,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     } catch (error) {
       const reason = describeError(error);
       failures.next(`Could not load the ${to} core: ${reason}`);
-      deps.warn(
+      warn(
         `[core] could not load the ${to} core, staying on ${from}: ${reason}`,
       );
       await liftCover(held, from, to);
@@ -266,6 +273,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     to: CoreImpl,
   ): Promise<Handover | null> {
     let previousDisposed = false;
+    let startFailure: string | null = null;
 
     try {
       deps.unmount();
@@ -274,7 +282,6 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       previousDisposed = true;
       deps.endComposition();
       let composition: Composition;
-      let startFailure: string | null = null;
 
       try {
         composition = compose(to, core, true);
@@ -298,7 +305,13 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
         await disposeQuietly(orphan);
       }
 
-      deps.onFatal(error);
+      if (startFailure !== null) {
+        // The fallback failed as well: say why the swap needed one, without
+        // claiming the page is back on a core.
+        warn(`[core] the ${to} core failed to start: ${startFailure}`);
+      }
+
+      reportFatal(error);
       return null;
     }
   }
@@ -312,9 +325,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
   ): void {
     if (handover.startFailure !== null) {
       const reason = handover.startFailure;
-      deps.warn(
-        `[core] the ${to} core failed to start, back on ${from}: ${reason}`,
-      );
+      warn(`[core] the ${to} core failed to start, back on ${from}: ${reason}`);
       runOrWarn(`publishing ${from}`, () => {
         deps.publish(from);
       });
@@ -330,7 +341,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     });
     runOrWarn(`saving the choice of ${to}`, () => {
       if (!deps.persist(to)) {
-        deps.warn(
+        warn(
           `[core] the choice of ${to} was not saved; it will not survive a reload`,
         );
       }
@@ -346,7 +357,28 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     try {
       run();
     } catch (error) {
-      deps.warn(`[core] ${step} failed: ${describeError(error)}`);
+      warn(`[core] ${step} failed: ${describeError(error)}`);
+    }
+  }
+
+  /** Logs a warning. A console that throws has nowhere left to report to,
+   * so its throw is dropped: a warning never ends a swap. */
+  function warn(message: string): void {
+    try {
+      deps.warn(message);
+    } catch {
+      // Nothing can report a failing console.
+    }
+  }
+
+  /** Hands the error to `onFatal`; a throw from it becomes a warning. */
+  function reportFatal(error: unknown): void {
+    try {
+      deps.onFatal(error);
+    } catch (failure) {
+      warn(
+        `[core] reporting the fatal error failed: ${describeError(failure)}`,
+      );
     }
   }
 
@@ -354,7 +386,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     try {
       await composed.app.dispose();
     } catch (error) {
-      deps.warn(
+      warn(
         `[core] the ${composed.impl} core failed to dispose: ${describeError(error)}`,
       );
     }
@@ -370,15 +402,33 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       states.next({ phase: "revealing", from, to });
       await deps.sleep(deps.cover.exitMs);
     } catch (error) {
-      deps.warn(`[core] lifting the cover failed: ${describeError(error)}`);
+      warn(`[core] lifting the cover failed: ${describeError(error)}`);
     }
   }
 
   return {
     state$: state(states, states.getValue()),
     start: (): void => {
-      deps.mount(compose(deps.initial.impl, deps.initial.core, false));
-      deps.publish(deps.initial.impl);
+      const impl = deps.initial.impl;
+
+      try {
+        deps.mount(compose(impl, deps.initial.core, false));
+      } catch (error) {
+        // Nothing is on screen: drop what was composed, as a fatal swap does.
+        const orphan = running;
+        running = null;
+        states.next({ phase: "fatal" });
+
+        if (orphan !== null) {
+          void disposeQuietly(orphan);
+        }
+
+        throw error;
+      }
+
+      runOrWarn(`publishing ${impl}`, () => {
+        deps.publish(impl);
+      });
     },
     swapTo,
   };

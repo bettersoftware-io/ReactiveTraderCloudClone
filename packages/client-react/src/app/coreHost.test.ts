@@ -182,7 +182,11 @@ describe("createCoreHost", () => {
     expect(harness.publish).toHaveBeenCalledTimes(1);
     expect(harness.persist).not.toHaveBeenCalled();
     expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
-    expect(harness.warnings).toEqual([]);
+    // The first error is not lost: it is logged, without claiming that the
+    // page is back on a core.
+    expect(harness.warnings).toEqual([
+      "[core] the effect core failed to start: effect broke",
+    ]);
   });
 
   it("8. a rejected old.dispose() is logged as a warning and the swap completes", async () => {
@@ -293,6 +297,7 @@ describe("createCoreHost", () => {
 
   describe("a throw after the unmount ends in onFatal; swapTo never rejects", () => {
     it.each([
+      ["unmount", "unmount"],
       ["nextMacrotask", "macrotask"],
       ["the first endComposition", "endComposition#1"],
     ])(
@@ -311,6 +316,7 @@ describe("createCoreHost", () => {
         expect(harness.log).not.toContain("createApp:effect");
         expect(harness.mounted).toHaveLength(1);
         expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+        expect(harness.warnings).toEqual([]);
       },
     );
 
@@ -347,7 +353,9 @@ describe("createCoreHost", () => {
         "dispose:rxjs",
         "dispose:rxjs",
       ]);
-      expect(harness.warnings).toEqual([]);
+      expect(harness.warnings).toEqual([
+        "[core] the effect core failed to start: effect broke",
+      ]);
       expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
     });
 
@@ -365,6 +373,9 @@ describe("createCoreHost", () => {
       expect(harness.log.filter(isCreateApp)).toEqual([
         "createApp:rxjs",
         "createApp:effect",
+      ]);
+      expect(harness.warnings).toEqual([
+        "[core] the effect core failed to start: effect broke",
       ]);
       expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
     });
@@ -409,6 +420,133 @@ describe("createCoreHost", () => {
         phase: "running",
         impl: "effect",
       });
+    });
+  });
+
+  it("14. after a fatal swap, later swapTo calls do nothing", async () => {
+    const harness = createHarness();
+    harness.start();
+    harness.faults.set("mount:2", new Error("render failed"));
+    await harness.host.swapTo("effect");
+    expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    const logged = [...harness.log];
+    const walked = harness.states.length;
+
+    await expect(harness.host.swapTo("async")).resolves.toBeUndefined();
+    await expect(harness.host.swapTo("rxjs")).resolves.toBeUndefined();
+
+    expect(harness.log).toEqual(logged);
+    expect(harness.states).toHaveLength(walked);
+    expect(harness.onFatal).toHaveBeenCalledTimes(1);
+  });
+
+  describe("swapTo never rejects, whatever an injected effect throws", () => {
+    it("onFatal throws → a warning says so, the state is fatal", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.faults.set("mount:2", new Error("render failed"));
+      harness.onFatal.mockImplementation(() => {
+        throw new Error("no error screen");
+      });
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.warnings).toEqual([
+        "[core] reporting the fatal error failed: no error screen",
+      ]);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+
+    it("warn throws on a rejected load → the page stays on the old core", async () => {
+      const harness = createHarness({ warnError: new Error("no console") });
+      harness.start();
+      harness.loadResults.effect = Promise.reject(new Error("chunk 404"));
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.warnings).toHaveLength(1);
+      expect(harness.log.at(-1)).toBe("lift");
+      expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
+    });
+
+    it("warn throws on a rejected old.dispose() → the swap completes", async () => {
+      const harness = createHarness({ warnError: new Error("no console") });
+      harness.start();
+      harness.cores.rxjs.disposeError = new Error("stuck fiber");
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.warnings).toHaveLength(1);
+      expect(harness.mounted.at(-1)?.impl).toBe("effect");
+      expect(harness.states.at(-1)).toEqual({
+        phase: "running",
+        impl: "effect",
+      });
+    });
+
+    it("warn and onFatal both throw when both compositions fail → the state is fatal", async () => {
+      const harness = createHarness({ warnError: new Error("no console") });
+      harness.start();
+      harness.cores.effect.createError = new Error("effect broke");
+      harness.cores.rxjs.createError = new Error("rxjs broke too");
+      harness.onFatal.mockImplementation(() => {
+        throw new Error("no error screen");
+      });
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+  });
+
+  describe("a boot that fails leaves nothing composed", () => {
+    it("the first mount throws → start() throws it, the composed app is disposed, the state is fatal", async () => {
+      const harness = createHarness();
+      const error = new Error("render failed");
+      harness.faults.set("mount:1", error);
+
+      expect(() => {
+        harness.host.start();
+      }).toThrow(error);
+
+      expect(harness.log).toEqual([
+        "createApp:rxjs",
+        "mount:1",
+        "dispose:rxjs",
+      ]);
+      expect(harness.publish).not.toHaveBeenCalled();
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+      expect(harness.load).not.toHaveBeenCalled();
+    });
+
+    it("the first createApp throws → start() throws it and the state is fatal", () => {
+      const harness = createHarness();
+      const error = new Error("rxjs broke");
+      harness.cores.rxjs.createError = error;
+
+      expect(() => {
+        harness.host.start();
+      }).toThrow(error);
+
+      expect(harness.log).toEqual(["createApp:rxjs"]);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+
+    it("the first publish throws → a warning; the boot stands", () => {
+      const harness = createHarness();
+      harness.faults.set("publish:rxjs", new Error("no html"));
+
+      harness.host.start();
+
+      expect(harness.warnings).toEqual([
+        "[core] publishing rxjs failed: no html",
+      ]);
+      expect(harness.log.filter(isDispose)).toEqual([]);
+      expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
     });
   });
 
@@ -458,6 +596,9 @@ describe("createCoreHost", () => {
       ]);
       expect(harness.onFatal).toHaveBeenCalledTimes(1);
       expect(harness.onFatal).toHaveBeenCalledWith(second);
+      expect(harness.warnings).toEqual([
+        "[core] the effect core failed to start: decorator broke",
+      ]);
       expect(harness.mounted).toHaveLength(1);
       expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
     });
@@ -481,6 +622,8 @@ interface FakeCore {
 interface HarnessOptions {
   readonly persisted?: boolean;
   readonly splash?: boolean;
+  /** When set, `warn` records its message and then throws this. */
+  readonly warnError?: Error;
   /** When set, the fakes wait on timers (case 12 runs them on vitest's fake
    * timers): every `sleep` waits its `ms`, and `load` resolves after this
    * many ms. Unset, every wait resolves at once. */
@@ -634,6 +777,10 @@ function createHarness(options: HarnessOptions = {}): Harness {
     },
     warn: (message: string): void => {
       warnings.push(message);
+
+      if (options.warnError !== undefined) {
+        throw options.warnError;
+      }
     },
     onFatal,
     cover: COVER,

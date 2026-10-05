@@ -181,7 +181,15 @@ void runBoot(
       nextMacrotask: waitForNextMacrotask,
     });
 
-    host.start();
+    try {
+      host.start();
+    } catch (error) {
+      // The boot composition could not be mounted, and the host has disposed
+      // it: drop the root too, as `onFatal` does, before `runBoot` shows the
+      // boot-error screen in its place.
+      tree.destroy();
+      throw error;
+    }
   },
   (error: unknown) => {
     renderBootError(rootEl, error, reloadOntoDefaultCore);

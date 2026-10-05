@@ -81,7 +81,7 @@ describe("the core host over the Solid tree mount", () => {
     expect(harness.persist).not.toHaveBeenCalled();
   });
 
-  it("a first composition whose UI fails its first render reaches runBoot's onError", async () => {
+  it("a first composition whose UI fails its first render reaches runBoot's onError, and its app is disposed", async () => {
     const harness = createHostHarness("effect");
     const onError = vi.fn();
 
@@ -101,6 +101,7 @@ describe("the core host over the Solid tree mount", () => {
       expect.objectContaining({ message: "boom" }),
     );
     expect(harness.publish).not.toHaveBeenCalled();
+    expect(harness.disposed).toEqual(["effect"]);
   });
 });
 
@@ -113,16 +114,19 @@ interface HostHarness {
   readonly persist: Mock<(impl: CoreImpl) => boolean>;
   readonly info: Mock<(message: string) => void>;
   readonly onFatal: Mock<(error: unknown) => void>;
+  /** The core of each app whose `dispose()` ran, in order. */
+  readonly disposed: CoreImpl[];
 }
 
 /** A host over fake cores whose mount is the real Solid tree mount, rendering
  * a tree that throws for the effect core — as `main.tsx` would render an
  * `AppRoot` whose UI fails on the new core. */
 function createHostHarness(initial: CoreImpl = "rxjs"): HostHarness {
+  const disposed: CoreImpl[] = [];
   const cores = {
-    rxjs: createFakeCore(),
-    async: createFakeCore(),
-    effect: createFakeCore(),
+    rxjs: createFakeCore("rxjs", disposed),
+    async: createFakeCore("async", disposed),
+    effect: createFakeCore("effect", disposed),
   };
   const tree = createSolidTreeMount(page.createContainer());
   const publish = vi.fn<(impl: CoreImpl) => void>();
@@ -170,10 +174,10 @@ function createHostHarness(initial: CoreImpl = "rxjs"): HostHarness {
     },
   });
 
-  return { host, cores, publish, persist, info, onFatal };
+  return { host, cores, publish, persist, info, onFatal, disposed };
 }
 
-function createFakeCore(): CoreFactory {
+function createFakeCore(impl: CoreImpl, disposed: CoreImpl[]): CoreFactory {
   return {
     createApp: (ports: AppPorts): App => {
       return {
@@ -181,6 +185,7 @@ function createFakeCore(): CoreFactory {
         ports,
         commands: {} as AppCommands,
         dispose: (): Promise<void> => {
+          disposed.push(impl);
           return Promise.resolve();
         },
       };
