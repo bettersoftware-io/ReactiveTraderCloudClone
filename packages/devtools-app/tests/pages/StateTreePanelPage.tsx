@@ -1,7 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 
-import type { StateTreePanelProps } from "#/panels/StateTreePanel";
-import { StateTreePanel } from "#/panels/StateTreePanel";
+import {
+  StateTreePanel,
+  type StateTreePanelProps,
+} from "#/panels/StateTreePanel";
 
 export interface StateTreePanelPage {
   mountStateTreePanel(props: StateTreePanelProps): void;

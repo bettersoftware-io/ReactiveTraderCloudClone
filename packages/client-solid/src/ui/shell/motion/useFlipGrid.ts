@@ -1,5 +1,4 @@
-import type { Accessor } from "solid-js";
-import { createEffect, on, onCleanup, onMount } from "solid-js";
+import { type Accessor, createEffect, on, onCleanup, onMount } from "solid-js";
 
 import {
   DRIFT_PX,

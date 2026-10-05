@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { ErrorBoundary } from "solid-js";
+import { ErrorBoundary, type JSX } from "solid-js";
 
 import styles from "./PanelErrorBoundary.module.css";
 

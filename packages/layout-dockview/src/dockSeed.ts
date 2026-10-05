@@ -1,5 +1,8 @@
-import type { GroupviewPanelState, SerializedDockview } from "dockview";
-import { Orientation } from "dockview";
+import {
+  type GroupviewPanelState,
+  Orientation,
+  type SerializedDockview,
+} from "dockview";
 
 /** Every panel id of a seed tree, in DOM order — the set a bridge
  * reconciles the layer-2 `closed` set against (close what the set names,

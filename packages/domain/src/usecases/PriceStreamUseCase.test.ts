@@ -3,8 +3,7 @@ import { toArray } from "rxjs/operators";
 import { describe, expect, it } from "vitest";
 
 import type { CurrencyPair } from "../fx/currencyPair.js";
-import type { Price, PriceTick } from "../fx/price.js";
-import { PriceMovementType } from "../fx/price.js";
+import { type Price, PriceMovementType, type PriceTick } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 import { PriceStreamUseCase } from "./PriceStreamUseCase.js";
 

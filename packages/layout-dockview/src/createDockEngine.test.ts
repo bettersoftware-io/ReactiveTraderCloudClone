@@ -18,14 +18,12 @@ import {
   vi,
 } from "vitest";
 
-import type {
-  DockDynamicPanel,
-  DockEngine,
-  DockEngineOptions,
-} from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
+  type DockDynamicPanel,
+  type DockEngine,
+  type DockEngineOptions,
   type DockMaximizeScope,
   type DockStripMap,
   GLIDE_ATTRIBUTE_MS,

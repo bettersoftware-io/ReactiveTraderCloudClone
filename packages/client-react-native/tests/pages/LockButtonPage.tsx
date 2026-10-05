@@ -1,8 +1,7 @@
 // packages/client-react-native/tests/pages/LockButtonPage.tsx
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { LockButton } from "#/ui/shell/lock/LockButton";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

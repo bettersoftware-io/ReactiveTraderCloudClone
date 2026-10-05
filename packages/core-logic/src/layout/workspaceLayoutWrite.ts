@@ -42,14 +42,12 @@ import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds, removeDockedLeaf } from "./dockColumn";
-import type {
-  DockedPanelEntry,
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
-} from "./workspaceLayoutPersistence";
 import {
+  type DockedPanelEntry,
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "./workspaceLayoutPersistence";
 
 /** One docked panel plus the tab it belongs to. The tab is the one that was

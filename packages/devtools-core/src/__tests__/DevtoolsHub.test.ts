@@ -1,5 +1,4 @@
-import type { Observable } from "rxjs";
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, type Observable, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";

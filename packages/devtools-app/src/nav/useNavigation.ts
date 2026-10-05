@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE, scopesEqual } from "#/nav/scope";
+import { ALL_SCOPE, type Scope, scopesEqual } from "#/nav/scope";
 
 export interface NavigationModel {
   scope: Scope;

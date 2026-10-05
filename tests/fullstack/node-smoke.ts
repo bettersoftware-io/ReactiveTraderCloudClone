@@ -21,8 +21,7 @@ import {
   WsAdapter,
 } from "@rtc/client-adapters";
 import type { JarvisAvailability } from "@rtc/core-api";
-import type { Direction } from "@rtc/domain";
-import { PreferencesSimulator } from "@rtc/domain";
+import { type Direction, PreferencesSimulator } from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.ts";
 import { loginForToken } from "./loginForToken.ts";

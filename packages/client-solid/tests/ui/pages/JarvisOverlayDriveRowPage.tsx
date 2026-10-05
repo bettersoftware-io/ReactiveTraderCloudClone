@@ -1,8 +1,7 @@
 import { cleanup, render, screen } from "@solidjs/testing-library";
 
 import type { JarvisEntry } from "@rtc/core-api";
-import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
 import { JarvisOverlay } from "#/ui/shell/jarvis/JarvisOverlay";
 

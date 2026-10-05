@@ -1,11 +1,12 @@
 import { afterEach, expect, test, vi } from "vitest";
 
-import type { AppToInspector, Recording } from "@rtc/devtools-core";
 import {
+  type AppToInspector,
   InspectorStore,
   PROTOCOL_VERSION,
   parseRecording,
   RECORDING_VERSION,
+  type Recording,
   serializeRecording,
 } from "@rtc/devtools-core";
 

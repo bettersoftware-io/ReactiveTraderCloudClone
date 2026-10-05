@@ -1,12 +1,12 @@
 import { renderHook } from "@solidjs/testing-library";
-import type { Accessor, JSX } from "solid-js";
-import { createComponent } from "solid-js";
+import { type Accessor, createComponent, type JSX } from "solid-js";
 
-import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
-import type { LiveMetrics } from "#/ui/shell/status/LiveMetricsContext";
-import { LiveMetricsContext } from "#/ui/shell/status/LiveMetricsContext";
+import {
+  type LiveMetrics,
+  LiveMetricsContext,
+} from "#/ui/shell/status/LiveMetricsContext";
 import { useLiveMetrics } from "#/ui/shell/status/useLiveMetrics";
 
 interface ProvidersProps {

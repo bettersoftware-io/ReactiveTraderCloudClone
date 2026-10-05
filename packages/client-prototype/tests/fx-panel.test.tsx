@@ -1,8 +1,7 @@
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import type { PanelId } from "#/fx/layout/useDockState";
-import { useDockState } from "#/fx/layout/useDockState";
+import { type PanelId, useDockState } from "#/fx/layout/useDockState";
 import { Panel } from "#/layout/Panel";
 
 afterEach(cleanup);

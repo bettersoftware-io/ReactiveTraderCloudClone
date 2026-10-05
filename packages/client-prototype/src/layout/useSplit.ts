@@ -1,5 +1,11 @@
-import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 // Pointer-drag resizable split (PROTO 1185 startSplit): the handle records the
 // pointer's start coordinate, the ratio it started at, and the container's

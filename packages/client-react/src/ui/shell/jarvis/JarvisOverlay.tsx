@@ -1,9 +1,12 @@
-import type {
-  ChangeEvent,
-  ReactElement,
-  KeyboardEvent as ReactKeyboardEvent,
+import {
+  type ChangeEvent,
+  type ReactElement,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
 } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { JARVIS_GUIDE_CATALOG, sampleGuideChips } from "@rtc/core-logic";
 import { JARVIS_SKINS, type JarvisSkin } from "@rtc/domain";

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { AppToInspector, InspectorToApp } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
+import {
+  type AppToInspector,
+  type InspectorToApp,
+  PROTOCOL_VERSION,
+} from "../protocol";
 
 describe("protocol v2", () => {
   it("bumps PROTOCOL_VERSION to 2", () => {

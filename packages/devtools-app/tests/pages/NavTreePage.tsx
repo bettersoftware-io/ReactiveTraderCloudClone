@@ -10,8 +10,7 @@ import { type ReactElement, useState } from "react";
 
 import type { NavNode } from "#/nav/buildNavTree";
 import { NavTree } from "#/nav/NavTree";
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE } from "#/nav/scope";
+import { ALL_SCOPE, type Scope } from "#/nav/scope";
 
 /** Every scope `NavTree`'s `onSelect` fired with, in order, plus a way to
  * push a new `lastSeq` into a node from OUTSIDE React's render cycle. Kept as

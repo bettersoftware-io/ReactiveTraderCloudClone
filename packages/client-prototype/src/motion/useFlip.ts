@@ -1,5 +1,4 @@
-import type { RefObject } from "react";
-import { useLayoutEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 
 // FLIP (First-Last-Invert-Play) glide for grid re-layout: measure the
 // [data-flip-key] nodes under `root` before/after a render, and when their

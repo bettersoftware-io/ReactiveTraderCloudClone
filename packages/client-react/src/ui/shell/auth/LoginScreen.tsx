@@ -1,5 +1,10 @@
-import type { ChangeEvent, FormEvent, ReactElement } from "react";
-import { useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactElement,
+  useRef,
+  useState,
+} from "react";
 
 import type { DemoAccount } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";

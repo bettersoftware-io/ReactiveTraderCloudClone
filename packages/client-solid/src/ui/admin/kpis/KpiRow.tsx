@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For } from "solid-js";
+import { createMemo, For, type JSX } from "solid-js";
 
 import { type AdminKpiVm, kpisVm } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";

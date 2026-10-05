@@ -2,7 +2,6 @@ import { NEVER, type Observable, of } from "rxjs";
 import { delay } from "rxjs/operators";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { JarvisEvent } from "@rtc/domain";
 import {
   type AnalyticsPort,
   type BlotterPort,
@@ -10,6 +9,7 @@ import {
   Direction,
   type ExecutionPort,
   type ExecutionRequest,
+  type JarvisEvent,
   KNOWN_CURRENCY_PAIRS,
   type PositionUpdates,
   type PriceTick,

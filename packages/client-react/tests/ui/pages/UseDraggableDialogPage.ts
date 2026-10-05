@@ -1,10 +1,10 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 
-import type {
-  UseDraggableDialogOptions,
-  UseDraggableDialogResult,
+import {
+  type UseDraggableDialogOptions,
+  type UseDraggableDialogResult,
+  useDraggableDialog,
 } from "#/ui/shell/modal/useDraggableDialog";
-import { useDraggableDialog } from "#/ui/shell/modal/useDraggableDialog";
 
 interface DraggableDialogHandle {
   readonly state: UseDraggableDialogResult;

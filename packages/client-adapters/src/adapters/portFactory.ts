@@ -58,20 +58,21 @@ import {
   TradeStoreSimulator,
   type WorkflowPort,
 } from "@rtc/domain";
-import type {
-  AnalyticsDto,
-  BlotterMessage,
-  DealerEvent,
-  ExecutionRequestDto,
-  ExecutionResponseDto,
-  InstrumentEvent,
-  PriceHistoryDto,
-  PriceTickDto,
-  ReferenceDataMessage,
-  RpcResponse,
-  WorkflowEvent,
+import {
+  type AnalyticsDto,
+  type BlotterMessage,
+  CLIENT_MSG,
+  type DealerEvent,
+  type ExecutionRequestDto,
+  type ExecutionResponseDto,
+  type InstrumentEvent,
+  type PriceHistoryDto,
+  type PriceTickDto,
+  type ReferenceDataMessage,
+  type RpcResponse,
+  SERVER_MSG,
+  type WorkflowEvent,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { ScriptedJarvisAdapter } from "./ScriptedJarvisAdapter";
 import { WsJarvisAdapter } from "./WsJarvisAdapter";

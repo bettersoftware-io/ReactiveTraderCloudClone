@@ -1,5 +1,11 @@
-import type { Accessor, JSX } from "solid-js";
-import { createEffect, createMemo, For, onCleanup } from "solid-js";
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  For,
+  type JSX,
+  onCleanup,
+} from "solid-js";
 
 import {
   type BootDrawCtx,

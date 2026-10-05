@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useId } from "react";
+import { type ReactElement, useId } from "react";
 
 import type { HistoricPosition } from "@rtc/domain";
 

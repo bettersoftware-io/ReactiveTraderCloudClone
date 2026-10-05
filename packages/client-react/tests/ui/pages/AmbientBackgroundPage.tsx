@@ -1,8 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/react-bindings";
 
 import { AmbientBackground } from "#/ui/shell/background/AmbientBackground";
 

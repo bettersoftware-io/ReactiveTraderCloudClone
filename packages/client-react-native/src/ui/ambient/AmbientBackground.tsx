@@ -8,8 +8,7 @@ import {
   RadialGradient,
   vec,
 } from "@shopify/react-native-skia";
-import type { JSX, ReactNode } from "react";
-import { useEffect } from "react";
+import { type JSX, type ReactNode, useEffect } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
 import {
   cancelAnimation,

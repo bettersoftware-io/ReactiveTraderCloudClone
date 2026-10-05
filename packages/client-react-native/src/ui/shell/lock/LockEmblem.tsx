@@ -1,6 +1,5 @@
 // packages/client-react-native/src/ui/shell/lock/LockEmblem.tsx
-import type { JSX } from "react";
-import { useEffect, useId } from "react";
+import { type JSX, useEffect, useId } from "react";
 import Animated, {
   cancelAnimation,
   Easing,

@@ -1,5 +1,4 @@
-import type { InspectorState } from "./InspectorStore";
-import { InspectorStore } from "./InspectorStore";
+import { type InspectorState, InspectorStore } from "./InspectorStore";
 import { projectSnapshot } from "./projectSnapshot";
 import type { AppToInspector } from "./protocol";
 import { RECORDING_VERSION, type Recording } from "./recording";

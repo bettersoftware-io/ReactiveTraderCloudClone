@@ -6,8 +6,14 @@ import { fixtures } from "@ui-visual-shared/fixtures";
 // tiers — see freezeClock.ts.
 import "@ui-visual-shared/freezeClock";
 import { scenarios } from "@ui-visual-shared/scenarios";
-import type { JSX } from "solid-js";
-import { createSignal, onCleanup, onMount, Show, untrack } from "solid-js";
+import {
+  createSignal,
+  type JSX,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
 

@@ -9,8 +9,7 @@ import type { ReactElement } from "react";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
 import type { LoginWaitVariant } from "@rtc/domain";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { LockScreen } from "#/ui/shell/lock/LockScreen";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

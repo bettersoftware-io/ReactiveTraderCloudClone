@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { untrack } from "solid-js";
+import { type JSX, untrack } from "solid-js";
 
 import type { ViewModel } from "#/createViewModel";
 import { ViewModelContext } from "#/ViewModelContext";

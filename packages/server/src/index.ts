@@ -1,8 +1,6 @@
-import type { IncomingMessage } from "node:http";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage } from "node:http";
 
-import type { VerifyClientCallbackAsync } from "ws";
-import { WebSocketServer } from "ws";
+import { type VerifyClientCallbackAsync, WebSocketServer } from "ws";
 
 import {
   buildJarvisTools,
@@ -13,8 +11,7 @@ import { KNOWN_CURRENCY_PAIRS } from "@rtc/domain";
 import { combineEffects, createWsListener } from "@rtc/ws-effects";
 
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
-import type { AgentLoop } from "./agent/agentLoop.js";
-import { createJarvisLoops } from "./agent/agentLoop.js";
+import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
 import { createRateLimiter } from "./auth/rateLimit.js";

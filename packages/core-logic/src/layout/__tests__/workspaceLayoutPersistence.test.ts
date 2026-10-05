@@ -5,13 +5,11 @@ import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "../defaultLayoutPort";
 import { dockedLeafIds, insertDockedLeaf } from "../dockColumn";
-import type {
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
-} from "../workspaceLayoutPersistence";
 import {
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "../workspaceLayoutPersistence";
 
 const REAL_TABS: readonly WorkspaceTab[] = [

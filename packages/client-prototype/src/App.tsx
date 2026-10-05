@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { AppShell } from "#/shell/AppShell";
 import { BootSequence } from "#/shell/Boot/BootSequence";

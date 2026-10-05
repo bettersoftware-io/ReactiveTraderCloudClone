@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createSignal, Show } from "solid-js";
+import { createSignal, type JSX, Show } from "solid-js";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";

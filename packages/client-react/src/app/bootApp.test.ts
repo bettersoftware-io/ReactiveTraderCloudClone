@@ -4,8 +4,9 @@ import type { CoreFactory } from "@rtc/core-api";
 
 import { bootErrorPage } from "#tests/ui/pages/BootErrorPage";
 
-import type { BootEnv, BootResult } from "./bootApp";
 import {
+  type BootEnv,
+  type BootResult,
   bootCore,
   formatBootedMessage,
   renderBootError,

@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { ChartScale } from "./chartScene.js";
-import { priceToY, yToPrice } from "./chartScene.js";
+import { type ChartScale, priceToY, yToPrice } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
-import type { Drawing } from "./drawingScene.js";
 import {
+  type Drawing,
   dragDrawing,
   drawingScene,
   hitTestDrawings,

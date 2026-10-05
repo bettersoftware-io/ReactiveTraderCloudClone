@@ -1,10 +1,8 @@
 import { state } from "@rx-state/core";
 import { act, render, renderHook } from "@testing-library/react";
-import type { ReactElement } from "react";
-import React from "react";
+import React, { type ReactElement } from "react";
 import { BehaviorSubject, Subject } from "rxjs";
-import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { Machine } from "@rtc/core-api";
 

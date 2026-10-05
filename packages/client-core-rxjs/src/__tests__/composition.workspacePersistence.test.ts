@@ -12,14 +12,15 @@ import type {
   Presenters,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { PersistedTabLayout, WorkspaceLayoutV1 } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
   insertDockedLeaf,
   instanceIdFor,
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "@rtc/core-logic";
 import {
   AuthSimulator,

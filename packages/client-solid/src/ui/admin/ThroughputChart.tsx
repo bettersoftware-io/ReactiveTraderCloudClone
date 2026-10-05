@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, createUniqueId, Show } from "solid-js";
+import { createMemo, createUniqueId, type JSX, Show } from "solid-js";
 
 import { type ThroughputPaths, throughputPaths } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";

@@ -13,13 +13,6 @@
  * so the two descriptions of "what kinds exist" cannot drift apart.
  */
 
-import type {
-  PanelAnnotation,
-  PanelSource,
-  PanelSpecV1,
-  PanelTransform,
-  PanelViz,
-} from "@rtc/domain";
 import {
   PANEL_ANNOTATION_KINDS,
   PANEL_ANNOTATION_TONES,
@@ -27,6 +20,11 @@ import {
   PANEL_TOPN_BY_VALUES,
   PANEL_TRANSFORM_KINDS,
   PANEL_VIZ_KINDS,
+  type PanelAnnotation,
+  type PanelSource,
+  type PanelSpecV1,
+  type PanelTransform,
+  type PanelViz,
 } from "@rtc/domain";
 
 export type ParsePanelSpecResult =

@@ -1,14 +1,14 @@
 import { expect, test } from "vitest";
 
-import type {
-  AppToInspector,
-  InspectorState,
-  LogRow,
+import {
+  type AppToInspector,
+  type InspectorState,
+  InspectorStore,
+  LiveHistory,
+  type LogRow,
 } from "@rtc/devtools-core";
-import { InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE } from "#/nav/scope";
+import { ALL_SCOPE, type Scope } from "#/nav/scope";
 import { mountTimeline } from "#tests/pages/UseTimelinePage";
 
 test("pin captures the row and reconstructs state at that seq; resume returns to follow", () => {

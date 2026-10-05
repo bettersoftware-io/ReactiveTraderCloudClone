@@ -36,8 +36,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
-import type { WorkspaceManifest } from "./workspaces.mts";
-import { listWorkspaceDirs, readManifest, repoRoot } from "./workspaces.mts";
+import {
+  listWorkspaceDirs,
+  readManifest,
+  repoRoot,
+  type WorkspaceManifest,
+} from "./workspaces.mts";
 
 type DependencyField =
   | "dependencies"

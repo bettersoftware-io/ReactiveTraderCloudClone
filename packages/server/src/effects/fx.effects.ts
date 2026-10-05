@@ -6,17 +6,18 @@ import type {
   PriceTick,
   Trade,
 } from "@rtc/domain";
-import type {
-  AnalyticsDto,
-  BlotterMessage,
-  CurrencyPairUpdateDto,
-  ExecutionResponseDto,
-  PriceHistoryDto,
-  PriceTickDto,
-  ReferenceDataMessage,
-  TradeDto,
+import {
+  type AnalyticsDto,
+  type BlotterMessage,
+  CLIENT_MSG,
+  type CurrencyPairUpdateDto,
+  type ExecutionResponseDto,
+  type PriceHistoryDto,
+  type PriceTickDto,
+  type ReferenceDataMessage,
+  SERVER_MSG,
+  type TradeDto,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   keyedStream,
   type Outbound,

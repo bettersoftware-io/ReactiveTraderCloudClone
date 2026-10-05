@@ -10,22 +10,27 @@ import {
   type JarvisHistoryEntry,
   type PanelSpecV1,
 } from "@rtc/domain";
-import type {
-  JarvisCancelPayload,
-  JarvisChatPayload,
-  JarvisConfirmPayload,
+import {
+  CLIENT_MSG,
+  type JarvisCancelPayload,
+  type JarvisChatPayload,
+  type JarvisConfirmPayload,
+  SERVER_MSG,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
-import type { Inbound, Outbound } from "@rtc/ws-effects";
-import { combineEffects, createWsListener } from "@rtc/ws-effects";
+import {
+  combineEffects,
+  createWsListener,
+  type Inbound,
+  type Outbound,
+} from "@rtc/ws-effects";
 
-import type {
-  AgentLoop,
-  AgentSession,
-  JarvisLoops,
-  JarvisTurnOptions,
+import {
+  type AgentLoop,
+  type AgentSession,
+  createJarvisLoops,
+  type JarvisLoops,
+  type JarvisTurnOptions,
 } from "../agent/agentLoop.js";
-import { createJarvisLoops } from "../agent/agentLoop.js";
 import { JarvisGateService } from "../services/JarvisGateService.js";
 import type { JarvisGateConfig } from "../services/jarvisGate.js";
 import {

@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { NavNode } from "#/nav/buildNavTree";
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE, scopeKey } from "#/nav/scope";
+import { ALL_SCOPE, type Scope, scopeKey } from "#/nav/scope";
 import { navTreePage } from "#tests/pages/NavTreePage";
 
 afterEach(() => {

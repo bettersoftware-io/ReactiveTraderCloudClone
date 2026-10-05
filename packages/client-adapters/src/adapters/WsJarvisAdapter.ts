@@ -25,14 +25,12 @@ import {
   type JarvisEvent,
   type JarvisHistoryEntry,
 } from "@rtc/domain";
-import type {
-  JarvisAvailabilityPayload,
-  JarvisCancelPayload,
-  JarvisChatPayload,
-  JarvisConfirmPayload,
-} from "@rtc/shared";
 import {
   CLIENT_MSG,
+  type JarvisAvailabilityPayload,
+  type JarvisCancelPayload,
+  type JarvisChatPayload,
+  type JarvisConfirmPayload,
   parseDriveBatch,
   parsePanelSpec,
   SERVER_MSG,

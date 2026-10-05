@@ -13,8 +13,7 @@ import {
   installFirstDockRenderRecorder,
 } from "../firstDockRenderRecorder.ts";
 import { buildPlaywrightPageObjects } from "../page-objects/playwright/factory.ts";
-import type { TestContext } from "../testContext.ts";
-import { Scratchpad } from "../testContext.ts";
+import { Scratchpad, type TestContext } from "../testContext.ts";
 
 export class PlaywrightWorld extends World {
   context!: BrowserContext;

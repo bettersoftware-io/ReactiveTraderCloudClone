@@ -2,9 +2,10 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { CoreFactory } from "@rtc/core-api";
 
-import type { CoreImporters, CoreSelectionDeps } from "./coreSelection";
 import {
   CORE_CHOICE_KEY,
+  type CoreImporters,
+  type CoreSelectionDeps,
   clearCoreChoice,
   createCoreSelection,
   defaultCoreResetHref,

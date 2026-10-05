@@ -1,12 +1,10 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useRef } from "react";
+import { type CSSProperties, type ReactElement, useRef } from "react";
 
 import { CreditBlotterPanel } from "#/credit/Blotter/CreditBlotterPanel";
 import styles from "#/credit/CreditScreen.module.css";
 import { NewRfqPanel } from "#/credit/NewRfq/NewRfqPanel";
 import { RfqFilterPills, RfqsPanel } from "#/credit/Rfqs/RfqsPanel";
-import type { CreditPanelId } from "#/credit/useCreditDock";
-import { useCreditDock } from "#/credit/useCreditDock";
+import { type CreditPanelId, useCreditDock } from "#/credit/useCreditDock";
 import { useCreditForm } from "#/credit/useCreditForm";
 import { useCreditRfqs } from "#/credit/useCreditRfqs";
 import { Panel } from "#/layout/Panel";

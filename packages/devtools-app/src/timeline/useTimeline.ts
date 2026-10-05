@@ -2,14 +2,13 @@ import { useState } from "react";
 
 import type { InspectorState, LiveHistory, LogRow } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
-import { compileScope } from "#/nav/scope";
-import type { TimelineFilter } from "#/timeline/timelineModel";
+import { compileScope, type Scope } from "#/nav/scope";
 import {
   EMPTY_TIMELINE_FILTER,
   filterLog,
   hasSeq,
   RADIUS_WINDOW_MS,
+  type TimelineFilter,
 } from "#/timeline/timelineModel";
 
 /** "pinned" carries the row itself (spec §6.2): the log caps at 5000 rows and

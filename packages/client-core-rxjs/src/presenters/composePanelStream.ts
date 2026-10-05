@@ -2,7 +2,6 @@ import { combineLatest, type Observable, of, shareReplay } from "rxjs";
 import { map, scan } from "rxjs/operators";
 
 import type { PanelData, PanelPoint } from "@rtc/core-api";
-import type { PanelStreamDeps } from "@rtc/core-logic";
 import {
   analyticsTableFrame,
   appendTickPoint,
@@ -10,6 +9,7 @@ import {
   type Frame,
   historySeries,
   type NamedSeries,
+  type PanelStreamDeps,
   renderPanelFrame,
   seriesFrame,
   unknownSourceFrame,

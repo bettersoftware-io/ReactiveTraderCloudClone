@@ -1,7 +1,11 @@
 import { expect, jest, test } from "@jest/globals";
 
-import type { CurrencyPair, Price } from "@rtc/domain";
-import { Direction, PriceMovementType } from "@rtc/domain";
+import {
+  type CurrencyPair,
+  Direction,
+  type Price,
+  PriceMovementType,
+} from "@rtc/domain";
 
 import { buySellPadsPage } from "#tests/pages/BuySellPadsPage";
 

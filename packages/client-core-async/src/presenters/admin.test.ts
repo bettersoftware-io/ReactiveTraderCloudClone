@@ -1,16 +1,17 @@
 import { Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type {
-  EventLogPort,
-  LogEvent,
-  MetricSample,
-  ServiceHealthPort,
-  ServiceTopology,
-  SessionInfo,
-  SessionsPort,
+import {
+  type EventLogPort,
+  type LogEvent,
+  MAX_LOG_ROWS,
+  METRIC_WINDOW,
+  type MetricSample,
+  type ServiceHealthPort,
+  type ServiceTopology,
+  type SessionInfo,
+  type SessionsPort,
 } from "@rtc/domain";
-import { MAX_LOG_ROWS, METRIC_WINDOW } from "@rtc/domain";
 
 import {
   createEventLogPresenter,

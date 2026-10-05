@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BridgeChannel } from "#/bridgeRelay";
-import { createBridgeRelay } from "#/bridgeRelay";
+import { type BridgeChannel, createBridgeRelay } from "#/bridgeRelay";
 import type { RuntimePort } from "#/ports";
 
 describe("createBridgeRelay", () => {

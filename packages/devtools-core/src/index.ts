@@ -6,15 +6,15 @@ export {
 export { DevtoolsHub, type DevtoolsHubOptions } from "./DevtoolsHub";
 export { type DiffEntry, type DiffKind, diffSerialized } from "./diff";
 export { InspectorClient } from "./InspectorClient";
-export type {
-  InspectorState,
-  InspectorStoreOptions,
-  LogRow,
-  MachineIntentRow,
-  MachineRow,
-  StreamRow,
+export {
+  type InspectorState,
+  InspectorStore,
+  type InspectorStoreOptions,
+  type LogRow,
+  type MachineIntentRow,
+  type MachineRow,
+  type StreamRow,
 } from "./InspectorStore";
-export { InspectorStore } from "./InspectorStore";
 export {
   type InstrumentableMachine,
   instrumentMachineFactories,

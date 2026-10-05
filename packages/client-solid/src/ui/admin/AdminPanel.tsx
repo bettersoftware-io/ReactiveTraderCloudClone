@@ -1,5 +1,4 @@
-import type { Accessor, JSX } from "solid-js";
-import { Show } from "solid-js";
+import { type Accessor, type JSX, Show } from "solid-js";
 
 import type { ThroughputView } from "@rtc/core-api";
 import { useViewModel } from "@rtc/solid-bindings";

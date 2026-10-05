@@ -2,12 +2,12 @@ import { EMPTY, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";
-import type {
-  AppToInspector,
-  DevtoolsEvent,
-  InspectorToApp,
+import {
+  type AppToInspector,
+  type DevtoolsEvent,
+  type InspectorToApp,
+  PROTOCOL_VERSION,
 } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
 
 describe("DevtoolsHub event stamping", () => {
   beforeEach(() => {

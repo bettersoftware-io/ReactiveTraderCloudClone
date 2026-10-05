@@ -2,8 +2,7 @@ import { defer, type Observable } from "rxjs";
 import { map } from "rxjs/operators";
 
 import type { CurrencyPair } from "../fx/currencyPair.js";
-import type { Price } from "../fx/price.js";
-import { calculateSpread, detectMovement } from "../fx/price.js";
+import { calculateSpread, detectMovement, type Price } from "../fx/price.js";
 import type { PricingPort } from "../ports/pricingPort.js";
 
 export class PriceStreamUseCase {

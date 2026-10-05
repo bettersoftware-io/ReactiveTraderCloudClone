@@ -1,10 +1,8 @@
 import { concat, defer, from, type Observable, of, Subject } from "rxjs";
 
-import type { Dealer } from "../credit/dealer.js";
-import { ADAPTIVE_BANK_NAME } from "../credit/dealer.js";
+import { ADAPTIVE_BANK_NAME, type Dealer } from "../credit/dealer.js";
 import type { Quote, QuoteState } from "../credit/quote.js";
-import type { Rfq } from "../credit/rfq.js";
-import { RfqState } from "../credit/rfq.js";
+import { type Rfq, RfqState } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";
 import type {
   CreateRfqRequest,

@@ -2,8 +2,11 @@ import type { Subscription } from "rxjs";
 
 import type { Duplex } from "./channel";
 import type { InspectorStore } from "./InspectorStore";
-import type { AppToInspector, InspectorToApp } from "./protocol";
-import { PROTOCOL_VERSION } from "./protocol";
+import {
+  type AppToInspector,
+  type InspectorToApp,
+  PROTOCOL_VERSION,
+} from "./protocol";
 
 const PING_INTERVAL_MS = 2000;
 

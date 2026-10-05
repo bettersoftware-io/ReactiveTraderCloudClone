@@ -3,8 +3,7 @@ import type { Accessor } from "solid-js";
 import { vi } from "vitest";
 
 import type { PowerSaverLevel } from "@rtc/domain";
-import type { ViewModel } from "@rtc/solid-bindings";
-import { ViewModelContext } from "@rtc/solid-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/solid-bindings";
 
 import { AmbientBackground } from "#/ui/shell/background/AmbientBackground";
 

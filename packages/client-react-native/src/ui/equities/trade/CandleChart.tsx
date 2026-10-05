@@ -1,6 +1,5 @@
 import { Canvas, Rect } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import {
   type LayoutChangeEvent,
   StyleSheet,
@@ -9,9 +8,9 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import type { SharedValue } from "react-native-reanimated";
 import {
   Easing,
+  type SharedValue,
   useDerivedValue,
   useSharedValue,
   withTiming,

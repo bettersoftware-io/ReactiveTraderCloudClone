@@ -5,8 +5,7 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { BlurView } from "expo-blur";
-import type { ComponentRef, JSX } from "react";
-import { useEffect, useRef } from "react";
+import { type ComponentRef, type JSX, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
