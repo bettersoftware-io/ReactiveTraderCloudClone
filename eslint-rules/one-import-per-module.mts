@@ -2,9 +2,10 @@
 // When it needs both types and values from that module, the types ride in the
 // same statement with an inline `type`:
 //
-//   import { type Trade, executeTrade } from "@rtc/domain";
+//   import { findRosterUser, type RosterEntry } from "@rtc/domain";
 //
-// never as a separate `import type { Trade }` block beside the value import.
+// never as a separate `import type { RosterEntry }` block beside the value
+// import.
 // Re-exports (`export … from`) follow the same rule, as their own group: an
 // import and a re-export of one module are never merged.
 //
@@ -13,9 +14,9 @@
 // with nothing but inline-type names survives as a runtime `import "m"`, which
 // here could pull a lazy application core into the eager bundle from a file
 // that only wanted a type. Biome's `useImportType` / `useExportType` reject
-// that spelling, so the two rules hold each other up: delete the last value
-// from a merged statement and Biome turns what is left back into
-// `import type`.
+// that spelling (both set to `error` in `biome.jsonc`), so the two rules hold
+// each other up: delete the last value from a merged statement and Biome
+// turns what is left back into `import type`.
 //
 // MEASURED 2026-10-05, before the migration: 418 split imports in 371 of
 // 3,135 files, and 52 split re-exports. ESLint's own `no-duplicate-imports`
@@ -35,8 +36,20 @@
 // - two default imports of one module;
 // - a comment inside either statement, trailing the one that would be
 //   removed, or above it when its partner is not the next statement — the
-//   fixer would have to decide where the comment goes. A comment above the
-//   pair is no judgment: it stays above the merged statement.
+//   fixer would have to decide where the comment goes. A comment trailing
+//   the statement directly above counts as "above", so it blocks too.
+//
+// A comment above the PAIR is no judgment: it stays above the merged
+// statement. That includes a directive (`// @ts-expect-error`,
+// `// eslint-disable-next-line`), which goes on covering the names it covered
+// and now covers their neighbours in the same statement as well.
+//
+// ONE `eslint --fix` MAY NOT FINISH A FILE. A fix edits two places, ESLint
+// applies it as one range from the first to the second, and overlapping
+// ranges wait for the next of its ten passes. A file whose type blocks and
+// value blocks interleave across more than ten modules needs a second run.
+// Biome keeps the statements of one module adjacent, so no file in the tree
+// did.
 
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils";
 
@@ -85,7 +98,7 @@ export const oneImportPerModule: TSESLint.RuleModule<MessageIds> = {
                   [kept.node.range[0], kept.source.range[0]],
                   printMergedHead(kept, extra, sourceCode),
                 ),
-                fixer.removeRange(rangeWithLineBreak(extra.node, sourceCode)),
+                fixer.removeRange(rangeWithItsLine(extra.node, sourceCode)),
               ];
             }
           : null,
@@ -93,8 +106,11 @@ export const oneImportPerModule: TSESLint.RuleModule<MessageIds> = {
     }
 
     return {
-      Program(program: TSESTree.Program): void {
-        for (const statements of groupByModule(program).values()) {
+      // A `declare module` block is a module body too, with groups of its own.
+      "Program, TSModuleBlock"(
+        scope: TSESTree.Program | TSESTree.TSModuleBlock,
+      ): void {
+        for (const statements of groupByModule(scope).values()) {
           // The value statement is the one that exists at runtime, so it stays
           // where it is and the emitted JavaScript does not move.
           const kept =
@@ -113,12 +129,14 @@ export const oneImportPerModule: TSESLint.RuleModule<MessageIds> = {
   },
 };
 
-/** The file's mergeable statements, keyed by keyword + module, in source
- * order. */
-function groupByModule(program: TSESTree.Program): Map<string, Statement[]> {
+/** The mergeable statements of one module body, keyed by keyword + module, in
+ * source order. */
+function groupByModule(
+  scope: TSESTree.Program | TSESTree.TSModuleBlock,
+): Map<string, Statement[]> {
   const groups = new Map<string, Statement[]>();
 
-  for (const node of program.body) {
+  for (const node of scope.body) {
     const statement = readStatement(node);
 
     if (statement !== null) {
@@ -255,14 +273,15 @@ function printMergedHead(
   return `${kept.keyword} ${typeOnly ? "type " : ""}${bindings.join(", ")} from `;
 }
 
-/** `node`'s range, widened over the rest of its line so removing it leaves no
- * empty line behind. */
-function rangeWithLineBreak(
+/** `node`'s range, widened to its whole line — indentation and line break —
+ * so removing it leaves neither an empty line nor a stray indent behind. */
+function rangeWithItsLine(
   node: TSESTree.Node,
   sourceCode: TSESLint.SourceCode,
 ): TSESTree.Range {
   const [start, end] = node.range;
+  const indent = /(?<=^|\n)[ \t]*$/.exec(sourceCode.text.slice(0, start));
   const rest = /^[ \t]*\r?\n/.exec(sourceCode.text.slice(end));
 
-  return [start, end + (rest?.[0].length ?? 0)];
+  return [start - (indent?.[0].length ?? 0), end + (rest?.[0].length ?? 0)];
 }

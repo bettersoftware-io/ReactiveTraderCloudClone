@@ -53,6 +53,10 @@ ruleTester.run("one-import-per-module", oneImportPerModule, {
       code: `import type { A } from "m";\nimport { b } from "n";\n`,
     },
     {
+      name: "a `declare module` block and the file around it are separate bodies",
+      code: `import { b } from "m";\ndeclare module "augmented" {\n  import type { A } from "m";\n}\n`,
+    },
+    {
       name: "a local export is not a re-export",
       code: `const a = 1;\nconst b = 2;\nexport { a };\nexport { b };\n`,
     },
@@ -75,6 +79,18 @@ ruleTester.run("one-import-per-module", oneImportPerModule, {
       code: `import { b } from "m";\nimport { c } from "n";\nimport type { A } from "m";\n`,
       output: `import { b, type A } from "m";\nimport { c } from "n";\n`,
       errors: [{ messageId: "splitStatements", line: 3 }],
+    },
+    {
+      name: "the value statement stays below a module that sat between the pair",
+      code: `import type { A } from "m";\nimport "./side-effect.js";\nimport { b } from "m";\n`,
+      output: `import "./side-effect.js";\nimport { b, type A } from "m";\n`,
+      errors: [{ messageId: "splitStatements", line: 1 }],
+    },
+    {
+      name: "a statement of inline types only is the runtime import that stays",
+      code: `import type { B } from "m";\nimport { type A } from "m";\n`,
+      output: `import { type A, type B } from "m";\n`,
+      errors: [{ messageId: "splitStatements", line: 1 }],
     },
     {
       name: "two value statements merge into the first",
@@ -147,6 +163,24 @@ ruleTester.run("one-import-per-module", oneImportPerModule, {
           data: { module: "m", keyword: "export" },
         },
       ],
+    },
+    {
+      name: "a re-exported default moves like any other name",
+      code: `export type { Props } from "./Card.js";\nexport { default as Card } from "./Card.js";\n`,
+      output: `export { default as Card, type Props } from "./Card.js";\n`,
+      errors: [{ messageId: "splitStatements", line: 1 }],
+    },
+    {
+      name: "a split inside a `declare module` block merges there",
+      code: `declare module "augmented" {\n  import type { A } from "m";\n  import { b } from "m";\n}\n`,
+      output: `declare module "augmented" {\n  import { b, type A } from "m";\n}\n`,
+      errors: [{ messageId: "splitStatements", line: 2 }],
+    },
+    {
+      name: "a CRLF file loses the whole line of the removed statement",
+      code: `import { b } from "m";\r\nimport type { A } from "m";\r\nconst x = 1;\r\n`,
+      output: `import { b, type A } from "m";\r\nconst x = 1;\r\n`,
+      errors: [{ messageId: "splitStatements", line: 2 }],
     },
     {
       name: "two type-only re-exports stay `export type`",
