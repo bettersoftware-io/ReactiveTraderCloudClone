@@ -210,6 +210,26 @@ so it starts afresh with every group. `leavingOnFailure(member)` turns a
 member's failure into its leaving the group (the narrator: one failing pair
 silences only itself).
 
+Three more sources cover what members used to reach for an Effect
+combinator to do, and grep gate 51 now forbids a `Stream` combinator that
+joins streams (`merge`, `flatMap`, `zipLatest`, `race`, …) anywhere outside
+`bridge/`:
+
+- **`latestOfEach([portEvents(…), …])`** — the latest of every member as one
+  array, from the moment each has emitted once (the RxJS `combineLatest`,
+  where `Stream.zipLatestAll` ran a fiber per port). A desk panel's
+  multi-symbol series.
+- **`firstPortEvent(port$, toEvent)`** — a port's first value, then its end,
+  with the port released as soon as it answered: a one-shot query as a
+  member of a group. The orders blotter's refresh.
+- **`oneEvent(event)`** — a constant member (`of(event)`). A desk panel that
+  is not live publishes `null`.
+
+`projectedChanges(source$, project)` is the view that goes with them: a
+selector that moves only when its projection changed (`map` +
+`distinctUntilChanged`), so a group is not reopened by every value of the
+stream it is selected from.
+
 Two more rules about WHEN a value arrives, both measured on the FX screen
 (2026-10-05):
 
@@ -325,17 +345,16 @@ stream would be subscribe/unsubscribe/subscribe on the wire at the start of
 every warm period. The price is that its first value arrives a fiber hop
 after subscribe, which is why the contract leaves a keyed wire stream's
 first value uncontracted while a presenter-owned CELL's is synchronous.
-`ordersBlotter` pairs two `PubSub`s (`fills$` and an internal refresh
-signal, both hot with no replay) with a RETAINED fold whose producer is
-`Stream.merge(Stream.make(undefined), Stream.fromPubSub(refreshes))`,
-flat-mapped with `switch` into one `rpc(orders.orders())` per trigger,
-newest winning. MEASURED on 3.22.2, sweeping the microtask distance between
-the period's first subscribe and a publish: `merge` loses a refresh
-published 0–2 microtasks after the subscribe and hears one from 3 on;
-`concat` loses through 3. So there IS a window and `merge` only narrows it —
-what makes it harmless is that in every lost case the initial `orders()`
-query had not completed (with `merge`, not even started), so the update a
-lost refresh carried is one that query goes on to observe anyway. Its `place()` is `scopedPortStream` tapped, so its
+`ordersBlotter` pairs a `PubSub` (`fills$`, hot with no replay) with a
+RETAINED fold whose producer is a `switchedPortEvents` group of one —
+`firstPortEvent(orders.orders())`, newest winning — selected by a refresh
+count kept in a `SyncRef`. The count's state stream hands a period its
+current value on subscribe (the initial query) and every later refresh
+synchronously, so no refresh is lost. Until 2026-10-05 the refresh signal
+was a second `PubSub` merged with an initial value, and a refresh published
+within three microtasks of the period's first subscribe reached nobody
+(measured on 3.22.2; harmless only because the initial query had not yet
+completed in those cases). Its `place()` is `scopedPortStream` tapped, so its
 own failure ERRORS that per-call stream: a per-call stream has an error
 channel, unlike the ticket machine's ref. `candleSeries` keeps the two
 backfill flags as presenter-owned `SyncRef` CELLS (replay-current

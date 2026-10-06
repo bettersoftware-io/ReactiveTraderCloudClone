@@ -770,6 +770,23 @@ const GATES: Gate[] = [
     paths: ["../packages/client-core-effect/src/"],
     excludes: [".test."],
   },
+  {
+    // An Effect combinator that joins streams (`merge`, `flatMap`,
+    // `zipLatest`, `race`, …) runs each side on a fiber of its own and hands
+    // every chunk across: about eleven scheduler tasks per value, and no
+    // order between the sides. Two ports joined that way cost 4,250 tasks
+    // per 6 s where the bridge's one queue costs 600 (2026-10-04). Members
+    // join ports through `fromPort.merged([...])` and its sources
+    // (`portEvents`, `switchedPortEvents`, `latestOfEach`, `firstPortEvent`)
+    // instead; the bridge is the one place that may reach for the
+    // combinators. The pattern is the CALL, so prose that names one does
+    // not trip it.
+    name: "51. The Effect core joins streams through its bridge (fromPort.merged), never an Effect Stream combinator (a fiber per side, ~11 steps per value)",
+    pattern:
+      "Stream\\.(merge|flatMap|zip|race|interleave|combine|cross|concat|switchMap)\\w*\\(",
+    paths: ["../packages/client-core-effect/src/"],
+    excludes: ["/bridge/", ".test."],
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {

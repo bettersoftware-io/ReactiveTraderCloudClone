@@ -32,6 +32,7 @@ import {
   interruptFiber,
   listenToStateStream,
   portEvents,
+  projectedChanges,
   reportOutOfBand,
   type SharedFold,
   scopedPortStream,
@@ -616,6 +617,64 @@ describe("bridge/out", () => {
     });
     ending.complete();
     expect(completed).toBe(true);
+  });
+
+  it("projectedChanges() passes a projection on only when it differs from the last one that subscriber heard", () => {
+    const source = new BehaviorSubject<Versioned>({ id: "a", version: 1 });
+    const ids = projectedChanges(source, (value: Versioned) => {
+      return value.id;
+    });
+    const seen: string[] = [];
+    const sub = ids.subscribe((id: string) => {
+      seen.push(id);
+    });
+    source.next({ id: "a", version: 2 });
+    source.next({ id: "b", version: 3 });
+    source.next({ id: "a", version: 4 });
+    expect(seen).toEqual(["a", "b", "a"]);
+
+    const late: string[] = [];
+    const lateSub = ids.subscribe((id: string) => {
+      late.push(id);
+    });
+    expect(late).toEqual(["a"]);
+    sub.unsubscribe();
+    lateSub.unsubscribe();
+    expect(source.observed).toBe(false);
+  });
+
+  it("projectedChanges() passes an undefined first projection on, and the source's failure and completion through", () => {
+    const source = new Subject<number | undefined>();
+    const seen: (number | undefined)[] = [];
+    let completed = false;
+    projectedChanges(source, (value: number | undefined) => {
+      return value;
+    }).subscribe({
+      next: (value: number | undefined) => {
+        seen.push(value);
+      },
+      complete: () => {
+        completed = true;
+      },
+    });
+    source.next(undefined);
+    source.next(undefined);
+    source.complete();
+    expect(seen).toEqual([undefined]);
+    expect(completed).toBe(true);
+
+    const failing = new Subject<number>();
+    const errors: unknown[] = [];
+    projectedChanges(failing, (value: number) => {
+      return value;
+    }).subscribe({
+      error: (error: unknown) => {
+        errors.push(error);
+      },
+    });
+    const failure = new Error("source");
+    failing.error(failure);
+    expect(errors).toEqual([failure]);
   });
 
   it("sharedFold() with a None seed delivers nothing until the first write, then replays it", async () => {
@@ -1517,4 +1576,9 @@ function tick(): Promise<unknown> {
 interface NeverStream {
   stream: Stream.Stream<never>;
   wasInterrupted: () => boolean;
+}
+
+interface Versioned {
+  readonly id: string;
+  readonly version: number;
 }

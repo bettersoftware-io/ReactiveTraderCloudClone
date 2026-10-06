@@ -42,8 +42,12 @@ import {
   type FromPort,
   fromPortIn,
   holdWarm,
-  scopedPortStream,
+  latestOfEach,
+  oneEvent,
+  portEvents,
+  projectedChanges,
   sharedFold,
+  switchedPortEvents,
 } from "#/bridge/out";
 import { peekCurrent } from "#/bridge/peek";
 import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
@@ -266,25 +270,28 @@ export function createJarvisPanelsPresenter(
         return target === null ? Option.some(null) : peekCurrent(target);
       },
       run: (update: FoldUpdate<PanelData | null>, fromPort: FromPort) => {
-        return fromPort(rows$.state$).pipe(
-          Stream.map(targetOf),
-          Stream.changes,
-          Stream.flatMap(
-            (target) => {
-              return target === null
-                ? Stream.make(null)
-                : scopedPortStream(() => {
-                    return target;
-                  });
-            },
-            { switch: true },
-          ),
-          Stream.runForEach((data) => {
-            return update(() => {
-              return data;
-            });
-          }),
-        );
+        return fromPort
+          .merged<PanelData | null>([
+            switchedPortEvents(
+              projectedChanges(rows$.state$, targetOf),
+              (target) => {
+                return [
+                  target === null
+                    ? oneEvent(null)
+                    : portEvents(target, (data) => {
+                        return data;
+                      }),
+                ];
+              },
+            ),
+          ])
+          .pipe(
+            Stream.runForEach((data) => {
+              return update(() => {
+                return data;
+              });
+            }),
+          );
       },
     });
     panelDataCache.set(panelId, stream);
@@ -319,7 +326,7 @@ export function createJarvisPanelsPresenter(
  * the SHARED per-source steps (`@rtc/core-logic`'s `panelFrames`), through
  * the spec's transforms and viz — a `sharedFold`, the RxJS
  * `shareReplay({ refCount: true })`. A multi-symbol source publishes once
- * every symbol has a series (`Stream.zipLatestAll`, `combineLatest`'s
+ * every symbol has a series (`latestOfEach`, `combineLatest`'s
  * rule). */
 function createPanelData(
   host: EffectHost,
@@ -349,30 +356,41 @@ function sourceFrames(
 ): Stream.Stream<Frame, unknown> {
   switch (source.kind) {
     case "fxTicks":
-      return Stream.zipLatestAll(
-        ...source.symbols.map((symbol) => {
-          return fromPort(deps.pricing.getPriceUpdates(symbol)).pipe(
-            Stream.mapAccum(
-              [] as readonly PanelPoint[],
-              (points, tick): [readonly PanelPoint[], NamedSeries] => {
-                const next = appendTickPoint(points, tick);
-                return [next, { label: symbol, points: next }];
-              },
-            ),
-          );
-        }),
-      ).pipe(Stream.map(seriesFrame));
+      return fromPort
+        .merged([
+          latestOfEach(
+            source.symbols.map((symbol) => {
+              // Per subscription, so per warm period: the series starts
+              // empty each time the panel's data is reopened.
+              let points: readonly PanelPoint[] = [];
+
+              return portEvents(
+                deps.pricing.getPriceUpdates(symbol),
+                (tick): NamedSeries => {
+                  points = appendTickPoint(points, tick);
+                  return { label: symbol, points };
+                },
+              );
+            }),
+          ),
+        ])
+        .pipe(Stream.map(seriesFrame));
 
     case "priceHistory":
-      return Stream.zipLatestAll(
-        ...source.symbols.map((symbol) => {
-          return fromPort(deps.pricing.getPriceHistory(symbol)).pipe(
-            Stream.map((ticks) => {
-              return historySeries(symbol, ticks);
+      return fromPort
+        .merged([
+          latestOfEach(
+            source.symbols.map((symbol) => {
+              return portEvents(
+                deps.pricing.getPriceHistory(symbol),
+                (ticks): NamedSeries => {
+                  return historySeries(symbol, ticks);
+                },
+              );
             }),
-          );
-        }),
-      ).pipe(Stream.map(seriesFrame));
+          ),
+        ])
+        .pipe(Stream.map(seriesFrame));
 
     case "analytics":
       return fromPort(new AnalyticsUseCase(deps.analytics).execute()).pipe(
