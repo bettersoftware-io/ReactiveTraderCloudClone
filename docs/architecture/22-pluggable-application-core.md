@@ -114,13 +114,13 @@ rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
 ```mermaid
 flowchart TD
   url["<b>?core=</b> URL parameter<br/>this load only — never written to storage,<br/>so a shared link keeps the visitor's saved choice"]
-  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the Preferences row's select()"]
+  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the core host after a successful swap"]
   build["<b>VITE_CORE_IMPL</b><br/>the build DEFAULT — the knob every dev:* / e2e<br/>script sets, no longer what gets bundled"]
   fallback["<b>rxjs</b>"]
   fail["throws — a developer error, fail-closed"]
   resolved["resolveCoreChoice(…): CoreImpl"]
-  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>rxjs → the already-imported rxjsCore<br/>async / effect → import(#quot;@rtc/client-core-async#quot;) /<br/>import(#quot;@rtc/client-core-effect#quot;), each its own lazy chunk,<br/>fetched only once chosen"]
-  boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx renders #lt;AppRoot core={core} …#gt;"]
+  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>import() of #quot;@rtc/client-core-rxjs#quot;,<br/>#quot;@rtc/client-core-async#quot; or #quot;@rtc/client-core-effect#quot;,<br/>each its own lazy chunk, fetched only once chosen"]
+  boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
 
   url -- "valid" --> resolved
   url -- "absent, or unknown<br/>(ignored + console warning)" --> stored
@@ -135,8 +135,8 @@ flowchart TD
 ```
 
 `bootCore` runs resolve-then-load before anything renders (the page shows
-only the static `index.html` background until then — one small chunk
-request on the async/Effect paths, zero on the default RxJS path). A
+only the static `index.html` background until then — one chunk request on
+every path, the default RxJS one included since approach B). A
 rejected chunk load — the only asynchronous failure in this sequence — never
 falls back to RxJS silently: `renderBootError` shows a plain-DOM message plus
 a "Load the default core" button that clears the stored choice and reloads
@@ -145,16 +145,28 @@ loaded, which is what the e2e booted-core assertions read.
 
 The choice is not a core preference (a core's presenters don't exist yet
 when it must be known), so it lives in this pre-boot `src/app` module, not
-behind the ViewModel. `main.tsx` instead builds a `CoreSelection` value via
-`createCoreSelection` (`{ current, options, select(impl) }`, `select` = save
-+ reload with `?core=` stripped so a page opened as `?core=effect` doesn't
-reload straight back onto Effect) and passes it to `AppRoot`, which forwards
-it to the bindings' `createViewModel` as an app-shell value, exposed to the
-UI as `useCoreSelection(): CoreSelection |
-null` — `null` when the host offers no selection at all (React Native passes
-none and stays RxJS-only). Both web clients render a Preferences →
-"Application core" row from it, hidden entirely when the hook returns
-`null`.
+behind the ViewModel. Each composition instead carries a `CoreSelection`
+value built by `createCoreSelection` (`{ current, options, select(impl),
+failure$ }`), which `AppRoot` forwards to the bindings' `createViewModel` as
+an app-shell value, exposed to the UI as `useCoreSelection()` — `null` when
+the host offers no selection at all (React Native passes none and stays
+RxJS-only). Both web clients render a Preferences → "Application core" row
+from it, hidden entirely when the hook returns `null`.
+
+**Since 2026-10-05 `select` swaps the core in place**
+([ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)).
+Until then it saved the choice and reloaded the page. Now it calls the core
+host's `swapTo(impl)` (`src/app/coreHost.ts`, twin files in both web
+clients), which owns the ports for the whole page life: it unmounts the UI,
+disposes the running core, composes the new one over the **same** ports
+object and mounts the UI again, then saves the choice and strips `?core=`
+with `history.replaceState`. No page load happens, so the session, the
+socket and the layout carry over. A swap that fails leaves the page on a
+working core and reports why through `failure$`, shown inline in the
+Preferences row; only a failure with nothing mounted ends on the boot-error
+screen. The step order and the failure table are in Decision 7. What the
+cores owe a swap is [guarantee 8](#three-timing-guarantees) and the `dispose`
+rule under [Failure, teardown and port discipline](#failure-teardown-and-port-discipline).
 
 `turbo.json` declares `VITE_CORE_IMPL` on the `dev` and `build` tasks' `env`
 lists (turbo's strict env mode silently strips undeclared vars) and
@@ -256,6 +268,36 @@ to reproduce them explicitly:
    until nothing is left: ~430 renders against ~420. The `animationDirector`
    case "a tick's price and the flash it causes reach the tile in one turn"
    pins it; `collectTurns` takes several streams for exactly this.
+7. **What a port replays on subscribe arrives in the subscribing turn.** A
+   tile subscribes its price and its history in one synchronous stretch.
+   The price is usually warm already (the animation director reads it), so
+   the tile is handed its current value inside `subscribe`; the history's
+   port replays its recent ticks inside `subscribe` too. Both must reach
+   the tile before it re-renders. RxJS delivers a replay inside the
+   `subscribe` call, and the async core within the same turn. In the Effect
+   core the
+   replay is queued for the fold's fiber, which would run at the next
+   microtask — after the render the price already caused. Measured
+   2026-10-05 (production build, nine tiles): 55 tile renders in the first
+   two seconds against 48 on RxJS, each tile rendering once for its price
+   and again for its history. `sharedFold` therefore settles the core
+   before its `subscribe` returns (`turnScheduler.settle()`): 49. The
+   `priceHistory` case "a tile mounting on a price that is already warm
+   hears that price and the history the port replays in one turn" pins it.
+8. **A core can be composed over ports another composition used.** Not a
+   timing property, but numbered with these because every core must
+   reproduce it explicitly too. The web clients build their ports once per
+   page and hand the same object to every `createApp`, so a core must not
+   assume it is the first to touch them (ADR-006 Decision 7, the hot swap).
+   The `recomposition` suite (`@rtc/core-contract`, cross-member, six cases
+   over `CoreHarness.recompose()`) composes, signs in, drives the ports,
+   calls `dispose()`, and composes again over the same scripted ports. The
+   second composition must resume the session with no login and exactly one
+   more `connect`; call every port method exactly as often as a first
+   composition does; receive the values the ports emit after the swap; hold
+   no more port subscriptions when warm than a warm first composition, and
+   none after its own `dispose()`; and start from a preference that was
+   changed before the swap.
 
 ## Failure, teardown and port discipline
 
@@ -289,8 +331,35 @@ explicitly (residual sweep, 2026-09-19):
    `auth.state$` (whose subject is never completed) — and that subscription
    stays the consumer's to release. Subscribing after `dispose()` to a
    refcounted presenter, or calling a machine factory, re-opens its ports:
-   uncontracted, and no production code does it (no shell calls
-   `app.dispose()`).
+   uncontracted, and no production code does it. The one caller of
+   `app.dispose()`, the web clients' core host, unmounts the UI and waits a
+   macrotask first, so no UI consumer still holds a stream when it runs.
+   One consumer can still be attached: with an inspector connected, the
+   devtools hub is subscribed to every observed stream, and the host ends
+   the hub's composition (`endComposition()`) right after `dispose()`
+   resolves, in the same synchronous step. The hub lets go there, and the
+   refcounted streams then release their ports. `coreHost.swap.test.ts`
+   case 5 pins it with a real hub and inspector: after each swap the ports
+   hold what the same core holds over fresh ports.
+   Measured on that uncontracted case (2026-10-05): with a consumer still
+   holding `connection.status$`, `dispose()` leaves its port subscription
+   open on the RxJS and async cores and closes it on the Effect core; it is
+   an open question in `docs/STATUS.md`.
+
+   Since the hot swap (2026-10-05) the same suite also fixes three
+   obligations about the workspace layout and failure, because a swap
+   seconds after a drag would otherwise lose the drag:
+
+   - **`dispose()` writes a workspace-layout change still inside the
+     persistence debounce**, exactly once, before it resolves. All three
+     cores used to drop it. Nothing is written after `dispose()` resolves;
+     a reset inside the debounce window is not undone by the flush; and
+     with nothing pending, nothing is written.
+   - **`dispose()` never throws past a step that releases ports.** A
+     flushed write that throws (storage full or blocked) is reported out of
+     band — RxJS rethrows it on a macrotask, the async core through
+     `reportAsync`, the Effect core through `reportOutOfBand` — and the
+     rest of `dispose()` still runs, so every port stream is released.
 4. **Every port method is called once, at construction** — including
    `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
    A stream re-subscribes the captured Observable on every warm period; a
@@ -483,10 +552,13 @@ flight), then fires `disposed$`.
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
 and per `AppCommands` member (75 members: 61 presenters, 12 machines, 2
-commands). Three cross-member suites sit beside the registry, witnessing
+commands). Four cross-member suites sit beside the registry, witnessing
 properties of the whole composition: `portDiscipline`, (slice 8)
-`transportGate`, and `dispose` (ADR-006 Follow-up 6: after a signed-in
-session, no port stream stays subscribed). Adding a member to `Presenters` or `MachineFactories` without
+`transportGate`, `dispose` (ADR-006 Follow-up 6: after a signed-in
+session, no port stream stays subscribed; since 2026-10-05 also the flushed
+layout write), and `recomposition` (2026-10-05, guarantee 8: a core
+composed a second time over ports a first composition used). Adding a
+member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 

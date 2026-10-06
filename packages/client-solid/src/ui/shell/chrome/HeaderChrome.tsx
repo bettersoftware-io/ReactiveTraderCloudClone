@@ -1,4 +1,6 @@
-import { createSignal, type JSX, Show } from "solid-js";
+import { createSignal, type JSX, onMount, Show } from "solid-js";
+
+import { useViewModel } from "@rtc/solid-bindings";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
@@ -23,6 +25,9 @@ import styles from "./HeaderChrome.module.css";
  * Trader.dc.html:107-217) to CSS-module markup with `var(--token)` colours.
  * The Preferences modal opens from the account menu's ⚙ Preferences row
  * (prototype parity — no standalone gear button); its open state lives here.
+ * It also opens once on mount when the shell's one-shot
+ * `takePreferencesReopen()` says this composition came from a core swap, so
+ * the user lands back where they chose the core.
  *
  * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs —
  * one NavTab component each (see NavTab.tsx for the testid/data-active
@@ -31,7 +36,20 @@ import styles from "./HeaderChrome.module.css";
 export function HeaderChrome(props: HeaderChromeProps): JSX.Element {
   // Local view-state only (which UI panel is open) — not business logic, so a
   // plain createSignal is correct here, no port involved.
-  const [prefsOpen, setPrefsOpen] = createSignal(false);
+  //
+  // It starts open when the shell's one-shot says this composition came from
+  // a core swap: read with the pure `peek`, and TAKEN once this header has
+  // mounted — the same two-step shell API as client-react's header. A later
+  // mount (AuthGate after sign-in) peeks `false` — the signal is the
+  // composition's, not the header's.
+  const { peekPreferencesReopen, takePreferencesReopen } = useViewModel();
+  const [prefsOpen, setPrefsOpen] = createSignal(
+    peekPreferencesReopen?.() === true,
+  );
+
+  onMount(() => {
+    takePreferencesReopen?.();
+  });
 
   function openPrefsModal(): void {
     setPrefsOpen(true);

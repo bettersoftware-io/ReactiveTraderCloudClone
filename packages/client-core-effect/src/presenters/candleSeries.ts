@@ -1,4 +1,4 @@
-import { Effect, Option, Queue, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
 
 import type {
   CandleSeriesPresenter,
@@ -14,9 +14,12 @@ import {
 } from "@rtc/domain";
 
 import {
+  createHotStream,
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  type HotStream,
+  portEvents,
   sharedFold,
 } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
@@ -42,9 +45,9 @@ interface Backfill {
   latestFirst: Candle | null;
   inFlight: boolean;
   lastErrorAtMs: number | null;
-  /** The CURRENT warm period's "older changed" queue; a page landing
-   * between periods offers to a queue nobody drains, which is inert. */
-  nudges: Queue.Queue<void> | null;
+  /** The CURRENT warm period's "older changed" signal; a page landing
+   * between periods publishes to one nobody hears, which is inert. */
+  nudges: HotStream<void> | null;
 }
 
 /** What the period's single writer folds: a fresh base series from the
@@ -107,7 +110,7 @@ export function createCandleSeriesPresenter(
         state.older = [...page, ...state.older];
 
         if (state.nudges !== null) {
-          Queue.unsafeOffer(state.nudges, undefined);
+          state.nudges.publish();
         }
       }
 
@@ -142,25 +145,21 @@ export function createCandleSeriesPresenter(
         // the key's backfill and owns its port subscription from the moment
         // it starts, so a fresh subscriber sees a cleared `exhausted$` in
         // its own tick.
-        const nudges = host.runtime.runSync(Queue.unbounded<void>());
+        const nudges = createHotStream<void>();
         state.older = [];
         state.latestFirst = null;
         state.nudges = nudges;
         state.exhausted.set(() => {
           return false;
         });
-        const events = Stream.merge(
-          fromPort(base$).pipe(
-            Stream.map((base): SeriesEvent => {
-              return { kind: "base", base };
-            }),
-          ),
-          Stream.fromQueue(nudges).pipe(
-            Stream.map((): SeriesEvent => {
-              return { kind: "older" };
-            }),
-          ),
-        );
+        const events = fromPort.merged<SeriesEvent>([
+          portEvents(base$, (base): SeriesEvent => {
+            return { kind: "base", base };
+          }),
+          portEvents(nudges.stream$, (): SeriesEvent => {
+            return { kind: "older" };
+          }),
+        ]);
         let current: readonly Candle[] | null = null;
 
         return Stream.runForEach(events, (event) => {

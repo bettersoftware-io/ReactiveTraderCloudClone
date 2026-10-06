@@ -89,6 +89,11 @@ The mode is carried by `EXPO_PUBLIC_SERVER_URL`, which Metro **bakes into the
 bundle** — so switching modes needs a Metro restart (each script starts its
 own). All run `expo run:ios` under the hood.
 
+**Android has the same five scripts** — `dev:android`, `dev:android:sim`,
+`dev:android:ws:local`, `dev:android:ws:remote`, `dev:android:fs` — which
+compile the dev build, install it in an emulator and start Metro. See
+[Developing against Android](#developing-against-android) for what they need.
+
 - Use `pnpm … exec expo` (the workspace-local Expo CLI), **not** `npx expo` —
   on this repo's Node 26, `npx expo` crashes (a `stripTypeScriptTypes` bug in
   npx's isolated fetch).
@@ -100,7 +105,7 @@ own). All run `expo run:ios` under the hood.
 <details>
 <summary>Force deterministic simulator data without tapping the toggle</summary>
 
-`pnpm dev:ios:sim` already does this — it sets `EXPO_PUBLIC_SERVER_URL=` (empty),
+`pnpm dev:ios:sim` (and `pnpm dev:android:sim`) already does this — it sets `EXPO_PUBLIC_SERVER_URL=` (empty),
 and `buildNativePorts` takes the in-process simulator branch whenever `serverUrl`
 is empty. To force it from a raw Metro start instead (empty string survives
 because `EXPO_PUBLIC_*` is inlined at bundle time and `??` only catches
@@ -164,9 +169,9 @@ keeps running the build it has. Sign in with `demo` / `mcdc2026`.
   the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
   on the Mac at all. The login screen's Simulator mode switch still works
   offline.
-- It is a production bundle running inside Expo Go's shell. Only someone
-  signed in to the owning Expo account sees the project, so this is for
-  showing the app on your own phone, not for handing it out.
+- It is a production bundle running inside Expo Go's shell. The project is
+  listed under Projects only for someone signed in to the owning Expo
+  account; anyone else needs a link — see the next section.
 - **Which build is on the phone?** The script stamps the bundle with the
   commit and the publish time (UTC). The status strip's build cell prints the
   commit on every screen, and the sign-in screen prints
@@ -174,13 +179,61 @@ keeps running the build it has. Sign in with `demo` / `mcdc2026`.
   `V2.0-RN` and the sign-in screen shows no build line.
 - The script passes `--environment preview`: EAS requires an environment in
   non-interactive mode, and `preview` matches the `preview` build profile in
-  `eas.json`. No variables are defined for it on EAS, so the app's own
+  `eas.json`. The app reads none of that environment's variables, so its own
   defaults apply.
 - `eas-cli` must be signed in (`pnpm dlx eas-cli@24.10.0 login`). Publishing is free
   on Expo's free plan.
 - The runtime version follows the SDK (`runtimeVersion.policy: "sdkVersion"`),
   so a published build keeps opening until Expo Go moves to the next SDK;
   after an SDK upgrade, publish again.
+
+#### Showing it to someone else
+
+Each publish gets a link that opens it in Expo Go on any phone:
+
+```
+exp://u.expo.dev/ec0ee21b-52af-4375-bb5d-70c6c52b8c1a/group/<group id>
+```
+
+The group id is printed by the publish, and by:
+
+```bash
+pnpm dlx eas-cli@24.10.0 update:list --branch demo --limit 1   # from this package
+```
+
+The update's page on expo.dev shows the same link as a QR code. The other
+person installs Expo Go, opens the link, and signs in to the app with a demo
+account.
+
+- **Checked 2026-10-06:** Expo serves that link's manifest to a request with
+  no login. **Not checked:** that Expo Go on a phone signed in to no account,
+  or to a different one, opens it. If it refuses, invite the person to the
+  Expo project as a viewer (free).
+- The link names one publish. After the next `demo:ios:publish` it still opens
+  the old build; send the new link.
+- Their Expo Go has to be on the same SDK as the publish (57 today).
+- Anyone the link is forwarded to can open the app. Only demo accounts exist
+  on the deployed server, so that is acceptable for a demo and nothing more.
+- An Android phone needs none of this: `pnpm preview:android:build` ends with
+  an install link for an APK.
+
+#### Is the update URL in `app.config.ts` a secret?
+
+No. `updates.url` (`https://u.expo.dev/<project id>`) and `extra.eas.projectId`
+are public identifiers: both ship inside every build and every publish, so
+anyone holding the app can read them. On its own the bare URL returns 404.
+With a group id it returns the JavaScript bundle, which is the code in this
+repository. Publishing an update or starting a build needs the Expo account's
+login or an access token, and neither is in the repository.
+
+Two consequences worth keeping in mind:
+
+- **Every `EXPO_PUBLIC_*` value is public.** Metro writes them into the
+  bundle, and the bundle can be downloaded. Never put a credential in one.
+- **Updates are not code-signed**, so the app runs whatever Expo serves for
+  the project. What protects the demo is the Expo account: a strong password
+  and two-factor sign-in. EAS offers update code signing if that is ever not
+  enough.
 
 ### Android — Expo Go or an APK
 
@@ -223,7 +276,7 @@ WS connect / disconnect / rejected upgrade (server README →
 The client uses `react-native-reanimated`, `@shopify/react-native-skia`,
 `react-native-gesture-handler`, `expo-blur`, `expo-haptics`, and `expo-sensors`.
 Because these are native modules, adding or upgrading them requires rebuilding
-the dev client (`pnpm dev:ios`) — a JS reload is not enough.
+the dev client (`pnpm dev:ios`, `pnpm dev:android`) — a JS reload is not enough.
 
 **Diagnostic:** launch with `EXPO_PUBLIC_MOTION_PROBE=1 pnpm dev:ios` to render a
 flag-gated probe (`src/ui/_probe/MotionProbe.tsx`) — a pulsing Skia circle that
@@ -236,14 +289,16 @@ device. It never appears in a normal run.
 
 This app is wired for **free-path distribution** — no paid Apple Developer
 account. `eas.json` carries exactly two build profiles (`development` dev-client
-and `preview` Android APK) and no EAS Update / OTA (`updates: { enabled: false }`
-in `app.config.ts`; the `eas.projectId` is already set in `extra`). Run the EAS
+and `preview` Android APK). EAS Update is on since 2026-10-04, for the
+published Expo Go demo only (`pnpm demo:ios:publish`, branch `demo` — see
+"A real iPhone" above); the `eas.projectId` is set in `extra`. Run the EAS
 CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 
 | Target | How | Cost |
 |---|---|---|
 | **iOS Simulator** (Mac) | `expo run:ios` (dev build) — see above | Free |
-| **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `eas build -p android --profile preview` → share the link | Free |
+| **Android emulator** (Mac) | `pnpm dev:android` (dev build) — see [Developing against Android](#developing-against-android) | Free |
+| **Android** device/emulator | Expo Go QR (`… start`), or a standalone APK: `pnpm preview:android:build` → share the link, or `pnpm preview:android:run` for an emulator | Free |
 | **Your own iPhone** (physical) | `expo run:ios --device` — cabled, signed with a **free** Apple ID (Xcode Personal Team) | Free, but **7-day** expiry + must be cabled |
 | **iPhone via EAS** (over-the-air link, no cable) | `eas device:create` then `eas build -p ios` | **Needs Apple Developer Program ($99/yr)** |
 | **iOS Expo Go** (App Store) | `expo start --go`, scan the QR — see "A real iPhone" above. No developer mode, no Apple account; runs only while the Mac serves it | Free |
@@ -252,8 +307,7 @@ CLI on demand with `pnpm dlx eas-cli` (no global install needed).
 
 Script names follow `<purpose>:<platform>:<variant>`, as `dev:ios:sim` does:
 `dev:*` is a development app with live code, `preview:*` is a finished cloud
-build, `demo:*` is the build published for Expo Go. There is no `dev:android`
-yet — nobody has needed to develop against Android.
+build, `demo:*` is the build published for Expo Go.
 
 ```bash
 pnpm preview:android:build      # from the repo root
@@ -286,8 +340,55 @@ booting, then installs and opens the latest cloud build. It builds nothing
 itself. The SDK is taken from `ANDROID_HOME`, defaulting to
 `~/Library/Android/sdk`, so the Android tools need not be on `PATH`.
 
-On Android the app has been seen to install, start and run in the emulator
-(slowly, as emulators are); it has had no systematic check there.
+A dev build left by `pnpm dev:android` is removed first: the two builds share
+one application id but are signed with different keys, and Android refuses to
+install one over the other (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Removing a
+build drops the session and preferences it had stored.
+
+### Developing against Android
+
+```bash
+pnpm build                  # the workspace libraries, once
+pnpm dev:android            # a) simulator — in-process fake data (alias of dev:android:sim)
+pnpm dev:android:ws:local   # b) a local server — needs `pnpm dev:ws` in another terminal
+pnpm dev:android:ws:remote  # c) the deployed server
+pnpm dev:android:fs         #    full stack — the local server and the app together
+RTC_ANDROID_AVD=Pixel_8 pnpm dev:android   # a named device, when there are several
+```
+
+Each runs `scripts/runAndroidDev.ts`, which wraps `expo run:android` with what
+Expo leaves to the machine:
+
+- **The SDK** comes from `ANDROID_HOME`, defaulting to `~/Library/Android/sdk`.
+  The first build downloads SDK 36, build-tools 36.0.0 and NDK 27.1 into it.
+- **Java 17.** A `JAVA_HOME` that is already set is used as it is; otherwise
+  the script uses Homebrew's (`brew install openjdk@17`). The Java that
+  Android Studio bundles (25) fails the native `configureCMake` step on a
+  warning Java 24 introduced.
+- **An emulator** is started if none is running, as for `preview:android:run`.
+  A virtual device must exist already.
+- **`adb reverse`** forwards the server's port when the app is pointed at this
+  machine (`:ws:local`, `:fs`). Inside the emulator `localhost` is the emulator
+  itself, so `ws://localhost:4000` reaches nothing without it. Expo forwards
+  Metro's own port the same way.
+- **A preview build is removed first**, for the signing-key reason above.
+
+The first compile takes about three minutes, later ones under one. The native
+`android/` folder is git-ignored and regenerated, like `ios/`.
+
+If the build stops while downloading with `Remote host terminated the
+handshake`, or the Gradle wrapper times out fetching `gradle-9.3.1-bin.zip`,
+check for a per-app firewall: on the first machine this ran on, Little Snitch
+was blocking Java while `curl` worked. Allowing Java's outgoing connections
+fixed both.
+
+Checked on 2026-10-05 in a Pixel emulator: `dev:android` and `dev:android:fs`
+build, install and load the app; under `:fs` a demo sign-in reaches the local
+server and the Rates tiles stream (`WS·CONNECTED`); and each of the two build
+kinds replaces the other. `:ws:local` and `:ws:remote` differ from those two
+only in the URL they set and were not run. Nothing beyond that has been checked on
+Android — every golden, the Expo Go version pins and the haptics sign-off are
+iOS only.
 
 ### Why iOS-on-a-real-device costs money
 
@@ -298,15 +399,6 @@ EAS drives on your behalf — so EAS device installs inherit Apple's paywall. A
 **free** Apple ID only gets a "Personal Team," which can sign locally via Xcode
 (cabled, 7-day) but has no cloud/EAS access. Android has no equivalent gate — the
 APK sideloads freely, which is why it's the free way to share broadly.
-
-### If you later want over-the-air updates (EAS Update)
-
-Deliberately **out of scope** here (free-path policy). Adopting it means
-installing `expo-updates`, replacing `updates: { enabled: false }` with
-`updates: { url: "https://u.expo.dev/<projectId>" }` in `app.config.ts`, adding
-`channel`s back to `eas.json`, and `eas update --channel <name>`. It still
-requires a build that colleagues can install first (Expo Go or a dev/preview
-build) — OTA only ships the JS bundle, not the native shell.
 
 ---
 
@@ -368,7 +460,7 @@ EXPO_PUBLIC_DEV_AUTH='{"astark":"mcdc2026","demo":"mcdc2026"}' pnpm --filter @rt
 Optional companion var: `EXPO_PUBLIC_SERVER_URL` selects the WS endpoint
 (defaults to `wss://rtc-clone-server.fly.dev`; empty string → the in-process
 simulator branch). You normally don't set it by hand — the `pnpm dev:ios:*`
-scripts do (see [Running the app](#running-the-app)).
+and `pnpm dev:android:*` scripts do (see [Running the app](#running-the-app)).
 
 > ⚠️ **Two caveats.**
 > 1. `.env` is git-ignored on purpose — **never commit a real credential**.

@@ -334,6 +334,7 @@ pnpm dev:solid          # the SolidJS client instead          → http://localho
 pnpm dev:react:fs       # full stack: WebSocket server + React client
 pnpm dev:react:effect   # React client on the Effect-TS core (also :async, and dev:solid:*)
 pnpm dev:ios            # React Native client on the iOS simulator
+pnpm dev:android        # React Native client in an Android emulator
 pnpm dev:devtools       # the state inspector
 ```
 
@@ -343,7 +344,8 @@ all, plus choosing an application core, the test stack and deploying.
 
 The core is switchable at load time in any build, the deployed one included:
 add `?core=async` or `?core=effect` to the URL, or pick one in Preferences →
-**Application core** (saved, then the page reloads). The async and Effect
+**Application core** (the core is swapped in place, with no page reload, and
+the choice is saved). The async and Effect
 cores are lazy chunks, so the default RxJS load costs nothing extra.
 
 ## Tests & verification

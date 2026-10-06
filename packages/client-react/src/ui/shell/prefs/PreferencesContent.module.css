@@ -53,6 +53,15 @@
   border-bottom: 1px solid var(--border-primary);
 }
 
+/* The Application core row's failure line: why the last switch left the page
+ * on the current core. Laid out like .gateHint, coloured as an error. */
+.coreFailure {
+  padding: 0 2px 11px;
+  font-size: 11px;
+  color: var(--accent-negative);
+  border-bottom: 1px solid var(--border-primary);
+}
+
 .sw {
   flex: none;
   position: relative;

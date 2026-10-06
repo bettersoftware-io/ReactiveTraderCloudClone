@@ -12,16 +12,22 @@
  * Happy path: subscribe to pricing and receive a tick; execute a trade and
  * receive an ack. Exits non-zero on any failure.
  */
-import { firstValueFrom, type Observable, timeout } from "rxjs";
+import { filter, firstValueFrom, type Observable, timeout } from "rxjs";
 
 import {
   createWsRealPorts,
   HttpAuthAdapter,
   InMemorySessionStore,
+  pairConnectionPorts,
   WsAdapter,
+  WsConnectionEventsAdapter,
 } from "@rtc/client-adapters";
-import type { JarvisAvailability } from "@rtc/core-api";
-import { type Direction, PreferencesSimulator } from "@rtc/domain";
+import type { AppPorts, CoreFactory, JarvisAvailability } from "@rtc/core-api";
+import {
+  ConnectionStatus,
+  type Direction,
+  PreferencesSimulator,
+} from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.ts";
 import { loginForToken } from "./loginForToken.ts";
@@ -372,6 +378,171 @@ async function runGateSmoke(): Promise<void> {
   }
 }
 
+// ── Hot-swap witness ─────────────────────────────────────────────
+//
+// The web clients build their ports once per page and swap the application
+// core in place, so in live mode ONE WsAdapter serves every core. A swap must
+// not open a second socket or drop the session. This composes the RxJS, async
+// and Effect cores one after another over the SAME ports object and asserts
+// each later core inherits the first one's session, connection and trade.
+
+/**
+ * Counts every socket the adapter opens. Installed over the global the way a
+ * browser page would see it, and restored by the caller.
+ */
+interface CountingWebSocket {
+  readonly ctor: typeof WebSocket;
+  opened(): number;
+}
+
+function createCountingWebSocket(base: typeof WebSocket): CountingWebSocket {
+  let opened = 0;
+
+  class Counted extends base {
+    constructor(url: string | URL, protocols?: string | string[]) {
+      super(url, protocols);
+      opened += 1;
+    }
+  }
+
+  return {
+    ctor: Counted,
+    opened: () => {
+      return opened;
+    },
+  };
+}
+
+async function runHotSwapSmoke(): Promise<void> {
+  const httpBase = `http://${HOST}:${PORT}`;
+  const login = await loginForToken(httpBase);
+  const sessionStore = new InMemorySessionStore();
+  sessionStore.write({
+    token: login.token,
+    user: login.user,
+    username: "demo",
+    exp: login.exp,
+  });
+
+  const counter = createCountingWebSocket(globalThis.WebSocket);
+  const realWebSocket = globalThis.WebSocket;
+  globalThis.WebSocket = counter.ctor;
+
+  const ws = new WsAdapter(
+    `ws://${HOST}:${PORT}`,
+    () => {
+      return sessionStore.read()?.token;
+    },
+    { autoConnect: false },
+  );
+
+  const ports: AppPorts = {
+    ...createWsRealPorts(ws, {
+      preferences: new PreferencesSimulator(),
+      auth: new HttpAuthAdapter(httpBase),
+      sessionStore,
+    }),
+    ...pairConnectionPorts(new WsConnectionEventsAdapter(ws).events()),
+    transport: ws,
+  };
+
+  const rxjsCore: CoreFactory = await import("@rtc/client-core-rxjs");
+  const asyncCore: CoreFactory = await import("@rtc/client-core-async");
+  const effectCore: CoreFactory = await import("@rtc/client-core-effect");
+
+  try {
+    // First core: sign in is already stored; trade once.
+    const first = rxjsCore.createApp(ports);
+    const pairs = await firstValueFrom(
+      first.presenters.currencyPairs.pairs$.pipe(
+        filter((p) => {
+          return p.length > 0;
+        }),
+        timeout({ first: FIRST_VALUE_TIMEOUT_MS }),
+      ),
+    );
+
+    const price = await firstValueFrom(
+      first.presenters.priceStream
+        .price$(pairs[0])
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
+
+    const executed = await firstValueFrom(
+      first.presenters.execution
+        .execute({
+          pair: pairs[0],
+          direction: DIR_BUY,
+          price,
+          notional: 1_234_567,
+        })
+        .pipe(timeout({ first: FIRST_VALUE_TIMEOUT_MS })),
+    );
+    const tradeId = executed.trade.tradeId;
+    assert(typeof tradeId === "number", "first core executed a trade");
+    await first.dispose();
+
+    for (const [name, core] of [
+      ["async", asyncCore],
+      ["effect", effectCore],
+    ] as const) {
+      const app = core.createApp(ports);
+
+      try {
+        const auth = await firstValueFrom(
+          app.presenters.auth.state$.pipe(
+            filter((s) => {
+              return s.status === "authenticated";
+            }),
+            timeout({ first: FIRST_VALUE_TIMEOUT_MS }),
+          ),
+        );
+        assert(
+          auth.status === "authenticated",
+          `${name} core is authenticated with no new login`,
+        );
+        await firstValueFrom(
+          app.presenters.connection.status$.pipe(
+            filter((s) => {
+              return s === ConnectionStatus.CONNECTED;
+            }),
+            timeout({ first: FIRST_VALUE_TIMEOUT_MS }),
+          ),
+        );
+        const trades = await firstValueFrom(
+          app.presenters.blotter.trades$.pipe(
+            filter((t) => {
+              return t.some((x) => {
+                return x.tradeId === tradeId;
+              });
+            }),
+            timeout({ first: FIRST_VALUE_TIMEOUT_MS }),
+          ),
+        );
+        assert(
+          trades.some((x) => {
+            return x.tradeId === tradeId;
+          }),
+          `${name} core's blotter holds trade ${tradeId}`,
+        );
+      } finally {
+        await app.dispose();
+      }
+    }
+
+    assert(
+      counter.opened() === 1,
+      `one socket across three cores (opened ${counter.opened()})`,
+    );
+    console.log(
+      `  ✓ hot swap: rxjs → async → effect over one WsAdapter — authenticated, connected, trade ${tradeId} in every blotter, ${counter.opened()} socket opened`,
+    );
+  } finally {
+    ws.dispose();
+    globalThis.WebSocket = realWebSocket;
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────
 
 console.log(
@@ -383,6 +554,7 @@ let failed = false;
 try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
+  await runHotSwapSmoke();
   await runOversizedFrameSmoke();
   await runEdgeGuardSmoke();
   await runGateSmoke();

@@ -1,6 +1,8 @@
+import { state } from "@rx-state/core";
+import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
-import type { CoreFactory } from "@rtc/core-api";
+import type { CoreFactory, CoreImpl } from "@rtc/core-api";
 
 import {
   CORE_CHOICE_KEY,
@@ -293,82 +295,54 @@ describe("defaultCoreResetHref", () => {
 });
 
 describe("createCoreSelection", () => {
-  it("saves and reloads without ?core= onto the chosen core", () => {
-    const { setItem, navigate, deps } = createDeps();
+  it("swaps to another core through the host", () => {
+    const { swapTo, deps } = createDeps();
 
     createCoreSelection(deps).select("async");
 
-    expect(setItem).toHaveBeenCalledWith(CORE_CHOICE_KEY, "async");
-    expect(navigate).toHaveBeenCalledWith("https://x.test/?a=1");
-  });
-
-  it("falls back to ?core= navigation when the choice cannot be saved", () => {
-    const { navigate, deps } = createDeps(false);
-
-    createCoreSelection(deps).select("async");
-
-    expect(navigate).toHaveBeenCalledWith("https://x.test/?a=1&core=async");
+    expect(swapTo).toHaveBeenCalledExactlyOnceWith("async");
   });
 
   it("does nothing when the current core is selected", () => {
-    const { setItem, navigate, deps } = createDeps();
+    const { swapTo, deps } = createDeps();
 
     createCoreSelection(deps).select("rxjs");
 
-    expect(setItem).not.toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(swapTo).not.toHaveBeenCalled();
   });
 
-  it("offers all three cores", () => {
+  it("reports the host's failure stream", () => {
+    const { deps } = createDeps();
+
+    expect(createCoreSelection(deps).failure$).toBe(deps.failure$);
+  });
+
+  it("offers all three cores and names the current one", () => {
+    const selection = createCoreSelection(createDeps().deps);
+
+    expect(selection.current).toBe("rxjs");
     expect(
-      createCoreSelection(createDeps().deps).options.map((o) => {
+      selection.options.map((o) => {
         return o.impl;
       }),
     ).toEqual(["rxjs", "async", "effect"]);
   });
-
-  it("warns with the caught reason when the choice cannot be persisted", () => {
-    const { deps } = createDeps(false);
-    const warn = vi.fn();
-
-    createCoreSelection({ ...deps, warn }).select("async");
-
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("denied"));
-  });
 });
 
 interface CreateDepsResult {
-  readonly setItem: ReturnType<typeof vi.fn>;
-  readonly navigate: ReturnType<typeof vi.fn>;
+  readonly swapTo: Mock<(impl: CoreImpl) => void>;
   readonly deps: CoreSelectionDeps;
 }
 
-function createDeps(saveWorks = true): CreateDepsResult {
-  const setItem = vi.fn(() => {
-    if (!saveWorks) {
-      throw new Error("denied");
-    }
-  });
-  const navigate = vi.fn();
-  const storage: Storage = {
-    setItem,
-    getItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-    key: vi.fn(),
-    length: 0,
-  };
+function createDeps(): CreateDepsResult {
+  const swapTo = vi.fn<(impl: CoreImpl) => void>();
 
   return {
-    setItem,
-    navigate,
+    swapTo,
     deps: {
-      current: "rxjs" as const,
-      storage,
-      href: (): string => {
-        return "https://x.test/?core=effect&a=1";
-      },
-      navigate,
+      current: "rxjs",
+      swapTo,
+      failure$: state(new BehaviorSubject<string | null>(null), null),
     },
   };
 }

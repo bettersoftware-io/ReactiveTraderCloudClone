@@ -1805,6 +1805,7 @@ export function solidViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
+        failure: wrapSubject(world.coreSelectionFailure),
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);
@@ -1814,6 +1815,12 @@ export function solidViewModel(world: World): ViewModel {
     },
     useDemoAccounts: () => {
       return world.demoAccounts;
+    },
+    takePreferencesReopen: () => {
+      return world.takePreferencesReopen();
+    },
+    peekPreferencesReopen: () => {
+      return world.peekPreferencesReopen();
     },
   };
 }

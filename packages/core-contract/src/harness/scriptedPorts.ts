@@ -238,6 +238,40 @@ function countCalls<P extends object>(
   });
 }
 
+/** An armed write failure: what the next write throws. Boxed, so even an
+ * `undefined` thrown value reads as armed. */
+interface ScriptedFailure {
+  readonly error: unknown;
+}
+
+/** Wrap the preferences port so `setWorkspaceLayout` throws whatever
+ * `takeFailure` hands it (once per armed failure) instead of writing. A
+ * Proxy for the same reason as `countCalls`. */
+function createFailableWorkspaceLayoutWrites<P extends object>(
+  port: P,
+  takeFailure: () => ScriptedFailure | null,
+): P {
+  return new Proxy(port, {
+    get: (target: P, property: string | symbol, receiver: unknown) => {
+      const value = Reflect.get(target, property, receiver);
+
+      if (property !== "setWorkspaceLayout" || typeof value !== "function") {
+        return value;
+      }
+
+      return (...args: unknown[]) => {
+        const failure = takeFailure();
+
+        if (failure !== null) {
+          throw failure.error;
+        }
+
+        return Reflect.apply(value, target, args);
+      };
+    },
+  });
+}
+
 /** `driver.connectionIntentCalls()`: calls per `connectionIntents` method. */
 interface ConnectionIntentCalls {
   reconnect: number;
@@ -266,9 +300,17 @@ export interface ScriptedDriver {
   /** How many times the core has invoked this port method since the harness
    * was built — the "called once, at construction" discipline's witness. */
   portCalls(method: PortMethodName): number;
+  /** A snapshot copy of every port method the core has called so far and
+   * how often — `portCalls` for each name at once, so a suite need not list
+   * the names. A method never called is absent. */
+  portCallCounts(): Readonly<Record<string, number>>;
   /** Push one raw tick into `pricing.getPriceUpdates(tick.symbol)`. A tick
    * for a symbol nobody has subscribed reaches nobody. */
   tickPrice(tick: PriceTick): void;
+  /** Make every LATER `getPriceUpdates(symbol)` subscription start with
+   * these ticks, delivered synchronously inside its `subscribe` — what the
+   * pricing simulator does with its 50 historical ticks. */
+  replayPricesOnSubscribe(symbol: string, ticks: readonly PriceTick[]): void;
   /** Error that symbol's price stream — terminal for its current subscribers;
    * the next `getPriceUpdates(symbol)` subscription gets a fresh Subject. */
   failPrice(symbol: string, error: unknown): void;
@@ -436,6 +478,10 @@ export interface ScriptedDriver {
   /** The `workspaceLayout` preference now — read on the UNCOUNTED base
    * port. */
   storedWorkspaceLayout(): string | null;
+  /** The core's next `preferences.setWorkspaceLayout` call throws `error`
+   * and stores nothing — full or blocked storage. Only that one call; the
+   * call is still counted (`portCallCounts`). */
+  failNextWorkspaceLayoutWrite(error: unknown): void;
   /** The dock-layout blob `ports.dockLayoutStore` holds for `tab` (null
    * when the harness supplied no store). */
   dockLayout(tab: WorkspaceTab): string | null;
@@ -484,8 +530,17 @@ export function scriptPorts(
   const connection$ = new Subject<ConnectionEvent>();
   const prefersDark$ = new BehaviorSubject<boolean>(false);
   const calls = new Map<string, number>();
-  const preferences = countCalls(base.preferences, calls);
+  let workspaceLayoutWriteFailure: ScriptedFailure | null = null;
+  const preferences = countCalls(
+    createFailableWorkspaceLayoutWrites(base.preferences, () => {
+      const failure = workspaceLayoutWriteFailure;
+      workspaceLayoutWriteFailure = null;
+      return failure;
+    }),
+    calls,
+  );
   const prices = new Map<string, Subject<PriceTick>>();
+  const priceReplays = new Map<string, readonly PriceTick[]>();
   const pairs$ = new Subject<readonly CurrencyPair[]>();
   const trades$ = new Subject<readonly Trade[]>();
   const position$ = new Subject<PositionUpdates>();
@@ -655,7 +710,15 @@ export function scriptPorts(
     // Deferred so each SUBSCRIPTION resolves the live Subject: after a
     // `failPrice` the replacement is what a fresh warm period gets.
     getPriceUpdates: (symbol: string): Observable<PriceTick> => {
-      return keyedStream(prices, symbol);
+      const live = keyedStream(prices, symbol);
+
+      return new Observable<PriceTick>((subscriber) => {
+        for (const tick of priceReplays.get(symbol) ?? []) {
+          subscriber.next(tick);
+        }
+
+        return live.subscribe(subscriber);
+      });
     },
     getPriceHistory: (symbol: string): Observable<readonly PriceTick[]> => {
       return base.pricing.getPriceHistory(symbol);
@@ -997,8 +1060,17 @@ export function scriptPorts(
       portCalls: (method: PortMethodName) => {
         return calls.get(method) ?? 0;
       },
+      portCallCounts: () => {
+        return Object.fromEntries(calls);
+      },
       tickPrice: (tick: PriceTick) => {
         prices.get(tick.symbol)?.next(tick);
+      },
+      replayPricesOnSubscribe: (
+        symbol: string,
+        ticks: readonly PriceTick[],
+      ) => {
+        priceReplays.set(symbol, ticks);
       },
       failPrice: (symbol: string, error: unknown) => {
         prices.get(symbol)?.error(error);
@@ -1176,6 +1248,9 @@ export function scriptPorts(
         }
 
         return portTally.live;
+      },
+      failNextWorkspaceLayoutWrite: (error: unknown) => {
+        workspaceLayoutWriteFailure = { error };
       },
       storedWorkspaceLayout: () => {
         const seen: (string | null)[] = [];

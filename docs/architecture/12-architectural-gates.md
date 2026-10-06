@@ -54,6 +54,7 @@
 | 48 | `fly.toml` declares a connections `hard_limit` — Fly's only load-shedding knob (custom check) |
 | 49 | The Effect core runs effects through its bridge, never the global `Effect.run*` — the bridge puts fibers on the turn scheduler and releases a scope's ports before closing it |
 | 50 | The Effect core keeps its state in a `SyncRef` (`bridge/syncRef.ts`), never an Effect `SubscriptionRef` — that reaches a subscriber through a fiber per subscriber, a step after the commit |
+| 51 | The Effect core joins streams through its bridge (`fromPort.merged` and its sources), never an Effect `Stream` combinator (`merge`, `flatMap`, `zipLatest`, …) — those run a fiber per side and spend about eleven steps per value |
 
 Gates 26–29 (web), 30–33 (RN), 34–37 (Solid), and 38–40 (devtools-app) are the machine-readable definition of "dumb UI": no streams, no storage, no transport, no clocks. All three shipped clients now carry the same four categories of guardrail on their `src/ui` (the RN patterns are a strict superset, adding platform APIs like `AsyncStorage` and `process.env`), so the SolidJS-port contract ([§8.1](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port)) held on the existing clients throughout the port, not just the one that happened to get gated first — proven, not merely valid, since the Solid client passed its own 34–37 from day one.
 

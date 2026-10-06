@@ -88,7 +88,7 @@ export function findBootFailure(ctx: TestContext): string | undefined {
 
 /** Assert the app booted on the core this run selected — `RTC_CORE_IMPL`
  *  (default `rxjs`; an explicitly EMPTY value collapses to `rxjs`, as
- *  `devServer.ts` → vite's `|| "rxjs"` does), forwarded to the dev server as
+ *  `clientServer.ts` → vite's `|| "rxjs"` does), forwarded to the dev server as
  *  `VITE_CORE_IMPL` (`coreSelection.ts`'s build default) and published by
  *  `main.tsx` as `<html data-core-impl>` once `bootApp.ts`'s `bootCore`
  *  resolves. A page error that mentions VITE_CORE_IMPL is the fail-closed

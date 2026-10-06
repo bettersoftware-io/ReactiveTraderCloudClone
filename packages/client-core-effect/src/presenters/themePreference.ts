@@ -1,5 +1,5 @@
 // packages/client-core-effect/src/presenters/themePreference.ts
-import { Option, Stream } from "effect";
+import { Effect, Option, Stream } from "effect";
 
 import type {
   ColorSchemeSource,
@@ -18,17 +18,23 @@ import {
   type EffectHost,
   type FoldUpdate,
   type FromPort,
+  type PortEvents,
+  portEvents,
   sharedFold,
 } from "#/bridge/out";
 import { peek, peekCurrent } from "#/bridge/peek";
 import { mirrorPortAsIs } from "#/presenters/mirrorPort";
 
+type ThemeEvent =
+  | { readonly kind: "preference"; readonly preference: ThemeModePreference }
+  | { readonly kind: "dark"; readonly dark: boolean };
+
 /** `modePreference$` mirrors the stored choice. `mode$` is the RxJS core's
- * `combineLatest → map(resolveThemeMode) → distinctUntilChanged` as
- * `Stream.zipLatest` into a `sharedFold` — the fold's own `Object.is` guard
- * is the de-duplication. No colour-scheme source means the OS never prefers
- * dark: `Stream.make(false)` emits once and ends, and `zipLatest` keeps
- * following the live side after a finite side ends (measured on 3.22.2). */
+ * `combineLatest → map(resolveThemeMode) → distinctUntilChanged` as the two
+ * ports through one queue (`fromPort.merged`) into a `sharedFold`: it
+ * resolves from the latest of each once both have spoken, and the fold's
+ * own `Object.is` guard is the de-duplication. No colour-scheme source means
+ * the OS never prefers dark, from the start. */
 export function createThemePreferencePresenter(
   host: EffectHost,
   preferences: PreferencesPort,
@@ -42,16 +48,22 @@ export function createThemePreferencePresenter(
     return prefersDark === undefined ? false : peek(prefersDark, false);
   }
 
-  // Subscribed through `fromPort`, so the period owns the subscription:
-  // closing the period's scope releases it, and the next period opens its
-  // own — a value built once at construction would only ever carry the
-  // FIRST period's subscription.
-  function buildPrefersDarkStream(
-    fromPort: FromPort,
-  ): Stream.Stream<boolean, unknown> {
+  function themeEvents(): readonly PortEvents<ThemeEvent>[] {
+    const preferenceEvents = portEvents(
+      modePreference,
+      (preference): ThemeEvent => {
+        return { kind: "preference", preference };
+      },
+    );
+
     return prefersDark === undefined
-      ? Stream.make(false)
-      : fromPort(prefersDark);
+      ? [preferenceEvents]
+      : [
+          preferenceEvents,
+          portEvents(prefersDark, (dark): ThemeEvent => {
+            return { kind: "dark", dark };
+          }),
+        ];
   }
 
   return {
@@ -68,13 +80,25 @@ export function createThemePreferencePresenter(
         });
       },
       run: (update: FoldUpdate<ThemeMode>, fromPort: FromPort) => {
-        return Stream.zipLatest(
-          fromPort(modePreference),
-          buildPrefersDarkStream(fromPort),
-        ).pipe(
-          Stream.runForEach(([preference, dark]) => {
+        let preference: ThemeModePreference | undefined;
+        let dark = prefersDark === undefined ? false : undefined;
+
+        return fromPort.merged(themeEvents()).pipe(
+          Stream.runForEach((event) => {
+            if (event.kind === "preference") {
+              preference = event.preference;
+            } else {
+              dark = event.dark;
+            }
+
+            if (preference === undefined || dark === undefined) {
+              return Effect.void;
+            }
+
+            const resolved = resolveThemeMode(preference, dark);
+
             return update(() => {
-              return resolveThemeMode(preference, dark);
+              return resolved;
             });
           }),
         );

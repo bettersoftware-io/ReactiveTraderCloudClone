@@ -23,7 +23,15 @@ import {
 } from "#/bridge/in";
 import { turnScheduler } from "#/bridge/turnScheduler";
 
-export { portEvents } from "#/bridge/in";
+export {
+  firstPortEvent,
+  latestOfEach,
+  leavingOnFailure,
+  oneEvent,
+  type PortEvents,
+  portEvents,
+  switchedPortEvents,
+} from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
  * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
@@ -300,6 +308,83 @@ export function listenToStream<T>(
   return () => {
     subscription.unsubscribe();
   };
+}
+
+/** `source`, narrowed to the values `keep` accepts. A VIEW, not a fold: no
+ * fiber, no queue and no state of its own, so a subscriber is called from
+ * whatever delivers `source`, in the same step — and when `source` replays
+ * its latest value to a newcomer, the view passes it on only if `keep`
+ * accepts it (the RxJS core's `shared$.pipe(filter(…))`).
+ *
+ * For one shared stream read through many narrow windows — the animation
+ * director's `intentsFor(target)`. As a fold per window, every intent woke
+ * a fiber per mounted tile to drop it again: about 19 ms of fiber time per
+ * six seconds on the FX screen (measured 2026-10-04). */
+export function filterStream<T>(
+  source: CoreStream<T>,
+  keep: (value: T) => boolean,
+): CoreStream<T> {
+  return new Observable<T>((subscriber) => {
+    const subscription = source.subscribe({
+      next: (value: T) => {
+        if (keep(value)) {
+          subscriber.next(value);
+        }
+      },
+      error: (error: unknown) => {
+        subscriber.error(error);
+      },
+      complete: () => {
+        subscriber.complete();
+      },
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
+}
+
+/** A view of `source` through `project`, passing a projection on only when
+ * it differs from the previous one (`Object.is`) — the RxJS
+ * `source.pipe(map(project), distinctUntilChanged())`. Each subscriber
+ * compares against what IT last heard.
+ *
+ * For the selector of a `switchedPortEvents`: a group that should be
+ * reopened only when what selects it changed, not on every value of the
+ * stream it is read from. */
+export function projectedChanges<T, K>(
+  source: CoreStream<T>,
+  project: (value: T) => K,
+): CoreStream<K> {
+  return new Observable<K>((subscriber) => {
+    let heard = false;
+    let last: K | undefined;
+
+    const subscription = source.subscribe({
+      next: (value: T) => {
+        const projected = project(value);
+
+        if (heard && Object.is(projected, last)) {
+          return;
+        }
+
+        heard = true;
+        last = projected;
+        subscriber.next(projected);
+      },
+      error: (error: unknown) => {
+        subscriber.error(error);
+      },
+      complete: () => {
+        subscriber.complete();
+      },
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
 }
 
 /** A stream that completes at once without a value — an unsupported desk
@@ -590,6 +675,17 @@ export function sharedFold<S>(
       ),
       { scope },
     );
+    // Whatever the producer can already do, it does before this subscribe
+    // returns. A port that replays on subscribe (the pricing simulator's 50
+    // ticks, any replay-current port) has queued those values by now, and
+    // the producer would otherwise fold them a microtask later — after a UI
+    // that was handed another stream's value synchronously has rendered.
+    // MEASURED 2026-10-05, production build, nine FX tiles: each tile
+    // rendered once for its price (seeded here, synchronously) and again
+    // for its history (folded a microtask later), 57 renders in the first
+    // two seconds against 49 on the RxJS core, whose replay arrives inside
+    // `subscribe`. Settled here: 46, and the two arrive together.
+    turnScheduler.settle();
 
     return period;
   }

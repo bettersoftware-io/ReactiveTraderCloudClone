@@ -281,4 +281,12 @@ export class HeaderChromePage extends MountedComponent<HeaderChromeProps> {
   async closePrefs(): Promise<void> {
     await this.user.click(within(this.root).getByTestId("prefs-close"));
   }
+
+  /** Signs out and back in through the auth seam: under `AuthGate`
+   * (the `AuthGatedHeaderChrome` token) the header unmounts for the login
+   * screen and mounts again — a fresh header in the same composition. */
+  signOutAndBackIn(): void {
+    this.setAuthStatus("unauthenticated");
+    this.setAuthStatus("authenticated");
+  }
 }

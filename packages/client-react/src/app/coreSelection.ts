@@ -3,6 +3,7 @@ import type {
   CoreImpl,
   CoreOption,
   CoreSelection,
+  StateStream,
 } from "@rtc/core-api";
 
 /** Every application core a page can boot. Not exported — nothing outside
@@ -288,44 +289,30 @@ export function safeLocalStorage(): Storage | undefined {
 }
 
 export interface CoreSelectionDeps {
+  /** The core this composition runs on. */
   readonly current: CoreImpl;
-  readonly storage: Storage | undefined;
-  readonly href: () => string;
-  readonly navigate: (href: string) => void;
-  /** Logs a caught storage failure when `select`'s save fails (non-fatal —
-   * `select` still carries the choice via `?core=` for this load). */
-  readonly warn?: (message: string) => void;
+  /** The host's swap: replaces the running core in place, no reload. */
+  readonly swapTo: (impl: CoreImpl) => void;
+  /** The host's report of why the last swap left the page on `current`. */
+  readonly failure$: StateStream<string | null>;
 }
 
 /**
- * The app-shell `CoreSelection` value: the currently active core, the
- * choices on offer, and how to switch. `select` saves the choice and reloads
- * the page with `?core=` stripped (so a link opened as `?core=effect` does
- * not reload straight back onto Effect, since the URL parameter outranks the
- * stored choice); when the choice cannot be persisted, it carries the choice
- * for this load only via `?core=` instead. Re-selecting the current core is
- * a no-op.
+ * One composition's `CoreSelection`: the core it runs on, the choices on
+ * offer, and how to switch. `select` hands the choice to the core host,
+ * which swaps the running core in place (spec
+ * 2026-10-05-core-hot-swap-design.md §2) and reports a failed swap through
+ * `failure$`. Re-selecting the current core is a no-op.
  */
 export function createCoreSelection(deps: CoreSelectionDeps): CoreSelection {
   return {
     current: deps.current,
     options: CORE_OPTIONS,
+    failure$: deps.failure$,
     select: (impl: CoreImpl): void => {
-      if (impl === deps.current) {
-        return;
+      if (impl !== deps.current) {
+        deps.swapTo(impl);
       }
-
-      const clean = urlWithoutCoreParam(deps.href());
-
-      if (saveCoreChoice(deps.storage, impl, deps.warn)) {
-        deps.navigate(clean);
-        return;
-      }
-
-      // Storage unavailable: carry the choice for this load in the URL instead.
-      const url = new URL(clean);
-      url.searchParams.set(CORE_PARAM, impl);
-      deps.navigate(url.toString());
     },
   };
 }

@@ -252,7 +252,7 @@ server's own `AUTH_USERS`. Vercel itself never sees or stores a credential.
 
 `EXPO_PUBLIC_*` variables are inlined into the JS bundle at Metro start, not
 hot-reloaded — after editing `.env` you must restart Metro
-(`pnpm dev:ios`), not just reload in-app.
+(`pnpm dev:ios` or `pnpm dev:android`), not just reload in-app.
 
 ### Local web dev (`pnpm dev`, simulator mode)
 
@@ -324,7 +324,7 @@ whose server roster is `demo:demo`, while the bundle's demo entry is
 ### 6.1 Composition
 
 The client composes its ports once per page load, before the login screen
-(`AppRoot` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
+(`main.tsx` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
 **at load**, from a stored choice, exactly as the load-time core switch does
 (ADR-006 Decision 6):
 

@@ -1,6 +1,6 @@
 import { type ReactElement, useState } from "react";
 
-import type { CoreImpl, CoreSelection } from "@rtc/core-api";
+import type { CoreImpl } from "@rtc/core-api";
 import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
 import {
   type AmbientStyle,
@@ -17,7 +17,7 @@ import {
   type LoginWaitStyle,
   type PowerSaverLevel,
 } from "@rtc/domain";
-import { useViewModel } from "@rtc/react-bindings";
+import { type CoreSelectionView, useViewModel } from "@rtc/react-bindings";
 
 import { PrefAction } from "./PrefAction";
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
@@ -272,6 +272,15 @@ export function PreferencesContent(): ReactElement {
             testid="pref-segment-coreImpl"
           />
         ) : null}
+        {coreSelection !== null && coreSelection.failure !== null ? (
+          <div
+            role="alert"
+            className={styles.coreFailure}
+            data-testid="prefs-core-failure"
+          >
+            {coreSelection.failure}
+          </div>
+        ) : null}
         <ToggleGroup
           defs={MOTION_TOGGLES}
           values={toggles}
@@ -383,7 +392,7 @@ export function PreferencesContent(): ReactElement {
 }
 
 const CORE_SELECTION_DESCRIPTION =
-  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page.";
+  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching swaps the core in place, without a reload.";
 
 /**
  * The "Application core" row's description: the fixed sentence above plus
@@ -393,7 +402,7 @@ const CORE_SELECTION_DESCRIPTION =
  * sentence alone; the row itself is absent entirely in that case anyway.
  */
 function formatCoreSelectionDescription(
-  coreSelection: CoreSelection | null,
+  coreSelection: CoreSelectionView | null,
 ): string {
   if (coreSelection === null) {
     return CORE_SELECTION_DESCRIPTION;

@@ -63,13 +63,13 @@ Native Playwright (react + solid) is the gating browser SOT — see
 `STRATEGY.md` §7.1 for the full verdict and its honest caveat (new browser
 behaviour lands native-first; the Gherkin tree may lag it while parked).
 
-`RTC_CORE_IMPL` (`rxjs` default, `async`, `effect`) is forwarded by `scripts/devServer.ts` as `VITE_CORE_IMPL`, so every dev-server-backed suite boots the chosen application core; `run-all.ts` logs which one it resolved.
+`RTC_CORE_IMPL` (`rxjs` default, `async`, `effect`) is forwarded by `scripts/clientServer.ts` as `VITE_CORE_IMPL`, so every dev-server-backed suite boots the chosen application core; `run-all.ts` logs which one it resolved.
 
 The two `:solid` rows are not a separate suite family — they run the *same*
 config, specs, steps, and page objects as their React counterparts, only
 re-pointed at `@rtc/client-solid` via `RTC_CLIENT_PKG`. See
 [`docs/architecture/21-cross-framework-testing.md`](../docs/architecture/21-cross-framework-testing.md#mechanism-3--e2e-via-rtc_client_pkg)
-§21 Mechanism 3 for the full env-var → `devServer.ts` → `run-all.ts` wiring.
+§21 Mechanism 3 for the full env-var → `clientServer.ts` → `run-all.ts` wiring.
 
 Utility scripts (`clean`, `clean:deep`, `typecheck`) are not included in the
 table — they are not part of the test pipeline. The `:headed` and `:ui` variants
@@ -100,7 +100,7 @@ presenter/
 specs/                  [shared: playwright-cucumber (incl. its :solid peer)]
                         .feature files
 fullstack/              node + browser smokes against the real server
-scripts/                run-all, with-server, devServer, free-port, grep-gates
+scripts/                run-all, with-server, clientServer, free-port, grep-gates
 ```
 
 Path-resolution rule: cucumber `import:` globs are **tests-root relative**
@@ -130,8 +130,10 @@ see the root README's report map.
 ## Orchestration
 
 `test:e2e` → `scripts/run-all.ts`: every suite runs concurrently; each browser
-suite gets its own dev server on `RTC_DEV_PORT` 3001–3004 (react 3001–3002,
-solid 3003–3004) (via `scripts/with-server.ts`). `RTC_E2E_MAX_PARALLEL=n` caps
+suite gets its own client server on `RTC_DEV_PORT` 3001–3004 (react 3001–3002,
+solid 3003–3004) (via `scripts/with-server.ts`) — the client's production
+build for the Playwright suites, its dev server for the Gherkin ones (next
+section). `RTC_E2E_MAX_PARALLEL=n` caps
 concurrency (CI uses 2). Wall-clock ≈ the slowest single suite when uncapped;
 a cap stretches that proportionally.
 
@@ -150,9 +152,48 @@ server on port 4123 and drives it directly over a Node WebSocket;
 3100, then runs a Playwright spec against the live UI. Neither uses mocks or
 simulators.
 
+## What the browser suites drive: a build, or the dev server
+
+`RTC_E2E_SERVE` (`scripts/lib/serveMode.ts`) picks what `with-server` starts:
+
+| mode | what runs | who uses it |
+|---|---|---|
+| `build` (default) | `vite build` of the client into `tests/node_modules/.cache/rtc-e2e/<client>-<core>`, served by `vite preview` | the two Playwright suites (`test:browser:playwright`, `…:solid`) — the long pole of `test:e2e` |
+| `dev` | the client's Vite dev server | the two Gherkin suites, the full-stack smokes, and every `:headed` / `:ui` script |
+
+Why the build is the default: each test opens a fresh browser context and so
+loads the whole app again. The dev server answers with one request per module
+(637 requests, 15 MB per test on the default core; 8.8 MB with the lean-deps
+switch below); a build answers with a handful of chunks. Measured 2026-10-05,
+same machine, back to back, every test passing unchanged:
+
+| suite | dev server | build |
+|---|---|---|
+| React Playwright, 97 tests | 310 s (3.13 s per test) | 197 s (2.00 s per test) |
+| React Gherkin, 47 scenarios | 73 s | 43 s |
+
+Why the dev server stays for some suites: it is what a developer runs, and a
+build does not behave identically. React double-mounts every component in dev
+(`StrictMode`), `import.meta.env.DEV` branches exist only there, and Vite
+transforms modules differently. The Gherkin suites and the full-stack smokes
+keep a browser witness on it. `RTC_E2E_SERVE=dev pnpm test:e2e` puts the
+Playwright suites back on the dev server too — use it when a failure needs
+source-mapped modules, or to check a dev-only behaviour.
+
+The build is made with the same variables the dev server gets
+(`VITE_DEV_AUTH`, `VITE_CORE_IMPL`), plus an empty `VITE_DEMO_AUTH`: a
+production build would otherwise take its roster from `.env.production`,
+where `demo`'s password is not the one the login spec types. It also gets
+`VITE_NARRATOR_TEST_SEAM=1`, which keeps the `?narratorThresholds=test` seam
+in the bundle; a real production build compiles that seam out, and the
+narrator spec cannot wait for a natural anomaly (about one per symbol every
+14 minutes). Workspace
+libraries are read from their `dist` in both modes, so `turbo run test:e2e`
+builds them first either way.
+
 ## Dev-server payload (lean deps)
 
-The browser suites run against the Vite **dev** server, and every test opens a
+In `dev` mode the suite runs against the Vite **dev** server, and every test opens a
 fresh browser context, so every test downloads every dependency again. Vite
 serves each pre-bundled dependency whole (no tree-shaking in dev) with its
 source map appended inline. For the Effect core that was the entire `effect`
