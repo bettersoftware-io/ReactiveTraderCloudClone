@@ -17,6 +17,7 @@ import {
   type CoreHostState,
   type CoverTimings,
   createCoreHost,
+  DISPOSE_TIMEOUT_MS,
 } from "./coreHost";
 import { CORE_OPTIONS } from "./coreSelection";
 
@@ -202,6 +203,52 @@ describe("createCoreHost", () => {
     ]);
     expect(harness.mounted.at(-1)?.impl).toBe("effect");
     expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "effect" });
+  });
+
+  describe("8b. an old.dispose() that never settles", () => {
+    it("ends in onFatal after the limit, with no core composed over the held ports", async () => {
+      vi.useFakeTimers();
+      const harness = createHarness({ timed: 0 });
+      harness.start();
+      harness.cores.rxjs.disposeHangs = true;
+
+      const swap = harness.host.swapTo("effect");
+      await advanceUntilLogged(harness, "dispose:rxjs");
+      await vi.advanceTimersByTimeAsync(DISPOSE_TIMEOUT_MS - 1);
+
+      // One millisecond short of the limit: still waiting, nothing decided.
+      expect(harness.onFatal).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await swap;
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.onFatal).toHaveBeenCalledWith(
+        new Error("the rxjs core did not finish disposing within 5 s"),
+      );
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+      expect(harness.log.filter(isCreateApp)).toEqual(["createApp:rxjs"]);
+      // Asked to dispose once: the fatal path does not wait on it again.
+      expect(harness.log.filter(isDispose)).toEqual(["dispose:rxjs"]);
+      expect(harness.persist).not.toHaveBeenCalled();
+    });
+
+    it("a dispose that settles in time leaves no timer behind", async () => {
+      vi.useFakeTimers();
+      const harness = createHarness({ timed: 0 });
+      harness.start();
+
+      const swap = harness.host.swapTo("effect");
+      await vi.runAllTimersAsync();
+      await swap;
+
+      expect(vi.getTimerCount()).toBe(0);
+      expect(harness.onFatal).not.toHaveBeenCalled();
+      expect(harness.states.at(-1)).toEqual({
+        phase: "running",
+        impl: "effect",
+      });
+    });
   });
 
   it("9. an unsaved choice is a warning; the swap stands", async () => {
@@ -661,6 +708,8 @@ interface FakeCore {
   createError: Error | null;
   /** When set, every later `dispose()` rejects with it. */
   disposeError: Error | null;
+  /** When set, every later `dispose()` never settles. */
+  disposeHangs: boolean;
   /** When set, the harness's `instrument` throws it for this core. */
   instrumentError: Error | null;
 }
@@ -709,6 +758,19 @@ interface Harness {
 }
 
 const COVER = { enterMs: 160, holdMs: 500, exitMs: 200 } as const;
+
+/** Advances the fake clock a millisecond at a time until `entry` is in the
+ * log, so a case can count from that step and not from the swap's start. */
+async function advanceUntilLogged(
+  harness: Harness,
+  entry: string,
+): Promise<void> {
+  for (let ms = 0; ms < 1_000 && !harness.log.includes(entry); ms += 1) {
+    await vi.advanceTimersByTimeAsync(1);
+  }
+
+  expect(harness.log).toContain(entry);
+}
 
 /** Runs one swap to `impl` on fake timers and returns how long it took on
  * the fake clock. */
@@ -862,6 +924,18 @@ function createHarness(options: HarnessOptions = {}): Harness {
 
       return Promise.resolve();
     },
+    // Untimed, the timer never expires: every fake settles at once, so a
+    // case that wants the limit runs on fake timers.
+    startTimer: (ms: number, onExpired: () => void): (() => void) => {
+      if (timed === undefined) {
+        return (): void => {};
+      }
+
+      const timer = setTimeout(onExpired, ms);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    },
     nextMacrotask: () => {
       record("macrotask");
 
@@ -918,6 +992,7 @@ function createFakeCore(
     splashDecisions: [],
     createError: null,
     disposeError: null,
+    disposeHangs: false,
     instrumentError: null,
     core: {
       createApp: (ports: AppPorts): App => {
@@ -935,6 +1010,11 @@ function createFakeCore(
           commands: {} as AppCommands,
           dispose: () => {
             record(`dispose:${impl}`);
+
+            if (fake.disposeHangs) {
+              return new Promise<void>(() => {});
+            }
+
             return fake.disposeError === null
               ? Promise.resolve()
               : Promise.reject(fake.disposeError);

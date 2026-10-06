@@ -537,6 +537,12 @@ function createHostHarness(
       return { enterMs: 0, holdMs: 0, exitMs: 0 };
     },
     sleep: delayBy,
+    startTimer: (ms: number, onExpired: () => void): (() => void) => {
+      const timer = setTimeout(onExpired, ms);
+      return (): void => {
+        clearTimeout(timer);
+      };
+    },
     nextMacrotask: () => {
       return delayBy(0);
     },
