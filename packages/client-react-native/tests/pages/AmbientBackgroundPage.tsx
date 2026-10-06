@@ -6,7 +6,7 @@ import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { ThemeContext } from "#/ui/theme/ThemeContext";
-import { rnThemeTokens } from "#/ui/theme/tokens";
+import { type RnTheme, rnThemeTokens } from "#/ui/theme/tokens";
 
 interface AmbientMountOptions {
   readonly animatedBackground: boolean;
@@ -14,6 +14,8 @@ interface AmbientMountOptions {
   readonly ambientStyle?: AmbientStyle;
   /** Defaults to "off", production's default. */
   readonly powerSaverLevel?: PowerSaverLevel;
+  /** Defaults to neon dark. */
+  readonly theme?: RnTheme;
 }
 
 // Minimal in-test PreferencesPort-shaped stub: only the ViewModel seams
@@ -54,6 +56,9 @@ export interface AmbientBackgroundPage {
   unmountAll(): Promise<void>;
   exists(testId: string): boolean;
   awaitExists(testId: string): Promise<boolean>;
+  /** The `opacity` of every shape whose testID matches `pattern`, in draw
+   * order. */
+  shapeOpacities(pattern: RegExp): number[];
 }
 
 /** The framework surface for `AmbientBackground.test.tsx`. */
@@ -62,7 +67,9 @@ export function ambientBackgroundPage(): AmbientBackgroundPage {
     async mount(options: AmbientMountOptions): Promise<void> {
       await render(
         <ViewModelProvider viewModel={fakeViewModel(options)}>
-          <ThemeContext.Provider value={rnThemeTokens.neon.dark}>
+          <ThemeContext.Provider
+            value={options.theme ?? rnThemeTokens.neon.dark}
+          >
             <AmbientBackground />
           </ThemeContext.Provider>
         </ViewModelProvider>,
@@ -77,6 +84,11 @@ export function ambientBackgroundPage(): AmbientBackgroundPage {
     async awaitExists(testId: string): Promise<boolean> {
       await screen.findByTestId(testId);
       return true;
+    },
+    shapeOpacities(pattern: RegExp): number[] {
+      return screen.getAllByTestId(pattern).map((node) => {
+        return node.props.opacity as number;
+      });
     },
   };
 }

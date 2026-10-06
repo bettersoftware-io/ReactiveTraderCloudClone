@@ -2,6 +2,7 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 import * as Reanimated from "react-native-reanimated";
 
+import { rnThemeTokens } from "#/ui/theme/tokens";
 import { ambientBackgroundPage } from "#tests/pages/AmbientBackgroundPage";
 
 afterEach(() => {
@@ -28,6 +29,36 @@ test("draws the rays blobs group when ambientStyle is rays and ambient is enable
   await page.mount({ animatedBackground: true, ambientStyle: "rays" });
   expect(await page.awaitExists("ambient-rays-blobs")).toBeTruthy();
   expect(page.exists("ambient-aurora-wash")).toBe(false);
+});
+
+// The washes were once multiplied by a per-skin intensity, which put them at
+// 2% on classic and made the layer read as absent. The design draws them at
+// the same strength in every skin.
+test.each([
+  ["classic dark", rnThemeTokens.classic.dark],
+  ["neon dark", rnThemeTokens.neon.dark],
+  ["terminal light", rnThemeTokens.terminal.light],
+])(
+  "draws the aurora washes at the design's 0.13 and 0.10 on %s",
+  async (_name, theme) => {
+    await page.mount({
+      animatedBackground: true,
+      ambientStyle: "aurora",
+      theme,
+    });
+    await page.awaitExists("ambient-aurora-wash");
+    expect(page.shapeOpacities(/^aurora-wash-/)).toEqual([0.13, 0.1]);
+  },
+);
+
+test("draws the three rays blobs at one strength in every skin", async () => {
+  await page.mount({
+    animatedBackground: true,
+    ambientStyle: "rays",
+    theme: rnThemeTokens.classic.dark,
+  });
+  await page.awaitExists("ambient-rays-blobs");
+  expect(page.shapeOpacities(/^rays-\d$/)).toEqual([0.18, 0.18, 0.18]);
 });
 
 // The drift loop is the one piece of ambient motion Freeze did not reach

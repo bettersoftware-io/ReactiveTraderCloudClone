@@ -53,9 +53,11 @@ export interface DepthTokens {
 /**
  * The RN-native theme surface: the plain-colour subset of the web's CSS token
  * set (packages/client-react/src/ui/shell/theme/tokens.ts), camelCased, with all
- * `var()` refs pre-resolved. The FX keys (`gridC`/`aurora`/`glowC`) are now
- * populated, ported verbatim from `docs/design/mobile/v1/dev-handoff/theme-tokens.ts`
- * — they back the Skia ambient background (grid + aurora) and glow shadows. Font
+ * `var()` refs pre-resolved. The FX keys (`gridC`/`glowC`) are
+ * ported verbatim from `docs/design/mobile/v1/dev-handoff/theme-tokens.ts`
+ * — they back the Skia ambient background's grid and the glow shadows. That
+ * file's per-skin `aurora` intensity is deliberately not ported: the prototype
+ * never applies it to its washes (see `AmbientBackground`). Font
  * fields hold a bundled family name (or `undefined` = RN system default, for
  * `classic`).
  */
@@ -131,8 +133,6 @@ export interface RnTheme {
 
   /** HUD grid line colour (the ambient background's faint grid overlay). */
   readonly gridC: string;
-  /** Ambient background intensity, 0..1 (`classic` ≈ calmest, `neon`/`holo` brightest). */
-  readonly aurora: number;
   /** Glow shadow colour for active/pressed elements and the ambient aurora; `null` = no glow. */
   readonly glowC: string | null;
 
@@ -186,7 +186,6 @@ const classicDark: RnTheme = {
   fontMono: undefined,
   fontMonoWeights: undefined,
   gridC: "rgba(148,163,184,0.05)",
-  aurora: 0.15,
   glowC: null,
   depth: FLAT_DEPTH,
 };
@@ -223,7 +222,6 @@ const classicLight: RnTheme = {
   fontMono: undefined,
   fontMonoWeights: undefined,
   gridC: "rgba(15,23,42,0.03)",
-  aurora: 0.1,
   glowC: null,
   depth: FLAT_DEPTH,
 };
@@ -260,7 +258,6 @@ const holoDark: RnTheme = {
   fontMono: FONT_JETBRAINS_MONO,
   fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(0,224,255,0.05)",
-  aurora: 0.6,
   glowC: "rgba(0,224,255,0.3)",
   depth: FLAT_DEPTH,
 };
@@ -297,7 +294,6 @@ const holoLight: RnTheme = {
   fontMono: FONT_JETBRAINS_MONO,
   fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(0,120,150,0.06)",
-  aurora: 0.3,
   glowC: "rgba(0,180,204,0.25)",
   depth: FLAT_DEPTH,
 };
@@ -379,7 +375,6 @@ const terminalDark: RnTheme = {
   fontMono: FONT_IBM_MONO,
   fontMonoWeights: IBM_MONO_WEIGHTS,
   gridC: "rgba(255,255,255,0.022)",
-  aurora: 0.22,
   glowC: null,
   depth: FLAT_DEPTH,
 };
@@ -416,7 +411,6 @@ const terminalLight: RnTheme = {
   fontMono: FONT_IBM_MONO,
   fontMonoWeights: IBM_MONO_WEIGHTS,
   gridC: "rgba(18,21,28,0.03)",
-  aurora: 0.1,
   glowC: null,
   depth: FLAT_DEPTH,
 };
@@ -495,7 +489,6 @@ const neonDark: RnTheme = {
   fontMono: FONT_JETBRAINS_MONO,
   fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(255,43,214,0.07)",
-  aurora: 0.7,
   glowC: "rgba(255,43,214,0.4)",
   depth: FLAT_DEPTH,
 };
@@ -532,7 +525,6 @@ const neonLight: RnTheme = {
   fontMono: FONT_JETBRAINS_MONO,
   fontMonoWeights: JETBRAINS_WEIGHTS,
   gridC: "rgba(150,0,120,0.05)",
-  aurora: 0.35,
   glowC: "rgba(200,0,160,0.25)",
   depth: FLAT_DEPTH,
 };

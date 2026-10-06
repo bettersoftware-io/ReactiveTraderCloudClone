@@ -12,6 +12,7 @@ import { type JSX, type ReactNode, useEffect } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
 import {
   cancelAnimation,
+  Easing,
   type SharedValue,
   useDerivedValue,
   useSharedValue,
@@ -33,16 +34,21 @@ import { withAlpha } from "#/ui/theme/withAlpha";
  * mutually-exclusive animated layer groups, selected by the `ambientStyle`
  * preference (`useAmbientStyle()`):
  *   - `"rays"` (`testID="ambient-rays-blobs"`) — the original layer: 3 soft
- *     blurred blobs in the active theme's accent colours.
+ *     blurred blobs in the active theme's accent colours. It has no
+ *     counterpart in the mobile design; its strength is set to read about as
+ *     strongly as the aurora.
  *   - `"aurora"` (`testID="ambient-aurora-wash"`, the default) — the mobile
  *     design's own ambient (dc.html:57-58): two theme-accent radial washes,
  *     `accentPrimary` across the top and `accent2` rising from the bottom,
  *     each an elliptical `radial-gradient(... 0%, transparent 62%)` at the
- *     design's 0.13/0.10 opacities × the skin's `aurora`. This was 3 fixed
- *     green/purple curtain bands (a port of the WEB client's aurora) until
- *     2026-09-02 — near-invisible on dark skins and off-palette next to the
- *     prototype, which is what the fidelity round's item 8 reported. The web
- *     client keeps its curtains; this layer answers to the mobile prototype.
+ *     design's 0.13/0.10 opacities, drifting between the design's two
+ *     keyframe poses (`kfAuroraA`/`B`). The web client keeps its own curtains;
+ *     this layer answers to the mobile prototype.
+ *
+ * Neither layer is scaled by the skin. Until 2026-10-06 both were multiplied
+ * by a per-skin `aurora` intensity (0.1–0.7), which put the washes at 1–9%
+ * opacity and made the layer read as absent on most skins. The design defines
+ * that number per skin and never applies it to the washes, so it is gone.
  * Both groups are gated by `useAmbientEnabled()` (the animated-background
  * preference ANDed with OS reduced-motion, unchanged by this style branch);
  * the whole component returns `null` when off, so no worklet or canvas
@@ -58,8 +64,8 @@ import { withAlpha } from "#/ui/theme/withAlpha";
  *
  * Drift is exactly ONE Reanimated shared value (`progress`, looping 0..1..0
  * via `withRepeat`+`withTiming` on the UI thread), read by every layer
- * (blob `cx`/`cy`, curtain `transform`) through `useDerivedValue` — position
- * only; opacity is static (pre-scaled by `t.aurora`, never animated). One
+ * (blob `cx`/`cy`, wash `transform`) through `useDerivedValue` — position
+ * and scale only; opacity is static, never animated. One
  * underlying animation drives the whole canvas regardless of style; Skia
  * reads the shared values directly on the UI thread, so React never
  * re-renders per frame (transform-equivalent only, per docs/performance.md's
@@ -87,7 +93,10 @@ export function AmbientBackground(): JSX.Element | null {
     }
 
     progress.value = withRepeat(
-      withTiming(1, { duration: DRIFT_DURATION_MS }),
+      withTiming(1, {
+        duration: DRIFT_DURATION_MS,
+        easing: Easing.inOut(Easing.ease),
+      }),
       -1,
       true,
     );
@@ -111,26 +120,14 @@ export function AmbientBackground(): JSX.Element | null {
       {style === "rays" ? (
         <TestGroup testID="ambient-rays-blobs">
           {raysBlobSpecs(width, height, t).map((blob) => {
-            return (
-              <RaysBlob
-                key={blob.id}
-                blob={blob}
-                progress={progress}
-                aurora={t.aurora}
-              />
-            );
+            return <RaysBlob key={blob.id} blob={blob} progress={progress} />;
           })}
         </TestGroup>
       ) : (
         <TestGroup testID="ambient-aurora-wash">
           {auroraWashSpecs(width, height, t).map((wash) => {
             return (
-              <AuroraWashBlob
-                key={wash.id}
-                wash={wash}
-                progress={progress}
-                aurora={t.aurora}
-              />
+              <AuroraWashBlob key={wash.id} wash={wash} progress={progress} />
             );
           })}
         </TestGroup>
@@ -139,7 +136,9 @@ export function AmbientBackground(): JSX.Element | null {
   );
 }
 
-const DRIFT_DURATION_MS = 18_000;
+/** One leg of the there-and-back loop: the design's `kfAuroraA` runs a full
+ * cycle in 26 s (`kfAuroraB` in 31 s — one clock stands in for both). */
+const DRIFT_DURATION_MS = 13_000;
 const GRID_CELL_PX = 56;
 
 interface TestGroupProps {
@@ -170,6 +169,8 @@ interface RaysBlobSpec {
   readonly baseX: number;
   readonly baseY: number;
   readonly radius: number;
+  /** How far the centre travels over one leg of the loop, in px. */
+  readonly drift: number;
   readonly color: string;
   /** Travel direction relative to the shared `progress` value (1 = with it,
    * -1 = against it) — gives each blob a distinct phase off ONE shared
@@ -180,31 +181,38 @@ interface RaysBlobSpec {
 interface RaysBlobProps {
   blob: RaysBlobSpec;
   progress: SharedValue<number>;
-  aurora: number;
 }
 
-const RAYS_BLOB_BASE_OPACITY = 0.35;
-const RAYS_BLOB_DRIFT_PX = 36;
+/** A disc blurred at 0.6 × its radius peaks at about three quarters of its
+ * own opacity, so 0.18 lands near the aurora's 0.13 peak. */
+const RAYS_BLOB_OPACITY = 0.18;
+/** Travel per leg as a share of the larger viewport dimension — the same
+ * order as the aurora's keyframe travel. */
+const RAYS_BLOB_DRIFT = 0.1;
 
 /** One blurred "rays"-style circle, its centre derived from the shared
  * `progress` clock — no per-blob animation, just a per-blob phase (`sign`)
  * applied to the one shared value. */
-function RaysBlob({ blob, progress, aurora }: RaysBlobProps): JSX.Element {
+function RaysBlob({ blob, progress }: RaysBlobProps): JSX.Element {
   const cx = useDerivedValue(() => {
-    return blob.baseX + blob.sign * (progress.value - 0.5) * RAYS_BLOB_DRIFT_PX;
+    return blob.baseX + blob.sign * (progress.value - 0.5) * blob.drift;
   });
 
   const cy = useDerivedValue(() => {
-    return blob.baseY + blob.sign * (0.5 - progress.value) * RAYS_BLOB_DRIFT_PX;
+    return blob.baseY + blob.sign * (0.5 - progress.value) * blob.drift;
   });
+
+  // A typed variable, for the reason `TestGroup` gives.
+  const testProps = { testID: blob.id };
 
   return (
     <Circle
+      {...testProps}
       cx={cx}
       cy={cy}
       r={blob.radius}
       color={blob.color}
-      opacity={RAYS_BLOB_BASE_OPACITY * aurora}
+      opacity={RAYS_BLOB_OPACITY}
     >
       <Blur blur={blob.radius * 0.6} />
     </Circle>
@@ -222,12 +230,14 @@ function raysBlobSpecs(
   t: RnTheme,
 ): RaysBlobSpec[] {
   const spread = Math.max(width, height);
+  const drift = spread * RAYS_BLOB_DRIFT;
   return [
     {
       id: "rays-1",
       baseX: width * 0.22,
       baseY: height * 0.18,
       radius: spread * 0.32,
+      drift,
       color: t.accentPrimary,
       sign: 1,
     },
@@ -236,6 +246,7 @@ function raysBlobSpecs(
       baseX: width * 0.82,
       baseY: height * 0.28,
       radius: spread * 0.28,
+      drift,
       color: t.accent2,
       sign: -1,
     },
@@ -244,6 +255,7 @@ function raysBlobSpecs(
       baseX: width * 0.5,
       baseY: height * 0.88,
       radius: spread * 0.3,
+      drift,
       color: t.glowC ?? t.accentPrimary,
       sign: 1,
     },
@@ -259,22 +271,24 @@ interface AuroraWashSpec {
   readonly rx: number;
   readonly ry: number;
   readonly color: string;
-  /** The design's per-wash opacity (0.13 top / 0.10 bottom), pre-`t.aurora`. */
+  /** The design's per-wash opacity (0.13 top / 0.10 bottom). */
   readonly opacity: number;
-  /** Drift phase off the ONE shared progress value — `RaysBlobSpec.sign`. */
-  readonly sign: 1 | -1;
+  /** The wash's pose at the two ends of the loop — the design's 0% and 50%
+   * keyframes, as an offset from the centre in px and a scale. */
+  readonly from: AuroraWashPose;
+  readonly to: AuroraWashPose;
+}
+
+interface AuroraWashPose {
+  readonly dx: number;
+  readonly dy: number;
+  readonly scale: number;
 }
 
 interface AuroraWashBlobProps {
   wash: AuroraWashSpec;
   progress: SharedValue<number>;
-  aurora: number;
 }
-
-/** The design's washes translate ±~12% of the viewport over their 26/31s
- * cycles (`kfAuroraA`/`B`); one shared 18s clock and a per-wash sign stand in
- * for the two independent CSS clocks, same trade as the rays blobs. */
-const AURORA_WASH_DRIFT_PX = 48;
 
 /** CSS `radial-gradient(ellipse at center, …)` sizes its 100% against the
  * FARTHEST CORNER by default — √2× the half-size for a centre-anchored
@@ -288,30 +302,32 @@ const WASH_GRADIENT_REACH: number = Math.SQRT2;
  * `radial-gradient(ellipse at center, colour 0%, transparent 62%)`
  * (dc.html:57-58), scaled into its ellipse by the group transform so the
  * gradient stays elliptical. The gradient's own alpha ramp does the
- * softening — no `<Blur>` pass, so the layer stays one cheap draw. Drift is
- * translate-only off the shared progress clock. */
-function AuroraWashBlob({
-  wash,
-  progress,
-  aurora,
-}: AuroraWashBlobProps): JSX.Element {
+ * softening — no `<Blur>` pass, so the layer stays one cheap draw. The pose
+ * is interpolated between the wash's two keyframes off the shared progress
+ * clock; at rest (`progress = 0`) it is the design's 0% keyframe. */
+function AuroraWashBlob({ wash, progress }: AuroraWashBlobProps): JSX.Element {
   const transform = useDerivedValue(() => {
-    const drift = wash.sign * (progress.value - 0.5);
+    const p = progress.value;
+    const scale = wash.from.scale + (wash.to.scale - wash.from.scale) * p;
     return [
-      { translateX: wash.cx + drift * AURORA_WASH_DRIFT_PX },
-      { translateY: wash.cy - drift * AURORA_WASH_DRIFT_PX * 0.5 },
-      { scaleX: wash.rx },
-      { scaleY: wash.ry },
+      { translateX: wash.cx + wash.from.dx + (wash.to.dx - wash.from.dx) * p },
+      { translateY: wash.cy + wash.from.dy + (wash.to.dy - wash.from.dy) * p },
+      { scaleX: wash.rx * scale },
+      { scaleY: wash.ry * scale },
     ];
   });
+
+  // A typed variable, for the reason `TestGroup` gives.
+  const testProps = { testID: wash.id };
 
   return (
     <Group transform={transform}>
       <Circle
+        {...testProps}
         cx={0}
         cy={0}
         r={WASH_GRADIENT_REACH}
-        opacity={wash.opacity * aurora}
+        opacity={wash.opacity}
       >
         <RadialGradient
           c={vec(0, 0)}
@@ -328,7 +344,10 @@ function AuroraWashBlob({
  * canvas px: `accentPrimary` as a 130%×60% ellipse whose centre sits 12% down
  * (`left:-15%;top:-18%`), `accent2` as a 120%×55% ellipse centred 5.5% below
  * the bottom edge (`left:-10%;bottom:-22%`). The transparent stop is the
- * wash's own colour at alpha 0, so the fade does not pass through grey. */
+ * wash's own colour at alpha 0, so the fade does not pass through grey.
+ *
+ * The poses are `kfAuroraA`/`kfAuroraB` (dc.html:43-44). A CSS `translate(x%,
+ * y%)` is a share of the element's OWN box, which is twice each radius here. */
 function auroraWashSpecs(
   width: number,
   height: number,
@@ -343,7 +362,8 @@ function auroraWashSpecs(
       ry: height * 0.3,
       color: t.accentPrimary,
       opacity: 0.13,
-      sign: 1,
+      from: { dx: width * 1.3 * -0.12, dy: height * 0.6 * -0.06, scale: 1 },
+      to: { dx: width * 1.3 * 0.1, dy: height * 0.6 * 0.08, scale: 1.18 },
     },
     {
       id: "aurora-wash-bottom",
@@ -353,7 +373,8 @@ function auroraWashSpecs(
       ry: height * 0.275,
       color: t.accent2,
       opacity: 0.1,
-      sign: -1,
+      from: { dx: width * 1.2 * 0.14, dy: height * 0.55 * 0.1, scale: 1.1 },
+      to: { dx: width * 1.2 * -0.08, dy: height * 0.55 * -0.1, scale: 0.95 },
     },
   ];
 }
