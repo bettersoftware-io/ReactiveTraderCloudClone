@@ -71,7 +71,6 @@ import {
   DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
-  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
@@ -854,15 +853,17 @@ export function createViewModel(
     presenters.eqBlotterViewPreference.setView(view);
   }
 
-  // Global/shared auth state → a plain bind (not a per-mount machine).
-  const [useAuthState] = bind(presenters.auth.state$, {
-    status: "unauthenticated",
-    user: null,
-    locked: false,
-    unlocking: false,
-    error: null,
-    waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
-  });
+  // Global/shared auth state, read DIRECTLY off the presenter's own state$
+  // (the eqWorkspace pattern below), not through bind(). bind() serves its
+  // default on the first render even over a warm source, and any default
+  // here is a guess: "unauthenticated" made React commit the login screen
+  // and remove it again within one task on every composition with a resumed
+  // session, at boot and after each core swap. auth.state$ is replay-current
+  // by contract and every core holds it itself (it gates the transport on
+  // it), so the first render reads the real state.
+  function useAuthState(): AuthViewState {
+    return useStateObservable(presenters.auth.state$);
+  }
 
   // Stable, this-bound command callbacks (the presenter methods touch `this`).
   function loginAuth(username: string, password: string): void {

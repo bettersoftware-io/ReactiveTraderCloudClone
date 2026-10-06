@@ -27,6 +27,13 @@ describe("PreferencesModal", () => {
     expect(page.isOpen()).toBe(false);
   });
 
+  it("takes keyboard focus when it opens", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.holdsFocus()).toBe(true);
+  });
+
   it("reflects the animated-background preference and writes it on toggle", async () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },

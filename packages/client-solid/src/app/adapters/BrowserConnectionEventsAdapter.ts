@@ -49,6 +49,15 @@ export class BrowserConnectionEventsAdapter implements ConnectionEventsPort {
       window.addEventListener("offline", emitBrowserOffline);
       armIdleTimer();
 
+      // The `offline` event only reports a CHANGE: a subscriber that arrives
+      // while the browser is already offline (a page booted offline, a core
+      // swapped in offline) would never hear it. `navigator.onLine` is only
+      // trusted when it says `false`; `true` can be a captive portal, and
+      // the gateway's own events cover that.
+      if (!navigator.onLine) {
+        emitBrowserOffline();
+      }
+
       return (): void => {
         for (const eventName of ACTIVITY_EVENTS) {
           window.removeEventListener(eventName, emitUserActivity);

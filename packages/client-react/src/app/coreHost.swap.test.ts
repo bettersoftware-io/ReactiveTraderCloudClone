@@ -151,12 +151,11 @@ describe("hot swap over the real browser ports", () => {
     },
   );
 
-  // A fresh composition cannot know the browser is already offline either:
-  // the browser adapter listens for `online` / `offline` and never reads
-  // `navigator.onLine` at subscribe time (a pre-existing gap of boot, tracked
-  // in docs/STATUS.md). So the comparison below only proves the swap carries
-  // no stale offline state; the follow-up events prove B is wired to the
-  // browser, and the ledger that A no longer is.
+  // Only the `offline` EVENT is dispatched here: `navigator.onLine` stays
+  // true, so B, like any fresh composition, reads the browser as online
+  // (case 2b is the one where it reads offline). The comparison below proves
+  // the swap carries no stale offline state; the follow-up events prove B is
+  // wired to the browser, and the ledger that A no longer is.
   // A's recording is released before the swap, as the host's unmount releases
   // the UI's: a consumer that keeps a stream keeps its port subscription on
   // two of the three cores, and the host never does.
@@ -206,6 +205,42 @@ describe("hot swap over the real browser ports", () => {
       await waitForStatus(heardByB, ConnectionStatus.CONNECTED);
       heardByB.stop();
       expect(ledger.liveEarly()).toBe(0);
+    },
+  );
+
+  // The `offline` event only reports a change, so a core composed while the
+  // browser is already offline has to be told by the adapter's own read of
+  // `navigator.onLine` at subscribe time. A swap is where that shows without
+  // a page load: B subscribes long after the event A heard.
+  it.each(ROTATION)(
+    "2b. %s → %s while the browser is offline: B starts offline, and recovers when the browser comes back",
+    async (from, to) => {
+      const onLine = vi.spyOn(navigator, "onLine", "get");
+      const harness = createHostHarness(buildBrowserPorts(), from);
+      const a = harness.current();
+      await signIn(a);
+      const heardByA = recordStatuses(a.presenters.connection.status$);
+      await waitForStatus(heardByA, ConnectionStatus.CONNECTED);
+
+      onLine.mockReturnValue(false);
+      window.dispatchEvent(new Event("offline"));
+      await vi.advanceTimersByTimeAsync(STEP_MS);
+      heardByA.stop();
+      await swapAndSettle(harness.host, to);
+
+      const heardByB = recordStatuses(
+        harness.current().presenters.connection.status$,
+      );
+      await vi.advanceTimersByTimeAsync(OBSERVE_MS);
+      expect(heardByB.values.at(-1)).toBe(
+        ConnectionStatus.OFFLINE_DISCONNECTED,
+      );
+
+      onLine.mockReturnValue(true);
+      window.dispatchEvent(new Event("online"));
+      await waitForStatus(heardByB, ConnectionStatus.CONNECTED);
+      heardByB.stop();
+      onLine.mockRestore();
     },
   );
 
@@ -311,9 +346,8 @@ describe("hot swap over the real browser ports", () => {
   // composition: the hub is the one consumer still attached when `dispose()`
   // runs. It lets go in the same synchronous step, so nothing may stay open.
   // Each core is compared with itself composed over fresh ports under a
-  // live hub, not with the other cores: what a held stream opens on the
-  // ports differs per core (the Effect core subscribes `themeMode$` once
-  // per theme stream, the other two share one subscription).
+  // live hub, not with the other cores: no contract obligation makes the
+  // three cores open the same port subscriptions for a held stream.
   // The narrator is off, as in case 4.
   it("5. with an inspector attached, five swaps leave no port subscription behind and the inspector shows one composition", async () => {
     localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");

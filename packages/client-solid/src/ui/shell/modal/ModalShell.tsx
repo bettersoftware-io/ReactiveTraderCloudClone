@@ -1,4 +1,4 @@
-import { type JSX, Show } from "solid-js";
+import { createEffect, type JSX, Show } from "solid-js";
 
 import { useDraggableDialog } from "./useDraggableDialog";
 
@@ -8,7 +8,8 @@ import styles from "./ModalShell.module.css";
  * Generic draggable HUD dialog chrome: dimmed overlay, drag-by-header dialog
  * (`useDraggableDialog`), title/subtitle header with a ✕ control, a scrollable
  * body clamped to 86vh (the ONLY scroll container — content renders at natural
- * height inside it), and a footer note + DONE button. Purely presentational:
+ * height inside it), and a footer note + DONE button. Takes focus when it
+ * opens. Otherwise purely presentational:
  * every string/testid is a prop, both the ✕ and DONE fire the same `onClose`
  * slot, and the body renders `children` — so a surface owns its content
  * component and this shell owns the dialog ceremony. Extracted verbatim from
@@ -23,6 +24,22 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
     },
   });
 
+  let dialogEl: HTMLDivElement | undefined;
+
+  function holdDialog(el: HTMLDivElement): void {
+    dialogEl = el;
+    dialogRef(el);
+  }
+
+  // A dialog that opens takes focus, so the keyboard and a screen reader
+  // land in it and not on whatever opened it. The dialog itself, not its
+  // first control: nothing is activated by a stray Enter.
+  createEffect(() => {
+    if (props.open) {
+      dialogEl?.focus();
+    }
+  });
+
   function closeModal(): void {
     props.onClose();
   }
@@ -31,9 +48,10 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
     <Show when={props.open}>
       <div data-testid={props.rootTestid} class={styles.overlay}>
         <div
-          ref={dialogRef}
+          ref={holdDialog}
           role="dialog"
           aria-label={props.ariaLabel}
+          tabIndex={-1}
           class={styles.dialog}
           style={dialogStyle()}
         >

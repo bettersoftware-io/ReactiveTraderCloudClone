@@ -14,7 +14,6 @@ import { navigateAndAwaitMount } from "./appMount.ts";
 interface WitnessWindow extends Window {
   __hotSwapMark?: number;
   __loginScreenSeen?: boolean;
-  __loginWatchFrames?: number;
 }
 
 export class PlaywrightWorkspace implements WorkspacePO {
@@ -107,47 +106,41 @@ export class PlaywrightWorkspace implements WorkspacePO {
   async watchForLoginScreen(): Promise<void> {
     await this.page.evaluate((loginTestId) => {
       // Self-contained: Playwright ships only this function's source text.
-      // Sampled once per animation frame, i.e. at every chance the browser
-      // has to paint, so a login screen that is ON SCREEN for even one frame
-      // counts. Deliberately not a MutationObserver: the React client commits
-      // the login screen and removes it again within one task, before any
-      // paint, on every composition (each boot on all three cores, and each
-      // swap) — react-bindings' `bind` serves its "unauthenticated" default
-      // on the first render — and that never reaches the screen.
+      // Reads the mutation RECORDS, not the document at callback time: a
+      // login screen inserted and removed again within one task is gone by
+      // the time the callback runs, and its insertion is still in the
+      // records. That is the case this must catch: the React client once
+      // committed the login screen and removed it within one task on every
+      // composition with a resumed session.
       const win = window as WitnessWindow;
       const selector = `[data-testid="${loginTestId}"]`;
-      win.__loginScreenSeen = false;
-      win.__loginWatchFrames = 0;
+      win.__loginScreenSeen = document.querySelector(selector) !== null;
 
-      function sample(): void {
-        win.__loginWatchFrames = (win.__loginWatchFrames ?? 0) + 1;
-
-        if (document.querySelector(selector) !== null) {
-          win.__loginScreenSeen = true;
-        }
-
-        requestAnimationFrame(sample);
+      function holdsLoginScreen(node: Node): boolean {
+        return (
+          node instanceof Element &&
+          (node.matches(selector) || node.querySelector(selector) !== null)
+        );
       }
 
-      requestAnimationFrame(sample);
+      new MutationObserver((records) => {
+        for (const record of records) {
+          if (Array.from(record.addedNodes).some(holdsLoginScreen)) {
+            win.__loginScreenSeen = true;
+          }
+        }
+      }).observe(document, { childList: true, subtree: true });
     }, TESTIDS.auth.loginScreen);
   }
 
   async loginScreenSeen(): Promise<boolean> {
-    const { seen, frames } = await this.page.evaluate(() => {
-      const win = window as WitnessWindow;
-      return { seen: win.__loginScreenSeen, frames: win.__loginWatchFrames };
+    const seen = await this.page.evaluate(() => {
+      return (window as WitnessWindow).__loginScreenSeen;
     });
 
-    if (seen === undefined || frames === undefined) {
+    if (seen === undefined) {
       throw new Error(
         "loginScreenSeen: no watch on this document — call watchForLoginScreen first (a navigation discards it)",
-      );
-    }
-
-    if (frames === 0) {
-      throw new Error(
-        "loginScreenSeen: the watch has not sampled a single frame, so it cannot say what was on screen",
       );
     }
 

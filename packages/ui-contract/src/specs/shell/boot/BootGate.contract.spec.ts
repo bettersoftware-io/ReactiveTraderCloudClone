@@ -55,6 +55,31 @@ describe("BootGate", () => {
     expect(page.hasContent()).toBe(true);
   });
 
+  it("unmounts the splash under a Freeze that arrives after the splash mounted", async () => {
+    // A stored preference reaches the UI after the first render. A done
+    // handler that kept the first render's "not frozen" would wait for a
+    // transitionend Freeze has switched off, and the splash would stay
+    // mounted, invisible, for the life of the page.
+    const page = mount(BootGate, {});
+    page.freezeArrives();
+    await page.skip();
+    expect(page.hasSplash()).toBe(false);
+    expect(page.hasContent()).toBe(true);
+  });
+
+  it("under Freeze, a rebooted splash plays again and is dismissed when it is done", async () => {
+    const page = mount(BootGate, { powerSaverLevel: "freeze" });
+    await page.skip();
+    expect(page.hasSplash()).toBe(false);
+
+    // The first splash being done must not count for the second one: it is
+    // neither dismissed on sight nor left mounted once it finishes.
+    page.reboot();
+    expect(page.hasSplash()).toBe(true);
+    await page.skip();
+    expect(page.hasSplash()).toBe(false);
+  });
+
   it("re-raises the splash when the seam reboots after a dismissal", async () => {
     const page = mount(BootGate, {});
     await page.skip();

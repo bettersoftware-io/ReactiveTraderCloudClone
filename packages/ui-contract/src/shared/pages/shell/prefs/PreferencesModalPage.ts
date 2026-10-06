@@ -47,6 +47,12 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return within(this.root).queryByTestId("prefs-modal") !== null;
   }
 
+  /** True when keyboard focus is on the dialog or on something inside it. */
+  holdsFocus(): boolean {
+    const dialog = within(this.root).queryByRole("dialog");
+    return dialog?.contains(document.activeElement) ?? false;
+  }
+
   /** Current state of the real Animated-background switch (its `data-on`). */
   animatedBgOn(): boolean {
     return (
