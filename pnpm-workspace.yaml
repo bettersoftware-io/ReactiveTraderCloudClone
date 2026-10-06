@@ -389,6 +389,12 @@ overrides:
   # through indexed source-map section offsets; >=1.0.0 <1.2.2). 1.2.2
   # published 2026-09-30.
   "source-map-js@<1.2.2": ^1.2.2
+  # shell-quote (client-react-native > … > react-native > react-devtools-core
+  # > shell-quote): CRITICAL GHSA-pqg4-j6r4-53mv (`quote()` command injection
+  # through a line terminator in a token after a `{ comment }` token;
+  # >=1.8.4 <1.11.0). 1.11.0 published 2026-09-29. Reach: React Native's
+  # devtools tooling only, never the server or a browser bundle.
+  "shell-quote@<1.11.0": ^1.11.0
 
 packageExtensions:
   "@expo/metro-config":
