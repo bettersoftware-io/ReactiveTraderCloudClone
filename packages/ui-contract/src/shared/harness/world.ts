@@ -641,6 +641,17 @@ export interface World {
    * host offers no core selection at all (useCoreSelection() returns null),
    * so the row is absent entirely. */
   readonly coreImpl: BehaviorSubject<CoreImpl | null>;
+  /** Why the last core switch left the page where it was, or null — backs
+   * `useCoreSelection().failure` (the Preferences row's failure line).
+   * Defaults to null; a spec pushes a reason to show the line. */
+  readonly coreSelectionFailure: BehaviorSubject<string | null>;
+  /** The shell's one-shot "reopen Preferences" signal backing
+   * `takePreferencesReopen()`: true at most once (only when seeded with
+   * `preferencesReopen: true`), false on every later call — the real core
+   * host's semantics for the composition a swap produced. */
+  takePreferencesReopen(): boolean;
+  /** What `takePreferencesReopen()` would answer, without consuming it. */
+  peekPreferencesReopen(): boolean;
   /** The demo sign-ins backing useDemoAccounts (drives LoginScreen's
    * demo-accounts hint). A plain value, not a subject: the real shell reads
    * it once at composition. Defaults to none — a plain live build. */
@@ -707,6 +718,9 @@ export interface WorldSeeds {
   coreImpl?: CoreImpl | null;
   /** Seeds `World.demoAccounts`; defaults to none. */
   demoAccounts?: readonly DemoAccount[];
+  /** Seeds `World.takePreferencesReopen`'s one shot; defaults to false (a
+   * boot composition, not one a core swap produced). */
+  preferencesReopen?: boolean;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -738,6 +752,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     layoutPresets: layoutPresetsSeed,
     coreImpl: coreImplSeed,
     demoAccounts = [],
+    preferencesReopen = false,
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -937,6 +952,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
   const coreImpl = new BehaviorSubject<CoreImpl | null>(
     coreImplSeed === undefined ? "rxjs" : coreImplSeed,
   );
+  const coreSelectionFailure = new BehaviorSubject<string | null>(null);
+  let preferencesReopenPending = preferencesReopen;
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each
@@ -1152,6 +1169,15 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     chartSubstrate,
     layoutEngine,
     coreImpl,
+    coreSelectionFailure,
+    takePreferencesReopen: (): boolean => {
+      const reopen = preferencesReopenPending;
+      preferencesReopenPending = false;
+      return reopen;
+    },
+    peekPreferencesReopen: (): boolean => {
+      return preferencesReopenPending;
+    },
     demoAccounts,
     jarvisSkin,
     jarvis,

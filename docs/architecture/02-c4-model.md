@@ -159,7 +159,8 @@ flowchart TB
         creditRfq["<b>Credit RFQ</b><br/>form · RFQ tiles ·<br/>sell-side panel"]:::ui
         equities["<b>Equities Dock</b><br/>watchlist · candles · depth ·<br/>ticket · blotters"]:::ui
         admin["<b>Admin / Telemetry</b><br/>KPIs · throughput · latency ·<br/>topology · event log"]:::ui
-        appRoot["<b>AppRoot</b><br/>core.createApp(buildBrowserPorts()) + createViewModel<br/>once per mount (StrictMode-safe)"]:::ui
+        coreHost["<b>main.tsx + core host</b><br/>buildBrowserPorts() once per page ·<br/>core.createApp(ports) per composition (swaps in place)"]:::ui
+        appRoot["<b>AppRoot</b><br/>createViewModel(composition)<br/>once per mount (StrictMode-safe)"]:::ui
         browserAdapters["<b>Browser Platform Adapters</b><br/>buildBrowserPorts (VITE_SERVER_URL switch) ·<br/>LocalStorage prefs · matchMedia color scheme"]:::ui
         app --> fxTiles
         app --> creditRfq
@@ -184,8 +185,9 @@ flowchart TB
     server["<b>WebSocket Server</b><br/>Node.js + @rtc/ws-effects"]:::server
 
     fxTiles & creditRfq & equities & admin -->|"useViewModel()"| viewModel
-    appRoot --> browserAdapters
-    appRoot -->|"createApp(ports)"| composition
+    coreHost --> browserAdapters
+    coreHost -->|"createApp(ports)"| composition
+    coreHost -->|"mounts with the composition"| appRoot
     appRoot -->|"ViewModelProvider"| viewModel
     viewModel -->|"subscribes streams / machines"| presenters
     wsAdapter -. WebSocket JSON .-> server

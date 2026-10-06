@@ -373,7 +373,8 @@ export interface UseLayoutPresetsResult {
 
 /** App-shell values a host passes through `createViewModel`'s optional 4th
  * arg — things owned by the shell that boots the core, not by the core
- * itself. Today the runtime core switch and the login screen's demo accounts. Solid twin of
+ * itself. Today the runtime core switch, the login screen's demo accounts and
+ * the one-shot "reopen Preferences" after a core swap. Solid twin of
  * react-bindings' `ViewModelShell`. */
 export interface ViewModelShell {
   readonly coreSelection?: CoreSelection;
@@ -381,6 +382,20 @@ export interface ViewModelShell {
    * screen's demo-accounts hint. Omitted (or empty) on a plain live build,
    * where every credential belongs to the server. */
   readonly demoAccounts?: readonly DemoAccount[];
+  /** True exactly once, for the composition a core swap produced: the
+   * header opens Preferences again on the new core. Omitted by a host that
+   * never swaps. */
+  readonly takePreferencesReopen?: () => boolean;
+  /** What `takePreferencesReopen` would answer, without consuming it. */
+  readonly peekPreferencesReopen?: () => boolean;
+}
+
+/** The core switch as the Preferences row reads it: the shell's selection,
+ * with its failure stream as a signal in place of the stream. Solid twin of
+ * react-bindings' `CoreSelectionView`. */
+export interface CoreSelectionView extends Omit<CoreSelection, "failure$"> {
+  /** Why the last `select` left the page on `current`, or null. */
+  readonly failure: Accessor<string | null>;
 }
 
 export interface ViewModel {
@@ -658,10 +673,19 @@ export interface ViewModel {
   /** Shared incident-machine state + inject/clear intents. */
   useIncident: () => UseIncidentResult;
   /** The app-shell core switch (web only); null when the host offers none. */
-  useCoreSelection: () => CoreSelection | null;
+  useCoreSelection: () => CoreSelectionView | null;
   /** The demo sign-ins the login screen may hint at; empty when the host
    * offers none (a plain live build, RN). */
   useDemoAccounts: () => readonly DemoAccount[];
+  /** Not a hook: consumes the shell's one-shot "reopen Preferences" signal
+   * (true at most once per composition, false when the host offers none).
+   * Optional like react-bindings' twin; `createViewModel` always supplies
+   * it. */
+  takePreferencesReopen?: () => boolean;
+  /** Not a hook: what `takePreferencesReopen` would answer, without
+   * consuming it — a pure read, safe to repeat. Read it for the initial
+   * signal value, take it in `onMount`. Optional like its sibling. */
+  peekPreferencesReopen?: () => boolean;
 }
 
 export function createViewModel(
@@ -672,6 +696,11 @@ export function createViewModel(
 ): ViewModel {
   const coreSelection = shell?.coreSelection ?? null;
   const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
+  const takePreferencesReopen =
+    shell?.takePreferencesReopen ?? declinePreferencesReopen;
+
+  const peekPreferencesReopen =
+    shell?.peekPreferencesReopen ?? declinePreferencesReopen;
 
   const priceState = state(
     (pair: CurrencyPair) => {
@@ -1647,14 +1676,30 @@ export function createViewModel(
       };
     },
     useCoreSelection: () => {
-      return coreSelection;
+      if (coreSelection === null) {
+        return null;
+      }
+
+      return {
+        current: coreSelection.current,
+        options: coreSelection.options,
+        select: coreSelection.select,
+        failure: toSignal(coreSelection.failure$),
+      };
     },
     useDemoAccounts: () => {
       return demoAccounts;
     },
+    takePreferencesReopen,
+    peekPreferencesReopen,
   };
 }
 
 /** One shared empty list, so a host without demo accounts hands every
  * render the same reference. */
 const NO_DEMO_ACCOUNTS: readonly DemoAccount[] = [];
+
+/** The answer of a host that never swaps cores: nothing to reopen. */
+function declinePreferencesReopen(): boolean {
+  return false;
+}

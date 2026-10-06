@@ -583,6 +583,33 @@ describe("PreferencesModal", () => {
     expect(page.coreImplDescription()).toContain(effectDescription);
     expect(page.coreImplDescription()).not.toContain(asyncDescription);
   });
+
+  it("says a switch swaps the core in place rather than reloading the page", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+
+    expect(page.coreImplDescription()).toContain(
+      "Switching swaps the core in place, without a reload.",
+    );
+    expect(page.coreImplDescription()).not.toContain("reloads the page");
+  });
+
+  it("shows why a core switch failed as an alert, and clears it when the reason clears", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.coreSwapFailure()).toBeNull();
+
+    page.reportCoreSwapFailure("Could not load the effect core: offline");
+    expect(page.coreSwapFailure()).toBe(
+      "Could not load the effect core: offline",
+    );
+    expect(page.coreSwapFailureIsAlert()).toBe(true);
+
+    page.reportCoreSwapFailure(null);
+    expect(page.coreSwapFailure()).toBeNull();
+  });
 });
 
 /**

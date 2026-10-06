@@ -23,7 +23,12 @@ import "@fontsource/orbitron/800.css";
 // (the package's export map falls back to `index_noop.js` once the plugin
 // isn't intercepting the specifier), so it's safe to leave unguarded here.
 import "solid-devtools";
-import { render } from "solid-js/web";
+
+import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
+import {
+  instrumentMachineFactories,
+  instrumentPresenters,
+} from "@rtc/devtools-core";
 
 import { AppRoot } from "./AppRoot";
 import {
@@ -32,13 +37,23 @@ import {
   renderBootError,
   runBoot,
 } from "./app/bootApp";
+import { buildBrowserPorts } from "./app/buildBrowserPorts";
+import {
+  type Composition,
+  type CoverTimings,
+  createCoreHost,
+} from "./app/coreHost";
 import {
   clearCoreChoice,
-  createCoreSelection,
   defaultCoreResetHref,
   loadCore,
   safeLocalStorage,
+  saveCoreChoice,
+  urlWithoutCoreParam,
 } from "./app/coreSelection";
+import { devtoolsHub } from "./app/devtools/devtoolsHub";
+import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
+import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
 
 import "./index.css";
@@ -51,6 +66,9 @@ if (!rootEl) {
 
 const storage = safeLocalStorage();
 
+/** No swap overlay yet: a swap covers, holds and reveals in zero time. */
+const NO_COVER: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
+
 /** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
  * value, or a storage read/write/clear failure) so it's diagnosable from the
  * console rather than silently swallowed. */
@@ -58,8 +76,47 @@ function warnCore(message: string): void {
   console.warn(`[core] ${message}`);
 }
 
+/** Clears the stored choice and reloads onto the RxJS core — the boot-error
+ * screen's "Load the default core" action. */
+function reloadOntoDefaultCore(): void {
+  clearCoreChoice(storage, warnCore);
+  location.assign(defaultCoreResetHref(location.href));
+}
+
+/** Applies the devtools decorators to one composition (the core host calls
+ * this once per `createApp`). */
+function instrumentComposition(
+  core: CoreFactory,
+  app: CoreApp,
+): Pick<Composition, "presenters" | "machineFactories"> {
+  const presenters = instrumentPresenters(
+    app.presenters,
+    PRESENTER_MANIFEST,
+    devtoolsHub,
+  );
+
+  return {
+    presenters,
+    machineFactories: instrumentMachineFactories(
+      core.createMachineFactories(presenters),
+      devtoolsHub,
+    ),
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function waitForNextMacrotask(): Promise<void> {
+  return sleep(0);
+}
+
 // Fire-and-forget by design: runBoot routes every rejection (core load or
-// render) to renderBootError, so there is nothing left to handle here.
+// the host's first composition) to renderBootError, so there is nothing left
+// to handle here.
 void runBoot(
   bootCore({
     href: location.href,
@@ -69,32 +126,72 @@ void runBoot(
     load: loadCore,
   }),
   ({ impl, core, source }) => {
-    document.documentElement.dataset.coreImpl = impl;
     console.info(formatBootedMessage(impl, source));
-    const coreSelection = createCoreSelection({
-      current: impl,
-      storage,
-      warn: warnCore,
-      href: () => {
-        return location.href;
+    // A tree that fails its first render is disposed before `mount` throws,
+    // so a swap onto a core whose UI cannot render leaks no reactive root.
+    const tree = createSolidTreeMount(rootEl);
+
+    // The host owns the ports (built once per page) and every composition;
+    // a Preferences core choice swaps the core in place, with no reload.
+    const host = createCoreHost({
+      ports: buildBrowserPorts(),
+      initial: { impl, core },
+      load: loadCore,
+      instrument: instrumentComposition,
+      endComposition: () => {
+        devtoolsHub.endComposition();
       },
-      navigate: (href: string): void => {
-        location.assign(href);
+      mount: (composition: Composition): void => {
+        tree.mount(() => {
+          return (
+            <AppRoot composition={composition}>
+              <App />
+            </AppRoot>
+          );
+        });
       },
+      unmount: tree.unmount,
+      publish: (next: CoreImpl): void => {
+        document.documentElement.dataset.coreImpl = next;
+      },
+      persist: (next: CoreImpl): boolean => {
+        return saveCoreChoice(storage, next, warnCore);
+      },
+      stripCoreParam: () => {
+        history.replaceState(
+          history.state,
+          "",
+          urlWithoutCoreParam(location.href),
+        );
+      },
+      info: (message: string): void => {
+        console.info(message);
+      },
+      warn: (message: string): void => {
+        console.warn(message);
+      },
+      onFatal: (error: unknown): void => {
+        // No core is composed: drop whatever the root still holds, then show
+        // the boot-error screen in its place.
+        tree.destroy();
+        renderBootError(rootEl, error, reloadOntoDefaultCore);
+      },
+      cover: NO_COVER,
+      sleep,
+      nextMacrotask: waitForNextMacrotask,
     });
 
-    render(() => {
-      return (
-        <AppRoot core={core} coreSelection={coreSelection}>
-          <App />
-        </AppRoot>
-      );
-    }, rootEl);
+    try {
+      host.start();
+    } catch (error) {
+      // The boot composition could not be mounted, and the host has disposed
+      // it: drop the root too, as `onFatal` does, before `runBoot` shows the
+      // boot-error screen in its place.
+      tree.destroy();
+      throw error;
+    }
   },
   (error: unknown) => {
-    renderBootError(rootEl, error, () => {
-      clearCoreChoice(storage, warnCore);
-      location.assign(defaultCoreResetHref(location.href));
-    });
+    renderBootError(rootEl, error, reloadOntoDefaultCore);
   },
 );

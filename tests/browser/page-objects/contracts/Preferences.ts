@@ -42,10 +42,13 @@ export interface PreferencesPO {
    * (PrefSegment.tsx composes `pref-segment-layoutEngine-<value>`). */
   selectLayoutEngine(value: PrefsLayoutEngine): Promise<void>;
   /** Clicks the Application core segment row's RxJS/async/Effect option
-   * (PrefSegment.tsx composes `pref-segment-coreImpl-<value>`). Triggers a
-   * real page navigation when it changes the current core (see
-   * `createCoreSelection().select`). */
+   * (PrefSegment.tsx composes `pref-segment-coreImpl-<value>`). Choosing a
+   * core other than the current one swaps it in place, with no navigation
+   * (`coreHost.ts`), and the modal opens again on the new core. */
   selectCoreImpl(value: PrefsCoreImpl): Promise<void>;
+  /** Waits until the Application core row's selected option (its
+   *  `aria-pressed` segment) is `value`. */
+  waitCoreImplSelected(value: PrefsCoreImpl, timeoutMs: number): Promise<void>;
   /** Dismisses the modal via its footer DONE button. */
   close(): Promise<void>;
   waitModalHidden(timeoutMs: number): Promise<void>;

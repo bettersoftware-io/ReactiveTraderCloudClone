@@ -28,8 +28,8 @@ beforeAll(() => {
   }
 });
 
-// Smoke test: mounts the REAL composition root (AppRoot →
-// createApp(buildBrowserPorts()) → simulator ports, no fakes on the seam)
+// Smoke test: mounts the REAL UI root (AppRoot on a boot composition over
+// buildBrowserPorts() → simulator ports, no fakes on the seam)
 // and asserts the live connection status renders through the real shell
 // chrome (StatusBar → ConnectionStatusBar) — the Solid↔ViewModel bridge,
 // end to end, exactly as a user would see it in `pnpm dev:solid`.

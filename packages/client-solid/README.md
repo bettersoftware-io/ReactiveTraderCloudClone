@@ -5,7 +5,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 | | |
 |---|---|
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-adapters` (the ports) and `@rtc/client-core-rxjs` (the default RxJS core), plus the two alternative cores — all three cores lazy-loaded — `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` is listed but confined to `src/app` — never `src/ui` (machine-enforced, gate 34). |
+| **Runtime deps** | `@rtc/client-adapters` (the ports) and `@rtc/client-core-rxjs` (the default RxJS core), plus the two alternative cores — all three cores lazy-loaded — `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `@rtc/solid-bindings`, `solid-js`, `rxjs`, `@rx-state/core`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` and `@rx-state/core` are listed but confined to `src/app` (the core host builds its state streams with them) — never `src/ui` (machine-enforced, gate 34). |
 | **Consumed by** | Nothing in-workspace — like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) workspace dependency; its own suites (contract + the visual tier) run entirely in-package. |
 | **Must never import** | `rxjs` / `@rx-state` in `src/ui` (gate 34); `local storage` in `src/ui` (gate 35); `fetch(` / `import.meta.env` in `src/ui` (gate 36); `setTimeout` / `setInterval` in `src/ui` (gate 37) — the exact same four-gate shape as `client-react`'s 26–29, re-numbered for this package, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -13,8 +13,8 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, then `runBoot(bootCore(...))` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`) -- mounting `<AppRoot core coreSelection><App /></AppRoot>` |
-| `src/AppRoot.tsx` | Composition root component — builds the app exactly once from the chosen core, wraps it in devtools instrumentation, and supplies `ViewModelProvider` + theme + `BootGate` |
+| `src/main.tsx` | Entry point: font imports (mirrors `client-react`'s manifest verbatim), solid-devtools registration, then `runBoot(bootCore(...))` -- the same load-time core selection as `client-react` (`?core=`, stored Preferences choice, `VITE_CORE_IMPL`, then `rxjs`) -- then hands the loaded core and the page's ports (`buildBrowserPorts()`, built once) to the core host (`src/app/coreHost.ts`), which renders `<AppRoot composition><App /></AppRoot>`, swapping the core in place when Preferences picks another |
+| `src/AppRoot.tsx` | UI root of one composition — builds the `ViewModel` from the host's composition and supplies `ViewModelProvider` + theme + `BootGate` |
 | `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, local storage, `fetch`/`import.meta.env` |
 | `src/app/adapters/` | `LocalStoragePreferencesAdapter`, `BrowserConnectionEventsAdapter` |
 | `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
@@ -33,7 +33,7 @@ SolidJS + RxJS + Vite client, at full parity with `@rtc/client-react`. Same clea
 ## Where to start reading
 
 1. `src/main.tsx` — the entry point; same font manifest and mount order as `client-react`'s, Solid's `render()` in place of React's `createRoot(...).render()`.
-2. `src/AppRoot.tsx` — the composition root; where the chosen core's `createApp`/`createMachineFactories` meet Solid (no `useRef`/StrictMode concern here — Solid's setup runs once, by construction).
+2. `src/app/coreHost.ts` then `src/AppRoot.tsx` — where the chosen core is composed over the page's ports (the host, framework-free) and meets Solid (no `useRef`/StrictMode concern here — Solid's setup runs once, by construction).
 3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring; compare against `client-react`'s file of the same name to see how little changed.
 4. `src/ui/App.tsx` — the dumb top-level UI tree, structurally identical to `client-react`'s `App.tsx`.
 5. `tests/parity/cssParity.test.ts` — read this before touching any `.module.css` file in this package: it is the enforcement mechanism behind "ported verbatim."

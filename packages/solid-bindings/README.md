@@ -20,7 +20,7 @@ solid-bindings is flat — no subfolders. Every file sits directly under `src/`.
 | `src/useMachine.ts` | The per-mount RxJS-machine → Solid primitive bridge (lifecycle glue only — see "Eager disposal" below) |
 | `src/useViewModel.ts` | The accessor hook UI components import to read the `ViewModel` from context |
 | `src/ViewModelContext.ts` | The seam itself: a bare Solid `Context<ViewModel \| undefined>`, kept in its own module so components importing `useViewModel` don't transitively pull in the provider |
-| `src/ViewModelProvider.tsx` | The injector component — imported only by `client-solid`'s composition root (`AppRoot.tsx`) |
+| `src/ViewModelProvider.tsx` | The injector component — imported only by `client-solid`'s UI root (`AppRoot.tsx`) |
 
 ## Where to start reading
 
@@ -31,7 +31,7 @@ solid-bindings is flat — no subfolders. Every file sits directly under `src/`.
 
 ## How it's used
 
-`client-solid` reads the `ViewModel` through `useViewModel()` — never through `@rx-state/core` or `rxjs` directly, the same discipline `client-react`/`client-react-native` keep with `react-bindings`. The provider side is wired once, at the composition root — `client-solid/src/AppRoot.tsx` calls `createViewModel(presenters, machineFactories, commands)` and wraps the tree in `<ViewModelProvider viewModel={...}>`.
+`client-solid` reads the `ViewModel` through `useViewModel()` — never through `@rx-state/core` or `rxjs` directly, the same discipline `client-react`/`client-react-native` keep with `react-bindings`. The provider side is wired once per composition — `client-solid/src/AppRoot.tsx` receives the `Composition` the core host built (`src/app/coreHost.ts`), calls `createViewModel(presenters, machineFactories, commands, …)` on it and wraps the tree in `<ViewModelProvider viewModel={...}>`.
 
 ```ts
 // packages/solid-bindings/src/toSignal.ts (trimmed)

@@ -88,8 +88,9 @@ pnpm test:e2e:async                             # e2e against that core (also te
   never saved) beats the persisted choice, which beats `VITE_CORE_IMPL` (now
   just the **build default** a fresh visitor lands on), which beats `rxjs`.
   Preferences → **Application core** lets a signed-in visitor pick one; it
-  saves the choice and reloads (a real navigation, not an SPA transition),
-  and the choice survives later plain reloads. An unknown `?core=` or stored
+  swaps the core in place, with no page reload (the session, the socket and
+  the layout carry over), then saves the choice, which survives later
+  reloads. An unknown `?core=` or stored
   value is ignored/cleared with a console warning and falls through; an
   unknown `VITE_CORE_IMPL` still fails loudly, never falling back to RxJS
   silently. Every successful boot logs which core won and why: `[core]

@@ -120,6 +120,9 @@ export interface MountOptions<P> {
   /** Seeds `useDemoAccounts()` (World.demoAccounts); defaults to none, the
    * plain live build, where LoginScreen renders no demo-accounts hint. */
   demoAccounts?: readonly DemoAccount[];
+  /** Seeds the one-shot `takePreferencesReopen()` (true: the composition a
+   * core swap produced); defaults to false. */
+  preferencesReopen?: boolean;
 }
 
 const mounted: MountedRoot[] = [];
@@ -230,6 +233,16 @@ function buildContext<P>(
         return world.bootGate.next(visible);
       });
     },
+    setAuthStatus: (status: AuthViewState["status"]) => {
+      return flush(() => {
+        return world.auth.next({ ...world.auth.getValue(), status });
+      });
+    },
+    setCoreSelectionFailure: (reason: string | null) => {
+      return flush(() => {
+        return world.coreSelectionFailure.next(reason);
+      });
+    },
     emitJarvis: (events: readonly JarvisEvent[]) => {
       return flush(() => {
         return world.jarvis.emit(events);
@@ -301,6 +314,7 @@ export function mount<P, Page extends MountedComponent<P>>(
     workspaceLayout: opts.workspaceLayout,
     coreImpl: opts.coreImpl,
     demoAccounts: opts.demoAccounts,
+    preferencesReopen: opts.preferencesReopen,
   });
   const propsSubject = new BehaviorSubject<Partial<P>>(opts.props ?? {});
   const rendered = getDriver().render(token, { propsSubject, world });

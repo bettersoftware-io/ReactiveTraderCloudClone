@@ -96,7 +96,7 @@ import type {
   ViewModePreferencePresenter,
   WatchlistPresenter,
 } from "#/presenters/index";
-import type { Stream } from "#/stream";
+import type { StateStream, Stream } from "#/stream";
 
 export interface AppPorts {
   referenceData: ReferenceDataPort;
@@ -395,9 +395,12 @@ export interface App {
   presenters: Presenters;
   ports: AppPorts;
   commands: AppCommands;
-  /** Release everything the core owns (fibers, timers, subscriptions). No-op
-   * for the RxJS core, abort for the async core, ManagedRuntime.dispose()
-   * for the Effect core. Idempotent. */
+  /** Release everything the core owns (fibers, timers, subscriptions): the
+   * RxJS core releases the subscriptions `createApp` holds and disposes the
+   * machines it owns, the async core aborts, the Effect core closes its
+   * host scope and then its runtime. All three write a workspace-layout
+   * change still waiting on the persistence debounce before they resolve.
+   * Idempotent. */
   dispose(): Promise<void>;
 }
 
@@ -417,10 +420,14 @@ export interface CoreOption {
   readonly description: string;
 }
 
-/** App-shell value: which application core this page booted, and how to
- * switch. Not served by a core — the choice is made before any core exists. */
+/** App-shell value: which application core this page runs on, and how to
+ * switch. Not served by a core: the host builds a fresh one for each
+ * composition, before that composition's UI mounts. */
 export interface CoreSelection {
   readonly current: CoreImpl;
   readonly options: readonly CoreOption[];
   select(impl: CoreImpl): void;
+  /** Why the last `select` left the page on `current`, or null. A stream
+   * because the host reports it while the same tree is still mounted. */
+  readonly failure$: StateStream<string | null>;
 }

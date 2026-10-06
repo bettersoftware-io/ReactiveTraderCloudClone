@@ -317,6 +317,32 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return label?.nextElementSibling?.textContent ?? null;
   }
 
+  /** The Application core row's failure line — why the last switch left the
+   * page on the current core — or `null` when no line is rendered. */
+  coreSwapFailure(): string | null {
+    return (
+      within(this.root)
+        .queryByTestId("prefs-core-failure")
+        ?.textContent?.trim() ?? null
+    );
+  }
+
+  /** True when the failure line is announced as an alert (`role="alert"`),
+   * so assistive technology reads it out when it appears. */
+  coreSwapFailureIsAlert(): boolean {
+    return (
+      within(this.root)
+        .queryByTestId("prefs-core-failure")
+        ?.getAttribute("role") === "alert"
+    );
+  }
+
+  /** The core host reports why a switch left the page where it was (or
+   * clears it with `null`), through `useCoreSelection().failure`. */
+  reportCoreSwapFailure(reason: string | null): void {
+    this.setCoreSelectionFailure(reason);
+  }
+
   /** Each core impl asked for through useCoreSelection().select, in order —
    * mirrors the real no-op rule: selecting the already-active core writes
    * nothing here. */
