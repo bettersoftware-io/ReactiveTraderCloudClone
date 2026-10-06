@@ -199,6 +199,11 @@ jobs:
       - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
         run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
 
+      # The shared web boot code (core host, core selection, browser adapters)
+      # carries the same coverage bar as the packages it was lifted out of.
+      - name: Web boot coverage gate (≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/web-boot test:coverage
+
       # The RN client runs TWO runners (vitest for *.test.ts, jest for
       # *.test.tsx), so neither runner's own percentage is the package's. This
       # merges their line coverage and gates the union — see

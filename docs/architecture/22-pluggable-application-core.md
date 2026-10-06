@@ -108,8 +108,8 @@ build ships all three cores as lazy chunks (the RxJS core too: its
 composition root since approach B on 2026-10-02, the whole of it as the
 package `@rtc/client-core-rxjs` since 2026-10-04) —
 and a visitor (or the deployed demo itself) can switch between them without a
-rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
-`selectCore.ts`) resolves the choice through a pure precedence chain:
+rebuild. `@rtc/web-boot`'s `coreSelection.ts`, shared by both web clients (which
+replaced `selectCore.ts`), resolves the choice through a pure precedence chain:
 
 ```mermaid
 flowchart TD
@@ -120,7 +120,7 @@ flowchart TD
   fail["throws — a developer error, fail-closed"]
   resolved["resolveCoreChoice(…): CoreImpl"]
   load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>import() of #quot;@rtc/client-core-rxjs#quot;,<br/>#quot;@rtc/client-core-async#quot; or #quot;@rtc/client-core-effect#quot;,<br/>each its own lazy chunk, fetched only once chosen"]
-  boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
+  boot["bootCore (web-boot/src/bootApp.ts)<br/>→ main.tsx hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
 
   url -- "valid" --> resolved
   url -- "absent, or unknown<br/>(ignored + console warning)" --> stored
@@ -144,7 +144,7 @@ without `?core=`. `<html data-core-impl>` publishes whichever core actually
 loaded, which is what the e2e booted-core assertions read.
 
 The choice is not a core preference (a core's presenters don't exist yet
-when it must be known), so it lives in this pre-boot `src/app` module, not
+when it must be known), so it lives in this pre-boot `@rtc/web-boot` module, not
 behind the ViewModel. Each composition instead carries a `CoreSelection`
 value built by `createCoreSelection` (`{ current, options, select(impl),
 failure$ }`), which `AppRoot` forwards to the bindings' `createViewModel` as
@@ -156,8 +156,8 @@ from it, hidden entirely when the hook returns `null`.
 **Since 2026-10-05 `select` swaps the core in place**
 ([ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)).
 Until then it saved the choice and reloaded the page. Now it calls the core
-host's `swapTo(impl)` (`src/app/coreHost.ts`, twin files in both web
-clients), which owns the ports for the whole page life: it unmounts the UI,
+host's `swapTo(impl)` (`packages/web-boot/src/coreHost.ts`, one copy for
+both web clients), which owns the ports for the whole page life: it unmounts the UI,
 disposes the running core, composes the new one over the **same** ports
 object and mounts the UI again, then saves the choice and strips `?core=`
 with `history.replaceState`. No page load happens, so the session, the

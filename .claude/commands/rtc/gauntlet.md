@@ -60,6 +60,7 @@ otherwise one line ("all N CI steps mapped").
 | UI contract coverage gate — solid (≥95%, branches ≥85%) | full |
 | Devtools coverage gates (core + app, ≥95%, branches ≥85%) | full |
 | Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%) | full |
+| Web boot coverage gate (≥95%, branches ≥85%) | full |
 | React Native coverage gate (merged lines ≥95%) | full |
 | Build | full |
 | Prod /devtools/ bundle check | full |
@@ -132,6 +133,7 @@ pnpm --filter @rtc/devtools-core test:coverage               # ≥95%, branches 
 pnpm --filter @rtc/devtools-app test:coverage                # ≥95%, branches ≥85%
 pnpm --filter @rtc/client-core-async test:coverage          # Alternative-core coverage gates (async) — ≥95%, branches ≥85%
 pnpm --filter @rtc/client-core-effect test:coverage         # Alternative-core coverage gates (effect) — ≥95%, branches ≥85%
+pnpm --filter @rtc/web-boot test:coverage                   # Web boot coverage gate — ≥95%, branches ≥85%
 pnpm --filter @rtc/client-react-native test:coverage:gate   # React Native coverage gate — merged lines ≥95% (jest ∪ vitest)
 pnpm build
 pnpm check:devtools-dist                                    # REQUIRES the build above

@@ -146,8 +146,8 @@ Consequences, below). A follow-on design
 replaced that with selection **at load time**, so a deployed build can be
 switched between all three cores without a rebuild.
 
-- **`src/app/coreSelection.ts` replaces `selectCore.ts`** in both web
-  clients. `resolveCoreChoice` is a pure precedence chain: `?core=` (this
+- **`coreSelection.ts` replaces `selectCore.ts`** (since 2026-10-06 one copy
+  in `@rtc/web-boot`, shared by both web clients; follow-up 11). `resolveCoreChoice` is a pure precedence chain: `?core=` (this
   load only, never persisted — a shareable link that doesn't change the
   visitor's saved choice) → the stored choice (`localStorage["rtc.coreImpl"]`)
   → the build default (`VITE_CORE_IMPL`, still the knob every `dev:*` script
@@ -161,7 +161,7 @@ switched between all three cores without a rebuild.
   `import("@rtc/client-core/core")`, `async` and `effect` through
   `import("@rtc/client-core-async")` / `import("@rtc/client-core-effect")`,
   each of which the bundler splits into its own lazy chunk fetched only once
-  chosen. `bootCore` (`src/app/bootApp.ts`) runs this resolve-then-load
+  chosen. `bootCore` (`packages/web-boot/src/bootApp.ts`) runs this resolve-then-load
   sequence before `main.tsx` renders anything; a rejected chunk load renders
   a plain boot-error screen with a "Load the default core" action (clears the
   stored choice, reloads without `?core=`) — never a silent fallback to
@@ -326,8 +326,8 @@ no host.
   and the browser listeners survive a swap; only the core's presenters,
   machines and commands are replaced. `AppRoot` no longer composes a core.
   It builds the ViewModel from a composition the host hands it.
-- **The core host owns what outlives a core.** `src/app/coreHost.ts`
-  (byte-identical in `client-react` and `client-solid`, framework-free):
+- **The core host owns what outlives a core.** `packages/web-boot/src/coreHost.ts`
+  (one copy in `@rtc/web-boot` since 2026-10-06, framework-free):
   `createCoreHost(deps)` holds the ports, the running composition and the
   swap sequence. A *composition* is one `createApp(ports)` after the
   devtools decorators: the instrumented presenters and machine factories,
@@ -399,7 +399,7 @@ sequenceDiagram
 tree, because that tree is unmounted and mounted again under it. It names
 both cores and the phase, and holds one sentence in a status region for
 assistive technology. While a swap is under way the app tree is `inert`
-(`src/app/coreSwapCover.ts`), so no key reaches controls nobody can see. The
+(`packages/web-boot/src/coreSwapCover.ts`), so no key reaches controls nobody can see. The
 host asks for the timings as each swap starts (`chooseCoverTimings`): the
 cover fades in for 160 ms, stays at least 500 ms from the end of covering,
 and fades out for 200 ms. Under `prefers-reduced-motion` or power-saver
@@ -464,7 +464,7 @@ after a drag would otherwise lose the drag.
 
 **Witnesses**, per web client unless noted:
 
-- `src/app/coreHost.test.ts` — 22 cases over fake cores: the step order,
+- `packages/web-boot/src/coreHost.test.ts` — 22 cases over fake cores: the step order,
   every failure row, re-entrancy, the splash once, the reopen once, the
   phases and the hold.
 - `src/app/coreHost.swap.test.ts` — 13 cases over the real browser ports,
@@ -493,7 +493,7 @@ Open questions this work found but did not fix are listed in
   `core-api` + `domain` + `rxjs` only — **never** `client-core`, to avoid a
   build-order cycle with the RxJS core's own contract runner living inside
   `client-core`), `@rtc/client-core-async`, `@rtc/client-core-effect`.
-- Each web client gains one `src/app/coreSelection.ts` (originally
+- The web clients gain one `coreSelection.ts` (originally
   `selectCore.ts`, replaced by Decision 6 below), and `AppRoot` takes its
   `CoreFactory` as a prop from `bootCore`'s result rather than importing one
   directly.
@@ -1596,6 +1596,11 @@ changing it.
     done 2026-10-04 (#921, #926, #929 and the rename to
     `@rtc/client-adapters`); see "Amended 2026-10-04" under Decision 6.
     [The package split spec](../superpowers/specs/2026-10-04-client-core-rxjs-package-split-design.md).
+11. **The web boot code in one package, `@rtc/web-boot`.** — 2026-10-06: the
+    core host, the core selection and the swap cover moved from each web
+    client's `src/app` into `@rtc/web-boot`, one copy. Behaviour unchanged.
+    `buildBrowserPorts` and the shared part of `main.tsx` follow.
+    [The package spec](../superpowers/specs/2026-10-06-web-boot-package-design.md).
 
 ## See also
 

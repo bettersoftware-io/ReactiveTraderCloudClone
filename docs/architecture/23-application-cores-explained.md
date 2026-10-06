@@ -870,7 +870,7 @@ sequenceDiagram
   R->>R: createViewModel(...)
 ```
 
-The **core host** (`src/app/coreHost.ts`) is the object that outlives any
+The **core host** (`packages/web-boot/src/coreHost.ts`) is the object that outlives any
 one core. `main.tsx` builds the ports once and gives them to it; the host
 composes the core over them and mounts `AppRoot` with the result.
 `AppRoot` never learns which core it got. The full precedence chain, the
