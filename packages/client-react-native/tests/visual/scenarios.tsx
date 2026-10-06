@@ -368,12 +368,20 @@ export const SCENARIOS: readonly Scenario[] = [
     },
   },
   {
+    // The shell with an empty body, ambient layer ON. Every other framed
+    // scenario covers most of the screen with its module, so this is the one
+    // golden where the ambient layer shows unobstructed.
     id: "shell/chrome",
     skin: "holo3d",
     mode: "dark",
     build: (): ReactNode => {
       return (
-        <VisualScenarioHost skin="holo3d" mode="dark" powerSaverLevel="freeze">
+        <VisualScenarioHost
+          skin="holo3d"
+          mode="dark"
+          powerSaverLevel="freeze"
+          forceReduceMotion={false}
+        >
           <ShellChromeFixture />
         </VisualScenarioHost>
       );

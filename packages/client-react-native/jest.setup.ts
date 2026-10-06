@@ -206,6 +206,14 @@ jest.mock("@shopify/react-native-skia", () => {
     // the first DECLARATIVE text node in the app — the boot scenes all draw
     // their text imperatively through `canvas.drawText`.
     RadialGradient: passthrough("SkiaRadialGradient"),
+    // AuroraCurtains: a shader that multiplies its two gradient children, and
+    // the `rect(x, y, w, h)` constructor a Group's `clip` takes.
+    Blend: passthrough("SkiaBlend"),
+    // AmbientRays: the turning beam's conic shader.
+    SweepGradient: passthrough("SkiaSweepGradient"),
+    rect: (x: number, y: number, width: number, height: number) => {
+      return { x, y, width, height };
+    },
     Text: passthrough("SkiaText"),
     vec: (x: number, y: number) => {
       return { x, y };
