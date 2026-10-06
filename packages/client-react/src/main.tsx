@@ -119,6 +119,14 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+function startTimer(ms: number, onExpired: () => void): () => void {
+  const timer = setTimeout(onExpired, ms);
+
+  return (): void => {
+    clearTimeout(timer);
+  };
+}
+
 function waitForNextMacrotask(): Promise<void> {
   return sleep(0);
 }
@@ -202,6 +210,7 @@ void runBoot(
       },
       sleep,
       nextMacrotask: waitForNextMacrotask,
+      startTimer,
     });
 
     // While a swap is under way the overlay is shown and the app tree is
