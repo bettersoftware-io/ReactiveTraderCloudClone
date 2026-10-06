@@ -118,9 +118,9 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     window.dispatchEvent(new Event("offline"));
     window.dispatchEvent(new Event("online"));
 
-    expect(
-      seen.reduce(nextConnectionStatus, ConnectionStatus.CONNECTING),
-    ).toBe(ConnectionStatus.CONNECTED);
+    expect(seen.reduce(nextConnectionStatus, ConnectionStatus.CONNECTING)).toBe(
+      ConnectionStatus.CONNECTED,
+    );
     sub.unsubscribe();
   });
 
@@ -195,20 +195,18 @@ interface OpenableSocket {
 function createOpenableWebSocket(): OpenableSocket[] {
   const sockets: OpenableSocket[] = [];
 
-  vi.stubGlobal(
-    "WebSocket",
-    class {
-      onopen: (() => void) | null = null;
+  // A constructor that returns an object hands `new` that object.
+  function createSocket(): OpenableSocket {
+    const socket = {
+      onopen: null,
+      close: (): void => {},
+      send: (): void => {},
+    };
+    sockets.push(socket);
+    return socket;
+  }
 
-      constructor() {
-        sockets.push(this);
-      }
-
-      close(): void {}
-
-      send(): void {}
-    },
-  );
+  vi.stubGlobal("WebSocket", createSocket);
 
   return sockets;
 }

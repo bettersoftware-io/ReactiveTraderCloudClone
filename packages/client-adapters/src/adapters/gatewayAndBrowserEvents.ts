@@ -25,24 +25,24 @@ export function mergeGatewayAndBrowserEvents(
     let gatewayIsConnected = false;
 
     const gatewaySub = gateway$.subscribe({
-      next: (event) => {
+      next: (event: ConnectionEvent): void => {
         gatewayIsConnected = event.type === "gatewayConnected";
         subscriber.next(event);
       },
-      error: (error: unknown) => {
+      error: (error: unknown): void => {
         subscriber.error(error);
       },
     });
 
     const browserSub = browser$.subscribe({
-      next: (event) => {
+      next: (event: ConnectionEvent): void => {
         subscriber.next(event);
 
         if (event.type === "browserOnline" && gatewayIsConnected) {
           subscriber.next({ type: "gatewayConnected" });
         }
       },
-      error: (error: unknown) => {
+      error: (error: unknown): void => {
         subscriber.error(error);
       },
     });
