@@ -13,6 +13,7 @@ import type {
   JarvisEvent,
   LogEvent,
   MetricSample,
+  PowerSaverLevel,
   Price,
   PriceTick,
   Quote,
@@ -62,6 +63,9 @@ export interface PageContext<P> {
   setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Push the boot-splash visibility (useBootGate source — drives BootGate). */
   setBootGateVisible(visible: boolean): void;
+  /** Push the power-saver level, as a stored preference arriving after the
+   * first render does. */
+  setPowerSaverLevel(level: PowerSaverLevel): void;
   /** Push a new auth status → AuthGate swaps LoginScreen and the app. */
   setAuthStatus(status: AuthViewState["status"]): void;
   /** Push why the last core switch failed (or null) → the Preferences row. */
@@ -202,6 +206,11 @@ export abstract class MountedComponent<P> {
   /** Push the boot-splash visibility through the seam → re-render BootGate. */
   protected setBootGateVisible(visible: boolean): void {
     this.ctx.setBootGateVisible(visible);
+  }
+
+  /** Push the power-saver level through the seam → re-render its readers. */
+  protected setPowerSaverLevel(level: PowerSaverLevel): void {
+    this.ctx.setPowerSaverLevel(level);
   }
 
   /** Push a new auth status through the seam → AuthGate unmounts the app for

@@ -11,6 +11,7 @@ describe("BrowserConnectionEventsAdapter", () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("emits userActivity on mousemove and resets the idle timer", () => {
@@ -64,6 +65,30 @@ describe("BrowserConnectionEventsAdapter", () => {
         return e.type;
       }),
     ).toEqual(expect.arrayContaining(["browserOffline", "browserOnline"]));
+    sub.unsubscribe();
+  });
+
+  it("tells a subscriber that arrives while the browser is offline, before any event", () => {
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    const adapter = new BrowserConnectionEventsAdapter();
+    const events: ConnectionEvent[] = [];
+    const sub = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
+
+    expect(events).toEqual([{ type: "browserOffline" }]);
+    sub.unsubscribe();
+  });
+
+  it("says nothing on subscribe while the browser is online", () => {
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+    const adapter = new BrowserConnectionEventsAdapter();
+    const events: ConnectionEvent[] = [];
+    const sub = adapter.events().subscribe((e) => {
+      return events.push(e);
+    });
+
+    expect(events).toEqual([]);
     sub.unsubscribe();
   });
 

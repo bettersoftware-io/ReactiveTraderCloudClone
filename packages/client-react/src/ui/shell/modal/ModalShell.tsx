@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+import { type ReactElement, type ReactNode, useEffect } from "react";
 
 import { useDraggableDialog } from "./useDraggableDialog";
 
@@ -8,7 +8,8 @@ import styles from "./ModalShell.module.css";
  * Generic draggable HUD dialog chrome: dimmed overlay, drag-by-header dialog
  * (`useDraggableDialog`), title/subtitle header with a ✕ control, a scrollable
  * body clamped to 86vh (the ONLY scroll container — content renders at natural
- * height inside it), and a footer note + DONE button. Purely presentational:
+ * height inside it), and a footer note + DONE button. Takes focus when it
+ * opens. Otherwise purely presentational:
  * every string/testid is a prop, both the ✕ and DONE fire the same `onClose`
  * slot, and the body renders `children` — so a surface owns its content
  * component and this shell owns the dialog ceremony. Extracted verbatim from
@@ -31,6 +32,25 @@ export function ModalShell({
 }: ModalShellProps): ReactElement | null {
   const { dialogRef, headerProps, dialogStyle } = useDraggableDialog({ open });
 
+  // A dialog that opens takes focus, so the keyboard and a screen reader
+  // land in it and not on whatever opened it. The dialog itself, not its
+  // first control: nothing is activated by a stray Enter. When it closes,
+  // focus goes back to where it was, if that element is still on the page.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const opener = document.activeElement;
+    dialogRef.current?.focus();
+
+    return (): void => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus();
+      }
+    };
+  }, [open, dialogRef]);
+
   if (!open) {
     return null;
   }
@@ -41,6 +61,7 @@ export function ModalShell({
         ref={dialogRef}
         role="dialog"
         aria-label={ariaLabel}
+        tabIndex={-1}
         className={styles.dialog}
         style={dialogStyle}
       >

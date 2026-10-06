@@ -78,6 +78,29 @@ describe("followCoreSwaps", () => {
     expect(page.rootEl.inert).toBe(false);
   });
 
+  it("a swap that ends hands focus to the dialog the app tree has open", () => {
+    const page = createPage();
+    const dialog = createDialogIn(page.rootEl);
+
+    for (const phase of SWAP_PHASES) {
+      page.states.next({ phase, from: "rxjs", to: "effect" });
+      expect(document.activeElement).not.toBe(dialog);
+    }
+
+    page.states.next({ phase: "running", impl: "effect" });
+
+    expect(document.activeElement).toBe(dialog);
+  });
+
+  it("focus is not moved while no swap has run: a dialog the user left stays left", () => {
+    const page = createPage();
+    const dialog = createDialogIn(page.rootEl);
+
+    page.states.next(RUNNING);
+
+    expect(document.activeElement).not.toBe(dialog);
+  });
+
   it("the app tree is inert before the cover is asked for: no key reaches it once the swap has begun", () => {
     const rootEl = document.createElement("div");
     rootEl.inert = false;
@@ -104,6 +127,17 @@ interface Page {
   readonly states: BehaviorSubject<CoreHostState>;
   /** Every `show` call's argument, oldest first. */
   readonly shown: (CoreSwapView | null)[];
+}
+
+/** A focusable dialog inside `rootEl`, attached to the document. */
+function createDialogIn(rootEl: HTMLElement): HTMLElement {
+  const dialog = document.createElement("div");
+  dialog.setAttribute("role", "dialog");
+  dialog.tabIndex = -1;
+  rootEl.append(dialog);
+  document.body.append(rootEl);
+
+  return dialog;
 }
 
 /** An app root and a host state stream (starting at `running`), followed. */

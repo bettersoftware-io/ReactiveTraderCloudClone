@@ -154,10 +154,10 @@ export async function armSwapWitnesses(ctx: TestContext): Promise<void> {
 /**
  * Asserts a Preferences core choice of `impl` swapped the core in place:
  * the document root names `impl`, the user was never signed out (checked
- * first, the moment the swap lands, and against every frame since
+ * first, the moment the swap lands, and against every DOM insertion since
  * {@link armSwapWitnesses}), the page never navigated, `?core=` is gone,
  * the swap's cover is gone,
- * Preferences is open again with `impl` selected, and the desk
+ * Preferences is open again with `impl` selected and holds focus, and the desk
  * {@link prepareDesk} left behind is intact and live.
  */
 export async function expectSwappedInPlace(
@@ -169,7 +169,7 @@ export async function expectSwappedInPlace(
   await ctx.po.workspace.waitSignedIn(SETTLED_TIMEOUT_MS);
   assertFalse(
     await ctx.po.workspace.loginScreenSeen(),
-    `the login screen was on screen during the swap to ${impl}`,
+    `the login screen was in the document during the swap to ${impl}`,
   );
 
   assertEquals(
@@ -183,6 +183,9 @@ export async function expectSwappedInPlace(
 
   await ctx.po.preferences.waitModalVisible(SETTLED_TIMEOUT_MS);
   await ctx.po.preferences.waitCoreImplSelected(impl, SETTLED_TIMEOUT_MS);
+  // The tree was inert under the cover, which drops focus: the reopened
+  // modal has it back, so the keyboard carries on where the user was.
+  await ctx.po.preferences.waitModalHoldsFocus(SETTLED_TIMEOUT_MS);
 
   await expectTradeInBlotter(ctx);
   await expectDeskLayout(ctx);
