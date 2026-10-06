@@ -14,6 +14,7 @@
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
     "test:app:coverage": "vitest run src/app -c vitest.app.coverage.config.ts --coverage",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
+    "test:ui:styles": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts coreSwapOverlay",
     "test:ui:visual": "node tests/ui/visual/run-all.ts",
     "test:ui:visual:solid": "node tests/ui/visual/run-all.ts solid",
     "test:ui:visual:playwright:solid": "playwright test -c tests/ui/visual/playwright/playwright.config.ts",
