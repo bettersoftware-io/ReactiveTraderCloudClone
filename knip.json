@@ -76,6 +76,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/web-boot": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/layout-dockview": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
