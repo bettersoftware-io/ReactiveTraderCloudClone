@@ -317,35 +317,39 @@ explicitly (residual sweep, 2026-09-19):
    path). That isolation covers a CONSUMER's `next`: an operator built on a
    primitive (`mapTopic`, an Effect `Stream` combinator) turns its own
    projection error into a stream failure instead, as rxjs operators do.
-3. **After `dispose()`, the app holds no port subscription once its
-   consumers have let go.** That is the contract (the `dispose` suite, all
-   three cores): after a session, including a Jarvis turn still in flight,
-   and after the session's own consumers unsubscribe, `dispose()` leaves
-   zero live port subscriptions. What a subscriber STILL attached at dispose
-   hears is not contracted. In the RxJS core (ADR-006 Follow-up 6) only the
-   `warmReplay` singletons and the machines `createApp` owns end — their
-   subscribers complete; an interrupt-only Effect cause is deliberately
-   silent. Every refcounted stream, per-key or singleton, keeps delivering
-   to a subscriber still attached in the RxJS core — `price$`, `quote$`,
-   `depth$`, but also `connection.status$`, the preference presenters,
-   `execution.executions$`, `ordersBlotter.fills$`, `throughput.state$` and
-   `auth.state$` (whose subject is never completed) — and that subscription
-   stays the consumer's to release. Subscribing after `dispose()` to a
-   refcounted presenter, or calling a machine factory, re-opens its ports:
-   uncontracted, and no production code does it. The one caller of
-   `app.dispose()`, the web clients' core host, unmounts the UI and waits a
-   macrotask first, so no UI consumer still holds a stream when it runs.
-   One consumer can still be attached: with an inspector connected, the
-   devtools hub is subscribed to every observed stream, and the host ends
-   the hub's composition (`endComposition()`) right after `dispose()`
-   resolves, in the same synchronous step. The hub lets go there, and the
-   refcounted streams then release their ports. `coreHost.swap.test.ts`
-   case 5 pins it with a real hub and inspector: after each swap the ports
-   hold what the same core holds over fresh ports.
-   Measured on that uncontracted case (2026-10-05): with a consumer still
-   holding `connection.status$`, `dispose()` leaves its port subscription
-   open on the RxJS and async cores and closes it on the Effect core; it is
-   an open question in `docs/STATUS.md`.
+3. **After `dispose()`, the app holds no port subscription, whoever still
+   holds its streams.** That is the contract (the `dispose` suite, all
+   three cores). After a session, including a Jarvis turn still in flight,
+   `dispose()` leaves zero live port subscriptions: with the session's
+   consumers gone, and also with the session's presenter streams (the 40
+   `everySessionStream` lists) still held. A held
+   stream is cut, not orphaned: what a port emits next reaches nobody. A
+   stream first subscribed after `dispose()` opens no port.
+
+   The cut itself is silent: the port stream is released, not completed
+   or errored, so a subscriber still attached simply hears nothing more.
+   (The RxJS core's `warmReplay` singletons and the machines `createApp`
+   owns do complete their subscribers, as they did before; that much is
+   recorded, not contracted.) One consequence: a consumer waiting on a
+   one-shot port answer still in flight at `dispose()` (a login) waits for
+   good. Nothing in production does, since the UI is unmounted first.
+
+   Each core gets there at one place. The RxJS and async cores read their
+   ports through a wrapper that ends every port stream with the composition
+   (`ports/cutPortsOnDispose.ts`, `bridge/cutPortsOnAbort.ts`, since
+   2026-10-06); the Effect core closes the scope its port subscriptions
+   live in. `app.ports` is still the object the core was given, never the
+   wrapper (the `recomposition` suite), because the host composes the next
+   core over it.
+
+   Until 2026-10-06 this was contracted only "once its consumers have let
+   go", and the cores differed on the rest: holding every session stream
+   across `dispose()` left 16 port subscriptions open on the RxJS core, 12
+   on the async core and none on the Effect core. The web clients' core
+   host never relied on it (it unmounts the UI and waits a macrotask before
+   `dispose()`, and ends the devtools hub's composition right after), and
+   `coreHost.swap.test.ts` cases 4 and 5 still pin that path. The rule now
+   holds without that care.
 
    Since the hot swap (2026-10-05) the same suite also fixes three
    obligations about the workspace layout and failure, because a swap

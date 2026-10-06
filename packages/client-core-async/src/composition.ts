@@ -17,6 +17,7 @@ import type {
 } from "@rtc/domain";
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
+import { cutPortsOnAbort } from "#/bridge/cutPortsOnAbort";
 import { peek } from "#/bridge/in";
 import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
@@ -252,8 +253,11 @@ function nativePresenters(
  * source and usage). `App.presenters: Presenters` makes the typecheck the
  * completeness witness — every member is this core's. The transport is gated
  * on this core's own `auth`. */
-export function createApp(ports: AppPorts): App {
+export function createApp(givenPorts: AppPorts): App {
   const lifetime = new AbortController();
+  // Every port stream this composition opens ends with it, whoever still
+  // holds the presenter stream built on it.
+  const ports = cutPortsOnAbort(givenPorts, lifetime.signal);
   const native = nativePresenters(ports, lifetime.signal);
   const family = createJarvisFamily(
     {
@@ -282,7 +286,7 @@ export function createApp(ports: AppPorts): App {
       jarvisDemo: family.jarvisDemo,
       jarvisUsage: family.jarvisUsage,
     },
-    ports,
+    ports: givenPorts,
     commands: createCommands(
       ports.connectionIntents,
       family.workspace.reportDetachedPanels,

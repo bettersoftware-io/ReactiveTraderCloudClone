@@ -48,6 +48,7 @@ function createEffectHarness(seed?: HarnessSeed): CoreHarness {
     app,
     machines: createMachineFactories(app.presenters),
     driver,
+    ports,
     recompose: async () => {
       await current.dispose();
       current = createApp(ports);
