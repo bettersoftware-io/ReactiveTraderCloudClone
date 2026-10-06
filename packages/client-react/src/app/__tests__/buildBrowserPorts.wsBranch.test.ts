@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WsAdapter } from "@rtc/client-adapters";
+import {
+  type ConnectionEvent,
+  ConnectionStatus,
+  nextConnectionStatus,
+} from "@rtc/domain";
 
 import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
@@ -128,6 +133,75 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     sub.unsubscribe();
   });
 
+  it("returns to CONNECTED when the browser comes back online over a socket that never dropped", () => {
+    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+
+    const sockets = createOpenableWebSocket();
+    const ports = buildBrowserPorts();
+    const seen: ConnectionEvent[] = [];
+    const sub = ports.connectionEvents.events().subscribe((event) => {
+      seen.push(event);
+    });
+
+    ports.transport?.connect();
+    sockets[0]?.onopen?.();
+    // A server on this machine: the socket outlives the network going away.
+    window.dispatchEvent(new Event("offline"));
+    window.dispatchEvent(new Event("online"));
+
+    expect(seen.reduce(nextConnectionStatus, ConnectionStatus.CONNECTING)).toBe(
+      ConnectionStatus.CONNECTED,
+    );
+    sub.unsubscribe();
+  });
+
+  it.each([
+    ["idle first, then offline", ["idle", "offline"]],
+    ["offline first, then idle", ["offline", "idle"]],
+  ] as const)(
+    "reopens a socket closed for idle when the browser comes back online (%s)",
+    async (_label, order) => {
+      vi.stubEnv("VITE_SERVER_URL", WS_URL);
+
+      const sockets = createOpenableWebSocket();
+      const ports = buildBrowserPorts();
+      const seen: ConnectionEvent[] = [];
+      const sub = ports.connectionEvents.events().subscribe((event) => {
+        seen.push(event);
+      });
+
+      ports.transport?.connect();
+      sockets[0]?.onopen?.();
+
+      for (const step of order) {
+        if (step === "idle") {
+          // The idle timer's event, without the 15-minute wait. The
+          // socket's own `close` event never arrives here, as with no
+          // network: the adapter reports the close itself, a microtask on.
+          ports.connectionIntents.injectIncident({ type: "idleTimeout" });
+          await Promise.resolve();
+        } else {
+          window.dispatchEvent(new Event("offline"));
+        }
+      }
+
+      window.dispatchEvent(new Event("online"));
+
+      // Nothing else would reopen it: the status would sit on CONNECTING.
+      expect(sockets).toHaveLength(2);
+      // The new socket is still connecting, and the status says so: the
+      // old socket's connection is not repeated as if it were this one's.
+      expect(
+        seen.reduce(nextConnectionStatus, ConnectionStatus.CONNECTING),
+      ).toBe(ConnectionStatus.CONNECTING);
+      sockets[1]?.onopen?.();
+      expect(
+        seen.reduce(nextConnectionStatus, ConnectionStatus.CONNECTING),
+      ).toBe(ConnectionStatus.CONNECTED);
+      sub.unsubscribe();
+    },
+  );
+
   it("treats an empty VITE_SERVER_URL as simulator mode", () => {
     // The `:sim` dev scripts set the var to the empty string rather than
     // unsetting it, so empty MUST fall through to the simulator branch.
@@ -207,6 +281,31 @@ function seedSession(token: string): void {
       clearance: "standard",
     },
   });
+}
+
+interface OpenableSocket {
+  onopen: (() => void) | null;
+}
+
+/** Replaces WebSocket with a stub a test opens by hand, and returns the
+ * instances built, so the adapter's `onopen` can be driven. */
+function createOpenableWebSocket(): OpenableSocket[] {
+  const sockets: OpenableSocket[] = [];
+
+  // A constructor that returns an object hands `new` that object.
+  function createSocket(): OpenableSocket {
+    const socket = {
+      onopen: null,
+      close: (): void => {},
+      send: (): void => {},
+    };
+    sockets.push(socket);
+    return socket;
+  }
+
+  vi.stubGlobal("WebSocket", createSocket);
+
+  return sockets;
 }
 
 /** Replaces WebSocket with an inert stub and returns the list of URLs it was

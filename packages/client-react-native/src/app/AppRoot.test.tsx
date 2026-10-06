@@ -35,6 +35,13 @@ test("hands the build stamp it read down to the UI", async () => {
   expect(page.buildStampText()).toBe("f0482c5|2026-10-04T15:20Z");
 });
 
+// The sign-in screen's hint reads the list through the ViewModel; a
+// simulator composition that handed none down would show an empty hint.
+test("a simulator composition offers the roster as demo accounts", async () => {
+  await page.mountDemoAccountsProbe();
+  expect(page.demoAccountsText()).toBe("astark,nromanoff,tchalla,demo");
+});
+
 // AsyncStorage has no native module under jest, so importing the real one
 // throws at require time. Stub the two methods the preferences adapter uses
 // (getItem/setItem) so the simulator composition builds without a native host.

@@ -1,4 +1,10 @@
-import { type JSX, type ParentProps, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  type JSX,
+  type ParentProps,
+  Show,
+} from "solid-js";
 
 import styles from "@rtc/boot-splash/styles/BootGate.module.css";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -11,9 +17,9 @@ import { BootSequence } from "./BootSequence";
  * splash's own CSS fades it out on `data-done` (BootSequence.module.css
  * `.boot[data-done]`); BootGate then dismisses through the seam once that
  * opacity transition ends — the `transitionend` bubbles from the splash root to
- * this host. Under reduced motion the splash has no transition, so `onDone`
- * dismisses at once instead of waiting for a `transitionend` that would never
- * fire.
+ * this host. Under reduced motion or power-saver Freeze the splash has no
+ * transition, so the gate dismisses as soon as the sequence is done instead
+ * of waiting for a `transitionend` that would never fire.
  *
  * Visibility lives in the `useBootGate` seam (BootGatePresenter): it is seeded
  * from the one-shot boot-splash decision at composition time, and the account
@@ -26,7 +32,28 @@ export function BootGate(props: ParentProps): JSX.Element {
   const { enabled: forced } = useForceBootAnimation();
   const { isFreeze } = usePowerSaver();
 
-  function dismissOnJumpCut(): void {
+  const [done, setDone] = createSignal(false);
+
+  // `onDone` only records that the sequence is done. The decision below is
+  // an effect over the current values, not a one-off taken at that moment:
+  // a Freeze switched on while the splash is fading turns the transition
+  // off, so the `transitionend` the gate was waiting for never arrives.
+  function markDone(): void {
+    setDone(true);
+  }
+
+  createEffect(() => {
+    // A splash that is gone is not done: the next one (⟳ Reboot HUD) starts
+    // over.
+    if (!visible()) {
+      setDone(false);
+      return;
+    }
+
+    if (!done()) {
+      return;
+    }
+
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -40,7 +67,7 @@ export function BootGate(props: ParentProps): JSX.Element {
     if (isFreeze() || (reduce && !forced())) {
       dismiss();
     }
-  }
+  });
 
   function dismissOnOpacityEnd(event: TransitionEvent): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip
@@ -55,7 +82,7 @@ export function BootGate(props: ParentProps): JSX.Element {
       {props.children}
       <Show when={visible()}>
         <div class={styles.host} onTransitionEnd={dismissOnOpacityEnd}>
-          <BootSequence onDone={dismissOnJumpCut} />
+          <BootSequence onDone={markDone} />
         </div>
       </Show>
     </>

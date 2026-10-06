@@ -14,6 +14,7 @@ import {
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_SKIN,
   DEFAULT_VIEW_MODE,
+  listDemoAccounts,
   type PowerSaverLevel,
   type ThemeMode,
   type ThemeSkin,
@@ -161,6 +162,9 @@ export function buildShellSlice(options: ShellSliceOptions = {}): ShellSlice {
     useForceBootAnimation: () => {
       return forceBootAnimationPreference;
     },
+    useDemoAccounts: () => {
+      return DEMO_ACCOUNTS;
+    },
     useIncident: () => {
       return incident;
     },
@@ -214,3 +218,16 @@ export interface ShellSliceOptions {
  * arguments an implementation is free to ignore) — same convention as the
  * web sibling's `buildFakeViewModel.ts`. */
 function noop(): void {}
+
+/** What the sign-in screen's demo-accounts hint lists. The harness mounts on
+ * simulator ports, where the app offers the whole roster at the committed
+ * demo password (`nativeAuthConfig.ts`'s fallback); a scenario that mounts
+ * `LoginScreen` therefore shows the hint, as the app does with the Simulator
+ * switch on. One module-level list, so every call returns the same
+ * reference. */
+const DEMO_ACCOUNTS = listDemoAccounts({
+  astark: "mcdc2026",
+  nromanoff: "mcdc2026",
+  tchalla: "mcdc2026",
+  demo: "mcdc2026",
+});

@@ -72,6 +72,73 @@ export function describeDisposeContract(
       });
     });
 
+    it("dispose() cuts every stream a consumer still holds: its ports are released and it hears nothing more", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({ transport: true, countPortStreams: true });
+
+        try {
+          await signIn(h.app, h.driver.resolveLogin, clock.settle);
+          // Held across dispose(), unlike the case above: a consumer that
+          // never let go (an inspector, a leaked subscription).
+          const held = everySessionStream(h.app).map((stream) => {
+            return collect(stream);
+          });
+          await clock.settle();
+          expect(h.driver.livePortSubscriptions()).toBeGreaterThan(0);
+
+          const status = collect(h.app.presenters.connection.status$);
+          await clock.settle();
+
+          await h.app.dispose();
+          await clock.settle();
+
+          expect(h.driver.livePortSubscriptions()).toBe(0);
+
+          // The held stream is cut, not just orphaned: what the port says
+          // next reaches nobody.
+          const heard = status.values.length;
+          h.driver.emitConnection({ type: "browserOffline" });
+          await clock.settle();
+          expect(status.values).toHaveLength(heard);
+          expect(status.errors).toEqual([]);
+
+          for (const c of [...held, status]) {
+            c.unsubscribe();
+          }
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("a stream first subscribed after dispose() opens no port", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({ transport: true, countPortStreams: true });
+
+        try {
+          await signIn(h.app, h.driver.resolveLogin, clock.settle);
+          await h.app.dispose();
+          await clock.settle();
+          expect(h.driver.livePortSubscriptions()).toBe(0);
+
+          const late = everySessionStream(h.app).map((stream) => {
+            return collect(stream);
+          });
+          await clock.settle();
+
+          expect(h.driver.livePortSubscriptions()).toBe(0);
+
+          for (const c of late) {
+            c.unsubscribe();
+          }
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
     it("dispose() releases the transport gate: a later sign-out does not disconnect", async () => {
       await withFakeClock(async (clock) => {
         vi.setSystemTime(NOW);

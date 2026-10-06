@@ -62,6 +62,18 @@ export function describeRecompositionContract(
       });
     });
 
+    it("app.ports is the ports object the composition was given, not a wrapper of it", async () => {
+      // The host composes the next core over these same ports. A core that
+      // wraps its ports for its own use must not hand the wrapper on.
+      const h = makeHarness();
+
+      try {
+        expect(h.app.ports).toBe(h.ports);
+      } finally {
+        await h.teardown();
+      }
+    });
+
     it("a second composition calls each port method as often as a first", async () => {
       await withFakeClock(async (clock) => {
         const h = makeHarness(SEED);

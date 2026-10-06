@@ -448,6 +448,7 @@ warning.
 | `createApp` (or the devtools `instrument`) of the new core | An app that was created is disposed. The **previous** core is composed again over the same ports and mounted. `failure$` carries the reason, `data-core-impl` names the previous core, and the saved choice is untouched. |
 | The previous core fails too, or anything else between the unmount and a successful mount (the mount itself included) | Every app that is composed but not mounted is disposed. `onFatal` is called once and shows the boot-error screen. When the new core's failure led to it, that first error is logged as a `[core]` warning. `state$` ends at `fatal`, nothing claims to be composed, and later `swapTo` calls do nothing. |
 | `old.dispose()` rejects | A `[core]` warning; the swap continues, since the old tree is already gone. |
+| `old.dispose()` has not settled after 5 s (`DISPOSE_TIMEOUT_MS`) | `onFatal` is called once and shows the boot-error screen, whose reload boots the default core. The next core is **not** composed: a half-disposed core may still hold the ports. The hung `dispose()` is not awaited again. |
 | A step after a successful mount (`publish`, the console line, saving, stripping `?core=`, lifting the cover) | A `[core]` warning; the steps after it still run. |
 | Saving returns false (storage blocked or full) | A `[core]` warning that the choice will not survive a reload; the swap stands. |
 | A second `swapTo` during a swap, or `swapTo(current)` | Nothing. |
@@ -1559,9 +1560,10 @@ changing it.
    cuts an in-flight turn's ask) and a `disposed$` signal every `warmReplay`
    singleton ends on. The contract, witnessed for all three cores by the
    `@rtc/core-contract` `dispose` suite, is that the app holds no port
-   subscription once its consumers have let go; what a still-attached
-   subscriber hears — including a refcounted stream still delivering — stays
-   uncontracted (§22's envelope rule 3).
+   subscription. Until 2026-10-06 that was promised only once its consumers
+   had let go, and a refcounted stream kept delivering to a subscriber still
+   attached; since then every port stream is cut with the composition,
+   silently, on all three cores (§22's envelope rule 3).
 7. ~~**Hot swap without a page reload** (Decision 6) — `app.dispose()` (real in
    all three cores since #834) plus a remount onto the newly loaded core in
    place, as a showcase of the architecture's resilience rather than a

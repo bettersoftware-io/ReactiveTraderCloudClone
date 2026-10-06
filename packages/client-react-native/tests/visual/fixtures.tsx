@@ -541,7 +541,9 @@ function NOOP_TOGGLE(): void {}
  * The REAL `LoginScreen` at rest: the fake ViewModel's default `useAuth`
  * reports an unauthenticated session with no error, which is exactly the
  * state `AuthGate` mounts it for — no pin needed. `simulator` is shown ON
- * (the harness runs on sim ports) with the toggle inert.
+ * (the harness runs on sim ports) with the toggle inert, and the fake's
+ * `useDemoAccounts` lists the roster, so the demo-accounts hint shows — the
+ * app's own state with that switch on.
  */
 export function LoginFixture(): ReactNode {
   return <LoginScreen simulator={true} onToggleSimulator={NOOP_TOGGLE} />;

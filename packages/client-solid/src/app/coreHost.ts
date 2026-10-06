@@ -88,7 +88,16 @@ export interface CoreHostDeps {
   readonly cover: () => CoverTimings;
   readonly sleep: (ms: number) => Promise<void>;
   readonly nextMacrotask: () => Promise<void>;
+  /** Calls `onExpired` after `ms`, unless the function it returns is called
+   * first. A cancellable timer, not a `sleep`: the wait it guards normally
+   * ends long before, and nothing may be left pending when it does. */
+  readonly startTimer: (ms: number, onExpired: () => void) => () => void;
 }
+
+/** How long a swap waits for the old core's `dispose()` to settle. All three
+ * cores settle within a few milliseconds; this only has to be long enough
+ * that a slow machine never reaches it. */
+export const DISPOSE_TIMEOUT_MS = 5_000;
 
 export interface CoreHost {
   readonly state$: StateStream<CoreHostState>;
@@ -118,7 +127,8 @@ interface Handover {
 /**
  * Creates the host. `swapTo(impl)` runs, in order: ask for this swap's cover
  * timings, cover, load the new core, unmount the UI and wait one macrotask
- * (deferred machine disposals run), `await` the old core's `dispose()`, end
+ * (deferred machine disposals run), `await` the old core's `dispose()` (for
+ * at most `DISPOSE_TIMEOUT_MS`), end
  * the devtools composition, compose the new core over the same ports and
  * mount it, publish (attribute, console line, saved choice, URL), then lift
  * the cover once the minimum hold — measured from the end of covering — has
@@ -128,7 +138,9 @@ interface Handover {
  * core, still mounted; a `createApp` (or `instrument`) that throws composes
  * the previous core again; when that throws too, `onFatal` gets the second
  * error and the first is a `[core]` warning. The reason reaches the UI
- * through `CoreSelection.failure$`.
+ * through `CoreSelection.failure$`. A `dispose()` that has not settled in
+ * time ends in `onFatal` too: the next core is never composed over ports a
+ * half-disposed core may still hold.
  *
  * Any other throw is split by whether a core is mounted. Between the unmount
  * and a successful mount nothing is on screen, so the throw ends in
@@ -278,14 +290,22 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     core: CoreFactory,
     to: CoreImpl,
   ): Promise<Handover | null> {
-    let previousDisposed = false;
+    let previousDisposeAsked = false;
+    let previousDisposeTimedOut = false;
     let startFailure: string | null = null;
 
     try {
       deps.unmount();
       await deps.nextMacrotask();
-      await disposeQuietly(previous);
-      previousDisposed = true;
+      previousDisposeAsked = true;
+
+      if (!(await disposeWithinLimit(previous))) {
+        previousDisposeTimedOut = true;
+        throw new Error(
+          `the ${previous.impl} core did not finish disposing within ${DISPOSE_TIMEOUT_MS / 1000} s`,
+        );
+      }
+
       deps.endComposition();
       let composition: Composition;
 
@@ -303,12 +323,23 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       const orphan = running;
       running = null;
 
-      if (!previousDisposed) {
-        await disposeQuietly(previous);
+      // Asked once only: a dispose that timed out must not be awaited
+      // again. The disposals here are limited too, so a hang in one of them
+      // cannot keep the fatal screen from showing.
+      if (!previousDisposeAsked) {
+        await disposeWithinLimit(previous);
       }
 
       if (orphan !== null && orphan !== previous) {
-        await disposeQuietly(orphan);
+        await disposeWithinLimit(orphan);
+      }
+
+      if (previousDisposeTimedOut) {
+        // The throw skipped this step, and an attached inspector would keep
+        // holding the old composition's streams.
+        runOrWarn("ending the devtools composition", () => {
+          deps.endComposition();
+        });
       }
 
       if (startFailure !== null) {
@@ -396,6 +427,21 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
         `[core] the ${composed.impl} core failed to dispose: ${describeError(error)}`,
       );
     }
+  }
+
+  /** Disposes `composed`, waiting at most `DISPOSE_TIMEOUT_MS`. The answer
+   * is whether it settled in time; a late settle changes nothing. */
+  function disposeWithinLimit(composed: Running): Promise<boolean> {
+    return new Promise((resolve) => {
+      const cancelTimer = deps.startTimer(DISPOSE_TIMEOUT_MS, () => {
+        resolve(false);
+      });
+
+      void disposeQuietly(composed).then(() => {
+        cancelTimer();
+        resolve(true);
+      });
+    });
   }
 
   async function liftCover(

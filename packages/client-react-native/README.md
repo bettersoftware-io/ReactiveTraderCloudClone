@@ -429,6 +429,13 @@ credential depends on which branch `buildNativePorts` selects:
   demo password (`mcdc2026`), so simulator mode always has a working login with no env
   set at all: `astark`, `nromanoff`, `tchalla`, `demo`. **Simulator-only —
   never a deployed secret; live mode never baked-in credentials.**
+- **The demo-accounts hint.** With the Simulator switch on, the sign-in
+  screen lists those accounts under the switch; tapping one fills both
+  fields, and AUTHENTICATE still does the signing in. With the switch off the
+  list is absent: the credentials are the server's, and the app lists only
+  what it verifies on the device (`listNativeDemoAccounts`) — the rule the
+  web clients follow. A published demo build starts in live mode, so it shows
+  no list until the switch is flipped.
 
 If the live tiles show "Disconnected" while the Simulator works, a credential
 mismatch against the deployed server (or the pair not existing in its

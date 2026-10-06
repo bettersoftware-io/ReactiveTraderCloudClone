@@ -5,8 +5,8 @@ appId: io.bettersoftware.rtcmobile
 # that link, and Maestro's next accessibility query then walks the view tree
 # while it is being torn down: the app dies with a malloc heap-corruption
 # trap (EXC_BREAKPOINT under UIAccessibility's snapshot, off the main
-# thread). Nothing relaunches it, so the `login-screen` wait burns its whole
-# timeout — and because the crash leaves the app dead, the NEXT flow passes.
+# thread). Nothing relaunches it, so the wait for the harness home burns its
+# whole timeout — and because the crash leaves the app dead, the NEXT flow passes.
 # That is why exactly every other flow failed (measured 2026-10-04: 13 of
 # 26, strictly alternating, one crash report per failure).
 # Android adds a second, rarer way to die here (measured 2026-10-06: once
@@ -29,11 +29,11 @@ appId: io.bettersoftware.rtcmobile
       # the app has been launched before, so iOS already trusts the scheme
       # and this dialog never shows. On a freshly created simulator with a
       # never-launched app it ALWAYS shows — and while it sits unanswered
-      # the app cannot launch, so the `login-screen` wait below burns its
-      # whole timeout against the iOS home screen. Diagnosed from a CI
-      # failure screenshot (the flow reported only `Assertion is false: id:
-      # login-screen is visible`, which named what was absent and nothing
-      # about the dialog that caused it).
+      # the app cannot launch, so the wait below burns its whole timeout
+      # against the iOS home screen. Diagnosed from a CI failure screenshot
+      # (the flow reported only `Assertion is false: id: … is visible`,
+      # which named what was absent and nothing about the dialog that
+      # caused it).
       # iOS only: Android opens a link without asking, and an app screen
       # there may carry its own 'Open' text, which this would tap.
       - runFlow:
@@ -42,13 +42,14 @@ appId: io.bettersoftware.rtcmobile
             visible: "Open"
           commands:
             - tapOn: "Open"
-      # Wait for the app to boot (bundle loaded). The unauthenticated
-      # LoginScreen is the stable, scenario-agnostic boot marker;
-      # `visual-ready` only appears AFTER the scenario deep link below, so
-      # waiting for it here would always time out on the login screen.
+      # Wait for the bundle to load. On a harness bundle the home route is
+      # a bare marker screen: the app itself (application core, boot
+      # splash, sign-in) is never mounted, because a scenario needs none
+      # of it. `visual-ready` only appears AFTER the scenario deep link
+      # below, so waiting for it here would always time out.
       - extendedWaitUntil:
           visible:
-            id: "login-screen"
+            id: "visual-harness-home"
           timeout: 120000
 # Step 2: in-app navigation to the scenario route (release scheme).
 - openLink:
