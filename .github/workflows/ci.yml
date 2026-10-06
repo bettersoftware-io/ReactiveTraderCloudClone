@@ -303,10 +303,15 @@ jobs:
       # applies no CSS, the pixel tier shoots one still frame and the e2e
       # journey runs under webdriver, where every cover timing is zero, so
       # nothing else on a PR sees these rules. Lives in this job because it is
-      # the one that installs Chromium; it needs no build (the component
-      # imports only types and its own stylesheet) and takes about a second
-      # per client. Before the e2e suite, so a red suite cannot hide it. Not
-      # repeated in e2e-alt-cores: no application core is involved.
+      # the one that installs Chromium. Built first: the spec itself imports
+      # only types and a stylesheet, but Vite's dependency scan walks the whole
+      # client, and fails the run when a workspace package has no dist. The
+      # e2e suite below needs the same build and takes it from turbo's cache.
+      # Before the e2e suite, so a red suite cannot hide it. Not repeated in
+      # e2e-alt-cores: no application core is involved.
+      - name: Build (shared by the style checks and the e2e suite)
+        run: pnpm build
+
       - name: Browser style checks (core-swap overlay, react + solid)
         run: pnpm --filter @rtc/client-react --filter @rtc/client-solid test:ui:styles
 
