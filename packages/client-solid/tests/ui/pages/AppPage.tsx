@@ -10,10 +10,10 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
+import type { Composition } from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
-import type { Composition } from "#/app/coreHost";
 import { App } from "#/ui/App";
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,

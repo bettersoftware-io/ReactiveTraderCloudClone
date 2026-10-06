@@ -43,6 +43,7 @@
     { "path": "../domain" },
     { "path": "../client-adapters" },
     { "path": "../client-core-rxjs" },
+    { "path": "../web-boot" },
     { "path": "../motion-core" },
     { "path": "../solid-bindings" }
   ]

@@ -199,6 +199,11 @@ jobs:
       - name: Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%)
         run: pnpm --filter @rtc/client-core-async test:coverage && pnpm --filter @rtc/client-core-effect test:coverage
 
+      # The shared web boot code (core host, core selection, browser adapters)
+      # carries the same coverage bar as the packages it was lifted out of.
+      - name: Web boot coverage gate (≥95%, branches ≥85%)
+        run: pnpm --filter @rtc/web-boot test:coverage
+
       # The RN client runs TWO runners (vitest for *.test.ts, jest for
       # *.test.tsx), so neither runner's own percentage is the package's. This
       # merges their line coverage and gates the union — see
@@ -218,7 +223,7 @@ jobs:
       # which writes that path regardless of --outDir.
       # Since the runtime core switch, a web client ships ONE production build
       # and loads whichever core the visitor resolved to as a lazy chunk
-      # src/app/coreSelection.ts's `loadCore` fetches only once chosen — all
+      # packages/web-boot/src/coreSelection.ts's `loadCore` fetches only once chosen — all
       # three, the RxJS default included since approach B (ADR-006 Decision
       # 6; rolldown splits each `import()` into its own chunk). This builds
       # each web client once and asserts the eager set (both pages' entry
@@ -339,7 +344,7 @@ jobs:
           retention-days: 7
 
   # Same e2e suite, run again against the two non-default application cores
-  # (VITE_CORE_IMPL: async | effect — see packages/client-*/src/app/coreSelection.ts).
+  # (VITE_CORE_IMPL: async | effect — see packages/web-boot/src/coreSelection.ts).
   # A sibling job, not a rename of `e2e` above: the `main` ruleset's required
   # checks reference that job's name, and renaming it would silently drop the
   # required check.

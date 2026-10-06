@@ -141,10 +141,10 @@ Reports land under each package's own `reports/` tree — gitignored, and wiped 
 - **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
   `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
   `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
-  seven CI-enforced ≥95% gates (five steps in `ci.yml`): the `test:ui:contract:coverage`
+  eight CI-enforced ≥95% gates (six steps in `ci.yml`): the `test:ui:contract:coverage`
   of `@rtc/client-react` and `@rtc/client-solid`, the `test:coverage` of
-  `@rtc/devtools-core`, `@rtc/devtools-app`, `@rtc/client-core-async` and
-  `@rtc/client-core-effect`, and `@rtc/client-react-native`'s
+  `@rtc/devtools-core`, `@rtc/devtools-app`, `@rtc/client-core-async`,
+  `@rtc/client-core-effect` and `@rtc/web-boot`, and `@rtc/client-react-native`'s
   `test:coverage:gate` (merged lines of its two runners). The
   `@rtc/client-react test:ui:visual:vitest-browser:react:coverage` report is a
   **gap-finder**: uncovered `src/ui` branches are visual states with no golden

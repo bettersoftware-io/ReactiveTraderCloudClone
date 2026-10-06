@@ -1,9 +1,9 @@
 import { type JSX, type ParentProps, untrack } from "solid-js";
 
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
+import type { Composition } from "@rtc/web-boot";
 
 import { readDemoAccounts } from "#/app/buildBrowserPorts";
-import type { Composition } from "#/app/coreHost";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { PowerSaverRoot } from "#/ui/shell/power/PowerSaverRoot";

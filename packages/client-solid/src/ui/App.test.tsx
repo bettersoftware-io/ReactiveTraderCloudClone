@@ -8,7 +8,8 @@ import {
   vi,
 } from "vitest";
 
-import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
+import { SESSION_STORAGE_KEY } from "@rtc/web-boot";
+
 import { appPage } from "#tests/ui/pages/AppPage";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way

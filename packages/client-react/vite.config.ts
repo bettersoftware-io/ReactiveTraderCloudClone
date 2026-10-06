@@ -146,6 +146,7 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "styles",
       ),
       "@rtc/boot-splash": pkgSrc("boot-splash"),
+      "@rtc/web-boot": pkgSrc("web-boot"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core-rxjs": pkgSrc("client-core-rxjs"),
@@ -204,7 +205,7 @@ function dropDepSourcemaps(): Plugin {
 
 export default defineConfig({
   // VITE_CORE_IMPL sets this build's DEFAULT application core (see
-  // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
+  // packages/web-boot/src/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
   // the stored choice above this build default, itself above "rxjs"). All
   // three cores ship in every build, each a dynamic import `loadCore`
   // fetches lazily once chosen (RxJS included, from its own package,

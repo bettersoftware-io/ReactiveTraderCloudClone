@@ -6,8 +6,8 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 
 | | |
 |---|---|
-| **Ring** | ④ Frameworks & Drivers (`src/ui`) + ③ platform adapters (`src/app/adapters`) — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
-| **Runtime deps** | `@rtc/client-adapters` (the ports) and `@rtc/client-core-rxjs` (the default RxJS core), plus the two alternative cores — all three cores lazy-loaded — `@rtc/client-core-async` / `@rtc/client-core-effect`, `@rtc/core-api`, `@rtc/domain`, `@rtc/core-logic`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `motion`, `rxjs`, `@rx-state/core`, `@fontsource/*` (`package.json` `dependencies`). `rxjs` and `@rx-state/core` are listed but confined to `src/app` (the core host builds its state streams with them) — never `src/ui` (machine-enforced, gate 26). |
+| **Ring** | ④ Frameworks & Drivers (`src/ui`) + the composition root (`src/app`); the ③ platform adapters are in `@rtc/web-boot` — per [§1.3.1](../../docs/architecture/01-overview.md#131-clean-architecture-concretely----which-package-is-which-ring) |
+| **Runtime deps** | `@rtc/client-adapters` (the ports), `@rtc/core-api`, `@rtc/web-boot`, `@rtc/domain`, `@rtc/core-logic`, `@rtc/react-bindings`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `motion`, `rxjs`, `@fontsource/*` (`package.json` `dependencies`). The three application cores (`@rtc/client-core-rxjs`, `-async`, `-effect`) and `@rx-state/core` are `devDependencies`, for tests: the app reaches the cores, each a lazy chunk, through `@rtc/web-boot`'s `import()` calls. `rxjs` is confined to `src/app` and `@rtc/web-boot` (`buildBrowserPorts.ts` imports it) — never `src/ui` (machine-enforced, gate 26). |
 | **Consumed by** | The `tests` workspace only (`tests/package.json` lists `@rtc/client-react`; [§13.2](../../docs/architecture/13-codebase-map.md#132-l1----the-package-line-map)) — it is a shipping leaf app, not a library other packages import. |
 | **Must never import** | `rxjs` / `@react-rxjs` / `@rx-state` in `src/ui` (gate 26); `localStorage` in `src/ui` (gate 27); `fetch(` / `import.meta.env` in `src/ui` (gate 28); `setTimeout` / `setInterval` in `src/ui` (gate 29) — all four enforced by `tests/scripts/grep-gates.ts`, see [§12](../../docs/architecture/12-architectural-gates.md#12-architectural-gates). |
 
@@ -15,13 +15,10 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 
 | Path | What lives here |
 |---|---|
-| `src/main.tsx` | Entry point: font imports, then `runBoot(bootCore(...))` -- resolves which application core to load (`?core=` URL parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build default, then `rxjs`), then hands the loaded core and the page's ports (`buildBrowserPorts()`, built once) to the core host (`src/app/coreHost.ts`), which mounts `<AppRoot composition><App /></AppRoot>` into `#root` — and swaps the core in place when Preferences picks another. A second root on `#core-swap-overlay` renders `CoreSwapOverlay` (`src/ui/shell/core/`) while a swap is under way, and `#root` is `inert` for that time (`src/app/coreSwapCover.ts`) |
+| `src/main.tsx` | Entry point: font imports, then `runBoot(bootCore(...))` -- resolves which application core to load (`?core=` URL parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build default, then `rxjs`), then hands the loaded core and the page's ports (`buildBrowserPorts()`, built once) to the core host (`@rtc/web-boot`'s `coreHost.ts`), which mounts `<AppRoot composition><App /></AppRoot>` into `#root` — and swaps the core in place when Preferences picks another. A second root on `#core-swap-overlay` renders `CoreSwapOverlay` (`src/ui/shell/core/`) while a swap is under way, and `#root` is `inert` for that time (`@rtc/web-boot`'s `coreSwapCover.ts`) |
 | `src/AppRoot.tsx` | UI root of one composition — builds the `ViewModel` once from the host's composition (lazy `useRef`, StrictMode-safe) and supplies `ViewModelProvider` + `ThemeProvider` + `BootGate` |
-| `src/app/` | Browser platform adapters + composition wiring (Ring ③) — the only place in this package allowed to touch `rxjs`, `localStorage`, `fetch`/`import.meta.env` |
-| `src/app/adapters/` | `BrowserConnectionEventsAdapter`, `LocalStoragePreferencesAdapter`, the `LocalStorage*` layout/session stores |
-| `src/app/theme/` | `MediaQueryColorSchemeAdapter` |
-| `src/app/bootApp.ts`, `src/app/coreSelection.ts` | Load-time core selection: `bootCore` resolves and loads the chosen `CoreFactory` (the alternative cores are lazy chunks), `coreSelection.ts` holds the precedence rules and the stored-choice helpers |
-| `src/app/devtools/` | The app-side `devtoolsHub` singleton and the `PRESENTER_MANIFEST` the `@rtc/devtools-core` decorators walk |
+| `src/app/` | Browser composition wiring (Ring ③) — `buildBrowserPorts.ts`, the devtools hub and the tree mount; the browser platform adapters, the core host and the core selection live in `@rtc/web-boot`. The only place in this package allowed to touch `rxjs`, `localStorage`, `fetch`/`import.meta.env` |
+| `src/app/devtools/` | The app-side `devtoolsHub` singleton (the `PRESENTER_MANIFEST` it is wired with lives in `@rtc/web-boot`) |
 | `src/app/buildBrowserPorts.ts` | Assembles `AppPorts` for `createApp` — switches real WS vs. simulator ports on `VITE_SERVER_URL` |
 | `src/ui/` | Dumb React 19 UI (Ring ④) — every component reads data through `useViewModel()`; gates 26–29 keep it framework-swappable |
 | `src/ui/shell/` | Chrome, layout engine, boot sequence, theme, lock screen, connection overlay, status bar |
@@ -39,7 +36,7 @@ through `useViewModel()` (`ViewModel` interface); production wires presenters vi
 ## Where to start reading
 
 1. `src/main.tsx` — the entry point; shows exactly what gets mounted and in what order (fonts, `AppRoot`, `App`)
-2. `src/app/coreHost.ts` then `src/AppRoot.tsx` — where the chosen core is composed over the page's ports (the host, framework-free) and meets React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
+2. `packages/web-boot/src/coreHost.ts` then `src/AppRoot.tsx` — where the chosen core is composed over the page's ports (the host, framework-free) and meets React (`useRef`, not `useState`/`useMemo` — see the doc comment for why)
 3. `src/app/buildBrowserPorts.ts` — real-WS-vs-simulator port wiring, the browser-specific half of composition
 4. `src/ui/App.tsx` — the dumb top-level UI tree: `AmbientBackground`, `HeaderChrome`, the per-tab layout engine (`DockviewLayoutEngine` or `InhouseLayoutEngine`, by preference), `StatusBar`, `ConnectionOverlay`, `LockScreen`, `JarvisOverlay`, `JarvisPanelLayer`
 
@@ -85,7 +82,7 @@ the swap" ([§8.1](../../docs/architecture/08-replaceability-matrix.md#81-the-mu
 
 `src/app/` is where this package plugs the framework-free application core
 into the browser. `main.tsx` first resolves and loads the core (`bootCore`),
-then the core host (`src/app/coreHost.ts`) calls `core.createApp(ports)` on
+then the core host (`@rtc/web-boot`'s `coreHost.ts`) calls `core.createApp(ports)` on
 the page's ports — built once by `main.tsx` with `buildBrowserPorts()` — and
 wraps `{ presenters, commands }` in the devtools decorators; `src/AppRoot.tsx`
 uses `createViewModel` from `@rtc/react-bindings` to build the `ViewModel` the
@@ -153,8 +150,7 @@ The default `pnpm test` runs the **union** of two co-resident tiers (report
 under `reports/unit/`); each tier also has a focused runner:
 
 **App tier (`pnpm test:app`)** — co-located `src/app/**/*.test.ts(x)`: presenter
-streams (`src/app/presenters/__tests__/`), WS adapters incl. real-gateway
-contract tests (`src/app/adapters/`). No browser, no screenshots. Report under
+streams, the browser-port builder and the devtools hub (`src/app/__tests__/`). No browser, no screenshots. Report under
 `reports/app/`.
 
 **UI contract tier (`pnpm test:ui:contract`)** — framework-neutral sociable

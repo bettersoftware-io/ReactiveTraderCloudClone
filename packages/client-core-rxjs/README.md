@@ -33,7 +33,7 @@ tests compose a real core over real adapters.
 ## How a client reaches it
 
 A web client never imports this package statically. Its
-`src/app/coreSelection.ts` loads it with `import("@rtc/client-core-rxjs")`,
+`@rtc/web-boot`'s `coreSelection.ts` loads it with `import("@rtc/client-core-rxjs")`,
 which is what lets the bundler put the whole core in one lazy chunk, like the
 two alternative cores. `pnpm check:core-bundle` proves it on a real build, and
 dependency-cruiser's `web-clients-load-cores-lazily` rejects a static import on

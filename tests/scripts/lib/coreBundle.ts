@@ -3,7 +3,7 @@
  * docs/superpowers/specs/2026-09-27-runtime-core-switch-design.md): since
  * slice 8/the runtime core switch, a web client ships ONE production build
  * and loads whichever core the visitor resolved to as a lazy chunk fetched
- * only once chosen (src/app/coreSelection.ts's `loadCore`) — all three of
+ * only once chosen (packages/web-boot/src/coreSelection.ts's `loadCore`) — all three of
  * them, the RxJS core included, since approach B (ADR-006 Decision 6,
  * 2026-10-02). So the bundle isolation check is no longer "one build per
  * core" — it is "one build; the eager graph carries NO core's composition

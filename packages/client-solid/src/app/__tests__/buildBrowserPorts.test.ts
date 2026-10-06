@@ -6,8 +6,8 @@ import {
   ConnectionStatus,
   nextConnectionStatus,
 } from "@rtc/domain";
+import { LocalStoragePreferencesAdapter } from "@rtc/web-boot";
 
-import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
 // No VITE_SERVER_URL configured in vitest → simulator branch is always taken.

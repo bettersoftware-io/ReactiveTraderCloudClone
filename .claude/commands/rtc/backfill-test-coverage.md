@@ -43,11 +43,11 @@ Do not substitute the **published gh-pages report**. Two reasons, and the second
 matters more:
 
 1. It is dispatch-only and stale by default (last time: 10 days / 48 commits).
-2. **It only covers 10 tiers** — domain, server, devtools-core, devtools-app,
-   and app/contract/visual-reach for each web client. `boot-splash`,
+2. **It only covers 11 tiers** — domain, server, devtools-core, devtools-app,
+   web-boot, and app/contract/visual-reach for each web client. `boot-splash`,
    `client-core-rxjs`, `client-adapters`, `motion-core`, `ws-effects` and `devtools-relay` appear in
    **no** tier, so a gap there is invisible in the report no matter how fresh
-   it is. A local run sees all 12.
+   it is. A local run sees every package that emits a coverage report (the analyser globs `packages/*/**/lcov.info`, so a new package needs no line here).
 
 ### 2. Rank the gaps
 
