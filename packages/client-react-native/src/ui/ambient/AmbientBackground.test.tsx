@@ -89,12 +89,19 @@ test.each([
 // Asserted on `withRepeat` itself — the loop is a UI-thread worklet the render
 // tree cannot show, and the mock's shared values would resolve instantly
 // either way.
-test("does not start the drift loop under power-saver Freeze, but still paints the canvas", async () => {
-  const withRepeat = jest.spyOn(Reanimated, "withRepeat");
-  await page.mount({ animatedBackground: true, powerSaverLevel: "freeze" });
-  expect(await page.awaitExists("ambient-background")).toBeTruthy();
-  expect(withRepeat).not.toHaveBeenCalled();
-});
+test.each(["aurora", "rays"] as const)(
+  "starts no %s loop under power-saver Freeze, but still paints the canvas",
+  async (ambientStyle) => {
+    const withRepeat = jest.spyOn(Reanimated, "withRepeat");
+    await page.mount({
+      animatedBackground: true,
+      ambientStyle,
+      powerSaverLevel: "freeze",
+    });
+    expect(await page.awaitExists("ambient-background")).toBeTruthy();
+    expect(withRepeat).not.toHaveBeenCalled();
+  },
+);
 
 // One loop per CSS animation a style ports: five for the aurora (`aurora-a` …
 // `aurora-e`), three for the rays (two glows and the beam). Only the mounted
