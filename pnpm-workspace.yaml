@@ -56,6 +56,28 @@ auditConfig:
     - GHSA-vfj7-8cjw-p6xm
 
 overrides:
+  # 2026-10-06: four advisories published against production dependencies
+  # reddened CI gate 25 (`pnpm audit --prod`) on every branch, main included.
+  # Each override is SCOPED to the vulnerable range, so a consumer already on
+  # a safe version is never forced off its choice, and each patched version
+  # was published in September, outside the minimumReleaseAge cooldown.
+  #   seroval (via client-solid > solid-js > seroval-plugins):
+  #     CRITICAL GHSA-p6vx-979v-rg4c (fromJSON() thenable assimilation,
+  #     >=0.12.0 <=1.6.0) and HIGH GHSA-jp82-f5mq-hwhp (unchecked TypedArray
+  #     length, <=1.6.2). Patched 1.6.3. seroval-plugins is released in step
+  #     with seroval and peers on it, so both are lifted together.
+  #   proxy-addr (via server > @modelcontextprotocol/sdk > express):
+  #     CRITICAL GHSA-jqcg-44mw-7w3h (IP spoofing through an IPv4-mapped IPv6
+  #     trust subnet, >=1.1.0 <2.0.8). Patched 2.0.8.
+  #   source-map-js (via client-react-native > expo > … > postcss):
+  #     HIGH GHSA-68fv-2mgg-jv7q (event-loop DoS through indexed source maps,
+  #     >=1.0.0 <1.2.2). Patched 1.2.2.
+  # Not lifted: sprintf-js MODERATE GHSA-hp3w-g68c-fv3c has no patched
+  # version; gate 25 fails on high and critical only.
+  "seroval@<1.6.3": ^1.6.3
+  "seroval-plugins@<1.6.3": ^1.6.3
+  "proxy-addr@<2.0.8": ^2.0.8
+  "source-map-js@<1.2.2": ^1.2.2
   # Force the transitive brace-expansion 1.x line (arrives via minimatch/glob
   # in dozens of prod-reachable paths, e.g. client-react-native > react-native
   # > @react-native/jest-preset > … > test-exclude > minimatch) up from the
