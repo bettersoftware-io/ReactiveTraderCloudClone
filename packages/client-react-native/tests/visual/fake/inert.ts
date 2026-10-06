@@ -15,7 +15,6 @@ import {
   DEFAULT_JARVIS_EFFORT,
   DEFAULT_JARVIS_NARRATOR,
   DEFAULT_JARVIS_SKIN,
-  type DemoAccount,
   type LogEvent,
   type MetricSample,
   type SessionInfo,
@@ -78,12 +77,6 @@ export const inertSlice: InertSlice = {
   // createViewModel's own default when its host supplies no shell.
   useCoreSelection: () => {
     return null;
-  },
-  // Login screen's demo-accounts hint (web-only shell feature): RN's login
-  // screen offers none — mirrors the real createViewModel's own default when
-  // its host supplies no shell.
-  useDemoAccounts: () => {
-    return NO_DEMO_ACCOUNTS;
   },
   useEventLog: () => {
     return EMPTY_EVENT_LOG;
@@ -170,10 +163,6 @@ export const inertSlice: InertSlice = {
  * (`useEventLogValue`'s own bind default), so empty is not a degraded stand-
  * in here, it is the resting value. */
 const EMPTY_EVENT_LOG: readonly LogEvent[] = [];
-
-/** The web login screen's demo-accounts hint has no RN counterpart, so the
- * list is always empty — one shared reference, like `EMPTY_EVENT_LOG`. */
-const NO_DEMO_ACCOUNTS: readonly DemoAccount[] = [];
 
 /** Rolling session-count series for the Admin "Active Sessions" KPI card —
  * starts empty, mirroring `useMetrics`'s three series below in shape. */

@@ -27,6 +27,9 @@ function fakePowerSaver(): FakePowerSaverResult {
 
 function fakeViewModel(status: AuthStatus): ViewModel {
   return {
+    useDemoAccounts: () => {
+      return [];
+    },
     useAuth: () => {
       return {
         state: { status, locked: false, error: null, user: null },

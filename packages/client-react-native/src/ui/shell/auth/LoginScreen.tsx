@@ -13,8 +13,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import type { DemoAccount } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
+import { DemoAccountsHint } from "#/ui/shell/auth/DemoAccountsHint";
 import { HandshakeConsole } from "#/ui/shell/auth/wait/HandshakeConsole";
 import { ReactorRings } from "#/ui/shell/auth/wait/ReactorRings";
 import { ReactorWait } from "#/ui/shell/auth/wait/ReactorWait";
@@ -47,13 +49,19 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * web clients use): `handshake` shows a telemetry console under the submit,
  * `reactor` spins rings up around the emblem over an indeterminate bar. The
  * web submit's sweeping highlight is not ported — the label already reads
- * `AUTHENTICATING`, and the sweep was emphasis only. */
+ * `AUTHENTICATING`, and the sweep was emphasis only.
+ *
+ * Under the Simulator switch sits the demo-accounts hint, for the accounts
+ * the app verifies on the device (`useDemoAccounts`): the roster in simulator
+ * mode, none against a real server. It follows the switch because the switch
+ * is what makes it appear. */
 export function LoginScreen({
   simulator,
   onToggleSimulator,
 }: LoginScreenProps): JSX.Element {
-  const { useAuth } = useViewModel();
+  const { useAuth, useDemoAccounts } = useViewModel();
   const { state, login } = useAuth();
+  const demoAccounts = useDemoAccounts();
   const styles = useThemedStyles(makeStyles);
   const buildStamp = useContext(BuildStampContext);
 
@@ -65,6 +73,13 @@ export function LoginScreen({
 
   function submitLogin(): void {
     login(username, password);
+  }
+
+  /** A picked demo account fills both fields; pressing AUTHENTICATE still
+   * signs in — the pick itself never does. */
+  function stageSignIn(account: DemoAccount): void {
+    setUsername(account.username);
+    setPassword(account.password);
   }
 
   return (
@@ -150,6 +165,12 @@ export function LoginScreen({
             onValueChange={onToggleSimulator}
           />
         </View>
+
+        <DemoAccountsHint
+          accounts={demoAccounts}
+          busy={authenticating}
+          onPick={stageSignIn}
+        />
 
         {buildStamp !== null ? (
           <Text testID="login-build" style={styles.build}>

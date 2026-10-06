@@ -205,6 +205,8 @@ import { VisualScenarioHost } from "./VisualScenarioHost";
  *   `lock/hold`, restyled 2026-08-31 to the same emblem / wordmark /
  *   tracked-mono idiom. The emblem's orbit spins under `useShellMotionEnabled`
  *   exactly as `lock/hold`'s does, so the two scenarios pin identically.
+ *   The fixture shows the Simulator switch ON, so the demo-accounts hint is
+ *   listed under it (the fake's `useDemoAccounts`), as in the app.
  *
  * - `shell/login-reactor` — the same `LoginScreen` mid-request
  *   (`createPinnedReactorLogin`): the `reactor` wait treatment. `lock/hold`
