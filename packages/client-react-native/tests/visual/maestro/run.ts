@@ -5,10 +5,18 @@ import { argv, cwd, env, exit } from "node:process";
 import { promisify } from "node:util";
 
 import { SCENARIO_IDS } from "../scenarioIds.ts";
+import {
+  hideAndroidDevMenu,
+  resolveAndroidSerial,
+  restoreAndroidDevMenu,
+  reverseMetroPort,
+} from "../shared/androidDevice.ts";
 import { resolveBootedUdid } from "../shared/bootedUdid.ts";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
 import { compareToGolden, toleranceFor, verdictLine } from "../shared/diff.ts";
 import { goldenPath } from "../shared/goldens.ts";
+import { type Platform, resolvePlatform } from "../shared/platform.ts";
+import { maskTopRows, STATUS_BAR_ROWS } from "../shared/statusBarMask.ts";
 
 const exec = promisify(execFile);
 
@@ -19,9 +27,16 @@ const exec = promisify(execFile);
  *
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro
  *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update
+ *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android
+ *   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android:update
  *
- * Env: `RTC_VISUAL_UDID` (the simulator to drive; defaults to the single
- * booted one, and refuses to guess between two), `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
+ * The SAME flows drive both platforms; what differs is the device this runner
+ * prepares around them and the golden set it compares against.
+ *
+ * Env: `RTC_VISUAL_PLATFORM` (`ios`, the default, or `android`),
+ * `RTC_VISUAL_UDID` (the simulator — or Android serial — to drive; defaults to
+ * the single running one, and refuses to guess between two), `RTC_VISUAL_ADB`
+ * (Android only: the `adb` binary, when it is not on `PATH`), `MAESTRO_METRO_PORT` (default `8083`, injected into the flow's
  * dev-client link — the `MAESTRO_` prefix is what makes Maestro interpolate
  * `${MAESTRO_METRO_PORT}`), `RTC_VISUAL_MAESTRO_SHOTS` (where the flows'
  * `takeScreenshot: shots/<id>` PNGs land). Maestro writes a relative
@@ -34,38 +49,32 @@ const SHOTS: string = env.RTC_VISUAL_MAESTRO_SHOTS ?? join(cwd(), "shots");
 
 async function main(): Promise<void> {
   const update = argv.includes("--update");
-  // Pinned, never left to Maestro: its goldens sit under a path claiming
-  // `ios-iphone17-26`, and with two simulators booted Maestro would pick one
-  // itself. The same UDID is what `hideDevMenuFab` needs — which is why this
-  // tier's goldens carried the dev-menu gear until 2026-10-01.
-  const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
-
-  // Once around the whole run, restored in `finally` — the same contract as
-  // the simctl tier (see `hideDevMenuFab`).
-  await hideDevMenuFab(udid);
+  const platform = resolvePlatform(env.RTC_VISUAL_PLATFORM);
+  const metroPort = env.MAESTRO_METRO_PORT ?? "8083";
+  const device = await prepareDevice(platform, metroPort);
 
   try {
     await exec(
       "maestro",
-      ["--udid", udid, "test", FLOWS_DIR, "--format", "junit"],
+      ["--udid", device.id, "test", FLOWS_DIR, "--format", "junit"],
       {
         env: {
           ...env,
           MAESTRO_CLI_NO_ANALYTICS: "1",
-          MAESTRO_METRO_PORT: env.MAESTRO_METRO_PORT ?? "8083",
+          MAESTRO_METRO_PORT: metroPort,
         },
       },
     );
   } finally {
-    await restoreDevMenuFab(udid);
+    await device.restore();
   }
 
   let failures = 0;
 
   for (const id of SCENARIO_IDS) {
     const shot = join(SHOTS, `${id.replace(/\//g, "_")}.png`);
-    const png = await readFile(shot);
-    const gp = goldenPath("maestro", id);
+    const png = maskTopRows(await readFile(shot), STATUS_BAR_ROWS[platform]);
+    const gp = goldenPath("maestro", id, platform);
 
     if (update) {
       await mkdir(dirname(gp), { recursive: true });
@@ -94,6 +103,48 @@ async function main(): Promise<void> {
   }
 
   exit(0);
+}
+
+/** A device made ready for a run, and how to put it back. */
+interface PreparedDevice {
+  readonly id: string;
+  restore(): Promise<void>;
+}
+
+/** Resolves the device and hides what must not be in a shot. The id is pinned,
+ * never left to Maestro: the goldens sit under a path naming one device, and
+ * with two running Maestro would pick one itself. Everything done here is
+ * undone by `restore`, which the caller runs in a `finally`. */
+async function prepareDevice(
+  platform: Platform,
+  metroPort: string,
+): Promise<PreparedDevice> {
+  if (platform === "android") {
+    const serial = env.RTC_VISUAL_UDID ?? (await resolveAndroidSerial());
+
+    await reverseMetroPort(serial, metroPort);
+    const devMenu = await hideAndroidDevMenu(serial);
+
+    return {
+      id: serial,
+      restore: async () => {
+        await restoreAndroidDevMenu(serial, devMenu);
+      },
+    };
+  }
+
+  // The same UDID is what `hideDevMenuFab` needs — which is why this tier's
+  // goldens carried the dev-menu gear until 2026-10-01.
+  const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
+
+  await hideDevMenuFab(udid);
+
+  return {
+    id: udid,
+    restore: async () => {
+      await restoreDevMenuFab(udid);
+    },
+  };
 }
 
 main().catch((e: unknown): void => {

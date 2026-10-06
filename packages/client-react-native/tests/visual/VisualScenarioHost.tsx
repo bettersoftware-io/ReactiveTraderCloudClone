@@ -195,7 +195,15 @@ function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
        * 41 accessibility nodes -> 3), which would blind the Maestro tier
        * to the scenario's own content.
        *
-       * 1x1 and empty, so it paints nothing and cannot shift a golden. */}
+       * 1x1 and empty, so it paints nothing and cannot shift a golden.
+       *
+       * Halfway down the left edge, not in a corner: on Android the status
+       * bar and the navigation bar are windows of their own, drawn over the
+       * top and bottom of an edge-to-edge app, and Maestro drops an element
+       * that sits wholly under one of them. At `top: 0` the marker was in
+       * `uiautomator dump` yet absent from Maestro's hierarchy, so every flow
+       * timed out waiting for a screen that was ready (measured 2026-10-05;
+       * enlarging it to 12x12 changed nothing, moving it down fixed it). */}
       <View
         testID={ready ? "visual-ready" : "visual-pending"}
         accessible={true}
@@ -203,7 +211,7 @@ function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
         pointerEvents="none"
         style={{
           position: "absolute",
-          top: 0,
+          top: "50%",
           left: 0,
           width: 1,
           height: 1,

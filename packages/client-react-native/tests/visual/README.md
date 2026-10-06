@@ -11,7 +11,8 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 ## What's here
 
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
-- `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone17-26`).
+- `shared/goldens.ts` — golden path resolver + the device pins (`ios-iphone17-26`, `android-pixel10a-37`).
+- `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: resolve the one device, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
 - `simctl/` — **Tier 1** capture driver + CLI runner (`xcrun simctl` + `idb`).
@@ -20,6 +21,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
   test were removed 2026-07-25 (they were the sole source of a vulnerable
   transitive `ajv@7`). See `BAKEOFF.md`.
 - `__screenshots__/ios-iphone17-26/{simctl,maestro}/` — committed goldens (one set per viable tier).
+- `__screenshots__/android-pixel10a-37/maestro/` — the Android set (Maestro only; `simctl` is Apple-only).
 
 **Scenarios** — `scenarioIds.ts` is the authoritative list (it has grown well past the three original "prove-the-harness" fixtures below, which are kept as worked examples):
 
@@ -66,6 +68,26 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
   pnpm --filter @rtc/client-react-native test:rn:visual:maestro          # verify vs goldens
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update   # regenerate
 ```
+
+### Android (Maestro only)
+
+```bash
+# once: a debug build on the emulator (JDK 17, ~4 min; creates the gitignored android/)
+ANDROID_HOME=~/Library/Android/sdk JAVA_HOME="$(brew --prefix openjdk@17)" \
+  npx expo run:android --no-bundler          # from packages/client-react-native
+
+# each run: emulator `Pixel_10a` (API 37) cold-booted, Metro (8083) up as above
+PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
+  JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
+  pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android          # verify
+… pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android:update   # regenerate
+```
+
+The flows are the same files iOS runs. A build signed with another key (an EAS
+preview APK) must be uninstalled first — `adb install` refuses to replace it.
+Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
+service mid-run. The top 142 rows (the status bar) are blacked out in every
+Android shot because that bar does not reproduce between boots.
 
 **Tier 1** capture: load the app from Metro base → poll the a11y tree for the `login-screen` boot marker → in-app deep-link `rtcmobile://__visual/<id>` → dismiss the iOS "Open in RTC Mobile?" confirmation by locating its "Open" button in the a11y tree (a blind coordinate tap at the iPhone 17 pin, `(274, 474)`, is a **fallback only**, tried once if no such button is found partway through the wait) → poll the a11y tree for the harness's `visual-ready` id, throwing if it's never observed → re-check the a11y tree isn't launcher-shaped at the moment of the shot → `simctl io screenshot --mask=black` (the flag is pinned because Xcode 27 changed the default mask policy and dropped the Dynamic Island. It paints the WHOLE device mask black — the island **and the four rounded screen corners** — and since 2026-10-02 every simctl golden is captured that way. A diff confined to the first/last ~250 rows at the row ends is the corner mask, i.e. a golden from before the pin, not a content change and not flake: it reads ~1% on a light background and a few pixels on a dark one). **Tier 2** does the same two-step deep link via Maestro's own a11y-tree waits (`extendedWaitUntil`). After `:update`, eyeball each PNG and run the verify pass — it must report `pass` for every scenario (a golden that can't reproduce itself is flaky; fix the scenario, don't pin the flake).
 

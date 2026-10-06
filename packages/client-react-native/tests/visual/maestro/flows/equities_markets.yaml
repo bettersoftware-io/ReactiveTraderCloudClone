@@ -22,8 +22,11 @@ appId: io.bettersoftware.rtcmobile
 # screen. Diagnosed from a CI failure screenshot (the flow reported only
 # `Assertion is false: id: login-screen is visible`, which named what was
 # absent and nothing about the dialog that caused it).
+# iOS only: Android opens a link without asking, and an app screen there
+# may carry its own 'Open' text, which this would tap.
 - runFlow:
     when:
+      platform: iOS
       visible: "Open"
     commands:
       - tapOn: "Open"
@@ -41,6 +44,7 @@ appId: io.bettersoftware.rtcmobile
 # Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
 - runFlow:
     when:
+      platform: iOS
       visible: "Open"
     commands:
       - tapOn: "Open"
