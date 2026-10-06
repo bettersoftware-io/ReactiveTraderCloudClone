@@ -128,8 +128,14 @@ jobs:
       - name: Playwright container image tag drift (single-source pin)
         run: pnpm check:image-tag-drift
 
-      - name: Lint-warnings ledger drift (docs/lint-warnings.md)
-        run: pnpm check:lint-warnings-drift
+      # DORMANT since 2026-10-06. Every lint step runs with --max-warnings 0
+      # (#960), so the ledger can only read zero and this step re-ran ESLint
+      # for nothing. Kept, with the ledger and its two scripts, as the
+      # fallback: if warnings are ever allowed again, uncomment this step in
+      # the same PR that drops --max-warnings 0, and put the row back in
+      # .claude/commands/rtc/gauntlet.md.
+      # - name: Lint-warnings ledger drift (docs/lint-warnings.md)
+      #   run: pnpm check:lint-warnings-drift
 
       - name: Version consistency (manypkg + syncpack)
         run: pnpm check:versions

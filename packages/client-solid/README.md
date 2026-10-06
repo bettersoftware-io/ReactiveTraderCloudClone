@@ -167,8 +167,8 @@ existing equality guard handles mount with no special case — the mount call
 still runs (comparing the current value against itself, a no-op) and,
 critically, still records the mount values as `previous` for the first real
 call afterwards. See `CreditBlotter.tsx`, `NewRfqPanel.tsx`, and
-`RfqsPanel.tsx` for worked examples. Unsuppressed warnings are ledgered in
-[`docs/lint-warnings.md`](../../docs/lint-warnings.md) (CI drift-gated).
+`RfqsPanel.tsx` for worked examples. A `solid/reactivity` finding fails the lint step, so it is
+either fixed or carries a justified disable comment.
 
 ## See also
 
