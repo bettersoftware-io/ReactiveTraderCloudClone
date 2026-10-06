@@ -171,6 +171,10 @@ function createHostHarness(initial: CoreImpl = "rxjs"): HostHarness {
     nextMacrotask: (): Promise<void> => {
       return Promise.resolve();
     },
+    // Never expires: every fake here settles at once.
+    startTimer: (): (() => void) => {
+      return (): void => {};
+    },
   });
 
   return { host, cores, publish, persist, info, onFatal, disposed };

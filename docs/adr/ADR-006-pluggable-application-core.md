@@ -448,6 +448,7 @@ warning.
 | `createApp` (or the devtools `instrument`) of the new core | An app that was created is disposed. The **previous** core is composed again over the same ports and mounted. `failure$` carries the reason, `data-core-impl` names the previous core, and the saved choice is untouched. |
 | The previous core fails too, or anything else between the unmount and a successful mount (the mount itself included) | Every app that is composed but not mounted is disposed. `onFatal` is called once and shows the boot-error screen. When the new core's failure led to it, that first error is logged as a `[core]` warning. `state$` ends at `fatal`, nothing claims to be composed, and later `swapTo` calls do nothing. |
 | `old.dispose()` rejects | A `[core]` warning; the swap continues, since the old tree is already gone. |
+| `old.dispose()` has not settled after 5 s (`DISPOSE_TIMEOUT_MS`) | `onFatal` is called once and shows the boot-error screen, whose reload boots the default core. The next core is **not** composed: a half-disposed core may still hold the ports. The hung `dispose()` is not awaited again. |
 | A step after a successful mount (`publish`, the console line, saving, stripping `?core=`, lifting the cover) | A `[core]` warning; the steps after it still run. |
 | Saving returns false (storage blocked or full) | A `[core]` warning that the choice will not survive a reload; the swap stands. |
 | A second `swapTo` during a swap, or `swapTo(current)` | Nothing. |
