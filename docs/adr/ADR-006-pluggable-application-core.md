@@ -464,7 +464,7 @@ after a drag would otherwise lose the drag.
 
 **Witnesses**, per web client unless noted:
 
-- `packages/web-boot/src/coreHost.test.ts` — 22 cases over fake cores: the step order,
+- `packages/web-boot/src/coreHost.test.ts` — 38 cases over fake cores: the step order,
   every failure row, re-entrancy, the splash once, the reopen once, the
   phases and the hold.
 - `src/app/coreHost.swap.test.ts` — 13 cases over the real browser ports,
@@ -1599,7 +1599,7 @@ changing it.
 11. **The web boot code in one package, `@rtc/web-boot`.** — 2026-10-06: the
     core host, the core selection and the swap cover moved from each web
     client's `src/app` into `@rtc/web-boot`, one copy. Behaviour unchanged.
-    `buildBrowserPorts` and the shared part of `main.tsx` follow.
+    `buildBrowserPorts` and the tree mounts stay in each client.
     [The package spec](../superpowers/specs/2026-10-06-web-boot-package-design.md).
 
 ## See also

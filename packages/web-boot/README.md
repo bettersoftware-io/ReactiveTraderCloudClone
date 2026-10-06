@@ -33,5 +33,7 @@ pnpm --filter @rtc/web-boot test            # unit tests
 pnpm --filter @rtc/web-boot test:coverage   # the gate: ≥95%, branches ≥85%
 ```
 
-The clients consume the built `dist`, so a client's tests see an edit here only
-after `pnpm --filter @rtc/web-boot build`.
+Both clients, the dev server included, consume the built `dist`. An edit here
+shows up in a running `pnpm dev` only with `pnpm dev:watch` running alongside,
+or after `pnpm --filter @rtc/web-boot build`. A client's tests see it the same
+way.
