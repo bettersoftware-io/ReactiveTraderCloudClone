@@ -7,28 +7,18 @@ import {
   Rect,
   vec,
 } from "@shopify/react-native-skia";
-import { type JSX, useEffect } from "react";
-import {
-  cancelAnimation,
-  type SharedValue,
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
+import type { JSX } from "react";
+import { type SharedValue, useDerivedValue } from "react-native-reanimated";
 
 import { GlowLayer } from "#/ui/ambient/GlowLayer";
 import {
   type Box,
   DRIFT_A,
   DRIFT_B,
-  EASE_IN_OUT,
   type GlowSpec,
   glowGradient,
 } from "#/ui/ambient/glowSpec";
-import { useSwingClock } from "#/ui/ambient/useSwingClock";
-import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import type { AuroraClock, AuroraClocks } from "#/ui/ambient/useAuroraClocks";
 
 /**
  * The "aurora" ambient style: the web client's northern-lights curtains
@@ -50,19 +40,20 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
  * Every number below is the web stylesheet's. CSS percentages are resolved
  * against the layer's own box, which is what `box` carries.
  *
- * Motion is five Reanimated shared values, one per CSS animation, read by
- * Skia on the UI thread through `useDerivedValue`: transform only, no React
- * render per frame. Under power-saver Freeze (`useShellMotionEnabled`) no
- * loop runs and every layer rests at its 0% keyframe, which is the frame the
- * visual harness captures.
+ * Motion is five Reanimated shared values, one per CSS animation
+ * (`useAuroraClocks`), read by Skia on the UI thread through
+ * `useDerivedValue`: transform only, no React render per frame. This
+ * component only draws: it renders inside the Skia canvas, where React
+ * context does not reach, so the clocks are made by the canvas's parent and
+ * handed in. At rest every layer holds its 0% keyframe, which is the frame
+ * the visual harness captures.
  */
 export function AuroraCurtains({
   width,
   height,
   glowStrength,
+  clocks,
 }: AuroraCurtainsProps): JSX.Element {
-  const clocks = useAuroraClocks();
-
   return (
     <>
       {glowSpecs(width, height).map((glow) => {
@@ -94,58 +85,8 @@ interface AuroraCurtainsProps {
   readonly height: number;
   /** The skin's `aurora` intensity, applied to the two glow layers only. */
   readonly glowStrength: number;
-}
-
-/** One clock per CSS animation: `aurora-a` … `aurora-e`. */
-type AuroraClock = "a" | "b" | "c" | "d" | "e";
-
-type AuroraClocks = Readonly<Record<AuroraClock, SharedValue<number>>>;
-
-/** Full-cycle durations of the three curtain animations, in ms; the two
- * glow layers carry their own (`DRIFT_A`, `DRIFT_B`). */
-const CURTAIN_CYCLE_MS = { c: 44_000, d: 61_000, e: 27_000 } as const;
-
-/** `aurora-e` is the one animation with four keyframes (0/33/66/100%), so its
- * clock runs 0→1→2→3 and wraps; the other four swing 0→1→0. */
-const E_SEGMENTS: readonly number[] = [0.33, 0.33, 0.34];
-
-function useAuroraClocks(): AuroraClocks {
-  const drifting = useShellMotionEnabled();
-  const a = useSwingClock(DRIFT_A.cycleMs);
-  const b = useSwingClock(DRIFT_B.cycleMs);
-  const c = useSwingClock(CURTAIN_CYCLE_MS.c);
-  const d = useSwingClock(CURTAIN_CYCLE_MS.d);
-  const e = useSharedValue(0);
-
-  useEffect(() => {
-    cancelAnimation(e);
-    e.value = 0;
-
-    if (!drifting) {
-      return;
-    }
-
-    e.value = withRepeat(
-      withSequence(
-        ...E_SEGMENTS.map((share, index) => {
-          return withTiming(index + 1, {
-            duration: CURTAIN_CYCLE_MS.e * share,
-            easing: EASE_IN_OUT,
-          });
-        }),
-        // Back to the start of the cycle in no time: the 100% keyframe is
-        // the 0% keyframe, so the wrap does not show.
-        withTiming(0, { duration: 0 }),
-      ),
-      -1,
-    );
-
-    return () => {
-      cancelAnimation(e);
-    };
-  }, [drifting, e]);
-
-  return { a, b, c, d, e };
+  /** From `useAuroraClocks`, which the canvas's parent calls. */
+  readonly clocks: AuroraClocks;
 }
 
 /** A curtain's pose at one keyframe:

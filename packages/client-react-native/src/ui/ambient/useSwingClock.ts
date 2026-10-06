@@ -17,11 +17,16 @@ import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
  * eases 0%→50% and 50%→100% separately.
  *
  * It asks the motion gate itself, so a layer cannot be given a running clock
- * by a caller that forgot to: under power-saver Freeze no loop starts and the
- * clock rests at 0, the layer's 0% keyframe.
+ * by a caller that forgot to: under power-saver Freeze, or while `active` is
+ * false (the other ambient style is showing), no loop starts and the clock
+ * rests at 0, the layer's 0% keyframe. Like every hook that reads the view
+ * model, it must be called outside the Skia canvas (see `useAuroraClocks`).
  */
-export function useSwingClock(cycleMs: number): SharedValue<number> {
-  const drifting = useShellMotionEnabled();
+export function useSwingClock(
+  cycleMs: number,
+  active: boolean,
+): SharedValue<number> {
+  const drifting = useShellMotionEnabled() && active;
   const clock = useSharedValue(0);
 
   useEffect(() => {

@@ -1,14 +1,7 @@
 // packages/client-react-native/src/ui/ambient/AmbientRays.tsx
 import { Circle, Group, SweepGradient, vec } from "@shopify/react-native-skia";
-import { type JSX, useEffect } from "react";
-import {
-  cancelAnimation,
-  Easing,
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
+import type { JSX } from "react";
+import { useDerivedValue } from "react-native-reanimated";
 
 import { GlowLayer } from "#/ui/ambient/GlowLayer";
 import {
@@ -18,8 +11,7 @@ import {
   type GlowSpec,
   glowGradient,
 } from "#/ui/ambient/glowSpec";
-import { useSwingClock } from "#/ui/ambient/useSwingClock";
-import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
+import type { RaysClocks } from "#/ui/ambient/useRaysClocks";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { withAlpha } from "#/ui/theme/withAlpha";
 
@@ -40,38 +32,19 @@ import { withAlpha } from "#/ui/theme/withAlpha";
  * strength in every skin, the web's Holo level (`RAYS_STRENGTH`) — the
  * owner's choice, 2026-10-06.
  *
- * Under power-saver Freeze (`useShellMotionEnabled`) no loop runs: the glows
- * rest at their 0% keyframe and the beam points straight up, which is the
- * frame the visual harness captures.
+ * This component only draws: it renders inside the Skia canvas, where React
+ * context does not reach, so its three clocks (`useRaysClocks`) are made by
+ * the canvas's parent and handed in. At rest the glows hold their 0% keyframe
+ * and the beam points straight up, which is the frame the visual harness
+ * captures.
  */
 export function AmbientRays({
   width,
   height,
   theme,
+  clocks,
 }: AmbientRaysProps): JSX.Element {
-  const drifting = useShellMotionEnabled();
-  const driftA = useSwingClock(DRIFT_A.cycleMs);
-  const driftB = useSwingClock(DRIFT_B.cycleMs);
-  const turn = useSharedValue(0);
-
-  useEffect(() => {
-    cancelAnimation(turn);
-    turn.value = 0;
-
-    if (!drifting) {
-      return;
-    }
-
-    turn.value = withRepeat(
-      withTiming(1, { duration: SWEEP_TURN_MS, easing: Easing.linear }),
-      -1,
-    );
-
-    return () => {
-      cancelAnimation(turn);
-    };
-  }, [drifting, turn]);
-
+  const { driftA, driftB, turn } = clocks;
   const [glowA, glowB] = glowSpecs(width, height, theme);
 
   // The beam's wedge is drawn starting at Skia's zero angle, which points
@@ -123,6 +96,8 @@ interface AmbientRaysProps {
   readonly width: number;
   readonly height: number;
   readonly theme: RnTheme;
+  /** From `useRaysClocks`, which the canvas's parent calls. */
+  readonly clocks: RaysClocks;
 }
 
 /** What the web's Holo skin multiplies this style by (`--aurora-opacity:
@@ -133,8 +108,6 @@ const GLOW_A_OPACITY = 0.18;
 const GLOW_B_OPACITY = 0.13;
 /** `.sweep`'s own share: `opacity: calc(var(--aurora-opacity) * 0.06)`. */
 const SWEEP_OPACITY = 0.06;
-/** One full turn of the beam. */
-const SWEEP_TURN_MS = 90_000;
 /** The beam is a 170vmax square on the web, so it reaches 85vmax from the
  * centre along the axes and further into the corners; a disc of that
  * half-diagonal covers the same ground. */

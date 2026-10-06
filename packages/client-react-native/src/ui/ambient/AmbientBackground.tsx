@@ -8,6 +8,8 @@ import { useViewModel } from "@rtc/react-bindings";
 import { AmbientRays } from "#/ui/ambient/AmbientRays";
 import { AuroraCurtains } from "#/ui/ambient/AuroraCurtains";
 import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
+import { useAuroraClocks } from "#/ui/ambient/useAuroraClocks";
+import { useRaysClocks } from "#/ui/ambient/useRaysClocks";
 import { useTheme } from "#/ui/theme/useTheme";
 
 /**
@@ -37,7 +39,7 @@ import { useTheme } from "#/ui/theme/useTheme";
  * per the perf doctrine.
  *
  * The DRIFT is additionally gated by `useShellMotionEnabled()`, which each
- * style asks for itself where it starts its loops: under
+ * style's clock hook asks for itself: under
  * power-saver Freeze the canvas still paints (grid + the style's resting
  * frame) but no loop starts — Freeze is the tier that kills every motion. It
  * is also what lets the visual harness capture the ambient layer at all: with
@@ -57,6 +59,10 @@ export function AmbientBackground(): JSX.Element | null {
   const { width, height } = useWindowDimensions();
   const { useAmbientStyle } = useViewModel();
   const { style } = useAmbientStyle();
+  // Made here and handed down: a hook that reads the view model cannot run
+  // inside the canvas (see `useAuroraClocks`). Only the showing style's run.
+  const auroraClocks = useAuroraClocks(enabled && style === "aurora");
+  const raysClocks = useRaysClocks(enabled && style === "rays");
 
   if (!enabled) {
     return null;
@@ -71,7 +77,12 @@ export function AmbientBackground(): JSX.Element | null {
       {gridLines(width, height, t.gridC)}
       {style === "rays" ? (
         <TestGroup testID="ambient-rays">
-          <AmbientRays width={width} height={height} theme={t} />
+          <AmbientRays
+            width={width}
+            height={height}
+            theme={t}
+            clocks={raysClocks}
+          />
         </TestGroup>
       ) : (
         <TestGroup testID="ambient-aurora-curtains">
@@ -79,6 +90,7 @@ export function AmbientBackground(): JSX.Element | null {
             width={width}
             height={height}
             glowStrength={t.aurora}
+            clocks={auroraClocks}
           />
         </TestGroup>
       )}
