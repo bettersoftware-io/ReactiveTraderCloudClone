@@ -5,7 +5,7 @@
  * hands over — so what is under test is whether a core composed over ports
  * another core already used behaves like one composed over fresh ports
  * (spec 2026-10-05-core-hot-swap-design.md). The host's own sequence is
- * pinned with fake cores in `coreHost.test.ts`.
+ * pinned with fake cores in `coreHost.test.ts` in `@rtc/web-boot`.
  *
  * Everything runs on fake timers: the simulators, the host's cover and
  * macrotask waits, and every core's scheduling all follow them, so each wait

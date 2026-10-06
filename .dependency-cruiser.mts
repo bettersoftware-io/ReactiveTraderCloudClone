@@ -257,14 +257,35 @@ const config: IConfiguration = {
       },
     },
     {
+      name: "web-boot-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/web-boot is the boot code both web clients share: browser adapters, the core selection and the core host. It may depend only on client-adapters, the three cores (through import(), see `web-clients-load-cores-lazily`), core-api, devtools-core and domain: never on a client, a bindings package, @rtc/shared, @rtc/ui-contract or any other package.",
+      from: { path: "^packages/web-boot/src" },
+      to: {
+        path: "^packages/",
+        pathNot:
+          "^packages/(web-boot|client-adapters|client-core-(rxjs|async|effect)|core-api|devtools-core|domain)/",
+      },
+    },
+    {
       name: "web-boot-stays-framework-free",
       severity: "error",
       comment:
-        "@rtc/web-boot is the boot code both web clients share: browser adapters, the port builder, the core selection and the core host. It may touch the DOM, and it must not import a UI framework, a client, a bindings package, @rtc/shared or @rtc/ui-contract.",
+        "@rtc/web-boot may touch the DOM (it reads localStorage, window and document), but it is framework-free by contract: no React or Solid, which each client supplies for itself.",
       from: { path: "^packages/web-boot/src" },
-      to: {
-        path: "(^|node_modules/)(react|react-dom|solid-js)(/|$)|^packages/(client-react|client-solid|client-react-native|react-bindings|solid-bindings|shared|ui-contract)/",
+      to: { path: "(^|node_modules/)(react|react-dom|solid-js)(/|$)" },
+    },
+    {
+      name: "web-boot-only-in-web-clients",
+      severity: "error",
+      comment:
+        "@rtc/web-boot reads localStorage, window and document, so only the two web clients may import it. The React Native client, the server and every inner package must not. (`pnpm check:deps` also scans tests/, and nothing there imports it.)",
+      from: {
+        path: "^packages/",
+        pathNot: "^packages/(web-boot|client-react|client-solid)/",
       },
+      to: { path: "^packages/web-boot/" },
     },
     {
       name: "ui-contract-only-in-client-tests",

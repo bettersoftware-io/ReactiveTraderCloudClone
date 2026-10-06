@@ -142,7 +142,7 @@ interface EffectCoreModule {
  * packages reached the same way; `@rtc/client-adapters`, which the UI imports
  * eagerly, holds only the adapters, so none of the three cores is in the
  * entry bundle (ADR-006 Decision 6). A static import of a core from this
- * client's source is a dependency-cruiser error
+ * package's source, or from a web client's, is a dependency-cruiser error
  * (`web-clients-load-cores-lazily`). */
 const DEFAULT_CORE_IMPORTERS: CoreImporters = {
   rxjs: () => {

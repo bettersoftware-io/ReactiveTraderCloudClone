@@ -526,15 +526,6 @@ importers:
       '@rtc/client-adapters':
         specifier: workspace:*
         version: link:../client-adapters
-      '@rtc/client-core-async':
-        specifier: workspace:*
-        version: link:../client-core-async
-      '@rtc/client-core-effect':
-        specifier: workspace:*
-        version: link:../client-core-effect
-      '@rtc/client-core-rxjs':
-        specifier: workspace:*
-        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -559,9 +550,6 @@ importers:
       '@rtc/web-boot':
         specifier: workspace:*
         version: link:../web-boot
-      '@rx-state/core':
-        specifier: ^0.1.4
-        version: 0.1.4(rxjs@7.8.2)
       motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -584,12 +572,24 @@ importers:
       '@rolldown/plugin-babel':
         specifier: ^0.2.3
         version: 0.2.4(@babel/core@8.0.6)(@babel/plugin-transform-runtime@7.29.7(@babel/core@8.0.6)(supports-color@11.0.0))(@babel/runtime@7.29.7)(rolldown@1.2.11)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+      '@rtc/client-core-async':
+        specifier: workspace:*
+        version: link:../client-core-async
+      '@rtc/client-core-effect':
+        specifier: workspace:*
+        version: link:../client-core-effect
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rtc/devtools-app':
         specifier: workspace:*
         version: link:../devtools-app
       '@rtc/ui-contract':
         specifier: workspace:*
         version: link:../ui-contract
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.2
@@ -843,15 +843,6 @@ importers:
       '@rtc/client-adapters':
         specifier: workspace:*
         version: link:../client-adapters
-      '@rtc/client-core-async':
-        specifier: workspace:*
-        version: link:../client-core-async
-      '@rtc/client-core-effect':
-        specifier: workspace:*
-        version: link:../client-core-effect
-      '@rtc/client-core-rxjs':
-        specifier: workspace:*
-        version: link:../client-core-rxjs
       '@rtc/core-api':
         specifier: workspace:*
         version: link:../core-api
@@ -876,9 +867,6 @@ importers:
       '@rtc/web-boot':
         specifier: workspace:*
         version: link:../web-boot
-      '@rx-state/core':
-        specifier: ^0.1.4
-        version: 0.1.4(rxjs@7.8.2)
       rxjs:
         specifier: ^7.8
         version: 7.8.2
@@ -889,12 +877,24 @@ importers:
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.63.0
+      '@rtc/client-core-async':
+        specifier: workspace:*
+        version: link:../client-core-async
+      '@rtc/client-core-effect':
+        specifier: workspace:*
+        version: link:../client-core-effect
+      '@rtc/client-core-rxjs':
+        specifier: workspace:*
+        version: link:../client-core-rxjs
       '@rtc/devtools-app':
         specifier: workspace:*
         version: link:../devtools-app
       '@rtc/ui-contract':
         specifier: workspace:*
         version: link:../ui-contract
+      '@rx-state/core':
+        specifier: ^0.1.4
+        version: 0.1.4(rxjs@7.8.2)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.15)
