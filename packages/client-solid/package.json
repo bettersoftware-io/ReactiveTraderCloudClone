@@ -31,7 +31,6 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/orbitron": "^5.2.8",
     "@rtc/boot-splash": "workspace:*",
-    "@rtc/web-boot": "workspace:*",
     "@rtc/client-adapters": "workspace:*",
     "@rtc/client-core-async": "workspace:*",
     "@rtc/client-core-effect": "workspace:*",
@@ -43,6 +42,7 @@
     "@rtc/layout-dockview": "workspace:*",
     "@rtc/motion-core": "workspace:*",
     "@rtc/solid-bindings": "workspace:*",
+    "@rtc/web-boot": "workspace:*",
     "@rx-state/core": "^0.1.4",
     "rxjs": "^7.8",
     "solid-js": "^1.9.14"
