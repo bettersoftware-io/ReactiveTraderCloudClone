@@ -19,37 +19,49 @@ test("renders the canvas when the animated-background preference is on", async (
   expect(await page.awaitExists("ambient-background")).toBeTruthy();
 });
 
-test("draws the aurora wash group when ambientStyle is aurora and ambient is enabled", async () => {
+test("draws the aurora curtains group when ambientStyle is aurora and ambient is enabled", async () => {
   await page.mount({ animatedBackground: true, ambientStyle: "aurora" });
-  expect(await page.awaitExists("ambient-aurora-wash")).toBeTruthy();
+  expect(await page.awaitExists("ambient-aurora-curtains")).toBeTruthy();
   expect(page.exists("ambient-rays-blobs")).toBe(false);
 });
 
 test("draws the rays blobs group when ambientStyle is rays and ambient is enabled", async () => {
   await page.mount({ animatedBackground: true, ambientStyle: "rays" });
   expect(await page.awaitExists("ambient-rays-blobs")).toBeTruthy();
-  expect(page.exists("ambient-aurora-wash")).toBe(false);
+  expect(page.exists("ambient-aurora-curtains")).toBe(false);
 });
 
-// The washes were once multiplied by a per-skin intensity, which put them at
-// 2% on classic and made the layer read as absent. The design draws them at
-// the same strength in every skin.
+// The web draws its curtains and wash at their own strength in every skin;
+// only the two glow layers follow the skin's intensity. Scaling the curtains
+// too is what once made the whole style read as absent.
 test.each([
   ["classic dark", rnThemeTokens.classic.dark],
   ["neon dark", rnThemeTokens.neon.dark],
   ["terminal light", rnThemeTokens.terminal.light],
 ])(
-  "draws the aurora washes at the design's 0.13 and 0.10 on %s",
+  "draws the three aurora curtains and the wash at the web's strengths on %s",
   async (_name, theme) => {
     await page.mount({
       animatedBackground: true,
       ambientStyle: "aurora",
       theme,
     });
-    await page.awaitExists("ambient-aurora-wash");
-    expect(page.shapeOpacities(/^aurora-wash-/)).toEqual([0.13, 0.1]);
+    await page.awaitExists("ambient-aurora-curtains");
+    expect(page.shapeOpacities(/^aurora-curtain-/)).toEqual([0.3, 0.24, 0.22]);
+    expect(page.shapeOpacities(/^aurora-wash$/)).toEqual([0.5]);
   },
 );
+
+test("scales the two aurora glow layers, and only them, by the skin's intensity", async () => {
+  const theme = rnThemeTokens.neon.dark;
+  await page.mount({ animatedBackground: true, ambientStyle: "aurora", theme });
+  await page.awaitExists("ambient-aurora-curtains");
+
+  const [glowA, glowB] = page.shapeOpacities(/^aurora-glow-/);
+
+  expect(glowA).toBeCloseTo(0.26 * theme.aurora);
+  expect(glowB).toBeCloseTo(0.2 * theme.aurora);
+});
 
 test("draws the three rays blobs at one strength in every skin", async () => {
   await page.mount({
@@ -73,9 +85,25 @@ test("does not start the drift loop under power-saver Freeze, but still paints t
   expect(withRepeat).not.toHaveBeenCalled();
 });
 
-test("starts the drift loop when power-saver is off", async () => {
+// One loop per CSS animation the aurora ports (`aurora-a` … `aurora-e`); the
+// rays blobs share a single one. Only the active style's loops run.
+test("starts the aurora's five loops, and not the rays loop, when power-saver is off", async () => {
   const withRepeat = jest.spyOn(Reanimated, "withRepeat");
-  await page.mount({ animatedBackground: true, powerSaverLevel: "off" });
+  await page.mount({
+    animatedBackground: true,
+    ambientStyle: "aurora",
+    powerSaverLevel: "off",
+  });
+  expect(withRepeat).toHaveBeenCalledTimes(5);
+});
+
+test("starts the one rays loop, and none of the aurora's, when power-saver is off", async () => {
+  const withRepeat = jest.spyOn(Reanimated, "withRepeat");
+  await page.mount({
+    animatedBackground: true,
+    ambientStyle: "rays",
+    powerSaverLevel: "off",
+  });
   expect(withRepeat).toHaveBeenCalledTimes(1);
 });
 
