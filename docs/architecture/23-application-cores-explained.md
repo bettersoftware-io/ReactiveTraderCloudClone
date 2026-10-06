@@ -883,9 +883,9 @@ unmounts the UI, waits one macrotask so the UI's machines finish disposing,
 disposes the old core, composes the new one over the same ports and mounts
 the UI again. Then it saves the choice and opens Preferences again, so you
 land where you were. If the new core cannot load or start, the page stays
-on (or goes back to) the old core and Preferences shows why. Today this
-happens with no visible cover; a short overlay over the swap is the
-workstream's remaining step.
+on (or goes back to) the old core and Preferences shows why. A short
+overlay covers the page while this happens (`CoreSwapOverlay`): it names the
+two cores, and the app underneath takes no input until it lifts.
 [ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)
 has the exact step order and the failure table, and
 [promise 11](#promise-11-the-ports-were-used-before) what it asks of a core.

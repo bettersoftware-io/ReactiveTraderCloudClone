@@ -17,6 +17,7 @@ import {
   ChartPanel,
   ConnectionOverlay,
   ConnectionStatusBar,
+  CoreSwapOverlay,
   CreditBlotter,
   CreditBlotterHead,
   CreditBlotterWorkspace,
@@ -217,6 +218,10 @@ import {
 import { ThemePicker as ThemePickerComponent } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay as ConnectionOverlayComponent } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar as ConnectionStatusBarComponent } from "#/ui/shell/connection/ConnectionStatusBar";
+import {
+  CoreSwapOverlay as CoreSwapOverlayComponent,
+  type CoreSwapOverlayProps,
+} from "#/ui/shell/core/CoreSwapOverlay";
 import { JarvisOrb as JarvisOrbComponent } from "#/ui/shell/jarvis/JarvisOrb";
 import { JarvisOverlay as JarvisOverlayComponent } from "#/ui/shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer as JarvisPanelLayerComponent } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
@@ -808,6 +813,17 @@ export const registry = new Map<AnyToken, ElementFor>([
           interactive={(p.interactive as boolean | undefined) ?? false}
           specsVariant={p.specsVariant as "no-maximize" | undefined}
           layoutResets={(p.layoutResets as number | undefined) ?? 0}
+        />
+      );
+    },
+  ],
+  [
+    CoreSwapOverlay,
+    (p: Record<string, unknown>): ReactElement => {
+      return (
+        <CoreSwapOverlayComponent
+          swap={p.swap as CoreSwapOverlayProps["swap"]}
+          fade={p.fade as CoreSwapOverlayProps["fade"]}
         />
       );
     },

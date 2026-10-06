@@ -86,6 +86,12 @@ export class PlaywrightWorkspace implements WorkspacePO {
     );
   }
 
+  async waitCoreSwapOverlayGone(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.shell.coreSwapOverlay),
+    ).toHaveCount(0, { timeout: timeoutMs });
+  }
+
   async setNavigationMark(): Promise<void> {
     await this.page.evaluate(() => {
       (window as WitnessWindow).__hotSwapMark = 1;

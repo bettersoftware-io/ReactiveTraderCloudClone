@@ -82,7 +82,10 @@ export interface CoreHostDeps {
   readonly info: (message: string) => void;
   readonly warn: (message: string) => void;
   readonly onFatal: (error: unknown) => void;
-  readonly cover: CoverTimings;
+  /** Asked once per swap, as it starts: how long this swap's cover takes
+   * to enter, hold and leave (the motion settings may change between two
+   * swaps of one page). */
+  readonly cover: () => CoverTimings;
   readonly sleep: (ms: number) => Promise<void>;
   readonly nextMacrotask: () => Promise<void>;
 }
@@ -113,12 +116,13 @@ interface Handover {
 }
 
 /**
- * Creates the host. `swapTo(impl)` runs, in order: cover, load the new core,
- * unmount the UI and wait one macrotask (deferred machine disposals run),
- * `await` the old core's `dispose()`, end the devtools composition, compose
- * the new core over the same ports and mount it, publish (attribute, console
- * line, saved choice, URL), then lift the cover once the minimum hold —
- * measured from the end of covering — has passed.
+ * Creates the host. `swapTo(impl)` runs, in order: ask for this swap's cover
+ * timings, cover, load the new core, unmount the UI and wait one macrotask
+ * (deferred machine disposals run), `await` the old core's `dispose()`, end
+ * the devtools composition, compose the new core over the same ports and
+ * mount it, publish (attribute, console line, saved choice, URL), then lift
+ * the cover once the minimum hold — measured from the end of covering — has
+ * passed.
  *
  * Failures (spec §1's table): a load that rejects leaves the page on the old
  * core, still mounted; a `createApp` (or `instrument`) that throws composes
@@ -223,13 +227,15 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
 
   async function runSwap(previous: Running, to: CoreImpl): Promise<void> {
     const from = previous.impl;
+    let cover: CoverTimings;
     let held: Promise<void>;
     let core: CoreFactory;
 
     try {
+      cover = deps.cover();
       states.next({ phase: "covering", from, to });
-      await deps.sleep(deps.cover.enterMs);
-      held = deps.sleep(deps.cover.holdMs);
+      await deps.sleep(cover.enterMs);
+      held = deps.sleep(cover.holdMs);
       states.next({ phase: "loading", from, to });
     } catch (error) {
       const reason = describeError(error);
@@ -248,7 +254,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       warn(
         `[core] could not load the ${to} core, staying on ${from}: ${reason}`,
       );
-      await liftCover(held, from, to);
+      await liftCover(held, cover.exitMs, from, to);
       return;
     }
 
@@ -260,7 +266,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     }
 
     publishHandover(handover, from, to);
-    await liftCover(held, from, to);
+    await liftCover(held, cover.exitMs, from, to);
   }
 
   /** The section with nothing on screen: unmount, dispose the old core, and
@@ -394,13 +400,14 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
 
   async function liftCover(
     held: Promise<void>,
+    exitMs: number,
     from: CoreImpl,
     to: CoreImpl,
   ): Promise<void> {
     try {
       await held;
       states.next({ phase: "revealing", from, to });
-      await deps.sleep(deps.cover.exitMs);
+      await deps.sleep(exitMs);
     } catch (error) {
       warn(`[core] lifting the cover failed: ${describeError(error)}`);
     }

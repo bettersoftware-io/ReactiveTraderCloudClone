@@ -15,6 +15,7 @@ import {
   type CoreHost,
   type CoreHostDeps,
   type CoreHostState,
+  type CoverTimings,
   createCoreHost,
 } from "./coreHost";
 import { CORE_OPTIONS } from "./coreSelection";
@@ -286,6 +287,34 @@ describe("createCoreHost", () => {
     ]);
   });
 
+  it("12b. the cover timings are asked once per swap, before the cover is shown", async () => {
+    vi.useFakeTimers();
+    const harness = createHarness({ timed: 0 });
+    harness.start();
+    expect(harness.cover).not.toHaveBeenCalled();
+    // What the host said last when it asked: whoever shows the cover on
+    // `covering` must already hold this swap's timings.
+    const askedIn: string[] = [];
+
+    function answer(timings: CoverTimings): () => CoverTimings {
+      return () => {
+        askedIn.push(harness.states.at(-1)?.phase ?? "none");
+        return timings;
+      };
+    }
+
+    harness.cover.mockImplementation(answer(COVER));
+    harness.cover.mockImplementationOnce(
+      answer({ enterMs: 0, holdMs: 0, exitMs: 0 }),
+    );
+    expect(await timeSwap(harness, "effect")).toBe(0);
+    expect(harness.cover).toHaveBeenCalledTimes(1);
+
+    expect(await timeSwap(harness, "async")).toBe(860);
+    expect(harness.cover).toHaveBeenCalledTimes(2);
+    expect(askedIn).toEqual(["running", "running"]);
+  });
+
   it("13. the console line names both cores", async () => {
     const harness = createHarness();
     harness.start();
@@ -397,6 +426,23 @@ describe("createCoreHost", () => {
       expect(harness.failures.at(-1)).toBe(
         "Could not switch to the effect core: no clock",
       );
+      expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
+    });
+
+    it("before the unmount (asking for the cover timings throws) → the page stays on the old core", async () => {
+      const harness = createHarness();
+      harness.start();
+      harness.cover.mockImplementationOnce(() => {
+        throw new Error("no media query");
+      });
+
+      await expect(harness.host.swapTo("effect")).resolves.toBeUndefined();
+
+      expect(harness.onFatal).not.toHaveBeenCalled();
+      expect(harness.unmount).not.toHaveBeenCalled();
+      expect(harness.warnings).toEqual([
+        "[core] could not switch to the effect core, staying on rxjs: no media query",
+      ]);
       expect(harness.states.at(-1)).toEqual({ phase: "running", impl: "rxjs" });
     });
 
@@ -653,6 +699,8 @@ interface Harness {
   readonly warnings: string[];
   readonly infos: string[];
   readonly load: Mock<(impl: CoreImpl) => Promise<CoreFactory>>;
+  /** Answers `COVER` unless a case overrides one call. */
+  readonly cover: Mock<() => CoverTimings>;
   readonly unmount: Mock<() => void>;
   readonly publish: Mock<(impl: CoreImpl) => void>;
   readonly persist: Mock<(impl: CoreImpl) => boolean>;
@@ -661,6 +709,16 @@ interface Harness {
 }
 
 const COVER = { enterMs: 160, holdMs: 500, exitMs: 200 } as const;
+
+/** Runs one swap to `impl` on fake timers and returns how long it took on
+ * the fake clock. */
+async function timeSwap(harness: Harness, impl: CoreImpl): Promise<number> {
+  const start = Date.now();
+  const swap = harness.host.swapTo(impl);
+  await vi.runAllTimersAsync();
+  await swap;
+  return Date.now() - start;
+}
 
 /** Runs one rxjs → effect swap on fake timers with a load that takes
  * `loadMs`, returning each `state$` phase stamped with the fake clock. */
@@ -742,6 +800,9 @@ function createHarness(options: HarnessOptions = {}): Harness {
     record("stripCoreParam");
   });
   const onFatal = vi.fn((_error: unknown): void => {});
+  const cover = vi.fn((): CoverTimings => {
+    return COVER;
+  });
 
   const deps: CoreHostDeps = {
     ports: createFakePorts(options.splash),
@@ -783,7 +844,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
       }
     },
     onFatal,
-    cover: COVER,
+    cover,
     sleep: (ms: number): Promise<void> => {
       if (ms === COVER.enterMs) {
         record("cover");
@@ -839,6 +900,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
     warnings,
     infos,
     load,
+    cover,
     unmount,
     publish,
     persist,

@@ -41,6 +41,7 @@ it in sync with the implementation when the behaviour changes.
 | Price *number* + directional tint | live | conflated | conflated (same rate as Calm), **tint kept** |
 | **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **off (`transition-property: none` — snap)** |
 | **FLIP tile/row reorder, rank-glide** (WAAPI) | glide | glide | **snap, no glide** |
+| Core-swap cover (`CoreSwapOverlay`) | fades in and out | fades in and out | **jump cuts — the 500 ms hold stays** (also under `prefers-reduced-motion`) |
 | **Spinners, infinite pulses, row-flash keyframes** | on | on | **frozen** |
 | FPS-meter `rAF` loop | running | running | **running — diagnostic exemption** |
 | Boot splash canvas | plays | plays | **skipped** (persisted Freeze) |
@@ -209,6 +210,14 @@ Two things Freeze deliberately does *not* take away:
   (`pnpm perf:motion-audit` / `/rtc:perf-audit`) reports the same census per
   view per power-saver level for both web clients, asserting freeze
   motion-free. Both share the probe in `tests/browser/motionProbe.ts`.
+
+  **Neither instrument sees the core-swap cover.** Both run under webdriver,
+  where every cover timing is zero, and the audit only visits the four view
+  tabs. The cover's row in the table above is witnessed by `coverTimings.test.ts`
+  (the fades are zero under freeze and reduced motion, the hold stays) and by
+  the browser-tier `coreSwapOverlay.spec.tsx` in each web client's
+  `tests/ui/visual/vitest-browser/` (the stylesheet takes its durations from
+  those numbers and keeps no transition outside the two fades).
 - **JS gates (CSS can't reach imperative motion):**
   - **WAAPI** — `useFlipGrid` (tile/row FLIP glide, enter/exit) and
     `useRankGlide` (watchlist rank glide + highlight) already contained a

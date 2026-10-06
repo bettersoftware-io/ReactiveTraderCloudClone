@@ -1,0 +1,129 @@
+/*
+ * The cover over a core swap. Opaque, because the app tree behind it is
+ * unmounted and mounted again while it is up; above every other layer
+ * (lock screen 9000, boot splash 9999); and it takes pointer input for as
+ * long as it is in the DOM.
+ *
+ * The only motion is `opacity`, per docs/performance.md: no `filter`, no
+ * `backdrop-filter`, no transform. The element is inserted when the swap
+ * starts, so the fade-in runs from `@starting-style`; the fade-out runs when
+ * the phase becomes `revealing`. Both ease out: a fade starts a frame or
+ * more after the host's clock and the element is removed on that clock, so
+ * the fade-out must do most of its work early, or its cut-off end shows as
+ * a pop. Both durations come from the component
+ * (`--core-swap-enter` / `--core-swap-exit`, the core host's own waits for
+ * this swap), with no fallback here: an unset one computes to 0s, a jump
+ * cut, never to a second copy of the number.
+ *
+ * The fade-in belongs to the `covering` phase alone. A transition starts at
+ * the first frame after the element is inserted, which is later than the
+ * host's clock (50 to 100 ms later, measured), so when the host moves on to
+ * `loading` the fade may be unfinished. `transition-property: none` in every
+ * other phase cancels it there (a zero duration would not: a running
+ * transition whose end value is unchanged carries on), so the cover is fully
+ * opaque from `loading` on by rule, not by timing, and the tree is never
+ * unmounted behind a translucent cover.
+ *
+ * Power-saver freeze sets `transition-property: none` on everything, and the
+ * component gets zero durations under freeze and under reduced motion, so
+ * both are jump cuts; the media query below says the same for reduced motion
+ * in the stylesheet itself.
+ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #00060a);
+  opacity: 1;
+  transition-property: none;
+  will-change: opacity;
+}
+
+.overlay[data-phase="covering"] {
+  transition: opacity var(--core-swap-enter) ease-out;
+}
+
+@starting-style {
+  .overlay {
+    opacity: 0;
+  }
+}
+
+.overlay[data-phase="revealing"] {
+  opacity: 0;
+  transition: opacity var(--core-swap-exit) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay[data-phase] {
+    transition: none;
+  }
+}
+
+/* The lock screen's static HUD grid: no animation, painted once. */
+.grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.5;
+}
+
+.panel {
+  position: relative;
+  max-width: 86vw;
+  text-align: center;
+}
+
+.label {
+  margin-bottom: 18px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+}
+
+.cores {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  font-family: var(--font-logo, "Orbitron", sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.separator {
+  color: var(--accent-primary);
+}
+
+.status {
+  margin-top: 20px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+}
+
+/* The status region: on the page for assistive technology only, with or
+ * without a swap. Fixed, so it never adds to the page's scroll size. */
+.sentence {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

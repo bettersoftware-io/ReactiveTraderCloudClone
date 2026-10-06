@@ -391,11 +391,25 @@ sequenceDiagram
 ```
 
 `host.state$` names the phase: `running`, `covering`, `loading`,
-`handover`, `revealing`, and the terminal `fatal`. **Today every cover
-timing is zero** (`NO_COVER` in each `main.tsx`), so the phases pass in no
-time and a swap is a plain remount. The branded overlay
-(`CoreSwapOverlay`, real timings, rendering `host.state$`) is the remaining
-PR of the workstream.
+`handover`, `revealing`, and the terminal `fatal`.
+
+**The overlay.** Each client's `main.tsx` renders `CoreSwapOverlay`
+(`src/ui/shell/core/`) from `host.state$`, in a second root on a
+`<div id="core-swap-overlay">` appended to `body`. It is outside the app
+tree, because that tree is unmounted and mounted again under it. It names
+both cores and the phase, and holds one sentence in a status region for
+assistive technology. While a swap is under way the app tree is `inert`
+(`src/app/coreSwapCover.ts`), so no key reaches controls nobody can see. The
+host asks for the timings as each swap starts (`chooseCoverTimings`): the
+cover fades in for 160 ms, stays at least 500 ms from the end of covering,
+and fades out for 200 ms. Under `prefers-reduced-motion` or power-saver
+freeze the two fades are jump cuts and the hold stays. Under
+`navigator.webdriver` all three are zero, so a test spends no real time on a
+swap. The fades are an `opacity` transition whose durations are those same
+numbers. The fade-in belongs to the `covering` phase alone: a transition
+starts a frame or more after the host's clock, so the stylesheet drops it
+when `loading` begins. The cover is then fully opaque before the unmount by
+rule, not by timing.
 
 Three smaller rules complete the swap:
 
@@ -1555,9 +1569,8 @@ changing it.
    singletons it named tolerate a second composition: the transport belongs
    to the ports, which the host builds once per page, and the devtools hub
    gained `endComposition()` (#952). The cores gained the `recomposition`
-   suite and the flushed layout write (#953). What remains is the branded
-   overlay over the swap (`CoreSwapOverlay`, the workstream's last PR);
-   until it lands the swap is a plain remount.
+   suite and the flushed layout write (#953). The branded overlay over the
+   swap (`CoreSwapOverlay`) closed the workstream on 2026-10-06.
 8. ~~**Approach B** (Decision 6) — all three cores lazy via a `@rtc/client-core`
    subpath export for the RxJS composition root~~ — done 2026-10-02 (the
    amendment under Decision 6): the composition root is lazy and the entry

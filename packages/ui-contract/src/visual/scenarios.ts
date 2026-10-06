@@ -890,6 +890,16 @@ const baseScenarios: Record<string, Scenario> = {
   // scenarioActions.
   "boot/chrome": { componentKey: "BootSequence", fixtureKey: "boot" },
   "lock/locked": { componentKey: "LockScreen", fixtureKey: "session-locked" },
+  // The cover over an application-core swap, in its `handover` phase: the
+  // one phase with nothing behind it (the app tree is unmounted), and a
+  // static frame, since the overlay's only motion is the fade at each end.
+  // The component reads no ViewModel (the swap and its fade arrive as
+  // props, fixed in each client's registry), so the fixture only supplies
+  // the theme the page is painted in.
+  "shell/core-swap-overlay": {
+    componentKey: "CoreSwapOverlayHandover",
+    fixtureKey: "app-connected",
+  },
   // Login/lock-wait treatments: the handshake/reactor overlays shown while a
   // sign-in or unlock request is in flight. waitVariant is seeded explicitly
   // in the fixture (never the live cycling pointer — see fixtures.ts), and

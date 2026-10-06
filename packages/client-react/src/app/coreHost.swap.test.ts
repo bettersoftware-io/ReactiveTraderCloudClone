@@ -499,7 +499,9 @@ function createHostHarness(
     onFatal: (error: unknown): void => {
       hostFatals.push(error);
     },
-    cover: { enterMs: 0, holdMs: 0, exitMs: 0 },
+    cover: () => {
+      return { enterMs: 0, holdMs: 0, exitMs: 0 };
+    },
     sleep: delayBy,
     nextMacrotask: () => {
       return delayBy(0);
