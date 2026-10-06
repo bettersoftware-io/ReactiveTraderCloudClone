@@ -59,13 +59,20 @@ overrides:
   # 2026-10-06: four advisories published against production dependencies
   # reddened CI gate 25 (`pnpm audit --prod`) on every branch, main included.
   # Each override is SCOPED to the vulnerable range, so a consumer already on
-  # a safe version is never forced off its choice, and each patched version
-  # was published in September, outside the minimumReleaseAge cooldown.
+  # a safe version is never forced off its choice (one exception, noted under
+  # seroval), and each RESOLVED version was published in September, outside
+  # the minimumReleaseAge cooldown.
   #   seroval (via client-solid > solid-js > seroval-plugins):
   #     CRITICAL GHSA-p6vx-979v-rg4c (fromJSON() thenable assimilation,
   #     >=0.12.0 <=1.6.0) and HIGH GHSA-jp82-f5mq-hwhp (unchecked TypedArray
   #     length, <=1.6.2). Patched 1.6.3. seroval-plugins is released in step
   #     with seroval and peers on it, so both are lifted together.
+  #     THIS ONE OVERRIDES A PIN: solid-js@1.9.15 (the latest 1.x) declares
+  #     `~1.5.4` for both, and no 1.5.x carries the fix, so the lift takes
+  #     solid-js outside the range its authors tested. It is safe here because
+  #     only solid-js's SERVER build imports seroval (web/dist/server.js); this
+  #     client-only app never loads it and the built bundle has no trace of
+  #     it. Drop both lines once solid-js ships a seroval >=1.6.3 itself.
   #   proxy-addr (via server > @modelcontextprotocol/sdk > express):
   #     CRITICAL GHSA-jqcg-44mw-7w3h (IP spoofing through an IPv4-mapped IPv6
   #     trust subnet, >=1.1.0 <2.0.8). Patched 2.0.8.
