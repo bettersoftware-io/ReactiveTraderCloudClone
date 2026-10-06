@@ -36,13 +36,18 @@ export interface AppRootPage {
   mount(): void;
   /** Mounts the header (not the whole App) under `AppRoot` inside
    * `StrictMode`, as `main.tsx` does, on the composition a core swap
-   * produced: its shell's one-shot "reopen Preferences" is armed. */
+   * produced: its shell's one-shot "reopen Preferences" is armed, and the
+   * boot splash does not play (the core host plays it once per page). */
   mountHeaderAfterCoreSwap(): void;
   /** As `mountHeaderAfterCoreSwap`, with a Suspense boundary above the
    * header and a sibling that suspends on its first render, so React throws
    * the header's first render away and renders it again once the sibling's
-   * data arrives. Returns the function that delivers that data. */
-  mountHeaderAfterCoreSwapBesideSuspender(): () => void;
+   * data arrives. Returns the function that delivers that data and resolves
+   * once React has committed the retry: it runs inside an awaited `act`,
+   * where React reveals a Suspense boundary at once instead of holding the
+   * commit back on its 300 ms fallback throttle — so the caller asserts
+   * straight after it, with no wait on real time. */
+  mountHeaderAfterCoreSwapBesideSuspender(): () => Promise<void>;
   unmountAll(): void;
   exists(testId: string): boolean;
   /** The demo-account rows' usernames, top to bottom; empty when the login
@@ -70,7 +75,7 @@ export function appRootPage(): AppRootPage {
         </AppRoot>,
       );
     },
-    mountHeaderAfterCoreSwapBesideSuspender(): () => void {
+    mountHeaderAfterCoreSwapBesideSuspender(): () => Promise<void> {
       let resolve: (value: string) => void = noValue;
       const promise = new Promise<string>((settle) => {
         resolve = settle;
@@ -87,8 +92,11 @@ export function appRootPage(): AppRootPage {
         </StrictMode>,
       );
 
-      return () => {
-        resolve("ready");
+      return async (): Promise<void> => {
+        await act(async () => {
+          resolve("ready");
+          await promise;
+        });
       };
     },
     mountHeaderAfterCoreSwap(): void {
@@ -139,16 +147,33 @@ export function appRootPage(): AppRootPage {
 
 function selectNoTab(): void {}
 
+/** The boot-splash port as the core host hands it to every composition after
+ * the page's first. */
+const SPLASH_ALREADY_PLAYED = {
+  shouldPlay: (): boolean => {
+    return false;
+  },
+};
+
 function noValue(_value: string): void {}
 
 /** A composition the core host would build for the RxJS core over the
  * page's real `buildBrowserPorts()` — built at mount time, after a spec has
  * stubbed the env the ports read. Uninstrumented: no devtools here.
- * `reopenPreferences` arms the shell's one-shot, as the host does for the
- * composition a swap produced. */
-function createComposition(reopenPreferences: boolean): Composition {
-  const app = rxjsCore.createApp(buildBrowserPorts());
-  let reopenPending = reopenPreferences;
+ *
+ * `afterSwap` makes it the composition a swap produced, with both things the
+ * host does for one: the shell's one-shot "reopen Preferences" is armed, and
+ * the boot-splash port answers "do not play" (`coreHost.ts`'s
+ * `playOncePerPage`). The second matters to a test beyond fidelity: a
+ * playing splash re-renders on every progress tick, and those updates
+ * pre-empt React's low-priority Suspense retry — on a slow runner the retry
+ * is starved until the splash ends, seconds later. */
+function createComposition(afterSwap: boolean): Composition {
+  const pagePorts = buildBrowserPorts();
+  const app = rxjsCore.createApp(
+    afterSwap ? { ...pagePorts, bootSplash: SPLASH_ALREADY_PLAYED } : pagePorts,
+  );
+  let reopenPending = afterSwap;
 
   return {
     impl: "rxjs",

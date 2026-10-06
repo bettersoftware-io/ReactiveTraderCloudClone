@@ -47,6 +47,14 @@ describe("AppRoot (login screen demo accounts)", () => {
 // real AppRoot → createViewModel → HeaderChrome under StrictMode (as
 // main.tsx mounts it): StrictMode's second call of the header's state
 // initializer must not lose the signal the first call took.
+//
+// Nothing here waits on time. The simulator signs in synchronously, so the
+// header (or the Suspense fallback) is committed when the sign-in click's
+// `act` returns; a swapped-in composition plays no boot splash (asserted, as
+// the witness for the page's seam); and the suspended data is delivered
+// inside an awaited `act`, where React commits the retry at once. A
+// `waitFor` here once raced a playing splash on CI: its progress updates
+// starved React's Suspense retry for the whole splash.
 describe("AppRoot (Preferences after a core swap)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -57,7 +65,7 @@ describe("AppRoot (Preferences after a core swap)", () => {
     page.unmountAll();
   });
 
-  it("opens Preferences once the header mounts under StrictMode", async () => {
+  it("opens Preferences once the header mounts under StrictMode", () => {
     vi.stubEnv("VITE_SERVER_URL", "");
     vi.stubEnv("VITE_DEV_AUTH", createDevAuth());
     page.mountHeaderAfterCoreSwap();
@@ -65,9 +73,8 @@ describe("AppRoot (Preferences after a core swap)", () => {
     page.pickDemoAccount("demo");
     page.submitLogin();
 
-    await page.waitFor(() => {
-      expect(page.exists("header")).toBe(true);
-    });
+    expect(page.exists("header")).toBe(true);
+    expect(page.exists("boot-sequence")).toBe(false);
     expect(page.exists("prefs-modal")).toBe(true);
   });
 
@@ -78,15 +85,13 @@ describe("AppRoot (Preferences after a core swap)", () => {
 
     page.pickDemoAccount("demo");
     await page.submitLoginAwaitingSuspense();
-    await page.waitFor(() => {
-      expect(page.exists("suspense-fallback")).toBe(true);
-    });
+    expect(page.exists("suspense-fallback")).toBe(true);
+    expect(page.exists("header")).toBe(false);
+    expect(page.exists("boot-sequence")).toBe(false);
 
-    deliver();
+    await deliver();
 
-    await page.waitFor(() => {
-      expect(page.exists("suspender")).toBe(true);
-    });
+    expect(page.exists("suspender")).toBe(true);
     expect(page.exists("prefs-modal")).toBe(true);
   });
 });
