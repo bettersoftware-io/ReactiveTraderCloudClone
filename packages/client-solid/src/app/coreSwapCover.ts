@@ -24,14 +24,27 @@ export interface CoreSwapCoverDeps {
  * overlay is shown, and released on every way out of a swap: the host always
  * ends in `running` or in `fatal`, and both map to no swap. On `fatal` the
  * boot-error screen sits in this same element, and must be usable.
+ *
+ * `inert` also drops focus, and an element in an inert tree cannot take it:
+ * the Preferences dialog a swap reopens is mounted while the tree is still
+ * inert, so its own focus on open does nothing. When a swap ends, focus is
+ * therefore handed to the dialog the tree has open, if it has one.
  */
 export function followCoreSwaps(
   state$: Stream<CoreHostState>,
   deps: CoreSwapCoverDeps,
 ): void {
+  let covered = false;
+
   state$.subscribe((state) => {
     const swap = coreSwapOf(state, deps.options);
     deps.rootEl.inert = swap !== null;
     deps.show(swap);
+
+    if (covered && swap === null) {
+      deps.rootEl.querySelector<HTMLElement>('[role="dialog"]')?.focus();
+    }
+
+    covered = swap !== null;
   });
 }

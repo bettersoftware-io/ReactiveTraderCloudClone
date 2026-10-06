@@ -73,4 +73,21 @@ test.describe("Application core switch", () => {
     await coreSwitch.openWithCoreImplParam(ctx, "bogus");
     await coreSwitch.expectBootedCoreImpl(ctx, stored, 10_000);
   });
+
+  // The plan's manual check, pinned: the cover cannot reach a panel popped
+  // out into its own window, so the swap has to close that window itself.
+  test("a panel popped out into its own window closes on a swap and comes back docked", async ({
+    ctx,
+  }) => {
+    const buildDefault = resolveCoreImpl(process.env);
+    const { start } = coreSwitch.pickDistinctCores(buildDefault);
+
+    await coreSwitch.openWithCoreImplParam(ctx, start);
+    await coreSwitch.expectBootedCoreImpl(ctx, start, 10_000);
+
+    await coreSwitch.poppedOutPanelClosesOnSwapAndComesBackDocked(
+      ctx,
+      buildDefault,
+    );
+  });
 });

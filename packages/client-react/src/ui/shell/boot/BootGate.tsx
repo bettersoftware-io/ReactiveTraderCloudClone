@@ -1,4 +1,10 @@
-import type { ReactElement, ReactNode, TransitionEvent } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  type TransitionEvent,
+  useEffect,
+  useState,
+} from "react";
 
 import styles from "@rtc/boot-splash/styles/BootGate.module.css";
 import { useViewModel } from "@rtc/react-bindings";
@@ -11,9 +17,9 @@ import { BootSequence } from "./BootSequence";
  * splash's own CSS fades it out on `data-done` (BootSequence.module.css
  * `.boot[data-done]`); BootGate then dismisses through the seam once that
  * opacity transition ends — the `transitionend` bubbles from the splash root to
- * this host. Under reduced motion the splash has no transition, so `onDone`
- * dismisses at once instead of waiting for a `transitionend` that would never
- * fire.
+ * this host. Under reduced motion or power-saver Freeze the splash has no
+ * transition, so the gate dismisses as soon as the sequence is done instead
+ * of waiting for a `transitionend` that would never fire.
  *
  * Visibility lives in the `useBootGate` seam (BootGatePresenter): it is seeded
  * from the one-shot boot-splash decision at composition time, and the account
@@ -26,7 +32,30 @@ export function BootGate({ children }: BootGateProps): ReactElement {
   const forced = useForceBootAnimation().enabled;
   const { isFreeze } = usePowerSaver();
 
-  function dismissOnJumpCut(): void {
+  const [done, setDone] = useState(false);
+
+  // A splash that is gone is not done: the next one (⟳ Reboot HUD) starts
+  // over. Adjusted during render, React's "state from a prop change".
+  if (!visible && done) {
+    setDone(false);
+  }
+
+  // BootSequence keeps the `onDone` of its FIRST render (the boot machine is
+  // built once, around it), so that function must not read anything a later
+  // render can change: it only records that the sequence is done. The
+  // decision below is taken from the current render's values. It used to be
+  // taken inside `onDone`, from the first render's: a stored power-saver
+  // Freeze reaches the UI one render later, so the splash waited for a
+  // `transitionend` Freeze had switched off, and stayed mounted for good.
+  function markDone(): void {
+    setDone(true);
+  }
+
+  useEffect(() => {
+    if (!done) {
+      return;
+    }
+
     const reduce = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -40,7 +69,7 @@ export function BootGate({ children }: BootGateProps): ReactElement {
     if (isFreeze || (reduce && !forced)) {
       dismiss();
     }
-  }
+  }, [done, isFreeze, forced, dismiss]);
 
   function dismissOnOpacityEnd(event: TransitionEvent<HTMLDivElement>): void {
     // Only the splash root animates opacity; ignore the progress-bar/skip
@@ -55,7 +84,7 @@ export function BootGate({ children }: BootGateProps): ReactElement {
       {children}
       {visible ? (
         <div className={styles.host} onTransitionEnd={dismissOnOpacityEnd}>
-          <BootSequence onDone={dismissOnJumpCut} />
+          <BootSequence onDone={markDone} />
         </div>
       ) : null}
     </>

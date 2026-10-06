@@ -12,7 +12,7 @@ committed goldens under `__screenshots__/<pin>/<tier>/`; they differ only in how
 they navigate the device and take the shot. Measured on the pinned device
 `ios-iphone17-26` (iPhone 17 / iOS 26.x). **Never CI** — iOS pixels need a Mac.
 
-## Status: the iOS comparison is DONE at full coverage; Android has a first run (2026-10-06)
+## Status: the iOS comparison is DONE at full coverage; Android is verified (2026-10-06)
 
 The gate this file used to name — the mobile UI's visual fidelity settling —
 lifted on 2026-10-04 (all 12 skins signed off), so both viable tiers were
@@ -83,7 +83,7 @@ coverage, they agree pixel for pixel, and both catch the bug class the suite
 exists for. simctl is faster; Maestro is steadier and is the only route to
 Android.
 
-### The Android leg: Maestro runs there, less steadily than on iOS (2026-10-06)
+### The Android leg: Maestro runs there, as steadily as on iOS once the emulator is headless (2026-10-06)
 
 The same 26 flows now drive an Android emulator (Pixel 10a, API 37, a local
 debug build from `expo run:android`) and a golden set is committed under
@@ -93,17 +93,64 @@ set has no second tier to agree with — it was accepted by eye.
 | | measured |
 |---|---|
 | Scenarios captured | 26 / 26 |
-| Capture time, idle machine | 5 min 51 s (iOS Maestro: ~8 min 10 s) |
-| Verification runs that produced verdicts | 2 of 3 |
-| Scenario runs passing in those two | 51 / 52, every pass at 0.0000% |
-| The one failure | `equities/trade`, 0.1070%, once; passed in the next run; undiagnosed |
-| The run without verdicts | 3 flows errored (`login-screen` never visible, twice; "Unknown error", once) |
+| Verification runs, emulator started with `-no-window` | 6 of 6 complete |
+| Scenario runs passing in those six | 156 / 156, every one at 0.0000% |
+| Time per run | 175–202 s (iOS Maestro: ~8 min 10 s) |
+| App crashes at launch | 1 in about 280 launches (see below) |
 
-The verification runs were taken with this machine at a load average of 14–25
-from other work, and each took 21–27 minutes instead of six. So the errored
-run says the flows' waits are not load-proof; it does not say what an idle
-machine would do. That is a smaller sample, and a worse one, than the iOS
-side's five clean runs — it shows the leg is possible, not that it is stable.
+**The first verification was wrong about its own cause.** It was taken with
+the emulator in a window, produced 51 of 52 passes and one run with three
+errored flows, took 21–27 minutes a run, and was put down to "a heavily loaded
+machine". Repeating it showed the load was the symptom. What was found:
+
+- **A windowed emulator is throttled by macOS once its window is covered.**
+  Two runs passed in about four minutes each; partway through the fourth, each
+  flow went from 8 s to 50 s between one flow and the next. The host was idle
+  apart from the emulator. `ps` showed the emulator process at priority 4 with
+  every thread throttled, where its siblings from the same shell sat at 31:
+  App Nap's background class. A shell loop inside the guest took 10.4 s
+  throttled and 3.5 s not. In that state launches time out against the
+  two-minute wait and Android reports the app as not responding (an ANR after
+  18 s on the main thread). Started with `-no-window` the emulator is a plain
+  process App Nap never touches: priority stayed at 56 through six runs, and it
+  renders the same pixels — all six runs matched goldens captured with a
+  window. The runner now warns when the emulator it drives has one
+  (`shared/emulatorWindow.ts`).
+- **`equities/trade`'s 0.1070% frame was a frame still settling.** The harness
+  raises `visual-ready` one frame after fonts load, but this scene needs a few
+  more: the Skia candle chart draws at its first size before its final layout,
+  and the skin's frame lines are still being drawn. At normal speed the scene
+  matches its golden within 0.44 s of the scenario link opening, and Maestro
+  shoots 0.92–2.53 s after it (median 1.13 s over 26 flows), so the shot lands
+  on the settled frame. With the emulator throttled on purpose (`taskpolicy
+  -b`, the same class App Nap uses) a burst of screenshots found an unsettled
+  frame about two seconds in, 5 times out of 5, scoring 0.4119% (once
+  0.4110%). The exact 0.1070% was not reproduced — the burst samples about
+  0.6 s apart — so this is the mechanism, not that frame. What remains is that
+  the marker precedes the settled frame and only Maestro's own latency covers
+  the gap.
+- **Android scroll indicators are not the cause, though they do vary.** A
+  scroll view flashes its indicator when it appears and fades it about two
+  seconds later, so `rates/ticket` and `shell/appearance` each have two
+  distinct frames across runs: a strip 11 px wide on the right edge. Its
+  pixels differ from the golden by 1–2 in 255, below the comparison's
+  per-pixel threshold, so both frames score 0.0000%.
+- **One real crash, independent of all that.** Once in about 280 launches the
+  app died about four seconds after the dev client recreated its activity:
+  `SIGSEGV` in React Native's `MountingCoordinator::pullTransaction` on the JS
+  thread, at a fault address that reads as ASCII text — freed memory reused
+  for a string. Nothing relaunches the app, so the flow waited two minutes on
+  the home screen. It is in React Native's native mounting code on a path only
+  a dev build takes; it is not reported upstream. The flows now retry the
+  launch once (`retry` around the stop, the link and the wait). Proven by
+  killing the app during a launch: the flow passed on its second attempt.
+- **One failed flow no longer hides the other 25.** Maestro exits non-zero
+  when any flow fails, and the runner used to stop there with a stack trace.
+  It now prints Maestro's `[Failed]` lines, scores every scenario that has a
+  shot, and reports the rest as `NO SHOT`. It also deletes each scenario's
+  shot before the run, so a flow that took none cannot be scored from the
+  previous run's file. Proven by killing the app on both attempts of one
+  flow: 25 passes, one `NO SHOT`, exit 1.
 
 What Android needed that iOS did not:
 
@@ -128,13 +175,15 @@ What Android needed that iOS did not:
 - **The "Open" tap is iOS-only** in the flows (`when: platform: iOS`).
 - A resumed emulator snapshot lost its package service mid-run ("Can't find
   service: package"); a cold boot (`emulator -avd … -no-snapshot`) cured it.
+- **No window** (`-no-window`), for the reason above.
 
 It does **not** settle whether to retire a tier. On iOS they now duplicate each
 other exactly, so keeping both costs a second set of 26 goldens to re-pin on
 every visual change. Retiring simctl leaves the slower tier; retiring Maestro
 leaves the one with capture incidents and closes the door on Android. That is a
 maintainer decision. The Android leg has now run: Maestro does reach Android,
-and is not yet as steady there as on iOS.
+and with a headless emulator it reproduced its goldens in 156 of 156 scenario
+runs — the same result as on iOS, at under half the time per run.
 
 ## Scoreboard
 
@@ -443,9 +492,10 @@ visual fidelity settling.
    itself (keep both, or retire one) is left to the maintainer.
 4. ~~**Add an inset-3D-card scenario**~~ — **DONE**: the matrix now has
    inset-card scenarios, and the #147 shadow-clip is caught by both tiers.
-5. ~~**Run the Android leg.**~~ — **DONE 2026-10-06**, results above. Still
-   open from it: repeat the verification on an idle machine, and diagnose
-   `equities/trade`'s one 0.1070% frame.
+5. ~~**Run the Android leg.**~~ — **DONE 2026-10-06**, results above,
+   including the repeat verification (156 / 156 headless) and the cause of
+   `equities/trade`'s stray frame. Still open from it: `visual-ready` is raised
+   before a scene has settled, and only Maestro's latency covers the gap.
 6. **Diagnose simctl's `credit/new-rfq` alternate frame** (0.1147%, twice in 8
    runs) — or replace its fixed settle delay with the `visual-ready` marker
    Maestro already waits for.

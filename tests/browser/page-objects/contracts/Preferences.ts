@@ -35,6 +35,9 @@ export interface PreferencesPO {
    * mounts once `open` flips true (HeaderChrome.tsx owns the state). */
   open(): Promise<void>;
   waitModalVisible(timeoutMs: number): Promise<void>;
+  /** Resolves once keyboard focus is on the modal or inside it; rejects
+   * after `timeoutMs`. */
+  waitModalHoldsFocus(timeoutMs: number): Promise<void>;
   /** Clicks the Chart renderer segment row's DOM/Canvas option
    * (PrefSegment.tsx composes `pref-segment-chartSubstrate-<value>`). */
   selectChartSubstrate(value: PrefsChartSubstrate): Promise<void>;

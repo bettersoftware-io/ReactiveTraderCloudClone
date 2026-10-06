@@ -233,6 +233,11 @@ function buildContext<P>(
         return world.bootGate.next(visible);
       });
     },
+    setPowerSaverLevel: (level: PowerSaverLevel) => {
+      return flush(() => {
+        return world.powerSaverLevel.next(level);
+      });
+    },
     setAuthStatus: (status: AuthViewState["status"]) => {
       return flush(() => {
         return world.auth.next({ ...world.auth.getValue(), status });

@@ -53,6 +53,11 @@ export class BootGatePage extends MountedComponent<Record<string, never>> {
     this.setBootGateVisible(true);
   }
 
+  /** The stored power-saver Freeze arrives, after the splash has mounted. */
+  freezeArrives(): void {
+    this.setPowerSaverLevel("freeze");
+  }
+
   /** Seed the splash hidden through the seam (webdriver/nosplash equivalent). */
   hideThroughSeam(): void {
     this.setBootGateVisible(false);

@@ -127,7 +127,7 @@ below) retired the other two candidate tiers from the assert role:
 | Tier | Runner | Config | Role today |
 |---|---|---|---|
 | **Playwright** (the sole CI-asserted tier) | Plain Playwright over a Vite host | `playwright/` | Asserts on every push to `main` — the framework-agnostic spec (`visual.spec.ts`) is reused **verbatim** by `client-solid` |
-| Vitest browser mode | `vitest-browser-react` + `toMatchScreenshot` | `vitest-browser/` | **Coverage-only instrument** — still renders + interacts through the full shared scenario matrix (`@rtc/ui-contract`) so istanbul sees every branch, but the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`); never gates anything |
+| Vitest browser mode | `vitest-browser-react` + `toMatchScreenshot` | `vitest-browser/` | **Coverage-only instrument** — still renders + interacts through the full shared scenario matrix (`@rtc/ui-contract`) so istanbul sees every branch, but the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`); the matrix walk gates nothing. One spec beside it does gate PRs: `coreSwapOverlay.spec.tsx` reads the core-swap overlay's computed styles (opaque from `loading` on, the two fade durations, the easing), and `ci.yml`'s `e2e` job runs it for both web clients through `test:ui:styles` |
 | ~~Playwright Component Testing~~ | ~~`@playwright/experimental-ct-react`~~ | ~~`playwright-ct/`~~ | **Retired** — deleted along with its goldens |
 
 Two golden sets are committed for the surviving tier, under

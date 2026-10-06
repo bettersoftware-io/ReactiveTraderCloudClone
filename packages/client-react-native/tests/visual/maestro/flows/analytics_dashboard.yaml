@@ -9,35 +9,47 @@ appId: io.bettersoftware.rtcmobile
 # timeout — and because the crash leaves the app dead, the NEXT flow passes.
 # That is why exactly every other flow failed (measured 2026-10-04: 13 of
 # 26, strictly alternating, one crash report per failure).
-- stopApp
-# Step 1: load the Metro bundle via the dev client (two-step deep link).
-- openLink:
-    link: "exp+rtc-mobile://expo-development-client/?url=http://localhost:${MAESTRO_METRO_PORT}"
-# Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
-# REQUIRED on a COLD simulator, and easy to miss: on a dev machine the app
-# has been launched before, so iOS already trusts the scheme and this dialog
-# never shows. On a freshly created simulator with a never-launched app it
-# ALWAYS shows — and while it sits unanswered the app cannot launch, so the
-# `login-screen` wait below burns its whole timeout against the iOS home
-# screen. Diagnosed from a CI failure screenshot (the flow reported only
-# `Assertion is false: id: login-screen is visible`, which named what was
-# absent and nothing about the dialog that caused it).
-# iOS only: Android opens a link without asking, and an app screen there
-# may carry its own 'Open' text, which this would tap.
-- runFlow:
-    when:
-      platform: iOS
-      visible: "Open"
+# Android adds a second, rarer way to die here (measured 2026-10-06: once
+# in about 280 launches). The dev client recreates the activity to load the
+# bundle, and now and then React Native's mounting layer reads freed memory
+# during that handover: SIGSEGV in MountingCoordinator::pullTransaction on
+# the JS thread. Again nothing relaunches the app. The launch is therefore
+# retried once: a crash at launch is a capture failure, and relaunching
+# changes nothing about the frame that is compared afterwards.
+- retry:
+    maxRetries: 1
     commands:
-      - tapOn: "Open"
-# Wait for the app to boot (bundle loaded). The unauthenticated LoginScreen
-# is the stable, scenario-agnostic boot marker; `visual-ready` only appears
-# AFTER the scenario deep link below, so waiting for it here would always
-# time out on the login screen.
-- extendedWaitUntil:
-    visible:
-      id: "login-screen"
-    timeout: 120000
+      - stopApp
+      # Step 1: load the Metro bundle via the dev client (two-step deep
+      # link).
+      - openLink:
+          link: "exp+rtc-mobile://expo-development-client/?url=http://localhost:${MAESTRO_METRO_PORT}"
+      # Dismiss the iOS 'Open in RTC Mobile?' confirmation if it appears.
+      # REQUIRED on a COLD simulator, and easy to miss: on a dev machine
+      # the app has been launched before, so iOS already trusts the scheme
+      # and this dialog never shows. On a freshly created simulator with a
+      # never-launched app it ALWAYS shows — and while it sits unanswered
+      # the app cannot launch, so the `login-screen` wait below burns its
+      # whole timeout against the iOS home screen. Diagnosed from a CI
+      # failure screenshot (the flow reported only `Assertion is false: id:
+      # login-screen is visible`, which named what was absent and nothing
+      # about the dialog that caused it).
+      # iOS only: Android opens a link without asking, and an app screen
+      # there may carry its own 'Open' text, which this would tap.
+      - runFlow:
+          when:
+            platform: iOS
+            visible: "Open"
+          commands:
+            - tapOn: "Open"
+      # Wait for the app to boot (bundle loaded). The unauthenticated
+      # LoginScreen is the stable, scenario-agnostic boot marker;
+      # `visual-ready` only appears AFTER the scenario deep link below, so
+      # waiting for it here would always time out on the login screen.
+      - extendedWaitUntil:
+          visible:
+            id: "login-screen"
+          timeout: 120000
 # Step 2: in-app navigation to the scenario route (release scheme).
 - openLink:
     link: "rtcmobile://__visual/analytics/dashboard"

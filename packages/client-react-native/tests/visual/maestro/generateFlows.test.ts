@@ -23,30 +23,55 @@ describe("flowYaml", () => {
   });
 
   it("stops the app before the dev-client link, so every flow cold-launches", () => {
-    const yaml = flowYaml("blotter/seeded");
-    const commands = yaml.split("\n").filter((line) => {
-      return line.startsWith("- ");
-    });
+    const commands = commandLines(flowYaml("blotter/seeded"));
 
-    // The FIRST command, ahead of the link: a running app reloads its bundle
-    // on that link and crashes under Maestro's next accessibility query.
-    expect(commands[0]).toBe("- stopApp");
-    expect(commands[1]).toBe("- openLink:");
+    // The FIRST command of the launch, ahead of the link: a running app
+    // reloads its bundle on that link and crashes under Maestro's next
+    // accessibility query.
+    expect(commands[1]).toBe("- stopApp");
+    expect(commands[2]).toBe("- openLink:");
+  });
+
+  // On Android the app now and then dies at launch (a native crash while the
+  // dev client recreates the activity), and nothing relaunches it. The retry
+  // has to hold the stop, the link and the wait together: retrying the wait
+  // alone would wait again on a dead app.
+  it("retries the whole launch once, from the stop to the login screen", () => {
+    const lines = flowYaml("blotter/seeded").split("\n");
+    const retry = lines.indexOf("- retry:");
+    const afterRetry = lines.findIndex((line, index) => {
+      return index > retry && line.startsWith("- ");
+    });
+    const retried = lines.slice(retry, afterRetry).join("\n");
+
+    expect(commandLines(flowYaml("blotter/seeded"))[0]).toBe("- retry:");
+    expect(retried).toContain("    maxRetries: 1");
+    expect(retried).toContain("      - stopApp");
+    expect(retried).toContain("expo-development-client");
+    expect(retried).toContain('            id: "login-screen"');
+    // The scenario link and the shot come after it, once.
+    expect(retried).not.toContain("rtcmobile://__visual/");
+    expect(retried).not.toContain("takeScreenshot");
   });
 
   // One flow set drives both platforms. Android opens a link without asking,
   // and an app screen there may carry its own "Open" text for this to tap.
   it("taps the 'Open' confirmation on iOS only", () => {
-    const lines = flowYaml("blotter/seeded").split("\n");
+    const lines = flowYaml("blotter/seeded")
+      .split("\n")
+      .map((line) => {
+        return line.trim();
+      });
+
     const conditions = lines.filter((line) => {
-      return line === '      visible: "Open"';
+      return line === 'visible: "Open"';
     });
 
     expect(conditions).toHaveLength(2);
 
     for (const [index, line] of lines.entries()) {
-      if (line === '      visible: "Open"') {
-        expect(lines[index - 1]).toBe("      platform: iOS");
+      if (line === 'visible: "Open"') {
+        expect(lines[index - 1]).toBe("platform: iOS");
       }
     }
   });
@@ -100,6 +125,18 @@ describe("committed flows", () => {
     }
   });
 });
+
+/** Every command of a flow in order, nested ones included, unindented. */
+function commandLines(yaml: string): string[] {
+  return yaml
+    .split("\n")
+    .map((line) => {
+      return line.trim();
+    })
+    .filter((line) => {
+      return line.startsWith("- ");
+    });
+}
 
 function flowFileName(scenarioId: string): string {
   return `${scenarioId.replace(/\//g, "_")}.yaml`;
