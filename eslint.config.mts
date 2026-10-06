@@ -568,8 +568,7 @@ export default tseslint.config(
   {
     // devtools-app is migrated (Wave A of the page-object-isolation plan):
     // every spec under src/**/*.{test,spec}.{ts,tsx} speaks page objects
-    // under tests/pages/, so this package is held to error while the rest
-    // of the warn block above burns down.
+    // under tests/pages/, so this package is held to error.
     files: ["packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
