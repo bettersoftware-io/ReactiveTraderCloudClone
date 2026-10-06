@@ -275,7 +275,7 @@ describe("WsAdapter token-at-connect", () => {
 });
 
 describe("WsAdapter.closeForIdle() / reopen()", () => {
-  it("(a) closeForIdle() closes the socket and suppresses auto-reconnect", () => {
+  it("(a) closeForIdle() closes the socket, reports it and suppresses auto-reconnect", async () => {
     const adapter = new WsAdapter(
       "ws://test",
       () => {
@@ -292,6 +292,14 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
 
     lastMock.onopen?.(new Event("open"));
     adapter.closeForIdle();
+    // Reported by the adapter one microtask later, with no `close` event
+    // from the socket yet: offline, that event can be seconds away.
+    expect(events).toEqual([{ type: "gatewayConnected" }]);
+    await Promise.resolve();
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayDisconnected" },
+    ]);
     lastMock.onclose?.(new CloseEvent("close"));
 
     // Must NOT schedule a reconnect — advancing well past delay should not build a new socket
@@ -342,6 +350,104 @@ describe("WsAdapter.closeForIdle() / reopen()", () => {
         payload: { symbol: "EURUSD" },
       }),
     );
+    adapter.dispose();
+  });
+
+  it("(b2) reopen() does nothing on a socket that was never opened: no tokenless upgrade before sign-in", () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      { autoConnect: false },
+    );
+
+    adapter.reopen();
+
+    expect(MockWebSocket.constructed).toBe(0);
+    adapter.dispose();
+  });
+
+  it("(b3) reopen() does nothing after a sign-out, even one that followed an idle close", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    lastMock.onopen?.(new Event("open"));
+    adapter.closeForIdle();
+    lastMock.onclose?.(new CloseEvent("close"));
+
+    adapter.disconnect();
+    adapter.reopen();
+
+    expect(MockWebSocket.constructed).toBe(1);
+    adapter.dispose();
+  });
+
+  it("(b4) reopen() does nothing on a socket that is open", () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    lastMock.onopen?.(new Event("open"));
+
+    adapter.reopen();
+
+    expect(MockWebSocket.constructed).toBe(1);
+    adapter.dispose();
+  });
+
+  it("(b5) a replaced socket's late close neither reports a disconnect nor opens another socket", async () => {
+    const adapter = new WsAdapter(
+      "ws://test",
+      () => {
+        return undefined;
+      },
+      { reconnectDelayMs: 50 },
+    );
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
+    const first = lastMock;
+    first.onopen?.(new Event("open"));
+
+    // Reopened before the first socket's `close` event has arrived.
+    adapter.closeForIdle();
+    adapter.reopen();
+    // The close is reported a microtask on, and by then a new socket is on
+    // its way: reporting it now would show DISCONNECTED over a live socket.
+    await Promise.resolve();
+    lastMock.onopen?.(new Event("open"));
+    first.onclose?.(new CloseEvent("close"));
+    vi.advanceTimersByTime(200);
+
+    // Two sockets ever: the late close scheduled no reconnect, so nothing
+    // is open that a sign-out could not close.
+    expect(MockWebSocket.constructed).toBe(2);
+    expect(events).toEqual([
+      { type: "gatewayConnected" },
+      { type: "gatewayConnected" },
+    ]);
+
+    adapter.disconnect();
+    expect(lastMock.close).toHaveBeenCalledTimes(1);
+    adapter.dispose();
+  });
+
+  it("(b6) a released socket that opens late reports no connection", async () => {
+    const adapter = new WsAdapter("ws://test", () => {
+      return undefined;
+    });
+    const events: ConnectionEvent[] = [];
+    adapter.connectionEvents().subscribe((e) => {
+      return events.push(e);
+    });
+
+    // Signed out while the socket was still connecting.
+    adapter.disconnect();
+    await Promise.resolve();
+    lastMock.onopen?.(new Event("open"));
+
+    expect(events).toEqual([{ type: "gatewayDisconnected" }]);
     adapter.dispose();
   });
 

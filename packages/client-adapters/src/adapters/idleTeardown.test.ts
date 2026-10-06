@@ -2,7 +2,8 @@
 //
 // Verifies the composition.ts WS-branch tap wiring:
 //   idleTimeout  → ws.closeForIdle()
-//   reconnect    → ws.reopen()         ← sole recovery from idle (Item 1)
+//   reconnect    → ws.reopen()         ← the Reconnect button
+//   browserOnline → ws.reopen()        ← the network coming back
 //   userActivity → neither             ← resets countdown only, not socket
 //
 // Imports routeIdleLifecycle directly from composition.ts so that removing or
@@ -29,6 +30,13 @@ describe("composition.ts idle-teardown wiring (T2.2)", () => {
     expect(ws.closeForIdle).not.toHaveBeenCalled();
   });
 
+  it("browserOnline event invokes reopen(): a socket closed for idle comes back with the network", () => {
+    const ws = createWs();
+    routeIdleLifecycle({ type: "browserOnline" }, ws);
+    expect(ws.reopen).toHaveBeenCalledTimes(1);
+    expect(ws.closeForIdle).not.toHaveBeenCalled();
+  });
+
   it("userActivity event no longer reopens the socket after an idle close", () => {
     const ws = createWs();
     routeIdleLifecycle({ type: "userActivity" }, ws);
@@ -41,6 +49,7 @@ describe("composition.ts idle-teardown wiring (T2.2)", () => {
     routeIdleLifecycle({ type: "gatewayConnected" }, ws);
     routeIdleLifecycle({ type: "gatewayDisconnected" }, ws);
     routeIdleLifecycle({ type: "reconnectAttempt" }, ws);
+    routeIdleLifecycle({ type: "browserOffline" }, ws);
     expect(ws.closeForIdle).not.toHaveBeenCalled();
     expect(ws.reopen).not.toHaveBeenCalled();
   });

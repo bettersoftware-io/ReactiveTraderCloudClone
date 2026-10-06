@@ -87,6 +87,9 @@ export function nextConnectionStatus(
     case ConnectionStatus.OFFLINE_DISCONNECTED:
       switch (event.type) {
         case "browserOnline":
+          // The transport reopens a socket closed for idle on this same
+          // event (routeIdleLifecycle), so CONNECTING always has a socket
+          // on its way, whether idle came before the outage or during it.
           return ConnectionStatus.CONNECTING;
         default:
           return current;
