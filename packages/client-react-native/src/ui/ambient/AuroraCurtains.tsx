@@ -1,19 +1,15 @@
 // packages/client-react-native/src/ui/ambient/AuroraCurtains.tsx
 import {
   Blend,
-  Circle,
   Group,
   LinearGradient,
   Path,
-  RadialGradient,
   Rect,
-  rect,
   vec,
 } from "@shopify/react-native-skia";
 import { type JSX, useEffect } from "react";
 import {
   cancelAnimation,
-  Easing,
   type SharedValue,
   useDerivedValue,
   useSharedValue,
@@ -21,6 +17,17 @@ import {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+
+import { GlowLayer } from "#/ui/ambient/GlowLayer";
+import {
+  type Box,
+  DRIFT_A,
+  DRIFT_B,
+  EASE_IN_OUT,
+  type GlowSpec,
+  glowGradient,
+  swing,
+} from "#/ui/ambient/glowSpec";
 
 /**
  * The "aurora" ambient style: the web client's northern-lights curtains
@@ -59,10 +66,10 @@ export function AuroraCurtains({
     <>
       {glowSpecs(width, height).map((glow) => {
         return (
-          <AuroraGlow
-            key={glow.id}
-            glow={glow}
-            strength={glowStrength}
+          <GlowLayer
+            key={glow.spec.id}
+            glow={glow.spec}
+            opacity={glow.opacity * glowStrength}
             clock={clocks[glow.clock]}
           />
         );
@@ -95,17 +102,9 @@ type AuroraClock = "a" | "b" | "c" | "d" | "e";
 
 type AuroraClocks = Readonly<Record<AuroraClock, SharedValue<number>>>;
 
-/** Full-cycle durations of the web's five animations, in ms. */
-const CYCLE_MS: Readonly<Record<AuroraClock, number>> = {
-  a: 52_000,
-  b: 68_000,
-  c: 44_000,
-  d: 61_000,
-  e: 27_000,
-};
-
-/** CSS `ease-in-out`, which the web applies to each keyframe segment. */
-const EASE_IN_OUT = Easing.bezier(0.42, 0, 0.58, 1);
+/** Full-cycle durations of the three curtain animations, in ms; the two
+ * glow layers carry their own (`DRIFT_A`, `DRIFT_B`). */
+const CURTAIN_CYCLE_MS = { c: 44_000, d: 61_000, e: 27_000 } as const;
 
 /** `aurora-e` is the one animation with four keyframes (0/33/66/100%), so its
  * clock runs 0→1→2→3 and wraps; the other four swing 0→1→0. */
@@ -130,15 +129,15 @@ function useAuroraClocks(drifting: boolean): AuroraClocks {
       return;
     }
 
-    a.value = swing(CYCLE_MS.a);
-    b.value = swing(CYCLE_MS.b);
-    c.value = swing(CYCLE_MS.c);
-    d.value = swing(CYCLE_MS.d);
+    a.value = swing(DRIFT_A.cycleMs);
+    b.value = swing(DRIFT_B.cycleMs);
+    c.value = swing(CURTAIN_CYCLE_MS.c);
+    d.value = swing(CURTAIN_CYCLE_MS.d);
     e.value = withRepeat(
       withSequence(
         ...E_SEGMENTS.map((share, index) => {
           return withTiming(index + 1, {
-            duration: CYCLE_MS.e * share,
+            duration: CURTAIN_CYCLE_MS.e * share,
             easing: EASE_IN_OUT,
           });
         }),
@@ -157,113 +156,6 @@ function useAuroraClocks(drifting: boolean): AuroraClocks {
   }, [drifting, a, b, c, d, e]);
 
   return { a, b, c, d, e };
-}
-
-/** A two-keyframe CSS animation as a there-and-back loop: each half is one
- * eased segment, as CSS eases 0%→50% and 50%→100% separately. */
-function swing(cycleMs: number): number {
-  return withRepeat(
-    withTiming(1, { duration: cycleMs / 2, easing: EASE_IN_OUT }),
-    -1,
-    true,
-  );
-}
-
-/** A layer's box in canvas px: what its CSS percentages are measured on. */
-interface Box {
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-}
-
-/** One `radial-gradient(<rx> <ry> at <cx> <cy>, …)` of a glow layer, already
- * resolved to canvas px. */
-interface GlowGradient {
-  readonly cx: number;
-  readonly cy: number;
-  readonly rx: number;
-  readonly ry: number;
-  readonly colors: readonly string[];
-  readonly positions: readonly number[];
-}
-
-/** A glow layer's pose at one keyframe: `translate3d(x%, y%, 0) scale(s)`. */
-interface GlowPose {
-  readonly tx: number;
-  readonly ty: number;
-  readonly scale: number;
-}
-
-interface GlowSpec {
-  readonly id: string;
-  readonly box: Box;
-  readonly gradients: readonly GlowGradient[];
-  /** The layer's own CSS opacity, before the skin's intensity. */
-  readonly opacity: number;
-  readonly clock: AuroraClock;
-  readonly from: GlowPose;
-  readonly to: GlowPose;
-}
-
-interface AuroraGlowProps {
-  readonly glow: GlowSpec;
-  readonly strength: number;
-  readonly clock: SharedValue<number>;
-}
-
-/** One glow layer. Each gradient is a unit circle scaled into its ellipse, so
- * the falloff stays elliptical; the layer is clipped to its box, as a CSS
- * background is. */
-function AuroraGlow({ glow, strength, clock }: AuroraGlowProps): JSX.Element {
-  const { box, from, to } = glow;
-
-  const transform = useDerivedValue(() => {
-    const p = clock.value;
-
-    return [
-      { translateX: (from.tx + (to.tx - from.tx) * p) * box.w },
-      { translateY: (from.ty + (to.ty - from.ty) * p) * box.h },
-      { scale: from.scale + (to.scale - from.scale) * p },
-    ];
-  });
-
-  // A typed variable: Skia's prop types do not declare `testID` (see
-  // `TestGroup` in AmbientBackground.tsx).
-  const testProps = { testID: glow.id };
-
-  return (
-    <Group
-      {...testProps}
-      origin={vec(box.x + box.w / 2, box.y + box.h / 2)}
-      transform={transform}
-      clip={rect(box.x, box.y, box.w, box.h)}
-      opacity={glow.opacity * strength}
-    >
-      {glow.gradients.map((gradient) => {
-        return (
-          <Group
-            key={`${gradient.cx}-${gradient.cy}`}
-            transform={[
-              { translateX: gradient.cx },
-              { translateY: gradient.cy },
-              { scaleX: gradient.rx },
-              { scaleY: gradient.ry },
-            ]}
-          >
-            <Circle cx={0} cy={0} r={1}>
-              <RadialGradient
-                c={vec(0, 0)}
-                r={1}
-                colors={[...gradient.colors]}
-                positions={[...gradient.positions]}
-              />
-            </Circle>
-          </Group>
-        );
-      })}
-    </Group>
-  );
 }
 
 /** A curtain's pose at one keyframe:
@@ -408,9 +300,17 @@ function rgba(color: Rgb, alpha: number): string {
   return `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
 }
 
+interface AuroraGlow {
+  readonly spec: GlowSpec;
+  /** The layer's own CSS opacity, before the skin's intensity. */
+  readonly opacity: number;
+  readonly clock: AuroraClock;
+}
+
 /** `.auroraBlobA` and `.auroraBlobB`: both `inset: -12% -6%`, so 112% of the
- * width and 124% of the height. */
-function glowSpecs(width: number, height: number): GlowSpec[] {
+ * width and 124% of the height. A fade to `transparent` keeps its hue, as
+ * CSS interpolates premultiplied. */
+function glowSpecs(width: number, height: number): AuroraGlow[] {
   const box: Box = {
     x: width * -0.06,
     y: height * -0.12,
@@ -418,69 +318,75 @@ function glowSpecs(width: number, height: number): GlowSpec[] {
     h: height * 1.24,
   };
 
-  function gradient(
-    rx: number,
-    ry: number,
-    cx: number,
-    cy: number,
-    stops: readonly (readonly [Rgb, number, number])[],
-  ): GlowGradient {
-    return {
-      cx: box.x + box.w * cx,
-      cy: box.y + box.h * cy,
-      rx: box.w * rx,
-      ry: box.h * ry,
-      colors: stops.map(([color, alpha]) => {
-        return rgba(color, alpha);
-      }),
-      positions: stops.map(([, , position]) => {
-        return position;
-      }),
-    };
-  }
-
   return [
     {
-      id: "aurora-glow-a",
-      box,
       opacity: 0.26,
       clock: "a",
-      from: { tx: -0.07, ty: -0.04, scale: 1.08 },
-      to: { tx: 0.07, ty: 0.05, scale: 1.28 },
-      gradients: [
-        gradient(1.2, 0.3, 0.5, 0.12, [
-          [GREEN, 0.42, 0],
-          [TEAL, 0.2, 0.46],
-          [TEAL, 0, 0.74],
-        ]),
-        gradient(0.9, 0.24, 0.3, 0.26, [
-          [SKY, 0.3, 0],
-          [SKY, 0, 0.68],
-        ]),
-        gradient(0.8, 0.22, 0.74, 0.06, [
-          [PURPLE, 0.38, 0],
-          [MAGENTA, 0.14, 0.52],
-          [MAGENTA, 0, 0.76],
-        ]),
-      ],
+      spec: {
+        id: "aurora-glow-a",
+        box,
+        drift: DRIFT_A,
+        gradients: [
+          glowGradient(
+            box,
+            [1.2, 0.3],
+            [0.5, 0.12],
+            [
+              [rgba(GREEN, 0.42), 0],
+              [rgba(TEAL, 0.2), 0.46],
+              [rgba(TEAL, 0), 0.74],
+            ],
+          ),
+          glowGradient(
+            box,
+            [0.9, 0.24],
+            [0.3, 0.26],
+            [
+              [rgba(SKY, 0.3), 0],
+              [rgba(SKY, 0), 0.68],
+            ],
+          ),
+          glowGradient(
+            box,
+            [0.8, 0.22],
+            [0.74, 0.06],
+            [
+              [rgba(PURPLE, 0.38), 0],
+              [rgba(MAGENTA, 0.14), 0.52],
+              [rgba(MAGENTA, 0), 0.76],
+            ],
+          ),
+        ],
+      },
     },
     {
-      id: "aurora-glow-b",
-      box,
       opacity: 0.2,
       clock: "b",
-      from: { tx: 0.06, ty: 0.04, scale: 1.22 },
-      to: { tx: -0.06, ty: -0.04, scale: 1.04 },
-      gradients: [
-        gradient(0.7, 0.18, 0.62, 0.2, [
-          [MAGENTA, 0.3, 0],
-          [MAGENTA, 0, 0.64],
-        ]),
-        gradient(0.95, 0.26, 0.18, 0.1, [
-          [TEAL, 0.34, 0],
-          [TEAL, 0, 0.66],
-        ]),
-      ],
+      spec: {
+        id: "aurora-glow-b",
+        box,
+        drift: DRIFT_B,
+        gradients: [
+          glowGradient(
+            box,
+            [0.7, 0.18],
+            [0.62, 0.2],
+            [
+              [rgba(MAGENTA, 0.3), 0],
+              [rgba(MAGENTA, 0), 0.64],
+            ],
+          ),
+          glowGradient(
+            box,
+            [0.95, 0.26],
+            [0.18, 0.1],
+            [
+              [rgba(TEAL, 0.34), 0],
+              [rgba(TEAL, 0), 0.66],
+            ],
+          ),
+        ],
+      },
     },
   ];
 }

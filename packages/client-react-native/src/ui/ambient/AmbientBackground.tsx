@@ -1,105 +1,63 @@
 // packages/client-react-native/src/ui/ambient/AmbientBackground.tsx
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Group,
-  Line,
-  vec,
-} from "@shopify/react-native-skia";
-import { type JSX, type ReactNode, useEffect } from "react";
+import { Canvas, Group, Line, vec } from "@shopify/react-native-skia";
+import type { JSX, ReactNode } from "react";
 import { StyleSheet, useWindowDimensions } from "react-native";
-import {
-  cancelAnimation,
-  Easing,
-  type SharedValue,
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 
 import { useViewModel } from "@rtc/react-bindings";
 
+import { AmbientRays } from "#/ui/ambient/AmbientRays";
 import { AuroraCurtains } from "#/ui/ambient/AuroraCurtains";
 import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
 import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
-import type { RnTheme } from "#/ui/theme/tokens";
 import { useTheme } from "#/ui/theme/useTheme";
 
 /**
  * Ambient background: a full-bleed Skia canvas mounted BEHIND the app's
  * routed content — a faint HUD grid (`t.gridC`, shared) plus ONE of two
  * mutually-exclusive animated layer groups, selected by the `ambientStyle`
- * preference (`useAmbientStyle()`):
- *   - `"rays"` (`testID="ambient-rays-blobs"`) — the original layer: 3 soft
- *     blurred blobs in the active theme's accent colours. It has no
- *     counterpart in the mobile design; its strength is set to read about as
- *     strongly as the aurora.
- *   - `"aurora"` (`testID="ambient-aurora-curtains"`, the default) — the
- *     web client's northern-lights curtains, layer for layer: see
- *     `AuroraCurtains`. From 2026-08 until 2026-10-06 this style drew the
- *     mobile design's two accent washes instead (dc.html:57-58); the owner
- *     asked for the web's look and motion.
+ * preference (`useAmbientStyle()`). Both are the web client's, layer for
+ * layer:
+ *   - `"rays"` (`testID="ambient-rays"`) — two accent-coloured glows and a
+ *     slowly turning beam: see `AmbientRays`.
+ *   - `"aurora"` (`testID="ambient-aurora-curtains"`, the default) —
+ *     northern-lights curtains on a fixed palette: see `AuroraCurtains`.
  *
- * The rays blobs are not scaled by the skin. Until 2026-10-06 they were
- * multiplied by the per-skin `aurora` intensity (0.1–0.7), which made them
- * read as absent on most skins. The aurora style uses that intensity the way
- * the web does: on its two glow layers only, never on the curtains.
- * Both groups are gated by `useAmbientEnabled()` (the animated-background
- * preference ANDed with OS reduced-motion, unchanged by this style branch);
- * the whole component returns `null` when off, so no worklet or canvas
- * mounts at all — calm-until-real-event per the perf doctrine.
+ * History, because both styles looked different until 2026-10-06: the aurora
+ * drew the mobile design's two accent washes (dc.html:57-58) and the rays
+ * drew three blurred blobs with no beam. The owner's reference for both is
+ * the web client, so both were replaced by ports of it.
+ *
+ * The skin's `aurora` intensity scales only the aurora's two glow layers, as
+ * on the web — never its curtains, which is what once made that style read
+ * as absent. The rays are drawn at one strength in every skin (see
+ * `AmbientRays` for why that departs from the web).
+ *
+ * The canvas is gated by `useAmbientEnabled()` (the animated-background
+ * preference ANDed with OS reduced-motion); the component returns `null`
+ * when off, so no worklet or canvas mounts at all — calm-until-real-event
+ * per the perf doctrine.
  *
  * The DRIFT is additionally gated by `useShellMotionEnabled()`: under
- * power-saver Freeze the canvas still paints (grid + one static frame of the
- * layer group at its resting pose) but no loop starts — Freeze is the tier
- * that kills every motion. It is also what lets the visual harness capture
- * the ambient layer at all: with the preference on and Freeze seeded, the
- * frame is the same on every capture.
+ * power-saver Freeze the canvas still paints (grid + the style's resting
+ * frame) but no loop starts — Freeze is the tier that kills every motion. It
+ * is also what lets the visual harness capture the ambient layer at all: with
+ * the preference on and Freeze seeded, the frame is the same on every
+ * capture.
  *
- * Only the active style's loops run: the rays blobs share ONE Reanimated
- * shared value (`progress`, looping 0..1..0), the aurora owns five (one per
- * CSS animation it ports). Skia reads them on the UI thread through
- * `useDerivedValue` — position, scale and skew only, opacity is never
- * animated — so React never re-renders per frame (transform-equivalent only,
- * per docs/performance.md's RN-adapted rule).
+ * Each style owns its loops (five for the aurora, three for the rays), one
+ * Reanimated shared value per CSS animation it ports, and only the mounted
+ * style's run. Skia reads them on the UI thread through `useDerivedValue` —
+ * position, scale, skew and rotation only, opacity is never animated — so
+ * React never re-renders per frame (transform-equivalent only, per
+ * docs/performance.md's RN-adapted rule).
  */
 export function AmbientBackground(): JSX.Element | null {
   const enabled = useAmbientEnabled();
   const drifting = useShellMotionEnabled();
   const t = useTheme();
   const { width, height } = useWindowDimensions();
-  const progress = useSharedValue(0);
   const { useAmbientStyle } = useViewModel();
   const { style } = useAmbientStyle();
-  const raysDrifting = enabled && drifting && style === "rays";
-
-  useEffect(() => {
-    if (!raysDrifting) {
-      // Stop the drift loop (toggle off / reduced-motion / Freeze) — the
-      // first two return null below, which unmounts the Canvas but would
-      // leave a withRepeat(-1) worklet running forever on the UI thread;
-      // Freeze keeps the Canvas and shows this resting frame. Cancel and
-      // rest at a static frame either way.
-      cancelAnimation(progress);
-      progress.value = 0;
-      return;
-    }
-
-    progress.value = withRepeat(
-      withTiming(1, {
-        duration: DRIFT_DURATION_MS,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true,
-    );
-
-    return () => {
-      cancelAnimation(progress);
-    };
-  }, [raysDrifting, progress]);
 
   if (!enabled) {
     return null;
@@ -113,10 +71,13 @@ export function AmbientBackground(): JSX.Element | null {
     >
       {gridLines(width, height, t.gridC)}
       {style === "rays" ? (
-        <TestGroup testID="ambient-rays-blobs">
-          {raysBlobSpecs(width, height, t).map((blob) => {
-            return <RaysBlob key={blob.id} blob={blob} progress={progress} />;
-          })}
+        <TestGroup testID="ambient-rays">
+          <AmbientRays
+            width={width}
+            height={height}
+            theme={t}
+            drifting={drifting}
+          />
         </TestGroup>
       ) : (
         <TestGroup testID="ambient-aurora-curtains">
@@ -132,8 +93,6 @@ export function AmbientBackground(): JSX.Element | null {
   );
 }
 
-/** One leg of the rays blobs' there-and-back loop. */
-const DRIFT_DURATION_MS = 13_000;
 const GRID_CELL_PX = 56;
 
 interface TestGroupProps {
@@ -157,103 +116,6 @@ interface TestGroupProps {
 function TestGroup({ testID, children }: TestGroupProps): JSX.Element {
   const testProps = { testID };
   return <Group {...testProps}>{children}</Group>;
-}
-
-interface RaysBlobSpec {
-  readonly id: string;
-  readonly baseX: number;
-  readonly baseY: number;
-  readonly radius: number;
-  /** How far the centre travels over one leg of the loop, in px. */
-  readonly drift: number;
-  readonly color: string;
-  /** Travel direction relative to the shared `progress` value (1 = with it,
-   * -1 = against it) — gives each blob a distinct phase off ONE shared
-   * animation instead of a second animated value per blob. */
-  readonly sign: 1 | -1;
-}
-
-interface RaysBlobProps {
-  blob: RaysBlobSpec;
-  progress: SharedValue<number>;
-}
-
-/** A disc blurred at 0.6 × its radius peaks at about three quarters of its
- * own opacity, so 0.18 reads as a soft 13% glow at the centre. */
-const RAYS_BLOB_OPACITY = 0.18;
-/** Travel per leg as a share of the larger viewport dimension. */
-const RAYS_BLOB_DRIFT = 0.1;
-
-/** One blurred "rays"-style circle, its centre derived from the shared
- * `progress` clock — no per-blob animation, just a per-blob phase (`sign`)
- * applied to the one shared value. */
-function RaysBlob({ blob, progress }: RaysBlobProps): JSX.Element {
-  const cx = useDerivedValue(() => {
-    return blob.baseX + blob.sign * (progress.value - 0.5) * blob.drift;
-  });
-
-  const cy = useDerivedValue(() => {
-    return blob.baseY + blob.sign * (0.5 - progress.value) * blob.drift;
-  });
-
-  // A typed variable, for the reason `TestGroup` gives.
-  const testProps = { testID: blob.id };
-
-  return (
-    <Circle
-      {...testProps}
-      cx={cx}
-      cy={cy}
-      r={blob.radius}
-      color={blob.color}
-      opacity={RAYS_BLOB_OPACITY}
-    >
-      <Blur blur={blob.radius * 0.6} />
-    </Circle>
-  );
-}
-
-/** Three blobs spread toward the canvas corners/base, sized relative to the
- * larger viewport dimension so they read consistently across phone sizes.
- * Colours reuse existing theme accents (no new theme tokens): `accentPrimary`,
- * `accent2`, and `glowC` (falling back to `accentPrimary` for skins where
- * `glowC` is `null`). */
-function raysBlobSpecs(
-  width: number,
-  height: number,
-  t: RnTheme,
-): RaysBlobSpec[] {
-  const spread = Math.max(width, height);
-  const drift = spread * RAYS_BLOB_DRIFT;
-  return [
-    {
-      id: "rays-1",
-      baseX: width * 0.22,
-      baseY: height * 0.18,
-      radius: spread * 0.32,
-      drift,
-      color: t.accentPrimary,
-      sign: 1,
-    },
-    {
-      id: "rays-2",
-      baseX: width * 0.82,
-      baseY: height * 0.28,
-      radius: spread * 0.28,
-      drift,
-      color: t.accent2,
-      sign: -1,
-    },
-    {
-      id: "rays-3",
-      baseX: width * 0.5,
-      baseY: height * 0.88,
-      radius: spread * 0.3,
-      drift,
-      color: t.glowC ?? t.accentPrimary,
-      sign: 1,
-    },
-  ];
 }
 
 /** Evenly spaced HUD grid lines (vertical + horizontal) at `GRID_CELL_PX`

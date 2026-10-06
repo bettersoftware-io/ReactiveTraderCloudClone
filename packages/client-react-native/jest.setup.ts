@@ -209,6 +209,8 @@ jest.mock("@shopify/react-native-skia", () => {
     // AuroraCurtains: a shader that multiplies its two gradient children, and
     // the `rect(x, y, w, h)` constructor a Group's `clip` takes.
     Blend: passthrough("SkiaBlend"),
+    // AmbientRays: the turning beam's conic shader.
+    SweepGradient: passthrough("SkiaSweepGradient"),
     rect: (x: number, y: number, width: number, height: number) => {
       return { x, y, width, height };
     },
