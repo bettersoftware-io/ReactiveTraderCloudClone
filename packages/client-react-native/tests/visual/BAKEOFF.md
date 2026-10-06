@@ -12,7 +12,7 @@ committed goldens under `__screenshots__/<pin>/<tier>/`; they differ only in how
 they navigate the device and take the shot. Measured on the pinned device
 `ios-iphone17-26` (iPhone 17 / iOS 26.x). **Never CI** — iOS pixels need a Mac.
 
-## Status: the iOS comparison is DONE at full coverage; Android is not (2026-10-05)
+## Status: the iOS comparison is DONE at full coverage; Android has a first run (2026-10-06)
 
 The gate this file used to name — the mobile UI's visual fidelity settling —
 lifted on 2026-10-04 (all 12 skins signed off), so both viable tiers were
@@ -23,7 +23,7 @@ the same commit.
 |---|---|
 | Scenarios | **all 26**, on both tiers |
 | Devices | 1 (`ios-iphone17-26`) |
-| Platforms | iOS only — **still no Android run**, though Maestro's whole case is that it is cross-platform |
+| Platforms | iOS for the comparison; Android since 2026-10-06, Maestro only — see "The Android leg" below |
 | Repetitions | **5 full runs per tier** (130 scenario runs each), back to back |
 | Regressions | 1 injected (the #147 shadow-clip), run once through each tier |
 
@@ -83,12 +83,58 @@ coverage, they agree pixel for pixel, and both catch the bug class the suite
 exists for. simctl is faster; Maestro is steadier and is the only route to
 Android.
 
+### The Android leg: Maestro runs there, less steadily than on iOS (2026-10-06)
+
+The same 26 flows now drive an Android emulator (Pixel 10a, API 37, a local
+debug build from `expo run:android`) and a golden set is committed under
+`android-pixel10a-37/maestro/`. `simctl` has no Android counterpart, so this
+set has no second tier to agree with — it was accepted by eye.
+
+| | measured |
+|---|---|
+| Scenarios captured | 26 / 26 |
+| Capture time, idle machine | 5 min 51 s (iOS Maestro: ~8 min 10 s) |
+| Verification runs that produced verdicts | 2 of 3 |
+| Scenario runs passing in those two | 51 / 52, every pass at 0.0000% |
+| The one failure | `equities/trade`, 0.1070%, once; passed in the next run; undiagnosed |
+| The run without verdicts | 3 flows errored (`login-screen` never visible, twice; "Unknown error", once) |
+
+The verification runs were taken with this machine at a load average of 14–25
+from other work, and each took 21–27 minutes instead of six. So the errored
+run says the flows' waits are not load-proof; it does not say what an idle
+machine would do. That is a smaller sample, and a worse one, than the iOS
+side's five clean runs — it shows the leg is possible, not that it is stable.
+
+What Android needed that iOS did not:
+
+- **The ready marker had to move.** `VisualScenarioHost`'s 1x1 `visual-ready`
+  view sat at the top-left corner. Android's status bar is a window of its own
+  over an edge-to-edge app, and Maestro drops an element wholly under it: the
+  marker was in `uiautomator dump` and absent from `maestro hierarchy`, so every
+  flow timed out on a ready screen. It now sits halfway down the left edge.
+  Both iOS tiers were re-verified after the move.
+- **The dev menu opens itself.** Besides the floating gear, expo-dev-menu on
+  Android shows its sheet at launch while `showsAtLaunch` is true or
+  `isOnboardingFinished` is false — both defaults. The runner writes three
+  preferences through `adb shell run-as` and restores the file afterwards
+  (`shared/androidDevice.ts`).
+- **The status bar is masked, not pinned.** Between two boots of the same
+  emulator the clock moved 43 px sideways and the signal glyph changed, which
+  failed 25 of 26 scenarios at about 0.05%. System UI's demo mode held the
+  clock's text and the battery but neither of those. The top 142 rows are
+  painted black on Android (`shared/statusBarMask.ts`); the app's own
+  background behind the bar goes with them.
+- **`adb reverse`** for the Metro port, so the flows keep one dev-client link.
+- **The "Open" tap is iOS-only** in the flows (`when: platform: iOS`).
+- A resumed emulator snapshot lost its package service mid-run ("Can't find
+  service: package"); a cold boot (`emulator -avd … -no-snapshot`) cured it.
+
 It does **not** settle whether to retire a tier. On iOS they now duplicate each
 other exactly, so keeping both costs a second set of 26 goldens to re-pin on
 every visual change. Retiring simctl leaves the slower tier; retiring Maestro
 leaves the one with capture incidents and closes the door on Android. That is a
-maintainer decision, and the Android leg — never run — is the evidence it is
-still missing.
+maintainer decision. The Android leg has now run: Maestro does reach Android,
+and is not yet as steady there as on iOS.
 
 ## Scoreboard
 
@@ -344,8 +390,9 @@ and is reachable two different ways:
 | **Android** | `AndroidManifest` meta-data → **same key** (`DevMenuPreferences.kt:73`, fallback `true`) | `SharedPreferences` → `adb shell` |
 
 Android has its own FAB (`MovableFloatingActionButton.kt`) — this is not an
-Apple-only problem, and will land on the Maestro tier the moment it drives an
-Android emulator.
+Apple-only problem. `shared/androidDevice.ts` implements the **Android runtime
+override** since 2026-10-06, along with the two preferences that stop the menu
+opening itself at launch.
 
 `shared/devMenuFab.ts` implements the **iOS runtime override**: written off
 before a run, deleted afterwards, best-effort in both directions so a simulator
@@ -396,10 +443,9 @@ visual fidelity settling.
    itself (keep both, or retire one) is left to the maintainer.
 4. ~~**Add an inset-3D-card scenario**~~ — **DONE**: the matrix now has
    inset-card scenarios, and the #147 shadow-clip is caught by both tiers.
-5. **Run the Android leg.** Maestro's case rests on being cross-platform and it
-   has never taken an Android shot here. It needs an Android **dev** build (the
-   harness is inert outside `__DEV__`, so the preview APK cannot be used) and
-   an `android-*` golden set.
+5. ~~**Run the Android leg.**~~ — **DONE 2026-10-06**, results above. Still
+   open from it: repeat the verification on an idle machine, and diagnose
+   `equities/trade`'s one 0.1070% frame.
 6. **Diagnose simctl's `credit/new-rfq` alternate frame** (0.1147%, twice in 8
    runs) — or replace its fixed settle delay with the `visual-ready` marker
    Maestro already waits for.

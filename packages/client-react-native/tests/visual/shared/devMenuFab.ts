@@ -92,10 +92,10 @@ const FAB_PREFERENCE_KEY = "EXDevMenuShowFloatingActionButton";
  * near-constant ~12,670 px in every Maestro shot — and they were re-pinned
  * without it the same day.
  *
- * Android will need a SIBLING, not this: the FAB exists there too, under the
- * same preference key, but in `SharedPreferences` via `adb shell` rather than
- * `UserDefaults` via `simctl`. The version that needs neither is the build-time
- * default (`Info.plist` / `AndroidManifest` meta-data), which no runner can
- * forget. See `tests/visual/BAKEOFF.md` — "The dev-menu gear, and how to hide
- * it on every tier". */
+ * Android has a SIBLING, not this: the FAB exists there too, but in
+ * `SharedPreferences` reached through `adb shell` rather than `UserDefaults`
+ * through `simctl` — see `androidDevice.ts`. The version that needs neither is
+ * the build-time default (`Info.plist` / `AndroidManifest` meta-data), which no
+ * runner can forget. See `tests/visual/BAKEOFF.md` — "The dev-menu gear, and
+ * how to hide it on every tier". */
 const APP_BUNDLE_ID = "io.bettersoftware.rtcmobile";
