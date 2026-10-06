@@ -7,9 +7,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import type { SessionStore } from "@rtc/core-api";
 import type { PreferencesPort } from "@rtc/domain";
 
+import { VisualHarnessHome } from "#/../tests/visual/VisualHarnessHome";
 import { AppRoot } from "#/app/AppRoot";
 import { AsyncStoragePreferencesAdapter } from "#/app/adapters/AsyncStoragePreferencesAdapter";
 import { AsyncStorageSessionStore } from "#/app/adapters/AsyncStorageSessionStore";
+import { visualHarnessEnabled } from "#/app/visualHarnessGate";
 import { MotionProbe } from "#/ui/_probe/MotionProbe";
 import { AmbientBackground } from "#/ui/ambient/AmbientBackground";
 import { ConnectionBanner } from "#/ui/ConnectionBanner";
@@ -25,7 +27,16 @@ import { ThemeProvider } from "#/ui/theme/ThemeProvider";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { useThemedStyles } from "#/ui/theme/useThemedStyles";
 
-/** App-group layout: owns the simulator/live toggle, wraps the HUD chrome in one
+/** The app's home route group. On a visual-harness bundle it is a bare marker
+ * screen and the app below is never mounted: a capture loads the bundle here
+ * and then opens a scenario route, which needs none of the app — see
+ * `VisualHarnessHome`. The flag is fixed for the life of a bundle, so this is
+ * one branch or the other for good, never a switch between them. */
+export default function AppGroupLayout(): JSX.Element {
+  return visualHarnessEnabled() ? <VisualHarnessHome /> : <AppShell />;
+}
+
+/** The app itself: owns the simulator/live toggle, wraps the HUD chrome in one
  * `AppRoot` (one composition, one WS, one blotter presenter) and one
  * `ThemeProvider` (one resolved skin×mode shared by every route). First paint is
  * gated on the bundled fonts (so no leaf renders a not-yet-loaded family), a
@@ -42,7 +53,7 @@ import { useThemedStyles } from "#/ui/theme/useThemedStyles";
  * The outer wrapper is a plain `View` (not `SafeAreaView`): `ShellHeader` now
  * owns its own top safe-area inset via `useSafeAreaInsets`, so a `SafeAreaView`
  * here would double-pad the top edge. */
-export default function AppGroupLayout(): JSX.Element {
+function AppShell(): JSX.Element {
   const [simulator, setSimulator] = useState(false);
   const [sessionStore, setSessionStore] = useState<SessionStore | null>(null);
   const [preferences, setPreferences] = useState<PreferencesPort | null>(null);

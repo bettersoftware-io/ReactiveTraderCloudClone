@@ -36,7 +36,7 @@ describe("flowYaml", () => {
   // dev client recreates the activity), and nothing relaunches it. The retry
   // has to hold the stop, the link and the wait together: retrying the wait
   // alone would wait again on a dead app.
-  it("retries the whole launch once, from the stop to the login screen", () => {
+  it("retries the whole launch once, from the stop to the harness home", () => {
     const lines = flowYaml("blotter/seeded").split("\n");
     const retry = lines.indexOf("- retry:");
     const afterRetry = lines.findIndex((line, index) => {
@@ -48,7 +48,7 @@ describe("flowYaml", () => {
     expect(retried).toContain("    maxRetries: 1");
     expect(retried).toContain("      - stopApp");
     expect(retried).toContain("expo-development-client");
-    expect(retried).toContain('            id: "login-screen"');
+    expect(retried).toContain('            id: "visual-harness-home"');
     // The scenario link and the shot come after it, once.
     expect(retried).not.toContain("rtcmobile://__visual/");
     expect(retried).not.toContain("takeScreenshot");
@@ -74,6 +74,12 @@ describe("flowYaml", () => {
         expect(lines[index - 1]).toBe("platform: iOS");
       }
     }
+  });
+
+  // The flow must never wait on a screen of the app itself: a harness bundle
+  // does not mount the app, so such a wait could only time out.
+  it("waits for the harness home, never for a screen of the app", () => {
+    expect(flowYaml("blotter/seeded")).not.toContain("login-screen");
   });
 
   it("flattens slashes in the screenshot name for every registered id", () => {

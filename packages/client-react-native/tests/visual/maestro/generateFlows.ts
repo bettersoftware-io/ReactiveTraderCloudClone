@@ -2,13 +2,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { VISUAL_HARNESS_HOME_ID } from "../harnessHomeId.ts";
 import { SCENARIO_IDS } from "../scenarioIds.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** Dev-client + release schemes — mirror `simctl/capture.ts` (the proven
  * two-step). Maestro's `openLink` drives the same custom-scheme handoff; the
- * dev client must load the Metro bundle before the in-app scenario link.
+ * dev client must load the Metro bundle before the in-app scenario link. On a
+ * harness bundle the first link lands on a bare marker screen, never on the
+ * app (`VisualHarnessHome.tsx`).
  * `${MAESTRO_METRO_PORT}` is a literal Maestro flow variable — Maestro
  * interpolates it at `maestro test` time (from the runner's env), NOT a JS
  * template literal. */
@@ -42,7 +45,7 @@ const BOOT_WAIT_MS = 120_000;
 const READY_WAIT_MS = 60_000;
 
 /**
- * How many times a launch that never reaches the login screen is tried again.
+ * How many times a launch that never reaches the harness home is tried again.
  * One: the crash this covers was seen once in about 280 launches, so two in a
  * row is not a rate worth waiting for, and every extra try is another
  * {@link BOOT_WAIT_MS} spent on a run that is broken for a real reason (Metro
@@ -60,8 +63,8 @@ export function flowYaml(id: string): string {
     "# that link, and Maestro's next accessibility query then walks the view tree",
     "# while it is being torn down: the app dies with a malloc heap-corruption",
     "# trap (EXC_BREAKPOINT under UIAccessibility's snapshot, off the main",
-    "# thread). Nothing relaunches it, so the `login-screen` wait burns its whole",
-    "# timeout — and because the crash leaves the app dead, the NEXT flow passes.",
+    "# thread). Nothing relaunches it, so the wait for the harness home burns its",
+    "# whole timeout — and because the crash leaves the app dead, the NEXT flow passes.",
     "# That is why exactly every other flow failed (measured 2026-10-04: 13 of",
     "# 26, strictly alternating, one crash report per failure).",
     "# Android adds a second, rarer way to die here (measured 2026-10-06: once",
@@ -84,11 +87,11 @@ export function flowYaml(id: string): string {
     "      # the app has been launched before, so iOS already trusts the scheme",
     "      # and this dialog never shows. On a freshly created simulator with a",
     "      # never-launched app it ALWAYS shows — and while it sits unanswered",
-    "      # the app cannot launch, so the `login-screen` wait below burns its",
-    "      # whole timeout against the iOS home screen. Diagnosed from a CI",
-    "      # failure screenshot (the flow reported only `Assertion is false: id:",
-    "      # login-screen is visible`, which named what was absent and nothing",
-    "      # about the dialog that caused it).",
+    "      # the app cannot launch, so the wait below burns its whole timeout",
+    "      # against the iOS home screen. Diagnosed from a CI failure screenshot",
+    "      # (the flow reported only `Assertion is false: id: … is visible`,",
+    "      # which named what was absent and nothing about the dialog that",
+    "      # caused it).",
     "      # iOS only: Android opens a link without asking, and an app screen",
     "      # there may carry its own 'Open' text, which this would tap.",
     "      - runFlow:",
@@ -97,13 +100,14 @@ export function flowYaml(id: string): string {
     '            visible: "Open"',
     "          commands:",
     '            - tapOn: "Open"',
-    "      # Wait for the app to boot (bundle loaded). The unauthenticated",
-    "      # LoginScreen is the stable, scenario-agnostic boot marker;",
-    "      # `visual-ready` only appears AFTER the scenario deep link below, so",
-    "      # waiting for it here would always time out on the login screen.",
+    "      # Wait for the bundle to load. On a harness bundle the home route is",
+    "      # a bare marker screen: the app itself (application core, boot",
+    "      # splash, sign-in) is never mounted, because a scenario needs none",
+    "      # of it. `visual-ready` only appears AFTER the scenario deep link",
+    "      # below, so waiting for it here would always time out.",
     "      - extendedWaitUntil:",
     "          visible:",
-    '            id: "login-screen"',
+    `            id: "${VISUAL_HARNESS_HOME_ID}"`,
     `          timeout: ${BOOT_WAIT_MS}`,
     "# Step 2: in-app navigation to the scenario route (release scheme).",
     "- openLink:",
