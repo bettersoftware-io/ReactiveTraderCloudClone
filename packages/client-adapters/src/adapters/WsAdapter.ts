@@ -64,6 +64,11 @@ export class WsAdapter implements IWsAdapter {
   // an explicit reopen()/connect().
   private suspended = false;
 
+  // The suspension is an idle close, the only kind reopen() may undo. A
+  // sign-out (or a socket not yet opened) is suspended too, and reopening
+  // that one would send a tokenless upgrade.
+  private closedForIdle = false;
+
   private readonly connectionEvents$ = new ReplaySubject<ConnectionEvent>(1);
 
   constructor(
@@ -94,6 +99,7 @@ export class WsAdapter implements IWsAdapter {
     }
 
     this.suspended = false;
+    this.closedForIdle = false;
     this.openSocket();
   }
 
@@ -101,6 +107,9 @@ export class WsAdapter implements IWsAdapter {
    * the adapter goes quiet instead of retrying tokenless upgrades. The
    * adapter stays reusable — a later connect() re-establishes it. */
   disconnect(): void {
+    // A sign-out outranks an idle close: only connect() opens it again.
+    this.closedForIdle = false;
+
     if (this.disposed || this.suspended) {
       return;
     }
@@ -112,9 +121,7 @@ export class WsAdapter implements IWsAdapter {
       this.reconnectTimer = null;
     }
 
-    const ws = this.ws;
-    this.ws = null;
-    ws?.close();
+    this.releaseSocket();
   }
 
   private openSocket(): void {
@@ -126,15 +133,34 @@ export class WsAdapter implements IWsAdapter {
     // a token that changes between disconnects (e.g. re-login) is picked up
     // without recreating the adapter.
     const target = buildWsUrl(this.url, this.tokenProvider());
-    this.ws = new WebSocket(target);
+    const socket = new WebSocket(target);
+    this.ws = socket;
 
-    this.ws.onopen = (): void => {
+    // A socket the adapter has let go of (closed on purpose, see
+    // releaseSocket) still fires its handlers, and its `close` event can
+    // arrive seconds later with no network. None of them may speak for the
+    // adapter: a late `close` would schedule a reconnect and open a second
+    // socket beside the live one, which no later disconnect() could reach,
+    // and a late `open` would report a connection nobody holds.
+    const isReleased = (): boolean => {
+      return this.ws !== socket;
+    };
+
+    socket.onopen = (): void => {
+      if (isReleased()) {
+        return;
+      }
+
       console.log("[WsAdapter] Connected to", this.url.split("?")[0]);
       this.connectionEvents$.next({ type: "gatewayConnected" });
       this.flushSendQueue();
     };
 
-    this.ws.onmessage = (event: MessageEvent): void => {
+    socket.onmessage = (event: MessageEvent): void => {
+      if (isReleased()) {
+        return;
+      }
+
       let msg: WsMessage;
 
       try {
@@ -172,18 +198,14 @@ export class WsAdapter implements IWsAdapter {
       }
     };
 
-    this.ws.onclose = (): void => {
-      if (this.disposed) {
+    socket.onclose = (): void => {
+      if (this.disposed || isReleased()) {
         return;
       }
 
+      // Only a genuine drop reaches here: a deliberate close (idle timeout
+      // or sign-out) released the socket first and reported it itself.
       this.connectionEvents$.next({ type: "gatewayDisconnected" });
-
-      if (this.suspended) {
-        // Deliberate close (idle timeout or sign-out): suppress auto-reconnect;
-        // recovery is an explicit reopen()/connect().
-        return;
-      }
 
       console.log(
         "[WsAdapter] Disconnected, reconnecting in",
@@ -193,9 +215,32 @@ export class WsAdapter implements IWsAdapter {
       this.scheduleReconnect();
     };
 
-    this.ws.onerror = (): void => {
+    socket.onerror = (): void => {
       // onclose will fire after onerror
     };
+  }
+
+  /** Closes the current socket on purpose and reports it. The socket's own
+   * `close` event is ignored from here on (it may come late, or after a
+   * replacement), so the adapter says `gatewayDisconnected` itself — one
+   * microtask later, so the event whose handling closed the socket (an
+   * `idleTimeout` passing through `routeIdleLifecycle`) reaches the reducer
+   * first, as it did when the socket's `close` event reported it. Nothing
+   * is reported if the socket has been reopened by then. */
+  private releaseSocket(): void {
+    const ws = this.ws;
+
+    if (ws === null) {
+      return;
+    }
+
+    this.ws = null;
+    ws.close();
+    queueMicrotask(() => {
+      if (!this.disposed && this.ws === null) {
+        this.connectionEvents$.next({ type: "gatewayDisconnected" });
+      }
+    });
   }
 
   private scheduleReconnect(): void {
@@ -307,23 +352,25 @@ export class WsAdapter implements IWsAdapter {
     }
 
     this.suspended = true;
+    this.closedForIdle = true;
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
 
-    const ws = this.ws;
-    this.ws = null;
-    ws?.close();
+    this.releaseSocket();
   }
 
-  /** Re-establish the socket after an idle close (user activity). */
+  /** Re-establish the socket after an idle close: the Reconnect button, or
+   * the browser coming back online. A no-op in every other state, a
+   * signed-out or never-opened socket included. */
   reopen(): void {
-    if (this.disposed || !this.suspended) {
+    if (this.disposed || !this.closedForIdle) {
       return;
     }
 
+    this.closedForIdle = false;
     this.suspended = false;
     this.openSocket();
   }
