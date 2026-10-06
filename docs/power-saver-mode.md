@@ -217,7 +217,9 @@ Two things Freeze deliberately does *not* take away:
   (the fades are zero under freeze and reduced motion, the hold stays) and by
   the browser-tier `coreSwapOverlay.spec.tsx` in each web client's
   `tests/ui/visual/vitest-browser/` (the stylesheet takes its durations from
-  those numbers and keeps no transition outside the two fades).
+  those numbers and keeps no transition outside the two fades). The second
+  is a PR gate: `ci.yml`'s `e2e` job runs it for both clients
+  (`pnpm --filter @rtc/client-react test:ui:styles`).
 - **JS gates (CSS can't reach imperative motion):**
   - **WAAPI** — `useFlipGrid` (tile/row FLIP glide, enter/exit) and
     `useRankGlide` (watchlist rank glide + highlight) already contained a

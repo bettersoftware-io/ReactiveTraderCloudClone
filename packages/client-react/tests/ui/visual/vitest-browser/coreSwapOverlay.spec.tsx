@@ -19,6 +19,9 @@ import {
 // - both fades ease out (the fade-out is removed on the host's clock, so it
 //   must do most of its work early).
 //
+// A PR gate, unlike the matrix walk beside it: `test:ui:styles` runs this
+// file alone, from the `e2e` job in ci.yml.
+//
 // Twin of client-solid's spec of the same name.
 
 test("covering: the fade-in is an opacity transition of the swap's enterMs", async () => {

@@ -298,6 +298,18 @@ jobs:
       - name: Install Playwright Chromium + OS deps
         run: pnpm --filter @rtc/tests exec playwright install --with-deps chromium
 
+      # The core-swap overlay's stylesheet, read back from a real browser:
+      # opaque from `loading` on, the two fade durations, the easing. jsdom
+      # applies no CSS, the pixel tier shoots one still frame and the e2e
+      # journey runs under webdriver, where every cover timing is zero, so
+      # nothing else on a PR sees these rules. Lives in this job because it is
+      # the one that installs Chromium; it needs no build (the component
+      # imports only types and its own stylesheet) and takes about a second
+      # per client. Before the e2e suite, so a red suite cannot hide it. Not
+      # repeated in e2e-alt-cores: no application core is involved.
+      - name: Browser style checks (core-swap overlay, react + solid)
+        run: pnpm --filter @rtc/client-react --filter @rtc/client-solid test:ui:styles
+
       # Invoke through turbo (root script = `turbo run test:e2e`, NOT
       # `pnpm --filter`) so the task's dependsOn ["build"] builds every workspace
       # lib first — the suites import @rtc/{domain,shared,client,server} via their

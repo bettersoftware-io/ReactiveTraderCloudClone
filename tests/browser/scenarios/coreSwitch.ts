@@ -4,6 +4,7 @@ import {
 } from "#/scripts/lib/coreImpl.ts";
 
 import type { PrefsCoreImpl } from "../page-objects/contracts/Preferences.ts";
+import { TESTIDS } from "../page-objects/contracts/testids.ts";
 import type { TestContext } from "../testContext.ts";
 import { assertEquals, assertFalse, assertTrue } from "./assert.ts";
 import { findBootFailure } from "./login.ts";
@@ -28,6 +29,12 @@ const SETTLED_TIMEOUT_MS = 3_000;
 
 // The brief's bound: a tile must tick again within 5 s of the swap.
 const PRICE_TICK_TIMEOUT_MS = 5_000;
+
+// A real child window opening or closing (layout.ts's POPUP_TIMEOUT_MS).
+const POPUP_TIMEOUT_MS = 5_000;
+
+// The FX tab's shipped arrangement: rates, blotter, analytics, positions.
+const FX_DOCK_GROUP_COUNT = 4;
 
 export interface DistinctCores {
   /** The `?core=` value for the journey's very first load. */
@@ -183,6 +190,47 @@ export async function expectSwappedInPlace(
   // to its first price is not a tick.
   await ctx.po.liveRatesTile.waitForFirstTileLiveRate(PRICE_TICK_TIMEOUT_MS);
   await ctx.po.liveRatesTile.waitFirstTilePriceChange(PRICE_TICK_TIMEOUT_MS);
+}
+
+/**
+ * Pops the blotter out into a real child window, then swaps the core to
+ * `impl` from Preferences. The swap's cover lives in the main document and
+ * cannot reach that window, so the swap must not leave it behind: the
+ * unmount disposes the dock engine, which closes the window, and the next
+ * composition's dock shows the blotter docked, as a reload would.
+ *
+ * Dockview-engine only (the default engine): the in-house engine has no
+ * pop-outs.
+ */
+export async function poppedOutPanelClosesOnSwapAndComesBackDocked(
+  ctx: TestContext,
+  impl: PrefsCoreImpl,
+): Promise<void> {
+  await ctx.po.workspace.clickTab("fx");
+
+  const popup = await ctx.po.layout.popoutPanel(BLOTTER_PANEL_ID);
+  await popup.waitForTestId(TESTIDS.blotter.table, POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockPopped([BLOTTER_PANEL_ID], POPUP_TIMEOUT_MS);
+  assertFalse(
+    await popup.isClosed(),
+    "expected the blotter pop-out open before the swap",
+  );
+
+  await openPreferences(ctx);
+  await selectCoreImpl(ctx, impl);
+  await expectBootedCoreImpl(ctx, impl, SWAP_TIMEOUT_MS);
+  await ctx.po.workspace.waitCoreSwapOverlayGone(SETTLED_TIMEOUT_MS);
+
+  await popup.waitClosed(POPUP_TIMEOUT_MS);
+  await ctx.po.layout.waitDockPopped([], SETTLED_TIMEOUT_MS);
+  await ctx.po.layout.waitDockGroupCount(
+    FX_DOCK_GROUP_COUNT,
+    SETTLED_TIMEOUT_MS,
+  );
+  await ctx.po.layout.waitForTestId(
+    TESTIDS.layout.dockTab(BLOTTER_PANEL_ID),
+    SETTLED_TIMEOUT_MS,
+  );
 }
 
 /** Asserts the last step was a real navigation (the mark is gone — the

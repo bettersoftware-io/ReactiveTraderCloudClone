@@ -26,6 +26,7 @@
     "test:ui:coverage": "pnpm test:ui:contract:coverage && pnpm test:ui:visual:vitest-browser:react:coverage",
     "test:ui:contract": "vitest run -c tests/ui/contract/vitest.config.ts",
     "test:ui:contract:coverage": "vitest run -c tests/ui/contract/vitest.coverage.config.ts --coverage",
+    "test:ui:styles": "vitest run -c tests/ui/visual/vitest-browser/vitest-browser.config.ts coreSwapOverlay",
     "test:ui:visual": "node tests/ui/visual/run-all.ts",
     "test:ui:visual:react": "node tests/ui/visual/run-all.ts react",
     "test:ui:visual:playwright:react": "playwright test -c tests/ui/visual/playwright/playwright.config.ts",

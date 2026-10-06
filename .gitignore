@@ -34,6 +34,10 @@ packages/*/tests/ui/visual/**/__screenshots__/*.spec.tsx/
 packages/ui-contract/goldens/**/__screenshots__/*.spec.ts/
 packages/ui-contract/goldens/**/__screenshots__/*.spec.tsx/
 
+# vitest browser mode's attachment dir (failure screenshots, traces): a run of
+# either client's vitest-browser tier leaves PNGs here.
+.vitest/
+
 # actionlint binary (downloaded via scripts/install-actionlint.sh)
 .tooling/
 
