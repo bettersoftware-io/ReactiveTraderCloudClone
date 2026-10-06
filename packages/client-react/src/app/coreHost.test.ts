@@ -214,12 +214,14 @@ describe("createCoreHost", () => {
 
       const swap = harness.host.swapTo("effect");
       await advanceUntilLogged(harness, "dispose:rxjs");
-      await vi.advanceTimersByTimeAsync(DISPOSE_TIMEOUT_MS - 1);
+      // `advanceUntilLogged` may stop a millisecond after the timer was
+      // armed, hence the margin of two.
+      await vi.advanceTimersByTimeAsync(DISPOSE_TIMEOUT_MS - 2);
 
-      // One millisecond short of the limit: still waiting, nothing decided.
+      // Just short of the limit: still waiting, nothing decided.
       expect(harness.onFatal).not.toHaveBeenCalled();
 
-      await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(2);
       await swap;
 
       expect(harness.onFatal).toHaveBeenCalledTimes(1);
@@ -231,6 +233,42 @@ describe("createCoreHost", () => {
       // Asked to dispose once: the fatal path does not wait on it again.
       expect(harness.log.filter(isDispose)).toEqual(["dispose:rxjs"]);
       expect(harness.persist).not.toHaveBeenCalled();
+      // An attached inspector is told to let go of the old composition.
+      expect(harness.log.filter(isEndComposition)).toHaveLength(1);
+    });
+
+    it("a hang in the fatal path's own disposal still ends in onFatal (the unmount throws)", async () => {
+      vi.useFakeTimers();
+      const harness = createHarness({ timed: 0 });
+      harness.start();
+      harness.cores.rxjs.disposeHangs = true;
+      harness.faults.set("unmount", new Error("unmount broke"));
+
+      const swap = harness.host.swapTo("effect");
+      await vi.runAllTimersAsync();
+      await swap;
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
+    });
+
+    it("a composed-but-unmounted app whose dispose hangs still ends in onFatal (the mount throws)", async () => {
+      vi.useFakeTimers();
+      const harness = createHarness({ timed: 0 });
+      harness.start();
+      harness.cores.effect.disposeHangs = true;
+      harness.faults.set("mount:2", new Error("mount broke"));
+
+      const swap = harness.host.swapTo("effect");
+      await vi.runAllTimersAsync();
+      await swap;
+
+      expect(harness.onFatal).toHaveBeenCalledTimes(1);
+      expect(harness.log.filter(isDispose)).toEqual([
+        "dispose:rxjs",
+        "dispose:effect",
+      ]);
+      expect(harness.states.at(-1)).toEqual({ phase: "fatal" });
     });
 
     it("a dispose that settles in time leaves no timer behind", async () => {
@@ -1063,6 +1101,10 @@ function createDeferred<T>(): Deferred<T> {
 
 function isCreateApp(entry: string): boolean {
   return entry.startsWith("createApp:");
+}
+
+function isEndComposition(entry: string): boolean {
+  return entry === "endComposition";
 }
 
 function isDispose(entry: string): boolean {

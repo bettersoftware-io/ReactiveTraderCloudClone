@@ -291,6 +291,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
     to: CoreImpl,
   ): Promise<Handover | null> {
     let previousDisposeAsked = false;
+    let previousDisposeTimedOut = false;
     let startFailure: string | null = null;
 
     try {
@@ -299,6 +300,7 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       previousDisposeAsked = true;
 
       if (!(await disposeWithinLimit(previous))) {
+        previousDisposeTimedOut = true;
         throw new Error(
           `the ${previous.impl} core did not finish disposing within ${DISPOSE_TIMEOUT_MS / 1000} s`,
         );
@@ -322,13 +324,22 @@ export function createCoreHost(deps: CoreHostDeps): CoreHost {
       running = null;
 
       // Asked once only: a dispose that timed out must not be awaited
-      // again, or the page would hang after all.
+      // again. The disposals here are limited too, so a hang in one of them
+      // cannot keep the fatal screen from showing.
       if (!previousDisposeAsked) {
-        await disposeQuietly(previous);
+        await disposeWithinLimit(previous);
       }
 
       if (orphan !== null && orphan !== previous) {
-        await disposeQuietly(orphan);
+        await disposeWithinLimit(orphan);
+      }
+
+      if (previousDisposeTimedOut) {
+        // The throw skipped this step, and an attached inspector would keep
+        // holding the old composition's streams.
+        runOrWarn("ending the devtools composition", () => {
+          deps.endComposition();
+        });
       }
 
       if (startFailure !== null) {
