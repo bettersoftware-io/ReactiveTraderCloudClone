@@ -41,6 +41,7 @@ it in sync with the implementation when the behaviour changes.
 | Price *number* + directional tint | live | conflated | conflated (same rate as Calm), **tint kept** |
 | **CSS transitions** (panel maximize/restore, hover, modal, chrome) | on | on | **off (`transition-property: none` — snap)** |
 | **FLIP tile/row reorder, rank-glide** (WAAPI) | glide | glide | **snap, no glide** |
+| Core-swap cover (`CoreSwapOverlay`) | fades in and out | fades in and out | **jump cuts — the 500 ms hold stays** (also under `prefers-reduced-motion`) |
 | **Spinners, infinite pulses, row-flash keyframes** | on | on | **frozen** |
 | FPS-meter `rAF` loop | running | running | **running — diagnostic exemption** |
 | Boot splash canvas | plays | plays | **skipped** (persisted Freeze) |

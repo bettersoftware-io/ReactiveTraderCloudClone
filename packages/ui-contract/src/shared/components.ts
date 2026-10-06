@@ -176,6 +176,10 @@ import {
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import {
+  CoreSwapOverlayPage,
+  type CoreSwapOverlayProps,
+} from "./pages/shell/core/CoreSwapOverlayPage";
 import { JarvisDriverPage } from "./pages/shell/jarvis/JarvisDriverPage";
 import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
 import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
@@ -535,6 +539,13 @@ export const BootGate = component<Record<string, never>, BootGatePage>(
     return new BootGatePage(ctx);
   },
 );
+
+export const CoreSwapOverlay = component<
+  CoreSwapOverlayProps,
+  CoreSwapOverlayPage
+>((ctx) => {
+  return new CoreSwapOverlayPage(ctx);
+});
 
 export const LockScreen = component<Record<string, never>, LockScreenPage>(
   (ctx) => {

@@ -23,6 +23,8 @@ import "@fontsource/orbitron/800.css";
 // (the package's export map falls back to `index_noop.js` once the plugin
 // isn't intercepting the specifier), so it's safe to leave unguarded here.
 import "solid-devtools";
+import { createSignal } from "solid-js";
+import { render } from "solid-js/web";
 
 import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
 import {
@@ -38,12 +40,9 @@ import {
   runBoot,
 } from "./app/bootApp";
 import { buildBrowserPorts } from "./app/buildBrowserPorts";
+import { type Composition, createCoreHost } from "./app/coreHost";
 import {
-  type Composition,
-  type CoverTimings,
-  createCoreHost,
-} from "./app/coreHost";
-import {
+  CORE_OPTIONS,
   clearCoreChoice,
   defaultCoreResetHref,
   loadCore,
@@ -51,10 +50,16 @@ import {
   saveCoreChoice,
   urlWithoutCoreParam,
 } from "./app/coreSelection";
+import { coreSwapOf } from "./app/coreSwapView";
+import { chooseCoverTimings, type MotionSettings } from "./app/coverTimings";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
 import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
+import {
+  CoreSwapOverlay,
+  type CoreSwapOverlayProps,
+} from "./ui/shell/core/CoreSwapOverlay";
 
 import "./index.css";
 
@@ -65,9 +70,6 @@ if (!rootEl) {
 }
 
 const storage = safeLocalStorage();
-
-/** No swap overlay yet: a swap covers, holds and reveals in zero time. */
-const NO_COVER: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
 
 /** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
  * value, or a storage read/write/clear failure) so it's diagnosable from the
@@ -104,6 +106,17 @@ function instrumentComposition(
   };
 }
 
+/** What decides how a swap's cover moves, as it is right now. The
+ * power-saver level is read from `<html>`, where `PowerSaverRoot` writes it:
+ * no ViewModel is reachable from out here. */
+function readMotionSettings(): MotionSettings {
+  return {
+    webdriver: navigator.webdriver,
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    freeze: document.documentElement.dataset.powerSaver === "freeze",
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -130,6 +143,22 @@ void runBoot(
     // A tree that fails its first render is disposed before `mount` throws,
     // so a swap onto a core whose UI cannot render leaks no reactive root.
     const tree = createSolidTreeMount(rootEl);
+
+    // The swap overlay gets a root of its own, outside the app tree: that
+    // tree is unmounted and mounted again while the overlay covers it.
+    const overlayEl = document.createElement("div");
+    overlayEl.id = "core-swap-overlay";
+    document.body.append(overlayEl);
+    // The timings of the swap under way: the host asks for them as each swap
+    // starts, and the overlay's two fades take the same numbers.
+    let cover = chooseCoverTimings(readMotionSettings());
+    const [overlay, setOverlay] = createSignal<CoreSwapOverlayProps>({
+      swap: null,
+      fade: cover,
+    });
+    render(() => {
+      return <CoreSwapOverlay swap={overlay().swap} fade={overlay().fade} />;
+    }, overlayEl);
 
     // The host owns the ports (built once per page) and every composition;
     // a Preferences core choice swaps the core in place, with no reload.
@@ -176,9 +205,20 @@ void runBoot(
         tree.destroy();
         renderBootError(rootEl, error, reloadOntoDefaultCore);
       },
-      cover: NO_COVER,
+      cover: () => {
+        cover = chooseCoverTimings(readMotionSettings());
+        return cover;
+      },
       sleep,
       nextMacrotask: waitForNextMacrotask,
+    });
+
+    // A signal write renders synchronously, so the cover is in the DOM
+    // before the host's next step. Subscribed before `start()`: a boot that
+    // fails leaves the host `fatal`, which renders nothing over the
+    // boot-error screen.
+    host.state$.subscribe((state) => {
+      setOverlay({ swap: coreSwapOf(state, CORE_OPTIONS), fade: cover });
     });
 
     try {

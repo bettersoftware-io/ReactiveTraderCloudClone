@@ -412,6 +412,9 @@ const scenarioActions: Record<string, ScenarioAction> = {
   },
   // Lock + preferences are fixed-position viewport overlays → full-page capture.
   "lock/locked": { fullPage: true, waitForText: "SESSION LOCKED" },
+  // A fixed-position viewport cover, like lock/locked. "handing over" is the
+  // handover phase's own status line.
+  "shell/core-swap-overlay": { fullPage: true, waitForText: "handing over" },
   // Login/lock-wait treatments: state is seeded through the seam (no click
   // needed), so this is a static shot like the tile execution/RFQ arms above.
   // "AWAITING AUTH GRANT" is rendered by both HandshakeConsole and ReactorWait

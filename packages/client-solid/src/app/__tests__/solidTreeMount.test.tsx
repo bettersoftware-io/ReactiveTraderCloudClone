@@ -165,7 +165,9 @@ function createHostHarness(initial: CoreImpl = "rxjs"): HostHarness {
     info,
     warn: vi.fn(),
     onFatal,
-    cover: { enterMs: 0, holdMs: 0, exitMs: 0 },
+    cover: () => {
+      return { enterMs: 0, holdMs: 0, exitMs: 0 };
+    },
     sleep: (): Promise<void> => {
       return Promise.resolve();
     },

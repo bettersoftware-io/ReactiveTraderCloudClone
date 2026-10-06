@@ -149,6 +149,7 @@ export async function armSwapWitnesses(ctx: TestContext): Promise<void> {
  * the document root names `impl`, the user was never signed out (checked
  * first, the moment the swap lands, and against every frame since
  * {@link armSwapWitnesses}), the page never navigated, `?core=` is gone,
+ * the swap's cover is gone,
  * Preferences is open again with `impl` selected, and the desk
  * {@link prepareDesk} left behind is intact and live.
  */
@@ -170,6 +171,8 @@ export async function expectSwappedInPlace(
     `the page navigated during the swap to ${impl}`,
   );
   await ctx.po.workspace.waitUrlHasNoCoreParam(SETTLED_TIMEOUT_MS);
+  // The swap is over: its cover is gone, not left over the new composition.
+  await ctx.po.workspace.waitCoreSwapOverlayGone(SETTLED_TIMEOUT_MS);
 
   await ctx.po.preferences.waitModalVisible(SETTLED_TIMEOUT_MS);
   await ctx.po.preferences.waitCoreImplSelected(impl, SETTLED_TIMEOUT_MS);

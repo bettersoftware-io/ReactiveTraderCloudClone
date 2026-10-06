@@ -27,6 +27,11 @@ export interface WorkspacePO {
    */
   waitUrlHasNoCoreParam(timeoutMs: number): Promise<void>;
   /**
+   * Waits until the core-swap overlay is out of the DOM: the host removes
+   * it once the swap is over, and a cover left up would sit over the app.
+   */
+  waitCoreSwapOverlayGone(timeoutMs: number): Promise<void>;
+  /**
    * Sets a mark on the current document's `window` that only a navigation
    * can remove — the witness that a later step happened WITHOUT one (an
    * in-place core swap), read back by `navigationMark`.
