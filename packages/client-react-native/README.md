@@ -169,9 +169,9 @@ keeps running the build it has. Sign in with `demo` / `mcdc2026`.
   the default when `EXPO_PUBLIC_SERVER_URL` is unset), so it does not depend
   on the Mac at all. The login screen's Simulator mode switch still works
   offline.
-- It is a production bundle running inside Expo Go's shell. Only someone
-  signed in to the owning Expo account sees the project, so this is for
-  showing the app on your own phone, not for handing it out.
+- It is a production bundle running inside Expo Go's shell. The project is
+  listed under Projects only for someone signed in to the owning Expo
+  account; anyone else needs a link — see the next section.
 - **Which build is on the phone?** The script stamps the bundle with the
   commit and the publish time (UTC). The status strip's build cell prints the
   commit on every screen, and the sign-in screen prints
@@ -179,13 +179,61 @@ keeps running the build it has. Sign in with `demo` / `mcdc2026`.
   `V2.0-RN` and the sign-in screen shows no build line.
 - The script passes `--environment preview`: EAS requires an environment in
   non-interactive mode, and `preview` matches the `preview` build profile in
-  `eas.json`. No variables are defined for it on EAS, so the app's own
+  `eas.json`. The app reads none of that environment's variables, so its own
   defaults apply.
 - `eas-cli` must be signed in (`pnpm dlx eas-cli@24.10.0 login`). Publishing is free
   on Expo's free plan.
 - The runtime version follows the SDK (`runtimeVersion.policy: "sdkVersion"`),
   so a published build keeps opening until Expo Go moves to the next SDK;
   after an SDK upgrade, publish again.
+
+#### Showing it to someone else
+
+Each publish gets a link that opens it in Expo Go on any phone:
+
+```
+exp://u.expo.dev/ec0ee21b-52af-4375-bb5d-70c6c52b8c1a/group/<group id>
+```
+
+The group id is printed by the publish, and by:
+
+```bash
+pnpm dlx eas-cli@24.10.0 update:list --branch demo --limit 1   # from this package
+```
+
+The update's page on expo.dev shows the same link as a QR code. The other
+person installs Expo Go, opens the link, and signs in to the app with a demo
+account.
+
+- **Checked 2026-10-06:** Expo serves that link's manifest to a request with
+  no login. **Not checked:** that Expo Go on a phone signed in to no account,
+  or to a different one, opens it. If it refuses, invite the person to the
+  Expo project as a viewer (free).
+- The link names one publish. After the next `demo:ios:publish` it still opens
+  the old build; send the new link.
+- Their Expo Go has to be on the same SDK as the publish (57 today).
+- Anyone the link is forwarded to can open the app. Only demo accounts exist
+  on the deployed server, so that is acceptable for a demo and nothing more.
+- An Android phone needs none of this: `pnpm preview:android:build` ends with
+  an install link for an APK.
+
+#### Is the update URL in `app.config.ts` a secret?
+
+No. `updates.url` (`https://u.expo.dev/<project id>`) and `extra.eas.projectId`
+are public identifiers: both ship inside every build and every publish, so
+anyone holding the app can read them. On its own the bare URL returns 404.
+With a group id it returns the JavaScript bundle, which is the code in this
+repository. Publishing an update or starting a build needs the Expo account's
+login or an access token, and neither is in the repository.
+
+Two consequences worth keeping in mind:
+
+- **Every `EXPO_PUBLIC_*` value is public.** Metro writes them into the
+  bundle, and the bundle can be downloaded. Never put a credential in one.
+- **Updates are not code-signed**, so the app runs whatever Expo serves for
+  the project. What protects the demo is the Expo account: a strong password
+  and two-factor sign-in. EAS offers update code signing if that is ever not
+  enough.
 
 ### Android — Expo Go or an APK
 
@@ -351,15 +399,6 @@ EAS drives on your behalf — so EAS device installs inherit Apple's paywall. A
 **free** Apple ID only gets a "Personal Team," which can sign locally via Xcode
 (cabled, 7-day) but has no cloud/EAS access. Android has no equivalent gate — the
 APK sideloads freely, which is why it's the free way to share broadly.
-
-### If you later want over-the-air updates (EAS Update)
-
-Deliberately **out of scope** here (free-path policy). Adopting it means
-installing `expo-updates`, replacing `updates: { enabled: false }` with
-`updates: { url: "https://u.expo.dev/<projectId>" }` in `app.config.ts`, adding
-`channel`s back to `eas.json`, and `eas update --channel <name>`. It still
-requires a build that colleagues can install first (Expo Go or a dev/preview
-build) — OTA only ships the JS bundle, not the native shell.
 
 ---
 
