@@ -3,6 +3,14 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** The fields of the root package.json that gate 52 reads. */
+interface RootManifest {
+  engines?: { node?: string };
+  devEngines?: {
+    runtime?: { name?: string; version?: string; onFail?: string };
+  };
+}
+
 interface Gate {
   name: string;
   pattern: string;
@@ -787,6 +795,22 @@ const GATES: Gate[] = [
     paths: ["../packages/client-core-effect/src/"],
     excludes: ["/bridge/", ".test."],
   },
+  {
+    // `vercel build` reads `engines.node` from the root package.json and
+    // refuses any range that meets none of the Node lines Vercel hosts —
+    // today 24.x at most — and nothing overrides it, not even the project's
+    // own Node setting. The tooling needs Node 26, so `"engines": { "node":
+    // ">=26" }` (added 2026-10-04) failed the next Deploy before its build
+    // started (2026-10-06); no CI step runs `vercel build`, so the PR was
+    // green. The floor lives in `devEngines.runtime` instead: Vercel does
+    // not read it, and pnpm enforces it on install, which it never did for
+    // `engines.node`. What the clients ship is static files, so the Node
+    // line Vercel then selects runs nothing.
+    name: "52. The root package.json keeps its Node floor in devEngines.runtime, never engines.node (vercel build rejects a range above the Node it hosts)",
+    pattern: "",
+    paths: [],
+    customCheck: checkNodeFloorLivesInDevEngines,
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {
@@ -813,6 +837,35 @@ function checkDockerfileRunsAsNode(): string[] {
   }
 
   return [];
+}
+
+function checkNodeFloorLivesInDevEngines(): string[] {
+  const manifest = JSON.parse(
+    readFileSync("../package.json", "utf8"),
+  ) as RootManifest;
+  const failures: string[] = [];
+
+  if (manifest.engines?.node !== undefined) {
+    failures.push(
+      `package.json: engines.node is "${manifest.engines.node}" — move the floor to devEngines.runtime (vercel build reads engines.node)`,
+    );
+  }
+
+  const runtime = manifest.devEngines?.runtime;
+
+  if (runtime?.name !== "node" || !runtime.version) {
+    failures.push(
+      'package.json: devEngines.runtime must name "node" with a version range (the Node floor the .mts tooling needs)',
+    );
+  }
+
+  if (runtime?.onFail !== undefined && runtime.onFail !== "error") {
+    failures.push(
+      `package.json: devEngines.runtime.onFail is "${runtime.onFail}" — it must be "error", or pnpm no longer enforces the floor`,
+    );
+  }
+
+  return failures;
 }
 
 function checkFlyDeclaresConnectionHardLimit(): string[] {
