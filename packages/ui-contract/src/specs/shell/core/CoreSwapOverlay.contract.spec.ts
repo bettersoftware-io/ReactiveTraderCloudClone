@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 describe("CoreSwapOverlay", () => {
-  it("renders nothing while no swap is under way", () => {
+  it("renders no cover while no swap is under way", () => {
     const overlay = mount(CoreSwapOverlay, { props: createProps(null) });
 
     expect(overlay.isShown()).toBe(false);
@@ -37,23 +37,48 @@ describe("CoreSwapOverlay", () => {
     expect(overlay.statusLine()).toBe(line);
   });
 
-  it("is a status region", () => {
-    const overlay = mount(CoreSwapOverlay, {
-      props: createProps("covering"),
-    });
+  it("keeps an empty status region on the page before any swap, outside the cover", () => {
+    const overlay = mount(CoreSwapOverlay, { props: createProps(null) });
 
-    expect(overlay.role()).toBe("status");
+    expect(overlay.hasStatusRegion()).toBe(true);
+    expect(overlay.sentence()).toBe("");
+
+    overlay.setProps(createProps("covering"));
+
+    expect(overlay.statusRegionOutlivesOverlay()).toBe(true);
   });
 
-  it("carries one full sentence for assistive technology, and hides the lettering from it", () => {
+  it("writes one full sentence into the status region for the whole swap, and clears it after", () => {
+    const overlay = mount(CoreSwapOverlay, { props: createProps(null) });
+    const sentence = "Swapping application core from RxJS to Effect-TS";
+
+    for (const phase of [
+      "covering",
+      "loading",
+      "handover",
+      "revealing",
+    ] as const) {
+      overlay.setProps(createProps(phase));
+      expect(overlay.sentence()).toBe(sentence);
+    }
+
+    overlay.setProps(createProps(null));
+
+    expect(overlay.sentence()).toBe("");
+  });
+
+  it("hides the lettering from assistive technology, leaving the sentence", () => {
     const overlay = mount(CoreSwapOverlay, {
       props: createProps("handover"),
     });
 
-    expect(overlay.sentence()).toBe(
-      "Swapping application core from RxJS to Effect-TS",
-    );
     expect(overlay.hidesLetteringFromAssistiveTechnology()).toBe(true);
+  });
+
+  it("has no lettering to hide while no swap is under way", () => {
+    const overlay = mount(CoreSwapOverlay, { props: createProps(null) });
+
+    expect(overlay.hidesLetteringFromAssistiveTechnology()).toBe(false);
   });
 
   it("marks each phase for the stylesheet as the swap advances", () => {

@@ -7,7 +7,10 @@
  * The only motion is `opacity`, per docs/performance.md: no `filter`, no
  * `backdrop-filter`, no transform. The element is inserted when the swap
  * starts, so the fade-in runs from `@starting-style`; the fade-out runs when
- * the phase becomes `revealing`. Both durations come from the component
+ * the phase becomes `revealing`. Both ease out: a fade starts a frame or
+ * more after the host's clock and the element is removed on that clock, so
+ * the fade-out must do most of its work early, or its cut-off end shows as
+ * a pop. Both durations come from the component
  * (`--core-swap-enter` / `--core-swap-exit`, the core host's own waits for
  * this swap), with no fallback here: an unset one computes to 0s, a jump
  * cut, never to a second copy of the number.
@@ -51,7 +54,7 @@
 
 .overlay[data-phase="revealing"] {
   opacity: 0;
-  transition: opacity var(--core-swap-exit) ease-in;
+  transition: opacity var(--core-swap-exit) ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -112,9 +115,12 @@
   color: var(--accent-primary);
 }
 
-/* On the page for assistive technology only. */
+/* The status region: on the page for assistive technology only, with or
+ * without a swap. Fixed, so it never adds to the page's scroll size. */
 .sentence {
-  position: absolute;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   overflow: hidden;

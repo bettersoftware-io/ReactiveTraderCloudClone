@@ -29,14 +29,25 @@ interface FadeDurations {
  */
 export class CoreSwapOverlayPage extends MountedComponent<CoreSwapOverlayProps> {
   /** True when the overlay is in the DOM (false → the component rendered
-   * nothing). */
+   * no cover, only its empty status region). */
   isShown(): boolean {
     return this.overlay() !== null;
   }
 
-  /** The overlay's ARIA role; null when it is not shown. */
-  role(): string | null {
-    return this.overlay()?.getAttribute("role") ?? null;
+  /** True when the status region is in the DOM. It is there with or
+   * without a swap: a live region must exist before its content arrives for
+   * the content to be announced. */
+  hasStatusRegion(): boolean {
+    return this.statusRegion() !== null;
+  }
+
+  /** True when the status region is an element of its own, outside the
+   * overlay that comes and goes. */
+  statusRegionOutlivesOverlay(): boolean {
+    const region = this.statusRegion();
+    const overlay = this.overlay();
+
+    return region !== null && (overlay === null || !overlay.contains(region));
   }
 
   /** The phase the stylesheet keys on (`data-phase`); null when not shown. */
@@ -59,20 +70,26 @@ export class CoreSwapOverlayPage extends MountedComponent<CoreSwapOverlayProps> 
     return this.textOf("core-swap-status");
   }
 
-  /** The full sentence written for assistive technology. */
+  /** The status region's content: the full sentence written for assistive
+   * technology, or nothing while no swap is under way. */
   sentence(): string {
-    return this.textOf("core-swap-sentence");
+    return this.statusRegion()?.textContent?.trim() ?? "";
   }
 
-  /** True when the visible lettering is hidden from assistive technology,
-   * which leaves the sentence as the status region's only content. */
+  /** True when the visible lettering is on the page and hidden from
+   * assistive technology while the status region is not, which leaves the
+   * sentence as the only thing read out. False when either is missing. */
   hidesLetteringFromAssistiveTechnology(): boolean {
-    const sentence = within(this.root).queryByTestId("core-swap-sentence");
-    const status = within(this.root).queryByTestId("core-swap-status");
+    const region = this.statusRegion();
+    const lettering = within(this.root).queryByTestId("core-swap-status");
+
+    if (region === null || lettering === null) {
+      return false;
+    }
 
     return (
-      status?.closest('[aria-hidden="true"]') !== null &&
-      sentence?.closest('[aria-hidden="true"]') === null
+      lettering.closest('[aria-hidden="true"]') !== null &&
+      region.closest('[aria-hidden="true"]') === null
     );
   }
 
@@ -85,6 +102,10 @@ export class CoreSwapOverlayPage extends MountedComponent<CoreSwapOverlayProps> 
       enter: style?.getPropertyValue("--core-swap-enter") ?? "",
       exit: style?.getPropertyValue("--core-swap-exit") ?? "",
     };
+  }
+
+  private statusRegion(): HTMLElement | null {
+    return within(this.root).queryByRole("status");
   }
 
   private overlay(): HTMLElement | null {

@@ -34,7 +34,11 @@ import {
   runBoot,
 } from "./app/bootApp";
 import { buildBrowserPorts } from "./app/buildBrowserPorts";
-import { type Composition, createCoreHost } from "./app/coreHost";
+import {
+  type Composition,
+  type CoverTimings,
+  createCoreHost,
+} from "./app/coreHost";
 import {
   CORE_OPTIONS,
   clearCoreChoice,
@@ -44,7 +48,8 @@ import {
   saveCoreChoice,
   urlWithoutCoreParam,
 } from "./app/coreSelection";
-import { coreSwapOf } from "./app/coreSwapView";
+import { followCoreSwaps } from "./app/coreSwapCover";
+import type { CoreSwapView } from "./app/coreSwapView";
 import { chooseCoverTimings, type MotionSettings } from "./app/coverTimings";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
@@ -142,8 +147,9 @@ void runBoot(
     document.body.append(overlayEl);
     const overlayRoot = createRoot(overlayEl);
     // The timings of the swap under way: the host asks for them as each swap
-    // starts, and the overlay's two fades take the same numbers.
-    let cover = chooseCoverTimings(readMotionSettings());
+    // starts, and the overlay's two fades take the same numbers. Zeros until
+    // the first swap: nothing is shown before then.
+    let cover: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
 
     // The host owns the ports (built once per page) and every composition;
     // a Preferences core choice swaps the core in place, with no reload.
@@ -198,18 +204,18 @@ void runBoot(
       nextMacrotask: waitForNextMacrotask,
     });
 
-    // Synchronous, so the cover is in the DOM before the host's next step.
-    // Subscribed before `start()`: a boot that fails leaves the host `fatal`,
-    // which renders nothing over the boot-error screen.
-    host.state$.subscribe((state) => {
-      flushSync(() => {
-        overlayRoot.render(
-          <CoreSwapOverlay
-            swap={coreSwapOf(state, CORE_OPTIONS)}
-            fade={cover}
-          />,
-        );
-      });
+    // While a swap is under way the overlay is shown and the app tree is
+    // inert. The render is synchronous, so the cover is in the DOM before the
+    // host's next step. Followed before `start()`: a boot that fails leaves
+    // the host `fatal`, which shows no cover over the boot-error screen.
+    followCoreSwaps(host.state$, {
+      rootEl,
+      options: CORE_OPTIONS,
+      show: (swap: CoreSwapView | null): void => {
+        flushSync(() => {
+          overlayRoot.render(<CoreSwapOverlay swap={swap} fade={cover} />);
+        });
+      },
     });
 
     try {

@@ -9,24 +9,25 @@ import styles from "./CoreSwapOverlay.module.css";
  * 2026-10-05-core-hot-swap-design.md §4). The app tree is unmounted and
  * mounted again underneath it, so it lives in a root of its own, outside
  * the `ViewModelProvider`: it takes plain props and reads no ViewModel. The
- * theme and the power-saver level reach it through the `<html>` attributes.
+ * theme reaches it through `<html>` (the tokens and `data-skin` /
+ * `data-mode`). The reduced-motion and power-saver freeze decision does not:
+ * it arrives as `fade`, already made.
  *
  * The scrim is opaque and the only motion is its `opacity` (see
  * `CoreSwapOverlay.module.css`). The two fade durations are the host's own
  * `enterMs` / `exitMs` for this swap, handed to the stylesheet as custom
  * properties, so the fade and the host's waits cannot drift apart.
  *
- * The lettering is hidden from assistive technology; the status region's
- * content there is one full sentence.
+ * The status region is always mounted and empty until a swap starts: a
+ * live region is announced when its content changes, not when it is
+ * inserted already full. The sentence stays the same through every phase,
+ * so a swap is announced once. The lettering on the cover is hidden from
+ * assistive technology.
  */
 export function CoreSwapOverlay({
   swap,
   fade,
-}: CoreSwapOverlayProps): ReactElement | null {
-  if (swap === null) {
-    return null;
-  }
-
+}: CoreSwapOverlayProps): ReactElement {
   // This swap's fade durations, decided at run time by the core host: custom
   // properties are the one thing static CSS cannot carry.
   const fadeDurations = {
@@ -35,36 +36,41 @@ export function CoreSwapOverlay({
   } as CSSProperties;
 
   return (
-    <div
-      className={styles.overlay}
-      role="status"
-      data-testid="core-swap-overlay"
-      data-phase={swap.phase}
-      style={fadeDurations}
-    >
-      <div className={styles.grid} aria-hidden="true" />
-      <div className={styles.panel} aria-hidden="true">
-        <div className={styles.label}>CORE SWAP</div>
-        <div className={styles.cores}>
-          <span data-testid="core-swap-from">{swap.from.label}</span>
-          <span className={styles.separator}>▸</span>
-          <span data-testid="core-swap-to">{swap.to.label}</span>
-        </div>
-        <div className={styles.status} data-testid="core-swap-status">
-          {STATUS_LINES[swap.phase]}
-        </div>
-      </div>
-      <span className={styles.sentence} data-testid="core-swap-sentence">
-        {`Swapping application core from ${swap.from.label} to ${swap.to.label}`}
+    <>
+      <span className={styles.sentence} role="status">
+        {swap === null
+          ? ""
+          : `Swapping application core from ${swap.from.label} to ${swap.to.label}`}
       </span>
-    </div>
+      {swap === null ? null : (
+        <div
+          className={styles.overlay}
+          data-testid="core-swap-overlay"
+          data-phase={swap.phase}
+          style={fadeDurations}
+        >
+          <div className={styles.grid} aria-hidden="true" />
+          <div className={styles.panel} aria-hidden="true">
+            <div className={styles.label}>CORE SWAP</div>
+            <div className={styles.cores}>
+              <span data-testid="core-swap-from">{swap.from.label}</span>
+              <span className={styles.separator}>▸</span>
+              <span data-testid="core-swap-to">{swap.to.label}</span>
+            </div>
+            <div className={styles.status} data-testid="core-swap-status">
+              {STATUS_LINES[swap.phase]}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 type CoreSwapPhase = "covering" | "loading" | "handover" | "revealing";
 
 export interface CoreSwapOverlayProps {
-  /** null while no swap is under way: the overlay renders nothing. */
+  /** null while no swap is under way: no cover, and an empty status region. */
   readonly swap: {
     readonly from: CoreOption;
     readonly to: CoreOption;

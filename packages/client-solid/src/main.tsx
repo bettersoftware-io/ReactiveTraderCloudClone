@@ -40,7 +40,11 @@ import {
   runBoot,
 } from "./app/bootApp";
 import { buildBrowserPorts } from "./app/buildBrowserPorts";
-import { type Composition, createCoreHost } from "./app/coreHost";
+import {
+  type Composition,
+  type CoverTimings,
+  createCoreHost,
+} from "./app/coreHost";
 import {
   CORE_OPTIONS,
   clearCoreChoice,
@@ -50,7 +54,8 @@ import {
   saveCoreChoice,
   urlWithoutCoreParam,
 } from "./app/coreSelection";
-import { coreSwapOf } from "./app/coreSwapView";
+import { followCoreSwaps } from "./app/coreSwapCover";
+import type { CoreSwapView } from "./app/coreSwapView";
 import { chooseCoverTimings, type MotionSettings } from "./app/coverTimings";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
@@ -150,8 +155,9 @@ void runBoot(
     overlayEl.id = "core-swap-overlay";
     document.body.append(overlayEl);
     // The timings of the swap under way: the host asks for them as each swap
-    // starts, and the overlay's two fades take the same numbers.
-    let cover = chooseCoverTimings(readMotionSettings());
+    // starts, and the overlay's two fades take the same numbers. Zeros until
+    // the first swap: nothing is shown before then.
+    let cover: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
     const [overlay, setOverlay] = createSignal<CoreSwapOverlayProps>({
       swap: null,
       fade: cover,
@@ -213,12 +219,17 @@ void runBoot(
       nextMacrotask: waitForNextMacrotask,
     });
 
-    // A signal write renders synchronously, so the cover is in the DOM
-    // before the host's next step. Subscribed before `start()`: a boot that
-    // fails leaves the host `fatal`, which renders nothing over the
-    // boot-error screen.
-    host.state$.subscribe((state) => {
-      setOverlay({ swap: coreSwapOf(state, CORE_OPTIONS), fade: cover });
+    // While a swap is under way the overlay is shown and the app tree is
+    // inert. A signal write renders synchronously, so the cover is in the DOM
+    // before the host's next step. Followed before `start()`: a boot that
+    // fails leaves the host `fatal`, which shows no cover over the boot-error
+    // screen.
+    followCoreSwaps(host.state$, {
+      rootEl,
+      options: CORE_OPTIONS,
+      show: (swap: CoreSwapView | null): void => {
+        setOverlay({ swap, fade: cover });
+      },
     });
 
     try {

@@ -287,18 +287,32 @@ describe("createCoreHost", () => {
     ]);
   });
 
-  it("12b. the cover timings are asked once per swap, as it starts", async () => {
+  it("12b. the cover timings are asked once per swap, before the cover is shown", async () => {
     vi.useFakeTimers();
     const harness = createHarness({ timed: 0 });
     harness.start();
     expect(harness.cover).not.toHaveBeenCalled();
+    // What the host said last when it asked: whoever shows the cover on
+    // `covering` must already hold this swap's timings.
+    const askedIn: string[] = [];
 
-    harness.cover.mockReturnValueOnce({ enterMs: 0, holdMs: 0, exitMs: 0 });
+    function answer(timings: CoverTimings): () => CoverTimings {
+      return () => {
+        askedIn.push(harness.states.at(-1)?.phase ?? "none");
+        return timings;
+      };
+    }
+
+    harness.cover.mockImplementation(answer(COVER));
+    harness.cover.mockImplementationOnce(
+      answer({ enterMs: 0, holdMs: 0, exitMs: 0 }),
+    );
     expect(await timeSwap(harness, "effect")).toBe(0);
     expect(harness.cover).toHaveBeenCalledTimes(1);
 
     expect(await timeSwap(harness, "async")).toBe(860);
     expect(harness.cover).toHaveBeenCalledTimes(2);
+    expect(askedIn).toEqual(["running", "running"]);
   });
 
   it("13. the console line names both cores", async () => {
