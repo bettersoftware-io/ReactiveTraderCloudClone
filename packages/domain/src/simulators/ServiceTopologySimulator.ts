@@ -3,10 +3,11 @@ import {
   concat,
   defer,
   interval,
+  map,
   type Observable,
   of,
+  share,
 } from "rxjs";
-import { map } from "rxjs/operators";
 
 import type { ServiceHealthPort } from "../ports/serviceHealthPort.js";
 import { mulberry32 } from "../telemetry/prng.js";
@@ -80,6 +81,20 @@ export class ServiceTopologySimulator
   private nodeHealths: number[];
 
   private edgeLatencies: number[];
+
+  /**
+   * The live walk, shared by every subscriber: the first one starts the
+   * interval, later ones join it, and it stops with the last. `tick()`
+   * advances state this simulator owns, so an interval per subscriber would
+   * step every node and edge once per subscriber.
+   */
+  private readonly ticks$ = interval(2_000).pipe(
+    map(() => {
+      this.tick();
+      return this.buildTopology();
+    }),
+    share(),
+  );
 
   constructor(seed = 3) {
     this.rng = mulberry32(seed);
@@ -162,15 +177,7 @@ export class ServiceTopologySimulator
 
   topology$(): Observable<ServiceTopology> {
     return defer(() => {
-      return concat(
-        of(this.buildTopology()),
-        interval(2_000).pipe(
-          map(() => {
-            this.tick();
-            return this.buildTopology();
-          }),
-        ),
-      );
+      return concat(of(this.buildTopology()), this.ticks$);
     });
   }
 }
