@@ -9,8 +9,8 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
-
 import {
+  CORE_OPTIONS,
   type Composition,
   type CoreHost,
   type CoreHostDeps,
@@ -18,8 +18,7 @@ import {
   type CoverTimings,
   createCoreHost,
   DISPOSE_TIMEOUT_MS,
-} from "./coreHost";
-import { CORE_OPTIONS } from "./coreSelection";
+} from "@rtc/web-boot";
 
 afterEach(() => {
   vi.useRealTimers();

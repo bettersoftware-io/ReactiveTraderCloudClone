@@ -115,7 +115,7 @@ const DEFAULTS: HookValues = {
 };
 
 /** The three application cores a `CoreSelection.options` list offers, mirrored
- * from each client's own `src/app/coreSelection.ts` `CORE_OPTIONS` (same
+ * from `@rtc/web-boot`'s `CORE_OPTIONS` (`src/coreSelection.ts`) (same
  * impls/labels/descriptions) — duplicated rather than imported because this
  * framework-neutral harness cannot depend on a concrete client's `src/app`
  * (`ui-contract-stays-neutral`). */

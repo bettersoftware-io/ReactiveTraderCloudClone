@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocalStorageDockLayoutStore } from "./LocalStorageDockLayoutStore";
+import { LocalStorageDockLayoutStore } from "@rtc/web-boot";
 
 describe("LocalStorageDockLayoutStore", () => {
   afterEach(() => {

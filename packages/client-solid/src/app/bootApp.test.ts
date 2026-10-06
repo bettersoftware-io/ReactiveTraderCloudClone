@@ -1,18 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CoreFactory } from "@rtc/core-api";
-
-import { bootErrorPage } from "#tests/ui/pages/BootErrorPage";
-
 import {
   type BootEnv,
   type BootResult,
   bootCore,
+  CORE_CHOICE_KEY,
   formatBootedMessage,
   renderBootError,
   runBoot,
-} from "./bootApp";
-import { CORE_CHOICE_KEY } from "./coreSelection";
+} from "@rtc/web-boot";
+
+import { bootErrorPage } from "#tests/ui/pages/BootErrorPage";
 
 describe("bootCore", () => {
   it("boots the URL's core, sourced from url, and publishes nothing itself", async () => {

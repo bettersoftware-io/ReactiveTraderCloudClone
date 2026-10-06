@@ -13,8 +13,8 @@ export interface CoreSwapCoverDeps {
 
 /**
  * Keeps the page in step with the core host for the page's lifetime: while a
- * swap is under way the overlay is shown and the app tree is `inert`. Twin
- * of `client-solid`'s `src/app/coreSwapCover.ts`, byte for byte.
+ * swap is under way the overlay is shown and the app tree is `inert`. One
+ * copy, shared by both web clients.
  *
  * The overlay only covers the tree; it does not stop the keyboard. The tree
  * underneath stays mounted through `covering` and `loading` and is mounted

@@ -6,8 +6,8 @@ import {
   ConnectionStatus,
   nextConnectionStatus,
 } from "@rtc/domain";
+import { LocalStoragePreferencesAdapter } from "@rtc/web-boot";
 
-import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
 // The Solid mirror of client-react's buildBrowserPorts.wsBranch.test.ts — the

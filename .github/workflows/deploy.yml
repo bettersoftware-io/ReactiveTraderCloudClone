@@ -198,7 +198,7 @@ jobs:
 
       # Since the runtime core switch, production ships ALL THREE cores as
       # lazy chunks a visitor only fetches once their choice resolves
-      # (src/app/coreSelection.ts's `loadCore`; the RxJS default too, since
+      # (packages/web-boot/src/coreSelection.ts's `loadCore`; the RxJS default too, since
       # approach B) — so the old "no alternative core anywhere in the bundle"
       # grep would now fail on every build. The guard this reuses instead
       # proves the SHAPE stays runtime-switchable: the eager set (both pages'

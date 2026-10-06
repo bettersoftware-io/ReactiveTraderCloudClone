@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chooseCoverTimings, type MotionSettings } from "./coverTimings";
+import { chooseCoverTimings, type MotionSettings } from "@rtc/web-boot";
 
 describe("chooseCoverTimings", () => {
   it("fades in, holds and fades out when nothing asks for less motion", () => {

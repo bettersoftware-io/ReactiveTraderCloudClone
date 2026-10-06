@@ -11,6 +11,7 @@
  * macrotask waits, and every core's scheduling all follow them, so each wait
  * below advances the clock in steps until the awaited value is seen.
  */
+
 import { isObservable, NEVER, Observable, type Subscription } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,16 +46,16 @@ import {
   type Price,
   type PricingPort,
 } from "@rtc/domain";
-
-import { JARVIS_NARRATOR_STORAGE_KEY } from "./adapters/LocalStoragePreferencesAdapter";
-import { buildBrowserPorts } from "./buildBrowserPorts";
 import {
   type Composition,
   type CoreHost,
   type CoreHostState,
   createCoreHost,
-} from "./coreHost";
-import { PRESENTER_MANIFEST } from "./devtools/presenterManifest";
+  JARVIS_NARRATOR_STORAGE_KEY,
+  PRESENTER_MANIFEST,
+} from "@rtc/web-boot";
+
+import { buildBrowserPorts } from "./buildBrowserPorts";
 
 /** Every ordered pair of distinct cores. */
 const PAIRS: readonly (readonly [CoreImpl, CoreImpl])[] = [

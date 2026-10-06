@@ -11,8 +11,8 @@ export interface CoreSwapView {
 }
 
 /**
- * Maps the core host's state to what the swap overlay shows. Twin of
- * `client-solid`'s `src/app/coreSwapView.ts`, byte for byte.
+ * Maps the core host's state to what the swap overlay shows. One copy,
+ * shared by both web clients.
  *
  * Null means "render nothing", for both states with no swap under way:
  * `running`, and `fatal` — there the boot-error screen has replaced the

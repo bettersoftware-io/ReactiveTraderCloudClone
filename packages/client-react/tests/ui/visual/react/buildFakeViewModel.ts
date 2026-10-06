@@ -20,6 +20,7 @@ import {
   resolveThemeMode,
   type SessionUser,
 } from "@rtc/domain";
+import { CORE_OPTIONS } from "@rtc/web-boot";
 
 // The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
 // showcase default): classic's tokens are byte-identical to the pre-redesign
@@ -83,8 +84,6 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import type { CoreSelectionView, ViewModel } from "@rtc/react-bindings";
-
-import { CORE_OPTIONS } from "#/app/coreSelection";
 
 function noop(): void {}
 

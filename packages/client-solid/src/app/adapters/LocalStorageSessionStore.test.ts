@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type { StoredSession } from "@rtc/core-api";
 import type { SessionUser } from "@rtc/domain";
-
-import {
-  LocalStorageSessionStore,
-  SESSION_STORAGE_KEY,
-} from "./LocalStorageSessionStore";
+import { LocalStorageSessionStore, SESSION_STORAGE_KEY } from "@rtc/web-boot";
 
 describe("LocalStorageSessionStore (jsdom localStorage)", () => {
   beforeEach(() => {

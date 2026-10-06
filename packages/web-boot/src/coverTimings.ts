@@ -16,8 +16,8 @@ export interface MotionSettings {
 const COVER: CoverTimings = { enterMs: 160, holdMs: 500, exitMs: 200 };
 
 /**
- * Chooses one swap's cover timings. Twin of `client-solid`'s
- * `src/app/coverTimings.ts`, byte for byte.
+ * Chooses one swap's cover timings. One copy, shared by
+ * both web clients.
  *
  * Under reduced motion or power-saver freeze the two fades are jump cuts and
  * the hold stays: the cover still shows long enough to be read, it just does

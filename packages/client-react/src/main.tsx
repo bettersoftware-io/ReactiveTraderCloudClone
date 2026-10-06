@@ -1,6 +1,7 @@
 // v2 design fonts (PROTO L23): Chakra Petch 400/500/600/700, JetBrains Mono 400/500/700,
 // IBM Plex Sans 400/500/600, IBM Plex Mono 400/500/600, Orbitron 700/800
 // (wordmark, P&L amount, lock-screen fallback, prefs-dialog title chrome).
+
 import "@fontsource/chakra-petch/400.css";
 import "@fontsource/chakra-petch/500.css";
 import "@fontsource/chakra-petch/600.css";
@@ -25,34 +26,31 @@ import {
   instrumentMachineFactories,
   instrumentPresenters,
 } from "@rtc/devtools-core";
-
-import { AppRoot } from "./AppRoot";
 import {
   bootCore,
+  CORE_OPTIONS,
+  type Composition,
+  type CoreSwapView,
+  type CoverTimings,
+  chooseCoverTimings,
+  clearCoreChoice,
+  createCoreHost,
+  defaultCoreResetHref,
+  followCoreSwaps,
   formatBootedMessage,
+  loadCore,
+  type MotionSettings,
+  PRESENTER_MANIFEST,
   renderBootError,
   runBoot,
-} from "./app/bootApp";
-import { buildBrowserPorts } from "./app/buildBrowserPorts";
-import {
-  type Composition,
-  type CoverTimings,
-  createCoreHost,
-} from "./app/coreHost";
-import {
-  CORE_OPTIONS,
-  clearCoreChoice,
-  defaultCoreResetHref,
-  loadCore,
   safeLocalStorage,
   saveCoreChoice,
   urlWithoutCoreParam,
-} from "./app/coreSelection";
-import { followCoreSwaps } from "./app/coreSwapCover";
-import type { CoreSwapView } from "./app/coreSwapView";
-import { chooseCoverTimings, type MotionSettings } from "./app/coverTimings";
+} from "@rtc/web-boot";
+
+import { AppRoot } from "./AppRoot";
+import { buildBrowserPorts } from "./app/buildBrowserPorts";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
-import { PRESENTER_MANIFEST } from "./app/devtools/presenterManifest";
 import { createReactTreeMount } from "./app/reactTreeMount";
 import { App } from "./ui/App";
 import { CoreSwapOverlay } from "./ui/shell/core/CoreSwapOverlay";

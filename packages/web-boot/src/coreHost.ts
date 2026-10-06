@@ -1,8 +1,8 @@
 /**
  * The core host: the framework-free object that owns what outlives one
  * application core — the ports, the running composition, and the swap
- * sequence (spec 2026-10-05-core-hot-swap-design.md §1). Twin of
- * `client-solid`'s `src/app/coreHost.ts`, byte for byte.
+ * sequence (spec 2026-10-05-core-hot-swap-design.md §1). One copy, shared by
+ * both web clients.
  *
  * The ports are built once per page and handed to every `createApp` as the
  * SAME object; a swap disposes the running core and composes another over

@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
+
 import { BehaviorSubject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { CoreHostState } from "./coreHost";
-import { CORE_OPTIONS } from "./coreSelection";
-import { followCoreSwaps } from "./coreSwapCover";
-import type { CoreSwapView } from "./coreSwapView";
+import {
+  CORE_OPTIONS,
+  type CoreHostState,
+  type CoreSwapView,
+  followCoreSwaps,
+} from "@rtc/web-boot";
 
 describe("followCoreSwaps", () => {
   it("shows nothing and leaves the app tree live while no swap is under way", () => {

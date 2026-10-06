@@ -10,7 +10,6 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../boot-splash" },
     { "path": "../client-adapters" },
     { "path": "../client-core-async" },
     { "path": "../client-core-effect" },

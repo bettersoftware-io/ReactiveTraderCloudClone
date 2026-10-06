@@ -1401,9 +1401,6 @@ importers:
 
   packages/web-boot:
     dependencies:
-      '@rtc/boot-splash':
-        specifier: workspace:*
-        version: link:../boot-splash
       '@rtc/client-adapters':
         specifier: workspace:*
         version: link:../client-adapters

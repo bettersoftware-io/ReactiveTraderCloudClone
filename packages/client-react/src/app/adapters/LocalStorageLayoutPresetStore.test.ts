@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocalStorageLayoutPresetStore } from "./LocalStorageLayoutPresetStore";
+import { LocalStorageLayoutPresetStore } from "@rtc/web-boot";
 
 describe("LocalStorageLayoutPresetStore", () => {
   afterEach(() => {

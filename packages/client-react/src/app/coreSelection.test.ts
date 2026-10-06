@@ -3,7 +3,6 @@ import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { CoreFactory, CoreImpl } from "@rtc/core-api";
-
 import {
   CORE_CHOICE_KEY,
   type CoreImporters,
@@ -17,7 +16,7 @@ import {
   safeLocalStorage,
   saveCoreChoice,
   urlWithoutCoreParam,
-} from "./coreSelection";
+} from "@rtc/web-boot";
 
 describe("resolveCoreChoice", () => {
   it("defaults to rxjs from the fallback source", () => {
