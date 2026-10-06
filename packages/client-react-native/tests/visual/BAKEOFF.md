@@ -126,9 +126,24 @@ machine". Repeating it showed the load was the symptom. What was found:
   -b`, the same class App Nap uses) a burst of screenshots found an unsettled
   frame about two seconds in, 5 times out of 5, scoring 0.4119% (once
   0.4110%). The exact 0.1070% was not reproduced — the burst samples about
-  0.6 s apart — so this is the mechanism, not that frame. What remains is that
-  the marker precedes the settled frame and only Maestro's own latency covers
-  the gap.
+  0.6 s apart — so this is the mechanism, not that frame. **Fixed the same
+  day:** the marker now waits for the scene to stop committing
+  (`useSceneSettled.ts`). A `Profiler` around the scene counts its commits,
+  and a round asks the UI thread to run three frames and answer, lets two pass
+  on the JS side, then waits for React to finish what it has queued (a
+  transition, which commits only after everything more urgent); a round with
+  no commit raises the marker. A plain count of quiet frames was built first
+  and measured out: the last real commit came at most 4 frames after the one
+  before it at normal speed, and up to 57 with the emulator throttled, because
+  the JS frame clock keeps ticking while the UI thread is slow. Measured with
+  the round trip: the marker rises a median 136 ms after mount on iOS (26
+  scenarios, one to three rounds each); on Android 192 ms, measured before the
+  React step was added. With the emulator
+  throttled, seven scenarios shot three times each: the old marker gave 20 of
+  21 (`rates/ticket` 24.7% off, shot mid-transition), the new one 21 of 21.
+  Most scenes still commit once or twice a second or two after the marker,
+  on both platforms; burst captures over 3–8 s show those commits change no
+  pixel.
 - **Android scroll indicators are not the cause, though they do vary.** A
   scroll view flashes its indicator when it appears and fades it about two
   seconds later, so `rates/ticket` and `shell/appearance` each have two
@@ -494,8 +509,8 @@ visual fidelity settling.
    inset-card scenarios, and the #147 shadow-clip is caught by both tiers.
 5. ~~**Run the Android leg.**~~ — **DONE 2026-10-06**, results above,
    including the repeat verification (156 / 156 headless) and the cause of
-   `equities/trade`'s stray frame. Still open from it: `visual-ready` is raised
-   before a scene has settled, and only Maestro's latency covers the gap.
+   `equities/trade`'s stray frame, and the marker fix that followed from it
+   (`visual-ready` now waits for the scene to stop committing).
 6. **Diagnose simctl's `credit/new-rfq` alternate frame** (0.1147%, twice in 8
    runs) — or replace its fixed settle delay with the `visual-ready` marker
    Maestro already waits for.
