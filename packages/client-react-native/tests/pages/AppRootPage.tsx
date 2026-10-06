@@ -28,6 +28,9 @@ export interface AppRootPage {
   /** Mounts a child that prints the build stamp `AppRoot` supplies. */
   mountBuildStampProbe(): Promise<void>;
   buildStampText(): string;
+  /** Mounts a child that prints the usernames `useDemoAccounts` lists. */
+  mountDemoAccountsProbe(): Promise<void>;
+  demoAccountsText(): string;
   authStatus(): AuthStatus;
 }
 
@@ -91,6 +94,24 @@ export function appRootPage(): AppRootPage {
           <BuildStampProbe />
         </AppRoot>,
       );
+    },
+    async mountDemoAccountsProbe(): Promise<void> {
+      function DemoAccountsProbe(): React.JSX.Element {
+        const { useDemoAccounts } = useViewModel();
+        const usernames = useDemoAccounts().map((account) => {
+          return account.username;
+        });
+        return <Text testID="demo-accounts">{usernames.join(",")}</Text>;
+      }
+
+      await render(
+        <AppRoot simulator>
+          <DemoAccountsProbe />
+        </AppRoot>,
+      );
+    },
+    demoAccountsText(): string {
+      return textContentOf(screen.getByTestId("demo-accounts"));
     },
     buildStampText(): string {
       return textContentOf(screen.getByTestId("build-stamp"));

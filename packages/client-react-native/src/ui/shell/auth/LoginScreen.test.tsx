@@ -1,5 +1,7 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
 
+import type { DemoAccount } from "@rtc/domain";
+
 import { loginScreenPage } from "#tests/pages/LoginScreenPage";
 
 afterEach(() => {
@@ -16,6 +18,56 @@ test("typing credentials then pressing AUTHENTICATE calls login with them", asyn
 
   expect(login).toHaveBeenCalledTimes(1);
   expect(login).toHaveBeenCalledWith("trader1", "s3cret");
+});
+
+// Against a real server every credential is the server's, so there is
+// nothing the app may offer.
+test("lists no demo accounts when the host verifies none", async () => {
+  await page.mount("unauthenticated", jest.fn());
+
+  expect(page.exists("login-demo-accounts")).toBe(false);
+});
+
+test("picking a demo account fills the form without signing in", async () => {
+  const login = jest.fn();
+  await page.mount("unauthenticated", login, {
+    demoAccounts: createDemoAccounts(),
+  });
+
+  await page.pickDemoAccount("nromanoff");
+
+  expect(login).not.toHaveBeenCalled();
+
+  await page.pressSubmit();
+
+  expect(login).toHaveBeenCalledWith("nromanoff", "widow-pass");
+});
+
+test("prints the password once when every demo account shares it", async () => {
+  await page.mount("unauthenticated", jest.fn(), {
+    demoAccounts: createDemoAccounts().map((account) => {
+      return { ...account, password: "shared-pass" };
+    }),
+  });
+
+  expect(page.demoPassword()).toBe("shared-pass");
+});
+
+test("prints no password when the demo accounts differ", async () => {
+  await page.mount("unauthenticated", jest.fn(), {
+    demoAccounts: createDemoAccounts(),
+  });
+
+  expect(page.demoPassword()).toBeNull();
+});
+
+test("a sign-in in flight recedes the demo accounts and disables their rows", async () => {
+  await page.mount("authenticating", jest.fn(), {
+    demoAccounts: createDemoAccounts(),
+  });
+
+  expect(page.opacityOf("login-demo-accounts")).toBe(0.35);
+  expect(page.demoAccountDisabled("astark")).toBe(true);
 });
 
 // A development run has no stamp, and half a line would read as a fact.
@@ -100,3 +152,10 @@ test("toggling the sim switch calls onToggleSimulator with the new value", async
 });
 
 const page = loginScreenPage();
+
+function createDemoAccounts(): DemoAccount[] {
+  return [
+    { username: "astark", password: "stark-pass", role: "Senior FX Trader" },
+    { username: "nromanoff", password: "widow-pass", role: "Credit Trader" },
+  ];
+}

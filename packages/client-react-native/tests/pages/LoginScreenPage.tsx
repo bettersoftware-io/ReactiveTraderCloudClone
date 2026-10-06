@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react-native";
 import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 
-import type { LoginWaitVariant } from "@rtc/domain";
+import type { DemoAccount, LoginWaitVariant } from "@rtc/domain";
 import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { LoginScreen } from "#/ui/shell/auth/LoginScreen";
@@ -25,6 +25,9 @@ interface LoginScreenMountOptions {
   /** The running build's stamp, as `AppRoot` supplies it. Default `null` —
    * a development run. */
   buildStamp?: BuildStamp | null;
+  /** The accounts the host verifies on the device. Default none — a sign-in
+   * against a real server. */
+  demoAccounts?: readonly DemoAccount[];
 }
 
 /** What a single-child RN `<Text>` node's `props.children` actually holds. */
@@ -51,8 +54,12 @@ function fakeViewModel(
   login: (username: string, password: string) => void,
   error: string | null = null,
   waitVariant: LoginWaitVariant = "handshake",
+  demoAccounts: readonly DemoAccount[] = [],
 ): ViewModel {
   return {
+    useDemoAccounts: () => {
+      return demoAccounts;
+    },
     useAuth: () => {
       return {
         state: {
@@ -89,6 +96,12 @@ export interface LoginScreenPage {
   typeUsername(value: string): Promise<void>;
   typePassword(value: string): Promise<void>;
   pressSubmit(): Promise<void>;
+  /** Presses the demo-account row for `username`. */
+  pickDemoAccount(username: string): Promise<void>;
+  /** Whether the demo-account row for `username` is disabled. */
+  demoAccountDisabled(username: string): boolean;
+  /** The shared password the hint prints, or `null` when it prints none. */
+  demoPassword(): TextChildren | null;
   toggleSimulator(next: boolean): Promise<void>;
 }
 
@@ -105,11 +118,18 @@ export function loginScreenPage(): LoginScreenPage {
         onToggleSimulator = noop,
         waitVariant = "handshake",
         buildStamp = null,
+        demoAccounts = [],
       } = options;
       await renderWithTheme(
         <BuildStampContext.Provider value={buildStamp}>
           <ViewModelProvider
-            viewModel={fakeViewModel(status, login, error, waitVariant)}
+            viewModel={fakeViewModel(
+              status,
+              login,
+              error,
+              waitVariant,
+              demoAccounts,
+            )}
           >
             <LoginScreen
               simulator={false}
@@ -148,6 +168,20 @@ export function loginScreenPage(): LoginScreenPage {
     },
     async pressSubmit(): Promise<void> {
       await fireEvent.press(screen.getByTestId("login-submit"));
+    },
+    async pickDemoAccount(username: string): Promise<void> {
+      await fireEvent.press(
+        screen.getByTestId(`login-demo-account-${username}`),
+      );
+    },
+    demoAccountDisabled(username: string): boolean {
+      const state = screen.getByTestId(`login-demo-account-${username}`).props
+        .accessibilityState as { disabled?: boolean } | undefined;
+      return state?.disabled === true;
+    },
+    demoPassword(): TextChildren | null {
+      const node = screen.queryByTestId("login-demo-password");
+      return node === null ? null : (node.props.children as TextChildren);
     },
     async toggleSimulator(next: boolean): Promise<void> {
       await fireEvent(
