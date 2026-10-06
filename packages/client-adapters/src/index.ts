@@ -8,6 +8,7 @@
 
 export * from "#/adapters/connectionIntents";
 export * from "#/adapters/dataSource";
+export * from "#/adapters/gatewayAndBrowserEvents";
 export * from "#/adapters/HttpAuthAdapter";
 export * from "#/adapters/InMemoryDataSourceStore";
 export * from "#/adapters/InMemorySessionStore";

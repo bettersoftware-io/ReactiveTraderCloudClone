@@ -15,6 +15,7 @@ exports[`@rtc/client-adapters public runtime API > has a pinned runtime surface 
   "createWsRealPorts",
   "formatDataSourceMessage",
   "isDataSource",
+  "mergeGatewayAndBrowserEvents",
   "pairConnectionPorts",
   "resolveDataSource",
   "routeIdleLifecycle",

@@ -67,6 +67,19 @@ describe("BootGate", () => {
     expect(page.hasContent()).toBe(true);
   });
 
+  it("unmounts the splash under a Freeze that arrives while it is fading", async () => {
+    // The sequence is done and the gate is waiting for the fade to end.
+    // Freeze switches the transition off, so that end never comes: the gate
+    // has to act on the Freeze itself.
+    const page = mount(BootGate, {});
+    await page.skip();
+    expect(page.hasSplash()).toBe(true);
+
+    page.freezeArrives();
+    expect(page.hasSplash()).toBe(false);
+    expect(page.hasContent()).toBe(true);
+  });
+
   it("under Freeze, a rebooted splash plays again and is dismissed when it is done", async () => {
     const page = mount(BootGate, { powerSaverLevel: "freeze" });
     await page.skip();
