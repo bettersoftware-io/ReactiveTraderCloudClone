@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DATA_SOURCE_STORAGE_KEY } from "@rtc/client-adapters";
-import { LocalStorageDataSourceStore } from "@rtc/web-boot";
+
+import { LocalStorageDataSourceStore } from "#/adapters/LocalStorageDataSourceStore";
 
 afterEach(() => {
   localStorage.clear();

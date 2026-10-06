@@ -1,23 +1,33 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocalStorageLayoutPresetStore } from "@rtc/web-boot";
+import { LocalStorageDockLayoutStore } from "#/adapters/LocalStorageDockLayoutStore";
 
-describe("LocalStorageLayoutPresetStore", () => {
+describe("LocalStorageDockLayoutStore", () => {
   afterEach(() => {
-    localStorage.removeItem("rtc-layout-presets-fx");
-    localStorage.removeItem("rtc-layout-presets-credit");
+    localStorage.removeItem("rtc-dock-layout-fx");
+    localStorage.removeItem("rtc-dock-layout-credit");
   });
 
   it("returns null when nothing is stored", () => {
-    expect(new LocalStorageLayoutPresetStore().load("fx")).toBeNull();
+    expect(new LocalStorageDockLayoutStore().load("fx")).toBeNull();
   });
 
-  it("round-trips a serialized list per tab independently", () => {
-    const store = new LocalStorageLayoutPresetStore();
+  it("round-trips a blob per tab independently", () => {
+    const store = new LocalStorageDockLayoutStore();
     store.save("fx", '{"a":1}');
     store.save("credit", '{"b":2}');
     expect(store.load("fx")).toBe('{"a":1}');
     expect(store.load("credit")).toBe('{"b":2}');
+  });
+
+  it("persists under the stable per-tab key an earlier session wrote", () => {
+    localStorage.setItem("rtc-dock-layout-fx", "seeded");
+
+    expect(new LocalStorageDockLayoutStore().load("fx")).toBe("seeded");
+
+    new LocalStorageDockLayoutStore().save("credit", "written");
+
+    expect(localStorage.getItem("rtc-dock-layout-credit")).toBe("written");
   });
 
   it("swallows storage failures (best-effort persistence)", () => {
@@ -27,23 +37,13 @@ describe("LocalStorageLayoutPresetStore", () => {
         throw new Error("quota");
       });
     expect(() => {
-      return new LocalStorageLayoutPresetStore().save("fx", "x");
+      return new LocalStorageDockLayoutStore().save("fx", "x");
     }).not.toThrow();
     spy.mockRestore();
   });
 
-  it("swallows storage failures on load, returning null", () => {
-    const spy = vi
-      .spyOn(Storage.prototype, "getItem")
-      .mockImplementation(() => {
-        throw new Error("blocked");
-      });
-    expect(new LocalStorageLayoutPresetStore().load("fx")).toBeNull();
-    spy.mockRestore();
-  });
-
-  it("clear round-trips: removes the tab's list and leaves the other tab's alone", () => {
-    const store = new LocalStorageLayoutPresetStore();
+  it("clear round-trips: removes the tab's blob and leaves the other tab's alone", () => {
+    const store = new LocalStorageDockLayoutStore();
     store.save("fx", '{"a":1}');
     store.save("credit", '{"b":2}');
 
@@ -60,7 +60,7 @@ describe("LocalStorageLayoutPresetStore", () => {
         throw new Error("blocked");
       });
     expect(() => {
-      return new LocalStorageLayoutPresetStore().clear("fx");
+      return new LocalStorageDockLayoutStore().clear("fx");
     }).not.toThrow();
     spy.mockRestore();
   });

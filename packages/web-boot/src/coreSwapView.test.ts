@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { CORE_OPTIONS, type CoreHostState, coreSwapOf } from "@rtc/web-boot";
+import type { CoreHostState } from "#/coreHost";
+import { CORE_OPTIONS } from "#/coreSelection";
+import { coreSwapOf } from "#/coreSwapView";
 
 describe("coreSwapOf", () => {
   it.each(["covering", "loading", "handover", "revealing"] as const)(

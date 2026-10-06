@@ -2,7 +2,8 @@ import type { Subscription } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type ConnectionEvent, IDLE_TIMEOUT_MS } from "@rtc/domain";
-import { BrowserConnectionEventsAdapter } from "@rtc/web-boot";
+
+import { BrowserConnectionEventsAdapter } from "#/adapters/BrowserConnectionEventsAdapter";
 
 describe("BrowserConnectionEventsAdapter", () => {
   beforeEach(() => {

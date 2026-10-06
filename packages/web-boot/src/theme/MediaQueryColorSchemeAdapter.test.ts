@@ -2,7 +2,7 @@ import { firstValueFrom } from "rxjs";
 import { take, toArray } from "rxjs/operators";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MediaQueryColorSchemeAdapter } from "@rtc/web-boot";
+import { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";
 
 // This adapter is how "system" theme follows the OS. Two things had no witness:
 // the CHANGE listener (without it the app seeds correctly at boot and then

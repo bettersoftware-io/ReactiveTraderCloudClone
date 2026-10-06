@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { LocalStorageLayoutPresetStore } from "@rtc/web-boot";
+import { LocalStorageLayoutPresetStore } from "#/adapters/LocalStorageLayoutPresetStore";
 
 describe("LocalStorageLayoutPresetStore", () => {
   afterEach(() => {
@@ -18,6 +18,16 @@ describe("LocalStorageLayoutPresetStore", () => {
     store.save("credit", '{"b":2}');
     expect(store.load("fx")).toBe('{"a":1}');
     expect(store.load("credit")).toBe('{"b":2}');
+  });
+
+  it("persists under the stable per-tab key an earlier session wrote", () => {
+    localStorage.setItem("rtc-layout-presets-fx", "seeded");
+
+    expect(new LocalStorageLayoutPresetStore().load("fx")).toBe("seeded");
+
+    new LocalStorageLayoutPresetStore().save("credit", "written");
+
+    expect(localStorage.getItem("rtc-layout-presets-credit")).toBe("written");
   });
 
   it("swallows storage failures (best-effort persistence)", () => {

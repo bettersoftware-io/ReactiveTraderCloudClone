@@ -16,6 +16,7 @@ import {
   DEFAULT_VIEW_MODE,
 } from "@rtc/domain";
 import { describePreferencesPortContract } from "@rtc/domain/ports/__contracts__/PreferencesPortContract";
+
 import {
   AMBIENT_STYLE_STORAGE_KEY,
   ANIMATED_BG_STORAGE_KEY,
@@ -39,7 +40,7 @@ import {
   THEME_STORAGE_KEY,
   VIEW_MODE_STORAGE_KEY,
   WORKSPACE_LAYOUT_STORAGE_KEY,
-} from "@rtc/web-boot";
+} from "#/adapters/LocalStoragePreferencesAdapter";
 
 describe("LocalStoragePreferencesAdapter (jsdom localStorage)", () => {
   beforeEach(clearStorage);

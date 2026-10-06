@@ -3,6 +3,7 @@ import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
 import type { CoreFactory, CoreImpl } from "@rtc/core-api";
+
 import {
   CORE_CHOICE_KEY,
   type CoreImporters,
@@ -16,7 +17,7 @@ import {
   safeLocalStorage,
   saveCoreChoice,
   urlWithoutCoreParam,
-} from "@rtc/web-boot";
+} from "#/coreSelection";
 
 describe("resolveCoreChoice", () => {
   it("defaults to rxjs from the fallback source", () => {
@@ -203,6 +204,10 @@ describe("storage", () => {
     expect(saveCoreChoice(storage, "async")).toBe(false);
   });
 
+  it("reports absent storage as not saved without throwing", () => {
+    expect(saveCoreChoice(undefined, "async")).toBe(false);
+  });
+
   it("warns with the caught reason when saving fails", () => {
     const storage = {
       setItem: () => {
@@ -256,6 +261,20 @@ describe("storage", () => {
 describe("safeLocalStorage", () => {
   it("returns window.localStorage", () => {
     expect(safeLocalStorage()).toBe(window.localStorage);
+  });
+
+  it("returns undefined when reading localStorage throws", () => {
+    const spy = vi
+      .spyOn(window, "localStorage", "get")
+      .mockImplementation(() => {
+        throw new Error("denied");
+      });
+
+    try {
+      expect(safeLocalStorage()).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
