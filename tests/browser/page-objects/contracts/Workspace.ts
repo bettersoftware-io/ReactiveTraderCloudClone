@@ -42,11 +42,12 @@ export interface WorkspacePO {
   navigationMark(): Promise<number | undefined>;
   /**
    * Starts recording, on the current document, whether the login screen is
-   * ever on screen from now on — for even a single frame. Read back by
-   * `loginScreenSeen`; a navigation discards it.
+   * ever inserted into it from now on, even if it is removed again before
+   * the browser paints. Read back by `loginScreenSeen`; a navigation
+   * discards it.
    */
   watchForLoginScreen(): Promise<void>;
-  /** Whether the login screen has been on screen since `watchForLoginScreen`. */
+  /** Whether the login screen has been in the document since `watchForLoginScreen`. */
   loginScreenSeen(): Promise<boolean>;
   /** Waits until the signed-in app shell (its header) is visible and no
    *  login screen is in the DOM. */

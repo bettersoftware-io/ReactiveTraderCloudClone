@@ -26,6 +26,17 @@ export class PlaywrightPreferences implements PreferencesPO {
     });
   }
 
+  async waitModalHoldsFocus(timeoutMs: number): Promise<void> {
+    await this.page.waitForFunction(
+      (modalTestId) => {
+        const modal = document.querySelector(`[data-testid="${modalTestId}"]`);
+        return modal?.contains(document.activeElement) ?? false;
+      },
+      TESTIDS.prefs.modal,
+      { timeout: timeoutMs },
+    );
+  }
+
   async selectChartSubstrate(value: PrefsChartSubstrate): Promise<void> {
     await this.page
       .getByTestId(TESTIDS.prefs.chartSubstrateSegment(value))

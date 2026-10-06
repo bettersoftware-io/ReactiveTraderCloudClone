@@ -41,6 +41,10 @@ export function createThemePreferencePresenter(
   colorScheme?: ColorSchemeSource,
 ): ThemePreferencePresenter {
   const modePreference = preferences.themeMode$();
+  // `mode$` follows the stored choice through THIS stream, not through the
+  // port again: with both streams held, the port has one subscriber, as on
+  // the RxJS and async cores.
+  const modePreference$ = mirrorPortAsIs(host, modePreference);
   const prefersDark =
     colorScheme === undefined ? undefined : colorScheme.prefersDark$();
 
@@ -50,7 +54,7 @@ export function createThemePreferencePresenter(
 
   function themeEvents(): readonly PortEvents<ThemeEvent>[] {
     const preferenceEvents = portEvents(
-      modePreference,
+      modePreference$,
       (preference): ThemeEvent => {
         return { kind: "preference", preference };
       },
@@ -67,7 +71,7 @@ export function createThemePreferencePresenter(
   }
 
   return {
-    modePreference$: mirrorPortAsIs(host, modePreference),
+    modePreference$,
     mode$: sharedFold(host, {
       /** `None` when the port has not emitted on subscribe: a READ must
        * not invent a default, or a port that is merely slow would push a
