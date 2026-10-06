@@ -72,9 +72,9 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
 ### Android (Maestro only)
 
 ```bash
-# once: a debug build on the emulator (JDK 17, ~4 min; creates the gitignored android/)
-ANDROID_HOME=~/Library/Android/sdk JAVA_HOME="$(brew --prefix openjdk@17)" \
-  npx expo run:android --no-bundler          # from packages/client-react-native
+# once: a dev build on the emulator — `pnpm dev:android` from the repo root
+# builds and installs one (it also removes an EAS preview build, which is
+# signed with another key and cannot be replaced in place)
 
 # each run: emulator `Pixel_10a` (API 37) cold-booted, Metro (8083) up as above
 PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
@@ -83,9 +83,7 @@ PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android:update   # regenerate
 ```
 
-The flows are the same files iOS runs. A build signed with another key (an EAS
-preview APK) must be uninstalled first — `adb install` refuses to replace it.
-Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
+The flows are the same files iOS runs. Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
 service mid-run. The top 142 rows (the status bar) are blacked out in every
 Android shot because that bar does not reproduce between boots.
 
