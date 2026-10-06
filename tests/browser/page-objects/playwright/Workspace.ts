@@ -125,7 +125,12 @@ export class PlaywrightWorkspace implements WorkspacePO {
 
       new MutationObserver((records) => {
         for (const record of records) {
-          if (Array.from(record.addedNodes).some(holdsLoginScreen)) {
+          // Removed nodes too: a login screen nested in a node that was
+          // added empty and filled later shows up when it leaves.
+          if (
+            Array.from(record.addedNodes).some(holdsLoginScreen) ||
+            Array.from(record.removedNodes).some(holdsLoginScreen)
+          ) {
             win.__loginScreenSeen = true;
           }
         }

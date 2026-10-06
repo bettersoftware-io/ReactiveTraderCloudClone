@@ -34,11 +34,21 @@ export function ModalShell({
 
   // A dialog that opens takes focus, so the keyboard and a screen reader
   // land in it and not on whatever opened it. The dialog itself, not its
-  // first control: nothing is activated by a stray Enter.
+  // first control: nothing is activated by a stray Enter. When it closes,
+  // focus goes back to where it was, if that element is still on the page.
   useEffect(() => {
-    if (open) {
-      dialogRef.current?.focus();
+    if (!open) {
+      return;
     }
+
+    const opener = document.activeElement;
+    dialogRef.current?.focus();
+
+    return (): void => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus();
+      }
+    };
   }, [open, dialogRef]);
 
   if (!open) {

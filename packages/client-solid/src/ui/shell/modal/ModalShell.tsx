@@ -1,4 +1,4 @@
-import { createEffect, type JSX, Show } from "solid-js";
+import { createEffect, type JSX, onCleanup, Show } from "solid-js";
 
 import { useDraggableDialog } from "./useDraggableDialog";
 
@@ -33,11 +33,21 @@ export function ModalShell(props: ModalShellProps): JSX.Element {
 
   // A dialog that opens takes focus, so the keyboard and a screen reader
   // land in it and not on whatever opened it. The dialog itself, not its
-  // first control: nothing is activated by a stray Enter.
+  // first control: nothing is activated by a stray Enter. When it closes,
+  // focus goes back to where it was, if that element is still on the page.
   createEffect(() => {
-    if (props.open) {
-      dialogEl?.focus();
+    if (!props.open) {
+      return;
     }
+
+    const opener = document.activeElement;
+    dialogEl?.focus();
+
+    onCleanup(() => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus();
+      }
+    });
   });
 
   function closeModal(): void {

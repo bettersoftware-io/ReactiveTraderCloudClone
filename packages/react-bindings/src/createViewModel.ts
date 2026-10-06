@@ -858,9 +858,10 @@ export function createViewModel(
   // default on the first render even over a warm source, and any default
   // here is a guess: "unauthenticated" made React commit the login screen
   // and remove it again within one task on every composition with a resumed
-  // session, at boot and after each core swap. auth.state$ is replay-current
-  // by contract and every core holds it itself (it gates the transport on
-  // it), so the first render reads the real state.
+  // session, at boot and after each core swap. Every core builds
+  // auth.state$ as a state stream whose default is the resumed session it
+  // read at construction, so the first render reads the real state with no
+  // subscriber needed.
   function useAuthState(): AuthViewState {
     return useStateObservable(presenters.auth.state$);
   }

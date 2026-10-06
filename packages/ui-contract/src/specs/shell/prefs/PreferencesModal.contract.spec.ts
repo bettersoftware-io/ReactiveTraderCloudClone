@@ -34,6 +34,22 @@ describe("PreferencesModal", () => {
     expect(page.holdsFocus()).toBe(true);
   });
 
+  it("hands focus back to where it was when it closes", () => {
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    const page = mount(PreferencesModal, {
+      props: { open: false, onClose: () => {} },
+    });
+
+    page.setOpen(true);
+    expect(page.holdsFocus()).toBe(true);
+
+    page.setOpen(false);
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it("reflects the animated-background preference and writes it on toggle", async () => {
     const page = mount(PreferencesModal, {
       props: { open: true, onClose: () => {} },

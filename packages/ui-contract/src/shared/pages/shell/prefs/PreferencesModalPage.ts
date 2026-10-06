@@ -47,6 +47,11 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return within(this.root).queryByTestId("prefs-modal") !== null;
   }
 
+  /** Opens or closes the modal, as its owner does. */
+  setOpen(open: boolean): void {
+    this.setProps({ open });
+  }
+
   /** True when keyboard focus is on the dialog or on something inside it. */
   holdsFocus(): boolean {
     const dialog = within(this.root).queryByRole("dialog");
