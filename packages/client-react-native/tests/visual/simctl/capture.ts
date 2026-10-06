@@ -7,6 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 import type { VisualDriver } from "../driver.ts";
+import { VISUAL_HARNESS_HOME_ID } from "../harnessHomeId.ts";
 import type { SkinOverride } from "../skinOverride.ts";
 
 const exec = promisify(execFile);
@@ -43,8 +44,8 @@ const DEFAULT_IDB_PATH = "idb";
 const DEFAULT_IDB_TAP_X = 274;
 const DEFAULT_IDB_TAP_Y = 474;
 
-/** Bounded poll for the app to leave the dev-client launcher after loading
- * the Metro base URL — i.e. our bundle is on screen, in whatever state. */
+/** Bounded poll for the harness home marker after loading the Metro base URL
+ * — i.e. our bundle is on screen. */
 const DEFAULT_APP_BOOT_TIMEOUT_MS = 20_000;
 /** Bounded poll for the `visual-ready` a11y marker after the in-app scenario
  * deep link. This is the core fix: the driver must not screenshot until this
@@ -148,8 +149,8 @@ export interface SimctlDriverConfig {
    * the iPhone 17 pin's on-device-measured coordinates. */
   idbTapX?: number;
   idbTapY?: number;
-  /** Bounded wait (ms) for the app to leave the dev-client launcher after
-   * loading the Metro base URL. Throws if it never does. */
+  /** Bounded wait (ms) for the harness home marker after loading the Metro
+   * base URL. Throws if it never appears. */
   appBootTimeoutMs?: number;
   /** Bounded wait (ms) for the `visual-ready` marker after the in-app
    * scenario deep link. Throws if never observed — this is what makes a
@@ -173,10 +174,9 @@ export interface SimctlDriverConfig {
  * The on-device sequence (rehaul Phase 1 amendment A2, later hardened by the
  * reliability fix below): load the dev client at its Metro base URL first
  * (the combined `?url=.../--/<route>` form does NOT work), poll the a11y
- * tree until the app has left the dev-client launcher (NOT for a
- * `login-screen` marker — the session persists in AsyncStorage, so a
- * simulator that has ever signed in boots straight to the shell and that
- * marker never appears), THEN deep-link in-app to the
+ * tree for the harness home marker (on a harness bundle the home route is a
+ * bare marker screen and the app itself is never mounted — see
+ * `VisualHarnessHome.tsx`), THEN deep-link in-app to the
  * scenario route, poll the a11y tree for the iOS "Open in RTC Mobile?"
  * confirmation and dismiss it by tapping the located "Open" button (falling
  * back to a blind coordinate tap only if it can't be found), poll the a11y
@@ -431,29 +431,18 @@ async function tapBlindFallback(
   await exec(idbPath, ["ui", "tap", "--udid", udid, String(x), String(y)]);
 }
 
-/** Polls until the dev client has left its launcher home screen — i.e. OUR
- * app is on screen, whatever it is showing.
+/** Polls until the harness home marker is on screen — i.e. the bundle has
+ * loaded and the scenario link has somewhere to go.
  *
- * This deliberately does NOT wait for `login-screen`. That marker only
- * renders when the app is signed OUT, and the session persists in
- * AsyncStorage, so a simulator that has ever signed in boots straight to the
- * shell and the login marker never appears. Waiting for it timed out against
- * a perfectly healthy app (observed: the tree carried `logout-button` and the
- * spot-tile ids instead).
- *
- * An earlier version of this gate claimed that inverting the launcher
- * signature is "false only while the dev client is still on its own home
- * screen". That was wrong, and it cost a debugging session: the iOS
- * SpringBoard home screen is not the Expo launcher either, so a terminated
- * app read as "booted" and the scenario deep link went nowhere. The same
- * mistake this harness exists to prevent — inferring a good state from the
- * absence of one known-bad state — reproduced one level up.
- *
- * Both screens are now rejected. This gate remains a negative one (there is
- * no app-side marker to assert before the scenario route mounts — the
- * harness host, and so `visual-pending`, only exists under `__visual/`), but
- * it can no longer pass on an app that is not running: `visual-ready` is
- * still the only thing a capture ever proceeds on. */
+ * A harness bundle shows a bare marker screen at the app's home route, so
+ * this is a positive gate. It used to be a negative one ("not the dev-client
+ * launcher, and not the iOS home screen"), because the home route was the
+ * real app and the app had no marker that held in every state: a simulator
+ * that had ever signed in booted straight to the shell and never showed the
+ * sign-in screen. A negative gate passes on any screen nobody thought to
+ * list, which is how a terminated app once read as "booted". The two
+ * signatures are now used only to say, on a timeout, which screen was there
+ * instead. */
 interface AppBootWaitConfig {
   timeoutMs: number;
   pollIntervalMs: number;
@@ -475,6 +464,7 @@ async function waitForAppBoot(
   // no diagnosis.
   let lastDescribeError: unknown;
   let sawTree = false;
+  let lastTree: AXElement[] = [];
 
   while (Date.now() < deadline) {
     try {
@@ -482,9 +472,11 @@ async function waitForAppBoot(
 
       sawTree = true;
 
-      if (!looksLikeLauncherHome(tree) && !looksLikeSpringBoard(tree)) {
+      if (findById(tree, VISUAL_HARNESS_HOME_ID) !== undefined) {
         return;
       }
+
+      lastTree = tree;
     } catch (error: unknown) {
       // `idb ui describe-all` can transiently fail while the app is mid
       // relaunch; keep polling rather than failing on the blip.
@@ -506,11 +498,27 @@ async function waitForAppBoot(
   }
 
   throw new Error(
-    `Timed out after ${timeoutMs}ms waiting for the app to start for ` +
-      `scenario "${scenarioId}" — the simulator is still showing the Expo ` +
-      `dev-client launcher or the iOS home screen, so the app never loaded ` +
-      `from Metro. Refusing to return a screenshot (a capture failure is ` +
-      `not the same as a visual regression).`,
+    `Timed out after ${timeoutMs}ms waiting for "${VISUAL_HARNESS_HOME_ID}" ` +
+      `for scenario "${scenarioId}" — ${describeBootScreen(lastTree)} ` +
+      `Refusing to return a screenshot (a capture failure is not the same ` +
+      `as a visual regression).`,
+  );
+}
+
+/** What was on screen instead of the harness home, for the timeout message. */
+function describeBootScreen(tree: AXElement[]): string {
+  if (looksLikeLauncherHome(tree)) {
+    return "the simulator is still showing the Expo dev-client launcher, so the app never loaded from Metro.";
+  }
+
+  if (looksLikeSpringBoard(tree)) {
+    return "the simulator is showing the iOS home screen, so the app is not running.";
+  }
+
+  return (
+    "an app screen is up without the marker. Metro was most likely started " +
+    "without EXPO_PUBLIC_VISUAL_HARNESS=1, in which case the home route is " +
+    "the real app."
   );
 }
 
