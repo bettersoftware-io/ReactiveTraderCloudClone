@@ -1,11 +1,14 @@
-// CI gate: regenerates the lint-warnings ledger in memory and fails if the
-// committed docs/lint-warnings.md is stale. Mirrors check-manifest-drift.mts.
+// Regenerates the lint-warnings ledger in memory and fails if the committed
+// docs/lint-warnings.md is stale. Mirrors check-manifest-drift.mts.
 //
-// This is what makes warnings impossible to introduce untracked: adding code
-// that trips a new ESLint warning changes the regenerated ledger, so this gate
+// DORMANT since 2026-10-06: a lint warning fails the build (#960), so the
+// ledger reads zero and CI no longer runs this check (#963). Kept as the
+// fallback — see the header of sync-lint-warnings.mts.
+//
+// With warnings allowed, this is what stops one arriving untracked: code that
+// trips a new ESLint warning changes the regenerated ledger, so this check
 // turns red until the author either fixes the warning or runs
-// `pnpm sync:lint-warnings` and commits the updated ledger. It does NOT force
-// fixing (warnings stay non-blocking as code) — only that they be recorded.
+// `pnpm sync:lint-warnings` and commits the updated ledger.
 
 import { readFileSync } from "node:fs";
 

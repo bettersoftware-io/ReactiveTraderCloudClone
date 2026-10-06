@@ -1,21 +1,8 @@
-import {
-  BehaviorSubject,
-  concat,
-  defer,
-  from,
-  interval,
-  type Observable,
-} from "rxjs";
-import { map } from "rxjs/operators";
+import { BehaviorSubject, type Observable } from "rxjs";
 
 import type { MetricSample } from "../telemetry/metrics.js";
 import { mulberry32 } from "../telemetry/prng.js";
-import {
-  METRIC_TICK_MS,
-  seedHistory,
-  type WalkCfg,
-  walkStep,
-} from "./metricWalk.js";
+import { createMetricStream, type WalkCfg, walkStep } from "./metricWalk.js";
 import type { MetricControl, Perturbation } from "./perturbation.js";
 
 // Correlated-walk regimes (PROTO adminData.ts METRIC_CFG `lat`, tuned to this
@@ -36,6 +23,11 @@ export class LatencySimulator implements MetricControl {
 
   /** Last regime the walk stepped in, so a perturbation flip recenters it. */
   private lastRegime: WalkCfg = BASELINE;
+
+  /** One walk for every subscriber — see `createMetricStream`. */
+  private readonly samples$ = createMetricStream(() => {
+    return this.nextValue();
+  });
 
   constructor(seed = 1) {
     this.rng = mulberry32(seed);
@@ -69,19 +61,6 @@ export class LatencySimulator implements MetricControl {
   }
 
   latency$(): Observable<MetricSample> {
-    return defer(() => {
-      return concat(
-        from(
-          seedHistory(() => {
-            return this.nextValue();
-          }),
-        ),
-        interval(METRIC_TICK_MS).pipe(
-          map(() => {
-            return { t: Date.now(), value: this.nextValue() };
-          }),
-        ),
-      );
-    });
+    return this.samples$;
   }
 }

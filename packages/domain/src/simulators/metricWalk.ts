@@ -1,3 +1,14 @@
+import {
+  concat,
+  defer,
+  finalize,
+  from,
+  interval,
+  map,
+  type Observable,
+  share,
+} from "rxjs";
+
 import type { MetricSample } from "../telemetry/metrics.js";
 
 /** Cadence shared by every telemetry metric stream (PROTO ticks ~1s). */
@@ -37,12 +48,58 @@ export function walkStep(
  * the caller's walk (PROTO adminData.ts `gs` seeding, L809). Timestamps are
  * derived from Date.now() only as sample-time metadata — never as PRNG seeds.
  */
-export function seedHistory(nextValue: () => number): MetricSample[] {
+function seedHistory(nextValue: () => number): MetricSample[] {
   const now = Date.now();
   return Array.from({ length: METRIC_HISTORY_LEN }, (_, i) => {
     return {
       t: now - (METRIC_HISTORY_LEN - 1 - i) * METRIC_TICK_MS,
       value: nextValue(),
     };
+  });
+}
+
+/**
+ * One metric's stream — a seeded history window, then a sample per
+ * METRIC_TICK_MS — as ONE walk for every subscriber. The first subscriber
+ * starts the tick loop, later ones join it, and it stops with the last.
+ *
+ * `nextValue` advances state its simulator owns, so a loop per subscriber
+ * would step the walk once per subscriber, and seeding a fresh history for
+ * each newcomer would throw it METRIC_HISTORY_LEN steps ahead under everyone
+ * already listening. A subscriber joining a running walk is therefore
+ * replayed the window the walk has kept, not a new one; a fresh window is
+ * drawn only when no walk is running, when there is nobody to disturb.
+ */
+export function createMetricStream(
+  nextValue: () => number,
+): Observable<MetricSample> {
+  let window: MetricSample[] = [];
+  let running = false;
+
+  const live$ = defer(() => {
+    running = true;
+    return interval(METRIC_TICK_MS).pipe(
+      map(() => {
+        const sample: MetricSample = { t: Date.now(), value: nextValue() };
+        window.push(sample);
+
+        if (window.length > METRIC_HISTORY_LEN) {
+          window.shift();
+        }
+
+        return sample;
+      }),
+      finalize(() => {
+        running = false;
+      }),
+    );
+  }).pipe(share());
+
+  return defer(() => {
+    if (!running) {
+      window = seedHistory(nextValue);
+    }
+
+    return concat(from([...window]), live$);
   });
 }
