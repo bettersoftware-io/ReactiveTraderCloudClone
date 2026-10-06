@@ -161,7 +161,8 @@ clients), which owns the ports for the whole page life: it unmounts the UI,
 disposes the running core, composes the new one over the **same** ports
 object and mounts the UI again, then saves the choice and strips `?core=`
 with `history.replaceState`. No page load happens, so the session, the
-socket and the layout carry over. A swap that fails leaves the page on a
+socket and the layout carry over. An overlay rendered outside the app tree
+(`CoreSwapOverlay`) covers the page for the length of the swap. A swap that fails leaves the page on a
 working core and reports why through `failure$`, shown inline in the
 Preferences row; only a failure with nothing mounted ends on the boot-error
 screen. The step order and the failure table are in Decision 7. What the
