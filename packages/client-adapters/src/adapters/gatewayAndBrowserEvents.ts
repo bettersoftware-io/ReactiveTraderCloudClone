@@ -15,7 +15,11 @@ import type { ConnectionEvent } from "@rtc/domain";
  *
  * The gateway is subscribed first, so what it replays on subscribe (the
  * `WsAdapter` keeps its last event) is known before the browser adapter's
- * own subscribe-time `browserOffline`.
+ * own subscribe-time event.
+ *
+ * Known limit: a socket that has died but not yet reported it still counts
+ * as connected, so a `browserOnline` in that window shows `CONNECTED` until
+ * the socket's own `gatewayDisconnected` arrives.
  */
 export function mergeGatewayAndBrowserEvents(
   gateway$: Observable<ConnectionEvent>,
@@ -23,6 +27,16 @@ export function mergeGatewayAndBrowserEvents(
 ): Observable<ConnectionEvent> {
   return new Observable<ConnectionEvent>((subscriber) => {
     let gatewayIsConnected = false;
+    let openSources = 2;
+
+    // Like rxjs `merge`: complete once both sources have.
+    function closeOneSource(): void {
+      openSources -= 1;
+
+      if (openSources === 0) {
+        subscriber.complete();
+      }
+    }
 
     const gatewaySub = gateway$.subscribe({
       next: (event: ConnectionEvent): void => {
@@ -32,6 +46,7 @@ export function mergeGatewayAndBrowserEvents(
       error: (error: unknown): void => {
         subscriber.error(error);
       },
+      complete: closeOneSource,
     });
 
     const browserSub = browser$.subscribe({
@@ -45,6 +60,7 @@ export function mergeGatewayAndBrowserEvents(
       error: (error: unknown): void => {
         subscriber.error(error);
       },
+      complete: closeOneSource,
     });
 
     return (): void => {

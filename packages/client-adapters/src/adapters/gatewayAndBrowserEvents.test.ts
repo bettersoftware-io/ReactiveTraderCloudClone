@@ -59,26 +59,42 @@ describe("mergeGatewayAndBrowserEvents", () => {
     expect(seen).toEqual([{ type: "browserOnline" }]);
   });
 
-  it("knows the gateway's replayed state before the browser's subscribe-time event", () => {
-    // A core swapped in while offline: the gateway replays its last event
-    // and the browser adapter reports `browserOffline` as it is subscribed.
+  it("subscribes the gateway first, so its replayed state is known to a browser event that arrives on subscribe", () => {
+    // Both sources replay on subscribe. Subscribed the other way round, the
+    // browser's `browserOnline` would arrive before the gateway had said it
+    // was connected, and nothing would be repeated.
     const gateway$ = new ReplaySubject<ConnectionEvent>(1);
     const browser$ = new ReplaySubject<ConnectionEvent>(1);
     gateway$.next({ type: "gatewayConnected" });
-    browser$.next({ type: "browserOffline" });
+    browser$.next({ type: "browserOnline" });
 
     const seen: ConnectionEvent[] = [];
     mergeGatewayAndBrowserEvents(gateway$, browser$).subscribe((event) => {
       seen.push(event);
     });
-    browser$.next({ type: "browserOnline" });
 
     expect(seen).toEqual([
       { type: "gatewayConnected" },
-      { type: "browserOffline" },
       { type: "browserOnline" },
       { type: "gatewayConnected" },
     ]);
+  });
+
+  it("completes once both sources have completed, not before", () => {
+    const gateway$ = new Subject<ConnectionEvent>();
+    const browser$ = new Subject<ConnectionEvent>();
+    let completed = false;
+    mergeGatewayAndBrowserEvents(gateway$, browser$).subscribe({
+      complete: () => {
+        completed = true;
+      },
+    });
+
+    gateway$.complete();
+    expect(completed).toBe(false);
+
+    browser$.complete();
+    expect(completed).toBe(true);
   });
 
   it("releases both sources when unsubscribed", () => {
