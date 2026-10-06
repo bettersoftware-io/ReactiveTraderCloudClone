@@ -13,6 +13,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
 - `shared/goldens.ts` — golden path resolver + the device pins (`ios-iphone17-26`, `android-pixel10a-37`).
 - `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: resolve the one device, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
+- `shared/emulatorWindow.ts`, `shared/maestroOutcome.ts` — the runner's two diagnostics: a warning when the Android emulator has a window, and the per-flow failure lines of a `maestro test` that exited non-zero.
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
 - `simctl/` — **Tier 1** capture driver + CLI runner (`xcrun simctl` + `idb`).
@@ -76,7 +77,9 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
 # builds and installs one (it also removes an EAS preview build, which is
 # signed with another key and cannot be replaced in place)
 
-# each run: emulator `Pixel_10a` (API 37) cold-booted, Metro (8083) up as above
+# each run: emulator `Pixel_10a` (API 37) cold-booted WITHOUT a window, Metro
+# (8083) up as above:
+#   ~/Library/Android/sdk/emulator/emulator -avd Pixel_10a -no-snapshot -no-window
 PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
   JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
   pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android          # verify
@@ -84,7 +87,13 @@ PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
 ```
 
 The flows are the same files iOS runs. Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
-service mid-run. The top 142 rows (the status bar) are blacked out in every
+service mid-run. Boot it with `-no-window` too: macOS throttles a windowed
+emulator once its window is covered (6–8 times slower), which shows up as
+launch timeouts and unsettled frames, never as its cause — the runner warns
+when it sees a window. An emulator started by `pnpm dev:android` has one;
+close it and start a headless one before a run. A scenario reported as
+`NO SHOT` had its flow fail before the screenshot: that is a capture failure,
+and the `[Failed]` line above it carries Maestro's reason. The top 142 rows (the status bar) are blacked out in every
 Android shot because that bar does not reproduce between boots.
 
 **Tier 1** capture: load the app from Metro base → poll the a11y tree for the `login-screen` boot marker → in-app deep-link `rtcmobile://__visual/<id>` → dismiss the iOS "Open in RTC Mobile?" confirmation by locating its "Open" button in the a11y tree (a blind coordinate tap at the iPhone 17 pin, `(274, 474)`, is a **fallback only**, tried once if no such button is found partway through the wait) → poll the a11y tree for the harness's `visual-ready` id, throwing if it's never observed → re-check the a11y tree isn't launcher-shaped at the moment of the shot → `simctl io screenshot --mask=black` (the flag is pinned because Xcode 27 changed the default mask policy and dropped the Dynamic Island. It paints the WHOLE device mask black — the island **and the four rounded screen corners** — and since 2026-10-02 every simctl golden is captured that way. A diff confined to the first/last ~250 rows at the row ends is the corner mask, i.e. a golden from before the pin, not a content change and not flake: it reads ~1% on a light background and a few pixels on a dark one). **Tier 2** does the same two-step deep link via Maestro's own a11y-tree waits (`extendedWaitUntil`). After `:update`, eyeball each PNG and run the verify pass — it must report `pass` for every scenario (a golden that can't reproduce itself is flaky; fix the scenario, don't pin the flake).
