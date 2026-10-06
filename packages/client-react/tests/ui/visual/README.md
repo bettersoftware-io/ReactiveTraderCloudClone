@@ -90,6 +90,7 @@ tests/ui/visual/
     vitest-browser.config.ts — in-suite runner config (asserts, __RTC_VISUAL_SKIP_DIFF__=false)
     vitest-browser.coverage.config.ts — coverage config (skips the assert, __RTC_VISUAL_SKIP_DIFF__=true)
     visual.spec.tsx  — Data-driven spec (shares scenarioActions with the playwright tier)
+    coreSwapOverlay.spec.tsx — the core-swap overlay's computed styles; a PR gate (`test:ui:styles`, ci.yml's e2e job)
   run-all.ts         — Orchestrator (reads package.json scripts; discovers the one runner)
   ADR-001-visual-diff-tooling.md
   README.md          — this file
