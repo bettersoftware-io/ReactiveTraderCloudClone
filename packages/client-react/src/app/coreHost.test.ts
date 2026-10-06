@@ -932,6 +932,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
       }
 
       const timer = setTimeout(onExpired, ms);
+
       return (): void => {
         clearTimeout(timer);
       };

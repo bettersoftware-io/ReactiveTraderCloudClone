@@ -539,6 +539,7 @@ function createHostHarness(
     sleep: delayBy,
     startTimer: (ms: number, onExpired: () => void): (() => void) => {
       const timer = setTimeout(onExpired, ms);
+
       return (): void => {
         clearTimeout(timer);
       };
