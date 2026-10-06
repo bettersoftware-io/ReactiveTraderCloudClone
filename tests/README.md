@@ -213,6 +213,23 @@ presenter suite, which does not depend on the core, takes ≈3 s on the fast kin
 and ≈5 s on the slow kind, and every suite is about 1.4x faster on the fast
 kind. Read that number in a job's log before comparing two jobs or two runs.
 
+**Where the three e2e jobs stand, read like for like (2026-10-06).** Eight
+green runs on `main` since the Playwright suites moved to the production build,
+slow-kind runners only (the largest `built in` of a job's log ≥ 6.3 s; five to
+seven jobs per core), 97 tests per suite:
+
+| core | React suite | Solid suite |
+|---|---|---|
+| default (RxJS) | 333 s | 329 s |
+| async | 336 s | 331 s |
+| Effect | 351 s | 348 s |
+
+The Effect job is about 1.06x the default one, against 1.17x on the dev server
+(587 s against 502 s): the gap went from ~0.8 s to ~0.2 s per test, so most of
+it was the dev server's cost per page load and not the core. The async job is
+level with the default one. The fast-kind samples (one to three jobs per core,
+240–297 s) are too few and too spread to rank the cores.
+
 **Decided, 2026-10-04: keep `import { Effect, Layer } from "effect"`.**
 Importing Effect per module (`import * as Effect from "effect/Effect"`) would
 shrink the dev pre-bundle from 600 to 216 modules. Simulated on top of the lean
