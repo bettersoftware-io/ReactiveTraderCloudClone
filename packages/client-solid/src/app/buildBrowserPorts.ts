@@ -7,6 +7,7 @@ import {
   createWsRealPorts,
   formatDataSourceMessage,
   HttpAuthAdapter,
+  mergeGatewayAndBrowserEvents,
   pairConnectionPorts,
   resolveDataSource,
   routeIdleLifecycle,
@@ -199,7 +200,7 @@ export function buildBrowserPorts(
     // supplying it apart from the events it feeds is a type error, not just
     // a runtime footgun.
     const paired = pairConnectionPorts(
-      merge(gateway.events(), browser.events()),
+      mergeGatewayAndBrowserEvents(gateway.events(), browser.events()),
     );
 
     const connectionEvents: ConnectionEventsPort = {
