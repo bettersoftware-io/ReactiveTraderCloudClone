@@ -26,8 +26,9 @@ import {
   EASE_IN_OUT,
   type GlowSpec,
   glowGradient,
-  swing,
 } from "#/ui/ambient/glowSpec";
+import { useSwingClock } from "#/ui/ambient/useSwingClock";
+import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 
 /**
  * The "aurora" ambient style: the web client's northern-lights curtains
@@ -51,16 +52,16 @@ import {
  *
  * Motion is five Reanimated shared values, one per CSS animation, read by
  * Skia on the UI thread through `useDerivedValue`: transform only, no React
- * render per frame. With `drifting` false no loop runs and every layer rests
- * at its 0% keyframe, which is the frame the visual harness captures.
+ * render per frame. Under power-saver Freeze (`useShellMotionEnabled`) no
+ * loop runs and every layer rests at its 0% keyframe, which is the frame the
+ * visual harness captures.
  */
 export function AuroraCurtains({
   width,
   height,
   glowStrength,
-  drifting,
 }: AuroraCurtainsProps): JSX.Element {
-  const clocks = useAuroraClocks(drifting);
+  const clocks = useAuroraClocks();
 
   return (
     <>
@@ -93,8 +94,6 @@ interface AuroraCurtainsProps {
   readonly height: number;
   /** The skin's `aurora` intensity, applied to the two glow layers only. */
   readonly glowStrength: number;
-  /** False under power-saver Freeze: the layers hold their 0% keyframe. */
-  readonly drifting: boolean;
 }
 
 /** One clock per CSS animation: `aurora-a` … `aurora-e`. */
@@ -110,29 +109,22 @@ const CURTAIN_CYCLE_MS = { c: 44_000, d: 61_000, e: 27_000 } as const;
  * clock runs 0→1→2→3 and wraps; the other four swing 0→1→0. */
 const E_SEGMENTS: readonly number[] = [0.33, 0.33, 0.34];
 
-function useAuroraClocks(drifting: boolean): AuroraClocks {
-  const a = useSharedValue(0);
-  const b = useSharedValue(0);
-  const c = useSharedValue(0);
-  const d = useSharedValue(0);
+function useAuroraClocks(): AuroraClocks {
+  const drifting = useShellMotionEnabled();
+  const a = useSwingClock(DRIFT_A.cycleMs);
+  const b = useSwingClock(DRIFT_B.cycleMs);
+  const c = useSwingClock(CURTAIN_CYCLE_MS.c);
+  const d = useSwingClock(CURTAIN_CYCLE_MS.d);
   const e = useSharedValue(0);
 
   useEffect(() => {
-    const all = [a, b, c, d, e];
-
-    for (const clock of all) {
-      cancelAnimation(clock);
-      clock.value = 0;
-    }
+    cancelAnimation(e);
+    e.value = 0;
 
     if (!drifting) {
       return;
     }
 
-    a.value = swing(DRIFT_A.cycleMs);
-    b.value = swing(DRIFT_B.cycleMs);
-    c.value = swing(CURTAIN_CYCLE_MS.c);
-    d.value = swing(CURTAIN_CYCLE_MS.d);
     e.value = withRepeat(
       withSequence(
         ...E_SEGMENTS.map((share, index) => {
@@ -149,11 +141,9 @@ function useAuroraClocks(drifting: boolean): AuroraClocks {
     );
 
     return () => {
-      for (const clock of all) {
-        cancelAnimation(clock);
-      }
+      cancelAnimation(e);
     };
-  }, [drifting, a, b, c, d, e]);
+  }, [drifting, e]);
 
   return { a, b, c, d, e };
 }

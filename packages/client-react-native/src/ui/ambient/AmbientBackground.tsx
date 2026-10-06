@@ -8,7 +8,6 @@ import { useViewModel } from "@rtc/react-bindings";
 import { AmbientRays } from "#/ui/ambient/AmbientRays";
 import { AuroraCurtains } from "#/ui/ambient/AuroraCurtains";
 import { useAmbientEnabled } from "#/ui/ambient/useAmbientEnabled";
-import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import { useTheme } from "#/ui/theme/useTheme";
 
 /**
@@ -37,7 +36,8 @@ import { useTheme } from "#/ui/theme/useTheme";
  * when off, so no worklet or canvas mounts at all — calm-until-real-event
  * per the perf doctrine.
  *
- * The DRIFT is additionally gated by `useShellMotionEnabled()`: under
+ * The DRIFT is additionally gated by `useShellMotionEnabled()`, which each
+ * style asks for itself where it starts its loops: under
  * power-saver Freeze the canvas still paints (grid + the style's resting
  * frame) but no loop starts — Freeze is the tier that kills every motion. It
  * is also what lets the visual harness capture the ambient layer at all: with
@@ -53,7 +53,6 @@ import { useTheme } from "#/ui/theme/useTheme";
  */
 export function AmbientBackground(): JSX.Element | null {
   const enabled = useAmbientEnabled();
-  const drifting = useShellMotionEnabled();
   const t = useTheme();
   const { width, height } = useWindowDimensions();
   const { useAmbientStyle } = useViewModel();
@@ -72,12 +71,7 @@ export function AmbientBackground(): JSX.Element | null {
       {gridLines(width, height, t.gridC)}
       {style === "rays" ? (
         <TestGroup testID="ambient-rays">
-          <AmbientRays
-            width={width}
-            height={height}
-            theme={t}
-            drifting={drifting}
-          />
+          <AmbientRays width={width} height={height} theme={t} />
         </TestGroup>
       ) : (
         <TestGroup testID="ambient-aurora-curtains">
@@ -85,7 +79,6 @@ export function AmbientBackground(): JSX.Element | null {
             width={width}
             height={height}
             glowStrength={t.aurora}
-            drifting={drifting}
           />
         </TestGroup>
       )}

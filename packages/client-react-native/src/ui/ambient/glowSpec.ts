@@ -1,5 +1,5 @@
 // packages/client-react-native/src/ui/ambient/glowSpec.ts
-import { Easing, withRepeat, withTiming } from "react-native-reanimated";
+import { Easing } from "react-native-reanimated";
 
 // The data a `GlowLayer` draws, and the two drifts both ambient styles share.
 
@@ -58,16 +58,6 @@ export const DRIFT_B: GlowDrift = {
 
 /** CSS `ease-in-out`, which the web applies to each keyframe segment. */
 export const EASE_IN_OUT = Easing.bezier(0.42, 0, 0.58, 1);
-
-/** A two-keyframe CSS animation as a there-and-back loop: each half is one
- * eased segment, as CSS eases 0%→50% and 50%→100% separately. */
-export function swing(cycleMs: number): number {
-  return withRepeat(
-    withTiming(1, { duration: cycleMs / 2, easing: EASE_IN_OUT }),
-    -1,
-    true,
-  );
-}
 
 /** One gradient of a glow layer from its CSS numbers: radii and centre as
  * shares of `box`, stops as `[colour, position]`. */

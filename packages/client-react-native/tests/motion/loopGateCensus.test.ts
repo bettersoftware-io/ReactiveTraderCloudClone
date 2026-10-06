@@ -38,7 +38,7 @@ test("every exemption still names a real, still-repeating file", () => {
 test("the census finds the loops it exists to check", () => {
   const files = repeatingFiles();
 
-  expect(files).toContain("ui/ambient/AmbientBackground.tsx");
+  expect(files).toContain("ui/ambient/AuroraCurtains.tsx");
   expect(files).toContain("ui/shell/boot/BootCanvas.tsx");
   expect(files.length).toBeGreaterThan(10);
 });

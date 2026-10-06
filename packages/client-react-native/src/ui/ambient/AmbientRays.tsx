@@ -17,8 +17,9 @@ import {
   DRIFT_B,
   type GlowSpec,
   glowGradient,
-  swing,
 } from "#/ui/ambient/glowSpec";
+import { useSwingClock } from "#/ui/ambient/useSwingClock";
+import { useShellMotionEnabled } from "#/ui/shell/hud/useShellMotionEnabled";
 import type { RnTheme } from "#/ui/theme/tokens";
 import { withAlpha } from "#/ui/theme/withAlpha";
 
@@ -39,45 +40,37 @@ import { withAlpha } from "#/ui/theme/withAlpha";
  * strength in every skin, the web's Holo level (`RAYS_STRENGTH`) — the
  * owner's choice, 2026-10-06.
  *
- * With `drifting` false no loop runs: the glows rest at their 0% keyframe and
- * the beam points straight up, which is the frame the visual harness
- * captures.
+ * Under power-saver Freeze (`useShellMotionEnabled`) no loop runs: the glows
+ * rest at their 0% keyframe and the beam points straight up, which is the
+ * frame the visual harness captures.
  */
 export function AmbientRays({
   width,
   height,
   theme,
-  drifting,
 }: AmbientRaysProps): JSX.Element {
-  const driftA = useSharedValue(0);
-  const driftB = useSharedValue(0);
+  const drifting = useShellMotionEnabled();
+  const driftA = useSwingClock(DRIFT_A.cycleMs);
+  const driftB = useSwingClock(DRIFT_B.cycleMs);
   const turn = useSharedValue(0);
 
   useEffect(() => {
-    const all = [driftA, driftB, turn];
-
-    for (const clock of all) {
-      cancelAnimation(clock);
-      clock.value = 0;
-    }
+    cancelAnimation(turn);
+    turn.value = 0;
 
     if (!drifting) {
       return;
     }
 
-    driftA.value = swing(DRIFT_A.cycleMs);
-    driftB.value = swing(DRIFT_B.cycleMs);
     turn.value = withRepeat(
       withTiming(1, { duration: SWEEP_TURN_MS, easing: Easing.linear }),
       -1,
     );
 
     return () => {
-      for (const clock of all) {
-        cancelAnimation(clock);
-      }
+      cancelAnimation(turn);
     };
-  }, [drifting, driftA, driftB, turn]);
+  }, [drifting, turn]);
 
   const [glowA, glowB] = glowSpecs(width, height, theme);
 
@@ -130,8 +123,6 @@ interface AmbientRaysProps {
   readonly width: number;
   readonly height: number;
   readonly theme: RnTheme;
-  /** False under power-saver Freeze: the layers hold their resting pose. */
-  readonly drifting: boolean;
 }
 
 /** What the web's Holo skin multiplies this style by (`--aurora-opacity:
