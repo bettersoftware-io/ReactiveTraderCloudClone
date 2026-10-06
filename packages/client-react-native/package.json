@@ -39,6 +39,8 @@
     "test:rn:visual:simctl:update": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/simctl/run.ts --update",
     "test:rn:visual:maestro": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts",
     "test:rn:visual:maestro:update": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts --update",
+    "test:rn:visual:maestro:android": "RTC_VISUAL_PLATFORM=android node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts",
+    "test:rn:visual:maestro:android:update": "RTC_VISUAL_PLATFORM=android node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/maestro/run.ts --update",
     "test:rn:visual:reach": "jest tests/visual/reach --coverage --coverageProvider=babel --collectCoverageFrom='src/ui/**/*.tsx' --coverageReporters=json-summary --coverageDirectory=reports/native/visual-reach && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/visual/reach/report.ts",
     "clean": "rm -rf dist .turbo reports coverage .expo *.tsbuildinfo node_modules/.cache 2>/dev/null || true",
     "clean:deep": "pnpm run clean && (rm -rf node_modules ios android 2>/dev/null || true)"

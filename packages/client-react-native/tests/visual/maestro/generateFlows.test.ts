@@ -34,6 +34,23 @@ describe("flowYaml", () => {
     expect(commands[1]).toBe("- openLink:");
   });
 
+  // One flow set drives both platforms. Android opens a link without asking,
+  // and an app screen there may carry its own "Open" text for this to tap.
+  it("taps the 'Open' confirmation on iOS only", () => {
+    const lines = flowYaml("blotter/seeded").split("\n");
+    const conditions = lines.filter((line) => {
+      return line === '      visible: "Open"';
+    });
+
+    expect(conditions).toHaveLength(2);
+
+    for (const [index, line] of lines.entries()) {
+      if (line === '      visible: "Open"') {
+        expect(lines[index - 1]).toBe("      platform: iOS");
+      }
+    }
+  });
+
   it("flattens slashes in the screenshot name for every registered id", () => {
     for (const id of SCENARIO_IDS) {
       const yaml = flowYaml(id);

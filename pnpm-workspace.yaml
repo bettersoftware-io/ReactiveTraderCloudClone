@@ -366,6 +366,30 @@ overrides:
 # neither manypkg nor syncpack sees an @babel/core version split — the web packages
 # keep @babel/core@8. @expo/metro-config is RN-only (web builds with Vite), so this
 # cannot affect the web bundles.
+  # 2026-10-06: three advisories published the same night, all red on CI gate
+  # 25 (`pnpm audit --prod`). Each override is SCOPED to the vulnerable range,
+  # and each patched release is outside the minimumReleaseAge cooldown.
+  #
+  # seroval (client-solid > solid-js > seroval, and > seroval-plugins):
+  # CRITICAL GHSA-p6vx-979v-rg4c (`fromJSON()` thenable assimilation invokes
+  # plugin-produced callables; <=1.6.0) and HIGH GHSA-jp82-f5mq-hwhp (memory
+  # exhaustion via an unchecked TypedArray length; <=1.6.2). There is no 1.5.x
+  # backport and no solid-js release that asks for a patched one — solid-js
+  # 1.9.15, the latest, still pins `~1.5.4` — so the override crosses a minor.
+  # Solid reaches seroval only from its server renderer (serialising state for
+  # hydration); this app renders in the browser only. seroval-plugins is lifted
+  # with it so the pair stays on one release (1.6.8, published 2026-09-29).
+  "seroval@<1.6.3": ^1.6.8
+  "seroval-plugins@<1.6.3": ^1.6.8
+  # proxy-addr (server > @modelcontextprotocol/sdk > express > proxy-addr):
+  # CRITICAL GHSA-jqcg-44mw-7w3h (IP spoofing through an IPv4-mapped IPv6
+  # trust subnet; <2.0.8). 2.0.8 published 2026-09-15.
+  "proxy-addr@<2.0.8": ^2.0.8
+  # source-map-js: HIGH GHSA-68fv-2mgg-jv7q (event-loop denial of service
+  # through indexed source-map section offsets; >=1.0.0 <1.2.2). 1.2.2
+  # published 2026-09-30.
+  "source-map-js@<1.2.2": ^1.2.2
+
 packageExtensions:
   "@expo/metro-config":
     dependencies:
