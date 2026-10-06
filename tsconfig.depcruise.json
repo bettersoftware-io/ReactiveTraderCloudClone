@@ -57,6 +57,8 @@
       "@rtc/motion-core/*": ["packages/motion-core/src/*"],
       "@rtc/boot-splash": ["packages/boot-splash/src/index.ts"],
       "@rtc/boot-splash/*": ["packages/boot-splash/src/*"],
+      "@rtc/web-boot": ["packages/web-boot/src/index.ts"],
+      "@rtc/web-boot/*": ["packages/web-boot/src/*"],
       "@rtc/layout-dockview": ["packages/layout-dockview/src/index.ts"],
       "@rtc/layout-dockview/*": ["packages/layout-dockview/src/*"],
       "@rtc/ui-contract": ["packages/ui-contract/src/index.ts"],

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Asserts a web client's production build is runtime-switchable between the
 // three application cores (docs/superpowers/specs/2026-09-27-runtime-core-
-// switch-design.md §4): ONE build, not one per core. src/app/coreSelection.ts's
+// switch-design.md §4): ONE build, not one per core. packages/web-boot/src/coreSelection.ts's
 // `loadCore` reaches EVERY core — the RxJS default included, each a sibling
 // package (`@rtc/client-core-rxjs` since 2026-10-04; ADR-006 Decision 6) —
 // via `import()`, which the bundler splits into its own lazy

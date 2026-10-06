@@ -14,7 +14,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const WEB = "packages/client-react/src/app/devtools/presenterManifest.ts";
+const WEB = "packages/web-boot/src/devtools/presenterManifest.ts";
 const NATIVE =
   "packages/client-react-native/src/app/devtools/presenterManifest.ts";
 

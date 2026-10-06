@@ -66,7 +66,7 @@ the weakest by percentage were `useShellTelemetry.ts` (50.0%),
 
 ## Not done
 
-- **No tier in `coverage-report.yml`.** The published report has ten tiers and
+- **No tier in `coverage-report.yml`.** The published report has eleven tiers and
   none is RN.
 - **No UI contract tier.** RN owns none of the shared `@rtc/ui-contract`
   behavioural specs and cannot simply adopt them: the shared page objects query

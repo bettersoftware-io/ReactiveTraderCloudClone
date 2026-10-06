@@ -45,7 +45,7 @@ test.describe("DevTools inspector (same-origin)", () => {
 
     // DEVIATION from the task brief: the brief assumed "the simulator emits
     // blotter.activity$ continuously", but the blotter presenter's streams
-    // (trades$/newTradeIds$/activity$ — packages/client-react/src/app/devtools/presenterManifest.ts)
+    // (trades$/newTradeIds$/activity$ — packages/web-boot/src/devtools/presenterManifest.ts)
     // are all synchronously derived from BlotterPresenter.trades$, which is
     // execution-triggered, not periodic: ExecutionSimulator.executeTrade only
     // fires on demand and TradeStoreSimulator carries no timer (see

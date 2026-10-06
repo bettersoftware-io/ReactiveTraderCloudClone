@@ -9,13 +9,13 @@ import type {
   MachineFactories,
   Presenters,
 } from "@rtc/core-api";
-
-import { runBoot } from "#/app/bootApp";
 import {
   type Composition,
   type CoreHost,
   createCoreHost,
-} from "#/app/coreHost";
+  runBoot,
+} from "@rtc/web-boot";
+
 import { createSolidTreeMount } from "#/app/solidTreeMount";
 import { solidTreeMountPage } from "#tests/ui/pages/SolidTreeMountPage";
 

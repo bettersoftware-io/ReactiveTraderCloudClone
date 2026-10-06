@@ -594,6 +594,16 @@ export default tseslint.config(
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
   {
+    // @rtc/web-boot holds the boot code both web clients shared, with its
+    // specs (framework-free .ts, so no .tsx). Held to error like the two
+    // clients it was moved out of; page modules such as
+    // src/__tests__/BootErrorPage.ts are not .test.ts files, so the glob
+    // skips them.
+    files: ["packages/web-boot/src/**/*.{test,spec}.ts"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
     // client-react-native is migrated (Wave C of the page-object-isolation
     // plan, batches 1-3 + the batch-3 fix round): every co-located spec
     // under src/**/*.{test,spec}.{ts,tsx} speaks page objects under

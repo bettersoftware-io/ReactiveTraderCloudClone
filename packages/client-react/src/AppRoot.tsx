@@ -5,9 +5,9 @@ import {
   type ViewModel,
   ViewModelProvider,
 } from "@rtc/react-bindings";
+import type { Composition } from "@rtc/web-boot";
 
 import { readDemoAccounts } from "#/app/buildBrowserPorts";
-import type { Composition } from "#/app/coreHost";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";

@@ -45,7 +45,7 @@ Two new packages, following the existing naming and layering conventions
 `.subscribe`), so its types are generic. The presenter **manifest** — which
 keys of `Presenters` are streams, parameterized-stream methods, or a shared
 machine — lives at the call site in `client-react`
-(`packages/client-react/src/app/devtools/presenterManifest.ts`), which
+(`packages/web-boot/src/devtools/presenterManifest.ts`, shared by both web clients), which
 already knows the concrete types. `devtools-app` never imports `client-core-rxjs`
 or `domain` either — it understands only the wire protocol, which is what
 makes a future extension shell a thin wrapper around the same bundle.

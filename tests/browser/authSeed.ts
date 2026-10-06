@@ -40,7 +40,7 @@ export const E2E_SESSION_JSON: string = JSON.stringify(E2E_STORED_SESSION);
  * The JarvisNarrator preference's storage key and persisted "off"/"on" forms
  * — mirrored identically by both web clients' `LocalStoragePreferencesAdapter`
  * (`packages/client-react` and `packages/client-solid`, each at
- * `src/app/adapters/LocalStoragePreferencesAdapter.ts:70`;
+ * `packages/web-boot/src/adapters/LocalStoragePreferencesAdapter.ts:70`;
  * `JarvisNarratorPreference = "on" | "off"` in
  * `packages/domain/src/preferences/preferences.ts`). Hardcoded here (like
  * `E2E_SESSION_KEY` above) rather than imported from a client package: the

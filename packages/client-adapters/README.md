@@ -57,7 +57,7 @@ import {
 The composition-root component (`AppRoot` in
 `packages/client-react/src/AppRoot.tsx`) then hands those ports to the core the
 visitor's choice resolved to. The web clients pick the core at load time
-(`bootCore` in `packages/client-react/src/app/bootApp.ts`: `?core=` URL
+(`bootCore` in `packages/web-boot/src/bootApp.ts`: `?core=` URL
 parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build
 default, then `rxjs`), so `AppRoot` receives the chosen `CoreFactory`:
 

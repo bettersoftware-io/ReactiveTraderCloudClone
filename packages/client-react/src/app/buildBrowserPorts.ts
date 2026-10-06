@@ -26,15 +26,17 @@ import {
   type DemoAccount,
   listDemoAccounts,
 } from "@rtc/domain";
+import {
+  BrowserConnectionEventsAdapter,
+  LocalStorageDataSourceStore,
+  LocalStorageDockLayoutStore,
+  LocalStorageLayoutPresetStore,
+  LocalStoragePreferencesAdapter,
+  LocalStorageSessionStore,
+  MediaQueryColorSchemeAdapter,
+} from "@rtc/web-boot";
 
-import { BrowserConnectionEventsAdapter } from "#/app/adapters/BrowserConnectionEventsAdapter";
-import { LocalStorageDataSourceStore } from "#/app/adapters/LocalStorageDataSourceStore";
-import { LocalStorageDockLayoutStore } from "#/app/adapters/LocalStorageDockLayoutStore";
-import { LocalStorageLayoutPresetStore } from "#/app/adapters/LocalStorageLayoutPresetStore";
-import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
-import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { devtoolsHub } from "#/app/devtools/devtoolsHub";
-import { MediaQueryColorSchemeAdapter } from "#/app/theme/MediaQueryColorSchemeAdapter";
 
 /**
  * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in

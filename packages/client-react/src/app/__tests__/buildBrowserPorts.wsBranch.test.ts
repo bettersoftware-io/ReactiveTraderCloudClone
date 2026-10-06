@@ -6,9 +6,11 @@ import {
   ConnectionStatus,
   nextConnectionStatus,
 } from "@rtc/domain";
+import {
+  LocalStoragePreferencesAdapter,
+  LocalStorageSessionStore,
+} from "@rtc/web-boot";
 
-import { LocalStoragePreferencesAdapter } from "#/app/adapters/LocalStoragePreferencesAdapter";
-import { LocalStorageSessionStore } from "#/app/adapters/LocalStorageSessionStore";
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 
 // The sibling buildBrowserPorts.test.ts covers the simulator branch, which is

@@ -11,9 +11,9 @@ import {
   instrumentMachineFactories,
   instrumentPresenters,
 } from "@rtc/devtools-core";
+import { PRESENTER_MANIFEST } from "@rtc/web-boot";
 
 import { buildBrowserPorts } from "#/app/buildBrowserPorts";
-import { PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 
 /** End-to-end proof that the composition-root wiring (createApp →
  * instrumentPresenters → instrumentMachineFactories, exactly as main.tsx's

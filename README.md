@@ -260,13 +260,13 @@ dependency RxJS, and grep gates catch what types cannot (for example, an
 
 ## Architecture at a glance
 
-A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 26
+A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 27
 packages. The clients and the server never import each other; the three
 cores never depend on each other. Any framework (React, RxJS,
 Vite, Vitest…) is meant to be replaceable by changing only its own package.
 
 <details>
-<summary>All 26 packages</summary>
+<summary>All 27 packages</summary>
 
 ```
 packages/
@@ -295,6 +295,7 @@ packages/
   client-prototype/    @rtc/client-prototype    Readable React port of the v2 design prototype. Isolated.
   boot-splash/         @rtc/boot-splash         Canvas boot/splash engine shared by both web clients.
   layout-dockview/     @rtc/layout-dockview     Dockview wrapper behind the layout-engine preference.
+  web-boot/            @rtc/web-boot            Boot code both web clients share: core host, core selection, browser adapters.
   ui-contract/         @rtc/ui-contract         Framework-neutral UI test contract + visual goldens.
 
   # Server and tooling

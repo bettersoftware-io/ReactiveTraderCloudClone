@@ -107,7 +107,7 @@ core → laser → docking → hologram → geo → layers → jarvis → topo �
 like any other user preference — `PreferencesPort.bootVariant$()` /
 `setBootVariant()`, backed by `LocalStoragePreferencesAdapter` (key
 `rt-boot-variant` — the `BOOT_VARIANT_STORAGE_KEY` constant in
-`packages/client-react/src/app/adapters/LocalStoragePreferencesAdapter.ts`,
+`packages/web-boot/src/adapters/LocalStoragePreferencesAdapter.ts`,
 mirrored verbatim by the RN client's `AsyncStoragePreferencesAdapter.ts`; not
 the design prototype's original `localStorage['rt_bootSeq']`, which this key
 deliberately does not reuse). Because it's in `localStorage`, the pointer

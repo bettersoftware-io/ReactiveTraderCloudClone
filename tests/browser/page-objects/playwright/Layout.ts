@@ -34,7 +34,7 @@ const DOCK_TAB = ".dv-tab";
 const DOCK_GROUPVIEW_CLASS = "dv-groupview";
 
 // The prefix `LocalStorageDockLayoutStore` keys every per-tab blob under
-// (packages/{client-react,client-solid}/src/app/adapters/LocalStorageDockLayoutStore.ts).
+// (packages/web-boot/src/adapters/LocalStorageDockLayoutStore.ts).
 const DOCK_LAYOUT_STORAGE_PREFIX = "rtc-dock-layout-";
 
 /**

@@ -146,7 +146,7 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `effect-port-subscription-owned-by-the-bridge` | `^packages/client-core-effect/src` except `bridge/` and tests | — (rejects `bridge/in.ts`) | `fromObservable` subscribes a port eagerly, so it is reached only through a shared fold's period-scoped `fromPort`; presenters never import `bridge/in.ts` directly |
 | `effect-only-in-client-core-effect` | `^packages/` **except** `^packages/client-core-effect/` | — (rejects `effect`, bare specifier included) | The Effect runtime never leaks past its own package boundary — an alternative core is pluggable precisely because of that |
 | `client-adapters-framework-free` | `^packages/client-adapters/src` | — (rejects `react`/`react-dom`/`react-native`/`solid-js`, same pattern) | The adapters stay framework-free despite UI-facing consumers |
-| `web-clients-load-cores-lazily` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects a **static** import of `^packages/client-core-(rxjs\|async\|effect)/`: `dynamic: false`) | A web client reaches a core only through `import()`, so each core sits in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6). The repo's only `dynamic`-qualified rule: the same edge is allowed when it is a dynamic import |
+| `web-clients-load-cores-lazily` | `^packages/(client-(react\|solid)\|web-boot)/src` (tests excepted) | — (rejects a **static** import of `^packages/client-core-(rxjs\|async\|effect)/`: `dynamic: false`) | A web client, and `@rtc/web-boot` which boots it, reaches a core only through `import()` (the calls live in `packages/web-boot/src/coreSelection.ts`), so each core sits in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6). The repo's only `dynamic`-qualified rule: the same edge is allowed when it is a dynamic import |
 | `ui-contract-only-in-client-tests` | `^packages/client-(react\|solid)/src` (tests excepted) | — (rejects `^packages/ui-contract/`) | `@rtc/ui-contract` is a client's devDependency, and its harness imports the RxJS core statically: an import from production source would put that core in the eager bundle by a road `web-clients-load-cores-lazily` does not watch |
 | `adapter-fakes-stay-in-tests` | any package's `src/` or `app/` (tests and `client-adapters/src/testing.ts` excepted) | — (rejects `client-adapters`'s `testing.ts`, `adapters/__tests__/` and `*.testHelpers.ts`) | The adapters' test scaffolding (`@rtc/client-adapters/testing`) never reaches a shipped bundle |
 | `ui-never-imports-shared` | `^packages/(client-react\|client-solid\|client-react-native\|react-bindings\|solid-bindings\|ui-contract)/` | — (rejects `^packages/shared/`) | The UI side never imports `@rtc/shared`: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, and what the UI renders (Jarvis events, panel specs, drive commands, usage) is domain vocabulary. The graph sees value edges only, so this rule catches a value import; a type import is stopped by these packages not listing `@rtc/shared` (pinned by `tests/scripts/lib/packageSurfaces.test.ts`), which leaves the typecheck unable to resolve it |
@@ -157,6 +157,9 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `clients-never-import-each-other` | `^packages/(client-react\|client-react-native\|client-prototype\|client-solid)/src` | — (rejects any *other* client, via `pathNot ^packages/$1/`) | Peer clients composed from the same core never import one another |
 | `prototype-isolated` | `^packages/client-prototype/src` | nothing (`pathNot ^packages/client-prototype/`) | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
 | `motion-core-stays-pure` | `^packages/motion-core/src` | nothing (`pathNot ^packages/motion-core/`) | The view-layer motion-math package stays a zero-dependency pure leaf |
+| `web-boot-stays-inner` | `^packages/web-boot/src` | `web-boot\|client-adapters\|client-core-(rxjs\|async\|effect)\|core-api\|devtools-core\|domain` | The boot code both web clients share reaches only inward: never a client, a bindings package, `@rtc/shared`, `@rtc/ui-contract` or any other package. The three cores are allowed here and held to `import()` by `web-clients-load-cores-lazily` |
+| `web-boot-stays-framework-free` | `^packages/web-boot/src` | — (rejects `react`, `react-dom`, `solid-js`) | The boot code may touch the DOM but imports no UI framework |
+| `web-boot-only-in-web-clients` | `^packages/` **except** `^packages/(web-boot\|client-react\|client-solid)/` | — (rejects `^packages/web-boot/`) | `@rtc/web-boot` reads `localStorage`, `window` and `document`, so the React Native client, the server and the inner packages must not import it. `check:deps` also scans `tests/`, where nothing imports it |
 | `boot-splash-stays-pure` | `^packages/boot-splash/src` | nothing (`pathNot ^packages/boot-splash/`) | The boot/splash canvas engine + gate stays a zero-`@rtc/*` leaf (DOM access to canvas/`navigator`/`location` is allowed) |
 | `layout-dockview-stays-pure` | `^packages/layout-dockview/src` | nothing (`pathNot ^packages/layout-dockview/`) | `@rtc/layout-dockview` stays a zero-`@rtc/*` leaf (DOM access to mount Dockview into a container element is allowed) |
 | `dockview-only-in-layout-dockview` | `^packages/` **except** `^packages/layout-dockview/` | — (rejects `node_modules/dockview`, which also nets `node_modules/dockview-core` as a substring match) | `dockview`/`dockview-core` is confined to `@rtc/layout-dockview` so the layout engine stays swappable by replacing one package ([ADR-002](adr/ADR-002-layout-management-port.md)) |
@@ -170,12 +173,12 @@ allowlist is matched against the **bare package path** (e.g. `^packages/server/`
 so importing a server **test** file from the client is rejected too — not only
 `server/src`.
 
-**Full coverage:** every one of the twenty-six workspace packages is either the
+**Full coverage:** every one of the twenty-seven workspace packages is either the
 `from` of a package-boundary rule or reachable only inward. The pure leaves
 (`domain`, `motion-core`, `boot-splash`, `layout-dockview`, `ws-effects`,
 `devtools-core`, `devtools-relay`, `client-prototype`) allow *nothing*; the
 bridges and harness (`react-bindings`, `solid-bindings`, `ui-contract`,
-`client-adapters`, `core-api`, `core-logic`, `core-contract`, the three
+`client-adapters`, `core-api`, `core-logic`, `core-contract`, `web-boot`, the three
 application cores) allow a small inward set; the clients are guarded against each
 other and the server. Two backstops complement these rules: `no-circular`, and
 pnpm strict mode (a package cannot even resolve an **undeclared** `@rtc/*`
