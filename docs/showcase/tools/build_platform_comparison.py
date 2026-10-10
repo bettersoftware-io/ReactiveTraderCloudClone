@@ -13,11 +13,13 @@ chrome, so a pixel comparison between them would measure the devices.
 
 Re-run it after either golden set is re-pinned.
 """
-import base64, html, re, subprocess, sys, tempfile
+import base64, datetime, html, re, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(sys.argv[1])
 COMMIT = sys.argv[2]
+# The page states its own build date, so it cannot go on naming an old one.
+TODAY = datetime.date.today().isoformat()
 VISUAL = ROOT / "packages/client-react-native/tests/visual"
 SETS = {
     "ios": VISUAL / "__screenshots__/ios-iphone17-26/maestro",
@@ -163,7 +165,7 @@ OUT.write_text(f'''<!doctype html>
 <div class="wrap">
 <header class="bench">
   <button class="toggle" id="toggle" type="button">Theme</button>
-  <p class="eyebrow">Showcase · built 2026-10-06 · @rtc/client-react-native</p>
+  <p class="eyebrow">Showcase · built {TODAY} · @rtc/client-react-native</p>
   <h1>One React Native client, on iOS and on Android</h1>
   <p class="lede">All {len(ids)} visual scenarios, each as its committed golden on both platforms: an iPhone 17 simulator (iOS 26.5) on the left, a Pixel 10a emulator (Android API 37) on the right. One codebase, one set of Maestro flows, one static scene per scenario. The pairs are for looking at, not for diffing: the two devices differ in size, density and system chrome, so a pixel comparison between them would measure the devices.</p>
   <nav>{links}</nav>
