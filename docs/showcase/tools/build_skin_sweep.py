@@ -13,12 +13,14 @@ contact sheet per screen.
     # 2. build
     python3 docs/showcase/tools/build_skin_sweep.py <repo> <commit> <dir>
 """
-import base64, html, subprocess, sys, tempfile
+import base64, datetime, html, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(sys.argv[1])
 COMMIT = sys.argv[2]
 SHOTS = Path(sys.argv[3])
+# The page states its own capture date, so it cannot go on naming an old one.
+TODAY = datetime.date.today().isoformat()
 OUT = ROOT / "docs/showcase/rn-skin-sweep.html"
 THUMB_W = 190   # display width
 ENC_W = 570     # encoded at 3x, so a zoomed shot stays legible
@@ -115,9 +117,9 @@ OUT.write_text(f'''<!doctype html>
 <div class="wrap">
 <header class="bench">
   <button class="toggle" id="toggle" type="button">Theme</button>
-  <p class="eyebrow">Showcase · captured 2026-10-03 · @rtc/client-react-native · signed off 2026-10-04</p>
+  <p class="eyebrow">Showcase · captured {TODAY} · @rtc/client-react-native</p>
   <h1>The React Native client in all twelve skins</h1>
-  <p class="lede">Six skins, each in dark and light, across {len(SCREENS)} screens — {count} device captures. The committed goldens pin one skin×mode per scenario and so cover two of these twelve cells; this page is the look at the other ten that Phase 7's sign-off asked for. Each row reads <code>classic · holo · holo3d · terminal · terminal3d · neon</code>.</p>
+  <p class="lede">Six skins, each in dark and light, across {len(SCREENS)} screens — {count} device captures. The committed goldens pin one skin×mode per scenario and so cover two of these twelve cells; this page is the look at the other ten that Phase 7's sign-off asked for. The skins were signed off on 2026-10-04 against the first capture of this page; it has been re-shot since, as the app changed. Each row reads <code>classic · holo · holo3d · terminal · terminal3d · neon</code>.</p>
   <nav>{links}</nav>
 </header>
 {sheets}
