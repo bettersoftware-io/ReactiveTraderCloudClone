@@ -170,10 +170,11 @@ switched between all three cores without a rebuild.
   concern.** The core host (`@rtc/web-boot`'s `coreHost.ts`) builds a
   `CoreSelection` (`{ current, options, select }`) via `createCoreSelection`
   for each composition and hands it to the UI root on the `Composition`;
-  `AppRoot` forwards it into the bindings' `createViewModel`; `select` saves the
-  choice and reloads with `?core=` stripped (so a page opened as
-  `?core=effect` doesn't reload straight back onto Effect, since the URL
-  outranks storage). `@rtc/react-bindings` and `@rtc/solid-bindings` expose
+  `AppRoot` forwards it into the bindings' `createViewModel`; `select` asks
+  the host for the swap, which happens in place (Decision 7): the host saves
+  the choice and strips `?core=` from the URL (so a page opened as
+  `?core=effect` doesn't load straight back onto Effect next time, since the
+  URL outranks storage). `@rtc/react-bindings` and `@rtc/solid-bindings` expose
   it as `useCoreSelection(): CoreSelection | null` — `null` when the host
   offers none (React Native passes none; it stays RxJS-only). Both clients
   gained a Preferences → "Application core" row, rendered only when
