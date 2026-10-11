@@ -23,7 +23,7 @@ import { createPortsOptions } from "./createPortsOptions";
  * feeds a real DevtoolsHub, and that an InspectorStore driven by an
  * InspectorClient over an in-memory duplex pair observes the app's streams and
  * machines. A FRESH local hub is used (never the module singleton) so each
- * test stays isolated. jsdom + the simulator port branch (no VITE_SERVER_URL),
+ * test stays isolated. jsdom + the simulator port branch (no server URL),
  * mirroring composition.incident.test.ts. */
 describe("devtools integration — composition root ↔ inspector", () => {
   beforeEach(() => {

@@ -101,8 +101,8 @@ flowchart TB
     style Panel fill:transparent,stroke:#6e7681
 ```
 
-The three decorators, all applied at the `client-react` composition root
-(`packages/client-react/src/AppRoot.tsx` and
+The three decorators, all applied at a web client's composition root
+(`instrumentComposition` in `packages/client-react/src/main.tsx` and
 `packages/web-boot/src/buildBrowserPorts.ts`):
 
 - **`instrumentWsAdapter(adapter, hub)`** (`packages/devtools-core/src/instrument/wsAdapter.ts`) — wraps `send`/`on`/`rpc` to report `wire:out`/`wire:in`; every other member delegates untouched via an explicit-bind `Proxy`.

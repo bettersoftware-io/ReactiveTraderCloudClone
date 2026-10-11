@@ -38,32 +38,35 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 
 ## How it's used
 
-`@rtc/client-react`'s composition root applies all three decorators before the
-result reaches `createViewModel` (`AppRoot` in `packages/client-react/src/AppRoot.tsx`,
-`buildBrowserPorts` in `packages/web-boot/src/buildBrowserPorts.ts`):
+Each web client's composition root applies all three decorators before the
+result reaches `createViewModel` (`instrumentComposition` in
+`packages/client-react/src/main.tsx`, which the core host calls for every
+composition, and `buildBrowserPorts` in
+`packages/web-boot/src/buildBrowserPorts.ts`):
 
 ```ts
 // packages/web-boot/src/buildBrowserPorts.ts
 const ws = instrumentWsAdapter(
-  new WsAdapter(buildWsUrl(url, token)),
+  new WsAdapter(url, readToken, { autoConnect: false }),
   devtoolsHub,
 );
 
-// packages/client-react/src/AppRoot.tsx
-const { presenters, commands } = core.createApp(buildBrowserPorts({ env, devtoolsHub }));
-const instrumented = instrumentPresenters(
-  presenters,
-  PRESENTER_MANIFEST,
-  devtoolsHub,
-);
-viewModelRef.current = createViewModel(
-  instrumented,
-  instrumentMachineFactories(
-    core.createMachineFactories(instrumented),
+// packages/client-react/src/main.tsx
+function instrumentComposition(core, app) {
+  const presenters = instrumentPresenters(
+    app.presenters,
+    PRESENTER_MANIFEST,
     devtoolsHub,
-  ),
-  commands,
-);
+  );
+
+  return {
+    presenters,
+    machineFactories: instrumentMachineFactories(
+      core.createMachineFactories(presenters),
+      devtoolsHub,
+    ),
+  };
+}
 ```
 
 The app-side hub is a module-level singleton

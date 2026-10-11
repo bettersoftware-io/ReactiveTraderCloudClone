@@ -18,7 +18,7 @@ import { createPortsOptions } from "./createPortsOptions";
 // hard-fakes connectionEvents (tests/presenter/scenarios/_buildApp.ts) and
 // runs in Node without a DOM, while the scenario under test is precisely the
 // REAL browser composition — buildBrowserPorts()'s merged idle-timer +
-// reconnect-intent wiring — which needs jsdom and import.meta.env.
+// reconnect-intent wiring — which needs jsdom.
 describe("idle disconnection → Reconnect button (simulator branch)", () => {
   beforeEach(() => {
     // Fake timers BEFORE building ports so the idle countdown uses the

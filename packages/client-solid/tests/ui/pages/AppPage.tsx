@@ -142,7 +142,8 @@ function findDemoAccountRows(): HTMLElement[] {
 
 /** The boot composition the core host would build for the RxJS core over
  * the page's real `buildBrowserPorts()` — built at mount time, after a spec
- * has stubbed the env the ports read. Uninstrumented: the hub is passed for the transport's wire tap only. */
+ * has stubbed the env the ports read. Uninstrumented: the hub is passed for
+ * the transport's wire tap only. */
 function createComposition(): Composition {
   const app = rxjsCore.createApp(
     buildBrowserPorts({ env: webBootEnvOf(import.meta.env), devtoolsHub }),

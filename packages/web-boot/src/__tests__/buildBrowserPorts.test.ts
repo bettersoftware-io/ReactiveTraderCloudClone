@@ -12,7 +12,7 @@ import { buildBrowserPorts } from "#/buildBrowserPorts";
 
 import { createPortsOptions } from "./createPortsOptions";
 
-// No VITE_SERVER_URL configured in vitest → simulator branch is always taken.
+// `createPortsOptions()` sets no server URL, so the simulator branch is taken.
 describe("buildBrowserPorts (simulator branch)", () => {
   it("returns a LocalStoragePreferencesAdapter as preferences", () => {
     const ports = buildBrowserPorts(createPortsOptions());
@@ -100,10 +100,10 @@ describe("buildBrowserPorts (simulator branch)", () => {
   });
 });
 
-// The NarratorMachine threshold seam. `import.meta.env.DEV` is `true` under
-// vitest, so the first four cases vary only the query param; the last two
-// stub DEV off to stand in for a production build, with and without the
-// variable the e2e harness builds with.
+// The NarratorMachine threshold seam. `createPortsOptions()` describes a dev
+// build, so the first four cases vary only the query param; the last two pass
+// `dev: false` to stand in for a production build, with and without the seam
+// the e2e harness builds with.
 describe("buildBrowserPorts — narratorConfig (the ?narratorThresholds=test seam)", () => {
   afterEach(() => {
     setSearch("");

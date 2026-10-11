@@ -77,6 +77,9 @@ describe("buildBrowserPorts (hybrid: server URL + demo roster)", () => {
       username: "ada",
       token: "tok-ada",
     });
+    // Still once after everything settled: a second relaunch would reload a
+    // page that is already reloading.
+    expect(relaunch).toHaveBeenCalledTimes(1);
     probe.dispose();
   });
 
