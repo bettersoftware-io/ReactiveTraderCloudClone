@@ -34,6 +34,12 @@ These always **ask**, because the `ask` rules beat the allow rules:
 - a force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`);
 - a push that deletes or sweeps (`--delete`, `-d`, `--mirror`, `--all`,
   `--tags`, `--prune`) or names its target (`source:target`);
+- a push with ANY option after the branch name. Git takes a shortened long
+  option (`--del`, `--mir`) and bundled short ones (`-fd`), so a list of
+  spellings can never be complete; the rule is "a dash after the branch
+  asks". Options a routine push needs go before `origin`, where only `-u`
+  is pre-approved. A filter with a dash flag (`… 2>&1 | tail -2`) may ask
+  too: run the push bare, its output is short;
 - a merge past branch protection (`gh pr merge … --admin`);
 - a push of anything that isn't a `worktree-*` branch.
 
