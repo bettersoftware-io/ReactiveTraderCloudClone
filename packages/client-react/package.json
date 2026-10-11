@@ -46,7 +46,6 @@
     "@rtc/boot-splash": "workspace:*",
     "@rtc/core-api": "workspace:*",
     "@rtc/core-logic": "workspace:*",
-    "@rtc/devtools-core": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/layout-dockview": "workspace:*",
     "@rtc/motion-core": "workspace:*",

@@ -27,37 +27,18 @@ import "solid-devtools";
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 
-import type { App as CoreApp, CoreFactory, CoreImpl } from "@rtc/core-api";
 import {
-  instrumentMachineFactories,
-  instrumentPresenters,
-} from "@rtc/devtools-core";
-import {
-  bootCore,
-  buildBrowserPorts,
-  CORE_OPTIONS,
   type Composition,
   type CoreSwapView,
   type CoverTimings,
-  chooseCoverTimings,
-  clearCoreChoice,
-  createCoreHost,
-  defaultCoreResetHref,
-  followCoreSwaps,
-  formatBootedMessage,
-  loadCore,
-  type MotionSettings,
-  PRESENTER_MANIFEST,
-  renderBootError,
-  runBoot,
-  safeLocalStorage,
-  saveCoreChoice,
-  urlWithoutCoreParam,
+  INSTANT_COVER,
+  startWebClient,
+  type WebClientPage,
+  type WebClientView,
   webBootEnvOf,
 } from "@rtc/web-boot";
 
 import { AppRoot } from "./AppRoot";
-import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
 import {
@@ -67,194 +48,47 @@ import {
 
 import "./index.css";
 
-const rootEl = document.getElementById("root");
+// Fire-and-forget by design: `startWebClient` shows the boot-error screen
+// itself, and its promise never rejects.
+void startWebClient({
+  appId: "rtc-web-solid",
+  rootId: "root",
+  // Read here because only the client's own source is where the bundler
+  // substitutes the build-time values.
+  env: webBootEnvOf(import.meta.env),
+  createView: createSolidView,
+});
 
-if (!rootEl) {
-  throw new Error("Root element #root not found in DOM");
-}
-
-// The build-time values, read here because only the client's own source is
-// where the bundler substitutes them.
-const env = webBootEnvOf(import.meta.env);
-
-const storage = safeLocalStorage();
-
-/** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
- * value, or a storage read/write/clear failure) so it's diagnosable from the
- * console rather than silently swallowed. */
-function warnCore(message: string): void {
-  console.warn(`[core] ${message}`);
-}
-
-/** Clears the stored choice and reloads onto the RxJS core — the boot-error
- * screen's "Load the default core" action. */
-function reloadOntoDefaultCore(): void {
-  clearCoreChoice(storage, warnCore);
-  location.assign(defaultCoreResetHref(location.href));
-}
-
-/** Applies the devtools decorators to one composition (the core host calls
- * this once per `createApp`). */
-function instrumentComposition(
-  core: CoreFactory,
-  app: CoreApp,
-): Pick<Composition, "presenters" | "machineFactories"> {
-  const presenters = instrumentPresenters(
-    app.presenters,
-    PRESENTER_MANIFEST,
-    devtoolsHub,
-  );
-
-  return {
-    presenters,
-    machineFactories: instrumentMachineFactories(
-      core.createMachineFactories(presenters),
-      devtoolsHub,
-    ),
-  };
-}
-
-/** What decides how a swap's cover moves, as it is right now. The
- * power-saver level is read from `<html>`, where `PowerSaverRoot` writes it:
- * no ViewModel is reachable from out here. */
-function readMotionSettings(): MotionSettings {
-  return {
-    webdriver: navigator.webdriver,
-    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
-    freeze: document.documentElement.dataset.powerSaver === "freeze",
-  };
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+/** The Solid part of the page: the app tree and the swap overlay, each a
+ * reactive root of its own. */
+function createSolidView(page: WebClientPage): WebClientView {
+  // A tree that fails its first render is disposed before `mount` throws,
+  // so a swap onto a core whose UI cannot render leaks no reactive root.
+  const tree = createSolidTreeMount(page.rootEl);
+  const [overlay, setOverlay] = createSignal<CoreSwapOverlayProps>({
+    swap: null,
+    fade: INSTANT_COVER,
   });
-}
+  render(() => {
+    return <CoreSwapOverlay swap={overlay().swap} fade={overlay().fade} />;
+  }, page.overlayEl);
 
-function startTimer(ms: number, onExpired: () => void): () => void {
-  const timer = setTimeout(onExpired, ms);
-
-  return (): void => {
-    clearTimeout(timer);
+  return {
+    mount: (composition: Composition): void => {
+      tree.mount(() => {
+        return (
+          <AppRoot composition={composition} demoAccounts={page.demoAccounts}>
+            <App />
+          </AppRoot>
+        );
+      });
+    },
+    unmount: tree.unmount,
+    destroy: tree.destroy,
+    showOverlay: (swap: CoreSwapView | null, fade: CoverTimings): void => {
+      // A signal write renders synchronously, so the cover is in the DOM
+      // before the host's next step.
+      setOverlay({ swap, fade });
+    },
   };
 }
-
-function waitForNextMacrotask(): Promise<void> {
-  return sleep(0);
-}
-
-// Fire-and-forget by design: runBoot routes every rejection (core load or
-// the host's first composition) to renderBootError, so there is nothing left
-// to handle here.
-void runBoot(
-  bootCore({
-    href: location.href,
-    storage,
-    buildDefault: env.coreImpl,
-    warn: warnCore,
-    load: loadCore,
-  }),
-  ({ impl, core, source }) => {
-    console.info(formatBootedMessage(impl, source));
-    // A tree that fails its first render is disposed before `mount` throws,
-    // so a swap onto a core whose UI cannot render leaks no reactive root.
-    const tree = createSolidTreeMount(rootEl);
-
-    // The swap overlay gets a root of its own, outside the app tree: that
-    // tree is unmounted and mounted again while the overlay covers it.
-    const overlayEl = document.createElement("div");
-    overlayEl.id = "core-swap-overlay";
-    document.body.append(overlayEl);
-    // The timings of the swap under way: the host asks for them as each swap
-    // starts, and the overlay's two fades take the same numbers. Zeros until
-    // the first swap: nothing is shown before then.
-    let cover: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
-    const [overlay, setOverlay] = createSignal<CoreSwapOverlayProps>({
-      swap: null,
-      fade: cover,
-    });
-    render(() => {
-      return <CoreSwapOverlay swap={overlay().swap} fade={overlay().fade} />;
-    }, overlayEl);
-
-    // The host owns the ports (built once per page) and every composition;
-    // a Preferences core choice swaps the core in place, with no reload.
-    const host = createCoreHost({
-      ports: buildBrowserPorts({ env, devtoolsHub }),
-      initial: { impl, core },
-      load: loadCore,
-      instrument: instrumentComposition,
-      endComposition: () => {
-        devtoolsHub.endComposition();
-      },
-      mount: (composition: Composition): void => {
-        tree.mount(() => {
-          return (
-            <AppRoot composition={composition}>
-              <App />
-            </AppRoot>
-          );
-        });
-      },
-      unmount: tree.unmount,
-      publish: (next: CoreImpl): void => {
-        document.documentElement.dataset.coreImpl = next;
-      },
-      persist: (next: CoreImpl): boolean => {
-        return saveCoreChoice(storage, next, warnCore);
-      },
-      stripCoreParam: () => {
-        history.replaceState(
-          history.state,
-          "",
-          urlWithoutCoreParam(location.href),
-        );
-      },
-      info: (message: string): void => {
-        console.info(message);
-      },
-      warn: (message: string): void => {
-        console.warn(message);
-      },
-      onFatal: (error: unknown): void => {
-        // No core is composed: drop whatever the root still holds, then show
-        // the boot-error screen in its place.
-        tree.destroy();
-        renderBootError(rootEl, error, reloadOntoDefaultCore);
-      },
-      cover: () => {
-        cover = chooseCoverTimings(readMotionSettings());
-        return cover;
-      },
-      sleep,
-      nextMacrotask: waitForNextMacrotask,
-      startTimer,
-    });
-
-    // While a swap is under way the overlay is shown and the app tree is
-    // inert. A signal write renders synchronously, so the cover is in the DOM
-    // before the host's next step. Followed before `start()`: a boot that
-    // fails leaves the host `fatal`, which shows no cover over the boot-error
-    // screen.
-    followCoreSwaps(host.state$, {
-      rootEl,
-      options: CORE_OPTIONS,
-      show: (swap: CoreSwapView | null): void => {
-        setOverlay({ swap, fade: cover });
-      },
-    });
-
-    try {
-      host.start();
-    } catch (error) {
-      // The boot composition could not be mounted, and the host has disposed
-      // it: drop the root too, as `onFatal` does, before `runBoot` shows the
-      // boot-error screen in its place.
-      tree.destroy();
-      throw error;
-    }
-  },
-  (error: unknown) => {
-    renderBootError(rootEl, error, reloadOntoDefaultCore);
-  },
-);

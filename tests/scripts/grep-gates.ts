@@ -811,6 +811,12 @@ const GATES: Gate[] = [
     paths: [],
     customCheck: checkNodeFloorLivesInDevEngines,
   },
+  {
+    name: "53. A web client reads import.meta.env only in main.tsx (the entry hands the values to @rtc/web-boot)",
+    pattern: "import\\.meta\\.env",
+    paths: ["../packages/client-react/src/", "../packages/client-solid/src/"],
+    excludes: ["/node_modules/", "/src/main.tsx", ".test.", ".spec."],
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {

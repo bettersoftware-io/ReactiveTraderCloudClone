@@ -12,17 +12,27 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
+import type { DemoAccount } from "@rtc/domain";
 import {
   buildBrowserPorts,
   type Composition,
+  createDevtoolsHub,
+  readDemoAccounts,
+  type WebBootEnv,
   webBootEnvOf,
 } from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
-import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 
 import { Suspender } from "./Suspender";
+
+/** A hub of this page's own: the client's is created inside
+ * `startWebClient`, which a test does not call. */
+const devtoolsHub = createDevtoolsHub({
+  appId: "rtc-web",
+  dev: readRunEnv().dev,
+});
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
  * so there is no runtime switch to exercise here. */
@@ -74,7 +84,10 @@ export function appRootPage(): AppRootPage {
   return {
     mount(): void {
       render(
-        <AppRoot composition={createComposition(false)}>
+        <AppRoot
+          composition={createComposition(false)}
+          demoAccounts={readRunDemoAccounts()}
+        >
           <div data-testid="app-children" />
         </AppRoot>,
       );
@@ -87,7 +100,10 @@ export function appRootPage(): AppRootPage {
 
       render(
         <StrictMode>
-          <AppRoot composition={createComposition(true)}>
+          <AppRoot
+            composition={createComposition(true)}
+            demoAccounts={readRunDemoAccounts()}
+          >
             <Suspense fallback={<div data-testid="suspense-fallback" />}>
               <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
               <Suspender data={promise} />
@@ -106,7 +122,10 @@ export function appRootPage(): AppRootPage {
     mountHeaderAfterCoreSwap(): void {
       render(
         <StrictMode>
-          <AppRoot composition={createComposition(true)}>
+          <AppRoot
+            composition={createComposition(true)}
+            demoAccounts={readRunDemoAccounts()}
+          >
             <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
           </AppRoot>
         </StrictMode>,
@@ -174,7 +193,7 @@ function noValue(_value: string): void {}
  * is starved until the splash ends, seconds later. */
 function createComposition(afterSwap: boolean): Composition {
   const pagePorts = buildBrowserPorts({
-    env: webBootEnvOf(import.meta.env),
+    env: readRunEnv(),
     devtoolsHub,
   });
 
@@ -199,6 +218,16 @@ function createComposition(afterSwap: boolean): Composition {
       return reopenPending;
     },
   };
+}
+
+/** The build-time values as the run has them right now: read when a page
+ * mounts, not once at import, because a spec stubs them per case. */
+function readRunEnv(): WebBootEnv {
+  return webBootEnvOf(import.meta.env);
+}
+
+function readRunDemoAccounts(): readonly DemoAccount[] {
+  return readDemoAccounts(readRunEnv());
 }
 
 function findDemoAccountRows(): HTMLElement[] {

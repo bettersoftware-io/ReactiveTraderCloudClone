@@ -73,10 +73,10 @@ describe("App (shell chrome)", () => {
   });
 
   // The composition root's own wiring for the login screen's demo-accounts
-  // hint (hardening spec §7 D9): AppRoot → readDemoAccounts() →
-  // createViewModel → LoginScreen, no fake on the seam. The contract tier
-  // covers LoginScreen against a seeded World and so cannot see whether
-  // AppRoot hands the accounts over at all.
+  // hint (hardening spec §7 D9): the page's demo accounts → AppRoot's
+  // `demoAccounts` prop → createViewModel → LoginScreen, no fake on the
+  // seam. The contract tier covers LoginScreen against a seeded World and so
+  // cannot see whether AppRoot hands the accounts over at all.
   it("hints at the simulator's demo accounts, and a picked account signs in", async () => {
     page.mount();
 

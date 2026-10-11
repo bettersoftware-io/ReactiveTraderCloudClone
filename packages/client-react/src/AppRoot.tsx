@@ -1,15 +1,12 @@
 import { type ReactElement, type ReactNode, useRef } from "react";
 
+import type { DemoAccount } from "@rtc/domain";
 import {
   createViewModel,
   type ViewModel,
   ViewModelProvider,
 } from "@rtc/react-bindings";
-import {
-  type Composition,
-  readDemoAccounts,
-  webBootEnvOf,
-} from "@rtc/web-boot";
+import type { Composition } from "@rtc/web-boot";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
@@ -30,7 +27,11 @@ import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
  * dev, which would bind — and discard — a second ViewModel over the same
  * presenters. A ref cell is shared across both invocations of the mount, so
  * `createViewModel()` runs exactly once per mount. */
-export function AppRoot({ composition, children }: AppRootProps): ReactElement {
+export function AppRoot({
+  composition,
+  demoAccounts,
+  children,
+}: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
 
   if (viewModelRef.current === null) {
@@ -40,7 +41,7 @@ export function AppRoot({ composition, children }: AppRootProps): ReactElement {
       composition.commands,
       {
         coreSelection: composition.coreSelection,
-        demoAccounts: readDemoAccounts(webBootEnvOf(import.meta.env)),
+        demoAccounts,
         takePreferencesReopen: () => {
           return composition.takePreferencesReopen();
         },
@@ -71,5 +72,8 @@ export function AppRoot({ composition, children }: AppRootProps): ReactElement {
 
 interface AppRootProps {
   composition: Composition;
+  /** The sign-ins the login screen lists as a hint: the page's, not one
+   * composition's. */
+  demoAccounts: readonly DemoAccount[];
   children: ReactNode;
 }
