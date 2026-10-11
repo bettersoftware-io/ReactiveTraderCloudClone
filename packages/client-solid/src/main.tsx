@@ -34,6 +34,7 @@ import {
 } from "@rtc/devtools-core";
 import {
   bootCore,
+  buildBrowserPorts,
   CORE_OPTIONS,
   type Composition,
   type CoreSwapView,
@@ -52,10 +53,10 @@ import {
   safeLocalStorage,
   saveCoreChoice,
   urlWithoutCoreParam,
+  webBootEnvOf,
 } from "@rtc/web-boot";
 
 import { AppRoot } from "./AppRoot";
-import { buildBrowserPorts } from "./app/buildBrowserPorts";
 import { devtoolsHub } from "./app/devtools/devtoolsHub";
 import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
@@ -71,6 +72,10 @@ const rootEl = document.getElementById("root");
 if (!rootEl) {
   throw new Error("Root element #root not found in DOM");
 }
+
+// The build-time values, read here because only the client's own source is
+// where the bundler substitutes them.
+const env = webBootEnvOf(import.meta.env);
 
 const storage = safeLocalStorage();
 
@@ -145,7 +150,7 @@ void runBoot(
   bootCore({
     href: location.href,
     storage,
-    buildDefault: import.meta.env.VITE_CORE_IMPL,
+    buildDefault: env.coreImpl,
     warn: warnCore,
     load: loadCore,
   }),
@@ -175,7 +180,7 @@ void runBoot(
     // The host owns the ports (built once per page) and every composition;
     // a Preferences core choice swaps the core in place, with no reload.
     const host = createCoreHost({
-      ports: buildBrowserPorts(),
+      ports: buildBrowserPorts({ env, devtoolsHub }),
       initial: { impl, core },
       load: loadCore,
       instrument: instrumentComposition,

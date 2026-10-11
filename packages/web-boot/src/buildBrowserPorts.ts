@@ -16,7 +16,7 @@ import {
   wsUrlToHttpBase,
 } from "@rtc/client-adapters";
 import type { AppPorts } from "@rtc/core-api";
-import { instrumentWsAdapter } from "@rtc/devtools-core";
+import { type DevtoolsHub, instrumentWsAdapter } from "@rtc/devtools-core";
 import {
   type AnomalyDetectorConfig,
   type AuthPort,
@@ -26,23 +26,22 @@ import {
   type DemoAccount,
   listDemoAccounts,
 } from "@rtc/domain";
-import {
-  BrowserConnectionEventsAdapter,
-  LocalStorageDataSourceStore,
-  LocalStorageDockLayoutStore,
-  LocalStorageLayoutPresetStore,
-  LocalStoragePreferencesAdapter,
-  LocalStorageSessionStore,
-  MediaQueryColorSchemeAdapter,
-} from "@rtc/web-boot";
 
-import { devtoolsHub } from "#/app/devtools/devtoolsHub";
+import { BrowserConnectionEventsAdapter } from "#/adapters/BrowserConnectionEventsAdapter";
+import { LocalStorageDataSourceStore } from "#/adapters/LocalStorageDataSourceStore";
+import { LocalStorageDockLayoutStore } from "#/adapters/LocalStorageDockLayoutStore";
+import { LocalStorageLayoutPresetStore } from "#/adapters/LocalStorageLayoutPresetStore";
+import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/adapters/LocalStorageSessionStore";
+import type { WebBootEnv } from "#/env";
+import { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";
 
 /**
- * Parses `VITE_DEV_AUTH` (a JSON object of username -> password used only in
- * simulator mode) — tolerant of missing/malformed values, returning `{}`
- * rather than throwing so a bad/absent env var degrades to "no dev logins
- * work" instead of a boot crash. Never logs the raw value (it's credentials).
+ * Parses `VITE_DEV_AUTH` / `VITE_DEMO_AUTH` (a JSON object of username ->
+ * password, verified in the browser by an `AuthSimulator`) — tolerant of
+ * missing/malformed values, returning `{}` rather than throwing so a
+ * bad/absent value degrades to "no local logins work" instead of a boot
+ * crash. Never logs the raw value (it's credentials).
  */
 function parseDevAuth(raw: string | undefined): Record<string, string> {
   if (raw === undefined) {
@@ -86,15 +85,17 @@ const TEST_NARRATOR_CONFIG: Partial<AnomalyDetectorConfig> = {
  *
  * Two conditions, both required:
  *
- * - The bundle carries the seam at all. `import.meta.env.DEV` and
- *   `import.meta.env.VITE_NARRATOR_TEST_SEAM` are both replaced with literals
- *   at build time, so a production build made without the variable has this
- *   whole branch, relaxed thresholds included, removed as dead code. Only
- *   `tests/scripts/clientServer.ts` sets the variable; no deploy does.
+ * - The build allows it: `env.narratorTestSeam`, which `webBootEnvOf` sets
+ *   on a dev build and on a production build made with
+ *   `VITE_NARRATOR_TEST_SEAM=1`. Only `tests/scripts/clientServer.ts` sets
+ *   that variable; no deploy does. The relaxed thresholds are in every
+ *   bundle; without the flag nothing can switch them on.
  * - The page asked for it with `?narratorThresholds=test`.
  */
-function seamNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
-  if (!import.meta.env.DEV && import.meta.env.VITE_NARRATOR_TEST_SEAM !== "1") {
+function seamNarratorConfig(
+  env: WebBootEnv,
+): Partial<AnomalyDetectorConfig> | undefined {
+  if (!env.narratorTestSeam) {
     return undefined;
   }
 
@@ -106,6 +107,10 @@ function seamNarratorConfig(): Partial<AnomalyDetectorConfig> | undefined {
 }
 
 export interface BuildBrowserPortsOptions {
+  /** The build-time values: `webBootEnvOf(import.meta.env)` in a client. */
+  readonly env: WebBootEnv;
+  /** The page's devtools hub: the WS transport is mirrored to it. */
+  readonly devtoolsHub: DevtoolsHub;
   /** Slot: how a mode-change login reloads the page (hardening spec §8.3
    * step 3). Defaults to `location.reload()`; tests inject a spy. */
   readonly relaunch?: () => void;
@@ -115,12 +120,11 @@ function reloadPage(): void {
   location.reload();
 }
 
-export function buildBrowserPorts(
-  options: BuildBrowserPortsOptions = {},
-): AppPorts {
-  const url = import.meta.env.VITE_SERVER_URL;
-  const demoRoster = parseDevAuth(import.meta.env.VITE_DEMO_AUTH);
-  const narratorConfig = seamNarratorConfig();
+export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
+  const { env, devtoolsHub } = options;
+  const url = env.serverUrl;
+  const demoRoster = parseDevAuth(env.demoAuth);
+  const narratorConfig = seamNarratorConfig(env);
   const browser = new BrowserConnectionEventsAdapter();
   const preferences = new LocalStoragePreferencesAdapter();
   const sessionStore = new LocalStorageSessionStore();
@@ -132,6 +136,9 @@ export function buildBrowserPorts(
   // composition time to seed the BootGatePresenter.
   const bootSplash = { shouldPlay: shouldPlayBootSplash };
 
+  // Which port set this page composes (hardening spec §8.2): no server URL →
+  // sim; server URL without a demo roster → live (today's WS-real mode, byte
+  // for byte); both → hybrid, where the last login's stored choice decides.
   const decision = resolveDataSource({
     serverUrl: url,
     hasDemoRoster: Object.keys(demoRoster).length > 0,
@@ -143,7 +150,9 @@ export function buildBrowserPorts(
   // Simulator roster: the dev file's accounts (dev builds only — Vite loads
   // .env.development in dev) plus the committed demo roster (.env.production),
   // so a production simulator build has working demo logins too.
-  const simulatorAuth = new AuthSimulator(readSimulatorCredentials(demoRoster));
+  const simulatorAuth = new AuthSimulator(
+    readSimulatorCredentials(env, demoRoster),
+  );
 
   // Hybrid data source — hardening spec §8.
   /** The page's auth port. Non-hybrid pages keep today's single adapter;
@@ -266,19 +275,20 @@ export function buildBrowserPorts(
  * nothing, since all of its credentials belong to the server. With no server
  * it is the simulator's whole roster.
  */
-export function readDemoAccounts(): readonly DemoAccount[] {
-  const demoRoster = parseDevAuth(import.meta.env.VITE_DEMO_AUTH);
+export function readDemoAccounts(env: WebBootEnv): readonly DemoAccount[] {
+  const demoRoster = parseDevAuth(env.demoAuth);
 
-  if (import.meta.env.VITE_SERVER_URL) {
+  if (env.serverUrl) {
     return listDemoAccounts(demoRoster);
   }
 
-  return listDemoAccounts(readSimulatorCredentials(demoRoster));
+  return listDemoAccounts(readSimulatorCredentials(env, demoRoster));
 }
 
 /** The simulator's roster: the dev file's accounts plus the demo roster. */
 function readSimulatorCredentials(
+  env: WebBootEnv,
   demoRoster: Record<string, string>,
 ): Record<string, string> {
-  return { ...parseDevAuth(import.meta.env.VITE_DEV_AUTH), ...demoRoster };
+  return { ...parseDevAuth(env.devAuth), ...demoRoster };
 }

@@ -19,6 +19,11 @@ export {
   runBoot,
 } from "#/bootApp";
 export {
+  type BuildBrowserPortsOptions,
+  buildBrowserPorts,
+  readDemoAccounts,
+} from "#/buildBrowserPorts";
+export {
   type Composition,
   type CoreHost,
   type CoreHostState,

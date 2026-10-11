@@ -1,9 +1,12 @@
 import { type JSX, type ParentProps, untrack } from "solid-js";
 
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
-import type { Composition } from "@rtc/web-boot";
+import {
+  type Composition,
+  readDemoAccounts,
+  webBootEnvOf,
+} from "@rtc/web-boot";
 
-import { readDemoAccounts } from "#/app/buildBrowserPorts";
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
 import { PowerSaverRoot } from "#/ui/shell/power/PowerSaverRoot";
@@ -38,7 +41,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
     composition.commands,
     {
       coreSelection: composition.coreSelection,
-      demoAccounts: readDemoAccounts(),
+      demoAccounts: readDemoAccounts(webBootEnvOf(import.meta.env)),
       takePreferencesReopen: () => {
         return composition.takePreferencesReopen();
       },

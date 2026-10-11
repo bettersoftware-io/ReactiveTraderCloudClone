@@ -6,14 +6,13 @@ import {
   ConnectionStatus,
   nextConnectionStatus,
 } from "@rtc/domain";
-import { LocalStoragePreferencesAdapter } from "@rtc/web-boot";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
+import { LocalStorageSessionStore } from "#/adapters/LocalStorageSessionStore";
+import { buildBrowserPorts } from "#/buildBrowserPorts";
 
-// The Solid mirror of client-react's buildBrowserPorts.wsBranch.test.ts — the
-// two composition roots are functionally identical (only comments differ), so
-// the contract they must satisfy is identical too.
-//
+import { createPortsOptions } from "./createPortsOptions";
+
 // The sibling buildBrowserPorts.test.ts covers the simulator branch, which is
 // what an unset VITE_SERVER_URL selects. Everything here is the OTHER half —
 // the ws-real branch and the dev-auth parsing — which no test reached before.
@@ -23,15 +22,12 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 // login screen.
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
 describe("buildBrowserPorts (ws-real branch)", () => {
   it("selects the ws-real branch and exposes the transport", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
-
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
 
     // `transport` is the branch discriminator: the simulator branch has no
     // adapter to expose, so its absence is how "which branch ran" is observable.
@@ -39,11 +35,9 @@ describe("buildBrowserPorts (ws-real branch)", () => {
   });
 
   it("does NOT open a socket at composition time", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
-
     const ctor = vi.spyOn(globalThis, "WebSocket");
 
-    buildBrowserPorts();
+    buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
 
     // Regression pin for the pre-login WS gate: WsAdapter is built with
     // autoConnect: false so createApp's auth gate opens the socket AFTER login.
@@ -52,37 +46,40 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     expect(ctor).not.toHaveBeenCalled();
   });
 
-  it("still wires the browser-side ports that both branches share", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+  it("supplies the stored session token when the gate later connects", () => {
+    seedSession("tok-abc123");
 
-    const ports = buildBrowserPorts();
+    const sockets = createStubWebSocket();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
 
-    expect(ports.preferences).toBeInstanceOf(LocalStoragePreferencesAdapter);
-    expect(typeof ports.connectionEvents.events).toBe("function");
-    expect(ports.colorScheme).toBeDefined();
-    // bootSplash is optional on AppPorts, so assert presence before shape —
-    // the ws branch must still seed the BootGatePresenter's one-shot decision.
-    expect(ports.bootSplash).toBeDefined();
-    expect(typeof ports.bootSplash?.shouldPlay).toBe("function");
+    // The composition root hands WsAdapter a token PROVIDER, not a token —
+    // read fresh per (re)connect. Nothing invokes it until the auth gate
+    // opens the socket, which is why the pin above (no eager connect) leaves
+    // it unexercised. Drive the same call the gate makes.
+    ports.transport?.connect();
+
+    expect(sockets).toHaveLength(1);
+    expect(sockets[0]).toContain("tok-abc123");
   });
 
-  it("merges gateway, browser and intent events into one stream", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+  it("re-reads the token on every connect rather than baking it in", () => {
+    seedSession("first-token");
 
-    const ports = buildBrowserPorts();
-    // Subscribing proves the merge/tap pipeline actually assembles — the tap
-    // routes idle lifecycle events back into the transport, so a broken
-    // composition throws here rather than at first disconnect in production.
-    const sub = ports.connectionEvents.events().subscribe();
+    const sockets = createStubWebSocket();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
 
-    expect(sub.closed).toBe(false);
-    sub.unsubscribe();
+    ports.transport?.connect();
+    ports.transport?.disconnect();
+    seedSession("second-token"); // e.g. a re-login between drops
+    ports.transport?.connect();
+
+    // A provider that captured the token at composition time would send the
+    // stale one here, and the upgrade would be rejected after a re-login.
+    expect(sockets[1]).toContain("second-token");
   });
 
   it("routes idle-lifecycle events from the merged stream to the transport", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
-
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
     const closeForIdle = vi.spyOn(ports.transport as WsAdapter, "closeForIdle");
     const reopen = vi.spyOn(ports.transport as WsAdapter, "reopen");
 
@@ -102,11 +99,32 @@ describe("buildBrowserPorts (ws-real branch)", () => {
     sub.unsubscribe();
   });
 
-  it("returns to CONNECTED when the browser comes back online over a socket that never dropped", () => {
-    vi.stubEnv("VITE_SERVER_URL", WS_URL);
+  it("still wires the browser-side ports that both branches share", () => {
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
 
+    expect(ports.preferences).toBeInstanceOf(LocalStoragePreferencesAdapter);
+    expect(typeof ports.connectionEvents.events).toBe("function");
+    expect(ports.colorScheme).toBeDefined();
+    // bootSplash is optional on AppPorts, so assert presence before shape —
+    // the ws branch must still seed the BootGatePresenter's one-shot decision.
+    expect(ports.bootSplash).toBeDefined();
+    expect(typeof ports.bootSplash?.shouldPlay).toBe("function");
+  });
+
+  it("merges gateway, browser and intent events into one stream", () => {
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
+    // Subscribing proves the merge/tap pipeline actually assembles — the tap
+    // routes idle lifecycle events back into the transport, so a broken
+    // composition throws here rather than at first disconnect in production.
+    const sub = ports.connectionEvents.events().subscribe();
+
+    expect(sub.closed).toBe(false);
+    sub.unsubscribe();
+  });
+
+  it("returns to CONNECTED when the browser comes back online over a socket that never dropped", () => {
     const sockets = createOpenableWebSocket();
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions({ serverUrl: WS_URL }));
     const seen: ConnectionEvent[] = [];
     const sub = ports.connectionEvents.events().subscribe((event) => {
       seen.push(event);
@@ -130,10 +148,10 @@ describe("buildBrowserPorts (ws-real branch)", () => {
   ] as const)(
     "reopens a socket closed for idle when the browser comes back online (%s)",
     async (_label, order) => {
-      vi.stubEnv("VITE_SERVER_URL", WS_URL);
-
       const sockets = createOpenableWebSocket();
-      const ports = buildBrowserPorts();
+      const ports = buildBrowserPorts(
+        createPortsOptions({ serverUrl: WS_URL }),
+      );
       const seen: ConnectionEvent[] = [];
       const sub = ports.connectionEvents.events().subscribe((event) => {
         seen.push(event);
@@ -174,9 +192,9 @@ describe("buildBrowserPorts (ws-real branch)", () => {
   it("treats an empty VITE_SERVER_URL as simulator mode", () => {
     // The `:sim` dev scripts set the var to the empty string rather than
     // unsetting it, so empty MUST fall through to the simulator branch.
-    vi.stubEnv("VITE_SERVER_URL", "");
-
-    expect(buildBrowserPorts().transport).toBeUndefined();
+    expect(
+      buildBrowserPorts(createPortsOptions({ serverUrl: "" })).transport,
+    ).toBeUndefined();
   });
 
   const WS_URL = "ws://localhost:4000";
@@ -218,19 +236,36 @@ interface LoginProbe {
   readonly ok: boolean;
 }
 
-/** Seeds VITE_DEV_AUTH, rebuilds the ports, and reports the login result. */
+/** Builds the ports with `devAuth` as VITE_DEV_AUTH, and reports the login result. */
 function loginOutcome(devAuth: string): LoginProbe {
-  vi.stubEnv("VITE_DEV_AUTH", devAuth);
-
   let outcome: LoginProbe = { ok: false };
 
-  buildBrowserPorts()
+  buildBrowserPorts(createPortsOptions({ devAuth }))
     .auth.login(DEMO_USER, DEMO_PASS)
     .subscribe((result) => {
       outcome = result;
     });
 
   return outcome;
+}
+
+/** Writes a session whose token is `token`, so the adapter's token provider
+ * has something to read. */
+function seedSession(token: string): void {
+  new LocalStorageSessionStore().write({
+    token,
+    username: "demo",
+    exp: Date.now() + 60_000,
+    user: {
+      name: "Demo User",
+      initials: "DU",
+      role: "trader",
+      id: "u1",
+      email: "demo@example.com",
+      desk: "FX",
+      clearance: "standard",
+    },
+  });
 }
 
 interface OpenableSocket {
@@ -256,6 +291,27 @@ function createOpenableWebSocket(): OpenableSocket[] {
   vi.stubGlobal("WebSocket", createSocket);
 
   return sockets;
+}
+
+/** Replaces WebSocket with an inert stub and returns the list of URLs it was
+ * constructed with, so a test can read the token off the connect URL. */
+function createStubWebSocket(): string[] {
+  const urls: string[] = [];
+
+  vi.stubGlobal(
+    "WebSocket",
+    class {
+      constructor(url: string) {
+        urls.push(url);
+      }
+
+      close(): void {}
+
+      send(): void {}
+    },
+  );
+
+  return urls;
 }
 
 // `demo` is a committed demo-roster account (packages/domain/src/auth/roster.ts).

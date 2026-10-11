@@ -12,10 +12,14 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
-import type { Composition } from "@rtc/web-boot";
+import {
+  buildBrowserPorts,
+  type Composition,
+  webBootEnvOf,
+} from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 
 import { Suspender } from "./Suspender";
@@ -169,7 +173,11 @@ function noValue(_value: string): void {}
  * pre-empt React's low-priority Suspense retry — on a slow runner the retry
  * is starved until the splash ends, seconds later. */
 function createComposition(afterSwap: boolean): Composition {
-  const pagePorts = buildBrowserPorts();
+  const pagePorts = buildBrowserPorts({
+    env: webBootEnvOf(import.meta.env),
+    devtoolsHub,
+  });
+
   const app = rxjsCore.createApp(
     afterSwap ? { ...pagePorts, bootSplash: SPLASH_ALREADY_PLAYED } : pagePorts,
   );
