@@ -49,7 +49,7 @@ export interface AppRootPage {
    * one testid rather than the whole workspace. */
   mount(): void;
   /** Mounts the header (not the whole App) under `AppRoot` inside
-   * `StrictMode`, as `main.tsx` does, on the composition a core swap
+   * `StrictMode`, as the client's view does, on the composition a core swap
    * produced: its shell's one-shot "reopen Preferences" is armed, and the
    * boot splash does not play (the core host plays it once per page). */
   mountHeaderAfterCoreSwap(): void;

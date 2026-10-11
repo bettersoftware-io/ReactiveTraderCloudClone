@@ -30,7 +30,7 @@ export interface BootResult {
 /**
  * Resolves which core to boot (`?core=` > stored choice > build default >
  * `"rxjs"`), clears an invalid stored value, logs any warnings, then loads
- * the chosen core. Publishes nothing itself — the caller (`main.tsx`) owns
+ * the chosen core. Publishes nothing itself — the caller (`startWebClient`) owns
  * `<html data-core-impl>` and the render.
  *
  * Deliberately NOT an `async function`: resolving the choice is synchronous,
@@ -63,7 +63,7 @@ export function bootCore(env: BootEnv): Promise<BootResult> {
   });
 }
 
-/** Formats the one-line boot log `main.tsx` prints after a successful boot
+/** Formats the one-line boot log `startWebClient` prints after a successful boot
  * (`console.info(formatBootedMessage(impl, source))`) — names both WHAT
  * booted and WHY (which precedence step decided it), so a deployed build
  * booting on an unexpected core is diagnosable from the console alone. */
@@ -104,7 +104,7 @@ export function runBoot(
  * Plain-DOM boot failure, rendered without any application core (none
  * loaded successfully): the error message plus a button that clears the
  * stored choice and reloads onto the default core. `root` is the same
- * element `main.tsx` would otherwise mount React/Solid into.
+ * element the client's view would otherwise mount React/Solid into.
  */
 export function renderBootError(
   root: HTMLElement,

@@ -102,7 +102,7 @@ flowchart TB
 ```
 
 The three decorators, all applied at a web client's composition root
-(`instrumentComposition` in `packages/client-react/src/main.tsx` and
+(`instrumentComposition` in `packages/web-boot/src/startWebClient.ts` and
 `packages/web-boot/src/buildBrowserPorts.ts`):
 
 - **`instrumentWsAdapter(adapter, hub)`** (`packages/devtools-core/src/instrument/wsAdapter.ts`) — wraps `send`/`on`/`rpc` to report `wire:out`/`wire:in`; every other member delegates untouched via an explicit-bind `Proxy`.
@@ -361,8 +361,9 @@ work identically in dev and in the deployed app:
   `/devtools/` with no separate deploy step.
 
 Disconnect behavior: the app registers a `pagehide` listener at module load.
-Each client's `src/app/devtools/devtoolsHub.ts` makes one
-`createDevtoolsHub({ appId, dev })` call, and the factory
+`startWebClient` (`packages/web-boot/src/startWebClient.ts`) makes one
+`createDevtoolsHub({ appId, dev })` call per page, with the `appId` the
+client's `main.tsx` passes it and `dev` from the build env, and the factory
 (`packages/web-boot/src/devtools/createDevtoolsHub.ts`) does the wiring:
 
 ```ts

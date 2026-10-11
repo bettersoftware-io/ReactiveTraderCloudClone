@@ -21,7 +21,7 @@ interface MountFailure {
 }
 
 /**
- * Creates the React root `main.tsx` mounts every composition into.
+ * Creates the React root the client's view mounts every composition into.
  *
  * React 19 does not rethrow an uncaught render error from `root.render` or
  * `flushSync`: it hands the error to the root's `onUncaughtError` (by default

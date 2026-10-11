@@ -45,7 +45,7 @@ describe("AppRoot (login screen demo accounts)", () => {
 
 // The one-shot "reopen Preferences" of a swapped-in composition, through the
 // real AppRoot → createViewModel → HeaderChrome under StrictMode (as
-// main.tsx mounts it): StrictMode's second call of the header's state
+// the client's view mounts it): StrictMode's second call of the header's state
 // initializer must not lose the signal the first call took.
 //
 // Nothing here waits on time. The simulator signs in synchronously, so the

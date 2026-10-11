@@ -162,7 +162,7 @@ switched between all three cores without a rebuild.
   `import("@rtc/client-core-async")` / `import("@rtc/client-core-effect")`,
   each of which the bundler splits into its own lazy chunk fetched only once
   chosen. `bootCore` (`packages/web-boot/src/bootApp.ts`) runs this resolve-then-load
-  sequence before `main.tsx` renders anything; a rejected chunk load renders
+  sequence before the client renders anything (`startWebClient` runs it); a rejected chunk load renders
   a plain boot-error screen with a "Load the default core" action (clears the
   stored choice, reloads without `?core=`) — never a silent fallback to
   RxJS. `<html data-core-impl>` publishes whichever core actually loaded.
@@ -321,7 +321,7 @@ unchanged: it composes the RxJS core once, offers no selection, and builds
 no host.
 
 - **The ports outlive a core.** Each web client builds its ports once per
-  page, with `buildBrowserPorts()`, called from `src/main.tsx`. Every
+  page, with `buildBrowserPorts()`, called from `startWebClient`. Every
   `createApp` receives that same object. So the WebSocket, the session store
   and the browser listeners survive a swap; only the core's presenters,
   machines and commands are replaced. `AppRoot` no longer composes a core.
@@ -393,7 +393,7 @@ sequenceDiagram
 `host.state$` names the phase: `running`, `covering`, `loading`,
 `handover`, `revealing`, and the terminal `fatal`.
 
-**The overlay.** Each client's `main.tsx` renders `CoreSwapOverlay`
+**The overlay.** Each client's view (made in its `main.tsx`) renders `CoreSwapOverlay`
 (`src/ui/shell/core/`) from `host.state$`, in a second root on a
 `<div id="core-swap-overlay">` appended to `body`. It is outside the app
 tree, because that tree is unmounted and mounted again under it. It names
@@ -1601,8 +1601,10 @@ changing it.
     client's `src/app` into `@rtc/web-boot`, one copy. Behaviour unchanged.
     `buildBrowserPorts` and the tree mounts stay in each client. Update,
     2026-10-11: `buildBrowserPorts` (with the build values passed in) and the
-    devtools hub factory moved into the package too; the tree mounts and
-    `main.tsx` stay in each client.
+    devtools hub factory moved into the package too. Update, 2026-10-11
+    (PR 3): `startWebClient`, the page's composition root, moved in as well;
+    a client keeps its tree mount and a `main.tsx` of fonts, a view factory
+    and one `startWebClient` call.
     [The package spec](../superpowers/specs/2026-10-06-web-boot-package-design.md).
 
 ## See also

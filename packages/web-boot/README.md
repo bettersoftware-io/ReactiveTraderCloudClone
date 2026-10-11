@@ -21,9 +21,50 @@ In it today:
   `webBootEnvOf(import.meta.env)`, so this package never reads
   `import.meta.env` itself.
 - `devtools/`: the presenter manifest and `createDevtoolsHub`, the app-side hub
-  factory. A client calls it once with its app id.
+  factory. `startWebClient` calls it once per page with the client's app id.
+- `startWebClient.ts`: the page's composition root, one copy for both clients.
+  It looks up the root element, creates the devtools hub, resolves and loads the
+  core, builds the ports once, builds the core host, follows swaps and shows the
+  boot-error screen when the first core cannot load or mount.
 
-Not in it: the tree mount and each client's own `main.tsx`.
+Not in it: the tree mount and the swap overlay. Each is a client's framework
+part.
+
+## Starting a client
+
+A client's `main.tsx` is its font imports, a view factory and one call:
+
+```ts
+void startWebClient({
+  appId: "rtc-web",
+  rootId: "root",
+  env: webBootEnvOf(import.meta.env),
+  createView: createReactView,
+});
+```
+
+`startWebClient` returns a promise that settles once the boot composition is
+mounted or the boot-error screen is shown, and never rejects. A missing root
+element and an invalid `VITE_CORE_IMPL` throw out of the call itself. An
+optional `load` slot replaces the three `import()` calls; tests use it to hand
+in cores they can track or break.
+
+`createView(page)` is called once, after the first core loaded. The `page`
+holds the `rootEl` the app tree mounts in, the `overlayEl` the swap overlay
+renders in (outside the app tree, which is unmounted and mounted again under
+it) and the `demoAccounts` the login screen lists. It returns the client's
+`WebClientView`, four operations:
+
+- `mount(composition)`: mounts the app tree over one composition,
+  synchronously, and throws the error of a tree that fails its first render.
+- `unmount()`: removes the tree, synchronously.
+- `destroy()`: drops whatever the root still holds, for good, before the
+  boot-error screen takes its element.
+- `showOverlay(swap, fade)`: renders the swap overlay synchronously; a null
+  `swap` removes it.
+
+`WebBootEnv.dev` is the one flag the package reads itself: `startWebClient`
+hands it to `createDevtoolsHub`.
 
 Two dependency rules (`.dependency-cruiser.mts`):
 

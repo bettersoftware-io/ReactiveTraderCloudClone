@@ -26,7 +26,7 @@ flowchart TB
     subgraph SharedFloors["Shared floors — one contract, three cores, every client"]
         rb["react-bindings<br/>createViewModel · useMachine"]:::bridge
         sb["solid-bindings<br/>Observable → signal"]:::bridge
-        wb["web-boot<br/>core host · core selection<br/>browser adapters · buildBrowserPorts<br/>(DOM-touching)"]:::bridge
+        wb["web-boot<br/>startWebClient · core host · core selection<br/>browser adapters · buildBrowserPorts<br/>(DOM-touching)"]:::bridge
         core["application cores ×3<br/>client-core-rxjs (RxJS, default) · client-core-async · client-core-effect<br/>presenters · machines<br/>over client-adapters: WsAdapter · portFactory"]:::core
         api["core-api (types) · core-logic (shared rules)"]:::core
         domain["domain<br/>entities · use cases · ports · simulators"]:::domain
@@ -215,9 +215,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The web client: dumb React 19 UI (`src/ui`) + the browser composition (`src/app`: the devtools hub, the tree mount); the browser platform adapters and `buildBrowserPorts` live in `@rtc/web-boot`. |
+| **What it is** | The web client: dumb React 19 UI (`src/ui`) + the browser composition (`src/app`: the tree mount); the browser platform adapters, `buildBrowserPorts` and the page's composition root, `startWebClient`, live in `@rtc/web-boot`. |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + the composition root (`src/app`); its ③ platform adapters are in `@rtc/web-boot` |
-| **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/web-boot`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `react`, `react-dom`, `rxjs`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for its tests: the app reaches the three cores through `@rtc/web-boot`'s `import()` calls, and the ports (`@rtc/client-adapters`) through `buildBrowserPorts` |
+| **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/react-bindings`, `@rtc/web-boot`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `react`, `react-dom`, `rxjs`, `motion`, `@fontsource/*` (`packages/client-react/package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for its tests: the app reaches the three cores through `@rtc/web-boot`'s `import()` calls, and the ports (`@rtc/client-adapters`) through `buildBrowserPorts` |
 | **Consumed by** | `tests` (`@rtc/tests` workspace) |
 | **Non-obvious** | Depends on `@rtc/domain` directly, not only transitively through `client-core-rxjs` -- e.g. `ThemeMode`/`ThemeSkin` types are imported straight from `@rtc/domain` in `src/ui/shell/theme/tokens.ts`. `rxjs` is a listed runtime dependency, but no file of this package imports it now (`buildBrowserPorts.ts` moved to `@rtc/web-boot`); it is machine-banned from `src/ui` by gate 26. `@rtc/motion-core` (pure FLIP/rank-glide math) and `motion` (the third-party animation library) are two distinct dependencies despite the similar name -- don't confuse them. All three cores are runtime dependencies of `@rtc/web-boot`, and none is in the eager bundle: `@rtc/web-boot`'s `coreSelection.ts` lazy-imports each core on demand (`pnpm check:core-bundle` asserts the split; `web-clients-load-cores-lazily` rejects a static import on source). |
 | **README** | [`packages/client-react/README.md`](../../packages/client-react/README.md) |
@@ -238,9 +238,9 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The SolidJS web client: dumb Solid UI (`src/ui`) + the browser composition (`src/app`: the devtools hub, the tree mount); the browser platform adapters and `buildBrowserPorts` live in `@rtc/web-boot`, at full parity with `@rtc/client-react` -- same contract specs, same visual goldens, same behavioural suites. |
+| **What it is** | The SolidJS web client: dumb Solid UI (`src/ui`) + the browser composition (`src/app`: the tree mount); the browser platform adapters, `buildBrowserPorts` and the page's composition root, `startWebClient`, live in `@rtc/web-boot`, at full parity with `@rtc/client-react` -- same contract specs, same visual goldens, same behavioural suites. |
 | **Ring** | ④ Frameworks & Drivers (`src/ui`) + the composition root (`src/app`); its ③ platform adapters are in `@rtc/web-boot` |
-| **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/solid-bindings`, `@rtc/web-boot`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `@rtc/devtools-core`, `solid-js`, `rxjs`, `@fontsource/*` (`packages/client-solid/package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for its tests: the app reaches the three cores through `@rtc/web-boot`'s `import()` calls, and the ports (`@rtc/client-adapters`) through `buildBrowserPorts` |
+| **Depends on** | `@rtc/core-api`, `@rtc/core-logic`, `@rtc/domain`, `@rtc/solid-bindings`, `@rtc/web-boot`, `@rtc/motion-core`, `@rtc/boot-splash`, `@rtc/layout-dockview`, `solid-js`, `rxjs`, `@fontsource/*` (`packages/client-solid/package.json` `dependencies`). `@rtc/client-core-rxjs` and `@rx-state/core` are `devDependencies`, for its tests: the app reaches the three cores through `@rtc/web-boot`'s `import()` calls, and the ports (`@rtc/client-adapters`) through `buildBrowserPorts` |
 | **Consumed by** | Nothing in-workspace -- like `client-react-native`, it is a leaf app and *not* a `tests` (`@rtc/tests`) dependency; its own suite (contract + one visual tier) runs in-package |
 | **Non-obvious** | Asserts against goldens generated only from `client-react`'s renders rather than owning any of its own (`packages/ui-contract/goldens/<tier>/__screenshots__/`) -- a passing Solid visual run is a direct cross-framework pixel match, not a self-comparison ([its README](../../packages/client-solid/README.md)). `@rtc/ui-contract` and `@rtc/devtools-app` are `devDependencies`, not runtime deps -- the former supplies the shared contract specs and visual scenario manifest, the latter the `/devtools/` inspector build. |
 | **README** | [`packages/client-solid/README.md`](../../packages/client-solid/README.md) |
@@ -293,7 +293,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 
 | | |
 |---|---|
-| **What it is** | The boot code both web clients share: the browser adapters (LocalStorage stores, connection events, color scheme), `buildBrowserPorts` and `createDevtoolsHub`, the load-time core selection (`coreSelection.ts`, which holds the three `import()` calls), the core host, the swap cover and the presenter manifest. |
+| **What it is** | The boot code both web clients share: the browser adapters (LocalStorage stores, connection events, color scheme), `buildBrowserPorts`, `createDevtoolsHub` and `startWebClient` (the page's composition root: it takes a client's `appId`, `rootId`, env and view factory), the load-time core selection (`coreSelection.ts`, which holds the three `import()` calls), the core host, the swap cover and the presenter manifest. |
 | **Ring** | ③ Interface Adapters -- platform adapters; DOM-touching and framework-free |
 | **Depends on** | `@rtc/client-adapters`, `@rtc/client-core-rxjs`, `@rtc/client-core-async`, `@rtc/client-core-effect`, `@rtc/boot-splash`, `@rtc/core-api`, `@rtc/devtools-core`, `@rtc/domain`, `rxjs`, `@rx-state/core` (`packages/web-boot/package.json` `dependencies`) |
 | **Consumed by** | `client-react`, `client-solid` |
@@ -329,7 +329,7 @@ One card per package -- what it is, which ring it sits in ([§1.3.1](01-overview
 | **What it is** | The devtools event protocol, the `DevtoolsHub` collector (registry, dormancy, coalescing, ring buffer), the three composition-root decorators (`instrumentPresenters`, `instrumentMachineFactories`, `instrumentWsAdapter`), and the `BroadcastChannelDuplex` transport adapter. |
 | **Ring** | ④ Frameworks & Drivers -- a leaf instrumentation framework, structurally analogous to `ws-effects` |
 | **Depends on** | `rxjs` only (`packages/devtools-core/package.json` `dependencies`) |
-| **Consumed by** | `devtools-app`, `devtools-extension`, and all three clients (the composition-root decorators; `client-react-native` under `__DEV__` only) |
+| **Consumed by** | `devtools-app`, `devtools-extension`, `web-boot` (the web clients' composition-root decorators and hub) and `client-react-native` (the same decorators, under `__DEV__` only) |
 | **Non-obvious** | Never imports `@rtc/client-adapters` or any other `@rtc/*` package -- it decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`), machine-enforced by dependency-cruiser's `devtools-core-stays-pure` rule ([§6](06-package-dependencies.md#6-package-dependencies)). Dormant cost is one boolean check per tapped emission: `registerStream`/`machineCreated` only write to a registry `Map` until an inspector's `hello` flips the hub live and subscribes everything ([§20.3](20-devtools.md#203-the-dormancy-contract)). |
 | **README** | [`packages/devtools-core/README.md`](../../packages/devtools-core/README.md) |
 
@@ -510,7 +510,7 @@ src/
 `@rtc/client-react`:
 ```
 src/
-├── app/            the devtools hub · the tree mount
+├── app/            the tree mount
 ├── ui/fx/          tiles · blotter · analytics · positions
 ├── ui/credit/      RFQ form · RFQ tiles · sell-side panel
 ├── ui/equities/    watchlist · candles · depth · ticket · blotters
@@ -533,7 +533,7 @@ src/
 `@rtc/client-solid`:
 ```
 src/
-├── app/            the devtools hub · the tree mount
+├── app/            the tree mount
 ├── ui/fx/          tiles · blotter · analytics · positions
 ├── ui/credit/      RFQ form · RFQ tiles · sell-side panel
 ├── ui/equities/    watchlist · candles · depth · ticket · blotters
@@ -575,6 +575,7 @@ src/
 src/
 ├── bootApp.ts coreSelection.ts      the pre-boot resolve-and-load (the three import() calls)
 ├── coreHost.ts coreSwapCover.ts coreSwapView.ts coverTimings.ts   the core host and its swap cover
+├── startWebClient.ts                the page's composition root, called once by each client's main.tsx
 ├── adapters/                        LocalStorage stores, browser connection events
 ├── theme/                           MediaQueryColorSchemeAdapter
 └── devtools/                        presenterManifest

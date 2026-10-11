@@ -90,7 +90,7 @@ export function findBootFailure(ctx: TestContext): string | undefined {
  *  (default `rxjs`; an explicitly EMPTY value collapses to `rxjs`, as
  *  `clientServer.ts` → vite's `|| "rxjs"` does), forwarded to the dev server as
  *  `VITE_CORE_IMPL` (`coreSelection.ts`'s build default) and published by
- *  `main.tsx` as `<html data-core-impl>` once `bootApp.ts`'s `bootCore`
+ *  `startWebClient` as `<html data-core-impl>` once `bootApp.ts`'s `bootCore`
  *  resolves. A page error that mentions VITE_CORE_IMPL is the fail-closed
  *  message from `coreSelection.ts`'s `resolveCoreChoice` — surfaced verbatim
  *  instead of being waited out as a locator timeout. */

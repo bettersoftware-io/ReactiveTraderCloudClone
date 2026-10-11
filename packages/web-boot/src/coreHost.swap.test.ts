@@ -484,7 +484,7 @@ interface HostHarnessOptions {
   /** Runs when the host starts loading the next core: the swap has begun. */
   readonly beforeLoad?: () => void;
   /** When set, every composition is instrumented into this hub with the
-   * real decorators and the host ends the hub's composition, as `main.tsx`
+   * real decorators and the host ends the hub's composition, as `startWebClient`
    * wires it. Unset, both are pass-throughs. */
   readonly devtools?: DevtoolsHub;
 }

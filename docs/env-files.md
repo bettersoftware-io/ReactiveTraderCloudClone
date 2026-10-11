@@ -59,7 +59,7 @@ last column says.
 
 | Var | Set where | Holds | Read by |
 |---|---|---|---|
-| `VITE_CORE_IMPL` | shell / `dev:*` scripts / deploy build | The **build default** application core (`rxjs` \| `async` \| `effect`). A `?core=` URL parameter or a stored Preferences choice outranks it (load-time selection); unset falls back to `rxjs`. Declared in `turbo.json` `build.env` so strict-mode Turbo does not strip it | `packages/client-react/src/main.tsx` → `coreSelection.ts` (and the Solid client's equivalents) |
+| `VITE_CORE_IMPL` | shell / `dev:*` scripts / deploy build | The **build default** application core (`rxjs` \| `async` \| `effect`). A `?core=` URL parameter or a stored Preferences choice outranks it (load-time selection); unset falls back to `rxjs`. Declared in `turbo.json` `build.env` so strict-mode Turbo does not strip it | `packages/client-react/src/main.tsx` → `startWebClient` → `coreSelection.ts` (and the Solid client's equivalents) |
 | `ANTHROPIC_API_KEY` | Fly secret / shell (never committed) | The key for the real Anthropic-backed Jarvis loop; with it unset (or `RTC_JARVIS_FAKE=1`) Jarvis runs the free scripted brain. See [`running-real-jarvis.md`](running-real-jarvis.md) | `packages/server/src/agent/agentLoop.ts`, `packages/server/src/index.ts` |
 | `RTC_JARVIS_FAKE` | shell / Fly | `1` forces the scripted (no-API) Jarvis loop even when a key is present | `packages/server/src/agent/agentLoop.ts` |
 | `RTC_JARVIS_BUDGET_USD` | shell / Fly | Real-Claude spend budget per usage window in USD (default `1`); `off` disables the gate | `parseJarvisGateConfig` (`packages/server/src/services/jarvisGate.ts`) |

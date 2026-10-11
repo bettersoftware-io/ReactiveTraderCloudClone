@@ -18,7 +18,7 @@ import { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
 import { createPortsOptions } from "./createPortsOptions";
 
 /** End-to-end proof that the composition-root wiring (createApp →
- * instrumentPresenters → instrumentMachineFactories, exactly as main.tsx's
+ * instrumentPresenters → instrumentMachineFactories, exactly as startWebClient's
  * `instrumentComposition` does for the core host)
  * feeds a real DevtoolsHub, and that an InspectorStore driven by an
  * InspectorClient over an in-memory duplex pair observes the app's streams and
