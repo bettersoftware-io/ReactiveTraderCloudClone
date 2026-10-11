@@ -49,6 +49,12 @@
       "Bash(git push *:*)",
       "Bash(git push origin worktree-* -*)",
       "Bash(git push -u origin worktree-* -*)",
+      "Bash(git push *\"*)",
+      "Bash(git push *'*)",
+      "Bash(git push *$*)",
+      "Bash(git push *`*)",
+      "Bash(git push *\\*)",
+      "Bash(git push *\t*)",
       "Bash(gh pr merge *--admin*)"
     ]
   },

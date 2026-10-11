@@ -40,6 +40,8 @@ These always **ask**, because the `ask` rules beat the allow rules:
   asks". Options a routine push needs go before `origin`, where only `-u`
   is pre-approved. A filter with a dash flag (`… 2>&1 | tail -2`) may ask
   too: run the push bare, its output is short;
+- a push whose text holds a quote, a `$`, a backtick, a backslash or a tab:
+  each is a way to write an option the rule above would not see as one;
 - a merge past branch protection (`gh pr merge … --admin`);
 - a push of anything that isn't a `worktree-*` branch.
 
