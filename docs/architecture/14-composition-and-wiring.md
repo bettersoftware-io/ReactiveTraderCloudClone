@@ -74,7 +74,7 @@ Each app's port builder calls the *same* two factories from `@rtc/client-adapter
 
 #### Web (`@rtc/client-react`)
 
-Built by `buildBrowserPorts()` (`packages/client-react/src/app/buildBrowserPorts.ts`), switched on `VITE_SERVER_URL`.
+Built by `buildBrowserPorts()` (`packages/web-boot/src/buildBrowserPorts.ts`, shared by both web clients), switched on `VITE_SERVER_URL`.
 
 | Port family | Simulator-mode impl | WS-mode impl | Shared with other apps? |
 |---|---|---|---|
@@ -90,7 +90,7 @@ Built by `buildBrowserPorts()` (`packages/client-react/src/app/buildBrowserPorts
 | `transport` | not set — no socket | the `WsAdapter` itself, built with `autoConnect: false` and wrapped in `instrumentWsAdapter(..., devtoolsHub)` so the devtools Wire view sees every frame | RN sets the bare `WsAdapter` (no wire tap) |
 | `bootSplash` | `{ shouldPlay: shouldPlayBootSplash }`, imported from `@rtc/boot-splash` | same | Shape shared; RN supplies its own always-`true` `shouldPlayBootSplash` |
 
-Mode selection: `buildBrowserPorts` reads `import.meta.env.VITE_SERVER_URL` and branches on `if (url)`. Platform-specific adapters: `preferences`, `sessionStore`, the two layout stores, `colorScheme`, `bootSplash`, and the `BrowserConnectionEventsAdapter` half of `connectionEvents`. Verbatim-shared: every `createSimulatorPorts`/`createWsRealPorts` port, `WsAdapter`, `WsConnectionEventsAdapter`, `HttpAuthAdapter`, `pairConnectionPorts` — all from `@rtc/client-adapters`.
+Mode selection: `buildBrowserPorts` reads `env.serverUrl` (a client passes `webBootEnvOf(import.meta.env)` in, so the value is `VITE_SERVER_URL`) and branches on `if (url)`. Platform-specific adapters: `preferences`, `sessionStore`, the two layout stores, `colorScheme`, `bootSplash`, and the `BrowserConnectionEventsAdapter` half of `connectionEvents`. Verbatim-shared: every `createSimulatorPorts`/`createWsRealPorts` port, `WsAdapter`, `WsConnectionEventsAdapter`, `HttpAuthAdapter`, `pairConnectionPorts` — all from `@rtc/client-adapters`.
 
 #### Mobile (`@rtc/client-react-native`)
 

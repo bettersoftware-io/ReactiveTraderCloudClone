@@ -8,7 +8,7 @@
 
 Three different "directions" are easy to conflate in a codebase this layered, and each flow below draws on all three:
 
-**Imports** are a compile-time fact, fixed by the dependency rule: `client-react` / `client-react-native` depend on `react-bindings` (which names only the contract, `core-api`), on a core (`client-core-rxjs` by default) and on the adapters (`client-adapters`), which all depend on `domain` and `shared` ([§6 Package Dependencies](06-package-dependencies.md)). This direction never reverses — it's enforced by `package.json` and the grep gates in [§12](12-architectural-gates.md), not by any runtime behaviour.
+**Imports** are a compile-time fact, fixed by the dependency rule: `client-react` / `client-react-native` depend on `react-bindings` (which names only the contract, `core-api`), on a core (`client-core-rxjs` by default) and on the adapters (`client-adapters`; the web client reaches the core and the adapters through `web-boot`), which all depend on `domain` and `shared` ([§6 Package Dependencies](06-package-dependencies.md)). This direction never reverses — it's enforced by `package.json` and the grep gates in [§12](12-architectural-gates.md), not by any runtime behaviour.
 
 **Control flow** — who calls whom — mostly follows imports *inward*: a click handler in the UI calls a ViewModel hook (`useViewModel()`), which calls a machine intent or a presenter method, which constructs a domain use case, which calls a port method, which an adapter fulfils (a WS `rpc()`/`send()` or an in-process simulator call). This is a synchronous call chain even though most of the methods being called return `Observable`s — nothing has *happened* yet at the moment of the call; a subscription has merely been arranged.
 

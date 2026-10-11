@@ -2,8 +2,9 @@ import { defineConfig, mergeConfig } from "vitest/config";
 
 import base from "./vitest.config";
 
-// Report-only v8 coverage for the app tier (src/app: browser adapters + the
-// port composition seam) — the Solid mirror of client-react's
+// Report-only v8 coverage for the app tier (src/app: the devtools hub and the
+// tree mount; the rest of the boot code lives in @rtc/web-boot, which has its
+// own gated tier) — the Solid mirror of client-react's
 // vitest.app.coverage.config.ts, so the published coverage report can show both
 // clients side by side instead of react only.
 //
@@ -11,10 +12,6 @@ import base from "./vitest.config";
 // DENOMINATOR scoped to src/app. That blind spot is not theoretical: it hid
 // buildBrowserPorts.ts sitting at 50% (the whole ws-real branch untested) —
 // the exact gap its react twin had, found only once this config existed.
-//
-// No `src/app/composition.ts` exclude here (unlike react): this package has no
-// such file, and excluding a non-existent path would be misleading rather than
-// harmless.
 export default mergeConfig(
   base,
   defineConfig({

@@ -53,8 +53,8 @@ export interface IncidentPresenterCtx {
  * each connection event through `ports.connectionIntents`, which this
  * builder merges into `connectionEvents`, as a client's port builder does.
  * Instance-scoped (no module-level Subject is shared between scenarios), and
- * free of `buildBrowserPorts()`, which reads `import.meta.env` (Vite-only)
- * and throws in Node.js/tsx. The push is synchronous, so `status$` is already
+ * free of `buildBrowserPorts()`, which touches browser globals
+ * (`localStorage`, `window`) that Node.js/tsx lacks. The push is synchronous, so `status$` is already
  * DISCONNECTED by the time `inject()` returns.
  */
 export function buildIncidentPresenterApp(): IncidentPresenterCtx {

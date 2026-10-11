@@ -5,9 +5,11 @@ import {
   type ViewModel,
   ViewModelProvider,
 } from "@rtc/react-bindings";
-import type { Composition } from "@rtc/web-boot";
-
-import { readDemoAccounts } from "#/app/buildBrowserPorts";
+import {
+  type Composition,
+  readDemoAccounts,
+  webBootEnvOf,
+} from "@rtc/web-boot";
 
 import { AuthGate } from "./ui/shell/auth/AuthGate";
 import { BootGate } from "./ui/shell/boot/BootGate";
@@ -38,7 +40,7 @@ export function AppRoot({ composition, children }: AppRootProps): ReactElement {
       composition.commands,
       {
         coreSelection: composition.coreSelection,
-        demoAccounts: readDemoAccounts(),
+        demoAccounts: readDemoAccounts(webBootEnvOf(import.meta.env)),
         takePreferencesReopen: () => {
           return composition.takePreferencesReopen();
         },

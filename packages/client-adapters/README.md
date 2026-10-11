@@ -2,9 +2,9 @@
 
 The ports every application core consumes, and the factories that build them:
 `WsAdapter`, `portFactory` (`createSimulatorPorts` / `createWsRealPorts`), the
-auth adapters and the session and data-source stores. A client imports this
-package statically, builds an `AppPorts` object from it, and hands that object
-to whichever core it loaded.
+auth adapters and the session and data-source stores. A platform port-builder
+imports this package, builds an `AppPorts` object from it, and hands that
+object to whichever core was loaded.
 
 No application core lives here. Until 2026-10-04 this package was named
 `@rtc/client-core` and also held the RxJS core; that is now
@@ -17,7 +17,7 @@ tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 |---|---|
 | **Ring** | ③ Interface Adapters — gateways and port assembly (`docs/architecture/01-overview.md` §1.3.1) |
 | **Runtime deps** | `@rtc/core-api` (types), `@rtc/core-logic`, `@rtc/domain`, `@rtc/shared`, `rxjs` (`packages/client-adapters/package.json` `dependencies`) |
-| **Consumed by** | `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native`, `tests`; and, as a devDependency for test adapters only, the three cores and both bindings |
+| **Consumed by** | `@rtc/web-boot` (for both web clients), `@rtc/client-react-native`, `tests`; and, as a devDependency for test adapters only, the three cores and both bindings |
 | **Must never import** | An application core, a binding, a client, the server, or a framework. Two dependency-cruiser rules (`docs/dependency-cruiser.md`, `pnpm check:deps`): `client-adapters-stays-inner` allows only `core-api` / `core-logic` / `domain` / `shared`, and `client-adapters-framework-free` blocks `react` / `react-dom` / `react-native` / `solid-js`. |
 
 ## Folder map
@@ -37,8 +37,8 @@ tour in [§23](../../docs/architecture/23-application-cores-explained.md).
 
 ## How it's used
 
-A client's platform port-builder (`buildBrowserPorts` in
-`packages/client-react/src/app/buildBrowserPorts.ts`) assembles the `AppPorts`
+A platform port-builder (`buildBrowserPorts` in
+`packages/web-boot/src/buildBrowserPorts.ts`, shared by both web clients) assembles the `AppPorts`
 object, using this package's factories and adapters directly:
 
 ```ts
@@ -62,7 +62,7 @@ parameter, then the stored Preferences choice, then the `VITE_CORE_IMPL` build
 default, then `rxjs`), so `AppRoot` receives the chosen `CoreFactory`:
 
 ```ts
-const { presenters, commands } = core.createApp(buildBrowserPorts());
+const { presenters, commands } = core.createApp(buildBrowserPorts({ env, devtoolsHub }));
 ```
 
 The ports are the same whichever core booted. That is the point of the split:

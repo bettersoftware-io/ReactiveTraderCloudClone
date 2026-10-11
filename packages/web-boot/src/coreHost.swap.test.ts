@@ -46,16 +46,21 @@ import {
   type Price,
   type PricingPort,
 } from "@rtc/domain";
+
+import { JARVIS_NARRATOR_STORAGE_KEY } from "#/adapters/LocalStoragePreferencesAdapter";
+import {
+  type BuildBrowserPortsOptions,
+  buildBrowserPorts,
+} from "#/buildBrowserPorts";
 import {
   type Composition,
   type CoreHost,
   type CoreHostState,
   createCoreHost,
-  JARVIS_NARRATOR_STORAGE_KEY,
-  PRESENTER_MANIFEST,
-} from "@rtc/web-boot";
+} from "#/coreHost";
+import { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
 
-import { buildBrowserPorts } from "./buildBrowserPorts";
+import { createPortsOptions } from "./__tests__/createPortsOptions";
 
 /** Every ordered pair of distinct cores. */
 const PAIRS: readonly (readonly [CoreImpl, CoreImpl])[] = [
@@ -77,7 +82,6 @@ const ROTATION: readonly (readonly [CoreImpl, CoreImpl])[] = [
 describe("hot swap over the real browser ports", () => {
   beforeEach(() => {
     vi.useFakeTimers({ now: Date.now(), shouldAdvanceTime: false });
-    vi.stubEnv("VITE_DEV_AUTH", JSON.stringify({ [USER]: PASSWORD }));
     // buildBrowserPorts announces its data source on every call.
     vi.spyOn(console, "info").mockImplementation(() => {});
     localStorage.clear();
@@ -91,7 +95,6 @@ describe("hot swap over the real browser ports", () => {
     const fatals = hostFatals.splice(0);
     await disposeAll();
     vi.useRealTimers();
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     localStorage.clear();
 
@@ -101,7 +104,10 @@ describe("hot swap over the real browser ports", () => {
   it.each(PAIRS)(
     "1. %s → %s: the new core is signed in, connected, ticking live, and holds the trade",
     async (from, to) => {
-      const harness = createHostHarness(buildBrowserPorts(), from);
+      const harness = createHostHarness(
+        buildBrowserPorts(createSwapPortsOptions()),
+        from,
+      );
       const a = harness.current();
       a.presenters.auth.login(USER, PASSWORD);
       await waitFor(a.presenters.auth.state$, isAuthenticated, "A signs in");
@@ -163,7 +169,10 @@ describe("hot swap over the real browser ports", () => {
   it.each(ROTATION)(
     "2. %s → %s after an offline event: B starts as fresh ports would, then follows offline and online, and A's connection subscription is closed",
     async (from, to) => {
-      const ledger = createConnectionLedger(buildBrowserPorts());
+      const ledger = createConnectionLedger(
+        buildBrowserPorts(createSwapPortsOptions()),
+      );
+
       const harness = createHostHarness(ledger.ports, from, {
         beforeLoad: ledger.markSwapStart,
       });
@@ -217,7 +226,10 @@ describe("hot swap over the real browser ports", () => {
     "2b. %s → %s while the browser is offline: B starts offline, and recovers when the browser comes back",
     async (from, to) => {
       const onLine = vi.spyOn(navigator, "onLine", "get");
-      const harness = createHostHarness(buildBrowserPorts(), from);
+      const harness = createHostHarness(
+        buildBrowserPorts(createSwapPortsOptions()),
+        from,
+      );
       const a = harness.current();
       await signIn(a);
       const heardByA = recordStatuses(a.presenters.connection.status$);
@@ -253,7 +265,7 @@ describe("hot swap over the real browser ports", () => {
     "3. %s → %s with a reconnect intent in flight: no connection event from before the swap reaches the new core, and its connection matches fresh ports",
     async (from, to) => {
       const ledger = createConnectionLedger(
-        withQuietPrices(buildBrowserPorts()),
+        withQuietPrices(buildBrowserPorts(createSwapPortsOptions())),
       );
 
       const harness = createHostHarness(ledger.ports, from, {
@@ -293,7 +305,7 @@ describe("hot swap over the real browser ports", () => {
 
       const fresh = await recordFreshStatuses(
         to,
-        withQuietPrices(buildBrowserPorts()),
+        withQuietPrices(buildBrowserPorts(createSwapPortsOptions())),
       );
 
       expect(swapped.length).toBeGreaterThan(0);
@@ -306,7 +318,9 @@ describe("hot swap over the real browser ports", () => {
   // subscription that comes and goes on its own.
   it("4. five swaps around the three cores leave no port subscription behind, method by method", async () => {
     localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");
-    const tally = createTalliedPorts(buildBrowserPorts());
+    const tally = createTalliedPorts(
+      buildBrowserPorts(createSwapPortsOptions()),
+    );
     const harness = createHostHarness(tally.ports, "rxjs");
     await signIn(harness.current());
     const pair = await waitForFirstPair(harness.current());
@@ -352,7 +366,9 @@ describe("hot swap over the real browser ports", () => {
   // The narrator is off, as in case 4.
   it("5. with an inspector attached, five swaps leave no port subscription behind and the inspector shows one composition", async () => {
     localStorage.setItem(JARVIS_NARRATOR_STORAGE_KEY, "off");
-    const tally = createTalliedPorts(buildBrowserPorts());
+    const tally = createTalliedPorts(
+      buildBrowserPorts(createSwapPortsOptions()),
+    );
     const inspector = createLiveInspector();
     const harness = createHostHarness(tally.ports, "rxjs", {
       devtools: inspector.hub,
@@ -670,7 +686,7 @@ async function measureFreshFootprint(
   pair: CurrencyPair,
 ): Promise<InspectedFootprint> {
   const firstOwnApp = composedApps.length;
-  const tally = createTalliedPorts(buildBrowserPorts());
+  const tally = createTalliedPorts(buildBrowserPorts(createSwapPortsOptions()));
   const inspector = createLiveInspector();
   const harness = createHostHarness(tally.ports, impl, {
     devtools: inspector.hub,
@@ -694,7 +710,7 @@ async function measureUnobservedPorts(
   impl: CoreImpl,
 ): Promise<LiveSubscriptions> {
   const firstOwnApp = composedApps.length;
-  const tally = createTalliedPorts(buildBrowserPorts());
+  const tally = createTalliedPorts(buildBrowserPorts(createSwapPortsOptions()));
   await settleSignedIn(createHostHarness(tally.ports, impl).current());
   const live = tally.live();
 
@@ -894,7 +910,7 @@ async function recordStatusesFor(
  * reload would give, signed in through the session the swap kept. */
 async function recordFreshStatuses(
   impl: CoreImpl,
-  ports: AppPorts = buildBrowserPorts(),
+  ports: AppPorts = buildBrowserPorts(createSwapPortsOptions()),
 ): Promise<readonly ConnectionStatus[]> {
   const app = trackApps(CORES[impl]).createApp(ports);
   await waitFor(app.presenters.auth.state$, isAuthenticated, "fresh sign-in");
@@ -1161,6 +1177,12 @@ const CORES: Readonly<Record<CoreImpl, CoreFactory>> = {
   async: asyncCore,
   effect: effectCore,
 };
+
+/** The options for the real browser ports under test: simulator mode, with
+ * the dev roster holding the one account the cases sign in with. */
+function createSwapPortsOptions(): BuildBrowserPortsOptions {
+  return createPortsOptions({ devAuth: JSON.stringify({ [USER]: PASSWORD }) });
+}
 
 const USER = "astark";
 

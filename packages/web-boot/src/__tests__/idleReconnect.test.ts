@@ -8,7 +8,9 @@ import {
   PricingSimulator,
 } from "@rtc/domain";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { buildBrowserPorts } from "#/buildBrowserPorts";
+
+import { createPortsOptions } from "./createPortsOptions";
 
 // Executable promotion of specs/features/shared/connection.feature:40-44
 // ("Reconnect from idle disconnection"). Lives here as a plain vitest
@@ -16,7 +18,7 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
 // hard-fakes connectionEvents (tests/presenter/scenarios/_buildApp.ts) and
 // runs in Node without a DOM, while the scenario under test is precisely the
 // REAL browser composition — buildBrowserPorts()'s merged idle-timer +
-// reconnect-intent wiring — which needs jsdom and import.meta.env.
+// reconnect-intent wiring — which needs jsdom.
 describe("idle disconnection → Reconnect button (simulator branch)", () => {
   beforeEach(() => {
     // Fake timers BEFORE building ports so the idle countdown uses the
@@ -32,10 +34,10 @@ describe("idle disconnection → Reconnect button (simulator branch)", () => {
     // where it flaked as a timeout. The pinned simulator (the visual tier's
     // own determinism seam) returns a resting tick and arms no timer, which
     // takes that to zero. Only `pricing` is swapped: the subject —
-    // buildBrowserPorts()'s idle timer + reconnect-intent wiring, its
+    // buildBrowserPorts's idle timer + reconnect-intent wiring, its
     // `connectionEvents` — is untouched.
     app = createApp({
-      ...buildBrowserPorts(),
+      ...buildBrowserPorts(createPortsOptions()),
       pricing: new PricingSimulator(Date.now()),
     });
     statuses = [];

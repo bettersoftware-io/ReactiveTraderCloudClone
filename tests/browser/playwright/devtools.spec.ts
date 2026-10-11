@@ -102,8 +102,8 @@ test.describe("DevTools inspector (same-origin)", () => {
     await devtools.expectMachineOfKind(ctx, "tileExecution");
 
     // Closing the app view fires `pagehide` on its window, which the app-side
-    // devtoolsHub (packages/client-react/src/app/devtools/devtoolsHub.ts)
-    // handles by calling `dispose()` → `goDormant()` → sends `bye` over the
+    // devtoolsHub (packages/client-react/src/app/devtools/devtoolsHub.ts,
+    // built by `createDevtoolsHub` in @rtc/web-boot) handles by calling `dispose()` → `goDormant()` → sends `bye` over the
     // BroadcastChannel. The inspector has no independent liveness timer (an
     // abrupt crash with no `pagehide` is a documented v1 limitation — see
     // design spec §5), but a graceful close is exactly this path. Generous

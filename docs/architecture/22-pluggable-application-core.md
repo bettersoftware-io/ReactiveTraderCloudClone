@@ -654,8 +654,8 @@ the one client it built.
 *composition root* — the file that constructs the app. Rule 1 therefore
 proves the entry bundle constructs no core. That a core's presenters and
 machines are lazy too rests on two more facts. First, a core is a package of
-its own, and what the UI imports statically — `@rtc/client-adapters`: adapters,
-port factories and stores — imports no core (`client-adapters-stays-inner`).
+its own, and what the entry bundle imports statically, through `@rtc/web-boot` —
+`@rtc/client-adapters`: adapters, port factories and stores — imports no core (`client-adapters-stays-inner`).
 Second, a core's presenters are exported from the same package as its
 composition root: a UI file that imported that package statically would drag
 the brand into the eager set and fail rule 1, and dependency-cruiser's

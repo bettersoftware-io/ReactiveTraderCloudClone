@@ -38,47 +38,58 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 
 ## How it's used
 
-`@rtc/client-react`'s composition root applies all three decorators before the
-result reaches `createViewModel` (`AppRoot` in `packages/client-react/src/AppRoot.tsx`,
-`buildBrowserPorts` in `packages/client-react/src/app/buildBrowserPorts.ts`):
+Each web client's composition root applies all three decorators before the
+result reaches `createViewModel` (`instrumentComposition` in
+`packages/client-react/src/main.tsx`, which the core host calls for every
+composition, and `buildBrowserPorts` in
+`packages/web-boot/src/buildBrowserPorts.ts`):
 
 ```ts
-// packages/client-react/src/app/buildBrowserPorts.ts
+// packages/web-boot/src/buildBrowserPorts.ts
 const ws = instrumentWsAdapter(
-  new WsAdapter(buildWsUrl(url, token)),
+  new WsAdapter(url, readToken, { autoConnect: false }),
   devtoolsHub,
 );
 
-// packages/client-react/src/AppRoot.tsx
-const { presenters, commands } = core.createApp(buildBrowserPorts());
-const instrumented = instrumentPresenters(
-  presenters,
-  PRESENTER_MANIFEST,
-  devtoolsHub,
-);
-viewModelRef.current = createViewModel(
-  instrumented,
-  instrumentMachineFactories(
-    core.createMachineFactories(instrumented),
+// packages/client-react/src/main.tsx
+function instrumentComposition(core, app) {
+  const presenters = instrumentPresenters(
+    app.presenters,
+    PRESENTER_MANIFEST,
     devtoolsHub,
-  ),
-  commands,
-);
+  );
+
+  return {
+    presenters,
+    machineFactories: instrumentMachineFactories(
+      core.createMachineFactories(presenters),
+      devtoolsHub,
+    ),
+  };
+}
 ```
 
 The app-side hub is a module-level singleton
-(`packages/client-react/src/app/devtools/devtoolsHub.ts`) wired to a
-`BroadcastChannelDuplex` and disposed on `pagehide`:
+(`packages/client-react/src/app/devtools/devtoolsHub.ts`), one call to
+`createDevtoolsHub` from `@rtc/web-boot`. The factory wires the hub to a
+`BroadcastChannelDuplex` and disposes it on `pagehide`:
 
 ```ts
-export const devtoolsHub = new DevtoolsHub({ appId: "rtc-web" });
+// packages/client-react/src/app/devtools/devtoolsHub.ts
+export const devtoolsHub = createDevtoolsHub({
+  appId: "rtc-web",
+  dev: import.meta.env.DEV,
+});
+
+// packages/web-boot/src/devtools/createDevtoolsHub.ts
+const hub = new DevtoolsHub(options);
 
 if (typeof BroadcastChannel !== "undefined") {
-  devtoolsHub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
+  hub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
 
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", () => {
-      devtoolsHub.dispose();
+      hub.dispose();
     });
   }
 }

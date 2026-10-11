@@ -260,12 +260,12 @@ const config: IConfiguration = {
       name: "web-boot-stays-inner",
       severity: "error",
       comment:
-        "@rtc/web-boot is the boot code both web clients share: browser adapters, the core selection and the core host. It may depend only on client-adapters, the three cores (through import(), see `web-clients-load-cores-lazily`), core-api, devtools-core and domain: never on a client, a bindings package, @rtc/shared, @rtc/ui-contract or any other package.",
+        "@rtc/web-boot is the boot code both web clients share: browser adapters, the core selection and the core host. It may depend only on boot-splash, client-adapters, the three cores (through import(), see `web-clients-load-cores-lazily`), core-api, devtools-core and domain: never on a client, a bindings package, @rtc/shared, @rtc/ui-contract or any other package.",
       from: { path: "^packages/web-boot/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(web-boot|client-adapters|client-core-(rxjs|async|effect)|core-api|devtools-core|domain)/",
+          "^packages/(web-boot|boot-splash|client-adapters|client-core-(rxjs|async|effect)|core-api|devtools-core|domain)/",
       },
     },
     {

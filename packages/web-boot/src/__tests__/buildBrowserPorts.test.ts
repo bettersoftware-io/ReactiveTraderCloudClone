@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createApp } from "@rtc/client-core-rxjs";
 import {
@@ -6,14 +6,16 @@ import {
   ConnectionStatus,
   nextConnectionStatus,
 } from "@rtc/domain";
-import { LocalStoragePreferencesAdapter } from "@rtc/web-boot";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { LocalStoragePreferencesAdapter } from "#/adapters/LocalStoragePreferencesAdapter";
+import { buildBrowserPorts } from "#/buildBrowserPorts";
 
-// No VITE_SERVER_URL configured in vitest → simulator branch is always taken.
+import { createPortsOptions } from "./createPortsOptions";
+
+// `createPortsOptions()` sets no server URL, so the simulator branch is taken.
 describe("buildBrowserPorts (simulator branch)", () => {
   it("returns a LocalStoragePreferencesAdapter as preferences", () => {
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(ports.preferences).toBeInstanceOf(LocalStoragePreferencesAdapter);
   });
 
@@ -23,7 +25,7 @@ describe("buildBrowserPorts (simulator branch)", () => {
   // through untouched. Neither arm had a test — the whole ternary was reached
   // only if something dispatched a window online/offline event, and nothing did.
   it("fans browserOnline out to a synthetic gatewayConnected", () => {
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     const seen: ConnectionEvent[] = [];
     const sub = ports.connectionEvents.events().subscribe((e) => {
       seen.push(e);
@@ -45,7 +47,7 @@ describe("buildBrowserPorts (simulator branch)", () => {
   });
 
   it("passes a non-online browser event through unchanged", () => {
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     const seen: ConnectionEvent[] = [];
     const sub = ports.connectionEvents.events().subscribe((e) => {
       seen.push(e);
@@ -65,7 +67,7 @@ describe("buildBrowserPorts (simulator branch)", () => {
   });
 
   it("returns a connectionEvents port with an events() function", () => {
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(typeof ports.connectionEvents.events).toBe("function");
   });
 
@@ -75,7 +77,7 @@ describe("buildBrowserPorts (simulator branch)", () => {
   // only gatewayConnected, which IDLE_DISCONNECTED discards, so the fold
   // stayed stuck in IDLE_DISCONNECTED.
   it("reconnect command recovers the reducer from IDLE_DISCONNECTED to CONNECTED", () => {
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     const app = createApp(ports);
     const seen: ConnectionEvent[] = [];
     const sub = ports.connectionEvents.events().subscribe((e) => {
@@ -98,31 +100,30 @@ describe("buildBrowserPorts (simulator branch)", () => {
   });
 });
 
-// The NarratorMachine threshold seam. `import.meta.env.DEV` is `true` under
-// vitest, so the first four cases vary only the query param; the last two
-// stub DEV off to stand in for a production build, with and without the
-// variable the e2e harness builds with.
+// The NarratorMachine threshold seam. `createPortsOptions()` describes a dev
+// build, so the first four cases vary only the query param; the last two pass
+// `dev: false` to stand in for a production build, with and without the seam
+// the e2e harness builds with.
 describe("buildBrowserPorts — narratorConfig (the ?narratorThresholds=test seam)", () => {
   afterEach(() => {
     setSearch("");
-    vi.unstubAllEnvs();
   });
 
   it("omits narratorConfig when the query param is absent", () => {
     setSearch("");
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(ports.narratorConfig).toBeUndefined();
   });
 
   it("omits narratorConfig for an unrelated query param", () => {
     setSearch("?foo=1");
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(ports.narratorConfig).toBeUndefined();
   });
 
   it("supplies the relaxed detector thresholds when ?narratorThresholds=test is present", () => {
     setSearch("?narratorThresholds=test");
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(ports.narratorConfig).toEqual({
       windowSize: 8,
       minWindowFill: 4,
@@ -133,23 +134,28 @@ describe("buildBrowserPorts — narratorConfig (the ?narratorThresholds=test sea
 
   it("omits narratorConfig for a near-miss value", () => {
     setSearch("?narratorThresholds=production");
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(createPortsOptions());
     expect(ports.narratorConfig).toBeUndefined();
   });
 
   it("a production build ignores the query param", () => {
-    vi.stubEnv("DEV", false);
     setSearch("?narratorThresholds=test");
-    const ports = buildBrowserPorts();
+    const ports = buildBrowserPorts(
+      createPortsOptions({ dev: false, narratorTestSeam: false }),
+    );
     expect(ports.narratorConfig).toBeUndefined();
   });
 
   it("a production build made with VITE_NARRATOR_TEST_SEAM=1 honours the query param, and only then", () => {
-    vi.stubEnv("DEV", false);
-    vi.stubEnv("VITE_NARRATOR_TEST_SEAM", "1");
-    expect(buildBrowserPorts().narratorConfig).toBeUndefined();
+    const production = { dev: false, narratorTestSeam: true };
+    expect(
+      buildBrowserPorts(createPortsOptions(production)).narratorConfig,
+    ).toBeUndefined();
     setSearch("?narratorThresholds=test");
-    expect(buildBrowserPorts().narratorConfig?.minWindowFill).toBe(4);
+    expect(
+      buildBrowserPorts(createPortsOptions(production)).narratorConfig
+        ?.minWindowFill,
+    ).toBe(4);
   });
 });
 

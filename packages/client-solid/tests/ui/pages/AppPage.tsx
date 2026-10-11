@@ -10,10 +10,14 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
-import type { Composition } from "@rtc/web-boot";
+import {
+  buildBrowserPorts,
+  type Composition,
+  webBootEnvOf,
+} from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { App } from "#/ui/App";
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
@@ -138,9 +142,12 @@ function findDemoAccountRows(): HTMLElement[] {
 
 /** The boot composition the core host would build for the RxJS core over
  * the page's real `buildBrowserPorts()` — built at mount time, after a spec
- * has stubbed the env the ports read. Uninstrumented: no devtools here. */
+ * has stubbed the env the ports read. Uninstrumented: the hub is passed for
+ * the transport's wire tap only. */
 function createComposition(): Composition {
-  const app = rxjsCore.createApp(buildBrowserPorts());
+  const app = rxjsCore.createApp(
+    buildBrowserPorts({ env: webBootEnvOf(import.meta.env), devtoolsHub }),
+  );
 
   return {
     impl: "rxjs",

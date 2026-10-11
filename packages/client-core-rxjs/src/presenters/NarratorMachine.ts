@@ -92,8 +92,8 @@ export interface NarratorDeps {
    * identical injection idiom. */
   readonly scheduler?: SchedulerLike;
   /** Overrides `DEFAULT_ANOMALY_CONFIG` — composition threads this from the
-   * `?narratorThresholds=test` seam (both web clients'
-   * `buildBrowserPorts.ts`; a dev server or the e2e build only), `undefined`
+   * `?narratorThresholds=test` seam (`@rtc/web-boot`'s
+   * `buildBrowserPorts.ts`, for both web clients; a dev server or the e2e build only), `undefined`
    * in production. */
   readonly config?: Partial<AnomalyDetectorConfig>;
 }

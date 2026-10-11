@@ -1599,7 +1599,10 @@ changing it.
 11. **The web boot code in one package, `@rtc/web-boot`.** — 2026-10-06: the
     core host, the core selection and the swap cover moved from each web
     client's `src/app` into `@rtc/web-boot`, one copy. Behaviour unchanged.
-    `buildBrowserPorts` and the tree mounts stay in each client.
+    `buildBrowserPorts` and the tree mounts stay in each client. Update,
+    2026-10-11: `buildBrowserPorts` (with the build values passed in) and the
+    devtools hub factory moved into the package too; the tree mounts and
+    `main.tsx` stay in each client.
     [The package spec](../superpowers/specs/2026-10-06-web-boot-package-design.md).
 
 ## See also

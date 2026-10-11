@@ -11,9 +11,11 @@ import {
   instrumentMachineFactories,
   instrumentPresenters,
 } from "@rtc/devtools-core";
-import { PRESENTER_MANIFEST } from "@rtc/web-boot";
 
-import { buildBrowserPorts } from "#/app/buildBrowserPorts";
+import { buildBrowserPorts } from "#/buildBrowserPorts";
+import { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
+
+import { createPortsOptions } from "./createPortsOptions";
 
 /** End-to-end proof that the composition-root wiring (createApp →
  * instrumentPresenters → instrumentMachineFactories, exactly as main.tsx's
@@ -21,7 +23,7 @@ import { buildBrowserPorts } from "#/app/buildBrowserPorts";
  * feeds a real DevtoolsHub, and that an InspectorStore driven by an
  * InspectorClient over an in-memory duplex pair observes the app's streams and
  * machines. A FRESH local hub is used (never the module singleton) so each
- * test stays isolated. jsdom + the simulator port branch (no VITE_SERVER_URL),
+ * test stays isolated. jsdom + the simulator port branch (no server URL),
  * mirroring composition.incident.test.ts. */
 describe("devtools integration — composition root ↔ inspector", () => {
   beforeEach(() => {
@@ -102,7 +104,7 @@ describe("devtools integration — composition root ↔ inspector", () => {
     >();
     hub.attachTransport(appSide);
 
-    const { presenters } = createApp(buildBrowserPorts());
+    const { presenters } = createApp(buildBrowserPorts(createPortsOptions()));
     const instrumented = instrumentPresenters(
       presenters,
       PRESENTER_MANIFEST,

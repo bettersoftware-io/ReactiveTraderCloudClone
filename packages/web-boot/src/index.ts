@@ -19,6 +19,11 @@ export {
   runBoot,
 } from "#/bootApp";
 export {
+  type BuildBrowserPortsOptions,
+  buildBrowserPorts,
+  readDemoAccounts,
+} from "#/buildBrowserPorts";
+export {
   type Composition,
   type CoreHost,
   type CoreHostState,
@@ -37,5 +42,10 @@ export {
 export { followCoreSwaps } from "#/coreSwapCover";
 export { type CoreSwapView, coreSwapOf } from "#/coreSwapView";
 export { chooseCoverTimings, type MotionSettings } from "#/coverTimings";
+export {
+  createDevtoolsHub,
+  type DevtoolsHubOptions,
+} from "#/devtools/createDevtoolsHub";
 export { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
+export { type BuildEnvValues, type WebBootEnv, webBootEnvOf } from "#/env";
 export { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";

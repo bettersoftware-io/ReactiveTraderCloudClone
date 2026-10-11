@@ -25,6 +25,7 @@ graph TD
     webc["@rtc/client-react<br/>(web UI + browser adapters)"]
     rnc["@rtc/client-react-native<br/>(RN UI + native adapters)"]
     rb["@rtc/react-bindings<br/>(ViewModel bridge)"]
+    wb["@rtc/web-boot<br/>(boot code both web clients share)"]
     core["@rtc/client-adapters + @rtc/client-core-rxjs<br/>(adapters + the default application core)"]
     server["@rtc/server<br/>(WebSocket server)"]
     wse["@rtc/ws-effects<br/>(effects framework, rxjs only)"]
@@ -36,13 +37,14 @@ graph TD
     dockv["@rtc/layout-dockview<br/>(Dockview wrapper — no @rtc/* deps, dockview@8.3.1 confined here)"]
 
     webc -->|allowed| rb
-    webc -->|allowed| core
+    webc -->|allowed| wb
     webc -->|allowed| domain
     webc -->|allowed| motion
     webc -->|allowed| dockv
     rnc -->|allowed| rb
     rnc -->|allowed| core
     rnc -->|allowed| domain
+    wb -->|allowed| core
     rb -->|allowed| core
     rb -->|allowed| domain
     core -->|allowed| shared
@@ -157,7 +159,7 @@ new package is forbidden by default until it is explicitly allowed. (The
 | `clients-never-import-each-other` | `^packages/(client-react\|client-react-native\|client-prototype\|client-solid)/src` | — (rejects any *other* client, via `pathNot ^packages/$1/`) | Peer clients composed from the same core never import one another |
 | `prototype-isolated` | `^packages/client-prototype/src` | nothing (`pathNot ^packages/client-prototype/`) | The design-comprehension island stays `react`/`react-dom` only — zero `@rtc/*` edges |
 | `motion-core-stays-pure` | `^packages/motion-core/src` | nothing (`pathNot ^packages/motion-core/`) | The view-layer motion-math package stays a zero-dependency pure leaf |
-| `web-boot-stays-inner` | `^packages/web-boot/src` | `web-boot\|client-adapters\|client-core-(rxjs\|async\|effect)\|core-api\|devtools-core\|domain` | The boot code both web clients share reaches only inward: never a client, a bindings package, `@rtc/shared`, `@rtc/ui-contract` or any other package. The three cores are allowed here and held to `import()` by `web-clients-load-cores-lazily` |
+| `web-boot-stays-inner` | `^packages/web-boot/src` | `web-boot\|boot-splash\|client-adapters\|client-core-(rxjs\|async\|effect)\|core-api\|devtools-core\|domain` | The boot code both web clients share reaches only inward: never a client, a bindings package, `@rtc/shared`, `@rtc/ui-contract` or any other package. The three cores are allowed here and held to `import()` by `web-clients-load-cores-lazily` |
 | `web-boot-stays-framework-free` | `^packages/web-boot/src` | — (rejects `react`, `react-dom`, `solid-js`) | The boot code may touch the DOM but imports no UI framework |
 | `web-boot-only-in-web-clients` | `^packages/` **except** `^packages/(web-boot\|client-react\|client-solid)/` | — (rejects `^packages/web-boot/`) | `@rtc/web-boot` reads `localStorage`, `window` and `document`, so the React Native client, the server and the inner packages must not import it. `check:deps` also scans `tests/`, where nothing imports it |
 | `boot-splash-stays-pure` | `^packages/boot-splash/src` | nothing (`pathNot ^packages/boot-splash/`) | The boot/splash canvas engine + gate stays a zero-`@rtc/*` leaf (DOM access to canvas/`navigator`/`location` is allowed) |

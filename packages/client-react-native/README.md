@@ -38,8 +38,8 @@ segment shorter here because Expo Router reserves the bare `app/` name.
    `createApp`/`createViewModel` exactly once per real mount (StrictMode-safe
    via a lazy ref + deferred dispose).
 3. `src/app/buildNativePorts.ts` — assembles the `AppPorts`: real-`WsAdapter`
-   branch vs. in-process simulator branch, the RN analogue of client-react's
-   `buildBrowserPorts`.
+   branch vs. in-process simulator branch, the RN analogue of
+   `buildBrowserPorts` in `@rtc/web-boot`.
 4. `src/ui/theme/tokens.ts` — RN theme tokens delivered via React context
    (not CSS custom properties, since RN has no stylesheet cascade).
 

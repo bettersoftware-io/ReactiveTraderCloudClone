@@ -85,7 +85,7 @@ flowchart TD
     Sim["expo dev, sim toggle ON<br/>or EXPO_PUBLIC_SERVER_URL=''"] -->|"simulator"| RootN
     Live["expo dev, live mode<br/>(default: wss://rtc-clone-server.fly.dev)"] -->|"URL set"| RootN
 
-    RootW["buildBrowserPorts()<br/>client-react"] --> Q{"url present?"}
+    RootW["buildBrowserPorts()<br/>@rtc/web-boot"] --> Q{"url present?"}
     RootN["buildNativePorts()<br/>client-react-native"] --> Q
     Q -->|"no"| SIM["createSimulatorPorts()<br/>simulators run IN the tab / on the device"]
     Q -->|"yes"| WS["createWsRealPorts(ws)<br/>thin WS adapters → backend"]
