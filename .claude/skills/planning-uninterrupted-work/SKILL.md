@@ -29,9 +29,23 @@ batch written in these exact forms runs unattended:
 | open the PR | `gh pr create …` |
 | merge it | `gh pr merge …` |
 
-A force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`) always
-**asks** (the `ask` rules beat the allow rules), and so does pushing anything
-that isn't a `worktree-*` branch. Those need a person to look at them.
+These always **ask**, because the `ask` rules beat the allow rules:
+
+- a force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`);
+- a push that deletes or sweeps (`--delete`, `-d`, `--mirror`, `--all`,
+  `--tags`, `--prune`) or names its target (`source:target`);
+- a merge past branch protection (`gh pr merge … --admin`);
+- a push of anything that isn't a `worktree-*` branch.
+
+Those need a person to look at them. The allow rules end in `*`, and a
+pattern cannot say "one more word": before 2026-10-11 they also let
+`git push origin worktree-a --delete main` and `gh pr merge 5 --admin` run
+unasked. The list is of exact spellings, kept short on purpose so that no
+routine command gains a prompt. Still unasked: a second branch after the
+first (`git push origin worktree-a main`), an option git accepts shortened
+or bundled (`--del`, `-fd`), and `gh pr merge` of any pull request number.
+The `main` ruleset stands behind a push to `main`; nothing but attention
+stands behind the rest.
 
 ## Two rules
 
