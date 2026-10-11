@@ -34,12 +34,13 @@ These always **ask**, because the `ask` rules beat the allow rules:
 - a force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`);
 - a push that deletes or sweeps (`--delete`, `-d`, `--mirror`, `--all`,
   `--tags`, `--prune`) or names its target (`source:target`);
-- a push with ANY option after the branch name. Git takes a shortened long
-  option (`--del`, `--mir`) and bundled short ones (`-fd`), so a list of
-  spellings can never be complete; the rule is "a dash after the branch
-  asks". Options a routine push needs go before `origin`, where only `-u`
-  is pre-approved. A filter with a dash flag (`… 2>&1 | tail -2`) may ask
-  too: run the push bare, its output is short;
+- a push with ANYTHING after the branch name: a second branch
+  (`… worktree-a main`), or an option. Git takes a shortened long option
+  (`--del`, `--mir`) and bundled short ones (`-fd`), so a list of spellings
+  can never be complete; the rule is "a space after the branch asks". The
+  pre-approved push is exactly `git push [-u] origin worktree-<name>` and
+  nothing more, so a filter (`… 2>&1 | tail -2`) asks too: run the push
+  bare, its output is short;
 - a push whose text holds a quote, a `$`, a backtick, a backslash or a tab:
   each is a way to write an option the rule above would not see as one;
 - a merge past branch protection (`gh pr merge … --admin`);
@@ -48,10 +49,8 @@ These always **ask**, because the `ask` rules beat the allow rules:
 Those need a person to look at them. The allow rules end in `*`, and a
 pattern cannot say "one more word": before 2026-10-11 they also let
 `git push origin worktree-a --delete main` and `gh pr merge 5 --admin` run
-unasked. Two cases no `ask` rule can catch still run unasked: a second
-branch after the first (`git push origin worktree-a main`), and
-`gh pr merge` of any pull request number. The `main` ruleset is what stands
-behind the first; nothing but attention stands behind the second.
+unasked. One case still runs unasked: `gh pr merge` of any pull request
+number. Nothing but attention stands behind it.
 
 ## Two rules
 
@@ -68,7 +67,8 @@ An **outward step** sends something off this machine, or changes shared state:
 | `gh issue / release / repo` writes | `git fetch`, `./scripts/new-worktree.sh` |
 
 Each outward step gets **its own Bash call**. Piping its output into a filter
-(`git push … 2>&1 | tail -2`) is fine, because that is still one step. Joining it
+(`git push … 2>&1 | tail -2`) is fine for the hook, because that is still one
+step, but it is not one of the pre-approved forms above, so it asks. Joining it
 to anything else with `&&`, `;`, `||` or a newline is not.
 
 **Why:** auto mode judges a chained command as a whole and labels the prompt
