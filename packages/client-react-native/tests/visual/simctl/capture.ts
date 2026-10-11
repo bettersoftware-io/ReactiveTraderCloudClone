@@ -9,6 +9,10 @@ import { promisify } from "node:util";
 import type { VisualDriver } from "../driver.ts";
 import { VISUAL_HARNESS_HOME_ID } from "../harnessHomeId.ts";
 import type { SkinOverride } from "../skinOverride.ts";
+import {
+  describeBareApplication,
+  isBareApplicationTree,
+} from "./bareApplication.ts";
 
 const exec = promisify(execFile);
 
@@ -499,14 +503,21 @@ async function waitForAppBoot(
 
   throw new Error(
     `Timed out after ${timeoutMs}ms waiting for "${VISUAL_HARNESS_HOME_ID}" ` +
-      `for scenario "${scenarioId}" — ${describeBootScreen(lastTree)} ` +
+      `for scenario "${scenarioId}" — ${describeBootScreen(lastTree, udid)} ` +
       `Refusing to return a screenshot (a capture failure is not the same ` +
       `as a visual regression).`,
   );
 }
 
 /** What was on screen instead of the harness home, for the timeout message. */
-function describeBootScreen(tree: AXElement[]): string {
+function describeBootScreen(tree: AXElement[], udid: string): string {
+  // First: this tree says nothing about the screen, so every reading of it
+  // below would be a guess. It used to fall through to the last one, which
+  // blamed Metro's harness flag for a simulator that needed a reboot.
+  if (isBareApplicationTree(tree)) {
+    return describeBareApplication(udid);
+  }
+
   if (looksLikeLauncherHome(tree)) {
     return "the simulator is still showing the Expo dev-client launcher, so the app never loaded from Metro.";
   }

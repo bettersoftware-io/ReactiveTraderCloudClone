@@ -14,6 +14,7 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 - `shared/goldens.ts` — golden path resolver + the device pins (`ios-iphone17-26`, `android-pixel10a-37`).
 - `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: resolve the one device, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
 - `shared/emulatorWindow.ts`, `shared/maestroOutcome.ts` — the runner's two diagnostics: a warning when the Android emulator has a window, and the per-flow failure lines of a `maestro test` that exited non-zero.
+- `shared/deviceInUse.ts` (+ `refuseDeviceInUse.ts`), `simctl/bareApplication.ts` — the two start-of-run checks: refuse a device another run is already driving, and recognise the tree `idb` returns for a simulator Maestro has driven. See "Before a run" below.
 - `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
 - `useSceneSettled.ts` — when the host raises `visual-ready`: not one frame after mount but once the scene has stopped committing (a UI-thread round trip, then React's queue drained, repeated until a round sees no commit). A scene that never stops committing never becomes ready, and its capture times out on the marker — that is the signal that the scene has no single frame to pin.
@@ -96,6 +97,35 @@ close it and start a headless one before a run. A scenario reported as
 `NO SHOT` had its flow fail before the screenshot: that is a capture failure,
 and the `[Failed]` line above it carries Maestro's reason. The top 142 rows (the status bar) are blacked out in every
 Android shot because that bar does not reproduce between boots.
+
+### Before a run: two traps the runners now name, and one they cannot
+
+The first two cost hours on 2026-10-06 because neither announced itself.
+
+- **One run per device.** Two runs on the same simulator or emulator kill
+  each other's app: flows report "app crashed or stopped", waits time out on
+  the home screen, and a shot can show the OTHER run's scenario, which then
+  reads as a pixel failure of up to 25%. Each runner now checks first and
+  refuses to start, naming the process already on its device
+  (`shared/deviceInUse.ts`). The simulator and the emulator are separate
+  devices, so one run on each is fine. When several Claude sessions share this
+  machine, agree who has which device before starting; `ps -Ao pid,etime,command
+  | grep -i "simctl/run\|maestro\|expo start"` shows what is running.
+- **Reboot the simulator between a Maestro run and a simctl run.** After even
+  one Maestro flow, `idb` returns the app's `Application` node with no element
+  under it, so the simctl tier cannot see a screen that is in fact ready and
+  times out on its first scenario. Stopping Maestro's driver or restarting
+  `idb_companion` does not help (and killing `idb_companion` by hand breaks
+  `idb` until `idb kill`); `xcrun simctl shutdown <udid> && xcrun simctl boot
+  <udid>` does. The timeout message now says this instead of blaming Metro's
+  harness flag (`simctl/bareApplication.ts`). Run simctl first, or reboot.
+- **Warm Metro before the simctl tier** (not enforced). Start it from this
+  package's directory — from the repository root there is no Expo project and
+  it exits. The first bundle after a cold start, and any start with `--clear`,
+  takes longer than the driver's 20 s boot wait, so the first scenario times
+  out with the launcher or a half-loaded app on screen. Open the app once
+  (`xcrun simctl openurl <udid> "exp+rtc-mobile://expo-development-client/?url=http://localhost:8083"`)
+  and wait for Metro to print `Bundled` before running.
 
 **Tier 1** capture: load the bundle from Metro base → poll the a11y tree for the `visual-harness-home` marker (on a harness bundle the home route is a bare marker screen; the app itself is never mounted, see below) → in-app deep-link `rtcmobile://__visual/<id>` → dismiss the iOS "Open in RTC Mobile?" confirmation by locating its "Open" button in the a11y tree (a blind coordinate tap at the iPhone 17 pin, `(274, 474)`, is a **fallback only**, tried once if no such button is found partway through the wait) → poll the a11y tree for the harness's `visual-ready` id, throwing if it's never observed → re-check the a11y tree isn't launcher-shaped at the moment of the shot → `simctl io screenshot --mask=black` (the flag is pinned because Xcode 27 changed the default mask policy and dropped the Dynamic Island. It paints the WHOLE device mask black — the island **and the four rounded screen corners** — and since 2026-10-02 every simctl golden is captured that way. A diff confined to the first/last ~250 rows at the row ends is the corner mask, i.e. a golden from before the pin, not a content change and not flake: it reads ~1% on a light background and a few pixels on a dark one). **Tier 2** does the same two-step deep link via Maestro's own a11y-tree waits (`extendedWaitUntil`). After `:update`, eyeball each PNG and run the verify pass — it must report `pass` for every scenario (a golden that can't reproduce itself is flaky; fix the scenario, don't pin the flake).
 
