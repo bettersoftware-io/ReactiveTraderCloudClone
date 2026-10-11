@@ -37,5 +37,10 @@ export {
 export { followCoreSwaps } from "#/coreSwapCover";
 export { type CoreSwapView, coreSwapOf } from "#/coreSwapView";
 export { chooseCoverTimings, type MotionSettings } from "#/coverTimings";
+export {
+  createDevtoolsHub,
+  type DevtoolsHubOptions,
+} from "#/devtools/createDevtoolsHub";
 export { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
+export { type BuildEnvValues, type WebBootEnv, webBootEnvOf } from "#/env";
 export { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";

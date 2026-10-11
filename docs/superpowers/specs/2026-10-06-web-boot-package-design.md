@@ -126,6 +126,15 @@ export interface WebBootEnv {
 }
 ```
 
+**Amended 2026-10-10 (PR 2).** The package also exports
+`webBootEnvOf(values)`, which turns a record shaped like Vite's
+`import.meta.env` into a `WebBootEnv`. A client writes
+`webBootEnvOf(import.meta.env)` at each call site and holds no mapping of its
+own, so the rule for the narrator seam exists once. The package still never
+reads `import.meta.env`. Cost: Vite replaces a whole-object `import.meta.env`
+with a literal listing every `VITE_*` value at each call site; those values
+are in the bundle already.
+
 Reasons: the package stays free of Vite, as `@rtc/boot-splash` is; its tests
 pass a plain object instead of stubbing `import.meta.env`; and the node
 fullstack smoke, which loads this code with no `import.meta.env`, needs no
