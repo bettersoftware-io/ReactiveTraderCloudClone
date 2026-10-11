@@ -140,7 +140,7 @@ sequenceDiagram
     BC->>BC: resolveCoreChoice - url, stored, build, rxjs
     BC->>BC: loadCore(impl) - lazy import() for async/effect
     BC-->>M: onBooted(impl, core, source)
-    M->>M: log it, buildBrowserPorts() - autoConnect false
+    M->>M: log it, createView(page), buildBrowserPorts() - autoConnect false
     M->>H: createCoreHost(ports, impl, core, ...), start()
     H->>C: core.createApp(ports)
     C-->>H: presenters, commands (auth gate holds the socket closed)

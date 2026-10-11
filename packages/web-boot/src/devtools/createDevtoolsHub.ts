@@ -10,10 +10,10 @@ export interface DevtoolsHubOptions {
 }
 
 /**
- * Builds the app-side devtools hub and wires it to the page. A client calls
- * this once, at module level: the hub's lifetime is the page, not one
- * composition (unlike the connection-intents pair, which
- * `pairConnectionPorts` scopes per composition).
+ * Builds the app-side devtools hub and wires it to the page.
+ * `startWebClient` calls this once per page, before any core loads: the hub's
+ * lifetime is the page, not one composition (unlike the connection-intents
+ * pair, which `pairConnectionPorts` scopes per composition).
  *
  * The hub is dormant until an inspector handshakes on the rtc-devtools
  * channel and costs nothing per emission until then. BroadcastChannel is

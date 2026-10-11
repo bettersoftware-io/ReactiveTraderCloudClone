@@ -63,8 +63,8 @@ it) and the `demoAccounts` the login screen lists. It returns the client's
 - `showOverlay(swap, fade)`: renders the swap overlay synchronously; a null
   `swap` removes it.
 
-`WebBootEnv.dev` is the one flag the package reads itself: `startWebClient`
-hands it to `createDevtoolsHub`.
+`WebBootEnv.dev` has one reader: `startWebClient` hands it to
+`createDevtoolsHub`.
 
 Two dependency rules (`.dependency-cruiser.mts`):
 

@@ -48,7 +48,7 @@ otherwise one line ("all N CI steps mapped").
 | React Compiler coverage | fast |
 | Worklet capture safety (RN + motion-core) | fast |
 | Pages tooling unit tests | fast |
-| E2E harness tooling unit tests | fast |
+| E2E harness tooling + deployed-file guards (unit) | fast |
 | Cucumber hooks unit tests | fast |
 | Dead code (knip) | fast |
 | Dependency graph (cycles + layering) | fast |
@@ -107,7 +107,7 @@ pnpm check:react-policies               # compiler / memo-ban / react-hooks poli
 pnpm check:compiler                     # React Compiler coverage (de-memoized files)
 pnpm check:worklet-order                # worklet capture safety (RN + motion-core)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
-pnpm --filter @rtc/tests test:report    # e2e harness tooling units (report render, core selection)
+pnpm --filter @rtc/tests test:report    # e2e harness tooling units (report render, core selection) + the web clients' deployed-file guards
 pnpm --filter @rtc/tests test:hooks     # cucumber hooks units
 pnpm lint:dead                          # knip
 pnpm check:deps                         # dep-cruiser cycles + layering

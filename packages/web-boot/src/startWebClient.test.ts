@@ -41,6 +41,9 @@ beforeEach(() => {
 
 afterEach(async () => {
   await disposeComposedApps();
+  // Disposes the devtools hubs the cases created: each added a `pagehide`
+  // listener to the shared jsdom window and opened a channel.
+  window.dispatchEvent(new Event("pagehide"));
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -229,10 +232,17 @@ describe("startWebClient", () => {
     expect(client.view.mount).toHaveBeenCalledTimes(2);
     expect(client.composition(2).generation).toBe(2);
     expect(client.composition(2).impl).toBe("async");
+    // The second composition is instrumented too: its presenters are wrapped.
+    expect(client.composition(2).presenters).not.toBe(
+      client.composedApps()[1]?.presenters,
+    );
     expect(document.documentElement.dataset.coreImpl).toBe("async");
     expect(localStorage.getItem(CORE_CHOICE_KEY)).toBe("async");
     expect(location.search).toBe("?x=1");
-    expect(client.infoLines()).toHaveLength(2);
+    expect(client.infoLines()).toEqual([
+      "[core] booted rxjs from url",
+      "[core] swapped rxjs to async",
+    ]);
     expect(client.view.showOverlay).toHaveBeenLastCalledWith(null, COVER);
     expect(client.rootEl().inert).toBe(false);
   });

@@ -12,12 +12,7 @@ export {
   LocalStorageSessionStore,
   SESSION_STORAGE_KEY,
 } from "#/adapters/LocalStorageSessionStore";
-export {
-  bootCore,
-  formatBootedMessage,
-  renderBootError,
-  runBoot,
-} from "#/bootApp";
+export { runBoot } from "#/bootApp";
 export {
   type BuildBrowserPortsOptions,
   buildBrowserPorts,
@@ -30,27 +25,13 @@ export {
   type CoverTimings,
   createCoreHost,
 } from "#/coreHost";
-export {
-  CORE_OPTIONS,
-  clearCoreChoice,
-  defaultCoreResetHref,
-  loadCore,
-  safeLocalStorage,
-  saveCoreChoice,
-  urlWithoutCoreParam,
-} from "#/coreSelection";
-export { followCoreSwaps } from "#/coreSwapCover";
+export { CORE_OPTIONS } from "#/coreSelection";
 export { type CoreSwapView, coreSwapOf } from "#/coreSwapView";
-export {
-  chooseCoverTimings,
-  INSTANT_COVER,
-  type MotionSettings,
-} from "#/coverTimings";
+export { INSTANT_COVER } from "#/coverTimings";
 export {
   createDevtoolsHub,
   type DevtoolsHubOptions,
 } from "#/devtools/createDevtoolsHub";
-export { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
 export { type BuildEnvValues, type WebBootEnv, webBootEnvOf } from "#/env";
 export {
   startWebClient,

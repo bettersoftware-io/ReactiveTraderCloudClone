@@ -167,9 +167,10 @@ switched between all three cores without a rebuild.
   stored choice, reloads without `?core=`) — never a silent fallback to
   RxJS. `<html data-core-impl>` publishes whichever core actually loaded.
 - **The choice is exposed to the UI as an app-shell value, not a core
-  concern.** `main.tsx` builds a `CoreSelection` (`{ current, options, select
-  }`) via `createCoreSelection` and passes it to `AppRoot`, which forwards it
-  into the bindings' `createViewModel`; `select` saves the
+  concern.** The core host (`@rtc/web-boot`'s `coreHost.ts`) builds a
+  `CoreSelection` (`{ current, options, select }`) via `createCoreSelection`
+  for each composition and hands it to the UI root on the `Composition`;
+  `AppRoot` forwards it into the bindings' `createViewModel`; `select` saves the
   choice and reloads with `?core=` stripped (so a page opened as
   `?core=effect` doesn't reload straight back onto Effect, since the URL
   outranks storage). `@rtc/react-bindings` and `@rtc/solid-bindings` expose
