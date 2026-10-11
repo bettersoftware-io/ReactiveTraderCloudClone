@@ -4,7 +4,8 @@ export interface DevtoolsHubOptions {
   /** The id the inspector labels this app with. */
   readonly appId: string;
   /** True on a dev build: the inspector then offers intent injection. The
-   * write surface stays dev-only through the hub's own handler regardless. */
+   * hub acts on the inspector's `intent:invoke` only when this is true, and a
+   * production build passes false, so there the handler never runs. */
   readonly dev: boolean;
 }
 

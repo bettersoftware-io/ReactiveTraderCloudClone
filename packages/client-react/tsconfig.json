@@ -45,7 +45,6 @@
   ],
   "references": [
     { "path": "../domain" },
-    { "path": "../client-adapters" },
     { "path": "../client-core-rxjs" },
     { "path": "../web-boot" },
     { "path": "../react-bindings" }
