@@ -101,8 +101,8 @@ pnpm test:e2e:async                             # e2e against that core (also te
   split in CI — the eager set carries no core's marker, and each core sits in
   exactly one lazy chunk — and dependency-cruiser's
   `web-clients-load-cores-lazily` rejects a static import of a core from a
-  web client's source. `@rtc/client-adapters` is what the UI imports statically
-  (adapters, port factories, stores), and it re-exports nothing: a contract
+  web client's source. `@rtc/client-adapters` holds the adapters, port factories and stores that
+  `@rtc/web-boot` imports statically, and it re-exports nothing: a contract
   type comes from `@rtc/core-api`, a shared rule from `@rtc/core-logic`; a
   test that needs a presenter class or a machine factory imports it from
   `@rtc/client-core-rxjs`.

@@ -644,7 +644,7 @@ export function scriptPorts(
 
   // The core's own pushes (the Reconnect button, admin incident injection)
   // land on the same Subject `emitConnection` drives — the harness owns the
-  // merge a client's `buildBrowserPorts` performs.
+  // merge `buildBrowserPorts` performs.
   const intentCalls = { reconnect: 0, injectIncident: 0 };
   const connectionIntents: ConnectionIntentsPort = {
     reconnect: () => {

@@ -16,10 +16,14 @@ In it today:
 - `adapters/`: the LocalStorage stores (session, preferences, data source, dock
   layout, layout presets) and the browser connection-events adapter.
 - `theme/`: `MediaQueryColorSchemeAdapter`.
-- `devtools/`: the presenter manifest.
+- `buildBrowserPorts.ts`, `env.ts`: `buildBrowserPorts` and `readDemoAccounts`,
+  which take the build-time values as a `WebBootEnv`. A client makes one with
+  `webBootEnvOf(import.meta.env)`, so this package never reads
+  `import.meta.env` itself.
+- `devtools/`: the presenter manifest and `createDevtoolsHub`, the app-side hub
+  factory. A client calls it once with its app id.
 
-Not in it: each client still owns `buildBrowserPorts.ts` (it reads the
-`VITE_*` build values), the devtools hub, the tree mount and its own `main.tsx`.
+Not in it: the tree mount and each client's own `main.tsx`.
 
 Two dependency rules (`.dependency-cruiser.mts`):
 

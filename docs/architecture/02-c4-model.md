@@ -159,7 +159,7 @@ flowchart TB
         creditRfq["<b>Credit RFQ</b><br/>form · RFQ tiles ·<br/>sell-side panel"]:::ui
         equities["<b>Equities Dock</b><br/>watchlist · candles · depth ·<br/>ticket · blotters"]:::ui
         admin["<b>Admin / Telemetry</b><br/>KPIs · throughput · latency ·<br/>topology · event log"]:::ui
-        coreHost["<b>main.tsx + core host</b><br/>buildBrowserPorts() once per page ·<br/>core.createApp(ports) per composition (swaps in place)"]:::ui
+        coreHost["<b>main.tsx + core host</b><br/>buildBrowserPorts({ env, devtoolsHub }) once per page ·<br/>core.createApp(ports) per composition (swaps in place)"]:::ui
         appRoot["<b>AppRoot</b><br/>createViewModel(composition)<br/>once per mount (StrictMode-safe)"]:::ui
         browserAdapters["<b>Browser Platform Adapters</b><br/>buildBrowserPorts (VITE_SERVER_URL switch) ·<br/>LocalStorage prefs · matchMedia color scheme"]:::ui
         app --> fxTiles
@@ -379,7 +379,7 @@ What is native-specific, exhaustively:
 
 | Concern | Web (`client-react`) | Mobile (`client-react-native`) |
 |---|---|---|
-| Port selection switch | `src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL` | `src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants` (empty string forces simulator mode) |
+| Port selection switch | `@rtc/web-boot`'s `buildBrowserPorts.ts` reads `VITE_SERVER_URL` (passed in by `main.tsx`) | `src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants` (empty string forces simulator mode) |
 | Preferences persistence | `LocalStoragePreferencesAdapter` (sync) | `AsyncStoragePreferencesAdapter` (seeds defaults synchronously, then `hydrate()` -- no-flash contract) |
 | OS color scheme | `MediaQueryColorSchemeAdapter` (matchMedia) | `AppearanceColorSchemeAdapter` (RN `Appearance`) |
 | Charts | SVG/canvas in React DOM | `react-native-svg`, geometry precomputed in pure vitest-tested helpers (`buildChart`, `buildCandles`, `bubbleLayout`, ...) |

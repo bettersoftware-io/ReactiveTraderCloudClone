@@ -68,8 +68,8 @@ sequenceDiagram
    seam. The two web clients also render a **demo-accounts hint** under the
    form (`DemoAccountsHint`): one click-to-fill row per account the page
    verifies in the browser, plus the password when every account shares it.
-   The list comes from `readDemoAccounts()` in each web client's
-   `buildBrowserPorts.ts` through `useDemoAccounts()` — the simulator's
+   The list comes from `readDemoAccounts()` in `@rtc/web-boot`'s
+   `buildBrowserPorts.ts` (each web client's `AppRoot` calls it) through `useDemoAccounts()` — the simulator's
    roster with no server URL, the `VITE_DEMO_AUTH` roster on a hybrid build,
    and nothing on a plain live build, where every credential belongs to the
    server. Picking a row fills the fields and moves keyboard focus to AUTHENTICATE;
@@ -261,7 +261,7 @@ so a fresh clone signs in out of the box — no setup. Vite loads it in dev only
 (never in a production build). Sign in as any roster user — `astark`,
 `nromanoff`, `tchalla`, or `demo` — with password `mcdc2026`.
 
-Without `VITE_SERVER_URL` set, `buildBrowserPorts.ts` takes the simulator branch
+Without `VITE_SERVER_URL` set, `buildBrowserPorts.ts` (in `@rtc/web-boot`) takes the simulator branch
 and parses `VITE_DEV_AUTH` via its own `parseDevAuth`, tolerant of a
 missing/malformed value (degrading to "no dev logins work" rather than a boot
 crash) — unlike the RN client it has no built-in fallback roster in code, so
@@ -277,9 +277,10 @@ the box.
 
 `@rtc/client-solid` (`pnpm dev:solid`) follows the identical mechanism: its own
 committed `packages/client-solid/.env.development` carries the same
-`VITE_DEV_AUTH` value, and its `buildBrowserPorts.ts` reads it via the same
-`parseDevAuth` helper as `client-react` — the two web clients are at full
-parity here, not just visually and behaviourally.
+`VITE_DEV_AUTH` value, and it reads it through the same `buildBrowserPorts.ts`
+and `parseDevAuth` helper as `client-react` (one copy, in `@rtc/web-boot`) —
+the two web clients are at full parity here, not just visually and
+behaviourally.
 
 ## 5. What's committed vs. what stays secret
 
@@ -391,11 +392,11 @@ won, mirroring `[core] booted …`.
 ### 6.3 Where the pieces live
 
 - `resolveDataSource` and `createRoutingAuthPort` — `@rtc/client-adapters`
-  (framework-free; `location.reload()` is injected by each client as
-  `relaunch`).
+  (framework-free; `location.reload()` is the default `relaunch`, which
+  `buildBrowserPorts` takes as an option so a test can inject its own).
 - The composition, the `VITE_DEMO_AUTH` parsing and the `rtc.dataSource`
-  store — each web client's `src/app/buildBrowserPorts.ts`
-  (`client-react`, `client-solid`, identical).
+  store — `packages/web-boot/src/buildBrowserPorts.ts`, one copy shared by
+  `client-react` and `client-solid`.
 - The committed roster for production builds — `packages/client-react/.env.production`
   and `packages/client-solid/.env.production` (inventory in
   [`docs/env-files.md`](env-files.md)); the deploy-time guard that the roster

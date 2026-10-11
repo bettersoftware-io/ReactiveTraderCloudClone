@@ -103,7 +103,7 @@ flowchart TB
 
 The three decorators, all applied at the `client-react` composition root
 (`packages/client-react/src/AppRoot.tsx` and
-`packages/client-react/src/app/buildBrowserPorts.ts`):
+`packages/web-boot/src/buildBrowserPorts.ts`):
 
 - **`instrumentWsAdapter(adapter, hub)`** (`packages/devtools-core/src/instrument/wsAdapter.ts`) — wraps `send`/`on`/`rpc` to report `wire:out`/`wire:in`; every other member delegates untouched via an explicit-bind `Proxy`.
 - **`instrumentPresenters(presenters, manifest, hub)`** (`packages/devtools-core/src/instrument/presenters.ts`) — walks the `Presenters` object per the `PresenterManifest`: `props` register a shared stream once, `methods` register a child stream per distinct arg tuple on first call, `machine` entries register a shared machine's `state$` and log its intents. Proxies, not spreads — presenters are class instances, so spreading would drop prototype methods.
@@ -360,18 +360,20 @@ work identically in dev and in the deployed app:
   into `dist/devtools`, so the deployed app serves the same bundle at
   `/devtools/` with no separate deploy step.
 
-Disconnect behavior: the app registers a `pagehide` listener at module load
-(`packages/client-react/src/app/devtools/devtoolsHub.ts`):
+Disconnect behavior: the app registers a `pagehide` listener at module load.
+Each client's `src/app/devtools/devtoolsHub.ts` makes one
+`createDevtoolsHub({ appId, dev })` call, and the factory
+(`packages/web-boot/src/devtools/createDevtoolsHub.ts`) does the wiring:
 
 ```ts
-export const devtoolsHub = new DevtoolsHub({ appId: "rtc-web" });
+const hub = new DevtoolsHub(options);
 
 if (typeof BroadcastChannel !== "undefined") {
-  devtoolsHub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
+  hub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
 
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", () => {
-      devtoolsHub.dispose();
+      hub.dispose();
     });
   }
 }

@@ -166,8 +166,9 @@ export interface AppPorts {
   /** Overrides `NarratorMachine`'s `detectAnomalies` thresholds — read once
    * at composition time and threaded straight through to
    * `createNarratorMachine`'s own `config`. Optional — `undefined` in
-   * production (the detector runs at `DEFAULT_ANOMALY_CONFIG`). Both web
-   * clients' `buildBrowserPorts.ts` supply the relaxed thresholds here
+   * production (the detector runs at `DEFAULT_ANOMALY_CONFIG`). `@rtc/web-boot`'s
+   * `buildBrowserPorts.ts` supplies the relaxed thresholds here, for both web
+   * clients
    * (`?narratorThresholds=test`, on a dev server or the e2e harness's
    * build); nothing else in the app sets it. */
   narratorConfig?: Partial<AnomalyDetectorConfig>;

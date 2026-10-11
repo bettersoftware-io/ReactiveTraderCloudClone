@@ -503,8 +503,9 @@ live, not hypothetical:
   (3003–3004, vs. React's 3001–3002) and `-solid` report suffixes.
 - `playwright.config.ts`'s `testIgnore` (`notYetPortedSpecs`) is empty for
   both clients — `login.spec.ts` runs unmodified on the Solid run too, now
-  that `client-solid`'s `buildBrowserPorts.ts` reads `VITE_DEV_AUTH` via the
-  same `parseDevAuth` helper as `client-react` instead of hardcoding the
+  that `client-solid` reads `VITE_DEV_AUTH` via the same `parseDevAuth` helper
+  as `client-react` (both now share the one in `@rtc/web-boot`'s
+  `buildBrowserPorts.ts`) instead of hardcoding the
   `mcdc2026` demo roster. The mechanism stays wired for any future genuine
   port gap.
 

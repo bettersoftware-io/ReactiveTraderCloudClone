@@ -320,7 +320,8 @@ in `buildBrowserPorts.ts` instead, so `demo`/`demo` failed there, even though
 had already shipped (PR #241) and the UI-contract tier's two `shell/auth`
 specs already passed on Solid (see the scoreboard above). Enabled 2026-07-19:
 `client-solid`'s `buildBrowserPorts.ts` now reads `VITE_DEV_AUTH` via the same
-`parseDevAuth` helper as `client-react`, so `login.spec.ts` runs unmodified
+`parseDevAuth` helper as `client-react` (both clients now share the one
+`buildBrowserPorts.ts` in `@rtc/web-boot`), so `login.spec.ts` runs unmodified
 against both clients, same as every other browser e2e spec including
 `devtools.spec.ts`.
 

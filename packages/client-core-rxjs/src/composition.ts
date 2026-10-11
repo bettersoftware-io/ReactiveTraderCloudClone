@@ -747,8 +747,8 @@ export function createApp(givenPorts: AppPorts): App {
   // guard is internal (see createNarratorMachine's doc) — unlike
   // jarvisPanels/jarvisDriver, it reads no jarvis.events$, so it needs no
   // guard here. `ports.narratorConfig` is the dev-only relaxed-threshold
-  // seam (`?narratorThresholds=test`, both web clients'
-  // buildBrowserPorts.ts) — undefined in production, so the detector runs
+  // seam (`?narratorThresholds=test`, supplied by
+  // `@rtc/web-boot`'s buildBrowserPorts.ts for both web clients) — undefined in production, so the detector runs
   // at DEFAULT_ANOMALY_CONFIG. Lives for the app's whole session; its
   // `stop()` is called by `app.dispose()`.
   //

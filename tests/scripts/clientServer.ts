@@ -55,8 +55,8 @@ const VITE_BIN = join(CLIENT_DIR, "node_modules", ".bin", "vite");
  * login-form e2e spec (browser/playwright/login.spec.ts) can drive the real
  * LoginScreen. Every OTHER browser spec seeds an authenticated session
  * directly (see tests/browser/authSeed.ts) and never touches this form, so
- * the value is unused there. Both clients read it identically through their
- * own `parseDevAuth` helper in buildBrowserPorts.ts. NODE_OPTIONS is emptied
+ * the value is unused there. Both clients read it identically through the
+ * one `parseDevAuth` helper in @rtc/web-boot's buildBrowserPorts.ts. NODE_OPTIONS is emptied
  * so Vite does not inherit the parent's loader options. */
 function clientEnv(): NodeJS.ProcessEnv {
   return {
