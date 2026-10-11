@@ -5,6 +5,7 @@ import {
   expect,
   it,
   type Mock,
+  type MockInstance,
   vi,
 } from "vitest";
 
@@ -43,6 +44,8 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  // jsdom has no `navigator.webdriver`; a case that sets it is undone here.
+  Reflect.deleteProperty(navigator, "webdriver");
 });
 
 describe("startWebClient", () => {
@@ -60,7 +63,7 @@ describe("startWebClient", () => {
 
     expect(() => {
       void client.start();
-    }).toThrow();
+    }).toThrow(/bogus/);
     expect(client.createView).not.toHaveBeenCalled();
   });
 
@@ -113,10 +116,15 @@ describe("startWebClient", () => {
 
   it("boots through the real loader when the client gives none", async () => {
     vi.useFakeTimers();
+    // The real loader hands back the package's own rxjs core, which nothing
+    // here wraps: record what it composes so `afterEach` disposes it.
+    const createApp = vi.spyOn(rxjsCore, "createApp");
     const client = createClient({ realLoader: true });
 
     await client.start();
+    composedApps.push(...composedBy(createApp));
 
+    expect(createApp).toHaveBeenCalledTimes(1);
     expect(client.composition(1).impl).toBe("rxjs");
     expect(document.documentElement.dataset.coreImpl).toBe("rxjs");
   });
@@ -151,7 +159,7 @@ describe("startWebClient", () => {
     );
   });
 
-  it("a production build's hub does not offer intent injection", async () => {
+  it("a production build's hub tells the inspector it is not a dev build", async () => {
     const channel = createRecordingBroadcastChannel();
     const client = createClient({ env: { dev: false } });
 
@@ -207,7 +215,10 @@ describe("startWebClient", () => {
 
     expect(client.rootEl().inert).toBe(true);
     expect(client.view.showOverlay).toHaveBeenLastCalledWith(
-      expect.anything(),
+      expect.objectContaining({
+        from: expect.objectContaining({ impl: "rxjs", label: "RxJS" }),
+        to: expect.objectContaining({ impl: "async", label: "async/await" }),
+      }),
       COVER,
     );
 
@@ -252,6 +263,25 @@ describe("startWebClient", () => {
     },
   );
 
+  it("under webdriver a swap's cover is instant, and the swap still completes", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(navigator, "webdriver", {
+      value: true,
+      configurable: true,
+    });
+    const client = createClient();
+    await client.start();
+
+    client.composition(1).coreSelection.select("async");
+
+    expect(client.view.showOverlay).toHaveBeenLastCalledWith(
+      expect.objectContaining({ phase: "covering" }),
+      INSTANT,
+    );
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.composition(2).impl).toBe("async");
+  });
+
   it("a swap that can compose neither core destroys the view and shows the boot-error screen", async () => {
     vi.useFakeTimers();
     const client = createClient({ composeOnce: true });
@@ -261,6 +291,9 @@ describe("startWebClient", () => {
     await vi.advanceTimersByTimeAsync(2_000);
 
     expect(client.view.destroy).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[core\] the async core failed to start: /),
+    );
     expect(client.rootEl().textContent).toContain(
       "The application core failed to load",
     );
@@ -435,6 +468,13 @@ async function disposeComposedApps(): Promise<void> {
   for (const app of composedApps.splice(0)) {
     await app.dispose();
   }
+}
+
+/** The apps a spied `createApp` returned. */
+function composedBy(createApp: MockInstance<CoreFactory["createApp"]>): App[] {
+  return createApp.mock.results.flatMap((result) => {
+    return result.type === "return" ? [result.value] : [];
+  });
 }
 
 /** jsdom has no `matchMedia`. */
