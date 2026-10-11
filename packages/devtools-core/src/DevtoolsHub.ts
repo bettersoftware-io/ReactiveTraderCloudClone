@@ -129,7 +129,7 @@ export class DevtoolsHub {
           this.goDormant();
         } else if (this.dev && msg.kind === "intent:invoke") {
           // THE INBOUND WRITE — gated on the runtime `dev` flag each composition
-          // root passes at construction (web: `import.meta.env?.DEV === true`;
+          // root passes at construction (web: `import.meta.env.DEV`;
           // React Native: `__DEV__`). Both resolve `false` in a production
           // build, so the branch is unreachable there and the tap stays
           // observe-only where it matters. The gate is a runtime flag rather

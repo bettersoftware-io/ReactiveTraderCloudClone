@@ -56,7 +56,7 @@ graph TB
     wb -->|"import() only"| alts
     wb --> api
     wb --> dtcore
-    wb --> leaves
+    wb -->|"boot-splash only"| leaves
     wb --> domain
 
     %% Invisible rank constraints -- keep each rank to four boxes (tall, not wide)

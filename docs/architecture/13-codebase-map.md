@@ -53,7 +53,7 @@ flowchart TB
     sb --> core
     wb -. "import() only" .-> core
     wb --> api
-    wb --> motion
+    wb -- "boot-splash only" --> motion
     core --> api
     core --> domain
     core --> shared

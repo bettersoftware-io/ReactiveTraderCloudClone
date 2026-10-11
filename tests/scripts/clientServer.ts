@@ -84,8 +84,9 @@ function buildOutDir(): string {
  * production build reads its demo roster from the committed
  * `.env.production`, where `demo`'s password is not the `demo` the login spec
  * types — the roster this run uses is VITE_DEV_AUTH's, as on the dev server.
- * VITE_NARRATOR_TEST_SEAM keeps the `?narratorThresholds=test` seam in the
- * bundle (a production build otherwise compiles it out): the narrator spec
+ * VITE_NARRATOR_TEST_SEAM allows the `?narratorThresholds=test` seam at run
+ * time (the relaxed thresholds ship in every bundle; a production build made
+ * without the variable cannot switch them on): the narrator spec
  * cannot wait for a natural anomaly, about one per symbol every 14 minutes. */
 function buildClient(outDir: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
