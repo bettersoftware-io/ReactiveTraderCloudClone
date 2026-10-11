@@ -41,11 +41,21 @@ export {
 } from "#/coreSelection";
 export { followCoreSwaps } from "#/coreSwapCover";
 export { type CoreSwapView, coreSwapOf } from "#/coreSwapView";
-export { chooseCoverTimings, type MotionSettings } from "#/coverTimings";
+export {
+  chooseCoverTimings,
+  INSTANT_COVER,
+  type MotionSettings,
+} from "#/coverTimings";
 export {
   createDevtoolsHub,
   type DevtoolsHubOptions,
 } from "#/devtools/createDevtoolsHub";
 export { PRESENTER_MANIFEST } from "#/devtools/presenterManifest";
 export { type BuildEnvValues, type WebBootEnv, webBootEnvOf } from "#/env";
+export {
+  startWebClient,
+  type WebClientOptions,
+  type WebClientPage,
+  type WebClientView,
+} from "#/startWebClient";
 export { MediaQueryColorSchemeAdapter } from "#/theme/MediaQueryColorSchemeAdapter";

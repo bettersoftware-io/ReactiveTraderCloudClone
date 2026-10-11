@@ -15,6 +15,9 @@ export interface MotionSettings {
  * takes its two transition durations from these same numbers. */
 const COVER: CoverTimings = { enterMs: 160, holdMs: 500, exitMs: 200 };
 
+/** No fade and no hold: under webdriver, and before a page's first swap. */
+export const INSTANT_COVER: CoverTimings = { enterMs: 0, holdMs: 0, exitMs: 0 };
+
 /**
  * Chooses one swap's cover timings. One copy, shared by both web clients.
  *
@@ -30,7 +33,7 @@ const COVER: CoverTimings = { enterMs: 160, holdMs: 500, exitMs: 200 };
  */
 export function chooseCoverTimings(motion: MotionSettings): CoverTimings {
   if (motion.webdriver) {
-    return { enterMs: 0, holdMs: 0, exitMs: 0 };
+    return INSTANT_COVER;
   }
 
   if (motion.reducedMotion || motion.freeze) {
