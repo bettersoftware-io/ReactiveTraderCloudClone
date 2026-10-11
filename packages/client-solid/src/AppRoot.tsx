@@ -1,11 +1,8 @@
 import { type JSX, type ParentProps, untrack } from "solid-js";
 
+import type { DemoAccount } from "@rtc/domain";
 import { createViewModel, ViewModelProvider } from "@rtc/solid-bindings";
-import {
-  type Composition,
-  readDemoAccounts,
-  webBootEnvOf,
-} from "@rtc/web-boot";
+import type { Composition } from "@rtc/web-boot";
 
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { BootGate } from "#/ui/shell/boot/BootGate";
@@ -28,11 +25,13 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
  * splash still plays over the login screen; it renders LoginScreen until
  * useAuth() reports "authenticated", then renders the app (children). */
 export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
-  // `composition` never changes within one mount: a swap renders a new tree
-  // rather than re-valuing this component, so this snapshot — read once via
-  // `untrack`, exactly like `ViewModelProvider`'s `props.value` — is correct.
-  const composition = untrack(() => {
-    return props.composition;
+  // Neither prop changes within one mount: a swap renders a new tree rather
+  // than re-valuing this component, so one `untrack`ed read is correct.
+  const { composition, demoAccounts } = untrack(() => {
+    return {
+      composition: props.composition,
+      demoAccounts: props.demoAccounts,
+    };
   });
 
   const viewModel = createViewModel(
@@ -41,7 +40,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
     composition.commands,
     {
       coreSelection: composition.coreSelection,
-      demoAccounts: readDemoAccounts(webBootEnvOf(import.meta.env)),
+      demoAccounts,
       takePreferencesReopen: () => {
         return composition.takePreferencesReopen();
       },
@@ -65,4 +64,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
 
 interface AppRootProps {
   composition: Composition;
+  /** The sign-ins the login screen lists as a hint: the page's, not one
+   * composition's. */
+  demoAccounts: readonly DemoAccount[];
 }

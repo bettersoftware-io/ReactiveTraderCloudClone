@@ -1,7 +1,7 @@
 # `@rtc/web-boot`: one copy of the web clients' boot code
 
 **Date:** 2026-10-06
-**Status:** design, awaiting review
+**Status:** implemented (PR 1 #987, PR 2 #992, PR 3)
 
 ## The problem
 
@@ -104,10 +104,14 @@ Each file's tests move with it. One copy of each test is kept.
 ### What stays in each client
 
 - `src/app/reactTreeMount.ts` / `solidTreeMount.ts` and their tests.
-- `src/app/devtools/devtoolsHub.ts`: three lines that call
-  `createDevtoolsHub` with the client's app id.
-- `src/main.tsx`: the fonts, the framework imports and one call to
-  `startWebClient`.
+- `src/main.tsx`: the fonts, the framework imports, a view factory
+  (`createReactView` / `createSolidView`: the tree mount and the swap
+  overlay's root) and one call to `startWebClient`, which is given the
+  client's app id.
+
+Amended 2026-10-11 (PR 3): no `src/app/devtools/devtoolsHub.ts` stays.
+`startWebClient` creates the hub (see "The devtools hub" and the
+`startWebClient` amendment below).
 
 ### Build-time values are passed in
 
@@ -190,6 +194,77 @@ action, the devtools decorators, the motion settings, the timers, the host
 and the swap follower. Each `main.tsx` shrinks to its framework's part.
 
 This is the step that removes the last twin, so no drift gate is added.
+
+**Amended 2026-10-11 (PR 3).** The sketch above is not what was built. Reading
+both entry files as they were gave a smaller and more honest shape. Eight
+decisions:
+
+1. **One view factory instead of `tree` + `mountApp` + `showOverlay(overlayEl,
+   ...)`.** Both entry files created the tree mount and the overlay's root
+   after the first core had loaded. A `tree` passed in up front would create
+   React's root before the load, so a failed load would write the boot-error
+   screen into an element that already has a live root. `createView(page)` is
+   called at the same moment as before and returns all four operations.
+2. **`startWebClient` creates the devtools hub** from `appId` and `env.dev`.
+   Each client's `src/app/devtools/devtoolsHub.ts` is deleted. This gives
+   `WebBootEnv.dev` its reader, removes the last file pair that differed only
+   in a string, and removes an untested file from each client's `app`
+   coverage tier. The hub is still created once per page, before the core
+   loads.
+3. **`rootId: string` instead of `rootEl`.** The lookup and its "not found"
+   error were the same four lines in both entry files, so they moved in. The
+   client names its element.
+4. **It returns `Promise<void>`**, which settles when the boot composition is
+   mounted or the boot-error screen is shown, and never rejects. A test
+   awaits it; `main.tsx` writes `void startWebClient(...)`. It is not an
+   `async function`: a missing root and an invalid `VITE_CORE_IMPL` still
+   throw synchronously.
+5. **`AppRoot` takes `demoAccounts` as a prop.** `startWebClient` computes
+   them once per page and hands them to the view in `page.demoAccounts`. Grep
+   gate 53 pins that a web client's source reads `import.meta.env` only in
+   `main.tsx`.
+6. **One optional seam, `load`.** A client omits it. Tests pass a loader that
+   returns tracked, broken or rejecting cores. Precedent:
+   `BuildBrowserPortsOptions.relaunch`.
+7. **The twin tests moved to the `tests` workspace** as
+   `tests/scripts/lib/webClientFiles.test.ts`, looping over both clients: a
+   client's `.env.production` roster and its `popout.html`. It runs in CI's
+   `pnpm --filter @rtc/tests test:report` step and is never turbo-cached. It
+   cannot live in `@rtc/web-boot`: turbo would cache that package's test task
+   without seeing a change to a client's `.env.production`. Cost: these two
+   checks leave `pnpm test`.
+8. **Each client's `app` coverage tier stays**, report-only, and covers the
+   tree mount alone.
+
+The shapes as built (`packages/web-boot/src/startWebClient.ts`):
+
+```ts
+export interface WebClientPage {
+  readonly rootEl: HTMLElement;
+  readonly overlayEl: HTMLElement;
+  readonly demoAccounts: readonly DemoAccount[];
+}
+
+export interface WebClientView {
+  mount(composition: Composition): void;
+  unmount(): void;
+  destroy(): void;
+  showOverlay(swap: CoreSwapView | null, fade: CoverTimings): void;
+}
+
+export interface WebClientOptions {
+  readonly appId: string;
+  readonly rootId: string;
+  readonly env: WebBootEnv;
+  readonly createView: (page: WebClientPage) => WebClientView;
+  readonly load?: (impl: CoreImpl) => Promise<CoreFactory>;
+}
+
+export function startWebClient(options: WebClientOptions): Promise<void>;
+```
+
+`INSTANT_COVER` is exported beside them, for a view that renders the overlay
+before the first swap.
 
 ### Rules and gates
 

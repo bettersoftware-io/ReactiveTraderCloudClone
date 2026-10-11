@@ -69,7 +69,7 @@ sequenceDiagram
    form (`DemoAccountsHint`): one click-to-fill row per account the page
    verifies in the browser, plus the password when every account shares it.
    The list comes from `readDemoAccounts()` in `@rtc/web-boot`'s
-   `buildBrowserPorts.ts` (each web client's `AppRoot` calls it) through `useDemoAccounts()` — the simulator's
+   `buildBrowserPorts.ts` (`startWebClient` calls it once per page and hands the list to each client's `AppRoot`) through `useDemoAccounts()` — the simulator's
    roster with no server URL, the `VITE_DEMO_AUTH` roster on a hybrid build,
    and nothing on a plain live build, where every credential belongs to the
    server. Picking a row fills the fields and moves keyboard focus to AUTHENTICATE;
@@ -325,7 +325,7 @@ whose server roster is `demo:demo`, while the bundle's demo entry is
 ### 6.1 Composition
 
 The client composes its ports once per page load, before the login screen
-(`main.tsx` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
+(`main.tsx` → `startWebClient` → `buildBrowserPorts()`). The hybrid therefore chooses the port set
 **at load**, from a stored choice, exactly as the load-time core switch does
 (ADR-006 Decision 6):
 

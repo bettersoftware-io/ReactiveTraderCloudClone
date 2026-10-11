@@ -120,7 +120,7 @@ flowchart TD
   fail["throws — a developer error, fail-closed"]
   resolved["resolveCoreChoice(…): CoreImpl"]
   load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>import() of #quot;@rtc/client-core-rxjs#quot;,<br/>#quot;@rtc/client-core-async#quot; or #quot;@rtc/client-core-effect#quot;,<br/>each its own lazy chunk, fetched only once chosen"]
-  boot["bootCore (web-boot/src/bootApp.ts)<br/>→ main.tsx hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
+  boot["bootCore (web-boot/src/bootApp.ts)<br/>→ startWebClient hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
 
   url -- "valid" --> resolved
   url -- "absent, or unknown<br/>(ignored + console warning)" --> stored

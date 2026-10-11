@@ -209,11 +209,13 @@ export default defineConfig({
   // the stored choice above this build default, itself above "rxjs"). All
   // three cores ship in every build, each a dynamic import `loadCore`
   // fetches lazily once chosen (RxJS included, from its own package,
-  // `@rtc/client-core-rxjs`), so this no longer selects what gets
+  // `@rtc/client-core-rxjs`), so this does not select what gets
   // bundled (see `pnpm check:core-bundle`). Vite's built-in
   // import.meta.env replacement leaves the value as whatever string ran the
-  // process, so `define` re-inlines it as a JSON string literal `bootApp.ts`
-  // reads through `import.meta.env.VITE_CORE_IMPL`. Unset → "rxjs".
+  // process, so `define` re-inlines it as a JSON string literal that
+  // `main.tsx` passes (as `import.meta.env`) to `webBootEnvOf`, and
+  // `startWebClient` hands `env.coreImpl` to `bootCore` as the build default.
+  // Unset → "rxjs".
   define: {
     "import.meta.env.VITE_CORE_IMPL": JSON.stringify(
       process.env.VITE_CORE_IMPL || "rxjs",

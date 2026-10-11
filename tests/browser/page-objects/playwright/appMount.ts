@@ -17,11 +17,11 @@ type MountOutcome = "mounted" | "boot-error";
  * Runs `navigate` (a `goto` or `reload`) and then waits until the app has
  * actually MOUNTED — `page.goto` alone only waits for the document's `load`
  * event, which was enough while boot was synchronous but not since the
- * async/Effect cores load through a dynamic `import()`: `main.tsx` renders
+ * async/Effect cores load through a dynamic `import()`: `startWebClient` renders
  * only once `bootCore` resolves, so a bare `goto` can return on an empty
  * `#root`.
  *
- * Mounted means `<html data-core-impl>` is set (published by `main.tsx` once
+ * Mounted means `<html data-core-impl>` is set (published by `startWebClient` once
  * the core resolved) AND `#root` has rendered children. A load that ends on
  * the plain-DOM boot-error screen (`renderBootError`, the chunk-load failure
  * path) or throws at module init (an invalid `VITE_CORE_IMPL`) fails HERE with

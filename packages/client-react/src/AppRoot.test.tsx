@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appRootPage } from "#tests/ui/pages/AppRootPage";
 
 // The one place the composition root's own wiring is witnessed in this
-// client: AppRoot → buildBrowserPorts()/readDemoAccounts() → createViewModel
-// → AuthGate → LoginScreen, with no fake on the seam. The contract tier
-// covers LoginScreen against a seeded World and so cannot see whether AppRoot
-// hands the accounts over at all.
+// client: the page's demo accounts → AppRoot's `demoAccounts` prop →
+// createViewModel → AuthGate → LoginScreen, with no fake on the seam. The
+// contract tier covers LoginScreen against a seeded World and so cannot see
+// whether AppRoot hands the accounts over at all.
 describe("AppRoot (login screen demo accounts)", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -45,7 +45,7 @@ describe("AppRoot (login screen demo accounts)", () => {
 
 // The one-shot "reopen Preferences" of a swapped-in composition, through the
 // real AppRoot → createViewModel → HeaderChrome under StrictMode (as
-// main.tsx mounts it): StrictMode's second call of the header's state
+// the client's view mounts it): StrictMode's second call of the header's state
 // initializer must not lose the signal the first call took.
 //
 // Nothing here waits on time. The simulator signs in synchronously, so the

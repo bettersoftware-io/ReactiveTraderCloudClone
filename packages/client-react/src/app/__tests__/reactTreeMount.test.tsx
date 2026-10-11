@@ -120,7 +120,7 @@ interface HostHarness {
 }
 
 /** A host over fake cores whose mount is the real React tree mount, rendering
- * a tree that throws for the effect core — as `main.tsx` would render an
+ * a tree that throws for the effect core — as the client's view would render an
  * `AppRoot` whose UI fails on the new core. */
 function createHostHarness(initial: CoreImpl = "rxjs"): HostHarness {
   const disposed: CoreImpl[] = [];

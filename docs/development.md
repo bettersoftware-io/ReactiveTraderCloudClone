@@ -165,8 +165,8 @@ Per-package detail: [`packages/client-react/README.md`](../packages/client-react
 e2e suite matrix).
 
 `pnpm test` runs each package's bare `test`; in `@rtc/client-react` that's the
-**union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
-adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
+**union** of two co-resident tiers — the **app tier** (`test:app`: the React
+tree mount under `src/app`) and the **ui contract tier** (`test:ui:contract`:
 sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
 
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then

@@ -2,11 +2,11 @@ import { defineConfig, mergeConfig } from "vitest/config";
 
 import base from "./vitest.config";
 
-// Report-only v8 coverage for the app tier (src/app: the devtools hub and the
-// tree mount; the rest of the boot code lives in @rtc/web-boot, which has its
-// own gated tier) — the Solid mirror of client-react's
-// vitest.app.coverage.config.ts, so the published coverage report can show both
-// clients side by side instead of react only.
+// Report-only v8 coverage for the app tier (src/app: the tree mount alone;
+// the rest of the boot code lives in @rtc/web-boot, which has its own gated
+// tier) — the Solid mirror of client-react's vitest.app.coverage.config.ts, so
+// the published coverage report can show both clients side by side instead of
+// react only.
 //
 // These tests already RAN under `pnpm test`; what was missing was a coverage
 // DENOMINATOR scoped to src/app. That blind spot is not theoretical: it hid

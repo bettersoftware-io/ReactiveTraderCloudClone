@@ -102,7 +102,7 @@ flowchart TB
 ```
 
 The three decorators, all applied at a web client's composition root
-(`instrumentComposition` in `packages/client-react/src/main.tsx` and
+(`instrumentComposition` in `packages/web-boot/src/startWebClient.ts` and
 `packages/web-boot/src/buildBrowserPorts.ts`):
 
 - **`instrumentWsAdapter(adapter, hub)`** (`packages/devtools-core/src/instrument/wsAdapter.ts`) — wraps `send`/`on`/`rpc` to report `wire:out`/`wire:in`; every other member delegates untouched via an explicit-bind `Proxy`.
@@ -360,9 +360,10 @@ work identically in dev and in the deployed app:
   into `dist/devtools`, so the deployed app serves the same bundle at
   `/devtools/` with no separate deploy step.
 
-Disconnect behavior: the app registers a `pagehide` listener at module load.
-Each client's `src/app/devtools/devtoolsHub.ts` makes one
-`createDevtoolsHub({ appId, dev })` call, and the factory
+Disconnect behavior: the app registers a `pagehide` listener when `startWebClient` runs, once per page.
+`startWebClient` (`packages/web-boot/src/startWebClient.ts`) makes one
+`createDevtoolsHub({ appId, dev })` call per page, with the `appId` the
+client's `main.tsx` passes it and `dev` from the build env, and the factory
 (`packages/web-boot/src/devtools/createDevtoolsHub.ts`) does the wiring:
 
 ```ts
@@ -534,7 +535,7 @@ third transport adapter, `WsRelayDuplex` (in `@rtc/devtools-core`), plus a
 standalone dev-machine relay (`@rtc/devtools-relay`). The RN app — dev build
 only, `__DEV__`-gated at the composition root — opens `WsRelayDuplex(url,
 "app")` as its `DevtoolsHub` transport and applies the same three decorators
-`client-react` applies; the browser `devtools-app` opens `WsRelayDuplex(url,
+the web clients get from `startWebClient`; the browser `devtools-app` opens `WsRelayDuplex(url,
 "panel")` via a `?relay=<ws-url>` query; the relay forwards frames between them
 (broadcast app→panels, single panel→app), identifying each connection by its
 `?role=` query and holding no protocol knowledge. Frames are JSON; the duplex

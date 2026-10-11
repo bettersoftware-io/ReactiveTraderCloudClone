@@ -102,8 +102,8 @@ test.describe("DevTools inspector (same-origin)", () => {
     await devtools.expectMachineOfKind(ctx, "tileExecution");
 
     // Closing the app view fires `pagehide` on its window, which the app-side
-    // devtoolsHub (packages/client-react/src/app/devtools/devtoolsHub.ts,
-    // built by `createDevtoolsHub` in @rtc/web-boot) handles by calling `dispose()` → `goDormant()` → sends `bye` over the
+    // devtoolsHub (made by `startWebClient` in @rtc/web-boot) handles by
+    // calling `dispose()` → `goDormant()` → sends `bye` over the
     // BroadcastChannel. The inspector has no independent liveness timer (an
     // abrupt crash with no `pagehide` is a documented v1 limitation — see
     // design spec §5), but a graceful close is exactly this path. Generous
@@ -114,10 +114,10 @@ test.describe("DevTools inspector (same-origin)", () => {
 });
 
 // Same client-selection env var playwright.config.ts branches on. The two
-// app-side devtoolsHub.ts files intentionally use different appId values
-// (packages/client-react/src/app/devtools/devtoolsHub.ts: "rtc-web";
-// packages/client-solid/src/app/devtools/devtoolsHub.ts: "rtc-web-solid") so
-// two same-origin inspectors from different clients are distinguishable —
+// clients' main.tsx files intentionally pass different appId values to
+// `startWebClient` (packages/client-react/src/main.tsx: "rtc-web";
+// packages/client-solid/src/main.tsx: "rtc-web-solid") so two same-origin
+// inspectors from different clients are distinguishable —
 // the connection badge the app-side hub reports is client-specific too.
 const expectedAppId =
   process.env.RTC_CLIENT_PKG === "@rtc/client-solid"

@@ -530,9 +530,6 @@ importers:
       '@rtc/core-logic':
         specifier: workspace:*
         version: link:../core-logic
-      '@rtc/devtools-core':
-        specifier: workspace:*
-        version: link:../devtools-core
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain
@@ -838,9 +835,6 @@ importers:
       '@rtc/core-logic':
         specifier: workspace:*
         version: link:../core-logic
-      '@rtc/devtools-core':
-        specifier: workspace:*
-        version: link:../devtools-core
       '@rtc/domain':
         specifier: workspace:*
         version: link:../domain

@@ -22,7 +22,7 @@ interface BuiltRoot {
 }
 
 /**
- * Creates the mount `main.tsx` renders every composition into.
+ * Creates the mount the client's view renders every composition into.
  *
  * It does what `solid-js/web`'s `render` does — a reactive root that inserts
  * the tree into the container — except on failure: `render` returns its

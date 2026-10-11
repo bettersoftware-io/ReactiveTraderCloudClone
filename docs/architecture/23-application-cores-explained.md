@@ -850,7 +850,7 @@ the build default (`VITE_CORE_IMPL`), then `rxjs`.
 ```mermaid
 sequenceDiagram
   autonumber
-  participant M as main.tsx
+  participant M as startWebClient
   participant S as coreSelection
   participant N as Network
   participant H as Core host
@@ -871,7 +871,7 @@ sequenceDiagram
 ```
 
 The **core host** (`packages/web-boot/src/coreHost.ts`) is the object that outlives any
-one core. `main.tsx` builds the ports once and gives them to it; the host
+one core. `startWebClient` (called once by each client's `main.tsx`) builds the ports once and gives them to it; the host
 composes the core over them and mounts `AppRoot` with the result.
 `AppRoot` never learns which core it got. The full precedence chain, the
 failure screen and the bundle check are in

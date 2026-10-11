@@ -10,15 +10,25 @@ import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
+import type { DemoAccount } from "@rtc/domain";
 import {
   buildBrowserPorts,
   type Composition,
+  createDevtoolsHub,
+  readDemoAccounts,
+  type WebBootEnv,
   webBootEnvOf,
 } from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
-import { devtoolsHub } from "#/app/devtools/devtoolsHub";
 import { App } from "#/ui/App";
+
+/** A hub of this page's own: the client's is created inside
+ * `startWebClient`, which a test does not call. */
+const devtoolsHub = createDevtoolsHub({
+  appId: "rtc-web-solid",
+  dev: readRunEnv().dev,
+});
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
  * so there is no runtime switch to exercise here — `Preferences.contract.spec.ts`
@@ -74,7 +84,10 @@ export function appPage(): AppPage {
     mount(): void {
       render(() => {
         return (
-          <AppRoot composition={createComposition()}>
+          <AppRoot
+            composition={createComposition()}
+            demoAccounts={readRunDemoAccounts()}
+          >
             <App />
           </AppRoot>
         );
@@ -136,6 +149,16 @@ export function appPage(): AppPage {
   };
 }
 
+/** The build-time values as the run has them right now: read when a page
+ * mounts, not once at import, because a spec stubs them per case. */
+function readRunEnv(): WebBootEnv {
+  return webBootEnvOf(import.meta.env);
+}
+
+function readRunDemoAccounts(): readonly DemoAccount[] {
+  return readDemoAccounts(readRunEnv());
+}
+
 function findDemoAccountRows(): HTMLElement[] {
   return screen.queryAllByTestId("login-demo-account");
 }
@@ -146,7 +169,7 @@ function findDemoAccountRows(): HTMLElement[] {
  * the transport's wire tap only. */
 function createComposition(): Composition {
   const app = rxjsCore.createApp(
-    buildBrowserPorts({ env: webBootEnvOf(import.meta.env), devtoolsHub }),
+    buildBrowserPorts({ env: readRunEnv(), devtoolsHub }),
   );
 
   return {

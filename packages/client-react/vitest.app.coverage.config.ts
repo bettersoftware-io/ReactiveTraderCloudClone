@@ -2,9 +2,9 @@ import { defineConfig, mergeConfig } from "vitest/config";
 
 import base from "./vitest.config";
 
-// Report-only v8 coverage for the app tier (src/app: the devtools hub and the
-// tree mount; the rest of the boot code lives in @rtc/web-boot, which has its
-// own gated tier).
+// Report-only v8 coverage for the app tier (src/app: the tree mount alone;
+// the rest of the boot code lives in @rtc/web-boot, which has its own gated
+// tier).
 // Reuses the base jsdom/react config; the `src/app` positional in the script
 // scopes which tests RUN, coverage.include scopes the DENOMINATOR. The test
 // HTML report is redirected to reports/app so it doesn't clobber reports/unit.

@@ -165,7 +165,7 @@ jobs:
       - name: Pages tooling unit tests
         run: pnpm --filter @rtc/tests test:pages
 
-      - name: E2E harness tooling unit tests
+      - name: E2E harness tooling + deployed-file guards (unit)
         run: pnpm --filter @rtc/tests test:report
 
       # The cucumber teardown policy decides whether a green run is allowed to go

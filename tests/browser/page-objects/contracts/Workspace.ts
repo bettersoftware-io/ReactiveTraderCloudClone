@@ -23,7 +23,7 @@ export interface WorkspacePO {
   /**
    * Waits until the current URL no longer carries `?core=` — the core host
    * strips it with `history.replaceState` once an in-place core swap lands
-   * (`coreHost.ts`'s `stripCoreParam`, wired in each client's `main.tsx`).
+   * (`coreHost.ts`'s `stripCoreParam`, wired in `startWebClient`).
    */
   waitUrlHasNoCoreParam(timeoutMs: number): Promise<void>;
   /**
@@ -53,7 +53,7 @@ export interface WorkspacePO {
    *  login screen is in the DOM. */
   waitSignedIn(timeoutMs: number): Promise<void>;
   /** Wait until the document root's `data-core-impl` reads exactly `expected`
-   *  — the application core the app actually booted on (set by `main.tsx`
+   *  — the application core the app actually booted on (set by `startWebClient`
    *  once `bootApp.ts`'s `bootCore` resolves). Unlike
    *  `LoginScreenPO.waitCoreImpl` (a second, unauthenticated context/page,
    *  Playwright-only), this reads the SAME page every other `WorkspacePO`
