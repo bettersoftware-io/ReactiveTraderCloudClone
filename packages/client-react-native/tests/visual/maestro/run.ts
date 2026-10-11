@@ -21,6 +21,7 @@ import {
 import { goldenPath } from "../shared/goldens.ts";
 import { failedFlowLines, noShotLine } from "../shared/maestroOutcome.ts";
 import { type Platform, resolvePlatform } from "../shared/platform.ts";
+import { refuseDeviceInUse } from "../shared/refuseDeviceInUse.ts";
 import { maskTopRows, STATUS_BAR_ROWS } from "../shared/statusBarMask.ts";
 
 const exec = promisify(execFile);
@@ -189,6 +190,8 @@ async function prepareDevice(
   if (platform === "android") {
     const serial = env.RTC_VISUAL_UDID ?? (await resolveAndroidSerial());
 
+    await refuseDeviceInUse(serial, "android");
+
     if (serial.startsWith("emulator-")) {
       await warnOfWindowedEmulator();
     }
@@ -208,6 +211,7 @@ async function prepareDevice(
   // goldens carried the dev-menu gear until 2026-10-01.
   const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
 
+  await refuseDeviceInUse(udid, "ios");
   await hideDevMenuFab(udid);
 
   return {

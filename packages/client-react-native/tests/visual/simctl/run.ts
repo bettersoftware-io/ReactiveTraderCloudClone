@@ -8,6 +8,7 @@ import { resolveBootedUdid } from "../shared/bootedUdid.ts";
 import { hideDevMenuFab, restoreDevMenuFab } from "../shared/devMenuFab.ts";
 import { compareToGolden, toleranceFor, verdictLine } from "../shared/diff.ts";
 import { goldenPath } from "../shared/goldens.ts";
+import { refuseDeviceInUse } from "../shared/refuseDeviceInUse.ts";
 import { parseSkinFlag, type SkinOverride } from "../skinOverride.ts";
 import { createSimctlDriver } from "./capture.ts";
 
@@ -109,6 +110,8 @@ async function main(): Promise<void> {
         });
 
   const udid = env.RTC_VISUAL_UDID ?? (await resolveBootedUdid());
+
+  await refuseDeviceInUse(udid, "ios");
 
   const driver = createSimctlDriver({
     udid,
