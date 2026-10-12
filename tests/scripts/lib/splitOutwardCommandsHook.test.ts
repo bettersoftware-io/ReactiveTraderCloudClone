@@ -29,10 +29,27 @@ describe("a push the hook cannot read asks", () => {
     );
   });
 
-  it("asks when a quote never closes", () => {
-    expect(judge("git push origin 'worktree-a").reason).toContain(
-      "a quote that never closes",
+  it.each([
+    "git push origin 'worktree-a",
+    "cat <<EOF\ngit push origin worktree-a --force",
+  ])("%s", (command) => {
+    expect(judge(command).reason).toContain(
+      "a quote or a heredoc never closes",
     );
+  });
+});
+
+describe("the prompt prints a word of the command safely", () => {
+  it("replaces a character that is not plain printable text", () => {
+    expect(judge("git push origin '+a\tb'").reason).toContain(
+      "`+a?b` overwrites",
+    );
+  });
+
+  it("cuts a long word short", () => {
+    const reason = judge(`git push origin +${"a".repeat(60)}`).reason;
+
+    expect(reason).toContain(`\`+${"a".repeat(39)}\` overwrites`);
   });
 });
 
@@ -40,6 +57,9 @@ describe("a chained outward step is still refused, lossy or not", () => {
   it.each([
     "git commit -m x && git push origin worktree-a",
     "git commit -m x && git push --force origin worktree-a",
+    "git add -A && timeout 60 git push origin worktree-a",
+    // a here-string has no body, so the next line is a second step
+    "git status <<<EOF\ngit push origin worktree-a --del main",
   ])("%s", (command) => {
     expect(judge(command).decision).toBe("refused");
   });
@@ -50,6 +70,7 @@ describe("a command that is not a push is never asked about", () => {
     "git commit -m 'never push --force'",
     "git branch -d worktree-a",
     "git fetch --prune origin",
+    "git stash push -u",
     "rm -f notes.txt",
   ])("%s", (command) => {
     expect(judge(command).decision).toBe("silent");
@@ -118,6 +139,15 @@ function createLossyPushes(): readonly (readonly [string, string])[] {
     ["git -C ../other push --force origin worktree-a", "`--force` overwrites"],
     ["GIT_TRACE=1 git push -f origin worktree-a", "`-f` overwrites"],
     ["git push -f origin worktree-a 2>&1 | tail -5", "`-f` overwrites"],
+    ["timeout 60 git push origin worktree-a --del main", "`--del` deletes"],
+    ["command git push -f origin worktree-a", "`-f` overwrites"],
+    ["env GIT_TRACE=1 git push -f origin worktree-a", "`-f` overwrites"],
+    ["/usr/bin/git push -f origin worktree-a", "`-f` overwrites"],
+    ["(git push origin worktree-a --del main)", "`--del` deletes"],
+    ["2>&1 git push origin worktree-a --del main", "`--del` deletes"],
+    ["echo y | git push origin worktree-a --del main", "`--del` deletes"],
+    ["git push origin worktree-a#x --force", "`--force` overwrites"],
+    ["git push -f origin worktree-a # don't forget", "`-f` overwrites"],
   ];
 }
 
@@ -138,5 +168,8 @@ function createHarmlessPushes(): readonly string[] {
     "git push -o +draft origin worktree-a",
     "git push -ofast origin worktree-a",
     "git push",
+    "timeout 60 git push origin worktree-a",
+    "# push the branch\ngit push origin worktree-a",
+    "git push origin worktree-a # don't forget",
   ];
 }

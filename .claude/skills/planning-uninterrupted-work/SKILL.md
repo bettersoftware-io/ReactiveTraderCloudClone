@@ -52,9 +52,14 @@ Still unasked, because nothing is lost: a named target
 (`git push origin worktree-a:main`), a second branch after the first
 (`git push origin worktree-a main`), and `gh pr merge` of any pull request
 number. The `main` ruleset stands behind a push to `main`; nothing but
-attention stands behind the rest. The hook reads the command, not its
-effect: a `remote.origin.push` setting or an alias can still turn a plain
-push into a forced one.
+attention stands behind the rest.
+
+The hook catches a mistake; it does not hold back an agent that wants past
+it. It finds a push wherever it sits in the command (behind `timeout`, in
+`( … )`, after a pipe), but it is not a shell: a push built from a string
+(`sh -c '…'`, `eval`, a script, an alias) is not read, and neither is what
+the words do (a `remote.origin.push` setting can turn a plain push into a
+forced one).
 
 ## Two rules
 
