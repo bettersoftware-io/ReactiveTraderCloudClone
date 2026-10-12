@@ -4,6 +4,8 @@
 
 `tests/scripts/grep-gates.ts` encodes import-boundary rules plus a supply-chain audit — see the file for the current gate count and list (49 active gates, numbered up to 53, as of this writing — gates 12–14 were retired with Cypress on 2026-07-20, and gate 24 was retired with the quickpickle presenter peer that same day; none of the numbers are reused) — enforced on every CI run. Gates use regex search — no runtime or type information — so they are fast and framework-agnostic.
 
+A gate runs `grep -rH`, so every output line is `path:content`, and a gate's `excludes` are path fragments (`/node_modules/`, `.test.`, `/bridge/`, one file's path): a line is dropped when the **file path** contains one, and what the line says is never consulted. A banned construct on a production line that mentions `foo.test.ts` in a comment still fails its gate. The rule lives in `tests/scripts/lib/gateLines.ts` (`keepViolations`) and is unit-tested beside it.
+
 | Gate | Rule |
 |------|------|
 | 1 | No raw `data-testid="..."` literals outside `testids.ts` (must use `TESTIDS` constants) |
