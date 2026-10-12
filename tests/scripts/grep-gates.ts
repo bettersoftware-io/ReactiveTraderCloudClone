@@ -3,6 +3,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { gateGrepArgs, keepViolations } from "./lib/gateLines.ts";
+
 /** The fields of the root package.json that gate 52 reads. */
 interface RootManifest {
   engines?: { node?: string };
@@ -15,6 +17,10 @@ interface Gate {
   name: string;
   pattern: string;
   paths: string[];
+  /**
+   * Path fragments. A grep line is dropped when the FILE PATH it came from
+   * contains one of them; the matched content is never consulted.
+   */
   excludes?: string[];
   /**
    * Optional custom check. When present, runs INSTEAD OF the grep pipeline;
@@ -219,19 +225,19 @@ function checkProductionAudit(): string[] {
  * exception is needed. Test files are not gated here.
  */
 function checkNoUiTimers(path: string): string[] {
-  const result = spawnSync("grep", ["-rnE", "setTimeout|setInterval", path], {
-    encoding: "utf8",
-  });
-  const out = result.stdout ?? "";
-  return out
-    .split("\n")
-    .filter(Boolean)
-    .filter((line) => {
-      return !line.includes("/node_modules/");
-    })
-    .filter((line) => {
-      return !line.includes(".test.") && !line.includes(".spec.");
-    });
+  const result = spawnSync(
+    "grep",
+    gateGrepArgs("setTimeout|setInterval", [path]),
+    {
+      encoding: "utf8",
+    },
+  );
+
+  return keepViolations(result.stdout ?? "", [
+    "/node_modules/",
+    ".test.",
+    ".spec.",
+  ]);
 }
 
 /** The two pixel specs, which must stay in lockstep (each is the other's copy). */
@@ -903,7 +909,7 @@ for (const gate of GATES) {
   if (gate.customCheck) {
     lines = gate.customCheck();
   } else {
-    const args = ["-rE", gate.pattern, ...gate.paths];
+    const args = gateGrepArgs(gate.pattern, gate.paths);
     const result = spawnSync("grep", args, { encoding: "utf8" });
 
     if (result.status === 2) {
@@ -912,15 +918,7 @@ for (const gate of GATES) {
       continue;
     }
 
-    const out = result.stdout ?? "";
-    lines = out
-      .split("\n")
-      .filter(Boolean)
-      .filter((line) => {
-        return !(gate.excludes ?? []).some((e) => {
-          return line.includes(e);
-        });
-      });
+    lines = keepViolations(result.stdout ?? "", gate.excludes ?? []);
   }
 
   if (lines.length > 0) {
