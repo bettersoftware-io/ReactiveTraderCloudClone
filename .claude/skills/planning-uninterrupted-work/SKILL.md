@@ -54,6 +54,10 @@ Still unasked, because nothing is lost: a named target
 number. The `main` ruleset stands behind a push to `main`; nothing but
 attention stands behind the rest.
 
+Write a push with no comment on it. The hook reads a command's comments two
+ways and asks when the two disagree, so a routine push followed by
+`# see PR#12` asks as well.
+
 The hook catches a mistake; it does not hold back an agent that wants past
 it. It finds a push wherever it sits in the command (behind `timeout`, in
 `( … )`, after a pipe), but it is not a shell: a push built from a string

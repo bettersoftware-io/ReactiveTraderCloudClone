@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -32,13 +33,31 @@ describe("a push the hook cannot read asks", () => {
   it.each([
     "git push origin 'worktree-a",
     "cat <<EOF\ngit push origin worktree-a --force",
-    "git push origin worktree-a # don't forget",
     'timeout 5 "git" push --force \'worktree-a',
+    // the shell removes the quotes: pu"sh" is push
+    "echo a#b; git pu\"sh\" origin :old # don't",
   ])("%s", (command) => {
     const verdict = judge(command);
 
     expect(verdict.decision).toBe("ask");
     expect(verdict.reason).toContain("a quote or a heredoc never closes");
+  });
+});
+
+describe("a push that two readings of the comments disagree about asks", () => {
+  it("asks when a # inside a word and a quote inside a comment hide the same push", () => {
+    const verdict = judge(
+      "# it's time\ngit push origin worktree-a#x --forc # isn't it",
+    );
+
+    expect(verdict.decision).toBe("ask");
+    expect(verdict.reason).toContain("the two disagree about the push");
+  });
+
+  it("asks about a harmless push too when its comment glues a # to a word: the price", () => {
+    expect(judge("git push origin worktree-a # see PR#12").reason).toContain(
+      "the two disagree about the push",
+    );
   });
 });
 
@@ -78,9 +97,19 @@ describe("a command that is not a push is never asked about", () => {
     "git fetch --prune origin",
     "git stash push -u",
     "git commit -m 'never closes",
+    "git commit -m 'fix PR#12, the push hook'",
+    "git commit -m 'fix the push hook' # see PR#12",
     "rm -f notes.txt",
   ])("%s", (command) => {
     expect(judge(command).decision).toBe("silent");
+  });
+});
+
+describe("the hook loads on the Python that macOS ships", () => {
+  it("defers its annotations, which Python 3.9 cannot evaluate", () => {
+    expect(readFileSync(HOOK, "utf8")).toContain(
+      "\nfrom __future__ import annotations\n",
+    );
   });
 });
 
@@ -155,6 +184,9 @@ function createLossyPushes(): readonly (readonly [string, string])[] {
     ["echo y | git push origin worktree-a --del main", "`--del` deletes"],
     ["git push origin worktree-a#x --force", "`--force` overwrites"],
     ["git push -f origin worktree-a # then tidy up", "`-f` overwrites"],
+    ["git push -f origin worktree-a # don't forget", "`-f` overwrites"],
+    ["# it's time\ngit push origin :old # isn't it", "`:old` deletes"],
+    ["# it's PR#1\ngit push origin :old # isn't it", "`:old` deletes"],
   ];
 }
 
@@ -178,5 +210,6 @@ function createHarmlessPushes(): readonly string[] {
     "timeout 60 git push origin worktree-a",
     "# push the branch\ngit push origin worktree-a",
     "git push origin worktree-a # then open the pull request",
+    "git push origin worktree-a # don't forget",
   ];
 }

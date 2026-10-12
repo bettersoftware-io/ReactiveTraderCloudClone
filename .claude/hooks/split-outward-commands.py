@@ -38,6 +38,11 @@ A JSON `permissionDecision: "ask"` on stdout = a person is prompted, and the
 reason is shown in the prompt.
 """
 
+# macOS ships Python 3.9 as /usr/bin/python3. Without this line a `X | None`
+# in a signature raises there as the file loads, and a hook that crashes
+# fails open: nothing is refused and nothing is asked.
+from __future__ import annotations
+
 import json
 import re
 import shlex
@@ -95,12 +100,13 @@ def strip_heredocs(command: str) -> str:
     return "\n".join(out)
 
 
-def segments(command: str, commenters: str = "#") -> list[list[str]]:
-    """The command's words, one list per chained step; empty when unreadable.
+def segments(command: str, commenters: str = "#") -> list[list[str]] | None:
+    """The command's words, one list per chained step; None when unreadable.
 
-    `commenters=""` keeps a comment's words. shlex starts a comment at a `#`
-    in the middle of a word, where the shell does not, so `x#y --force` loses
-    its last word unless comments are read too."""
+    Neither reading is the shell's. With `commenters="#"` shlex also starts a
+    comment at a `#` in the middle of a word, so `x#y --force` loses its last
+    word. With `commenters=""` a comment's words are kept, and a quote inside
+    a comment opens a string the shell never sees."""
     result: list[list[str]] = [[]]
 
     try:
@@ -120,7 +126,7 @@ def segments(command: str, commenters: str = "#") -> list[list[str]]:
             else:
                 result[-1].append(token)
     except ValueError:
-        return []  # unparseable: let the normal permission flow judge it
+        return None
 
     return [seg for seg in result if seg]
 
@@ -191,6 +197,40 @@ def pushes_in(segment: list[str]) -> list[list[str]]:
                 found.append(subcommand[1:])
 
     return found
+
+
+def pushes_read(command: str, commenters: str) -> list[list[str]] | None:
+    """Every push's arguments under one reading; None when it cannot be made."""
+    read = segments(command, commenters)
+
+    return None if read is None else [push for p in read for push in pushes_in(p)]
+
+
+def push_doubts(command: str) -> list[str]:
+    """Why a person should look at this command's pushes; empty when both
+    readings agree that nothing can be lost."""
+    lenient = pushes_read(command, commenters="#")
+    # With no `#` glued to the character before it, shlex's comments are the
+    # shell's, and the one reading is enough.
+    glued = re.search(r"\S#", command)
+    strict = pushes_read(command, commenters="") if glued else lenient
+
+    pushes = (strict or []) + (lenient or [])
+    losses = [loss for push in pushes for loss in push_losses(push)]
+
+    if losses:
+        return list(dict.fromkeys(losses))
+
+    if strict is None:
+        # quote removal is the shell's: pu"sh" is push
+        named = re.search(r"\bpush\b", re.sub(r"[\\'\"]", "", command))
+
+        return ["a quote or a heredoc never closes, so it cannot be read here"] if named else []
+
+    if strict != lenient:
+        return ["its comments can be read two ways, and the two disagree about the push"]
+
+    return []
 
 
 def shown(word: str) -> str:
@@ -279,27 +319,16 @@ def main() -> None:
         return
 
     command = (payload.get("tool_input") or {}).get("command") or ""
-    parts = segments(command)
+    parts = segments(command) or []
     outward = [" ".join(words_of(p)[:3]) for p in parts if is_outward(p)]
 
     if len(parts) < 2 or not outward:
-        # Every word, a comment's too: the judgement that must not miss one.
-        read = segments(command, commenters="")
-        losses = [
-            loss for p in read for push in pushes_in(p) for loss in push_losses(push)
-        ]
+        doubts = push_doubts(command)
 
-        if not read and re.search(r"\bpush\b", command):
-            # No second, kinder reading: one that drops what it cannot read
-            # is how a push gets past.
+        if doubts:
             ask(
-                "This command names a push and cannot be read here: a quote "
-                "or a heredoc never closes (an apostrophe in a comment counts)."
-            )
-        elif losses:
-            ask(
-                "This push can lose something on the remote: "
-                + "; ".join(losses)
+                "This push may lose something on the remote: "
+                + "; ".join(doubts)
                 + ". A person decides."
             )
         return
