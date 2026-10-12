@@ -104,7 +104,9 @@ def segments(command: str, commenters: str = "#") -> list[list[str]]:
     result: list[list[str]] = [[]]
 
     try:
-        text = strip_heredocs(command.replace("\\\n", " ")).replace("\n", " ; ")
+        # The newline stays, so that a comment ends where its line does, and
+        # the separator follows it, so that the comment does not swallow it.
+        text = strip_heredocs(command.replace("\\\n", " ")).replace("\n", "\n; ")
         lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
         lexer.commenters = commenters
@@ -278,25 +280,23 @@ def main() -> None:
 
     command = (payload.get("tool_input") or {}).get("command") or ""
     parts = segments(command)
-    # Every word for the judgement that must not miss one. A comment with an
-    # apostrophe in it cannot be read that way, so the shell's reading stands.
-    read = segments(command, commenters="") or parts
-
-    if not read and pushes_in(command.split()):
-        ask(
-            "This command holds a push and cannot be read here: a quote or a "
-            "heredoc never closes."
-        )
-        return
-
     outward = [" ".join(words_of(p)[:3]) for p in parts if is_outward(p)]
 
     if len(parts) < 2 or not outward:
+        # Every word, a comment's too: the judgement that must not miss one.
+        read = segments(command, commenters="")
         losses = [
             loss for p in read for push in pushes_in(p) for loss in push_losses(push)
         ]
 
-        if losses:
+        if not read and re.search(r"\bpush\b", command):
+            # No second, kinder reading: one that drops what it cannot read
+            # is how a push gets past.
+            ask(
+                "This command names a push and cannot be read here: a quote "
+                "or a heredoc never closes (an apostrophe in a comment counts)."
+            )
+        elif losses:
             ask(
                 "This push can lose something on the remote: "
                 + "; ".join(losses)

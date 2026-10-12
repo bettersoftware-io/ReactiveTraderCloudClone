@@ -32,10 +32,13 @@ describe("a push the hook cannot read asks", () => {
   it.each([
     "git push origin 'worktree-a",
     "cat <<EOF\ngit push origin worktree-a --force",
+    "git push origin worktree-a # don't forget",
+    'timeout 5 "git" push --force \'worktree-a',
   ])("%s", (command) => {
-    expect(judge(command).reason).toContain(
-      "a quote or a heredoc never closes",
-    );
+    const verdict = judge(command);
+
+    expect(verdict.decision).toBe("ask");
+    expect(verdict.reason).toContain("a quote or a heredoc never closes");
   });
 });
 
@@ -58,6 +61,9 @@ describe("a chained outward step is still refused, lossy or not", () => {
     "git commit -m x && git push origin worktree-a",
     "git commit -m x && git push --force origin worktree-a",
     "git add -A && timeout 60 git push origin worktree-a",
+    // a comment ends at its own line's end, so the next line is a second step
+    "git push origin worktree-a # don't\ngit push origin worktree-b --forc",
+    "# note\ngit add -A && git push origin worktree-a",
     // a here-string has no body, so the next line is a second step
     "git status <<<EOF\ngit push origin worktree-a --del main",
   ])("%s", (command) => {
@@ -71,6 +77,7 @@ describe("a command that is not a push is never asked about", () => {
     "git branch -d worktree-a",
     "git fetch --prune origin",
     "git stash push -u",
+    "git commit -m 'never closes",
     "rm -f notes.txt",
   ])("%s", (command) => {
     expect(judge(command).decision).toBe("silent");
@@ -147,7 +154,7 @@ function createLossyPushes(): readonly (readonly [string, string])[] {
     ["2>&1 git push origin worktree-a --del main", "`--del` deletes"],
     ["echo y | git push origin worktree-a --del main", "`--del` deletes"],
     ["git push origin worktree-a#x --force", "`--force` overwrites"],
-    ["git push -f origin worktree-a # don't forget", "`-f` overwrites"],
+    ["git push -f origin worktree-a # then tidy up", "`-f` overwrites"],
   ];
 }
 
@@ -170,6 +177,6 @@ function createHarmlessPushes(): readonly string[] {
     "git push",
     "timeout 60 git push origin worktree-a",
     "# push the branch\ngit push origin worktree-a",
-    "git push origin worktree-a # don't forget",
+    "git push origin worktree-a # then open the pull request",
   ];
 }
