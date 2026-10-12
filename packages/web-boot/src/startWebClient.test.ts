@@ -373,7 +373,9 @@ function createClient(options: ClientOptions = {}): Client {
   const createView = vi.fn((_page: WebClientPage): WebClientView => {
     return view;
   });
-  const own: App[] = [];
+  // `composedApps` is the one list; this client answers for what it added after
+  // this point.
+  const composedBefore = composedApps.length;
   let composed = 0;
 
   function mayCompose(): boolean {
@@ -393,7 +395,7 @@ function createClient(options: ClientOptions = {}): Client {
       return Promise.reject(new Error(`no test core for ${impl}`));
     }
 
-    return Promise.resolve(createTrackedCore(core, own, mayCompose));
+    return Promise.resolve(createTrackedCore(core, mayCompose));
   });
 
   return {
@@ -428,7 +430,7 @@ function createClient(options: ClientOptions = {}): Client {
       return composition;
     },
     composedApps: (): readonly App[] => {
-      return own;
+      return composedApps.slice(composedBefore);
     },
     rootEl: (): HTMLElement => {
       const rootEl = document.getElementById("root");
@@ -456,7 +458,6 @@ function createClient(options: ClientOptions = {}): Client {
  * each `createApp`, and a core it refuses throws instead. */
 function createTrackedCore(
   core: CoreFactory,
-  own: App[],
   mayCompose: () => boolean,
 ): CoreFactory {
   return {
@@ -466,7 +467,6 @@ function createTrackedCore(
       }
 
       const app = core.createApp(ports);
-      own.push(app);
       composedApps.push(app);
       return app;
     },
