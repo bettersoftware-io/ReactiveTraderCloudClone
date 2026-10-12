@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { keepViolations } from "./lib/gateLines.ts";
+import { gateGrepArgs, keepViolations } from "./lib/gateLines.ts";
 
 /** The fields of the root package.json that gate 52 reads. */
 interface RootManifest {
@@ -225,9 +225,13 @@ function checkProductionAudit(): string[] {
  * exception is needed. Test files are not gated here.
  */
 function checkNoUiTimers(path: string): string[] {
-  const result = spawnSync("grep", ["-rnHE", "setTimeout|setInterval", path], {
-    encoding: "utf8",
-  });
+  const result = spawnSync(
+    "grep",
+    gateGrepArgs("setTimeout|setInterval", [path]),
+    {
+      encoding: "utf8",
+    },
+  );
 
   return keepViolations(result.stdout ?? "", [
     "/node_modules/",
@@ -905,7 +909,7 @@ for (const gate of GATES) {
   if (gate.customCheck) {
     lines = gate.customCheck();
   } else {
-    const args = ["-rHE", gate.pattern, ...gate.paths];
+    const args = gateGrepArgs(gate.pattern, gate.paths);
     const result = spawnSync("grep", args, { encoding: "utf8" });
 
     if (result.status === 2) {

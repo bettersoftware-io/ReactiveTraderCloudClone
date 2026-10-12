@@ -1,6 +1,11 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { keepViolations, pathOfGrepLine } from "./gateLines.ts";
+import { gateGrepArgs, keepViolations, pathOfGrepLine } from "./gateLines.ts";
 
 describe("pathOfGrepLine", () => {
   it("is the file a `grep -H` line came from", () => {
@@ -10,6 +15,14 @@ describe("pathOfGrepLine", () => {
   it("stops at the first colon, so a colon in the content does not move the path", () => {
     expect(pathOfGrepLine("src/a.ts:const x: Map<string, number> = y;")).toBe(
       "src/a.ts",
+    );
+  });
+});
+
+describe("pathOfGrepLine without a colon", () => {
+  it("returns the whole line", () => {
+    expect(pathOfGrepLine("Binary file src/a.png matches")).toBe(
+      "Binary file src/a.png matches",
     );
   });
 });
@@ -47,6 +60,14 @@ describe("keepViolations", () => {
     ).toEqual([kept]);
   });
 
+  it("keeps a line without a colon, so an unexpected grep message fails the gate", () => {
+    const line = "Binary file src/a.png matches";
+
+    expect(
+      keepViolations(createOutput(line), [".test.", "/node_modules/"]),
+    ).toEqual([line]);
+  });
+
   it("gives no lines for empty output", () => {
     expect(keepViolations("", [".test."])).toEqual([]);
   });
@@ -55,6 +76,52 @@ describe("keepViolations", () => {
     const lines = ["src/a.test.ts:x", "src/b.ts:y"];
 
     expect(keepViolations(createOutput(...lines), [])).toEqual(lines);
+  });
+});
+
+describe("gateGrepArgs", () => {
+  it("makes grep name the file even when the only operand is one file, so its exclude can match", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gate-lines-"));
+
+    try {
+      const file = join(dir, "a.test.ts");
+      writeFileSync(file, "const x = import.meta.env.DEV;\n");
+
+      const result = spawnSync(
+        "grep",
+        gateGrepArgs("import\\.meta\\.env", [file]),
+        {
+          encoding: "utf8",
+        },
+      );
+
+      expect(result.stdout).toMatch(/a\.test\.ts:1:/);
+      expect(keepViolations(result.stdout, [".test."])).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("carries the file-name flag itself, not a recursion that happens to print names", () => {
+    // `grep -r` over one file prints a name on some greps (ugrep, BSD) and not
+    // on others (GNU); without `-r`, no grep prints one unless `-H` asks.
+    const dir = mkdtempSync(join(tmpdir(), "gate-lines-"));
+
+    try {
+      const file = join(dir, "a.test.ts");
+      writeFileSync(file, "const x = import.meta.env.DEV;\n");
+
+      const [flags, ...operands] = gateGrepArgs("import\\.meta\\.env", [file]);
+      const result = spawnSync(
+        "grep",
+        [(flags ?? "").replace("r", ""), ...operands],
+        { encoding: "utf8" },
+      );
+
+      expect(keepViolations(result.stdout, [".test."])).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
