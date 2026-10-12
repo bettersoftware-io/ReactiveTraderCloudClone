@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""PreToolUse(Bash) hook: refuse a command that CHAINS an outward-facing step
-(git push, gh pr create/merge, gh workflow run, ...) with anything else.
+"""PreToolUse(Bash) hook with two jobs.
+
+1. Refuse a command that CHAINS an outward-facing step (git push, gh pr
+   create/merge, gh workflow run, ...) with anything else.
+2. Ask a person before a `git push` that can LOSE something on the remote:
+   a force, a delete, a mirror, a prune. Every other push is left to the
+   permission rules, so no routine push gains a prompt.
 
 Why: auto mode judges a chained command as a whole and shows the prompt from
 its first word, so `git add && git commit && git push && gh pr create` reads
@@ -9,7 +14,21 @@ outward one. Outward steps must run as their own Bash call, batched at the
 start or end of a piece of work. Pipes into filters (`git push 2>&1 | tail`)
 are allowed: that is still a single outward step.
 
+Why the second job lives here and not in `permissions.ask`: a rule is a
+glob over the command's text, and a glob cannot name a word. It missed a
+shortened option (`--del`), a bundled one (`-uf`) and a quoted one
+(`"--force"`), and `Bash(git push *:*)` could not be written at all: a rule
+that ends in `:*` is read as the old prefix syntax. This hook reads the words
+the shell would pass to git. It only ever ASKS, so the worst it can do is
+nothing: the rules still decide what runs unasked.
+
+What it cannot see is what the words do: a `remote.origin.push` setting, an
+alias, or a tag that shares the branch's name can all turn a plain-looking
+push into something else.
+
 Exit 2 + stderr = the call is refused and the message goes back to Claude.
+A JSON `permissionDecision: "ask"` on stdout = a person is prompted, and the
+reason is shown in the prompt.
 """
 
 import json
@@ -27,8 +46,20 @@ GH_OUTWARD = {
     "release": {"create", "delete", "edit", "upload"},
     "repo": {"create", "delete", "edit", "fork"},
 }
-GIT_OUTWARD = {"push"}
 WRITE_METHODS = {"POST", "PATCH", "PUT", "DELETE"}
+
+# What each option of `git push` can take away from the remote.
+LOSSY_LONG = {
+    "--force": "overwrites the remote branch",
+    "--delete": "deletes a remote ref",
+    "--mirror": "overwrites and deletes remote refs",
+    "--prune": "deletes remote branches",
+}
+LOSSY_SHORT = {"f": LOSSY_LONG["--force"], "d": LOSSY_LONG["--delete"]}
+# Short options that take a value, which is not an option itself: -o <string>.
+VALUE_SHORT = {"o"}
+# The shell rewrites a word holding one of these before git reads it.
+SHELL_EXPANDED = set("$`{")
 
 
 def strip_heredocs(command: str) -> str:
@@ -95,11 +126,7 @@ def is_outward(segment: list[str]) -> bool:
         return False
 
     if words[0] == "git":
-        rest = words[1:]
-        # skip global options: git -C dir push, git -c k=v push
-        while rest and rest[0].startswith("-"):
-            rest = rest[2:] if rest[0] in {"-C", "-c"} else rest[1:]
-        return bool(rest) and rest[0] in GIT_OUTWARD
+        return git_subcommand(words)[:1] == ["push"]
 
     if words[0] == "gh":
         group, action = words[1], words[2] if len(words) > 2 else ""
@@ -115,6 +142,76 @@ def is_outward(segment: list[str]) -> bool:
         return action in GH_OUTWARD.get(group, set())
 
     return False
+
+
+def git_subcommand(words: list[str]) -> list[str]:
+    """`git -C dir push -u origin x` -> ["push", "-u", "origin", "x"]."""
+    if not words or words[0] != "git":
+        return []
+
+    rest = words[1:]
+    # skip global options: git -C dir push, git -c k=v push
+    while rest and rest[0].startswith("-"):
+        rest = rest[2:] if rest[0] in {"-C", "-c"} else rest[1:]
+
+    return rest
+
+
+def push_losses(words: list[str]) -> list[str]:
+    """Why this push can lose something on the remote; empty when it cannot,
+    and when `words` is not a push at all."""
+    subcommand = git_subcommand(words)
+
+    if subcommand[:1] != ["push"]:
+        return []
+
+    losses: list[str] = []
+    is_value = False
+
+    for word in subcommand[1:]:
+        if is_value:
+            is_value = False
+        elif SHELL_EXPANDED & set(word):
+            losses.append(f"`{word}` is rewritten by the shell, so it cannot be read here")
+        elif not word.startswith("-"):
+            if word.startswith("+"):
+                losses.append(f"`{word}` {LOSSY_LONG['--force']}")
+            elif word.startswith(":"):
+                losses.append(f"`{word}` {LOSSY_LONG['--delete']}")
+        elif word == "--":
+            pass  # the end of the options, not a shortened one
+        elif word.startswith("--"):
+            # git takes a long option shortened (--del), and
+            # --force-with-lease=x is a force too
+            for option, loss in LOSSY_LONG.items():
+                if option.startswith(word) or word.startswith(option):
+                    losses.append(f"`{word}` {loss}")
+                    break
+        else:
+            # a bundle of short options: -uf is -u -f
+            letters = word[1:]
+
+            for index, letter in enumerate(letters):
+                if letter in VALUE_SHORT:
+                    is_value = index == len(letters) - 1
+                    break
+                if letter in LOSSY_SHORT:
+                    losses.append(f"`{word}` {LOSSY_SHORT[letter]}")
+
+    return losses
+
+
+def ask(reason: str) -> None:
+    json.dump(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": reason,
+            }
+        },
+        sys.stdout,
+    )
 
 
 def shadowed_by_project_copy() -> bool:
@@ -148,12 +245,21 @@ def main() -> None:
     command = (payload.get("tool_input") or {}).get("command") or ""
     parts = segments(command)
 
-    if len(parts) < 2:
+    if not parts and git_subcommand(command.split())[:1] == ["push"]:
+        ask("This push has a quote that never closes, so it cannot be read here.")
         return
 
     outward = [" ".join(words_of(p)[:3]) for p in parts if is_outward(p)]
 
-    if not outward:
+    if len(parts) < 2 or not outward:
+        losses = [loss for p in parts for loss in push_losses(words_of(p))]
+
+        if losses:
+            ask(
+                "This push can lose something on the remote: "
+                + "; ".join(losses)
+                + ". A person decides."
+            )
         return
 
     sys.stderr.write(

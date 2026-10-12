@@ -46,7 +46,6 @@
       "Bash(git push *--all*)",
       "Bash(git push *--tags*)",
       "Bash(git push *--prune*)",
-      "Bash(git push *:*)",
       "Bash(gh pr merge *--admin*)"
     ]
   },
