@@ -62,6 +62,26 @@ interface Entry {
  * a wrong password are both `invalid` — so the policy above it is exercised
  * the same way against either.
  */
+/** The seeds' credential, derived once per process: every seed shares the one
+ * public dev password, and a test suite builds hundreds of directories — four
+ * scrypt derivations each, at construction, pushed single tests past their
+ * timeout on a loaded machine. One salt for all seeds is fine: the password it
+ * protects is committed. */
+let seedCredential: Credential | undefined;
+
+function devSeedCredential(): Credential {
+  if (seedCredential === undefined) {
+    const salt = createSalt();
+
+    seedCredential = {
+      salt,
+      digest: hashPasswordSync(DEV_ACCOUNT_PASSWORD, salt),
+    };
+  }
+
+  return seedCredential;
+}
+
 export function createInMemoryAccountDirectory(
   options: InMemoryDirectoryOptions,
 ): AccountDirectory {
@@ -70,18 +90,13 @@ export function createInMemoryAccountDirectory(
   const dummySalt = createSalt();
 
   for (const seed of options.seeds) {
-    const salt = createSalt();
-
     byEmail.set(seed.email, {
       id: seed.id,
       email: seed.email,
       displayName: seed.displayName,
       access: seed.access,
       createdAt: 0,
-      credential: {
-        salt,
-        digest: hashPasswordSync(DEV_ACCOUNT_PASSWORD, salt),
-      },
+      credential: devSeedCredential(),
       confirmed: seed.status !== "unconfirmed",
       approved: seed.status === "active",
       blocked: seed.status === "blocked",
