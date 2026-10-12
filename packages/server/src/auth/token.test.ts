@@ -7,7 +7,69 @@ import { signToken, verifyToken } from "#/auth/token";
 describe("token", () => {
   it("round-trips a valid, unexpired token", () => {
     const t = signToken("demo", SECRET, 60_000, NOW);
-    expect(verifyToken(t, SECRET, NOW + 30_000)).toEqual({ username: "demo" });
+    expect(verifyToken(t, SECRET, NOW + 30_000)).toEqual({
+      username: "demo",
+      accountId: null,
+      access: "user",
+    });
+  });
+
+  it("round-trips the account id and access level", () => {
+    const t = signToken("ann@desk.io", SECRET, 60_000, NOW, {
+      accountId: "acc-1",
+      access: "admin",
+    });
+
+    expect(verifyToken(t, SECRET, NOW)).toEqual({
+      username: "ann@desk.io",
+      accountId: "acc-1",
+      access: "admin",
+    });
+  });
+
+  it("rejects an access claim with no account id (a half-claim)", () => {
+    const payload = JSON.stringify({ u: "demo", exp: 9e15, a: "admin" });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
+  it("rejects an account id with no access claim", () => {
+    const payload = JSON.stringify({ u: "demo", exp: 9e15, id: "acc-1" });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
+  it("rejects an empty-string account id", () => {
+    const payload = JSON.stringify({
+      u: "demo",
+      exp: 9e15,
+      id: "",
+      a: "user",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
+  it("rejects a non-string account id with a valid access level", () => {
+    const payload = JSON.stringify({
+      u: "demo",
+      exp: 9e15,
+      id: 1,
+      a: "admin",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
+  });
+
+  it("rejects an access level it does not know", () => {
+    const payload = JSON.stringify({
+      u: "demo",
+      exp: 9e15,
+      id: "acc-1",
+      a: "root",
+    });
+
+    expect(verifyToken(forge(payload), SECRET, NOW)).toBeNull();
   });
   it("rejects after expiry", () => {
     const t = signToken("demo", SECRET, 60_000, NOW);

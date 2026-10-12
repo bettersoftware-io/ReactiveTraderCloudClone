@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { LoginResponseDto } from "@rtc/shared";
 
+import {
+  type AccountService,
+  createAccountService,
+} from "#/accounts/AccountService";
+import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
+import {
+  DEV_ACCOUNT_PASSWORD,
+  DEV_ACCOUNT_SEEDS,
+} from "#/accounts/devAccounts";
+import { createInMemoryAccountDirectory } from "#/accounts/InMemoryAccountDirectory";
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
 import { type BanList, createBanList } from "#/auth/banList";
 import { createRateLimiter, type RateLimiter } from "#/auth/rateLimit";
@@ -14,6 +24,158 @@ import {
 } from "./loginHandler.js";
 
 describe("authenticateLoginRequest", () => {
+  it("signs a registered, active account in with its derived profile and claims", async () => {
+    const auth = createAuth(createClock(1_000));
+    const deps = createDeps(auth);
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("admin@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+    const parsed = JSON.parse(result.body) as LoginResponseDto;
+
+    expect(result.status).toBe(200);
+    expect(parsed.user.name).toBe("Desk Admin");
+    expect(parsed.user.email).toBe("admin@rtc.test");
+    expect(parsed.exp).toBe(1_000 + TTL_MS);
+    expect(auth.verifyToken(parsed.token)).toEqual({
+      username: "admin@rtc.test",
+      accountId: "00000000-0000-4000-8000-000000000001",
+      access: "admin",
+    });
+  });
+
+  it.each([
+    ["pending@rtc.test", "pending_approval"],
+    ["blocked@rtc.test", "blocked"],
+  ])("refuses %s with 403 %s and no strike", async (email, error) => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+    const deps = createDeps(createAuth(createClock(1_000)), { banList });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody(email, DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(403);
+    expect(JSON.parse(result.body)).toEqual({ error });
+    expect(banList.isBanned("1.2.3.4", 1_000)).toBe(false);
+  });
+
+  it("refuses a registered but unconfirmed address with 403 unconfirmed and no strike", async () => {
+    const now = createClock(2 * 24 * 60 * 60 * 1_000);
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      banList,
+      accounts: createAccountService({
+        directory: createInMemoryAccountDirectory({
+          now,
+          seeds: [
+            {
+              id: "00000000-0000-4000-8000-000000000009",
+              email: "fresh@rtc.test",
+              displayName: "Fresh Guest",
+              access: "user",
+              status: "unconfirmed",
+            },
+          ],
+        }),
+        now,
+        registrationOpen: true,
+        maxRegistrationsPerDay: 100,
+        codeEntryLimiter: createRateLimiter(100, 60_000),
+        sendLimiter: createRateLimiter(100, 60_000),
+        sendFuse: createRateLimiter(100, 60_000),
+      }),
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("fresh@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(403);
+    expect(JSON.parse(result.body)).toEqual({ error: "unconfirmed" });
+    expect(banList.isBanned("1.2.3.4", 1_000)).toBe(false);
+  });
+
+  it("a wrong password for a registered address is 401 and a strike", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 30_000,
+      maxEntries: 10,
+    });
+    const deps = createDeps(createAuth(createClock(1_000)), { banList });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("blocked@rtc.test", "Wrong2026!pass"),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(401);
+    expect(JSON.parse(result.body)).toEqual({ error: "invalid_credentials" });
+    expect(banList.isBanned("1.2.3.4", 1_000)).toBe(true);
+  });
+
+  it("answers 503 for a registered address when the directory is unavailable, and still serves the roster", async () => {
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      accounts: createAccountService({
+        directory: createDisabledAccountDirectory(),
+        now: createClock(1_000),
+        registrationOpen: true,
+        maxRegistrationsPerDay: 100,
+        codeEntryLimiter: createRateLimiter(100, 60_000),
+        sendLimiter: createRateLimiter(100, 60_000),
+        sendFuse: createRateLimiter(100, 60_000),
+      }),
+    });
+
+    const account = await authenticateLoginRequest(
+      createLoginBody("trader@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    const roster = await authenticateLoginRequest(
+      createLoginBody("demo", "localpass"),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(account.status).toBe(503);
+    expect(JSON.parse(account.body)).toEqual({ error: "unavailable" });
+    expect(roster.status).toBe(200);
+  });
+
+  it("never sends a roster username to the account service", async () => {
+    const deps = createDeps(createAuth(createClock(1_000)));
+    const login = vi.spyOn(deps.accounts, "login");
+
+    await authenticateLoginRequest(
+      createLoginBody("demo", "localpass"),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(login).not.toHaveBeenCalled();
+  });
+
   it("returns 429 when the caller is rate-limited", async () => {
     const deps = createDeps(createAuth(createClock(1_000)), {
       rateLimit: createRateLimiter(1, 60_000),
@@ -186,6 +348,7 @@ describe("describeUpgrade", () => {
     });
     expect(describeUpgrade(`/?access=${login.token}`, auth)).toEqual({
       ok: true,
+      token: { username: "demo", accountId: null, access: "user" },
     });
   });
 });
@@ -196,6 +359,24 @@ interface DepsOverrides {
   readonly rateLimit?: RateLimiter;
   readonly banList?: BanList;
   readonly now?: () => number;
+  readonly accounts?: AccountService;
+}
+
+function createAccounts(): AccountService {
+  const now = createClock(2 * 24 * 60 * 60 * 1_000);
+
+  return createAccountService({
+    directory: createInMemoryAccountDirectory({
+      now,
+      seeds: DEV_ACCOUNT_SEEDS,
+    }),
+    now,
+    registrationOpen: true,
+    maxRegistrationsPerDay: 100,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuse: createRateLimiter(100, 60_000),
+  });
 }
 
 function createAuth(now: () => number): AuthService {
@@ -230,6 +411,7 @@ function createDeps(
         banMs: 60_000,
         maxEntries: 10,
       }),
+    accounts: overrides.accounts ?? createAccounts(),
     now: overrides.now ?? createClock(1_000),
   };
 }

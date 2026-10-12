@@ -30,6 +30,7 @@ import {
 } from "@rtc/domain";
 
 import { startServer, stopProcess, waitForHttp } from "./_orchestration.ts";
+import { runAccountsJourney } from "./accounts-journey.ts";
 import { loginForToken } from "./loginForToken.ts";
 
 // Direction is a `const enum` in @rtc/domain, inaccessible under
@@ -555,6 +556,7 @@ try {
   await waitForHttp(`http://${HOST}:${PORT}/health`, 30_000);
   await runChecks();
   await runHotSwapSmoke();
+  await runAccountsJourney(`http://${HOST}:${PORT}`, `ws://${HOST}:${PORT}`);
   await runOversizedFrameSmoke();
   await runEdgeGuardSmoke();
   await runGateSmoke();

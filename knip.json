@@ -113,7 +113,7 @@
       "project": "src/**/*.ts"
     },
     "packages/server": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/index.ts", "scripts/probe-accounts.ts"],
       "project": "src/**/*.ts"
     },
     "packages/client-react": {

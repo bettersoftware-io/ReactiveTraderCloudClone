@@ -59,12 +59,23 @@ async function serveMcpRequest(
 ): Promise<void> {
   const token = bearerToken(req);
 
-  if (token === null || deps.auth.verifyToken(token) === null) {
+  const verified = token === null ? null : deps.auth.verifyToken(token);
+
+  if (verified === null) {
     rejectRequest(
       res,
       401,
       "Unauthorized: pass 'Authorization: Bearer <token>' using a session token from POST /login.",
     );
+    return;
+  }
+
+  // Only the WebSocket upgrade re-checks an account's status, so a registered
+  // account's token — including a since-blocked account's — must not work
+  // here until it expires. B2c replaces this with an administrator gate that
+  // checks the account's current status.
+  if (verified.accountId !== null) {
+    rejectRequest(res, 403, "account_tokens_not_accepted");
     return;
   }
 

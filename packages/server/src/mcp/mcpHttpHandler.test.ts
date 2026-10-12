@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildJarvisTools } from "@rtc/agent-tools";
 
 import { AuthService, parseAuthUsers } from "../auth/AuthService.js";
+import { signToken } from "../auth/token.js";
 import { createServices } from "../services/serviceContainer.js";
 import { createMcpRequestHandler } from "./mcpHttpHandler.js";
 
@@ -80,6 +81,30 @@ describe("createMcpRequestHandler", () => {
     await expect(
       client.connect(authedTransport("not-a-real-token")),
     ).rejects.toMatchObject({ code: 401 });
+  });
+
+  it("refuses a registered account's token with 403, before any MCP handling", async () => {
+    const token = signToken("ann@desk.io", "test-secret", 60_000, Date.now(), {
+      accountId: "00000000-0000-4000-8000-000000000001",
+      access: "admin",
+    });
+
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "account_tokens_not_accepted" },
+      id: null,
+    });
   });
 
   it("non-POST methods are rejected 405 (stateless endpoint) with an Allow header", async () => {

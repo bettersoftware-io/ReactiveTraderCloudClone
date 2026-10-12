@@ -40,6 +40,12 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | `AUTH_SECRET` | Fly secret (by hand) | HMAC secret that signs session tokens | `AuthService` (`packages/server/src/auth/AuthService.ts`) |
 | `AUTH_USERS` | Fly secret (deployed); the committed `dev:ws` / `dev:*:fs` scripts embed the demo roster for local full-stack | The credential roster, `"user:pass,user2:pass2"` | `parseAuthUsers` (`packages/server/src/auth/loadUsers.ts`) |
 | `AUTH_TTL_MS` | Fly secret (by hand, optional) | Session-token lifetime in ms (defaults to 8h) | `AuthService` |
+| `SUPABASE_URL` | Fly secret (by hand); shell for `accounts:probe` | The account store's Supabase project URL (`https://…`); with `SUPABASE_SECRET_KEY` it turns on registered accounts ([authentication.md §7](authentication.md#7-registered-accounts-b2a)) | `resolveAccountsMode` (`packages/server/src/accounts/resolveAccountsMode.ts`) |
+| `SUPABASE_SECRET_KEY` | Fly secret (by hand); shell for `accounts:probe`; never committed, never in a client | A Supabase **secret** key (`sb_secret_…`), which bypasses row-level security | `resolveAccountsMode` → `SupabaseAccountDirectory` |
+| `RTC_DEV_ACCOUNTS` | the committed `dev:ws` / `dev:*:fs` scripts and the full-stack smoke | `1` turns on the in-memory dev account directory (seeded `@rtc.test` accounts, password `Mcdc2026!desk`, code `00000000`); the server refuses it when `FLY_APP_NAME` or `RTC_DEPLOYED` is set | `resolveAccountsMode` |
+| `RTC_DEPLOYED` | `packages/server/Dockerfile` (`ENV RTC_DEPLOYED=1`); blanked by the full-stack smoke | marks a container built from the server image as deployed, whatever the host: the dev account directory is refused | `resolveAccountsMode` |
+| `REGISTRATION_OPEN` | Fly secret (optional) | `true` (default) or `false`; `false` closes sign-up without a code change; any other value stops the server | `isRegistrationOpen` (`resolveAccountsMode.ts`) |
+| `PROBE_EMAIL_DOMAIN` | shell, for `accounts:probe` only | A domain you control or a test inbox; the probe sends one real confirmation email there | `packages/server/scripts/probe-accounts.ts` |
 | `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` and `packages/client-solid/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via `@rtc/web-boot`'s `buildBrowserPorts.ts` and its `parseDevAuth` — one helper, used by both `client-react` and `client-solid` |
 | `VITE_DEMO_AUTH` | committed `packages/client-react/.env.production` and `packages/client-solid/.env.production` — **production builds only** (Vite never loads it in dev, so every `dev:*` and e2e flow is unaffected); declared in `turbo.json` `build.env` / `dev.env` so an explicit process-level override survives strict env mode | JSON `username -> password` — the committed demo roster at `mcdc2026`, inlined into the production bundle. With `VITE_SERVER_URL` set the build is **hybrid**: a login matching this roster is verified in the browser and runs the simulators, anything else is posted to the server's `/login`. Without `VITE_SERVER_URL` it is the simulator-only build's login roster | `resolveDataSource` / `createRoutingAuthPort` (`@rtc/client-adapters`) via `@rtc/web-boot`'s `buildBrowserPorts.ts` |
 | `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
@@ -47,8 +53,9 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 The **demo login password is committed** (`mcdc2026`) — this is a demo app, and
 those credentials are throwaway and rotatable. The one credential that stays out
 of git is the server's **`AUTH_SECRET`** (the token-signing key); dev uses a
-throwaway `dev-local-secret` baked into the `dev:*` scripts, and the deployed
-value is a Fly secret set by hand. The `.env.example` templates still ship
+throwaway `dev-local-secret-public-by-design-never-deploy` baked into the `dev:*` scripts, and the deployed
+value is a Fly secret set by hand. So is `SUPABASE_SECRET_KEY` once registered
+accounts are enabled. The `.env.example` templates still ship
 overridable placeholder values.
 
 ## Other environment variables (server, build, Jarvis)

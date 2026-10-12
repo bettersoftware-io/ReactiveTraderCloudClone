@@ -1,11 +1,26 @@
 // Auth
 
+export type { AccessLevel } from "./auth/accessLevel.js";
+export {
+  initialsOf,
+  isConfirmationCode,
+  isValidDisplayName,
+  isValidEmail,
+  normalizeDisplayName,
+  normalizeEmail,
+} from "./auth/accountInput.js";
 export { DEFAULT_AUTH_TTL_MS } from "./auth/authTtl.js";
 export {
   type DemoAccount,
   listDemoAccounts,
   sharedDemoPassword,
 } from "./auth/demoAccounts.js";
+export {
+  findPasswordViolation,
+  PASSWORD_RULES,
+  type PasswordRule,
+  type PasswordRuleId,
+} from "./auth/passwordPolicy.js";
 export { findRosterUser, ROSTER, type RosterEntry } from "./auth/roster.js";
 export type { SessionUser } from "./auth/sessionUser.js";
 

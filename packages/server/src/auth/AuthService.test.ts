@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { AuthService, parseAuthUsers } from "#/auth/AuthService";
+import { signToken } from "#/auth/token";
 
 describe("AuthService", () => {
   it("issues a token + profile on valid credentials", async () => {
@@ -11,7 +12,11 @@ describe("AuthService", () => {
     }
 
     expect(r.user.name).toBe("Demo Operator");
-    expect(svc.verifyToken(r.token)).toEqual({ username: "demo" });
+    expect(svc.verifyToken(r.token)).toEqual({
+      username: "demo",
+      accountId: null,
+      access: "user",
+    });
   });
 
   it("rejects a wrong password", async () => {
@@ -54,6 +59,19 @@ describe("AuthService", () => {
     expect(m.get("a")).toBe("1");
     expect(m.get("b")).toBe("2");
     expect(m.size).toBe(2);
+  });
+
+  it("parseAuthUsers refuses a username containing @, naming the entry by index only", () => {
+    expect(() => {
+      return parseAuthUsers("demo:x,ann@desk:hunter2");
+    }).toThrow('AUTH_USERS: a roster username must not contain "@" (entry 2)');
+
+    try {
+      parseAuthUsers("ann@desk:hunter2");
+    } catch (error) {
+      expect(String(error)).not.toContain("ann@desk");
+      expect(String(error)).not.toContain("hunter2");
+    }
   });
 
   it("throws when constructed with an empty secret but configured users", () => {
@@ -118,6 +136,66 @@ describe("AuthService", () => {
   });
 });
 
+describe("issueAccountSession", () => {
+  it("issues a token that verifies with the account's id and access", () => {
+    const auth = new AuthService({
+      secret: "s3cret",
+      ttlMs: 60_000,
+      credentials: new Map<string, string>(),
+      now: (): number => {
+        return 1_000;
+      },
+    });
+
+    const token = auth.issueAccountSession("ann@desk.io", {
+      accountId: "acc-1",
+      access: "admin",
+    });
+
+    expect(auth.verifyToken(token)).toEqual({
+      username: "ann@desk.io",
+      accountId: "acc-1",
+      access: "admin",
+    });
+  });
+
+  it("refuses to sign with an empty secret (Review Focus 2)", () => {
+    const auth = new AuthService({
+      secret: "",
+      ttlMs: 60_000,
+      credentials: new Map<string, string>(),
+    });
+
+    expect(() => {
+      return auth.issueAccountSession("ann@desk.io", {
+        accountId: "acc-1",
+        access: "user",
+      });
+    }).toThrow("AUTH_SECRET must be set to issue an account session");
+  });
+});
+
+describe("verifyToken under an empty secret", () => {
+  it("refuses an account token, which anyone can sign offline", () => {
+    const token = signToken("ann@desk.io", "", 60_000, 1_000, {
+      accountId: "00000000-0000-4000-8000-000000000001",
+      access: "admin",
+    });
+
+    expect(createEmptySecretAuth().verifyToken(token)).toBeNull();
+  });
+
+  it("still verifies a roster token (refusal is scoped to account claims)", () => {
+    const token = signToken("demo", "", 60_000, 1_000);
+
+    expect(createEmptySecretAuth().verifyToken(token)).toEqual({
+      username: "demo",
+      accountId: null,
+      access: "user",
+    });
+  });
+});
+
 interface TokenPayload {
   exp: number;
 }
@@ -130,3 +208,14 @@ const svc = new AuthService({
     return 1_000_000;
   },
 });
+
+function createEmptySecretAuth(): AuthService {
+  return new AuthService({
+    secret: "",
+    ttlMs: 60_000,
+    credentials: new Map<string, string>(),
+    now: (): number => {
+      return 1_000;
+    },
+  });
+}

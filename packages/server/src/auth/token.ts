@@ -1,12 +1,25 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import type { AccessLevel } from "@rtc/domain";
+
+/** The registered account a token was issued for. Roster logins carry none. */
+export interface TokenAccount {
+  readonly accountId: string;
+  readonly access: AccessLevel;
+}
+
 interface Payload {
   readonly u: string;
   readonly exp: number;
+  readonly id?: string;
+  readonly a?: AccessLevel;
 }
 
 export interface VerifiedToken {
   readonly username: string;
+  /** Null for a roster login, which has no directory entry. */
+  readonly accountId: string | null;
+  readonly access: AccessLevel;
 }
 
 function sign(payload: string, secret: string): string {
@@ -18,8 +31,17 @@ export function signToken(
   secret: string,
   ttlMs: number,
   now: number,
+  account: TokenAccount | null = null,
 ): string {
-  const payload: Payload = { u: username, exp: now + ttlMs };
+  const payload: Payload =
+    account === null
+      ? { u: username, exp: now + ttlMs }
+      : {
+          u: username,
+          exp: now + ttlMs,
+          id: account.accountId,
+          a: account.access,
+        };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${encoded}.${sign(encoded, secret)}`;
 }
@@ -49,13 +71,32 @@ export function verifyToken(
     const payload = JSON.parse(
       Buffer.from(encoded, "base64url").toString("utf8"),
     ) as Payload;
+    const claims = readClaims(payload);
 
-    if (typeof payload.u !== "string" || typeof payload.exp !== "number") {
-      return null;
-    }
-
-    return payload.exp > now ? { username: payload.u } : null;
+    return claims !== null && payload.exp > now ? claims : null;
   } catch {
     return null;
   }
+}
+
+/** A token carries BOTH account claims or NEITHER. A half-claim is a
+ * malformed token, never a quiet downgrade to `user`. */
+function readClaims(payload: Payload): VerifiedToken | null {
+  if (typeof payload.u !== "string" || typeof payload.exp !== "number") {
+    return null;
+  }
+
+  if (payload.id === undefined && payload.a === undefined) {
+    return { username: payload.u, accountId: null, access: "user" };
+  }
+
+  if (
+    typeof payload.id !== "string" ||
+    payload.id === "" ||
+    (payload.a !== "user" && payload.a !== "admin")
+  ) {
+    return null;
+  }
+
+  return { username: payload.u, accountId: payload.id, access: payload.a };
 }
