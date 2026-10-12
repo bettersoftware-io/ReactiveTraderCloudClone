@@ -16,7 +16,8 @@ one prompt boundary at each end of a unit of work**. Nothing in between.
 This skill is the planning half. The enforcing half is the project's
 PreToolUse hook [`.claude/hooks/split-outward-commands.py`](../../hooks/split-outward-commands.py),
 registered in `.claude/settings.json`, which refuses any Bash command that
-chains an outward step with other commands.
+chains an outward step with other commands, and asks a person before a push
+that can lose something on the remote.
 
 ## The pre-approved forms (no prompt at all)
 
@@ -29,23 +30,40 @@ batch written in these exact forms runs unattended:
 | open the PR | `gh pr create …` |
 | merge it | `gh pr merge …` |
 
-These always **ask**, because the `ask` rules beat the allow rules:
+These always **ask**:
 
-- a force push (`--force`, `--force-with-lease`, `-f`, a `+refspec`);
-- a push that deletes or sweeps (`--delete`, `-d`, `--mirror`, `--all`,
-  `--tags`, `--prune`) or names its target (`source:target`);
-- a merge past branch protection (`gh pr merge … --admin`);
-- a push of anything that isn't a `worktree-*` branch.
+- a push that can lose something on the remote: a force (`--force`,
+  `--force-with-lease`, `-f`, a `+refspec`), a delete (`--delete`, `-d`, a
+  `:branch` refspec), `--mirror`, `--prune`. The hook asks, and the prompt
+  names the word it stopped at;
+- a push that sweeps (`--all`, `--tags`) and a merge past branch protection
+  (`gh pr merge … --admin`): `ask` rules, which beat the allow rules;
+- a push of anything that isn't a `worktree-*` branch: no rule allows it.
 
-Those need a person to look at them. The allow rules end in `*`, and a
-pattern cannot say "one more word": before 2026-10-11 they also let
-`git push origin worktree-a --delete main` and `gh pr merge 5 --admin` run
-unasked. The list is of exact spellings, kept short on purpose so that no
-routine command gains a prompt. Still unasked: a second branch after the
-first (`git push origin worktree-a main`), an option git accepts shortened
-or bundled (`--del`, `-fd`), and `gh pr merge` of any pull request number.
-The `main` ruleset stands behind a push to `main`; nothing but attention
-stands behind the rest.
+Those need a person to look at them. The hook decides the first group
+because it reads the words git will receive, and a rule cannot: the allow
+rules end in `*`, a pattern cannot say "one more word", and a list of
+spellings missed an option git accepts shortened (`--del`), bundled (`-uf`)
+or quoted (`"--force"`). Nine `ask` rules for the plain spellings stay as a
+backstop for a hook that fails to run. The hook asks only for a push that
+can lose something, so that no routine command gains a prompt.
+
+Still unasked, because nothing is lost: a named target
+(`git push origin worktree-a:main`), a second branch after the first
+(`git push origin worktree-a main`), and `gh pr merge` of any pull request
+number. The `main` ruleset stands behind a push to `main`; nothing but
+attention stands behind the rest.
+
+Write a push with no comment on it. The hook reads a command's comments two
+ways and asks when the two disagree, so a routine push followed by
+`# see PR#12` asks as well.
+
+The hook catches a mistake; it does not hold back an agent that wants past
+it. It finds a push wherever it sits in the command (behind `timeout`, in
+`( … )`, after a pipe), but it is not a shell: a push built from a string
+(`sh -c '…'`, `eval`, a script, an alias) is not read, and neither is what
+the words do (a `remote.origin.push` setting can turn a plain push into a
+forced one).
 
 ## Two rules
 
