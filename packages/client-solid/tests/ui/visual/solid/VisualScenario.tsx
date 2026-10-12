@@ -16,6 +16,10 @@ import {
 } from "solid-js";
 
 import { ViewModelProvider } from "@rtc/solid-bindings";
+// Importing the font manifest registers the app's real @fontsource web fonts, so
+// goldens render in the app's fonts, not the fallback system stack; its
+// (weight, family) list is what we force-load below.
+import { FONT_LOAD_SPECS } from "@rtc/web-boot/fonts";
 
 import { CreditViewProvider } from "#/ui/credit/CreditViewProvider";
 import { FxViewProvider } from "#/ui/fx/FxViewProvider";
@@ -26,10 +30,6 @@ import {
 import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 
 import { buildFakeViewModel } from "./buildFakeViewModel";
-// Register the app's real @fontsource web fonts so goldens render in the app's
-// fonts, not the fallback system stack, and pull in the (weight, family) list we
-// force-load below. See loadFonts.ts.
-import { FONT_LOAD_SPECS } from "./loadFonts";
 import { registry } from "./registry";
 import { resolveScenarioData } from "./resolveScenarioData";
 

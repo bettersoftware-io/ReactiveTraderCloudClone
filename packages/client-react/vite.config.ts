@@ -146,6 +146,15 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "styles",
       ),
       "@rtc/boot-splash": pkgSrc("boot-splash"),
+      // A second entry point, like the `/styles` pairs above: listed FIRST so
+      // `@rtc/web-boot/fonts` does not become `.../src/index.ts/fonts`.
+      "@rtc/web-boot/fonts": resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "web-boot",
+        "src",
+        "fonts.ts",
+      ),
       "@rtc/web-boot": pkgSrc("web-boot"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
