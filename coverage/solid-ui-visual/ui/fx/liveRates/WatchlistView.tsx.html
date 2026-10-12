@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">7.92% </span>
+                <span class="strong">7.76% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>8/101</span>
+                <span class='fraction'>8/103</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/30</span>
+                <span class='fraction'>0/32</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">9.75% </span>
+                <span class="strong">9.52% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/82</span>
+                <span class='fraction'>8/84</span>
             </div>
         
             
@@ -289,8 +289,11 @@
 <a name='L224'></a><a href='#L224'>224</a>
 <a name='L225'></a><a href='#L225'>225</a>
 <a name='L226'></a><a href='#L226'>226</a>
-<a name='L227'></a><a href='#L227'>227</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L227'></a><a href='#L227'>227</a>
+<a name='L228'></a><a href='#L228'>228</a>
+<a name='L229'></a><a href='#L229'>229</a>
+<a name='L230'></a><a href='#L230'>230</a>
+<a name='L231'></a><a href='#L231'>231</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -361,8 +364,13 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -515,8 +523,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, Show } from "solid-js";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { createMemo, For, type JSX, onCleanup, Show } from "solid-js";
 &nbsp;
 import {
   type CurrencyCategory,
@@ -585,10 +592,15 @@ const NO_VALUE = "—";
 &nbsp;
 function <span class="fstat-no" title="function not covered" >WatchlistRow(</span>props: WatchlistRowProps): JSX.Element {
   const { usePrice, usePriceHistory } = <span class="cstat-no" title="statement not covered" >useViewModel();</span>
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-  const price = <span class="cstat-no" title="statement not covered" >usePrice(props.pair);</span>
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-  const history = <span class="cstat-no" title="statement not covered" >usePriceHistory(props.pair.symbol);</span>
+&nbsp;
+  const price = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >usePrice(() =&gt; {</span></span>
+<span class="cstat-no" title="statement not covered" >    return props.pair;</span>
+  });
+&nbsp;
+  const history = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >usePriceHistory(() =&gt; {</span></span>
+<span class="cstat-no" title="statement not covered" >    return props.pair.symbol;</span>
+  });
+&nbsp;
   const movementPips = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >createMemo((): number | null =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >    return computeMovementPips(history(), props.pair.pipsPosition);</span>
   });
@@ -748,7 +760,7 @@ function <span class="fstat-no" title="function not covered" >buildTrendPoints(h
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:50:13.613Z
+                at 2026-10-12T01:52:43.014Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

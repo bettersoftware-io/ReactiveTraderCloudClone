@@ -133,7 +133,11 @@
 <a name='L68'></a><a href='#L68'>68</a>
 <a name='L69'></a><a href='#L69'>69</a>
 <a name='L70'></a><a href='#L70'>70</a>
-<a name='L71'></a><a href='#L71'>71</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -145,7 +149,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">456x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1086x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -153,17 +167,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1086x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">456x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">456x</span>
+<span class="cline-any cline-yes">1086x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -203,10 +211,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ReactElement } from "react";
-import { type ChangeEvent, type KeyboardEvent, useRef } from "react";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  useRef,
+} from "react";
 &nbsp;
-import type { NotionalIntents, NotionalView } from "@rtc/client-core";
+import type { NotionalIntents, NotionalView } from "@rtc/core-api";
 &nbsp;
 import styles from "./TileNotional.module.css";
 &nbsp;
@@ -217,17 +229,17 @@ export function TileNotional({
 }: TileNotionalProps): ReactElement {
   const inputRef = useRef&lt;HTMLInputElement&gt;(null);
 &nbsp;
-  function <span class="fstat-no" title="function not covered" >handleChange(e</span>: ChangeEvent&lt;HTMLInputElement&gt;): void {
-<span class="cstat-no" title="statement not covered" >    notional.change(e.target.value);</span>
-  }
-&nbsp;
-  function <span class="fstat-no" title="function not covered" >handleKeyDown(e</span>: KeyboardEvent&lt;HTMLInputElement&gt;): void {
+  function <span class="fstat-no" title="function not covered" >blurNotionalOnEnter(e</span>: KeyboardEvent&lt;HTMLInputElement&gt;): void {
 <span class="cstat-no" title="statement not covered" >    if (e.key === "Enter") {</span>
 <span class="cstat-no" title="statement not covered" >      inputRef.current?.blur();</span>
     }
   }
 &nbsp;
-  function <span class="fstat-no" title="function not covered" >handleFocus(): void {</span>
+  function <span class="fstat-no" title="function not covered" >changeNotional(e</span>: ChangeEvent&lt;HTMLInputElement&gt;): void {
+<span class="cstat-no" title="statement not covered" >    notional.change(e.target.value);</span>
+  }
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >selectNotionalText(): void {</span>
 <span class="cstat-no" title="statement not covered" >    inputRef.current?.select();</span>
   }
 &nbsp;
@@ -240,9 +252,9 @@ export function TileNotional({
         &lt;input
           ref={inputRef}
           value={notional.state.displayValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
+          onChange={changeNotional}
+          onKeyDown={blurNotionalOnEnter}
+          onFocus={selectNotionalText}
           disabled={disabled}
           data-error={hasError ? "true" : "false"}
           className={styles.input}
@@ -280,7 +292,7 @@ interface TileNotionalProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:47:46.181Z
+                at 2026-10-12T01:50:26.249Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

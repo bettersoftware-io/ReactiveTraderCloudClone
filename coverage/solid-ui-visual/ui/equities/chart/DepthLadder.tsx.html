@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.82% </span>
+                <span class="strong">95.08% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>55/58</span>
+                <span class='fraction'>58/61</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.3% </span>
+                <span class="strong">92.3% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>21/23</span>
+                <span class='fraction'>24/26</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">97.77% </span>
+                <span class="strong">97.91% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>44/45</span>
+                <span class='fraction'>47/48</span>
             </div>
         
             
@@ -174,7 +174,8 @@
 <a name='L109'></a><a href='#L109'>109</a>
 <a name='L110'></a><a href='#L110'>110</a>
 <a name='L111'></a><a href='#L111'>111</a>
-<a name='L112'></a><a href='#L112'>112</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -183,8 +184,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -231,22 +233,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">80x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">80x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">80x</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">160x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">80x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">80x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">80x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">160x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">80x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -285,7 +287,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type Accessor, createMemo, For, type JSX, Show } from "solid-js";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type Accessor, createMemo, Index, type JSX, Show } from "solid-js";
 &nbsp;
 import type { DepthBook, DepthLevel } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -294,8 +296,9 @@ import styles from "./DepthLadder.module.css";
 &nbsp;
 export function DepthLadder(props: DepthLadderProps): JSX.Element {
   const { useDepth } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-  const book = useDepth(props.symbol);
+  const book = useDepth(() =&gt; {
+    return props.symbol;
+  });
 &nbsp;
   return (
     &lt;Show
@@ -338,32 +341,32 @@ export function DepthLadder(props: DepthLadderProps): JSX.Element {
           &lt;div class={styles.ladder}&gt;
             &lt;div class={styles.section}&gt;
               &lt;div class={styles.sectionLabel}&gt;ASKS&lt;/div&gt;
-              &lt;For each={asks()}&gt;
-                {(level: DepthLevel): JSX.Element =&gt; {
+              &lt;Index each={asks()}&gt;
+                {(level: Accessor&lt;DepthLevel&gt;): JSX.Element =&gt; {
                   return (
                     &lt;DepthRow
-                      level={level}
+                      level={level()}
                       side="ask"
-                      depth={level.size / maxSize()}
+                      depth={level().size / maxSize()}
                     /&gt;
                   );
                 }}
-              &lt;/For&gt;
+              &lt;/Index&gt;
             &lt;/div&gt;
             &lt;div class={styles.spread}&gt;SPREAD {spread()}&lt;/div&gt;
             &lt;div class={styles.section}&gt;
               &lt;div class={styles.sectionLabel}&gt;BIDS&lt;/div&gt;
-              &lt;For each={bids()}&gt;
-                {(level: DepthLevel): JSX.Element =&gt; {
+              &lt;Index each={bids()}&gt;
+                {(level: Accessor&lt;DepthLevel&gt;): JSX.Element =&gt; {
                   return (
                     &lt;DepthRow
-                      level={level}
+                      level={level()}
                       side="bid"
-                      depth={level.size / maxSize()}
+                      depth={level().size / maxSize()}
                     /&gt;
                   );
                 }}
-              &lt;/For&gt;
+              &lt;/Index&gt;
             &lt;/div&gt;
           &lt;/div&gt;
         );
@@ -403,7 +406,7 @@ function DepthRow(props: DepthRowProps): JSX.Element {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:50:13.613Z
+                at 2026-10-12T01:52:43.014Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

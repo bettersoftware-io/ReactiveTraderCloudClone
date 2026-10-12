@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>75/75</span>
+                <span class='fraction'>68/68</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.11% </span>
+                <span class="strong">96.87% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>32/34</span>
+                <span class='fraction'>31/32</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>28/28</span>
+                <span class='fraction'>29/29</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>52/52</span>
+                <span class='fraction'>47/47</span>
             </div>
         
             
@@ -211,12 +211,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-yes">16x</span>
@@ -265,12 +265,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16x</span>
@@ -294,7 +294,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -302,14 +302,14 @@
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">15x</span>
 <span class="cline-any cline-yes">15x</span>
-<span class="cline-any cline-yes">15x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -342,9 +342,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { JSX } from "solid-js";
-import { createMemo, createSignal, Show } from "solid-js";
+<span class="cline-any cline-yes">147x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { createMemo, createSignal, type JSX, Show } from "solid-js";
 &nbsp;
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -355,8 +354,9 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   const { useTicketSubmission, useAnimationIntents } = useViewModel();
   // App-layer machine: submit-price / pass flow + the submitted flag. The
   // component keeps only the price draft + parseFloat guard below.
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-  const anim = useAnimationIntents(`rfq:${props.rfq.id}`);
+  const anim = useAnimationIntents(() =&gt; {
+    return `rfq:${props.rfq.id}`;
+  });
   const ticket = useTicketSubmission();
   const { submitPrice, pass } = ticket;
   const [price, setPrice] = createSignal("");
@@ -380,7 +380,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
     return ticket.state().submitted;
   });
 &nbsp;
-  function handleSubmit(): void {
+  function submitQuote(): void {
     const num = Number.parseFloat(price());
 &nbsp;
     if (Number.isNaN(num) || num &lt;= 0) {
@@ -390,7 +390,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
     submitPrice(props.quote.id, num);
   }
 &nbsp;
-  function handlePass(): void {
+  function passOnRfq(): void {
     pass(props.quote.id);
   }
 &nbsp;
@@ -399,7 +399,7 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
   // blur/commit) — both wired to this one handler so real typing (`input`,
   // what @testing-library/user-event's type() dispatches) and a
   // programmatic `change` both narrow live (mirrors QuickFilter.tsx).
-  function handlePriceEdit(e: InputChangeEvent): void {
+  function setPriceDraft(e: InputChangeEvent): void {
     setPrice(e.currentTarget.value);
   }
 &nbsp;
@@ -439,21 +439,21 @@ export function TradeTicket(props: TradeTicketProps): JSX.Element {
                 type="number"
                 data-testid="trade-ticket-price"
                 value={price()}
-                onInput={handlePriceEdit}
-                onChange={handlePriceEdit}
+                onInput={setPriceDraft}
+                onChange={setPriceDraft}
                 placeholder="Price"
                 class={styles.priceInput}
               /&gt;
               &lt;button
                 type="button"
-                onClick={handleSubmit}
+                onClick={submitQuote}
                 disabled={!price()}
                 data-can-submit={price() ? "true" : "false"}
                 class={styles.submitBtn}
               &gt;
                 Submit
               &lt;/button&gt;
-              &lt;button type="button" onClick={handlePass} class={styles.passBtn}&gt;
+              &lt;button type="button" onClick={passOnRfq} class={styles.passBtn}&gt;
                 Pass
               &lt;/button&gt;
             &lt;/div&gt;
@@ -482,7 +482,7 @@ interface TradeTicketProps {
   instrument: Instrument | undefined;
 }
 &nbsp;
-type InputChangeEvent = Event &amp; { currentTarget: HTMLInputElement };<span class="missing-if-branch" title="else path not taken" >E</span>
+type InputChangeEvent = Event &amp; { currentTarget: HTMLInputElement };
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -490,7 +490,7 @@ type InputChangeEvent = Event &amp; { currentTarget: HTMLInputElement };<span cl
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:49:26.352Z
+                at 2026-10-12T01:51:58.354Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

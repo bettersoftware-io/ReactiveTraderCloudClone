@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>26/26</span>
+                <span class='fraction'>27/27</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>18/18</span>
+                <span class='fraction'>19/19</span>
             </div>
         
             
@@ -115,8 +115,16 @@
 <a name='L50'></a><a href='#L50'>50</a>
 <a name='L51'></a><a href='#L51'>51</a>
 <a name='L52'></a><a href='#L52'>52</a>
-<a name='L53'></a><a href='#L53'>53</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -133,22 +141,32 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">300x</span>
-<span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">380x</span>
+<span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">380x</span>
-<span class="cline-any cline-yes">380x</span>
-<span class="cline-any cline-yes">380x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">50x</span>
-<span class="cline-any cline-yes">300x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">300x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">380x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">380x</span>
+<span class="cline-any cline-yes">380x</span>
+<span class="cline-any cline-yes">380x</span>
+<span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-yes">300x</span>
 <span class="cline-any cline-yes">2580x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -167,8 +185,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { JSX } from "solid-js";
-import { createSignal, For } from "solid-js";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { createSignal, For, type JSX, untrack } from "solid-js";
 &nbsp;
 import { TradeStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -184,9 +201,23 @@ export function BlotterRow&lt;TRow extends { status: string }&gt;(
   // in the app-layer createRowHighlightMachine behind the seam, so this row holds
   // no timer. Hover stays here — it's pure interaction view state, no timer.
   const { useRowHighlight } = useViewModel();
-  // eslint-disable-next-line solid/reactivity -- setup-scope read is intentional: this component remounts when the value changes
-  const highlight = useRowHighlight(props.isNew);
+  // A one-time seed, spelt `untrack`: the decay machine owns the highlight
+  // from here on (true for HIGHLIGHT_MS, then false, on its own timer), so
+  // tracking props.isNew afterwards would have nothing to update.
+  const highlight = useRowHighlight(
+    untrack((): boolean =&gt; {
+      return props.isNew;
+    }),
+  );
   const [hovered, setHovered] = createSignal(false);
+&nbsp;
+  function hoverRow(): void {
+    setHovered(true);
+  }
+&nbsp;
+  function unhoverRow(): void {
+    setHovered(false);
+  }
 &nbsp;
   return (
     &lt;tr
@@ -196,12 +227,8 @@ export function BlotterRow&lt;TRow extends { status: string }&gt;(
       data-status={props.trade.status.toLowerCase()}
       data-highlight={highlight() ? <span class="branch-0 cbranch-no" title="branch not covered" >"true" : u</span>ndefined}
       data-hovered={hovered() ? "true" : undefined}
-      onMouseEnter={() =&gt; {
-        setHovered(true);
-      }}
-      onMouseLeave={() =&gt; {
-        setHovered(false);
-      }}
+      onMouseEnter={hoverRow}
+      onMouseLeave={unhoverRow}
       class={styles.row}
     &gt;
       &lt;For each={props.columns}&gt;
@@ -226,7 +253,7 @@ interface BlotterRowProps&lt;TRow&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:50:13.613Z
+                at 2026-10-12T01:52:43.014Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

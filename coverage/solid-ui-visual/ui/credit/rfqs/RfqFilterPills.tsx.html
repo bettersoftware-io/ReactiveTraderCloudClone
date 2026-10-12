@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">85.71% </span>
+                <span class="strong">95% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>18/21</span>
+                <span class='fraction'>19/20</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">66.66% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/6</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">82.35% </span>
+                <span class="strong">93.75% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/17</span>
+                <span class='fraction'>15/16</span>
             </div>
         
             
@@ -131,38 +131,38 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">50x</span>
-<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">60x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">100x</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">90x</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">180x</span>
+<span class="cline-any cline-yes">20x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -189,6 +189,12 @@ import styles from "./RfqFilterPills.module.css";
  * to render in the panel's head slot, writing through the same
  * useCreditRfqFilterPreference seam RfqsPanel reads. */
 export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
+  function filterRfqs(next: CreditRfqFilter) {
+<span class="fstat-no" title="function not covered" >    return () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >      props.onFilter(next);</span>
+    };
+  }
+&nbsp;
   return (
     &lt;div class={styles.filters}&gt;
       &lt;button
@@ -196,20 +202,16 @@ export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
         class={styles.pill}
         data-testid="rfq-filter-live"
         data-active={String(props.filter === "live")}
-        onClick={() =&gt; {
-<span class="cstat-no" title="statement not covered" >          props.onFilter("live");</span>
-        }}
+        onClick={filterRfqs("live")}
       &gt;
-        LIVE {props.liveCount<span class="fstat-no" title="function not covered" >}</span>
+        LIVE {props.liveCount}
       &lt;/button&gt;
       &lt;button
         type="button"
         class={styles.pill}
         data-testid="rfq-filter-closed"
         data-active={String(props.filter === "closed")}
-        onClick={() =&gt; {
-<span class="cstat-no" title="statement not covered" >          props.onFilter("closed");</span>
-        }<span class="fstat-no" title="function not covered" >}</span>
+        onClick={filterRfqs("closed")}
       &gt;
         CLOSED
       &lt;/button&gt;
@@ -218,9 +220,7 @@ export function RfqFilterPills(props: RfqFilterPillsProps): JSX.Element {
         class={styles.pill}
         data-testid="rfq-filter-all"
         data-active={String(props.filter === "all")}
-        onClick={() =&gt; {
-<span class="cstat-no" title="statement not covered" >          props.onFilter("all");</span>
-        }}
+        onClick={filterRfqs("all")}
       &gt;
         ALL
       &lt;/button&gt;
@@ -244,7 +244,7 @@ export interface RfqFilterPillsProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:50:13.613Z
+                at 2026-10-12T01:52:43.014Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

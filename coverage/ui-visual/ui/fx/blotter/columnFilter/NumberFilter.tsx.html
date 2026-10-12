@@ -190,8 +190,14 @@
 <a name='L125'></a><a href='#L125'>125</a>
 <a name='L126'></a><a href='#L126'>126</a>
 <a name='L127'></a><a href='#L127'>127</a>
-<a name='L128'></a><a href='#L128'>128</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -230,17 +236,31 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">292x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">160x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">70x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">292x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -257,18 +277,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">160x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">70x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -286,7 +294,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -317,10 +331,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { ChangeEvent, ReactElement } from "react";
-import { useState } from "react";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type ChangeEvent, type ReactElement, useState } from "react";
 &nbsp;
-import type { ColumnFilter, Comparator } from "@rtc/client-core";
+import type { ColumnFilter, Comparator } from "@rtc/core-logic";
 &nbsp;
 import styles from "./NumberFilter.module.css";
 &nbsp;
@@ -343,7 +356,7 @@ export function NumberFilter&lt;TRow&gt;({
       : "",
   );
 &nbsp;
-  function handleApply(): void {
+  function applyNumberFilter(): void {
     const num = parseFloat(value);
 &nbsp;
     <span class="missing-if-branch" title="if path not taken" >I</span>if (Number.isNaN(num)) {
@@ -361,14 +374,28 @@ export function NumberFilter&lt;TRow&gt;({
     });
   }
 &nbsp;
+  function changeComparator(e: ChangeEvent&lt;HTMLSelectElement&gt;): void {
+    setComparator(e.target.value as Comparator);
+  }
+&nbsp;
+  function changeValue(e: ChangeEvent&lt;HTMLInputElement&gt;): void {
+    setValue(e.target.value);
+  }
+&nbsp;
+  function changeValueTo(e: ChangeEvent&lt;HTMLInputElement&gt;): void {
+    setValueTo(e.target.value);
+  }
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >resetNumberFilter(): void {</span>
+<span class="cstat-no" title="statement not covered" >    onApply(null);</span>
+  }
+&nbsp;
   return (
     &lt;div className={styles.container}&gt;
       &lt;select
         data-testid="number-filter-comparator"
         value={comparator}
-        onChange={(e: ChangeEvent&lt;HTMLSelectElement&gt;): void =&gt; {
-          setComparator(e.target.value as Comparator);
-        }}
+        onChange={changeComparator}
         className={styles.select}
       &gt;
         {comparators.map((c) =&gt; {
@@ -383,9 +410,7 @@ export function NumberFilter&lt;TRow&gt;({
         type="number"
         data-testid="number-filter-value"
         value={value}
-        onChange={(e: ChangeEvent&lt;HTMLInputElement&gt;): void =&gt; {
-          setValue(e.target.value);
-        }}
+        onChange={changeValue}
         placeholder="Value"
         className={styles.input}
       /&gt;
@@ -394,9 +419,7 @@ export function NumberFilter&lt;TRow&gt;({
           type="number"
           data-testid="number-filter-value-to"
           value={valueTo}
-          onChange={(e: ChangeEvent&lt;HTMLInputElement&gt;): void =&gt; {
-            setValueTo(e.target.value);
-          }}
+          onChange={changeValueTo}
           placeholder="To"
           className={styles.input}
         /&gt;
@@ -405,16 +428,14 @@ export function NumberFilter&lt;TRow&gt;({
         &lt;button
           type="button"
           data-testid="number-filter-apply"
-          onClick={handleApply}
+          onClick={applyNumberFilter}
           className={styles.applyBtn}
         &gt;
           Apply
         &lt;/button&gt;
         &lt;button
           type="button"
-<span class="fstat-no" title="function not covered" >          onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >            return onApply(null);</span>
-          }}
+          onClick={resetNumberFilter}
           className={styles.resetBtn}
         &gt;
           Reset
@@ -451,7 +472,7 @@ const comparators: ComparatorOption[] = [
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:47:46.181Z
+                at 2026-10-12T01:50:26.249Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

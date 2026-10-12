@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">62.5% </span>
+                <span class="strong">75% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/8</span>
+                <span class='fraction'>6/8</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">25% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/4</span>
+                <span class='fraction'>2/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">62.5% </span>
+                <span class="strong">75% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/8</span>
+                <span class='fraction'>6/8</span>
             </div>
         
             
@@ -120,7 +120,12 @@
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -133,15 +138,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">302x</span>
+<span class="cline-any cline-yes">302x</span>
+<span class="cline-any cline-yes">302x</span>
+<span class="cline-any cline-yes">302x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">604x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -149,16 +154,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">302x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -169,7 +165,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -181,6 +191,7 @@
 &nbsp;
 import { useViewModel } from "@rtc/react-bindings";
 &nbsp;
+import type { RatesTab } from "#/ui/fx/fxViewContext";
 import { useFxView } from "#/ui/fx/useFxView";
 import styles from "#/ui/shell/layout/engine/PanelHeadTabs.module.css";
 &nbsp;
@@ -195,6 +206,16 @@ export function LiveRatesHead(): ReactElement {
   const { viewMode, setViewMode } = useViewModePreference();
   const charts = viewMode === "chart";
 &nbsp;
+  function selectRatesTab(tab: RatesTab) {
+<span class="fstat-no" title="function not covered" >    return () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >      setRatesTab(tab);</span>
+    };
+  }
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >toggleChartsView(): void {</span>
+<span class="cstat-no" title="statement not covered" >    setViewMode(charts ? "price" : "chart");</span>
+  }
+&nbsp;
   return (
     &lt;div className={styles.headTabs}&gt;
       &lt;button
@@ -202,9 +223,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="rates-tab-live"
         data-active={ratesTab === "rates" ? "true" : <span class="branch-1 cbranch-no" title="branch not covered" >"false"}</span>
         className={styles.headTab}
-<span class="fstat-no" title="function not covered" >        onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >          setRatesTab("rates");</span>
-        }}
+        onClick={selectRatesTab("rates")}
       &gt;
         ◧ Live Rates
       &lt;/button&gt;
@@ -213,9 +232,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="rates-tab-watchlist"
         data-active={ratesTab === "watchlist" ? <span class="branch-0 cbranch-no" title="branch not covered" >"true" : "</span>false"}
         className={styles.headTab}
-<span class="fstat-no" title="function not covered" >        onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >          setRatesTab("watchlist");</span>
-        }}
+        onClick={selectRatesTab("watchlist")}
       &gt;
         ☰ Watchlist
       &lt;/button&gt;
@@ -225,9 +242,7 @@ export function LiveRatesHead(): ReactElement {
         data-testid="charts-toggle"
         data-active={charts ? "true" : <span class="branch-1 cbranch-no" title="branch not covered" >"false"}</span>
         className={styles.headChip}
-<span class="fstat-no" title="function not covered" >        onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >          setViewMode(charts ? "price" : "chart");</span>
-        }}
+        onClick={toggleChartsView}
       &gt;
         CHARTS
       &lt;/button&gt;
@@ -241,7 +256,7 @@ export function LiveRatesHead(): ReactElement {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:47:46.181Z
+                at 2026-10-12T01:50:26.249Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

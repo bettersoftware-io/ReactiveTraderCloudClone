@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>16/16</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">75% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>3/4</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -119,25 +119,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">95x</span>
+<span class="cline-any cline-yes">223x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">5146x</span>
+<span class="cline-any cline-yes">11160x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">11160x</span>
+<span class="cline-any cline-yes">11160x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11160x</span>
+<span class="cline-any cline-yes">11160x</span>
+<span class="cline-any cline-yes">11160x</span>
+<span class="cline-any cline-yes">11160x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -146,8 +144,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { For, type JSX } from "solid-js";
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type Accessor, Index, type JSX } from "solid-js";
 &nbsp;
 import type { ChartVm } from "@rtc/motion-core";
 &nbsp;
@@ -163,32 +163,32 @@ import styles from "./CandleBars.module.css";
  */
 export function CandleBars(props: CandleBarsProps): JSX.Element {
   return (
-    &lt;For each={props.candles}&gt;
-      {(cd: ChartVm["candles"][number]): JSX.Element =&gt; {
+    &lt;Index each={props.candles}&gt;
+      {(cd: Accessor&lt;ChartVm["candles"][number]&gt;): JSX.Element =&gt; {
         return (
-          &lt;div data-candle="" data-up={String(cd.up)}&gt;
+          &lt;div data-candle="" data-up={String(cd().up)}&gt;
             &lt;span
               class={styles.wick}
-              style={cd.wickStyle}
-              data-up={String(cd.up)}
+              style={cd().wickStyle}
+              data-up={String(cd().up)}
             /&gt;
             &lt;span
               class={styles.body}
-              style={cd.style}
-              data-up={String(cd.up)}
-              data-last={String(cd.last)}
-              data-glow={String(cd.glow)}
+              style={cd().style}
+              data-up={String(cd().up)}
+              data-last={String(cd().last)}
+              data-glow={String(cd().glow)}
             /&gt;
           &lt;/div&gt;
         );
       }}
-    &lt;/For&gt;
+    &lt;/Index&gt;
   );
 }
 &nbsp;
 export interface CandleBarsProps {
   candles: ChartVm["candles"];
-}<span class="missing-if-branch" title="else path not taken" >E</span>
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -196,7 +196,7 @@ export interface CandleBarsProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:49:26.352Z
+                at 2026-10-12T01:51:58.354Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

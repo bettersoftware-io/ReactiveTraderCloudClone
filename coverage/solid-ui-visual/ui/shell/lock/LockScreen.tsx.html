@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">92% </span>
+                <span class="strong">91.83% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>46/50</span>
+                <span class='fraction'>45/49</span>
             </div>
         
             
@@ -242,14 +242,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-yes">252x</span>
+<span class="cline-any cline-yes">252x</span>
+<span class="cline-any cline-yes">252x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">62x</span>
-<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">252x</span>
+<span class="cline-any cline-yes">252x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">570x</span>
 <span class="cline-any cline-yes">30x</span>
@@ -303,13 +311,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">30x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
@@ -325,8 +327,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">30x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -375,8 +375,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { Accessor, JSX } from "solid-js";
-import { createSignal, Show } from "solid-js";
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type Accessor, createSignal, type JSX, Show } from "solid-js";
 &nbsp;
 import type { SessionUser } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -403,6 +402,15 @@ export function LockScreen(): JSX.Element {
   const { useAuth } = useViewModel();
   const { state, unlock } = useAuth();
   const [password, setPassword] = createSignal("");
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >submitUnlock(e</span>vent: SubmitEvent): void {
+<span class="cstat-no" title="statement not covered" >    event.preventDefault();</span>
+<span class="cstat-no" title="statement not covered" >    unlock(password());</span>
+  }
+&nbsp;
+  function <span class="fstat-no" title="function not covered" >changePassword(e</span>vent: InputChangeEvent): void {
+<span class="cstat-no" title="statement not covered" >    setPassword(event.currentTarget.value);</span>
+  }
 &nbsp;
   return (
     &lt;Show when={state().locked &amp;&amp; state().user}&gt;
@@ -457,15 +465,9 @@ export function LockScreen(): JSX.Element {
 &nbsp;
               {/* Prototype order: the biometric dots sit between the role line and
                   the AUTHENTICATE button; the channel line stays below the button. */}
-              &lt;BiometricDots<span class="fstat-no" title="function not covered" > /&gt;</span>
+              &lt;BiometricDots /&gt;
 &nbsp;
-              &lt;form
-                class={styles.form}
-                onSubmit={(event: SubmitEvent) =&gt; {
-<span class="cstat-no" title="statement not covered" >                  event.preventDefault();</span>
-<span class="cstat-no" title="statement not covered" >                  unlock(password());</span>
-                }<span class="fstat-no" title="function not covered" >}</span>
-              &gt;
+              &lt;form class={styles.form} onSubmit={submitUnlock}&gt;
                 &lt;div
                   class={
                     state().unlocking
@@ -481,9 +483,7 @@ export function LockScreen(): JSX.Element {
                       type="password"
                       autocomplete="current-password"
                       value={password()}
-                      onInput={(event: InputChangeEvent) =&gt; {
-<span class="cstat-no" title="statement not covered" >                        setPassword(event.currentTarget.value);</span>
-                      }}
+                      onInput={changePassword}
                     /&gt;
                   &lt;/label&gt;
                 &lt;/div&gt;
@@ -538,7 +538,7 @@ type InputChangeEvent = Event &amp; { currentTarget: HTMLInputElement };<span cl
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:50:13.613Z
+                at 2026-10-12T01:52:43.014Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

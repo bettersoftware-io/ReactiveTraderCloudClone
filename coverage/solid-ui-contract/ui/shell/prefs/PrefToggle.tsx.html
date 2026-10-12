@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>25/25</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">83.33% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>5/6</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>15/15</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -111,7 +111,8 @@
 <a name='L46'></a><a href='#L46'>46</a>
 <a name='L47'></a><a href='#L47'>47</a>
 <a name='L48'></a><a href='#L48'>48</a>
-<a name='L49'></a><a href='#L49'>49</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -122,26 +123,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
-<span class="cline-any cline-yes">176x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">176x</span>
-<span class="cline-any cline-yes">176x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
-<span class="cline-any cline-yes">192x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">176x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">784x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">784x</span>
+<span class="cline-any cline-yes">784x</span>
+<span class="cline-any cline-yes">784x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">800x</span>
+<span class="cline-any cline-yes">800x</span>
+<span class="cline-any cline-yes">800x</span>
+<span class="cline-any cline-yes">800x</span>
+<span class="cline-any cline-yes">784x</span>
+<span class="cline-any cline-yes">784x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -158,11 +160,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">114x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+<span class="cline-any cline-yes">146x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { type JSX, Show } from "solid-js";
 &nbsp;
-import styles from "./PreferencesModal.module.css";
+import styles from "./PreferencesContent.module.css";
 &nbsp;
 /**
  * Reusable preferences row carrying a label/description and an on/off switch
@@ -171,6 +172,10 @@ import styles from "./PreferencesModal.module.css";
  * so the control is a dumb reflection of the `on` prop.
  */
 export function PrefToggle(props: PrefToggleProps): JSX.Element {
+  function toggleSwitch(): void {
+    props.onToggle();
+  }
+&nbsp;
   return (
     &lt;div class={styles.row}&gt;
       &lt;div class={styles.rowText}&gt;
@@ -187,9 +192,7 @@ export function PrefToggle(props: PrefToggleProps): JSX.Element {
         data-testid={props.testid}
         data-on={props.on ? "true" : "false"}
         class={styles.sw}
-        onClick={() =&gt; {
-          props.onToggle();
-        }}
+        onClick={toggleSwitch}
       /&gt;
     &lt;/div&gt;
   );
@@ -206,7 +209,7 @@ interface PrefToggleProps {
   onToggle: () =&gt; void;
   /** Stable testid for the switch element (e.g. "pref-toggle-animatedBg"). */
   testid: string;
-}<span class="missing-if-branch" title="else path not taken" >E</span>
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -214,7 +217,7 @@ interface PrefToggleProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-26T11:49:26.352Z
+                at 2026-10-12T01:51:58.354Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
