@@ -5,8 +5,8 @@ export interface WorkspacePO {
   openAdmin(): Promise<void>;
   openEquities(): Promise<void>;
   /**
-   * Navigate to "/" with the dev-only `?narratorThresholds=test` query param
-   * (see `buildBrowserPorts.ts`'s `devNarratorConfig`) — relaxes
+   * Navigate to "/" with the `?narratorThresholds=test` query param
+   * (see `packages/web-boot/src/buildBrowserPorts.ts`'s `seamNarratorConfig`) — relaxes
    * `NarratorMachine`'s anomaly-detector thresholds so a proactive narration
    * fires within seconds of live sim ticks instead of the simulator's
    * natural ~14 min expected interval.
@@ -21,14 +21,39 @@ export interface WorkspacePO {
    */
   openWithCoreImpl(impl: string): Promise<void>;
   /**
-   * Waits until the current URL no longer carries `?core=` — the real page
-   * navigation `createCoreSelection().select()` performs once a choice is
-   * persisted (see `coreSelection.ts`'s `select`, `main.tsx`'s
-   * `navigate: (href) => location.assign(href)`).
+   * Waits until the current URL no longer carries `?core=` — the core host
+   * strips it with `history.replaceState` once an in-place core swap lands
+   * (`coreHost.ts`'s `stripCoreParam`, wired in `startWebClient`).
    */
   waitUrlHasNoCoreParam(timeoutMs: number): Promise<void>;
+  /**
+   * Waits until the core-swap overlay is out of the DOM: the host removes
+   * it once the swap is over, and a cover left up would sit over the app.
+   */
+  waitCoreSwapOverlayGone(timeoutMs: number): Promise<void>;
+  /**
+   * Sets a mark on the current document's `window` that only a navigation
+   * can remove — the witness that a later step happened WITHOUT one (an
+   * in-place core swap), read back by `navigationMark`.
+   */
+  setNavigationMark(): Promise<void>;
+  /** The mark `setNavigationMark` set: `1` on the same document, `undefined`
+   *  once any navigation (a reload included) replaced it. */
+  navigationMark(): Promise<number | undefined>;
+  /**
+   * Starts recording, on the current document, whether the login screen is
+   * ever inserted into it from now on, even if it is removed again before
+   * the browser paints. Read back by `loginScreenSeen`; a navigation
+   * discards it.
+   */
+  watchForLoginScreen(): Promise<void>;
+  /** Whether the login screen has been in the document since `watchForLoginScreen`. */
+  loginScreenSeen(): Promise<boolean>;
+  /** Waits until the signed-in app shell (its header) is visible and no
+   *  login screen is in the DOM. */
+  waitSignedIn(timeoutMs: number): Promise<void>;
   /** Wait until the document root's `data-core-impl` reads exactly `expected`
-   *  — the application core the app actually booted on (set by `main.tsx`
+   *  — the application core the app actually booted on (set by `startWebClient`
    *  once `bootApp.ts`'s `bootCore` resolves). Unlike
    *  `LoginScreenPO.waitCoreImpl` (a second, unauthenticated context/page,
    *  Playwright-only), this reads the SAME page every other `WorkspacePO`

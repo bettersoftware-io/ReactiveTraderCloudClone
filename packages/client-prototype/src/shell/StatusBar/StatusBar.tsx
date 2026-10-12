@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
-import { Fragment } from "react";
+import { type CSSProperties, Fragment, type ReactElement } from "react";
 
 import { statusItems } from "#/mock/shellData";
 import type { StatusItem } from "#/mock/types";

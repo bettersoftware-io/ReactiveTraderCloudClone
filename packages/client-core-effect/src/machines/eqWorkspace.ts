@@ -1,4 +1,4 @@
-import { Cause, Effect, Scope, Stream, SubscriptionRef } from "effect";
+import { Cause, Effect, Scope, Stream } from "effect";
 
 import type {
   Stream as CoreStream,
@@ -22,10 +22,9 @@ import {
   createChildHost,
   type EffectHost,
   fromPortIn,
-  refToWarmStateStream,
   reportOutOfBand,
-  setRefIfChanged,
 } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface EqWorkspaceDeps {
   /** Symbol the workspace opens with — the sole open tab and the selection.
@@ -39,7 +38,7 @@ export interface EqWorkspaceDeps {
 }
 
 /** The cross-panel equities workspace singleton: the imported fold over a
- * `SubscriptionRef`, kept warm for the app's lifetime (a cold `getValue()`
+ * `SyncRef`, kept warm for the app's lifetime (a cold `getValue()`
  * between panel mounts must not glitch the shared selection), on a CHILD
  * host so `app.dispose()` ends it. The seed is ONE forked fiber over the
  * roster — `Stream.take(1)` after the empty-symbol filter, so an empty
@@ -51,12 +50,10 @@ export function createEqWorkspaceMachine(
   deps: EqWorkspaceDeps,
 ): Machine<EqWorkspaceState, EqWorkspaceIntents> {
   const host = createChildHost(parent);
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<EqWorkspaceState>(
-      createEqWorkspaceState(deps.initialSymbol),
-    ),
+  const ref = createSyncRef<EqWorkspaceState>(
+    createEqWorkspaceState(deps.initialSymbol),
   );
-  const warm = refToWarmStateStream(host, ref);
+  const warm = ref.warm();
   let disposed = false;
 
   /** Idempotent, and reached from BOTH ends of the machine's lifetime —
@@ -68,22 +65,19 @@ export function createEqWorkspaceMachine(
 
   // `app.dispose()` closes the app host's scope, and this machine's is a
   // CHILD of it, so that close has to dispose the machine too. Without this
-  // finalizer the singleton freezes instead: the keep-warm fiber is
-  // interrupted while `disposed` is still false, so every later intent
-  // writes a ref nobody will ever hear and the RxJS keep-warm subscription
-  // is never released. The async twin converges the same two ends through
-  // its `lifetime` abort listener.
+  // finalizer the singleton outlives its app instead: `disposed` is still
+  // false, so every later intent keeps writing the ref, and the RxJS
+  // keep-warm subscription is never released. The async twin converges the
+  // same two ends through its `lifetime` abort listener.
   host.runtime.runSync(
     Scope.addFinalizer(host.scope, Effect.sync(markDisposed)),
   );
 
   function apply(event: EqWorkspaceEvent): void {
     if (!disposed) {
-      host.runtime.runSync(
-        setRefIfChanged(ref, (state) => {
-          return reduceEqWorkspace(state, event);
-        }),
-      );
+      ref.set((state) => {
+        return reduceEqWorkspace(state, event);
+      });
     }
   }
 
@@ -110,7 +104,7 @@ export function createEqWorkspaceMachine(
         }),
         Stream.take(1),
         Stream.runForEach((sym) => {
-          return setRefIfChanged(ref, (state) => {
+          return ref.write((state) => {
             return reduceEqWorkspace(state, { kind: "seed", sym });
           });
         }),

@@ -1,5 +1,10 @@
-import type { ChangeEvent, ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   CREDIT_RFQ_EXPIRY_SECONDS,

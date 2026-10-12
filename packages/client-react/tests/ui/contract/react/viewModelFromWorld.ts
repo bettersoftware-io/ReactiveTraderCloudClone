@@ -71,42 +71,40 @@ import {
   type WorkspaceDock,
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
-import type {
-  AmbientStyle,
-  Candle,
-  CandleTimeframe,
-  ChartSubstrate,
-  CreateRfqInput,
-  CreditRfqFilter,
-  CurrencyPair,
-  DepthBook,
-  EqBlotterView,
-  EquityQuote,
-  EqWatchlistSort,
-  ExecuteTradeInput,
-  ExecuteTradeResult,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  JarvisSkin,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  MarketDataPort,
-  PlaceOrderRequest,
-  PowerSaverLevel,
-  RfqQuoteResult,
-  ThemeSkin,
-  ViewMode,
-} from "@rtc/domain";
 import {
+  type AmbientStyle,
+  type Candle,
+  type CandleTimeframe,
+  type ChartSubstrate,
+  type CreateRfqInput,
+  type CreditRfqFilter,
+  type CurrencyPair,
+  type DepthBook,
+  type EqBlotterView,
+  type EquityQuote,
+  type EqWatchlistSort,
+  type ExecuteTradeInput,
+  type ExecuteTradeResult,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type JarvisSkin,
+  type LayoutEngine,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type MarketDataPort,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
+  type PanelSpecV1,
+  type PlaceOrderRequest,
+  type PowerSaverLevel,
+  type RfqQuoteResult,
   resolveThemeMode,
+  type ThemeSkin,
+  type ViewMode,
 } from "@rtc/domain";
-import type { ViewModel } from "@rtc/react-bindings";
-import { useMachine } from "@rtc/react-bindings";
+import { useMachine, type ViewModel } from "@rtc/react-bindings";
 
 /** Mirror of RfqsPresenter's presenter-local redirect delay. The contract spec
  * drives this with fake timers (advanceTimersByTimeAsync(1500)), so the fake
@@ -136,7 +134,7 @@ interface Unsubscribable {
 
 /** A warmed `@rx-state/core` `StateObservable` — structurally typed here (not
  * imported by name) so this test-only package doesn't need its own dependency
- * on `@rx-state/core` (a transitive dep via `@rtc/client-core`). */
+ * on `@rx-state/core` (a transitive dep via `@rtc/client-core-rxjs`). */
 interface PeekableState<T> {
   subscribe(onNext: (v: T) => void): Unsubscribable;
   getValue(): T | Promise<T>;
@@ -218,7 +216,7 @@ function getJarvisMachine(world: World): JarvisMachineHandle {
  * `"panel"` leaf contributes its own id, a `"split"` node contributes its
  * children's. Mirrors `composition.ts`'s own `collectPanelIds` (private
  * there) — this test-only fixture keeps its own copy rather than reaching
- * into `@rtc/client-core`'s composition-root internals, exactly like
+ * into `@rtc/client-core-rxjs`'s composition-root internals, exactly like
  * `JarvisPanelLayer.contract.spec.ts` keeps its own copy of
  * `ScriptedJarvisEngine`'s module-private `SCRIPTED_PANEL_ID`. */
 function collectPanelIds(node: LayoutNode): readonly string[] {
@@ -444,7 +442,7 @@ function getWorkspaceDock(world: World): WorkspaceDock {
     dismiss: (panelId: string) => {
       panelsMachineFor(world).dismissPanel(panelId);
     },
-    restore: (panelId: string, spec: NonNullable<PanelInstance["spec"]>) => {
+    restore: (panelId: string, spec: PanelSpecV1) => {
       panelsMachineFor(world).restoreDockedPanel(panelId, spec);
     },
   };
@@ -1854,6 +1852,7 @@ export function reactViewModel(world: World): ViewModel {
       };
     },
     useCoreSelection: () => {
+      const failure = useSubject(world.coreSelectionFailure);
       const current = world.coreImpl.getValue();
 
       if (current === null) {
@@ -1863,6 +1862,7 @@ export function reactViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
+        failure,
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);
@@ -1872,6 +1872,12 @@ export function reactViewModel(world: World): ViewModel {
     },
     useDemoAccounts: () => {
       return world.demoAccounts;
+    },
+    takePreferencesReopen: () => {
+      return world.takePreferencesReopen();
+    },
+    peekPreferencesReopen: () => {
+      return world.peekPreferencesReopen();
     },
   };
 }

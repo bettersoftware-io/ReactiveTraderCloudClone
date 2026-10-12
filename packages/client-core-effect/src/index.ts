@@ -7,19 +7,17 @@ export {
   type FoldUpdate,
   type FromPort,
   fromPortIn,
-  refToStateStream,
-  refToWarmStateStream,
   reportOutOfBand,
   runnerFor,
   type SharedFold,
   scopedPortStream,
-  setRefIfChanged,
   sharedFold,
   streamToStream,
   type WarmStateStream,
 } from "#/bridge/out";
 export { peek, peekCurrent } from "#/bridge/peek";
 export { rpc } from "#/bridge/rpc";
+export { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 export { createCommands } from "#/commands";
 export {
   composeApp,

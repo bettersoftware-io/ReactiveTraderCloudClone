@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-import type { StateTabProps } from "#/timeline/StateTab";
-import { StateTab } from "#/timeline/StateTab";
+import { StateTab, type StateTabProps } from "#/timeline/StateTab";
 
 export interface StateTabPage {
   mountStateTab(props: StateTabProps): void;

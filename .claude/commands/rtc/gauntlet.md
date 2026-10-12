@@ -48,19 +48,19 @@ otherwise one line ("all N CI steps mapped").
 | React Compiler coverage | fast |
 | Worklet capture safety (RN + motion-core) | fast |
 | Pages tooling unit tests | fast |
-| E2E harness tooling unit tests | fast |
+| E2E harness tooling + deployed-file guards (unit) | fast |
 | Cucumber hooks unit tests | fast |
 | Dead code (knip) | fast |
 | Dependency graph (cycles + layering) | fast |
 | Architecture + supply-chain gates (grep gates + pnpm audit --prod) | fast |
 | Typecheck | full |
 | Tests (unit) | full |
-| Lint-warnings ledger drift (docs/lint-warnings.md) | full |
 | ESLint (type-aware rules) | full |
 | UI contract coverage gate (≥95%) | full |
 | UI contract coverage gate — solid (≥95%, branches ≥85%) | full |
 | Devtools coverage gates (core + app, ≥95%, branches ≥85%) | full |
 | Alternative-core coverage gates (async + effect, ≥95%, branches ≥85%) | full |
+| Web boot coverage gate (≥95%, branches ≥85%) | full |
 | React Native coverage gate (merged lines ≥95%) | full |
 | Build | full |
 | Prod /devtools/ bundle check | full |
@@ -92,7 +92,7 @@ even if one fails — a single command's failure is not a reason to skip the res
 
 ```bash
 pnpm exec biome ci --error-on-warnings . # format + import-sort + lint (warnings fail too)
-pnpm lint:eslint                        # AST rules
+pnpm lint:eslint                        # AST rules (warnings fail too: --max-warnings 0)
 pnpm test:rules                         # custom rule RuleTester suite
 pnpm lint:css                           # stylelint
 pnpm lint:actions                       # actionlint
@@ -107,7 +107,7 @@ pnpm check:react-policies               # compiler / memo-ban / react-hooks poli
 pnpm check:compiler                     # React Compiler coverage (de-memoized files)
 pnpm check:worklet-order                # worklet capture safety (RN + motion-core)
 pnpm --filter @rtc/tests test:pages     # pages tooling units
-pnpm --filter @rtc/tests test:report    # e2e harness tooling units (report render, core selection)
+pnpm --filter @rtc/tests test:report    # e2e harness tooling units (report render, core selection) + the web clients' deployed-file guards
 pnpm --filter @rtc/tests test:hooks     # cucumber hooks units
 pnpm lint:dead                          # knip
 pnpm check:deps                         # dep-cruiser cycles + layering
@@ -126,7 +126,6 @@ Everything above, then:
 ```bash
 pnpm typecheck
 pnpm test                                                   # unit, the long pole (~2.5 min)
-pnpm check:lint-warnings-drift                              # re-runs ESLint; slower than it looks
 pnpm lint:eslint:types                                      # type-aware rules
 pnpm --filter @rtc/client-react test:ui:contract:coverage   # ≥95%
 pnpm --filter @rtc/client-solid test:ui:contract:coverage   # ≥95%, branches ≥85%
@@ -134,6 +133,7 @@ pnpm --filter @rtc/devtools-core test:coverage               # ≥95%, branches 
 pnpm --filter @rtc/devtools-app test:coverage                # ≥95%, branches ≥85%
 pnpm --filter @rtc/client-core-async test:coverage          # Alternative-core coverage gates (async) — ≥95%, branches ≥85%
 pnpm --filter @rtc/client-core-effect test:coverage         # Alternative-core coverage gates (effect) — ≥95%, branches ≥85%
+pnpm --filter @rtc/web-boot test:coverage                   # Web boot coverage gate — ≥95%, branches ≥85%
 pnpm --filter @rtc/client-react-native test:coverage:gate   # React Native coverage gate — merged lines ≥95% (jest ∪ vitest)
 pnpm build
 pnpm check:devtools-dist                                    # REQUIRES the build above

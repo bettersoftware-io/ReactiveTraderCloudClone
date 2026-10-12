@@ -2,8 +2,7 @@
 import { cleanup, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { AuthGate } from "#/ui/shell/auth/AuthGate";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";
@@ -28,6 +27,9 @@ function fakePowerSaver(): FakePowerSaverResult {
 
 function fakeViewModel(status: AuthStatus): ViewModel {
   return {
+    useDemoAccounts: () => {
+      return [];
+    },
     useAuth: () => {
       return {
         state: { status, locked: false, error: null, user: null },

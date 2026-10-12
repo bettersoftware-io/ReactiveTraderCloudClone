@@ -1,5 +1,11 @@
-import type { JSX } from "solid-js";
-import { createEffect, createMemo, createSignal, on, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  type JSX,
+  on,
+  Show,
+} from "solid-js";
 
 import {
   CREDIT_RFQ_EXPIRY_SECONDS,

@@ -9,8 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import type { CurrencyPair, Price } from "@rtc/domain";
-import { Direction } from "@rtc/domain";
+import { type CurrencyPair, Direction, type Price } from "@rtc/domain";
 
 import { splitPrice } from "#/ui/formatPrice";
 import { labelStyle } from "#/ui/theme/labelStyle";

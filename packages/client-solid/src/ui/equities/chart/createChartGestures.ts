@@ -91,7 +91,7 @@ interface EditDrag {
 }
 
 /** The drawing-tool gesture inputs — a slot object, so this primitive stays
- * machine-agnostic (it never imports `@rtc/client-core`'s drawings machine,
+ * machine-agnostic (it never imports `@rtc/client-core-rxjs`'s drawings machine,
  * only its `EqDrawTool` union). Optional on the primitive: every existing
  * call site that doesn't draw keeps compiling untouched.
  *

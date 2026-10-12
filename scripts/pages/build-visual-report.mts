@@ -11,9 +11,9 @@
 //     [--branch <b>] [--sha <s>] [--run-url <u>] \
 //     [--failed "<space-separated package labels that failed>"]
 
-import type { Dirent } from "node:fs";
 import {
   cpSync,
+  type Dirent,
   existsSync,
   mkdirSync,
   readdirSync,

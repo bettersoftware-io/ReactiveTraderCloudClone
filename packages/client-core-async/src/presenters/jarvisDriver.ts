@@ -9,8 +9,7 @@ import {
   type DriveCommandDeps,
   driveStaggerMs,
 } from "@rtc/core-logic";
-import type { PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { DriveBatchV1, JarvisEvent, PowerSaverLevel } from "@rtc/domain";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";
@@ -30,15 +29,9 @@ export interface JarvisDriverDeps {
   readonly powerSaverLevel: () => PowerSaverLevel;
 }
 
-type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
-
-interface CommandTag {
-  readonly type: "command";
-}
-
 /**
  * `presenters.jarvisDriver` on the async core: the shared interpreter
- * (`applyDriveCommand`, client-core) does every command; this file owns the
+ * (`applyDriveCommand`, core-logic) does every command; this file owns the
  * timing. Batches queue and drain one at a time — a batch arriving
  * mid-stagger waits — and within a batch each command waits
  * `driveStaggerMs` (0 for the first, and under freeze) on a timer, as the
@@ -57,7 +50,7 @@ export function createJarvisDriver(
   const releaseOutcomes = outcomes.subscribe(() => {
     // held open for the driver's life, like the RxJS Subject
   });
-  const batches: DriveBatch[] = [];
+  const batches: DriveBatchV1[] = [];
   let draining = false;
 
   async function drainBatches(): Promise<void> {

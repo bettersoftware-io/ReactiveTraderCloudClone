@@ -7,7 +7,24 @@ test("app-group layout mounts inside the gesture-handler root", async () => {
   // Fonts are not loaded in jsdom, so the gated fallback renders — proving the
   // tree (now wrapped in GestureHandlerRootView) mounts without throwing.
   expect(page.exists("fonts-loading")).toBeTruthy();
+  expect(page.exists("visual-harness-home")).toBe(false);
   await page.unmountAll();
+});
+
+// A visual-harness bundle never mounts the app: its home route is a bare
+// marker screen the capture drivers wait for before opening a scenario link.
+test("app-group layout shows only the harness home on a visual-harness bundle", async () => {
+  process.env.EXPO_PUBLIC_VISUAL_HARNESS = "1";
+
+  try {
+    await page.mount();
+
+    expect(page.exists("visual-harness-home")).toBe(true);
+    expect(page.exists("fonts-loading")).toBe(false);
+  } finally {
+    delete process.env.EXPO_PUBLIC_VISUAL_HARNESS;
+    await page.unmountAll();
+  }
 });
 
 // AsyncStorage has no native module under jest, so importing the real one

@@ -1,7 +1,10 @@
 import { NEVER } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import type { App, AppPorts } from "@rtc/core-api";
 import { scriptPorts } from "@rtc/core-contract";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";

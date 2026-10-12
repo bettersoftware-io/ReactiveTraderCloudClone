@@ -1,7 +1,10 @@
 import { renderHook } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {
@@ -18,7 +21,7 @@ import { createViewModel, type ViewModel } from "#/createViewModel";
  * used `useMachine`, matching react-bindings' OLD implementation the review
  * flagged there).
  *
- * `machines.layout(tab)` (client-core's `Presenters.layoutFor`) resolves to
+ * `machines.layout(tab)` (client-core-rxjs's `Presenters.layoutFor`) resolves to
  * a composition-root SINGLETON shared across every mount for that tab — not
  * a fresh instance per mount like every other `useMachine`-bridged factory.
  * `useLayout` reads the singleton directly via `toSignal` (no `useMachine`,

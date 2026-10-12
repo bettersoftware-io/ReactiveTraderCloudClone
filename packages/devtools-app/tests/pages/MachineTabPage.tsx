@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-import type { MachineTabProps } from "#/timeline/MachineTab";
-import { MachineTab } from "#/timeline/MachineTab";
+import { MachineTab, type MachineTabProps } from "#/timeline/MachineTab";
 
 export interface MachineTabPage {
   mountMachineTab(props: MachineTabProps): void;

@@ -34,34 +34,48 @@ export const MAX_WAVES_PER_TURN = 2048;
  * so running the same steps in one microtask blocks nothing that was not
  * already blocked. Only the ORDER against other microtasks moves: they now
  * run after the core has settled, not in the middle of it. */
-export function createTurnScheduler(): Scheduler.Scheduler {
+export function createTurnScheduler(): TurnScheduler {
   let ready = new Scheduler.PriorityBuckets();
   let scheduled = false;
+  let running = false;
 
   function runTurn(): void {
-    let waves = 0;
-
-    while (ready.buckets.length > 0) {
-      if (waves === MAX_WAVES_PER_TURN) {
-        setTimeout(runTurn, 0);
-        return;
-      }
-
-      waves += 1;
-      const wave = ready.buckets;
-      ready = new Scheduler.PriorityBuckets();
-
-      for (const [, tasks] of wave) {
-        for (const task of tasks) {
-          task();
-        }
-      }
+    // `settle()` called from inside a turn — a subscriber that subscribes
+    // another fold from its `next` — has nothing to do: the turn already
+    // running takes whatever that made ready in its next wave.
+    if (running) {
+      return;
     }
 
-    scheduled = false;
+    running = true;
+
+    try {
+      let waves = 0;
+
+      while (ready.buckets.length > 0) {
+        if (waves === MAX_WAVES_PER_TURN) {
+          setTimeout(runTurn, 0);
+          return;
+        }
+
+        waves += 1;
+        const wave = ready.buckets;
+        ready = new Scheduler.PriorityBuckets();
+
+        for (const [, tasks] of wave) {
+          for (const task of tasks) {
+            task();
+          }
+        }
+      }
+
+      scheduled = false;
+    } finally {
+      running = false;
+    }
   }
 
-  return Scheduler.make((task: Scheduler.Task, priority: number) => {
+  const scheduler = Scheduler.make((task: Scheduler.Task, priority: number) => {
     ready.scheduleTask(task, priority);
 
     if (!scheduled) {
@@ -71,10 +85,24 @@ export function createTurnScheduler(): Scheduler.Scheduler {
       void Promise.resolve().then(runTurn);
     }
   });
+
+  return Object.assign(scheduler, { settle: runTurn });
+}
+
+/** The scheduler, plus a way for PLAIN code to have the turn now. */
+export interface TurnScheduler extends Scheduler.Scheduler {
+  /** Run every ready fiber step, and what those make ready, before
+   * returning — the turn itself, taken synchronously instead of at the next
+   * microtask. For plain code that has just handed the core work whose
+   * result its caller reads in the same call: a fold's `subscribe`
+   * (`sharedFold`, `bridge/out.ts`, which says why). A no-op when nothing is
+   * ready or a turn is already running; the microtask already queued then
+   * finds nothing left. */
+  settle(): void;
 }
 
 /** The one scheduler every host of this core runs on (`runnerFor`,
  * `bridge/out.ts`). ONE instance, not one per host, because the app's fibers
  * and each machine's fibers hand values to one another: they settle together
  * only if they share a queue. */
-export const turnScheduler: Scheduler.Scheduler = createTurnScheduler();
+export const turnScheduler: TurnScheduler = createTurnScheduler();

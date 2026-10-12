@@ -1,8 +1,7 @@
 // FPS + MEM are LIVE (useLiveMetrics, react-scan-style rAF meter); the rest of
 // the footer is decorative static chrome. A frozen provider under the harnesses
 // keeps goldens byte-identical.
-import type { JSX } from "solid-js";
-import { For } from "solid-js";
+import { For, type JSX } from "solid-js";
 
 import { useLiveMetrics } from "./useLiveMetrics";
 

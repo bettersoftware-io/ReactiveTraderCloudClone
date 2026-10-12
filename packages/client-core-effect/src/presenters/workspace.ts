@@ -1,4 +1,4 @@
-import { Effect, type Fiber, Scope } from "effect";
+import { Cause, Effect, type Fiber, Scope } from "effect";
 
 import type {
   AppPorts,
@@ -26,22 +26,22 @@ import {
   type PresetSummaryChannel,
   writeWorkspaceLayout,
 } from "@rtc/core-logic";
-import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import { type JarvisEvent, WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 import {
   createChildHost,
   type EffectHost,
   interruptFiber,
+  reportOutOfBand,
   type WarmStateStream,
 } from "#/bridge/out";
 import { peek } from "#/bridge/peek";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 import { createLayoutMachine } from "#/machines/layout";
 import {
   createJarvisPanelsMachine,
   createJarvisPanelsPresenter,
 } from "#/presenters/jarvisPanels";
-import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
 
 /** The twelve workspace members this core owns natively (pluggable-core
  * slice 7, wave 1). */
@@ -63,7 +63,7 @@ interface NativeWorkspacePresenters {
 }
 
 /** What the Jarvis driver reaches in this workspace, read and written
- * synchronously (`DriveCommandDeps`, client-core). */
+ * synchronously (`DriveCommandDeps`, core-logic). */
 type WorkspaceDriveDeps = Pick<
   DriveCommandDeps,
   | "layout"
@@ -81,6 +81,10 @@ export interface NativeWorkspace {
   readonly drive: WorkspaceDriveDeps;
   /** `AppCommands.reportDetachedPanels`. */
   reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
+  /** Writes a layout change still inside the persistence debounce, now —
+   * `app.dispose()` calls it before the host scope closes, while the layout
+   * state it reads is still live. No pending change, no write. */
+  writePendingLayout(): void;
 }
 
 export interface NativeWorkspaceDeps {
@@ -93,14 +97,15 @@ export interface NativeWorkspaceDeps {
 
 /** The workspace on the Effect core: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
- * `@rtc/client-core`, wired to `SyncRef`-backed layout machines and panels
- * roster — `SubscriptionRef`s committed with `runSync`, their in-core mirrors
- * notified synchronously (the workspace's synchronous-fold contract) — with
+ * `@rtc/core-logic`, wired to `SyncRef`-backed layout machines and panels
+ * roster — committed synchronously, their in-core mirrors notified in the
+ * same tick (the workspace's synchronous-fold contract) — with
  * the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`, the presets
  * lists) as warm refs and the persistence debounce as an `Effect.sleep`
  * fiber. Everything lives on a CHILD of the app host: its scope's close (the
- * app's `dispose()`) interrupts the relays and the pending write, and
- * releases every keep-warm.
+ * app's `dispose()`) interrupts the relays and the debounce fiber, and
+ * releases every keep-warm — `dispose()` writes a pending change first
+ * (`writePendingLayout`), so the close interrupts nothing left to write.
  *
  * Built outside the Layer graph, with the rest of the Jarvis family
  * (`presenters/jarvisFamily.ts`), over this core's own `jarvis.events$`
@@ -141,8 +146,8 @@ export function createNativeWorkspace(
   track(jarvisPanels.release);
   const dockLayoutStore =
     ports.dockLayoutStore ?? new InMemoryDockLayoutStore();
-  const membership = createSyncRef(host, 0);
-  const resets = createSyncRef(host, 0);
+  const membership = createSyncRef(0);
+  const resets = createSyncRef(0);
   const resets$ = resets.warm();
   track(resets$.release);
   const handles = new Map<WorkspaceTab, Machine<LayoutState, LayoutIntents>>();
@@ -215,7 +220,6 @@ export function createNativeWorkspace(
     }
 
     const machine = createLayoutMachine(
-      host,
       createDefaultLayoutPort(tab).initial,
       dock.seedFor(tab),
     );
@@ -277,7 +281,7 @@ export function createNativeWorkspace(
       return existing.state$;
     }
 
-    const ids = createSyncRef<readonly string[]>(host, currentDockedIds(tab));
+    const ids = createSyncRef<readonly string[]>(currentDockedIds(tab));
 
     function recompute(): void {
       const next = currentDockedIds(tab);
@@ -308,7 +312,7 @@ export function createNativeWorkspace(
       dockedPanelIdsNow: dock.dockedPanelIdsNow,
       rebuildLiveEngine: bumpResets,
     },
-    createRefSummaryChannel(host, track),
+    createRefSummaryChannel(track),
   );
 
   function livePanelIdsNow(): readonly string[] {
@@ -364,24 +368,33 @@ export function createNativeWorkspace(
       detachedPanelIds: dock.detachedPanelIds,
     },
     reportDetachedPanels: dock.reportDetachedPanels,
+    writePendingLayout: persist.writePending,
   };
 }
 
 interface PersistDebounce {
   /** (Re)start the quiet window; the write runs once it elapses. */
   kick(): void;
+  /** End an open quiet window early and write now; with none open, do
+   * nothing. A hot swap disposes the core inside the window, and the scope's
+   * close alone would interrupt the change away. */
+  writePending(): void;
 }
 
 /** The writer's debounce: each kick interrupts the pending
  * `WORKSPACE_PERSIST_DEBOUNCE_MS` sleep fiber and forks a fresh one in the
- * host scope, so only an uninterrupted window writes — and the scope's
- * close (the app's `dispose()`) interrupts a pending one. */
+ * host scope, so only an uninterrupted window writes — `writePending` ends a
+ * window early (the app's `dispose()`, before the scope's close interrupts
+ * it). */
 function createPersistDebounce(
   host: EffectHost,
   isClosed: () => boolean,
   write: () => void,
 ): PersistDebounce {
   let pending: Fiber.RuntimeFiber<void> | null = null;
+  // A kick not yet written. `pending` alone cannot say so: it keeps the
+  // fiber after that fiber wrote.
+  let unwritten = false;
 
   return {
     kick: () => {
@@ -398,11 +411,13 @@ function createPersistDebounce(
         interruptFiber(pending);
       }
 
+      unwritten = true;
       pending = host.runtime.runFork(
         Effect.sleep(WORKSPACE_PERSIST_DEBOUNCE_MS).pipe(
           Effect.andThen(
             Effect.sync(() => {
               if (!isClosed()) {
+                unwritten = false;
                 write();
               }
             }),
@@ -410,6 +425,27 @@ function createPersistDebounce(
         ),
         { scope: host.scope },
       );
+    },
+    writePending: () => {
+      if (!unwritten || isClosed()) {
+        return;
+      }
+
+      // Always true when `unwritten` is: the check only narrows the type.
+      if (pending !== null) {
+        interruptFiber(pending);
+      }
+
+      unwritten = false;
+
+      // `app.dispose()` calls this first: a write that throws (full or
+      // blocked storage) is reported out of band, never thrown into
+      // dispose, whose scope close releases the ports.
+      try {
+        write();
+      } catch (error: unknown) {
+        reportOutOfBand(Cause.die(error));
+      }
     },
   };
 }
@@ -421,7 +457,6 @@ interface SummaryEntry {
 
 /** The presets summaries as one warm ref per tab. */
 function createRefSummaryChannel(
-  host: EffectHost,
   track: (release: () => void) => void,
 ): PresetSummaryChannel {
   const byTab = new Map<WorkspaceTab, SummaryEntry>();
@@ -436,7 +471,7 @@ function createRefSummaryChannel(
       return existing;
     }
 
-    const ref = createSyncRef(host, initial());
+    const ref = createSyncRef(initial());
     const entry = { ref, warm: ref.warm() };
     track(entry.warm.release);
     byTab.set(tab, entry);

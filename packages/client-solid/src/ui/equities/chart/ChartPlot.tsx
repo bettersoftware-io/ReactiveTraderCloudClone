@@ -30,8 +30,7 @@ import { DrawingsLayer } from "./DrawingsLayer";
 import { IndicatorPane } from "./IndicatorPane";
 import { NavigatorStrip } from "./NavigatorStrip";
 import { SceneCanvas } from "./SceneCanvas";
-import type { IndicatorPath } from "./SvgPathLayer";
-import { SvgPathLayer } from "./SvgPathLayer";
+import { type IndicatorPath, SvgPathLayer } from "./SvgPathLayer";
 import { TimeAxis } from "./TimeAxis";
 import { VolumePane } from "./VolumePane";
 

@@ -1,5 +1,9 @@
-import { JARVIS_BRAINS, type JarvisBrain } from "@rtc/domain";
-import type { JarvisGateLevel, JarvisUsageSnapshot } from "@rtc/shared";
+import {
+  JARVIS_BRAINS,
+  type JarvisBrain,
+  type JarvisGateLevel,
+  type JarvisUsageSnapshot,
+} from "@rtc/domain";
 
 export const DEFAULT_JARVIS_BUDGET_USD = 1;
 export const DEFAULT_JARVIS_BUDGET_SOFT_RATIO = 0.8;

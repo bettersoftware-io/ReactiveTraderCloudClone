@@ -1,5 +1,12 @@
-import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, onMount, Show, untrack } from "solid-js";
+import {
+  createMemo,
+  For,
+  type JSX,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 

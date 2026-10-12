@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { DRIVE_TABS } from "@rtc/domain";
+
 import { DESK_PANEL_ROSTER } from "../deskPanels.js";
-import { DRIVE_TABS } from "../driveCommand.js";
 
 describe("DESK_PANEL_ROSTER", () => {
   it("covers every drive tab", () => {

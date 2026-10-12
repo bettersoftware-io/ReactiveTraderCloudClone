@@ -3,6 +3,9 @@ export const TESTIDS = {
     header: "header",
     themeToggle: "theme-toggle",
     powerSaverToggle: "power-saver-toggle",
+    /** The cover a core swap puts over the page (CoreSwapOverlay); in the
+     * DOM only while a swap is under way. */
+    coreSwapOverlay: "core-swap-overlay",
     tab: (tab: "fx" | "credit" | "admin" | "equities") => {
       return `tab-${tab}`;
     },

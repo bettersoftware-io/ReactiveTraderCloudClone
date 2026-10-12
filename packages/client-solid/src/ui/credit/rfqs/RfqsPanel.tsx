@@ -1,9 +1,9 @@
-import type { JSX } from "solid-js";
 import {
   createEffect,
   createMemo,
   createSignal,
   For,
+  type JSX,
   on,
   onCleanup,
   Show,

@@ -3,7 +3,7 @@
 ## 22. Pluggable Application Core
 
 [§21](21-cross-framework-testing.md) proved the *UI* layer replaceable: two
-web clients share one framework-free `@rtc/client-core` and pass the same
+web clients share one framework-free `@rtc/client-core-rxjs` and pass the same
 behavioural specs. This chapter is the same experiment run one ring inward —
 the **application layer** (presenters, machines, the composition root) is
 now pluggable too, with two alternative implementations proven equivalent to
@@ -58,7 +58,8 @@ flowchart TB
 ```
 
 `@rtc/core-api` is types-only (grep gate 42 enforces no runtime export) and
-sits inside `domain`/`shared`, alongside the innermost packages. It holds the
+sits just outside `domain`, alongside the innermost packages, and names
+no wire type. It holds the
 `Stream<T>` / `StateStream<S>` aliases, one interface per presenter, every
 machine's state/intents/view types, `Machine<S,I>` / `MachineFactories` /
 `Presenters` / `AppCommands` / `AppPorts` / `App`, and `CoreFactory` — the
@@ -67,7 +68,7 @@ whole plug a client needs to name a core without naming an implementation.
 `@rtc/client-core-rxjs` is the RxJS core: it `implements` `@rtc/core-api`'s
 presenter interfaces. Until 2026-10-04 it lived inside `@rtc/client-core`,
 which also re-exported every contract type; since then the core is its own
-package, `@rtc/client-core` holds only the adapters, port factories and
+package, `@rtc/client-adapters` holds only the adapters, port factories and
 stores, and a consumer imports a contract type from `@rtc/core-api` itself.
 `@rtc/client-core-async` and `@rtc/client-core-effect` are its
 sibling packages, implementing the same `CoreFactory` contract on
@@ -88,14 +89,14 @@ whole until 2026-10-04; a consumer now imports a shared rule from
 `@rtc/core-logic` directly. Each core — the RxJS one too, in its own package
 `@rtc/client-core-rxjs` since 2026-10-04 — composes from `core-logic`,
 `core-api`, `domain`, `shared` and its own members only, and never from
-another core (`cores-stay-inner`). `@rtc/client-core`, which now holds only
+another core (`cores-stay-inner`). `@rtc/client-adapters`, which now holds only
 the adapters, port factories and stores, is a core's devDependency, for test
 adapters (`createSimulatorPorts`): a core takes its ports as arguments, and
 `cores-take-ports-as-arguments` forbids the import from any non-test file.
 
 The bindings (`react-bindings`, `solid-bindings`) are unaffected by which
 core is active: they consume `Presenters` / `MachineFactories` /
-`AppCommands` by shape, from `@rtc/core-api`, not by importing `@rtc/client-core`'s
+`AppCommands` by shape, from `@rtc/core-api`, not by importing `@rtc/client-core-rxjs`'s
 concrete classes directly.
 
 ## Selection: at load time
@@ -107,19 +108,19 @@ build ships all three cores as lazy chunks (the RxJS core too: its
 composition root since approach B on 2026-10-02, the whole of it as the
 package `@rtc/client-core-rxjs` since 2026-10-04) —
 and a visitor (or the deployed demo itself) can switch between them without a
-rebuild. Each web client's `src/app/coreSelection.ts` (which replaced
-`selectCore.ts`) resolves the choice through a pure precedence chain:
+rebuild. `@rtc/web-boot`'s `coreSelection.ts`, shared by both web clients (which
+replaced `selectCore.ts`), resolves the choice through a pure precedence chain:
 
 ```mermaid
 flowchart TD
   url["<b>?core=</b> URL parameter<br/>this load only — never written to storage,<br/>so a shared link keeps the visitor's saved choice"]
-  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the Preferences row's select()"]
+  stored["<b>localStorage['rtc.coreImpl']</b><br/>saved by the core host after a successful swap"]
   build["<b>VITE_CORE_IMPL</b><br/>the build DEFAULT — the knob every dev:* / e2e<br/>script sets, no longer what gets bundled"]
   fallback["<b>rxjs</b>"]
   fail["throws — a developer error, fail-closed"]
   resolved["resolveCoreChoice(…): CoreImpl"]
-  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>rxjs → the already-imported rxjsCore<br/>async / effect → import(#quot;@rtc/client-core-async#quot;) /<br/>import(#quot;@rtc/client-core-effect#quot;), each its own lazy chunk,<br/>fetched only once chosen"]
-  boot["bootCore (src/app/bootApp.ts)<br/>→ main.tsx renders #lt;AppRoot core={core} …#gt;"]
+  load["loadCore(impl): Promise#lt;CoreFactory#gt;<br/>import() of #quot;@rtc/client-core-rxjs#quot;,<br/>#quot;@rtc/client-core-async#quot; or #quot;@rtc/client-core-effect#quot;,<br/>each its own lazy chunk, fetched only once chosen"]
+  boot["bootCore (web-boot/src/bootApp.ts)<br/>→ startWebClient hands the core to the core host,<br/>which composes it and mounts #lt;AppRoot#gt;"]
 
   url -- "valid" --> resolved
   url -- "absent, or unknown<br/>(ignored + console warning)" --> stored
@@ -134,8 +135,8 @@ flowchart TD
 ```
 
 `bootCore` runs resolve-then-load before anything renders (the page shows
-only the static `index.html` background until then — one small chunk
-request on the async/Effect paths, zero on the default RxJS path). A
+only the static `index.html` background until then — one chunk request on
+every path, the default RxJS one included since approach B). A
 rejected chunk load — the only asynchronous failure in this sequence — never
 falls back to RxJS silently: `renderBootError` shows a plain-DOM message plus
 a "Load the default core" button that clears the stored choice and reloads
@@ -143,17 +144,30 @@ without `?core=`. `<html data-core-impl>` publishes whichever core actually
 loaded, which is what the e2e booted-core assertions read.
 
 The choice is not a core preference (a core's presenters don't exist yet
-when it must be known), so it lives in this pre-boot `src/app` module, not
-behind the ViewModel. `main.tsx` instead builds a `CoreSelection` value via
-`createCoreSelection` (`{ current, options, select(impl) }`, `select` = save
-+ reload with `?core=` stripped so a page opened as `?core=effect` doesn't
-reload straight back onto Effect) and passes it to `AppRoot`, which forwards
-it to the bindings' `createViewModel` as an app-shell value, exposed to the
-UI as `useCoreSelection(): CoreSelection |
-null` — `null` when the host offers no selection at all (React Native passes
-none and stays RxJS-only). Both web clients render a Preferences →
-"Application core" row from it, hidden entirely when the hook returns
-`null`.
+when it must be known), so it lives in this pre-boot `@rtc/web-boot` module, not
+behind the ViewModel. Each composition instead carries a `CoreSelection`
+value built by `createCoreSelection` (`{ current, options, select(impl),
+failure$ }`), which `AppRoot` forwards to the bindings' `createViewModel` as
+an app-shell value, exposed to the UI as `useCoreSelection()` — `null` when
+the host offers no selection at all (React Native passes none and stays
+RxJS-only). Both web clients render a Preferences → "Application core" row
+from it, hidden entirely when the hook returns `null`.
+
+**Since 2026-10-05 `select` swaps the core in place**
+([ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)).
+Until then it saved the choice and reloaded the page. Now it calls the core
+host's `swapTo(impl)` (`packages/web-boot/src/coreHost.ts`, one copy for
+both web clients), which owns the ports for the whole page life: it unmounts the UI,
+disposes the running core, composes the new one over the **same** ports
+object and mounts the UI again, then saves the choice and strips `?core=`
+with `history.replaceState`. No page load happens, so the session, the
+socket and the layout carry over. An overlay rendered outside the app tree
+(`CoreSwapOverlay`) covers the page for the length of the swap. A swap that
+fails leaves the page on a working core and reports why through `failure$`, shown inline in the
+Preferences row; only a failure with nothing mounted ends on the boot-error
+screen. The step order and the failure table are in Decision 7. What the
+cores owe a swap is [guarantee 8](#three-timing-guarantees) and the `dispose`
+rule under [Failure, teardown and port discipline](#failure-teardown-and-port-discipline).
 
 `turbo.json` declares `VITE_CORE_IMPL` on the `dev` and `build` tasks' `env`
 lists (turbo's strict env mode silently strips undeclared vars) and
@@ -180,8 +194,8 @@ to reproduce them explicitly:
    `state$` emit on subscribe, synchronously — `toSignal` throws otherwise,
    and `readPreferenceNow` / `ThemePreferencePresenter.cycle()` both read
    synchronously. The async core's `Store` is replay-current by
-   construction; the Effect core's `refToStateStream` re-reads the
-   `SubscriptionRef` per subscription rather than caching a value from
+   construction; the Effect core's `SyncRef.stateStream()` re-reads the
+   cell per subscription rather than caching a value from
    construction time (a value cached once would go stale across a
    cold → warm cycle); a `sharedFold` whose port has not emitted yet starts
    a SEEDLESS period and delivers nothing until the first value, as
@@ -255,6 +269,36 @@ to reproduce them explicitly:
    until nothing is left: ~430 renders against ~420. The `animationDirector`
    case "a tick's price and the flash it causes reach the tile in one turn"
    pins it; `collectTurns` takes several streams for exactly this.
+7. **What a port replays on subscribe arrives in the subscribing turn.** A
+   tile subscribes its price and its history in one synchronous stretch.
+   The price is usually warm already (the animation director reads it), so
+   the tile is handed its current value inside `subscribe`; the history's
+   port replays its recent ticks inside `subscribe` too. Both must reach
+   the tile before it re-renders. RxJS delivers a replay inside the
+   `subscribe` call, and the async core within the same turn. In the Effect
+   core the
+   replay is queued for the fold's fiber, which would run at the next
+   microtask — after the render the price already caused. Measured
+   2026-10-05 (production build, nine tiles): 55 tile renders in the first
+   two seconds against 48 on RxJS, each tile rendering once for its price
+   and again for its history. `sharedFold` therefore settles the core
+   before its `subscribe` returns (`turnScheduler.settle()`): 49. The
+   `priceHistory` case "a tile mounting on a price that is already warm
+   hears that price and the history the port replays in one turn" pins it.
+8. **A core can be composed over ports another composition used.** Not a
+   timing property, but numbered with these because every core must
+   reproduce it explicitly too. The web clients build their ports once per
+   page and hand the same object to every `createApp`, so a core must not
+   assume it is the first to touch them (ADR-006 Decision 7, the hot swap).
+   The `recomposition` suite (`@rtc/core-contract`, cross-member, six cases
+   over `CoreHarness.recompose()`) composes, signs in, drives the ports,
+   calls `dispose()`, and composes again over the same scripted ports. The
+   second composition must resume the session with no login and exactly one
+   more `connect`; call every port method exactly as often as a first
+   composition does; receive the values the ports emit after the swap; hold
+   no more port subscriptions when warm than a warm first composition, and
+   none after its own `dispose()`; and start from a preference that was
+   changed before the swap.
 
 ## Failure, teardown and port discipline
 
@@ -273,23 +317,54 @@ explicitly (residual sweep, 2026-09-19):
    path). That isolation covers a CONSUMER's `next`: an operator built on a
    primitive (`mapTopic`, an Effect `Stream` combinator) turns its own
    projection error into a stream failure instead, as rxjs operators do.
-3. **After `dispose()`, the app holds no port subscription once its
-   consumers have let go.** That is the contract (the `dispose` suite, all
-   three cores): after a session, including a Jarvis turn still in flight,
-   and after the session's own consumers unsubscribe, `dispose()` leaves
-   zero live port subscriptions. What a subscriber STILL attached at dispose
-   hears is not contracted. In the RxJS core (ADR-006 Follow-up 6) only the
-   `warmReplay` singletons and the machines `createApp` owns end — their
-   subscribers complete; an interrupt-only Effect cause is deliberately
-   silent. Every refcounted stream, per-key or singleton, keeps delivering
-   to a subscriber still attached in the RxJS core — `price$`, `quote$`,
-   `depth$`, but also `connection.status$`, the preference presenters,
-   `execution.executions$`, `ordersBlotter.fills$`, `throughput.state$` and
-   `auth.state$` (whose subject is never completed) — and that subscription
-   stays the consumer's to release. Subscribing after `dispose()` to a
-   refcounted presenter, or calling a machine factory, re-opens its ports:
-   uncontracted, and no production code does it (no shell calls
-   `app.dispose()`).
+3. **After `dispose()`, the app holds no port subscription, whoever still
+   holds its streams.** That is the contract (the `dispose` suite, all
+   three cores). After a session, including a Jarvis turn still in flight,
+   `dispose()` leaves zero live port subscriptions: with the session's
+   consumers gone, and also with the session's presenter streams (the 40
+   `everySessionStream` lists) still held. A held
+   stream is cut, not orphaned: what a port emits next reaches nobody. A
+   stream first subscribed after `dispose()` opens no port.
+
+   The cut itself is silent: the port stream is released, not completed
+   or errored, so a subscriber still attached simply hears nothing more.
+   (The RxJS core's `warmReplay` singletons and the machines `createApp`
+   owns do complete their subscribers, as they did before; that much is
+   recorded, not contracted.) One consequence: a consumer waiting on a
+   one-shot port answer still in flight at `dispose()` (a login) waits for
+   good. Nothing in production does, since the UI is unmounted first.
+
+   Each core gets there at one place. The RxJS and async cores read their
+   ports through a wrapper that ends every port stream with the composition
+   (`ports/cutPortsOnDispose.ts`, `bridge/cutPortsOnAbort.ts`, since
+   2026-10-06); the Effect core closes the scope its port subscriptions
+   live in. `app.ports` is still the object the core was given, never the
+   wrapper (the `recomposition` suite), because the host composes the next
+   core over it.
+
+   Until 2026-10-06 this was contracted only "once its consumers have let
+   go", and the cores differed on the rest: holding every session stream
+   across `dispose()` left 16 port subscriptions open on the RxJS core, 12
+   on the async core and none on the Effect core. The web clients' core
+   host never relied on it (it unmounts the UI and waits a macrotask before
+   `dispose()`, and ends the devtools hub's composition right after), and
+   `coreHost.swap.test.ts` cases 4 and 5 still pin that path. The rule now
+   holds without that care.
+
+   Since the hot swap (2026-10-05) the same suite also fixes three
+   obligations about the workspace layout and failure, because a swap
+   seconds after a drag would otherwise lose the drag:
+
+   - **`dispose()` writes a workspace-layout change still inside the
+     persistence debounce**, exactly once, before it resolves. All three
+     cores used to drop it. Nothing is written after `dispose()` resolves;
+     a reset inside the debounce window is not undone by the flush; and
+     with nothing pending, nothing is written.
+   - **`dispose()` never throws past a step that releases ports.** A
+     flushed write that throws (storage full or blocked) is reported out of
+     band — RxJS rethrows it on a macrotask, the async core through
+     `reportAsync`, the Effect core through `reportOutOfBand` — and the
+     rest of `dispose()` still runs, so every port stream is released.
 4. **Every port method is called once, at construction** — including
    `colorScheme.prefersDark$`, which the `portDiscipline` suite also counts.
    A stream re-subscribes the captured Observable on every warm period; a
@@ -346,12 +421,14 @@ core; slice 3 added the credit shapes to the same list:
 - **Machines** (`staleFlag`, `analyticsStaleFlag`, `rowHighlight`, `notional`,
   `tileExecution`): `createMachineFactories(presenters)` has no app handle,
   so a machine owns its lifetime — a `Store` plus an `AbortController`
-  (async), a `SubscriptionRef` under a detached host with its own `Scope`
-  (Effect); `dispose()` aborts or closes it. The tile execution is the
+  (async), a `SyncRef` under a detached host with its own `Scope`
+  (Effect; a plain cell, never Effect's `SubscriptionRef`, which reaches a
+  subscriber a fiber step late — grep gate 50); `dispose()` aborts or
+  closes it. The tile execution is the
   spec's sketch in both: one run per `execute()`, cancelled by the next
   `execute()`, by `dismiss()` and by `dispose()`; a `race` between the RPC
   and the timeout; a too-long marker that a terminal state ignores. A
-  machine's source failure has no channel on a `Store`/`SubscriptionRef`
+  machine's source failure has no channel on a `Store`/`SyncRef`
   and is rethrown out of band (`reportAsync` / `reportOutOfBand`); the
   RxJS `state()` would error `state$` — uncontracted, nothing observes it.
   When the execution timeout wins, the Effect machine releases the
@@ -418,7 +495,7 @@ core; slice 3 added the credit shapes to the same list:
   bridge export (`Stream.unwrapScoped`) for `place()`; `orders$` there
   supersedes its own query with `Stream.flatMap(…, { switch: true })`
   inside its retained fold (`presenters/ordersBlotter.ts`). It holds its
-  two singletons warm through `refToWarmStateStream`, and grows the Layer
+  two singletons warm through `SyncRef.warm()`, and grows the Layer
   graph by seven (`presenters/mirrorPort.ts`, `layers.ts`). A
   `Scope.addFinalizer` on each Effect singleton's child scope marks it
   disposed and releases its keep-warm, so `app.dispose()` and the
@@ -450,7 +527,7 @@ connection-event stream that originate inside the app — the Reconnect
 button and the admin incident machine — so no core imports a module-level
 Subject. `@rtc/core-api`'s `TransportPorts` omits `connectionEvents` AND
 `connectionIntents` together (ADR-006 Follow-up 5), so a port factory can no
-longer typecheck while supplying one without the other. `@rtc/client-core`'s
+longer typecheck while supplying one without the other. `@rtc/client-adapters`'s
 `pairConnectionPorts(events$)` is the only producer of the pair in that
 package: it builds an instance-scoped reconnect/incident Subject pair per
 call and hands the client back `connectionEvents` (the merge) alongside
@@ -480,10 +557,13 @@ flight), then fires `disposed$`.
 boundary. `CONTRACT_SUITES` is an exhaustive `Record<ContractMember, Suite |
 null>` — one entry per `Presenters` member, per `MachineFactories` member,
 and per `AppCommands` member (75 members: 61 presenters, 12 machines, 2
-commands). Three cross-member suites sit beside the registry, witnessing
+commands). Four cross-member suites sit beside the registry, witnessing
 properties of the whole composition: `portDiscipline`, (slice 8)
-`transportGate`, and `dispose` (ADR-006 Follow-up 6: after a signed-in
-session, no port stream stays subscribed). Adding a member to `Presenters` or `MachineFactories` without
+`transportGate`, `dispose` (ADR-006 Follow-up 6: after a signed-in
+session, no port stream stays subscribed; since 2026-10-05 also the flushed
+layout write), and `recomposition` (2026-10-05, guarantee 8: a core
+composed a second time over ports a first composition used). Adding a
+member to `Presenters` or `MachineFactories` without
 listing it here is a compile error, so the registry can never silently fall
 behind the types it is supposed to cover.
 
@@ -574,8 +654,8 @@ the one client it built.
 *composition root* — the file that constructs the app. Rule 1 therefore
 proves the entry bundle constructs no core. That a core's presenters and
 machines are lazy too rests on two more facts. First, a core is a package of
-its own, and what the UI imports statically — `@rtc/client-core`: adapters,
-port factories and stores — imports no core (`client-core-stays-inner`).
+its own, and what the entry bundle imports statically, through `@rtc/web-boot` —
+`@rtc/client-adapters`: adapters, port factories and stores — imports no core (`client-adapters-stays-inner`).
 Second, a core's presenters are exported from the same package as its
 composition root: a UI file that imported that package statically would drag
 the brand into the eager set and fail rule 1, and dependency-cruiser's
@@ -591,7 +671,7 @@ grew from 4.2 to 13.9 KB, next to async's 13.1 and Effect's 73.4. A visitor
 on another core downloads ~8.7 KB less; the default RxJS visitor about 1.2 KB
 more in total, since the presenters are needed at boot either way. The point
 was the boundary, not the bytes — ADR-006's amendments have the full
-breakdown. `@rtc/client-core`'s adapters and port factories ship eagerly by
+breakdown. `@rtc/client-adapters`'s adapters and port factories ship eagerly by
 design: the ports are built before any core loads.
 
 ## See also

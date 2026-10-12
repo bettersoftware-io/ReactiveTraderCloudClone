@@ -1,6 +1,5 @@
 // DECORATIVE — cosmetic HUD chrome, intentionally not wired to any port (spec: decorative-but-dead is allowed and explicit).
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import styles from "./HeaderChrome.module.css";
 

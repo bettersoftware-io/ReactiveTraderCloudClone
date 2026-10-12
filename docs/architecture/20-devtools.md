@@ -40,13 +40,13 @@ Two new packages, following the existing naming and layering conventions
 | `@rtc/devtools-core` | Protocol types, serializer, `DevtoolsHub`, three decorators, `DevtoolsTransport` port + `BroadcastChannelDuplex` adapter | **`rxjs` only** — the same constraint as `@rtc/domain`/`@rtc/ws-effects` |
 | `@rtc/devtools-app` | The inspector UI: Vite + React 19 SPA, store-first ([§20.12](#2012-store-first-navigation-v3)) | `@rtc/devtools-core`, `react`, `react-dom` |
 
-`devtools-core` never imports `@rtc/client-core` — it decorates by
+`devtools-core` never imports `@rtc/client-core-rxjs` — it decorates by
 *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with a
 `.subscribe`), so its types are generic. The presenter **manifest** — which
 keys of `Presenters` are streams, parameterized-stream methods, or a shared
 machine — lives at the call site in `client-react`
-(`packages/client-react/src/app/devtools/presenterManifest.ts`), which
-already knows the concrete types. `devtools-app` never imports `client-core`
+(`packages/web-boot/src/devtools/presenterManifest.ts`, shared by both web clients), which
+already knows the concrete types. `devtools-app` never imports `client-core-rxjs`
 or `domain` either — it understands only the wire protocol, which is what
 makes a future extension shell a thin wrapper around the same bundle.
 
@@ -101,9 +101,9 @@ flowchart TB
     style Panel fill:transparent,stroke:#6e7681
 ```
 
-The three decorators, all applied at the `client-react` composition root
-(`packages/client-react/src/AppRoot.tsx` and
-`packages/client-react/src/app/buildBrowserPorts.ts`):
+The three decorators, all applied at a web client's composition root
+(`instrumentComposition` in `packages/web-boot/src/startWebClient.ts` and
+`packages/web-boot/src/buildBrowserPorts.ts`):
 
 - **`instrumentWsAdapter(adapter, hub)`** (`packages/devtools-core/src/instrument/wsAdapter.ts`) — wraps `send`/`on`/`rpc` to report `wire:out`/`wire:in`; every other member delegates untouched via an explicit-bind `Proxy`.
 - **`instrumentPresenters(presenters, manifest, hub)`** (`packages/devtools-core/src/instrument/presenters.ts`) — walks the `Presenters` object per the `PresenterManifest`: `props` register a shared stream once, `methods` register a child stream per distinct arg tuple on first call, `machine` entries register a shared machine's `state$` and log its intents. Proxies, not spreads — presenters are class instances, so spreading would drop prototype methods.
@@ -219,6 +219,22 @@ asserted: `packages/devtools-core/src/__tests__/DevtoolsHub.test.ts`'s
 registers a stream, asserts `source$.observed === false`, pushes an emission,
 and asserts nothing was sent or buffered — then sends `hello` and asserts the
 subscription (and the welcome/snapshot pair) appear only at that point.
+
+**Ending a composition.** The hub outlives any one application core: the hot
+swap disposes the running core and composes another in the same page.
+`endComposition()` is the call it makes between `dispose()` and the next
+`createApp`. It unsubscribes and forgets every registered stream, so the new
+core's `registerStream` with the same id takes the new source. It reports every
+machine still live as disposed. If an inspector is attached, the hub sends a
+fresh welcome and snapshot on the next flush, and the inspector replaces what
+it held; anything registered after that flush arrives as ordinary events. Any
+snapshot, including the one a repeated `hello` triggers, supersedes the
+lifecycle events queued before it, and a disposed
+machine's state stream and intents are released, so the hub keeps nothing of
+the old core alive. A dormant hub just forgets, and the next `hello` sees only
+the new composition. The call belongs between the two steps: a registration the
+old core makes after it is adopted as the new core's own. No protocol message
+is added.
 
 ### 20.4 Protocol
 
@@ -344,18 +360,21 @@ work identically in dev and in the deployed app:
   into `dist/devtools`, so the deployed app serves the same bundle at
   `/devtools/` with no separate deploy step.
 
-Disconnect behavior: the app registers a `pagehide` listener at module load
-(`packages/client-react/src/app/devtools/devtoolsHub.ts`):
+Disconnect behavior: the app registers a `pagehide` listener when `startWebClient` runs, once per page.
+`startWebClient` (`packages/web-boot/src/startWebClient.ts`) makes one
+`createDevtoolsHub({ appId, dev })` call per page, with the `appId` the
+client's `main.tsx` passes it and `dev` from the build env, and the factory
+(`packages/web-boot/src/devtools/createDevtoolsHub.ts`) does the wiring:
 
 ```ts
-export const devtoolsHub = new DevtoolsHub({ appId: "rtc-web" });
+const hub = new DevtoolsHub(options);
 
 if (typeof BroadcastChannel !== "undefined") {
-  devtoolsHub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
+  hub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
 
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", () => {
-      devtoolsHub.dispose();
+      hub.dispose();
     });
   }
 }
@@ -479,7 +498,7 @@ this.
 
 devtools-app deliberately does **not** use `@rtc/react-bindings`. The reason
 is structural, not stylistic: `devtools-core` is an rxjs-only leaf that may
-not import `client-core`, so `createViewModel`/`bind()` are unavailable to
+not import `client-core-rxjs`, so `createViewModel`/`bind()` are unavailable to
 the packages built on it. The sanctioned pattern is therefore:
 
 - **Live data** flows rxjs → `InspectorStore` (copy-on-write,
@@ -502,7 +521,7 @@ over `InspectorStore` was considered and deferred — see `docs/IDEAS.md`.
 
 Summarized from spec [§9](../superpowers/specs/2026-07-11-custom-devtools-design.md#9-future-extensions-designed-for-explicitly-out-of-v1) — designed for, explicitly deferred from v1:
 
-1. ~~**Intent injection**~~ — **shipped** (machine-level, web **and** React Native): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is gated on the hub's runtime `dev` flag, which every composition root resolves `false` in a production build (web `import.meta.env?.DEV`, RN `__DEV__`) — and **confirm-gated** in the panel's Machines tab. The gate is a runtime flag rather than a bundler-static `import.meta.env.DEV` literal because one shared `devtools-core` source line cannot be dead-code-eliminated by both Vite and Metro at once; the "a non-dev hub ignores `intent:invoke`" invariant is pinned by a `DevtoolsHub` unit test (a `dev:false` hub drops the frame) rather than by grepping the built bundle. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
+1. ~~**Intent injection**~~ — **shipped** (machine-level, web **and** React Native): the protocol gained `intent:invoke {machineId, name, args}` (v2) and the hub fires the *wrapped* intent it already taps, so an injected call is auditable exactly like a UI-driven one. It is **dev-build-only** — the handler is gated on the hub's runtime `dev` flag, which every composition root resolves `false` in a production build (web `import.meta.env.DEV`, RN `__DEV__`) — and **confirm-gated** in the panel's Machines tab. The gate is a runtime flag rather than a bundler-static `import.meta.env.DEV` literal because one shared `devtools-core` source line cannot be dead-code-eliminated by both Vite and Metro at once; the "a non-dev hub ignores `intent:invoke`" invariant is pinned by a `DevtoolsHub` unit test (a `dev:false` hub drops the frame) rather than by grepping the built bundle. See the [intent-injection design](../superpowers/specs/2026-07-15-devtools-intent-injection-design.md). Presenter-level injection and a full intent-name catalogue (beyond observed history) remain future work.
 2. ~~**Record & replay**~~ — **shipped** (panel-side), **superseded by recording v2** ([§20.11](#2011-timeline-first-ux-v2)): a `Recorder` tees `InspectorStore.tap()` into a bounded, seeded frame buffer, and a recording (appId + injected `startedAt` + the ordered `AppToInspector` frames) exports/imports as JSON — observe-only, no protocol or app change. The original design's `ReplayController` re-folded captured frames through a *synchronous* `InspectorStore` clone (`{ coalesce: false }`) at periodic checkpoints for frame-indexed lookup; v2 replaces that with the always-on `LiveHistory` buffer (same checkpoint mechanics, generalized to the live app too) and retires `ReplayController` itself — see [§20.11](#2011-timeline-first-ux-v2) for why. Full *app* replay (recorded port inputs into a fresh composition root) is still a separately scoped, larger step needing seeded time/timers.
 3. ~~**Chrome extension shell**~~ — **shipped**: `@rtc/devtools-extension`, an MV3 wrapper — content script bridges `BroadcastChannel` ↔ background ↔ a devtools-panel page hosting the *same* `devtools-app` bundle. Protocol and UI untouched; see [§20.6.1](#2061-chrome-extension-transport) and the [package README](../../packages/devtools-extension/README.md).
 4. ~~**React Native support**~~ — **shipped**: a WebSocket-relay `DevtoolsTransport` adapter (`WsRelayDuplex` in `@rtc/devtools-core`) plus a standalone dev-machine relay (`@rtc/devtools-relay`), with the same three decorators applied `__DEV__`-gated at the RN composition root; the browser panel attaches via `?relay=<ws-url>`, inspecting the device over the relay on the developer's machine. See [§20.9](#209-websocket-relay-transport-react-native) and the [relay README](../../packages/devtools-relay/README.md).
@@ -516,7 +535,7 @@ third transport adapter, `WsRelayDuplex` (in `@rtc/devtools-core`), plus a
 standalone dev-machine relay (`@rtc/devtools-relay`). The RN app — dev build
 only, `__DEV__`-gated at the composition root — opens `WsRelayDuplex(url,
 "app")` as its `DevtoolsHub` transport and applies the same three decorators
-`client-react` applies; the browser `devtools-app` opens `WsRelayDuplex(url,
+the web clients get from `startWebClient`; the browser `devtools-app` opens `WsRelayDuplex(url,
 "panel")` via a `?relay=<ws-url>` query; the relay forwards frames between them
 (broadcast app→panels, single panel→app), identifying each connection by its
 `?role=` query and holding no protocol knowledge. Frames are JSON; the duplex

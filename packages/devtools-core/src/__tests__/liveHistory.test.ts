@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { InspectorState } from "../InspectorStore";
-import { InspectorStore } from "../InspectorStore";
+import { type InspectorState, InspectorStore } from "../InspectorStore";
 import { LiveHistory } from "../LiveHistory";
-import type { AppToInspector } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
+import { type AppToInspector, PROTOCOL_VERSION } from "../protocol";
 
 describe("LiveHistory", () => {
   it("stateAt(seq) equals a naive filtered fold, independent of checkpoints", () => {

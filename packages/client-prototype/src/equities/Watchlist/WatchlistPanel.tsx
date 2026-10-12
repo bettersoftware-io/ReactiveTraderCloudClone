@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useRef } from "react";
+import { type ReactElement, useRef } from "react";
 
 import type { EqSym, WlSort } from "#/equities/types";
 import { useRankGlide } from "#/equities/Watchlist/useRankGlide";

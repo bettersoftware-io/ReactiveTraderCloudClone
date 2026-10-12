@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useState } from "react";
+import { type CSSProperties, type ReactElement, useState } from "react";
 
 import styles from "./RfqCountdown.module.css";
 

@@ -12,9 +12,8 @@ import {
   createDefaultLayoutPort,
   formatGateResetTime,
   parseWorkspaceLayout,
-  type UNSUPPORTED_SENTINEL_SPEC,
 } from "@rtc/core-logic";
-import { JARVIS_BRAINS } from "@rtc/domain";
+import { JARVIS_BRAINS, type PanelSpecV1 } from "@rtc/domain";
 
 afterEach(() => {
   cleanupMounted();
@@ -26,6 +25,29 @@ describe("PreferencesModal", () => {
       props: { open: false, onClose: () => {} },
     });
     expect(page.isOpen()).toBe(false);
+  });
+
+  it("takes keyboard focus when it opens", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.holdsFocus()).toBe(true);
+  });
+
+  it("hands focus back to where it was when it closes", () => {
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    const page = mount(PreferencesModal, {
+      props: { open: false, onClose: () => {} },
+    });
+
+    page.setOpen(true);
+    expect(page.holdsFocus()).toBe(true);
+
+    page.setOpen(false);
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
   });
 
   it("reflects the animated-background preference and writes it on toggle", async () => {
@@ -584,6 +606,33 @@ describe("PreferencesModal", () => {
     expect(page.coreImplDescription()).toContain(effectDescription);
     expect(page.coreImplDescription()).not.toContain(asyncDescription);
   });
+
+  it("says a switch swaps the core in place rather than reloading the page", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+
+    expect(page.coreImplDescription()).toContain(
+      "Switching swaps the core in place, without a reload.",
+    );
+    expect(page.coreImplDescription()).not.toContain("reloads the page");
+  });
+
+  it("shows why a core switch failed as an alert, and clears it when the reason clears", () => {
+    const page = mount(PreferencesModal, {
+      props: { open: true, onClose: () => {} },
+    });
+    expect(page.coreSwapFailure()).toBeNull();
+
+    page.reportCoreSwapFailure("Could not load the effect core: offline");
+    expect(page.coreSwapFailure()).toBe(
+      "Could not load the effect core: offline",
+    );
+    expect(page.coreSwapFailureIsAlert()).toBe(true);
+
+    page.reportCoreSwapFailure(null);
+    expect(page.coreSwapFailure()).toBeNull();
+  });
 });
 
 /**
@@ -682,11 +731,6 @@ describe("PreferencesModal — reset workspace layout", () => {
 /** The panel the reset scenario pins — an `analytics`-sourced table, the
  * cheapest spec whose body mounts without any seeded World data. */
 const RESET_PANEL_ID = "panel-desk-positions";
-
-/** No public export of `PanelSpecV1` reaches `@rtc/ui-contract`, so this
- * borrows the type off the one already-exported `PanelSpecV1`-typed const —
- * the same trick `JarvisPanelLayer.contract.spec.ts` uses. */
-type PanelSpecV1 = typeof UNSUPPORTED_SENTINEL_SPEC;
 
 const DESK_POSITIONS_SPEC: PanelSpecV1 = {
   v: 1,

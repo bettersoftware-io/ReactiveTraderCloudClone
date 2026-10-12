@@ -1,12 +1,11 @@
-import { concat, defer, from, interval, type Observable } from "rxjs";
-import { map } from "rxjs/operators";
+import type { Observable } from "rxjs";
 
 import type { TelemetryPort } from "../ports/telemetryPort.js";
 import type { MetricSample } from "../telemetry/metrics.js";
 import { mulberry32 } from "../telemetry/prng.js";
 import type { ErrorRateSimulator } from "./ErrorRateSimulator.js";
 import type { LatencySimulator } from "./LatencySimulator.js";
-import { METRIC_TICK_MS, seedHistory } from "./metricWalk.js";
+import { createMetricStream } from "./metricWalk.js";
 import type { ThroughputSimulator } from "./ThroughputSimulator.js";
 
 // Walk step size and clamp band, both expressed as a fraction of the current
@@ -23,6 +22,11 @@ export class TelemetrySimulator implements TelemetryPort {
 
   /** Last observed setpoint, so a slider change can recenter the walk. */
   private lastSetpoint: number | undefined;
+
+  /** One walk for every subscriber — see `createMetricStream`. */
+  private readonly throughputSamples$ = createMetricStream(() => {
+    return this.nextThroughputValue();
+  });
 
   constructor(
     private readonly throughputSim: ThroughputSimulator,
@@ -58,20 +62,7 @@ export class TelemetrySimulator implements TelemetryPort {
   }
 
   throughput$(): Observable<MetricSample> {
-    return defer(() => {
-      return concat(
-        from(
-          seedHistory(() => {
-            return this.nextThroughputValue();
-          }),
-        ),
-        interval(METRIC_TICK_MS).pipe(
-          map(() => {
-            return { t: Date.now(), value: this.nextThroughputValue() };
-          }),
-        ),
-      );
-    });
+    return this.throughputSamples$;
   }
 
   latency$(): Observable<MetricSample> {

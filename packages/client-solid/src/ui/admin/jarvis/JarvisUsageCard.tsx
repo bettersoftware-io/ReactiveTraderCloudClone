@@ -1,8 +1,6 @@
-import type { JSX } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, type JSX, Show } from "solid-js";
 
-import { JARVIS_BRAIN_LABELS } from "@rtc/domain";
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
+import { JARVIS_BRAIN_LABELS, type JarvisBrainUsageRow } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import styles from "./JarvisUsageCard.module.css";
@@ -22,7 +20,7 @@ import styles from "./JarvisUsageCard.module.css";
  * in scope per this card's spec), so there's nothing to flag either way.
  *
  * `windowEndMs === 0` is the snapshot's own "no turn recorded yet" sentinel
- * (see `AdminJarvisUsagePayload`'s doc) — rendered as "—" rather than the
+ * (see `JarvisUsageSnapshot`'s doc) — rendered as "—" rather than the
  * misleading epoch-zero clock read `clock(0)` would otherwise print.
  *
  * The budget-gate envelope fields (`budgetUsd`/`softBudgetUsd`/
@@ -126,11 +124,6 @@ interface UsageSectionProps {
   title: string;
   rows: () => readonly JarvisBrainUsageRow[];
 }
-
-/** One per-brain usage row, as carried by both `AdminJarvisUsagePayload`
- * windows — referenced structurally off the payload type, so this file
- * names one wire type from `@rtc/shared` rather than two. */
-type JarvisBrainUsageRow = AdminJarvisUsagePayload["currentWindow"][number];
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");

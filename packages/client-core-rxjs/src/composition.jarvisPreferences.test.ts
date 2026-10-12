@@ -9,8 +9,11 @@
 import { NEVER, type Observable } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createFakeConnectionPorts } from "@rtc/client-core/testing";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
+import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type { App, AppPorts } from "@rtc/core-api";
 import { AuthSimulator, PreferencesSimulator } from "@rtc/domain";
 

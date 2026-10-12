@@ -1,9 +1,10 @@
-import type { Accessor, JSX } from "solid-js";
 import {
+  type Accessor,
   createEffect,
   createMemo,
   createSignal,
   For,
+  type JSX,
   onCleanup,
   Show,
 } from "solid-js";

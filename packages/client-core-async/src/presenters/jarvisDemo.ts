@@ -14,8 +14,11 @@ import {
   JARVIS_DEMO_STEPS,
   lastEntryId,
 } from "@rtc/core-logic";
-import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DEMO_STEP_TIMEOUT_MS,
+  type JarvisEvent,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream } from "#/bridge/out";
@@ -42,7 +45,7 @@ type StepOutcome = "done" | "error";
 
 /**
  * `presenters.jarvisDemo` on the async core: the shared script and step
- * watcher (`createDemoStepWatch`, client-core) decide; this file owns the
+ * watcher (`createDemoStepWatch`, core-logic) decide; this file owns the
  * timing. A run is exhaust-style (a second start while running is dropped),
  * each step races its settle against `DEMO_STEP_TIMEOUT_MS`, a beat follows
  * each settle, and `stopDemo` aborts the run where it stands. An errored or

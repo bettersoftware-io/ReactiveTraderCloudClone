@@ -1,5 +1,9 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useEffect, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactElement,
+  useEffect,
+  useState,
+} from "react";
 
 import {
   applyFilters,

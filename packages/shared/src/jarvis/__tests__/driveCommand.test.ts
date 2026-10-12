@@ -3,15 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CANDLE_TIMEFRAMES,
   type CandleTimeframe,
-  POWER_SAVER_LEVELS,
-  type PowerSaverLevel,
-  THEME_SKINS,
-  type ThemeSkin,
-} from "@rtc/domain";
-
-import {
   DRIVE_CHART_TYPES,
-  DRIVE_COMMAND_JSON_SCHEMA,
   DRIVE_COMMAND_KINDS,
   DRIVE_INDICATORS,
   DRIVE_LAYOUT_OPS,
@@ -20,6 +12,14 @@ import {
   DRIVE_SKINS,
   DRIVE_TABS,
   DRIVE_TIMEFRAMES,
+  POWER_SAVER_LEVELS,
+  type PowerSaverLevel,
+  THEME_SKINS,
+  type ThemeSkin,
+} from "@rtc/domain";
+
+import {
+  DRIVE_COMMAND_JSON_SCHEMA,
   MAX_DRIVE_COMMANDS,
   parseDriveBatch,
 } from "../driveCommand.js";

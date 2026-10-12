@@ -39,7 +39,7 @@ import type {
   SplitDir,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 import { parsePanelSpec } from "@rtc/shared";
 
 import { createDefaultLayoutPort } from "./defaultLayoutPort";

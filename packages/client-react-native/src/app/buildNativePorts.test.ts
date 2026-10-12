@@ -1,7 +1,7 @@
 import { filter, firstValueFrom } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
-import { InMemorySessionStore, type WsAdapter } from "@rtc/client-core";
+import { InMemorySessionStore, type WsAdapter } from "@rtc/client-adapters";
 import { createApp } from "@rtc/client-core-rxjs";
 import {
   type AuthOutcome,
@@ -137,13 +137,13 @@ describe("simulator branch auth accepts every fallback roster credential", () =>
 // The real-WS branch must NOT open a socket until the user is authenticated —
 // otherwise the tokenless upgrade the server rejects retries forever behind the
 // login screen (the "WebSocket connects before login" defect, fixed in the web
-// clients and shared client-core; these tests pin the RN wiring specifically,
-// since client-core's own gate tests inject a fake transport and never exercise
+// clients and shared client-core-rxjs; these tests pin the RN wiring specifically,
+// since client-core-rxjs's own gate tests inject a fake transport and never exercise
 // `buildNativePorts`). A counting `WebSocket` stub is the oracle: the RN app's
 // socket construction is fully observable here in Node, no device or inspector
 // needed.
 describe("real-WS branch gates the socket on authentication", () => {
-  // Mirrors client-core's MockWebSocket.testHelpers: the static OPEN (=1) and
+  // Mirrors client-adapters's MockWebSocket.testHelpers: the static OPEN (=1) and
   // readyState (=0, never OPEN here) make WsAdapter.send() buffer into its
   // sendQueue rather than call a live socket, so eager port subscriptions at
   // createApp time (e.g. the watchlist SUBSCRIBE) don't throw against the stub.

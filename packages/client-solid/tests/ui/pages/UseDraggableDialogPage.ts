@@ -1,10 +1,10 @@
 import { renderHook } from "@solidjs/testing-library";
 
-import type {
-  UseDraggableDialogOptions,
-  UseDraggableDialogResult,
+import {
+  type UseDraggableDialogOptions,
+  type UseDraggableDialogResult,
+  useDraggableDialog,
 } from "#/ui/shell/modal/useDraggableDialog";
-import { useDraggableDialog } from "#/ui/shell/modal/useDraggableDialog";
 
 export interface UseDraggableDialogPage {
   mount(options: UseDraggableDialogOptions): UseDraggableDialogResult;

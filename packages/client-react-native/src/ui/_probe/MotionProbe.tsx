@@ -1,6 +1,5 @@
 import { Canvas, Circle, Fill } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,

@@ -9,7 +9,7 @@ import type {
   PanelInstance,
 } from "@rtc/core-api";
 import type { PanelStreamDeps } from "@rtc/core-logic";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import { composePanelStream } from "./composePanelStream.js";
 

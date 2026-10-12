@@ -1,8 +1,7 @@
 // packages/client-react-native/src/ui/shell/hud/RadialCommandDock.tsx
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
-import type { JSX } from "react";
-import { useContext, useEffect, useId, useState } from "react";
+import { type JSX, useContext, useEffect, useId, useState } from "react";
 import {
   Pressable,
   StyleSheet,

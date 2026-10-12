@@ -230,11 +230,10 @@ describe("candleSeries presenter", () => {
     first.unsubscribe();
     await tick();
     p.candles$("AAPL").subscribe(() => {});
-    // The fresh period clears the very same cell — the watcher attached
+    // The fresh period clears the very same cell — the subscriber attached
     // since before the first period hears it, which is what "the SAME cell
-    // across periods" means. It arrives a fiber hop later, as every ref
-    // change reaches an existing subscriber.
-    await tick();
+    // across periods" means — and it has heard it by the time the subscribe
+    // above returns.
     expect(exhausted.at(-1)).toBe(false);
     // Latched then cleared, not merely never latched.
     expect(exhausted).toContain(true);

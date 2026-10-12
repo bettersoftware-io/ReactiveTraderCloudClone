@@ -76,6 +76,10 @@
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
     },
+    "packages/web-boot": {
+      "entry": "src/index.ts",
+      "project": "src/**/*.ts"
+    },
     "packages/layout-dockview": {
       "entry": "src/index.ts",
       "project": "src/**/*.ts"
@@ -135,6 +139,8 @@
         "jest.setup.ts",
         "jest.resolver.mts",
         "scripts/liveWsSmoke.ts",
+        "scripts/runAndroidBuild.ts",
+        "scripts/runAndroidDev.ts",
         "tests/visual/driver.ts",
         "tests/visual/maestro/generateFlows.ts"
       ],

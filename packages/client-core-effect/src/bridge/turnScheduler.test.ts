@@ -103,6 +103,47 @@ describe("bridge/turnScheduler", () => {
     expect(runs).toBe(wanted);
   });
 
+  it("settle() runs what is ready, and what that makes ready, before it returns — the queued microtask then finds nothing", async () => {
+    const scheduler = createTurnScheduler();
+    const ran: string[] = [];
+    scheduler.scheduleTask(() => {
+      ran.push("first");
+      scheduler.scheduleTask(() => {
+        ran.push("second");
+      }, 0);
+    }, 0);
+
+    scheduler.settle();
+    expect(ran).toEqual(["first", "second"]);
+    await nextMacrotask();
+    expect(ran).toEqual(["first", "second"]);
+    // And the scheduler still works afterwards: the next task waits for
+    // its own microtask.
+    scheduler.scheduleTask(() => {
+      ran.push("third");
+    }, 0);
+    expect(ran).toEqual(["first", "second"]);
+    await Promise.resolve();
+    expect(ran).toEqual(["first", "second", "third"]);
+  });
+
+  it("settle() with nothing ready does nothing, and from inside a turn it leaves the work to that turn", async () => {
+    const scheduler = createTurnScheduler();
+    const order: string[] = [];
+    scheduler.settle();
+    scheduler.scheduleTask(() => {
+      order.push("outer starts");
+      scheduler.scheduleTask(() => {
+        order.push("inner");
+      }, 0);
+      // Re-entering here would run "inner" before "outer ends".
+      scheduler.settle();
+      order.push("outer ends");
+    }, 0);
+    await nextMacrotask();
+    expect(order).toEqual(["outer starts", "outer ends", "inner"]);
+  });
+
   it("a value handed across three fibers arrives within one turn of entering the first", async () => {
     const runner = runnerFor(Runtime.defaultRuntime);
     const [entry, middle, exit] = [

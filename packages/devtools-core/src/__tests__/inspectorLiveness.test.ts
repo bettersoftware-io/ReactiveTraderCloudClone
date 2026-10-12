@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createInMemoryDuplexPair } from "../channel";
 import { InspectorClient } from "../InspectorClient";
 import { InspectorStore } from "../InspectorStore";
-import type { AppToInspector, InspectorToApp } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
+import {
+  type AppToInspector,
+  type InspectorToApp,
+  PROTOCOL_VERSION,
+} from "../protocol";
 
 describe("InspectorClient liveness", () => {
   beforeEach(() => {

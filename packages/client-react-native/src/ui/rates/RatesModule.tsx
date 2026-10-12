@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { ScrollView, StyleSheet, type ViewStyle } from "react-native";
 
 import type { CurrencyPair } from "@rtc/domain";

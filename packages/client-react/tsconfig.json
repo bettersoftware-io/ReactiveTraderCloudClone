@@ -45,9 +45,8 @@
   ],
   "references": [
     { "path": "../domain" },
-    { "path": "../shared" },
-    { "path": "../client-core" },
     { "path": "../client-core-rxjs" },
+    { "path": "../web-boot" },
     { "path": "../react-bindings" }
   ]
 }

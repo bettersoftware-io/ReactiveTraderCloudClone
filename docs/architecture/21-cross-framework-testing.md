@@ -284,7 +284,7 @@ This mechanism has never had a maintained doc of its own — it lives entirely
 in source comments until this chapter. One environment variable
 re-parameterizes which client's dev server the shared e2e suites drive.
 
-`tests/scripts/devServer.ts:26-33`:
+`tests/scripts/clientServer.ts:26-33`:
 
 ```ts
 // Which client package's dev server to spawn. Defaults to the web React
@@ -296,7 +296,7 @@ export const CLIENT_PKG: string =
   process.env.RTC_CLIENT_PKG ?? "@rtc/client-react";
 ```
 
-...consumed by the spawn call in the same file (`tests/scripts/devServer.ts:79`):
+...consumed by the spawn call in the same file (`tests/scripts/clientServer.ts:79`):
 
 ```ts
 const child = spawn("pnpm", ["--filter", CLIENT_PKG, "dev"], {
@@ -320,7 +320,8 @@ in `buildBrowserPorts.ts` instead, so `demo`/`demo` failed there, even though
 had already shipped (PR #241) and the UI-contract tier's two `shell/auth`
 specs already passed on Solid (see the scoreboard above). Enabled 2026-07-19:
 `client-solid`'s `buildBrowserPorts.ts` now reads `VITE_DEV_AUTH` via the same
-`parseDevAuth` helper as `client-react`, so `login.spec.ts` runs unmodified
+`parseDevAuth` helper as `client-react` (both clients now share the one
+`buildBrowserPorts.ts` in `@rtc/web-boot`), so `login.spec.ts` runs unmodified
 against both clients, same as every other browser e2e spec including
 `devtools.spec.ts`.
 
@@ -337,7 +338,7 @@ flowchart TB
     RA["run-all.ts — 7 concurrent suites<br/>(5 on the PR gate; 2 parked weekly)"]
     RA -- "RTC_CLIENT_PKG unset<br/>ports 3001-3002" --> PWR["playwright / cucumber configs"]
     RA -- "RTC_CLIENT_PKG=@rtc/client-solid<br/>ports 3003-3004" --> PWS["same config files<br/>(-solid report suffix)"]
-    PWR --> DS["devServer.ts<br/>spawn: pnpm --filter CLIENT_PKG dev"]
+    PWR --> DS["clientServer.ts<br/>spawn: pnpm --filter CLIENT_PKG dev"]
     PWS --> DS
     DS --> APPR["client-react Vite"]
     DS --> APPS["client-solid Vite"]
@@ -354,7 +355,7 @@ render target is the detail that varies.
 
 **Humble object / dumb UI.** [ADR-005](../adr/ADR-005-ui-logic-placement.md)
 and the rxjs-machines refactor pushed state and orchestration into
-`client-core` machines and presenters, leaving `src/ui` thin enough that a
+`client-core-rxjs` machines and presenters, leaving `src/ui` thin enough that a
 framework port is a `src/ui`-only rewrite — nothing in the swap touches
 business logic, because none of it lives where the swap happens.
 

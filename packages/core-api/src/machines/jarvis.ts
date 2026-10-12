@@ -1,5 +1,10 @@
-import type { Direction, JarvisBrain, JarvisSkin } from "@rtc/domain";
-import type { JarvisAvailabilityGate, JarvisEvent } from "@rtc/shared";
+import type {
+  Direction,
+  JarvisAvailabilityGate,
+  JarvisBrain,
+  JarvisEvent,
+  JarvisSkin,
+} from "@rtc/domain";
 
 import type { Machine } from "#/machine";
 import type { DriveOutcome } from "#/machines/jarvisDriver";

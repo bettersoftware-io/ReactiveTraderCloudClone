@@ -1,5 +1,11 @@
-import type { JSX } from "solid-js";
-import { createMemo, createSignal, For, Show, untrack } from "solid-js";
+import {
+  createMemo,
+  createSignal,
+  For,
+  type JSX,
+  Show,
+  untrack,
+} from "solid-js";
 
 import type { WorkspaceTab } from "@rtc/core-api";
 import { PANEL_SPECS, staticPanelIdsFor } from "@rtc/core-logic";

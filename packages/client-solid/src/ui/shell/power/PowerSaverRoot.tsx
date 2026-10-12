@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect, type JSX, onCleanup } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 

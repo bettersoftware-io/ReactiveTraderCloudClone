@@ -1,6 +1,5 @@
 // packages/client-react-native/src/ui/equities/trade/OrderCeremony.tsx
-import type { JSX } from "react";
-import { useEffect, useRef } from "react";
+import { type JSX, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,

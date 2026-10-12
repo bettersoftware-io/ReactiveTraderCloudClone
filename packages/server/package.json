@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.125.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@rtc/agent-tools": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/shared": "workspace:*",
@@ -32,7 +32,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^5.0.3",
     "@vitest/ui": "^5.0.3",
-    "tsc-alias": "1.9.5",
+    "tsc-alias": "1.9.7",
     "tsx": "^4",
     "vitest": "^5.0.3"
   }

@@ -2,8 +2,7 @@ import { within } from "@testing-library/dom";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MountedComponent } from "@ui-contract/harness/component";
 
-import type { JarvisSkin } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { JarvisEvent, JarvisSkin } from "@rtc/domain";
 
 /** One rendered `jarvis-entry` row, as read off its `data-role`/`data-done`
  * attributes plus its visible text. `origin` mirrors `JarvisEntry.origin`

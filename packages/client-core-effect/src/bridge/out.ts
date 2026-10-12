@@ -10,9 +10,8 @@ import {
   Runtime,
   Scope,
   Stream,
-  SubscriptionRef,
 } from "effect";
-import { filter, Observable, type Subscriber } from "rxjs";
+import { Observable, type Subscriber } from "rxjs";
 
 import type { Stream as CoreStream, StateStream } from "@rtc/core-api";
 
@@ -24,7 +23,15 @@ import {
 } from "#/bridge/in";
 import { turnScheduler } from "#/bridge/turnScheduler";
 
-export { portEvents } from "#/bridge/in";
+export {
+  firstPortEvent,
+  latestOfEach,
+  leavingOnFailure,
+  oneEvent,
+  type PortEvents,
+  portEvents,
+  switchedPortEvents,
+} from "#/bridge/in";
 
 /** What a host runs Effects with: the two operations every bridge helper
  * needs. A `ManagedRuntime` satisfies it structurally (the tests' `useHost`
@@ -181,26 +188,6 @@ export interface WarmStateStream<S> {
   release(): void;
 }
 
-/** `refToStateStream` held warm by a subscription of its own, for an
- * app-lifetime singleton — see that function's doc: a COLD `getValue()`
- * hands back the construction-time value however stale, and that is what
- * React's `useStateObservable` reads on a first render. The RxJS singletons
- * hold the same internal subscription for the same reason. */
-export function refToWarmStateStream<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
-): WarmStateStream<S> {
-  const state$ = refToStateStream(host, ref);
-  const warm = state$.subscribe();
-
-  return {
-    state$,
-    release: () => {
-      warm.unsubscribe();
-    },
-  };
-}
-
 /** A state stream over a synchronous `listen` — NOT held warm: `listen`
  * runs on the first subscriber only (a lazily opened source, e.g. a port the
  * app should reach only once someone reads it), and the current value
@@ -323,30 +310,89 @@ export function listenToStream<T>(
   };
 }
 
+/** `source`, narrowed to the values `keep` accepts. A VIEW, not a fold: no
+ * fiber, no queue and no state of its own, so a subscriber is called from
+ * whatever delivers `source`, in the same step — and when `source` replays
+ * its latest value to a newcomer, the view passes it on only if `keep`
+ * accepts it (the RxJS core's `shared$.pipe(filter(…))`).
+ *
+ * For one shared stream read through many narrow windows — the animation
+ * director's `intentsFor(target)`. As a fold per window, every intent woke
+ * a fiber per mounted tile to drop it again: about 19 ms of fiber time per
+ * six seconds on the FX screen (measured 2026-10-04). */
+export function filterStream<T>(
+  source: CoreStream<T>,
+  keep: (value: T) => boolean,
+): CoreStream<T> {
+  return new Observable<T>((subscriber) => {
+    const subscription = source.subscribe({
+      next: (value: T) => {
+        if (keep(value)) {
+          subscriber.next(value);
+        }
+      },
+      error: (error: unknown) => {
+        subscriber.error(error);
+      },
+      complete: () => {
+        subscriber.complete();
+      },
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
+}
+
+/** A view of `source` through `project`, passing a projection on only when
+ * it differs from the previous one (`Object.is`) — the RxJS
+ * `source.pipe(map(project), distinctUntilChanged())`. Each subscriber
+ * compares against what IT last heard.
+ *
+ * For the selector of a `switchedPortEvents`: a group that should be
+ * reopened only when what selects it changed, not on every value of the
+ * stream it is read from. */
+export function projectedChanges<T, K>(
+  source: CoreStream<T>,
+  project: (value: T) => K,
+): CoreStream<K> {
+  return new Observable<K>((subscriber) => {
+    let heard = false;
+    let last: K | undefined;
+
+    const subscription = source.subscribe({
+      next: (value: T) => {
+        const projected = project(value);
+
+        if (heard && Object.is(projected, last)) {
+          return;
+        }
+
+        heard = true;
+        last = projected;
+        subscriber.next(projected);
+      },
+      error: (error: unknown) => {
+        subscriber.error(error);
+      },
+      complete: () => {
+        subscriber.complete();
+      },
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  });
+}
+
 /** A stream that completes at once without a value — an unsupported desk
  * panel's `data$` (the RxJS presenter's `EMPTY`). */
 export function emptyStream<T>(): CoreStream<T> {
   return new Observable<T>((subscriber) => {
     subscriber.complete();
   });
-}
-
-/** `SubscriptionRef.set` that publishes only a changed value: a
- * `SubscriptionRef` re-publishes an equal `set` (measured on 3.22.2), and a
- * machine's `state$` promises `distinctUntilChanged`. The same guard
- * `sharedFold`'s `update` applies, for a ref a machine owns directly. */
-export function setRefIfChanged<S>(
-  ref: SubscriptionRef.SubscriptionRef<S>,
-  next: (current: S) => S,
-): Effect.Effect<void> {
-  return SubscriptionRef.get(ref).pipe(
-    Effect.flatMap((current) => {
-      const value = next(current);
-      return Object.is(value, current)
-        ? Effect.void
-        : SubscriptionRef.set(ref, value);
-    }),
-  );
 }
 
 /** A `FromPort` bound to a scope that is not a fold period's — a machine's
@@ -359,7 +405,7 @@ export function fromPortIn(scope: Scope.Scope): FromPort {
 
 /** Rethrow a cause on a macrotask, outside every fiber — the Effect twin of
  * the async core's `reportAsync`, for a machine whose source failed and
- * whose `SubscriptionRef` has no error channel (slice 2 ruling 8). */
+ * whose ref has no error channel (slice 2 ruling 8). */
 export function reportOutOfBand(cause: Cause.Cause<unknown>): void {
   setTimeout(() => {
     throw Cause.squash(cause);
@@ -414,57 +460,6 @@ export function streamToStream<T, E>(
       interruptFiber(fiber);
     };
   });
-}
-
-/** A SubscriptionRef as a warm StateStream.
- *
- * The current value is read PER SUBSCRIPTION, not once at construction:
- * `@rx-state/core`'s `StateObservable` subscribes its source lazily and, at
- * refCount 0, drops `currentValue` and unsubscribes — so a value captured at
- * construction would be re-emitted, stale, on every cold → warm cycle, and
- * any `set` made before the first subscriber would be invisible.
- *
- * `ref.changes` REPLAYS the current value to each subscriber, which would
- * duplicate the seed we just emitted. The replayed head is therefore dropped
- * only when it is `Object.is`-equal to that seed — never blindly: if a `set`
- * lands between the read and the fiber's subscribe, the head carries the NEW
- * value and must be delivered. */
-export function refToStateStream<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
-  onSubscribe: () => void = () => {},
-): StateStream<S> {
-  function readCurrent(): S {
-    return host.runtime.runSync(SubscriptionRef.get(ref));
-  }
-
-  // `onSubscribe` runs on each zero-to-one subscriber transition
-  // (`@rx-state/core` shares this source) — how a presenter starts a lazy
-  // load on its first subscriber, as the RxJS core's `state()` does.
-  const perSubscription = new Observable<S>((subscriber) => {
-    onSubscribe();
-    const seed = readCurrent();
-    subscriber.next(seed);
-
-    return streamToStream(host, ref.changes)
-      .pipe(
-        filter((value, index) => {
-          return index > 0 || !Object.is(value, seed);
-        }),
-      )
-      .subscribe(subscriber);
-  });
-
-  // `state()` requires a default — there is no single-argument overload. It
-  // is read once, at construction, and is observable ONLY through a COLD
-  // `getValue()` (no subscriber yet), which hands back that construction-time
-  // value however stale the ref has since become. No SUBSCRIBER ever sees it:
-  // `StateObservable` emits its default only when the source has NOT already
-  // emitted by the end of `source$.subscribe(...)`, and `perSubscription`
-  // always emits synchronously there — every subscription re-reads the ref.
-  // The cold → warm test pins that, by seeing the ref's latest value rather
-  // than this one.
-  return state(perSubscription, readCurrent());
 }
 
 /** How a `sharedFold` producer writes its state: apply `next` to the
@@ -680,6 +675,17 @@ export function sharedFold<S>(
       ),
       { scope },
     );
+    // Whatever the producer can already do, it does before this subscribe
+    // returns. A port that replays on subscribe (the pricing simulator's 50
+    // ticks, any replay-current port) has queued those values by now, and
+    // the producer would otherwise fold them a microtask later — after a UI
+    // that was handed another stream's value synchronously has rendered.
+    // MEASURED 2026-10-05, production build, nine FX tiles: each tile
+    // rendered once for its price (seeded here, synchronously) and again
+    // for its history (folded a microtask later), 57 renders in the first
+    // two seconds against 49 on the RxJS core, whose replay arrives inside
+    // `subscribe`. Settled here: 46, and the two arrive together.
+    turnScheduler.settle();
 
     return period;
   }

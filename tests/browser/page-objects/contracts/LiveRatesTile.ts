@@ -13,6 +13,11 @@ export interface LiveRatesTilePO {
    * WebSocket → server → domain) delivered a genuine tick.
    */
   waitForFirstTileLiveRate(timeoutMs: number): Promise<void>;
+  /**
+   * Reads the first tile's SELL/BUY prices now, then waits until either one
+   * differs — the witness that the tile is still receiving ticks.
+   */
+  waitFirstTilePriceChange(timeoutMs: number): Promise<void>;
 
   /** Click a category filter (e.g. "EUR", "All"). */
   clickFilter(category: string): Promise<void>;

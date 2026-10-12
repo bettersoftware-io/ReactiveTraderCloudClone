@@ -2,8 +2,9 @@ import type { PanelInstance } from "@rtc/core-api";
 import {
   MAX_DOCKED_PANELS as DOMAIN_MAX_DOCKED_PANELS,
   MAX_LIVE_PANELS as DOMAIN_MAX_LIVE_PANELS,
+  type JarvisEvent,
+  type PanelSpecV1,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 /* The Jarvis desk-panels machine's pure half (pluggable-core slice 7): the
  * caps, the unsupported-spec sentinel and every roster fold, shared by every

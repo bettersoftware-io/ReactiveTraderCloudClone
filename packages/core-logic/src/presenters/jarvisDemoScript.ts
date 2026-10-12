@@ -12,8 +12,11 @@ import type {
   JarvisEntry,
   JarvisState,
 } from "@rtc/core-api";
-import { DEMO_STEP_BEAT_MS, type PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DEMO_STEP_BEAT_MS,
+  type JarvisEvent,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 import { JARVIS_GUIDE_CATALOG } from "./jarvisGuideCatalog";
 

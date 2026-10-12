@@ -41,8 +41,8 @@
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "references": [
     { "path": "../domain" },
-    { "path": "../client-core" },
     { "path": "../client-core-rxjs" },
+    { "path": "../web-boot" },
     { "path": "../motion-core" },
     { "path": "../solid-bindings" }
   ]

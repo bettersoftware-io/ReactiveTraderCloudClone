@@ -15,8 +15,7 @@ import {
   throwError,
 } from "rxjs";
 import { catchError, distinctUntilChanged, map, skip } from "rxjs/operators";
-import type { Accessor } from "solid-js";
-import { createSignal } from "solid-js";
+import { type Accessor, createSignal } from "solid-js";
 
 import {
   CandleSeriesPresenter,
@@ -73,42 +72,40 @@ import {
   type WorkspaceDock,
   type WorkspaceDockPanels,
 } from "@rtc/core-logic";
-import type {
-  AmbientStyle,
-  Candle,
-  CandleTimeframe,
-  ChartSubstrate,
-  CreateRfqInput,
-  CreditRfqFilter,
-  CurrencyPair,
-  DepthBook,
-  EqBlotterView,
-  EquityQuote,
-  EqWatchlistSort,
-  ExecuteTradeInput,
-  ExecuteTradeResult,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  JarvisSkin,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  MarketDataPort,
-  PlaceOrderRequest,
-  PowerSaverLevel,
-  RfqQuoteResult,
-  ThemeSkin,
-  ViewMode,
-} from "@rtc/domain";
 import {
+  type AmbientStyle,
+  type Candle,
+  type CandleTimeframe,
+  type ChartSubstrate,
+  type CreateRfqInput,
+  type CreditRfqFilter,
+  type CurrencyPair,
+  type DepthBook,
+  type EqBlotterView,
+  type EquityQuote,
+  type EqWatchlistSort,
+  type ExecuteTradeInput,
+  type ExecuteTradeResult,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type JarvisSkin,
+  type LayoutEngine,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type MarketDataPort,
   nextEqWatchlistSort,
   nextPowerSaverLevel,
   nextThemeModePreference,
+  type PanelSpecV1,
+  type PlaceOrderRequest,
+  type PowerSaverLevel,
+  type RfqQuoteResult,
   resolveThemeMode,
+  type ThemeSkin,
+  type ViewMode,
 } from "@rtc/domain";
-import type { ViewModel } from "@rtc/solid-bindings";
-import { useMachine } from "@rtc/solid-bindings";
+import { useMachine, type ViewModel } from "@rtc/solid-bindings";
 import {
   type MaybeAccessor,
   toKeyedSignal,
@@ -418,7 +415,7 @@ function getWorkspaceDock(world: World): WorkspaceDock {
     dismiss: (panelId: string) => {
       panelsMachineFor(world).dismissPanel(panelId);
     },
-    restore: (panelId: string, spec: NonNullable<PanelInstance["spec"]>) => {
+    restore: (panelId: string, spec: PanelSpecV1) => {
       panelsMachineFor(world).restoreDockedPanel(panelId, spec);
     },
   };
@@ -1613,7 +1610,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Eq workspace: the REAL createEqWorkspaceMachine, one shared instance
     // for the whole World (world.eqWorkspace) — its `state$` is already a
-    // warm StateObservable (see @rtc/client-core's Machine interface), so it
+    // warm StateObservable (see @rtc/core-api's Machine interface), so it
     // is read directly with `toSignal`, exactly like `@rtc/solid-bindings`'s
     // own createViewModel reads `presenters.eqWorkspace.state$` — NOT a
     // per-mount useMachine, so every component reading useEqWorkspace()
@@ -1645,7 +1642,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Eq drawings: the REAL createEqDrawingsMachine, one shared instance for
     // the whole World (world.eqDrawings) — its `state$` is already a warm
-    // StateObservable (see @rtc/client-core's Machine interface), so it is
+    // StateObservable (see @rtc/core-api's Machine interface), so it is
     // read directly with `toSignal`, exactly like `useEqWorkspace` above —
     // NOT a per-mount useMachine, so the chart head's draw-tool pills and
     // the plot's committed drawings, even mounted via separate mountWith()
@@ -1663,7 +1660,7 @@ export function solidViewModel(world: World): ViewModel {
     },
     // Jarvis: the REAL createJarvisMachine (Task 9), cached once per World
     // (getJarvisMachine above) and read directly with `toSignal` — its
-    // `state$` is already a warm StateObservable (see @rtc/client-core's
+    // `state$` is already a warm StateObservable (see @rtc/core-api's
     // Machine interface), exactly like `useEqWorkspace` above — so a
     // co-mounted JarvisOrb + JarvisOverlay, even mounted via separate
     // mountWith() calls sharing one World, observe the same open/phase/
@@ -1808,6 +1805,7 @@ export function solidViewModel(world: World): ViewModel {
       return {
         current,
         options: CORE_OPTIONS_FOR_TESTS,
+        failure: wrapSubject(world.coreSelectionFailure),
         select: (impl: CoreImpl) => {
           if (impl !== world.coreImpl.getValue()) {
             world.commands.coreSelects.push(impl);
@@ -1817,6 +1815,12 @@ export function solidViewModel(world: World): ViewModel {
     },
     useDemoAccounts: () => {
       return world.demoAccounts;
+    },
+    takePreferencesReopen: () => {
+      return world.takePreferencesReopen();
+    },
+    peekPreferencesReopen: () => {
+      return world.peekPreferencesReopen();
     },
   };
 }

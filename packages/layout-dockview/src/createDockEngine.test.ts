@@ -18,14 +18,12 @@ import {
   vi,
 } from "vitest";
 
-import type {
-  DockDynamicPanel,
-  DockEngine,
-  DockEngineOptions,
-} from "#/createDockEngine";
 import {
   createDockEngine,
   DOCK_GLIDE_ATTRIBUTE,
+  type DockDynamicPanel,
+  type DockEngine,
+  type DockEngineOptions,
   type DockMaximizeScope,
   type DockStripMap,
   GLIDE_ATTRIBUTE_MS,
@@ -756,7 +754,7 @@ describe("settle resize — a pristine grid tracks its source exactly", () => {
     return Number.parseInt((size ?? "").split("x")[0] ?? "", 10);
   }
 
-  // The real FX tab's ratios (client-core defaultLayoutPort's FX_ROOT). Made-up
+  // The real FX tab's ratios (core-logic defaultLayoutPort's FX_ROOT). Made-up
   // fractions do NOT reproduce the bug: 0.75/0.25 + 0.65/0.35 rescaled
   // 981→980 losslessly (measured), so a fixture that "looks equivalent" would
   // let a broken fix pass.

@@ -1,7 +1,11 @@
 import type { Trade } from "@rtc/domain";
 
-import type { CellFormatter, ColumnDef } from "./blotterColumns";
-import { COLUMNS, formatFxCell } from "./blotterColumns";
+import {
+  type CellFormatter,
+  COLUMNS,
+  type ColumnDef,
+  formatFxCell,
+} from "./blotterColumns";
 
 /** Generic CSV export. Columns with keys in unformatted get String(row[key]) directly.
  *  `filename` is the download's suggested name — each blotter passes its own

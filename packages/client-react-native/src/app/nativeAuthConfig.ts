@@ -10,8 +10,8 @@ import Constants from "expo-constants";
  *
  * Read from Expo config `extra.devAuth`, baked at build time from
  * `EXPO_PUBLIC_DEV_AUTH` (see `app.config.ts`) as a JSON `username -> password`
- * object — the RN analogue of client-react's `VITE_DEV_AUTH` / `parseDevAuth`
- * (`buildBrowserPorts.ts`). Parsing is tolerant of a missing, malformed, or
+ * object — the RN analogue of the web clients' `VITE_DEV_AUTH` / `parseDevAuth`
+ * (`@rtc/web-boot`'s `buildBrowserPorts.ts`). Parsing is tolerant of a missing, malformed, or
  * non-object (e.g. array) value, falling back to all four roster usernames at
  * a shared local dev password so the app still boots into a working simulator
  * login with no env set at all.

@@ -57,6 +57,7 @@ import type {
 
 import { createLayoutPresets } from "#/layout/createLayoutPresets";
 import { createWorkspacePersistenceWriter } from "#/layout/workspacePersistenceWriter";
+import { cutPortsOnDispose } from "#/ports/cutPortsOnDispose";
 import { withLoginDelay } from "#/ports/delayedAuthPort";
 import { readPreferenceNow } from "#/ports/readPreferenceNow";
 import {
@@ -245,7 +246,7 @@ function wireJarvisHistorySource(
  * core carries none of it — the twin of `ASYNC_CORE_BRAND`. */
 export const RXJS_CORE_BRAND = "@rtc/client-core-rxjs:brand";
 
-export function createApp(ports: AppPorts): App {
+export function createApp(givenPorts: AppPorts): App {
   // The app's lifetime. `held` collects every session-lifetime subscription
   // this function opens itself (state mirrors, persistence kicks, the
   // driver→chat outcome feed, the auth→transport gate); `disposed$` ends the
@@ -255,6 +256,9 @@ export function createApp(ports: AppPorts): App {
   // releases both, then disposes the machines this function owns.
   const held = new Subscription();
   const disposed$ = new ReplaySubject<void>(1);
+  // Every port stream this composition opens ends with it, whoever still
+  // holds the presenter stream built on it.
+  const ports = cutPortsOnDispose(givenPorts, disposed$);
   // Hoisted so the AnimationDirector can wire its connectionStatus$ source from
   // the same connection presenter instance the rest of the app consumes.
   const connection = new ConnectionStatusPresenter(ports.connectionEvents);
@@ -743,8 +747,8 @@ export function createApp(ports: AppPorts): App {
   // guard is internal (see createNarratorMachine's doc) — unlike
   // jarvisPanels/jarvisDriver, it reads no jarvis.events$, so it needs no
   // guard here. `ports.narratorConfig` is the dev-only relaxed-threshold
-  // seam (`?narratorThresholds=test`, both web clients'
-  // buildBrowserPorts.ts) — undefined in production, so the detector runs
+  // seam (`?narratorThresholds=test`, supplied by
+  // `@rtc/web-boot`'s buildBrowserPorts.ts for both web clients) — undefined in production, so the detector runs
   // at DEFAULT_ANOMALY_CONFIG. Lives for the app's whole session; its
   // `stop()` is called by `app.dispose()`.
   //
@@ -890,7 +894,7 @@ export function createApp(ports: AppPorts): App {
 
   const app: App = {
     presenters,
-    ports,
+    ports: givenPorts,
     commands,
     dispose: async (): Promise<void> => {
       // Ends the session this function opened, in dependency order: first

@@ -18,6 +18,10 @@
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-strong);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+
+  /* The dialog takes focus when it opens (tabindex -1, never a Tab stop).
+   * A ring round the whole panel would say nothing its border does not. */
+  outline: none;
 }
 
 .head {

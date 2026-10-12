@@ -47,11 +47,11 @@ code rather than argued:
 
 | A migration needs to… | What this repository shows |
 |---|---|
-| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the contract as types only (straight from `@rtc/core-api`) and name no alternative core; the switch happens in each client's composition root (`src/app/coreSelection.ts`), which the bindings never see. |
+| Change the substrate without touching the UI | `@rtc/core-api`: a types-only edge. The bindings import the contract as types only (straight from `@rtc/core-api`) and name no alternative core; the switch happens in each client's composition root (`packages/web-boot/src/coreSelection.ts`), which the bindings never see. |
 | Know the new implementation behaves the same | `@rtc/core-contract`: one suite per member, absolute construction-time counts, the `transportGate` and `portDiscipline` cross-checks. |
 | Migrate only the stream layer, not the business rules | `@rtc/core-logic`: the pure folds and controllers moved out once and every core reuses them; only the *plumbing* is rewritten per core. |
 | Let old and new coexist during the cutover | `bridge/`: the one place the old library may be imported as a value; everywhere else it is types only, so the old library cannot spread beyond it at runtime (dependency-cruiser `bridge-owns-rxjs` and grep gate 43; see [What keeps it honest](#what-keeps-it-honest)). |
-| Canary and roll back | Load-time selection (`?core=`, Preferences): one build ships every core, the choice is made per browser at load, and moving back is a reload. A production canary would feed the same switch from a feature flag. |
+| Canary and roll back | Load-time selection (`?core=`, Preferences): one build ships every core, and the choice is made per browser at load. Since 2026-10-05 moving to another core, or back, is a swap in place with no reload. A production canary would feed the same switch from a feature flag. |
 | Finish, and stop paying for the seam | See below. |
 
 **How this ends in a real project.** The edge abstractions and the
@@ -102,7 +102,7 @@ flowchart TD
   as["<b>@rtc/client-core-async</b><br/>async/await + AsyncIterable"]
   ef["<b>@rtc/client-core-effect</b><br/>Effect-TS"]
   socket{{"<b>THE SOCKET</b> — AppPorts<br/>what a core is given"}}
-  adapters["<b>Adapters</b> — @rtc/client-core<br/>WebSocket · simulators · localStorage"]
+  adapters["<b>Adapters</b> — @rtc/client-adapters<br/>WebSocket · simulators · localStorage"]
   world(["Server and browser"])
 
   ui --> bind
@@ -251,10 +251,10 @@ all 75 are implemented natively in all three cores.
 
 | Question | RxJS core | async core | Effect core |
 |---|---|---|---|
-| Package | `@rtc/client-core` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
+| Package | `@rtc/client-core-rxjs` | `@rtc/client-core-async` | `@rtc/client-core-effect` |
 | Style | operators over `Observable` | `async`/`await`, callbacks, `AsyncIterable` | `Effect`, `Stream`, fibers |
 | A shared stream is a… | `shareReplay({ bufferSize: 1, refCount: true })` | `Topic<T>` | `sharedFold` over a `Scope` |
-| A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SubscriptionRef<S>` |
+| A state cell is a… | `state()` from `@rx-state/core` | `Store<S>` | `SyncRef<S>` (`bridge/syncRef.ts`) |
 | Cancelling work | `unsubscribe()`, `switchMap`, `takeUntil` | `AbortController` / `AbortSignal` | `Fiber.interrupt`, closing a `Scope` |
 | Waiting | `timer()` | `sleep(ms, signal)` | `Effect.sleep` |
 | One-shot call to a port | the port's `Observable`, as is | `once(port(...), signal)` → `Promise` | `rpc(port(...))` → `Effect` |
@@ -369,14 +369,14 @@ flowchart TD
   subgraph native["Native — Effect"]
     effect["Effect#lt;T#gt;"]
     stream["Stream#lt;T#gt;"]
-    ref["SubscriptionRef#lt;S#gt;"]
+    ref["SyncRef#lt;S#gt;"]
     value["a plain value"]
   end
 
   subgraph outb["bridge/out.ts — wrap"]
     s2s["streamToStream()"]
     fold["sharedFold()"]
-    r2s["refToStateStream()"]
+    r2s["ref.stateStream()"]
   end
 
   ui["Stream#lt;T#gt; · StateStream#lt;S#gt;"]
@@ -401,7 +401,7 @@ flowchart TD
 | in | `fromPort.merged([...])` | several `Observable`s | one Effect `Stream` of events | folding two or more ports together, in the order they emitted |
 | in | `peek(source, fallback)` | `Observable` | the current value, read at once | seeding, synchronous reads |
 | out | `sharedFold(host, { seed, run })` | a seed and a producer | `Stream` (shared, replays the latest) | every shared stream |
-| out | `refToStateStream(host, ref)` | `SubscriptionRef` | `StateStream` | every machine's `state$` |
+| out | `ref.stateStream()` / `ref.warm()` | `SyncRef` | `StateStream` | every machine's `state$` |
 | out | `streamToStream(host, stream)` | Effect `Stream` | `Stream` | one-shot results and plain streams |
 | out | `scopedPortStream(...)` | a per-call port stream | `Stream` | an order's lifecycle updates |
 
@@ -576,6 +576,8 @@ the precise versions.
 | 7 | **Each port method is called once, at construction.** | A port call can open a subscription on the server; calling it twice doubles the load. |
 | 8 | **Values that arrive together are delivered together.** | The screen redraws once per turn. Fifty prices in one turn is one redraw; fifty prices in fifty turns is fifty. |
 | 9 | **Everything one event causes is delivered in the same turn.** | A price and the flash it causes must redraw the tile once, not once each. |
+| 10 | **What a port replays on subscribe arrives in the subscribing turn.** | A tile that mounts must paint its price and its chart in one redraw, not two. |
+| 11 | **A core can start on ports another core has already used.** | The web clients swap cores without a reload. The new core gets the old one's socket and session, and must carry on from them. |
 
 Promise 1 is the one that shapes the bridges most:
 
@@ -583,7 +585,7 @@ Promise 1 is the one that shapes the bridges most:
 sequenceDiagram
   participant B as Binding
   participant O as bridge/out
-  participant C as State cell<br/>(Store or SubscriptionRef)
+  participant C as State cell<br/>(Store or SyncRef)
 
   B->>O: subscribe(observer)
   O->>C: read the current value
@@ -677,10 +679,29 @@ The lesson for both: **when two things only work because one is slower than
 the other, it is a race, even if it has never failed.** Look for the
 ordering the code actually guarantees, not the one it happens to have.
 
+### Promise 10: a replay arrives with the subscribe
+
+A tile reads its price and its price history. When it mounts, it subscribes
+both, one after the other. The price is usually running already, because
+the animation director reads it too, so the tile gets the current price
+inside its `subscribe` call. The history is not running yet: subscribing it
+opens the port, and the port replays its recent ticks at once.
+
+In RxJS those replayed ticks pass through the operators and reach the tile
+inside the same `subscribe` call. In the Effect core they went into a queue
+for a fiber, and the fiber ran one microtask later. By then the tile had
+already redrawn with its price. Each tile drew twice when it appeared.
+
+The Effect core now lets its fibers run before `subscribe` returns
+(`turnScheduler.settle()`, called by `sharedFold`). The rule for any core:
+**a subscriber that is handed one value synchronously will redraw at the
+next microtask, so everything else its subscribes cause must be delivered
+before that.**
+
 ### What a value costs in the Effect core
 
 Getting the turns right fixed what the screen does. The same profiling also
-showed how much work each value took, and two habits were responsible for
+showed how much work each value took, and three habits were responsible for
 most of it.
 
 - **A fiber per subscriber, only to pass values on.** A shared stream kept
@@ -694,11 +715,92 @@ most of it.
   `fromPort.merged([...])`, which puts both ports into one queue. It is
   cheaper, and the events also keep the order they were emitted in, which
   `Stream.merge` never promised.
+- **A fiber per subscriber of a machine's state, too.** A machine kept its
+  state in Effect's `SubscriptionRef`. That type reaches a subscriber the
+  same way a shared stream used to: through a fiber that reads
+  `ref.changes`. State now lives in a `SyncRef`, a plain cell that calls its
+  subscribers from inside the write, as an RxJS `BehaviorSubject` does. The
+  workspace already used one, because its state must be readable right
+  after it is written; now every machine and presenter does, and a gate
+  keeps `SubscriptionRef` out of the package.
+- **A stream per currency pair, merged.** The animation director and the
+  narrator both follow the price of every pair in the roster. Each built one
+  Effect stream per pair and merged them, behind a "switch" for when the
+  roster changes: three or four fiber steps per tick, each. Now the bridge
+  subscribes the roster's pairs itself and puts every price into one queue
+  (`switchedPortEvents`): one step per tick.
+- **A fold per reader, only to drop most values.** Each tile asked the
+  director for "the intents for my tile", and got a fold of its own that
+  read every intent and kept one in nine. Now it gets a filtered view of the
+  director's one stream (`filterStream`): no fiber at all.
 
-Together they took the first two seconds of the FX screen from about 2,900
+The first two took the first two seconds of the FX screen from about 2,900
 fiber steps to about 1,000, and steady state from about 7,500 per six
-seconds to about 2,000. When you write a new Effect member: fold several
-ports with `fromPort.merged`, and let `sharedFold` do the sharing.
+seconds to about 2,000. The third took the first two seconds to about 700.
+The last two took steady state to about 520 (measured on a production
+build, where the first two seconds went from about 530 steps to about 160).
+
+When you write a new Effect member:
+
+- keep its state in a `SyncRef`;
+- fold several ports with `fromPort.merged`, and a changing set of ports
+  with `switchedPortEvents` inside it — never with an Effect combinator such
+  as `Stream.merge`, `flatMap` or `zipLatest`, which a gate now rejects
+  outside the bridge (use `latestOfEach` where you would have written
+  `combineLatest`, and `firstPortEvent` for a one-shot query);
+- let `sharedFold` do the sharing, and give a reader that wants only part
+  of a shared stream a `filterStream`, not a fold of its own.
+
+What is left is the price of the library itself. On a production build the
+Effect core's chunk takes about 25 ms to load and evaluate against about
+6 ms for the other two (it is 235 KB, most of it `effect`), and building
+the Layer graph takes about 15 ms where the other cores' plain construction
+takes 3. Both happen once, at start-up.
+
+### Promise 11: the ports were used before
+
+Until 2026-10-05 a core in the browser always started on a fresh page. It
+built its presenters over ports nobody had touched, and it was thrown away
+only when the page was.
+
+The hot swap changed the picture. The web clients now build their ports
+once per page and keep them. When you pick another core in Preferences, the
+page is not reloaded: the old core is disposed and the new one is composed
+over the **same** ports object (see
+[How a core is chosen and loaded](#how-a-core-is-chosen-and-loaded)). So
+the new core starts on a socket that is already open and a session that is
+already signed in.
+
+That asks something new of a core. It must not assume it is the first to
+use its ports. Concretely, the second core must:
+
+- **resume the session without a login**, opening exactly one more
+  `connect` on the transport;
+- **call each port method as often as a first core would**, no more;
+- **hear what the ports say after the swap**, such as new prices and
+  trades;
+- **leak nothing**: when warm, it holds no more port subscriptions than a
+  first core, and after its own `dispose()` it holds none;
+- **start from the latest preferences**, including one changed on the old
+  core just before the swap.
+
+The `recomposition` contract suite checks all five on all three cores. The
+test harness gained `recompose()`, which disposes the first app and composes
+a second over the same scripted ports.
+
+Promise 6 grew too. A layout change you make is saved after a short delay,
+so that a drag does not write to storage on every frame. If you dragged a
+panel and swapped core a moment later, the old core was disposed inside
+that delay, and all three cores simply dropped the pending write. The new
+core then read the layout from before the drag. Now `dispose()` writes a
+pending layout change, exactly once, before it resolves, and nothing
+afterwards. A write that throws is reported, and `dispose()` still
+releases every port.
+
+The lesson: **an assumption nobody wrote down is still a promise.** "The
+page is new" held for every core because nothing ever broke it. The first
+feature that broke it needed a test suite to say what a core may and may
+not assume.
 
 ## A command that can be cancelled
 
@@ -740,41 +842,53 @@ sequenceDiagram
 
 ## How a core is chosen and loaded
 
-One production build contains all three cores. The RxJS core is in the files
-the page loads up front. The other two are separate files, fetched only when
-chosen. The choice is made at page load, in this order: the `?core=` URL
-parameter, then the saved Preferences choice, then the build default
-(`VITE_CORE_IMPL`), then `rxjs`.
+One production build contains all three cores. Each core is a separate
+file, fetched only when chosen. The choice is made at page load, in this
+order: the `?core=` URL parameter, then the saved Preferences choice, then
+the build default (`VITE_CORE_IMPL`), then `rxjs`.
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant M as main.tsx
+  participant M as startWebClient
   participant S as coreSelection
   participant N as Network
-  participant R as AppRoot
+  participant H as Core host
   participant C as Chosen core
+  participant R as AppRoot
 
   M->>S: bootCore()
   S->>S: resolveCoreChoice()<br/>URL, stored, build default, rxjs
-  S->>S: loadCore(impl)
-  alt impl is rxjs
-    Note over S: already loaded, no request
-  else impl is async or effect
-    S->>N: import() of the core's file
-    N-->>S: CoreFactory
-  end
+  S->>N: import() of the core's file
+  N-->>S: CoreFactory
   S-->>M: impl, core, source
-  M->>R: render with core
-  R->>C: core.createApp(ports)
-  C-->>R: presenters, commands
-  R->>C: core.createMachineFactories(presenters)
+  M->>H: createCoreHost({ ports, initial })
+  H->>C: core.createApp(ports)
+  C-->>H: presenters, commands
+  H->>C: core.createMachineFactories(presenters)
+  H->>R: mount the composition
   R->>R: createViewModel(...)
 ```
 
-`AppRoot` receives a `CoreFactory` and never learns which one it is. The
-full precedence chain, the failure screen and the bundle check are in
+The **core host** (`packages/web-boot/src/coreHost.ts`) is the object that outlives any
+one core. `startWebClient` (called once by each client's `main.tsx`) builds the ports once and gives them to it; the host
+composes the core over them and mounts `AppRoot` with the result.
+`AppRoot` never learns which core it got. The full precedence chain, the
+failure screen and the bundle check are in
 [§22 Selection](22-pluggable-application-core.md#selection-at-load-time).
+
+**Changing core later does not reload the page.** Picking another core in
+Preferences calls the host's `swapTo`. The host loads the new core's file,
+unmounts the UI, waits one macrotask so the UI's machines finish disposing,
+disposes the old core, composes the new one over the same ports and mounts
+the UI again. Then it saves the choice and opens Preferences again, so you
+land where you were. If the new core cannot load or start, the page stays
+on (or goes back to) the old core and Preferences shows why. A short
+overlay covers the page while this happens (`CoreSwapOverlay`): it names the
+two cores, and the app underneath takes no input until it lifts.
+[ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)
+has the exact step order and the failure table, and
+[promise 11](#promise-11-the-ports-were-used-before) what it asks of a core.
 
 React Native is not part of this: it always runs the RxJS core.
 

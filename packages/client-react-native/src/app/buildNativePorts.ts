@@ -11,7 +11,7 @@ import {
   WsAdapter,
   WsConnectionEventsAdapter,
   wsUrlToHttpBase,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import type { AppPorts, SessionStore } from "@rtc/core-api";
 import {
   AuthSimulator,
@@ -49,7 +49,7 @@ export interface NativeComposition {
   dispose: () => void;
 }
 
-/** The RN analogue of `buildBrowserPorts` (client-react): assembles the
+/** The RN analogue of `buildBrowserPorts` (`@rtc/web-boot`): assembles the
  * `AppPorts` that `createApp` composes into presenters. Two branches selected
  * by the WS URL — a real WebSocket stack when `extra.serverUrl` is set, else a
  * fully in-process simulator stack. There is no DOM here, so the browser

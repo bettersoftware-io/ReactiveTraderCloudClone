@@ -18,6 +18,7 @@ import {
 import { createNativeDevtoolsHub } from "#/app/devtools/nativeDevtoolsHub";
 import { NATIVE_PRESENTER_MANIFEST } from "#/app/devtools/presenterManifest";
 import { resolveRelayUrl } from "#/app/devtools/resolveRelayUrl";
+import { listNativeDemoAccounts } from "#/app/listNativeDemoAccounts";
 import { BUILD_STAMP } from "#/app/readBuildStamp";
 import { BuildStampContext } from "#/ui/shell/BuildStampContext";
 
@@ -81,6 +82,7 @@ export function AppRoot({
       inputs.presenters,
       inputs.factories,
       commands,
+      { demoAccounts: listNativeDemoAccounts(simulator) },
     );
 
     ref.current = {

@@ -19,7 +19,7 @@ describe("createPowerSaverPresenter (effect)", () => {
     }
   });
 
-  it("isCalm$ conflates a calm to freeze transition (SubscriptionRef parity, distinct from the RxJS core's map)", async () => {
+  it("isCalm$ conflates a calm to freeze transition (the fold drops an equal state, distinct from the RxJS core's map)", async () => {
     const preferences = new PreferencesSimulator({ powerSaverLevel: "off" });
     const presenter = createPowerSaverPresenter(useHost(), preferences);
     const seen: boolean[] = [];

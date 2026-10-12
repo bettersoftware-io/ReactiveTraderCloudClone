@@ -7,7 +7,7 @@ import {
   InMemoryDataSourceStore,
   InMemorySessionStore,
   pairConnectionPorts,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import type { AppPorts } from "@rtc/core-api";
 import { withFakeClock } from "@rtc/core-contract";
 import {
@@ -25,10 +25,10 @@ import { createApp } from "#/composition";
  * core's real auth presenter: a cross-mode login writes the session and the
  * choice, calls `relaunch()`, and the login observable then NEVER emits.
  *
- * Why this test exists here and not only in client-core: this core awaits the
+ * Why this test exists here and not only in client-core-rxjs: this core awaits the
  * FIRST value of `auth.login` and treats a completion WITHOUT one as an error
  * it rethrows out of band (a macrotask), so a routing port that returned
- * `EMPTY` instead of `NEVER` would pass every client-core unit test and throw
+ * `EMPTY` instead of `NEVER` would pass every client-core-rxjs unit test and throw
  * an uncaught exception in production on every mode change — on this core
  * only. Under fake timers that rethrow lands inside `clock.settle()`, which
  * is exactly where this test would then fail.

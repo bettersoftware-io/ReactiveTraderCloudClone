@@ -5,8 +5,12 @@ import type {
   SerializedValue,
 } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
-import { parseStreamId, scopeKey, streamLeafLabel } from "#/nav/scope";
+import {
+  parseStreamId,
+  type Scope,
+  scopeKey,
+  streamLeafLabel,
+} from "#/nav/scope";
 import { sourceOfEvent } from "#/timeline/timelineModel";
 
 export interface NavNode {

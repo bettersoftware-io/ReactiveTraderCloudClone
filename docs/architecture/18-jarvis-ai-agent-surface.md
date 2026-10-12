@@ -30,7 +30,7 @@ can operate the app from outside. The companion section
 
 ## 18.1 The thesis: AI as the third client
 
-The web client and the RN client already share the framework-free `@rtc/client-core`
+The web client and the RN client already share the framework-free `@rtc/client-core-rxjs` + `@rtc/client-adapters`
 (§8.1, the multi-client proof). Jarvis is the **third head** — and unlike the planned
 SolidJS swap, it is not even a UI framework. It is the strongest test yet of the
 dependency rule, because an AI agent consumes the *application*, not the DOM.
@@ -45,7 +45,7 @@ None of it was designed "for AI". AI is simply the first non-UI consumer to arri
 |---|---|---|
 | Agent tools over the domain | Use cases are plain classes over injected ports, callable from any process | Trading logic lives in `onClick` handlers and effect chains; there is nothing callable to wrap |
 | MCP server as a thin wrapper | Same registry, second transport; zero domain changes | The "API for the AI" becomes a parallel reimplementation, forever chasing the UI |
-| A third client (the agent) | `client-core` has no React/DOM/RN imports | Logic captured in hooks is locked inside React's render lifecycle |
+| A third client (the agent) | `client-adapters` has no React/DOM/RN imports | Logic captured in hooks is locked inside React's render lifecycle |
 | Agent drives the UI (roadmap) | All UI state is machines with explicit intents | State scattered across `useState` islands; no addressable surface to act on |
 | LLM market participants (roadmap) | Dealers/pricing are simulators behind ports | Mock data hardcoded in components; a smart counterparty means rewriting the tab |
 | Deterministic tests for an LLM feature | The agent loop itself sits behind a port; a scripted fake serves CI and offline demos | LLM `fetch` inline in components; tests mock the network globally and flake |
@@ -79,7 +79,7 @@ flowchart TD
         EFF["ws-effects<br/>JARVIS_* messages"]
     end
 
-    subgraph core["@rtc/client-core"]
+    subgraph core["@rtc/client-core-rxjs + @rtc/client-adapters"]
         JPORT["JarvisPort (adapter)"]
         JM["JarvisMachine"]
     end
@@ -285,7 +285,7 @@ their own tool-permission surface.
 
 Chat state is an RxJS machine in `client-core-rxjs/src/presenters/` (per
 [ADR-005](../adr/ADR-005-ui-logic-placement.md): an autonomous async fold decoupled
-from the view). The `JarvisPort` lives in `client-core/adapters` — deliberately *not*
+from the view). The `JarvisPort` interface lives in `@rtc/core-api` (its adapters in `client-adapters`) — deliberately *not*
 in `domain/ports`, because chat is an application concern; keeping `@rtc/domain`
 untouched is the headline.
 
@@ -327,7 +327,7 @@ Every turn-scoped `server → client` payload obeys one rule: it **is** the matc
 `JarvisEvent` variant minus its `type` discriminant (the message type carries the
 discriminant), **plus** a `turnId` correlating it to the client-generated turn.
 `JARVIS_AVAILABILITY` is the one non-turn-scoped frame and carries no `turnId`.
-See `@rtc/shared`'s `src/jarvis/jarvisEvent.ts` for the single source of all of it.
+`JarvisEvent` itself is domain vocabulary (`@rtc/domain`'s `src/jarvis/jarvisEvent.ts`); the wire rule and the client-to-server payloads are in `@rtc/shared`'s `src/jarvis/jarvisPayloads.ts`.
 
 | Direction | Message | Payload |
 |---|---|---|
@@ -393,7 +393,7 @@ flowchart TD
     SHD["@rtc/shared"]
     WSE["@rtc/ws-effects"]
     SRV["@rtc/server"]
-    CC["@rtc/client-core"]
+    CC["@rtc/client-core-rxjs + @rtc/client-adapters"]
 
     DOM --> RXJS
     AGT --> DOM
@@ -478,11 +478,12 @@ against a brain whose output is already deterministic.
 
 The scripted engine did not get reimplemented server-side. It **moved** —
 `ScriptedJarvisAdapter`'s body relocated verbatim to `@rtc/shared`
-(`src/jarvis/`: `jarvisEvent.ts`, `jarvisIntent.ts`, `ScriptedJarvisEngine.ts`),
+(`src/jarvis/`: `jarvisIntent.ts`, `ScriptedJarvisEngine.ts`; the `JarvisEvent`
+union it emits has lived in `@rtc/domain` since 2026-10-05),
 where both a client and the server can reach it. `@rtc/shared` is the right home
 for the same reason the `CLIENT_MSG`/`SERVER_MSG` envelopes live there: it is the
 one package **both sides of the wire already depend on**, and it is transport-neutral
-by construction. Putting the brain in `client-core` would have forced the server to
+by construction. Putting the brain in `client-adapters` would have forced the server to
 import a client package; putting it in `domain` would have put chat — an application
 concern — inside the domain and broken the rxjs-only rule (the engine needs
 `motion-core`'s `speechChunks` to pace its reveal). `shared` was already the seam
@@ -490,9 +491,9 @@ where "vocabulary both processes agree on" lives, and the brain is exactly that.
 
 ```mermaid
 flowchart TD
-    ENG["@rtc/shared · src/jarvis/<br/>ScriptedJarvisEngine<br/>+ JarvisEvent + jarvisIntent"]
+    ENG["@rtc/shared · src/jarvis/<br/>ScriptedJarvisEngine<br/>+ jarvisIntent"]
 
-    C1["client-core<br/>ScriptedJarvisAdapter<br/>(sim mode)"]
+    C1["client-adapters<br/>ScriptedJarvisAdapter<br/>(sim mode)"]
     C2["server<br/>ScriptedAgentLoop<br/>(RTC_JARVIS_FAKE=1)"]
     C3["the wire itself<br/>JARVIS_* payload shapes"]
 
@@ -1421,7 +1422,7 @@ it already cost the round-trip.
   Haiku) — the same lenient-parse posture the wire has always used for
   optional fields.
 - **New client → a pre-round server.** `JARVIS_AVAILABILITY`'s
-  `brains`/`defaultBrain` are likewise optional. The client-core parse
+  `brains`/`defaultBrain` are likewise optional. The client-adapters parse
   (`parseAvailability` in `WsJarvisAdapter`) treats an *absent*
   `brains`/`defaultBrain` as "every brain offered"
   (`available ? JARVIS_BRAINS : []`), not "none offered" — a deliberate,
@@ -1502,7 +1503,8 @@ deferred, recorded at the end of this section.
 
 ### The vocabulary: `PanelSpecV1`, a closed grammar validated at both ends
 
-`packages/shared/src/jarvis/panelSpec.ts` defines `PanelSpecV1` — title,
+`packages/domain/src/jarvis/panelSpec.ts` defines `PanelSpecV1` (its parser and
+JSON Schema stay in `packages/shared/src/jarvis/panelSpec.ts`) — title,
 optional `rationale`, one `PanelSource` (`fxTicks` / `priceHistory` /
 `analytics` / `blotter`), ≤4 `PanelTransform`s (`window` / `returns` /
 `rollingVol` / `spread` / `topN`) applied in order, one `PanelViz` (`line` /
@@ -1600,7 +1602,7 @@ client treats the stray edit as a fresh spawn instead of a no-op, which
 Panels are **not** chat state. `JarvisMachine` (the chat/turn machine) gained
 an explicit `case "panel": return (s) => s;` no-op arm in its exhaustive
 event switch — a panel event leaves no trace there — because panel state
-lives in a wholly separate `client-core` machine,
+lives in a wholly separate `client-core-rxjs` machine,
 `JarvisPanelsMachine.ts`, whose lifetime is the **session**, not any one
 turn or the chat overlay's mount state. That separation is what makes "the
 panel survives closing the chat" true by construction rather than by a
@@ -1772,8 +1774,9 @@ for the narrative; this section is the engineering receipt.
 
 ### `DriveCommand` v1 — a second closed vocabulary, `PanelSpec`'s sibling
 
-`packages/shared/src/jarvis/driveCommand.ts` follows §18.16's `PanelSpecV1`
-doctrine exactly, down to the file layout: ten command kinds
+`packages/domain/src/jarvis/driveCommand.ts` (vocabulary) and
+`packages/shared/src/jarvis/driveCommand.ts` (parser, JSON Schema) follow
+§18.16's `PanelSpecV1` doctrine exactly, down to the file layout: ten command kinds
 (`switchTab`, `layout`, `eqSelect`, `eqTimeframe`, `eqChartType`,
 `eqIndicator`, `eqPane`, `setTheme`, `setPowerSaver`, `dismissPanel`), each a
 discriminated-union variant over literal unions mirroring real app types
@@ -1991,7 +1994,15 @@ price-driven surface reads through — never a fresh direct `PricingPort` call,
 because the simulator's live tick stream is cold per subscription and a
 second independent subscription to the same symbol would double its
 effective tick rate (the #171 tick-acceleration family, reintroduced in a
-new spot if this were gotten wrong). A surviving anomaly must clear three
+new spot if this were gotten wrong). That hazard was real until 2026-10-05:
+a tile's sparkline (`PriceHistoryUseCase`) subscribed the port beside the
+tile's price, so every symbol on screen walked twice per interval, each
+reader saw every other step, and those double-size moves crossed 3σ against
+the single-step history the port replays — the narrator spoke about ten
+seconds into every session. `PricingSimulator` now runs one shared walk per
+symbol however many subscribers it has, as the WS server always did; the
+narrator still reads the shared presenter stream, for the conflation rule
+and to hold one WS subscription. A surviving anomaly must clear three
 gates, all folded by **one** `scan` sitting outside `pairs$`'s `switchMap`
 (deliberately — nesting the gate inside would let a `pairs$` re-emission
 silently reset the session cap): the `JarvisNarrator` preference reads `"on"`

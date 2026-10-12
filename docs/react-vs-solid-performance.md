@@ -37,7 +37,7 @@ Method notes:
 - **Power-saver freeze is the primary condition.** The motion audit proves
   freeze is motion-free in both clients, so no CSS animation, rAF loop, or
   WAAPI churn pollutes the numbers — what remains per quote tick is the
-  framework's update path (shared `client-core` streams are identical). `off`
+  framework's update path (shared `client-core-rxjs` streams are identical). `off`
   is kept as a secondary condition; it adds the (shared `motion-core`) rAF
   work and compositor noise.
 - Both clients run the same in-browser simulator, seeded session, same

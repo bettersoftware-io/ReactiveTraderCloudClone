@@ -8,7 +8,7 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { JarvisUsageSnapshot } from "@rtc/shared";
+import type { JarvisUsageSnapshot } from "@rtc/domain";
 
 import { jarvisUsageCardPage } from "#tests/ui/pages/JarvisUsageCardPage";
 

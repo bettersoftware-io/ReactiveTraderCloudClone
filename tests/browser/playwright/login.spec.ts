@@ -9,7 +9,7 @@
 // `PlaywrightLoginScreen.open()`) so the app boots into LoginScreen, then
 // drive the real username/password form — the dev-server child process is
 // started with `VITE_DEV_AUTH='{"demo":"demo"}'` (see
-// tests/scripts/devServer.ts) so `demo`/`demo` is a valid simulator-mode
+// tests/scripts/clientServer.ts) so `demo`/`demo` is a valid simulator-mode
 // credential, matching the `demo` roster identity.
 //
 // All assertions delegate to scenario helpers — gates 9-11 compliant.

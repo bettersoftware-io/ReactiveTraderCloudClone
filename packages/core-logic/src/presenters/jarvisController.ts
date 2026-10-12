@@ -27,9 +27,10 @@ import {
   JARVIS_NARRATION_PREFIX,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/shared";
 
 /** Strip `JARVIS_NARRATION_PREFIX` from a narrate prompt for display; a
  * prompt without the prefix passes through unchanged (defensive — every

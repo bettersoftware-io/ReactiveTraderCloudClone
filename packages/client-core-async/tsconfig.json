@@ -10,11 +10,10 @@
   },
   "include": ["src", "src/**/*.json"],
   "references": [
-    { "path": "../client-core" },
+    { "path": "../client-adapters" },
     { "path": "../core-api" },
     { "path": "../core-logic" },
     { "path": "../core-contract" },
-    { "path": "../domain" },
-    { "path": "../shared" }
+    { "path": "../domain" }
   ]
 }

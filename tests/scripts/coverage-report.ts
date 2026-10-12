@@ -59,6 +59,10 @@ export const TIERS = {
       path: "packages/devtools-app/reports/unit/coverage/coverage-final.json",
     },
     {
+      name: "web-boot",
+      path: "packages/web-boot/reports/unit/coverage/coverage-final.json",
+    },
+    {
       name: "react/app",
       path: "packages/client-react/reports/app/coverage/coverage-final.json",
     },
@@ -93,6 +97,10 @@ export const TIERS = {
     {
       tier: "devtools/app",
       path: "packages/devtools-app/reports/unit/test-results.json",
+    },
+    {
+      tier: "web-boot",
+      path: "packages/web-boot/reports/unit/test-results.json",
     },
     {
       tier: "react/app",

@@ -1,11 +1,8 @@
 import { type Observable, Subject } from "rxjs";
 import { takeUntil, tap } from "rxjs/operators";
 
-import type {
-  JarvisEvent,
-  JarvisHistoryEntry,
-  ScriptedJarvisEngine,
-} from "@rtc/shared";
+import type { JarvisEvent, JarvisHistoryEntry } from "@rtc/domain";
+import type { ScriptedJarvisEngine } from "@rtc/shared";
 
 import type { AgentSession, JarvisTurnOptions } from "./agentLoop.js";
 

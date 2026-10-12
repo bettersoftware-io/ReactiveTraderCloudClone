@@ -3,6 +3,14 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** The fields of the root package.json that gate 52 reads. */
+interface RootManifest {
+  engines?: { node?: string };
+  devEngines?: {
+    runtime?: { name?: string; version?: string; onFail?: string };
+  };
+}
+
 interface Gate {
   name: string;
   pattern: string;
@@ -756,6 +764,59 @@ const GATES: Gate[] = [
     paths: ["../packages/client-core-effect/src/"],
     excludes: ["/bridge/", ".test."],
   },
+  {
+    // State the Effect core owns lives in a `SyncRef` (`bridge/syncRef.ts`):
+    // a write reaches every subscriber before it returns. A
+    // `SubscriptionRef` reaches one through `ref.changes`, which takes a
+    // fiber per subscriber to read — a step after the commit, and a third of
+    // the fiber time left at start-up when the machines were moved off it
+    // (2026-10-05). The pattern is the IMPORT, in its three spellings, so a
+    // comment that names the type does not trip it.
+    name: "50. The Effect core keeps its state in a SyncRef, never an Effect SubscriptionRef (a fiber per subscriber, a step late)",
+    pattern:
+      'from "effect/SubscriptionRef"|import \\{[^}]*\\bSubscriptionRef\\b|^\\s*(type )?SubscriptionRef,?\\s*$',
+    paths: ["../packages/client-core-effect/src/"],
+    excludes: [".test."],
+  },
+  {
+    // An Effect combinator that joins streams (`merge`, `flatMap`,
+    // `zipLatest`, `race`, …) runs each side on a fiber of its own and hands
+    // every chunk across: about eleven scheduler tasks per value, and no
+    // order between the sides. Two ports joined that way cost 4,250 tasks
+    // per 6 s where the bridge's one queue costs 600 (2026-10-04). Members
+    // join ports through `fromPort.merged([...])` and its sources
+    // (`portEvents`, `switchedPortEvents`, `latestOfEach`, `firstPortEvent`)
+    // instead; the bridge is the one place that may reach for the
+    // combinators. The pattern is the CALL, so prose that names one does
+    // not trip it.
+    name: "51. The Effect core joins streams through its bridge (fromPort.merged), never an Effect Stream combinator (a fiber per side, ~11 steps per value)",
+    pattern:
+      "Stream\\.(merge|flatMap|zip|race|interleave|combine|cross|concat|switchMap)\\w*\\(",
+    paths: ["../packages/client-core-effect/src/"],
+    excludes: ["/bridge/", ".test."],
+  },
+  {
+    // `vercel build` reads `engines.node` from the root package.json and
+    // refuses any range that meets none of the Node lines Vercel hosts —
+    // today 24.x at most — and nothing overrides it, not even the project's
+    // own Node setting. The tooling needs Node 26, so `"engines": { "node":
+    // ">=26" }` (added 2026-10-04) failed the next Deploy before its build
+    // started (2026-10-06); no CI step runs `vercel build`, so the PR was
+    // green. The floor lives in `devEngines.runtime` instead: Vercel does
+    // not read it, and pnpm enforces it on install, which it never did for
+    // `engines.node`. What the clients ship is static files, so the Node
+    // line Vercel then selects runs nothing.
+    name: "52. The root package.json keeps its Node floor in devEngines.runtime, never engines.node (vercel build rejects a range above the Node it hosts)",
+    pattern: "",
+    paths: [],
+    customCheck: checkNodeFloorLivesInDevEngines,
+  },
+  {
+    name: "53. A web client reads import.meta.env only in main.tsx (the entry hands the values to @rtc/web-boot)",
+    pattern: "import\\.meta\\.env",
+    paths: ["../packages/client-react/src/", "../packages/client-solid/src/"],
+    excludes: ["/node_modules/", "/src/main.tsx", ".test.", ".spec."],
+  },
 ];
 
 function checkDockerfileRunsAsNode(): string[] {
@@ -782,6 +843,35 @@ function checkDockerfileRunsAsNode(): string[] {
   }
 
   return [];
+}
+
+function checkNodeFloorLivesInDevEngines(): string[] {
+  const manifest = JSON.parse(
+    readFileSync("../package.json", "utf8"),
+  ) as RootManifest;
+  const failures: string[] = [];
+
+  if (manifest.engines?.node !== undefined) {
+    failures.push(
+      `package.json: engines.node is "${manifest.engines.node}" — move the floor to devEngines.runtime (vercel build reads engines.node)`,
+    );
+  }
+
+  const runtime = manifest.devEngines?.runtime;
+
+  if (runtime?.name !== "node" || !runtime.version) {
+    failures.push(
+      'package.json: devEngines.runtime must name "node" with a version range (the Node floor the .mts tooling needs)',
+    );
+  }
+
+  if (runtime?.onFail !== undefined && runtime.onFail !== "error") {
+    failures.push(
+      `package.json: devEngines.runtime.onFail is "${runtime.onFail}" — it must be "error", or pnpm no longer enforces the floor`,
+    );
+  }
+
+  return failures;
 }
 
 function checkFlyDeclaresConnectionHardLimit(): string[] {

@@ -5,15 +5,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactElement } from "react";
-import { useEffect, useMemo } from "react";
+import { type ReactElement, useEffect, useMemo } from "react";
 
-import type { InspectorStore } from "@rtc/devtools-core";
-import { LiveHistory } from "@rtc/devtools-core";
+import { type InspectorStore, LiveHistory } from "@rtc/devtools-core";
 
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
-import type { RecordingModel } from "#/recording/useRecording";
-import { useRecording } from "#/recording/useRecording";
+import { type RecordingModel, useRecording } from "#/recording/useRecording";
 
 interface MountRecordingToolbarOptions {
   store: InspectorStore;

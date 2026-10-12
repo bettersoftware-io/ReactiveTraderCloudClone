@@ -40,8 +40,11 @@ import {
   JARVIS_DEMO_STEPS,
   lastEntryId,
 } from "@rtc/core-logic";
-import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DEMO_STEP_TIMEOUT_MS,
+  type JarvisEvent,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 export interface JarvisDemoDeps {
   readonly jarvisState$: Observable<JarvisState>;

@@ -1,4 +1,4 @@
-import type { DriveTab } from "./driveCommand.js";
+import type { DriveTab } from "@rtc/domain";
 
 /** One desk panel a `layout` drive command can target. */
 export interface DeskPanelInfo {
@@ -10,7 +10,7 @@ export interface DeskPanelInfo {
  * The per-tab roster of DEFAULT-TREE desk panels — the ids a
  * `DriveCommandV1` `layout` command can actually target. Transport-neutral
  * so both the server persona (the model-facing roster) and the client
- * layout layer can consume one source; the client-core conformance test
+ * layout layer can consume one source; the core-logic conformance test
  * (`defaultLayoutPort.rosterConformance.test.ts`) pins this against the
  * real layout trees, which the server may not import. Off-tree registered
  * panels (`credit-sell-side`, `eq-depth`, `eq-sectors`) are deliberately

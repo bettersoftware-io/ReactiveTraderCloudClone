@@ -494,7 +494,7 @@ live, not hypothetical:
 
 - `RTC_CLIENT_PKG` (default `@rtc/client-react`) is the one env var that
   re-targets which client's dev server the shared suites drive —
-  `tests/scripts/devServer.ts`'s `CLIENT_PKG` constant reads it and hands the
+  `tests/scripts/clientServer.ts`'s `CLIENT_PKG` constant reads it and hands the
   value straight to `spawn("pnpm", ["--filter", CLIENT_PKG, "dev"])`.
 - `run-all.ts` adds two Solid entries to the concurrent pool —
   `test:browser:playwright:solid` and `test:browser:playwright-cucumber:solid`
@@ -503,12 +503,13 @@ live, not hypothetical:
   (3003–3004, vs. React's 3001–3002) and `-solid` report suffixes.
 - `playwright.config.ts`'s `testIgnore` (`notYetPortedSpecs`) is empty for
   both clients — `login.spec.ts` runs unmodified on the Solid run too, now
-  that `client-solid`'s `buildBrowserPorts.ts` reads `VITE_DEV_AUTH` via the
-  same `parseDevAuth` helper as `client-react` instead of hardcoding the
+  that `client-solid` reads `VITE_DEV_AUTH` via the same `parseDevAuth` helper
+  as `client-react` (both now share the one in `@rtc/web-boot`'s
+  `buildBrowserPorts.ts`) instead of hardcoding the
   `mcdc2026` demo roster. The mechanism stays wired for any future genuine
   port gap.
 
-Deep dive on the full mechanism — env var → `devServer.ts` → `run-all.ts`
+Deep dive on the full mechanism — env var → `clientServer.ts` → `run-all.ts`
 wiring, plus the two real incidents this cross-framework net has caught:
 [§21 Mechanism 3 — e2e via RTC_CLIENT_PKG](../docs/architecture/21-cross-framework-testing.md#mechanism-3--e2e-via-rtc_client_pkg).
 

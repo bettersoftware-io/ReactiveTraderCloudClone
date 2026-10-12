@@ -1,10 +1,11 @@
 import { defer, type Observable, timer } from "rxjs";
 import { map, tap } from "rxjs/operators";
 
-import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import {
+  type ExecutionRequest,
   isoDaysFromNow,
   SPOT_VALUE_DATE_OFFSET_DAYS,
+  type Trade,
   TradeStatus,
 } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";

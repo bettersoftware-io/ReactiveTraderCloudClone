@@ -9,6 +9,7 @@ import {
   Direction,
   type ExecutionPort,
   type ExecutionRequest,
+  type JarvisEvent,
   KNOWN_CURRENCY_PAIRS,
   type PositionUpdates,
   type PriceTick,
@@ -18,7 +19,6 @@ import {
   TradeStatus,
 } from "@rtc/domain";
 
-import type { JarvisEvent } from "../jarvisEvent.js";
 import { parsePanelSpec } from "../panelSpec.js";
 import {
   SCRIPTED_VOL_WORKSPACE_BATCH,

@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, createUniqueId, Show } from "solid-js";
+import { createMemo, createUniqueId, type JSX, Show } from "solid-js";
 
 import { type ThroughputPaths, throughputPaths } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -10,7 +9,7 @@ import styles from "./ThroughputChart.module.css";
  * Message-throughput area+line chart — an SVG gradient-glow area chart
  * replacing the earlier <canvas> draw, ported from PROTO
  * Throughput/ThroughputChart.tsx. Both the glow line and the gradient area
- * come from the shared throughputPaths vm (client-core) as smoothed
+ * come from the shared throughputPaths vm (core-logic) as smoothed
  * Catmull-Rom path `d` strings; the gradient id is per-instance via
  * createUniqueId() (PnlChart.tsx precedent), and the area fill closes to a
  * flat baseline when no data has arrived yet, which is when the "NO DATA"

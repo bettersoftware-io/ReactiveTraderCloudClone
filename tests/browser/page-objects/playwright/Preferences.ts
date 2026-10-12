@@ -26,6 +26,17 @@ export class PlaywrightPreferences implements PreferencesPO {
     });
   }
 
+  async waitModalHoldsFocus(timeoutMs: number): Promise<void> {
+    await this.page.waitForFunction(
+      (modalTestId) => {
+        const modal = document.querySelector(`[data-testid="${modalTestId}"]`);
+        return modal?.contains(document.activeElement) ?? false;
+      },
+      TESTIDS.prefs.modal,
+      { timeout: timeoutMs },
+    );
+  }
+
   async selectChartSubstrate(value: PrefsChartSubstrate): Promise<void> {
     await this.page
       .getByTestId(TESTIDS.prefs.chartSubstrateSegment(value))
@@ -40,6 +51,15 @@ export class PlaywrightPreferences implements PreferencesPO {
 
   async selectCoreImpl(value: PrefsCoreImpl): Promise<void> {
     await this.page.getByTestId(TESTIDS.prefs.coreImplSegment(value)).click();
+  }
+
+  async waitCoreImplSelected(
+    value: PrefsCoreImpl,
+    timeoutMs: number,
+  ): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.prefs.coreImplSegment(value)),
+    ).toHaveAttribute("aria-pressed", "true", { timeout: timeoutMs });
   }
 
   async close(): Promise<void> {

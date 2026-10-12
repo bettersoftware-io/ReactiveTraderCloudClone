@@ -1,5 +1,5 @@
 import { bind, useStateObservable } from "@react-rxjs/core";
-import { combineLatest, firstValueFrom, map } from "rxjs";
+import { combineLatest, firstValueFrom, map, of } from "rxjs";
 
 import type {
   ActivityEntry,
@@ -71,7 +71,6 @@ import {
   DEFAULT_LAYOUT_ENGINE,
   DEFAULT_LOGIN_WAIT_DELAY,
   DEFAULT_LOGIN_WAIT_STYLE,
-  DEFAULT_LOGIN_WAIT_VARIANT,
   DEFAULT_THEME_MODE,
   DEFAULT_THEME_MODE_PREFERENCE,
   DEFAULT_THEME_SKIN,
@@ -90,6 +89,7 @@ import {
   type JarvisEffort,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
@@ -110,7 +110,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import type { AdminJarvisUsagePayload } from "@rtc/shared";
 
 import { useMachine } from "#/useMachine";
 
@@ -335,14 +334,29 @@ export interface UseLayoutPresetsResult {
 
 /** App-shell values a host passes through `createViewModel`'s optional 4th
  * arg — things owned by the shell that boots the core, not by the core
- * itself. Today the runtime core switch and the login screen's demo accounts; RN and older callers omit
- * this entirely. */
+ * itself. Today the runtime core switch, the login screen's demo accounts and
+ * the one-shot "reopen Preferences" after a core swap; RN and older callers
+ * omit this entirely. */
 export interface ViewModelShell {
   readonly coreSelection?: CoreSelection;
   /** The sign-ins this page verifies in the browser, for the login
    * screen's demo-accounts hint. Omitted (or empty) on a plain live build,
    * where every credential belongs to the server. */
   readonly demoAccounts?: readonly DemoAccount[];
+  /** True exactly once, for the composition a core swap produced: the
+   * header opens Preferences again on the new core. Omitted by a host that
+   * never swaps (RN). */
+  readonly takePreferencesReopen?: () => boolean;
+  /** What `takePreferencesReopen` would answer, without consuming it. */
+  readonly peekPreferencesReopen?: () => boolean;
+}
+
+/** The core switch as the Preferences row reads it (web only): the shell's
+ * selection, with its failure stream's current value in place of the
+ * stream. */
+export interface CoreSelectionView extends Omit<CoreSelection, "failure$"> {
+  /** Why the last `select` left the page on `current`, or null. */
+  readonly failure: string | null;
 }
 
 export interface ViewModel {
@@ -549,7 +563,7 @@ export interface ViewModel {
   useJarvisPreferences: () => UseJarvisPreferencesResult;
   /** Rolling Jarvis usage/cost telemetry (Admin surface) — null until the
    * first snapshot. */
-  useJarvisUsage: () => AdminJarvisUsagePayload | null;
+  useJarvisUsage: () => JarvisUsage | null;
   /** The generative-UI desk panels J.A.R.V.I.S. has spawned this session,
    * plus the dismiss intent (singleton, app-level). Starts empty. */
   useJarvisPanels: () => UseJarvisPanelsResult;
@@ -587,10 +601,19 @@ export interface ViewModel {
   /** Shared incident-machine state + inject/clear intents. */
   useIncident: () => UseIncidentResult;
   /** The app-shell core switch (web only); null when the host offers none. */
-  useCoreSelection: () => CoreSelection | null;
+  useCoreSelection: () => CoreSelectionView | null;
   /** The demo sign-ins the login screen may hint at; empty when the host
    * offers none (a plain live build, RN). */
   useDemoAccounts: () => readonly DemoAccount[];
+  /** Not a hook: consumes the shell's one-shot "reopen Preferences" signal
+   * (true at most once per composition, false when the host offers none).
+   * Optional so a hand-built ViewModel (RN's visual fake) may omit it;
+   * `createViewModel` always supplies it. */
+  takePreferencesReopen?: () => boolean;
+  /** Not a hook: what `takePreferencesReopen` would answer, without
+   * consuming it — a pure read, safe in a render React may throw away. Read
+   * it to decide, take it once committed. Optional like its sibling. */
+  peekPreferencesReopen?: () => boolean;
 }
 
 export function createViewModel(
@@ -601,6 +624,16 @@ export function createViewModel(
 ): ViewModel {
   const coreSelection = shell?.coreSelection ?? null;
   const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
+  const takePreferencesReopen =
+    shell?.takePreferencesReopen ?? declinePreferencesReopen;
+
+  const peekPreferencesReopen =
+    shell?.peekPreferencesReopen ?? declinePreferencesReopen;
+
+  const [useCoreSelectionFailure] = bind(
+    coreSelection?.failure$ ?? of(null),
+    null,
+  );
 
   const [usePrice] = bind((pair: CurrencyPair) => {
     return presenters.priceStream.price$(pair);
@@ -820,15 +853,18 @@ export function createViewModel(
     presenters.eqBlotterViewPreference.setView(view);
   }
 
-  // Global/shared auth state → a plain bind (not a per-mount machine).
-  const [useAuthState] = bind(presenters.auth.state$, {
-    status: "unauthenticated",
-    user: null,
-    locked: false,
-    unlocking: false,
-    error: null,
-    waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
-  });
+  // Global/shared auth state, read DIRECTLY off the presenter's own state$
+  // (the eqWorkspace pattern below), not through bind(). bind() serves its
+  // default on the first render even over a warm source, and any default
+  // here is a guess: "unauthenticated" made React commit the login screen
+  // and remove it again within one task on every composition with a resumed
+  // session, at boot and after each core swap. Every core builds
+  // auth.state$ as a state stream whose default is the resumed session it
+  // read at construction, so the first render reads the real state with no
+  // subscriber needed.
+  function useAuthState(): AuthViewState {
+    return useStateObservable(presenters.auth.state$);
+  }
 
   // Stable, this-bound command callbacks (the presenter methods touch `this`).
   function loginAuth(username: string, password: string): void {
@@ -973,7 +1009,7 @@ export function createViewModel(
 
   const [useJarvisUsageValue] = bind(
     presenters.jarvisUsage.usage$,
-    null as AdminJarvisUsagePayload | null,
+    null as JarvisUsage | null,
   );
 
   const [useJarvisPanelsValue] = bind(
@@ -1542,14 +1578,32 @@ export function createViewModel(
       };
     },
     useCoreSelection: () => {
-      return coreSelection;
+      const failure = useCoreSelectionFailure();
+
+      if (coreSelection === null) {
+        return null;
+      }
+
+      return {
+        current: coreSelection.current,
+        options: coreSelection.options,
+        select: coreSelection.select,
+        failure,
+      };
     },
     useDemoAccounts: () => {
       return demoAccounts;
     },
+    takePreferencesReopen,
+    peekPreferencesReopen,
   };
 }
 
 /** One shared empty list, so a host without demo accounts hands every
  * render the same reference. */
 const NO_DEMO_ACCOUNTS: readonly DemoAccount[] = [];
+
+/** The answer of a host that never swaps cores: nothing to reopen. */
+function declinePreferencesReopen(): boolean {
+  return false;
+}

@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useRef } from "react";
+import { type ReactElement, useRef } from "react";
 
 import type { JarvisPanelVm } from "@rtc/core-api";
 import { MAX_DOCKED_PANELS } from "@rtc/core-logic";

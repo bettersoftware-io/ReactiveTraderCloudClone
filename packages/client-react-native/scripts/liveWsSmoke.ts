@@ -6,7 +6,7 @@ import {
   InMemorySessionStore,
   WsAdapter,
   wsUrlToHttpBase,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import { KNOWN_CURRENCY_PAIRS, PreferencesSimulator } from "@rtc/domain";
 
 /**

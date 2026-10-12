@@ -2,11 +2,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Recording } from "@rtc/devtools-core";
 import {
   InspectorStore,
   PROTOCOL_VERSION,
   RECORDING_VERSION,
+  type Recording,
   serializeRecording,
 } from "@rtc/devtools-core";
 

@@ -1,5 +1,4 @@
-import type { Accessor, JSX } from "solid-js";
-import { For, Show } from "solid-js";
+import { type Accessor, For, type JSX, Show } from "solid-js";
 
 import {
   type CurrencyExposure,

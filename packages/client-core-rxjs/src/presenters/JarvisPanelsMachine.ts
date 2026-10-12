@@ -14,7 +14,7 @@ import {
   restoreDockedPanelInState,
   undockPanelInState,
 } from "@rtc/core-logic";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
+import type { JarvisEvent, PanelSpecV1 } from "@rtc/domain";
 
 const INITIAL: JarvisPanelsState = { panels: [] };
 

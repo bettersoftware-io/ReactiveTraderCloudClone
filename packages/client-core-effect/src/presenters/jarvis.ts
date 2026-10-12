@@ -35,9 +35,9 @@ import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import {
   closeScope,
@@ -49,7 +49,7 @@ import {
   listenToStream,
   reportOutOfBand,
 } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisMachineDeps {
   readonly port: JarvisPort;
@@ -75,7 +75,7 @@ export interface NativeJarvis {
 
 /**
  * `presenters.jarvis` on the Effect core: the shared `createJarvisController`
- * (client-core) holds every rule; this file owns only the timing, on its
+ * (core-logic) holds every rule; this file owns only the timing, on its
  * own child host.
  * - State is a `SyncRef`, committed synchronously; each patch is applied
  *   exactly once (`SyncRef.set` runs it once inside `runSync`).
@@ -99,7 +99,7 @@ export function createJarvisMachine(
   const host = createChildHost(parent);
   const confirmTimeoutMs = deps.confirmTimeoutMs ?? JARVIS_CONFIRM_TIMEOUT_MS;
   const controller = createJarvisController();
-  const ref = createSyncRef<JarvisState>(host, JARVIS_INITIAL_STATE);
+  const ref = createSyncRef<JarvisState>(JARVIS_INITIAL_STATE);
   const events = createHotStream<JarvisEvent>();
   let countdown: Fiber.RuntimeFiber<void> | null = null;
   let closed = false;

@@ -1,8 +1,7 @@
 // packages/client-react-native/tests/pages/BootEmblemPage.tsx
 import { cleanup, screen } from "@testing-library/react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { BootEmblem } from "#/ui/shell/boot/BootEmblem";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

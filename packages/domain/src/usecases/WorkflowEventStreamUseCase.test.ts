@@ -2,8 +2,7 @@ import { of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { Quote } from "../credit/quote.js";
-import type { Rfq } from "../credit/rfq.js";
-import { RfqState } from "../credit/rfq.js";
+import { type Rfq, RfqState } from "../credit/rfq.js";
 import { Direction } from "../fx/trade.js";
 import type { RfqEvent, WorkflowPort } from "../ports/workflowPort.js";
 import {

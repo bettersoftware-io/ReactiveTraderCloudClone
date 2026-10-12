@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { StyleSheet, type TextStyle, View, type ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,

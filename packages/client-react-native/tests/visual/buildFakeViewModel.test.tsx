@@ -227,9 +227,9 @@ const LIVE_SOURCE_PATTERN =
  * has no saved layouts either), then `useCoreSelection` (→ 77) for the
  * runtime application-core switch (also `InertSlice` — RN has no core-switch
  * UI), then `useEquityPriceHistory` (→ 78) for the movers sparkline's live
- * quote window (`EquitiesSlice`), then `useDemoAccounts` (→ 79) for the web
- * login screen's demo-accounts hint (`InertSlice` — RN's login screen offers
- * none). The compiler found every one of
+ * quote window (`EquitiesSlice`), then `useDemoAccounts` (→ 79) for the login
+ * screen's demo-accounts hint (`ShellSlice` since RN's sign-in screen gained
+ * the hint). The compiler found every one of
  * these on the next catch-up merge, because `buildFakeViewModel` is typed
  * `ViewModel` with no cast — the same reason it caught `loadOlderCandles`,
  * the one member without a `use` prefix, which a hand-written census had

@@ -1,6 +1,6 @@
 import type { DevtoolsHub } from "../DevtoolsHub";
 
-/** Structural subset of client-core's IWsAdapter that the tap needs. */
+/** Structural subset of core-api's IWsAdapter that the tap needs. */
 export interface WsAdapterLike {
   on(type: string, handler: (payload: unknown) => void): () => void;
   send(type: string, payload?: unknown): void;

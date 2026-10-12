@@ -1,5 +1,4 @@
-import type { ChangeEvent, ReactElement } from "react";
-import { useState } from "react";
+import { type ChangeEvent, type ReactElement, useState } from "react";
 
 import { type Instrument, type Quote, type Rfq, RfqState } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";

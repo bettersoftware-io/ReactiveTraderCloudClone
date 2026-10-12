@@ -172,9 +172,8 @@ describe("createThroughputPresenter (effect)", () => {
     });
   });
 
-  // The echo is read from a FRESH subscriber's synchronous seed, which reads
-  // the ref: a subscriber made before the close follows the ref on a fiber
-  // the close interrupted, so it would read 700 whether or not 800 landed.
+  // The echo is read from a fresh subscriber's synchronous seed, which reads
+  // the ref.
   it("after the host scope closes, setValue neither writes nor echoes", async () => {
     const admin = createScriptedAdmin();
     const host = useHost();

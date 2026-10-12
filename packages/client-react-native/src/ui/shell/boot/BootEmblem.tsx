@@ -1,5 +1,4 @@
-import type { JSX } from "react";
-import { useEffect, useRef } from "react";
+import { type JSX, useEffect, useRef } from "react";
 import { Animated, StyleSheet, type ViewStyle } from "react-native";
 import Svg, { Circle, Polygon } from "react-native-svg";
 

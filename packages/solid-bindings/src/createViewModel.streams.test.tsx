@@ -12,7 +12,10 @@ import { BehaviorSubject, type Observable, of } from "rxjs";
 import { createSignal } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type {
   AnimationIntent,
@@ -295,7 +298,7 @@ describe("createViewModel — preferences", () => {
     // ThroughputPresenter reflects setValue optimistically (synchronous echo
     // via its setValue$ Subject, before the debounced write fires — see
     // "reflects setValue optimistically before the write resolves" in
-    // client-core's ThroughputPresenter.test.ts), so the accessor must show
+    // client-core-rxjs's ThroughputPresenter.test.ts), so the accessor must show
     // the new value immediately after the intent.
     result.setValue(250);
     expect(result.value()).toBe(250);

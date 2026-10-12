@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { type CurrencyCategory, matchesCurrencyFilter } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";

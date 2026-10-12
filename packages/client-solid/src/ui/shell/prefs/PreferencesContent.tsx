@@ -1,26 +1,30 @@
-import type { Accessor, JSX } from "solid-js";
-import { createMemo, createSignal, For, Show } from "solid-js";
-
-import type { CoreImpl, CoreSelection, JarvisState } from "@rtc/core-api";
-import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
-import type {
-  AmbientStyle,
-  ChartSubstrate,
-  JarvisBrain,
-  JarvisEffort,
-  JarvisNarratorPreference,
-  LayoutEngine,
-  LoginWaitDelay,
-  LoginWaitStyle,
-  PowerSaverLevel,
-} from "@rtc/domain";
 import {
+  type Accessor,
+  createMemo,
+  createSignal,
+  For,
+  type JSX,
+  Show,
+} from "solid-js";
+
+import type { CoreImpl, JarvisState } from "@rtc/core-api";
+import { formatBrainHint, formatGateHint } from "@rtc/core-logic";
+import {
+  type AmbientStyle,
+  type ChartSubstrate,
   JARVIS_BRAIN_LABELS,
   JARVIS_BRAINS,
   JARVIS_EFFORTS,
   JARVIS_NARRATOR_PREFERENCES,
+  type JarvisBrain,
+  type JarvisEffort,
+  type JarvisNarratorPreference,
+  type LayoutEngine,
+  type LoginWaitDelay,
+  type LoginWaitStyle,
+  type PowerSaverLevel,
 } from "@rtc/domain";
-import { useViewModel } from "@rtc/solid-bindings";
+import { type CoreSelectionView, useViewModel } from "@rtc/solid-bindings";
 
 import { PrefAction } from "./PrefAction";
 import { PrefSegment, type PrefSegmentOption } from "./PrefSegment";
@@ -80,6 +84,11 @@ export function PreferencesContent(): JSX.Element {
 
   const resetWorkspaceLayout = useWorkspaceReset();
   const coreSelection = useCoreSelection();
+
+  /** Why the last core switch left the page where it was, or null (no line). */
+  function coreSelectionFailure(): string | null {
+    return coreSelection === null ? null : coreSelection.failure();
+  }
 
   const { enabled: animatedBg, toggle: toggleAnimatedBg } =
     useAnimatedBackground();
@@ -288,6 +297,19 @@ export function PreferencesContent(): JSX.Element {
             testid="pref-segment-coreImpl"
           />
         </Show>
+        <Show when={coreSelectionFailure()}>
+          {(failure: Accessor<string>) => {
+            return (
+              <div
+                role="alert"
+                class={styles.coreFailure}
+                data-testid="prefs-core-failure"
+              >
+                {failure()}
+              </div>
+            );
+          }}
+        </Show>
         <ToggleGroup
           defs={MOTION_TOGGLES}
           values={toggles}
@@ -399,7 +421,7 @@ export function PreferencesContent(): JSX.Element {
 }
 
 const CORE_SELECTION_DESCRIPTION =
-  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching reloads the page.";
+  "Which core runs the app: RxJS, async/await, or Effect-TS. Switching swaps the core in place, without a reload.";
 
 /**
  * The "Application core" row's description: the fixed sentence above plus
@@ -409,7 +431,7 @@ const CORE_SELECTION_DESCRIPTION =
  * sentence alone; the row itself is absent entirely in that case anyway.
  */
 function formatCoreSelectionDescription(
-  coreSelection: CoreSelection | null,
+  coreSelection: CoreSelectionView | null,
 ): string {
   if (coreSelection === null) {
     return CORE_SELECTION_DESCRIPTION;

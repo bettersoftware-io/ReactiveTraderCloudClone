@@ -1,4 +1,8 @@
-import { AppShell, HeaderChrome } from "@ui-contract/components";
+import {
+  AppShell,
+  AuthGatedHeaderChrome,
+  HeaderChrome,
+} from "@ui-contract/components";
 import {
   cleanupMounted,
   createWorld,
@@ -228,5 +232,37 @@ describe("HeaderChrome", () => {
     await app.header.clickTab("credit");
     expect(app.header.isActive("credit")).toBe(true);
     expect(app.header.isActive("fx")).toBe(false);
+  });
+});
+
+/**
+ * After a core swap the host mounts a new composition whose shell carries a
+ * one-shot "reopen Preferences" signal (spec 2026-10-05-core-hot-swap-design
+ * §5): the header opens the modal once, on the new core, and never again in
+ * that composition.
+ */
+describe("HeaderChrome — Preferences after a core swap", () => {
+  it("opens Preferences on mount when the composition asks for it", () => {
+    const header = mount(HeaderChrome, {
+      props: { activeTab: "fx", onTabChange: () => {} },
+      preferencesReopen: true,
+    });
+
+    expect(header.prefsOpen()).toBe(true);
+  });
+
+  it("does not reopen Preferences when AuthGate remounts the header (sign out, sign in)", async () => {
+    const world = createWorld({ preferencesReopen: true });
+    const header = mountWith(world, AuthGatedHeaderChrome, {
+      activeTab: "fx",
+      onTabChange: () => {},
+    });
+    expect(header.prefsOpen()).toBe(true);
+    await header.closePrefs();
+
+    header.signOutAndBackIn();
+
+    expect(header.isRendered()).toBe(true);
+    expect(header.prefsOpen()).toBe(false);
   });
 });

@@ -94,11 +94,19 @@ interface CompareOpts {
   inlineGolden?: Buffer;
 }
 
+/** Why a comparison failed WITHOUT comparing pixels. Both cases report
+ * `ratio: 1`, which reads as "every pixel differs" — so a runner has to print
+ * the reason, or a scenario that simply has no golden yet looks like a total
+ * visual regression. */
+type NoComparisonReason = "missing-golden" | "size-mismatch";
+
 interface CompareResult {
   pass: boolean;
   mismatchedPixels: number;
   ratio: number;
   diffPng: Buffer | null;
+  /** Set when the result is not a pixel diff; `null` for a real comparison. */
+  noComparison: NoComparisonReason | null;
 }
 
 export async function compareToGolden(
@@ -118,7 +126,13 @@ export async function compareToGolden(
       if (opts.createIfMissing) {
         await mkdir(dirname(goldenPath), { recursive: true });
         await writeFile(goldenPath, actualPng);
-        return { pass: true, mismatchedPixels: 0, ratio: 0, diffPng: null };
+        return {
+          pass: true,
+          mismatchedPixels: 0,
+          ratio: 0,
+          diffPng: null,
+          noComparison: null,
+        };
       }
 
       return {
@@ -126,6 +140,7 @@ export async function compareToGolden(
         mismatchedPixels: actual.width * actual.height,
         ratio: 1,
         diffPng: null,
+        noComparison: "missing-golden",
       };
     }
   }
@@ -139,6 +154,7 @@ export async function compareToGolden(
       mismatchedPixels: actual.width * actual.height,
       ratio: 1,
       diffPng: null,
+      noComparison: "size-mismatch",
     };
   }
 
@@ -160,5 +176,24 @@ export async function compareToGolden(
     mismatchedPixels: mismatched,
     ratio,
     diffPng: pass ? null : PNG.sync.write(diff),
+    noComparison: null,
   };
+}
+
+/** The one-line verdict a runner prints for a scenario. A result that never
+ * compared pixels says why, instead of the `100.0000%` its ratio would print. */
+export function verdictLine(id: string, result: CompareResult): string {
+  if (result.noComparison === "missing-golden") {
+    return `NO GOLDEN ${id}  (nothing to compare against — capture one with the :update script)`;
+  }
+
+  if (result.noComparison === "size-mismatch") {
+    return `SIZE     ${id}  (the capture and its golden differ in dimensions)`;
+  }
+
+  const percent = `${(result.ratio * 100).toFixed(4)}%`;
+
+  return result.pass
+    ? `pass     ${id}  (${percent})`
+    : `FAIL     ${id}  (${percent})`;
 }

@@ -105,11 +105,11 @@ identity. Each describer is parameterised by a `makeHarness()` factory
 returning `{port, driver, teardown}`, so the same assertions run twice:
 once against the simulator implementation in `packages/domain/src/simulators/`
 and once against the WsReal implementation in
-`packages/client-core/src/adapters/portFactory.ts` driven by an in-memory
+`packages/client-adapters/src/adapters/portFactory.ts` driven by an in-memory
 `FakeWsAdapter` that scripts canonical wire frames from
 `packages/shared/src/__fixtures__/wireFrames.ts`. The equities port trio has
 the same treatment (`wsRealMarketData.contract.test.ts`, `portFactory.equities.test.ts`
-in `client-core`).
+in `client-adapters`).
 
 The contract is happy-path only. Error semantics (RPC nack handling) are
 covered by three `wsReal<Execution|Pricing|Workflow>.errors.test.ts`
@@ -127,7 +127,7 @@ below) retired the other two candidate tiers from the assert role:
 | Tier | Runner | Config | Role today |
 |---|---|---|---|
 | **Playwright** (the sole CI-asserted tier) | Plain Playwright over a Vite host | `playwright/` | Asserts on every push to `main` — the framework-agnostic spec (`visual.spec.ts`) is reused **verbatim** by `client-solid` |
-| Vitest browser mode | `vitest-browser-react` + `toMatchScreenshot` | `vitest-browser/` | **Coverage-only instrument** — still renders + interacts through the full shared scenario matrix (`@rtc/ui-contract`) so istanbul sees every branch, but the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`); never gates anything |
+| Vitest browser mode | `vitest-browser-react` + `toMatchScreenshot` | `vitest-browser/` | **Coverage-only instrument** — still renders + interacts through the full shared scenario matrix (`@rtc/ui-contract`) so istanbul sees every branch, but the pixel assert is compiled out (`__RTC_VISUAL_SKIP_DIFF__`); the matrix walk gates nothing. One spec beside it does gate PRs: `coreSwapOverlay.spec.tsx` reads the core-swap overlay's computed styles (opaque from `loading` on, the two fade durations, the easing), and `ci.yml`'s `e2e` job runs it for both web clients through `test:ui:styles` |
 | ~~Playwright Component Testing~~ | ~~`@playwright/experimental-ct-react`~~ | ~~`playwright-ct/`~~ | **Retired** — deleted along with its goldens |
 
 Two golden sets are committed for the surviving tier, under
@@ -182,8 +182,8 @@ import React, RxJS, or Playwright internals") applies to the co-located
 `src/**` unit tier too, enforced by `rtc/no-framework-calls-in-specs`:
 specs call semantic methods on page modules under the package's
 `tests/**/pages/`; those modules are the only test files importing
-`@testing-library/*`. Rollout state and per-package backlog:
-[`docs/lint-warnings.md`](../lint-warnings.md). Design:
+`@testing-library/*`. The rule is an error in every covered tree (the
+migration backlog reached zero on 2026-09-04). Design:
 [page-object isolation spec](../superpowers/specs/2026-09-01-spec-page-object-isolation-design.md).
 
 **A page object must also CONSTRUCT the component it is named for**, not accept

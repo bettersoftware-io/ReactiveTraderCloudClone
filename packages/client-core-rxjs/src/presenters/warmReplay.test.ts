@@ -1,8 +1,8 @@
 import { NEVER, Observable, ReplaySubject, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { createWsRealPorts, InMemorySessionStore } from "@rtc/client-core";
-import { FakeWsAdapter } from "@rtc/client-core/testing";
+import { createWsRealPorts, InMemorySessionStore } from "@rtc/client-adapters";
+import { FakeWsAdapter } from "@rtc/client-adapters/testing";
 import { AuthSimulator, type PreferencesPort } from "@rtc/domain";
 import { CLIENT_MSG } from "@rtc/shared";
 

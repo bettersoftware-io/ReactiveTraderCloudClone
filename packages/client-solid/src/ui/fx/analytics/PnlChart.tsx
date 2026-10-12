@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, createUniqueId, Show } from "solid-js";
+import { createMemo, createUniqueId, type JSX, Show } from "solid-js";
 
 import type { HistoricPosition } from "@rtc/domain";
 

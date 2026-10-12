@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { main, TIERS } from "./coverage-report.ts";
 
 describe("coverage-report CLI", () => {
-  it("exposes the ten standalone coverage tiers, both clients framework-prefixed and symmetric", () => {
+  it("exposes the eleven standalone coverage tiers, both clients framework-prefixed and symmetric", () => {
     expect(
       TIERS.coverage.map((t) => {
         return t.name;
@@ -15,6 +15,7 @@ describe("coverage-report CLI", () => {
       "server",
       "devtools/core",
       "devtools/app",
+      "web-boot",
       "react/app",
       "react/ui (contract)",
       "react/ui (visual reach)",

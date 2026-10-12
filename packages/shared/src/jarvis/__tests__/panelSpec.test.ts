@@ -4,12 +4,12 @@ import {
   PANEL_ANNOTATION_KINDS,
   PANEL_ANNOTATION_TONES,
   PANEL_SOURCE_KINDS,
-  PANEL_SPEC_JSON_SCHEMA,
   PANEL_TOPN_BY_VALUES,
   PANEL_TRANSFORM_KINDS,
   PANEL_VIZ_KINDS,
-  parsePanelSpec,
-} from "../panelSpec.js";
+} from "@rtc/domain";
+
+import { PANEL_SPEC_JSON_SCHEMA, parsePanelSpec } from "../panelSpec.js";
 
 describe("parsePanelSpec — valid input", () => {
   it("accepts a minimal valid spec (fxTicks + line)", () => {

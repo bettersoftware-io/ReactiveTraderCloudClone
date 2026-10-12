@@ -1,4 +1,11 @@
-import { type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  Profiler,
+  type ReactNode,
+  useContext,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 import { View } from "react-native";
 
 import type { PowerSaverLevel, ThemeMode, ThemeSkin } from "@rtc/domain";
@@ -11,6 +18,7 @@ import { useTheme } from "#/ui/theme/useTheme";
 
 import { buildFakeViewModel } from "./buildFakeViewModel";
 import { SkinOverrideContext } from "./SkinOverrideContext";
+import { useSceneSettled } from "./useSceneSettled";
 
 interface Props {
   skin: ThemeSkin;
@@ -71,11 +79,11 @@ const HARNESS_FONT_PROBE = { probe: { size: 12 } } as const;
  * ThemeProvider override; no production touch was needed for the skin/mode
  * axis.
  *
- * Renders `children` ONLY once both font paths have loaded, and sets
- * `testID="visual-ready"` on the root one frame after that — the RN text
+ * Renders `children` ONLY once both font paths have loaded — the RN text
  * families (`useAppFonts`) and the Skia typefaces the boot scenes draw with —
- * the same rendered-ready marker the capture drivers (Tasks 1.x/2.x/3.x) wait
- * on before taking the screenshot.
+ * and sets `testID="visual-ready"` on the root once the scene has stopped
+ * committing (`useSceneSettled`). That is the rendered-ready marker the
+ * capture drivers wait on before taking the screenshot.
  *
  * WHY `children` IS GATED AND NOT MERELY THE MARKER. iOS resolves a `<Text>`'s
  * `fontFamily` when the node is CREATED, and no later re-render re-resolves
@@ -92,8 +100,11 @@ const HARNESS_FONT_PROBE = { probe: { size: 12 } } as const;
  * commit.
  *
  * The gate deliberately sits one commit AHEAD of the marker: children mount on
- * the commit where fonts become ready, and `visual-ready` follows a frame
- * later, so the marker can never appear before real-font text has painted. */
+ * the commit where fonts become ready, and `visual-ready` follows once the
+ * scene has settled, so the marker can never appear before real-font text has
+ * painted. Until 2026-10-06 it followed ONE FRAME later, which was before a
+ * scene that measures itself had redrawn: on a slow emulator the shot landed
+ * between `CandleChart`'s two commits. */
 export function VisualScenarioHost({
   skin,
   mode,
@@ -125,28 +136,25 @@ export function VisualScenarioHost({
       overrides: viewModelOverrides,
     });
   });
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!fontsReady) {
-      return undefined;
-    }
-
-    const handle = requestAnimationFrame(() => {
-      setReady(true);
-    });
-
-    return () => {
-      cancelAnimationFrame(handle);
-    };
-  }, [fontsReady]);
+  const { settled: ready, recordCommit } = useSceneSettled(fontsReady);
+  // One element for as long as the scene is the same. `useSceneSettled`
+  // re-renders this host from its own state, and a `Profiler` reports every
+  // render that reaches it: without a stable element the hook would count its
+  // own re-render as the scene committing, and never settle. Written out, not
+  // left to the React Compiler, because jest runs without it.
+  const profilerId = useId();
+  const scene = useMemo(() => {
+    return (
+      <Profiler id={profilerId} onRender={recordCommit}>
+        {fontsReady ? children : null}
+      </Profiler>
+    );
+  }, [profilerId, recordCommit, fontsReady, children]);
 
   return (
     <ViewModelProvider viewModel={viewModel}>
       <ThemeProvider>
-        <ScenarioSurface ready={ready}>
-          {fontsReady ? children : null}
-        </ScenarioSurface>
+        <ScenarioSurface ready={ready}>{scene}</ScenarioSurface>
       </ThemeProvider>
     </ViewModelProvider>
   );
@@ -195,7 +203,15 @@ function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
        * 41 accessibility nodes -> 3), which would blind the Maestro tier
        * to the scenario's own content.
        *
-       * 1x1 and empty, so it paints nothing and cannot shift a golden. */}
+       * 1x1 and empty, so it paints nothing and cannot shift a golden.
+       *
+       * Halfway down the left edge, not in a corner: on Android the status
+       * bar and the navigation bar are windows of their own, drawn over the
+       * top and bottom of an edge-to-edge app, and Maestro drops an element
+       * that sits wholly under one of them. At `top: 0` the marker was in
+       * `uiautomator dump` yet absent from Maestro's hierarchy, so every flow
+       * timed out waiting for a screen that was ready (measured 2026-10-05;
+       * enlarging it to 12x12 changed nothing, moving it down fixed it). */}
       <View
         testID={ready ? "visual-ready" : "visual-pending"}
         accessible={true}
@@ -203,7 +219,7 @@ function ScenarioSurface({ ready, children }: SurfaceProps): ReactNode {
         pointerEvents="none"
         style={{
           position: "absolute",
-          top: 0,
+          top: "50%",
           left: 0,
           width: 1,
           height: 1,

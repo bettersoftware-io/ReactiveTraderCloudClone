@@ -1,7 +1,8 @@
-import { Duration, Effect, Scope, SubscriptionRef } from "effect";
+import { Duration, Effect, Scope } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDetachedHost, type EffectHost } from "#/bridge/out";
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run, type RunSlot } from "#/machines/runSlot";
 
 describe("createRunSlot", () => {
@@ -19,7 +20,7 @@ describe("createRunSlot", () => {
   });
 
   it("start() forks the build and write() updates the ref", async () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
 
     slot.start((run: Run<number>) => {
       return run.write(() => {
@@ -28,11 +29,11 @@ describe("createRunSlot", () => {
     });
     await settle();
 
-    expect(current(host, ref)).toBe(1);
+    expect(ref.get()).toBe(1);
   });
 
   it("a second start() interrupts the first run's fiber; its queued write and guarded step never land", async () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
     let finalized = false;
     let guardedRan = false;
 
@@ -59,7 +60,7 @@ describe("createRunSlot", () => {
       );
     });
     await settle();
-    expect(current(host, ref)).toBe(1);
+    expect(ref.get()).toBe(1);
 
     // Fire the sleep timer SYNCHRONOUSLY: the continuation (the second
     // write, then the guarded step) is queued on the scheduler but has not
@@ -79,12 +80,12 @@ describe("createRunSlot", () => {
     await settle();
 
     expect(finalized).toBe(true);
-    expect(current(host, ref)).toBe(100);
+    expect(ref.get()).toBe(100);
     expect(guardedRan).toBe(false);
   });
 
   it("a build that calls start() on its OWN slot interrupts itself first; the second run executes and the first run's write yielded after the inner start never reaches the ref", async () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
 
     slot.start((run: Run<number>) => {
       return Effect.gen(function* runFirst() {
@@ -100,7 +101,7 @@ describe("createRunSlot", () => {
     });
     await settle();
 
-    expect(current(host, ref)).toBe(2);
+    expect(ref.get()).toBe(2);
   });
 
   it("start() reassigning the token stops a captured run's write()/guarded() driven DIRECTLY — no fiber, no interrupt in play (positive control: the still-live run's write/guarded do land)", () => {
@@ -116,7 +117,7 @@ describe("createRunSlot", () => {
         return 7;
       }),
     );
-    expect(current(host, ref)).toBe(7);
+    expect(ref.get()).toBe(7);
     host.runtime.runSync(
       captured.guarded(
         Effect.sync(() => {
@@ -140,7 +141,7 @@ describe("createRunSlot", () => {
         return 999;
       }),
     );
-    expect(current(host, ref)).toBe(7);
+    expect(ref.get()).toBe(7);
     host.runtime.runSync(
       captured.guarded(
         Effect.sync(() => {
@@ -163,7 +164,7 @@ describe("createRunSlot", () => {
         return 3;
       }),
     );
-    expect(current(host, ref)).toBe(3);
+    expect(ref.get()).toBe(3);
 
     slot.end();
 
@@ -172,7 +173,7 @@ describe("createRunSlot", () => {
         return 404;
       }),
     );
-    expect(current(host, ref)).toBe(3);
+    expect(ref.get()).toBe(3);
     host.runtime.runSync(
       captured.guarded(
         Effect.sync(() => {
@@ -184,7 +185,7 @@ describe("createRunSlot", () => {
   });
 
   it("end() with nothing live is a harmless no-op; a following start() still runs", async () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
 
     expect(() => {
       slot.end();
@@ -197,7 +198,7 @@ describe("createRunSlot", () => {
     });
     await settle();
 
-    expect(current(host, ref)).toBe(5);
+    expect(ref.get()).toBe(5);
   });
 
   it("dispose() interrupts the run in flight, closes the host's scope, refuses a later start(), and is idempotent", async () => {
@@ -228,7 +229,7 @@ describe("createRunSlot", () => {
         );
     });
     await settle();
-    expect(current(host, ref)).toBe(1);
+    expect(ref.get()).toBe(1);
     expect(slot.isDisposed()).toBe(false);
 
     slot.dispose();
@@ -243,7 +244,7 @@ describe("createRunSlot", () => {
       });
     });
     await settle();
-    expect(current(host, ref)).toBe(1);
+    expect(ref.get()).toBe(1);
 
     expect(() => {
       slot.dispose();
@@ -263,7 +264,7 @@ describe("createRunSlot", () => {
   });
 
   it("a run ended from OUTSIDE (end()) does not rethrow — its fiber's teardown does not crash the slot", async () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
 
     slot.start(() => {
       return Effect.never;
@@ -278,11 +279,11 @@ describe("createRunSlot", () => {
     // itself, prove the `Cause.isInterruptedOnly` filter's skip branch ran:
     // the next case isolates that with a self-interrupting build.
     await vi.advanceTimersByTimeAsync(0);
-    expect(current(host, ref)).toBe(0);
+    expect(ref.get()).toBe(0);
   });
 
   it("a build that interrupts ITSELF is silent too, and this is the case that actually proves the filter's skip branch runs", () => {
-    const { host, ref, slot } = createHarness();
+    const { ref, slot } = createHarness();
 
     // `Effect.interrupt` self-interrupts from INSIDE the build's own
     // fiber, so — unlike ending the run from outside above — it is
@@ -295,13 +296,13 @@ describe("createRunSlot", () => {
     expect(() => {
       vi.runAllTimers();
     }).not.toThrow();
-    expect(current(host, ref)).toBe(0);
+    expect(ref.get()).toBe(0);
   });
 });
 
 interface RunSlotHarness {
   host: EffectHost;
-  ref: SubscriptionRef.SubscriptionRef<number>;
+  ref: SyncRef<number>;
   slot: RunSlot<number>;
 }
 
@@ -312,7 +313,7 @@ const activeSlots: RunSlot<number>[] = [];
  * leak the host's fiber or scope. */
 function createHarness(): RunSlotHarness {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(SubscriptionRef.make(0));
+  const ref = createSyncRef(0);
   const slot = createRunSlot(host, ref);
   activeSlots.push(slot);
   return { host, ref, slot };
@@ -337,13 +338,6 @@ function captureRun(slot: RunSlot<number>): Run<number> {
   }
 
   return captured;
-}
-
-function current<S>(
-  host: EffectHost,
-  ref: SubscriptionRef.SubscriptionRef<S>,
-): S {
-  return host.runtime.runSync(SubscriptionRef.get(ref));
 }
 
 /** Two zero-length advances: no time moves, the microtask continuations an

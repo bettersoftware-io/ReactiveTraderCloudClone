@@ -6,8 +6,8 @@ import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
 import type { MakeHarness } from "#/harness/harness";
-import { WORKSPACE_TABS } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
+import { WORKSPACE_TABS } from "#/harness/workspaceTabs";
 import {
   dockedIds,
   leafIds,

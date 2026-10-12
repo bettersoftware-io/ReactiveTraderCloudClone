@@ -9,8 +9,8 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 |---|---|
 | **Ring** | ④ Frameworks & Drivers -- an instrumentation framework, structurally analogous to `@rtc/ws-effects` (`docs/architecture/06-package-dependencies.md` §6) |
 | **Runtime deps** | `rxjs` only -- the same single permitted exception as `@rtc/domain`/`@rtc/ws-effects`, enforced by pnpm strict mode at install time |
-| **Consumed by** | `@rtc/devtools-app` (the inspector SPA), `@rtc/devtools-extension` (the MV3 DevTools panel), and the three clients `@rtc/client-react`, `@rtc/client-solid`, `@rtc/client-react-native` (the composition-root decorators + the app-side hub singleton; RN attaches under `__DEV__` only) |
-| **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core`'s concrete types -- that is the whole point of a composition-root decorator. |
+| **Consumed by** | `@rtc/devtools-app` (the inspector SPA), `@rtc/devtools-extension` (the MV3 DevTools panel), `@rtc/web-boot` (the web clients' composition root, `startWebClient`: the hub and the composition-root decorators) and `@rtc/client-react-native` (the same decorators and its own hub; RN attaches under `__DEV__` only) |
+| **Must never import** | Any other `@rtc/*` package -- enforced by the dependency-cruiser `devtools-core-stays-pure` rule (`^packages/devtools-core/src` → every other `@rtc/*` package, see `docs/dependency-cruiser.md`). It decorates by *structural* shape (`InstrumentableMachine`, `WsAdapterLike`, anything with `.subscribe`), never by importing `@rtc/client-core-rxjs`'s or `@rtc/client-adapters`'s concrete types -- that is the whole point of a composition-root decorator. |
 
 ## Folder map
 
@@ -38,47 +38,56 @@ behind the ViewModel seam, not Redux/MobX/Zustand).
 
 ## How it's used
 
-`@rtc/client-react`'s composition root applies all three decorators before the
-result reaches `createViewModel` (`AppRoot` in `packages/client-react/src/AppRoot.tsx`,
-`buildBrowserPorts` in `packages/client-react/src/app/buildBrowserPorts.ts`):
+The web clients' composition root, `startWebClient`, applies all three
+decorators before the result reaches `createViewModel` (`instrumentComposition`
+in `packages/web-boot/src/startWebClient.ts`, which the core host calls for
+every composition, and `buildBrowserPorts` in
+`packages/web-boot/src/buildBrowserPorts.ts`):
 
 ```ts
-// packages/client-react/src/app/buildBrowserPorts.ts
+// packages/web-boot/src/buildBrowserPorts.ts
 const ws = instrumentWsAdapter(
-  new WsAdapter(buildWsUrl(url, token)),
+  new WsAdapter(url, readToken, { autoConnect: false }),
   devtoolsHub,
 );
 
-// packages/client-react/src/AppRoot.tsx
-const { presenters, commands } = core.createApp(buildBrowserPorts());
-const instrumented = instrumentPresenters(
-  presenters,
-  PRESENTER_MANIFEST,
-  devtoolsHub,
-);
-viewModelRef.current = createViewModel(
-  instrumented,
-  instrumentMachineFactories(
-    core.createMachineFactories(instrumented),
+// packages/web-boot/src/startWebClient.ts
+function instrumentComposition(core, app) {
+  const presenters = instrumentPresenters(
+    app.presenters,
+    PRESENTER_MANIFEST,
     devtoolsHub,
-  ),
-  commands,
-);
+  );
+
+  return {
+    presenters,
+    machineFactories: instrumentMachineFactories(
+      core.createMachineFactories(presenters),
+      devtoolsHub,
+    ),
+  };
+}
 ```
 
-The app-side hub is a module-level singleton
-(`packages/client-react/src/app/devtools/devtoolsHub.ts`) wired to a
-`BroadcastChannelDuplex` and disposed on `pagehide`:
+The app-side hub is one per page: `startWebClient` makes one call to
+`createDevtoolsHub` from `@rtc/web-boot`, before any core loads, with the
+`appId` a client's `main.tsx` passes it (`"rtc-web"` for React,
+`"rtc-web-solid"` for Solid) and `dev` from the build env. The factory wires
+the hub to a `BroadcastChannelDuplex` and disposes it on `pagehide`:
 
 ```ts
-export const devtoolsHub = new DevtoolsHub({ appId: "rtc-web" });
+// packages/web-boot/src/startWebClient.ts
+const devtoolsHub = createDevtoolsHub({ appId: options.appId, dev: env.dev });
+
+// packages/web-boot/src/devtools/createDevtoolsHub.ts
+const hub = new DevtoolsHub(options);
 
 if (typeof BroadcastChannel !== "undefined") {
-  devtoolsHub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
+  hub.attachTransport(new BroadcastChannelDuplex("rtc-devtools"));
 
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", () => {
-      devtoolsHub.dispose();
+      hub.dispose();
     });
   }
 }

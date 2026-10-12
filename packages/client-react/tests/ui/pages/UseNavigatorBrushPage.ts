@@ -2,8 +2,10 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 
 import type { ChartViewport } from "@rtc/motion-core";
 
-import type { NavigatorBrush } from "#/ui/equities/chart/useNavigatorBrush";
-import { useNavigatorBrush } from "#/ui/equities/chart/useNavigatorBrush";
+import {
+  type NavigatorBrush,
+  useNavigatorBrush,
+} from "#/ui/equities/chart/useNavigatorBrush";
 
 interface HookProps {
   seriesLen: number;

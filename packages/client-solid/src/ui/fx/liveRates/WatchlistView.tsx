@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For, onCleanup, Show } from "solid-js";
+import { createMemo, For, type JSX, onCleanup, Show } from "solid-js";
 
 import {
   type CurrencyCategory,

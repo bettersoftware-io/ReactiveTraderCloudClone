@@ -198,6 +198,17 @@ package onto its patched line (`tar`, `undici`, `js-yaml`, `minimatch`,
 0**. Seven are same-major bumps; `undici` 5.x → 6.x is the one major jump (the
 5.x line has no patched release).
 
+**One exception since 2026-10-04: `braces`.** GHSA-vfj7-8cjw-p6xm (high) covers
+every release up to 3.0.3, which is the latest, and names no patched version. An
+override lifts a package onto its patched line, so there is nothing to lift it
+to. The CLI reaches it as `fast-glob` > `micromatch` > `braces`, and `npm audit`
+reports it as **21 high**, one per package that inherits it; all 21 are this one
+advisory. The flaw is a stack exhaustion on a deeply nested brace pattern. The
+CLI runs only in the dispatch-only deploy workflows, where a pattern would have
+to come from a file already in this repo. The Dependabot alert stays open on
+purpose: it closes itself when a patched `braces` ships and the lockfile takes
+it.
+
 Verification, and its limit: an **A/B smoke test** ran a real `vercel build` on
 a small static project with the stock tree and with the overridden tree — both
 exit 0 with identical `.vercel/output`. That exercises the build path. It does
@@ -329,7 +340,9 @@ lighter-weight first try).
   major is done by hand and proven with a Deploy dispatch.
 - **The `overrides` in `scripts/ci-tooling/vercel/package.json` are debt with an
   exit**: delete each one when the Vercel CLI ships the patched dependency
-  itself, and re-run `npm audit --package-lock-only` there after any bump.
+  itself, and re-run `npm audit --package-lock-only` there after any bump. It
+  should report only the `braces` exception above until that advisory has a
+  patched release.
 
 ## Open items
 

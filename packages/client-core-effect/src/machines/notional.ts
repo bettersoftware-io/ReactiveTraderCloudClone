@@ -1,41 +1,32 @@
-import { SubscriptionRef } from "effect";
-
 import type { Machine, NotionalIntents, NotionalView } from "@rtc/core-api";
 import {
   createInitialNotionalView,
   reduceNotionalInput,
 } from "@rtc/core-logic";
 
-import {
-  closeScope,
-  createDetachedHost,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
-/** A `SubscriptionRef` plus two intents; the view math is the RxJS core's,
- * imported. Each intent is one synchronous `setRefIfChanged`; `dispose()`
- * closes the machine's scope and makes the intents inert. */
+/** A `SyncRef` plus two intents; the view math is the RxJS core's,
+ * imported. Each intent is one synchronous write; `dispose()` makes the
+ * intents inert. No host: the machine forks nothing and subscribes no
+ * port, so there is no scope to close. */
 export function createNotionalMachine(
   defaultNotional: number,
 ): Machine<NotionalView, NotionalIntents> {
-  const host = createDetachedHost();
   const initial = createInitialNotionalView(defaultNotional);
-  const ref = host.runtime.runSync(SubscriptionRef.make(initial));
+  const ref = createSyncRef(initial);
   let disposed = false;
 
   function setView(view: NotionalView): void {
     if (!disposed) {
-      host.runtime.runSync(
-        setRefIfChanged(ref, () => {
-          return view;
-        }),
-      );
+      ref.set(() => {
+        return view;
+      });
     }
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       change: (input: string) => {
         setView(reduceNotionalInput(defaultNotional, input));
@@ -46,7 +37,6 @@ export function createNotionalMachine(
     },
     dispose: () => {
       disposed = true;
-      closeScope(host.scope);
     },
   };
 }

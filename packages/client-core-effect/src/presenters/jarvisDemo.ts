@@ -15,11 +15,14 @@ import {
   JARVIS_DEMO_STEPS,
   lastEntryId,
 } from "@rtc/core-logic";
-import { DEMO_STEP_TIMEOUT_MS, type PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  DEMO_STEP_TIMEOUT_MS,
+  type JarvisEvent,
+  type PowerSaverLevel,
+} from "@rtc/domain";
 
 import { createChildHost, type EffectHost, interruptFiber } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisDemoDeps {
   readonly jarvisStateNow: () => JarvisState;
@@ -45,7 +48,7 @@ interface DemoRun {
 
 /**
  * `presenters.jarvisDemo` on the Effect core: the shared script and step
- * watcher (`createDemoStepWatch`, client-core) decide; this file owns the
+ * watcher (`createDemoStepWatch`, core-logic) decide; this file owns the
  * timing. A run is one fiber, exhaust-style (a second start while one runs
  * is dropped); each step is an `Effect.async` settled by the watcher and
  * raced against `DEMO_STEP_TIMEOUT_MS`; a beat (`Effect.sleep`) follows
@@ -58,7 +61,7 @@ export function createJarvisDemo(
   deps: JarvisDemoDeps,
 ): JarvisDemoMachineHandle {
   const host = createChildHost(parent);
-  const ref = createSyncRef<JarvisDemoState>(host, JARVIS_DEMO_INITIAL_STATE);
+  const ref = createSyncRef<JarvisDemoState>(JARVIS_DEMO_INITIAL_STATE);
   let active: DemoRun | null = null;
   let closedByDemo = false;
 

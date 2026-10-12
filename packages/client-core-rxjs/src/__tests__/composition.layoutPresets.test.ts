@@ -1,8 +1,11 @@
 import { firstValueFrom, from } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createFakeConnectionPorts } from "@rtc/client-core/testing";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
+import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type {
   JarvisPort,
   LayoutPresetSummary,
@@ -11,20 +14,21 @@ import type {
   SaveLayoutPresetResult,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
   InMemoryLayoutPresetStore,
   LAYOUT_PRESET_VERSION,
   parseLayoutPresetList,
+  type StoredLayoutPreset,
 } from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  type JarvisEvent,
+  type PanelSpecV1,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createApp } from "#/composition";
 

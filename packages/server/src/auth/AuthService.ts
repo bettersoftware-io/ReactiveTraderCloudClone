@@ -7,8 +7,12 @@ import {
   hashPassword,
   hashPasswordSync,
 } from "./passwordHash.js";
-import type { TokenAccount, VerifiedToken } from "./token.js";
-import { signToken, verifyToken } from "./token.js";
+import {
+  signToken,
+  type TokenAccount,
+  type VerifiedToken,
+  verifyToken,
+} from "./token.js";
 
 export { parseAuthUsers } from "./loadUsers.js";
 

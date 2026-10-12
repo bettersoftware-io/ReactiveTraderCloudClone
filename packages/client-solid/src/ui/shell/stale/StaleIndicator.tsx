@@ -1,5 +1,4 @@
-import type { JSX, ParentProps } from "solid-js";
-import { Show } from "solid-js";
+import { type JSX, type ParentProps, Show } from "solid-js";
 
 import styles from "./StaleIndicator.module.css";
 

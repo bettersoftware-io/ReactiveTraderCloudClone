@@ -7,5 +7,5 @@
     "paths": { "#/*": ["./src/*"] }
   },
   "include": ["src"],
-  "references": [{ "path": "../domain" }, { "path": "../shared" }]
+  "references": [{ "path": "../domain" }]
 }

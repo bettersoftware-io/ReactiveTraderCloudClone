@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createSignal, For, Show, untrack } from "solid-js";
+import { createSignal, For, type JSX, Show, untrack } from "solid-js";
 
 import type { ColumnFilter, Comparator } from "@rtc/core-logic";
 

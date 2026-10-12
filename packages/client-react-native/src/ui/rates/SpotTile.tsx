@@ -9,8 +9,7 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
-import type { CurrencyPair } from "@rtc/domain";
-import { PriceMovementType } from "@rtc/domain";
+import { type CurrencyPair, PriceMovementType } from "@rtc/domain";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { splitPrice } from "#/ui/formatPrice";

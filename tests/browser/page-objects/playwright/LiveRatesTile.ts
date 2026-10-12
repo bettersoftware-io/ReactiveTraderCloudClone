@@ -40,6 +40,29 @@ export class PlaywrightLiveRatesTile implements LiveRatesTilePO {
     await expect(this.firstTile()).not.toContainText("Loading...");
   }
 
+  async waitFirstTilePriceChange(timeoutMs: number): Promise<void> {
+    const initial = await this.firstTilePrices();
+    await expect
+      .poll(
+        () => {
+          return this.firstTilePrices();
+        },
+        {
+          message: `the first tile's prices stayed "${initial}" for ${timeoutMs}ms`,
+          timeout: timeoutMs,
+        },
+      )
+      .not.toBe(initial);
+  }
+
+  /** The first tile's SELL and BUY button texts — the prices it shows. */
+  private async firstTilePrices(): Promise<string> {
+    const tile = this.firstTile();
+    const sell = await tile.getByTestId(TESTIDS.liveRates.sellBtn).innerText();
+    const buy = await tile.getByTestId(TESTIDS.liveRates.buyBtn).innerText();
+    return `${sell} | ${buy}`;
+  }
+
   async clickFilter(category: string): Promise<void> {
     await this.page.getByTestId(TESTIDS.liveRates.filter(category)).click();
   }

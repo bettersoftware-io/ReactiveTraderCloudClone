@@ -29,9 +29,9 @@ layout and paint) on **every frame** for the animation's whole lifetime.
 | # | Trap | Why it burns | Found in |
 |---|------|--------------|----------|
 | T1 | Keyframes/transitions on `width`, `height`, `padding`, `margin`, `left/top` | Layout property → style + **layout** every frame. Layout invalidates subtrees, not just the element. | RfqCard countdown bar, FX RfqCountdown, pips tick flash (`padding`) |
-| T2 | Keyframes/transitions on `background-*`, `color`, `border-color`, `box-shadow`, `text-shadow` | Paint property → style + paint every frame. `box-shadow` repaints an inflated area. | pips flash + transition, accept-button pulse, ticket fill flash, blotter row flashes, last-price color transition |
-| T3 | Animating `transform` on **SVG child elements** (`circle`, `g`, `path`) | SVG-internal transforms are *never* compositor-offloaded. | HudLogo orbit/triangle rotations |
-| T4 | `transform: scaleX(var(--x))` (or any var()-dependent transform) in a transition/animation | The compositor cannot resolve `var()`; the animation silently falls back to the main thread. **Timing** vars (`animation-duration: var(--d)`) are fine — they resolve once at creation. | RfqCard bar, first fix attempt |
+| T2 | Keyframes/transitions on `background-*`, `color`, `border-color`, `box-shadow`, `text-shadow` | Paint property → style + paint every frame. `box-shadow` repaints an inflated area. (`background-color` alone is composited by Chromium 153 in a simple case — [re-measured](#re-measured-on-chromium-153-2026-10-04); the rule stays.) | pips flash + transition, accept-button pulse, ticket fill flash, blotter row flashes, last-price color transition |
+| T3 | Animating `transform` on **SVG child elements** (`circle`, `g`, `path`) | SVG-internal transforms were not compositor-offloaded when this was found. Chromium 153 does offload them in a simple case — [re-measured](#re-measured-on-chromium-153-2026-10-04); the rule stays. | HudLogo orbit/triangle rotations |
+| T4 | `transform: scaleX(var(--x))` (or any var()-dependent transform) in a transition/animation | When this was found the compositor could not resolve `var()` and the animation silently fell back to the main thread. Chromium 153 composites it in a simple case — [re-measured](#re-measured-on-chromium-153-2026-10-04); the rule stays. **Timing** vars (`animation-duration: var(--d)`) are fine — they resolve once at creation. | RfqCard bar, first fix attempt |
 | T5 | Two animations of the **same property** on one element | Chrome refuses to composite the element wholesale (`kTargetHasIncompatibleAnimations`, `compositeFailed` bit 64) — even if both properties are compositable, even if they don't overlap in time (a comma-separated `animation` list counts). | accept button `acceptIn` + `acceptPulse` |
 | T6 | `filter: blur()` (or any filter) on large layers | Filters are re-evaluated at **composite time**: every frame produced by *anything else* re-pays the filter, even when the filtered layer itself is static or its animation is paused. | (all backdrop `filter`s since **removed** via P6/P6b — AmbientBackground no longer applies) |
 | T7 | Animating `background-position` | Paint property on the whole element — a full-viewport grid repainted every frame. | AmbientBackground grid/dot drift |
@@ -52,6 +52,51 @@ Two systemic effects make single offenders expensive:
 - **The frame pipeline never idles while any animation runs.** Ambient
   compositing cost (T6) is paid per frame produced by anything — the two
   multiply.
+
+### Re-measured on Chromium 153 (2026-10-04)
+
+The catalogue above is from July 2026. Three of its entries no longer
+reproduce on a current Chromium, at least in the simplest case. This was
+measured on a bare test page (one element per animation, nothing else on the
+page) in the headless Chromium that Playwright 1.63.0 installs
+(153.0.8010.12), by reading `compositeFailed` on the `Animation` events of a
+`blink.animations` trace:
+
+| Animation | Trap | `compositeFailed` | Composited? |
+|---|---|---|---|
+| `transform` keyframes; `opacity` keyframes; a `transform` transition | — | none | Yes |
+| `width` keyframes | T1 | 8224 (`width`) | No |
+| `color`, `border-color`, `box-shadow` keyframes | T2 | 8224 | No |
+| **`background-color` keyframes on a plain `div`** | T2 | none | **Yes** |
+| **`transform` keyframes on an SVG `g`, `circle` and `path`** (with and without `transform-box: fill-box`) | T3 | none | **Yes** |
+| **`transform: scaleX(var(--x))` in a keyframe**, and a `transform` transition started by changing `--x` | T4 | none | **Yes** |
+| Two `transform` animations on one element | T5 | 64 | No |
+| `filter: blur()` keyframes | T6 | 4096 | No |
+| `background-position` keyframes | T7 | 8224 | No |
+
+The `width` and `transform` rows are the controls: the instrument reports a
+failure where one is expected and none where none is.
+
+**The rules stay as they are**, for three reasons:
+
+- This is one browser engine at one version. The patterns in §2 are cheap in
+  every engine; the three exceptions above are not known to be.
+- It is the simplest case. The traps were found in this app, where the SVG
+  sat inside a busy tree and the variable was written by live data on every
+  tick (which is T10 as well as T4). Nobody has repeated the measurement there.
+- It was headless Chromium. Nobody has repeated it in a headed Chrome with a
+  real GPU process.
+
+What this does change: do not quote T3 or T4 as "the browser cannot do this".
+The claim that holds is the checklist's last line — a steady-state trace of
+the real app shows zero `compositeFailed` events. If one of these three
+shapes would make a component much simpler, measure it in the app with a
+trace before deciding, and write the result here.
+
+The script is small enough to rewrite: launch Chromium with Playwright,
+`browser.startTracing(page, { categories: ["blink.animations"] })`, load the
+page, wait, `browser.stopTracing()`, and read `args.data.compositeFailed` and
+`unsupportedProperties` on every event named `Animation`.
 
 ---
 

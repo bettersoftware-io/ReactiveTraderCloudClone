@@ -1,4 +1,4 @@
-import { Effect, SubscriptionRef } from "effect";
+import { Effect } from "effect";
 
 import type {
   Machine,
@@ -8,8 +8,9 @@ import type {
 } from "@rtc/core-api";
 import type { QuoteRequest } from "@rtc/domain";
 
-import { createDetachedHost, refToStateStream } from "#/bridge/out";
+import { createDetachedHost } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface TicketSubmissionDeps {
@@ -49,9 +50,7 @@ export function createTicketSubmissionMachine(
   deps: TicketSubmissionDeps,
 ): Machine<TicketSubmissionState, TicketSubmissionIntents> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<TicketSubmissionState>(NOT_SUBMITTED),
-  );
+  const ref = createSyncRef<TicketSubmissionState>(NOT_SUBMITTED);
   const slot = createRunSlot(host, ref);
 
   function submit(command: Stream<void>): void {
@@ -65,7 +64,7 @@ export function createTicketSubmissionMachine(
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       submitPrice: (quoteId: number, price: number) => {
         submit(deps.quoteRfq({ quoteId, price }));

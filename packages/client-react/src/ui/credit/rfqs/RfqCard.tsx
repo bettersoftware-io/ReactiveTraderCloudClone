@@ -1,5 +1,10 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 

@@ -1,7 +1,6 @@
 import type { IncomingMessage } from "node:http";
 
-import type { RawData, WebSocket } from "ws";
-import { WebSocketServer } from "ws";
+import { type RawData, type WebSocket, WebSocketServer } from "ws";
 
 export interface RelayServerOptions {
   port: number;

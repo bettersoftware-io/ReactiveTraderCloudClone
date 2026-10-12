@@ -10,7 +10,6 @@ import type {
   Machine,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { StoredLayoutPreset } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
@@ -19,6 +18,7 @@ import {
   LAYOUT_PRESET_VERSION,
   MAX_LAYOUT_PRESETS,
   parseLayoutPresetList,
+  type StoredLayoutPreset,
   UNREADABLE_LIST_ID,
 } from "@rtc/core-logic";
 

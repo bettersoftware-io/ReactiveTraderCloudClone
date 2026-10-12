@@ -1,5 +1,6 @@
 import type {
   AnimationIntent,
+  AuthViewState,
   IncidentKind,
   JarvisAvailability,
   ThroughputView,
@@ -9,15 +10,16 @@ import type {
   EquityInstrument,
   EquityOrder,
   EquityQuote,
+  JarvisEvent,
   LogEvent,
   MetricSample,
+  PowerSaverLevel,
   Price,
   PriceTick,
   Quote,
   ServiceTopology,
   SessionInfo,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import type { CommandLog, HookValues, MetricsView } from "./world";
 
@@ -61,6 +63,13 @@ export interface PageContext<P> {
   setCreditRfqFilter(filter: CreditRfqFilter): void;
   /** Push the boot-splash visibility (useBootGate source — drives BootGate). */
   setBootGateVisible(visible: boolean): void;
+  /** Push the power-saver level, as a stored preference arriving after the
+   * first render does. */
+  setPowerSaverLevel(level: PowerSaverLevel): void;
+  /** Push a new auth status → AuthGate swaps LoginScreen and the app. */
+  setAuthStatus(status: AuthViewState["status"]): void;
+  /** Push why the last core switch failed (or null) → the Preferences row. */
+  setCoreSelectionFailure(reason: string | null): void;
   /** Push one or more reply events onto the Jarvis fake's in-flight `ask()`
    * turn (`world.jarvis.emit`), flush-wrapped so the framework driver applies
    * the resulting re-render before the caller's next assertion. */
@@ -197,6 +206,23 @@ export abstract class MountedComponent<P> {
   /** Push the boot-splash visibility through the seam → re-render BootGate. */
   protected setBootGateVisible(visible: boolean): void {
     this.ctx.setBootGateVisible(visible);
+  }
+
+  /** Push the power-saver level through the seam → re-render its readers. */
+  protected setPowerSaverLevel(level: PowerSaverLevel): void {
+    this.ctx.setPowerSaverLevel(level);
+  }
+
+  /** Push a new auth status through the seam → AuthGate unmounts the app for
+   * the login screen, or mounts it again. */
+  protected setAuthStatus(status: AuthViewState["status"]): void {
+    this.ctx.setAuthStatus(status);
+  }
+
+  /** Push why the last core switch left the page where it was (or null)
+   * through the seam → re-render the Preferences row's failure line. */
+  protected setCoreSelectionFailure(reason: string | null): void {
+    this.ctx.setCoreSelectionFailure(reason);
   }
 
   /** Push reply events onto the Jarvis fake's in-flight `ask()` turn. */

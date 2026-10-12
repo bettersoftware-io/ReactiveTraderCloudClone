@@ -117,7 +117,7 @@ function pkgSrc(name: string): string {
 }
 
 // Bare package specifiers only. Every @rtc/* package currently exports just "."
-// (imported as `@rtc/client-core`, never `@rtc/client-core/sub`), so mapping the
+// (imported as `@rtc/client-adapters`, never `@rtc/client-adapters/sub`), so mapping the
 // specifier straight to src/index.ts is correct. If a production `src` file ever
 // adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
 // otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
@@ -146,10 +146,11 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "styles",
       ),
       "@rtc/boot-splash": pkgSrc("boot-splash"),
+      "@rtc/web-boot": pkgSrc("web-boot"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),
       "@rtc/client-core-rxjs": pkgSrc("client-core-rxjs"),
-      "@rtc/client-core": pkgSrc("client-core"),
+      "@rtc/client-adapters": pkgSrc("client-adapters"),
       "@rtc/core-api": pkgSrc("core-api"),
       "@rtc/core-logic": pkgSrc("core-logic"),
       "@rtc/domain": pkgSrc("domain"),
@@ -204,15 +205,17 @@ function dropDepSourcemaps(): Plugin {
 
 export default defineConfig({
   // VITE_CORE_IMPL sets this build's DEFAULT application core (see
-  // src/app/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
+  // packages/web-boot/src/coreSelection.ts's resolveCoreChoice, which ranks `?core=` and
   // the stored choice above this build default, itself above "rxjs"). All
   // three cores ship in every build, each a dynamic import `loadCore`
   // fetches lazily once chosen (RxJS included, from its own package,
-  // `@rtc/client-core-rxjs`), so this no longer selects what gets
+  // `@rtc/client-core-rxjs`), so this does not select what gets
   // bundled (see `pnpm check:core-bundle`). Vite's built-in
   // import.meta.env replacement leaves the value as whatever string ran the
-  // process, so `define` re-inlines it as a JSON string literal `bootApp.ts`
-  // reads through `import.meta.env.VITE_CORE_IMPL`. Unset → "rxjs".
+  // process, so `define` re-inlines it as a JSON string literal that
+  // `main.tsx` passes (as `import.meta.env`) to `webBootEnvOf`, and
+  // `startWebClient` hands `env.coreImpl` to `bootCore` as the build default.
+  // Unset → "rxjs".
   define: {
     "import.meta.env.VITE_CORE_IMPL": JSON.stringify(
       process.env.VITE_CORE_IMPL || "rxjs",

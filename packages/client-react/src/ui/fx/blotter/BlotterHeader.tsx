@@ -1,5 +1,4 @@
-import type { MouseEvent, ReactElement } from "react";
-import { useState } from "react";
+import { type MouseEvent, type ReactElement, useState } from "react";
 
 import type { ColumnFilter, SortState } from "@rtc/core-logic";
 

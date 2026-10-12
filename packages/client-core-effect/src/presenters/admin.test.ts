@@ -2,16 +2,17 @@ import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 import { Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type {
-  EventLogPort,
-  LogEvent,
-  MetricSample,
-  ServiceHealthPort,
-  ServiceTopology,
-  SessionInfo,
-  SessionsPort,
+import {
+  type EventLogPort,
+  type LogEvent,
+  MAX_LOG_ROWS,
+  METRIC_WINDOW,
+  type MetricSample,
+  type ServiceHealthPort,
+  type ServiceTopology,
+  type SessionInfo,
+  type SessionsPort,
 } from "@rtc/domain";
-import { MAX_LOG_ROWS, METRIC_WINDOW } from "@rtc/domain";
 
 import type { EffectHost } from "#/bridge/out";
 import {

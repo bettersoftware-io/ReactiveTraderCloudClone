@@ -98,6 +98,16 @@
         // error to match the repo's zero-findings / no-disables policy. Prefer
         // an explicit narrowing guard (`if (x === undefined) throw …`).
         "noNonNullAssertion": "error",
+        // A statement that names ONLY types is spelled `import type { … }` /
+        // `export type { … }`. Under `verbatimModuleSyntax` the inline form
+        // (`import { type A }`) survives as a runtime import of the module,
+        // which could pull a lazy application core into the eager bundle.
+        // `recommended` ships both as warnings; they are errors here so a
+        // plain `pnpm lint` fails too, not only CI's `--error-on-warnings`.
+        // The other half — one statement per module — is ESLint's
+        // `rtc/one-import-per-module`.
+        "useImportType": "error",
+        "useExportType": "error",
         // Always require braces on control statements (if/else/for/while/…).
         // Bans the brace-less single-statement form (`if (x) doThis();`) so
         // every branch body is a block — cheaper diffs when a second statement

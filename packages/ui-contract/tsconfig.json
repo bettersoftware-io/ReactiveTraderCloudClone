@@ -17,7 +17,6 @@
     { "path": "../core-api" },
     { "path": "../domain" },
     { "path": "../motion-core" },
-    { "path": "../core-logic" },
-    { "path": "../shared" }
+    { "path": "../core-logic" }
   ]
 }

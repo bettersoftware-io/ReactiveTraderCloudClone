@@ -279,7 +279,7 @@ export function CandleChart(props: CandleChartProps): JSX.Element {
     return d ? [...previewDrawings(), draftToDrawing(d)] : previewDrawings();
   });
 
-  // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
+  // EqDrawing (core-api) satisfies motion-core's structural `Drawing` —
   // passed directly, no mapping.
   const drawItems = createMemo((): readonly DrawingSceneItem[] => {
     return drawingScene(

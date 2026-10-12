@@ -2,8 +2,10 @@ import { BehaviorSubject } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 
 import { DevtoolsHub } from "../DevtoolsHub";
-import type { InstrumentableMachine } from "../instrument/machines";
-import { instrumentMachineFactories } from "../instrument/machines";
+import {
+  type InstrumentableMachine,
+  instrumentMachineFactories,
+} from "../instrument/machines";
 
 describe("instrumentMachineFactories", () => {
   it("returns same-shape factories whose machines still work", () => {

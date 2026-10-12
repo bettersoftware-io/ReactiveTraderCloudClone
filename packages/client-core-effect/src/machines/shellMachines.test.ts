@@ -53,8 +53,8 @@ describe("createWorkspaceNavMachine (effect)", () => {
     expect(seen).toEqual([{ activeTab: "equities" }]);
   });
 
-  // Read from a FRESH subscriber's seed after the close: a subscriber made
-  // before it follows the ref on a fiber the close interrupted.
+  // Read from a fresh subscriber's seed after the close, which reads the
+  // ref.
   it("after the host scope closes, switchTab changes nothing", async () => {
     const host = useHost();
     const nav = createWorkspaceNavMachine(host);

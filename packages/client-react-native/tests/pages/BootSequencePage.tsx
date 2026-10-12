@@ -2,8 +2,7 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { BootSequence } from "#/ui/shell/boot/BootSequence";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

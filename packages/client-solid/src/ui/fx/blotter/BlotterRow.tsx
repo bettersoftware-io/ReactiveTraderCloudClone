@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createSignal, For, untrack } from "solid-js";
+import { createSignal, For, type JSX, untrack } from "solid-js";
 
 import { TradeStatus } from "@rtc/domain";
 import { useViewModel } from "@rtc/solid-bindings";

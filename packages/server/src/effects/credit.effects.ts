@@ -1,14 +1,15 @@
 import { concat, from, map, mergeMap, type Observable, of } from "rxjs";
 
 import type { Dealer, Instrument, RfqEvent } from "@rtc/domain";
-import type {
-  DealerDto,
-  DealerEvent,
-  InstrumentDto,
-  InstrumentEvent,
-  WorkflowEvent as WorkflowEventDto,
+import {
+  CLIENT_MSG,
+  type DealerDto,
+  type DealerEvent,
+  type InstrumentDto,
+  type InstrumentEvent,
+  SERVER_MSG,
+  type WorkflowEvent as WorkflowEventDto,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 import {
   type Outbound,
   out,

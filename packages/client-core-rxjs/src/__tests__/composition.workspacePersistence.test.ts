@@ -1,29 +1,34 @@
 import { firstValueFrom, from } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
-import { createFakeConnectionPorts } from "@rtc/client-core/testing";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
+import { createFakeConnectionPorts } from "@rtc/client-adapters/testing";
 import type {
   JarvisPort,
   LayoutState,
   Presenters,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { PersistedTabLayout, WorkspaceLayoutV1 } from "@rtc/core-logic";
 import {
   createDefaultLayoutPort,
   dockedLeafIds,
   insertDockedLeaf,
   instanceIdFor,
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
+  type JarvisEvent,
+  type PanelSpecV1,
   PreferencesSimulator,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createApp } from "#/composition";
 

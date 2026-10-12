@@ -1,10 +1,16 @@
-import type { ChangeEvent, ReactElement, RefObject, UIEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type ReactElement,
+  type RefObject,
+  type UIEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { LogRow } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
-import { shortLabel } from "#/nav/scope";
+import { type Scope, shortLabel } from "#/nav/scope";
 import { formatLogTime } from "#/panels/formatLogTime";
 import styles from "#/timeline/TimelinePane.module.css";
 import { familyOf, sourceOfEvent } from "#/timeline/timelineModel";

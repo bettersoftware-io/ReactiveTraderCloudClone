@@ -6,8 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactElement } from "react";
-import { StrictMode } from "react";
+import { type ReactElement, StrictMode } from "react";
 
 import type { InspectorStore } from "@rtc/devtools-core";
 

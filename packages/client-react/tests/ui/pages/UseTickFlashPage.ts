@@ -1,7 +1,6 @@
 import { cleanup, renderHook } from "@testing-library/react";
 
-import type { TickFlash } from "#/ui/equities/chart/useTickFlash";
-import { useTickFlash } from "#/ui/equities/chart/useTickFlash";
+import { type TickFlash, useTickFlash } from "#/ui/equities/chart/useTickFlash";
 
 interface HookProps {
   value: number | null;

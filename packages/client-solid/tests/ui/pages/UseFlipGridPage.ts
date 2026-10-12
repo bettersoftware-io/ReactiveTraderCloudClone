@@ -1,10 +1,10 @@
 import { renderHook } from "@solidjs/testing-library";
 
-import type {
-  FlipGridApi,
-  FlipGridOptions,
+import {
+  type FlipGridApi,
+  type FlipGridOptions,
+  useFlipGrid,
 } from "#/ui/shell/motion/useFlipGrid";
-import { useFlipGrid } from "#/ui/shell/motion/useFlipGrid";
 
 export interface UseFlipGridPage {
   mount(deps: () => unknown[], options?: FlipGridOptions): FlipGridApi;

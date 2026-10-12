@@ -27,8 +27,13 @@ import {
   undockPanelInState,
   unknownSourceFrame,
 } from "@rtc/core-logic";
-import { AnalyticsUseCase, TradeBlotterUseCase } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import {
+  AnalyticsUseCase,
+  type JarvisEvent,
+  type PanelSource,
+  type PanelSpecV1,
+  TradeBlotterUseCase,
+} from "@rtc/domain";
 
 import {
   type EffectHost,
@@ -37,19 +42,18 @@ import {
   type FromPort,
   fromPortIn,
   holdWarm,
-  scopedPortStream,
+  latestOfEach,
+  oneEvent,
+  portEvents,
+  projectedChanges,
   sharedFold,
+  switchedPortEvents,
 } from "#/bridge/out";
 import { peekCurrent } from "#/bridge/peek";
-import { createSyncRef, type SyncRef } from "#/presenters/syncRef";
-
-/** A desk panel's spec — `@rtc/shared`'s `PanelSpecV1`, which this package
- * does not depend on. */
-type PanelSpecV1 = NonNullable<PanelInstance["spec"]>;
-type PanelSource = PanelSpecV1["source"];
+import { createSyncRef, type SyncRef } from "#/bridge/syncRef";
 
 /** The desk-panels roster: a `SyncRef` folded by the SHARED folds
- * (`@rtc/client-core`'s `jarvisPanelsFolds`), fed the `panel` events of the
+ * (`@rtc/core-logic`'s `jarvisPanelsFolds`), fed the `panel` events of the
  * Jarvis turns it is handed on a fiber of the host scope. Every intent
  * commits synchronously (the workspace's synchronous-fold contract), and —
  * as in the RxJS machine — writes a FRESH state object even when the fold
@@ -67,7 +71,7 @@ export function createJarvisPanelsMachine(
   host: EffectHost,
   events$: CoreStream<JarvisEvent>,
 ): JarvisPanelsMachine {
-  const ref = createSyncRef<JarvisPanelsState>(host, { panels: [] });
+  const ref = createSyncRef<JarvisPanelsState>({ panels: [] });
 
   function foldPanels(
     step: (panels: readonly PanelInstance[]) => readonly PanelInstance[],
@@ -149,9 +153,9 @@ export function createJarvisPanelsPresenter(
 ): OwnedJarvisPanelsPresenter {
   const cache = new Map<string, PanelCacheEntry>();
   const panelDataCache = new Map<string, CoreStream<PanelData | null>>();
-  const rows = createSyncRef<readonly JarvisPanelVm[]>(host, []);
-  const docked = createSyncRef<readonly JarvisPanelVm[]>(host, []);
-  const floating = createSyncRef<readonly JarvisPanelVm[]>(host, []);
+  const rows = createSyncRef<readonly JarvisPanelVm[]>([]);
+  const docked = createSyncRef<readonly JarvisPanelVm[]>([]);
+  const floating = createSyncRef<readonly JarvisPanelVm[]>([]);
 
   const unlisten = machine.ref.listen((state) => {
     syncCache(state.panels);
@@ -266,25 +270,28 @@ export function createJarvisPanelsPresenter(
         return target === null ? Option.some(null) : peekCurrent(target);
       },
       run: (update: FoldUpdate<PanelData | null>, fromPort: FromPort) => {
-        return fromPort(rows$.state$).pipe(
-          Stream.map(targetOf),
-          Stream.changes,
-          Stream.flatMap(
-            (target) => {
-              return target === null
-                ? Stream.make(null)
-                : scopedPortStream(() => {
-                    return target;
-                  });
-            },
-            { switch: true },
-          ),
-          Stream.runForEach((data) => {
-            return update(() => {
-              return data;
-            });
-          }),
-        );
+        return fromPort
+          .merged<PanelData | null>([
+            switchedPortEvents(
+              projectedChanges(rows$.state$, targetOf),
+              (target) => {
+                return [
+                  target === null
+                    ? oneEvent(null)
+                    : portEvents(target, (data) => {
+                        return data;
+                      }),
+                ];
+              },
+            ),
+          ])
+          .pipe(
+            Stream.runForEach((data) => {
+              return update(() => {
+                return data;
+              });
+            }),
+          );
       },
     });
     panelDataCache.set(panelId, stream);
@@ -316,10 +323,10 @@ export function createJarvisPanelsPresenter(
 }
 
 /** One desk panel's interpreted data: its source's port streams, folded by
- * the SHARED per-source steps (`@rtc/client-core`'s `panelFrames`), through
+ * the SHARED per-source steps (`@rtc/core-logic`'s `panelFrames`), through
  * the spec's transforms and viz — a `sharedFold`, the RxJS
  * `shareReplay({ refCount: true })`. A multi-symbol source publishes once
- * every symbol has a series (`Stream.zipLatestAll`, `combineLatest`'s
+ * every symbol has a series (`latestOfEach`, `combineLatest`'s
  * rule). */
 function createPanelData(
   host: EffectHost,
@@ -349,30 +356,41 @@ function sourceFrames(
 ): Stream.Stream<Frame, unknown> {
   switch (source.kind) {
     case "fxTicks":
-      return Stream.zipLatestAll(
-        ...source.symbols.map((symbol) => {
-          return fromPort(deps.pricing.getPriceUpdates(symbol)).pipe(
-            Stream.mapAccum(
-              [] as readonly PanelPoint[],
-              (points, tick): [readonly PanelPoint[], NamedSeries] => {
-                const next = appendTickPoint(points, tick);
-                return [next, { label: symbol, points: next }];
-              },
-            ),
-          );
-        }),
-      ).pipe(Stream.map(seriesFrame));
+      return fromPort
+        .merged([
+          latestOfEach(
+            source.symbols.map((symbol) => {
+              // Per subscription, so per warm period: the series starts
+              // empty each time the panel's data is reopened.
+              let points: readonly PanelPoint[] = [];
+
+              return portEvents(
+                deps.pricing.getPriceUpdates(symbol),
+                (tick): NamedSeries => {
+                  points = appendTickPoint(points, tick);
+                  return { label: symbol, points };
+                },
+              );
+            }),
+          ),
+        ])
+        .pipe(Stream.map(seriesFrame));
 
     case "priceHistory":
-      return Stream.zipLatestAll(
-        ...source.symbols.map((symbol) => {
-          return fromPort(deps.pricing.getPriceHistory(symbol)).pipe(
-            Stream.map((ticks) => {
-              return historySeries(symbol, ticks);
+      return fromPort
+        .merged([
+          latestOfEach(
+            source.symbols.map((symbol) => {
+              return portEvents(
+                deps.pricing.getPriceHistory(symbol),
+                (ticks): NamedSeries => {
+                  return historySeries(symbol, ticks);
+                },
+              );
             }),
-          );
-        }),
-      ).pipe(Stream.map(seriesFrame));
+          ),
+        ])
+        .pipe(Stream.map(seriesFrame));
 
     case "analytics":
       return fromPort(new AnalyticsUseCase(deps.analytics).execute()).pipe(

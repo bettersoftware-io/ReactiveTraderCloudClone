@@ -1,5 +1,4 @@
-import type { ChartScale } from "./chartScene.js";
-import { priceToY, yToPrice } from "./chartScene.js";
+import { type ChartScale, priceToY, yToPrice } from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 
 /** A drawing anchor in data-space: a candle index (not a plot fraction) plus

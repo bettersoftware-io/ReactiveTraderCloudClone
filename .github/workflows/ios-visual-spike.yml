@@ -361,7 +361,7 @@ jobs:
       # `pnpm build`: that builds all 19 packages, including the Vite bundles for
       # client-react, client-solid, devtools-app and client-prototype, none of
       # which an iOS capture touches. The filter resolves to the 7 that matter —
-      # domain, shared, client-core, react-bindings, motion-core, devtools-core,
+      # domain, shared, client-adapters, client-core-rxjs, react-bindings, motion-core, devtools-core,
       # devtools-relay — which is real time back on a 3-core runner.
       - name: Build workspace libraries (this package's deps only)
         run: pnpm exec turbo run build --filter='@rtc/client-react-native^...'

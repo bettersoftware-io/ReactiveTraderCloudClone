@@ -1,8 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import type { WatchRow } from "#/fx/LiveRates/WatchlistView";
-import { WatchlistView } from "#/fx/LiveRates/WatchlistView";
+import { WatchlistView, type WatchRow } from "#/fx/LiveRates/WatchlistView";
 
 afterEach(cleanup);
 

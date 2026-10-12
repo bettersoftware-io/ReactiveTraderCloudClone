@@ -1,18 +1,22 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactElement,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
 import {
   EqBlotterPanel,
   EqBlotterPanelControls,
+  type EqBlotView,
 } from "#/equities/Blotter/EqBlotterPanel";
 import { ChartPanel, ChartPanelControls } from "#/equities/Chart/ChartPanel";
 import styles from "#/equities/EquitiesScreen.module.css";
 import { positionsVm } from "#/equities/positionsVm";
 import { OrderTicketPanel } from "#/equities/Ticket/OrderTicketPanel";
 import { useEqChart } from "#/equities/useEqChart";
-import type { EqPanelId } from "#/equities/useEqDock";
-import { useEqDock } from "#/equities/useEqDock";
+import { type EqPanelId, useEqDock } from "#/equities/useEqDock";
 import { useEqTicket } from "#/equities/useEqTicket";
 import { useEquities } from "#/equities/useEquities";
 import {

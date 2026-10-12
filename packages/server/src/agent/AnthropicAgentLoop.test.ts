@@ -5,8 +5,13 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 
 import type { ConfirmGate, JarvisToolDefinition } from "@rtc/agent-tools";
-import { DEFAULT_JARVIS_BRAIN, Direction } from "@rtc/domain";
-import type { JarvisEvent, JarvisHistoryEntry, PanelSpecV1 } from "@rtc/shared";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  Direction,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+  type PanelSpecV1,
+} from "@rtc/domain";
 
 import { AnthropicAgentLoop } from "./AnthropicAgentLoop.js";
 import type {

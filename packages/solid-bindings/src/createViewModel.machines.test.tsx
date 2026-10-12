@@ -5,7 +5,7 @@
 //   useMachine exactly as react-bindings does (see its createViewModel.ts:605-752).
 //
 // Smoke coverage only — the machines themselves are exhaustively unit-tested
-// in @rtc/client-core (presenters/__tests__/*Machine.test.ts); this proves the
+// in @rtc/client-core-rxjs (presenters/__tests__/*Machine.test.ts); this proves the
 // seam wiring (factory called once, state readable as an Accessor, intents
 // forward to the machine) mirroring how react-bindings'
 // __tests__/creditRfqHooks.test.tsx exercises useRfqSubmission/useCancelRfq
@@ -15,7 +15,10 @@
 import { renderHook, waitFor } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import { createApp, createMachineFactories } from "@rtc/client-core-rxjs";
 import type { AppPorts } from "@rtc/core-api";
 import {

@@ -167,8 +167,8 @@ export function describeThroughputContract(
           h.driver.resolveThroughputWrite();
           await clock.settle();
           // "Throughput has been set to 2" is `throughputSetMessage(2)` in
-          // @rtc/client-core's adminFolds.ts; this suite may not import
-          // client-core, so the banner text is spelled literally.
+          // @rtc/core-logic's adminFolds.ts; this suite may not import
+          // client-core-rxjs, so the banner text is spelled literally.
           expect(c.values.at(-1)?.message).toEqual({
             text: "Throughput has been set to 2",
             isError: false,
@@ -199,7 +199,7 @@ export function describeThroughputContract(
           h.driver.failThroughputWrite(new Error("nope"));
           await clock.settle();
           // "Error setting throughput" is `THROUGHPUT_SET_ERROR` in
-          // @rtc/client-core's adminFolds.ts — spelled literally, as above.
+          // @rtc/core-logic's adminFolds.ts — spelled literally, as above.
           expect(c.values.at(-1)?.message).toEqual({
             text: "Error setting throughput",
             isError: true,

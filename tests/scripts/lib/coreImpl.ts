@@ -1,5 +1,5 @@
 // Which application core an e2e run targets. The harness's own knob is
-// RTC_CORE_IMPL — devServer.ts forwards it to the spawned Vite server as
+// RTC_CORE_IMPL — clientServer.ts forwards it to the spawned Vite server as
 // VITE_CORE_IMPL, the runner configs name their report directories after it,
 // and the login scenario asserts the booted core against it. But
 // VITE_CORE_IMPL is the knob every `dev:*` script and the README teach, and

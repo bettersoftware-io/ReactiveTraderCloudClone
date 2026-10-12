@@ -1,4 +1,4 @@
-import { Effect, Stream, SubscriptionRef } from "effect";
+import { Effect, Stream } from "effect";
 
 import type {
   Stream as CoreStream,
@@ -26,12 +26,8 @@ import type {
   PlaceOrderRequest,
 } from "@rtc/domain";
 
-import {
-  createDetachedHost,
-  refToStateStream,
-  scopedPortStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createDetachedHost, scopedPortStream } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface OrderTicketDeps {
@@ -39,12 +35,12 @@ export interface OrderTicketDeps {
   defaultSymbol: string;
 }
 
-/** The ticket on a `SubscriptionRef` and a run slot, under a DETACHED host
+/** The ticket on a `SyncRef` and a run slot, under a DETACHED host
  * (one per mount, like `rfqTile`). The form and the fold accumulator are
  * plain mutable state; every candidate state goes through the imported
  * `reduceOrderTicket`, so the in-flight gate is the RxJS core's own rule —
  * a form edit made while an order is in flight returns the SAME accumulator,
- * which `setRefIfChanged` then drops. A valid `submit()` supersedes the
+ * which the ref then drops (an unchanged write). A valid `submit()` supersedes the
  * order in flight (the RxJS `switchMap`); an invalid one ends it too. A
  * failing `place()` is caught inside the build and lands on `rejected`
  * through the imported `placeFailureToTicketPhase` — the RxJS core's
@@ -56,16 +52,14 @@ export function createOrderTicketMachine(
   const host = createDetachedHost();
   let form = createOrderTicketForm(deps.defaultSymbol);
   let acc: OrderTicketAcc = createOrderTicketAcc(form);
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<OrderTicketState>(acc.state),
-  );
+  const ref = createSyncRef<OrderTicketState>(acc.state);
   const slot = createRunSlot(host, ref);
 
   function offer(next: OrderTicketState): Effect.Effect<void> {
     return Effect.suspend(() => {
       acc = reduceOrderTicket(acc, next);
       const { state } = acc;
-      return setRefIfChanged(ref, () => {
+      return ref.write(() => {
         return state;
       });
     });
@@ -88,7 +82,7 @@ export function createOrderTicketMachine(
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       setSymbol: (symbol: string) => {
         patch({ symbol });

@@ -1,11 +1,12 @@
 import { Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import type { CandleTimeframe, MarketDataPort } from "@rtc/domain";
 import {
   CANDLE_HISTORY_PAGE,
   CANDLE_HISTORY_RETRY_COOLDOWN_MS,
   type Candle,
+  type CandleTimeframe,
+  type MarketDataPort,
 } from "@rtc/domain";
 
 import { createCandleSeriesPresenter } from "#/presenters/candleSeries";

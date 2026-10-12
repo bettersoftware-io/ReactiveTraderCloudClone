@@ -1,4 +1,6 @@
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
+
+import { useViewModel } from "@rtc/react-bindings";
 
 import { JarvisOrb } from "../jarvis/JarvisOrb";
 import { useJarvisDrivenPulse } from "../jarvis/useJarvisDrivenPulse";
@@ -23,6 +25,9 @@ import styles from "./HeaderChrome.module.css";
  * Trader.dc.html:107-217) to CSS-module markup with `var(--token)` colours.
  * The Preferences modal opens from the account menu's ⚙ Preferences row
  * (prototype parity — no standalone gear button); its open state lives here.
+ * It also opens once on mount when the shell's one-shot
+ * `takePreferencesReopen()` says this composition came from a core swap, so
+ * the user lands back where they chose the core.
  *
  * All four nav tabs (FX, Credit, Equities, Admin) are live workspace tabs —
  * one NavTab component each (see NavTab.tsx for the testid/data-active
@@ -34,7 +39,23 @@ export function HeaderChrome({
 }: HeaderChromeProps): ReactElement {
   // Local view-state only (which UI panel is open) — not business logic, so a
   // plain useState is correct here, no port involved.
-  const [prefsOpen, setPrefsOpen] = useState(false);
+  //
+  // It starts open when the shell's one-shot says this composition came from
+  // a core swap. The initializer only PEEKS — a pure read, because React may
+  // run this render and throw it away (a Suspense boundary, an error retry, a
+  // discarded concurrent render) and then call the initializer again. The
+  // one-shot is TAKEN in an effect, i.e. only once this header has
+  // committed; StrictMode's effect replay takes it a second time, which is
+  // harmless. A later mount (AuthGate after sign-in) peeks `false` — the
+  // signal is the composition's, not the header's.
+  const { peekPreferencesReopen, takePreferencesReopen } = useViewModel();
+  const [prefsOpen, setPrefsOpen] = useState(() => {
+    return peekPreferencesReopen?.() === true;
+  });
+
+  useEffect(() => {
+    takePreferencesReopen?.();
+  }, [takePreferencesReopen]);
 
   // Driven-pulse cue (Task 10): flashes the nav rail for one CSS animation
   // cycle when Jarvis's drive-the-app interpreter applies a command — see

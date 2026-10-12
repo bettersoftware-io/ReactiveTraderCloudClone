@@ -8,7 +8,8 @@ import {
   vi,
 } from "vitest";
 
-import { SESSION_STORAGE_KEY } from "#/app/adapters/LocalStorageSessionStore";
+import { SESSION_STORAGE_KEY } from "@rtc/web-boot";
+
 import { appPage } from "#tests/ui/pages/AppPage";
 
 // jsdom has no ResizeObserver; dockview-core's own tests stub it the same way
@@ -28,8 +29,8 @@ beforeAll(() => {
   }
 });
 
-// Smoke test: mounts the REAL composition root (AppRoot →
-// createApp(buildBrowserPorts()) → simulator ports, no fakes on the seam)
+// Smoke test: mounts the REAL UI root (AppRoot on a boot composition over
+// buildBrowserPorts() → simulator ports, no fakes on the seam)
 // and asserts the live connection status renders through the real shell
 // chrome (StatusBar → ConnectionStatusBar) — the Solid↔ViewModel bridge,
 // end to end, exactly as a user would see it in `pnpm dev:solid`.
@@ -72,10 +73,10 @@ describe("App (shell chrome)", () => {
   });
 
   // The composition root's own wiring for the login screen's demo-accounts
-  // hint (hardening spec §7 D9): AppRoot → readDemoAccounts() →
-  // createViewModel → LoginScreen, no fake on the seam. The contract tier
-  // covers LoginScreen against a seeded World and so cannot see whether
-  // AppRoot hands the accounts over at all.
+  // hint (hardening spec §7 D9): the page's demo accounts → AppRoot's
+  // `demoAccounts` prop → createViewModel → LoginScreen, no fake on the
+  // seam. The contract tier covers LoginScreen against a seeded World and so
+  // cannot see whether AppRoot hands the accounts over at all.
   it("hints at the simulator's demo accounts, and a picked account signs in", async () => {
     page.mount();
 

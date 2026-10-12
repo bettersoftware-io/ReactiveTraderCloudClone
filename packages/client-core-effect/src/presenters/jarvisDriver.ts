@@ -10,15 +10,14 @@ import {
   type DriveCommandDeps,
   driveStaggerMs,
 } from "@rtc/core-logic";
-import type { PowerSaverLevel } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import type { DriveBatchV1, JarvisEvent, PowerSaverLevel } from "@rtc/domain";
 
 import {
   createChildHost,
   createHotStream,
   type EffectHost,
 } from "#/bridge/out";
-import { createSyncRef } from "#/presenters/syncRef";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface JarvisDriverDeps {
   /** Every Jarvis turn event, heard synchronously. */
@@ -29,15 +28,9 @@ export interface JarvisDriverDeps {
   readonly powerSaverLevel: () => PowerSaverLevel;
 }
 
-interface CommandTag {
-  readonly type: "command";
-}
-
-type DriveBatch = Extract<JarvisEvent, CommandTag>["batch"];
-
 /**
  * `presenters.jarvisDriver` on the Effect core: the shared interpreter
- * (`applyDriveCommand`, client-core) does every command; this file owns the
+ * (`applyDriveCommand`, core-logic) does every command; this file owns the
  * timing. Batches queue (an Effect `Queue`) and one consumer fiber drains
  * them — a batch arriving mid-stagger waits — and within a batch each
  * command waits `driveStaggerMs` (0 for the first, and under freeze) on an
@@ -57,11 +50,11 @@ export function createJarvisDriver(
   deps: JarvisDriverDeps,
 ): NativeJarvisDriver {
   const host = createChildHost(parent);
-  const ref = createSyncRef<JarvisDriverState>(host, { lastBatch: [] });
+  const ref = createSyncRef<JarvisDriverState>({ lastBatch: [] });
   const outcomes = createHotStream<DriveOutcome>();
-  const batches = host.runtime.runSync(Queue.unbounded<DriveBatch>());
+  const batches = host.runtime.runSync(Queue.unbounded<DriveBatchV1>());
 
-  function applyBatch(batch: DriveBatch): Effect.Effect<void> {
+  function applyBatch(batch: DriveBatchV1): Effect.Effect<void> {
     return Effect.sync(() => {
       ref.set(() => {
         return { lastBatch: [] };

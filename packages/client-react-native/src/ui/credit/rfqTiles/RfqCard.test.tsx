@@ -1,7 +1,6 @@
 import { afterEach, expect, type jest, test } from "@jest/globals";
 
-import type { Quote } from "@rtc/domain";
-import { Direction, type Rfq, RfqState } from "@rtc/domain";
+import { Direction, type Quote, type Rfq, RfqState } from "@rtc/domain";
 
 import { rnThemeTokens } from "#/ui/theme/tokens";
 import { rfqCardPage } from "#tests/pages/RfqCardPage";

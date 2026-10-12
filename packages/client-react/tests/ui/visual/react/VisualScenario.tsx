@@ -34,6 +34,7 @@ const FULL_BLEED = new Set([
   "App",
   "BootSequence",
   "LockScreen",
+  "CoreSwapOverlayHandover",
   "LoginScreen",
   "PreferencesModal",
   "JarvisOverlay",

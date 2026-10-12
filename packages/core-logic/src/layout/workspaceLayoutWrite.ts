@@ -38,18 +38,16 @@
  */
 
 import type { LayoutState, WorkspaceTab } from "@rtc/core-api";
-import type { PanelSpecV1 } from "@rtc/shared";
+import type { PanelSpecV1 } from "@rtc/domain";
 
 import { createDefaultLayoutPort } from "./defaultLayoutPort";
 import { dockedLeafIds, removeDockedLeaf } from "./dockColumn";
-import type {
-  DockedPanelEntry,
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
-} from "./workspaceLayoutPersistence";
 import {
+  type DockedPanelEntry,
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "./workspaceLayoutPersistence";
 
 /** One docked panel plus the tab it belongs to. The tab is the one that was
@@ -169,7 +167,7 @@ function buildPayload(deps: WorkspaceLayoutWriteDeps): WorkspaceLayoutV1 {
  * that survives one debounce window survives all of them, and this writer
  * fires on every layout drag settle, so an unguarded log would flood the
  * console for the rest of the session. Plain `console` matches the only other
- * client-core logging precedent (`WsAdapter`'s connect/retry lines). */
+ * client-adapters logging precedent (`WsAdapter`'s connect/retry lines). */
 let warnedAboutUnwritablePayload = false;
 
 export function writeWorkspaceLayout(deps: WorkspaceLayoutWriteDeps): void {

@@ -1,5 +1,9 @@
-import type { ReactElement } from "react";
-import { type ChangeEvent, type KeyboardEvent, useRef } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactElement,
+  useRef,
+} from "react";
 
 import type { NotionalIntents, NotionalView } from "@rtc/core-api";
 

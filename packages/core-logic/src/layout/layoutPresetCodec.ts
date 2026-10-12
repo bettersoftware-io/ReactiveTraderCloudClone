@@ -47,13 +47,11 @@ import type {
 } from "@rtc/core-api";
 import { MAX_LAYOUT_PRESETS as DOMAIN_MAX_LAYOUT_PRESETS } from "@rtc/domain";
 
-import type {
-  PersistedTabLayout,
-  WorkspaceLayoutV1,
-} from "./workspaceLayoutPersistence";
 import {
+  type PersistedTabLayout,
   parseWorkspaceLayout,
   serializeWorkspaceLayout,
+  type WorkspaceLayoutV1,
 } from "./workspaceLayoutPersistence";
 
 /** Bumped 1 → 2 for the width locks (plan 2026-09-28, R9): a v1 preset's blob

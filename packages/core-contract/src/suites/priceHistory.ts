@@ -8,7 +8,7 @@ import {
 
 import { withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
-import { createTick } from "#/harness/fixtures";
+import { createTick, EURUSD } from "#/harness/fixtures";
 import type { MakeHarness } from "#/harness/harness";
 import { settle } from "#/harness/settle";
 import { collectTurns } from "#/harness/turns";
@@ -86,6 +86,41 @@ export function describePriceHistoryContract(
         expect(c.turnCount()).toBe(1);
         expect(c.errors).toEqual([]);
         c.unsubscribe();
+      } finally {
+        await h.teardown();
+      }
+    });
+
+    it("a tile mounting on a price that is already warm hears that price and the history the port replays in one turn — one UI render, not one each", async () => {
+      const h = makeHarness();
+
+      try {
+        // What the pricing simulator does on every subscribe.
+        h.driver.replayPricesOnSubscribe("EURUSD", [
+          createTick("EURUSD", 1),
+          createTick("EURUSD", 2),
+          createTick("EURUSD", 3),
+        ]);
+        // Something else already reads the price — in the app, the animation
+        // director and the narrator do — so a newcomer is handed its current
+        // value inside `subscribe`.
+        const price$ = h.app.presenters.priceStream.price$(EURUSD);
+        const held = collect(price$);
+        await settle();
+
+        // The two streams a tile reads, subscribed one after the other in
+        // one synchronous stretch, as a component's effects are.
+        const tile = collectTurns<unknown>(
+          price$,
+          h.app.presenters.priceHistory.history$("EURUSD"),
+        );
+        await settle();
+
+        expect(tile.turnCount()).toBe(1);
+        expect(tile.values.at(-1)).toHaveLength(3);
+        expect(tile.errors).toEqual([]);
+        tile.unsubscribe();
+        held.unsubscribe();
       } finally {
         await h.teardown();
       }

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 720" font-family="ui-sans-serif, system-ui, sans-serif">
-  <title>Clean Architecture rings mapped to this repo's packages: Entities and Use Cases in @rtc/domain at the centre; Interface Adapters (client-core, react-bindings, simulators, server effects, shared DTOs) around them; Frameworks and Drivers (React, Expo, ws-effects, Node, Vite) at the volatile outer edge. Source code points inward only.</title>
+  <title>Clean Architecture rings mapped to this repo's packages: Entities and Use Cases in @rtc/domain at the centre; Interface Adapters (client-core-rxjs + client-adapters, react-bindings, simulators, server effects, shared DTOs) around them; Frameworks and Drivers (React, Expo, ws-effects, Node, Vite) at the volatile outer edge. Source code points inward only.</title>
 
   <defs>
     <marker id="inwardArrow" markerWidth="12" markerHeight="12" refX="8.5" refY="5"

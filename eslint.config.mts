@@ -14,6 +14,7 @@ import { newspaperOrder } from "./eslint-rules/newspaper-order.mts";
 import { noFrameworkCallsInSpecs } from "./eslint-rules/no-framework-calls-in-specs.mts";
 import { noMinifiedJsonLiteral } from "./eslint-rules/no-minified-json-literal.mts";
 import { noRenderFunctions } from "./eslint-rules/no-render-functions.mts";
+import { oneImportPerModule } from "./eslint-rules/one-import-per-module.mts";
 import { pageObjectsOwnTheirComponent } from "./eslint-rules/page-objects-own-their-component.mts";
 
 // Structural `no-restricted-syntax` bans shared between the repo-wide block and
@@ -163,6 +164,7 @@ const rtcPlugin: TSESLint.FlatConfig.Plugin = {
     "name-fixture-factories": nameFixtureFactories,
     "no-framework-calls-in-specs": noFrameworkCallsInSpecs,
     "no-minified-json-literal": noMinifiedJsonLiteral,
+    "one-import-per-module": oneImportPerModule,
     "json-fixtures-in-factories": jsonFixturesInFactories,
     "page-objects-own-their-component": pageObjectsOwnTheirComponent,
   },
@@ -482,7 +484,7 @@ export default tseslint.config(
     // The ban is therefore "this seam stays memo-free by design", not "the
     // compiler covers it". It holds today at zero call sites. The package is
     // three thin files bridging React to RxJS; a `useMemo` appearing here is a
-    // signal the logic belongs in `client-core` (an RxJS machine) or in
+    // signal the logic belongs in `client-core-rxjs` (an RxJS machine) or in
     // `@rtc/motion-core` (a pure function) — see ADR-005's decision tree —
     // rather than being cached at the binding layer.
     files: ["packages/react-bindings/src/**/*.{ts,tsx}"],
@@ -505,7 +507,7 @@ export default tseslint.config(
               // runtime makes it unnecessary and no file here uses one.
               importNames: ["default", "useMemo", "useCallback", "memo"],
               message:
-                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
+                "Manual memoization is banned in react-bindings. This package is tsc-built, so the React Compiler never runs here and cannot replace a memo — which is the point: the bridge stays memo-free by design. If you need memoization, the logic likely belongs in an RxJS machine (client-core-rxjs) or a pure function (@rtc/motion-core) instead — see ADR-005. A default React import is banned for the same reason: it is the one form that could reach React.useMemo unseen. React 19 does not need it — use named imports.",
             },
           ],
         },
@@ -536,9 +538,10 @@ export default tseslint.config(
     // pages/contract/visual chokepoints below, plus the occasional
     // non-UI spec (e.g. client-solid's `tests/parity/cssParity.test.ts`,
     // a filesystem check with no testing-library import, so the rule is
-    // silent on it either way) — this WARNs, rather than leaving the tree
+    // silent on it either way) — this reports, rather than leaving the tree
     // fully ungoverned, if a future spec lands directly under `tests/**`
-    // outside those chokepoints. client-prototype is out of scope (abandoned
+    // outside those chokepoints. An error since 2026-10-05, when
+    // `--max-warnings 0` made every warning fail the lint step anyway. client-prototype is out of scope (abandoned
     // reference port), and the bindings packages' renderHook specs stay out
     // until a harness exists for them.
     files: [
@@ -560,13 +563,12 @@ export default tseslint.config(
       "**/*.testHelpers.*",
     ],
     plugins: { rtc: rtcPlugin },
-    rules: { "rtc/no-framework-calls-in-specs": "warn" },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
   {
     // devtools-app is migrated (Wave A of the page-object-isolation plan):
     // every spec under src/**/*.{test,spec}.{ts,tsx} speaks page objects
-    // under tests/pages/, so this package is held to error while the rest
-    // of the warn block above burns down.
+    // under tests/pages/, so this package is held to error.
     files: ["packages/devtools-app/src/**/*.{test,spec}.{ts,tsx}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
@@ -588,6 +590,16 @@ export default tseslint.config(
     // ports of each other; App.test.tsx's page is solid-only), so this
     // package is held to error too.
     files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/no-framework-calls-in-specs": "error" },
+  },
+  {
+    // @rtc/web-boot holds the boot code both web clients shared, with its
+    // specs (framework-free .ts, so no .tsx). Held to error like the two
+    // clients it was moved out of; page modules such as
+    // src/__tests__/BootErrorPage.ts are not .test.ts files, so the glob
+    // skips them.
+    files: ["packages/web-boot/src/**/*.{test,spec}.ts"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-framework-calls-in-specs": "error" },
   },
@@ -635,6 +647,17 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx,mts}"],
     plugins: { rtc: rtcPlugin },
     rules: { "rtc/no-minified-json-literal": "error" },
+  },
+  {
+    // A file names a module in ONE import statement: types ride beside the
+    // values with an inline `type`, never in a separate `import type` block.
+    // Re-exports follow the same rule. Repo-wide and autofixable. The other
+    // half — a statement naming ONLY types stays `import type` — is Biome's
+    // `useImportType` / `useExportType`; read the rule header for why the two
+    // need each other under `verbatimModuleSyntax`.
+    files: ["**/*.{ts,tsx,mts}"],
+    plugins: { rtc: rtcPlugin },
+    rules: { "rtc/one-import-per-module": "error" },
   },
   {
     // A page object CONSTRUCTS the component it is named for; its published
@@ -788,7 +811,7 @@ export default tseslint.config(
     // real components.
     files: ["packages/client-solid/src/**/*.{test,spec}.{ts,tsx}"],
     rules: {
-      "solid/reactivity": ["warn", { customReactiveFunctions: ["/^mount/"] }],
+      "solid/reactivity": ["error", { customReactiveFunctions: ["/^mount/"] }],
     },
   },
   prettier,

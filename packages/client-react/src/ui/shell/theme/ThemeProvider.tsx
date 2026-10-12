@@ -1,5 +1,4 @@
-import type { ReactElement } from "react";
-import { type ReactNode, useLayoutEffect } from "react";
+import { type ReactElement, type ReactNode, useLayoutEffect } from "react";
 
 import { useViewModel } from "@rtc/react-bindings";
 

@@ -10,6 +10,12 @@ import { TESTIDS } from "../contracts/testids.ts";
 import type { WorkspacePO } from "../contracts/Workspace.ts";
 import { navigateAndAwaitMount } from "./appMount.ts";
 
+/** The page globals the swap witnesses keep on `window`. */
+interface WitnessWindow extends Window {
+  __hotSwapMark?: number;
+  __loginScreenSeen?: boolean;
+}
+
 export class PlaywrightWorkspace implements WorkspacePO {
   private readonly page: Page;
 
@@ -75,6 +81,83 @@ export class PlaywrightWorkspace implements WorkspacePO {
       (url) => {
         return !url.searchParams.has("core");
       },
+      { timeout: timeoutMs },
+    );
+  }
+
+  async waitCoreSwapOverlayGone(timeoutMs: number): Promise<void> {
+    await expect(
+      this.page.getByTestId(TESTIDS.shell.coreSwapOverlay),
+    ).toHaveCount(0, { timeout: timeoutMs });
+  }
+
+  async setNavigationMark(): Promise<void> {
+    await this.page.evaluate(() => {
+      (window as WitnessWindow).__hotSwapMark = 1;
+    });
+  }
+
+  async navigationMark(): Promise<number | undefined> {
+    return await this.page.evaluate(() => {
+      return (window as WitnessWindow).__hotSwapMark;
+    });
+  }
+
+  async watchForLoginScreen(): Promise<void> {
+    await this.page.evaluate((loginTestId) => {
+      // Self-contained: Playwright ships only this function's source text.
+      // Reads the mutation RECORDS, not the document at callback time: a
+      // login screen inserted and removed again within one task is gone by
+      // the time the callback runs, and its insertion is still in the
+      // records. That is the case this must catch: the React client once
+      // committed the login screen and removed it within one task on every
+      // composition with a resumed session.
+      const win = window as WitnessWindow;
+      const selector = `[data-testid="${loginTestId}"]`;
+      win.__loginScreenSeen = document.querySelector(selector) !== null;
+
+      function holdsLoginScreen(node: Node): boolean {
+        return (
+          node instanceof Element &&
+          (node.matches(selector) || node.querySelector(selector) !== null)
+        );
+      }
+
+      new MutationObserver((records) => {
+        for (const record of records) {
+          // Removed nodes too: a login screen nested in a node that was
+          // added empty and filled later shows up when it leaves.
+          if (
+            Array.from(record.addedNodes).some(holdsLoginScreen) ||
+            Array.from(record.removedNodes).some(holdsLoginScreen)
+          ) {
+            win.__loginScreenSeen = true;
+          }
+        }
+      }).observe(document, { childList: true, subtree: true });
+    }, TESTIDS.auth.loginScreen);
+  }
+
+  async loginScreenSeen(): Promise<boolean> {
+    const seen = await this.page.evaluate(() => {
+      return (window as WitnessWindow).__loginScreenSeen;
+    });
+
+    if (seen === undefined) {
+      throw new Error(
+        "loginScreenSeen: no watch on this document — call watchForLoginScreen first (a navigation discards it)",
+      );
+    }
+
+    return seen;
+  }
+
+  async waitSignedIn(timeoutMs: number): Promise<void> {
+    await expect(this.page.getByTestId(TESTIDS.shell.header)).toBeVisible({
+      timeout: timeoutMs,
+    });
+    await expect(this.page.getByTestId(TESTIDS.auth.loginScreen)).toHaveCount(
+      0,
       { timeout: timeoutMs },
     );
   }

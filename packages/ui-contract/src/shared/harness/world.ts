@@ -61,8 +61,10 @@ import {
   JARVIS_BRAINS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisNarratorPreference,
   type JarvisSkin,
+  type JarvisUsage,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitDelay,
@@ -85,7 +87,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import type { AdminJarvisUsagePayload, JarvisEvent } from "@rtc/shared";
 
 /** The value each NULLARY query hook yields. Parametric hooks (usePrice etc.)
  *  are modelled by the per-key subject maps below, not by this map. */
@@ -114,9 +115,9 @@ const DEFAULTS: HookValues = {
 };
 
 /** The three application cores a `CoreSelection.options` list offers, mirrored
- * from each client's own `src/app/coreSelection.ts` `CORE_OPTIONS` (same
+ * from `@rtc/web-boot`'s `CORE_OPTIONS` (`src/coreSelection.ts`; same
  * impls/labels/descriptions) — duplicated rather than imported because this
- * framework-neutral harness cannot depend on a concrete client's `src/app`
+ * framework-neutral harness does not depend on the web clients' boot package
  * (`ui-contract-stays-neutral`). */
 export const CORE_OPTIONS_FOR_TESTS: readonly CoreOption[] = [
   {
@@ -297,7 +298,7 @@ export interface AdminSeed {
    * fields (`budgetUsd`/`softBudgetUsd`/`spentWindowUsd`/`gateLevel`).
    * Defaults to null (the card's "NO USAGE DATA" placeholder), mirroring
    * `topology`'s null-until-first-push default. */
-  jarvisUsage?: AdminJarvisUsagePayload | null;
+  jarvisUsage?: JarvisUsage | null;
 }
 
 /**
@@ -471,9 +472,9 @@ export interface World {
   /** Jarvis token-usage/cost telemetry backing useJarvisUsage() (the
    * JarvisUsageCard admin surface, Task 10 of Phase 3) — mirrors `topology$`
    * above (null until first push / not seeded). */
-  readonly jarvisUsage$: BehaviorSubject<AdminJarvisUsagePayload | null>;
+  readonly jarvisUsage$: BehaviorSubject<JarvisUsage | null>;
   /** Push a new Jarvis usage snapshot (drives the JarvisUsageCard's re-render). */
-  setJarvisUsage(value: AdminJarvisUsagePayload | null): void;
+  setJarvisUsage(value: JarvisUsage | null): void;
   /** The persisted `workspaceLayoutV1` preference string (GenUI L3's pinned
    * panels) — the ONLY `string | null` preference on this World, and the one
    * every other one is not: it is both READ (each framework's
@@ -640,6 +641,17 @@ export interface World {
    * host offers no core selection at all (useCoreSelection() returns null),
    * so the row is absent entirely. */
   readonly coreImpl: BehaviorSubject<CoreImpl | null>;
+  /** Why the last core switch left the page where it was, or null — backs
+   * `useCoreSelection().failure` (the Preferences row's failure line).
+   * Defaults to null; a spec pushes a reason to show the line. */
+  readonly coreSelectionFailure: BehaviorSubject<string | null>;
+  /** The shell's one-shot "reopen Preferences" signal backing
+   * `takePreferencesReopen()`: true at most once (only when seeded with
+   * `preferencesReopen: true`), false on every later call — the real core
+   * host's semantics for the composition a swap produced. */
+  takePreferencesReopen(): boolean;
+  /** What `takePreferencesReopen()` would answer, without consuming it. */
+  peekPreferencesReopen(): boolean;
   /** The demo sign-ins backing useDemoAccounts (drives LoginScreen's
    * demo-accounts hint). A plain value, not a subject: the real shell reads
    * it once at composition. Defaults to none — a plain live build. */
@@ -706,6 +718,9 @@ export interface WorldSeeds {
   coreImpl?: CoreImpl | null;
   /** Seeds `World.demoAccounts`; defaults to none. */
   demoAccounts?: readonly DemoAccount[];
+  /** Seeds `World.takePreferencesReopen`'s one shot; defaults to false (a
+   * boot composition, not one a core swap produced). */
+  preferencesReopen?: boolean;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -737,6 +752,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     layoutPresets: layoutPresetsSeed,
     coreImpl: coreImplSeed,
     demoAccounts = [],
+    preferencesReopen = false,
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -936,6 +952,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
   const coreImpl = new BehaviorSubject<CoreImpl | null>(
     coreImplSeed === undefined ? "rxjs" : coreImplSeed,
   );
+  const coreSelectionFailure = new BehaviorSubject<string | null>(null);
+  let preferencesReopenPending = preferencesReopen;
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each
@@ -964,7 +982,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisNarratorSeed ?? DEFAULT_JARVIS_NARRATOR,
   );
 
-  const jarvisUsage$ = new BehaviorSubject<AdminJarvisUsagePayload | null>(
+  const jarvisUsage$ = new BehaviorSubject<JarvisUsage | null>(
     adminSeed.jarvisUsage ?? null,
   );
 
@@ -1151,6 +1169,15 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     chartSubstrate,
     layoutEngine,
     coreImpl,
+    coreSelectionFailure,
+    takePreferencesReopen: (): boolean => {
+      const reopen = preferencesReopenPending;
+      preferencesReopenPending = false;
+      return reopen;
+    },
+    peekPreferencesReopen: (): boolean => {
+      return preferencesReopenPending;
+    },
     demoAccounts,
     jarvisSkin,
     jarvis,
@@ -1160,7 +1187,7 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffort,
     jarvisNarrator,
     jarvisUsage$,
-    setJarvisUsage: (value: AdminJarvisUsagePayload | null) => {
+    setJarvisUsage: (value: JarvisUsage | null) => {
       return jarvisUsage$.next(value);
     },
     workspaceLayout,

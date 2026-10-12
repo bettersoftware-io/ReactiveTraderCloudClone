@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DriveBatchV1 } from "@rtc/shared";
+import type { DriveBatchV1 } from "@rtc/domain";
 import { DRIVE_COMMAND_JSON_SCHEMA } from "@rtc/shared";
 
 import {

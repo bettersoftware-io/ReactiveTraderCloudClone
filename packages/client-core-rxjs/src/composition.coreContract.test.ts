@@ -10,7 +10,10 @@
 
 import { NEVER } from "rxjs";
 
-import { createSimulatorPorts, InMemorySessionStore } from "@rtc/client-core";
+import {
+  createSimulatorPorts,
+  InMemorySessionStore,
+} from "@rtc/client-adapters";
 import type { AppPorts } from "@rtc/core-api";
 import {
   type CoreHarness,
@@ -40,13 +43,20 @@ function createRxjsHarness(seed?: HarnessSeed): CoreHarness {
     },
   };
   const { ports, driver, teardown } = scriptPorts(base, seed);
-  const app = createApp(ports);
+  let current = createApp(ports);
+  const app = current;
   return {
     app,
     machines: createMachineFactories(app.presenters),
     driver,
+    ports,
+    recompose: async () => {
+      await current.dispose();
+      current = createApp(ports);
+      return current;
+    },
     teardown: async () => {
-      await app.dispose();
+      await current.dispose();
       teardown();
     },
   };

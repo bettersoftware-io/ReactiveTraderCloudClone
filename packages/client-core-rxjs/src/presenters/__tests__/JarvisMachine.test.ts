@@ -19,9 +19,10 @@ import {
   JARVIS_GREETING,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisSkin,
+  type PanelSpecV1,
 } from "@rtc/domain";
-import type { JarvisEvent, PanelSpecV1 } from "@rtc/shared";
 
 import { createJarvisMachine, type JarvisDeps } from "../JarvisMachine";
 

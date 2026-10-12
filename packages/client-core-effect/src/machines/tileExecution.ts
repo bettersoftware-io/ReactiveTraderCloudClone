@@ -1,4 +1,4 @@
-import { Duration, Effect, SubscriptionRef } from "effect";
+import { Duration, Effect } from "effect";
 
 import type {
   Machine,
@@ -26,12 +26,9 @@ import {
   TOO_LONG_THRESHOLD_MS,
 } from "@rtc/domain";
 
-import {
-  createDetachedHost,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createDetachedHost } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface TileExecutionDeps {
@@ -95,7 +92,7 @@ function runExecution(
   });
 }
 
-/** The RxJS machine's shape on a `SubscriptionRef` under a detached host,
+/** The RxJS machine's shape on a `SyncRef` under a detached host,
  * with `createRunSlot` owning the run token and fiber: `execute()` starts a
  * fresh run (superseding any in flight), `dismiss()` ends the run in flight
  * and writes `ready` directly, `dispose()` ends everything and closes the
@@ -105,13 +102,11 @@ export function createTileExecutionMachine(
   deps: TileExecutionDeps,
 ): Machine<TileExecutionState, TileExecutionIntents> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<TileExecutionState>(READY_TILE_EXECUTION),
-  );
+  const ref = createSyncRef<TileExecutionState>(READY_TILE_EXECUTION);
   const slot = createRunSlot(host, ref);
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       execute: (direction: Direction, price: Price, notional: number) => {
         if (slot.isDisposed()) {
@@ -129,11 +124,9 @@ export function createTileExecutionMachine(
         }
 
         slot.end();
-        host.runtime.runSync(
-          setRefIfChanged(ref, () => {
-            return READY_TILE_EXECUTION;
-          }),
-        );
+        ref.set(() => {
+          return READY_TILE_EXECUTION;
+        });
       },
     },
     dispose: () => {

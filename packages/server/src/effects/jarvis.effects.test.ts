@@ -1,27 +1,36 @@
 import { type Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_JARVIS_BRAIN, Direction, JARVIS_BRAINS } from "@rtc/domain";
-import type {
-  DriveBatchV1,
-  JarvisCancelPayload,
-  JarvisChatPayload,
-  JarvisConfirmPayload,
-  JarvisEvent,
-  JarvisHistoryEntry,
-  PanelSpecV1,
+import {
+  DEFAULT_JARVIS_BRAIN,
+  Direction,
+  type DriveBatchV1,
+  JARVIS_BRAINS,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+  type PanelSpecV1,
+} from "@rtc/domain";
+import {
+  CLIENT_MSG,
+  type JarvisCancelPayload,
+  type JarvisChatPayload,
+  type JarvisConfirmPayload,
+  SERVER_MSG,
 } from "@rtc/shared";
-import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
-import type { Inbound, Outbound } from "@rtc/ws-effects";
-import { combineEffects, createWsListener } from "@rtc/ws-effects";
+import {
+  combineEffects,
+  createWsListener,
+  type Inbound,
+  type Outbound,
+} from "@rtc/ws-effects";
 
-import type {
-  AgentLoop,
-  AgentSession,
-  JarvisLoops,
-  JarvisTurnOptions,
+import {
+  type AgentLoop,
+  type AgentSession,
+  createJarvisLoops,
+  type JarvisLoops,
+  type JarvisTurnOptions,
 } from "../agent/agentLoop.js";
-import { createJarvisLoops } from "../agent/agentLoop.js";
 import { JarvisGateService } from "../services/JarvisGateService.js";
 import type { JarvisGateConfig } from "../services/jarvisGate.js";
 import {

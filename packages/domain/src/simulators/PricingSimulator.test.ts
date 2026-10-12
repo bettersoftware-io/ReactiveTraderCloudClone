@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { defined } from "../__testUtils__/defined.js";
 import { KNOWN_CURRENCY_PAIRS } from "../fx/currencyPair.js";
-import { PRICE_HISTORY_SIZE } from "../fx/price.js";
+import { PRICE_HISTORY_SIZE, type PriceTick } from "../fx/price.js";
 import {
   DEFAULT_ANOMALY_CONFIG,
   detectAnomalies,
@@ -208,6 +208,75 @@ describe("PricingSimulator", () => {
     // The shift() path must have fired: length must still equal the cap, not 51.
     expect(history).toHaveLength(PRICE_HISTORY_SIZE);
     expect(history.length).not.toBeGreaterThan(PRICE_HISTORY_SIZE);
+  });
+
+  it("two subscribers to one symbol share one walk: each hears the same live ticks", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    const first: PriceTick[] = [];
+    const second: PriceTick[] = [];
+    const subscriptions = [
+      engine.getPriceUpdates("EURUSD").subscribe((tick) => {
+        first.push(tick);
+      }),
+      engine.getPriceUpdates("EURUSD").subscribe((tick) => {
+        second.push(tick);
+      }),
+    ];
+
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 10);
+
+    for (const subscription of subscriptions) {
+      subscription.unsubscribe();
+    }
+
+    const live = first.slice(PRICE_HISTORY_SIZE);
+    expect(live.length).toBeGreaterThanOrEqual(10);
+    expect(second.slice(PRICE_HISTORY_SIZE)).toEqual(live);
+  });
+
+  it("the shared walk outlives one subscriber and stops with the last", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    const heard: PriceTick[] = [];
+    const leaver = engine.getPriceUpdates("EURUSD").subscribe();
+    const stayer = engine.getPriceUpdates("EURUSD").subscribe((tick) => {
+      heard.push(tick);
+    });
+
+    leaver.unsubscribe();
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 2);
+    expect(heard.length).toBeGreaterThan(PRICE_HISTORY_SIZE);
+
+    stayer.unsubscribe();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("a subscriber joining a running walk is replayed every tick so far, then hears the next one once", async () => {
+    vi.useFakeTimers();
+    const engine = new PricingSimulator();
+    const early: PriceTick[] = [];
+    const late: PriceTick[] = [];
+    const subscriptions = [
+      engine.getPriceUpdates("EURUSD").subscribe((tick) => {
+        early.push(tick);
+      }),
+    ];
+
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 3);
+    subscriptions.push(
+      engine.getPriceUpdates("EURUSD").subscribe((tick) => {
+        late.push(tick);
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(MAX_TICK_INTERVAL_MS * 3);
+
+    for (const subscription of subscriptions) {
+      subscription.unsubscribe();
+    }
+
+    expect(late).toEqual(early.slice(-late.length));
+    expect(late.length).toBeGreaterThan(PRICE_HISTORY_SIZE);
   });
 
   // --- Anomaly-episode wiring (Task 7b) -----------------------------------

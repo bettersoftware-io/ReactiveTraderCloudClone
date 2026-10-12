@@ -14,7 +14,7 @@ core. Each core owns exactly one **runner** file that builds its own base
 describeCoreContract("rxjs", makeRxjsHarness);
 ```
 
-That inversion is why the dependency edge points this way: `client-core`
+That inversion is why the dependency edge points this way: `client-core-rxjs`
 devDepends on `@rtc/core-contract`, and `@rtc/core-contract` depends on no
 core at all, so a second or third core can be added without a workspace cycle.
 

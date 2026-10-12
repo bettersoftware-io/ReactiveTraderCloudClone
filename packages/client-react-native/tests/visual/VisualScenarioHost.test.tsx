@@ -134,3 +134,16 @@ jest.mock("#/ui/theme/fonts", () => {
     },
   };
 });
+
+// The ready marker waits on the UI thread; under jest there is none, so a
+// worklet runs where it is scheduled.
+jest.mock("react-native-worklets", () => {
+  return {
+    scheduleOnUI: (worklet: () => void): void => {
+      worklet();
+    },
+    scheduleOnRN: (callback: () => void): void => {
+      callback();
+    },
+  };
+});

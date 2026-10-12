@@ -3,7 +3,7 @@
  *
  * Verifies the SVG gradient-glow area chart renders its smoothed area+line
  * paths (Catmull-Rom `d` strings from the shared throughputPaths vm,
- * client-core) once throughput samples are seeded, and shows the "NO DATA"
+ * core-logic) once throughput samples are seeded, and shows the "NO DATA"
  * placeholder when the series is empty. The chart was ported from a <canvas>
  * draw to SVG, so pixel output is owned by the visual (browser) tier; this
  * tier only asserts the DOM-visible paths.

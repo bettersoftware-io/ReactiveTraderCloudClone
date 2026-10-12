@@ -41,6 +41,7 @@ export type ShellSlice = Pick<
   | "useBootGate"
   | "useBootSequence"
   | "useConnectionStatus"
+  | "useDemoAccounts"
   | "useForceBootAnimation"
   | "useIncident"
   | "useLoginWaitPreferences"
@@ -141,7 +142,6 @@ export type InertSlice = Pick<
   ViewModel,
   | "useAnimationIntents"
   | "useCoreSelection"
-  | "useDemoAccounts"
   | "useDockedPanelIds"
   | "useDockLayoutStore"
   | "useEventLog"

@@ -1,10 +1,10 @@
 import type { Page } from "@playwright/test";
 
-import type {
-  MotionSample,
-  MotionSampleOptions,
+import {
+  type MotionSample,
+  type MotionSampleOptions,
+  sampleMotion,
 } from "#/browser/motionProbe.ts";
-import { sampleMotion } from "#/browser/motionProbe.ts";
 
 import type { PowerSaverPO } from "../contracts/PowerSaver.ts";
 import { TESTIDS } from "../contracts/testids.ts";

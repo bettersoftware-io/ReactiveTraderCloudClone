@@ -176,6 +176,10 @@ import {
 import { ThemePickerPage } from "./pages/shell/chrome/ThemePickerPage";
 import { ConnectionOverlayPage } from "./pages/shell/connection/ConnectionOverlayPage";
 import { ConnectionStatusBarPage } from "./pages/shell/connection/ConnectionStatusBarPage";
+import {
+  CoreSwapOverlayPage,
+  type CoreSwapOverlayProps,
+} from "./pages/shell/core/CoreSwapOverlayPage";
 import { JarvisDriverPage } from "./pages/shell/jarvis/JarvisDriverPage";
 import { JarvisOrbPage } from "./pages/shell/jarvis/JarvisOrbPage";
 import { JarvisOverlayPage } from "./pages/shell/jarvis/JarvisOverlayPage";
@@ -447,6 +451,16 @@ export const HeaderChrome = component<HeaderChromeProps, HeaderChromePage>(
   },
 );
 
+/** `HeaderChrome` mounted under the real `AuthGate`, as `AppRoot` mounts it:
+ * signing out unmounts the header and signing in mounts a fresh one, within
+ * the same ViewModel (one composition). */
+export const AuthGatedHeaderChrome = component<
+  HeaderChromeProps,
+  HeaderChromePage
+>((ctx) => {
+  return new HeaderChromePage(ctx);
+});
+
 /** The full `App` shell, mounted whole (Task 12/P5) — see `JarvisDriverPage`'s
  * own doc for why this is the one page object that mounts production's
  * top-level composition rather than a leaf/synthetic composite. */
@@ -525,6 +539,13 @@ export const BootGate = component<Record<string, never>, BootGatePage>(
     return new BootGatePage(ctx);
   },
 );
+
+export const CoreSwapOverlay = component<
+  CoreSwapOverlayProps,
+  CoreSwapOverlayPage
+>((ctx) => {
+  return new CoreSwapOverlayPage(ctx);
+});
 
 export const LockScreen = component<Record<string, never>, LockScreenPage>(
   (ctx) => {

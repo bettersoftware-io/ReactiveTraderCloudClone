@@ -20,7 +20,6 @@
     "@rtc/core-logic": "workspace:*",
     "@rtc/domain": "workspace:*",
     "@rtc/motion-core": "workspace:*",
-    "@rtc/shared": "workspace:*",
     "rxjs": "^7.8"
   },
   "devDependencies": {
@@ -28,7 +27,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@vitest/coverage-v8": "^5.0.3",
     "@vitest/ui": "^5.0.3",
-    "tsc-alias": "1.9.5",
+    "tsc-alias": "1.9.7",
     "vitest": "^5.0.3"
   }
 }

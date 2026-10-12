@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, Show, untrack } from "solid-js";
+import { createMemo, type JSX, Show, untrack } from "solid-js";
 
 import type { LayoutPanelInstance, LayoutState } from "@rtc/core-api";
 import { PANEL_SPECS, visibleRootOf } from "@rtc/core-logic";

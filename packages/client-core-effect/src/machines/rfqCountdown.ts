@@ -1,14 +1,10 @@
-import { Duration, Effect, SubscriptionRef } from "effect";
+import { Duration, Effect } from "effect";
 
 import type { ReadOnlyMachine, RfqCountdownSeed } from "@rtc/core-api";
 import { RFQ_COUNTDOWN_INTERVAL_MS } from "@rtc/domain";
 
-import {
-  closeScope,
-  createDetachedHost,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { closeScope, createDetachedHost } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 /** `remainingMs` from `totalMs − elapsed` (read ONCE, at construction) down
  * to an inclusive 0, one tick per `RFQ_COUNTDOWN_INTERVAL_MS`, derived from
@@ -22,7 +18,7 @@ export function createRfqCountdownMachine(
 ): ReadOnlyMachine<number> {
   const host = createDetachedHost();
   const initial = Math.max(0, seed.totalMs - (now() - seed.creationTimestamp));
-  const ref = host.runtime.runSync(SubscriptionRef.make(initial));
+  const ref = createSyncRef(initial);
 
   if (initial > 0) {
     host.runtime.runFork(
@@ -33,7 +29,7 @@ export function createRfqCountdownMachine(
             0,
             initial - tick * RFQ_COUNTDOWN_INTERVAL_MS,
           );
-          yield* setRefIfChanged(ref, () => {
+          yield* ref.write(() => {
             return remaining;
           });
 
@@ -47,7 +43,7 @@ export function createRfqCountdownMachine(
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {},
     dispose: () => {
       closeScope(host.scope);

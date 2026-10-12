@@ -1,4 +1,4 @@
-import type { PanelAnnotation } from "@rtc/shared";
+import type { PanelAnnotation } from "@rtc/domain";
 
 /** A single numeric sample on a line/spark series — `t` is a timestamp in ms
  * (whatever epoch the underlying tick carries), `v` its value. */

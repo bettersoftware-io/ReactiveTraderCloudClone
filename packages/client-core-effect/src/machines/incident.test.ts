@@ -19,13 +19,11 @@ describe("createIncidentMachine (effect)", () => {
     }
   });
 
-  // The controls and the push are synchronous within the intent; the new
-  // state follows the ref on a fiber (refToWarmStateStream), so it lands a
-  // tick later — still after both side effects.
-  it("inject perturbs every control, then pushes, then updates state — in that order", async () => {
+  // All three are synchronous within the intent: the state has reached its
+  // subscriber by the time `inject` returns, after both side effects.
+  it("inject perturbs every control, then pushes, then updates state — in that order", () => {
     const rig = createRig(useHost());
     rig.machine.intents.inject("latencySpike");
-    await tick();
 
     expect(rig.log).toEqual([
       "c0.perturb(latencySpike)",
@@ -83,9 +81,7 @@ describe("createIncidentMachine (effect)", () => {
     expect(rig.log).toContain("push(gatewayConnected)");
   });
 
-  // State is read from a FRESH subscriber's seed, which reads the ref: an
-  // earlier subscriber follows the ref on a fiber the close interrupted, and
-  // would read the old state whether or not the guard ran.
+  // State is read from a fresh subscriber's seed, which reads the ref.
   it("an intent after the host scope closes touches no control, pushes nothing and changes no state", async () => {
     const host = useHost();
     const rig = createRig(host);

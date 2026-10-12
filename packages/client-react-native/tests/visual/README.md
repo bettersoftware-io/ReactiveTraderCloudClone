@@ -11,15 +11,20 @@ Real iOS-simulator pixel-screenshot regression tests for `@rtc/client-react-nati
 ## What's here
 
 - `shared/diff.ts` — `pixelmatch`/`pngjs` golden-diff core (exact reproduction by default, with a per-scenario allowance via `toleranceFor` — no longer a global `0.06`; the rationale is in the file's header comment).
-- `shared/goldens.ts` — golden path resolver + device pin (`ios-iphone17-26`).
-- `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash tsx/esbuild).
+- `shared/goldens.ts` — golden path resolver + the device pins (`ios-iphone17-26`, `android-pixel10a-37`).
+- `shared/androidDevice.ts`, `shared/statusBarMask.ts` — what an Android run does around the flows: resolve the one device, forward the Metro port, keep the dev menu out of the shots, and black out the status bar rows.
+- `shared/emulatorWindow.ts`, `shared/maestroOutcome.ts` — the runner's two diagnostics: a warning when the Android emulator has a window, and the per-flow failure lines of a `maestro test` that exited non-zero.
+- `shared/deviceInUse.ts` (+ `refuseDeviceInUse.ts`), `simctl/bareApplication.ts` — the two start-of-run checks: refuse a device another run is already driving, and recognise the tree `idb` returns for a simulator Maestro has driven. See "Before a run" below.
+- `scenarioIds.ts` — the pure, Node-safe list of scenario ids (the runner iterates this; importing the RN registry would crash a Node runner).
 - `scenarios.tsx` — the RN scenario registry (each id → a leaf wrapped in `VisualScenarioHost`, which mounts it on sim ports with a pinned skin/mode and frozen motion, **outside** the app's `AuthGate`/shell — see "Harness isolation" below).
+- `useSceneSettled.ts` — when the host raises `visual-ready`: not one frame after mount but once the scene has stopped committing (a UI-thread round trip, then React's queue drained, repeated until a round sees no commit). A scene that never stops committing never becomes ready, and its capture times out on the marker — that is the signal that the scene has no single frame to pin.
 - `simctl/` — **Tier 1** capture driver + CLI runner (`xcrun simctl` + `idb`).
 - `maestro/` — **Tier 2** generated flows + CLI runner (`maestro test`, XCUITest a11y driver).
 - `owl/` — **Tier 3** config only — **not viable on this stack**; the dep and its
   test were removed 2026-07-25 (they were the sole source of a vulnerable
   transitive `ajv@7`). See `BAKEOFF.md`.
 - `__screenshots__/ios-iphone17-26/{simctl,maestro}/` — committed goldens (one set per viable tier).
+- `__screenshots__/android-pixel10a-37/maestro/` — the Android set (Maestro only; `simctl` is Apple-only).
 
 **Scenarios** — `scenarioIds.ts` is the authoritative list (it has grown well past the three original "prove-the-harness" fixtures below, which are kept as worked examples):
 
@@ -67,12 +72,67 @@ PATH="$HOME/.maestro/bin:$PATH" JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_
 … pnpm --filter @rtc/client-react-native test:rn:visual:maestro:update   # regenerate
 ```
 
-**Tier 1** capture: load the app from Metro base → poll the a11y tree for the `login-screen` boot marker → in-app deep-link `rtcmobile://__visual/<id>` → dismiss the iOS "Open in RTC Mobile?" confirmation by locating its "Open" button in the a11y tree (a blind coordinate tap at the iPhone 17 pin, `(274, 474)`, is a **fallback only**, tried once if no such button is found partway through the wait) → poll the a11y tree for the harness's `visual-ready` id, throwing if it's never observed → re-check the a11y tree isn't launcher-shaped at the moment of the shot → `simctl io screenshot --mask=black` (the flag is pinned because Xcode 27 changed the default mask policy and dropped the Dynamic Island. It paints the WHOLE device mask black — the island **and the four rounded screen corners** — and since 2026-10-02 every simctl golden is captured that way. A diff confined to the first/last ~250 rows at the row ends is the corner mask, i.e. a golden from before the pin, not a content change and not flake: it reads ~1% on a light background and a few pixels on a dark one). **Tier 2** does the same two-step deep link via Maestro's own a11y-tree waits (`extendedWaitUntil`). After `:update`, eyeball each PNG and run the verify pass — it must report `pass` for every scenario (a golden that can't reproduce itself is flaky; fix the scenario, don't pin the flake).
+### Android (Maestro only)
+
+```bash
+# once: a dev build on the emulator — `pnpm dev:android` from the repo root
+# builds and installs one (it also removes an EAS preview build, which is
+# signed with another key and cannot be replaced in place)
+
+# each run: emulator `Pixel_10a` (API 37) cold-booted WITHOUT a window, Metro
+# (8083) up as above:
+#   ~/Library/Android/sdk/emulator/emulator -avd Pixel_10a -no-snapshot -no-window
+PATH="$HOME/.maestro/bin:$HOME/Library/Android/sdk/platform-tools:$PATH" \
+  JAVA_HOME="$(brew --prefix openjdk@21)" MAESTRO_METRO_PORT=8083 \
+  pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android          # verify
+… pnpm --filter @rtc/client-react-native test:rn:visual:maestro:android:update   # regenerate
+```
+
+The flows are the same files iOS runs. Boot the emulator with `-no-snapshot`: a resumed snapshot lost its package
+service mid-run. Boot it with `-no-window` too: macOS throttles a windowed
+emulator once its window is covered (6–8 times slower), which shows up as
+launch timeouts and unsettled frames, never as its cause — the runner warns
+when it sees a window. An emulator started by `pnpm dev:android` has one;
+close it and start a headless one before a run. A scenario reported as
+`NO SHOT` had its flow fail before the screenshot: that is a capture failure,
+and the `[Failed]` line above it carries Maestro's reason. The top 142 rows (the status bar) are blacked out in every
+Android shot because that bar does not reproduce between boots.
+
+### Before a run: two traps the runners now name, and one they cannot
+
+The first two cost hours on 2026-10-06 because neither announced itself.
+
+- **One run per device.** Two runs on the same simulator or emulator kill
+  each other's app: flows report "app crashed or stopped", waits time out on
+  the home screen, and a shot can show the OTHER run's scenario, which then
+  reads as a pixel failure of up to 25%. Each runner now checks first and
+  refuses to start, naming the process already on its device
+  (`shared/deviceInUse.ts`). The simulator and the emulator are separate
+  devices, so one run on each is fine. When several Claude sessions share this
+  machine, agree who has which device before starting; `ps -Ao pid,etime,command
+  | grep -i "simctl/run\|maestro\|expo start"` shows what is running.
+- **Reboot the simulator between a Maestro run and a simctl run.** After even
+  one Maestro flow, `idb` returns the app's `Application` node with no element
+  under it, so the simctl tier cannot see a screen that is in fact ready and
+  times out on its first scenario. Stopping Maestro's driver or restarting
+  `idb_companion` does not help (and killing `idb_companion` by hand breaks
+  `idb` until `idb kill`); `xcrun simctl shutdown <udid> && xcrun simctl boot
+  <udid>` does. The timeout message now says this instead of blaming Metro's
+  harness flag (`simctl/bareApplication.ts`). Run simctl first, or reboot.
+- **Warm Metro before the simctl tier** (not enforced). Start it from this
+  package's directory — from the repository root there is no Expo project and
+  it exits. The first bundle after a cold start, and any start with `--clear`,
+  takes longer than the driver's 20 s boot wait, so the first scenario times
+  out with the launcher or a half-loaded app on screen. Open the app once
+  (`xcrun simctl openurl <udid> "exp+rtc-mobile://expo-development-client/?url=http://localhost:8083"`)
+  and wait for Metro to print `Bundled` before running.
+
+**Tier 1** capture: load the bundle from Metro base → poll the a11y tree for the `visual-harness-home` marker (on a harness bundle the home route is a bare marker screen; the app itself is never mounted, see below) → in-app deep-link `rtcmobile://__visual/<id>` → dismiss the iOS "Open in RTC Mobile?" confirmation by locating its "Open" button in the a11y tree (a blind coordinate tap at the iPhone 17 pin, `(274, 474)`, is a **fallback only**, tried once if no such button is found partway through the wait) → poll the a11y tree for the harness's `visual-ready` id, throwing if it's never observed → re-check the a11y tree isn't launcher-shaped at the moment of the shot → `simctl io screenshot --mask=black` (the flag is pinned because Xcode 27 changed the default mask policy and dropped the Dynamic Island. It paints the WHOLE device mask black — the island **and the four rounded screen corners** — and since 2026-10-02 every simctl golden is captured that way. A diff confined to the first/last ~250 rows at the row ends is the corner mask, i.e. a golden from before the pin, not a content change and not flake: it reads ~1% on a light background and a few pixels on a dark one). **Tier 2** does the same two-step deep link via Maestro's own a11y-tree waits (`extendedWaitUntil`). After `:update`, eyeball each PNG and run the verify pass — it must report `pass` for every scenario (a golden that can't reproduce itself is flaky; fix the scenario, don't pin the flake).
 
 **Capture failure vs. visual regression (Tier 1 reliability fix).** Before this fix, Tier 1 dismissed the "Open in RTC Mobile?" confirmation with an **unconditional blind tap** at a hardcoded point, followed by a **fixed sleep**, then screenshotted whatever was on screen — no matter what that was. When the confirmation didn't land exactly where expected (e.g. a stale "RECENTLY OPENED" row from a prior Metro session sitting under the tap point), the blind tap missed, the deep link never completed, and the driver silently screenshotted the Expo dev-client launcher instead of the scenario. That capture-of-the-wrong-screen then diffed against the golden as if it were a real render, producing a `FAIL` percentage indistinguishable from an actual pixel regression — which made `:update` in that state actively dangerous: it would have pinned a screenshot of the launcher as the new baseline and made the tier permanently, silently green on a broken capture.
 
 The fix (`simctl/capture.ts`) makes the driver refuse to guess:
-- It polls the a11y tree (`idb ui describe-all --udid <udid>`) for the `login-screen` and `visual-ready` markers with bounded timeouts, and **throws — never returns a screenshot** — if either is never observed. A capture failure now looks like a thrown error naming the scenario, not a mysterious diff percentage.
+- It polls the a11y tree (`idb ui describe-all --udid <udid>`) for the `visual-harness-home` and `visual-ready` markers with bounded timeouts, and **throws — never returns a screenshot** — if either is never observed. A capture failure now looks like a thrown error naming the scenario, not a mysterious diff percentage.
 - It locates the "Open in RTC Mobile?" confirmation's button by its a11y label ("Open") instead of assuming a fixed coordinate; the coordinate tap is now a last-resort fallback, tried once, only if the button never appears in the tree.
 - As defence in depth, it re-checks the a11y tree at the moment of the shot for the launcher home screen's signature (`DEVELOPMENT SERVERS`, `RECENTLY OPENED`, `Enter URL manually`, `Development Build` — confirmed empirically against a live capture of that screen) and throws if it matches. A **pixel-based** guard (e.g. "screen is mostly light") was considered and rejected: `shell/connection-banner` is pinned `classic`/`light`, so a blanket light-background heuristic would misfire on a legitimately passing capture. The a11y-label signature is scenario-agnostic and safe regardless of skin/mode.
 
@@ -162,6 +222,46 @@ pins). Diagnose headlessly without a sim via `expo export --platform ios` and a
 dev-bundle curl to `/.expo/.virtual-metro-entry.bundle?platform=ios&dev=true`
 (a clean bundle is >100 KB and contains no `Babel plugin exception`). This is
 the RN analogue of CLAUDE.md's Vite "blank screen = stale pre-bundle" note.
+
+## Reading a run's verdicts
+
+Each scenario prints one line. Only `FAIL` is a visual regression:
+
+| line | meaning |
+|---|---|
+| `pass     <id>  (0.0000%)` | the capture matches its golden |
+| `FAIL     <id>  (n%)` | the capture differs from its golden by that share of pixels |
+| `NO GOLDEN <id>` | there is no golden to compare against — a scenario added without capturing one. Both tiers have a golden for every scenario, so this should not appear; it exits 1 |
+| `SIZE     <id>` | the capture and its golden have different dimensions (a different device or mask) |
+
+`NO GOLDEN` and `SIZE` used to print as `FAIL … (100.0000%)`, which read as a
+total regression.
+
+## A harness bundle never mounts the app
+
+A capture loads the bundle before it can open a scenario route, and the dev
+client loads a bundle at the app's home route. With `EXPO_PUBLIC_VISUAL_HARNESS=1`
+that route (`app/(app)/_layout.tsx`) renders `VisualHarnessHome` — an empty
+screen with the `visual-harness-home` marker — and nothing else: no
+application core, no boot splash, no sign-in screen. A scenario renders on a
+fake view model outside the app's providers, so it needs none of them. Until
+2026-10-06 the home route was the real app, and every capture booted it only
+to navigate away.
+
+Two consequences. A Metro started with the flag cannot show the real app, so
+use a separate Metro for that. And a Metro started WITHOUT the flag fails a
+capture at the first wait, by name, instead of at the scenario route.
+
+## Maestro flows start from a dead app
+
+Every generated flow begins with `stopApp`. Left running from the previous
+flow, the app reloads its bundle when the flow opens the dev-client link, and
+Maestro's next accessibility query walks the view tree while it is being torn
+down: the app dies with a malloc heap-corruption trap under UIAccessibility's
+snapshot. Nothing relaunches it, so the wait for the harness home times out — and
+because the crash leaves the app dead, the next flow passes. The symptom was
+exactly every other flow failing (13 of 26, one crash report each, measured
+2026-10-04).
 
 ## Metro under `CI=1` does not watch files
 

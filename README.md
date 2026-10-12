@@ -260,13 +260,13 @@ dependency RxJS, and grep gates catch what types cannot (for example, an
 
 ## Architecture at a glance
 
-A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 26
+A [pnpm](https://pnpm.io/) + [Turborepo](https://turbo.build/) monorepo of 27
 packages. The clients and the server never import each other; the three
 cores never depend on each other. Any framework (React, RxJS,
 Vite, Vitest…) is meant to be replaceable by changing only its own package.
 
 <details>
-<summary>All 26 packages</summary>
+<summary>All 27 packages</summary>
 
 ```
 packages/
@@ -280,7 +280,7 @@ packages/
   # Application core — pluggable, three implementations of one contract
   core-api/            @rtc/core-api            Types-only contract every core implements.
   core-logic/          @rtc/core-logic          Rules the three cores share that need no stream library.
-  client-core/         @rtc/client-core         The ports every core consumes: WsAdapter, port factories, stores.
+  client-adapters/         @rtc/client-adapters         The ports every core consumes: WsAdapter, port factories, stores.
   client-core-rxjs/    @rtc/client-core-rxjs    The RxJS core (the default): composition root, presenters, state machines.
   client-core-async/   @rtc/client-core-async   Alternative core on async/await + AsyncIterable.
   client-core-effect/  @rtc/client-core-effect  Alternative core on Effect-TS.
@@ -295,6 +295,7 @@ packages/
   client-prototype/    @rtc/client-prototype    Readable React port of the v2 design prototype. Isolated.
   boot-splash/         @rtc/boot-splash         Canvas boot/splash engine shared by both web clients.
   layout-dockview/     @rtc/layout-dockview     Dockview wrapper behind the layout-engine preference.
+  web-boot/            @rtc/web-boot            Boot code both web clients share: core host, core selection, browser adapters.
   ui-contract/         @rtc/ui-contract         Framework-neutral UI test contract + visual goldens.
 
   # Server and tooling
@@ -334,6 +335,7 @@ pnpm dev:solid          # the SolidJS client instead          → http://localho
 pnpm dev:react:fs       # full stack: WebSocket server + React client
 pnpm dev:react:effect   # React client on the Effect-TS core (also :async, and dev:solid:*)
 pnpm dev:ios            # React Native client on the iOS simulator
+pnpm dev:android        # React Native client in an Android emulator
 pnpm dev:devtools       # the state inspector
 ```
 
@@ -343,7 +345,8 @@ all, plus choosing an application core, the test stack and deploying.
 
 The core is switchable at load time in any build, the deployed one included:
 add `?core=async` or `?core=effect` to the URL, or pick one in Preferences →
-**Application core** (saved, then the page reloads). The async and Effect
+**Application core** (the core is swapped in place, with no page reload, and
+the choice is saved). The async and Effect
 cores are lazy chunks, so the default RxJS load costs nothing extra.
 
 ## Tests & verification

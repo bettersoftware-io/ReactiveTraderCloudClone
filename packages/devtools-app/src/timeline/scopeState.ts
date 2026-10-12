@@ -1,7 +1,6 @@
 import type { MachineRow, StreamRow } from "@rtc/devtools-core";
 
-import type { Scope } from "#/nav/scope";
-import { parseStreamId } from "#/nav/scope";
+import { parseStreamId, type Scope } from "#/nav/scope";
 
 /** Shared by `StateTab`: the empty change-set for the unpinned/unmarked case,
  * a single stable instance so callers can compare by reference. */

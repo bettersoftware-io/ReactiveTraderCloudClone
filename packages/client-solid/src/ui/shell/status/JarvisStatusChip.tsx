@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { type JSX, Show } from "solid-js";
 
 import type { JarvisState } from "@rtc/core-api";
 import { JARVIS_BRAIN_LABELS } from "@rtc/domain";

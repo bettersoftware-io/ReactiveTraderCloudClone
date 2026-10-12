@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Recording } from "@rtc/devtools-core";
-import { RECORDING_VERSION } from "@rtc/devtools-core";
+import { RECORDING_VERSION, type Recording } from "@rtc/devtools-core";
 
 import { downloadRecording } from "#/recording/downloadRecording";
 

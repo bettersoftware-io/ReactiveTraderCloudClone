@@ -9,7 +9,7 @@ import type {
 } from "../protocol";
 
 // The inbound intent-injection write path is gated on the hub's runtime `dev`
-// flag (set by each composition root: web `import.meta.env?.DEV === true`, RN
+// flag (set by each composition root: web `import.meta.env.DEV`, RN
 // `__DEV__`). It replaced a bundler-static `import.meta.env.DEV` gate, so the
 // "a production (non-dev) hub ignores intent:invoke" invariant — once asserted
 // by grepping the built web bundle (`check:devtools-no-inject`) — now lives in

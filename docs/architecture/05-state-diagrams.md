@@ -20,13 +20,21 @@ stateDiagram-v2
     DISCONNECTED --> CONNECTING : reconnectAttempt every 10s
     DISCONNECTED --> OFFLINE_DISCONNECTED : browserOffline
 
-    IDLE_DISCONNECTED --> CONNECTING : userActivity
+    IDLE_DISCONNECTED --> CONNECTING : reconnect (the button)
     IDLE_DISCONNECTED --> OFFLINE_DISCONNECTED : browserOffline
 
     OFFLINE_DISCONNECTED --> CONNECTING : browserOnline
 ```
 
 **Constants:** `IDLE_TIMEOUT_MS = 15 min`, `RECONNECT_INTERVAL_MS = 10s`
+
+**Idle and offline together.** An idle timeout closes the socket and stops
+its auto-reconnect; `OFFLINE_DISCONNECTED` hides that, whichever came first.
+So in live mode `browserOnline` also reopens a socket that was closed for
+idle (`routeIdleLifecycle`), and the status goes `CONNECTING` then
+`CONNECTED`. Without it the status would sit on `CONNECTING` with no
+Reconnect button to press. A socket that is open, signed out or never
+opened is left alone.
 
 ### 5.2 Quote State Machine (Credit RFQ)
 

@@ -1,5 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
-import { useRef, useState } from "react";
+import { type ReactElement, type ReactNode, useRef, useState } from "react";
 
 import {
   CreditViewContext,

@@ -2,10 +2,14 @@ import { firstValueFrom, type Observable, of, throwError } from "rxjs";
 import { describe, expect, it } from "vitest";
 
 import type { CurrencyPair } from "../fx/currencyPair.js";
-import type { Price } from "../fx/price.js";
-import { PriceMovementType } from "../fx/price.js";
-import type { ExecutionRequest, Trade } from "../fx/trade.js";
-import { Direction, ExecutionStatus, TradeStatus } from "../fx/trade.js";
+import { type Price, PriceMovementType } from "../fx/price.js";
+import {
+  Direction,
+  type ExecutionRequest,
+  ExecutionStatus,
+  type Trade,
+  TradeStatus,
+} from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";
 import { ExecuteTradeUseCase } from "./ExecuteTradeUseCase.js";
 

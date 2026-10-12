@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { InspectorStore } from "../InspectorStore";
-import type {
-  DevtoolsEvent,
-  SnapshotMachine,
-  SnapshotStream,
+import {
+  type DevtoolsEvent,
+  PROTOCOL_VERSION,
+  type SnapshotMachine,
+  type SnapshotStream,
 } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
 
 describe("InspectorStore registry caps", () => {
   it("evicts the oldest disposed machines beyond the cap", () => {

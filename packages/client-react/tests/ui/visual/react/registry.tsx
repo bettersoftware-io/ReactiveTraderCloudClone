@@ -45,6 +45,7 @@ import { HeaderChrome } from "#/ui/shell/chrome/HeaderChrome";
 import { ThemePicker } from "#/ui/shell/chrome/ThemePicker";
 import { ConnectionOverlay } from "#/ui/shell/connection/ConnectionOverlay";
 import { ConnectionStatusBar } from "#/ui/shell/connection/ConnectionStatusBar";
+import { CoreSwapOverlay } from "#/ui/shell/core/CoreSwapOverlay";
 import { JarvisOrb } from "#/ui/shell/jarvis/JarvisOrb";
 import { JarvisOverlay } from "#/ui/shell/jarvis/JarvisOverlay";
 import { JarvisPanelLayer } from "#/ui/shell/jarvis/panels/JarvisPanelLayer";
@@ -644,6 +645,27 @@ export const registry: Record<string, (fixtureKey: string) => ReactElement> = {
   },
   LockScreen: () => {
     return <LockScreen />;
+  },
+  // The handover phase with no fade: a still frame of the cover.
+  CoreSwapOverlayHandover: () => {
+    return (
+      <CoreSwapOverlay
+        swap={{
+          from: {
+            impl: "rxjs",
+            label: "RxJS",
+            description: "Observables and operators — the default core.",
+          },
+          to: {
+            impl: "effect",
+            label: "Effect-TS",
+            description: "Effect's fibers, layers and streams.",
+          },
+          phase: "handover",
+        }}
+        fade={{ enterMs: 0, exitMs: 0 }}
+      />
+    );
   },
   LoginScreen: () => {
     return <LoginScreen />;

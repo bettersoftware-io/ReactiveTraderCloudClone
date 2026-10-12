@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { WebSocketLike } from "../WsRelayDuplex";
-import { WsRelayDuplex } from "../WsRelayDuplex";
+import { type WebSocketLike, WsRelayDuplex } from "../WsRelayDuplex";
 import { FakeSocket } from "./FakeSocket.testHelpers";
 
 describe("WsRelayDuplex", () => {

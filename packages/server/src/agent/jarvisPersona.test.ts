@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { DESK_PANEL_ROSTER, PANEL_VIZ_KINDS } from "@rtc/shared";
+import { PANEL_VIZ_KINDS } from "@rtc/domain";
+import { DESK_PANEL_ROSTER } from "@rtc/shared";
 
 import { JARVIS_SYSTEM_PROMPT } from "./jarvisPersona.js";
 

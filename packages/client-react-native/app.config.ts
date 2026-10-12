@@ -39,7 +39,7 @@ const config: ExpoConfig = {
     // with no env set. The explicit dev scripts drive `EXPO_PUBLIC_SERVER_URL`
     // per mode — `dev:ios:sim` sets it empty (offline), `dev:ios:ws:local`
     // points at `ws://localhost:4000`, `dev:ios:ws:remote` at the deployed
-    // endpoint. `??` only catches null/undefined, so an empty string is a
+    // endpoint; the `dev:android:*` scripts set the same three values. `??` only catches null/undefined, so an empty string is a
     // deliberate "force simulator" and survives to `buildNativePorts`.
     // The old shared `wsToken` query-param gate is gone — the WS connection
     // now authenticates with a genuine session token (`buildNativePorts`),

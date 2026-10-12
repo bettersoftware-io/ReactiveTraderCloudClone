@@ -1,12 +1,12 @@
 import { BehaviorSubject, of, Subject, throwError } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type {
-  CurrencyPair,
-  JarvisNarratorPreference,
-  PriceTick,
+import {
+  type CurrencyPair,
+  type JarvisNarratorPreference,
+  NARRATION_COOLDOWN_MS,
+  type PriceTick,
 } from "@rtc/domain";
-import { NARRATION_COOLDOWN_MS } from "@rtc/domain";
 
 import { createDetachedHost } from "#/bridge/out";
 import { createNarrator } from "#/presenters/narrator";

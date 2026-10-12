@@ -25,9 +25,9 @@ import {
   JARVIS_CONFIRM_TIMEOUT_MS,
   type JarvisBrain,
   type JarvisEffort,
+  type JarvisEvent,
   type JarvisSkin,
 } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
 
 import { relay } from "#/bridge/in";
 import { storeToWarmStateStream, topicToStream } from "#/bridge/out";
@@ -54,7 +54,7 @@ export interface JarvisMachineDeps {
 
 /**
  * `presenters.jarvis` on the async core: the shared `createJarvisController`
- * (client-core) holds every rule; this file owns only the timing.
+ * (core-logic) holds every rule; this file owns only the timing.
  * - State is a `Store`, committed synchronously, so readers can peek it.
  * - Turns drain from ONE queue, one `ask` at a time; each is planned when it
  *   is DEQUEUED (`planTurn` — an availability flip while queued is honoured,

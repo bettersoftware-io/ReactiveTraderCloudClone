@@ -1,19 +1,19 @@
 import { type Observable, of, Subject } from "rxjs";
 import { describe, expect, it } from "vitest";
 
-import { InMemorySessionStore } from "@rtc/client-core";
+import { InMemorySessionStore } from "@rtc/client-adapters";
 import type {
   AuthViewState,
   LoginWaitCycle,
   StoredSession,
 } from "@rtc/core-api";
-import type {
-  AuthOutcome,
-  AuthPort,
-  LoginWaitVariant,
-  SessionUser,
+import {
+  type AuthOutcome,
+  type AuthPort,
+  DEFAULT_LOGIN_WAIT_VARIANT,
+  type LoginWaitVariant,
+  type SessionUser,
 } from "@rtc/domain";
-import { DEFAULT_LOGIN_WAIT_VARIANT } from "@rtc/domain";
 
 import { AuthPresenter } from "../AuthPresenter";
 

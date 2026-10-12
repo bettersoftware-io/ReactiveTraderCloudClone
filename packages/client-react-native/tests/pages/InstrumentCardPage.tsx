@@ -2,8 +2,7 @@
 import { cleanup, screen } from "@testing-library/react-native";
 import type { TextStyle } from "react-native";
 
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelProvider } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelProvider } from "@rtc/react-bindings";
 
 import { InstrumentCard } from "#/ui/equities/trade/InstrumentCard";
 import { renderWithTheme } from "#/ui/theme/renderWithTheme";

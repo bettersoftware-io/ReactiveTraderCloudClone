@@ -1,5 +1,4 @@
-import type { JSX, ParentProps } from "solid-js";
-import { createSignal } from "solid-js";
+import { createSignal, type JSX, type ParentProps } from "solid-js";
 
 import {
   type BlotterTab,

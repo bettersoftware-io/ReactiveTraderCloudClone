@@ -47,6 +47,17 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
     return within(this.root).queryByTestId("prefs-modal") !== null;
   }
 
+  /** Opens or closes the modal, as its owner does. */
+  setOpen(open: boolean): void {
+    this.setProps({ open });
+  }
+
+  /** True when keyboard focus is on the dialog or on something inside it. */
+  holdsFocus(): boolean {
+    const dialog = within(this.root).queryByRole("dialog");
+    return dialog?.contains(document.activeElement) ?? false;
+  }
+
   /** Current state of the real Animated-background switch (its `data-on`). */
   animatedBgOn(): boolean {
     return (
@@ -315,6 +326,32 @@ export class PreferencesModalPage extends MountedComponent<PreferencesModalProps
   coreImplDescription(): string | null {
     const label = within(this.root).queryByText("Application core");
     return label?.nextElementSibling?.textContent ?? null;
+  }
+
+  /** The Application core row's failure line — why the last switch left the
+   * page on the current core — or `null` when no line is rendered. */
+  coreSwapFailure(): string | null {
+    return (
+      within(this.root)
+        .queryByTestId("prefs-core-failure")
+        ?.textContent?.trim() ?? null
+    );
+  }
+
+  /** True when the failure line is announced as an alert (`role="alert"`),
+   * so assistive technology reads it out when it appears. */
+  coreSwapFailureIsAlert(): boolean {
+    return (
+      within(this.root)
+        .queryByTestId("prefs-core-failure")
+        ?.getAttribute("role") === "alert"
+    );
+  }
+
+  /** The core host reports why a switch left the page where it was (or
+   * clears it with `null`), through `useCoreSelection().failure`. */
+  reportCoreSwapFailure(reason: string | null): void {
+    this.setCoreSelectionFailure(reason);
   }
 
   /** Each core impl asked for through useCoreSelection().select, in order —

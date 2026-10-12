@@ -1,5 +1,4 @@
-import type { Accessor } from "solid-js";
-import { createContext } from "solid-js";
+import { type Accessor, createContext } from "solid-js";
 
 import type { ThemeMode, ThemeModePreference, ThemeSkin } from "@rtc/domain";
 

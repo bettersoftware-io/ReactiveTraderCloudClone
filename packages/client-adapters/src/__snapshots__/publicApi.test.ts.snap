@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`@rtc/client-adapters public runtime API > has a pinned runtime surface 1`] = `
+[
+  "DATA_SOURCE_STORAGE_KEY",
+  "HttpAuthAdapter",
+  "InMemoryDataSourceStore",
+  "InMemorySessionStore",
+  "ScriptedJarvisAdapter",
+  "WsAdapter",
+  "WsConnectionEventsAdapter",
+  "buildWsUrl",
+  "createRoutingAuthPort",
+  "createSimulatorPorts",
+  "createWsRealPorts",
+  "formatDataSourceMessage",
+  "isDataSource",
+  "mergeGatewayAndBrowserEvents",
+  "pairConnectionPorts",
+  "resolveDataSource",
+  "routeIdleLifecycle",
+  "wsUrlToHttpBase",
+]
+`;

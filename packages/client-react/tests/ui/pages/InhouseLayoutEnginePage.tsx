@@ -9,8 +9,10 @@ import { vi } from "vitest";
 
 import type { LayoutState } from "@rtc/core-api";
 
-import type { InhouseLayoutEngineProps } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
-import { InhouseLayoutEngine } from "#/ui/shell/layout/engine/InhouseLayoutEngine";
+import {
+  InhouseLayoutEngine,
+  type InhouseLayoutEngineProps,
+} from "#/ui/shell/layout/engine/InhouseLayoutEngine";
 import type { PanelRegistry } from "#/ui/shell/layout/engine/panelRegistry";
 
 type InhouseLayoutEngineCallbacks = Partial<

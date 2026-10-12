@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import type { EqBlotView } from "#/equities/Blotter/EqBlotterPanel";
 import {
   EqBlotterPanel,
   EqBlotterPanelControls,
+  type EqBlotView,
 } from "#/equities/Blotter/EqBlotterPanel";
 import type { EqOrder } from "#/equities/types";
 

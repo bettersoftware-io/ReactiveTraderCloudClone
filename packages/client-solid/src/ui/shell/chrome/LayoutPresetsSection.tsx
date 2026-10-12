@@ -1,5 +1,11 @@
-import type { Accessor, JSX } from "solid-js";
-import { createSignal, For, Show, untrack } from "solid-js";
+import {
+  type Accessor,
+  createSignal,
+  For,
+  type JSX,
+  Show,
+  untrack,
+} from "solid-js";
 
 import type {
   LayoutPresetNameProblem,

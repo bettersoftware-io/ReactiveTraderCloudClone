@@ -9,7 +9,7 @@ sequenceDiagram
     participant Trader
     participant Tile as FX Tile (React / RN)
     participant Hook as usePrice (ViewModel, react-bindings)
-    participant Presenter as PriceStreamPresenter (client-core)
+    participant Presenter as PriceStreamPresenter (client-core-rxjs)
     participant UC as PriceStreamUseCase
     participant Adapter as Port Adapter (Simulator or WsReal)
     participant Server as WS Server (real mode only)
@@ -52,7 +52,7 @@ sequenceDiagram
     participant Trader
     participant Tile as FX Tile (React / RN)
     participant Hook as useTileExecution (ViewModel machine)
-    participant Presenter as TradeExecutionPresenter (client-core)
+    participant Presenter as TradeExecutionPresenter (client-core-rxjs)
     participant UC as ExecuteTradeUseCase
     participant Adapter as Port Adapter
     participant Server as WS Server
@@ -102,7 +102,7 @@ sequenceDiagram
     participant Form as New RFQ Form (React)
     participant Tiles as RFQ Tiles (React)
     participant Hook as useRfqs (ViewModel)
-    participant Presenter as RfqsPresenter (client-core)
+    participant Presenter as RfqsPresenter (client-core-rxjs)
     participant CreateUC as CreateRfqUseCase
     participant EventsUC as WorkflowEventStreamUseCase
     participant Adapter as Port Adapter
@@ -177,7 +177,7 @@ sequenceDiagram
     participant Trader
     participant Ticket as Order Ticket (React / RN)
     participant Hook as useOrderTicket (ViewModel machine)
-    participant Machine as OrderTicketMachine (client-core)
+    participant Machine as OrderTicketMachine (client-core-rxjs)
     participant Port as OrderPort (createOrderPort)
     participant Effect as placeOrder$ effect (server)
     participant OrderSim as EquityOrderSimulator

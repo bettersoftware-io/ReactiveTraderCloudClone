@@ -3,12 +3,12 @@
 // fileURLToPath throws, so this golden test must run in the node environment.
 // @vitest-environment node
 //
-// nextSortDirection itself now lives in @rtc/client-core's blotter/ module
+// nextSortDirection itself now lives in @rtc/core-logic's blotter/ module
 // (relocated out of this package — it was already framework-free, importing
 // only @rtc/domain). This golden test stays here rather than moving with it:
 // the fixture-loading harness (loadGolden + the `.original.json` fixture
 // under tests/ui/__golden__/) is client-react-local test infrastructure, so
-// duplicating it into client-core for one fixture wasn't worth it — this file
+// duplicating it into core-logic for one fixture wasn't worth it — this file
 // just imports the relocated function and keeps exercising it against the
 // pinned original-codebase ground truth.
 import { describe, expect, it } from "vitest";

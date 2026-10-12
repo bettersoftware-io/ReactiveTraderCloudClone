@@ -1,6 +1,10 @@
 import { crosshairVmFromScene } from "./chartCssVars.js";
-import type { ChartCandle, ChartScale, ChartVarStyle } from "./chartScene.js";
-import { crosshairScene } from "./chartScene.js";
+import {
+  type ChartCandle,
+  type ChartScale,
+  type ChartVarStyle,
+  crosshairScene,
+} from "./chartScene.js";
 import type { ChartViewport } from "./chartViewport.js";
 
 /** The crosshair's snapped position plus its preformatted OHLCV readout. */

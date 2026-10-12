@@ -1,24 +1,20 @@
-import type { ReactElement } from "react";
-import { useEffect, useRef } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 
-import type {
-  InspectorState,
-  InspectorStore,
-  LogRow,
+import {
+  type InspectorState,
+  type InspectorStore,
+  LiveHistory,
+  type LogRow,
+  projectSnapshot,
 } from "@rtc/devtools-core";
-import { LiveHistory, projectSnapshot } from "@rtc/devtools-core";
 
 import styles from "#/InspectorApp.module.css";
-import type { NavNode } from "#/nav/buildNavTree";
-import { buildNavTree } from "#/nav/buildNavTree";
+import { buildNavTree, type NavNode } from "#/nav/buildNavTree";
 import { NavTree } from "#/nav/NavTree";
-import type { Scope } from "#/nav/scope";
-import { ALL_SCOPE } from "#/nav/scope";
-import type { NavigationModel } from "#/nav/useNavigation";
-import { useNavigation } from "#/nav/useNavigation";
+import { ALL_SCOPE, type Scope } from "#/nav/scope";
+import { type NavigationModel, useNavigation } from "#/nav/useNavigation";
 import { RecordingToolbar } from "#/recording/RecordingToolbar";
-import type { ImportedRecording } from "#/recording/useRecording";
-import { useRecording } from "#/recording/useRecording";
+import { type ImportedRecording, useRecording } from "#/recording/useRecording";
 import { ContextPane } from "#/timeline/ContextPane";
 import { TimelinePane } from "#/timeline/TimelinePane";
 import { logAfterSeq, seqOfMachineIntent } from "#/timeline/timelineModel";

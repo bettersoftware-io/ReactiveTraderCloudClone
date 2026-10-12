@@ -83,7 +83,7 @@ const config: IConfiguration = {
       name: "agent-tools-stays-inner",
       severity: "error",
       comment:
-        "@rtc/agent-tools is the framework-neutral Jarvis desk-tool package — it may depend only on domain (+ rxjs), never on shared, client-core, a client, bindings, or the server.",
+        "@rtc/agent-tools is the framework-neutral Jarvis desk-tool package — it may depend only on domain (+ rxjs), never on shared, client-adapters, a client, bindings, or the server.",
       from: { path: "^packages/agent-tools/src" },
       to: {
         path: "^packages/",
@@ -190,7 +190,7 @@ const config: IConfiguration = {
       name: "ui-contract-stays-neutral",
       severity: "error",
       comment:
-        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core-rxjs (the core its harness composes), core-api/core-logic/domain/motion-core (and on @rtc/shared for types, an edge this value-only graph does not see), never on a concrete client, a binding, or the server.",
+        "@rtc/ui-contract is the framework-neutral UI contract harness (shared by client-react and client-solid) — it may depend only on client-core-rxjs (the core its harness composes), core-api/core-logic/domain/motion-core, never on a concrete client, a binding, the wire package (@rtc/shared), or the server.",
       from: { path: "^packages/ui-contract/src" },
       to: {
         path: "^packages/",
@@ -202,11 +202,11 @@ const config: IConfiguration = {
       name: "core-api-stays-inner",
       severity: "error",
       comment:
-        "@rtc/core-api is the types-only application-core contract — it may import only domain/shared (types), never a core, a binding, a client, or the server.",
+        "@rtc/core-api is the types-only application-core contract — it may import only the domain, never the wire package (@rtc/shared), a core, a binding, a client, or the server. This graph sees value edges only; a TYPE import of @rtc/shared is stopped by the package not listing it (tests/scripts/lib/packageSurfaces.test.ts pins the manifest).",
       from: { path: "^packages/core-api/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(core-api|domain|shared)/",
+        pathNot: "^packages/(core-api|domain)/",
       },
     },
     {
@@ -221,22 +221,23 @@ const config: IConfiguration = {
       },
     },
     {
-      name: "client-core-stays-inner",
+      name: "client-adapters-stays-inner",
       severity: "error",
       comment:
-        "@rtc/client-core holds the ports every application core consumes — adapters, port factories, stores. It may depend only on core-api/core-logic/domain/shared: never on a core (a core is a sibling that receives these ports as arguments), a binding, any client, or the server.",
-      from: { path: "^packages/client-core/src" },
+        "@rtc/client-adapters holds the ports every application core consumes — adapters, port factories, stores. It may depend only on core-api/core-logic/domain/shared: never on a core (a core is a sibling that receives these ports as arguments), a binding, any client, or the server.",
+      from: { path: "^packages/client-adapters/src" },
       to: {
         path: "^packages/",
-        pathNot: "^packages/(client-core|core-api|core-logic|domain|shared)/",
+        pathNot:
+          "^packages/(client-adapters|core-api|core-logic|domain|shared)/",
       },
     },
     {
-      name: "client-core-framework-free",
+      name: "client-adapters-framework-free",
       severity: "error",
       comment:
-        "@rtc/client-core (the adapters) is framework-free by contract — no React/DOM/RN modules.",
-      from: { path: "^packages/client-core/src" },
+        "@rtc/client-adapters (the adapters) is framework-free by contract — no React/DOM/RN modules.",
+      from: { path: "^packages/client-adapters/src" },
       to: {
         path: "(^|node_modules/)(react|react-dom|react-native|solid-js)(/|$)",
       },
@@ -245,15 +246,46 @@ const config: IConfiguration = {
       name: "web-clients-load-cores-lazily",
       severity: "error",
       comment:
-        'A web client reaches an application core only through a dynamic import() (src/app/coreSelection.ts), so the bundler can put each core in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6; `pnpm check:core-bundle` proves it on a real build, this rule on source, without one). A static value import of a core anywhere in a client\'s source would pull that core into the eager set. An `import type { X }` is invisible to this graph (tsPreCompilationDeps:false) and costs nothing at runtime; the inline form, `import { type X }`, survives transpilation as a bare `import "…"` and IS caught. The same core reached through @rtc/ui-contract, whose harness imports it statically, is `ui-contract-only-in-client-tests` below.',
+        'A web client, and the @rtc/web-boot package it boots through, reach an application core only through a dynamic import() (packages/web-boot/src/coreSelection.ts), so the bundler can put each core in its own lazy chunk and the entry bundle carries none (ADR-006 Decision 6; `pnpm check:core-bundle` proves it on a real build, this rule on source, without one). A static value import of a core anywhere in a client\'s source would pull that core into the eager set. An `import type { X }` is invisible to this graph (tsPreCompilationDeps:false) and costs nothing at runtime; the inline form, `import { type X }`, survives transpilation as a bare `import "…"` and IS caught. The same core reached through @rtc/ui-contract, whose harness imports it statically, is `ui-contract-only-in-client-tests` below.',
       from: {
-        path: "^packages/client-(react|solid)/src",
+        path: "^packages/(client-(react|solid)|web-boot)/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/)",
       },
       to: {
         path: "^packages/client-core-(rxjs|async|effect)/",
         dynamic: false,
       },
+    },
+    {
+      name: "web-boot-stays-inner",
+      severity: "error",
+      comment:
+        "@rtc/web-boot is the boot code both web clients share: browser adapters, the core selection and the core host. It may depend only on boot-splash, client-adapters, the three cores (through import(), see `web-clients-load-cores-lazily`), core-api, devtools-core and domain: never on a client, a bindings package, @rtc/shared, @rtc/ui-contract or any other package.",
+      from: { path: "^packages/web-boot/src" },
+      to: {
+        path: "^packages/",
+        pathNot:
+          "^packages/(web-boot|boot-splash|client-adapters|client-core-(rxjs|async|effect)|core-api|devtools-core|domain)/",
+      },
+    },
+    {
+      name: "web-boot-stays-framework-free",
+      severity: "error",
+      comment:
+        "@rtc/web-boot may touch the DOM (it reads localStorage, window and document), but it is framework-free by contract: no React or Solid, which each client supplies for itself.",
+      from: { path: "^packages/web-boot/src" },
+      to: { path: "(^|node_modules/)(react|react-dom|solid-js)(/|$)" },
+    },
+    {
+      name: "web-boot-only-in-web-clients",
+      severity: "error",
+      comment:
+        "@rtc/web-boot reads localStorage, window and document, so only the two web clients may import it. The React Native client, the server and every inner package must not. (`pnpm check:deps` also scans tests/, and nothing there imports it.)",
+      from: {
+        path: "^packages/",
+        pathNot: "^packages/(web-boot|client-react|client-solid)/",
+      },
+      to: { path: "^packages/web-boot/" },
     },
     {
       name: "ui-contract-only-in-client-tests",
@@ -270,32 +302,34 @@ const config: IConfiguration = {
       name: "adapter-fakes-stay-in-tests",
       severity: "error",
       comment:
-        "@rtc/client-core's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
+        "@rtc/client-adapters's test scaffolding — its `./testing` entry, `adapters/__tests__/` and `*.testHelpers.ts` — is for tests. No production source in any package, this one included, may import it: a fake transport has no business in a shipped bundle.",
       from: {
         path: "^packages/[^/]+/(src|app)/",
         pathNot:
-          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-core/src/testing\\.ts$)",
+          "(\\.test\\.tsx?$|\\.spec\\.tsx?$|\\.testHelpers\\.ts$|/__tests__/|/testing/|^packages/client-adapters/src/testing\\.ts$)",
       },
       to: {
-        path: "^packages/client-core/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
+        path: "^packages/client-adapters/src/(testing\\.ts$|adapters/__tests__/|.*\\.testHelpers\\.ts$)",
       },
     },
     {
       name: "bindings-name-no-core",
       severity: "error",
       comment:
-        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core and none of the adapters, so any core can sit behind it; `@rtc/client-core-rxjs` and `@rtc/client-core` are a binding's devDependencies. Only a binding's tests compose a real core.",
+        "A binding bridges the CONTRACT (@rtc/core-api) to its framework and receives the app already composed — its source names no application core and none of the adapters, so any core can sit behind it; `@rtc/client-core-rxjs` and `@rtc/client-adapters` are a binding's devDependencies. Only a binding's tests compose a real core.",
       from: {
         path: "^packages/(react|solid)-bindings/src",
         pathNot: "(\\.test\\.tsx?$|/__tests__/|/testing/)",
       },
-      to: { path: "^packages/client-core(-rxjs|-async|-effect)?/" },
+      to: {
+        path: "^packages/(client-adapters|client-core-(rxjs|async|effect))/",
+      },
     },
     {
-      name: "ui-takes-wire-types-only",
+      name: "ui-never-imports-shared",
       severity: "error",
       comment:
-        "The UI side — the three clients, both bindings and the UI contract — may NAME a wire DTO type from @rtc/shared (the Jarvis event and usage types that @rtc/core-api's own interfaces carry), but never import a VALUE from it: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, out of the UI's bundle. Type-only edges are invisible to this graph (tsPreCompilationDeps:false), so every edge this rule sees is a value edge.",
+        "The UI side — the three clients, both bindings and the UI contract — never imports @rtc/shared: the wire protocol and the scripted Jarvis brain stay on the port side of the plug, out of the UI's bundle. What the UI renders (Jarvis events, panel specs, drive commands, usage) is domain vocabulary and comes from @rtc/domain. Type-only edges are invisible to this graph (tsPreCompilationDeps:false), so this rule catches a VALUE import; a TYPE import is stopped by these packages not listing @rtc/shared (tests/scripts/lib/packageSurfaces.test.ts pins the manifests), which leaves the typecheck unable to resolve it.",
       from: {
         path: "^packages/(client-react|client-solid|client-react-native|react-bindings|solid-bindings|ui-contract)/",
       },
@@ -316,24 +350,24 @@ const config: IConfiguration = {
       name: "cores-stay-inner",
       severity: "error",
       comment:
-        "The three application cores are siblings. Each may import only ITSELF, core-api, core-logic (the shared stream-free rules), client-core (the adapters, from tests only — `cores-take-ports-as-arguments` below keeps them out of production code), core-contract (its runner test), domain, and shared — never a binding, a client, the server, or EACH OTHER, tests included. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`.",
+        "The three application cores are siblings. Each may import only ITSELF, core-api, core-logic (the shared stream-free rules), client-adapters (the adapters, from tests only — `cores-take-ports-as-arguments` below keeps them out of production code), core-contract (its runner test), domain, and shared — never a binding, a client, the server, or EACH OTHER, tests included. The `$1` in pathNot is dependency-cruiser group matching against the capture in `from.path`.",
       from: { path: "^packages/(client-core-(?:rxjs|async|effect))/src" },
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/($1|client-core|core-api|core-contract|core-logic|domain|shared)/",
+          "^packages/($1|client-adapters|core-api|core-contract|core-logic|domain|shared)/",
       },
     },
     {
       name: "cores-take-ports-as-arguments",
       severity: "error",
       comment:
-        "A core composes from @rtc/core-logic and its own members, and receives its ports — already built — as `createApp(ports)`'s argument. @rtc/client-core (the adapters and port factories) is a core's devDependency, for tests that compose a real core over real adapters (createSimulatorPorts), never a runtime import.",
+        "A core composes from @rtc/core-logic and its own members, and receives its ports — already built — as `createApp(ports)`'s argument. @rtc/client-adapters (the adapters and port factories) is a core's devDependency, for tests that compose a real core over real adapters (createSimulatorPorts), never a runtime import.",
       from: {
         path: "^packages/client-core-(rxjs|async|effect)/src",
         pathNot: "\\.test\\.tsx?$",
       },
-      to: { path: "^packages/client-core/" },
+      to: { path: "^packages/client-adapters/" },
     },
     {
       name: "cores-framework-free",
@@ -364,7 +398,7 @@ const config: IConfiguration = {
       name: "core-logic-stays-inner",
       severity: "error",
       comment:
-        "@rtc/core-logic may import only itself, core-api (types), domain and shared — an allowlist, so a package added later is forbidden by default. An edge to client-core in particular would be a cycle (client-core re-exports core-logic).",
+        "@rtc/core-logic may import only itself, core-api (types), domain and shared — an allowlist, so a package added later is forbidden by default. An edge to a core or to client-adapters in particular would be a cycle: all four depend on core-logic.",
       from: { path: "^packages/core-logic/src" },
       to: {
         path: "^packages/",
@@ -401,7 +435,7 @@ const config: IConfiguration = {
       name: "effect-only-in-client-core-effect",
       severity: "error",
       comment:
-        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-core, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
+        'The Effect runtime is confined to @rtc/client-core-effect — no other package (client-adapters, a binding, a client, the server) may import `effect`; an alternative core is pluggable precisely because its runtime never leaks past its own package boundary. The `to` path matches the BARE specifier as well as the resolved one: under pnpm strict mode a package that has not declared `effect` cannot resolve it, so the leak arrives as `resolved: "effect"` with couldNotResolve — a node_modules-only pattern would be dormant in exactly the case this rule exists to catch.',
       from: { path: "^packages/", pathNot: "^packages/client-core-effect/" },
       to: { path: "^effect(/|$)|node_modules/effect/" },
     },
@@ -414,7 +448,7 @@ const config: IConfiguration = {
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(react-bindings|client-core|client-core-rxjs|core-api|domain)/",
+          "^packages/(react-bindings|client-adapters|client-core-rxjs|core-api|domain)/",
       },
     },
     {
@@ -426,7 +460,7 @@ const config: IConfiguration = {
       to: {
         path: "^packages/",
         pathNot:
-          "^packages/(solid-bindings|client-core|client-core-rxjs|core-api|domain)/",
+          "^packages/(solid-bindings|client-adapters|client-core-rxjs|core-api|domain)/",
       },
     },
     {

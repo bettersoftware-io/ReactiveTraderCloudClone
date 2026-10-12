@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { InspectorState } from "../InspectorStore";
-import { InspectorStore } from "../InspectorStore";
-import type { AppToInspector, DevtoolsEvent } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
+import { type InspectorState, InspectorStore } from "../InspectorStore";
+import {
+  type AppToInspector,
+  type DevtoolsEvent,
+  PROTOCOL_VERSION,
+} from "../protocol";
 import { Recorder } from "../Recorder";
 import { RECORDING_VERSION } from "../recording";
 

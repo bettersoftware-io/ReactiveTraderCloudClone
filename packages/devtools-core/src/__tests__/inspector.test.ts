@@ -5,12 +5,12 @@ import { createInMemoryDuplexPair, type Duplex } from "../channel";
 import { DevtoolsHub } from "../DevtoolsHub";
 import { InspectorClient } from "../InspectorClient";
 import { InspectorStore } from "../InspectorStore";
-import type {
-  AppToInspector,
-  DevtoolsEvent,
-  InspectorToApp,
+import {
+  type AppToInspector,
+  type DevtoolsEvent,
+  type InspectorToApp,
+  PROTOCOL_VERSION,
 } from "../protocol";
-import { PROTOCOL_VERSION } from "../protocol";
 
 describe("InspectorStore", () => {
   it("populates streams+machines from snapshot; identity changes only on apply", () => {

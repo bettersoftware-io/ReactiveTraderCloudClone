@@ -2,7 +2,7 @@
 
 ## 14. Composition & Wiring
 
-Every app in this repo — web, mobile, server — is built from the same three moving parts: a platform-specific **port builder** that decides simulator-vs-real-transport and constructs the platform adapters (storage, color scheme, connection lifecycle, session and layout stores); the shared **composition root** (`createApp`, `createMachineFactories`) that turns a completed `AppPorts` into presenters, machines, and commands; and a platform-specific **boot shell** that mounts the result and shows/hides a splash while the app's streams warm underneath. On the web a fourth step comes first: **choosing which application core** supplies that composition root — the RxJS `@rtc/client-core` by default, or one of its two siblings (see [§14.1.1](#1411-how-the-other-two-cores-plug-in)). This section walks that pipeline end to end for all three runtimes. For *when* each client picks simulator vs. real WebSocket (the env-var switch and the topology table), see [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when) — this section does not repeat it.
+Every app in this repo — web, mobile, server — is built from the same three moving parts: a platform-specific **port builder** that decides simulator-vs-real-transport and constructs the platform adapters (storage, color scheme, connection lifecycle, session and layout stores); the shared **composition root** (`createApp`, `createMachineFactories`) that turns a completed `AppPorts` into presenters, machines, and commands; and a platform-specific **boot shell** that mounts the result and shows/hides a splash while the app's streams warm underneath. On the web a fourth step comes first: **choosing which application core** supplies that composition root — the RxJS `@rtc/client-core-rxjs` by default, or one of its two siblings (see [§14.1.1](#1411-how-the-other-two-cores-plug-in)). This section walks that pipeline end to end for all three runtimes. For *when* each client picks simulator vs. real WebSocket (the env-var switch and the topology table), see [§7 Runtime Topology](07-communication-patterns.md#runtime-topology-what-runs-when) — this section does not repeat it.
 
 ### 14.1 The Composition Root
 
@@ -22,7 +22,7 @@ A second, separate function — **`createMachineFactories(presenters): MachineFa
 
 | Built | When | Where |
 |---|---|---|
-| `CoreFactory` (which core's `createApp`/`createMachineFactories`) | Once per page load, **before** React mounts (web only) | `bootCore(...)` in `packages/client-react/src/app/bootApp.ts` + `loadCore` in `coreSelection.ts` |
+| `CoreFactory` (which core's `createApp`/`createMachineFactories`) | Once per page load, **before** React mounts (web only) | `bootCore(...)` in `packages/web-boot/src/bootApp.ts` + `loadCore` in `coreSelection.ts` |
 | `AppPorts` (adapters, `WsAdapter`/simulators) | Once, at composition-root mount | `buildBrowserPorts()` / `buildNativePorts()` |
 | `Presenters` + `AppCommands` | Once, at composition-root mount | `core.createApp(ports)` (web) / `createApp(ports)` (RN) |
 | Per-tab layout machines | Lazily, once per tab on first open, then kept for the app's lifetime (they survive the `WorkspaceEngine` remount on a tab switch) | `layoutFor(tab)` inside `createApp`, seeded from the persisted workspace layout |
@@ -31,7 +31,7 @@ A second, separate function — **`createMachineFactories(presenters): MachineFa
 | Individual `Machine` instances (tile execution, RFQ tile, boot sequence, ...) | **Fresh per component mount** — a factory call each time a component using that machine mounts | `useMachine` (`react-bindings`) calling into `MachineFactories` |
 | Domain use cases (e.g. `PriceStreamUseCase`) | **Lazily, per unique subscription key**, inside a presenter method, then cached | e.g. `PriceStreamPresenter.price$(pair)` — `new PriceStreamUseCase(this.pricing)` per new `pair.symbol`, cached in a `Map` + `shareReplay({ bufferSize: 1, refCount: true })` (`packages/client-core-rxjs/src/presenters/PriceStreamPresenter.ts`) |
 
-Both web and RN guard the once-only build against React StrictMode's double-invoked render body with a **lazy `useRef`** rather than `useState`/`useMemo`: `AppRoot` in `packages/client-react/src/AppRoot.tsx` and `AppRoot` in `packages/client-react-native/src/app/AppRoot.tsx` both check `ref.current === null` before building, so `createApp()` runs exactly once per real mount even though StrictMode invokes the render body twice in dev.
+Both React clients guard a once-only build against React StrictMode's double-invoked render body with a **lazy `useRef`** rather than `useState`/`useMemo`: `AppRoot` in `packages/client-react/src/AppRoot.tsx` and `AppRoot` in `packages/client-react-native/src/app/AppRoot.tsx` both check `ref.current === null` before building. What they build differs. On RN the ref holds the whole build, so `createApp()` runs exactly once per real mount even though StrictMode invokes the render body twice in dev. On the web `createApp()` does not run in a component at all: the core host (`src/app/coreHost.ts`) calls it outside React, once per composition, and the web `AppRoot`'s ref guards only `createViewModel()`.
 
 ```mermaid
 flowchart TD
@@ -66,15 +66,15 @@ flowchart TD
 
 #### 14.1.1 How the other two cores plug in
 
-Everything above describes the RxJS core, but the web `AppRoot` never imports it by name: it receives a `core: CoreFactory` prop — `{ createApp, createMachineFactories }`, the `CoreFactory` interface in `@rtc/core-api` — and calls `core.createApp(buildBrowserPorts())` and `core.createMachineFactories(...)`. `main.tsx` decides which core that is before React mounts (`bootCore` resolves `?core=` → the stored Preferences choice → the `VITE_CORE_IMPL` build default → `"rxjs"`; `loadCore` `import()`s the chosen core's composition root as a lazy chunk — `@rtc/client-core-rxjs`'s `rxjsCore`, `@rtc/client-core-async`'s `asyncCore` or `@rtc/client-core-effect`'s `effectCore`; every core is lazy since approach B, 2026-10-02). The ports, the devtools decorators, `createViewModel` and the whole UI are identical whichever core booted; `@rtc/client-solid` shares the same `bootApp`/`coreSelection` shape. The RN client does not take part: its `AppRoot` imports `createApp` from `@rtc/client-core-rxjs` statically. How each alternative core builds the same `Presenters`/`MachineFactories` contract is [§22 Selection: at load time](22-pluggable-application-core.md#selection-at-load-time) and [§23 How a core is chosen and loaded](23-application-cores-explained.md#how-a-core-is-chosen-and-loaded).
+Everything above describes the RxJS core, but no web file imports it by name. `startWebClient` (`packages/web-boot/src/startWebClient.ts`, which each client's `main.tsx` calls once) builds the ports once per page (`buildBrowserPorts()`) and hands them, with a `core: CoreFactory` — `{ createApp, createMachineFactories }`, the `CoreFactory` interface in `@rtc/core-api` — to the core host (`packages/web-boot/src/coreHost.ts`, one copy shared by both web clients). The host calls `core.createApp(ports)` and, through `startWebClient`'s `instrument`, `core.createMachineFactories(...)`, and mounts `AppRoot` (through the client's view) with the resulting `Composition`; `AppRoot` only builds the ViewModel from it. A Preferences core choice makes the host dispose that core and compose another over the **same** ports, with no reload ([ADR-006 Decision 7](../adr/ADR-006-pluggable-application-core.md#decision-7--hot-swap-in-place)). `startWebClient` decides which core boots before React mounts (`bootCore` resolves `?core=` → the stored Preferences choice → the `VITE_CORE_IMPL` build default → `"rxjs"`; `loadCore` `import()`s the chosen core's composition root as a lazy chunk — `@rtc/client-core-rxjs`'s `rxjsCore`, `@rtc/client-core-async`'s `asyncCore` or `@rtc/client-core-effect`'s `effectCore`; every core is lazy since approach B, 2026-10-02). The ports, the devtools decorators, `createViewModel` and the whole UI are identical whichever core booted; `@rtc/client-solid` shares the same `startWebClient`, `bootApp` and `coreSelection`, all from `@rtc/web-boot`. The RN client does not take part: its `AppRoot` imports `createApp` from `@rtc/client-core-rxjs` statically. How each alternative core builds the same `Presenters`/`MachineFactories` contract is [§22 Selection: at load time](22-pluggable-application-core.md#selection-at-load-time) and [§23 How a core is chosen and loaded](23-application-cores-explained.md#how-a-core-is-chosen-and-loaded).
 
 ### 14.2 Adapter Tables Per App
 
-Each app's port builder calls the *same* two factories from `@rtc/client-core`'s `src/adapters/portFactory.ts` — `createSimulatorPorts(deps)` and `createWsRealPorts(ws, deps)` — and layers platform-specific adapters (`connectionEvents`/`connectionIntents`, `colorScheme`, `bootSplash`, `transport`, and on the web the two layout stores) on top; `preferences`, `auth` and `sessionStore` are passed *into* both factories as `PortFactoryDeps`. Four port families are **always simulator-backed, in both modes, on every client** — `telemetry`, `serviceHealth`, `eventLog`, `sessions` (plus the `metricControls` array) have no wire protocol; `createWsRealPorts` constructs fresh `LatencySimulator(1)` / `ErrorRateSimulator(2)` / `ServiceTopologySimulator(3)` / `EventLogSimulator(4)` instances itself rather than sourcing them from the server.
+Each app's port builder calls the *same* two factories from `@rtc/client-adapters`'s `src/adapters/portFactory.ts` — `createSimulatorPorts(deps)` and `createWsRealPorts(ws, deps)` — and layers platform-specific adapters (`connectionEvents`/`connectionIntents`, `colorScheme`, `bootSplash`, `transport`, and on the web the two layout stores) on top; `preferences`, `auth` and `sessionStore` are passed *into* both factories as `PortFactoryDeps`. Four port families are **always simulator-backed, in both modes, on every client** — `telemetry`, `serviceHealth`, `eventLog`, `sessions` (plus the `metricControls` array) have no wire protocol; `createWsRealPorts` constructs fresh `LatencySimulator(1)` / `ErrorRateSimulator(2)` / `ServiceTopologySimulator(3)` / `EventLogSimulator(4)` instances itself rather than sourcing them from the server.
 
 #### Web (`@rtc/client-react`)
 
-Built by `buildBrowserPorts()` (`packages/client-react/src/app/buildBrowserPorts.ts`), switched on `VITE_SERVER_URL`.
+Built by `buildBrowserPorts()` (`packages/web-boot/src/buildBrowserPorts.ts`, shared by both web clients), switched on `VITE_SERVER_URL`.
 
 | Port family | Simulator-mode impl | WS-mode impl | Shared with other apps? |
 |---|---|---|---|
@@ -82,15 +82,15 @@ Built by `buildBrowserPorts()` (`packages/client-react/src/app/buildBrowserPorts
 | `jarvis`, `jarvisUsage` | `ScriptedJarvisAdapter` (the scripted brain in-process) and an all-zero usage stream | `WsJarvisAdapter(ws)`, `WsJarvisUsageAdapter(ws)` | **Yes** — same factories as RN |
 | `telemetry`, `serviceHealth`, `eventLog`, `sessions`, `metricControls` | Local simulators (`TelemetrySimulator`, `ServiceTopologySimulator`, `EventLogSimulator`, `SessionSimulator`) | **Same simulators, still local** — no wire protocol for these even in WS mode | **Yes** — identical in RN; server has its own separate instances |
 | `auth` | `AuthSimulator` over the `VITE_DEV_AUTH` roster (`parseDevAuth`) | `HttpAuthAdapter(wsUrlToHttpBase(url))` — `POST /login` on the server | Same classes as RN; the dev roster source differs |
-| `sessionStore` | `LocalStorageSessionStore` (`src/app/adapters/LocalStorageSessionStore.ts`) — same class regardless of transport mode | same; the `WsAdapter` reads its token from it on every (re)connect | No — web-only (RN uses `AsyncStorageSessionStore`) |
-| `preferences` | `LocalStoragePreferencesAdapter` (`src/app/adapters/LocalStoragePreferencesAdapter.ts`) — same class regardless of transport mode; also stores the persisted workspace layout | same | No — web-only (RN uses `AsyncStoragePreferencesAdapter`) |
-| `dockLayoutStore`, `layoutPresetStore` | `LocalStorageDockLayoutStore` (the Dockview blob per tab) and `LocalStorageLayoutPresetStore` (saved layouts per tab), in `src/app/adapters/` | same | No — web-only; RN supplies neither and `createApp` falls back to in-memory stores |
-| `colorScheme` | `MediaQueryColorSchemeAdapter` (`src/app/theme/MediaQueryColorSchemeAdapter.ts`, backed by `window.matchMedia`) | same | No — web-only (RN uses `AppearanceColorSchemeAdapter`) |
+| `sessionStore` | `LocalStorageSessionStore` (`packages/web-boot/src/adapters/LocalStorageSessionStore.ts`) — same class regardless of transport mode | same; the `WsAdapter` reads its token from it on every (re)connect | No — web-only (RN uses `AsyncStorageSessionStore`) |
+| `preferences` | `LocalStoragePreferencesAdapter` (`packages/web-boot/src/adapters/LocalStoragePreferencesAdapter.ts`) — same class regardless of transport mode; also stores the persisted workspace layout | same | No — web-only (RN uses `AsyncStoragePreferencesAdapter`) |
+| `dockLayoutStore`, `layoutPresetStore` | `LocalStorageDockLayoutStore` (the Dockview blob per tab) and `LocalStorageLayoutPresetStore` (saved layouts per tab), in `packages/web-boot/src/adapters/` | same | No — web-only; RN supplies neither and `createApp` falls back to in-memory stores |
+| `colorScheme` | `MediaQueryColorSchemeAdapter` (`packages/web-boot/src/theme/MediaQueryColorSchemeAdapter.ts`, backed by `window.matchMedia`) | same | No — web-only (RN uses `AppearanceColorSchemeAdapter`) |
 | `connectionEvents` + `connectionIntents` | `ConnectionEventsSimulator` (`@rtc/domain`) merged with `BrowserConnectionEventsAdapter`, paired via `pairConnectionPorts(events$, { reconnectRendering: "intent-then-connected" })` | `WsConnectionEventsAdapter(ws)` merged with the same browser events, paired via `pairConnectionPorts(events$)` (default rendering), with a `routeIdleLifecycle` tap that closes/reopens the socket | Partial — `BrowserConnectionEventsAdapter` (tab visibility/idle) is web-only; RN's `connectionEvents` omits it |
 | `transport` | not set — no socket | the `WsAdapter` itself, built with `autoConnect: false` and wrapped in `instrumentWsAdapter(..., devtoolsHub)` so the devtools Wire view sees every frame | RN sets the bare `WsAdapter` (no wire tap) |
 | `bootSplash` | `{ shouldPlay: shouldPlayBootSplash }`, imported from `@rtc/boot-splash` | same | Shape shared; RN supplies its own always-`true` `shouldPlayBootSplash` |
 
-Mode selection: `buildBrowserPorts` reads `import.meta.env.VITE_SERVER_URL` and branches on `if (url)`. Platform-specific adapters: `preferences`, `sessionStore`, the two layout stores, `colorScheme`, `bootSplash`, and the `BrowserConnectionEventsAdapter` half of `connectionEvents`. Verbatim-shared: every `createSimulatorPorts`/`createWsRealPorts` port, `WsAdapter`, `WsConnectionEventsAdapter`, `HttpAuthAdapter`, `pairConnectionPorts` — all from `@rtc/client-core`.
+Mode selection: `buildBrowserPorts` reads `env.serverUrl` (a client passes `webBootEnvOf(import.meta.env)` in, so the value is `VITE_SERVER_URL`) and branches on `if (url)`. Platform-specific adapters: `preferences`, `sessionStore`, the two layout stores, `colorScheme`, `bootSplash`, and the `BrowserConnectionEventsAdapter` half of `connectionEvents`. Verbatim-shared: every `createSimulatorPorts`/`createWsRealPorts` port, `WsAdapter`, `WsConnectionEventsAdapter`, `HttpAuthAdapter`, `pairConnectionPorts` — all from `@rtc/client-adapters`.
 
 #### Mobile (`@rtc/client-react-native`)
 
@@ -129,27 +129,29 @@ Wiring: `createWsListener(combineEffects(...buildEffects(jarvisLoops)), services
 
 ```mermaid
 sequenceDiagram
-    participant M as main.tsx
+    participant M as startWebClient.ts
     participant BC as bootApp.ts + coreSelection.ts
-    participant AR as AppRoot.tsx
+    participant H as coreHost.ts
     participant C as core (CoreFactory)
+    participant AR as AppRoot.tsx
     participant G as BootGate + AuthGate
 
     M->>BC: runBoot(bootCore(href, storage, VITE_CORE_IMPL, loadCore))
     BC->>BC: resolveCoreChoice - url, stored, build, rxjs
     BC->>BC: loadCore(impl) - lazy import() for async/effect
     BC-->>M: onBooted(impl, core, source)
-    M->>M: stamp data-core-impl, log it, createCoreSelection
-    M->>AR: render StrictMode > AppRoot(core, coreSelection) > App
-    AR->>AR: buildBrowserPorts() - autoConnect false
-    AR->>C: core.createApp(ports)
-    C-->>AR: presenters, commands (auth gate holds the socket closed)
-    AR->>AR: instrumentPresenters(presenters)
-    AR->>C: core.createMachineFactories(instrumented)
-    C-->>AR: factories
-    AR->>AR: instrumentMachineFactories(factories)
+    M->>M: log it, createView(page), buildBrowserPorts() - autoConnect false
+    M->>H: createCoreHost(ports, impl, core, ...), start()
+    H->>C: core.createApp(ports)
+    C-->>H: presenters, commands (auth gate holds the socket closed)
+    H->>M: instrument(core, app)
+    M->>C: instrumentPresenters, core.createMachineFactories(instrumented)
+    C-->>M: factories
+    M-->>H: presenters, instrumentMachineFactories(factories)
+    H->>AR: mount StrictMode > AppRoot(composition) > App
     AR->>AR: createViewModel(..., coreSelection)
     AR->>G: ViewModelProvider > ThemeProvider > PowerSaverRoot + BootGate > AuthGate
+    H->>H: publish - stamp data-core-impl
     G->>G: splash overlaid while useBootGate().visible
     G->>G: AuthGate shows LoginScreen until useAuth() is authenticated
     Note over C,G: authenticated - gateTransportOnAuth calls transport.connect()
@@ -158,9 +160,9 @@ sequenceDiagram
 ```
 
 1. `packages/client-react/index.html` holds the `#root` mount point and loads `/src/main.tsx` as a module script.
-2. `main.tsx` imports the fonts, finds `#root`, and — before any React renders — calls `runBoot(bootCore({ href, storage, buildDefault: import.meta.env.VITE_CORE_IMPL, warn, load: loadCore }), onBooted, onError)` (`src/app/bootApp.ts`). `bootCore` resolves the core through `resolveCoreChoice` (`src/app/coreSelection.ts`: `?core=` for this load only → the stored `rtc.coreImpl` choice → the build default → `"rxjs"`), then `loadCore(impl)` `import()`s the chosen core's lazy chunk — the RxJS core from `@rtc/client-core-rxjs`, a sibling package like the other two. A failed load (or a throw inside `onBooted`) routes to `renderBootError`, a plain-DOM message with a "Load the default core" button; an invalid `VITE_CORE_IMPL` throws synchronously as a developer error.
-3. `onBooted` stamps `<html data-core-impl>`, logs `[core] booted <impl> from <source>`, builds a `CoreSelection` (the Preferences core picker's seam), and renders `<StrictMode><AppRoot core={core} coreSelection={coreSelection}><App/></AppRoot></StrictMode>`.
-4. `AppRoot` builds, once per real mount (lazy ref): `buildBrowserPorts()`, then `core.createApp(ports)` (§14.1), then wraps the presenters with `instrumentPresenters(presenters, PRESENTER_MANIFEST, devtoolsHub)` and the factories with `instrumentMachineFactories(core.createMachineFactories(instrumented), devtoolsHub)` — dormant decorators until an inspector attaches ([§20](20-devtools.md)) — and finally `createViewModel(instrumented, factories, commands, { coreSelection })`. The `WsAdapter` (WS-real mode) is constructed with `autoConnect: false`; no socket opens here.
+2. `main.tsx` imports the fonts and makes one call, `startWebClient({ appId, rootId: "root", env: webBootEnvOf(import.meta.env), createView })`. `startWebClient` (`packages/web-boot/src/startWebClient.ts`) finds `#root`, creates the page's devtools hub, and — before any React renders — calls `runBoot(bootCore({ href, storage, buildDefault: env.coreImpl, warn, load }), onBooted, onError)` (`packages/web-boot/src/bootApp.ts`). `bootCore` resolves the core through `resolveCoreChoice` (`packages/web-boot/src/coreSelection.ts`: `?core=` for this load only → the stored `rtc.coreImpl` choice → the build default → `"rxjs"`), then `loadCore(impl)` `import()`s the chosen core's lazy chunk — the RxJS core from `@rtc/client-core-rxjs`, a sibling package like the other two. A failed load (or a throw inside `onBooted`) routes to `renderBootError`, a plain-DOM message with a "Load the default core" button; a missing root element and an invalid `VITE_CORE_IMPL` throw synchronously as developer errors.
+3. `onBooted` logs `[core] booted <impl> from <source>`, calls the client's `createView(page)` once (the React tree mount and the swap overlay's root), builds the ports once for the page (`buildBrowserPorts()`), creates the core host over them (`createCoreHost`, `packages/web-boot/src/coreHost.ts`) and calls `host.start()`. The `WsAdapter` (WS-real mode) is constructed with `autoConnect: false`; no socket opens here.
+4. The host composes, outside React: `core.createApp(ports)` (§14.1), then `startWebClient`'s `instrument`, which wraps the presenters with `instrumentPresenters(presenters, PRESENTER_MANIFEST, devtoolsHub)` and the factories with `instrumentMachineFactories(core.createMachineFactories(instrumented), devtoolsHub)` — dormant decorators until an inspector attaches ([§20](20-devtools.md)). It adds a `CoreSelection` (the Preferences core picker's seam), mounts `<StrictMode><AppRoot key={composition.generation} composition={composition} demoAccounts={page.demoAccounts}><App/></AppRoot></StrictMode>` through the view and stamps `<html data-core-impl>`. `AppRoot` builds only the ViewModel, once per real mount (lazy ref): `createViewModel(presenters, machineFactories, commands, { coreSelection, … })`. A later core choice in Preferences runs the host's `swapTo(impl)`: the same ports, a new composition, a new `AppRoot` mount.
 5. `AppRoot` renders `ViewModelProvider > ThemeProvider > [PowerSaverRoot, BootGate > AuthGate > children]`. `PowerSaverRoot` renders nothing and applies the power-saver level to the document root. `BootGate` (`src/ui/shell/boot/BootGate.tsx`) mounts its `children` **unconditionally and immediately** and overlays the `BootSequence` splash on top only while `useBootGate().visible` is `true` — so the splash also plays over the login screen. `AuthGate` (`src/ui/shell/auth/AuthGate.tsx`) renders `LoginScreen` until `useAuth().state.status` is `"authenticated"` (a resumed session skips it), then its `children`, the real `<App/>`; the moment auth flips, `createApp`'s `gateTransportOnAuth` opens the socket.
 6. `App.tsx` renders `AmbientBackground`, `HeaderChrome`, the workspace region holding the active tab's `WorkspaceEngine` (`key={activeTab}`, the tab coming from `useWorkspaceNav()`; it renders `DockviewLayoutEngine`, the default `LayoutEngine`, or `InhouseLayoutEngine` for a user who picked "inhouse"), `StatusBar`, `ConnectionOverlay`, `LockScreen`, `JarvisOverlay`, `JarvisPanelLayer` — this is the "first rendered tick", already live underneath the splash.
 7. The `BootSequence` machine (built per mount by `machineFactories.boot`) runs to completion or is skipped; `BootGate`'s `dismissOnOpacityEnd` (the splash's CSS fade) or `dismissOnJumpCut` (reduced motion) calls `dismiss()`, setting `visible=false` and revealing the already-warm app.

@@ -20,6 +20,8 @@ import {
   type EquityPosition,
   type EquityQuote,
   type Instrument,
+  type JarvisEvent,
+  type JarvisUsage,
   type LogEvent,
   type MetricSample,
   type PlaceOrderRequest,
@@ -49,7 +51,6 @@ import {
   EURUSD,
   MSFT,
 } from "#/harness/fixtures";
-import type { JarvisEvent, JarvisUsagePayload } from "#/harness/jarvisTypes";
 import { scriptPorts } from "#/harness/scriptedPorts";
 
 describe("scriptPorts port-call counting", () => {
@@ -77,6 +78,20 @@ describe("scriptPorts port-call counting", () => {
     teardown();
   });
 
+  it("failNextWorkspaceLayoutWrite: the next write throws, is counted, stores nothing; the one after writes", () => {
+    const { ports, driver, teardown } = scriptPorts(createBasePorts());
+    const failure = new Error("storage full");
+    driver.failNextWorkspaceLayoutWrite(failure);
+    expect(() => {
+      ports.preferences.setWorkspaceLayout("first");
+    }).toThrow(failure);
+    expect(driver.storedWorkspaceLayout()).toBe(null);
+    ports.preferences.setWorkspaceLayout("second");
+    expect(driver.storedWorkspaceLayout()).toBe("second");
+    expect(driver.portCallCounts().setWorkspaceLayout).toBe(2);
+    teardown();
+  });
+
   it("forwards the call to the real port with its own `this`", () => {
     const { ports, teardown } = scriptPorts(createBasePorts());
     ports.preferences.setThemeMode("light");
@@ -101,6 +116,32 @@ describe("scriptPorts port-call counting", () => {
     expect(seen).toEqual([1.1]);
     sub.unsubscribe();
     expect(driver.priceObserved("EURUSD")).toBe(false);
+  });
+
+  it("pricing: replayPricesOnSubscribe hands every later subscription those ticks inside its subscribe, then the live ones", () => {
+    const { ports, driver } = scriptPorts(createBasePorts());
+    driver.replayPricesOnSubscribe("EURUSD", [
+      createTick("EURUSD", 1),
+      createTick("EURUSD", 2),
+    ]);
+    const seen: number[] = [];
+    const sub = ports.pricing.getPriceUpdates("EURUSD").subscribe((tick) => {
+      seen.push(tick.mid);
+    });
+    expect(seen).toEqual([1, 2]);
+    expect(driver.priceObserved("EURUSD")).toBe(true);
+    driver.tickPrice(createTick("EURUSD", 3));
+    expect(seen).toEqual([1, 2, 3]);
+    sub.unsubscribe();
+
+    const other: number[] = [];
+    ports.pricing
+      .getPriceUpdates("GBPUSD")
+      .subscribe((tick) => {
+        other.push(tick.mid);
+      })
+      .unsubscribe();
+    expect(other).toEqual([]);
   });
 
   it("pricing: failPrice errors that symbol's subscribers", () => {
@@ -991,7 +1032,7 @@ function createAvailability(available: boolean): JarvisAvailability {
   };
 }
 
-function createUsagePayload(): JarvisUsagePayload {
+function createUsagePayload(): JarvisUsage {
   return { windowStartMs: 1, windowEndMs: 2, currentWindow: [], sinceBoot: [] };
 }
 

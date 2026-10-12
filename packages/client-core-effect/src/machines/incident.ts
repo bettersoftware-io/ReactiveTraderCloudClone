@@ -1,4 +1,4 @@
-import { Effect, Scope, SubscriptionRef } from "effect";
+import { Effect, Scope } from "effect";
 
 import type {
   IncidentIntents,
@@ -13,13 +13,8 @@ import {
 } from "@rtc/core-logic";
 import type { ConnectionEvent, MetricControl } from "@rtc/domain";
 
-import {
-  closeScope,
-  createChildHost,
-  type EffectHost,
-  refToWarmStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { closeScope, createChildHost, type EffectHost } from "#/bridge/out";
+import { createSyncRef } from "#/bridge/syncRef";
 
 export interface IncidentDeps {
   /** The perturbable simulators' controls, in `metricControls` order. */
@@ -29,7 +24,7 @@ export interface IncidentDeps {
   readonly pushConnectionEvent: (event: ConnectionEvent) => void;
 }
 
-/** The admin incident singleton: the imported fold over a SubscriptionRef,
+/** The admin incident singleton: the imported fold over a `SyncRef`,
  * warm for the app's lifetime, in a child of the app host's scope (so
  * `app.dispose()` disposes it, as `eqWorkspace`). Each intent runs
  * synchronously in the RxJS core's order — every control first, then the
@@ -39,10 +34,8 @@ export function createIncidentMachine(
   deps: IncidentDeps,
 ): Machine<IncidentState, IncidentIntents> {
   const host = createChildHost(parent);
-  const ref = host.runtime.runSync(
-    SubscriptionRef.make<IncidentState>({ active: [] }),
-  );
-  const warm = refToWarmStateStream(host, ref);
+  const ref = createSyncRef<IncidentState>({ active: [] });
+  const warm = ref.warm();
   let disposed = false;
 
   /** Idempotent; reached from `dispose()` and from the scope's own close. */
@@ -78,11 +71,9 @@ export function createIncidentMachine(
       deps.pushConnectionEvent(connectionEvent);
     }
 
-    host.runtime.runSync(
-      setRefIfChanged(ref, (state) => {
-        return reduceIncident(state, event);
-      }),
-    );
+    ref.set((state) => {
+      return reduceIncident(state, event);
+    });
   }
 
   return {

@@ -1,5 +1,4 @@
-import type { Observable } from "rxjs";
-import { Subject } from "rxjs";
+import { type Observable, Subject } from "rxjs";
 
 /** Symmetric message duplex. The hub's DevtoolsTransport is structurally
  * Duplex<AppToInspector, InspectorToApp>; the inspector uses the flip. */

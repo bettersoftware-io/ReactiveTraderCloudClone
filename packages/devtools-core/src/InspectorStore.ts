@@ -1,10 +1,10 @@
-import type {
-  AppToInspector,
-  DevtoolsEvent,
-  SnapshotMachine,
-  SnapshotStream,
+import {
+  type AppToInspector,
+  type DevtoolsEvent,
+  PROTOCOL_VERSION,
+  type SnapshotMachine,
+  type SnapshotStream,
 } from "./protocol";
-import { PROTOCOL_VERSION } from "./protocol";
 import type { SerializedValue } from "./serialize";
 
 const LOG_CAP = 5000;

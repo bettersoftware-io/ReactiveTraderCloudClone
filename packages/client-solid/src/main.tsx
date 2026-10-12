@@ -2,6 +2,7 @@
 // IBM Plex Sans 400/500/600, IBM Plex Mono 400/500/600, Orbitron 700/800
 // (wordmark, P&L amount, lock-screen fallback, prefs-dialog title chrome).
 // Mirrors client-react's main.tsx font manifest verbatim (see that file).
+
 import "@fontsource/chakra-petch/400.css";
 import "@fontsource/chakra-petch/500.css";
 import "@fontsource/chakra-petch/600.css";
@@ -23,78 +24,71 @@ import "@fontsource/orbitron/800.css";
 // (the package's export map falls back to `index_noop.js` once the plugin
 // isn't intercepting the specifier), so it's safe to leave unguarded here.
 import "solid-devtools";
+import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 
+import {
+  type Composition,
+  type CoreSwapView,
+  type CoverTimings,
+  INSTANT_COVER,
+  startWebClient,
+  type WebClientPage,
+  type WebClientView,
+  webBootEnvOf,
+} from "@rtc/web-boot";
+
 import { AppRoot } from "./AppRoot";
-import {
-  bootCore,
-  formatBootedMessage,
-  renderBootError,
-  runBoot,
-} from "./app/bootApp";
-import {
-  clearCoreChoice,
-  createCoreSelection,
-  defaultCoreResetHref,
-  loadCore,
-  safeLocalStorage,
-} from "./app/coreSelection";
+import { createSolidTreeMount } from "./app/solidTreeMount";
 import { App } from "./ui/App";
+import {
+  CoreSwapOverlay,
+  type CoreSwapOverlayProps,
+} from "./ui/shell/core/CoreSwapOverlay";
 
 import "./index.css";
 
-const rootEl = document.getElementById("root");
+// Fire-and-forget by design: `startWebClient` shows the boot-error screen
+// itself, and its promise never rejects.
+void startWebClient({
+  appId: "rtc-web-solid",
+  rootId: "root",
+  // Read here because only the client's own source is where the bundler
+  // substitutes the build-time values.
+  env: webBootEnvOf(import.meta.env),
+  createView: createSolidView,
+});
 
-if (!rootEl) {
-  throw new Error("Root element #root not found in DOM");
+/** The Solid part of the page: the app tree and the swap overlay, each a
+ * reactive root of its own. */
+function createSolidView(page: WebClientPage): WebClientView {
+  // A tree that fails its first render is disposed before `mount` throws,
+  // so a swap onto a core whose UI cannot render leaks no reactive root.
+  const tree = createSolidTreeMount(page.rootEl);
+  const [overlay, setOverlay] = createSignal<CoreSwapOverlayProps>({
+    swap: null,
+    fade: INSTANT_COVER,
+  });
+  render(() => {
+    return <CoreSwapOverlay swap={overlay().swap} fade={overlay().fade} />;
+  }, page.overlayEl);
+
+  return {
+    mount: (composition: Composition): void => {
+      tree.mount(() => {
+        return (
+          <AppRoot composition={composition} demoAccounts={page.demoAccounts}>
+            <App />
+          </AppRoot>
+        );
+      });
+    },
+    unmount: tree.unmount,
+    destroy: tree.destroy,
+    showOverlay: (swap: CoreSwapView | null, fade: CoverTimings): void => {
+      // A signal write renders synchronously, so the cover is in the DOM
+      // before the host's next step.
+      setOverlay({ swap, fade });
+    },
+  };
 }
-
-const storage = safeLocalStorage();
-
-/** Logs a caught, non-fatal core-selection issue (an unknown `?core=`/stored
- * value, or a storage read/write/clear failure) so it's diagnosable from the
- * console rather than silently swallowed. */
-function warnCore(message: string): void {
-  console.warn(`[core] ${message}`);
-}
-
-// Fire-and-forget by design: runBoot routes every rejection (core load or
-// render) to renderBootError, so there is nothing left to handle here.
-void runBoot(
-  bootCore({
-    href: location.href,
-    storage,
-    buildDefault: import.meta.env.VITE_CORE_IMPL,
-    warn: warnCore,
-    load: loadCore,
-  }),
-  ({ impl, core, source }) => {
-    document.documentElement.dataset.coreImpl = impl;
-    console.info(formatBootedMessage(impl, source));
-    const coreSelection = createCoreSelection({
-      current: impl,
-      storage,
-      warn: warnCore,
-      href: () => {
-        return location.href;
-      },
-      navigate: (href: string): void => {
-        location.assign(href);
-      },
-    });
-
-    render(() => {
-      return (
-        <AppRoot core={core} coreSelection={coreSelection}>
-          <App />
-        </AppRoot>
-      );
-    }, rootEl);
-  },
-  (error: unknown) => {
-    renderBootError(rootEl, error, () => {
-      clearCoreChoice(storage, warnCore);
-      location.assign(defaultCoreResetHref(location.href));
-    });
-  },
-);

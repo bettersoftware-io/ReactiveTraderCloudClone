@@ -1,7 +1,6 @@
 // packages/client-react-native/tests/pages/OrderCeremonyPage.tsx
 
-import type { RenderResult } from "@testing-library/react-native";
-import { cleanup } from "@testing-library/react-native";
+import { cleanup, type RenderResult } from "@testing-library/react-native";
 import type { ViewStyle } from "react-native";
 
 import type { OrderTicketState } from "@rtc/core-api";

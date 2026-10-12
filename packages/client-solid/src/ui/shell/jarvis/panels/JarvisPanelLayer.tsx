@@ -1,5 +1,4 @@
-import type { Accessor, JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { type Accessor, createMemo, For, type JSX, Show } from "solid-js";
 
 import type { JarvisPanelVm } from "@rtc/core-api";
 import { MAX_DOCKED_PANELS } from "@rtc/core-logic";

@@ -77,7 +77,7 @@ client under `__DEV__` (see [architecture/20-devtools.md](architecture/20-devtoo
 - **Shows:** the **WebSocket wire** (every frame, natively — nothing off-the-shelf
   matches this for the app's protocol), plus presenters, machines, and the
   event timeline.
-- **The tell for simulator mode:** in `dev:ios:sim` there is no `WsAdapter`, so
+- **The tell for simulator mode:** in `dev:ios:sim` / `dev:android:sim` there is no `WsAdapter`, so
   the **wire panel is empty** while the state panels still populate — an
   immediate "this build isn't on a real socket" signal.
 - **Best for:** protocol-level debugging and understanding app state; it is the

@@ -1,5 +1,9 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useEffect, useRef } from "react";
+import {
+  type CSSProperties,
+  type ReactElement,
+  useEffect,
+  useRef,
+} from "react";
 
 import {
   type BootDrawCtx,

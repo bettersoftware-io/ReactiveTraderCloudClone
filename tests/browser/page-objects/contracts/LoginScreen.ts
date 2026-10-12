@@ -31,7 +31,7 @@ export interface LoginScreenPO {
   waitAppShell(timeoutMs: number): Promise<void>;
   /** Wait until the document root's `data-core-impl` reads exactly
    *  `expected` — the application core the app actually booted on (set by
-   *  `main.tsx` once `bootApp.ts`'s `bootCore` resolves). `check:core-bundle`
+   *  `startWebClient` once `bootApp.ts`'s `bootCore` resolves). `check:core-bundle`
    *  proves the OTHER cores are absent from a build; this proves the
    *  selected one is present and running. */
   waitCoreImpl(expected: string, timeoutMs: number): Promise<void>;

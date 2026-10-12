@@ -3,8 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { InspectorState, LiveHistory, LogRow } from "@rtc/devtools-core";
 
 import type { Scope } from "#/nav/scope";
-import type { TimelineModel } from "#/timeline/useTimeline";
-import { useTimeline } from "#/timeline/useTimeline";
+import { type TimelineModel, useTimeline } from "#/timeline/useTimeline";
 
 interface MountArgs {
   log: readonly LogRow[];

@@ -20,6 +20,7 @@ import {
   resolveThemeMode,
   type SessionUser,
 } from "@rtc/domain";
+import { CORE_OPTIONS } from "@rtc/web-boot";
 
 // The visual fakes pin the skin to "classic" by default (NOT the app's "holo"
 // showcase default): classic's tokens are byte-identical to the pre-redesign
@@ -72,7 +73,6 @@ import { EMPTY } from "rxjs";
 import { createLayoutMachine } from "@rtc/client-core-rxjs";
 import type {
   BootSequenceState,
-  CoreSelection,
   JarvisDemoState,
   JarvisDriverState,
   JarvisPanelVm,
@@ -83,9 +83,7 @@ import type {
   RfqCountdownSeed,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { ViewModel } from "@rtc/react-bindings";
-
-import { CORE_OPTIONS } from "#/app/coreSelection";
+import type { CoreSelectionView, ViewModel } from "@rtc/react-bindings";
 
 function noop(): void {}
 
@@ -706,8 +704,13 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     // Preferences' "Application core" row (Task 5): a static "RxJS selected"
     // selection so the row renders pixel-identically to a real build's
     // default — no scenario ever clicks it, so select() is inert.
-    useCoreSelection: (): CoreSelection => {
-      return { current: "rxjs", options: CORE_OPTIONS, select: noop };
+    useCoreSelection: (): CoreSelectionView => {
+      return {
+        current: "rxjs",
+        options: CORE_OPTIONS,
+        select: noop,
+        failure: null,
+      };
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
     // so every scenario but login/demo-hint renders the plain live form.

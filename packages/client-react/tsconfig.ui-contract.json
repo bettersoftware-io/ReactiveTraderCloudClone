@@ -16,9 +16,5 @@
     }
   },
   "include": ["src", "tests/ui/contract"],
-  "references": [
-    { "path": "../domain" },
-    { "path": "../shared" },
-    { "path": "../ui-contract" }
-  ]
+  "references": [{ "path": "../domain" }, { "path": "../ui-contract" }]
 }

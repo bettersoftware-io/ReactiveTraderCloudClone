@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { For } from "solid-js";
+import { For, type JSX } from "solid-js";
 
 import { CURRENCY_CATEGORIES, type CurrencyCategory } from "@rtc/domain";
 

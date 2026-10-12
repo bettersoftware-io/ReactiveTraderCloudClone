@@ -2,8 +2,12 @@
   "name": "@rtc/root",
   "private": true,
   "packageManager": "pnpm@12.6.0+sha512.3ef68f951cb111ac204b4a5a16f0b2ddf0da56a96e0413e81d855d9f0b55ef926714709028e1cd00c405c2c5fb7b9e8ec4dc46777c805d0373c2f2ff00fd20ec",
-  "engines": {
-    "node": ">=26"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=26",
+      "onFail": "error"
+    }
   },
   "scripts": {
     "build": "turbo run build",
@@ -53,7 +57,14 @@
     "dev:ios:ws:local": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 pnpm --filter @rtc/client-react-native ios",
     "dev:ios:ws:remote": "EXPO_PUBLIC_SERVER_URL=wss://rtc-clone-server.fly.dev pnpm --filter @rtc/client-react-native ios",
     "dev:ios:fs": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 AUTH_USERS=astark:mcdc2026,nromanoff:mcdc2026,tchalla:mcdc2026,demo:mcdc2026 AUTH_SECRET=dev-local-secret-public-by-design-never-deploy RTC_DEV_ACCOUNTS=1 RTC_JARVIS_FAKE=1 turbo run dev --filter=@rtc/server --filter=@rtc/client-react-native",
-    "demo:publish:ios": "pnpm build && pnpm --filter @rtc/client-react-native publish:demo",
+    "dev:android": "pnpm run dev:android:sim",
+    "dev:android:sim": "EXPO_PUBLIC_SERVER_URL= pnpm --filter @rtc/client-react-native android",
+    "dev:android:ws:local": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 pnpm --filter @rtc/client-react-native android",
+    "dev:android:ws:remote": "EXPO_PUBLIC_SERVER_URL=wss://rtc-clone-server.fly.dev pnpm --filter @rtc/client-react-native android",
+    "dev:android:fs": "EXPO_PUBLIC_SERVER_URL=ws://localhost:4000 AUTH_USERS=astark:mcdc2026,nromanoff:mcdc2026,tchalla:mcdc2026,demo:mcdc2026 AUTH_SECRET=dev-local-secret-public-by-design-never-deploy RTC_DEV_ACCOUNTS=1 RTC_JARVIS_FAKE=1 turbo run @rtc/server#dev @rtc/client-react-native#dev:android",
+    "preview:android:build": "pnpm --filter @rtc/client-react-native preview:android:build",
+    "preview:android:run": "pnpm --filter @rtc/client-react-native preview:android:run",
+    "demo:ios:publish": "pnpm build && pnpm --filter @rtc/client-react-native demo:ios:publish",
     "dev:devtools": "pnpm --filter @rtc/devtools-app dev",
     "dev:devtools:ext": "pnpm --filter @rtc/devtools-extension dev",
     "dev:devtools:relay": "pnpm --filter @rtc/devtools-relay dev",
@@ -79,13 +90,12 @@
     "check:dist": "node scripts/check-dist.mts --all",
     "check:compiler": "node scripts/react-compiler-healthcheck.mts",
     "check:core-bundle": "node scripts/check-core-bundle.mts",
-    "codemod:repoint-imports": "node scripts/repoint-imports.mts",
     "mutation-check": "node scripts/mutation-check.mts",
     "lint:dead": "knip",
     "check:deps": "depcruise --config .dependency-cruiser.mts packages tests",
-    "lint:eslint": "eslint .",
-    "lint:eslint:types": "eslint . --config eslint.config.typed.mts",
-    "lint:css": "stylelint \"packages/*/src/**/*.css\"",
+    "lint:eslint": "eslint . --max-warnings 0",
+    "lint:eslint:types": "eslint . --config eslint.config.typed.mts --max-warnings 0",
+    "lint:css": "stylelint \"packages/*/src/**/*.css\" --max-warnings 0",
     "visual:jitter": "pnpm --filter @rtc/tests visual:jitter",
     "jarvis:smoke:live": "pnpm --filter @rtc/tests jarvis:smoke:live",
     "visual:engine-parity": "pnpm --filter @rtc/tests visual:engine-parity"

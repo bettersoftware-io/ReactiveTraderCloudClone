@@ -46,8 +46,8 @@ env); it is git-ignored via `.vercel/` and safe to delete — `vercel link` /
 | `RTC_DEPLOYED` | `packages/server/Dockerfile` (`ENV RTC_DEPLOYED=1`); blanked by the full-stack smoke | marks a container built from the server image as deployed, whatever the host: the dev account directory is refused | `resolveAccountsMode` |
 | `REGISTRATION_OPEN` | Fly secret (optional) | `true` (default) or `false`; `false` closes sign-up without a code change; any other value stops the server | `isRegistrationOpen` (`resolveAccountsMode.ts`) |
 | `PROBE_EMAIL_DOMAIN` | shell, for `accounts:probe` only | A domain you control or a test inbox; the probe sends one real confirmation email there | `packages/server/scripts/probe-accounts.ts` |
-| `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` and `packages/client-solid/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via each client's own `buildBrowserPorts.ts`'s `parseDevAuth` — identical helper in both `client-react` and `client-solid` |
-| `VITE_DEMO_AUTH` | committed `packages/client-react/.env.production` and `packages/client-solid/.env.production` — **production builds only** (Vite never loads it in dev, so every `dev:*` and e2e flow is unaffected); declared in `turbo.json` `build.env` / `dev.env` so an explicit process-level override survives strict env mode | JSON `username -> password` — the committed demo roster at `mcdc2026`, inlined into the production bundle. With `VITE_SERVER_URL` set the build is **hybrid**: a login matching this roster is verified in the browser and runs the simulators, anything else is posted to the server's `/login`. Without `VITE_SERVER_URL` it is the simulator-only build's login roster | `resolveDataSource` / `createRoutingAuthPort` (`@rtc/client-core`) via each client's own `buildBrowserPorts.ts` |
+| `VITE_DEV_AUTH` | committed `packages/client-react/.env.development` and `packages/client-solid/.env.development` (override in `.env.local`) | JSON `username -> password` map for **local simulator-mode dev only** — the committed demo roster at `mcdc2026` | `AuthSimulator` via `@rtc/web-boot`'s `buildBrowserPorts.ts` and its `parseDevAuth` — one helper, used by both `client-react` and `client-solid` |
+| `VITE_DEMO_AUTH` | committed `packages/client-react/.env.production` and `packages/client-solid/.env.production` — **production builds only** (Vite never loads it in dev, so every `dev:*` and e2e flow is unaffected); declared in `turbo.json` `build.env` / `dev.env` so an explicit process-level override survives strict env mode | JSON `username -> password` — the committed demo roster at `mcdc2026`, inlined into the production bundle. With `VITE_SERVER_URL` set the build is **hybrid**: a login matching this roster is verified in the browser and runs the simulators, anything else is posted to the server's `/login`. Without `VITE_SERVER_URL` it is the simulator-only build's login roster | `resolveDataSource` / `createRoutingAuthPort` (`@rtc/client-adapters`) via `@rtc/web-boot`'s `buildBrowserPorts.ts` |
 | `EXPO_PUBLIC_DEV_AUTH` | `packages/client-react-native/.env` | JSON `username -> password` map for **local simulator-mode dev only** (mobile analogue of `VITE_DEV_AUTH`), falling back to all four roster usernames at a shared dev password when unset | `AuthSimulator` via `nativeAuthConfig.ts`'s `DEV_CREDENTIALS` → `buildNativePorts.ts` |
 
 The **demo login password is committed** (`mcdc2026`) — this is a demo app, and
@@ -66,7 +66,7 @@ last column says.
 
 | Var | Set where | Holds | Read by |
 |---|---|---|---|
-| `VITE_CORE_IMPL` | shell / `dev:*` scripts / deploy build | The **build default** application core (`rxjs` \| `async` \| `effect`). A `?core=` URL parameter or a stored Preferences choice outranks it (load-time selection); unset falls back to `rxjs`. Declared in `turbo.json` `build.env` so strict-mode Turbo does not strip it | `packages/client-react/src/main.tsx` → `coreSelection.ts` (and the Solid client's equivalents) |
+| `VITE_CORE_IMPL` | shell / `dev:*` scripts / deploy build | The **build default** application core (`rxjs` \| `async` \| `effect`). A `?core=` URL parameter or a stored Preferences choice outranks it (load-time selection); unset falls back to `rxjs`. Declared in `turbo.json` `build.env` so strict-mode Turbo does not strip it | `packages/client-react/src/main.tsx` → `startWebClient` → `coreSelection.ts` (and the Solid client's equivalents) |
 | `ANTHROPIC_API_KEY` | Fly secret / shell (never committed) | The key for the real Anthropic-backed Jarvis loop; with it unset (or `RTC_JARVIS_FAKE=1`) Jarvis runs the free scripted brain. See [`running-real-jarvis.md`](running-real-jarvis.md) | `packages/server/src/agent/agentLoop.ts`, `packages/server/src/index.ts` |
 | `RTC_JARVIS_FAKE` | shell / Fly | `1` forces the scripted (no-API) Jarvis loop even when a key is present | `packages/server/src/agent/agentLoop.ts` |
 | `RTC_JARVIS_BUDGET_USD` | shell / Fly | Real-Claude spend budget per usage window in USD (default `1`); `off` disables the gate | `parseJarvisGateConfig` (`packages/server/src/services/jarvisGate.ts`) |
@@ -103,7 +103,8 @@ Per-developer, git-ignored. Keys:
   it per mode: `pnpm dev:ios:sim` (empty → simulator), `pnpm dev:ios:ws:local`
   (`ws://localhost:4000`, needs a local `pnpm dev:ws`), `pnpm dev:ios:ws:remote`
   (the deployed endpoint), `pnpm dev:ios:fs` (starts the local server + the app
-  together). Bare `pnpm dev:ios` aliases `:sim`. The mapping into
+  together). Bare `pnpm dev:ios` aliases `:sim`. `pnpm dev:android*` has the same
+  five scripts for an Android emulator. The mapping into
   `extra.serverUrl` is guarded by `app.config.test.ts` (it was silently dropped
   once, stranding the app in simulator mode regardless of this var).
 
@@ -115,7 +116,7 @@ Flow: `app.config.ts` reads these into `extra.devAuth` / `extra.serverUrl` →
 
 > ⚠️ **`EXPO_PUBLIC_*` is inlined into the JS bundle when Metro starts** — it is
 > not hot-reloaded. After editing this file you must **restart Metro**
-> (`pnpm dev:ios`); an in-app reload against the running Metro keeps the old
+> (`pnpm dev:ios` or `pnpm dev:android`); an in-app reload against the running Metro keeps the old
 > value. This is the most common "I updated the credential but it still won't
 > connect" trap.
 
@@ -175,7 +176,7 @@ ls`).
 Not committed and not created by default. Vite loads env files from the web
 package root, so to run the **web** client against live data locally you would
 create this file with `VITE_SERVER_URL` (see the `.env.example` above). Without
-it, `src/app/buildBrowserPorts.ts` sees no `VITE_SERVER_URL` and takes the
+it, `@rtc/web-boot`'s `buildBrowserPorts.ts` sees no `VITE_SERVER_URL` and takes the
 simulator branch — which is why `pnpm dev` shows simulated prices out of the
 box, with login handled by the in-process `AuthSimulator` seeded from
 `VITE_DEV_AUTH`. (In production `VITE_SERVER_URL` comes from Vercel, not this

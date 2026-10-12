@@ -32,20 +32,21 @@ import {
   createWsRealPorts,
   InMemorySessionStore,
   type PortFactoryDeps,
-} from "@rtc/client-core";
+} from "@rtc/client-adapters";
 import {
   createFakeConnectionPorts,
   FakeWsAdapter,
-} from "@rtc/client-core/testing";
+} from "@rtc/client-adapters/testing";
 import type { JarvisEntry } from "@rtc/core-api";
 import { historyEntriesExcludingInFlightTurn } from "@rtc/core-logic";
 import {
   AuthSimulator,
   ConnectionEventsSimulator,
   JARVIS_GREETING,
+  type JarvisHistoryEntry,
   PreferencesSimulator,
 } from "@rtc/domain";
-import { CLIENT_MSG, type JarvisHistoryEntry, SERVER_MSG } from "@rtc/shared";
+import { CLIENT_MSG, SERVER_MSG } from "@rtc/shared";
 
 import { createApp } from "#/composition";
 

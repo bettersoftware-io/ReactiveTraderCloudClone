@@ -52,15 +52,13 @@ import type {
 } from "@rtc/core-api";
 
 import { createDefaultLayoutPort } from "#/layout/defaultLayoutPort";
-import type {
-  LayoutPresetEntry,
-  ParsedLayoutPresetList,
-  StoredLayoutPreset,
-} from "#/layout/layoutPresetCodec";
 import {
   LAYOUT_PRESET_VERSION,
+  type LayoutPresetEntry,
   MAX_LAYOUT_PRESETS,
+  type ParsedLayoutPresetList,
   parseLayoutPresetList,
+  type StoredLayoutPreset,
   serializeLayoutPresetList,
   summarizeLayoutPresets,
   UNREADABLE_LIST_ID,

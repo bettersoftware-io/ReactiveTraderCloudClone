@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ChartViewport } from "./chartViewport.js";
-import type { ChartCandle } from "./chartVm.js";
-import { Y_SPAN, Y_TOP } from "./chartVm.js";
+import { type ChartCandle, Y_SPAN, Y_TOP } from "./chartVm.js";
 import { crosshairVm } from "./crosshairVm.js";
 
 describe("crosshairVm", () => {

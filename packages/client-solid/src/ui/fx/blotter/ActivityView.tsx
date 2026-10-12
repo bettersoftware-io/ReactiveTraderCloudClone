@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, type JSX, Show } from "solid-js";
 
 import type { ActivityEntry } from "@rtc/core-api";
 import { Direction, TradeStatus } from "@rtc/domain";

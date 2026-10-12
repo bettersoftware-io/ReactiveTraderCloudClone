@@ -1,4 +1,4 @@
-// Declared locally rather than imported from @rtc/motion-core — client-core
+// Declared locally rather than imported from @rtc/motion-core — core-api
 // must not depend on motion-core (see global constraints; the same EqPaneId
 // doctrine as EqWorkspaceMachine). motion-core's drawingScene types unify
 // with these structurally.

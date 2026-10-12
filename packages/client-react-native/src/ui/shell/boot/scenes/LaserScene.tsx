@@ -1,8 +1,7 @@
 // packages/client-react-native/src/ui/shell/boot/scenes/LaserScene.tsx
 import { Circle, Group, Line, Path, Rect } from "@shopify/react-native-skia";
 import type { JSX } from "react";
-import type { SharedValue } from "react-native-reanimated";
-import { useDerivedValue } from "react-native-reanimated";
+import { type SharedValue, useDerivedValue } from "react-native-reanimated";
 
 import { BOOT_DURATION_MS } from "@rtc/domain";
 

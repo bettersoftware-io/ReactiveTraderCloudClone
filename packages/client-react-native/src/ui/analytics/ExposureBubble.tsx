@@ -1,6 +1,5 @@
 import { Circle, Group, type SkFont, Text } from "@shopify/react-native-skia";
-import type { JSX } from "react";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import {
   Easing,
   useDerivedValue,

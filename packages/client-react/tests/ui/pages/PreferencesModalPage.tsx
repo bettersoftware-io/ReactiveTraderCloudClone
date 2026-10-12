@@ -2,8 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 
 import type { AmbientStyle, JarvisBrain, JarvisEffort } from "@rtc/domain";
-import type { ViewModel } from "@rtc/react-bindings";
-import { ViewModelContext } from "@rtc/react-bindings";
+import { type ViewModel, ViewModelContext } from "@rtc/react-bindings";
 
 import { PreferencesModal } from "#/ui/shell/prefs/PreferencesModal";
 

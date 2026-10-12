@@ -1,6 +1,6 @@
 // packages/client-core-effect/src/presenters/themePreference.test.ts
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
-import { BehaviorSubject, Subject } from "rxjs";
+import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -104,6 +104,39 @@ describe("createThemePreferencePresenter (effect)", () => {
     sub.unsubscribe();
   });
 
+  // Both theme streams read the stored choice. Held together (an attached
+  // devtools inspector holds both) they share ONE subscription to the port,
+  // as the RxJS and async cores do; each used to open its own.
+  it("modePreference$ and mode$ held together share one subscription to the port", async () => {
+    const counted = createCountedThemeModePort("dark");
+    const presenter = createThemePreferencePresenter(useHost(), counted.port);
+    const preferences: ThemeModePreference[] = [];
+    const modes: ThemeMode[] = [];
+    const preferenceSub = presenter.modePreference$.subscribe((p) => {
+      preferences.push(p);
+    });
+
+    const modeSub = presenter.mode$.subscribe((m) => {
+      modes.push(m);
+    });
+    await tick();
+    await tick();
+
+    expect(counted.live()).toBe(1);
+
+    // Positive witness: both streams are wired to that one subscription.
+    counted.source.next("light");
+    await tick();
+    await tick();
+    expect(preferences).toEqual(["dark", "light"]);
+    expect(modes).toEqual(["dark", "light"]);
+
+    preferenceSub.unsubscribe();
+    modeSub.unsubscribe();
+    await tick();
+    expect(counted.live()).toBe(0);
+  });
+
   it("re-subscribes to the colour-scheme source on a fresh warm period", async () => {
     const prefersDark = new BehaviorSubject(false);
     const presenter = createThemePreferencePresenter(
@@ -141,6 +174,43 @@ describe("createThemePreferencePresenter (effect)", () => {
     return host;
   }
 });
+
+interface CountedThemeModePort {
+  readonly port: PreferencesPort;
+  readonly source: BehaviorSubject<ThemeModePreference>;
+  /** How many subscriptions to `themeMode$()` are open right now. */
+  live(): number;
+}
+
+/** A preferences port whose `themeMode$` counts its open subscriptions. */
+function createCountedThemeModePort(
+  initial: ThemeModePreference,
+): CountedThemeModePort {
+  const source = new BehaviorSubject<ThemeModePreference>(initial);
+  let live = 0;
+  const themeMode = new Observable<ThemeModePreference>((subscriber) => {
+    live += 1;
+    const sub = source.subscribe(subscriber);
+
+    return (): void => {
+      live -= 1;
+      sub.unsubscribe();
+    };
+  });
+  const port = new PreferencesSimulator({ themeMode: initial });
+
+  port.themeMode$ = (): Observable<ThemeModePreference> => {
+    return themeMode;
+  };
+
+  return {
+    port,
+    source,
+    live: () => {
+      return live;
+    },
+  };
+}
 
 function tick(): Promise<unknown> {
   return new Promise((resolve) => {

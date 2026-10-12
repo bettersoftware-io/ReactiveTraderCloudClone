@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, type JSX, Show } from "solid-js";
 
 import { type LatBarVm, latencyBuckets } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
@@ -9,7 +8,7 @@ import styles from "./LatencyHistogram.module.css";
 /**
  * Latency-distribution histogram — 6 fixed buckets (ported from PROTO
  * Latency/LatencyHistogram.tsx), each bar's height driven by a --bar-h custom
- * property computed by the shared latencyBuckets vm (client-core) from the
+ * property computed by the shared latencyBuckets vm (core-logic) from the
  * live latency window; the modal (highest-count) bucket is flagged via
  * data-accent.
  */

@@ -38,11 +38,14 @@ a class must name its file (`rtc/class-filename-match`), and twenty-six
 files for twenty-six tags would be the wrong trade.
 
 There is no kernel folder here, and there will not be one: `effect` already
-supplies the primitives `@rtc/client-core-async` had to write by hand —
-`SubscriptionRef` for a replay-current cell, `Stream` for a multicast
-sequence, `Fiber` for structured cancellation, `Effect.sleep` for a
-cancellable delay. That contrast is the point of running the two cores side
-by side.
+supplies most of the primitives `@rtc/client-core-async` had to write by
+hand — `Stream` for a sequence, `Fiber` for structured cancellation,
+`Effect.sleep` for a cancellable delay, `Scope` for ownership. That contrast
+is the point of running the two cores side by side. The one primitive this
+core does write is the cell a piece of state lives in, `SyncRef`
+(`bridge/syncRef.ts`) — Effect's own `SubscriptionRef` reaches a subscriber
+a fiber step late and costs a fiber per subscriber; see "State lives in a
+`SyncRef`" below.
 
 ## Bridge
 
@@ -70,11 +73,14 @@ published contract is two files:
   during `subscribe` THROWS that error at the read site rather than letting
   rxjs report it out of band; inside a `sharedFold` that failure reaches the
   subscriber whose subscribe triggered the seed, and no period is started.
-- `bridge/out.ts` — `streamToStream` / `refToStateStream` / `sharedFold`, the
-  only places in the package that construct an Observable. Each `subscribe`
-  forks a fiber and each `unsubscribe` interrupts it; an interrupt-only
-  `Cause` is silence, not an error, and `Cause.squash` collapses a typed
-  failure to the single `unknown` the contract's `Stream<T>` carries.
+- `bridge/out.ts` — `streamToStream` / `sharedFold` / the `listenTo…`
+  state-stream helpers, the only places in the package that construct an
+  Observable. A `streamToStream` `subscribe` forks a fiber and its
+  `unsubscribe` interrupts it; an interrupt-only `Cause` is silence, not an
+  error, and `Cause.squash` collapses a typed failure to the single
+  `unknown` the contract's `Stream<T>` carries.
+- `bridge/syncRef.ts` — `SyncRef`, the cell every machine and presenter-owned
+  flag keeps its state in, and its `stateStream()` / `warm()` views.
 
 All of them take an `EffectHost` — `{ runtime, scope }` — rather than a bare
 runtime. `runtime` is an `EffectRunner` (`runSync` + `runFork`), not a
@@ -114,15 +120,50 @@ Two details of the host are load-bearing:
   (`bridge/in.ts`) before it forks the close: nothing emitted after the call
   returns is received, which is what an RxJS `unsubscribe()` guarantees.
 
-`refToStateStream` reads the ref's current value **per subscription**, not
-once at construction. `@rx-state/core`'s `StateObservable` subscribes its
-source lazily and, at refCount 0, discards `currentValue` and unsubscribes —
-so a construction-time value would be re-emitted, stale, on every cold → warm
-cycle, and any `set` before the first subscriber would be invisible.
-`ref.changes` replays the current value on top of that, so its head is
-dropped only when it is `Object.is`-equal to the seed just emitted — never
-blindly, because a `set` landing between the read and the fiber's subscribe
-makes that head the NEW value.
+### State lives in a `SyncRef`
+
+A piece of state this core owns — a machine's, a presenter's flag — is a
+**`SyncRef`** (`bridge/syncRef.ts`): a plain cell with five operations.
+
+| operation | what it does |
+|---|---|
+| `get()` | the current value, read synchronously |
+| `set(next)` | commit `next(current)` and notify, before it returns; an `Object.is`-equal value is dropped (the `distinctUntilChanged` a state stream promises) |
+| `write(next)` | the same commit as an Effect, for a fiber's own steps |
+| `listen(listener)` | an in-core listener: called at once with the current value, then on every commit |
+| `stateStream(onSubscribe?)` / `warm()` | the cell as a `StateStream`; `warm()` also holds it warm and returns the `release` |
+
+It is not Effect's `SubscriptionRef`, and grep gate 50 keeps that type out
+of the package. A `SubscriptionRef` reaches a subscriber through
+`ref.changes`, and reading that takes a fiber per subscriber. Two things
+follow, both measured:
+
+- **A step late.** The fiber delivers after the commit. The workspace's
+  state is a synchronous fold — the shared dock reads the roster right after
+  writing it — and a step late meant a restored docked panel reached the
+  UI's first render after the Dockview bridge's orphan scrub had read the
+  empty set (slice 7). The workspace and Jarvis members have used a
+  `SyncRef` since then.
+- **A fiber per subscriber.** Moving the machines and the remaining
+  presenters onto it (2026-10-05) took the scheduler tasks of the FX
+  screen's first two seconds from about 1,000 to about 700 and the time spent in fibers
+  from 57 ms to 37 ms.
+
+So a subscriber is called from inside the write, as an RxJS
+`BehaviorSubject`'s is. Three consequences worth knowing:
+
+- `stateStream()` reads the cell **per subscription**, not once at
+  construction. `@rx-state/core`'s `StateObservable` subscribes its source
+  lazily and, at refCount 0, discards `currentValue` and unsubscribes — so a
+  construction-time value would be re-emitted, stale, on every cold → warm
+  cycle, and a write made before the first subscriber would be invisible.
+- With no subscriber, `stateStream().getValue()` hands back the value the
+  cell held when the stream was made. An app-lifetime singleton therefore
+  uses `warm()`: a first render reads `getValue()`.
+- A listener that writes the cell it is listening to commits again from
+  inside the notification. That inner commit tells every listener the newer
+  value, and the outer notification then stops: nobody hears an older value
+  after a newer one, or the same value twice.
 
 A `sharedFold` period is **seedless-capable**: `seed()` returns an
 `Option`, so a port that has not emitted by the time it is peeked seeds
@@ -155,6 +196,61 @@ about eleven steps per value. The price and price-history folds and the
 stale-flag machines went from 4,250 scheduler tasks per six seconds to 600.
 The stream ends when every port has completed and fails as soon as one does.
 
+A source of that merged stream can also be a GROUP of ports that follows a
+selector: **`switchedPortEvents(selector$, (key) => [portEvents(…), …])`**
+carries the ports of the selector's latest value and releases the previous
+group's when it moves on — the RxJS `switchMap((key) => merge(…))`, done as
+plain subscription management so every member feeds the same queue. The
+animation director and the narrator follow the roster's prices this way.
+As `Stream.flatMap(…, { switch: true })` over a `Stream.mergeAll` of a
+stream per pair they ran 812 of the core's 1,143 scheduler tasks per six
+seconds (four and three per tick); now one each per tick. State a group
+needs — the director's "previous mid" — lives in the closure `open` builds,
+so it starts afresh with every group. `leavingOnFailure(member)` turns a
+member's failure into its leaving the group (the narrator: one failing pair
+silences only itself).
+
+Three more sources cover what members used to reach for an Effect
+combinator to do, and grep gate 51 now forbids a `Stream` combinator that
+joins streams (`merge`, `flatMap`, `zipLatest`, `race`, …) anywhere outside
+`bridge/`:
+
+- **`latestOfEach([portEvents(…), …])`** — the latest of every member as one
+  array, from the moment each has emitted once (the RxJS `combineLatest`,
+  where `Stream.zipLatestAll` ran a fiber per port). A desk panel's
+  multi-symbol series.
+- **`firstPortEvent(port$, toEvent)`** — a port's first value, then its end,
+  with the port released as soon as it answered: a one-shot query as a
+  member of a group. The orders blotter's refresh.
+- **`oneEvent(event)`** — a constant member (`of(event)`). A desk panel that
+  is not live publishes `null`.
+
+`projectedChanges(source$, project)` is the view that goes with them: a
+selector that moves only when its projection changed (`map` +
+`distinctUntilChanged`), so a group is not reopened by every value of the
+stream it is selected from.
+
+Two more rules about WHEN a value arrives, both measured on the FX screen
+(2026-10-05):
+
+- **A fold's producer runs before its `subscribe` returns.** `sharedFold`
+  forks the producer and then calls `turnScheduler.settle()`: the turn,
+  taken now instead of at the next microtask. A port that replays on
+  subscribe (the pricing simulator's 50 ticks) has queued those values by
+  then, and without the settle the producer folds them a microtask later —
+  after a UI that was handed ANOTHER stream's current value synchronously
+  has already rendered. Each tile rendered once for its price and again for
+  its history: 55 tile renders in the first two seconds of a production
+  build against 48 on the RxJS core, 49 with the settle. The contract case
+  "a tile mounting on a price that is already warm hears that price and the
+  history the port replays in one turn" pins it for all three cores.
+- **A narrow view of a shared stream is a filter, not a fold.**
+  `filterStream(source, keep)` has no fiber, queue or state: its subscriber
+  is called from whatever delivers `source`. `animationDirector.intentsFor`
+  is that over the director's one stream (the RxJS core's
+  `all$.pipe(filter(…))`); as a fold per target, every intent woke a fiber
+  per mounted tile to be dropped by eight of them.
+
 Slice 4 adds three more bridge exports. `scopedPortStream(open)` is the
 lifecycle twin of `rpc`: a per-call, MULTI-value port stream whose `open()`
 runs — and whose port is subscribed — when the stream STARTS, and whose
@@ -170,16 +266,13 @@ host's, so `app.dispose()` ends the machine — what the two workspace
 singletons take. A `Scope.addFinalizer` on that child scope marks the
 machine disposed and releases its keep-warm (`machines/eqWorkspace.ts`,
 `eqDrawings.ts`), so `app.dispose()` and `machine.dispose()` converge — what
-the async twin's `lifetime` abort listener does. `refToWarmStateStream(host, ref)` is `refToStateStream`
-held warm by a subscription of its own, with a `release()`: an app-lifetime
-singleton must survive a cold `getValue()` between one panel unmounting and
-the next mounting, which is exactly what the RxJS singletons' internal
-`state$.subscribe()` is for.
+the async twin's `lifetime` abort listener does. `SyncRef.warm()` is
+`stateStream()` held warm by a subscription of its own, with a `release()`:
+an app-lifetime singleton must survive a cold `getValue()` between one panel
+unmounting and the next mounting, which is exactly what the RxJS singletons'
+internal `state$.subscribe()` is for.
 
-Four smaller bridge primitives carry slice 2: `setRefIfChanged` (a
-`SubscriptionRef.set` that skips an `Object.is`-equal value — the
-`distinctUntilChanged` a machine's `state$` promises, since a
-`SubscriptionRef` re-publishes an equal `set`), `fromPortIn(scope)` (a
+Three smaller bridge primitives carry slice 2: `fromPortIn(scope)` (a
 `FromPort` bound to a scope that is not a fold period's — a machine's own),
 `reportOutOfBand(cause)` (rethrow on a macrotask, for a machine whose source
 failed and whose ref has no error channel), and `SharedFold.retain`, which
@@ -205,13 +298,14 @@ as the pricing simulator does. That is the order the RxJS
 only once the flag has emitted. A flag with no current value queues nothing,
 and ticks before it speaks are dropped.
 
-A machine here is a `SubscriptionRef` plus a **detached host**: its own
-scope under the default runtime, closed by `dispose()`. `state$` is
-`refToStateStream`, which re-reads the ref per subscription — so a fresh
+A machine here is a `SyncRef` plus, when it forks a fiber or subscribes a
+port, a **detached host**: its own scope under the default runtime, closed
+by `dispose()` (`notional` does neither, so it has no host). `state$` is
+`ref.stateStream()`, which re-reads the ref per subscription — so a fresh
 subscription after `dispose()` still yields the current value
 synchronously, which is what the contract asserts. Intents are synchronous
-`setRefIfChanged` writes; timers are fibers forked into the machine's scope,
-so `dispose()` interrupts them. The run token and the fiber behind
+`ref.set` writes; timers are fibers forked into the machine's scope, writing
+through `ref.write`, so `dispose()` interrupts them. The run token and the fiber behind
 switch-map semantics live in one place, `createRunSlot`
 (`src/machines/runSlot.ts`), shared by `tileExecution`, `rfqTile`,
 `rfqSubmission` and `ticketSubmission`: `start` interrupts the previous
@@ -235,7 +329,7 @@ ONCE per derived stream: the memo returns the PREVIOUS array whenever the
 new one is shallow-equal, which is exactly what the fold's `Object.is`
 guard then drops — `distinctUntilChanged(shallowArrayEquals)` restated
 where this core already de-duplicates. A countdown (`rfqCountdown`, and
-`rfqTile`'s received phase) is ONE looping fiber writing `setRefIfChanged`
+`rfqTile`'s received phase) is ONE looping fiber writing the ref once
 per tick, with `remainingMs` derived from the tick INDEX rather than the
 clock; never a timer that forks its successor, since a forked child is
 interrupted when its parent completes (the §22 fiber-ownership rule). The
@@ -251,20 +345,19 @@ stream would be subscribe/unsubscribe/subscribe on the wire at the start of
 every warm period. The price is that its first value arrives a fiber hop
 after subscribe, which is why the contract leaves a keyed wire stream's
 first value uncontracted while a presenter-owned CELL's is synchronous.
-`ordersBlotter` pairs two `PubSub`s (`fills$` and an internal refresh
-signal, both hot with no replay) with a RETAINED fold whose producer is
-`Stream.merge(Stream.make(undefined), Stream.fromPubSub(refreshes))`,
-flat-mapped with `switch` into one `rpc(orders.orders())` per trigger,
-newest winning. MEASURED on 3.22.2, sweeping the microtask distance between
-the period's first subscribe and a publish: `merge` loses a refresh
-published 0–2 microtasks after the subscribe and hears one from 3 on;
-`concat` loses through 3. So there IS a window and `merge` only narrows it —
-what makes it harmless is that in every lost case the initial `orders()`
-query had not completed (with `merge`, not even started), so the update a
-lost refresh carried is one that query goes on to observe anyway. Its `place()` is `scopedPortStream` tapped, so its
+`ordersBlotter` pairs a `PubSub` (`fills$`, hot with no replay) with a
+RETAINED fold whose producer is a `switchedPortEvents` group of one —
+`firstPortEvent(orders.orders())`, newest winning — selected by a refresh
+count kept in a `SyncRef`. The count's state stream hands a period its
+current value on subscribe (the initial query) and every later refresh
+synchronously, so no refresh is lost. Until 2026-10-05 the refresh signal
+was a second `PubSub` merged with an initial value, and a refresh published
+within three microtasks of the period's first subscribe reached nobody
+(measured on 3.22.2; harmless only because the initial query had not yet
+completed in those cases). Its `place()` is `scopedPortStream` tapped, so its
 own failure ERRORS that per-call stream: a per-call stream has an error
 channel, unlike the ticket machine's ref. `candleSeries` keeps the two
-backfill flags as presenter-owned `SubscriptionRef` CELLS (replay-current
+backfill flags as presenter-owned `SyncRef` CELLS (replay-current
 across warm periods, cleared synchronously when a period starts) while the
 series itself is a seedless fold whose `run` is the SINGLE writer:
 `loadOlder` never publishes, it grows `older` and offers to the period's
@@ -272,7 +365,7 @@ nudge `Queue`, which the fold merges with the base port and re-stitches
 through the imported `stitchCandles`. A page landing between periods offers
 to a queue nobody drains, which is inert, and the next period resets
 `older` anyway. The two workspace singletons (`eqWorkspace`, `eqDrawings`)
-are `createChildHost` + `refToWarmStateStream` over the imported folds;
+are `createChildHost` + a warm `SyncRef` over the imported folds;
 `eqWorkspace`'s seed is ONE forked fiber over the roster with
 `Stream.take(1)` after the empty-symbol filter, so an empty roster never
 seeds and a later one never re-seeds. `orderTicket` is a per-mount DETACHED
@@ -298,7 +391,7 @@ core would be RxJS with extra steps.
 ## Members
 
 **All 75** members are **native** (74 as of slice 7's wave 2; `equityPriceHistory` added 2026-09-28), and since slice 8
-`@rtc/client-core` is a devDependency for test adapters only. Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
+`@rtc/client-adapters` is a devDependency for test adapters only. Wave 2 added the Jarvis family (`presenters/jarvisFamily.ts`), built
 outside the Layer graph on child hosts of the app host: `jarvis` (a
 `SyncRef` over core-logic's shared `createJarvisController`; an idle `send`
 subscribes its `ask` in the same tick, a fiber folds the replies; a forked
@@ -307,11 +400,11 @@ countdown fiber; `events$` a synchronous bridge `createHotStream`),
 `jarvisDemo` (a run fiber; each step an `Effect.async` settled by the shared
 `createDemoStepWatch` over synchronous state/event listeners, raced by
 `Effect.timeoutTo`), `jarvisUsage` (lazily opened, retained) and the
-internal narrator (a switched `Stream.flatMap` over scoped per-pair
-streams). Wave 1 added the workspace —
+internal narrator (the latest roster's prices through one queue,
+`switchedPortEvents`). Wave 1 added the workspace —
 now built by the family over this core's own `jarvis.events$`: per-tab layout machines and the panels roster as `SyncRef`s
-(`SubscriptionRef`s committed with `runSync`, whose in-core mirrors hear a
-change synchronously — the workspace's sync-fold contract), each live
+(whose in-core mirrors hear a change synchronously — the workspace's
+sync-fold contract), each live
 panel's data as a `sharedFold` over the shared frame steps
 (`Stream.zipLatestAll` for multi-symbol sources), `panelData$` as a
 `sharedFold` that switches with the roster, and the persist debounce as an
@@ -320,15 +413,17 @@ panel's data as a `sharedFold` over the shared frame steps
 `writeWorkspaceLayout`. Slice 5 added the nine admin
 members: the three metric windows, `eventLog` and `sessionsKpi` as retained
 `sharedFold`s seeded `[]`, `topology` and `sessions` as retained mirrors,
-`throughput` (a `SubscriptionRef`, a debounce fiber and `createRunSlot`), and
+`throughput` (a `SyncRef`, a debounce fiber and `createRunSlot`), and
 the `incident` singleton, whose connection events go out through
 `ports.connectionIntents.injectIncident` (slice 8). Slice 6 added five shell
-members: `workspaceNav`, `bootGate` and `auth` over `SubscriptionRef`s
+members: `workspaceNav`, `bootGate` and `auth` over `SyncRef`s
 (since slice 8 this core also gates `ports.transport` on its `auth`, in
 `bridge/transportGate.ts`, released with the host scope),
 the `boot` ramp as a fiber of `Effect.sleep` steps, and `animationDirector`
-— a refCounted `sharedFold` over a merged Effect `Stream` whose per-pair
-prices are `scopedPortStream`s, so a roster switch releases them. Slice 4 added eight: the five
+— a refCounted `sharedFold` over its six sources in one queue
+(`fromPort.merged`), the per-pair prices a `switchedPortEvents` group, so a
+roster switch releases them; `intentsFor(target)` is a `filterStream` view
+of it. Slice 4 added eight: the five
 equities presenters (`watchlist`, `candleSeries`, `depth`, `ordersBlotter`,
 `positions`), the two workspace singletons (`eqWorkspace`, `eqDrawings`)
 and `machines.orderTicket`. Slice 3 added eight: the

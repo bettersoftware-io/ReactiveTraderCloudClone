@@ -1,11 +1,11 @@
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { createElement, type ReactElement } from "react";
 
-import type {
-  ChartGestures,
-  DrawGestureSlots,
+import {
+  type ChartGestures,
+  type DrawGestureSlots,
+  useChartGestures,
 } from "#/ui/equities/chart/useChartGestures";
-import { useChartGestures } from "#/ui/equities/chart/useChartGestures";
 
 interface HookProps {
   seriesLen: number;

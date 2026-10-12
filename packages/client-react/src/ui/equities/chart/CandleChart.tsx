@@ -31,8 +31,7 @@ import {
   volumeVm,
 } from "@rtc/motion-core";
 
-import type { PaneVm } from "./ChartPlot";
-import { ChartPlot } from "./ChartPlot";
+import { ChartPlot, type PaneVm } from "./ChartPlot";
 import type { IndicatorPath } from "./SvgPathLayer";
 import {
   type ChartGestures,
@@ -266,7 +265,7 @@ export function CandleChart({
     ? [...previewDrawings, draftToDrawing(draft)]
     : previewDrawings;
 
-  // EqDrawing (client-core) satisfies motion-core's structural `Drawing` —
+  // EqDrawing (core-api) satisfies motion-core's structural `Drawing` —
   // passed directly, no mapping.
   const drawItems = drawingScene(
     allDrawings,

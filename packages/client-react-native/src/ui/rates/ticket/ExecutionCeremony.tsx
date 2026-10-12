@@ -1,6 +1,5 @@
 // packages/client-react-native/src/ui/rates/ticket/ExecutionCeremony.tsx
-import type { JSX } from "react";
-import { useEffect, useRef } from "react";
+import { type JSX, useEffect, useRef } from "react";
 import {
   Pressable,
   StyleSheet,

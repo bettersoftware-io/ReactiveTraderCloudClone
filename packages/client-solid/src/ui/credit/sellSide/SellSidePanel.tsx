@@ -1,5 +1,4 @@
-import type { JSX } from "solid-js";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, type JSX, Show } from "solid-js";
 
 import {
   ADAPTIVE_BANK_NAME,

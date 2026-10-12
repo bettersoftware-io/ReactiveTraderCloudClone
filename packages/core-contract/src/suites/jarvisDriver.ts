@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import type { DriveOutcome } from "@rtc/core-api";
-import { DRIVE_STAGGER_MS, MAX_DOCKED_PANELS } from "@rtc/domain";
+import {
+  DRIVE_STAGGER_MS,
+  type DriveCommandV1,
+  MAX_DOCKED_PANELS,
+} from "@rtc/domain";
 
 import { type FakeClock, withFakeClock } from "#/harness/clock";
 import { collect } from "#/harness/collect";
 import { AAPL, MSFT } from "#/harness/fixtures";
 import type { CoreHarness, MakeHarness } from "#/harness/harness";
-import type { DriveCommand } from "#/harness/jarvisTypes";
 import { settle } from "#/harness/settle";
 import { clockPause, readJarvis } from "#/suites/jarvisKit";
 import {
@@ -229,7 +232,7 @@ export function describeJarvisDriverContract(
           await spawnPanels(h, docked, pause);
           await driveBatch(
             h,
-            docked.map((panelId): DriveCommand => {
+            docked.map((panelId): DriveCommandV1 => {
               return { kind: "dockPanel", panelId };
             }),
             pause,
@@ -360,7 +363,7 @@ export function describeJarvisDriverContract(
   });
 }
 
-function switchTo(tab: "credit" | "equities" | "admin"): DriveCommand {
+function switchTo(tab: "credit" | "equities" | "admin"): DriveCommandV1 {
   return { kind: "switchTab", tab };
 }
 

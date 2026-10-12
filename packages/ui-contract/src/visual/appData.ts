@@ -36,6 +36,7 @@ import {
   type EquityQuote,
   type EqWatchlistSort,
   type Instrument,
+  type JarvisUsageSnapshot,
   type LayoutEngine,
   type LogEvent,
   type LoginWaitVariant,
@@ -53,7 +54,6 @@ import {
   type Trade,
   type ViewMode,
 } from "@rtc/domain";
-import type { JarvisUsageSnapshot } from "@rtc/shared";
 
 export interface AppData {
   prices: Record<string, Price | null>;

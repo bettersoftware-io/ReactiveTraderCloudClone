@@ -1,5 +1,4 @@
-import { concat, defer, interval, type Observable, of } from "rxjs";
-import { map } from "rxjs/operators";
+import { concat, defer, interval, map, type Observable, of, share } from "rxjs";
 
 import type {
   CurrencyPairPosition,
@@ -144,6 +143,34 @@ export class AnalyticsSimulator implements AnalyticsPort {
    */
   private positions: readonly CurrencyPairPosition[] = STATIC_POSITIONS;
 
+  /**
+   * The live book's walk, shared by every subscriber: the first one starts
+   * the interval, later ones join it, and it stops with the last. Each step
+   * advances the P&L and drifts the book, so an interval per subscriber would
+   * move both once per subscriber.
+   */
+  private readonly updates$ = interval(UPDATE_INTERVAL_MS).pipe(
+    map<number, PositionUpdates>(() => {
+      this.currentPrice = randomWalkStep(this.currentPrice);
+      this.history.push({
+        timestamp: new Date().toISOString(),
+        usdPnl: this.currentPrice,
+      });
+
+      if (this.history.length > HISTORY_SIZE) {
+        this.history.shift();
+      }
+
+      this.positions = driftPositions(this.positions, STATIC_POSITIONS);
+
+      return {
+        currentPositions: this.positions,
+        history: [...this.history],
+      };
+    }),
+    share(),
+  );
+
   constructor() {
     // PROTO headline P&L seed (dc.html L816: pnl: 17120).
     this.currentPrice = 17_120;
@@ -167,27 +194,7 @@ export class AnalyticsSimulator implements AnalyticsPort {
         history: [...this.history],
       };
 
-      const updates$ = interval(UPDATE_INTERVAL_MS).pipe(
-        map<number, PositionUpdates>(() => {
-          this.currentPrice = randomWalkStep(this.currentPrice);
-          this.history.push({
-            timestamp: new Date().toISOString(),
-            usdPnl: this.currentPrice,
-          });
-
-          if (this.history.length > HISTORY_SIZE) {
-            this.history.shift();
-          }
-
-          this.positions = driftPositions(this.positions, STATIC_POSITIONS);
-
-          return {
-            currentPositions: this.positions,
-            history: [...this.history],
-          };
-        }),
-      );
-      return concat(of(initial), updates$);
+      return concat(of(initial), this.updates$);
     });
   }
 }

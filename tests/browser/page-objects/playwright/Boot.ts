@@ -9,7 +9,7 @@ import { navigateAndAwaitMount } from "./appMount.ts";
 /**
  * The preference's localStorage key, mirrored verbatim from
  * `FORCE_BOOT_ANIMATION_STORAGE_KEY`
- * (packages/client-{react,solid}/src/app/adapters/LocalStoragePreferencesAdapter.ts).
+ * (packages/web-boot/src/adapters/LocalStoragePreferencesAdapter.ts).
  * Not imported from either package: the tests package has no dependency edge
  * onto client-solid, and importing only from client-react would falsely
  * privilege one client's copy of a value both must agree on byte-for-byte.

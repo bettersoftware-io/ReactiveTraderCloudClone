@@ -131,7 +131,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Cache turbo's local task cache so the `^build` chain (domain, shared,
-      # motion-core, ui-contract, client-core, the bindings — turbo `build` task,
+      # motion-core, ui-contract, client-adapters, client-core-rxjs, the bindings — turbo `build` task,
       # outputs: dist/**) is restored instead of recompiled on merges that didn't
       # touch those pure-TS libs. Turbo invalidates per-package by input hash, so
       # a UI-only merge is a cache HIT for every lib and rebuilds nothing; a merge

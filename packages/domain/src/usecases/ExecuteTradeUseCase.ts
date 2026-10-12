@@ -3,11 +3,12 @@ import { map } from "rxjs/operators";
 
 import type { CurrencyPair } from "../fx/currencyPair.js";
 import type { Price } from "../fx/price.js";
-import type { ExecutionRequest, Trade } from "../fx/trade.js";
 import {
   Direction,
   deriveDealtCurrency,
+  type ExecutionRequest,
   ExecutionStatus,
+  type Trade,
   TradeStatus,
 } from "../fx/trade.js";
 import type { ExecutionPort } from "../ports/executionPort.js";

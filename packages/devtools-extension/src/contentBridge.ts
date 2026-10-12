@@ -1,5 +1,4 @@
-import type { BridgeChannel } from "#/bridgeRelay";
-import { createBridgeRelay } from "#/bridgeRelay";
+import { type BridgeChannel, createBridgeRelay } from "#/bridgeRelay";
 import type { RuntimePort } from "#/ports";
 
 /** Injected into the app tab (same origin as the hub). Opens the same

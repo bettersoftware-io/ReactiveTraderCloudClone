@@ -7,8 +7,7 @@ import {
   seedLocalStorageItem,
 } from "#/browser/authSeed.js";
 import { buildPlaywrightPageObjects } from "#/browser/page-objects/playwright/factory.js";
-import type { TestContext } from "#/browser/testContext.js";
-import { Scratchpad } from "#/browser/testContext.js";
+import { Scratchpad, type TestContext } from "#/browser/testContext.js";
 
 import { loginForToken } from "../loginForToken.js";
 

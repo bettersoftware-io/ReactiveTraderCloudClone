@@ -9,7 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
 // react default keeps its output path byte-identical to before.
 const isSolid = process.env.RTC_CLIENT_PKG === "@rtc/client-solid";
 // Likewise for the application core (RTC_CORE_IMPL, forwarded to the dev
-// server as VITE_CORE_IMPL by tests/scripts/devServer.ts): the async/effect
+// server as VITE_CORE_IMPL by tests/scripts/clientServer.ts): the async/effect
 // e2e runs (test:e2e:async/:effect) can be mid-flight alongside the default
 // rxjs run, so suffix by core too — empty for rxjs keeps its output path
 // byte-identical to before.

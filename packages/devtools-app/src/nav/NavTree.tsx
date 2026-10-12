@@ -1,10 +1,8 @@
-import type { KeyboardEvent, ReactElement } from "react";
-import { useRef, useState } from "react";
+import { type KeyboardEvent, type ReactElement, useRef, useState } from "react";
 
 import type { NavNode } from "#/nav/buildNavTree";
 import styles from "#/nav/NavTree.module.css";
-import type { Scope } from "#/nav/scope";
-import { scopeKey } from "#/nav/scope";
+import { type Scope, scopeKey } from "#/nav/scope";
 import { useFlashOnSeq } from "#/panels/flash";
 
 /** The rail navigator (spec §3.1): one tree, four roots, one selection.

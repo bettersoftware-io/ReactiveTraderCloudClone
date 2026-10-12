@@ -50,7 +50,7 @@ flowchart TB
         solidClient["<b>Solid Web Client</b><br/>@rtc/client-solid · SolidJS + Vite + CSS Modules<br/>dumb UI + browser adapters · full parity w/ Web Client"]:::ui
         bindings["<b>React Bindings</b><br/>@rtc/react-bindings · react-rxjs<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
         solidBindings["<b>Solid Bindings</b><br/>@rtc/solid-bindings · @rx-state/core → signal<br/>createViewModel / useMachine / ViewModelProvider"]:::bridge
-        core["<b>Application Cores ×3</b><br/>@rtc/client-core (RxJS, default) ·<br/>@rtc/client-core-async · @rtc/client-core-effect<br/>(each composition root a lazy chunk)<br/>composition root · presenters · machines · port factories"]:::core
+        core["<b>Application Cores ×3</b><br/>@rtc/client-core-rxjs (RxJS, default) ·<br/>@rtc/client-core-async · @rtc/client-core-effect<br/>(each a lazy chunk)<br/>composition root · presenters · machines<br/>ports built by @rtc/client-adapters"]:::core
         coreApi["<b>Core Contract</b><br/>@rtc/core-api · types only<br/>Presenters · MachineFactories · AppCommands · CoreFactory"]:::domain
         coreLogic["<b>Shared Core Rules</b><br/>@rtc/core-logic · no stream library<br/>pure folds · view derivations · workspace + Jarvis controllers"]:::core
         server["<b>WebSocket Server</b><br/>@rtc/server · Node.js + ws<br/>effects assembled by buildEffects(loops) · /login · /mcp<br/>Anthropic agent loop · deployed to Fly.io"]:::server
@@ -80,7 +80,7 @@ flowchart TB
     core --> coreLogic
     coreLogic --> coreApi
     core --> domain
-    core --> shared
+    core -->|"through the adapters"| shared
     core -. WebSocket JSON .-> server
     server -->|"composes effects"| wsEffects
     server -->|"Jarvis tools · /mcp"| agentTools
@@ -149,7 +149,7 @@ Two further packages exist **outside** the production dependency graph, as desig
 
 ### 2.3 Component Diagram -- Web Client
 
-The web client is now three packages deep. The **Application Core** (`@rtc/client-core`, the default of the three interchangeable cores -- [§22](22-pluggable-application-core.md#22-pluggable-application-core)) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
+The web client is now three packages deep. The **Application Core** (`@rtc/client-core-rxjs`, the default of the three interchangeable cores -- [§22](22-pluggable-application-core.md#22-pluggable-application-core)) is plain TypeScript + RxJS -- no React imports anywhere. The **Bindings** (`@rtc/react-bindings`) turn core streams into hooks. What remains in `@rtc/client-react` is only the dumb UI plus the browser-specific leaves. Replacing React means rewriting the last package; core and bindings-contract are untouched.
 
 ```mermaid
 flowchart TB
@@ -159,7 +159,8 @@ flowchart TB
         creditRfq["<b>Credit RFQ</b><br/>form · RFQ tiles ·<br/>sell-side panel"]:::ui
         equities["<b>Equities Dock</b><br/>watchlist · candles · depth ·<br/>ticket · blotters"]:::ui
         admin["<b>Admin / Telemetry</b><br/>KPIs · throughput · latency ·<br/>topology · event log"]:::ui
-        appRoot["<b>AppRoot</b><br/>core.createApp(buildBrowserPorts()) + createViewModel<br/>once per mount (StrictMode-safe)"]:::ui
+        coreHost["<b>startWebClient + core host</b><br/>buildBrowserPorts({ env, devtoolsHub }) once per page ·<br/>core.createApp(ports) per composition (swaps in place)"]:::ui
+        appRoot["<b>AppRoot</b><br/>createViewModel(composition)<br/>once per mount (StrictMode-safe)"]:::ui
         browserAdapters["<b>Browser Platform Adapters</b><br/>buildBrowserPorts (VITE_SERVER_URL switch) ·<br/>LocalStorage prefs · matchMedia color scheme"]:::ui
         app --> fxTiles
         app --> creditRfq
@@ -171,7 +172,7 @@ flowchart TB
         viewModel["<b>ViewModel</b><br/>~60 use* hooks — bind() for shared streams ·<br/>useMachine per mount · firstValueFrom for commands<br/>ViewModelProvider + useViewModel()"]:::bridge
     end
 
-    subgraph coreLayer["@rtc/client-core — vanilla TS + RxJS"]
+    subgraph coreLayer["@rtc/client-core-rxjs + @rtc/client-adapters — vanilla TS + RxJS"]
         composition["<b>createApp / createMachineFactories</b><br/>wires ports → presenters → commands"]:::core
         presenters["<b>Presenters & State Machines</b><br/>every core-api member (Presenters · MachineFactories · AppCommands):<br/>price$ · trades$ · rfqs$ · watchlist ·<br/>order ticket · boot · layout · theme · telemetry"]:::core
         portFactory["<b>portFactory</b><br/>createSimulatorPorts / createWsRealPorts"]:::core
@@ -184,8 +185,9 @@ flowchart TB
     server["<b>WebSocket Server</b><br/>Node.js + @rtc/ws-effects"]:::server
 
     fxTiles & creditRfq & equities & admin -->|"useViewModel()"| viewModel
-    appRoot --> browserAdapters
-    appRoot -->|"createApp(ports)"| composition
+    coreHost --> browserAdapters
+    coreHost -->|"createApp(ports)"| composition
+    coreHost -->|"mounts with the composition"| appRoot
     appRoot -->|"ViewModelProvider"| viewModel
     viewModel -->|"subscribes streams / machines"| presenters
     wsAdapter -. WebSocket JSON .-> server
@@ -200,7 +202,7 @@ flowchart TB
     linkStyle default stroke:#6e7fa3,stroke-width:1.5px
 ```
 
-**Key boundary**: anything inside `@rtc/client-core` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (see `wc -l` over its non-test `src/` files) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
+**Key boundary**: anything inside `@rtc/client-core-rxjs` may use RxJS freely. Anything in `src/ui` must not import `rxjs`, `@react-rxjs`, or `@rx-state` and must not see `Observable<T>` -- machine-enforced by grep gate 26 (plus gates 27--29 banning `localStorage`, `fetch`/`import.meta.env`, and timers in the UI). The bindings package is the only place that bridges the two worlds, and it is small (see `wc -l` over its non-test `src/` files) precisely so a `@rtc/solid-bindings` sibling can be written in about a day.
 
 #### 2.3.1 The shape of the simplicity
 
@@ -214,7 +216,7 @@ The web client is three moving parts, and only one of them contains logic.
 
 ```mermaid
 flowchart TB
-    subgraph core["@rtc/client-core — pure RxJS, zero React"]
+    subgraph core["@rtc/client-core-rxjs — pure RxJS, zero React"]
         direction TB
         port["PricingPort<br/>simulator or WebSocket"]:::domain
         uc["PriceStreamUseCase<br/>enrich · detectMovement · spread"]:::domain
@@ -342,7 +344,7 @@ C4Component
     }
 
     Container(bindings2, "@rtc/react-bindings", "SAME package as the web client")
-    Container(core2, "@rtc/client-core", "SAME package as the web client")
+    Container(core2, "@rtc/client-core-rxjs + @rtc/client-adapters", "SAME packages as the web client")
     Container(server2, "WebSocket Server", "wss://rtc-clone-server.fly.dev")
 
     Rel(tabs, screens, "Routes")
@@ -377,17 +379,17 @@ What is native-specific, exhaustively:
 
 | Concern | Web (`client-react`) | Mobile (`client-react-native`) |
 |---|---|---|
-| Port selection switch | `src/app/buildBrowserPorts.ts` reads `VITE_SERVER_URL` | `src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants` (empty string forces simulator mode) |
+| Port selection switch | `@rtc/web-boot`'s `buildBrowserPorts.ts` reads `VITE_SERVER_URL` (passed in by `startWebClient`, from the env each client's `main.tsx` hands it) | `src/app/buildNativePorts.ts` reads `EXPO_PUBLIC_SERVER_URL` via `expo-constants` (empty string forces simulator mode) |
 | Preferences persistence | `LocalStoragePreferencesAdapter` (sync) | `AsyncStoragePreferencesAdapter` (seeds defaults synchronously, then `hydrate()` -- no-flash contract) |
 | OS color scheme | `MediaQueryColorSchemeAdapter` (matchMedia) | `AppearanceColorSchemeAdapter` (RN `Appearance`) |
 | Charts | SVG/canvas in React DOM | `react-native-svg`, geometry precomputed in pure vitest-tested helpers (`buildChart`, `buildCandles`, `bubbleLayout`, ...) |
 | Theming | CSS custom properties (5 skins × dark/light) | `rnThemeTokens` context (same skins, CSS-only effects dropped) |
 | Navigation | In-house workspace/layout engine | `expo-router` native tabs |
-| Everything else | shared `@rtc/client-core` + `@rtc/react-bindings` | **identical imports** |
+| Everything else | shared `@rtc/client-core-rxjs` + `@rtc/client-adapters` + `@rtc/react-bindings` | **identical imports** |
 
-The Admin/telemetry workspace is web-only today; the RN app exposes five trading tabs. Distribution is the free path: EAS `development`/`preview` internal profiles, Android APK, no OTA updates (`updates.enabled: false`); the native `ios/`/`android/` folders are gitignored and regenerated by `expo prebuild` (`pnpm dev:ios` from the repo root).
+The Admin/telemetry workspace is web-only today; the RN app exposes five trading tabs. Distribution is the free path: EAS `development`/`preview` internal profiles, Android APK; EAS Update (over-the-air) is on since 2026-10-04 for the published Expo Go demo only (`pnpm demo:ios:publish`). The native `ios/`/`android/` folders are gitignored and regenerated by `expo prebuild` (`pnpm dev:ios` / `pnpm dev:android` from the repo root).
 
-**`@rtc/client-solid` is the same story again, one layer down.** Where the RN client is "same architecture, different leaves" at the *platform* layer (native adapters, RN components), the Solid client is "same architecture, different leaves" at the *framework* layer: it keeps `@rtc/client-core` and the *same* browser platform adapters as `client-react` (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`) and swaps only the bindings package (`@rtc/solid-bindings` instead of `@rtc/react-bindings`) and the UI components themselves -- CSS Modules ported byte-for-byte. Full detail, including the `ViewModel` seam it implements identically to React: [§8.1 The Multi-Client Proof & the SolidJS Port](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port) and [`packages/client-solid/README.md`](../../packages/client-solid/README.md).
+**`@rtc/client-solid` is the same story again, one layer down.** Where the RN client is "same architecture, different leaves" at the *platform* layer (native adapters, RN components), the Solid client is "same architecture, different leaves" at the *framework* layer: it reaches `@rtc/client-core-rxjs` and `@rtc/client-adapters` through `@rtc/web-boot`, so it shares one copy of the browser platform adapters with `client-react` (`buildBrowserPorts`, `LocalStoragePreferencesAdapter`, `MediaQueryColorSchemeAdapter`) and swaps only the bindings package (`@rtc/solid-bindings` instead of `@rtc/react-bindings`) and the UI components themselves -- CSS Modules ported byte-for-byte. Full detail, including the `ViewModel` seam it implements identically to React: [§8.1 The Multi-Client Proof & the SolidJS Port](08-replaceability-matrix.md#81-the-multi-client-proof--the-solidjs-port) and [`packages/client-solid/README.md`](../../packages/client-solid/README.md).
 
 ### 2.5 Component Diagram -- WebSocket Server
 

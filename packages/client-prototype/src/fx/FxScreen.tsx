@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
-import { useRef, useState } from "react";
+import { type CSSProperties, type ReactElement, useRef, useState } from "react";
 
 import { AnalyticsView } from "#/fx/Analytics/AnalyticsView";
 import {
@@ -12,8 +11,7 @@ import {
   LiveRatesHeadControls,
   LiveRatesPanel,
 } from "#/fx/LiveRates/LiveRatesPanel";
-import type { PanelId } from "#/fx/layout/useDockState";
-import { useDockState } from "#/fx/layout/useDockState";
+import { type PanelId, useDockState } from "#/fx/layout/useDockState";
 import { PositionsView } from "#/fx/Positions/PositionsView";
 import { useFxBlotter } from "#/fx/useFxBlotter";
 import { useFxRates } from "#/fx/useFxRates";

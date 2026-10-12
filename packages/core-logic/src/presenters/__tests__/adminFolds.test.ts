@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { LogEvent, MetricSample } from "@rtc/domain";
-import { MAX_LOG_ROWS, METRIC_WINDOW } from "@rtc/domain";
+import {
+  type LogEvent,
+  MAX_LOG_ROWS,
+  METRIC_WINDOW,
+  type MetricSample,
+} from "@rtc/domain";
 
 import {
   appendMetricSample,

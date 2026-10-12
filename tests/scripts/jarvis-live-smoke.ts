@@ -68,8 +68,8 @@
  * This is otherwise dependency-free (no other `@rtc/*` import): the
  * `CLIENT_MSG` / `SERVER_MSG` / `JarvisEvent` wire vocabulary below is a
  * narrow, hand-mirrored slice of packages/shared/src/protocol/messages.ts
- * and packages/shared/src/jarvis/jarvisEvent.ts, so this script never needs
- * `@rtc/shared` built first — see those files if the two drift.
+ * and packages/domain/src/jarvis/jarvisEvent.ts, so this script never needs
+ * `@rtc/shared` or `@rtc/domain` built first — see those files if the two drift.
  * `parsePanelSpec` / `parseDriveBatch` are the deliberate exceptions:
  * panel/batch-shape validation is exactly the kind of logic that must NOT
  * be re-hand-rolled a second time here (see `panelSpec.ts`'s own doc
@@ -458,7 +458,7 @@ interface ChatTurnOutcome {
    * confirmRequest/done/error, whichever lands first) — the real-world
    * datum the P3 final review asked for: adaptive thinking on the Anthropic
    * loop can push this past the old 10s deadline on a legitimately busy
-   * turn, which is why `JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS` (client-core's
+   * turn, which is why `JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS` (client-adapters's
    * `WsJarvisAdapter`) now sits at 30s instead. `undefined` if no frame
    * ever arrived (the turn hit `TURN_TIMEOUT_MS` first). */
   readonly firstEventMs: number | undefined;
@@ -517,7 +517,7 @@ function runChatTurn(
     // datum the P3 final review asked a live run to produce, now that the
     // Anthropic loop's adaptive thinking can legitimately take a while
     // before anything visible comes back (see JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS
-    // in client-core's WsJarvisAdapter). Idempotent: only the first call
+    // in client-adapters's WsJarvisAdapter). Idempotent: only the first call
     // per turn has any effect.
     function markFirstEvent(): void {
       if (firstEventMs === undefined) {

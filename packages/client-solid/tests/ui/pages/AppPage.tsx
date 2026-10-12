@@ -1,3 +1,4 @@
+import { state } from "@rx-state/core";
 import {
   cleanup,
   fireEvent,
@@ -5,12 +6,29 @@ import {
   screen,
   waitFor,
 } from "@solidjs/testing-library";
+import { BehaviorSubject } from "rxjs";
 
 import { rxjsCore } from "@rtc/client-core-rxjs";
 import type { CoreSelection } from "@rtc/core-api";
+import type { DemoAccount } from "@rtc/domain";
+import {
+  buildBrowserPorts,
+  type Composition,
+  createDevtoolsHub,
+  readDemoAccounts,
+  type WebBootEnv,
+  webBootEnvOf,
+} from "@rtc/web-boot";
 
 import { AppRoot } from "#/AppRoot";
 import { App } from "#/ui/App";
+
+/** A hub of this page's own: the client's is created inside
+ * `startWebClient`, which a test does not call. */
+const devtoolsHub = createDevtoolsHub({
+  appId: "rtc-web-solid",
+  dev: readRunEnv().dev,
+});
 
 /** A no-op `CoreSelection`: this page always mounts the RxJS core directly,
  * so there is no runtime switch to exercise here — `Preferences.contract.spec.ts`
@@ -20,6 +38,7 @@ const coreSelection: CoreSelection = {
   current: "rxjs",
   options: [],
   select: (): void => {},
+  failure$: state(new BehaviorSubject<string | null>(null), null),
 };
 
 interface WaitForOptions {
@@ -56,8 +75,8 @@ export interface AppPage {
   waitFor(assertion: () => void, options?: WaitForOptions): Promise<void>;
 }
 
-/** The framework surface for `App.test.tsx` — the real composition root
- * (`AppRoot` → `createApp(buildBrowserPorts())` → simulator ports), so this
+/** The framework surface for `App.test.tsx` — the real UI root (`AppRoot`)
+ * on a boot composition over `buildBrowserPorts()` (simulator ports), so this
  * page owns render/fireEvent/waitFor mechanics only; no fakes cross this
  * seam. */
 export function appPage(): AppPage {
@@ -65,7 +84,10 @@ export function appPage(): AppPage {
     mount(): void {
       render(() => {
         return (
-          <AppRoot core={rxjsCore} coreSelection={coreSelection}>
+          <AppRoot
+            composition={createComposition()}
+            demoAccounts={readRunDemoAccounts()}
+          >
             <App />
           </AppRoot>
         );
@@ -127,6 +149,41 @@ export function appPage(): AppPage {
   };
 }
 
+/** The build-time values as the run has them right now: read when a page
+ * mounts, not once at import, because a spec stubs them per case. */
+function readRunEnv(): WebBootEnv {
+  return webBootEnvOf(import.meta.env);
+}
+
+function readRunDemoAccounts(): readonly DemoAccount[] {
+  return readDemoAccounts(readRunEnv());
+}
+
 function findDemoAccountRows(): HTMLElement[] {
   return screen.queryAllByTestId("login-demo-account");
+}
+
+/** The boot composition the core host would build for the RxJS core over
+ * the page's real `buildBrowserPorts()` — built at mount time, after a spec
+ * has stubbed the env the ports read. Uninstrumented: the hub is passed for
+ * the transport's wire tap only. */
+function createComposition(): Composition {
+  const app = rxjsCore.createApp(
+    buildBrowserPorts({ env: readRunEnv(), devtoolsHub }),
+  );
+
+  return {
+    impl: "rxjs",
+    generation: 1,
+    presenters: app.presenters,
+    machineFactories: rxjsCore.createMachineFactories(app.presenters),
+    commands: app.commands,
+    coreSelection,
+    takePreferencesReopen: () => {
+      return false;
+    },
+    peekPreferencesReopen: () => {
+      return false;
+    },
+  };
 }

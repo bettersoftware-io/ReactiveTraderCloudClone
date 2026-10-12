@@ -40,7 +40,7 @@ describe("shell presenters (effect)", () => {
   });
 
   it("bootGate reads the seed synchronously and a subscriber follows dismiss/reboot", async () => {
-    const gate = createBootGatePresenter(useHost(), false);
+    const gate = createBootGatePresenter(false);
     const seen: boolean[] = [];
     const sub = gate.visible$.subscribe((v) => {
       seen.push(v);

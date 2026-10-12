@@ -1,4 +1,4 @@
-import { Duration, Effect, Option, SubscriptionRef } from "effect";
+import { Duration, Effect, Option } from "effect";
 
 import type {
   Machine,
@@ -15,12 +15,9 @@ import {
   type RfqQuoteResult,
 } from "@rtc/domain";
 
-import {
-  createDetachedHost,
-  refToStateStream,
-  setRefIfChanged,
-} from "#/bridge/out";
+import { createDetachedHost } from "#/bridge/out";
 import { rpc } from "#/bridge/rpc";
+import { createSyncRef } from "#/bridge/syncRef";
 import { createRunSlot, type Run } from "#/machines/runSlot";
 
 export interface RfqTileDeps {
@@ -94,8 +91,8 @@ function runQuote(
   });
 }
 
-/** The RxJS machine's one-run-per-request shape on a `SubscriptionRef`
- * under a detached host, with `createRunSlot` owning the run token and
+/** The RxJS machine's one-run-per-request shape on a `SyncRef` under a
+ * detached host, with `createRunSlot` owning the run token and
  * fiber: `requested`, then a received countdown derived from the tick
  * index in ONE looping fiber (never a timer that forks its successor — a
  * forked child is interrupted when its parent completes, §22), falling
@@ -108,44 +105,38 @@ export function createRfqTileMachine(
   deps: RfqTileDeps,
 ): Machine<RfqState, RfqTileIntents> {
   const host = createDetachedHost();
-  const ref = host.runtime.runSync(SubscriptionRef.make<RfqState>(INIT));
+  const ref = createSyncRef<RfqState>(INIT);
   const slot = createRunSlot(host, ref);
-
-  function current(): RfqState {
-    return host.runtime.runSync(SubscriptionRef.get(ref));
-  }
 
   function reset(): void {
     slot.end();
-    host.runtime.runSync(
-      setRefIfChanged(ref, () => {
-        return INIT;
-      }),
-    );
+    ref.set(() => {
+      return INIT;
+    });
   }
 
   return {
-    state$: refToStateStream(host, ref),
+    state$: ref.stateStream(),
     intents: {
       requestQuote: () => {
-        if (!slot.isDisposed() && current().status === "init") {
+        if (!slot.isDisposed() && ref.get().status === "init") {
           slot.start((run: Run<RfqState>) => {
             return runQuote(pair, deps, run);
           });
         }
       },
       cancel: () => {
-        if (!slot.isDisposed() && current().status === "requested") {
+        if (!slot.isDisposed() && ref.get().status === "requested") {
           reset();
         }
       },
       accept: () => {
-        if (!slot.isDisposed() && current().status === "received") {
+        if (!slot.isDisposed() && ref.get().status === "received") {
           reset();
         }
       },
       reject: () => {
-        if (!slot.isDisposed() && current().status === "received") {
+        if (!slot.isDisposed() && ref.get().status === "received") {
           slot.start((run: Run<RfqState>) => {
             return holdRejected(run);
           });

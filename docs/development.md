@@ -88,8 +88,9 @@ pnpm test:e2e:async                             # e2e against that core (also te
   never saved) beats the persisted choice, which beats `VITE_CORE_IMPL` (now
   just the **build default** a fresh visitor lands on), which beats `rxjs`.
   Preferences → **Application core** lets a signed-in visitor pick one; it
-  saves the choice and reloads (a real navigation, not an SPA transition),
-  and the choice survives later plain reloads. An unknown `?core=` or stored
+  swaps the core in place, with no page reload (the session, the socket and
+  the layout carry over), then saves the choice, which survives later
+  reloads. An unknown `?core=` or stored
   value is ignored/cleared with a console warning and falls through; an
   unknown `VITE_CORE_IMPL` still fails loudly, never falling back to RxJS
   silently. Every successful boot logs which core won and why: `[core]
@@ -100,8 +101,8 @@ pnpm test:e2e:async                             # e2e against that core (also te
   split in CI — the eager set carries no core's marker, and each core sits in
   exactly one lazy chunk — and dependency-cruiser's
   `web-clients-load-cores-lazily` rejects a static import of a core from a
-  web client's source. `@rtc/client-core` is what the UI imports statically
-  (adapters, port factories, stores), and it re-exports nothing: a contract
+  web client's source. `@rtc/client-adapters` holds the adapters, port factories and stores that
+  `@rtc/web-boot` imports statically, and it re-exports nothing: a contract
   type comes from `@rtc/core-api`, a shared rule from `@rtc/core-logic`; a
   test that needs a presenter class or a machine factory imports it from
   `@rtc/client-core-rxjs`.
@@ -140,10 +141,10 @@ Reports land under each package's own `reports/` tree — gitignored, and wiped 
 - **Coverage** (HTML + `lcov.info`) — the opt-in `:coverage` scripts ⇒
   `<package>/reports/<a>/<b>/coverage/` (`@rtc/domain` & `@rtc/server`
   `test:coverage` ⇒ `reports/unit/coverage/`). All report-only except
-  seven CI-enforced ≥95% gates (five steps in `ci.yml`): the `test:ui:contract:coverage`
+  eight CI-enforced ≥95% gates (six steps in `ci.yml`): the `test:ui:contract:coverage`
   of `@rtc/client-react` and `@rtc/client-solid`, the `test:coverage` of
-  `@rtc/devtools-core`, `@rtc/devtools-app`, `@rtc/client-core-async` and
-  `@rtc/client-core-effect`, and `@rtc/client-react-native`'s
+  `@rtc/devtools-core`, `@rtc/devtools-app`, `@rtc/client-core-async`,
+  `@rtc/client-core-effect` and `@rtc/web-boot`, and `@rtc/client-react-native`'s
   `test:coverage:gate` (merged lines of its two runners). The
   `@rtc/client-react test:ui:visual:vitest-browser:react:coverage` report is a
   **gap-finder**: uncovered `src/ui` branches are visual states with no golden
@@ -164,8 +165,8 @@ Per-package detail: [`packages/client-react/README.md`](../packages/client-react
 e2e suite matrix).
 
 `pnpm test` runs each package's bare `test`; in `@rtc/client-react` that's the
-**union** of two co-resident tiers — the **app tier** (`test:app`: presenters +
-adapters under `src/app`) and the **ui contract tier** (`test:ui:contract`:
+**union** of two co-resident tiers — the **app tier** (`test:app`: the React
+tree mount under `src/app`) and the **ui contract tier** (`test:ui:contract`:
 sociable RTL specs over `src/ui`) — which also have focused per-tier runners.
 
 `pnpm test:e2e` is the full behavioural suite: it runs the gates first, then

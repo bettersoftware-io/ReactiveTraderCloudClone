@@ -4,19 +4,19 @@ export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 export { DEALERS_CATALOG, DealerSimulator } from "./DealerSimulator.js";
 export { EquityMarketDataSimulator } from "./EquityMarketDataSimulator.js";
-export type {
-  EquityOrderDeps,
-  FillEvent,
-  OrderListener,
+export {
+  type EquityOrderDeps,
+  EquityOrderSimulator,
+  type FillEvent,
+  type OrderListener,
 } from "./EquityOrderSimulator.js";
-export { EquityOrderSimulator } from "./EquityOrderSimulator.js";
 export { EquityPositionSimulator } from "./EquityPositionSimulator.js";
 export { ErrorRateSimulator } from "./ErrorRateSimulator.js";
 export { EventLogSimulator } from "./EventLogSimulator.js";
-export type { TradeListener } from "./ExecutionSimulator.js";
 export {
   DEFAULT_TRADER_NAME,
   ExecutionSimulator,
+  type TradeListener,
 } from "./ExecutionSimulator.js";
 export { aggregateCandle, gbmStep } from "./gbm.js";
 export {
@@ -24,8 +24,10 @@ export {
   InstrumentSimulator,
 } from "./InstrumentSimulator.js";
 export { LatencySimulator } from "./LatencySimulator.js";
-export type { PreferencesSeed } from "./PreferencesSimulator.js";
-export { PreferencesSimulator } from "./PreferencesSimulator.js";
+export {
+  type PreferencesSeed,
+  PreferencesSimulator,
+} from "./PreferencesSimulator.js";
 export { PricingSimulator, rfqResponseDelayMs } from "./PricingSimulator.js";
 export type { MetricControl, Perturbation } from "./perturbation.js";
 export { ReferenceDataSimulator } from "./ReferenceDataSimulator.js";

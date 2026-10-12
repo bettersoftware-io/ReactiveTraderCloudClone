@@ -1,4 +1,4 @@
-import type { App, MachineFactories } from "@rtc/core-api";
+import type { App, AppPorts, MachineFactories } from "@rtc/core-api";
 
 import type { HarnessSeed, ScriptedDriver } from "#/harness/scriptedPorts";
 
@@ -6,6 +6,15 @@ export interface CoreHarness {
   app: App;
   machines: MachineFactories;
   driver: ScriptedDriver;
+  /** The ports object `createApp` was given. */
+  ports: AppPorts;
+  /** Disposes the running app and composes a new one over the SAME ports,
+   * as a hot swap does. Resolves to the new app; `teardown` disposes it.
+   * `app` and `machines` are NOT rebound: they stay the FIRST composition's,
+   * and `machines` is bound to that disposed app — a suite that drives
+   * `h.machines` after `recompose()` silently drives the dead core. Use the
+   * returned app. */
+  recompose(): Promise<App>;
   teardown(): Promise<void>;
 }
 

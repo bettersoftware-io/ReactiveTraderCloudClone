@@ -1,5 +1,4 @@
-import type { JSX, ParentProps } from "solid-js";
-import { createEffect } from "solid-js";
+import { createEffect, type JSX, type ParentProps } from "solid-js";
 
 import { useViewModel } from "@rtc/solid-bindings";
 

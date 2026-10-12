@@ -1,0 +1,559 @@
+import {
+  catchError,
+  distinctUntilChanged,
+  filter,
+  Observable,
+  of,
+  switchMap,
+  TimeoutError,
+  timeout,
+} from "rxjs";
+
+import type {
+  IWsAdapter,
+  JarvisAskOptions,
+  JarvisAvailability,
+  JarvisPort,
+} from "@rtc/core-api";
+import { UNSUPPORTED_SENTINEL_SPEC } from "@rtc/core-logic";
+import {
+  DEFAULT_JARVIS_BRAIN,
+  isJarvisBrain,
+  JARVIS_BRAINS,
+  type JarvisAvailabilityGate,
+  type JarvisBrain,
+  type JarvisEvent,
+  type JarvisHistoryEntry,
+} from "@rtc/domain";
+import {
+  CLIENT_MSG,
+  type JarvisAvailabilityPayload,
+  type JarvisCancelPayload,
+  type JarvisChatPayload,
+  type JarvisConfirmPayload,
+  parseDriveBatch,
+  parsePanelSpec,
+  SERVER_MSG,
+} from "@rtc/shared";
+
+/** No `SERVER_MSG.JARVIS_*` frame at all within this window after `ask()`
+ * sends `jarvis.chat` collapses the turn into a synthetic offline error
+ * instead of hanging forever. Once any frame lands, no further deadline
+ * applies — see `createJarvisTurnStream`'s `timeout({ first })`. Set well
+ * above `JARVIS_AVAILABILITY_TIMEOUT_MS`: this covers the model's own
+ * thinking phase before the first visible event (delta/toolEvent/etc.),
+ * which the Anthropic loop's adaptive, effort-driven thinking can push past
+ * 10s on a legitimately busy turn — the original 10s value predated that
+ * loop (it was tuned against the scripted stand-in, which never thinks) and
+ * would otherwise fabricate an offline error AND cancel a healthy, already
+ * billed turn out from under it. */
+export const JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS = 30_000;
+
+/** No `SERVER_MSG.JARVIS_AVAILABILITY` reply within this window after
+ * `jarvis.subscribe` is sent falls back to a synthetic `false` (see
+ * `createConnectionAvailabilityStream`) — the "the server never answered"
+ * case for the availability handshake specifically. Kept short and distinct
+ * from `JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS`: an availability reply is a
+ * same-process, non-LLM lookup (see `jarvisEffects`' `availability$` in
+ * `jarvis.effects.ts`), so it never has a thinking phase to wait out. */
+export const JARVIS_AVAILABILITY_TIMEOUT_MS = 10_000;
+
+/** Caps what `ask()` sends as `JarvisChatPayload.history` — belt-and-suspenders
+ * with the server's own truncation (`JARVIS_WIRE_HISTORY_MAX_ENTRIES` in
+ * `jarvis.effects.ts`, also 20): keeping the outbound frame itself small
+ * doesn't rely on the server being the only thing enforcing the wire cap. */
+const JARVIS_HISTORY_SEND_MAX_ENTRIES = 20;
+
+const JARVIS_OFFLINE_EVENT: JarvisEvent = {
+  type: "error",
+  message: "Jarvis is offline, sir — the desk link is down.",
+};
+
+// Named tags (rather than inline `{ type: "…" }` literals) so `Extract<
+// JarvisEvent, …>` never takes an inline object type argument — the repo's
+// `no-restricted-syntax` bans that even inside a type alias.
+interface DeltaTag {
+  readonly type: "delta";
+}
+interface ToolEventTag {
+  readonly type: "toolEvent";
+}
+interface ConfirmRequestTag {
+  readonly type: "confirmRequest";
+}
+interface ErrorTag {
+  readonly type: "error";
+}
+
+/** Every turn-scoped `SERVER_MSG.JARVIS_*` payload carries `turnId` alongside
+ * the `JarvisEvent` variant's own remaining fields (see the wire rule
+ * documented in `@rtc/shared`'s `jarvis/jarvisPayloads.ts`) — the listeners
+ * below filter on it before stripping it back off. */
+type DeltaFramePayload = Omit<Extract<JarvisEvent, DeltaTag>, "type"> & {
+  readonly turnId: string;
+};
+type ToolEventFramePayload = Omit<
+  Extract<JarvisEvent, ToolEventTag>,
+  "type"
+> & { readonly turnId: string };
+type ConfirmRequestFramePayload = Omit<
+  Extract<JarvisEvent, ConfirmRequestTag>,
+  "type"
+> & { readonly turnId: string };
+type ErrorFramePayload = Omit<Extract<JarvisEvent, ErrorTag>, "type"> & {
+  readonly turnId: string;
+};
+interface DoneFramePayload {
+  readonly turnId: string;
+}
+/** Unlike the other frame payloads above, `panelId`/`spec` are typed `unknown`
+ * rather than derived from `JarvisEvent`'s `panel` variant: the wire value
+ * hasn't been validated yet at this point, so it must not be trusted as
+ * already matching `PanelSpecV1` — that's exactly what `buildPanelEvent`
+ * below checks via `parsePanelSpec`. */
+interface PanelFramePayload {
+  readonly turnId: string;
+  readonly panelId: unknown;
+  readonly spec: unknown;
+}
+/** `batch` is likewise typed `unknown` — validated below via `parseDriveBatch`
+ * before ever becoming a `command` `JarvisEvent`. */
+interface CommandFramePayload {
+  readonly turnId: string;
+  readonly batch: unknown;
+}
+
+/** The minimal `Subscriber<JarvisEvent>` surface the turn listeners need. */
+interface JarvisTurnSubscriber {
+  next(event: JarvisEvent): void;
+  complete(): void;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+/** Monotonic across the module's lifetime (every adapter instance shares it)
+ * rather than per-turn or per-instance, so two garbage `panelId`s can never
+ * collide even across turns and reconnects — see `buildPanelEvent`. */
+let invalidPanelIdSeq = 0;
+
+function nextInvalidPanelId(): string {
+  invalidPanelIdSeq += 1;
+  return `panel-invalid-${invalidPanelIdSeq}`;
+}
+
+/** Normalizes one `SERVER_MSG.JARVIS_PANEL` frame's `panelId`/`spec` into a
+ * `panel` `JarvisEvent` — never dropped silently and never throws, even on a
+ * fully malformed frame. `spec` is re-validated client-side via
+ * `parsePanelSpec` (with `knownSymbols: []`, i.e. roster check skipped: this
+ * adapter has no reference-data access of its own); a failing spec — or a
+ * `panelId` that isn't a non-empty string — is substituted with
+ * `UNSUPPORTED_SENTINEL_SPEC`, which `JarvisPanelsMachine` detects BY
+ * REFERENCE and maps to `status: "unsupported"`. A garbage `panelId` still
+ * gets a usable, synthesized id (`nextInvalidPanelId`) so the resulting
+ * event is never dropped outright. */
+function buildPanelEvent(panelId: unknown, spec: unknown): JarvisEvent {
+  const panelIdValid = isNonEmptyString(panelId);
+  const resolvedPanelId = panelIdValid ? panelId : nextInvalidPanelId();
+  const result = parsePanelSpec(spec, []);
+
+  if (!panelIdValid || !result.ok) {
+    return {
+      type: "panel",
+      panelId: resolvedPanelId,
+      spec: UNSUPPORTED_SENTINEL_SPEC,
+    };
+  }
+
+  return { type: "panel", panelId: resolvedPanelId, spec: result.spec };
+}
+
+/** Attach the seven `SERVER_MSG.JARVIS_*` listeners that feed one turn's
+ * `JarvisEvent`s to `subscriber`, re-attaching the `type` discriminant the
+ * wire strips off. Every frame is filtered to `payload.turnId === turnId`
+ * first — a frame belonging to a different turn (a P2-era straggler arriving
+ * after this turn's own listeners replaced a torn-down turn's) is ignored
+ * silently rather than misdelivered. `done`/`error` frames also complete the
+ * subscriber. Returns the seven `ws.on()` unregister functions for teardown. */
+function attachJarvisTurnListeners(
+  ws: IWsAdapter,
+  turnId: string,
+  subscriber: JarvisTurnSubscriber,
+): Array<() => void> {
+  return [
+    ws.on(SERVER_MSG.JARVIS_DELTA, (payload) => {
+      const p = payload as DeltaFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "delta", text: p.text });
+    }),
+    ws.on(SERVER_MSG.JARVIS_TOOL_EVENT, (payload) => {
+      const p = payload as ToolEventFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "toolEvent", tool: p.tool, status: p.status });
+    }),
+    ws.on(SERVER_MSG.JARVIS_CONFIRM_REQUEST, (payload) => {
+      const p = payload as ConfirmRequestFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      const { turnId: _turnId, ...rest } = p;
+      subscriber.next({ type: "confirmRequest", ...rest });
+    }),
+    ws.on(SERVER_MSG.JARVIS_PANEL, (payload) => {
+      const p = payload as PanelFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next(buildPanelEvent(p.panelId, p.spec));
+    }),
+    ws.on(SERVER_MSG.JARVIS_COMMAND, (payload) => {
+      const p = payload as CommandFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      // Unlike buildPanelEvent (never dropped — a bad panel substitutes
+      // UNSUPPORTED_SENTINEL_SPEC), an invalid batch is dropped silently: a
+      // DriveCommand batch has no sentinel/degraded rendering, and the turn
+      // stays open — this is just one skipped server frame, not a reason to
+      // error or complete the stream.
+      const result = parseDriveBatch(p.batch);
+
+      if (!result.ok) {
+        return;
+      }
+
+      subscriber.next({ type: "command", batch: result.batch });
+    }),
+    ws.on(SERVER_MSG.JARVIS_DONE, (payload) => {
+      const p = payload as DoneFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "done" });
+      subscriber.complete();
+    }),
+    ws.on(SERVER_MSG.JARVIS_ERROR, (payload) => {
+      const p = payload as ErrorFramePayload;
+
+      if (p.turnId !== turnId) {
+        return;
+      }
+
+      subscriber.next({ type: "error", message: p.message });
+      subscriber.complete();
+    }),
+  ];
+}
+
+/** Builds the `JarvisChatPayload`, capping `history` at
+ * `JARVIS_HISTORY_SEND_MAX_ENTRIES` and omitting the field entirely when
+ * there's nothing to replay (keeps the common no-history frame shape the
+ * same as before turnId/history existed). `options`, when supplied, adds
+ * `brain`/`effort` to the frame — likewise omitted entirely rather than set
+ * to `undefined` when absent, matching `history`'s shape. */
+function buildChatPayload(
+  text: string,
+  turnId: string,
+  history: readonly JarvisHistoryEntry[],
+  options?: JarvisAskOptions,
+): JarvisChatPayload {
+  const capped = history.slice(-JARVIS_HISTORY_SEND_MAX_ENTRIES);
+  return {
+    text,
+    turnId,
+    ...(capped.length > 0 ? { history: capped } : {}),
+    ...(options ? { brain: options.brain, effort: options.effort } : {}),
+  };
+}
+
+/** Builds the cold source `Observable` for one `ask(text)` turn: registers
+ * all six turnId-filtered listeners before sending `jarvis.chat`, so a
+ * same-tick reply can't be missed (the `WsAdapter` buffers pre-open sends, so
+ * this also works while the socket is still connecting). Teardown
+ * unregisters every listener AND fires `JARVIS_CANCEL {turnId}` — covering
+ * every way this stream stops: the caller unsubscribing early, normal
+ * completion (done/error already delivered — the server ignores a cancel for
+ * a turnId that isn't in flight, so this is a harmless no-op), and the
+ * offline-timeout path in `ask()` below (whose `timeout()` operator
+ * unsubscribes this source when it fires, running this same teardown). The
+ * adapter always completes the turn locally FIRST in every case — the cancel
+ * is best-effort server-side cleanup the client never waits on, and a
+ * cancelled turn gets no terminal frame back. */
+function createJarvisTurnStream(
+  ws: IWsAdapter,
+  text: string,
+  turnId: string,
+  history: readonly JarvisHistoryEntry[],
+  options?: JarvisAskOptions,
+): Observable<JarvisEvent> {
+  return new Observable<JarvisEvent>((subscriber) => {
+    const unregisterFns = attachJarvisTurnListeners(ws, turnId, subscriber);
+    ws.send(
+      CLIENT_MSG.JARVIS_CHAT,
+      buildChatPayload(text, turnId, history, options),
+    );
+
+    return (): void => {
+      for (const unregister of unregisterFns) {
+        unregister();
+      }
+
+      ws.send(CLIENT_MSG.JARVIS_CANCEL, {
+        turnId,
+      } satisfies JarvisCancelPayload);
+    };
+  });
+}
+
+/** The not-yet-validated shape `parseGate` casts an unknown `gate` field
+ * into before checking each field individually — a named alias rather than
+ * an inline object type in the cast (the repo's `no-restricted-syntax` bans
+ * that even for a throwaway shape). */
+interface GateCandidate {
+  level?: unknown;
+  resetsAtMs?: unknown;
+  gated?: unknown;
+}
+
+/** Validates an unknown `gate` field off `JARVIS_AVAILABILITY` into a
+ * `JarvisAvailabilityGate`, or `null` on ANY shape mismatch — matching the
+ * silent-drop rule `parseDriveBatch`/`buildPanelEvent` already apply to
+ * other untrusted wire payloads (the P5 `jarvis.command` precedent): a
+ * malformed `gate` is dropped on its own, the rest of the frame (available/
+ * brains/defaultBrain) still applies normally. Every field is checked before
+ * any is trusted — `level` restricted to the non-"none" tri-state (the wire
+ * never sends "none"; it simply omits `gate`), `resetsAtMs` a number,
+ * `gated` an array of valid `JarvisBrain`s. */
+function parseGate(gate: unknown): JarvisAvailabilityGate | null {
+  if (typeof gate !== "object" || gate === null) {
+    return null;
+  }
+
+  const candidate = gate as GateCandidate;
+
+  if (candidate.level !== "soft" && candidate.level !== "hard") {
+    return null;
+  }
+
+  if (typeof candidate.resetsAtMs !== "number") {
+    return null;
+  }
+
+  if (
+    !Array.isArray(candidate.gated) ||
+    !candidate.gated.every(isJarvisBrain)
+  ) {
+    return null;
+  }
+
+  return {
+    level: candidate.level,
+    resetsAtMs: candidate.resetsAtMs,
+    gated: candidate.gated as readonly JarvisBrain[],
+  };
+}
+
+/** Normalizes a wire `JarvisAvailabilityPayload` into the core-api
+ * `JarvisAvailability` shape: `brains`/`defaultBrain` are OPTIONAL on the
+ * wire (a pre-round server never sends them), so an absent `brains` maps to
+ * "every selectable brain offered" when available, else none, and an absent
+ * `defaultBrain` maps to `DEFAULT_JARVIS_BRAIN`. Applying this same function
+ * to a bare `{ available: false }` also produces the synthetic
+ * offline-timeout shape (`brains: []`, since `available` is false) —
+ * `createConnectionAvailabilityStream`'s deadline branch below reuses it
+ * rather than duplicating the fallback rule. `gate` runs through `parseGate`
+ * — see its doc for the silent-drop rule on a malformed gate. */
+function parseAvailability(
+  payload: JarvisAvailabilityPayload,
+): JarvisAvailability {
+  return {
+    available: payload.available,
+    brains: payload.brains ?? (payload.available ? JARVIS_BRAINS : []),
+    defaultBrain: payload.defaultBrain ?? DEFAULT_JARVIS_BRAIN,
+    gate: parseGate(payload.gate),
+  };
+}
+
+/** Structural equality for one `JarvisAvailabilityGate | null` pair —
+ * `null` on both sides is equal; `null` on exactly one side is not; two
+ * non-null gates compare `level`/`resetsAtMs`/ordered `gated` (same
+ * order-stable index-comparison rationale as `brains` below — `gated` is a
+ * filtered slice of the fixed `JARVIS_BRAINS` list, not independently
+ * reordered). */
+function jarvisAvailabilityGateEquals(
+  a: JarvisAvailabilityGate | null,
+  b: JarvisAvailabilityGate | null,
+): boolean {
+  if (a === null || b === null) {
+    return a === b;
+  }
+
+  return (
+    a.level === b.level &&
+    a.resetsAtMs === b.resetsAtMs &&
+    a.gated.length === b.gated.length &&
+    a.gated.every((brain, index) => {
+      return brain === b.gated[index];
+    })
+  );
+}
+
+/** Structural equality for `JarvisAvailability` — `distinctUntilChanged`'s
+ * default `===` never matches two freshly-parsed objects, even when their
+ * contents are identical (every `JARVIS_AVAILABILITY` push builds a new
+ * object). `brains` is compared element-by-element in order rather than by
+ * reference: `JARVIS_BRAINS` is a fixed, order-stable list, so index
+ * comparison is sufficient and avoids a set/sort allocation per compare.
+ * `gate` delegates to `jarvisAvailabilityGateEquals`. */
+function jarvisAvailabilityEquals(
+  a: JarvisAvailability,
+  b: JarvisAvailability,
+): boolean {
+  return (
+    a.available === b.available &&
+    a.defaultBrain === b.defaultBrain &&
+    a.brains.length === b.brains.length &&
+    a.brains.every((brain, index) => {
+      return brain === b.brains[index];
+    }) &&
+    jarvisAvailabilityGateEquals(a.gate, b.gate)
+  );
+}
+
+/** One connection's live `SERVER_MSG.JARVIS_AVAILABILITY` feed: registers the
+ * handler, sends `jarvis.subscribe`, and forwards every push for as long as
+ * this source stays subscribed. A soft first-event deadline pushes a
+ * synthetic unavailable value if the server hasn't answered within
+ * `JARVIS_AVAILABILITY_TIMEOUT_MS` — but, unlike `ask()`'s use of the RxJS
+ * `timeout()` operator (which errors, and therefore completes, the source —
+ * fine for a one-shot turn), this is a plain `setTimeout` that does NOT
+ * complete the source: `JARVIS_AVAILABILITY` is a live push channel, so a
+ * real answer that lands late (after the synthetic value) must still reach
+ * the subscriber. Torn down (handler unregistered, timer cleared) when
+ * `availability$()`'s outer `switchMap` moves to the NEXT connection, or the
+ * caller unsubscribes. */
+function createConnectionAvailabilityStream(
+  ws: IWsAdapter,
+): Observable<JarvisAvailability> {
+  return new Observable<JarvisAvailability>((subscriber) => {
+    let answered = false;
+    const timer = setTimeout(() => {
+      if (!answered) {
+        subscriber.next(parseAvailability({ available: false }));
+      }
+    }, JARVIS_AVAILABILITY_TIMEOUT_MS);
+
+    const unregister = ws.on(SERVER_MSG.JARVIS_AVAILABILITY, (payload) => {
+      answered = true;
+      clearTimeout(timer);
+      subscriber.next(parseAvailability(payload as JarvisAvailabilityPayload));
+    });
+    ws.send(CLIENT_MSG.JARVIS_SUBSCRIBE);
+
+    return (): void => {
+      clearTimeout(timer);
+      unregister();
+    };
+  });
+}
+
+/** Wire-mode `JarvisPort`: turns `ask`/`confirm` into the `jarvis.*`
+ * CLIENT_MSG/SERVER_MSG frames over an `IWsAdapter`. */
+export class WsJarvisAdapter implements JarvisPort {
+  /** Late-bound by composition once `JarvisMachine` exists: the history this
+   * adapter needs to replay is that machine's own state, but the machine is
+   * built FROM this port, so the source can't be injected at construction
+   * time without a cycle. A mutable setter breaks the cycle (the same
+   * late-binding shape `portFactory.createSimulatorPorts` uses for
+   * `createInstantReveal$`, which is threaded in as an already-built
+   * Observable rather than needing a setter because preferences has no such
+   * cycle). Defaults to `() => []` so `ask()` works before composition wires
+   * it, and in any test/composition path that never calls `setHistorySource`
+   * (e.g. `ui-contract`'s WS-real fixtures). */
+  private historySource: () => readonly JarvisHistoryEntry[] = () => {
+    return [];
+  };
+
+  constructor(private readonly ws: IWsAdapter) {}
+
+  /** Injects the live history snapshot source. See the field doc above for
+   * why this is a setter rather than a constructor parameter. */
+  setHistorySource(source: () => readonly JarvisHistoryEntry[]): void {
+    this.historySource = source;
+  }
+
+  ask(text: string, options?: JarvisAskOptions): Observable<JarvisEvent> {
+    const turnId = crypto.randomUUID();
+
+    return createJarvisTurnStream(
+      this.ws,
+      text,
+      turnId,
+      this.historySource(),
+      options,
+    ).pipe(
+      timeout({ first: JARVIS_TURN_FIRST_EVENT_TIMEOUT_MS }),
+      catchError((error: unknown) => {
+        if (error instanceof TimeoutError) {
+          return of(JARVIS_OFFLINE_EVENT);
+        }
+
+        throw error;
+      }),
+    );
+  }
+
+  confirm(confirmationId: string, approved: boolean): void {
+    this.ws.send(CLIENT_MSG.JARVIS_CONFIRM, {
+      confirmationId,
+      approved,
+    } satisfies JarvisConfirmPayload);
+  }
+
+  /** Not turn-scoped and not part of `JarvisPort` (`@rtc/core-api`'s
+   * `adapters.ts` — its surface stays unchanged for this task): a query/push channel for the
+   * Jarvis backend's live availability.
+   *
+   * Re-queries on every `gatewayConnected` event from `ws.connectionEvents()`
+   * (a `ReplaySubject(1)` — a subscribe that lands while already connected
+   * gets the replayed event immediately, so this fires right away in the
+   * common case), NOT just once at subscribe time: a `jarvis.subscribe` sent
+   * on a since-dropped socket reaches nobody, so a subscriber that outlives
+   * one connection (the normal case — a UI badge, say) needs to re-arm on
+   * every reconnect, including the one after a server restart. `switchMap`
+   * tears down the previous connection's `JARVIS_AVAILABILITY` listener
+   * before arming the new one. `distinctUntilChanged` (structural, via
+   * `jarvisAvailabilityEquals`) collapses a reconnect's re-query landing on
+   * an equal `available`/`brains`/`defaultBrain` triple into a no-op for
+   * subscribers. See `createConnectionAvailabilityStream` for the per-
+   * connection deadline-without-completing behaviour, and `parseAvailability`
+   * for how the optional `brains`/`defaultBrain` wire fields are defaulted. */
+  availability$(): Observable<JarvisAvailability> {
+    return this.ws.connectionEvents().pipe(
+      filter((event) => {
+        return event.type === "gatewayConnected";
+      }),
+      switchMap(() => {
+        return createConnectionAvailabilityStream(this.ws);
+      }),
+      distinctUntilChanged(jarvisAvailabilityEquals),
+    );
+  }
+}

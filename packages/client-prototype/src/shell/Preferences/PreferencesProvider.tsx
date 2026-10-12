@@ -1,8 +1,17 @@
-import type { ReactElement, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import type { Prefs, SegmentKey } from "#/shell/Preferences/prefs";
-import { DEFAULT_PREFS } from "#/shell/Preferences/prefs";
+import {
+  DEFAULT_PREFS,
+  type Prefs,
+  type SegmentKey,
+} from "#/shell/Preferences/prefs";
 import { PreferencesContext } from "#/shell/Preferences/usePreferences";
 
 export interface PreferencesProviderProps {

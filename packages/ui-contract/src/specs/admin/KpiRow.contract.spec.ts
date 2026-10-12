@@ -2,7 +2,7 @@
  * KpiRow contract spec (v2 Parity E Task 2).
  *
  * Verifies the 4-up KPI strip renders throughput / P99-latency / error-rate /
- * active-sessions cards from the shared kpisVm (client-core), fed by
+ * active-sessions cards from the shared kpisVm (core-logic), fed by
  * useMetrics + useSessionCountSeries — values, units, deltas, warn flags and
  * sparklines all derive from seeded fake metric data.
  */

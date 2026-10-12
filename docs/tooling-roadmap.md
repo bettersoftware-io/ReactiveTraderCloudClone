@@ -159,7 +159,7 @@ language js
 - Any autofix (e.g. auto-extracting an inline type to a named one).
 
 **Next step when picked up:** add arrow + param patterns to no-inline-return-type,
-run all rules across the client packages (`packages/{client-core,react-bindings,client-react,client-react-native}/src`), decide blocking vs report-only
+run all rules across the client packages (`packages/{client-core-rxjs,client-adapters,react-bindings,client-react,client-react-native}/src`), decide blocking vs report-only
 per hit count.
 
 ---
@@ -237,8 +237,8 @@ The 4 reported cycles are all type-only (`machine.ts` ↔ presenters via
 Reproduce (repointed at the package that holds those files today):
 ```bash
 pnpm dlx dpdm -T --circular --no-warning --no-tree \
-  --tsconfig packages/client-core/tsconfig.json \
-  "packages/client-core/src/**/*.{ts,tsx}"
+  --tsconfig packages/client-core-rxjs/tsconfig.json \
+  "packages/client-core-rxjs/src/**/*.{ts,tsx}"
 ```
 
 ### Tool ranking (2026)

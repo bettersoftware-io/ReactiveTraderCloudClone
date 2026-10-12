@@ -5,6 +5,7 @@ import {
   map,
   type Observable,
   of,
+  share,
   throwError,
 } from "rxjs";
 
@@ -149,6 +150,9 @@ interface BaseAnchor {
 export class EquityMarketDataSimulator implements MarketDataPort {
   private readonly states = new Map<string, SymbolState>();
 
+  /** Per symbol: the live walk every `quotes(symbol)` subscriber shares. */
+  private readonly liveQuotes = new Map<string, Observable<EquityQuote>>();
+
   /** Deep-history cache per `symbol|timeframe`: built ONCE on first
    * candleHistory request by snapshotting `now` and walking
    * CANDLE_HISTORY_DEPTH_MAX − CANDLE_HISTORY_TOTAL buckets further back
@@ -214,14 +218,37 @@ export class EquityMarketDataSimulator implements MarketDataPort {
       }
 
       const first = this.toQuote(symbol, s, Date.now());
-      const live$ = interval(TICK_MS).pipe(
-        map(() => {
-          s.price = gbmStep(s.price, s.rng(), VOL);
-          return this.toQuote(symbol, s, Date.now());
-        }),
-      );
-      return concat(of(first), live$);
+      return concat(of(first), this.liveQuotesOf(symbol, s));
     });
+  }
+
+  /**
+   * One symbol's live walk, shared by every subscriber: the first one starts
+   * the interval, later ones join it, and it stops with the last. Each step
+   * moves the symbol's price, so an interval per subscriber would move it
+   * once per subscriber — a watchlist row and its sparkline already made two,
+   * and each showed a price the other had moved in between. `PricingSimulator`
+   * keeps the same rule for FX.
+   */
+  private liveQuotesOf(
+    symbol: string,
+    s: SymbolState,
+  ): Observable<EquityQuote> {
+    const shared = this.liveQuotes.get(symbol);
+
+    if (shared) {
+      return shared;
+    }
+
+    const live = interval(TICK_MS).pipe(
+      map(() => {
+        s.price = gbmStep(s.price, s.rng(), VOL);
+        return this.toQuote(symbol, s, Date.now());
+      }),
+      share(),
+    );
+    this.liveQuotes.set(symbol, live);
+    return live;
   }
 
   candles(

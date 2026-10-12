@@ -24,8 +24,7 @@ import {
   type PresetSummaryChannel,
   writeWorkspaceLayout,
 } from "@rtc/core-logic";
-import { WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
-import type { JarvisEvent } from "@rtc/shared";
+import { type JarvisEvent, WORKSPACE_PERSIST_DEBOUNCE_MS } from "@rtc/domain";
 
 import { peek, relay } from "#/bridge/in";
 import { storeToWarmStateStream, type WarmStateStream } from "#/bridge/out";
@@ -57,7 +56,7 @@ interface NativeWorkspacePresenters {
 }
 
 /** What the Jarvis driver reaches in this workspace, read and written
- * synchronously (`DriveCommandDeps`, client-core). */
+ * synchronously (`DriveCommandDeps`, core-logic). */
 type WorkspaceDriveDeps = Pick<
   DriveCommandDeps,
   | "layout"
@@ -75,6 +74,10 @@ export interface NativeWorkspace {
   readonly drive: WorkspaceDriveDeps;
   /** `AppCommands.reportDetachedPanels`. */
   reportDetachedPanels(tab: WorkspaceTab, panelIds: readonly string[]): void;
+  /** Writes a layout change still inside the persistence debounce, now —
+   * `app.dispose()` calls it before `lifetime` aborts, while the layout
+   * state it reads is still live. No pending change, no write. */
+  writePendingLayout(): void;
 }
 
 export interface NativeWorkspaceDeps {
@@ -87,7 +90,7 @@ export interface NativeWorkspaceDeps {
 
 /** The workspace on this core's kernel: the SHARED dock rules
  * (`createWorkspaceDock`), presets controller and payload write from
- * `@rtc/client-core`, wired to Store-backed layout machines and panels
+ * `@rtc/core-logic`, wired to Store-backed layout machines and panels
  * roster, with the streams (`dockedPanelIdsFor`, `workspaceLayoutResets$`,
  * the presets lists) and the persistence debounce built here. */
 export function createNativeWorkspace(
@@ -332,12 +335,17 @@ export function createNativeWorkspace(
       detachedPanelIds: dock.detachedPanelIds,
     },
     reportDetachedPanels: dock.reportDetachedPanels,
+    writePendingLayout: persist.writePending,
   };
 }
 
 interface PersistDebounce {
   /** (Re)start the quiet window; the write runs once it elapses. */
   kick(): void;
+  /** End an open quiet window early and write now; with none open, do
+   * nothing. A hot swap disposes the core inside the window, and a bare
+   * abort would drop the change. */
+  writePending(): void;
 }
 
 /** The writer's debounce: each kick aborts the pending
@@ -386,6 +394,23 @@ function createPersistDebounce(
           }
         },
       );
+    },
+    writePending: () => {
+      if (pending === null || lifetime.aborted) {
+        return;
+      }
+
+      pending.abort();
+      pending = null;
+
+      // `app.dispose()` calls this first: a write that throws (full or
+      // blocked storage) is reported like any other async failure, never
+      // thrown into dispose, whose remaining steps release the ports.
+      try {
+        write();
+      } catch (error: unknown) {
+        reportAsync(error);
+      }
     },
   };
 }
