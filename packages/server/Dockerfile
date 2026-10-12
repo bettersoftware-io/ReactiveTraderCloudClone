@@ -8,7 +8,7 @@
 # on linux/amd64 (Fly) and linux/arm64 (a local build on Apple silicon) alike.
 # Renovate's docker manager bumps a pinned digest like any other dependency,
 # behind the same 24h cooldown. (OpenSSF Scorecard PinnedDependencies; ADR-007.)
-FROM node:26-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
+FROM node:26-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
