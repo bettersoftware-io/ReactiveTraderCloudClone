@@ -1,6 +1,3 @@
-// The v2 design fonts come from @rtc/web-boot/fonts (the one font manifest both
-// web clients and their visual tiers share).
-
 import { StrictMode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -14,6 +11,8 @@ import {
   type WebClientView,
   webBootEnvOf,
 } from "@rtc/web-boot";
+// The v2 design fonts come from @rtc/web-boot/fonts (the one font manifest both
+// web clients and their visual tiers share).
 import "@rtc/web-boot/fonts";
 
 import { AppRoot } from "./AppRoot";

@@ -26,7 +26,6 @@ In it today:
   It looks up the root element, creates the devtools hub, resolves and loads the
   core, builds the ports once, builds the core host, follows swaps and shows the
   boot-error screen when the first core cannot load or mount.
-
 - `fonts.ts`: the font manifest, its own entry point `@rtc/web-boot/fonts`: the
   15 `@fontsource/*` stylesheets that register the v2 design fonts and
   `FONT_LOAD_SPECS`, the faces a visual harness force-loads before a capture.

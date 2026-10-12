@@ -1,6 +1,3 @@
-// The v2 design fonts come from @rtc/web-boot/fonts (the one font manifest both
-// web clients and their visual tiers share).
-
 // Solid Devtools runtime: registers this app with the browser extension.
 // Static import per the package's own docs — the vite plugin's `apply()` gate
 // (see vite.config.ts) resolves this to a real no-op module at build time
@@ -20,6 +17,8 @@ import {
   type WebClientView,
   webBootEnvOf,
 } from "@rtc/web-boot";
+// The v2 design fonts come from @rtc/web-boot/fonts (the one font manifest both
+// web clients and their visual tiers share).
 import "@rtc/web-boot/fonts";
 
 import { AppRoot } from "./AppRoot";
