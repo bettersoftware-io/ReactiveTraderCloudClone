@@ -35,7 +35,7 @@ describe("a push the hook cannot read asks", () => {
     "cat <<EOF\ngit push origin worktree-a --force",
     'timeout 5 "git" push --force \'worktree-a',
     // the shell removes the quotes: pu"sh" is push
-    "echo a#b; git pu\"sh\" origin :old # don't",
+    'echo a#b; git pu"sh" origin :old # don\'t',
   ])("%s", (command) => {
     const verdict = judge(command);
 
