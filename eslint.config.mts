@@ -786,6 +786,14 @@ export default tseslint.config(
       "packages/solid-bindings/**/*.{ts,tsx}",
     ],
     ...solid.configs["flat/recommended"],
+    // eslint-plugin-solid 0.18.1 types its own `sourceType` as `string`
+    // (0.18.0 said `"module"`), which the config type rejects. The value is
+    // unchanged; restating it here gives it its literal type back. Drop this
+    // override once the plugin's types say `"module"` again.
+    languageOptions: {
+      ...solid.configs["flat/recommended"].languageOptions,
+      sourceType: "module",
+    },
   },
   {
     // `solid/reactivity`'s MemberExpression heuristic only recognises a
