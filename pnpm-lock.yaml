@@ -506,21 +506,6 @@ importers:
 
   packages/client-react:
     dependencies:
-      '@fontsource/chakra-petch':
-        specifier: ^5.2.7
-        version: 5.3.0
-      '@fontsource/ibm-plex-mono':
-        specifier: ^5.2.7
-        version: 5.3.0
-      '@fontsource/ibm-plex-sans':
-        specifier: ^5.2.8
-        version: 5.3.0
-      '@fontsource/jetbrains-mono':
-        specifier: ^5.2.8
-        version: 5.3.0
-      '@fontsource/orbitron':
-        specifier: ^5.2.8
-        version: 5.3.0
       '@rtc/boot-splash':
         specifier: workspace:*
         version: link:../boot-splash
@@ -811,21 +796,6 @@ importers:
 
   packages/client-solid:
     dependencies:
-      '@fontsource/chakra-petch':
-        specifier: ^5.2.7
-        version: 5.3.0
-      '@fontsource/ibm-plex-mono':
-        specifier: ^5.2.7
-        version: 5.3.0
-      '@fontsource/ibm-plex-sans':
-        specifier: ^5.2.8
-        version: 5.3.0
-      '@fontsource/jetbrains-mono':
-        specifier: ^5.2.8
-        version: 5.3.0
-      '@fontsource/orbitron':
-        specifier: ^5.2.8
-        version: 5.3.0
       '@rtc/boot-splash':
         specifier: workspace:*
         version: link:../boot-splash
@@ -1378,6 +1348,21 @@ importers:
 
   packages/web-boot:
     dependencies:
+      '@fontsource/chakra-petch':
+        specifier: ^5.2.7
+        version: 5.3.0
+      '@fontsource/ibm-plex-mono':
+        specifier: ^5.2.7
+        version: 5.3.0
+      '@fontsource/ibm-plex-sans':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@fontsource/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@fontsource/orbitron':
+        specifier: ^5.2.8
+        version: 5.3.0
       '@rtc/boot-splash':
         specifier: workspace:*
         version: link:../boot-splash

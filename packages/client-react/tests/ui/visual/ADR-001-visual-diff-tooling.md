@@ -330,9 +330,9 @@ vitest-browser follow-up (see below).
 
 ### Fonts & component fidelity
 
-- **Fonts:** `react/loadFonts.ts` (a side-effect import in `VisualScenario`)
-  registers the app's real `@fontsource` faces — Chakra Petch, IBM Plex
-  Mono/Sans, JetBrains Mono, Orbitron (mirrors `src/main.tsx`). Without it the
+- **Fonts:** `@rtc/web-boot/fonts` (imported by `VisualScenario`, and by
+  `src/main.tsx`) registers the app's real `@fontsource` faces — Chakra Petch,
+  IBM Plex Mono/Sans, JetBrains Mono, Orbitron. Without it the
   harness rendered in the fallback system stack and goldens didn't look like the
   app. **Known gap:** the vitest-browser tier registers the `@font-face` rules
   but the webfonts stay `unloaded` at capture time (`document.fonts.ready`

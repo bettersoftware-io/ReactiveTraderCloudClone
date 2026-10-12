@@ -116,10 +116,12 @@ function pkgSrc(name: string): string {
   );
 }
 
-// Bare package specifiers only. Every @rtc/* package currently exports just "."
-// (imported as `@rtc/client-adapters`, never `@rtc/client-adapters/sub`), so mapping the
-// specifier straight to src/index.ts is correct. If a production `src` file ever
-// adds an `@rtc/*/subpath` import, add its own alias entry — a prefix match would
+// Bare package specifiers, plus the three subpath entries below. Every other @rtc/*
+// package exports just "." (imported as `@rtc/client-adapters`, never
+// `@rtc/client-adapters/sub`), so mapping the specifier straight to src/index.ts is
+// correct. The subpath entries are `@rtc/boot-splash/styles`, `@rtc/layout-dockview/styles`
+// and `@rtc/web-boot/fonts`. If a production `src` file ever adds another
+// `@rtc/*/subpath` import, add its own alias entry — a prefix match would
 // otherwise rewrite it to `.../src/index.ts/subpath` and break the debug build.
 // @rtc/layout-dockview also has a `./styles/*` subpath export (mirrors
 // @rtc/boot-splash), and — like boot-splash — its bare specifier IS mapped below (the debug build
@@ -146,6 +148,15 @@ const rtcSourceAlias: Record<string, string> = debugBuild
         "styles",
       ),
       "@rtc/boot-splash": pkgSrc("boot-splash"),
+      // A second entry point, like the `/styles` pairs above: listed FIRST so
+      // `@rtc/web-boot/fonts` does not become `.../src/index.ts/fonts`.
+      "@rtc/web-boot/fonts": resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "web-boot",
+        "src",
+        "fonts.ts",
+      ),
       "@rtc/web-boot": pkgSrc("web-boot"),
       "@rtc/client-core-async": pkgSrc("client-core-async"),
       "@rtc/client-core-effect": pkgSrc("client-core-effect"),

@@ -26,13 +26,20 @@ In it today:
   It looks up the root element, creates the devtools hub, resolves and loads the
   core, builds the ports once, builds the core host, follows swaps and shows the
   boot-error screen when the first core cannot load or mount.
+- `fonts.ts`: the font manifest, its own entry point `@rtc/web-boot/fonts`: the
+  15 `@fontsource/*` stylesheets that register the v2 design fonts and
+  `FONT_LOAD_SPECS`, the faces a visual harness force-loads before a capture.
+  It is not re-exported from `index.ts`: node-run scripts import the main entry
+  and node cannot load a `.css` file. The five `@fontsource/*` packages are this
+  package's dependencies; `fonts.test.ts` fails when the list and the imports
+  disagree.
 
 Not in it: the tree mount and the swap overlay. Each is a client's framework
 part.
 
 ## Starting a client
 
-A client's `main.tsx` is its font imports, a view factory and one call:
+A client's `main.tsx` is one `import "@rtc/web-boot/fonts"`, a view factory and one call:
 
 ```ts
 void startWebClient({
