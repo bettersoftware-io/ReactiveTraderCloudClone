@@ -1,22 +1,3 @@
-// v2 design fonts (PROTO L23): Chakra Petch 400/500/600/700, JetBrains Mono 400/500/700,
-// IBM Plex Sans 400/500/600, IBM Plex Mono 400/500/600, Orbitron 700/800
-// (wordmark, P&L amount, lock-screen fallback, prefs-dialog title chrome).
-
-import "@fontsource/chakra-petch/400.css";
-import "@fontsource/chakra-petch/500.css";
-import "@fontsource/chakra-petch/600.css";
-import "@fontsource/chakra-petch/700.css";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
-import "@fontsource/ibm-plex-mono/600.css";
-import "@fontsource/ibm-plex-sans/400.css";
-import "@fontsource/ibm-plex-sans/500.css";
-import "@fontsource/ibm-plex-sans/600.css";
-import "@fontsource/jetbrains-mono/400.css";
-import "@fontsource/jetbrains-mono/500.css";
-import "@fontsource/jetbrains-mono/700.css";
-import "@fontsource/orbitron/700.css";
-import "@fontsource/orbitron/800.css";
 import { StrictMode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -30,6 +11,9 @@ import {
   type WebClientView,
   webBootEnvOf,
 } from "@rtc/web-boot";
+// The v2 design fonts come from @rtc/web-boot/fonts (the one font manifest both
+// web clients and their visual tiers share).
+import "@rtc/web-boot/fonts";
 
 import { AppRoot } from "./AppRoot";
 import { createReactTreeMount } from "./app/reactTreeMount";

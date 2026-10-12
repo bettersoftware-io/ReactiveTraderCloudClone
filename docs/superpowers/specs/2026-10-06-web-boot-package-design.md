@@ -1,7 +1,7 @@
 # `@rtc/web-boot`: one copy of the web clients' boot code
 
 **Date:** 2026-10-06
-**Status:** implemented (PR 1 #987, PR 2 #992, PR 3)
+**Status:** implemented (PR 1 #987, PR 2 #992, PR 3 #994)
 
 ## The problem
 
@@ -32,7 +32,7 @@ swap overlay is rendered).
 
 One copy of the framework-free boot code, in a package both web clients
 import. After the work, a client's own boot code is what differs by framework
-and nothing else: its tree mount, how it renders the swap overlay, its fonts
+and nothing else: its tree mount, how it renders the swap overlay
 and its devtools app id.
 
 Success means:
@@ -104,10 +104,14 @@ Each file's tests move with it. One copy of each test is kept.
 ### What stays in each client
 
 - `src/app/reactTreeMount.ts` / `solidTreeMount.ts` and their tests.
-- `src/main.tsx`: the fonts, the framework imports, a view factory
+- `src/main.tsx`: the framework imports, a view factory
   (`createReactView` / `createSolidView`: the tree mount and the swap
   overlay's root) and one call to `startWebClient`, which is given the
   client's app id.
+
+Amended 2026-10-12: the font manifest is one module, `@rtc/web-boot/fonts`, a
+separate entry point (node-run scripts import the main entry and cannot load a
+`.css` file). `main.tsx` imports it in one line and holds no font list.
 
 Amended 2026-10-11 (PR 3): no `src/app/devtools/devtoolsHub.ts` stays.
 `startWebClient` creates the hub (see "The devtools hub" and the
