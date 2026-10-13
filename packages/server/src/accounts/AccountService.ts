@@ -148,18 +148,34 @@ export function createAccountService(
    * already been told `code_sent`; an outcome other than `sent` is one log
    * line with the route and the word, never the address. */
   function detach(route: string, send: Promise<string>): void {
-    send.then(
-      (outcome) => {
-        if (outcome !== "sent") {
-          options.log(
-            `[accounts] detached send route=${route} outcome=${outcome}`,
-          );
-        }
-      },
-      () => {
-        options.log(`[accounts] detached send route=${route} outcome=threw`);
-      },
-    );
+    send
+      .then(
+        (outcome) => {
+          if (outcome !== "sent") {
+            options.log(
+              `[accounts] detached send route=${route} outcome=${outcome}`,
+            );
+          }
+        },
+        () => {
+          options.log(`[accounts] detached send route=${route} outcome=threw`);
+        },
+      )
+      .catch(() => {
+        // A log that throws must not become an unhandled rejection: nothing
+        // awaits a detached send, so Node would terminate the process.
+      });
+  }
+
+  /** Starts a send so that a synchronous throw from the directory becomes a
+   * rejection: the caller's `.finally` and `detach` then see it, instead of
+   * the throw skipping both. */
+  function startSend(start: () => Promise<string>): Promise<string> {
+    try {
+      return start();
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   async function register(
@@ -210,7 +226,9 @@ export function createAccountService(
     inFlight += 1;
     detach(
       "/register",
-      directory.signUp({ email, displayName }, callerIp).finally(() => {
+      startSend(() => {
+        return directory.signUp({ email, displayName }, callerIp);
+      }).finally(() => {
         inFlight -= 1;
         answered += 1;
       }),
@@ -248,7 +266,12 @@ export function createAccountService(
         return "unavailable";
       }
 
-      detach("/resend-code", directory.resendCode(email, callerIp));
+      detach(
+        "/resend-code",
+        startSend(() => {
+          return directory.resendCode(email, callerIp);
+        }),
+      );
     }
 
     return "code_sent";
@@ -319,7 +342,12 @@ export function createAccountService(
         return "unavailable";
       }
 
-      detach("/request-reset", directory.requestReset(email, callerIp));
+      detach(
+        "/request-reset",
+        startSend(() => {
+          return directory.requestReset(email, callerIp);
+        }),
+      );
     }
 
     return "code_sent";

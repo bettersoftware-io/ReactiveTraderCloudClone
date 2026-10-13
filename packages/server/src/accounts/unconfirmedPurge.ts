@@ -39,11 +39,17 @@ export function startUnconfirmedPurge(
     }
   }
 
+  /** Runs one purge; a rejected run is the same line as an unanswered store,
+   * never an unhandled rejection that would terminate the process. */
+  function purgeOnce(): void {
+    runOnce().catch(() => {
+      options.log("[accounts] purge unavailable");
+    });
+  }
+
   const first = setTimeout(() => {
-    void runOnce();
-    repeating = setInterval(() => {
-      void runOnce();
-    }, options.intervalMs);
+    purgeOnce();
+    repeating = setInterval(purgeOnce, options.intervalMs);
     repeating.unref();
   }, options.firstRunDelayMs);
   first.unref();
