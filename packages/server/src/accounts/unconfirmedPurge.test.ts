@@ -78,6 +78,41 @@ describe("startUnconfirmedPurge", () => {
     expect(lines).toEqual(["[accounts] purge unavailable"]);
   });
 
+  it("a purge that rejects logs the unavailable line and the schedule keeps running", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const lines: string[] = [];
+    const handle = startUnconfirmedPurge({
+      directory: {
+        purgeUnconfirmedBefore: () => {
+          calls += 1;
+          return Promise.reject(new Error("store down"));
+        },
+      },
+      now: () => {
+        return 0;
+      },
+      retentionMs: 1,
+      intervalMs: 10,
+      firstRunDelayMs: 1,
+      batch: 1,
+      log: (line: string) => {
+        return lines.push(line);
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toBe(1);
+    expect(lines).toEqual(["[accounts] purge unavailable"]);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(calls).toBe(2);
+    expect(lines).toEqual([
+      "[accounts] purge unavailable",
+      "[accounts] purge unavailable",
+    ]);
+    handle.stop();
+  });
+
   it("stops cleanly before the first run ever fired", async () => {
     vi.useFakeTimers();
     const calls: number[] = [];

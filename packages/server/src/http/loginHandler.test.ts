@@ -455,18 +455,65 @@ describe("authenticateLoginRequest — the floor on a failed account login", () 
       },
     });
 
-    await authenticateLoginRequest(
+    const account = await authenticateLoginRequest(
       createLoginBody("admin@rtc.test", DEV_ACCOUNT_PASSWORD),
       "1.2.3.4",
       deps,
     );
-    await authenticateLoginRequest(
-      createLoginBody("astark", "mcdc2026"),
+
+    const roster = await authenticateLoginRequest(
+      createLoginBody("demo", "localpass"),
       "1.2.3.4",
       deps,
     );
 
+    // Both succeed, so the empty list proves a success is not held — a
+    // failed roster login would not call `wait` either.
+    expect(account.status).toBe(200);
+    expect(roster.status).toBe(200);
     expect(waits).toEqual([]);
+  });
+
+  it("holds a refusal after a correct password (pending) to the floor too", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("pending@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(403);
+    expect(waits).toEqual([300]);
+  });
+
+  it("holds an unavailable store's answer to the floor too", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      accounts: createDisabledAccounts(),
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("trader@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(503);
+    expect(JSON.parse(result.body)).toEqual({ error: "unavailable" });
+    expect(waits).toEqual([300]);
   });
 });
 
@@ -489,6 +536,21 @@ function createAccounts(): AccountService {
       seeds: DEV_ACCOUNT_SEEDS,
     }),
     now,
+    registrationOpen: true,
+    maxRegistrationsPerDay: 100,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: () => {},
+  });
+}
+
+/** An account service over the disabled directory: every login is
+ * `unavailable`. */
+function createDisabledAccounts(): AccountService {
+  return createAccountService({
+    directory: createDisabledAccountDirectory(),
+    now: createClock(1_000),
     registrationOpen: true,
     maxRegistrationsPerDay: 100,
     codeEntryLimiter: createRateLimiter(100, 60_000),

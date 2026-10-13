@@ -733,6 +733,94 @@ describe("AccountService when one directory operation is unavailable", () => {
     ]);
   });
 
+  it("a log that throws inside a detached send surfaces nothing", async () => {
+    const unhandled: unknown[] = [];
+
+    function recordUnhandled(reason: unknown): void {
+      unhandled.push(reason);
+    }
+
+    process.on("unhandledRejection", recordUnhandled);
+
+    try {
+      const directory = createDoubleDirectory({
+        countRegistrationsSince: () => {
+          return Promise.resolve({ outcome: "counted", count: 0 });
+        },
+        signUp: () => {
+          return Promise.resolve("unavailable");
+        },
+      });
+
+      const log = vi.fn((): void => {
+        throw new Error("log sink down");
+      });
+
+      const service = createAccountService({
+        ...createOptions(directory),
+        log,
+      });
+
+      expect(await service.register(createRegistration(), IP)).toEqual({
+        outcome: "code_sent",
+      });
+      await flushMicrotasks();
+      await new Promise<void>((done) => {
+        setImmediate(done);
+      });
+
+      expect(log).toHaveBeenCalledTimes(1);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", recordUnhandled);
+    }
+  });
+
+  it("a signUp that throws synchronously is logged as threw and releases its in-flight slot", async () => {
+    const lines: string[] = [];
+    let calls = 0;
+    const signUp = vi.fn((): Promise<SignUpOutcome> => {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error("boom ann@desk.io");
+      }
+
+      return Promise.resolve("sent");
+    });
+
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp,
+    });
+
+    const service = createAccountService({
+      ...createOptions(directory),
+      maxRegistrationsPerDay: 1,
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/register outcome=threw",
+    ]);
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "bob@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "code_sent" });
+    expect(signUp).toHaveBeenCalledTimes(2);
+  });
+
   it("login is unavailable when the password check is", async () => {
     const directory = createDoubleDirectory({
       checkPassword: () => {
@@ -1191,6 +1279,23 @@ describe("AccountService — sends are looked up first and never awaited", () =>
     expect(lookup).not.toHaveBeenCalled();
   });
 
+  it("a spent reset fuse refuses a missing address too, without a lookup", async () => {
+    const reset = createRateLimiter(1, 60_000);
+    reset.hit("all", createClock()());
+    const { service, directory } = createService({
+      sendFuses: createFuses({ reset }),
+    });
+    const lookup = vi.spyOn(directory, "findByEmail");
+
+    expect(await service.requestReset("nobody@desk.io", IP)).toBe(
+      "unavailable",
+    );
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe(
+      "unavailable",
+    );
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
   it("resendCode and requestReset answer unavailable when the lookup cannot be read", async () => {
     const directory = createDoubleDirectory({
       findByEmail: () => {
@@ -1217,10 +1322,25 @@ describe("AccountService — sends are looked up first and never awaited", () =>
       },
     });
     const service = createAccountService(createOptions(directory));
+    vi.useFakeTimers();
 
-    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
-    deferred.resolve("unavailable");
-    await flushMicrotasks();
+    try {
+      const answer = Promise.race([
+        service.resendCode("ann@desk.io", IP),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("awaited the send"));
+          }, 50);
+        }),
+      ]);
+      await vi.advanceTimersByTimeAsync(50);
+
+      expect(await answer).toBe("code_sent");
+    } finally {
+      vi.useRealTimers();
+      deferred.resolve("unavailable");
+      await flushMicrotasks();
+    }
   });
 });
 

@@ -343,6 +343,7 @@ describe("createPostRouter", () => {
 
 describe("createPostRouter — origins and content type", () => {
   const FOREIGN = "https://evil.example";
+
   it("answers the preflight of an allowed origin with that origin and no wildcard", async () => {
     const base = await startRouter({ "/echo": createEchoRoute() });
 
@@ -401,6 +402,7 @@ describe("createPostRouter — origins and content type", () => {
       });
 
       expect(response.status).toBe(403);
+      expect(response.headers.get("connection")).toBe("close");
       expect(await response.json()).toEqual({ error: "origin_not_allowed" });
       expect(response.headers.get("access-control-allow-origin")).toBeNull();
       expect(handled).toEqual([]);
@@ -492,14 +494,17 @@ describe("createPostRouter — origins and content type", () => {
       const handled: string[] = [];
       const base = await startRouter({ "/echo": createEchoRoute(handled) });
 
+      // A string body would make fetch add `text/plain;charset=UTF-8`; a
+      // byte body carries no Content-Type, so the header is truly absent.
       const response = await fetch(`${base}/echo`, {
         method: "POST",
         headers:
           contentType === undefined ? {} : { "Content-Type": contentType },
-        body: "{}",
+        body: contentType === undefined ? new TextEncoder().encode("{}") : "{}",
       });
 
       expect(response.status).toBe(415);
+      expect(response.headers.get("connection")).toBe("close");
       expect(await response.json()).toEqual({
         error: "unsupported_media_type",
       });

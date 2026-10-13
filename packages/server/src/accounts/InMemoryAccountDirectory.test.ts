@@ -7,6 +7,7 @@ import type {
 import {
   DEV_ACCOUNT_PASSWORD,
   DEV_ACCOUNT_SEEDS,
+  type DevAccountSeed,
 } from "#/accounts/devAccounts";
 import {
   createInMemoryAccountDirectory,
@@ -463,6 +464,11 @@ describe("InMemoryAccountDirectory", () => {
       outcome: "purged",
       count: 1,
     });
+    // Oldest first: the one-account batch took old1, not old2.
+    expect(await directory.findByEmail("old1@desk.io")).toEqual({
+      outcome: "missing",
+    });
+    expect((await directory.findByEmail("old2@desk.io")).outcome).toBe("found");
     expect(await directory.purgeUnconfirmedBefore(2_000, 10)).toEqual({
       outcome: "purged",
       count: 1,
@@ -485,7 +491,40 @@ describe("InMemoryAccountDirectory", () => {
       "found",
     );
   });
+
+  it("purgeUnconfirmedBefore never removes an unconfirmed seed, however old", async () => {
+    let now = 1_000;
+    const directory = createInMemoryAccountDirectory({
+      now: (): number => {
+        return now;
+      },
+      seeds: [createUnconfirmedSeed()],
+    });
+    await directory.signUp(createSignUp("old@desk.io"), IP);
+    now = 5_000;
+
+    expect(
+      await directory.purgeUnconfirmedBefore(Number.MAX_SAFE_INTEGER, 10),
+    ).toEqual({ outcome: "purged", count: 1 });
+    expect(await directory.findByEmail("seed@rtc.test")).toMatchObject({
+      outcome: "found",
+      account: { status: "unconfirmed" },
+    });
+    expect(await directory.findByEmail("old@desk.io")).toEqual({
+      outcome: "missing",
+    });
+  });
 });
+
+function createUnconfirmedSeed(): DevAccountSeed {
+  return {
+    id: "00000000-0000-4000-8000-0000000000ff",
+    email: "seed@rtc.test",
+    displayName: "Unconfirmed Seed",
+    access: "user",
+    status: "unconfirmed",
+  };
+}
 
 function createDirectory(hash?: PasswordHash): AccountDirectory {
   return createInMemoryAccountDirectory({
