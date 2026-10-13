@@ -98,17 +98,13 @@ export const SEND_PER_ADDRESS_MAX = 3;
 export const SEND_PER_ADDRESS_WINDOW_MS = 60 * 60 * 1000;
 export const SEND_PER_ADDRESS_MAX_KEYS = 50_000;
 
-/** B2 — sign-ups per window across the whole server: a fuse on `/register`
- * only. Every counted sign-up really is sent an email, so it must sit BELOW
- * the Supabase project's own email rate limit: the server answers `503
- * unavailable` honestly instead of the store answering "sent" and losing
- * the mail silently, and the rest of the project's allowance is left for
- * resends and resets. Not charged on `/resend-code` or `/request-reset`: a
- * request for an address with no account sends nothing at Supabase, so
- * charging them would let 25 junk addresses an hour make every resend and
- * reset answer 503 for everyone. */
+/** B2 — the default of `RTC_SIGNUPS_PER_HOUR`: sign-ups per hour across the
+ * whole server, the `/register` fuse (window `SEND_FUSE_WINDOW_MS`). Every
+ * counted sign-up really is sent an email, so with the two fuses below the
+ * three must sit under the Supabase project's own email rate limit: the
+ * server answers `503 unavailable` honestly instead of the store answering
+ * "sent" and losing the mail silently. */
 export const EMAIL_SENDS_PER_HOUR_MAX = 25;
-export const EMAIL_SENDS_WINDOW_MS = 60 * 60 * 1000;
 
 /** B2a hardening — resends and reset requests per hour, whole server, one
  * fuse each, charged only for a send that will really happen (the address

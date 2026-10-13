@@ -724,7 +724,7 @@ each endpoint has its own limiter instance.
 | Addresses the per-address limiter holds | `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 50 000 |
 | Emails per address, one budget shared by `/register`, `/resend-code` and `/request-reset` | `SEND_PER_ADDRESS_MAX` / `SEND_PER_ADDRESS_WINDOW_MS` | 3 per hour |
 | Addresses the per-address send limiter holds | `SEND_PER_ADDRESS_MAX_KEYS` | 50 000 |
-| Sign-ups per hour, whole server (a fuse on `/register` only); the default of `RTC_SIGNUPS_PER_HOUR` | `EMAIL_SENDS_PER_HOUR_MAX` / `EMAIL_SENDS_WINDOW_MS` | 25 per hour |
+| Sign-ups per hour, whole server (a fuse on `/register` only); the default of `RTC_SIGNUPS_PER_HOUR` | `EMAIL_SENDS_PER_HOUR_MAX` / `SEND_FUSE_WINDOW_MS` | 25 per hour |
 | Resends per hour, whole server (a fuse on `/resend-code` only) | `RESENDS_PER_HOUR_MAX` | 15 per hour |
 | Resets per hour, whole server (a fuse on `/request-reset` only); the three fuses sum to 55, under the project's 60 | `RESETS_PER_HOUR_MAX` | 15 per hour |
 | Registrations per day, whole service; the default of `RTC_SIGNUPS_PER_DAY` | `MAX_REGISTRATIONS_PER_DAY` | 200 |
