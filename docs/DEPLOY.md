@@ -75,7 +75,7 @@ registered logins answer `503 unavailable`, `/health/accounts` answers
 before. Merging B2a changes nothing on the deployed server until you
 redeploy it.
 
-**Unproven until step 9 passes** (it passed 2026-10-13). The server's Supabase adapter is tested
+**Unproven until step 9 passes** (it passed 2026-10-13 on the pre-hardening probe; re-run it — the two `findByEmail` checks have not run live). The server's Supabase adapter is tested
 against replayed copies of the responses Supabase documents; it has never
 run against a real project. Until the probe prints `PASS`, its agreement
 with Supabase's real answers is unproven. If a check prints `✗`, stop: the
@@ -86,7 +86,8 @@ on.
 Two choices changed no code and are made (2026-10-13): the **email sender and
 domain** (step 1), and the free plan with the `accounts-keepalive.yml`
 workflow rather than **Supabase Pro**, which would remove pausing outright
-(step 14). Steps 1-9 are done; steps 10-15 remain.
+(step 14). Steps 1-9 are done, but step 9 passed on the pre-hardening
+probe: re-run step 9, then 10–15.
 
 The Supabase dashboard menu names in steps 2–8 are as of October 2026;
 Supabase moves them.
@@ -152,7 +153,7 @@ Supabase moves them.
    chat. Do not hand out the project's publishable key either: with the URL
    it allows a direct `/auth/v1/signup` that skips the server's rules (such
    an account still needs approval and cannot read `profiles`).
-9. *Done 2026-10-13: PASS.* **Run the probe** from an up-to-date checkout of `main` (after `pnpm
+9. *Passed 2026-10-13 on the pre-hardening probe; re-run once from the merged tree before step 12 — the two `findByEmail` checks have not run live.* **Run the probe** from an up-to-date checkout of `main` (after `pnpm
    install`), with the secret typed at a prompt rather than on the command
    line:
 
@@ -193,7 +194,13 @@ Supabase moves them.
         fly secrets set --stage RTC_ALLOWED_ORIGINS=https://rtc-clone-react.vercel.app,https://rtc-clone-solid.vercel.app -a rtc-clone-server
 
     It is required on a deployed server: browsers reach the POST routes only
-    from these origins, and the server refuses to start without it. Then:
+    from these origins, and the server refuses to start without it. A
+    browser login from `dev:*:ws:remote`, other than the in-browser demo
+    logins, answers `403 origin_not_allowed` unless you append
+    `http://localhost:5173,http://localhost:5473` to this list — which
+    admits a page served from any developer's localhost (`Origin` is set by
+    the browser, so a foreign site cannot claim it). The React Native client
+    sends no `Origin` and is unaffected. Then:
 
         fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" -a rtc-clone-server
 
@@ -268,7 +275,7 @@ Supabase moves them.
 
 **Before opening registration** to the public (`REGISTRATION_OPEN` unset or
 `true`): the blocking list is done (the hardening PR, 2026-10-13). What
-remains is the deploy itself (steps 10-13) and a look at Resend's dashboard
+remains is re-running step 9, then the deploy itself (steps 10–15), and a look at Resend's dashboard
 in the first days.
 
 **Approving and blocking** (until the B2c Users panel): edit `approved` /

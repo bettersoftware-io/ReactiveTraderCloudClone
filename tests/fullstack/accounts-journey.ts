@@ -6,11 +6,14 @@
  * WebSocket, is refused on `/mcp` and resets its password. The unit tests
  * cover each rule; this proves they are wired to real routes.
  *
- * Every request carries its own `Fly-Client-IP`, so the journey shares no
- * rate-limit bucket or strike table with the other smoke checks. It sends at
- * most three emails per address (`SEND_PER_ADDRESS_MAX`): two registrations
- * for the new address, one reset request for the active seed, and one resend
- * for the origin witnesses' own address (the refused calls send nothing).
+ * Every request carries the one `Fly-Client-IP` of this run (`JOURNEY_IP`),
+ * so the journey shares its per-IP buckets with nothing else, and stays under
+ * each of them: `/register` 2 of 5, `/resend-code` 1 of 5, `/request-reset`
+ * 1 of 5, `/confirm-email` 3 of 10, `/reset-password` 1 of 10. A request
+ * refused before its handler (a foreign or null origin, a text/plain body)
+ * charges nothing. Per address it stays at or under 2 of the 3 sends
+ * (`SEND_PER_ADDRESS_MAX`): two registrations for the new address, one reset
+ * request for the active seed, one resend for the origin witnesses' own.
  */
 import { createHmac } from "node:crypto";
 

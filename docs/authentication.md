@@ -569,8 +569,11 @@ budget four times as large, so a tunnel-broker /48 holding 65,536 /64s
 cannot multiply every budget. One subscriber is
 routed a whole /64, so keying on the full address would give anyone
 unlimited keys. Every per-IP bound — the rate limiters, the ban list, the
-connection caps — uses that key, and it is also what the Supabase adapter
-forwards as `Sb-Forwarded-For`, so Supabase buckets a /64 the same way.
+connection caps — uses that key. The /48 tier applies only to the per-IP
+rate limiters of the account routes and `/login`; the ban list and the
+connection caps stay on the /64 key alone. The /64 key is also what the
+Supabase adapter forwards as `Sb-Forwarded-For`, so Supabase buckets a /64
+the same way.
 
 | Endpoint | Body | Success | Specific failures |
 |---|---|---|---|

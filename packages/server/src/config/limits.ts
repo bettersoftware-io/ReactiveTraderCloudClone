@@ -121,7 +121,8 @@ export const SEND_FUSE_WINDOW_MS = 60 * 60 * 1000;
 
 /** B2a hardening — a failed account login is not answered before this, so
  * Supabase's "unknown address at once, wrong password after its hash" is
- * not visible from outside. */
+ * not visible from outside. Sized above that hash: ~70 ms in the
+ * 2026-10-13 probe's logs (hardening spec §3.2). */
 export const LOGIN_FAILURE_FLOOR_MS = 300;
 
 /** B2a hardening — an account not confirmed within this is deleted; the
