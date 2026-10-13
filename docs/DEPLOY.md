@@ -89,6 +89,54 @@ workflow rather than **Supabase Pro**, which would remove pausing outright
 (step 14). Steps 1-9 are done, but step 9 passed on the pre-hardening
 probe: re-run step 9, then 10–15.
 
+**The deploy in short (steps 9–15).** The sequence for an operator whose
+project is set up (steps 1–8 done, for this instance or a new one); each
+line names the step that explains it. Replace `<ref>` with the Supabase
+project ref, and for a second instance also the Fly app name
+(`rtc-clone-server`) and the two client origins. Nothing here runs on its
+own.
+
+1. Fresh tree, built (the probe runs from source over the built
+   libraries): `git checkout main && git pull && pnpm install && pnpm build`.
+2. The probe (step 9), key typed at a prompt, never on the command line:
+
+       read -rs SUPABASE_SECRET_KEY && export SUPABASE_SECRET_KEY
+       SUPABASE_URL=https://<ref>.supabase.co PROBE_EMAIL_DOMAIN=<your domain> \
+         pnpm --filter @rtc/server accounts:probe
+
+   *Pass:* `accounts probe: PASS`, both `cleanup` lines `✓`, and the
+   confirmation mail arrived. A `✗` means stop and fix the adapter first.
+   Re-run it after any change to the server's Supabase adapter.
+3. The server's other secrets (step 10): `AUTH_SECRET` ≥ 32 characters, no
+   `@` in any `AUTH_USERS` username — rotate if unsure.
+4. The allowlist and the account secrets, staged (step 11), in the same
+   shell so the key is never typed again:
+
+       fly secrets set --stage RTC_ALLOWED_ORIGINS=https://rtc-clone-react.vercel.app,https://rtc-clone-solid.vercel.app -a rtc-clone-server
+       fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" REGISTRATION_OPEN=false -a rtc-clone-server
+
+   Decide first whether `,http://localhost:5173,http://localhost:5473` goes
+   on the end of `RTC_ALLOWED_ORIGINS`: without it, browser logins in
+   `dev:*:ws:remote` (other than the in-browser demo logins) answer `403`;
+   with it, a page served from any developer's localhost may use the
+   account routes. The mobile client is unaffected either way.
+5. Deploy (step 12): `gh workflow run deploy.yml -f deploy_server=true`.
+   *Pass:* `curl -s https://rtc-clone-server.fly.dev/health/accounts` answers
+   `{"ok":true,"directory":"up"}`. `disabled` = the secrets did not reach the
+   machine; `down` = wrong key or URL; no machine = `fly logs -a
+   rtc-clone-server` names the startup refusal (the list under step 12).
+6. The first administrator (step 13): register + confirm with `curl`, then in
+   the SQL editor `update public.profiles set role = 'admin', approved = true
+   where email = '…'`. *Pass:* `/login` with the address answers `200`.
+7. Keep-alive (step 14): `gh workflow run accounts-keepalive.yml` — a green
+   run, now that `/health/accounts` answers `up`.
+8. `unset SUPABASE_SECRET_KEY` (step 15). If you forwarded a catch-all
+   mailbox to receive the probe's mail, set it back now.
+9. Registration stays closed (`REGISTRATION_OPEN=false`) until you open it:
+   `fly secrets set REGISTRATION_OPEN=true -a rtc-clone-server` (restarts the
+   machine). Where this instance stands between these steps is in
+   [`STATUS.md`](STATUS.md), not here.
+
 The Supabase dashboard menu names in steps 2–8 are as of October 2026;
 Supabase moves them.
 
@@ -154,7 +202,7 @@ Supabase moves them.
    it allows a direct `/auth/v1/signup` that skips the server's rules (such
    an account still needs approval and cannot read `profiles`).
 9. *Passed 2026-10-13 on the pre-hardening probe; re-run once from the merged tree before step 12 — the two `findByEmail` checks have not run live.* **Run the probe** from an up-to-date checkout of `main` (after `pnpm
-   install`), with the secret typed at a prompt rather than on the command
+   install && pnpm build` — the probe runs from source over the built libraries), with the secret typed at a prompt rather than on the command
    line:
 
        read -rs SUPABASE_SECRET_KEY && export SUPABASE_SECRET_KEY
