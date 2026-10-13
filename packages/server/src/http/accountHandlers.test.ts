@@ -35,7 +35,7 @@ describe("registerAccount", () => {
 
     expect(result.status).toBe(202);
     expect(JSON.parse(result.body)).toEqual({ status: "code_sent" });
-    expect(result.headers?.["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers?.["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 
   it("answers identically for an address that already has an account", async () => {

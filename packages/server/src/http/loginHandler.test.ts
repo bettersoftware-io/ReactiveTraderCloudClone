@@ -219,7 +219,7 @@ describe("authenticateLoginRequest", () => {
     expect(result.status).toBe(401);
   });
 
-  it("returns 200 with a valid LoginResponseDto on success, with CORS headers", async () => {
+  it("returns 200 with a valid LoginResponseDto on success, leaving CORS to the router", async () => {
     const deps = createDeps(createAuth(createClock(1_000)));
 
     const result = await authenticateLoginRequest(
@@ -229,7 +229,7 @@ describe("authenticateLoginRequest", () => {
     );
 
     expect(result.status).toBe(200);
-    expect(result.headers?.["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers?.["Access-Control-Allow-Origin"]).toBeUndefined();
     expect(result.headers?.["Content-Type"]).toBe("application/json");
 
     const parsed = JSON.parse(result.body) as LoginResponseDto;

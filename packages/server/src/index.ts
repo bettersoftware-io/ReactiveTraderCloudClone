@@ -65,6 +65,7 @@ import {
   authenticateLoginRequest,
   type UpgradeRejection,
 } from "./http/loginHandler.js";
+import { resolveOriginPolicy } from "./http/originPolicy.js";
 import { createPostRouter, type PostRoute } from "./http/postRouter.js";
 import { declaredLengthExceeds } from "./http/readBody.js";
 import { settleUpgrade } from "./http/settleUpgrade.js";
@@ -308,8 +309,12 @@ const POST_ROUTES: ReadonlyMap<string, PostRoute> = new Map<string, PostRoute>([
   ],
 ]);
 
-// Preflight, the ban check before the body, the S2 body cap and the error
-// mapping — once, for every route above; the IP is always `clientIp`'s (S3).
+// Throws on a deployed machine (FLY_APP_NAME / RTC_DEPLOYED) without
+// RTC_ALLOWED_ORIGINS: a startup refusal, like the account modes.
+const originPolicy = resolveOriginPolicy(process.env);
+
+// Origin and content-type rules, preflight, the ban check before the body,
+// the S2 body cap and the error mapping — once, for every route above; the IP is always `clientIp`'s (S3).
 const servePostRoute = createPostRouter({
   routes: POST_ROUTES,
   banList,
@@ -318,6 +323,7 @@ const servePostRoute = createPostRouter({
   log: (line: string): void => {
     console.log(line);
   },
+  origins: originPolicy,
 });
 
 // ── HTTP Server ─────────────────────────────────────────────────
@@ -326,14 +332,16 @@ const servePostRoute = createPostRouter({
 // /health (Fly probe, token-free GET), /health/accounts (the account store's
 // reachability as one word, token-free GET), the six POST routes — /login
 // (exchanges credentials for the session token that gates the WS upgrade)
-// and the five account routes — and /mcp. All are permissively CORS'd; the
-// POST routes answer their OPTIONS preflight.
+// and the five account routes — and /mcp. The GET routes and /mcp are
+// permissively CORS'd; the POST routes answer only an allowed origin
+// (`originPolicy`) and write their own CORS headers.
 const httpServer = createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
   if (req.url === "/health" && req.method === "GET") {
     res.setHeader("Access-Control-Allow-Methods", "GET");
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json",
+    });
     res.end(JSON.stringify({ ok: true }));
     return;
   }
@@ -344,11 +352,17 @@ const httpServer = createServer((req, res) => {
     accountsHealth
       .read()
       .then((directory) => {
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        });
         res.end(JSON.stringify({ ok: true, directory }));
       })
       .catch(() => {
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        });
         res.end(JSON.stringify({ ok: true, directory: "down" }));
       });
     return;
@@ -359,6 +373,8 @@ const httpServer = createServer((req, res) => {
   }
 
   if (req.url === "/mcp" || req.url?.startsWith("/mcp?") === true) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     // The MCP transport reads its own body; refuse an over-declared one early.
     if (declaredLengthExceeds(req.headers, MCP_MAX_BODY_BYTES)) {
       res.writeHead(413, { "Content-Type": "application/json" });

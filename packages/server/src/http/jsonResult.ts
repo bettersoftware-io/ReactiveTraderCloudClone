@@ -4,8 +4,9 @@ export interface HttpResult {
   readonly headers?: Record<string, string>;
 }
 
-const JSON_CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
+/** The router, not this helper, adds the CORS headers: which origin a
+ * browser may use these routes from is the router's policy (spec §3.1). */
+const JSON_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",
 };
 
@@ -17,6 +18,6 @@ export function jsonResult(
   return {
     status,
     body: JSON.stringify(body),
-    headers: { ...JSON_CORS_HEADERS, ...extraHeaders },
+    headers: { ...JSON_HEADERS, ...extraHeaders },
   };
 }
