@@ -421,6 +421,70 @@ describe("InMemoryAccountDirectory", () => {
       count: 1,
     });
   });
+
+  it("findByEmail finds a seed and a sign-up, and is missing otherwise", async () => {
+    const directory = createDirectory();
+    await directory.signUp(createSignUp("ann@desk.io"), IP);
+
+    expect(await directory.findByEmail("trader@rtc.test")).toMatchObject({
+      outcome: "found",
+      account: { status: "active" },
+    });
+    expect(await directory.findByEmail("ann@desk.io")).toMatchObject({
+      outcome: "found",
+      account: { status: "unconfirmed" },
+    });
+    expect(await directory.findByEmail("nobody@desk.io")).toEqual({
+      outcome: "missing",
+    });
+  });
+
+  it("purgeUnconfirmedBefore removes only unconfirmed sign-ups older than the cutoff, never a seed or a confirmed account, at most limit", async () => {
+    let now = 1_000;
+    const directory = createInMemoryAccountDirectory({
+      now: (): number => {
+        return now;
+      },
+      seeds: DEV_ACCOUNT_SEEDS,
+    });
+    await directory.signUp(createSignUp("old1@desk.io"), IP);
+    await directory.signUp(createSignUp("old2@desk.io"), IP);
+    await directory.signUp(createSignUp("kept@desk.io"), IP);
+    await directory.confirmEmail(
+      "kept@desk.io",
+      DEV_CONFIRMATION_CODE,
+      PASSWORD,
+      IP,
+    );
+    now = 5_000;
+    await directory.signUp(createSignUp("young@desk.io"), IP);
+
+    expect(await directory.purgeUnconfirmedBefore(2_000, 1)).toEqual({
+      outcome: "purged",
+      count: 1,
+    });
+    expect(await directory.purgeUnconfirmedBefore(2_000, 10)).toEqual({
+      outcome: "purged",
+      count: 1,
+    });
+    expect(await directory.findByEmail("old1@desk.io")).toEqual({
+      outcome: "missing",
+    });
+    expect(await directory.findByEmail("old2@desk.io")).toEqual({
+      outcome: "missing",
+    });
+    expect((await directory.findByEmail("kept@desk.io")).outcome).toBe("found");
+    expect((await directory.findByEmail("young@desk.io")).outcome).toBe(
+      "found",
+    );
+    // Seeds are created at 0 and exempt, whatever the cutoff.
+    expect(
+      await directory.purgeUnconfirmedBefore(Number.MAX_SAFE_INTEGER, 10),
+    ).toEqual({ outcome: "purged", count: 1 });
+    expect((await directory.findByEmail("trader@rtc.test")).outcome).toBe(
+      "found",
+    );
+  });
 });
 
 function createDirectory(hash?: PasswordHash): AccountDirectory {

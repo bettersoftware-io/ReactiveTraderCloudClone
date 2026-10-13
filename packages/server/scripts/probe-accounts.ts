@@ -23,6 +23,7 @@ import type {
   AccountLookup,
   ConfirmOutcome,
   PasswordCheck,
+  PurgeOutcome,
   RegistrationCount,
   ResetOutcome,
   SendOutcome,
@@ -139,6 +140,19 @@ function timeEveryCall(inner: AccountDirectory): AccountDirectory {
     findAccount: (accountId: string): Promise<AccountLookup> => {
       return recordDuration(() => {
         return inner.findAccount(accountId);
+      });
+    },
+    findByEmail: (address: string): Promise<AccountLookup> => {
+      return recordDuration(() => {
+        return inner.findByEmail(address);
+      });
+    },
+    purgeUnconfirmedBefore: (
+      cutoffMs: number,
+      limit: number,
+    ): Promise<PurgeOutcome> => {
+      return recordDuration(() => {
+        return inner.purgeUnconfirmedBefore(cutoffMs, limit);
       });
     },
     countRegistrationsSince: (sinceMs: number): Promise<RegistrationCount> => {

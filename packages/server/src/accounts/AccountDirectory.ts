@@ -51,6 +51,10 @@ export type AccountLookup =
   | { readonly outcome: "found"; readonly account: AccountRecord }
   | { readonly outcome: "missing" | "unavailable" };
 
+export type PurgeOutcome =
+  | { readonly outcome: "purged"; readonly count: number }
+  | { readonly outcome: "unavailable" };
+
 export type RegistrationCount =
   | { readonly outcome: "counted"; readonly count: number }
   | { readonly outcome: "unavailable" };
@@ -95,6 +99,16 @@ export interface AccountDirectory {
    * cache shares ONE in-flight lookup per account, so a lookup that never
    * settles would hold every upgrade for that account. */
   findAccount(accountId: string): Promise<AccountLookup>;
+  /** The account for a normalized address; the same cost whether or not one
+   * exists, so a caller's timing says nothing about the address. */
+  findByEmail(email: string): Promise<AccountLookup>;
+  /** Deletes up to `limit` accounts never confirmed and created before
+   * `cutoffMs`, oldest first. `purged` with a partial count when a delete
+   * fails mid-run: the next run continues. */
+  purgeUnconfirmedBefore(
+    cutoffMs: number,
+    limit: number,
+  ): Promise<PurgeOutcome>;
   /** Must include every sign-up this directory has already answered — the
    * service adds to the count only the sign-ups still in flight and those
    * answered while the count was being read. */

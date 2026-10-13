@@ -11,9 +11,11 @@ import {
 import {
   type AccountDirectory,
   type AccountLookup,
+  type AccountRecord,
   type ConfirmOutcome,
   deriveAccountStatus,
   type PasswordCheck,
+  type PurgeOutcome,
   type RegistrationCount,
   type ResetOutcome,
   type SendOutcome,
@@ -46,6 +48,8 @@ interface Entry {
   readonly displayName: string;
   readonly access: AccessLevel;
   readonly createdAt: number;
+  /** A dev seed: never purged, whatever its age. */
+  readonly seed: boolean;
   /** Null from sign-up until the confirmation (or a reset) sets one: the
    * stand-in for Supabase's random sign-up password nobody knows. */
   credential: Credential | null;
@@ -96,6 +100,7 @@ export function createInMemoryAccountDirectory(
       displayName: seed.displayName,
       access: seed.access,
       createdAt: 0,
+      seed: true,
       credential: devSeedCredential(),
       confirmed: seed.status !== "unconfirmed",
       approved: seed.status === "active",
@@ -128,6 +133,7 @@ export function createInMemoryAccountDirectory(
           displayName: input.displayName,
           access: "user",
           createdAt: options.now(),
+          seed: false,
           credential: null,
           confirmed: false,
           approved: false,
@@ -252,16 +258,37 @@ export function createInMemoryAccountDirectory(
         return Promise.resolve({ outcome: "missing" });
       }
 
-      return Promise.resolve({
-        outcome: "found",
-        account: {
-          id: entry.id,
-          email: entry.email,
-          displayName: entry.displayName,
-          access: entry.access,
-          status: deriveAccountStatus(entry),
-        },
-      });
+      return Promise.resolve({ outcome: "found", account: toRecord(entry) });
+    },
+
+    findByEmail(email: string): Promise<AccountLookup> {
+      const entry = byEmail.get(email);
+
+      return Promise.resolve(
+        entry === undefined
+          ? { outcome: "missing" }
+          : { outcome: "found", account: toRecord(entry) },
+      );
+    },
+
+    purgeUnconfirmedBefore(
+      cutoffMs: number,
+      limit: number,
+    ): Promise<PurgeOutcome> {
+      let count = 0;
+
+      for (const [email, entry] of byEmail) {
+        if (count >= limit) {
+          break;
+        }
+
+        if (!entry.seed && !entry.confirmed && entry.createdAt < cutoffMs) {
+          byEmail.delete(email);
+          count += 1;
+        }
+      }
+
+      return Promise.resolve({ outcome: "purged", count });
     },
 
     countRegistrationsSince(sinceMs: number): Promise<RegistrationCount> {
@@ -279,6 +306,16 @@ export function createInMemoryAccountDirectory(
     ping(): Promise<boolean> {
       return Promise.resolve(true);
     },
+  };
+}
+
+function toRecord(entry: Entry): AccountRecord {
+  return {
+    id: entry.id,
+    email: entry.email,
+    displayName: entry.displayName,
+    access: entry.access,
+    status: deriveAccountStatus(entry),
   };
 }
 
