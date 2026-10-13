@@ -1,6 +1,6 @@
 # B2a hardening — the seven items that block opening registration: design
 
-Date: 2026-10-13 · Status: design approved in conversation, awaiting written-spec review
+Date: 2026-10-13 · Status: design approved 2026-10-13; built by [`../plans/2026-10-13-b2a-hardening.md`](../plans/2026-10-13-b2a-hardening.md)
 
 Parent: [B2 user management](2026-10-04-b2-user-management-design.md) (§5.7
 abuse controls, §6 failure modes) and its B2a rulings,

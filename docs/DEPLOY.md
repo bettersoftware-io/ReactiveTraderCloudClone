@@ -75,7 +75,7 @@ registered logins answer `503 unavailable`, `/health/accounts` answers
 before. Merging B2a changes nothing on the deployed server until you
 redeploy it.
 
-**Unproven until step 9 passes.** The server's Supabase adapter is tested
+**Unproven until step 9 passes** (it passed 2026-10-13). The server's Supabase adapter is tested
 against replayed copies of the responses Supabase documents; it has never
 run against a real project. Until the probe prints `PASS`, its agreement
 with Supabase's real answers is unproven. If a check prints `✗`, stop: the
@@ -83,10 +83,10 @@ adapter's mapping for that operation needs a fix (a follow-up PR against
 `packages/server/src/accounts/SupabaseAccountDirectory.ts`) before you go
 on.
 
-Two choices are still open and change no code: which **email sender and
-domain** to use (step 1), and whether to keep the free plan with the
-`accounts-keepalive.yml` workflow or pay for **Supabase Pro**, which removes
-pausing outright (step 14).
+Two choices changed no code and are made (2026-10-13): the **email sender and
+domain** (step 1), and the free plan with the `accounts-keepalive.yml`
+workflow rather than **Supabase Pro**, which would remove pausing outright
+(step 14). Steps 1-9 are done; steps 10-13 and 15 remain.
 
 The Supabase dashboard menu names in steps 2–8 are as of October 2026;
 Supabase moves them.
@@ -94,7 +94,11 @@ Supabase moves them.
 1. **Email sender.** Choose an SMTP provider and a sending domain you
    control, and add the provider's DNS records (SPF, DKIM) for it.
    *Done:* the provider shows the domain verified, and you have its SMTP
-   host, port, user and password. **This is required, not optional.**
+   host, port, user and password. *Done 2026-10-13:* Cloudflare Registrar +
+   DNS for `bettersoftware.io`; Resend (EU, free plan) through the project's
+   custom SMTP, sending domain `auth.bettersoftware.io` (DKIM, SPF, DMARC
+   p=none); `privacy@bettersoftware.io` forwards through Cloudflare Email
+   Routing. **This is required, not optional.**
    Supabase's built-in sender allows only a couple of emails an hour, and a
    sign-up Supabase throttles still answers "code sent" — so with the
    built-in sender a busy hour silently loses sign-ups, and nobody is told.
@@ -121,11 +125,13 @@ Supabase moves them.
    other length before it reaches Supabase, so a project left at the default
    6 would make every confirmation and every reset fail.
    Then set the project's email rate limit under Authentication → Rate
-   limits to **at least 60 an hour**: the server stops new sign-ups at 25
-   an hour (`EMAIL_SENDS_PER_HOUR_MAX`) and answers 503, which leaves the
-   rest for resends and password resets. Watch the sender's own dashboard
-   for volume in the first days: resends and resets are limited per
-   address, not overall (see [`STATUS.md`](STATUS.md)). A send over
+   limits to **at least 60 an hour**: the server holds three hourly fuses,
+   sign-ups at 25 (`RTC_SIGNUPS_PER_HOUR`, default
+   `EMAIL_SENDS_PER_HOUR_MAX`), resends at 15 and resets at 15, 55 an hour
+   at most, so the project never throttles a mail the server let through.
+   Raising `RTC_SIGNUPS_PER_HOUR` means raising the project's limit by the
+   same amount. Watch the sender's own dashboard for volume in the first
+   days. A send over
    Supabase's own limit is lost silently, as in step 1. *Done:* custom SMTP enabled, both templates
    saved, Email OTP length 8.
 6. **IP forwarding** (Authentication → Rate limits): enable IP address
@@ -146,7 +152,7 @@ Supabase moves them.
    chat. Do not hand out the project's publishable key either: with the URL
    it allows a direct `/auth/v1/signup` that skips the server's rules (such
    an account still needs approval and cannot read `profiles`).
-9. **Run the probe** from an up-to-date checkout of `main` (after `pnpm
+9. *Done 2026-10-13: PASS.* **Run the probe** from an up-to-date checkout of `main` (after `pnpm
    install`), with the secret typed at a prompt rather than on the command
    line:
 
@@ -182,7 +188,12 @@ Supabase moves them.
         fly secrets set --stage AUTH_SECRET="$(openssl rand -hex 32)" -a rtc-clone-server
 
     and re-set `AUTH_USERS` without any `@` if you ever put one in.
-11. **Set the account secrets on Fly:**
+11. **Set the account secrets on Fly.** First the origin allowlist:
+
+        fly secrets set --stage RTC_ALLOWED_ORIGINS=https://rtc-clone-react.vercel.app,https://rtc-clone-solid.vercel.app -a rtc-clone-server
+
+    It is required on a deployed server: browsers reach the POST routes only
+    from these origins, and the server refuses to start without it. Then:
 
         fly secrets set --stage SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" -a rtc-clone-server
 
@@ -216,7 +227,11 @@ Supabase moves them.
       empty `AUTH_SECRET`;
     - `RTC_DEV_ACCOUNTS=1` is set (Fly sets `FLY_APP_NAME` on every machine
       and the image sets `RTC_DEPLOYED=1`, and the dev directory is refused
-      when either is), or set together with `SUPABASE_URL`.
+      when either is), or set together with `SUPABASE_URL`;
+    - `RTC_ALLOWED_ORIGINS` is unset on a deployed machine, or an entry is
+      not `scheme://host[:port]`;
+    - `RTC_SIGNUPS_PER_HOUR` or `RTC_SIGNUPS_PER_DAY` is set and is not a
+      positive integer.
 13. **Make yourself the administrator.** Register, confirm and sign in with
     `curl` (B2b adds the screens; the password goes into your shell history
     unless the line starts with a space):
@@ -239,7 +254,7 @@ Supabase moves them.
     '{"username":"you@example.com","password":"…"}'` answers `200` with a
     token, and the deployed web client signs in with the email address typed
     as the username.
-14. **Keep-alive or Pro.** `accounts-keepalive.yml` already runs Monday and
+14. **Keep-alive or Pro.** *Decided 2026-10-13: keep-alive.* `accounts-keepalive.yml` already runs Monday and
     Thursday at 07:17 UTC: it reads `/health/accounts`, which is the activity
     that keeps a free-plan project from pausing, and fails on `down` (GitHub
     emails you) — passing quietly on `disabled`. Supabase does not guarantee
@@ -252,10 +267,9 @@ Supabase moves them.
     "${SUPABASE_SECRET_KEY:-unset}"` prints `unset`.
 
 **Before opening registration** to the public (`REGISTRATION_OPEN` unset or
-`true`): the items listed as blocking under B2a in
-[`STATUS.md`](STATUS.md) must be done first — cross-origin abuse, the
-response-time oracle, the purge of unconfirmed accounts, the live probe and
-the sign-up denial residuals.
+`true`): the blocking list is done (the hardening PR, 2026-10-13). What
+remains is the deploy itself (steps 10-13) and a look at Resend's dashboard
+in the first days.
 
 **Approving and blocking** (until the B2c Users panel): edit `approved` /
 `blocked` on the account's `profiles` row in the table editor. A change
