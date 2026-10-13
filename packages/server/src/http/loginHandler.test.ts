@@ -364,7 +364,14 @@ describe("authenticateLoginRequest — the floor on a failed account login", () 
   it("does not answer an unknown address or a wrong password before 300 ms, measured from the handler's start", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const clock = createClock(1_000);
-    const deps = createDeps(createAuth(clock), { now: clock });
+    const deps = createDeps(createAuth(clock), {
+      now: clock,
+      wait: (ms: number) => {
+        return new Promise<void>((resolve) => {
+          setTimeout(resolve, ms);
+        });
+      },
+    });
     let settled = false;
 
     const pending = authenticateLoginRequest(
@@ -534,7 +541,11 @@ function createDeps(
       }),
     accounts: overrides.accounts ?? createAccounts(),
     now: overrides.now ?? createClock(1_000),
-    wait: overrides.wait,
+    wait:
+      overrides.wait ??
+      ((): Promise<void> => {
+        return Promise.resolve();
+      }),
   };
 }
 
