@@ -11,6 +11,7 @@ import type { AuthService } from "../auth/AuthService.js";
 import type { BanList } from "../auth/banList.js";
 import type { RateLimiter } from "../auth/rateLimit.js";
 import type { VerifiedToken } from "../auth/token.js";
+import { LOGIN_FAILURE_FLOOR_MS } from "../config/limits.js";
 import { type HttpResult, jsonResult } from "./jsonResult.js";
 
 export interface LoginHandlerDeps {
@@ -19,6 +20,8 @@ export interface LoginHandlerDeps {
   readonly banList: BanList;
   readonly accounts: AccountService;
   readonly now: () => number;
+  /** How the floor waits; a test injects fake time. */
+  readonly wait?: (ms: number) => Promise<void>;
 }
 
 /**
@@ -176,6 +179,17 @@ async function answerAccountLogin(
     ip,
   );
 
+  if (decision.outcome !== "ok") {
+    // Supabase answers an unknown address at once and a wrong password after
+    // its hash, so without this the two are told apart from outside. A
+    // successful login is slower than the floor already and is not held.
+    const remaining = LOGIN_FAILURE_FLOOR_MS - (deps.now() - now);
+
+    if (remaining > 0) {
+      await (deps.wait ?? waitMs)(remaining);
+    }
+  }
+
   if (decision.outcome === "invalid") {
     deps.banList.strike(ip, "login-failed", now);
 
@@ -200,4 +214,10 @@ async function answerAccountLogin(
   };
 
   return jsonResult(200, response);
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }

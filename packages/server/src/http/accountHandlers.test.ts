@@ -4,7 +4,10 @@ import type {
   AccountDirectory,
   ConfirmOutcome,
 } from "#/accounts/AccountDirectory";
-import { createAccountService } from "#/accounts/AccountService";
+import {
+  createAccountService,
+  type SendFuses,
+} from "#/accounts/AccountService";
 import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
 import { DEV_ACCOUNT_SEEDS } from "#/accounts/devAccounts";
 import {
@@ -35,7 +38,7 @@ describe("registerAccount", () => {
 
     expect(result.status).toBe(202);
     expect(JSON.parse(result.body)).toEqual({ status: "code_sent" });
-    expect(result.headers?.["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers?.["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 
   it("answers identically for an address that already has an account", async () => {
@@ -501,7 +504,9 @@ describe("sending per address", () => {
   );
 
   it("a blown hourly fuse answers a registration 503 unavailable", async () => {
-    const deps = createDeps({ sendFuse: createRateLimiter(1, 60_000) });
+    const deps = createDeps({
+      sendFuses: createFuses({ signUp: createRateLimiter(1, 60_000) }),
+    });
 
     await registerAccount(createRegisterBody(), IP, deps);
     const result = await registerAccount(
@@ -655,6 +660,15 @@ async function requestResetFor(
   await deps.accounts.requestReset(email, IP);
 }
 
+function createFuses(overrides: Partial<SendFuses> = {}): SendFuses {
+  return {
+    signUp: createRateLimiter(100, 60_000),
+    resend: createRateLimiter(100, 60_000),
+    reset: createRateLimiter(100, 60_000),
+    ...overrides,
+  };
+}
+
 interface DepsOverrides {
   readonly directory?: AccountDirectory;
   readonly banList?: BanList;
@@ -662,7 +676,7 @@ interface DepsOverrides {
   readonly limits?: Partial<AccountRateLimits>;
   readonly codeEntryLimiter?: RateLimiter;
   readonly sendLimiter?: RateLimiter;
-  readonly sendFuse?: RateLimiter;
+  readonly sendFuses?: SendFuses;
   readonly registrationOpen?: boolean;
 }
 
@@ -683,7 +697,8 @@ function createDeps(overrides: DepsOverrides = {}): AccountHandlerDeps {
       codeEntryLimiter:
         overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
       sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
-      sendFuse: overrides.sendFuse ?? createRateLimiter(100, 60_000),
+      sendFuses: overrides.sendFuses ?? createFuses(),
+      log: () => {},
     }),
     banList:
       overrides.banList ??

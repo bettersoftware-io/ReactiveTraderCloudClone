@@ -4,13 +4,17 @@ import type { ConfirmEmailRequestDto, RegisterRequestDto } from "@rtc/shared";
 
 import type {
   AccountDirectory,
+  AccountRecord,
   ConfirmOutcome,
   RegistrationCount,
+  SendOutcome,
   SignUpOutcome,
 } from "#/accounts/AccountDirectory";
 import {
   type AccountService,
+  type AccountServiceOptions,
   createAccountService,
+  type SendFuses,
 } from "#/accounts/AccountService";
 import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
 import {
@@ -103,7 +107,8 @@ describe("AccountService.register", () => {
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
       sendLimiter: createRateLimiter(100, 60_000),
-      sendFuse: createRateLimiter(100, 60_000),
+      sendFuses: createFuses(),
+      log: ignoreLog,
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
@@ -111,7 +116,7 @@ describe("AccountService.register", () => {
     });
   });
 
-  it("maps the directory's own rejections to a named rule", async () => {
+  it("answers code_sent even when the directory later rejects the address (the send is detached)", async () => {
     const directory: AccountDirectory = {
       ...createDisabledAccountDirectory(),
       countRegistrationsSince: () => {
@@ -129,12 +134,12 @@ describe("AccountService.register", () => {
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
       sendLimiter: createRateLimiter(100, 60_000),
-      sendFuse: createRateLimiter(100, 60_000),
+      sendFuses: createFuses(),
+      log: ignoreLog,
     });
 
     expect(await service.register(createRegistration(), IP)).toEqual({
-      outcome: "invalid",
-      rule: "email",
+      outcome: "code_sent",
     });
   });
 });
@@ -214,7 +219,8 @@ describe("AccountService.login", () => {
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
       sendLimiter: createRateLimiter(100, 60_000),
-      sendFuse: createRateLimiter(100, 60_000),
+      sendFuses: createFuses(),
+      log: ignoreLog,
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -240,7 +246,8 @@ describe("AccountService.login", () => {
       maxRegistrationsPerDay: 10,
       codeEntryLimiter: createRateLimiter(100, 60_000),
       sendLimiter: createRateLimiter(100, 60_000),
-      sendFuse: createRateLimiter(100, 60_000),
+      sendFuses: createFuses(),
+      log: ignoreLog,
     });
 
     expect(await service.login("ann@desk.io", PASSWORD, IP)).toEqual({
@@ -587,9 +594,10 @@ describe("AccountService.register under concurrency", () => {
     });
     const service = createDoubleService(directory, 1);
 
-    await expect(service.register(createRegistration(), IP)).rejects.toThrow(
-      "boom",
-    );
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    await flushMicrotasks();
 
     expect(await service.register(createRegistration(), IP)).toEqual({
       outcome: "code_sent",
@@ -601,13 +609,14 @@ describe("AccountService.register under concurrency", () => {
 describe("AccountService normalization on every method", () => {
   it("resendCode and requestReset hand the directory a normalized address", async () => {
     const { service, directory } = createService();
+    await directory.signUp({ email: "ann@desk.io", displayName: "Ann" }, IP);
     const resend = vi.spyOn(directory, "resendCode");
     const reset = vi.spyOn(directory, "requestReset");
 
-    await service.resendCode(" TRADER@rtc.test ", IP);
+    await service.resendCode(" ANN@desk.io ", IP);
     await service.requestReset(" TRADER@rtc.test ", IP);
 
-    expect(resend).toHaveBeenCalledWith("trader@rtc.test", IP);
+    expect(resend).toHaveBeenCalledWith("ann@desk.io", IP);
     expect(reset).toHaveBeenCalledWith("trader@rtc.test", IP);
   });
 
@@ -629,7 +638,8 @@ describe("AccountService normalization on every method", () => {
 });
 
 describe("AccountService when one directory operation is unavailable", () => {
-  it("register is unavailable when only signUp is", async () => {
+  it("register answers code_sent when only signUp is unavailable, and logs the route and the word", async () => {
+    const lines: string[] = [];
     const directory = createDoubleDirectory({
       countRegistrationsSince: () => {
         return Promise.resolve({ outcome: "counted", count: 0 });
@@ -639,16 +649,36 @@ describe("AccountService when one directory operation is unavailable", () => {
       },
     });
 
-    expect(
-      await createDoubleService(directory, 10).register(
-        createRegistration(),
-        IP,
-      ),
-    ).toEqual({ outcome: "unavailable" });
+    const service = createAccountService({
+      ...createOptions(directory),
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/register outcome=unavailable",
+    ]);
   });
 
-  it("resendCode and requestReset are unavailable", async () => {
+  it("resendCode and requestReset answer code_sent when only the send is unavailable, and log each route and word", async () => {
+    const lines: string[] = [];
     const directory = createDoubleDirectory({
+      findByEmail: (email: string) => {
+        return Promise.resolve({
+          outcome: "found",
+          account: {
+            ...createUnconfirmedRecord(),
+            email,
+            status: email === "ann@desk.io" ? "unconfirmed" : "active",
+          },
+        });
+      },
       resendCode: () => {
         return Promise.resolve("unavailable");
       },
@@ -656,10 +686,139 @@ describe("AccountService when one directory operation is unavailable", () => {
         return Promise.resolve("unavailable");
       },
     });
-    const service = createDoubleService(directory, 10);
 
-    expect(await service.resendCode("ann@desk.io", IP)).toBe("unavailable");
-    expect(await service.requestReset("ann@desk.io", IP)).toBe("unavailable");
+    const service = createAccountService({
+      ...createOptions(directory),
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
+    expect(await service.requestReset("bob@desk.io", IP)).toBe("code_sent");
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/resend-code outcome=unavailable",
+      "[accounts] detached send route=/request-reset outcome=unavailable",
+    ]);
+  });
+
+  it("a send that throws is logged as threw and never rejects the request", async () => {
+    const lines: string[] = [];
+    const directory = createDoubleDirectory({
+      findByEmail: () => {
+        return Promise.resolve({
+          outcome: "found",
+          account: createUnconfirmedRecord(),
+        });
+      },
+      resendCode: () => {
+        return Promise.reject(new Error("boom ann@desk.io"));
+      },
+    });
+
+    const service = createAccountService({
+      ...createOptions(directory),
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/resend-code outcome=threw",
+    ]);
+  });
+
+  it("a log that throws inside a detached send surfaces nothing", async () => {
+    const unhandled: unknown[] = [];
+
+    function recordUnhandled(reason: unknown): void {
+      unhandled.push(reason);
+    }
+
+    process.on("unhandledRejection", recordUnhandled);
+
+    try {
+      const directory = createDoubleDirectory({
+        countRegistrationsSince: () => {
+          return Promise.resolve({ outcome: "counted", count: 0 });
+        },
+        signUp: () => {
+          return Promise.resolve("unavailable");
+        },
+      });
+
+      const log = vi.fn((): void => {
+        throw new Error("log sink down");
+      });
+
+      const service = createAccountService({
+        ...createOptions(directory),
+        log,
+      });
+
+      expect(await service.register(createRegistration(), IP)).toEqual({
+        outcome: "code_sent",
+      });
+      await flushMicrotasks();
+      await new Promise<void>((done) => {
+        setImmediate(done);
+      });
+
+      expect(log).toHaveBeenCalledTimes(1);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", recordUnhandled);
+    }
+  });
+
+  it("a signUp that throws synchronously is logged as threw and releases its in-flight slot", async () => {
+    const lines: string[] = [];
+    let calls = 0;
+    const signUp = vi.fn((): Promise<SignUpOutcome> => {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error("boom ann@desk.io");
+      }
+
+      return Promise.resolve("sent");
+    });
+
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp,
+    });
+
+    const service = createAccountService({
+      ...createOptions(directory),
+      maxRegistrationsPerDay: 1,
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/register outcome=threw",
+    ]);
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "bob@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "code_sent" });
+    expect(signUp).toHaveBeenCalledTimes(2);
   });
 
   it("login is unavailable when the password check is", async () => {
@@ -861,6 +1020,9 @@ describe("AccountService per-address send limit", () => {
     const { service } = createService({
       sendLimiter: {
         hit,
+        peek: (): boolean => {
+          return true;
+        },
         size: (): number => {
           return 0;
         },
@@ -871,6 +1033,9 @@ describe("AccountService per-address send limit", () => {
       registrationOpen: false,
       sendLimiter: {
         hit,
+        peek: (): boolean => {
+          return true;
+        },
         size: (): number => {
           return 0;
         },
@@ -918,7 +1083,7 @@ describe("AccountService per-address send limit", () => {
   it("the hourly fuse answers the 26th registration across different addresses unavailable, without a directory call", async () => {
     const { service, directory } = createService({
       maxRegistrationsPerDay: 100,
-      sendFuse: createRateLimiter(25, HOUR_MS),
+      sendFuses: createFuses({ signUp: createRateLimiter(25, HOUR_MS) }),
     });
     const signUp = vi.spyOn(directory, "signUp");
 
@@ -940,28 +1105,243 @@ describe("AccountService per-address send limit", () => {
     expect(signUp).toHaveBeenCalledTimes(25);
   });
 
-  it("a spent fuse leaves resends and reset requests reaching the directory, and only sign-up unavailable", async () => {
-    const { service, directory } = createService({
-      sendFuse: createRateLimiter(1, HOUR_MS),
+  const HOUR_MS = 60 * 60 * 1_000;
+});
+
+describe("AccountService — sends are looked up first and never awaited", () => {
+  it("register answers code_sent while the directory's sign-up is still pending, and settles the daily counters when it resolves (Review Focus 3)", async () => {
+    const deferred = createDeferred<SignUpOutcome>();
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp: () => {
+        return deferred.promise;
+      },
     });
+    const service = createDoubleService(directory, 1);
 
-    await service.register(createRegistration(), IP);
-    const resend = vi.spyOn(directory, "resendCode");
-    const reset = vi.spyOn(directory, "requestReset");
+    const answer = await service.register(createRegistration(), IP);
 
-    expect(await service.resendCode("bob@desk.io", IP)).toBe("code_sent");
-    expect(await service.requestReset("trader@rtc.test", IP)).toBe("code_sent");
-    expect(resend).toHaveBeenCalledTimes(1);
-    expect(reset).toHaveBeenCalledTimes(1);
+    expect(answer).toEqual({ outcome: "code_sent" });
+    // The in-flight sign-up counts against the cap until it settles.
+    expect(
+      await service.register(
+        { ...createRegistration(), email: "bob@desk.io" },
+        IP,
+      ),
+    ).toEqual({ outcome: "closed" });
+
+    deferred.resolve("sent");
+    await flushMicrotasks();
+    // Settled: nothing in flight any more. The double's count is a constant 0
+    // (a real store would now count the first sign-up), so the cap of 1 is
+    // open again — which proves the in-flight count was released.
     expect(
       await service.register(
         { ...createRegistration(), email: "cy@desk.io" },
         IP,
       ),
-    ).toEqual({ outcome: "unavailable" });
+    ).toEqual({ outcome: "code_sent" });
   });
 
-  const HOUR_MS = 60 * 60 * 1_000;
+  it("register logs a detached outcome that is not sent, without the address", async () => {
+    const lines: string[] = [];
+    const directory = createDoubleDirectory({
+      countRegistrationsSince: () => {
+        return Promise.resolve({ outcome: "counted", count: 0 });
+      },
+      signUp: () => {
+        return Promise.resolve("rejected-email");
+      },
+    });
+
+    const service = createAccountService({
+      ...createOptions(directory),
+      log: (line: string): void => {
+        lines.push(line);
+      },
+    });
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "code_sent",
+    });
+    await flushMicrotasks();
+
+    expect(lines).toEqual([
+      "[accounts] detached send route=/register outcome=rejected-email",
+    ]);
+    expect(lines.join()).not.toContain("ann@desk.io");
+  });
+
+  it("register charges the sign-up fuse after the count, so a closed registration spends nothing", async () => {
+    const fuse = createRateLimiter(1, 60_000);
+    const { service } = createService({
+      maxRegistrationsPerDay: 0,
+      sendFuses: createFuses({ signUp: fuse }),
+    });
+
+    expect(await service.register(createRegistration(), IP)).toEqual({
+      outcome: "closed",
+    });
+    expect(fuse.peek("all", 0)).toBe(true);
+  });
+
+  it.each([
+    ["resendCode", "trader@rtc.test", "active"],
+    ["resendCode", "nobody@desk.io", "missing"],
+    ["requestReset", "blocked@rtc.test", "blocked"],
+    ["requestReset", "nobody@desk.io", "missing"],
+  ] as const)(
+    "%s for %s (%s) answers code_sent and sends nothing",
+    async (path, email, _status) => {
+      const { service, directory } = createService();
+      const resend = vi.spyOn(directory, "resendCode");
+      const reset = vi.spyOn(directory, "requestReset");
+
+      expect(await service[path](email, IP)).toBe("code_sent");
+
+      expect(resend).not.toHaveBeenCalled();
+      expect(reset).not.toHaveBeenCalled();
+    },
+  );
+
+  it("requestReset sends for neither an unconfirmed nor a blocked account, and resendCode for no confirmed one", async () => {
+    const { service, directory } = createService();
+    await directory.signUp({ email: "ann@desk.io", displayName: "Ann" }, IP);
+    const resend = vi.spyOn(directory, "resendCode");
+    const reset = vi.spyOn(directory, "requestReset");
+
+    expect(await service.requestReset("ann@desk.io", IP)).toBe("code_sent");
+    expect(await service.resendCode("pending@rtc.test", IP)).toBe("code_sent");
+
+    expect(resend).not.toHaveBeenCalled();
+    expect(reset).not.toHaveBeenCalled();
+  });
+
+  it("resendCode sends for an unconfirmed account and requestReset for a pending or active one, each charging only its own fuse", async () => {
+    const fuses = createFuses({
+      resend: createRateLimiter(1, 60_000),
+      reset: createRateLimiter(2, 60_000),
+    });
+    const { service, directory } = createService({ sendFuses: fuses });
+    await directory.signUp({ email: "ann@desk.io", displayName: "Ann" }, IP);
+    const resend = vi.spyOn(directory, "resendCode");
+    const reset = vi.spyOn(directory, "requestReset");
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("code_sent");
+    expect(await service.requestReset("pending@rtc.test", IP)).toBe(
+      "code_sent",
+    );
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe("code_sent");
+    await flushMicrotasks();
+
+    expect(resend).toHaveBeenCalledWith("ann@desk.io", IP);
+    expect(reset).toHaveBeenCalledTimes(2);
+    expect(fuses.resend.peek("all", createClock()())).toBe(false);
+    expect(fuses.reset.peek("all", createClock()())).toBe(false);
+    expect(fuses.signUp.peek("all", createClock()())).toBe(true);
+  });
+
+  it("a fuse that goes spent between the peek and the hit answers unavailable and sends nothing", async () => {
+    const hit = vi.fn((): boolean => {
+      return false;
+    });
+
+    const { service, directory } = createService({
+      sendFuses: createFuses({
+        reset: {
+          hit,
+          peek: () => {
+            return true;
+          },
+        },
+      }),
+    });
+    const reset = vi.spyOn(directory, "requestReset");
+
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe(
+      "unavailable",
+    );
+    expect(reset).not.toHaveBeenCalled();
+  });
+
+  it("a spent fuse refuses a missing address too, so the refusal says nothing about the address (Review Focus 4)", async () => {
+    const resend = createRateLimiter(1, 60_000);
+    resend.hit("all", createClock()());
+    const { service, directory } = createService({
+      sendFuses: createFuses({ resend }),
+    });
+    const lookup = vi.spyOn(directory, "findByEmail");
+
+    expect(await service.resendCode("nobody@desk.io", IP)).toBe("unavailable");
+    expect(await service.resendCode("trader@rtc.test", IP)).toBe("unavailable");
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("a spent reset fuse refuses a missing address too, without a lookup", async () => {
+    const reset = createRateLimiter(1, 60_000);
+    reset.hit("all", createClock()());
+    const { service, directory } = createService({
+      sendFuses: createFuses({ reset }),
+    });
+    const lookup = vi.spyOn(directory, "findByEmail");
+
+    expect(await service.requestReset("nobody@desk.io", IP)).toBe(
+      "unavailable",
+    );
+    expect(await service.requestReset("trader@rtc.test", IP)).toBe(
+      "unavailable",
+    );
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("resendCode and requestReset answer unavailable when the lookup cannot be read", async () => {
+    const directory = createDoubleDirectory({
+      findByEmail: () => {
+        return Promise.resolve({ outcome: "unavailable" });
+      },
+    });
+    const service = createAccountService(createOptions(directory));
+
+    expect(await service.resendCode("ann@desk.io", IP)).toBe("unavailable");
+    expect(await service.requestReset("ann@desk.io", IP)).toBe("unavailable");
+  });
+
+  it("the send is not awaited: a resend answers while the directory's send is pending", async () => {
+    const deferred = createDeferred<SendOutcome>();
+    const directory = createDoubleDirectory({
+      findByEmail: () => {
+        return Promise.resolve({
+          outcome: "found",
+          account: createUnconfirmedRecord(),
+        });
+      },
+      resendCode: () => {
+        return deferred.promise;
+      },
+    });
+    const service = createAccountService(createOptions(directory));
+    vi.useFakeTimers();
+
+    try {
+      const answer = Promise.race([
+        service.resendCode("ann@desk.io", IP),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("awaited the send"));
+          }, 50);
+        }),
+      ]);
+      await vi.advanceTimersByTimeAsync(50);
+
+      expect(await answer).toBe("code_sent");
+    } finally {
+      vi.useRealTimers();
+      deferred.resolve("unavailable");
+      await flushMicrotasks();
+    }
+  });
 });
 
 interface ServiceOverrides {
@@ -970,7 +1350,8 @@ interface ServiceOverrides {
   readonly now?: () => number;
   readonly codeEntryLimiter?: RateLimiter;
   readonly sendLimiter?: RateLimiter;
-  readonly sendFuse?: RateLimiter;
+  readonly sendFuses?: SendFuses;
+  readonly log?: (line: string) => void;
 }
 
 interface ServiceFixture {
@@ -993,7 +1374,8 @@ function createService(overrides: ServiceOverrides = {}): ServiceFixture {
     codeEntryLimiter:
       overrides.codeEntryLimiter ?? createRateLimiter(100, 60_000),
     sendLimiter: overrides.sendLimiter ?? createRateLimiter(100, 60_000),
-    sendFuse: overrides.sendFuse ?? createRateLimiter(100, 60_000),
+    sendFuses: overrides.sendFuses ?? createFuses(),
+    log: overrides.log ?? ignoreLog,
   });
 
   return { service, directory };
@@ -1057,6 +1439,42 @@ function createDoubleDirectory(
   return { ...createDisabledAccountDirectory(), ...overrides };
 }
 
+function createFuses(overrides: Partial<SendFuses> = {}): SendFuses {
+  return {
+    signUp: createRateLimiter(100, 60_000),
+    resend: createRateLimiter(100, 60_000),
+    reset: createRateLimiter(100, 60_000),
+    ...overrides,
+  };
+}
+
+function createOptions(directory: AccountDirectory): AccountServiceOptions {
+  return {
+    directory,
+    now: createClock(),
+    registrationOpen: true,
+    maxRegistrationsPerDay: 10,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: ignoreLog,
+  };
+}
+
+function createUnconfirmedRecord(): AccountRecord {
+  return {
+    id: "00000000-0000-4000-8000-0000000000aa",
+    email: "ann@desk.io",
+    displayName: "Ann",
+    access: "user",
+    status: "unconfirmed",
+  };
+}
+
+function ignoreLog(): void {
+  // The default sink: a test that asserts a log line passes its own.
+}
+
 function createDoubleService(
   directory: AccountDirectory,
   maxRegistrationsPerDay: number,
@@ -1068,7 +1486,8 @@ function createDoubleService(
     maxRegistrationsPerDay,
     codeEntryLimiter: createRateLimiter(100, 60_000),
     sendLimiter: createRateLimiter(100, 60_000),
-    sendFuse: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: ignoreLog,
   });
 }
 

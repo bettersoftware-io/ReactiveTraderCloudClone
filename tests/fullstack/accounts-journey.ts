@@ -6,10 +6,14 @@
  * WebSocket, is refused on `/mcp` and resets its password. The unit tests
  * cover each rule; this proves they are wired to real routes.
  *
- * Every request carries its own `Fly-Client-IP`, so the journey shares no
- * rate-limit bucket or strike table with the other smoke checks. It sends at
- * most three emails per address (`SEND_PER_ADDRESS_MAX`): two registrations
- * for the new address, one reset request for the active seed.
+ * Every request carries the one `Fly-Client-IP` of this run (`JOURNEY_IP`),
+ * so the journey shares its per-IP buckets with nothing else, and stays under
+ * each of them: `/register` 2 of 5, `/resend-code` 1 of 5, `/request-reset`
+ * 1 of 5, `/confirm-email` 3 of 10, `/reset-password` 1 of 10. A request
+ * refused before its handler (a foreign or null origin, a text/plain body)
+ * charges nothing. Per address it stays at or under 2 of the 3 sends
+ * (`SEND_PER_ADDRESS_MAX`): two registrations for the new address, one reset
+ * request for the active seed, one resend for the origin witnesses' own.
  */
 import { createHmac } from "node:crypto";
 
@@ -35,6 +39,7 @@ const MISSING_ACCOUNT_ID = "00000000-0000-4000-8000-0000000000ff";
 
 interface Answer {
   readonly status: number;
+  readonly headers: Headers;
   readonly body: Record<string, unknown>;
 }
 
@@ -44,24 +49,35 @@ function assert(cond: unknown, message: string): asserts cond {
   }
 }
 
-async function post(
+async function postWith(
   httpBase: string,
   path: string,
   payload: Record<string, string>,
+  headers: Record<string, string>,
 ): Promise<Answer> {
   const response = await fetch(`${httpBase}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Fly-Client-IP": JOURNEY_IP,
+      ...headers,
     },
     body: JSON.stringify(payload),
   });
 
   return {
     status: response.status,
+    headers: response.headers,
     body: (await response.json()) as Record<string, unknown>,
   };
+}
+
+function post(
+  httpBase: string,
+  path: string,
+  payload: Record<string, string>,
+): Promise<Answer> {
+  return postWith(httpBase, path, payload, {});
 }
 
 /** Opens a socket with the token and resolves true once it is open. */
@@ -174,6 +190,66 @@ async function runRegistrationLeg(httpBase: string): Promise<void> {
   );
 }
 
+async function runOriginLeg(httpBase: string): Promise<void> {
+  const email = `origin-${Date.now()}@rtc.test`;
+  const foreign = await postWith(
+    httpBase,
+    "/register",
+    { email, displayName: "Journey" },
+    { Origin: "https://evil.example" },
+  );
+  assert(
+    foreign.status === 403 && foreign.body.error === "origin_not_allowed",
+    `foreign origin refused (got ${describe(foreign, "error")})`,
+  );
+  assert(
+    foreign.headers.get("access-control-allow-origin") === null,
+    "no CORS header for a foreign origin",
+  );
+
+  const nullOrigin = await postWith(
+    httpBase,
+    "/register",
+    { email, displayName: "Journey" },
+    { Origin: "null" },
+  );
+  assert(
+    nullOrigin.status === 403,
+    `null origin refused (got ${nullOrigin.status})`,
+  );
+
+  const local = await postWith(
+    httpBase,
+    "/resend-code",
+    { email },
+    { Origin: "http://localhost:5173" },
+  );
+  assert(
+    local.status === 202,
+    `localhost origin allowed (got ${local.status})`,
+  );
+  assert(
+    local.headers.get("access-control-allow-origin") ===
+      "http://localhost:5173",
+    "the allowed origin is echoed",
+  );
+  assert(
+    local.headers.get("vary") === "Origin",
+    "Vary: Origin on an allowed answer",
+  );
+
+  const plain = await fetch(`${httpBase}/resend-code`, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain", "Fly-Client-IP": JOURNEY_IP },
+    body: JSON.stringify({ email }),
+  });
+  assert(plain.status === 415, `text/plain refused (got ${plain.status})`);
+
+  console.log(
+    "  ✓ accounts: a foreign or null origin is refused, localhost is echoed, text/plain is 415; requests without Origin pass (every other call in this journey)",
+  );
+}
+
 async function postToMcp(httpBase: string, token: string): Promise<Answer> {
   const response = await fetch(`${httpBase}/mcp`, {
     method: "POST",
@@ -187,6 +263,7 @@ async function postToMcp(httpBase: string, token: string): Promise<Answer> {
 
   return {
     status: response.status,
+    headers: response.headers,
     body: (await response.json()) as Record<string, unknown>,
   };
 }
@@ -313,5 +390,6 @@ export async function runAccountsJourney(
   wsBase: string,
 ): Promise<void> {
   await runRegistrationLeg(httpBase);
+  await runOriginLeg(httpBase);
   await runSeededAccountsLeg(httpBase, wsBase);
 }

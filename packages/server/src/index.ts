@@ -15,13 +15,14 @@ import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
   isRegistrationOpen,
+  readSignupLevers,
   resolveAccountsMode,
 } from "./accounts/resolveAccountsMode.js";
+import { startUnconfirmedPurge } from "./accounts/unconfirmedPurge.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
-import { createRateLimiter } from "./auth/rateLimit.js";
 import {
   ACCOUNT_DIRECTORY_TIMEOUT_MS,
   ACCOUNT_MAX_BODY_BYTES,
@@ -36,12 +37,13 @@ import {
   INBOUND_DROPS_BEFORE_CLOSE,
   INBOUND_REFILL_PER_SECOND,
   LOGIN_MAX_BODY_BYTES,
-  LOGIN_RATE_LIMIT_MAX,
-  LOGIN_RATE_LIMIT_WINDOW_MS,
   MAX_CONNECTIONS_PER_IP,
   MAX_CONNECTIONS_TOTAL,
-  MAX_REGISTRATIONS_PER_DAY,
   MCP_MAX_BODY_BYTES,
+  PURGE_BATCH,
+  PURGE_FIRST_RUN_DELAY_MS,
+  PURGE_INTERVAL_MS,
+  PURGE_UNCONFIRMED_AFTER_MS,
   WS_MAX_PAYLOAD_BYTES,
 } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
@@ -56,7 +58,8 @@ import {
 import {
   createAccountLimits,
   createCodeEntryLimiter,
-  createSendFuse,
+  createLoginLimiter,
+  createSendFuses,
   createSendLimiter,
 } from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
@@ -65,6 +68,7 @@ import {
   authenticateLoginRequest,
   type UpgradeRejection,
 } from "./http/loginHandler.js";
+import { resolveOriginPolicy } from "./http/originPolicy.js";
 import { createPostRouter, type PostRoute } from "./http/postRouter.js";
 import { declaredLengthExceeds } from "./http/readBody.js";
 import { settleUpgrade } from "./http/settleUpgrade.js";
@@ -149,10 +153,7 @@ const auth = new AuthService({
   credentials: parseAuthUsers(process.env.AUTH_USERS),
 });
 
-const loginRateLimit = createRateLimiter(
-  LOGIN_RATE_LIMIT_MAX,
-  LOGIN_RATE_LIMIT_WINDOW_MS,
-);
+const loginRateLimit = createLoginLimiter();
 
 // §9.2 — the in-app expiring ban table, consulted first at both edges.
 const banList = createBanList({
@@ -184,6 +185,9 @@ function readClock(): number {
 // AUTH_SECRET in either account mode, and on the dev directory being asked
 // for on a deployed machine — all before the server listens.
 const accountsMode = resolveAccountsMode(process.env);
+// The sign-up levers (spec §3.4) are read here too: a malformed value stops
+// the server at startup, before it listens.
+const signupLevers = readSignupLevers(process.env);
 // ONE directory instance: the service, the upgrade's status cache and the
 // health probe all read the same store.
 const accountDirectory = createAccountDirectory(accountsMode, {
@@ -195,10 +199,13 @@ const accounts = createAccountService({
   directory: accountDirectory,
   now: readClock,
   registrationOpen: isRegistrationOpen(process.env),
-  maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
+  maxRegistrationsPerDay: signupLevers.perDay,
   codeEntryLimiter: createCodeEntryLimiter(),
   sendLimiter: createSendLimiter(),
-  sendFuse: createSendFuse(),
+  sendFuses: createSendFuses(signupLevers.perHour),
+  log: (line: string): void => {
+    console.log(line);
+  },
 });
 
 const accountStatus = createAccountStatusCache({
@@ -213,6 +220,22 @@ const accountsHealth = createAccountsHealth({
   cacheMs: ACCOUNTS_HEALTH_CACHE_MS,
   now: readClock,
 });
+
+// Spec §3.3: never-confirmed accounts are deleted after 48 h, hourly, one
+// batch per run. Not started with accounts disabled: there is no store.
+if (accountsMode.kind !== "disabled") {
+  startUnconfirmedPurge({
+    directory: accountDirectory,
+    now: readClock,
+    retentionMs: PURGE_UNCONFIRMED_AFTER_MS,
+    intervalMs: PURGE_INTERVAL_MS,
+    firstRunDelayMs: PURGE_FIRST_RUN_DELAY_MS,
+    batch: PURGE_BATCH,
+    log: (line: string): void => {
+      console.log(line);
+    },
+  });
+}
 
 // Each endpoint owns its limiter (`createAccountLimits`); the one shared
 // instance is the per-ADDRESS code-entry budget inside the account service,
@@ -308,8 +331,12 @@ const POST_ROUTES: ReadonlyMap<string, PostRoute> = new Map<string, PostRoute>([
   ],
 ]);
 
-// Preflight, the ban check before the body, the S2 body cap and the error
-// mapping — once, for every route above; the IP is always `clientIp`'s (S3).
+// Throws on a deployed machine (FLY_APP_NAME / RTC_DEPLOYED) without
+// RTC_ALLOWED_ORIGINS: a startup refusal, like the account modes.
+const originPolicy = resolveOriginPolicy(process.env);
+
+// Origin and content-type rules, preflight, the ban check before the body,
+// the S2 body cap and the error mapping — once, for every route above; the IP is always `clientIp`'s (S3).
 const servePostRoute = createPostRouter({
   routes: POST_ROUTES,
   banList,
@@ -318,6 +345,7 @@ const servePostRoute = createPostRouter({
   log: (line: string): void => {
     console.log(line);
   },
+  origins: originPolicy,
 });
 
 // ── HTTP Server ─────────────────────────────────────────────────
@@ -326,14 +354,16 @@ const servePostRoute = createPostRouter({
 // /health (Fly probe, token-free GET), /health/accounts (the account store's
 // reachability as one word, token-free GET), the six POST routes — /login
 // (exchanges credentials for the session token that gates the WS upgrade)
-// and the five account routes — and /mcp. All are permissively CORS'd; the
-// POST routes answer their OPTIONS preflight.
+// and the five account routes — and /mcp. The GET routes and /mcp are
+// permissively CORS'd; the POST routes answer only an allowed origin
+// (`originPolicy`) and write their own CORS headers.
 const httpServer = createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
   if (req.url === "/health" && req.method === "GET") {
     res.setHeader("Access-Control-Allow-Methods", "GET");
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json",
+    });
     res.end(JSON.stringify({ ok: true }));
     return;
   }
@@ -344,11 +374,17 @@ const httpServer = createServer((req, res) => {
     accountsHealth
       .read()
       .then((directory) => {
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        });
         res.end(JSON.stringify({ ok: true, directory }));
       })
       .catch(() => {
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        });
         res.end(JSON.stringify({ ok: true, directory: "down" }));
       });
     return;
@@ -359,6 +395,8 @@ const httpServer = createServer((req, res) => {
   }
 
   if (req.url === "/mcp" || req.url?.startsWith("/mcp?") === true) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     // The MCP transport reads its own body; refuse an over-declared one early.
     if (declaredLengthExceeds(req.headers, MCP_MAX_BODY_BYTES)) {
       res.writeHead(413, { "Content-Type": "application/json" });

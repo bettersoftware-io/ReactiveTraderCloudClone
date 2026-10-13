@@ -1,4 +1,8 @@
-import { AUTH_SECRET_MIN_LENGTH } from "../config/limits.js";
+import {
+  AUTH_SECRET_MIN_LENGTH,
+  EMAIL_SENDS_PER_HOUR_MAX,
+  MAX_REGISTRATIONS_PER_DAY,
+} from "../config/limits.js";
 import type { AccountDirectory } from "./AccountDirectory.js";
 import { createDisabledAccountDirectory } from "./DisabledAccountDirectory.js";
 import { DEV_ACCOUNT_SEEDS } from "./devAccounts.js";
@@ -128,4 +132,49 @@ export function isRegistrationOpen(env: NodeJS.ProcessEnv): boolean {
   }
 
   throw new Error('REGISTRATION_OPEN must be "true" or "false"');
+}
+
+export interface SignupLevers {
+  readonly perHour: number;
+  readonly perDay: number;
+}
+
+/**
+ * The two levers that pause sign-up during abuse (spec §3.4), read like
+ * `REGISTRATION_OPEN`: a set value must be a positive integer, or the server
+ * does not start; the refusal names the setting, never the value.
+ */
+export function readSignupLevers(env: NodeJS.ProcessEnv): SignupLevers {
+  return {
+    perHour: readPositiveInteger(
+      env,
+      "RTC_SIGNUPS_PER_HOUR",
+      EMAIL_SENDS_PER_HOUR_MAX,
+    ),
+    perDay: readPositiveInteger(
+      env,
+      "RTC_SIGNUPS_PER_DAY",
+      MAX_REGISTRATIONS_PER_DAY,
+    ),
+  };
+}
+
+function readPositiveInteger(
+  env: NodeJS.ProcessEnv,
+  name: string,
+  fallback: number,
+): number {
+  const raw = env[name];
+
+  if (raw === undefined) {
+    return fallback;
+  }
+
+  const value = raw.trim();
+
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return Number(value);
 }

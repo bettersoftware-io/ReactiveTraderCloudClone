@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createAccountDirectory,
   isRegistrationOpen,
+  readSignupLevers,
   resolveAccountsMode,
 } from "#/accounts/resolveAccountsMode";
 
@@ -244,6 +245,36 @@ describe("isRegistrationOpen", () => {
         message: expect.not.stringContaining("nope-value"),
       }),
     );
+  });
+});
+
+describe("readSignupLevers", () => {
+  it("defaults to the constants", () => {
+    expect(readSignupLevers({})).toEqual({ perHour: 25, perDay: 200 });
+  });
+
+  it("reads positive integers, trimmed", () => {
+    expect(
+      readSignupLevers({
+        RTC_SIGNUPS_PER_HOUR: " 10 ",
+        RTC_SIGNUPS_PER_DAY: "90",
+      }),
+    ).toEqual({ perHour: 10, perDay: 90 });
+  });
+
+  it.each(["0", "-1", "1.5", "ten", "", "25 x"])(
+    "refuses %j for the hour, naming the setting and not the value",
+    (value) => {
+      expect(() => {
+        return readSignupLevers({ RTC_SIGNUPS_PER_HOUR: value });
+      }).toThrow("RTC_SIGNUPS_PER_HOUR must be a positive integer");
+    },
+  );
+
+  it("refuses a bad day the same way", () => {
+    expect(() => {
+      return readSignupLevers({ RTC_SIGNUPS_PER_DAY: "many" });
+    }).toThrow("RTC_SIGNUPS_PER_DAY must be a positive integer");
   });
 });
 

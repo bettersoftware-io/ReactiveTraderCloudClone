@@ -417,6 +417,10 @@ strike of weight 1 (`code-failed`).
   server logs the IP and the reason when it bans an address, and the route,
   IP and error name when a handler fails with a 500. No account id is logged
   either.
+- **Amended 2026-10-13.** The fuses, the purge of never-confirmed accounts,
+  the origin rule and the two-tier per-IP limits changed after this section
+  was written; [the hardening spec](2026-10-13-b2a-hardening-design.md) is
+  authoritative for them.
 
 ### 5.8 Dev, e2e and the keep-alive
 
@@ -500,9 +504,9 @@ blocking registration under B2a in [`docs/STATUS.md`](../../STATUS.md):*
 
 | Residual | What it is |
 |---|---|
-| Response-time oracle | In Supabase mode a known address answers more slowly than an unknown one at `/request-reset`, `/resend-code`, `/register` and a failed `/login`, so timing can reveal who is registered (the in-memory directory hides this with a dummy hash). To be measured with the probe's printed durations, then closed with a response-time floor or detached sends. |
+| Response-time oracle | *Resolved 2026-10-13 by [the hardening spec](2026-10-13-b2a-hardening-design.md).* In Supabase mode a known address answers more slowly than an unknown one at `/request-reset`, `/resend-code`, `/register` and a failed `/login`, so timing can reveal who is registered (the in-memory directory hides this with a dummy hash). To be measured with the probe's printed durations, then closed with a response-time floor or detached sends. |
 | A reset does not end sessions | A password reset leaves the account's session tokens valid until they expire (up to eight hours) and an open socket open indefinitely, so a reset does not evict an attacker who already signed in. B2c closes the account's sessions on a reset, a block and a delete (§8). |
-| Resend and reset mail is bounded per address only | The hourly email fuse covers sign-up only, so junk accounts — up to 25 new an hour, 200 a day, never purged — can each draw resends and resets (three an hour per address) and spend the project's email allowance, after which legitimate mail is lost silently. The fix (a status lookup by address so only real sends are attempted and counted, a fuse per path, and the purge of never-confirmed accounts) is one piece of work. |
+| Resend and reset mail is bounded per address only | *Resolved 2026-10-13 by [the hardening spec](2026-10-13-b2a-hardening-design.md).* The hourly email fuse covers sign-up only, so junk accounts — up to 25 new an hour, 200 a day, never purged — can each draw resends and resets (three an hour per address) and spend the project's email allowance, after which legitimate mail is lost silently. The fix (a status lookup by address so only real sends are attempted and counted, a fuse per path, and the purge of never-confirmed accounts) is one piece of work. |
 
 ## 7. Client (stage B2b)
 

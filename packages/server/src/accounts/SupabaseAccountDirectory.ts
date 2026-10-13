@@ -8,6 +8,7 @@ import {
   type ConfirmOutcome,
   deriveAccountStatus,
   type PasswordCheck,
+  type PurgeOutcome,
   type RegistrationCount,
   type ResetOutcome,
   type SendOutcome,
@@ -50,7 +51,7 @@ type Reply =
   | { readonly kind: "unreachable" };
 
 interface Call {
-  readonly method: "GET" | "POST" | "PUT";
+  readonly method: "GET" | "POST" | "PUT" | "DELETE";
   readonly path: string;
   readonly body?: unknown;
   /** Replaces the secret key as the bearer (a user's own session). */
@@ -402,19 +403,72 @@ export function createSupabaseAccountDirectory(
         path: `/rest/v1/profiles?id=eq.${accountId}&select=${PROFILE_COLUMNS}`,
       });
 
-      if (reply.kind !== "ok" || !Array.isArray(reply.body)) {
+      return lookupOf(reply);
+    },
+
+    async findByEmail(email: string): Promise<AccountLookup> {
+      // At the top level PostgREST parses the operator first and takes the
+      // rest of the parameter as the value, so a local part's `+`, `.` or `,`
+      // needs no quoting — and must not be quoted: only logic trees and
+      // `in.(…)` lists strip double quotes, so a quoted value here would be
+      // compared with its quotes and match nothing. Percent-encoding is the
+      // only transformation; the validator bounds the character set.
+      const reply = await call({
+        method: "GET",
+        path: `/rest/v1/profiles?email=eq.${encodeURIComponent(email)}&select=${PROFILE_COLUMNS}`,
+      });
+
+      return lookupOf(reply);
+    },
+
+    async purgeUnconfirmedBefore(
+      cutoffMs: number,
+      limit: number,
+    ): Promise<PurgeOutcome> {
+      if (
+        !Number.isFinite(cutoffMs) ||
+        !Number.isInteger(limit) ||
+        limit <= 0
+      ) {
         return { outcome: "unavailable" };
       }
 
-      if (reply.body.length === 0) {
-        return { outcome: "missing" };
+      const cutoff = encodeURIComponent(new Date(cutoffMs).toISOString());
+      const listed = await call({
+        method: "GET",
+        path: `/rest/v1/profiles?select=id&email_confirmed_at=is.null&created_at=lt.${cutoff}&order=created_at.asc&limit=${limit}`,
+      });
+
+      if (listed.kind !== "ok" || !Array.isArray(listed.body)) {
+        return { outcome: "unavailable" };
       }
 
-      const account = toAccountRecord(reply.body[0]);
+      let count = 0;
 
-      return account === null
-        ? { outcome: "unavailable" }
-        : { outcome: "found", account };
+      for (const row of listed.body) {
+        const id = readString(row, "id");
+
+        if (id === null || !UUID_SHAPE.test(id)) {
+          continue;
+        }
+
+        // The cascade removes the profile; a 404 is an account already gone.
+        const deleted = await call({
+          method: "DELETE",
+          path: `/auth/v1/admin/users/${id}`,
+        });
+
+        if (
+          deleted.kind === "ok" ||
+          (deleted.kind === "refused" && deleted.status === 404)
+        ) {
+          count += 1;
+        } else {
+          break;
+        }
+      }
+
+      return { outcome: "purged", count };
     },
 
     async countRegistrationsSince(sinceMs: number): Promise<RegistrationCount> {
@@ -466,6 +520,23 @@ function createUnknowablePassword(): string {
  * the address has an account. Only an unreachable store is `unavailable`. */
 function sendOutcomeOf(reply: Reply): SendOutcome {
   return reply.kind === "unreachable" ? "unavailable" : "sent";
+}
+
+/** A profile read as a lookup: the first row, mapped. */
+function lookupOf(reply: Reply): AccountLookup {
+  if (reply.kind !== "ok" || !Array.isArray(reply.body)) {
+    return { outcome: "unavailable" };
+  }
+
+  if (reply.body.length === 0) {
+    return { outcome: "missing" };
+  }
+
+  const account = toAccountRecord(reply.body[0]);
+
+  return account === null
+    ? { outcome: "unavailable" }
+    : { outcome: "found", account };
 }
 
 async function readJson(response: Response): Promise<unknown> {

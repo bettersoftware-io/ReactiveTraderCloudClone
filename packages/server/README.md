@@ -64,7 +64,16 @@ WebSocket upgrade then requires that token as `?access=<token>`.
 | `SUPABASE_SECRET_KEY` | with `SUPABASE_URL` (Fly secret) | A Supabase **secret** key (`sb_secret_…`); bypasses row-level security, server-only |
 | `RTC_DEV_ACCOUNTS` | no; `1` in the `dev:ws` / `dev:*:fs` scripts | `1` turns on the in-memory dev account directory; refused when `FLY_APP_NAME` is set |
 | `REGISTRATION_OPEN` | no (unset = open) | `true` or `false`; `false` makes `/register` answer `403 registration_closed`; any other value stops the server |
+| `RTC_ALLOWED_ORIGINS` | yes on a deployed server (Fly secret); unset on a dev machine = localhost on any port | Comma-separated `scheme://host[:port]` origins; the server refuses to start without it when deployed, or with a malformed entry |
+| `RTC_SIGNUPS_PER_HOUR` | no (default 25) | Positive integer: the hourly sign-up fuse; raise the Supabase project's email limit with it; anything else stops the server |
+| `RTC_SIGNUPS_PER_DAY` | no (default 200) | Positive integer: the daily cap on new profiles; anything else stops the server |
 | `PROBE_EMAIL_DOMAIN` | for `accounts:probe` only | Where the live probe's one confirmation email goes |
+
+The POST routes (`/login` and the five account routes) accept a browser only
+from an origin in `RTC_ALLOWED_ORIGINS` and only with `Content-Type:
+application/json` (`403 origin_not_allowed` / `415 unsupported_media_type`,
+no strike); a request with no `Origin` header, such as the mobile client's,
+passes.
 
 With neither `SUPABASE_URL` nor `RTC_DEV_ACCOUNTS=1` the account store is
 **disabled**: registered logins answer `503` and the roster is untouched. The
@@ -132,7 +141,11 @@ Every per-caller bound lives in `src/config/limits.ts` (hardening spec §2.2 /
 | `/resend-code`, `/request-reset` per IP, each | `SEND_CODE_RATE_LIMIT_MAX` / `_WINDOW_MS` | 5 per hour |
 | `/confirm-email`, `/reset-password` per IP, each | `CODE_ENTRY_RATE_LIMIT_MAX` / `_WINDOW_MS` | 10 per 10 min |
 | Code entry per address (confirm + reset share it); addresses held | `CODE_ENTRY_PER_ADDRESS_MAX` / `_WINDOW_MS`; `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 5 per 15 min; 50 000 |
-| Registrations per day, whole service | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| Registrations per day, whole service (default of `RTC_SIGNUPS_PER_DAY`) | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| Hourly fuses, whole server: sign-ups (default of `RTC_SIGNUPS_PER_HOUR`) / resends / resets; sum 55, under the project's 60 | `EMAIL_SENDS_PER_HOUR_MAX` / `RESENDS_PER_HOUR_MAX` / `RESETS_PER_HOUR_MAX` | 25 / 15 / 15 |
+| A failed account login is held to at least | `LOGIN_FAILURE_FLOOR_MS` | 300 ms |
+| Never-confirmed accounts deleted after; first purge run; interval; batch | `PURGE_UNCONFIRMED_AFTER_MS` / `PURGE_FIRST_RUN_DELAY_MS` / `PURGE_INTERVAL_MS` / `PURGE_BATCH` | 48 h; 1 min; 1 h; 100 |
+| IPv6 /48 budget as a multiple of a caller's own; preflight cache | `WIDER_NETWORK_BUDGET_MULTIPLIER`; `CORS_MAX_AGE_SECONDS` | 4; 600 s |
 | One account-store call | `ACCOUNT_DIRECTORY_TIMEOUT_MS` | 5 s |
 | Upgrade status cache: lifetime; size | `ACCOUNT_STATUS_CACHE_TTL_MS` / `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` | 60 s; 1 000 |
 | Shortest `AUTH_SECRET` with accounts on | `AUTH_SECRET_MIN_LENGTH` | 32 |

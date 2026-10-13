@@ -8,17 +8,34 @@ import {
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
+  RESENDS_PER_HOUR_MAX,
+  RESETS_PER_HOUR_MAX,
   SEND_CODE_RATE_LIMIT_MAX,
   SEND_CODE_RATE_LIMIT_WINDOW_MS,
+  SEND_FUSE_WINDOW_MS,
 } from "#/config/limits";
 import {
   createAccountLimits,
   createCodeEntryLimiter,
-  createSendFuse,
+  createSendFuses,
   createSendLimiter,
 } from "#/http/accountLimits";
 
 describe("createAccountLimits", () => {
+  it("bounds a /48 at four /64s' worth of /register", () => {
+    const { register } = createAccountLimits();
+    const perKey = REGISTER_RATE_LIMIT_MAX;
+
+    for (let network = 1; network <= 4; network += 1) {
+      for (let i = 0; i < perKey; i += 1) {
+        expect(register.hit(`2001:db8:1:${network}::`, 0)).toBe(true);
+      }
+    }
+
+    expect(register.hit("2001:db8:1:5::", 0)).toBe(false);
+    expect(register.hit("2001:db8:2:1::", 0)).toBe(true);
+  });
+
   it("gives every endpoint its own limiter instance", () => {
     const limits = createAccountLimits();
     const instances = Object.values(limits);
@@ -113,13 +130,28 @@ describe("createSendLimiter", () => {
   });
 });
 
-describe("createSendFuse", () => {
-  it("allows exactly 25 sends per hour across the whole server", () => {
-    expectBudget(createSendFuse(), 25, 60 * 60 * 1_000);
+describe("createSendFuses", () => {
+  it("sizes the three fuses 25, 15 and 15 per hour when given 25", () => {
+    const fuses = createSendFuses(25);
+
+    expectBudget(fuses.signUp, 25, SEND_FUSE_WINDOW_MS);
+    expectBudget(fuses.resend, RESENDS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS);
+    expectBudget(fuses.reset, RESETS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS);
+    expect([RESENDS_PER_HOUR_MAX, RESETS_PER_HOUR_MAX]).toEqual([15, 15]);
+  });
+
+  it("makes three independent instances, each fresh per call", () => {
+    const fuses = createSendFuses(25);
+
+    exhaust(fuses.signUp, 25);
+
+    expect(fuses.resend.peek("1.2.3.4", 0)).toBe(true);
+    expect(fuses.reset.peek("1.2.3.4", 0)).toBe(true);
+    expect(createSendFuses(25).signUp).not.toBe(fuses.signUp);
   });
 });
 
-function exhaust(limiter: RateLimiter, max: number): void {
+function exhaust(limiter: Pick<RateLimiter, "hit">, max: number): void {
   for (let hit = 0; hit < max; hit += 1) {
     limiter.hit("1.2.3.4", 0);
   }
@@ -128,7 +160,7 @@ function exhaust(limiter: RateLimiter, max: number): void {
 /** `max` hits pass inside the window, the next is refused, the last
  * millisecond of the window still refuses, and the window's end resets it. */
 function expectBudget(
-  limiter: RateLimiter,
+  limiter: Pick<RateLimiter, "hit">,
   max: number,
   windowMs: number,
 ): void {

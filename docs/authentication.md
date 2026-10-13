@@ -529,12 +529,33 @@ at approval, and a rename comes with the B2c Users panel.
 
 ### 7.3 Endpoints
 
-All six are `POST` with a JSON body, CORS-open, capped at
+All six are `POST` with a JSON body, capped at
 `ACCOUNT_MAX_BODY_BYTES` / `LOGIN_MAX_BODY_BYTES` (4 KiB, bytes received),
-and checked in this order: the ban list, the endpoint's own per-IP limit,
-the JSON and its shape. A success body is `{"status": …}`; a failure body is
+and checked in this order: the origin and content-type rules (below), the
+ban list, the endpoint's own per-IP limit, the JSON and its shape. A success body is `{"status": …}`; a failure body is
 `{"error": …, "rule"?: …}` (`AccountFlowResponseDto` / `AccountErrorDto` in
 `packages/shared/src/protocol/auth.ts`).
+
+**Browsers.** The router (`http/postRouter.ts`) accepts a browser only from
+an origin listed in `RTC_ALLOWED_ORIGINS` (comma-separated
+`scheme://host[:port]`; unset on a dev machine means `http://localhost` and
+`http://127.0.0.1` on any port; unset on a deployed server the process does
+not start). A `POST` whose `Origin` is `null` or not allowed is answered
+`403 origin_not_allowed`, and one whose `Content-Type` is not
+`application/json` is answered `415 unsupported_media_type` (a parameter
+such as `; charset=utf-8` is fine, and the content-type rule is what stops a
+cross-site form post, which needs no preflight). Both are decided before
+the body is read and neither is a ban strike: the sender is a victim's
+browser. A request with **no** `Origin` header is not a browser's and
+passes: the mobile client, `curl`, the probe. The preflight (`OPTIONS`)
+answers `204` for an allowed origin and `403` otherwise, with
+`Access-Control-Max-Age` of `CORS_MAX_AGE_SECONDS`; every response to an
+allowed origin carries `Access-Control-Allow-Origin: <that origin>` and
+`Vary: Origin`, and a foreign page reads none. The GET routes (`/health`,
+`/health/accounts`) and `/mcp` keep `*`. Why: a foreign page could
+otherwise make its visitors' browsers register, resend and guess codes from
+their own addresses, inside every per-IP budget
+([hardening spec §3.1](superpowers/specs/2026-10-13-b2a-hardening-design.md)).
 
 **The caller's IP** is the platform header (`Fly-Client-IP`, or
 `RTC_TRUSTED_IP_HEADER`), else the socket address, collapsed by
@@ -542,11 +563,17 @@ the JSON and its shape. A success body is `{"status": …}`; a failure body is
 bound reads it: an IPv4 address is itself, an IPv4-mapped IPv6 address
 (`::ffff:a.b.c.d`) is the IPv4 address, and any other IPv6 address is its
 /64 network, spelled as its first four hextets plus `::`
-(`2001:db8:1:2:aaaa:bbbb:cccc:dddd` → `2001:db8:1:2::`). One subscriber is
+(`2001:db8:1:2:aaaa:bbbb:cccc:dddd` → `2001:db8:1:2::`). Each per-IP rate
+limiter also charges an IPv6 caller's /48 (`widerNetworkKeyOf`) against a
+budget four times as large, so a tunnel-broker /48 holding 65,536 /64s
+cannot multiply every budget. One subscriber is
 routed a whole /64, so keying on the full address would give anyone
 unlimited keys. Every per-IP bound — the rate limiters, the ban list, the
-connection caps — uses that key, and it is also what the Supabase adapter
-forwards as `Sb-Forwarded-For`, so Supabase buckets a /64 the same way.
+connection caps — uses that key. The /48 tier applies only to the per-IP
+rate limiters of the account routes and `/login`; the ban list and the
+connection caps stay on the /64 key alone. The /64 key is also what the
+Supabase adapter forwards as `Sb-Forwarded-For`, so Supabase buckets a /64
+the same way.
 
 | Endpoint | Body | Success | Specific failures |
 |---|---|---|---|
@@ -567,7 +594,8 @@ checked before the store is asked and spend nothing. Both endpoints check
 the address and the code's shape first (`invalid_code`), then the
 password rule.
 
-Every endpoint can also answer `400 malformed_json`, `400 invalid_request`
+Every endpoint can also answer `403 origin_not_allowed`,
+`415 unsupported_media_type`, `400 malformed_json`, `400 invalid_request`
 without a `rule` (wrong shape), `413 body_too_large`, `429 banned` with
 `Retry-After`, `429 rate_limited` (its per-IP limit; a ban strike) and
 `500 internal_error`.
@@ -575,7 +603,17 @@ without a `rule` (wrong shape), `413 body_too_large`, `429 banned` with
 `/register`, `/resend-code` and `/request-reset` answer the same way whether
 or not the address has an account, and the Supabase adapter reads every
 refusal of a resend or a reset request — a per-address limit, say — as
-"sent", so none of them reveals who is registered.
+"sent", so none of them reveals who is registered. They also answer
+**before the mail is sent**: `/register` starts the sign-up without
+awaiting it, and `/resend-code` and `/request-reset` look the address up
+first (`findByEmail`) and start the send, again without awaiting it, only
+where it will land (an unconfirmed account for a resend; a pending or
+active one for a reset). A send whose outcome is anything but `sent` is one
+log line with the route and the outcome word, never the address, so the
+answer's timing says nothing about the address. A failed account login is
+held to `LOGIN_FAILURE_FLOOR_MS` from the start of the handler, so an
+unknown address and a wrong password take the same time; a success and a
+roster login are not held.
 
 **How the store's failures read.** Every store call is bounded by
 `ACCOUNT_DIRECTORY_TIMEOUT_MS`. A timeout, a network failure or any 5xx
@@ -686,8 +724,15 @@ each endpoint has its own limiter instance.
 | Addresses the per-address limiter holds | `CODE_ENTRY_PER_ADDRESS_MAX_KEYS` | 50 000 |
 | Emails per address, one budget shared by `/register`, `/resend-code` and `/request-reset` | `SEND_PER_ADDRESS_MAX` / `SEND_PER_ADDRESS_WINDOW_MS` | 3 per hour |
 | Addresses the per-address send limiter holds | `SEND_PER_ADDRESS_MAX_KEYS` | 50 000 |
-| Sign-ups per hour, whole server (a fuse on `/register` only) | `EMAIL_SENDS_PER_HOUR_MAX` / `EMAIL_SENDS_WINDOW_MS` | 25 per hour |
-| Registrations per day, whole service | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| Sign-ups per hour, whole server (a fuse on `/register` only); the default of `RTC_SIGNUPS_PER_HOUR` | `EMAIL_SENDS_PER_HOUR_MAX` / `SEND_FUSE_WINDOW_MS` | 25 per hour |
+| Resends per hour, whole server (a fuse on `/resend-code` only) | `RESENDS_PER_HOUR_MAX` | 15 per hour |
+| Resets per hour, whole server (a fuse on `/request-reset` only); the three fuses sum to 55, under the project's 60 | `RESETS_PER_HOUR_MAX` | 15 per hour |
+| Registrations per day, whole service; the default of `RTC_SIGNUPS_PER_DAY` | `MAX_REGISTRATIONS_PER_DAY` | 200 |
+| A failed account login is held to at least | `LOGIN_FAILURE_FLOOR_MS` | 300 ms |
+| Never-confirmed accounts are deleted after | `PURGE_UNCONFIRMED_AFTER_MS` | 48 hours |
+| Purge: first run after start, then every, at most per run | `PURGE_FIRST_RUN_DELAY_MS` / `PURGE_INTERVAL_MS` / `PURGE_BATCH` | 1 minute, 1 hour, 100 |
+| An IPv6 caller's /48 budget, as a multiple of its own | `WIDER_NETWORK_BUDGET_MULTIPLIER` | 4 |
+| Preflight cache (`Access-Control-Max-Age`) | `CORS_MAX_AGE_SECONDS` | 600 s |
 | One account-store call | `ACCOUNT_DIRECTORY_TIMEOUT_MS` | 5 s |
 | Upgrade status cache: lifetime, size | `ACCOUNT_STATUS_CACHE_TTL_MS` / `ACCOUNT_STATUS_CACHE_MAX_ENTRIES` | 60 s, 1 000 |
 | Shortest `AUTH_SECRET` with accounts on | `AUTH_SECRET_MIN_LENGTH` | 32 characters |
@@ -704,23 +749,31 @@ each endpoint has its own limiter instance.
   address makes that address wait out the window. A per-address refusal is
   `429 rate_limited` but not a ban strike, since the caller may be the
   owner.
-- **The per-address send limit and the hourly email fuse.** The daily cap
+- **The per-address send limit and the three hourly fuses.** The daily cap
   counts new accounts only, but a repeat `/register`, `/resend-code` and
   `/request-reset` each send an email without creating one. So every send
   is charged to the normalized address (three per hour, whichever of the
   three paths made it, and only for a request that passes local
   validation): over it is `429 rate_limited`, not a ban strike, and the
-  answer is the same for a registered and an unregistered address. Every
-  `/register` that passes is also charged to one server-wide fuse of 25 an
-  hour: over it is `503 unavailable`. The fuse must sit **below** the
-  Supabase project's own email rate limit, so the server refuses honestly
-  instead of Supabase answering "sent" and dropping the mail, and the rest
-  of the allowance is left for resends and resets. `/resend-code` and
-  `/request-reset` are not charged to it: one for an address with no
-  account sends nothing, so charging them would let 25 junk requests an
-  hour make every resend and reset answer 503 for everyone. Both limiters
-  are in memory.
-- **The daily cap** is counted in the store (`profiles.created_at`), so a
+  answer is the same for a registered and an unregistered address. Each
+  path also has a server-wide hourly fuse of its own: sign-ups 25
+  (`RTC_SIGNUPS_PER_HOUR`, whose default is `EMAIL_SENDS_PER_HOUR_MAX`),
+  resends 15, resets 15. A resend or reset looks the address up first and
+  charges its fuse only for a send that will land, so junk requests for
+  addresses without an account never spend it. A spent fuse answers
+  `503 unavailable` to **every** request on its path, a missing address
+  too: refusing only the sends that would have happened would tell the caller
+  which addresses have accounts. The three sum to 55 an hour, which must stay
+  **below** the Supabase project's own email rate limit (60), so the server
+  refuses honestly instead of Supabase answering "sent" and dropping the mail;
+  raising `RTC_SIGNUPS_PER_HOUR` means raising the project's limit. The
+  limiters are in memory.
+- **The purge.** An account whose address is never confirmed is deleted 48
+  hours after creation, by an hourly run (the first a minute after start,
+  at most 100 per run, oldest first; seeded dev accounts are exempt). The log
+  line carries a count only. 48 and not 24: the daily cap counts the last 24
+  hours of profiles and must not be undercut by its own cleanup.
+- **The daily cap** (`RTC_SIGNUPS_PER_DAY`) is counted in the store (`profiles.created_at`), so a
   restart keeps it. It is exact within one server process — sign-ups still
   in flight are counted too — and approximate across several machines, which
   share only the stored count.

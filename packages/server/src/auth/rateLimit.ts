@@ -12,6 +12,9 @@ export interface RateLimiterOptions {
 
 export interface RateLimiter {
   hit(key: string, now: number): boolean;
+  /** Whether `hit` would be allowed now. Reads only: no window is opened or
+   * charged, so a refusal that depends on it is the same for every key. */
+  peek(key: string, now: number): boolean;
   size(): number;
 }
 
@@ -75,6 +78,15 @@ export function createRateLimiter(
 
       // We've hit the limit
       return false;
+    },
+    peek(key: string, now: number): boolean {
+      const state = windows.get(key);
+
+      if (state === undefined || now >= state.windowStart + windowMs) {
+        return true;
+      }
+
+      return state.count < maxPerWindow;
     },
     size(): number {
       return windows.size;

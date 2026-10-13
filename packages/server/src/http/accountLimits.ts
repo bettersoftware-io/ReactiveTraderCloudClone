@@ -1,3 +1,4 @@
+import type { SendFuses } from "../accounts/AccountService.js";
 import { createRateLimiter, type RateLimiter } from "../auth/rateLimit.js";
 import {
   CODE_ENTRY_PER_ADDRESS_MAX,
@@ -5,17 +6,31 @@ import {
   CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
   CODE_ENTRY_RATE_LIMIT_MAX,
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
-  EMAIL_SENDS_PER_HOUR_MAX,
-  EMAIL_SENDS_WINDOW_MS,
+  LOGIN_RATE_LIMIT_MAX,
+  LOGIN_RATE_LIMIT_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
+  RESENDS_PER_HOUR_MAX,
+  RESETS_PER_HOUR_MAX,
   SEND_CODE_RATE_LIMIT_MAX,
   SEND_CODE_RATE_LIMIT_WINDOW_MS,
+  SEND_FUSE_WINDOW_MS,
   SEND_PER_ADDRESS_MAX,
   SEND_PER_ADDRESS_MAX_KEYS,
   SEND_PER_ADDRESS_WINDOW_MS,
+  WIDER_NETWORK_BUDGET_MULTIPLIER,
 } from "../config/limits.js";
 import type { AccountRateLimits } from "./accountHandlers.js";
+import { createTieredLimiter } from "./tieredLimiter.js";
+
+/** A per-IP limiter in two tiers (spec §3.5): `max` per key, and a wider
+ * budget of `max × WIDER_NETWORK_BUDGET_MULTIPLIER` per IPv6 /48. */
+function createTieredIpLimiter(max: number, windowMs: number): RateLimiter {
+  return createTieredLimiter(
+    createRateLimiter(max, windowMs),
+    createRateLimiter(max * WIDER_NETWORK_BUDGET_MULTIPLIER, windowMs),
+  );
+}
 
 /**
  * The per-IP limiters of the five account endpoints, each its own instance
@@ -25,27 +40,36 @@ import type { AccountRateLimits } from "./accountHandlers.js";
  */
 export function createAccountLimits(): AccountRateLimits {
   return {
-    register: createRateLimiter(
+    register: createTieredIpLimiter(
       REGISTER_RATE_LIMIT_MAX,
       REGISTER_RATE_LIMIT_WINDOW_MS,
     ),
-    resendCode: createRateLimiter(
+    resendCode: createTieredIpLimiter(
       SEND_CODE_RATE_LIMIT_MAX,
       SEND_CODE_RATE_LIMIT_WINDOW_MS,
     ),
-    confirmEmail: createRateLimiter(
+    confirmEmail: createTieredIpLimiter(
       CODE_ENTRY_RATE_LIMIT_MAX,
       CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
     ),
-    requestReset: createRateLimiter(
+    requestReset: createTieredIpLimiter(
       SEND_CODE_RATE_LIMIT_MAX,
       SEND_CODE_RATE_LIMIT_WINDOW_MS,
     ),
-    resetPassword: createRateLimiter(
+    resetPassword: createTieredIpLimiter(
       CODE_ENTRY_RATE_LIMIT_MAX,
       CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
     ),
   };
+}
+
+/** The per-IP budget of `/login` (spec §3.5), two-tier like the account
+ * endpoints. */
+export function createLoginLimiter(): RateLimiter {
+  return createTieredIpLimiter(
+    LOGIN_RATE_LIMIT_MAX,
+    LOGIN_RATE_LIMIT_WINDOW_MS,
+  );
 }
 
 /** The per-ADDRESS code-entry budget, shared by confirmation and reset by
@@ -66,7 +90,13 @@ export function createSendLimiter(): RateLimiter {
   });
 }
 
-/** The server-wide hourly email fuse; the service charges it under one key. */
-export function createSendFuse(): RateLimiter {
-  return createRateLimiter(EMAIL_SENDS_PER_HOUR_MAX, EMAIL_SENDS_WINDOW_MS);
+/** The three server-wide hourly fuses (spec §3.2), one key each. Sized with
+ * `RESENDS_PER_HOUR_MAX` and `RESETS_PER_HOUR_MAX` so the three sum under
+ * the project's email limit. */
+export function createSendFuses(signupsPerHour: number): SendFuses {
+  return {
+    signUp: createRateLimiter(signupsPerHour, SEND_FUSE_WINDOW_MS),
+    resend: createRateLimiter(RESENDS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS),
+    reset: createRateLimiter(RESETS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS),
+  };
 }

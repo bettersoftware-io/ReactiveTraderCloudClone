@@ -30,7 +30,12 @@ of October 2026; Supabase moves them.
    a couple of emails an hour, and a sign-up Supabase throttles still
    answers "code sent" through the server and sends nothing — so a busy hour
    silently loses sign-ups. Check the email-sending rate under
-   Authentication → Rate limits as well.
+   Authentication → Rate limits as well: set the project's email limit to at
+   least 60 an hour, because the server's three hourly fuses (sign-ups 25,
+   resends 15, resets 15) sum to 55 and must stay under it, or Supabase
+   throttles a mail the server let through and loses it silently. Raising
+   `RTC_SIGNUPS_PER_HOUR` means raising the project's limit by the same
+   amount.
 6. **Authentication → Rate limits:** enable IP address forwarding
    (`Sb-Forwarded-For`), so Supabase limits each visitor, not our server's
    one address.
@@ -55,6 +60,9 @@ address they do not own never holds a working credential for it. If
 project, a confirmation can answer `password_unset` (the email is confirmed
 but the password was refused); the user then finishes through "forgot
 password".
+
+The server deletes accounts that are never confirmed 48 hours after
+creation, so the table editor rarely shows them.
 
 ## Keep these closed
 

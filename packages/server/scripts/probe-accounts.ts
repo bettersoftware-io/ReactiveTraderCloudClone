@@ -8,7 +8,11 @@
  * It also signs up ONE fresh address through the adapter to prove nobody
  * knows a sign-up's password, and deletes that account too. That sign-up
  * sends ONE real confirmation email, so the addresses use
- * PROBE_EMAIL_DOMAIN: a domain you control or a test inbox.
+ * PROBE_EMAIL_DOMAIN: a domain you control or a test inbox. It also proves
+ * the address lookup (`findByEmail`: found, with the same id, for the account
+ * it just created; missing for a never-registered address). It never calls
+ * `purgeUnconfirmedBefore` against a live project: a purge deletes real
+ * accounts, and the unit tests cover it.
  *
  *   SUPABASE_URL=… SUPABASE_SECRET_KEY=… PROBE_EMAIL_DOMAIN=… pnpm --filter @rtc/server accounts:probe
  *
@@ -23,6 +27,7 @@ import type {
   AccountLookup,
   ConfirmOutcome,
   PasswordCheck,
+  PurgeOutcome,
   RegistrationCount,
   ResetOutcome,
   SendOutcome,
@@ -139,6 +144,19 @@ function timeEveryCall(inner: AccountDirectory): AccountDirectory {
     findAccount: (accountId: string): Promise<AccountLookup> => {
       return recordDuration(() => {
         return inner.findAccount(accountId);
+      });
+    },
+    findByEmail: (address: string): Promise<AccountLookup> => {
+      return recordDuration(() => {
+        return inner.findByEmail(address);
+      });
+    },
+    purgeUnconfirmedBefore: (
+      cutoffMs: number,
+      limit: number,
+    ): Promise<PurgeOutcome> => {
+      return recordDuration(() => {
+        return inner.purgeUnconfirmedBefore(cutoffMs, limit);
       });
     },
     countRegistrationsSince: (sinceMs: number): Promise<RegistrationCount> => {
@@ -326,6 +344,22 @@ try {
     found.outcome === "found"
       ? `${found.account.status}/${found.account.access}`
       : found.outcome,
+  );
+
+  const byEmail = await directory.findByEmail(email);
+  check(
+    "findByEmail finds the account by its address",
+    byEmail.outcome === "found" && byEmail.account.id === signup.id,
+    byEmail.outcome === "found" ? byEmail.account.status : byEmail.outcome,
+  );
+
+  const nobody = await directory.findByEmail(
+    `probe-nobody-${Date.now()}@${emailDomain}`,
+  );
+  check(
+    "findByEmail is missing for an unknown address",
+    nobody.outcome === "missing",
+    nobody.outcome,
   );
 
   const counted = await directory.countRegistrationsSince(

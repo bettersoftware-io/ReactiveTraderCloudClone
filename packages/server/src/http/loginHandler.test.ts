@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LoginResponseDto } from "@rtc/shared";
 
 import {
   type AccountService,
   createAccountService,
+  type SendFuses,
 } from "#/accounts/AccountService";
 import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
 import {
@@ -98,7 +99,8 @@ describe("authenticateLoginRequest", () => {
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
         sendLimiter: createRateLimiter(100, 60_000),
-        sendFuse: createRateLimiter(100, 60_000),
+        sendFuses: createFuses(),
+        log: () => {},
       }),
     });
 
@@ -142,7 +144,8 @@ describe("authenticateLoginRequest", () => {
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
         sendLimiter: createRateLimiter(100, 60_000),
-        sendFuse: createRateLimiter(100, 60_000),
+        sendFuses: createFuses(),
+        log: () => {},
       }),
     });
 
@@ -219,7 +222,7 @@ describe("authenticateLoginRequest", () => {
     expect(result.status).toBe(401);
   });
 
-  it("returns 200 with a valid LoginResponseDto on success, with CORS headers", async () => {
+  it("returns 200 with a valid LoginResponseDto on success, leaving CORS to the router", async () => {
     const deps = createDeps(createAuth(createClock(1_000)));
 
     const result = await authenticateLoginRequest(
@@ -229,7 +232,7 @@ describe("authenticateLoginRequest", () => {
     );
 
     expect(result.status).toBe(200);
-    expect(result.headers?.["Access-Control-Allow-Origin"]).toBe("*");
+    expect(result.headers?.["Access-Control-Allow-Origin"]).toBeUndefined();
     expect(result.headers?.["Content-Type"]).toBe("application/json");
 
     const parsed = JSON.parse(result.body) as LoginResponseDto;
@@ -353,6 +356,167 @@ describe("describeUpgrade", () => {
   });
 });
 
+describe("authenticateLoginRequest — the floor on a failed account login", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not answer an unknown address or a wrong password before 300 ms, measured from the handler's start", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const clock = createClock(1_000);
+    const deps = createDeps(createAuth(clock), {
+      now: clock,
+      wait: (ms: number) => {
+        return new Promise<void>((resolve) => {
+          setTimeout(resolve, ms);
+        });
+      },
+    });
+    let settled = false;
+
+    const pending = authenticateLoginRequest(
+      createLoginBody("nobody@desk.io", "Wrong2026!desk"),
+      "1.2.3.4",
+      deps,
+    ).then((result) => {
+      settled = true;
+
+      return result;
+    });
+
+    // The account store hashes on real time; the floor's timer exists only
+    // once that decision is in, so let it land before moving fake time.
+    while (vi.getTimerCount() === 0) {
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+    }
+
+    await vi.advanceTimersByTimeAsync(299);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    const result = await pending;
+
+    expect(settled).toBe(true);
+    expect(result.status).toBe(401);
+  });
+
+  it("pads only the remainder: a decision that took 200 ms waits 100 ms more", async () => {
+    vi.useFakeTimers();
+    let clock = 1_000;
+    const accounts = createAccounts();
+    const slowAccounts: AccountService = {
+      ...accounts,
+      login: async (...args) => {
+        await new Promise<void>((resolve) => {
+          return setTimeout(resolve, 200);
+        });
+        clock += 200;
+
+        return accounts.login(...args);
+      },
+    };
+    const waits: number[] = [];
+    const deps = createDeps(
+      createAuth(() => {
+        return clock;
+      }),
+      {
+        now: () => {
+          return clock;
+        },
+        accounts: slowAccounts,
+        wait: (ms: number) => {
+          waits.push(ms);
+
+          return Promise.resolve();
+        },
+      },
+    );
+
+    const pending = authenticateLoginRequest(
+      createLoginBody("nobody@desk.io", "Wrong2026!desk"),
+      "1.2.3.4",
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(200);
+    await pending;
+
+    expect(waits).toEqual([100]);
+  });
+
+  it("does not hold a successful account login or a roster login", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const account = await authenticateLoginRequest(
+      createLoginBody("admin@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    const roster = await authenticateLoginRequest(
+      createLoginBody("demo", "localpass"),
+      "1.2.3.4",
+      deps,
+    );
+
+    // Both succeed, so the empty list proves a success is not held — a
+    // failed roster login would not call `wait` either.
+    expect(account.status).toBe(200);
+    expect(roster.status).toBe(200);
+    expect(waits).toEqual([]);
+  });
+
+  it("holds a refusal after a correct password (pending) to the floor too", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("pending@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(403);
+    expect(waits).toEqual([300]);
+  });
+
+  it("holds an unavailable store's answer to the floor too", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      accounts: createDisabledAccounts(),
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    const result = await authenticateLoginRequest(
+      createLoginBody("trader@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(result.status).toBe(503);
+    expect(JSON.parse(result.body)).toEqual({ error: "unavailable" });
+    expect(waits).toEqual([300]);
+  });
+});
+
 const TTL_MS = 60_000;
 
 interface DepsOverrides {
@@ -360,6 +524,7 @@ interface DepsOverrides {
   readonly banList?: BanList;
   readonly now?: () => number;
   readonly accounts?: AccountService;
+  readonly wait?: (ms: number) => Promise<void>;
 }
 
 function createAccounts(): AccountService {
@@ -375,8 +540,33 @@ function createAccounts(): AccountService {
     maxRegistrationsPerDay: 100,
     codeEntryLimiter: createRateLimiter(100, 60_000),
     sendLimiter: createRateLimiter(100, 60_000),
-    sendFuse: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: () => {},
   });
+}
+
+/** An account service over the disabled directory: every login is
+ * `unavailable`. */
+function createDisabledAccounts(): AccountService {
+  return createAccountService({
+    directory: createDisabledAccountDirectory(),
+    now: createClock(1_000),
+    registrationOpen: true,
+    maxRegistrationsPerDay: 100,
+    codeEntryLimiter: createRateLimiter(100, 60_000),
+    sendLimiter: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: () => {},
+  });
+}
+
+function createFuses(overrides: Partial<SendFuses> = {}): SendFuses {
+  return {
+    signUp: createRateLimiter(100, 60_000),
+    resend: createRateLimiter(100, 60_000),
+    reset: createRateLimiter(100, 60_000),
+    ...overrides,
+  };
 }
 
 function createAuth(now: () => number): AuthService {
@@ -413,6 +603,11 @@ function createDeps(
       }),
     accounts: overrides.accounts ?? createAccounts(),
     now: overrides.now ?? createClock(1_000),
+    wait:
+      overrides.wait ??
+      ((): Promise<void> => {
+        return Promise.resolve();
+      }),
   };
 }
 

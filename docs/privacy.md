@@ -43,11 +43,14 @@ address and the code it carries.
 
 ## How long, and how to delete it
 
-The account is kept until you ask for it to be deleted. To delete it, open an
-issue at <https://github.com/bettersoftware-io/ReactiveTraderCloudClone/issues>
+The account is kept until you ask for it to be deleted. To delete it, write to
+<privacy@bettersoftware.io> from the account's own address. If you would
+rather not email, open an issue at
+<https://github.com/bettersoftware-io/ReactiveTraderCloudClone/issues>
 asking for account deletion **without naming your address** (issues are
 public); the maintainer will ask you to confirm from the account's address.
-Deletion removes the account and its profile.
+Deletion removes the account and its profile. An account whose address is
+never confirmed is deleted after 48 hours.
 
 ## Logs
 

@@ -72,6 +72,31 @@ export function collapseToNetworkKey(address: string): string {
     .join(":")}::`;
 }
 
+/**
+ * The /48 that holds an IPv6 key — the first three hextets, then `::` — so a
+ * caller routed a whole /48 (a free tunnel broker hands out 65,536 /64s) can
+ * be bounded as a group. `null` for an IPv4 caller, an IPv4-mapped address
+ * and anything that does not parse: those have no wider bucket.
+ */
+export function widerNetworkKeyOf(key: string): string | null {
+  if (isIP(key) !== 6) {
+    return null;
+  }
+
+  const hextets = parseIpv6Hextets(key.replace(/%.*$/, ""));
+
+  if (hextets === null || isIpv4Mapped(hextets)) {
+    return null;
+  }
+
+  return `${hextets
+    .slice(0, 3)
+    .map((hextet) => {
+      return hextet.toString(16);
+    })
+    .join(":")}::`;
+}
+
 /** `RTC_TRUSTED_IP_HEADER` (lower-cased) or `TRUSTED_IP_HEADER_DEFAULT`. */
 export function resolveTrustedIpHeader(env: NodeJS.ProcessEnv): string {
   const override = env.RTC_TRUSTED_IP_HEADER?.trim().toLowerCase();

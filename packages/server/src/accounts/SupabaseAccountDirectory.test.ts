@@ -686,6 +686,110 @@ describe("SupabaseAccountDirectory — hardening", () => {
   });
 });
 
+describe("SupabaseAccountDirectory — findByEmail and purge", () => {
+  it("findByEmail reads profiles by the plain encoded address and maps the row", async () => {
+    const fake = createFakeFetch([createReply(200, [createProfileRow()])]);
+
+    const found = await createDirectory(fake).findByEmail("ann+desk@desk.io");
+
+    expect(fake.requests[0]?.method).toBe("GET");
+    expect(fake.requests[0]?.url).toBe(
+      "https://proj.supabase.co/rest/v1/profiles?email=eq.ann%2Bdesk%40desk.io&select=id,email,display_name,role,approved,blocked,email_confirmed_at",
+    );
+    expect(found.outcome).toBe("found");
+  });
+
+  it("findByEmail is missing for no row and unavailable for a 5xx or a non-array body", async () => {
+    expect(
+      await createDirectory(
+        createFakeFetch([createReply(200, [])]),
+      ).findByEmail("x@desk.io"),
+    ).toEqual({ outcome: "missing" });
+    expect(
+      await createDirectory(
+        createFakeFetch([createReply(503, {})]),
+      ).findByEmail("x@desk.io"),
+    ).toEqual({ outcome: "unavailable" });
+    expect(
+      await createDirectory(
+        createFakeFetch([createReply(200, { not: "rows" })]),
+      ).findByEmail("x@desk.io"),
+    ).toEqual({ outcome: "unavailable" });
+  });
+
+  it("purgeUnconfirmedBefore lists unconfirmed profiles before the cutoff, oldest first, then deletes each user", async () => {
+    const fake = createFakeFetch([
+      createReply(200, [{ id: ACCOUNT_ID }, { id: OTHER_ID }]),
+      createReply(200, {}),
+      createReply(404, { error_code: "user_not_found" }),
+    ]);
+
+    const result = await createDirectory(fake).purgeUnconfirmedBefore(
+      Date.UTC(2026, 9, 11),
+      50,
+    );
+
+    expect(result).toEqual({ outcome: "purged", count: 2 });
+    expect(fake.requests[0]?.url).toBe(
+      "https://proj.supabase.co/rest/v1/profiles?select=id&email_confirmed_at=is.null&created_at=lt.2026-10-11T00%3A00%3A00.000Z&order=created_at.asc&limit=50",
+    );
+    expect(fake.requests[1]?.method).toBe("DELETE");
+    expect(fake.requests[1]?.url).toBe(
+      `https://proj.supabase.co/auth/v1/admin/users/${ACCOUNT_ID}`,
+    );
+    expect(fake.requests[2]?.url).toBe(
+      `https://proj.supabase.co/auth/v1/admin/users/${OTHER_ID}`,
+    );
+  });
+
+  it("purgeUnconfirmedBefore is unavailable when the list fails, and stops with the partial count when a delete fails", async () => {
+    expect(
+      await createDirectory(
+        createFakeFetch([createReply(500, {})]),
+      ).purgeUnconfirmedBefore(0, 10),
+    ).toEqual({ outcome: "unavailable" });
+
+    const fake = createFakeFetch([
+      createReply(200, [{ id: ACCOUNT_ID }, { id: OTHER_ID }]),
+      createReply(200, {}),
+      createReply(500, {}),
+    ]);
+
+    expect(await createDirectory(fake).purgeUnconfirmedBefore(0, 10)).toEqual({
+      outcome: "purged",
+      count: 1,
+    });
+    expect(fake.requests).toHaveLength(3);
+  });
+
+  it("purgeUnconfirmedBefore stops at a refusal that is not a 404", async () => {
+    const fake = createFakeFetch([
+      createReply(200, [{ id: ACCOUNT_ID }, { id: OTHER_ID }]),
+      createReply(422, { error_code: "validation_failed" }),
+    ]);
+
+    expect(await createDirectory(fake).purgeUnconfirmedBefore(0, 10)).toEqual({
+      outcome: "purged",
+      count: 0,
+    });
+    expect(fake.requests).toHaveLength(2);
+  });
+
+  it("purgeUnconfirmedBefore refuses a non-finite cutoff or a non-positive limit without a request", async () => {
+    const fake = createFakeFetch([]);
+
+    expect(
+      await createDirectory(fake).purgeUnconfirmedBefore(Number.NaN, 10),
+    ).toEqual({
+      outcome: "unavailable",
+    });
+    expect(await createDirectory(fake).purgeUnconfirmedBefore(0, 0)).toEqual({
+      outcome: "unavailable",
+    });
+    expect(fake.requests).toHaveLength(0);
+  });
+});
+
 function expectLogout(
   request: RecordedRequest | undefined,
   token: string,
@@ -754,7 +858,7 @@ type Run = (directory: AccountDirectory) => Promise<unknown>;
 
 type Operation = readonly [name: string, run: Run, unavailable: unknown];
 
-/** All nine port methods with the value each answers when the store is down. */
+/** All eleven port methods with the value each answers when the store is down. */
 function createOperations(): Operation[] {
   const down = { outcome: "unavailable" };
 
@@ -790,6 +894,14 @@ function createOperations(): Operation[] {
     return d.countRegistrationsSince(0);
   }
 
+  function findByEmail(d: AccountDirectory): Promise<unknown> {
+    return d.findByEmail("a@b.io");
+  }
+
+  function purgeUnconfirmedBefore(d: AccountDirectory): Promise<unknown> {
+    return d.purgeUnconfirmedBefore(0, 10);
+  }
+
   function ping(d: AccountDirectory): Promise<unknown> {
     return d.ping();
   }
@@ -803,6 +915,8 @@ function createOperations(): Operation[] {
     ["resetPassword", resetPassword, "unavailable"],
     ["findAccount", findAccount, down],
     ["countRegistrationsSince", countRegistrationsSince, down],
+    ["findByEmail", findByEmail, down],
+    ["purgeUnconfirmedBefore", purgeUnconfirmedBefore, down],
     ["ping", ping, false],
   ];
 }
@@ -867,3 +981,4 @@ function createProfileRow(): ProfileRow {
 const IP = "203.0.113.9";
 
 const ACCOUNT_ID = "1f3a9c2e-0000-4000-8000-000000000000";
+const OTHER_ID = "2b4c8d1f-0000-4000-8000-000000000000";

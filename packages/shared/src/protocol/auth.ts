@@ -72,11 +72,15 @@ export type AccountErrorCode =
   | "invalid_credentials"
   | "invalid_request"
   | "malformed_json"
+  /** A browser page whose origin is not on the server's allowlist. */
+  | "origin_not_allowed"
   | "pending_approval"
   | "rate_limited"
   | "registration_closed"
   | "unavailable"
-  | "unconfirmed";
+  | "unconfirmed"
+  /** A POST whose `Content-Type` is not `application/json`. */
+  | "unsupported_media_type";
 
 export interface AccountErrorDto {
   readonly error: AccountErrorCode;

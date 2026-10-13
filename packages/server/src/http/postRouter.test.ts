@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { type BanList, createBanList } from "#/auth/banList";
 import { resolveClientIp } from "#/http/clientIp";
 import { type HttpResult, jsonResult } from "#/http/jsonResult";
+import { type OriginPolicy, resolveOriginPolicy } from "#/http/originPolicy";
 import { createPostRouter, type PostRoute } from "#/http/postRouter";
 
 afterEach(async () => {
@@ -39,6 +40,7 @@ describe("createPostRouter", () => {
     const response = await fetch(`${base}/echo`, {
       method: "POST",
       body: "hello",
+      headers: { "Content-Type": "application/json" },
     });
 
     expect(response.status).toBe(202);
@@ -61,32 +63,15 @@ describe("createPostRouter", () => {
     const response = await fetch(`${base}/echo`, {
       method: "POST",
       body: "x",
-      headers: { "Fly-Client-IP": "7.7.7.7", "X-Forwarded-For": "6.6.6.6" },
+      headers: {
+        "Content-Type": "application/json",
+        "Fly-Client-IP": "7.7.7.7",
+        "X-Forwarded-For": "6.6.6.6",
+      },
     });
 
     expect(await response.json()).toEqual({ ip: "7.7.7.7" });
   });
-
-  it.each(["/echo", "/other"])(
-    "answers the preflight for %s exactly as /login always has",
-    async (path) => {
-      const base = await startRouter({
-        "/echo": createEchoRoute(),
-        "/other": createEchoRoute(),
-      });
-
-      const response = await fetch(`${base}${path}`, { method: "OPTIONS" });
-
-      expect(response.status).toBe(204);
-      expect(response.headers.get("access-control-allow-origin")).toBe("*");
-      expect(response.headers.get("access-control-allow-methods")).toBe(
-        "POST, OPTIONS",
-      );
-      expect(response.headers.get("access-control-allow-headers")).toBe(
-        "Content-Type",
-      );
-    },
-  );
 
   it("leaves an unknown path and a GET to the caller (404 here)", async () => {
     const base = await startRouter({ "/echo": createEchoRoute() });
@@ -113,6 +98,7 @@ describe("createPostRouter", () => {
     const response = await fetch(`${base}/echo`, {
       method: "POST",
       body: "€€€",
+      headers: { "Content-Type": "application/json" },
     });
 
     expect(response.status).toBe(413);
@@ -130,11 +116,23 @@ describe("createPostRouter", () => {
     const body = "x".repeat(64);
 
     expect(
-      (await fetch(`${base}/small`, { method: "POST", body })).status,
+      (
+        await fetch(`${base}/small`, {
+          method: "POST",
+          body,
+          headers: { "Content-Type": "application/json" },
+        })
+      ).status,
     ).toBe(413);
     expect(
-      (await fetch(`${base}/large`, { method: "POST", body })).status,
-    ).toBe(200);
+      (
+        await fetch(`${base}/large`, {
+          method: "POST",
+          body,
+          headers: { "Content-Type": "application/json" },
+        })
+      ).status,
+    ).toBe(202);
   });
 
   it("answers a banned caller 429 without running the route", async () => {
@@ -154,7 +152,11 @@ describe("createPostRouter", () => {
       { banList },
     );
 
-    const response = await fetch(`${base}/echo`, { method: "POST", body: "x" });
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x",
+      headers: { "Content-Type": "application/json" },
+    });
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("30");
@@ -171,6 +173,7 @@ describe("createPostRouter", () => {
     const response = await fetch(`${base}/echo`, {
       method: "POST",
       body: "x".repeat(64),
+      headers: { "Content-Type": "application/json" },
     });
 
     expect(response.status).toBe(429);
@@ -186,7 +189,11 @@ describe("createPostRouter", () => {
       },
     });
 
-    const response = await fetch(`${base}/echo`, { method: "POST", body: "x" });
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x",
+      headers: { "Content-Type": "application/json" },
+    });
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "internal_error" });
@@ -213,7 +220,10 @@ describe("createPostRouter", () => {
     const response = await fetch(`${base}/register`, {
       method: "POST",
       body: JSON.stringify({ email: "body@example.com", code: "12345678" }),
-      headers: { "X-Secret-Header": "header-value" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Secret-Header": "header-value",
+      },
     });
 
     expect(response.status).toBe(500);
@@ -236,7 +246,11 @@ describe("createPostRouter", () => {
       },
     );
 
-    await fetch(`${base}/echo`, { method: "POST", body: "x".repeat(64) });
+    await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x".repeat(64),
+      headers: { "Content-Type": "application/json" },
+    });
 
     expect(lines).toEqual([]);
   });
@@ -253,7 +267,11 @@ describe("createPostRouter", () => {
       },
     );
 
-    const response = await fetch(`${base}/echo`, { method: "POST", body: "x" });
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x",
+      headers: { "Content-Type": "application/json" },
+    });
 
     expect(response.status).toBe(429);
     expect(lines).toEqual([]);
@@ -282,7 +300,11 @@ describe("createPostRouter", () => {
       },
     );
 
-    const outcome = await fetch(`${base}/echo`, { method: "POST", body: "x" })
+    const outcome = await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x",
+      headers: { "Content-Type": "application/json" },
+    })
       .then((response) => {
         return response.text();
       })
@@ -309,23 +331,235 @@ describe("createPostRouter", () => {
       },
     });
 
-    const response = await fetch(`${base}/echo`, { method: "POST", body: "x" });
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      body: "x",
+      headers: { "Content-Type": "application/json" },
+    });
 
     expect(response.status).toBe(500);
   });
+});
+
+describe("createPostRouter — origins and content type", () => {
+  const FOREIGN = "https://evil.example";
+
+  it("answers the preflight of an allowed origin with that origin and no wildcard", async () => {
+    const base = await startRouter({ "/echo": createEchoRoute() });
+
+    const response = await fetch(`${base}/echo`, {
+      method: "OPTIONS",
+      headers: { Origin: ALLOWED, "Access-Control-Request-Method": "POST" },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe(ALLOWED);
+    expect(response.headers.get("vary")).toBe("Origin");
+    expect(response.headers.get("access-control-allow-methods")).toBe(
+      "POST, OPTIONS",
+    );
+    expect(response.headers.get("access-control-allow-headers")).toBe(
+      "Content-Type",
+    );
+    expect(response.headers.get("access-control-max-age")).toBe("600");
+  });
+
+  it.each([FOREIGN, "null"])(
+    "refuses the preflight of %s with 403 and no CORS header",
+    async (origin) => {
+      const base = await startRouter({ "/echo": createEchoRoute() });
+
+      const response = await fetch(`${base}/echo`, {
+        method: "OPTIONS",
+        headers: { Origin: origin, "Access-Control-Request-Method": "POST" },
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    },
+  );
+
+  it.each([FOREIGN, "null"])(
+    "refuses a POST from %s before the body is read, without a strike",
+    async (origin) => {
+      const handled: string[] = [];
+      const banList = createBanList({
+        strikesToBan: 1,
+        strikeWindowMs: 60_000,
+        banMs: 60_000,
+        maxEntries: 10,
+      });
+
+      const base = await startRouter(
+        { "/echo": createEchoRoute(handled) },
+        { banList },
+      );
+
+      const response = await fetch(`${base}/echo`, {
+        method: "POST",
+        headers: { Origin: origin, ...JSON_HEADERS },
+        body: "{}",
+      });
+
+      expect(response.status).toBe(403);
+      expect(response.headers.get("connection")).toBe("close");
+      expect(await response.json()).toEqual({ error: "origin_not_allowed" });
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+      expect(handled).toEqual([]);
+      expect(banList.bannedUntil("9.9.9.9", 1_000)).toBeNull();
+    },
+  );
+
+  it("echoes an allowed origin on the handler's answer, the 413 and the banned 429", async () => {
+    const banList = createBanList({
+      strikesToBan: 1,
+      strikeWindowMs: 60_000,
+      banMs: 60_000,
+      maxEntries: 10,
+    });
+
+    const base = await startRouter(
+      { "/echo": { ...createEchoRoute(), maxBodyBytes: 4 } },
+      { banList },
+    );
+    const headers = { Origin: ALLOWED, ...JSON_HEADERS };
+
+    const ok = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers,
+      body: "{}",
+    });
+    expect(ok.status).toBe(202);
+    expect(ok.headers.get("access-control-allow-origin")).toBe(ALLOWED);
+    expect(ok.headers.get("vary")).toBe("Origin");
+
+    const big = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers,
+      body: '{"a":1}',
+    });
+    expect(big.status).toBe(413);
+    expect(big.headers.get("access-control-allow-origin")).toBe(ALLOWED);
+
+    banList.strike("9.9.9.9", "login-failed", 1_000);
+    const banned = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers,
+      body: "{}",
+    });
+    expect(banned.status).toBe(429);
+    expect(banned.headers.get("access-control-allow-origin")).toBe(ALLOWED);
+  });
+
+  it("echoes an allowed origin on a 500 too", async () => {
+    const base = await startRouter({
+      "/echo": {
+        maxBodyBytes: 1_024,
+        handle: (): Promise<HttpResult> => {
+          return Promise.reject(new Error("boom"));
+        },
+      },
+    });
+
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers: { Origin: ALLOWED, ...JSON_HEADERS },
+      body: "{}",
+    });
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("access-control-allow-origin")).toBe(ALLOWED);
+  });
+
+  it("sends no CORS header at all on a request with no Origin (the mobile client, curl)", async () => {
+    const base = await startRouter({ "/echo": createEchoRoute() });
+
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: "{}",
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(response.headers.get("vary")).toBeNull();
+  });
+
+  it.each([
+    ["text/plain", "text/plain"],
+    [undefined, "no header"],
+  ])(
+    "refuses a POST whose Content-Type is %s (%s) with 415 before the body is read",
+    async (contentType, _label) => {
+      const handled: string[] = [];
+      const base = await startRouter({ "/echo": createEchoRoute(handled) });
+
+      // A string body would make fetch add `text/plain;charset=UTF-8`; a
+      // byte body carries no Content-Type, so the header is truly absent.
+      const response = await fetch(`${base}/echo`, {
+        method: "POST",
+        headers:
+          contentType === undefined ? {} : { "Content-Type": contentType },
+        body: contentType === undefined ? new TextEncoder().encode("{}") : "{}",
+      });
+
+      expect(response.status).toBe(415);
+      expect(response.headers.get("connection")).toBe("close");
+      expect(await response.json()).toEqual({
+        error: "unsupported_media_type",
+      });
+      expect(handled).toEqual([]);
+    },
+  );
+
+  it("accepts application/json with a charset parameter", async () => {
+    const base = await startRouter({ "/echo": createEchoRoute() });
+
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers: { "Content-Type": "Application/JSON; charset=utf-8" },
+      body: "{}",
+    });
+
+    expect(response.status).toBe(202);
+  });
+
+  it("uses the policy it is given", async () => {
+    const base = await startRouter(
+      { "/echo": createEchoRoute() },
+      { origins: resolveOriginPolicy({ RTC_ALLOWED_ORIGINS: FOREIGN }) },
+    );
+
+    const response = await fetch(`${base}/echo`, {
+      method: "POST",
+      headers: { Origin: FOREIGN, ...JSON_HEADERS },
+      body: "{}",
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.headers.get("access-control-allow-origin")).toBe(FOREIGN);
+  });
+
+  const ALLOWED = "http://localhost:5173";
+
+  const JSON_HEADERS = { "Content-Type": "application/json" };
 });
 
 interface RouterOverrides {
   readonly banList?: BanList;
   readonly clientIp?: (req: IncomingMessage) => string;
   readonly log?: (line: string) => void;
+  readonly origins?: OriginPolicy;
 }
 
-function createEchoRoute(): PostRoute {
+/** A route that records each body it was handed and answers 202. */
+function createEchoRoute(handled: string[] = []): PostRoute {
   return {
     maxBodyBytes: 1_024,
-    handle: (bodyText: string) => {
-      return Promise.resolve(jsonResult(200, { bodyText }));
+    handle: (bodyText: string): Promise<HttpResult> => {
+      handled.push(bodyText);
+
+      return Promise.resolve(jsonResult(202, { ok: true }));
     },
   };
 }
@@ -373,6 +607,7 @@ async function startRouter(
       return 1_000;
     },
     log: overrides.log ?? createLineSink(),
+    origins: overrides.origins ?? resolveOriginPolicy({}),
   });
 
   const started = createServer((req, res) => {

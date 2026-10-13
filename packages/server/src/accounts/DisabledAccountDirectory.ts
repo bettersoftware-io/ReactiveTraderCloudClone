@@ -3,6 +3,7 @@ import type {
   AccountLookup,
   ConfirmOutcome,
   PasswordCheck,
+  PurgeOutcome,
   RegistrationCount,
   ResetOutcome,
   SendOutcome,
@@ -36,6 +37,12 @@ export function createDisabledAccountDirectory(): AccountDirectory {
       return Promise.resolve("unavailable");
     },
     findAccount: (): Promise<AccountLookup> => {
+      return Promise.resolve({ outcome: "unavailable" });
+    },
+    findByEmail: (): Promise<AccountLookup> => {
+      return Promise.resolve({ outcome: "unavailable" });
+    },
+    purgeUnconfirmedBefore: (): Promise<PurgeOutcome> => {
       return Promise.resolve({ outcome: "unavailable" });
     },
     countRegistrationsSince: (): Promise<RegistrationCount> => {
