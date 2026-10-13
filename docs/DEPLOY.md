@@ -86,7 +86,7 @@ on.
 Two choices changed no code and are made (2026-10-13): the **email sender and
 domain** (step 1), and the free plan with the `accounts-keepalive.yml`
 workflow rather than **Supabase Pro**, which would remove pausing outright
-(step 14). Steps 1-9 are done; steps 10-13 and 15 remain.
+(step 14). Steps 1-9 are done; steps 10-15 remain.
 
 The Supabase dashboard menu names in steps 2–8 are as of October 2026;
 Supabase moves them.
