@@ -13,15 +13,26 @@ import type {
 } from "@rtc/shared";
 
 import type { RateLimiter } from "../auth/rateLimit.js";
-import type {
-  AccountDirectory,
-  AccountRecord,
-  SignUpOutcome,
-} from "./AccountDirectory.js";
+import type { AccountDirectory, AccountRecord } from "./AccountDirectory.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
-/** The send fuse counts every sign-up the server sends under one key. */
+/** Each send fuse counts its path's sends under one key. */
 const SEND_FUSE_KEY = "all";
+
+type Fuse = Pick<RateLimiter, "hit" | "peek">;
+
+/** The three server-wide hourly fuses (spec §3.2), set below the store's own
+ * email limit so the server refuses honestly (`unavailable`) instead of the
+ * store dropping mail silently. Each is charged only where a mail really
+ * goes out: an address with no account sends nothing, so it spends nothing. */
+export interface SendFuses {
+  /** `/register`: every counted sign-up is a mail the project sends. */
+  readonly signUp: Fuse;
+  /** `/resend-code`, charged only for an unconfirmed account. */
+  readonly resend: Fuse;
+  /** `/request-reset`, charged only for a confirmed, unblocked account. */
+  readonly reset: Fuse;
+}
 
 export interface AccountServiceOptions {
   readonly directory: AccountDirectory;
@@ -36,14 +47,10 @@ export interface AccountServiceOptions {
    * by the normalized address and shared by `/register`, `/resend-code` and
    * `/request-reset`; never charged for a request that fails validation. */
   readonly sendLimiter: Pick<RateLimiter, "hit">;
-  /** One key for the whole server, charged by `/register` only: every
-   * counted sign-up really is sent an email, so the fuse, set below the
-   * store's own email limit, makes the server refuse honestly
-   * (`unavailable`) instead of the store dropping mail silently. Resends and
-   * reset requests are not charged: one for an address with no account
-   * sends nothing, so charging them would let junk addresses lock every
-   * resend and reset out. */
-  readonly sendFuse: Pick<RateLimiter, "hit">;
+  readonly sendFuses: SendFuses;
+  /** One fixed line per detached send that did not answer `sent`: the route
+   * and the outcome word, never the address. */
+  readonly log: (line: string) => void;
 }
 
 type RegisterOutcome =
@@ -114,7 +121,10 @@ export interface AccountService {
  * normalized before any lookup; registration can be closed or capped per
  * day (exact within one server process; approximate across several
  * machines, which only share the directory's count); and a login succeeds only for an `active` account, with the reason
- * it did not revealed only after the password was right.
+ * it did not revealed only after the password was right. A send is
+ * attempted only where it lands (a resend for an unconfirmed account, a
+ * reset for a pending or active one) and never awaited: the caller is told
+ * `code_sent` alike for every address.
  */
 export function createAccountService(
   options: AccountServiceOptions,
@@ -132,6 +142,24 @@ export function createAccountService(
     return options.sendLimiter.hit(email, options.now())
       ? "allowed"
       : "throttled";
+  }
+
+  /** Starts a send and lets the request answer without it. The caller has
+   * already been told `code_sent`; an outcome other than `sent` is one log
+   * line with the route and the word, never the address. */
+  function detach(route: string, send: Promise<string>): void {
+    send.then(
+      (outcome) => {
+        if (outcome !== "sent") {
+          options.log(
+            `[accounts] detached send route=${route} outcome=${outcome}`,
+          );
+        }
+      },
+      () => {
+        options.log(`[accounts] detached send route=${route} outcome=threw`);
+      },
+    );
   }
 
   async function register(
@@ -158,10 +186,6 @@ export function createAccountService(
       return { outcome: "throttled" };
     }
 
-    if (!options.sendFuse.hit(SEND_FUSE_KEY, options.now())) {
-      return { outcome: "unavailable" };
-    }
-
     const answeredBefore = answered;
     const counted = await directory.countRegistrationsSince(
       options.now() - DAY_MS,
@@ -179,22 +203,20 @@ export function createAccountService(
       return { outcome: "closed" };
     }
 
+    if (!options.sendFuses.signUp.hit(SEND_FUSE_KEY, options.now())) {
+      return { outcome: "unavailable" };
+    }
+
     inFlight += 1;
+    detach(
+      "/register",
+      directory.signUp({ email, displayName }, callerIp).finally(() => {
+        inFlight -= 1;
+        answered += 1;
+      }),
+    );
 
-    let sent: SignUpOutcome;
-
-    try {
-      sent = await directory.signUp({ email, displayName }, callerIp);
-    } finally {
-      inFlight -= 1;
-      answered += 1;
-    }
-
-    if (sent === "rejected-email") {
-      return { outcome: "invalid", rule: "email" };
-    }
-
-    return { outcome: sent === "sent" ? "code_sent" : "unavailable" };
+    return { outcome: "code_sent" };
   }
 
   async function resendCode(
@@ -211,9 +233,25 @@ export function createAccountService(
       return "throttled";
     }
 
-    const sent = await directory.resendCode(email, callerIp);
+    if (!options.sendFuses.resend.peek(SEND_FUSE_KEY, options.now())) {
+      return "unavailable";
+    }
 
-    return sent === "sent" ? "code_sent" : "unavailable";
+    const found = await directory.findByEmail(email);
+
+    if (found.outcome === "unavailable") {
+      return "unavailable";
+    }
+
+    if (found.outcome === "found" && found.account.status === "unconfirmed") {
+      if (!options.sendFuses.resend.hit(SEND_FUSE_KEY, options.now())) {
+        return "unavailable";
+      }
+
+      detach("/resend-code", directory.resendCode(email, callerIp));
+    }
+
+    return "code_sent";
   }
 
   /** The request that proves the mailbox is the one that sets the password.
@@ -263,9 +301,28 @@ export function createAccountService(
       return "throttled";
     }
 
-    const sent = await directory.requestReset(email, callerIp);
+    if (!options.sendFuses.reset.peek(SEND_FUSE_KEY, options.now())) {
+      return "unavailable";
+    }
 
-    return sent === "sent" ? "code_sent" : "unavailable";
+    const found = await directory.findByEmail(email);
+
+    if (found.outcome === "unavailable") {
+      return "unavailable";
+    }
+
+    if (
+      found.outcome === "found" &&
+      (found.account.status === "pending" || found.account.status === "active")
+    ) {
+      if (!options.sendFuses.reset.hit(SEND_FUSE_KEY, options.now())) {
+        return "unavailable";
+      }
+
+      detach("/request-reset", directory.requestReset(email, callerIp));
+    }
+
+    return "code_sent";
   }
 
   async function resetPassword(

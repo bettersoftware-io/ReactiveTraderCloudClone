@@ -1,3 +1,4 @@
+import type { SendFuses } from "../accounts/AccountService.js";
 import { createRateLimiter, type RateLimiter } from "../auth/rateLimit.js";
 import {
   CODE_ENTRY_PER_ADDRESS_MAX,
@@ -5,12 +6,13 @@ import {
   CODE_ENTRY_PER_ADDRESS_WINDOW_MS,
   CODE_ENTRY_RATE_LIMIT_MAX,
   CODE_ENTRY_RATE_LIMIT_WINDOW_MS,
-  EMAIL_SENDS_PER_HOUR_MAX,
-  EMAIL_SENDS_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
+  RESENDS_PER_HOUR_MAX,
+  RESETS_PER_HOUR_MAX,
   SEND_CODE_RATE_LIMIT_MAX,
   SEND_CODE_RATE_LIMIT_WINDOW_MS,
+  SEND_FUSE_WINDOW_MS,
   SEND_PER_ADDRESS_MAX,
   SEND_PER_ADDRESS_MAX_KEYS,
   SEND_PER_ADDRESS_WINDOW_MS,
@@ -66,7 +68,13 @@ export function createSendLimiter(): RateLimiter {
   });
 }
 
-/** The server-wide hourly email fuse; the service charges it under one key. */
-export function createSendFuse(): RateLimiter {
-  return createRateLimiter(EMAIL_SENDS_PER_HOUR_MAX, EMAIL_SENDS_WINDOW_MS);
+/** The three server-wide hourly fuses (spec §3.2), one key each. Sized with
+ * `RESENDS_PER_HOUR_MAX` and `RESETS_PER_HOUR_MAX` so the three sum under
+ * the project's email limit. */
+export function createSendFuses(signupsPerHour: number): SendFuses {
+  return {
+    signUp: createRateLimiter(signupsPerHour, SEND_FUSE_WINDOW_MS),
+    resend: createRateLimiter(RESENDS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS),
+    reset: createRateLimiter(RESETS_PER_HOUR_MAX, SEND_FUSE_WINDOW_MS),
+  };
 }

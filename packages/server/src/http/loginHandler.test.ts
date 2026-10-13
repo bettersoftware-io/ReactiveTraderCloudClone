@@ -5,6 +5,7 @@ import type { LoginResponseDto } from "@rtc/shared";
 import {
   type AccountService,
   createAccountService,
+  type SendFuses,
 } from "#/accounts/AccountService";
 import { createDisabledAccountDirectory } from "#/accounts/DisabledAccountDirectory";
 import {
@@ -98,7 +99,8 @@ describe("authenticateLoginRequest", () => {
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
         sendLimiter: createRateLimiter(100, 60_000),
-        sendFuse: createRateLimiter(100, 60_000),
+        sendFuses: createFuses(),
+        log: () => {},
       }),
     });
 
@@ -142,7 +144,8 @@ describe("authenticateLoginRequest", () => {
         maxRegistrationsPerDay: 100,
         codeEntryLimiter: createRateLimiter(100, 60_000),
         sendLimiter: createRateLimiter(100, 60_000),
-        sendFuse: createRateLimiter(100, 60_000),
+        sendFuses: createFuses(),
+        log: () => {},
       }),
     });
 
@@ -375,8 +378,18 @@ function createAccounts(): AccountService {
     maxRegistrationsPerDay: 100,
     codeEntryLimiter: createRateLimiter(100, 60_000),
     sendLimiter: createRateLimiter(100, 60_000),
-    sendFuse: createRateLimiter(100, 60_000),
+    sendFuses: createFuses(),
+    log: () => {},
   });
+}
+
+function createFuses(overrides: Partial<SendFuses> = {}): SendFuses {
+  return {
+    signUp: createRateLimiter(100, 60_000),
+    resend: createRateLimiter(100, 60_000),
+    reset: createRateLimiter(100, 60_000),
+    ...overrides,
+  };
 }
 
 function createAuth(now: () => number): AuthService {

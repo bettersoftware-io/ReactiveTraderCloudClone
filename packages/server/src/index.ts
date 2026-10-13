@@ -32,6 +32,7 @@ import {
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
   BAN_STRIKES,
+  EMAIL_SENDS_PER_HOUR_MAX,
   INBOUND_BURST,
   INBOUND_DROPS_BEFORE_CLOSE,
   INBOUND_REFILL_PER_SECOND,
@@ -56,7 +57,7 @@ import {
 import {
   createAccountLimits,
   createCodeEntryLimiter,
-  createSendFuse,
+  createSendFuses,
   createSendLimiter,
 } from "./http/accountLimits.js";
 import { createAccountsHealth } from "./http/accountsHealth.js";
@@ -199,7 +200,10 @@ const accounts = createAccountService({
   maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
   codeEntryLimiter: createCodeEntryLimiter(),
   sendLimiter: createSendLimiter(),
-  sendFuse: createSendFuse(),
+  sendFuses: createSendFuses(EMAIL_SENDS_PER_HOUR_MAX),
+  log: (line: string): void => {
+    console.log(line);
+  },
 });
 
 const accountStatus = createAccountStatusCache({
