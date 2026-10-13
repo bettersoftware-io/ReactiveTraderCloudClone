@@ -407,12 +407,15 @@ export function createSupabaseAccountDirectory(
     },
 
     async findByEmail(email: string): Promise<AccountLookup> {
-      // PostgREST reads a double-quoted filter value literally, so a local
-      // part's `+`, `,` or `.` is not an operator; the validator refuses the
-      // two characters a quoted value cannot carry (`"` and `\`).
+      // At the top level PostgREST parses the operator first and takes the
+      // rest of the parameter as the value, so a local part's `+`, `.` or `,`
+      // needs no quoting — and must not be quoted: only logic trees and
+      // `in.(…)` lists strip double quotes, so a quoted value here would be
+      // compared with its quotes and match nothing. Percent-encoding is the
+      // only transformation; the validator bounds the character set.
       const reply = await call({
         method: "GET",
-        path: `/rest/v1/profiles?email=eq.${encodeURIComponent(`"${email}"`)}&select=${PROFILE_COLUMNS}`,
+        path: `/rest/v1/profiles?email=eq.${encodeURIComponent(email)}&select=${PROFILE_COLUMNS}`,
       });
 
       return lookupOf(reply);

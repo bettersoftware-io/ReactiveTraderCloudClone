@@ -687,14 +687,14 @@ describe("SupabaseAccountDirectory — hardening", () => {
 });
 
 describe("SupabaseAccountDirectory — findByEmail and purge", () => {
-  it("findByEmail reads profiles by the quoted address and maps the row", async () => {
+  it("findByEmail reads profiles by the plain encoded address and maps the row", async () => {
     const fake = createFakeFetch([createReply(200, [createProfileRow()])]);
 
     const found = await createDirectory(fake).findByEmail("ann+desk@desk.io");
 
     expect(fake.requests[0]?.method).toBe("GET");
     expect(fake.requests[0]?.url).toBe(
-      `https://proj.supabase.co/rest/v1/profiles?email=eq.${encodeURIComponent('"ann+desk@desk.io"')}&select=id,email,display_name,role,approved,blocked,email_confirmed_at`,
+      "https://proj.supabase.co/rest/v1/profiles?email=eq.ann%2Bdesk%40desk.io&select=id,email,display_name,role,approved,blocked,email_confirmed_at",
     );
     expect(found.outcome).toBe("found");
   });

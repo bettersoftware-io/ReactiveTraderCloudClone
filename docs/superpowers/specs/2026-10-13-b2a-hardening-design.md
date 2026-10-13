@@ -108,9 +108,12 @@ a body-bearing request at all.
 **The port gains one read.** `findByEmail(email): Promise<AccountLookup>` —
 the same shape as `findAccount`, keyed by the normalized address. In the
 Supabase directory it is one PostgREST query on `profiles`
-(`email=eq."<address>"`, the value double-quoted so PostgREST's reserved
-characters in a local part are literal; the validator already refuses `"`
-and `\`), whose cost does not depend on whether a row exists. The dev
+(`email=eq.<address>`, the address percent-encoded and not quoted: at the
+top level PostgREST parses the operator first and takes the rest of the
+parameter as the value, so a local part's `+`, `.` or `,` is literal, and it
+strips double quotes only inside logic trees and `in.(…)` lists — a quoted
+value would match nothing; the validator bounds the character set), whose
+cost does not depend on whether a row exists. The dev
 directory reads its map; the disabled directory answers `unavailable`.
 
 **`/register`**, in the account service: validate; charge the address's send
