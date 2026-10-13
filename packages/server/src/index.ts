@@ -15,13 +15,14 @@ import { createAccountStatusCache } from "./accounts/accountStatusCache.js";
 import {
   createAccountDirectory,
   isRegistrationOpen,
+  readSignupLevers,
   resolveAccountsMode,
 } from "./accounts/resolveAccountsMode.js";
+import { startUnconfirmedPurge } from "./accounts/unconfirmedPurge.js";
 import { AnthropicAgentLoop } from "./agent/AnthropicAgentLoop.js";
 import { type AgentLoop, createJarvisLoops } from "./agent/agentLoop.js";
 import { AuthService, parseAuthUsers } from "./auth/AuthService.js";
 import { createBanList } from "./auth/banList.js";
-import { createRateLimiter } from "./auth/rateLimit.js";
 import {
   ACCOUNT_DIRECTORY_TIMEOUT_MS,
   ACCOUNT_MAX_BODY_BYTES,
@@ -32,17 +33,17 @@ import {
   BAN_MAX_ENTRIES,
   BAN_STRIKE_WINDOW_MS,
   BAN_STRIKES,
-  EMAIL_SENDS_PER_HOUR_MAX,
   INBOUND_BURST,
   INBOUND_DROPS_BEFORE_CLOSE,
   INBOUND_REFILL_PER_SECOND,
   LOGIN_MAX_BODY_BYTES,
-  LOGIN_RATE_LIMIT_MAX,
-  LOGIN_RATE_LIMIT_WINDOW_MS,
   MAX_CONNECTIONS_PER_IP,
   MAX_CONNECTIONS_TOTAL,
-  MAX_REGISTRATIONS_PER_DAY,
   MCP_MAX_BODY_BYTES,
+  PURGE_BATCH,
+  PURGE_FIRST_RUN_DELAY_MS,
+  PURGE_INTERVAL_MS,
+  PURGE_UNCONFIRMED_AFTER_MS,
   WS_MAX_PAYLOAD_BYTES,
 } from "./config/limits.js";
 import { buildEffects } from "./effects/index.js";
@@ -57,6 +58,7 @@ import {
 import {
   createAccountLimits,
   createCodeEntryLimiter,
+  createLoginLimiter,
   createSendFuses,
   createSendLimiter,
 } from "./http/accountLimits.js";
@@ -151,10 +153,7 @@ const auth = new AuthService({
   credentials: parseAuthUsers(process.env.AUTH_USERS),
 });
 
-const loginRateLimit = createRateLimiter(
-  LOGIN_RATE_LIMIT_MAX,
-  LOGIN_RATE_LIMIT_WINDOW_MS,
-);
+const loginRateLimit = createLoginLimiter();
 
 // §9.2 — the in-app expiring ban table, consulted first at both edges.
 const banList = createBanList({
@@ -186,6 +185,9 @@ function readClock(): number {
 // AUTH_SECRET in either account mode, and on the dev directory being asked
 // for on a deployed machine — all before the server listens.
 const accountsMode = resolveAccountsMode(process.env);
+// The sign-up levers (spec §3.4) are read here too: a malformed value stops
+// the server at startup, before it listens.
+const signupLevers = readSignupLevers(process.env);
 // ONE directory instance: the service, the upgrade's status cache and the
 // health probe all read the same store.
 const accountDirectory = createAccountDirectory(accountsMode, {
@@ -197,10 +199,10 @@ const accounts = createAccountService({
   directory: accountDirectory,
   now: readClock,
   registrationOpen: isRegistrationOpen(process.env),
-  maxRegistrationsPerDay: MAX_REGISTRATIONS_PER_DAY,
+  maxRegistrationsPerDay: signupLevers.perDay,
   codeEntryLimiter: createCodeEntryLimiter(),
   sendLimiter: createSendLimiter(),
-  sendFuses: createSendFuses(EMAIL_SENDS_PER_HOUR_MAX),
+  sendFuses: createSendFuses(signupLevers.perHour),
   log: (line: string): void => {
     console.log(line);
   },
@@ -218,6 +220,22 @@ const accountsHealth = createAccountsHealth({
   cacheMs: ACCOUNTS_HEALTH_CACHE_MS,
   now: readClock,
 });
+
+// Spec §3.3: never-confirmed accounts are deleted after 48 h, hourly, one
+// batch per run. Not started with accounts disabled: there is no store.
+if (accountsMode.kind !== "disabled") {
+  startUnconfirmedPurge({
+    directory: accountDirectory,
+    now: readClock,
+    retentionMs: PURGE_UNCONFIRMED_AFTER_MS,
+    intervalMs: PURGE_INTERVAL_MS,
+    firstRunDelayMs: PURGE_FIRST_RUN_DELAY_MS,
+    batch: PURGE_BATCH,
+    log: (line: string): void => {
+      console.log(line);
+    },
+  });
+}
 
 // Each endpoint owns its limiter (`createAccountLimits`); the one shared
 // instance is the per-ADDRESS code-entry budget inside the account service,

@@ -22,6 +22,20 @@ import {
 } from "#/http/accountLimits";
 
 describe("createAccountLimits", () => {
+  it("bounds a /48 at four /64s' worth of /register", () => {
+    const { register } = createAccountLimits();
+    const perKey = REGISTER_RATE_LIMIT_MAX;
+
+    for (let network = 1; network <= 4; network += 1) {
+      for (let i = 0; i < perKey; i += 1) {
+        expect(register.hit(`2001:db8:1:${network}::`, 0)).toBe(true);
+      }
+    }
+
+    expect(register.hit("2001:db8:1:5::", 0)).toBe(false);
+    expect(register.hit("2001:db8:2:1::", 0)).toBe(true);
+  });
+
   it("gives every endpoint its own limiter instance", () => {
     const limits = createAccountLimits();
     const instances = Object.values(limits);
