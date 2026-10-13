@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LoginResponseDto } from "@rtc/shared";
 
@@ -356,6 +356,113 @@ describe("describeUpgrade", () => {
   });
 });
 
+describe("authenticateLoginRequest — the floor on a failed account login", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not answer an unknown address or a wrong password before 300 ms, measured from the handler's start", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const clock = createClock(1_000);
+    const deps = createDeps(createAuth(clock), { now: clock });
+    let settled = false;
+
+    const pending = authenticateLoginRequest(
+      createLoginBody("nobody@desk.io", "Wrong2026!desk"),
+      "1.2.3.4",
+      deps,
+    ).then((result) => {
+      settled = true;
+
+      return result;
+    });
+
+    // The account store hashes on real time; the floor's timer exists only
+    // once that decision is in, so let it land before moving fake time.
+    while (vi.getTimerCount() === 0) {
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+    }
+
+    await vi.advanceTimersByTimeAsync(299);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    const result = await pending;
+
+    expect(settled).toBe(true);
+    expect(result.status).toBe(401);
+  });
+
+  it("pads only the remainder: a decision that took 200 ms waits 100 ms more", async () => {
+    vi.useFakeTimers();
+    let clock = 1_000;
+    const accounts = createAccounts();
+    const slowAccounts: AccountService = {
+      ...accounts,
+      login: async (...args) => {
+        await new Promise<void>((resolve) => {
+          return setTimeout(resolve, 200);
+        });
+        clock += 200;
+
+        return accounts.login(...args);
+      },
+    };
+    const waits: number[] = [];
+    const deps = createDeps(
+      createAuth(() => {
+        return clock;
+      }),
+      {
+        now: () => {
+          return clock;
+        },
+        accounts: slowAccounts,
+        wait: (ms: number) => {
+          waits.push(ms);
+
+          return Promise.resolve();
+        },
+      },
+    );
+
+    const pending = authenticateLoginRequest(
+      createLoginBody("nobody@desk.io", "Wrong2026!desk"),
+      "1.2.3.4",
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(200);
+    await pending;
+
+    expect(waits).toEqual([100]);
+  });
+
+  it("does not hold a successful account login or a roster login", async () => {
+    const waits: number[] = [];
+    const deps = createDeps(createAuth(createClock(1_000)), {
+      wait: (ms: number) => {
+        waits.push(ms);
+
+        return Promise.resolve();
+      },
+    });
+
+    await authenticateLoginRequest(
+      createLoginBody("admin@rtc.test", DEV_ACCOUNT_PASSWORD),
+      "1.2.3.4",
+      deps,
+    );
+    await authenticateLoginRequest(
+      createLoginBody("astark", "mcdc2026"),
+      "1.2.3.4",
+      deps,
+    );
+
+    expect(waits).toEqual([]);
+  });
+});
+
 const TTL_MS = 60_000;
 
 interface DepsOverrides {
@@ -363,6 +470,7 @@ interface DepsOverrides {
   readonly banList?: BanList;
   readonly now?: () => number;
   readonly accounts?: AccountService;
+  readonly wait?: (ms: number) => Promise<void>;
 }
 
 function createAccounts(): AccountService {
@@ -426,6 +534,7 @@ function createDeps(
       }),
     accounts: overrides.accounts ?? createAccounts(),
     now: overrides.now ?? createClock(1_000),
+    wait: overrides.wait,
   };
 }
 
