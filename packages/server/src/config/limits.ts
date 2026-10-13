@@ -110,6 +110,35 @@ export const SEND_PER_ADDRESS_MAX_KEYS = 50_000;
 export const EMAIL_SENDS_PER_HOUR_MAX = 25;
 export const EMAIL_SENDS_WINDOW_MS = 60 * 60 * 1000;
 
+/** B2a hardening — resends and reset requests per hour, whole server, one
+ * fuse each, charged only for a send that will really happen (the address
+ * was looked up first). With `EMAIL_SENDS_PER_HOUR_MAX` (25) the three fuses
+ * sum to 55, under the Supabase project's email limit of 60 an hour, so the
+ * project never throttles a mail the server let through. */
+export const RESENDS_PER_HOUR_MAX = 15;
+export const RESETS_PER_HOUR_MAX = 15;
+export const SEND_FUSE_WINDOW_MS = 60 * 60 * 1000;
+
+/** B2a hardening — a failed account login is not answered before this, so
+ * Supabase's "unknown address at once, wrong password after its hash" is
+ * not visible from outside. */
+export const LOGIN_FAILURE_FLOOR_MS = 300;
+
+/** B2a hardening — an account not confirmed within this is deleted; the
+ * check runs hourly, a minute after start first, at most PURGE_BATCH at a
+ * time. 48 hours and not 24: the daily cap counts the last 24 hours of
+ * profiles and must not be undercut by its own cleanup. */
+export const PURGE_UNCONFIRMED_AFTER_MS = 48 * 60 * 60 * 1000;
+export const PURGE_INTERVAL_MS = 60 * 60 * 1000;
+export const PURGE_FIRST_RUN_DELAY_MS = 60 * 1000;
+export const PURGE_BATCH = 100;
+
+/** B2a hardening — an IPv6 /48 may spend this many times one /64's budget. */
+export const WIDER_NETWORK_BUDGET_MULTIPLIER = 4;
+
+/** B2a hardening — how long a browser may cache a POST route's preflight. */
+export const CORS_MAX_AGE_SECONDS = 600;
+
 /** B2 — registrations per day across the whole service: a fuse against a
  * scripted flood. Counted in the account store, so a restart keeps it. */
 export const MAX_REGISTRATIONS_PER_DAY = 200;

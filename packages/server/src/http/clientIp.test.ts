@@ -8,7 +8,8 @@ import {
   resolveClientIp,
   resolveTrustedIpHeader,
   TRUSTED_IP_HEADER_DEFAULT,
-} from "./clientIp.js";
+  widerNetworkKeyOf,
+} from "#/http/clientIp";
 
 describe("resolveClientIp", () => {
   it("prefers the trusted header, trimmed", () => {
@@ -151,6 +152,19 @@ describe("resolveTrustedIpHeader", () => {
     expect(resolveTrustedIpHeader({ RTC_TRUSTED_IP_HEADER: "  " })).toBe(
       TRUSTED_IP_HEADER_DEFAULT,
     );
+  });
+});
+
+describe("widerNetworkKeyOf", () => {
+  it("gives the /48 of an IPv6 /64 key", () => {
+    expect(widerNetworkKeyOf("2001:db8:1:2::")).toBe("2001:db8:1::");
+    expect(widerNetworkKeyOf("2001:db8:1:2:3:4:5:6")).toBe("2001:db8:1::");
+  });
+
+  it("is null for IPv4, an IPv4-mapped address and anything unparsable", () => {
+    expect(widerNetworkKeyOf("203.0.113.9")).toBeNull();
+    expect(widerNetworkKeyOf("::ffff:203.0.113.9")).toBeNull();
+    expect(widerNetworkKeyOf("unknown")).toBeNull();
   });
 });
 

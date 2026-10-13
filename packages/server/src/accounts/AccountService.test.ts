@@ -861,6 +861,9 @@ describe("AccountService per-address send limit", () => {
     const { service } = createService({
       sendLimiter: {
         hit,
+        peek: (): boolean => {
+          return true;
+        },
         size: (): number => {
           return 0;
         },
@@ -871,6 +874,9 @@ describe("AccountService per-address send limit", () => {
       registrationOpen: false,
       sendLimiter: {
         hit,
+        peek: (): boolean => {
+          return true;
+        },
         size: (): number => {
           return 0;
         },
