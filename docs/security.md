@@ -53,6 +53,67 @@ anything else is posted to the server. So the public demo costs nothing on the
 server and cannot spend the AI key, while the same page is the real client for
 anyone with a real credential ([`authentication.md` §6](authentication.md#6-hybrid-data-source-one-deployment-two-modes)).
 
+### 1.1 One username, two worlds
+
+The confusing case, and the one worth testing yourself: on the deployed page
+the same persona name works in **both** worlds, and only the password decides
+which. The page matches the *pair* you typed against the committed demo
+roster; a match stays in the browser, anything else goes to the server.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor You
+  participant Page as Deployed web page<br/>(hybrid build)
+  participant Fly as Fly server<br/>/login
+  participant Store as Account store<br/>(Supabase)
+
+  You->>Page: username + password
+
+  alt pair matches the committed demo roster (astark + mcdc2026)
+    Page->>Page: verified in the browser
+    Page-->>You: simulators start, no request leaves the page
+  else no match — any other pair
+    Page->>Fly: POST /login {username, password}
+    alt username has no @ (a roster persona)
+      Fly->>Fly: AUTH_USERS password check, then roster.ts lookup
+    else username has an @ (a registered account)
+      Fly->>Store: password check, profile status
+      Store-->>Fly: confirmed? approved? blocked?
+    end
+    alt accepted
+      Fly-->>Page: 200 + signed token
+      Page->>Page: store "live", reload once
+      Page->>Fly: WebSocket upgrade ?access=token
+      Fly-->>Page: live prices
+    else refused
+      Fly-->>Page: 401 invalid_credentials / 403 pending_approval · blocked · unconfirmed
+      Page-->>You: the error line
+    end
+  end
+```
+
+Credential by credential, what happens on the deployed page:
+
+| You type | Checked by | Outcome |
+|---|---|---|
+| `astark` + `mcdc2026` (or any persona with the committed password) | the browser, against `VITE_DEMO_AUTH` | In-browser simulators; nothing is sent to the server. The public demo. |
+| `astark` + the **private** password from `AUTH_USERS` | the server: `AUTH_USERS`, then `roster.ts` | Live. The page reloads once into live mode and opens the WebSocket. Only whoever holds that password gets here. |
+| `astark` + any other password | the server | `401 invalid_credentials`, one strike against your address. |
+| a persona the server roster does not list (today every persona but one) + anything but `mcdc2026` | the server | `401`: no entry in `AUTH_USERS`. |
+| a username not in `roster.ts` (`csx`, `admin`, …) + anything | the server | `401`, always, even if `AUTH_USERS` names it (§2.2). |
+| `you@example.com` + its password | the server, then the account store | Live if confirmed **and** approved; `403 pending_approval` / `blocked` / `unconfirmed` otherwise; `401` on a wrong password. |
+| `you@example.com` on a page **without** a server URL (`pnpm dev`) | the in-browser `AuthSimulator` | Refused: the simulator knows only the demo roster. |
+
+How to tell which world the page landed in: the browser console prints
+`[data] composed sim from …` or `[data] composed live from …` at boot; a live
+page has one WebSocket to the server in the network panel and none in sim
+mode; the login screen's demo-accounts hint lists exactly the pairs the page
+verifies locally, so a persona shown there with the printed password is the
+simulator. The choice is remembered in `localStorage["rtc.dataSource"]` and
+re-decided at every login
+([`authentication.md` §6.2](authentication.md#62-reload-dynamics)).
+
 ## 2. The three identities
 
 ### 2.1 Demo personas, in the browser
