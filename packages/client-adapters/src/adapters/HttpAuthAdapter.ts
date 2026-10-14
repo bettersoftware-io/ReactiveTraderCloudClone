@@ -4,11 +4,20 @@ import {
   type AccountFlowOutcome,
   type AuthOutcome,
   type AuthPort,
-  createUnavailableAccountFlows,
+  isAccountInputRule,
 } from "@rtc/domain";
-import type { LoginResponseDto } from "@rtc/shared";
+import {
+  isAccountErrorDto,
+  isAccountFlowResponseDto,
+  type LoginResponseDto,
+} from "@rtc/shared";
 
 type FetchImpl = typeof fetch;
+
+const FLOW_UNAVAILABLE: AccountFlowOutcome = {
+  ok: false,
+  reason: "unavailable",
+};
 
 /**
  * AuthPort backed by the server's `POST /login` HTTP endpoint. Used in WS-real
@@ -17,8 +26,6 @@ type FetchImpl = typeof fetch;
  */
 export class HttpAuthAdapter implements AuthPort {
   private readonly fetchImpl: FetchImpl;
-
-  private readonly flows = createUnavailableAccountFlows();
 
   constructor(
     private readonly httpBaseUrl: string,
@@ -42,11 +49,11 @@ export class HttpAuthAdapter implements AuthPort {
   }
 
   register(email: string, displayName: string): Observable<AccountFlowOutcome> {
-    return this.flows.register(email, displayName);
+    return this.flow("/register", { email, displayName });
   }
 
   resendCode(email: string): Observable<AccountFlowOutcome> {
-    return this.flows.resendCode(email);
+    return this.flow("/resend-code", { email });
   }
 
   confirmEmail(
@@ -54,11 +61,11 @@ export class HttpAuthAdapter implements AuthPort {
     code: string,
     password: string,
   ): Observable<AccountFlowOutcome> {
-    return this.flows.confirmEmail(email, code, password);
+    return this.flow("/confirm-email", { email, code, password });
   }
 
   requestPasswordReset(email: string): Observable<AccountFlowOutcome> {
-    return this.flows.requestPasswordReset(email);
+    return this.flow("/request-reset", { email });
   }
 
   resetPassword(
@@ -66,7 +73,60 @@ export class HttpAuthAdapter implements AuthPort {
     code: string,
     password: string,
   ): Observable<AccountFlowOutcome> {
-    return this.flows.resetPassword(email, code, password);
+    return this.flow("/reset-password", { email, code, password });
+  }
+
+  private flow(
+    path: string,
+    body: Record<string, string>,
+  ): Observable<AccountFlowOutcome> {
+    return defer(() => {
+      return from(this.postFlow(path, body));
+    }).pipe(
+      catchError((): Observable<AccountFlowOutcome> => {
+        return of(FLOW_UNAVAILABLE);
+      }),
+    );
+  }
+
+  private async postFlow(
+    path: string,
+    body: Record<string, string>,
+  ): Promise<AccountFlowOutcome> {
+    const response = await this.fetchImpl(`${this.httpBaseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await readJson(response);
+
+    if (response.status === 200 || response.status === 202) {
+      return isAccountFlowResponseDto(payload)
+        ? { ok: true, status: payload.status }
+        : FLOW_UNAVAILABLE;
+    }
+
+    if (response.status === 429) {
+      return { ok: false, reason: "rate_limited" };
+    }
+
+    const error = isAccountErrorDto(payload) ? payload : null;
+
+    if (response.status === 400 && error?.error === "invalid_code") {
+      return { ok: false, reason: "invalid_code" };
+    }
+
+    if (response.status === 400 && error?.error === "invalid_request") {
+      return isAccountInputRule(error.rule)
+        ? { ok: false, reason: "invalid_input", rule: error.rule }
+        : { ok: false, reason: "invalid_input" };
+    }
+
+    if (response.status === 403 && error?.error === "registration_closed") {
+      return { ok: false, reason: "registration_closed" };
+    }
+
+    return FLOW_UNAVAILABLE;
   }
 
   private async postLogin(
@@ -88,7 +148,34 @@ export class HttpAuthAdapter implements AuthPort {
       return { ok: false, reason: "invalid" };
     }
 
+    if (response.status === 403) {
+      const payload = await readJson(response);
+      const error = isAccountErrorDto(payload) ? payload.error : null;
+
+      if (error === "unconfirmed") {
+        return { ok: false, reason: "unconfirmed" };
+      }
+
+      if (error === "pending_approval") {
+        return { ok: false, reason: "pending" };
+      }
+
+      if (error === "blocked") {
+        return { ok: false, reason: "blocked" };
+      }
+    }
+
     return { ok: false, reason: "unavailable" };
+  }
+}
+
+/** The body as JSON, or null when it is not JSON — a refusal from a proxy
+ * or the origin policy may carry none. */
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
   }
 }
 

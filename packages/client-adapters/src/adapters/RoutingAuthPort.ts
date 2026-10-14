@@ -1,11 +1,7 @@
-import { catchError, mergeMap, NEVER, type Observable, of } from "rxjs";
+import { catchError, defer, mergeMap, NEVER, type Observable, of } from "rxjs";
 
 import type { SessionStore, StoredSession } from "@rtc/core-api";
-import {
-  type AuthOutcome,
-  type AuthPort,
-  createUnavailableAccountFlows,
-} from "@rtc/domain";
+import type { AccountFlowOutcome, AuthOutcome, AuthPort } from "@rtc/domain";
 
 import type { DataSource, DataSourceStore } from "./dataSource.js";
 
@@ -31,6 +27,10 @@ type Authenticated = Extract<AuthOutcome, AuthenticatedShape>;
 
 const NO_LOCAL_MATCH: AuthOutcome = { ok: false, reason: "invalid" };
 const UNAVAILABLE: AuthOutcome = { ok: false, reason: "unavailable" };
+const FLOW_UNAVAILABLE: AccountFlowOutcome = {
+  ok: false,
+  reason: "unavailable",
+};
 
 /**
  * The hybrid login (hardening spec §8). Demo credentials never leave the
@@ -96,8 +96,46 @@ export function createRoutingAuthPort(deps: RoutingAuthPortDeps): AuthPort {
     );
   }
 
+  /** The account flows have no demo leg: a demo account is not a registered
+   * one, so every flow goes to the server, error-isolated like `askServer`. */
+  function liveFlow(
+    call: (live: AuthPort) => Observable<AccountFlowOutcome>,
+  ): Observable<AccountFlowOutcome> {
+    return defer(() => {
+      return call(deps.live);
+    }).pipe(
+      catchError((): Observable<AccountFlowOutcome> => {
+        return of(FLOW_UNAVAILABLE);
+      }),
+    );
+  }
+
   return {
-    ...createUnavailableAccountFlows(),
+    register: (email: string, displayName: string) => {
+      return liveFlow((live: AuthPort) => {
+        return live.register(email, displayName);
+      });
+    },
+    resendCode: (email: string) => {
+      return liveFlow((live: AuthPort) => {
+        return live.resendCode(email);
+      });
+    },
+    confirmEmail: (email: string, code: string, password: string) => {
+      return liveFlow((live: AuthPort) => {
+        return live.confirmEmail(email, code, password);
+      });
+    },
+    requestPasswordReset: (email: string) => {
+      return liveFlow((live: AuthPort) => {
+        return live.requestPasswordReset(email);
+      });
+    },
+    resetPassword: (email: string, code: string, password: string) => {
+      return liveFlow((live: AuthPort) => {
+        return live.resetPassword(email, code, password);
+      });
+    },
     login(username: string, password: string): Observable<AuthOutcome> {
       return deps.demo.login(username, password).pipe(
         catchError((): Observable<AuthOutcome> => {
