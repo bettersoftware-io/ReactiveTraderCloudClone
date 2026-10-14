@@ -42,6 +42,7 @@ export {
   type SubscriptionTally,
 } from "#/harness/portTally";
 export {
+  type AccountCall,
   type CandleHistoryRequest,
   type ControlCall,
   type HarnessSeed,

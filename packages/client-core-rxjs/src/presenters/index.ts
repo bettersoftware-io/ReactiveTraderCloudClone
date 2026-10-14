@@ -1,3 +1,4 @@
+export * from "#/presenters/AccountAccessMachine";
 export * from "#/presenters/AmbientStylePresenter";
 export * from "#/presenters/AnalyticsPresenter";
 export * from "#/presenters/AnimatedBackgroundPresenter";

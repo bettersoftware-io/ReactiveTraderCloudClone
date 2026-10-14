@@ -2,6 +2,10 @@ import type { CurrencyPair } from "@rtc/domain";
 
 import type { LayoutState, WorkspaceTab } from "#/layout";
 import type {
+  AccountAccessIntents,
+  AccountAccessState,
+} from "#/machines/accountAccess";
+import type {
   BootSequenceIntents,
   BootSequenceState,
 } from "#/machines/bootSequence";
@@ -93,4 +97,7 @@ export interface MachineFactories {
   orderTicket: (
     defaultSymbol: string,
   ) => Machine<OrderTicketState, OrderTicketIntents>;
+  /** The login screen's create-account / confirm / reset flows. One per
+   * login-screen mount; at rest it is the plain sign-in form (`signIn`). */
+  accountAccess: () => Machine<AccountAccessState, AccountAccessIntents>;
 }

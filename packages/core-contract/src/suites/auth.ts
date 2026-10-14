@@ -283,13 +283,15 @@ export function describeAuthContract(
         const h = makeHarness();
 
         try {
-          h.app.presenters.auth.accounts.register("a@b.co", "Ann").subscribe({
-            error: (): void => {
-              // the unavailable flows refuse; the call count is what is asserted
-            },
-          });
+          const call = h.app.presenters.auth.accounts
+            .register("a@b.co", "Ann")
+            .subscribe();
           await clock.settle();
           expect(h.driver.portCalls("auth.register")).toBe(1);
+          expect(h.driver.pendingAccountCalls()).toEqual([
+            { kind: "register", email: "a@b.co", displayName: "Ann" },
+          ]);
+          call.unsubscribe();
           expect(h.driver.portCalls("auth.login")).toBe(0);
           expect(h.driver.pendingLogins()).toEqual([]);
         } finally {
