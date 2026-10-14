@@ -1,70 +1,99 @@
-import { createMemo, createSignal, type JSX, Show } from "solid-js";
+import {
+  type Accessor,
+  createMemo,
+  type JSX,
+  Match,
+  Show,
+  Switch,
+} from "solid-js";
 
-import type { DemoAccount } from "@rtc/domain";
+import type { AccountAccessState } from "@rtc/core-api";
+import { describeAccountAccessTitle } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/solid-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
-import { DemoAccountsHint } from "./DemoAccountsHint";
-import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { AccountNotice } from "./AccountNotice";
+import { CreateAccountForm } from "./CreateAccountForm";
+import { EnterCodeForm } from "./EnterCodeForm";
+import { ResetRequestForm } from "./ResetRequestForm";
+import { SignInForm } from "./SignInForm";
 import { ReactorRings } from "./wait/ReactorRings";
-import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
-import waitStyles from "./wait/authWait.module.css";
 
 /**
- * Full-screen sign-in form (prototype-styled to match LockScreen). Renders
+ * Full-screen sign-in shell (prototype-styled to match LockScreen): the
+ * badge, the title, and one form by account-access phase — sign in, create
+ * an account, enter a code, request a reset, or a notice. Renders
  * unconditionally while mounted — AuthGate mounts it only for the
  * unauthenticated branch of the auth lifecycle. Dumb component: all state
- * arrives through the `useAuth` seam; the typed credentials live in local
- * signals only and are never logged.
+ * arrives through the `useAuth` / `useAccountAccess` hook seams; whatever is
+ * typed lives in each form's local signals only and is never logged.
  */
 export function LoginScreen(): JSX.Element {
-  const { useAuth, useDemoAccounts } = useViewModel();
-  const { state, login } = useAuth();
+  const {
+    useAuth,
+    useDemoAccounts,
+    useRegistrationAvailable,
+    useAccountAccess,
+  } = useViewModel();
+  const auth = useAuth();
+  const account = useAccountAccess();
   const demoAccounts = useDemoAccounts();
+  const registrationAvailable = useRegistrationAvailable();
+  const { state } = account;
 
-  const [username, setUsername] = createSignal("");
-  const [password, setPassword] = createSignal("");
-  let submitButton: HTMLButtonElement | undefined;
-
-  const authenticating = createMemo((): boolean => {
-    return state().status === "authenticating";
+  const reactorWaiting = createMemo((): boolean => {
+    return (
+      auth.state().status === "authenticating" &&
+      auth.state().waitVariant === "reactor"
+    );
   });
 
-  function submitLogin(event: SubmitEvent): void {
-    event.preventDefault();
-    login(username(), password());
-  }
+  // One memo per narrowed phase: a form keeps its typed signals across state
+  // changes inside its phase (the non-keyed <Show> never remounts it) and
+  // receives its phase's own state type.
+  const registerState = createMemo((): RegisterState | undefined => {
+    const current = state();
 
-  function changeUsername(event: InputChangeEvent): void {
-    setUsername(event.currentTarget.value);
-  }
+    return current.phase === "register" ? current : undefined;
+  });
 
-  function changePassword(event: InputChangeEvent): void {
-    setPassword(event.currentTarget.value);
-  }
+  const codeState = createMemo((): CodeState | undefined => {
+    const current = state();
 
-  /** A picked demo account fills both fields and hands focus to AUTHENTICATE,
-   * so the next Enter signs in — the pick itself never does. */
-  function stageSignIn(account: DemoAccount): void {
-    setUsername(account.username);
-    setPassword(account.password);
-    submitButton?.focus();
-  }
+    return current.phase === "code" ? current : undefined;
+  });
+
+  const requestResetState = createMemo((): RequestResetState | undefined => {
+    const current = state();
+
+    return current.phase === "requestReset" ? current : undefined;
+  });
+
+  const noticeState = createMemo((): NoticeState | undefined => {
+    const current = state();
+
+    return current.phase === "pendingApproval" ||
+      current.phase === "passwordUnset" ||
+      current.phase === "passwordChanged"
+      ? current
+      : undefined;
+  });
 
   return (
-    <div data-testid="login-screen" class={styles.overlay}>
+    <div
+      data-testid="login-screen"
+      data-phase={state().phase}
+      class={styles.overlay}
+    >
       <div class={styles.grid} aria-hidden="true" />
       <div class={styles.panel}>
         {/* Hex emblem — the shared animated HUD logo, matching LockScreen.
             While the reactor wait treatment is in flight, ReactorRings wraps
             it with the spin-up arcs + pulse instead of a bare HudLogo. */}
         <div class={styles.badge} aria-hidden="true">
-          <Show
-            when={authenticating() && state().waitVariant === "reactor"}
-            fallback={<HudLogo />}
-          >
+          <Show when={reactorWaiting()} fallback={<HudLogo />}>
             <ReactorRings>
               <HudLogo />
             </ReactorRings>
@@ -72,78 +101,90 @@ export function LoginScreen(): JSX.Element {
         </div>
 
         <div data-testid="login-title" class={styles.title}>
-          REACTIVE TRADER OS · SIGN IN
+          {describeAccountAccessTitle(state())}
         </div>
 
-        <form class={styles.form} onSubmit={submitLogin}>
-          <div
-            class={
-              authenticating()
-                ? `${waitStyles.fields} ${waitStyles.recede}`
-                : waitStyles.fields
-            }
-          >
-            <label class={styles.field}>
-              <span class={styles.label}>Username</span>
-              <input
-                data-testid="login-username"
-                class={styles.input}
-                type="text"
-                autocomplete="username"
-                value={username()}
-                onInput={changeUsername}
-              />
-            </label>
-
-            <label class={styles.field}>
-              <span class={styles.label}>Password</span>
-              <input
-                data-testid="login-password"
-                class={styles.input}
-                type="password"
-                autocomplete="current-password"
-                value={password()}
-                onInput={changePassword}
-              />
-            </label>
-          </div>
-
-          <Show when={state().error !== null}>
-            <div data-testid="login-error" class={styles.error}>
-              {state().error}
-            </div>
-          </Show>
-
-          <button
-            ref={submitButton}
-            type="submit"
-            data-testid="login-submit"
-            class={
-              authenticating()
-                ? `${styles.submit} ${waitStyles.busy}`
-                : styles.submit
-            }
-            disabled={authenticating()}
-          >
-            {authenticating() ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
-          </button>
-
-          <Show when={authenticating() && state().waitVariant === "handshake"}>
-            <HandshakeConsole />
-          </Show>
-          <Show when={authenticating() && state().waitVariant === "reactor"}>
-            <ReactorWait />
-          </Show>
-        </form>
-
-        <DemoAccountsHint
-          accounts={demoAccounts}
-          busy={authenticating()}
-          onPick={stageSignIn}
-        />
+        <Switch>
+          <Match when={state().phase === "signIn"}>
+            <SignInForm
+              auth={auth.state()}
+              registrationAvailable={registrationAvailable}
+              demoAccounts={demoAccounts}
+              onLogin={auth.login}
+              onCreateAccount={account.startRegistration}
+              onForgotPassword={account.startReset}
+              onEnterCode={account.startCodeEntry}
+            />
+          </Match>
+          <Match when={registerState()}>
+            {(current: Accessor<RegisterState>) => {
+              return (
+                <CreateAccountForm
+                  state={current()}
+                  onRegister={account.register}
+                  onHaveCode={account.startCodeEntry}
+                  onBack={account.returnToSignIn}
+                />
+              );
+            }}
+          </Match>
+          <Match when={codeState()}>
+            {(current: Accessor<CodeState>) => {
+              return (
+                <EnterCodeForm
+                  state={current()}
+                  onSubmit={account.submitCode}
+                  onResend={account.resendCode}
+                  onBack={account.returnToSignIn}
+                />
+              );
+            }}
+          </Match>
+          <Match when={requestResetState()}>
+            {(current: Accessor<RequestResetState>) => {
+              return (
+                <ResetRequestForm
+                  state={current()}
+                  onRequest={account.requestReset}
+                  onBack={account.returnToSignIn}
+                />
+              );
+            }}
+          </Match>
+          <Match when={noticeState()}>
+            {(current: Accessor<NoticeState>) => {
+              return (
+                <AccountNotice
+                  state={current()}
+                  onRequestReset={account.requestReset}
+                  onSignIn={account.returnToSignIn}
+                />
+              );
+            }}
+          </Match>
+        </Switch>
       </div>
     </div>
   );
 }
 
-type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
+interface RegisterPhaseTag {
+  readonly phase: "register";
+}
+
+interface CodePhaseTag {
+  readonly phase: "code";
+}
+
+interface RequestResetPhaseTag {
+  readonly phase: "requestReset";
+}
+
+interface NoticePhaseTag {
+  readonly phase: "pendingApproval" | "passwordUnset" | "passwordChanged";
+}
+
+type RegisterState = Extract<AccountAccessState, RegisterPhaseTag>;
+type CodeState = Extract<AccountAccessState, CodePhaseTag>;
+type RequestResetState = Extract<AccountAccessState, RequestResetPhaseTag>;
+type NoticeState = Extract<AccountAccessState, NoticePhaseTag>;
