@@ -21,6 +21,7 @@ import { cutPortsOnAbort } from "#/bridge/cutPortsOnAbort";
 import { peek } from "#/bridge/in";
 import { gateTransportOnAuth } from "#/bridge/transportGate";
 import { createCommands } from "#/commands";
+import { createAccountAccessMachine } from "#/machines/accountAccess";
 import { createBootMachine } from "#/machines/boot";
 import { createEqDrawingsMachine } from "#/machines/eqDrawings";
 import { createEqWorkspaceMachine } from "#/machines/eqWorkspace";
@@ -369,6 +370,9 @@ function nativeMachines(presenters: Presenters): MachineFactories {
     },
     layout: (tab: WorkspaceTab) => {
       return presenters.layoutFor(tab);
+    },
+    accountAccess: () => {
+      return createAccountAccessMachine(presenters.auth.accounts);
     },
     orderTicket: (defaultSymbol: string) => {
       return createOrderTicketMachine({
