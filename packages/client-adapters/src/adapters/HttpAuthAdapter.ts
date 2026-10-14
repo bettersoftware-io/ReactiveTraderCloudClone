@@ -1,11 +1,6 @@
 import { catchError, defer, from, type Observable, of } from "rxjs";
 
-import {
-  type AccountFlowOutcome,
-  type AuthOutcome,
-  type AuthPort,
-  isAccountInputRule,
-} from "@rtc/domain";
+import type { AccountFlowOutcome, AuthOutcome, AuthPort } from "@rtc/domain";
 import {
   isAccountErrorDto,
   isAccountFlowResponseDto,
@@ -110,19 +105,19 @@ export class HttpAuthAdapter implements AuthPort {
       return { ok: false, reason: "rate_limited" };
     }
 
-    const error = isAccountErrorDto(payload) ? payload : null;
+    const error = readErrorWord(payload);
 
-    if (response.status === 400 && error?.error === "invalid_code") {
+    if (response.status === 400 && error === "invalid_code") {
       return { ok: false, reason: "invalid_code" };
     }
 
-    if (response.status === 400 && error?.error === "invalid_request") {
-      return isAccountInputRule(error.rule)
-        ? { ok: false, reason: "invalid_input", rule: error.rule }
+    if (response.status === 400 && error === "invalid_request") {
+      return isAccountErrorDto(payload) && payload.rule !== undefined
+        ? { ok: false, reason: "invalid_input", rule: payload.rule }
         : { ok: false, reason: "invalid_input" };
     }
 
-    if (response.status === 403 && error?.error === "registration_closed") {
+    if (response.status === 403 && error === "registration_closed") {
       return { ok: false, reason: "registration_closed" };
     }
 
@@ -150,7 +145,7 @@ export class HttpAuthAdapter implements AuthPort {
 
     if (response.status === 403) {
       const payload = await readJson(response);
-      const error = isAccountErrorDto(payload) ? payload.error : null;
+      const error = readErrorWord(payload);
 
       if (error === "unconfirmed") {
         return { ok: false, reason: "unconfirmed" };
@@ -167,6 +162,19 @@ export class HttpAuthAdapter implements AuthPort {
 
     return { ok: false, reason: "unavailable" };
   }
+}
+
+/** A failure body's `error` word, read apart from its `rule`: a rule this
+ * client does not know (which fails `isAccountErrorDto`) costs the rule, not
+ * the refusal. */
+function readErrorWord(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) {
+    return null;
+  }
+
+  const error = (payload as Record<string, unknown>).error;
+
+  return typeof error === "string" ? error : null;
 }
 
 /** The body as JSON, or null when it is not JSON — a refusal from a proxy

@@ -125,4 +125,17 @@ describe("isAccountErrorDto", () => {
     expect(isAccountErrorDto({ error: "x", rule: 3 })).toBe(false);
     expect(isAccountErrorDto(null)).toBe(false);
   });
+
+  it("accepts every account input rule and rejects a rule it does not name", () => {
+    for (const rule of ["email", "display-name", "password", "min-length"]) {
+      expect(isAccountErrorDto({ error: "invalid_request", rule })).toBe(true);
+    }
+
+    expect(isAccountErrorDto({ error: "invalid_request", rule: "bogus" })).toBe(
+      false,
+    );
+    expect(isAccountErrorDto({ error: "invalid_request", rule: "" })).toBe(
+      false,
+    );
+  });
 });

@@ -1,4 +1,8 @@
-import type { AccountFlowStatus, AccountInputRule } from "@rtc/domain";
+import {
+  type AccountFlowStatus,
+  type AccountInputRule,
+  isAccountInputRule,
+} from "@rtc/domain";
 
 export interface SessionUserDto {
   readonly name: string;
@@ -137,8 +141,9 @@ export function isAccountFlowResponseDto(
   );
 }
 
-/** A failure body: `{error}` with a string, `rule` absent or a string. The
- * client maps the words it knows and reads anything else as unavailable. */
+/** A failure body: `{error}` with a string, `rule` absent or one of the
+ * account input rules. The client maps the words it knows and reads anything
+ * else as unavailable. */
 export function isAccountErrorDto(value: unknown): value is AccountErrorDto {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -148,6 +153,6 @@ export function isAccountErrorDto(value: unknown): value is AccountErrorDto {
 
   return (
     typeof record.error === "string" &&
-    (record.rule === undefined || typeof record.rule === "string")
+    (record.rule === undefined || isAccountInputRule(record.rule))
   );
 }
