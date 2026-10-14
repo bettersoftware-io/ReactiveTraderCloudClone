@@ -27,10 +27,11 @@ import { ThemeProvider } from "#/ui/shell/theme/ThemeProvider";
 export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
   // Neither prop changes within one mount: a swap renders a new tree rather
   // than re-valuing this component, so one `untrack`ed read is correct.
-  const { composition, demoAccounts } = untrack(() => {
+  const { composition, demoAccounts, registrationAvailable } = untrack(() => {
     return {
       composition: props.composition,
       demoAccounts: props.demoAccounts,
+      registrationAvailable: props.registrationAvailable,
     };
   });
 
@@ -41,6 +42,7 @@ export function AppRoot(props: ParentProps<AppRootProps>): JSX.Element {
     {
       coreSelection: composition.coreSelection,
       demoAccounts,
+      registrationAvailable,
       takePreferencesReopen: () => {
         return composition.takePreferencesReopen();
       },
@@ -67,4 +69,7 @@ interface AppRootProps {
   /** The sign-ins the login screen lists as a hint: the page's, not one
    * composition's. */
   demoAccounts: readonly DemoAccount[];
+  /** Whether the page has a server to register with: the page's, like the
+   * demo accounts. */
+  registrationAvailable: boolean;
 }

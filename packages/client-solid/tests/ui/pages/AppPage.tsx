@@ -87,6 +87,7 @@ export function appPage(): AppPage {
           <AppRoot
             composition={createComposition()}
             demoAccounts={readRunDemoAccounts()}
+            registrationAvailable={false}
           >
             <App />
           </AppRoot>

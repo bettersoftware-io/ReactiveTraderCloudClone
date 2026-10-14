@@ -142,6 +142,22 @@ export function buildShellSlice(options: ShellSliceOptions = {}): ShellSlice {
   const viewModePreference = { viewMode: DEFAULT_VIEW_MODE, setViewMode: noop };
 
   return {
+    useAccountAccess: () => {
+      return {
+        state: { phase: "signIn" },
+        startRegistration: noop,
+        startReset: noop,
+        startCodeEntry: noop,
+        returnToSignIn: noop,
+        register: noop,
+        requestReset: noop,
+        submitCode: noop,
+        resendCode: noop,
+      };
+    },
+    useRegistrationAvailable: () => {
+      return false;
+    },
     useAmbientStyle: () => {
       return ambientStylePreference;
     },

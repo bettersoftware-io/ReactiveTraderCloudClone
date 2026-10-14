@@ -796,6 +796,22 @@ export function buildFakeViewModel(data: AppData): ViewModel {
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
     // so every scenario but login/demo-hint renders the plain live form.
+    useAccountAccess: () => {
+      return {
+        state: at({ phase: "signIn" as const }),
+        startRegistration: noop,
+        startReset: noop,
+        startCodeEntry: noop,
+        returnToSignIn: noop,
+        register: noop,
+        requestReset: noop,
+        submitCode: noop,
+        resendCode: noop,
+      };
+    },
+    useRegistrationAvailable: () => {
+      return false;
+    },
     useDemoAccounts: () => {
       return data.demoAccounts ?? [];
     },

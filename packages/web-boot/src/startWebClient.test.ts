@@ -96,6 +96,22 @@ describe("startWebClient", () => {
     expect(document.documentElement.dataset.coreImpl).toBe("rxjs");
   });
 
+  it("tells the view the page can register when it has a server URL", async () => {
+    const client = createClient({ env: { serverUrl: "ws://x" } });
+
+    await client.start();
+
+    expect(client.page().registrationAvailable).toBe(true);
+  });
+
+  it("tells the view the page cannot register without a server URL", async () => {
+    const client = createClient({ env: { serverUrl: "" } });
+
+    await client.start();
+
+    expect(client.page().registrationAvailable).toBe(false);
+  });
+
   it("shows no overlay, with no fade, before it mounts the boot composition", async () => {
     const client = createClient();
 
