@@ -112,3 +112,85 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* ── Account flows (create account, code, reset, notices) ──────────────────
+ * Static: nothing below animates, and nothing may — the login overlay is a
+ * permanently-rendered HUD (docs/performance.md). */
+
+.links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.link {
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--accent-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.link:hover,
+.link:focus-visible {
+  text-decoration: underline;
+}
+
+.link:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checklist {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  list-style: none;
+}
+
+.rule {
+  color: var(--text-muted);
+}
+
+.ruleMet {
+  color: var(--accent-positive, #22c55e);
+}
+
+.sentTo {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.resent {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  color: var(--accent-positive, #22c55e);
+}
+
+.notice {
+  margin: 0 0 18px;
+  font-family: var(--font-display, "Chakra Petch", sans-serif);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.privacy {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.privacy a {
+  color: var(--accent-primary);
+}
