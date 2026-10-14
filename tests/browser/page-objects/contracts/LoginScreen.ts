@@ -35,4 +35,30 @@ export interface LoginScreenPO {
    *  proves the OTHER cores are absent from a build; this proves the
    *  selected one is present and running. */
   waitCoreImpl(expected: string, timeoutMs: number): Promise<void>;
+  /** True when the sign-in form offers the create-account link. */
+  hasCreateAccountLink(): Promise<boolean>;
+  /** Click the create-account link. */
+  openCreateAccount(): Promise<void>;
+  /** Click the forgot-password link. */
+  openForgotPassword(): Promise<void>;
+  /** Type into the email field. */
+  typeEmail(value: string): Promise<void>;
+  /** Type into the display-name field. */
+  typeDisplayName(value: string): Promise<void>;
+  /** Type into the new-password field of the reset code step. */
+  typeNewPassword(value: string): Promise<void>;
+  /** Type into the 8-digit code field. */
+  typeCode(value: string): Promise<void>;
+  /** Wait until the screen's `data-phase` reads exactly `expected`. */
+  waitPhase(expected: string, timeoutMs: number): Promise<void>;
+  /** Wait until the code step reads "Code sent to <email>". */
+  waitCodeSentTo(email: string, timeoutMs: number): Promise<void>;
+  /** Wait until the notice text contains `containsText`. */
+  waitNotice(containsText: string, timeoutMs: number): Promise<void>;
+  /** Click the notice's action button. */
+  takeNoticeAction(): Promise<void>;
+  /** Click Back (to sign in). */
+  goBack(): Promise<void>;
+  /** How many requests this page has made whose URL path ends with `path`. */
+  countRequestsTo(path: string): number;
 }

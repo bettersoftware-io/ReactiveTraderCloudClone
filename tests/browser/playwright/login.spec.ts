@@ -43,4 +43,9 @@ test.describe("Login form", () => {
     await login.expectLoginError(ctx, "Invalid credentials");
     await login.expectLoginScreenVisible(ctx);
   });
+
+  test("offers no account links in simulator mode", async ({ ctx }) => {
+    await login.openLoginScreen(ctx);
+    await login.expectAccountLinksAbsent(ctx);
+  });
 });
