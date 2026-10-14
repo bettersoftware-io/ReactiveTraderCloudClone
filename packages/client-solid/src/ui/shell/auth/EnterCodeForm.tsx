@@ -1,4 +1,4 @@
-import { type Accessor, createSignal, type JSX, Show } from "solid-js";
+import { createSignal, type JSX, Show } from "solid-js";
 
 import type { AccountAccessState, CodeInput } from "@rtc/core-api";
 import { ACCOUNT_ACCESS_COPY } from "@rtc/core-logic";
@@ -65,7 +65,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
     <>
       <form class={styles.form} noValidate onSubmit={submitCode}>
         <Show
-          when={props.state.email}
+          when={!asksEmail()}
           fallback={
             <label class={styles.field}>
               <span class={styles.label}>{ACCOUNT_ACCESS_COPY.emailLabel}</span>
@@ -80,13 +80,10 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
             </label>
           }
         >
-          {(heldEmail: Accessor<string>) => {
-            return (
-              <div data-testid="login-code-email" class={styles.sentTo}>
-                {ACCOUNT_ACCESS_COPY.codeSentTo} <strong>{heldEmail()}</strong>
-              </div>
-            );
-          }}
+          <div data-testid="login-code-email" class={styles.sentTo}>
+            {ACCOUNT_ACCESS_COPY.codeSentTo}{" "}
+            <strong>{props.state.email}</strong>
+          </div>
         </Show>
 
         <label class={styles.field}>
@@ -96,7 +93,6 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
             class={styles.input}
             type="text"
             inputMode="numeric"
-            maxLength={8}
             autocomplete="one-time-code"
             value={code()}
             onInput={changeCode}
@@ -129,7 +125,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
         </Show>
 
         <Show when={props.state.error !== null}>
-          <div data-testid="login-error" class={styles.error}>
+          <div data-testid="login-error" role="alert" class={styles.error}>
             {props.state.error}
           </div>
         </Show>
@@ -149,6 +145,7 @@ export function EnterCodeForm(props: EnterCodeFormProps): JSX.Element {
           type="button"
           data-testid="login-resend"
           class={styles.link}
+          disabled={props.state.busy}
           onClick={resendCode}
         >
           {ACCOUNT_ACCESS_COPY.resendLink}

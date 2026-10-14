@@ -65,6 +65,11 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
     );
   }
 
+  /** The error line's ARIA role; "" when the line or its role is absent. */
+  errorRole(): string {
+    return this.byTestId("login-error")?.getAttribute("role") ?? "";
+  }
+
   /** True when the AUTHENTICATE control is disabled. */
   isSubmitDisabled(): boolean {
     return within(this.root)
@@ -271,6 +276,13 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
   /** Click "Resend code". */
   async resend(): Promise<void> {
     await this.clickTestId("login-resend");
+  }
+
+  /** True when the "Resend code" link is disabled. */
+  isResendDisabled(): boolean {
+    return within(this.root)
+      .getByTestId("login-resend")
+      .hasAttribute("disabled");
   }
 
   /** The notice text of a notice phase; "" when none is on screen. */

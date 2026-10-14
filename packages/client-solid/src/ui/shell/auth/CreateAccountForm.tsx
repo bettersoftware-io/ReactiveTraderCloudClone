@@ -90,7 +90,7 @@ export function CreateAccountForm(props: CreateAccountFormProps): JSX.Element {
         <PasswordChecklist password={password()} />
 
         <Show when={props.state.error !== null}>
-          <div data-testid="login-error" class={styles.error}>
+          <div data-testid="login-error" role="alert" class={styles.error}>
             {props.state.error}
           </div>
         </Show>

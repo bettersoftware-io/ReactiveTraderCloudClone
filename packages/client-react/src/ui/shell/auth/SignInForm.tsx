@@ -95,7 +95,7 @@ export function SignInForm({
         </div>
 
         {auth.error !== null ? (
-          <div data-testid="login-error" className={styles.error}>
+          <div data-testid="login-error" role="alert" className={styles.error}>
             {auth.error}
           </div>
         ) : null}

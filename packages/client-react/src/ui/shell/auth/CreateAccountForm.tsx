@@ -90,7 +90,7 @@ export function CreateAccountForm({
         <PasswordChecklist password={password} />
 
         {state.error !== null ? (
-          <div data-testid="login-error" className={styles.error}>
+          <div data-testid="login-error" role="alert" className={styles.error}>
             {state.error}
           </div>
         ) : null}

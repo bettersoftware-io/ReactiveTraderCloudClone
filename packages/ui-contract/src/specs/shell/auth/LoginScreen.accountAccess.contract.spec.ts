@@ -82,6 +82,7 @@ describe("LoginScreen account access — sign-in phase", () => {
     });
 
     expect(page.error()).toBe("Email not confirmed");
+    expect(page.errorRole()).toBe("alert");
     expect(page.hasEnterCodeOffer()).toBe(true);
 
     await page.openCodeEntry();
@@ -120,6 +121,18 @@ describe("LoginScreen account access — sign-in phase", () => {
 });
 
 describe("LoginScreen account access — register phase", () => {
+  it("offers neither account link away from the sign-in form", () => {
+    const page = mount(LoginScreen, {
+      auth: { status: "unauthenticated" },
+      registrationAvailable: true,
+      accountAccess: createRegisterState(),
+    });
+
+    expect(page.phase()).toBe("register");
+    expect(page.hasCreateAccountLink()).toBe(false);
+    expect(page.hasForgotPasswordLink()).toBe(false);
+  });
+
   it("renders the create-account fields and a checklist row per password rule", () => {
     const page = mountAt(createRegisterState());
 
@@ -190,6 +203,7 @@ describe("LoginScreen account access — register phase", () => {
     );
 
     expect(page.error()).toBe("Sign-up is paused for now");
+    expect(page.errorRole()).toBe("alert");
   });
 
   it("links the privacy notice", () => {
@@ -316,13 +330,21 @@ describe("LoginScreen account access — code phase", () => {
     expect(page.submitLabel()).toBe(ACCOUNT_ACCESS_COPY.setPasswordSubmit);
   });
 
-  it("takes the code as an eight-digit one-time code", () => {
+  it("takes the code as a numeric one-time code", () => {
     const page = mountAt(createCodeState());
 
     expect(page.phase()).toBe("code");
     expect(page.codeAttribute("inputmode")).toBe("numeric");
-    expect(page.codeAttribute("maxlength")).toBe("8");
     expect(page.codeAttribute("autocomplete")).toBe("one-time-code");
+  });
+
+  it("passes a space-padded code on in full, leaving the trim to the machine", async () => {
+    const page = mountAt(createCodeState());
+
+    await page.typeCode(` ${CODE} `);
+    await page.submit();
+
+    expect(page.codeArgs()).toStrictEqual([{ code: ` ${CODE} ` }]);
   });
 
   it("disables the submit control and reads SENDING while busy", () => {
@@ -333,6 +355,23 @@ describe("LoginScreen account access — code phase", () => {
     expect(page.submitLabel()).toBe(ACCOUNT_ACCESS_COPY.busySubmit);
   });
 
+  it("disables Resend code while busy, so a click sends nothing", async () => {
+    const page = mountAt(createCodeState({ busy: true }));
+
+    expect(page.phase()).toBe("code");
+    expect(page.isResendDisabled()).toBe(true);
+
+    await page.resend();
+
+    expect(page.resendArgs()).toEqual([]);
+  });
+
+  it("enables Resend code when idle", () => {
+    const page = mountAt(createCodeState());
+
+    expect(page.isResendDisabled()).toBe(false);
+  });
+
   it("renders the machine's error in the error line", () => {
     const page = mountAt(
       createCodeState({ error: "That code is not valid or has expired" }),
@@ -340,6 +379,7 @@ describe("LoginScreen account access — code phase", () => {
 
     expect(page.phase()).toBe("code");
     expect(page.error()).toBe("That code is not valid or has expired");
+    expect(page.errorRole()).toBe("alert");
   });
 });
 
@@ -362,6 +402,16 @@ describe("LoginScreen account access — request-reset phase", () => {
 
     expect(page.phase()).toBe("requestReset");
     expect(page.isSubmitDisabled()).toBe(true);
+  });
+
+  it("renders the machine's error in the error line", () => {
+    const page = mountAt(
+      createRequestResetState({ error: "Enter a valid email address" }),
+    );
+
+    expect(page.phase()).toBe("requestReset");
+    expect(page.error()).toBe("Enter a valid email address");
+    expect(page.errorRole()).toBe("alert");
   });
 
   it("returns to sign-in from Back to sign in", async () => {

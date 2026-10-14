@@ -95,7 +95,7 @@ export function SignInForm(props: SignInFormProps): JSX.Element {
         </div>
 
         <Show when={props.auth.error !== null}>
-          <div data-testid="login-error" class={styles.error}>
+          <div data-testid="login-error" role="alert" class={styles.error}>
             {props.auth.error}
           </div>
         </Show>

@@ -89,7 +89,6 @@ export function EnterCodeForm({
             className={styles.input}
             type="text"
             inputMode="numeric"
-            maxLength={8}
             autoComplete="one-time-code"
             value={code}
             onChange={changeCode}
@@ -124,7 +123,7 @@ export function EnterCodeForm({
         ) : null}
 
         {state.error !== null ? (
-          <div data-testid="login-error" className={styles.error}>
+          <div data-testid="login-error" role="alert" className={styles.error}>
             {state.error}
           </div>
         ) : null}
@@ -144,6 +143,7 @@ export function EnterCodeForm({
           type="button"
           data-testid="login-resend"
           className={styles.link}
+          disabled={state.busy}
           onClick={resendCode}
         >
           {ACCOUNT_ACCESS_COPY.resendLink}
