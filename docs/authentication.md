@@ -854,18 +854,22 @@ flowchart TB
   signIn["signIn"] --> register["register"]
   signIn --> requestReset["requestReset"]
   signIn --> codeEntry["code (I already have a code)"]
+  codeEntry --> pending
+  codeEntry --> unset
   register --> codeSignup["code (signup)"]
   requestReset --> codeReset["code (reset)"]
   codeSignup --> pending["pendingApproval"]
   codeSignup --> unset["passwordUnset"]
   codeReset --> changed["passwordChanged"]
+  unset --> requestReset
 ```
 
 Every phase returns to `signIn` through `returnToSignIn`; `passwordUnset`
 leads on to `requestReset`. `unconfirmed` at sign-in offers the code entry,
 and `pending` / `blocked` show a plain message
 (`AuthViewState.failure` carries the reason, `error` its text). "I already
-have a code" opens the code step with nothing held, so a user whose resend was
+have a code" (on the create-account form; the sign-in form offers "Enter
+confirmation code" after `unconfirmed`) opens the code step with nothing held, so a user whose resend was
 throttled can use the latest code they received.
 
 **Who holds what.** The password chosen on the create-account form lives in
@@ -898,6 +902,7 @@ a user-readable literal. By reason:
 | `invalid_input`, a password rule | "Password: " plus the checklist label, lowercased |
 | `invalid_input`, rule `password`, at a reset | That code has been used. Request a new one and choose a different password |
 | `invalid_input`, rule `password`, elsewhere | That password was refused. Request a reset code to set one |
+| `invalid_input`, no rule | The request was refused |
 | `invalid_code` | That code is not valid or has expired |
 | `registration_closed` | Sign-up is paused for now |
 | `rate_limited`, on a send | Too many codes requested. The last code you received still works |
@@ -932,8 +937,10 @@ create-account form links the [privacy notice](privacy.md).
 **Driving it locally.** `pnpm dev:react:fs` (or `dev:solid:fs`) starts the
 server with the in-memory directory and the client together. Seeds:
 `admin@`, `trader@`, `pending@` and `blocked@rtc.test`, password
-`Mcdc2026!desk`; the confirmation code for any address is `00000000`. Register
-a new address, enter `00000000`, and the account lands in `pendingApproval`;
+`Mcdc2026!desk`; the dev confirmation code is `00000000`. It is accepted for an
+address you register (the seeds are already confirmed, so confirming one
+answers `invalid_code`) and for an address you have requested a reset for.
+Register a new address, enter `00000000`, and the account lands in `pendingApproval`;
 `pending@` and `blocked@` show their sign-in messages. The in-memory
 directory cannot produce `password_unset` or `unconfirmed`; those are rendered
 by the visual scenarios and the shared contract suite.
