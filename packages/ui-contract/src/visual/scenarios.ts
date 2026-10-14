@@ -919,6 +919,40 @@ const baseScenarios: Record<string, Scenario> = {
     componentKey: "LoginScreen",
     fixtureKey: "login-demo-hint-wait",
   },
+  // Account flows (B2b): the sign-in form's two links, then one shot per
+  // non-signIn phase. Full-page like the other login shots.
+  "login/live-links": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-live-links",
+  },
+  "login/create-account": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-create-account",
+  },
+  "login/create-account-checklist": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-create-account",
+  },
+  "login/enter-code": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-enter-code",
+  },
+  "login/enter-code-reset": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-enter-code-reset",
+  },
+  "login/reset-request": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-reset-request",
+  },
+  "login/pending-approval": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-pending-approval",
+  },
+  "login/password-unset": {
+    componentKey: "LoginScreen",
+    fixtureKey: "login-password-unset",
+  },
   "login/wait-handshake": {
     componentKey: "LoginScreen",
     fixtureKey: "login-wait-handshake",

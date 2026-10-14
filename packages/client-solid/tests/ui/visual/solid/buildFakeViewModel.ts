@@ -794,11 +794,9 @@ export function buildFakeViewModel(data: AppData): ViewModel {
         },
       };
     },
-    // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
-    // so every scenario but login/demo-hint renders the plain live form.
     useAccountAccess: () => {
       return {
-        state: at({ phase: "signIn" as const }),
+        state: at(data.accountAccess ?? { phase: "signIn" }),
         startRegistration: noop,
         startReset: noop,
         startCodeEntry: noop,
@@ -810,8 +808,10 @@ export function buildFakeViewModel(data: AppData): ViewModel {
       };
     },
     useRegistrationAvailable: () => {
-      return false;
+      return data.registrationAvailable ?? false;
     },
+    // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
+    // so every scenario but login/demo-hint renders the plain live form.
     useDemoAccounts: () => {
       return data.demoAccounts ?? [];
     },

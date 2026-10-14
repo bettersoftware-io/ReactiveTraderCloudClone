@@ -427,6 +427,28 @@ const scenarioActions: Record<string, ScenarioAction> = {
   // The hint's footer is the last thing LoginScreen renders, so waiting for
   // it proves the whole block is on screen before the full-page capture.
   "login/demo-hint": { fullPage: true, waitForText: "click to fill" },
+  // Account flows (B2b): each waits for text only its own screen prints.
+  "login/live-links": { fullPage: true, waitForText: "Forgot password?" },
+  "login/create-account": { fullPage: true, waitForText: "privacy notice" },
+  "login/create-account-checklist": {
+    fullPage: true,
+    steps: [{ type: "login-new-password", text: "Abc123!!" }],
+    waitForText: "privacy notice",
+  },
+  "login/enter-code": { fullPage: true, waitForText: "Code sent to" },
+  "login/enter-code-reset": { fullPage: true, waitForText: "Code sent to" },
+  "login/reset-request": {
+    fullPage: true,
+    waitForText: "Enter a valid email address",
+  },
+  "login/pending-approval": {
+    fullPage: true,
+    waitForText: "approves each account",
+  },
+  "login/password-unset": {
+    fullPage: true,
+    waitForText: "no password could be stored",
+  },
   "login/demo-hint-wait": {
     fullPage: true,
     waitForText: "AWAITING AUTH GRANT",

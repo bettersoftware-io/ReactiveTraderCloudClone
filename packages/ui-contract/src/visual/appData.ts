@@ -3,6 +3,7 @@
 // portable core shared by every UI implementation.
 
 import type {
+  AccountAccessState,
   ActivityEntry,
   EqWorkspaceState,
   IncidentKind,
@@ -160,6 +161,12 @@ export interface AppData {
   /** The demo sign-ins LoginScreen hints at (useDemoAccounts); defaults to
    * none → no hint, the plain live build. */
   demoAccounts?: readonly DemoAccount[];
+  /** The account-access machine's state (useAccountAccess); defaults to the
+   * sign-in form. */
+  accountAccess?: AccountAccessState;
+  /** Whether the build offers create-account / reset (useRegistrationAvailable);
+   * defaults to false → no links under the sign-in form. */
+  registrationAvailable?: boolean;
   // ── Admin / telemetry fields (Phase 5) ───────────────────────────────────
   /** Metric windows for the radial gauges / charts (useMetrics); defaults to empty series. */
   adminMetrics?: {
