@@ -50,6 +50,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
   });
@@ -80,6 +81,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
@@ -98,6 +100,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
   });
@@ -157,9 +160,31 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: "Invalid credentials",
+      failure: "invalid",
       waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();
+  });
+
+  it("login failure (unconfirmed) carries the reason beside its text", () => {
+    const presenter = new AuthPresenter(
+      createFakeAuthPort({ ok: false, reason: "unconfirmed" }),
+      new InMemorySessionStore(),
+    );
+
+    presenter.login("a@b.co", "pw");
+
+    expect(latest(presenter)).toMatchObject({
+      error: "Email not confirmed",
+      failure: "unconfirmed",
+    });
+  });
+
+  it("accounts is the injected port's account flows", () => {
+    const auth = createFakeAuthPort({ ok: false, reason: "invalid" });
+    const presenter = new AuthPresenter(auth, new InMemorySessionStore());
+
+    expect(presenter.accounts).toBe(auth);
   });
 
   it("login failure (unavailable) reports a service-unavailable error", () => {
@@ -205,6 +230,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
   });
@@ -241,6 +267,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
 
@@ -278,6 +305,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: "Invalid credentials",
+      failure: "invalid",
       waitVariant: "handshake",
     });
 
@@ -311,6 +339,7 @@ describe("AuthPresenter", () => {
       locked: true,
       unlocking: false,
       error: "Service unavailable",
+      failure: "unavailable",
       waitVariant: "handshake",
     });
   });
@@ -346,6 +375,7 @@ describe("AuthPresenter", () => {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: "handshake",
     });
     expect(store.read()).toBeNull();

@@ -1440,6 +1440,7 @@ export function solidViewModel(world: World): ViewModel {
             locked: false,
             unlocking: false,
             error: null,
+            failure: null,
             waitVariant: "handshake",
           });
         },

@@ -927,6 +927,7 @@ export function createViewModel(
     locked: false,
     unlocking: false,
     error: null,
+    failure: null,
     waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
   });
 

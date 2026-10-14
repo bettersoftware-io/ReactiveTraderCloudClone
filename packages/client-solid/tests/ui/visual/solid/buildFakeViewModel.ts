@@ -395,6 +395,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           locked: data.sessionLocked ?? false,
           unlocking: data.sessionUnlocking ?? false,
           error: null,
+          failure: null,
           waitVariant: data.waitVariant ?? "handshake",
         }),
         login: (): void => {

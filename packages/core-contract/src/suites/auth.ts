@@ -27,6 +27,7 @@ const SIGNED_OUT: AuthViewState = {
   locked: false,
   unlocking: false,
   error: null,
+  failure: null,
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
@@ -202,6 +203,7 @@ export function describeAuthContract(
           expect(c.values.at(-1)).toMatchObject({
             status: "unauthenticated",
             error: "Invalid credentials",
+            failure: "invalid",
           });
           auth.login(DEMO.username, "pw");
           h.driver.resolveLogin({ ok: false, reason: "unavailable" });
@@ -212,6 +214,84 @@ export function describeAuthContract(
           });
           expect(h.driver.storedSession()).toBeNull();
           c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it.each([
+      ["invalid", "Invalid credentials"],
+      ["unavailable", "Service unavailable"],
+      ["unconfirmed", "Email not confirmed"],
+      ["pending", "Account awaiting approval"],
+      ["blocked", "Account blocked"],
+    ] as const)(
+      "a login refused with %s is signed out with that reason and its text",
+      async (reason, text) => {
+        await withFakeClock(async (clock) => {
+          vi.setSystemTime(NOW);
+          const h = makeHarness();
+
+          try {
+            const c = collect(h.app.presenters.auth.state$);
+            h.app.presenters.auth.login(DEMO.username, "pw");
+            h.driver.resolveLogin({ ok: false, reason });
+            await clock.settle();
+            expect(c.values.at(-1)).toEqual({
+              ...SIGNED_OUT,
+              error: text,
+              failure: reason,
+              waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
+            });
+            c.unsubscribe();
+          } finally {
+            await h.teardown();
+          }
+        });
+      },
+    );
+
+    it("a refused unlock keeps the session locked and carries the reason", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness({ session: createSession(NOW + 1) });
+
+        try {
+          const auth = h.app.presenters.auth;
+          const c = collect(auth.state$);
+          auth.lock();
+          auth.unlock("pw");
+          h.driver.resolveLogin({ ok: false, reason: "blocked" });
+          await clock.settle();
+          expect(c.values.at(-1)).toMatchObject({
+            locked: true,
+            unlocking: false,
+            failure: "blocked",
+            error: "Account blocked",
+          });
+          c.unsubscribe();
+        } finally {
+          await h.teardown();
+        }
+      });
+    });
+
+    it("accounts is the port's account flows: a call reaches the port once and is not counted as a login", async () => {
+      await withFakeClock(async (clock) => {
+        vi.setSystemTime(NOW);
+        const h = makeHarness();
+
+        try {
+          h.app.presenters.auth.accounts.register("a@b.co", "Ann").subscribe({
+            error: (): void => {
+              // the unavailable flows refuse; the call count is what is asserted
+            },
+          });
+          await clock.settle();
+          expect(h.driver.portCalls("auth.register")).toBe(1);
+          expect(h.driver.portCalls("auth.login")).toBe(0);
+          expect(h.driver.pendingLogins()).toEqual([]);
         } finally {
           await h.teardown();
         }

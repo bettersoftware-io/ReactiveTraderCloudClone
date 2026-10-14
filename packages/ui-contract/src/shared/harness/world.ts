@@ -395,6 +395,7 @@ const DEFAULT_AUTH: AuthViewState = {
   locked: false,
   unlocking: false,
   error: null,
+  failure: null,
   waitVariant: "handshake",
 };
 
