@@ -77,6 +77,7 @@ const SIGNED_OUT: AuthViewState = {
   locked: false,
   unlocking: false,
   error: null,
+  failure: null,
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
@@ -145,6 +146,7 @@ export function createAuthPresenter(
       return {
         ...SIGNED_OUT,
         error: describeAuthFailure(outcome.reason),
+        failure: outcome.reason,
         waitVariant: view.waitVariant,
       };
     });
@@ -160,6 +162,7 @@ export function createAuthPresenter(
           locked: false,
           unlocking: false,
           error: null,
+          failure: null,
         };
       });
       return;
@@ -171,6 +174,7 @@ export function createAuthPresenter(
         locked: true,
         unlocking: false,
         error: describeAuthFailure(outcome.reason),
+        failure: outcome.reason,
       };
     });
   }
@@ -202,6 +206,7 @@ export function createAuthPresenter(
 
   return {
     state$: ref.stateStream(),
+    accounts: deps.auth,
     login: (username: string, password: string) => {
       update(() => {
         return {
@@ -228,7 +233,13 @@ export function createAuthPresenter(
 
       const waitVariant = pickWaitVariant();
       update((view) => {
-        return { ...view, unlocking: true, error: null, waitVariant };
+        return {
+          ...view,
+          unlocking: true,
+          error: null,
+          failure: null,
+          waitVariant,
+        };
       });
       attempt(username, password, commitUnlock);
     },

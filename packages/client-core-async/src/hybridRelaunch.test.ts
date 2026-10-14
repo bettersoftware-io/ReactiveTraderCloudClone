@@ -14,6 +14,7 @@ import {
   type AuthOutcome,
   type AuthPort,
   AuthSimulator,
+  createUnavailableAccountFlows,
   PreferencesSimulator,
   type SessionUser,
 } from "@rtc/domain";
@@ -98,6 +99,7 @@ interface LiveLoginPort extends AuthPort {
 function createLiveLoginPort(outcome: AuthOutcome): LiveLoginPort {
   const answers = new Subject<AuthOutcome>();
   return {
+    ...createUnavailableAccountFlows(),
     login(): Observable<AuthOutcome> {
       return answers.asObservable();
     },

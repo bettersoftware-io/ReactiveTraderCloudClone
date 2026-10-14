@@ -2,6 +2,8 @@ import { bind, useStateObservable } from "@react-rxjs/core";
 import { combineLatest, firstValueFrom, map, of } from "rxjs";
 
 import type {
+  AccountAccessIntents,
+  AccountAccessState,
   ActivityEntry,
   AnimationIntent,
   AppCommands,
@@ -120,6 +122,9 @@ type UseTileExecutionResult = {
   state: TileExecutionState;
 } & TileExecutionIntents;
 type UseRfqTileResult = { state: RfqState } & RfqTileIntents;
+type UseAccountAccessResult = {
+  state: AccountAccessState;
+} & AccountAccessIntents;
 type UseNotionalResult = { state: NotionalView } & NotionalIntents;
 type UseRfqSubmissionResult = {
   state: RfqSubmissionState;
@@ -343,6 +348,11 @@ export interface ViewModelShell {
    * screen's demo-accounts hint. Omitted (or empty) on a plain live build,
    * where every credential belongs to the server. */
   readonly demoAccounts?: readonly DemoAccount[];
+  /** True when the page has a server to register with (a server URL); the
+   * login screen then offers "Create account" and "Forgot password?".
+   * Omitted (false) on a simulator-only page, where the flows would only
+   * ever answer unavailable. */
+  readonly registrationAvailable?: boolean;
   /** True exactly once, for the composition a core swap produced: the
    * header opens Preferences again on the new core. Omitted by a host that
    * never swaps (RN). */
@@ -605,6 +615,11 @@ export interface ViewModel {
   /** The demo sign-ins the login screen may hint at; empty when the host
    * offers none (a plain live build, RN). */
   useDemoAccounts: () => readonly DemoAccount[];
+  /** The login screen's account flows — a per-mount machine: phase, busy,
+   * error, plus the eight intents. */
+  useAccountAccess: () => UseAccountAccessResult;
+  /** Not a hook: the shell's `registrationAvailable`, false by default. */
+  useRegistrationAvailable: () => boolean;
   /** Not a hook: consumes the shell's one-shot "reopen Preferences" signal
    * (true at most once per composition, false when the host offers none).
    * Optional so a hand-built ViewModel (RN's visual fake) may omit it;
@@ -624,6 +639,7 @@ export function createViewModel(
 ): ViewModel {
   const coreSelection = shell?.coreSelection ?? null;
   const demoAccounts = shell?.demoAccounts ?? NO_DEMO_ACCOUNTS;
+  const registrationAvailable = shell?.registrationAvailable ?? false;
   const takePreferencesReopen =
     shell?.takePreferencesReopen ?? declinePreferencesReopen;
 
@@ -1593,6 +1609,14 @@ export function createViewModel(
     },
     useDemoAccounts: () => {
       return demoAccounts;
+    },
+    useAccountAccess: () => {
+      return useMachine(() => {
+        return machines.accountAccess();
+      });
+    },
+    useRegistrationAvailable: () => {
+      return registrationAvailable;
     },
     takePreferencesReopen,
     peekPreferencesReopen,

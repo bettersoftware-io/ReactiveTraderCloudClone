@@ -49,6 +49,7 @@ exports[`@rtc/client-core-rxjs public runtime API > has a pinned runtime surface
   "ViewModePreferencePresenter",
   "WatchlistPresenter",
   "composePanelStream",
+  "createAccountAccessMachine",
   "createApp",
   "createBootSequenceMachine",
   "createEqDrawingsMachine",

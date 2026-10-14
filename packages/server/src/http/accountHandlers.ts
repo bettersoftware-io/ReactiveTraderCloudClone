@@ -1,7 +1,7 @@
+import type { AccountFlowStatus } from "@rtc/domain";
 import {
   type AccountErrorDto,
   type AccountFlowResponseDto,
-  type AccountFlowStatus,
   isConfirmEmailRequestDto,
   isEmailRequestDto,
   isRegisterRequestDto,

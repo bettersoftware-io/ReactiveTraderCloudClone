@@ -1,7 +1,12 @@
 import { lastValueFrom, type Observable, of, throwError, toArray } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
-import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
+import type {
+  AccountFlowOutcome,
+  AuthOutcome,
+  AuthPort,
+  SessionUser,
+} from "@rtc/domain";
 
 import { InMemoryDataSourceStore } from "./InMemoryDataSourceStore";
 import { InMemorySessionStore } from "./InMemorySessionStore";
@@ -184,12 +189,80 @@ describe("createRoutingAuthPort", () => {
     expect(harness.demo.login).toHaveBeenCalledWith("Ada ", "p@ss word");
     expect(harness.live.login).toHaveBeenCalledWith("Ada ", "p@ss word");
   });
+
+  it("each account flow is sent to the live leg with the same arguments and never to the demo leg", async () => {
+    const harness = createHarness({ composed: "live" });
+    const sent: AccountFlowOutcome = { ok: true, status: "code_sent" };
+
+    for (const method of FLOW_METHODS) {
+      harness.live[method].mockReturnValue(of(sent));
+      harness.demo[method].mockImplementation(() => {
+        throw new Error("the demo leg must not see account flows");
+      });
+    }
+
+    const results = [
+      await lastValueFrom(harness.port.register("a@x.test", "Ada")),
+      await lastValueFrom(harness.port.resendCode("a@x.test")),
+      await lastValueFrom(harness.port.confirmEmail("a@x.test", "1", "pw")),
+      await lastValueFrom(harness.port.requestPasswordReset("a@x.test")),
+      await lastValueFrom(harness.port.resetPassword("a@x.test", "2", "pw2")),
+    ];
+
+    expect(results).toEqual([sent, sent, sent, sent, sent]);
+    expect(harness.live.register).toHaveBeenCalledWith("a@x.test", "Ada");
+    expect(harness.live.resendCode).toHaveBeenCalledWith("a@x.test");
+    expect(harness.live.confirmEmail).toHaveBeenCalledWith(
+      "a@x.test",
+      "1",
+      "pw",
+    );
+    expect(harness.live.requestPasswordReset).toHaveBeenCalledWith("a@x.test");
+    expect(harness.live.resetPassword).toHaveBeenCalledWith(
+      "a@x.test",
+      "2",
+      "pw2",
+    );
+    expect(harness.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("an erroring live flow reads as unavailable", async () => {
+    const harness = createHarness({ composed: "live" });
+    harness.live.register.mockImplementation(() => {
+      return throwError(() => {
+        return new Error("network down");
+      });
+    });
+    harness.live.resetPassword.mockImplementation(() => {
+      throw new Error("thrown synchronously");
+    });
+
+    expect(
+      await lastValueFrom(harness.port.register("a@x.test", "Ada")),
+    ).toEqual({ ok: false, reason: "unavailable" });
+    expect(
+      await lastValueFrom(harness.port.resetPassword("a@x.test", "1", "pw")),
+    ).toEqual({ ok: false, reason: "unavailable" });
+  });
 });
+
+const FLOW_METHODS = [
+  "register",
+  "resendCode",
+  "confirmEmail",
+  "requestPasswordReset",
+  "resetPassword",
+] as const;
 
 type LoginMock = Mock<AuthPort["login"]>;
 
 interface MockAuthPort extends AuthPort {
   readonly login: LoginMock;
+  readonly register: Mock<AuthPort["register"]>;
+  readonly resendCode: Mock<AuthPort["resendCode"]>;
+  readonly confirmEmail: Mock<AuthPort["confirmEmail"]>;
+  readonly requestPasswordReset: Mock<AuthPort["requestPasswordReset"]>;
+  readonly resetPassword: Mock<AuthPort["resetPassword"]>;
 }
 
 interface HarnessOverrides {
@@ -245,9 +318,25 @@ function collect(source: Observable<AuthOutcome>): Promise<AuthOutcome[]> {
 }
 
 function createPort(outcome: AuthOutcome): MockAuthPort {
+  const unavailable: AccountFlowOutcome = { ok: false, reason: "unavailable" };
   return {
     login: vi.fn((): Observable<AuthOutcome> => {
       return of(outcome);
+    }),
+    register: vi.fn(() => {
+      return of(unavailable);
+    }),
+    resendCode: vi.fn(() => {
+      return of(unavailable);
+    }),
+    confirmEmail: vi.fn(() => {
+      return of(unavailable);
+    }),
+    requestPasswordReset: vi.fn(() => {
+      return of(unavailable);
+    }),
+    resetPassword: vi.fn(() => {
+      return of(unavailable);
     }),
   };
 }

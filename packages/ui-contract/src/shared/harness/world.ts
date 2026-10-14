@@ -6,9 +6,11 @@ import {
   createEqWorkspaceMachine,
 } from "@rtc/client-core-rxjs";
 import type {
+  AccountAccessState,
   ActivityEntry,
   AnimationIntent,
   AuthViewState,
+  CodeInput,
   CoreImpl,
   CoreOption,
   EqDrawingsIntents,
@@ -20,10 +22,16 @@ import type {
   JarvisAvailability,
   JarvisPort,
   Machine,
+  RegistrationInput,
   ThroughputView,
   WorkspaceTab,
 } from "@rtc/core-api";
-import type { PanelStreamDeps } from "@rtc/core-logic";
+import {
+  ACCOUNT_ACCESS_IDLE,
+  NOTHING_HELD,
+  type PanelStreamDeps,
+  stepAccountAccess,
+} from "@rtc/core-logic";
 import {
   type AmbientStyle,
   type Candle,
@@ -314,6 +322,13 @@ export interface CommandResults {
   requestRfqQuoteThrows?: boolean;
 }
 
+/** The four intents of useAccountAccess() that only change the screen. */
+export type AccountNavigation =
+  | "startRegistration"
+  | "startReset"
+  | "startCodeEntry"
+  | "returnToSignIn";
+
 /** Inputs captured from command hooks during a test. */
 export interface CommandLog {
   createRfq: CreateRfqInput[];
@@ -367,6 +382,17 @@ export interface CommandLog {
    * only when it differs from the current core (mirrors the real
    * createCoreSelection no-op rule for re-selecting the active core). */
   coreSelects: CoreImpl[];
+  /** Each navigation intent of useAccountAccess(), in order. */
+  accountNavigations: AccountNavigation[];
+  /** Each input useAccountAccess().register() was invoked with, in order. */
+  accountRegister: RegistrationInput[];
+  /** Each address useAccountAccess().requestReset() was invoked with, in order. */
+  accountRequestReset: string[];
+  /** Each input useAccountAccess().submitCode() was invoked with, in order. */
+  accountSubmitCode: CodeInput[];
+  /** Each argument useAccountAccess().resendCode() was invoked with, in order
+   * (`undefined` when the machine holds the address). */
+  accountResendCode: Array<string | undefined>;
 }
 
 /** The default throughput view a fresh World reports (loaded, value 100). */
@@ -395,6 +421,7 @@ const DEFAULT_AUTH: AuthViewState = {
   locked: false,
   unlocking: false,
   error: null,
+  failure: null,
   waitVariant: "handshake",
 };
 
@@ -656,6 +683,17 @@ export interface World {
    * demo-accounts hint). A plain value, not a subject: the real shell reads
    * it once at composition. Defaults to none — a plain live build. */
   readonly demoAccounts: readonly DemoAccount[];
+  /** Reactive accountAccess machine state backing useAccountAccess (drives
+   * which of LoginScreen's forms renders). Defaults to `{ phase: "signIn" }`. */
+  readonly accountAccess: BehaviorSubject<AccountAccessState>;
+  /** Backs useRegistrationAvailable; a plain value like `demoAccounts`, read
+   * once at composition by the real shell. Defaults to false. */
+  readonly registrationAvailable: boolean;
+  /** Records one navigation intent and moves `accountAccess` to the phase it
+   * opens, through the real fold — so a click on "Create account" re-renders
+   * the create-account form. The four request intents only record: a spec
+   * seeds busy, error and later phases directly. */
+  navigateAccountAccess(navigation: AccountNavigation): void;
 }
 
 /**
@@ -721,6 +759,10 @@ export interface WorldSeeds {
   /** Seeds `World.takePreferencesReopen`'s one shot; defaults to false (a
    * boot composition, not one a core swap produced). */
   preferencesReopen?: boolean;
+  /** Seeds `World.accountAccess`; defaults to `{ phase: "signIn" }`. */
+  accountAccess?: AccountAccessState;
+  /** Seeds `World.registrationAvailable`; defaults to false. */
+  registrationAvailable?: boolean;
 }
 
 export function createWorld(seeds: WorldSeeds = {}): World {
@@ -753,6 +795,8 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     coreImpl: coreImplSeed,
     demoAccounts = [],
     preferencesReopen = false,
+    accountAccess: accountAccessSeed = ACCOUNT_ACCESS_IDLE,
+    registrationAvailable = false,
   } = seeds;
 
   const merged: HookValues = { ...DEFAULTS, ...initial };
@@ -954,6 +998,18 @@ export function createWorld(seeds: WorldSeeds = {}): World {
   );
   const coreSelectionFailure = new BehaviorSubject<string | null>(null);
   let preferencesReopenPending = preferencesReopen;
+  const accountAccess = new BehaviorSubject<AccountAccessState>(
+    accountAccessSeed,
+  );
+
+  function navigateAccountAccess(navigation: AccountNavigation): void {
+    commands.accountNavigations.push(navigation);
+    accountAccess.next(
+      stepAccountAccess(accountAccess.getValue(), NOTHING_HELD, {
+        kind: navigation,
+      }).state,
+    );
+  }
 
   // Jarvis (Task 9): the skin preference is a plain World subject (mirrors
   // themeSkin); the port fake is built once here and handed to each
@@ -1154,6 +1210,11 @@ export function createWorld(seeds: WorldSeeds = {}): World {
     jarvisEffortSets: [],
     jarvisNarratorSets: [],
     coreSelects: [],
+    accountNavigations: [],
+    accountRegister: [],
+    accountRequestReset: [],
+    accountSubmitCode: [],
+    accountResendCode: [],
   };
 
   return {
@@ -1179,6 +1240,9 @@ export function createWorld(seeds: WorldSeeds = {}): World {
       return preferencesReopenPending;
     },
     demoAccounts,
+    accountAccess,
+    registrationAvailable,
+    navigateAccountAccess,
     jarvisSkin,
     jarvis,
     panelStreamDeps,

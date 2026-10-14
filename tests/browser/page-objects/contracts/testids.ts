@@ -374,6 +374,20 @@ export const TESTIDS = {
     loginPassword: "login-password",
     loginSubmit: "login-submit",
     loginError: "login-error",
+    loginCreateAccount: "login-create-account",
+    loginForgotPassword: "login-forgot-password",
+    loginHaveCode: "login-have-code",
+    loginBack: "login-back",
+    loginEmail: "login-email",
+    loginDisplayName: "login-display-name",
+    loginNewPassword: "login-new-password",
+    loginCode: "login-code",
+    loginCodeEmail: "login-code-email",
+    loginResend: "login-resend",
+    loginNotice: "login-notice",
+    loginNoticeAction: "login-notice-action",
+    /** `login-screen`'s `data-phase` attribute names the account-access phase. */
+    loginPhase: "login-screen",
   },
   /**
    * The same-origin DevTools inspector SPA (@rtc/devtools-app), served at

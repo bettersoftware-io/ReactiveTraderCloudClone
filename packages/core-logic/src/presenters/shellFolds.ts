@@ -1,4 +1,5 @@
 import {
+  type AuthFailureReason,
   BOOT_DURATION_MS,
   BOOT_TICK_MS,
   BOOT_VARIANTS,
@@ -31,7 +32,18 @@ export function nextLoginWaitVariant(
   ];
 }
 
-/** The error line a failed login or unlock shows. */
-export function describeAuthFailure(reason: "invalid" | "unavailable"): string {
-  return reason === "invalid" ? "Invalid credentials" : "Service unavailable";
+/** The error line a failed login or unlock shows, one per reason. */
+export function describeAuthFailure(reason: AuthFailureReason): string {
+  switch (reason) {
+    case "invalid":
+      return "Invalid credentials";
+    case "unavailable":
+      return "Service unavailable";
+    case "unconfirmed":
+      return "Email not confirmed";
+    case "pending":
+      return "Account awaiting approval";
+    case "blocked":
+      return "Account blocked";
+  }
 }

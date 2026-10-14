@@ -33,6 +33,8 @@ export * from "#/layout/workspaceDock";
 // serialization would prove nothing about the real round trip.
 export * from "#/layout/workspaceLayoutPersistence";
 export * from "#/layout/workspaceLayoutWrite";
+export * from "#/presenters/accountAccessCopy";
+export * from "#/presenters/accountAccessFold";
 export * from "#/presenters/adminFolds";
 export * from "#/presenters/blotterFolds";
 export * from "#/presenters/candleStitch";

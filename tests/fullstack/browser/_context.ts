@@ -29,6 +29,23 @@ interface ContextFixtureArgs {
   context: BrowserContext;
 }
 
+async function createCtx(
+  { page }: PlaywrightFixtureArgs,
+  use: (value: TestContext) => Promise<void>,
+): Promise<void> {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+  });
+
+  const ctx: TestContext = {
+    po: buildPlaywrightPageObjects(page),
+    scratch: new Scratchpad(),
+    pageErrors,
+  };
+  await use(ctx);
+}
+
 export const test = base.extend<TestFixtures>({
   // AuthGate now gates the app on a real signed session: before any spec here
   // loads the app, do a genuine POST /login round-trip against the real
@@ -66,20 +83,15 @@ export const test = base.extend<TestFixtures>({
     });
     await use(context);
   },
-  ctx: async (
-    { page }: PlaywrightFixtureArgs,
-    use: (value: TestContext) => Promise<void>,
-  ) => {
-    const pageErrors: string[] = [];
-    page.on("pageerror", (error) => {
-      pageErrors.push(error.message);
-    });
+  ctx: createCtx,
+});
 
-    const ctx: TestContext = {
-      po: buildPlaywrightPageObjects(page),
-      scratch: new Scratchpad(),
-      pageErrors,
-    };
-    await use(ctx);
-  },
+/**
+ * A `test` with NO seeded session and no `/login` round trip. The account
+ * specs sign in through the real form themselves, and the per-test token
+ * fetch above would spend the server's `/login` budget (10 per minute per IP)
+ * that the specs after them in the same run need.
+ */
+export const unseededTest = base.extend<TestFixtures>({
+  ctx: createCtx,
 });

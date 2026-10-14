@@ -267,6 +267,13 @@ export function buildBrowserPorts(options: BuildBrowserPortsOptions): AppPorts {
   };
 }
 
+/** Whether the login screen offers registration: only a page with a server
+ * URL has anywhere to send a sign-up. An empty string is no URL (the
+ * `dev:*:sim` scripts set `VITE_SERVER_URL=`). */
+export function offersRegistration(env: WebBootEnv): boolean {
+  return env.serverUrl !== undefined && env.serverUrl !== "";
+}
+
 /**
  * The sign-ins this page verifies IN THE BROWSER — what the login screen may
  * offer as its demo-accounts hint (hardening spec §7 D9). With a server URL

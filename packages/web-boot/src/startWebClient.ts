@@ -11,7 +11,11 @@ import {
   renderBootError,
   runBoot,
 } from "./bootApp";
-import { buildBrowserPorts, readDemoAccounts } from "./buildBrowserPorts";
+import {
+  buildBrowserPorts,
+  offersRegistration,
+  readDemoAccounts,
+} from "./buildBrowserPorts";
 import {
   type Composition,
   type CoverTimings,
@@ -46,6 +50,9 @@ export interface WebClientPage {
   readonly overlayEl: HTMLElement;
   /** The sign-ins the login screen lists as a click-to-fill hint. */
   readonly demoAccounts: readonly DemoAccount[];
+  /** Whether the page has a server to register with: the login screen
+   * offers the account flows only then. */
+  readonly registrationAvailable: boolean;
 }
 
 /** A client's framework part: its app tree and its swap overlay. */
@@ -154,6 +161,7 @@ export function startWebClient(options: WebClientOptions): Promise<void> {
         rootEl,
         overlayEl,
         demoAccounts: readDemoAccounts(env),
+        registrationAvailable: offersRegistration(env),
       });
       // The timings of the swap under way: the host asks for them as each
       // swap starts, and the overlay's two fades take the same numbers.

@@ -47,6 +47,7 @@ function createAuthState(status: AuthViewState["status"]): AuthViewState {
     locked: false,
     unlocking: false,
     error: null,
+    failure: null,
     waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
   };
 }

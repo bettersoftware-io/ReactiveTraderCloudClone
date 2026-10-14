@@ -109,3 +109,110 @@ export async function expectSelectedCoreImpl(ctx: TestContext): Promise<void> {
     throw error;
   }
 }
+
+/** Assert the sign-in form offers no account links (simulator mode has no
+ *  server to hold accounts). */
+export async function expectAccountLinksAbsent(
+  ctx: TestContext,
+): Promise<void> {
+  await login(ctx).waitVisible(10_000);
+
+  if (await login(ctx).hasCreateAccountLink()) {
+    throw new Error("the create-account link is offered without a server");
+  }
+}
+
+/** Click the create-account link. */
+async function openCreateAccount(ctx: TestContext): Promise<void> {
+  await login(ctx).openCreateAccount();
+}
+
+/** Click the forgot-password link. */
+export async function openForgotPassword(ctx: TestContext): Promise<void> {
+  await login(ctx).openForgotPassword();
+}
+
+/** Type into the email field. */
+export async function typeEmail(
+  ctx: TestContext,
+  value: string,
+): Promise<void> {
+  await login(ctx).typeEmail(value);
+}
+
+/** Type into the display-name field. */
+async function typeDisplayName(ctx: TestContext, value: string): Promise<void> {
+  await login(ctx).typeDisplayName(value);
+}
+
+/** Type into the new-password field. */
+export async function typeNewPassword(
+  ctx: TestContext,
+  value: string,
+): Promise<void> {
+  await login(ctx).typeNewPassword(value);
+}
+
+/** Type into the 8-digit code field. */
+export async function typeCode(ctx: TestContext, value: string): Promise<void> {
+  await login(ctx).typeCode(value);
+}
+
+/** Assert the screen's account-access phase reads `expected` within 5s. */
+export async function expectLoginPhase(
+  ctx: TestContext,
+  expected: string,
+): Promise<void> {
+  await login(ctx).waitPhase(expected, 5_000);
+}
+
+/** Assert the code step reads "Code sent to <email>" within 10s. */
+export async function expectCodeSentTo(
+  ctx: TestContext,
+  email: string,
+): Promise<void> {
+  await login(ctx).waitCodeSentTo(email, 10_000);
+}
+
+/** Assert the notice contains `containsText` within 10s. */
+export async function expectNotice(
+  ctx: TestContext,
+  containsText: string,
+): Promise<void> {
+  await login(ctx).waitNotice(containsText, 10_000);
+}
+
+/** Click the notice's action button. */
+export async function takeNoticeAction(ctx: TestContext): Promise<void> {
+  await login(ctx).takeNoticeAction();
+}
+
+/** Assert the login page has made no request whose path ends with `path`. */
+export function expectNoRequestsTo(ctx: TestContext, path: string): void {
+  const count = login(ctx).countRequestsTo(path);
+
+  if (count !== 0) {
+    throw new Error(`expected no request to ${path}, saw ${count}`);
+  }
+}
+
+/** The whole create-account ride: register, confirm with the dev code, land on
+ *  the awaiting-approval notice, and return to the sign-in form. */
+export async function registerAndConfirm(
+  ctx: TestContext,
+  email: string,
+  displayName: string,
+  password: string,
+): Promise<void> {
+  await openCreateAccount(ctx);
+  await expectLoginTitle(ctx, "REACTIVE TRADER OS · CREATE ACCOUNT");
+  await typeEmail(ctx, email);
+  await typeDisplayName(ctx, displayName);
+  await typeNewPassword(ctx, password);
+  await submitLogin(ctx);
+  await expectCodeSentTo(ctx, email);
+  await typeCode(ctx, "00000000");
+  await submitLogin(ctx);
+  await expectNotice(ctx, "administrator");
+  await takeNoticeAction(ctx);
+}

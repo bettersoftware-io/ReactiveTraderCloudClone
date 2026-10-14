@@ -10,6 +10,7 @@ import type {
 } from "@rtc/core-api";
 import { describeAuthFailure, nextLoginWaitVariant } from "@rtc/core-logic";
 import {
+  type AccountFlowPort,
   type AuthOutcome,
   type AuthPort,
   DEFAULT_LOGIN_WAIT_VARIANT,
@@ -23,6 +24,7 @@ const UNAUTHENTICATED_STATE: AuthViewState = {
   locked: false,
   unlocking: false,
   error: null,
+  failure: null,
   waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
 };
 
@@ -30,6 +32,8 @@ const UNAUTHENTICATED_STATE: AuthViewState = {
  * contract. Models the flow as a `BehaviorSubject<AuthViewState>` machine. */
 export class AuthPresenter implements AuthPresenterApi {
   readonly state$: StateObservable<AuthViewState>;
+
+  readonly accounts: AccountFlowPort;
 
   private readonly subject: BehaviorSubject<AuthViewState>;
 
@@ -50,6 +54,7 @@ export class AuthPresenter implements AuthPresenterApi {
       },
     },
   ) {
+    this.accounts = auth;
     const initial = this.resume();
     this.subject = new BehaviorSubject<AuthViewState>(initial);
     this.state$ = state(this.subject, initial);
@@ -76,6 +81,7 @@ export class AuthPresenter implements AuthPresenterApi {
         locked: false,
         unlocking: false,
         error: null,
+        failure: null,
         waitVariant: DEFAULT_LOGIN_WAIT_VARIANT,
       };
     }
@@ -92,6 +98,7 @@ export class AuthPresenter implements AuthPresenterApi {
       locked: false,
       unlocking: false,
       error: null,
+      failure: null,
       waitVariant: this.pickWaitVariant(),
     });
 
@@ -110,6 +117,7 @@ export class AuthPresenter implements AuthPresenterApi {
         locked: false,
         unlocking: false,
         error: null,
+        failure: null,
         waitVariant: this.subject.value.waitVariant,
       });
       return;
@@ -121,6 +129,7 @@ export class AuthPresenter implements AuthPresenterApi {
       locked: false,
       unlocking: false,
       error: describeAuthFailure(outcome.reason),
+      failure: outcome.reason,
       waitVariant: this.subject.value.waitVariant,
     });
   }
@@ -148,6 +157,7 @@ export class AuthPresenter implements AuthPresenterApi {
       ...this.subject.value,
       unlocking: true,
       error: null,
+      failure: null,
       waitVariant: this.pickWaitVariant(),
     });
 
@@ -167,6 +177,7 @@ export class AuthPresenter implements AuthPresenterApi {
         locked: false,
         unlocking: false,
         error: null,
+        failure: null,
       });
       return;
     }
@@ -176,6 +187,7 @@ export class AuthPresenter implements AuthPresenterApi {
       locked: true,
       unlocking: false,
       error: describeAuthFailure(outcome.reason),
+      failure: outcome.reason,
     });
   }
 

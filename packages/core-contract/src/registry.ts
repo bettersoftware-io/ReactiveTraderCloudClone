@@ -1,6 +1,7 @@
 import type { AppCommands, MachineFactories, Presenters } from "@rtc/core-api";
 
 import type { Suite } from "#/harness/harness";
+import { describeAccountAccessContract } from "#/suites/accountAccess";
 import { describeAmbientStyleContract } from "#/suites/ambientStyle";
 import { describeAnalyticsContract } from "#/suites/analytics";
 import { describeAnalyticsStaleFlagContract } from "#/suites/analyticsStaleFlag";
@@ -172,6 +173,7 @@ export const CONTRACT_SUITES: Record<ContractMember, Suite | null> = {
   "machines.layout": describeMachinesLayoutContract,
   "machines.boot": describeBootContract,
   "machines.orderTicket": describeOrderTicketContract,
+  "machines.accountAccess": describeAccountAccessContract,
   "commands.reconnect": describeReconnectContract,
   "commands.reportDetachedPanels": describeReportDetachedPanelsContract,
 };

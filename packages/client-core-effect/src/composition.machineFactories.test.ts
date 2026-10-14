@@ -95,6 +95,24 @@ describe("createMachineFactories — native wiring", () => {
     ticket.dispose();
   });
 
+  it("accountAccess reaches auth.accounts.register lazily — not at construction", async () => {
+    const { presenters, spies } = createStubPresenters();
+
+    const access = createMachineFactories(presenters).accountAccess();
+    await settle();
+
+    expect(spies.register).not.toHaveBeenCalled();
+    access.intents.startRegistration();
+    access.intents.register({
+      email: "a@rtc.test",
+      displayName: "Ada",
+      password: "Mcdc2026!desk",
+    });
+    await settle();
+    expect(spies.register).toHaveBeenCalledWith("a@rtc.test", "Ada");
+    access.dispose();
+  });
+
   it("rfqSubmission and ticketSubmission reach for DIFFERENT rfqs members", () => {
     const { presenters, spies } = createStubPresenters();
     const factories = createMachineFactories(presenters);
@@ -151,6 +169,7 @@ interface FactorySpies {
   createSubmission: ReturnType<typeof vi.fn>;
   createTicketSubmission: ReturnType<typeof vi.fn>;
   place: ReturnType<typeof vi.fn>;
+  register: ReturnType<typeof vi.fn>;
   setVariant: ReturnType<typeof vi.fn>;
 }
 
@@ -180,6 +199,9 @@ function createStubPresenters(): PresenterStub {
     place: vi.fn(() => {
       return NEVER;
     }),
+    register: vi.fn(() => {
+      return NEVER;
+    }),
     setVariant: vi.fn(),
   };
 
@@ -194,6 +216,7 @@ function createStubPresenters(): PresenterStub {
       createTicketSubmission: spies.createTicketSubmission,
     },
     ordersBlotter: { place: spies.place },
+    auth: { accounts: { register: spies.register } },
     bootPreference: {
       current: () => {
         return "core";

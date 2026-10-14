@@ -1347,6 +1347,48 @@ export const fixtures: Record<string, AppData> = {
     sessionAuthenticating: true,
     waitVariant: "handshake",
   }),
+  // Account flows (B2b): the live build's sign-in form with its two links,
+  // then each non-signIn phase of the account-access machine, seeded through
+  // the seam. Secrets never ride in the seeded state (only `passwordHeld`).
+  "login-live-links": makeAppData({ registrationAvailable: true }),
+  "login-create-account": makeAppData({
+    accountAccess: { phase: "register", busy: false, error: null },
+  }),
+  "login-enter-code": makeAppData({
+    accountAccess: {
+      phase: "code",
+      flow: "signup",
+      email: "ann@desk.io",
+      passwordHeld: true,
+      resent: false,
+      busy: false,
+      error: null,
+    },
+  }),
+  "login-enter-code-reset": makeAppData({
+    accountAccess: {
+      phase: "code",
+      flow: "reset",
+      email: "ann@desk.io",
+      passwordHeld: false,
+      resent: true,
+      busy: false,
+      error: null,
+    },
+  }),
+  "login-reset-request": makeAppData({
+    accountAccess: {
+      phase: "requestReset",
+      busy: false,
+      error: "Enter a valid email address",
+    },
+  }),
+  "login-pending-approval": makeAppData({
+    accountAccess: { phase: "pendingApproval", email: "ann@desk.io" },
+  }),
+  "login-password-unset": makeAppData({
+    accountAccess: { phase: "passwordUnset", email: "ann@desk.io" },
+  }),
   "login-wait-reactor": makeAppData({
     sessionAuthenticating: true,
     waitVariant: "reactor",

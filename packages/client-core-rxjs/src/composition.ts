@@ -74,6 +74,7 @@ import {
   ConnectionStatusPresenter,
   CreditRfqFilterPreferencePresenter,
   CurrencyPairsPresenter,
+  createAccountAccessMachine,
   createBootSequenceMachine,
   createEqDrawingsMachine,
   createEqWorkspaceMachine,
@@ -1047,6 +1048,9 @@ export function createMachineFactories(
         },
         defaultSymbol,
       });
+    },
+    accountAccess: () => {
+      return createAccountAccessMachine(presenters.auth.accounts);
     },
   };
 }

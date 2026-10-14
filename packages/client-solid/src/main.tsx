@@ -60,7 +60,11 @@ function createSolidView(page: WebClientPage): WebClientView {
     mount: (composition: Composition): void => {
       tree.mount(() => {
         return (
-          <AppRoot composition={composition} demoAccounts={page.demoAccounts}>
+          <AppRoot
+            composition={composition}
+            demoAccounts={page.demoAccounts}
+            registrationAvailable={page.registrationAvailable}
+          >
             <App />
           </AppRoot>
         );

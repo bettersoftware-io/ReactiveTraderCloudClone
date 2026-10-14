@@ -1,5 +1,9 @@
 export { AnalyticsSimulator } from "./AnalyticsSimulator.js";
-export { AuthSimulator, type DevCredentials } from "./AuthSimulator.js";
+export {
+  AuthSimulator,
+  createUnavailableAccountFlows,
+  type DevCredentials,
+} from "./AuthSimulator.js";
 export { ConnectionEventsSimulator } from "./ConnectionEventsSimulator.js";
 export { CreditRfqSimulator } from "./CreditRfqSimulator.js";
 export { DEALERS_CATALOG, DealerSimulator } from "./DealerSimulator.js";

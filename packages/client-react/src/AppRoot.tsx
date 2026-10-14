@@ -30,6 +30,7 @@ import { ThemeProvider } from "./ui/shell/theme/ThemeProvider";
 export function AppRoot({
   composition,
   demoAccounts,
+  registrationAvailable,
   children,
 }: AppRootProps): ReactElement {
   const viewModelRef = useRef<ViewModel | null>(null);
@@ -42,6 +43,7 @@ export function AppRoot({
       {
         coreSelection: composition.coreSelection,
         demoAccounts,
+        registrationAvailable,
         takePreferencesReopen: () => {
           return composition.takePreferencesReopen();
         },
@@ -75,5 +77,8 @@ interface AppRootProps {
   /** The sign-ins the login screen lists as a hint: the page's, not one
    * composition's. */
   demoAccounts: readonly DemoAccount[];
+  /** Whether the page has a server to register with: the page's, like the
+   * demo accounts. */
+  registrationAvailable: boolean;
   children: ReactNode;
 }

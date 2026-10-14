@@ -319,7 +319,10 @@ Supabase moves them.
 15. **Clear the key from your shell:** `unset SUPABASE_SECRET_KEY`. A later
     local `pnpm dev:ws` in that shell would otherwise refuse to start
     (`SUPABASE_SECRET_KEY` without `SUPABASE_URL`). *Done:* `echo
-    "${SUPABASE_SECRET_KEY:-unset}"` prints `unset`.
+    "${SUPABASE_SECRET_KEY:-unset}"` prints `unset`. B2b (PR #1007) is what
+    makes `REGISTRATION_OPEN=true` worth flipping: the login screens of both
+    web clients can now register, confirm and reset. Redeploy both clients
+    (Vercel) first; the account links show only on a build with a server URL.
 
 **Before opening registration** to the public (`REGISTRATION_OPEN` unset or
 `true`): the blocking list is done (the hardening PR, 2026-10-13). What

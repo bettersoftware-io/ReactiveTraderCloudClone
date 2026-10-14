@@ -59,6 +59,7 @@ function fakeViewModel(
           locked,
           unlocking,
           error,
+          failure: null,
           user,
           waitVariant,
         },

@@ -1,7 +1,12 @@
 import { BehaviorSubject, firstValueFrom, NEVER, of, throwError } from "rxjs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AuthOutcome, AuthPort } from "@rtc/domain";
+import {
+  type AccountFlowOutcome,
+  type AuthOutcome,
+  type AuthPort,
+  createUnavailableAccountFlows,
+} from "@rtc/domain";
 
 import { authDepsPrimitives } from "#/bridge/authDepsPrimitives";
 
@@ -76,6 +81,49 @@ describe("authDepsPrimitives", () => {
     });
     expect(seen).toEqual([outcome]);
   });
+
+  it("delayAuth passes the five account flows through undelayed, with the same arguments", () => {
+    vi.useFakeTimers();
+    const seen: Array<readonly unknown[]> = [];
+    const flowOutcome: AccountFlowOutcome = { ok: true, status: "code_sent" };
+    const inner: AuthPort = {
+      ...createFakeAuth(createRejectedOutcome()),
+      register: (email: string, displayName: string) => {
+        seen.push([email, displayName]);
+        return of(flowOutcome);
+      },
+    };
+
+    const delayed = authDepsPrimitives.delayAuth(inner, () => {
+      return 5_000;
+    });
+    const outcomes: AccountFlowOutcome[] = [];
+
+    delayed.register("a@b.co", "Ann").subscribe((value) => {
+      outcomes.push(value);
+    });
+    delayed.resendCode("a@b.co").subscribe((value) => {
+      outcomes.push(value);
+    });
+    delayed.confirmEmail("a@b.co", "12345678", "pw").subscribe((value) => {
+      outcomes.push(value);
+    });
+    delayed.requestPasswordReset("a@b.co").subscribe((value) => {
+      outcomes.push(value);
+    });
+    delayed.resetPassword("a@b.co", "12345678", "pw").subscribe((value) => {
+      outcomes.push(value);
+    });
+
+    expect(seen).toEqual([["a@b.co", "Ann"]]);
+    expect(outcomes).toEqual([
+      flowOutcome,
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+    ]);
+  });
 });
 
 function createRejectedOutcome(): AuthOutcome {
@@ -84,6 +132,7 @@ function createRejectedOutcome(): AuthOutcome {
 
 function createFakeAuth(outcome: AuthOutcome): AuthPort {
   return {
+    ...createUnavailableAccountFlows(),
     login: () => {
       return of(outcome);
     },

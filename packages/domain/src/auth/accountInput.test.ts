@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   initialsOf,
+  isAccountInputRule,
   isConfirmationCode,
   isValidDisplayName,
   isValidEmail,
   normalizeDisplayName,
   normalizeEmail,
 } from "./accountInput.js";
+import { PASSWORD_RULES } from "./passwordPolicy.js";
 
 describe("normalizeEmail", () => {
   it("trims and lowercases, so one person has one spelling", () => {
@@ -157,5 +159,24 @@ describe("isConfirmationCode", () => {
 
   it("refuses the six-digit code a misconfigured project would send", () => {
     expect(isConfirmationCode("123456")).toBe(false);
+  });
+});
+
+describe("isAccountInputRule", () => {
+  it("accepts every password rule id and the three other rules", () => {
+    for (const rule of PASSWORD_RULES) {
+      expect(isAccountInputRule(rule.id)).toBe(true);
+    }
+
+    expect(isAccountInputRule("email")).toBe(true);
+    expect(isAccountInputRule("display-name")).toBe(true);
+    expect(isAccountInputRule("password")).toBe(true);
+  });
+
+  it("rejects an unknown word, a non-string and the server's error words", () => {
+    expect(isAccountInputRule("invalid_code")).toBe(false);
+    expect(isAccountInputRule("")).toBe(false);
+    expect(isAccountInputRule(12)).toBe(false);
+    expect(isAccountInputRule(undefined)).toBe(false);
   });
 });

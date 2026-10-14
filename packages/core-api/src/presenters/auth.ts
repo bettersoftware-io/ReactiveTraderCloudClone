@@ -1,4 +1,9 @@
-import type { LoginWaitVariant, SessionUser } from "@rtc/domain";
+import type {
+  AccountFlowPort,
+  AuthFailureReason,
+  LoginWaitVariant,
+  SessionUser,
+} from "@rtc/domain";
 
 import type { StateStream } from "#/stream";
 
@@ -27,6 +32,9 @@ export interface AuthViewState {
    * rather than in the gate. */
   readonly unlocking: boolean;
   readonly error: string | null;
+  /** Why the last attempt failed, or null; `error` is its text. The sign-in
+   * form branches on it: `unconfirmed` offers the code entry (spec §7). */
+  readonly failure: AuthFailureReason | null;
   /** The wait treatment to render for the current attempt. */
   readonly waitVariant: LoginWaitVariant;
 }
@@ -49,4 +57,9 @@ export interface AuthPresenter {
   unlock(password: string): void;
   /** Clears the session and returns to the unauthenticated state. */
   logout(): void;
+  /** The port's five account flows, for the `accountAccess` machine — a
+   * machine factory is handed presenters only (`CoreFactory`), so the
+   * flows reach it through here. Pass-through: nothing is written to
+   * `state$`, and no outcome is observed by this presenter. */
+  readonly accounts: AccountFlowPort;
 }

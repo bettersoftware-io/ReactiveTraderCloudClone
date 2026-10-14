@@ -1,65 +1,51 @@
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactElement,
-  useRef,
-  useState,
-} from "react";
+import type { ReactElement } from "react";
 
-import type { DemoAccount } from "@rtc/domain";
+import { describeAccountAccessTitle } from "@rtc/core-logic";
 import { useViewModel } from "@rtc/react-bindings";
 
 import { HudLogo } from "../logo/HudLogo";
-import { DemoAccountsHint } from "./DemoAccountsHint";
-import { HandshakeConsole } from "./wait/HandshakeConsole";
+import { AccountNotice } from "./AccountNotice";
+import { CreateAccountForm } from "./CreateAccountForm";
+import { EnterCodeForm } from "./EnterCodeForm";
+import { ResetRequestForm } from "./ResetRequestForm";
+import { SignInForm } from "./SignInForm";
 import { ReactorRings } from "./wait/ReactorRings";
-import { ReactorWait } from "./wait/ReactorWait";
 
 import styles from "./LoginScreen.module.css";
-import waitStyles from "./wait/authWait.module.css";
 
 /**
- * Full-screen sign-in form (prototype-styled to match LockScreen). Renders
+ * Full-screen sign-in shell (prototype-styled to match LockScreen): the
+ * badge, the title, and one form by account-access phase — sign in, create
+ * an account, enter a code, request a reset, or a notice. Renders
  * unconditionally while mounted — the composition root is expected to mount
  * it only for the "unauthenticated" branch of the auth lifecycle. Dumb
- * component: all state arrives through the `useAuth` hook seam; the typed
- * credentials live in local component state only and are never logged.
+ * component: all state arrives through the `useAuth` / `useAccountAccess`
+ * hook seams; whatever is typed lives in each form's local state only and is
+ * never logged.
  */
 export function LoginScreen(): ReactElement {
-  const { useAuth, useDemoAccounts } = useViewModel();
-  const { state, login } = useAuth();
+  const {
+    useAuth,
+    useDemoAccounts,
+    useRegistrationAvailable,
+    useAccountAccess,
+  } = useViewModel();
+  const auth = useAuth();
+  const account = useAccountAccess();
   const demoAccounts = useDemoAccounts();
+  const registrationAvailable = useRegistrationAvailable();
+  const { state } = account;
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const submitRef = useRef<HTMLButtonElement>(null);
-
-  function submitLogin(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    login(username, password);
-  }
-
-  function changeUsername(event: ChangeEvent<HTMLInputElement>): void {
-    setUsername(event.target.value);
-  }
-
-  function changePassword(event: ChangeEvent<HTMLInputElement>): void {
-    setPassword(event.target.value);
-  }
-
-  /** A picked demo account fills both fields and hands focus to AUTHENTICATE,
-   * so the next Enter signs in — the pick itself never does. */
-  function stageSignIn(account: DemoAccount): void {
-    setUsername(account.username);
-    setPassword(account.password);
-    submitRef.current?.focus();
-  }
-
-  const authenticating = state.status === "authenticating";
-  const reactorWaiting = authenticating && state.waitVariant === "reactor";
+  const reactorWaiting =
+    auth.state.status === "authenticating" &&
+    auth.state.waitVariant === "reactor";
 
   return (
-    <div data-testid="login-screen" className={styles.overlay}>
+    <div
+      data-testid="login-screen"
+      data-phase={state.phase}
+      className={styles.overlay}
+    >
       <div className={styles.grid} aria-hidden="true" />
       <div className={styles.panel}>
         {/* Hex emblem — the shared animated HUD logo, matching LockScreen.
@@ -76,75 +62,52 @@ export function LoginScreen(): ReactElement {
         </div>
 
         <div data-testid="login-title" className={styles.title}>
-          REACTIVE TRADER OS · SIGN IN
+          {describeAccountAccessTitle(state)}
         </div>
 
-        <form className={styles.form} onSubmit={submitLogin}>
-          <div
-            className={
-              authenticating
-                ? `${waitStyles.fields} ${waitStyles.recede}`
-                : waitStyles.fields
-            }
-          >
-            <label className={styles.field}>
-              <span className={styles.label}>Username</span>
-              <input
-                data-testid="login-username"
-                className={styles.input}
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={changeUsername}
-              />
-            </label>
-
-            <label className={styles.field}>
-              <span className={styles.label}>Password</span>
-              <input
-                data-testid="login-password"
-                className={styles.input}
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={changePassword}
-              />
-            </label>
-          </div>
-
-          {state.error !== null ? (
-            <div data-testid="login-error" className={styles.error}>
-              {state.error}
-            </div>
-          ) : null}
-
-          <button
-            ref={submitRef}
-            type="submit"
-            data-testid="login-submit"
-            className={
-              authenticating
-                ? `${styles.submit} ${waitStyles.busy}`
-                : styles.submit
-            }
-            disabled={authenticating}
-          >
-            {authenticating ? "AUTHENTICATING" : "AUTHENTICATE ▸"}
-          </button>
-
-          {authenticating && state.waitVariant === "handshake" ? (
-            <HandshakeConsole />
-          ) : null}
-          {authenticating && state.waitVariant === "reactor" ? (
-            <ReactorWait />
-          ) : null}
-        </form>
-
-        <DemoAccountsHint
-          accounts={demoAccounts}
-          busy={authenticating}
-          onPick={stageSignIn}
-        />
+        {state.phase === "signIn" ? (
+          <SignInForm
+            auth={auth.state}
+            registrationAvailable={registrationAvailable}
+            demoAccounts={demoAccounts}
+            onLogin={auth.login}
+            onCreateAccount={account.startRegistration}
+            onForgotPassword={account.startReset}
+            onEnterCode={account.startCodeEntry}
+          />
+        ) : null}
+        {state.phase === "register" ? (
+          <CreateAccountForm
+            state={state}
+            onRegister={account.register}
+            onHaveCode={account.startCodeEntry}
+            onBack={account.returnToSignIn}
+          />
+        ) : null}
+        {state.phase === "code" ? (
+          <EnterCodeForm
+            state={state}
+            onSubmit={account.submitCode}
+            onResend={account.resendCode}
+            onBack={account.returnToSignIn}
+          />
+        ) : null}
+        {state.phase === "requestReset" ? (
+          <ResetRequestForm
+            state={state}
+            onRequest={account.requestReset}
+            onBack={account.returnToSignIn}
+          />
+        ) : null}
+        {state.phase === "pendingApproval" ||
+        state.phase === "passwordUnset" ||
+        state.phase === "passwordChanged" ? (
+          <AccountNotice
+            state={state}
+            onRequestReset={account.requestReset}
+            onSignIn={account.returnToSignIn}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { firstValueFrom } from "rxjs";
 import { describe, expect, it } from "vitest";
 
+import type { AccountFlowOutcome } from "#/ports/authPort.js";
 import { AuthSimulator } from "#/simulators/AuthSimulator.js";
 
 describe("AuthSimulator", () => {
@@ -35,6 +36,33 @@ describe("AuthSimulator", () => {
     if (r.ok) {
       expect(r.exp).toBe(6_000);
     }
+  });
+
+  it("answers every account flow with unavailable, synchronously — a simulator offers no registration", () => {
+    const simulator = new AuthSimulator({ demo: "pw" });
+    const seen: AccountFlowOutcome[] = [];
+
+    simulator.register("a@b.co", "Ann").subscribe((o) => {
+      return seen.push(o);
+    });
+    simulator.resendCode("a@b.co").subscribe((o) => {
+      return seen.push(o);
+    });
+    simulator
+      .confirmEmail("a@b.co", "12345678", "Pass!word2026x")
+      .subscribe((o) => {
+        return seen.push(o);
+      });
+    simulator.requestPasswordReset("a@b.co").subscribe((o) => {
+      return seen.push(o);
+    });
+    simulator
+      .resetPassword("a@b.co", "12345678", "Pass!word2026x")
+      .subscribe((o) => {
+        return seen.push(o);
+      });
+
+    expect(seen).toEqual(Array(5).fill({ ok: false, reason: "unavailable" }));
   });
 });
 

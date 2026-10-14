@@ -12,6 +12,7 @@ import {
   type AuthOutcome,
   type AuthPort,
   ConnectionEventsSimulator,
+  createUnavailableAccountFlows,
   PreferencesSimulator,
   type SessionUser,
 } from "@rtc/domain";
@@ -81,6 +82,7 @@ const DEMO_USER: SessionUser = {
  * lands within the same `act()` (mirrors `of(...)`'s synchronous emission). */
 function createFakeAuthPort(): AuthPort {
   return {
+    ...createUnavailableAccountFlows(),
     login(username: string, password: string): Observable<AuthOutcome> {
       if (username === "demo" && password === "pw") {
         return of({ ok: true, token: "t", user: DEMO_USER, exp: 9_000_000 });

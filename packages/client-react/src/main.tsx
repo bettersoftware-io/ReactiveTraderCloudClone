@@ -50,6 +50,7 @@ function createReactView(page: WebClientPage): WebClientView {
             key={composition.generation}
             composition={composition}
             demoAccounts={page.demoAccounts}
+            registrationAvailable={page.registrationAvailable}
           >
             <App />
           </AppRoot>

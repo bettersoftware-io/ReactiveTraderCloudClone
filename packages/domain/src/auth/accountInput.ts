@@ -1,3 +1,5 @@
+import { PASSWORD_RULES, type PasswordRuleId } from "./passwordPolicy.js";
+
 const EMAIL_MAX_LENGTH = 254;
 const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 40;
@@ -23,6 +25,31 @@ const READABLE_CHARACTER = /[\p{L}\p{N}]/u;
  * text). Spacing marks (`Mc`) are not counted: Burmese and other Brahmic
  * scripts write ordinary words with several in a row. */
 const STACKED_MARKS = /\p{Me}|\p{Mn}{4,}/u;
+
+/** Which input an account request broke: a password rule, the address, the
+ * display name, or `password` when the store refused one the rule allowed
+ * (spec §5.3 / §7). This is the vocabulary of `AccountErrorDto.rule`. */
+export type AccountInputRule =
+  | PasswordRuleId
+  | "email"
+  | "display-name"
+  | "password";
+
+const OTHER_INPUT_RULES: readonly string[] = [
+  "email",
+  "display-name",
+  "password",
+];
+
+export function isAccountInputRule(value: unknown): value is AccountInputRule {
+  return (
+    typeof value === "string" &&
+    (OTHER_INPUT_RULES.includes(value) ||
+      PASSWORD_RULES.some((rule) => {
+        return rule.id === value;
+      }))
+  );
+}
 
 /** One person, one spelling: every account lookup uses this form. */
 export function normalizeEmail(raw: string): string {

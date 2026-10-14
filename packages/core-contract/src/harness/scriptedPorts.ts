@@ -25,6 +25,7 @@ import type {
   WorkspaceTab,
 } from "@rtc/core-api";
 import {
+  type AccountFlowOutcome,
   type AdminPort,
   type AnalyticsPort,
   type AnomalyDetectorConfig,
@@ -117,6 +118,11 @@ export type PortMethodName =
   | "sessions.sessions$"
   | "admin.getThroughput"
   | "auth.login"
+  | "auth.register"
+  | "auth.resendCode"
+  | "auth.confirmEmail"
+  | "auth.requestPasswordReset"
+  | "auth.resetPassword"
   | "jarvis.ask"
   | "jarvis.confirm"
   | "jarvis.availability$"
@@ -179,6 +185,21 @@ type TransportCall = "connect" | "disconnect";
 interface LoginCall {
   readonly username: string;
   readonly password: string;
+}
+
+/** One account flow the core has subscribed. The password and the code are
+ * recorded so a suite can prove the HELD password travelled with the code. */
+export interface AccountCall {
+  readonly kind:
+    | "register"
+    | "resendCode"
+    | "confirmEmail"
+    | "requestPasswordReset"
+    | "resetPassword";
+  readonly email: string;
+  readonly displayName?: string;
+  readonly code?: string;
+  readonly password?: string;
 }
 
 /** What `marketData.candleHistory` was asked for. */
@@ -441,6 +462,16 @@ export interface ScriptedDriver {
   /** Settle the OLDEST pending login with this outcome (next + complete). A
    * no-op when nothing is pending. */
   resolveLogin(outcome: AuthOutcome): void;
+  /** Every `auth` account flow (`register` … `resetPassword`) the core has
+   * subscribed and the driver has not settled, oldest first — one queue for
+   * the five, so a suite reads the order the core issued them in. */
+  pendingAccountCalls(): readonly AccountCall[];
+  /** Settle the OLDEST pending account flow (next + complete). A no-op when
+   * nothing is pending. */
+  resolveAccountCall(outcome: AccountFlowOutcome): void;
+  /** Error the OLDEST pending account flow. A no-op when nothing is
+   * pending. */
+  failAccountCall(error: unknown): void;
   /** What the session store holds now. */
   storedSession(): StoredSession | null;
   /** The login-wait variant the preferences port holds now — read on the
@@ -570,6 +601,7 @@ export function scriptPorts(
   const throughputLoads = createPendingQueue<void, number>();
   const throughputWrites = createPendingQueue<number, void>();
   const logins = createPendingQueue<LoginCall, AuthOutcome>();
+  const accountCalls = createPendingQueue<AccountCall, AccountFlowOutcome>();
   const asks = createPendingQueue<string, JarvisEvent>();
   const askLog: JarvisAskRecord[] = [];
   const confirmations: JarvisConfirmRecord[] = [];
@@ -919,6 +951,42 @@ export function scriptPorts(
       login: (username: string, password: string): Observable<AuthOutcome> => {
         return logins.open({ username, password });
       },
+      register: (
+        email: string,
+        displayName: string,
+      ): Observable<AccountFlowOutcome> => {
+        return accountCalls.open({ kind: "register", email, displayName });
+      },
+      resendCode: (email: string): Observable<AccountFlowOutcome> => {
+        return accountCalls.open({ kind: "resendCode", email });
+      },
+      confirmEmail: (
+        email: string,
+        code: string,
+        password: string,
+      ): Observable<AccountFlowOutcome> => {
+        return accountCalls.open({
+          kind: "confirmEmail",
+          email,
+          code,
+          password,
+        });
+      },
+      requestPasswordReset: (email: string): Observable<AccountFlowOutcome> => {
+        return accountCalls.open({ kind: "requestPasswordReset", email });
+      },
+      resetPassword: (
+        email: string,
+        code: string,
+        password: string,
+      ): Observable<AccountFlowOutcome> => {
+        return accountCalls.open({
+          kind: "resetPassword",
+          email,
+          code,
+          password,
+        });
+      },
     },
     calls,
     "auth.",
@@ -1204,6 +1272,9 @@ export function scriptPorts(
       },
       pendingLogins: logins.pending,
       resolveLogin: logins.resolve,
+      pendingAccountCalls: accountCalls.pending,
+      resolveAccountCall: accountCalls.resolve,
+      failAccountCall: accountCalls.fail,
       storedSession: () => {
         return stored;
       },
@@ -1333,6 +1404,7 @@ export function scriptPorts(
       throughputLoads.drain();
       throughputWrites.drain();
       logins.drain();
+      accountCalls.drain();
       asks.drain();
       availability$.complete();
       usage$.complete();

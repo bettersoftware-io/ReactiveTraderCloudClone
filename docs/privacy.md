@@ -13,6 +13,8 @@ nothing about you. This notice covers **registered accounts** only.
 | A hash of your password | Held by Supabase Auth. The password is chosen when you enter the emailed code; the project's own code passes it to Supabase in that one request and never stores or logs it |
 | A record of each sign-in session | Kept by Supabase Auth, which stores it with an IP address and a client identification. The client is the project's server, not your browser: the server forwards your IP address but not your browser's identification |
 
+The create-account form links this notice before you submit it.
+
 Apart from these and the assistant's messages (below), nothing is collected.
 There is no tracking and no advertising. Trades and prices in the app are
 simulated and are not kept.

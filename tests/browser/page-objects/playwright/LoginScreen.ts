@@ -28,6 +28,9 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
    * `pageerror` at all; this scan is only ever for the build-default case.) */
   private pageErrors: string[] = [];
 
+  /** URL paths of every request the login page made since `open()`. */
+  private requestPaths: string[] = [];
+
   private readonly appPage: Page;
 
   constructor(appPage: Page) {
@@ -63,6 +66,10 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
     this.pageErrors = [];
     page.on("pageerror", (error) => {
       this.pageErrors.push(error.message);
+    });
+    this.requestPaths = [];
+    page.on("request", (request) => {
+      this.requestPaths.push(new URL(request.url()).pathname);
     });
     await page.goto("/");
     this.loginPage = page;
@@ -149,5 +156,68 @@ export class PlaywrightLoginScreen implements LoginScreenPO {
 
       throw error;
     }
+  }
+
+  async hasCreateAccountLink(): Promise<boolean> {
+    return (
+      (await this.page().getByTestId(TESTIDS.auth.loginCreateAccount).count()) >
+      0
+    );
+  }
+
+  async openCreateAccount(): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginCreateAccount).click();
+  }
+
+  async openForgotPassword(): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginForgotPassword).click();
+  }
+
+  async typeEmail(value: string): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginEmail).fill(value);
+  }
+
+  async typeDisplayName(value: string): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginDisplayName).fill(value);
+  }
+
+  async typeNewPassword(value: string): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginNewPassword).fill(value);
+  }
+
+  async typeCode(value: string): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginCode).fill(value);
+  }
+
+  async waitPhase(expected: string, timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.auth.loginPhase),
+    ).toHaveAttribute("data-phase", expected, { timeout: timeoutMs });
+  }
+
+  async waitCodeSentTo(email: string, timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.auth.loginCodeEmail),
+    ).toContainText(email, { timeout: timeoutMs });
+  }
+
+  async waitNotice(containsText: string, timeoutMs: number): Promise<void> {
+    await expect(
+      this.page().getByTestId(TESTIDS.auth.loginNotice),
+    ).toContainText(containsText, { timeout: timeoutMs });
+  }
+
+  async takeNoticeAction(): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginNoticeAction).click();
+  }
+
+  async goBack(): Promise<void> {
+    await this.page().getByTestId(TESTIDS.auth.loginBack).click();
+  }
+
+  countRequestsTo(path: string): number {
+    return this.requestPaths.filter((requested) => {
+      return requested.endsWith(path);
+    }).length;
   }
 }

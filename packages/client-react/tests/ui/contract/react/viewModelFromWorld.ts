@@ -37,6 +37,7 @@ import {
   JarvisPanelsPresenter,
 } from "@rtc/client-core-rxjs";
 import type {
+  CodeInput,
   CoreImpl,
   DockLayoutStore,
   DriveOutcome,
@@ -55,6 +56,7 @@ import type {
   Machine,
   PanelData,
   PanelInstance,
+  RegistrationInput,
   RfqCountdownSeed,
   RfqSubmissionState,
   SaveLayoutPresetOptions,
@@ -1530,6 +1532,7 @@ export function reactViewModel(world: World): ViewModel {
             locked: false,
             unlocking: false,
             error: null,
+            failure: null,
             waitVariant: "handshake",
           });
         },
@@ -1872,6 +1875,41 @@ export function reactViewModel(world: World): ViewModel {
     },
     useDemoAccounts: () => {
       return world.demoAccounts;
+    },
+    // Account flows: state from the World subject. The four navigation
+    // intents record and move the subject to the phase they open; the four
+    // requests only record — a spec seeds busy, error and later phases.
+    useAccountAccess: () => {
+      return {
+        state: useSubject(world.accountAccess),
+        startRegistration: () => {
+          world.navigateAccountAccess("startRegistration");
+        },
+        startReset: () => {
+          world.navigateAccountAccess("startReset");
+        },
+        startCodeEntry: () => {
+          world.navigateAccountAccess("startCodeEntry");
+        },
+        returnToSignIn: () => {
+          world.navigateAccountAccess("returnToSignIn");
+        },
+        register: (input: RegistrationInput) => {
+          world.commands.accountRegister.push(input);
+        },
+        requestReset: (email: string) => {
+          world.commands.accountRequestReset.push(email);
+        },
+        submitCode: (input: CodeInput) => {
+          world.commands.accountSubmitCode.push(input);
+        },
+        resendCode: (email?: string) => {
+          world.commands.accountResendCode.push(email);
+        },
+      };
+    },
+    useRegistrationAvailable: () => {
+      return world.registrationAvailable;
     },
     takePreferencesReopen: () => {
       return world.takePreferencesReopen();

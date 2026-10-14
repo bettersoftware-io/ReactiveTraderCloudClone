@@ -2,10 +2,37 @@ import { type Observable, of } from "rxjs";
 
 import { DEFAULT_AUTH_TTL_MS } from "../auth/authTtl.js";
 import { findRosterUser } from "../auth/roster.js";
-import type { AuthOutcome, AuthPort } from "../ports/authPort.js";
+import type {
+  AccountFlowOutcome,
+  AccountFlowPort,
+  AuthOutcome,
+  AuthPort,
+} from "../ports/authPort.js";
 
 export interface DevCredentials {
   readonly [username: string]: string;
+}
+
+const ACCOUNT_FLOWS_UNAVAILABLE: AccountFlowOutcome = {
+  ok: false,
+  reason: "unavailable",
+};
+
+/** The account flows of a port with no account store behind it: every call
+ * answers `unavailable`, synchronously. The simulator's own, and the one
+ * every test fake that only cares about `login` spreads in. */
+export function createUnavailableAccountFlows(): AccountFlowPort {
+  function unavailable(): Observable<AccountFlowOutcome> {
+    return of(ACCOUNT_FLOWS_UNAVAILABLE);
+  }
+
+  return {
+    register: unavailable,
+    resendCode: unavailable,
+    confirmEmail: unavailable,
+    requestPasswordReset: unavailable,
+    resetPassword: unavailable,
+  };
 }
 
 /**
@@ -15,6 +42,8 @@ export interface DevCredentials {
  * but the flow is identical to the real HttpAuthAdapter.
  */
 export class AuthSimulator implements AuthPort {
+  private readonly flows = createUnavailableAccountFlows();
+
   constructor(
     private readonly devCredentials: DevCredentials,
     private readonly ttlMs: number = DEFAULT_AUTH_TTL_MS,
@@ -38,5 +67,33 @@ export class AuthSimulator implements AuthPort {
       user: entry.user,
       exp: this.now() + this.ttlMs,
     });
+  }
+
+  register(email: string, displayName: string): Observable<AccountFlowOutcome> {
+    return this.flows.register(email, displayName);
+  }
+
+  resendCode(email: string): Observable<AccountFlowOutcome> {
+    return this.flows.resendCode(email);
+  }
+
+  confirmEmail(
+    email: string,
+    code: string,
+    password: string,
+  ): Observable<AccountFlowOutcome> {
+    return this.flows.confirmEmail(email, code, password);
+  }
+
+  requestPasswordReset(email: string): Observable<AccountFlowOutcome> {
+    return this.flows.requestPasswordReset(email);
+  }
+
+  resetPassword(
+    email: string,
+    code: string,
+    password: string,
+  ): Observable<AccountFlowOutcome> {
+    return this.flows.resetPassword(email, code, password);
   }
 }

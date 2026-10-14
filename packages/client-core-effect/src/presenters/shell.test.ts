@@ -14,6 +14,7 @@ import {
   type AuthOutcome,
   type ConnectionStatus,
   type CurrencyPair,
+  createUnavailableAccountFlows,
   DEFAULT_LOGIN_WAIT_VARIANT,
   type Price,
   type RfqEvent,
@@ -169,6 +170,7 @@ function createAuthRig(initial: StoredSession | null): AuthRig {
   return {
     deps: {
       auth: {
+        ...createUnavailableAccountFlows(),
         login: () => {
           return reply;
         },

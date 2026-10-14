@@ -35,6 +35,7 @@ import type { ViewModel } from "@rtc/react-bindings";
  */
 export type ShellSlice = Pick<
   ViewModel,
+  | "useAccountAccess"
   | "useAmbientStyle"
   | "useAnimatedBackground"
   | "useAuth"
@@ -47,6 +48,7 @@ export type ShellSlice = Pick<
   | "useLoginWaitPreferences"
   | "usePowerSaver"
   | "useReconnect"
+  | "useRegistrationAvailable"
   | "useThemePreference"
   | "useThemeSkinPreference"
   | "useViewModePreference"

@@ -87,6 +87,7 @@ export function appRootPage(): AppRootPage {
         <AppRoot
           composition={createComposition(false)}
           demoAccounts={readRunDemoAccounts()}
+          registrationAvailable={false}
         >
           <div data-testid="app-children" />
         </AppRoot>,
@@ -103,6 +104,7 @@ export function appRootPage(): AppRootPage {
           <AppRoot
             composition={createComposition(true)}
             demoAccounts={readRunDemoAccounts()}
+            registrationAvailable={false}
           >
             <Suspense fallback={<div data-testid="suspense-fallback" />}>
               <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
@@ -125,6 +127,7 @@ export function appRootPage(): AppRootPage {
           <AppRoot
             composition={createComposition(true)}
             demoAccounts={readRunDemoAccounts()}
+            registrationAvailable={false}
           >
             <HeaderChrome activeTab="fx" onTabChange={selectNoTab} />
           </AppRoot>

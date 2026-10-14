@@ -395,6 +395,7 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           locked: data.sessionLocked ?? false,
           unlocking: data.sessionUnlocking ?? false,
           error: null,
+          failure: null,
           waitVariant: data.waitVariant ?? "handshake",
         }),
         login: (): void => {
@@ -792,6 +793,22 @@ export function buildFakeViewModel(data: AppData): ViewModel {
           return null;
         },
       };
+    },
+    useAccountAccess: () => {
+      return {
+        state: at(data.accountAccess ?? { phase: "signIn" }),
+        startRegistration: noop,
+        startReset: noop,
+        startCodeEntry: noop,
+        returnToSignIn: noop,
+        register: noop,
+        requestReset: noop,
+        submitCode: noop,
+        resendCode: noop,
+      };
+    },
+    useRegistrationAvailable: () => {
+      return data.registrationAvailable ?? false;
     },
     // LoginScreen's demo-accounts hint: none unless the fixture seeds them,
     // so every scenario but login/demo-hint renders the plain live form.

@@ -1,4 +1,5 @@
 import {
+  type AccountInputRule,
   findPasswordViolation,
   isConfirmationCode,
   isValidDisplayName,
@@ -57,7 +58,7 @@ type RegisterOutcome =
   | {
       readonly outcome: "code_sent" | "closed" | "throttled" | "unavailable";
     }
-  | { readonly outcome: "invalid"; readonly rule: string };
+  | { readonly outcome: "invalid"; readonly rule: AccountInputRule };
 
 type SendCodeOutcome = "code_sent" | "invalid" | "throttled" | "unavailable";
 
@@ -70,7 +71,7 @@ type ConfirmEmailOutcome =
         | "throttled"
         | "unavailable";
     }
-  | { readonly outcome: "invalid"; readonly rule: string };
+  | { readonly outcome: "invalid"; readonly rule: AccountInputRule };
 
 type ResetPasswordOutcome =
   | {
@@ -80,7 +81,7 @@ type ResetPasswordOutcome =
         | "throttled"
         | "unavailable";
     }
-  | { readonly outcome: "invalid"; readonly rule: string };
+  | { readonly outcome: "invalid"; readonly rule: AccountInputRule };
 
 type LoginDecision =
   | { readonly outcome: "ok"; readonly account: AccountRecord }

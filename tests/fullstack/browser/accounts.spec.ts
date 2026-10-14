@@ -1,0 +1,100 @@
+import * as login from "#/browser/scenarios/login.js";
+
+import { unseededTest as test } from "./_context.js";
+
+test.describe
+  .serial("full-stack: the account journey", () => {
+    test("register, confirm, awaiting approval, then refused at sign-in", async ({
+      ctx,
+    }) => {
+      const email = `e2e-${Date.now()}@rtc.test`;
+      const password = "Correct-Horse-9x";
+
+      await login.openLoginScreen(ctx);
+      await login.expectLoginTitle(ctx, `${TITLE}SIGN IN`);
+      await login.registerAndConfirm(ctx, email, "E2E Guest", password);
+      await login.typeUsername(ctx, email);
+      await login.typePassword(ctx, password);
+      await login.submitLogin(ctx);
+      await login.expectLoginError(ctx, "Account awaiting approval");
+    });
+
+    test("a blocked seed is refused", async ({ ctx }) => {
+      await login.openLoginScreen(ctx);
+      await login.typeUsername(ctx, "blocked@rtc.test");
+      await login.typePassword(ctx, SEED_PASSWORD);
+      await login.submitLogin(ctx);
+      await login.expectLoginError(ctx, "Account blocked");
+    });
+
+    test("an active seed signs in", async ({ ctx }) => {
+      await login.openLoginScreen(ctx);
+      await login.typeUsername(ctx, "trader@rtc.test");
+      await login.typePassword(ctx, SEED_PASSWORD);
+      await login.submitLogin(ctx);
+      await login.expectAppShellVisible(ctx);
+      await login.expectLoginScreenGone(ctx);
+    });
+
+    test("forgot password changes a seed's password", async ({ ctx }) => {
+      await login.openLoginScreen(ctx);
+      await login.openForgotPassword(ctx);
+      await login.typeEmail(ctx, "pending@rtc.test");
+      await login.submitLogin(ctx);
+      await login.expectCodeSentTo(ctx, "pending@rtc.test");
+      await login.typeCode(ctx, "00000000");
+      await login.typeNewPassword(ctx, "Reset-Horse-7y");
+      await login.submitLogin(ctx);
+      await login.expectNotice(ctx, "changed");
+      await login.takeNoticeAction(ctx);
+      await login.typeUsername(ctx, "pending@rtc.test");
+      await login.typePassword(ctx, "Reset-Horse-7y");
+      await login.submitLogin(ctx);
+      await login.expectLoginError(ctx, "Account awaiting approval");
+    });
+  });
+
+// Ruling R13: the account forms skip native validation, so a malformed input
+// reaches the fold and shows the fold's own copy, with no request sent.
+test.describe("full-stack: malformed account input is refused locally", () => {
+  test("a non-numeric code shows the fold's error and sends no request", async ({
+    ctx,
+  }) => {
+    await login.openLoginScreen(ctx);
+    await login.openForgotPassword(ctx);
+    await login.typeEmail(ctx, "pending@rtc.test");
+    await login.submitLogin(ctx);
+    await login.expectLoginPhase(ctx, "code");
+    await login.typeCode(ctx, "12ab");
+    await login.typeNewPassword(ctx, "Reset-Horse-7y");
+    await login.submitLogin(ctx);
+    await login.expectLoginError(ctx, "Enter the 8-digit code from the email");
+    await login.expectLoginPhase(ctx, "code");
+    login.expectNoRequestsTo(ctx, "/confirm-email");
+  });
+
+  test("a malformed email on the reset form shows the fold's error", async ({
+    ctx,
+  }) => {
+    await login.openLoginScreen(ctx);
+    await login.openForgotPassword(ctx);
+    await login.typeEmail(ctx, "not-an-email");
+    await login.submitLogin(ctx);
+    await login.expectLoginError(ctx, "Enter a valid email address");
+    await login.expectLoginPhase(ctx, "requestReset");
+    login.expectNoRequestsTo(ctx, "/request-reset");
+  });
+});
+
+// The account journey over the real server (RTC_DEV_ACCOUNTS=1 in-memory
+// directory, seeded admin@ / trader@ / pending@ / blocked@rtc.test with
+// password "Mcdc2026!desk" and dev code 00000000). Every assertion delegates
+// to scenario helpers. Request budget for one IP: 1 register, 1 confirm,
+// 1 reset request, 1 reset confirm, 4 logins — inside every limit. The
+// local-refusal cases send nothing, so they add no server request.
+//
+// Copy strings mirror @rtc/core-logic's accountAccessCopy.ts / shellFolds.ts
+// (the tests workspace does not depend on core-logic).
+const TITLE = "REACTIVE TRADER OS · ";
+
+const SEED_PASSWORD = "Mcdc2026!desk";
