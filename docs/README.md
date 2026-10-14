@@ -54,6 +54,9 @@ flowchart TD
   Scorecard: what each open check measures, why `Code-Review` /
   `Branch-Protection` are capped for a single maintainer, the property-based
   (`fast-check`) tests behind `Fuzzing`, and the Best Practices badge walkthrough.
+- [`security.md`](security.md) — the security model: the three identities, every
+  layer of defence and what it does not stop, the risks table, and the
+  inventory of every setting and secret by location (names, never values).
 - [`performance.md`](performance.md) — **read before any CSS animation/transition
   work.** The compositor-perf traps, fix patterns, and pre-merge checklist.
 - [`handler-naming.md`](handler-naming.md) — **read before naming a function or a

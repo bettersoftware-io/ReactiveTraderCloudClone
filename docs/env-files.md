@@ -190,6 +190,9 @@ the server.)
 
 ## Related docs
 
+- [security.md](./security.md) — the security model: who reaches what, every
+  layer of defence, the risks, and the inventory of settings and secrets by
+  location.
 - [authentication.md](./authentication.md) — the full auth flow (login,
   resume-on-boot, lock/unlock, the roster) and per-platform credential setup.
 - [DEPLOY.md](./DEPLOY.md) — Fly + Vercel setup, the deploy workflow, and
