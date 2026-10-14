@@ -243,7 +243,7 @@ export class DevtoolsHub {
           kind: "machine:intent",
           machineId,
           name,
-          args: serializeValue(args),
+          args: serializeValue(redactIntentSecrets(args)),
         }),
       );
     } catch (error) {
@@ -600,4 +600,37 @@ export class DevtoolsHub {
       void error;
     }
   }
+}
+
+/** Property names whose values an intent must never put on the wire: the
+ * login screen's chosen password and emailed code. */
+const SECRET_INTENT_KEYS: ReadonlySet<string> = new Set(["password", "code"]);
+
+const REDACTED = "[redacted]";
+
+/** A copy of the intent's arguments with every secret property of a plain
+ * object argument (one level deep) masked. The intent itself receives the
+ * originals: only what the hub records is masked. */
+function redactIntentSecrets(args: readonly unknown[]): readonly unknown[] {
+  return args.map((arg: unknown): unknown => {
+    if (!isPlainObject(arg)) {
+      return arg;
+    }
+
+    return Object.fromEntries(
+      Object.entries(arg).map(([key, value]): [string, unknown] => {
+        return [key, SECRET_INTENT_KEYS.has(key) ? REDACTED : value];
+      }),
+    );
+  });
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const prototype: unknown = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
 }
