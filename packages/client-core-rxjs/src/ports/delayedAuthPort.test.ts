@@ -1,7 +1,12 @@
 import { Observable, of, Subject } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AuthOutcome, AuthPort } from "@rtc/domain";
+import {
+  type AccountFlowOutcome,
+  type AuthOutcome,
+  type AuthPort,
+  createUnavailableAccountFlows,
+} from "@rtc/domain";
 
 import { withLoginDelay } from "#/ports/delayedAuthPort";
 
@@ -83,6 +88,7 @@ describe("withLoginDelay", () => {
   it("forwards the credentials to the wrapped port untouched", () => {
     const calls: Array<readonly [string, string]> = [];
     const inner: AuthPort = {
+      ...createUnavailableAccountFlows(),
       login: (username: string, password: string) => {
         calls.push([username, password]);
         return of(OK);
@@ -102,6 +108,7 @@ describe("withLoginDelay", () => {
     // only subscribing dispatches. The wrapper must not change that.
     let subscribed = 0;
     const inner: AuthPort = {
+      ...createUnavailableAccountFlows(),
       login: () => {
         return new Observable<AuthOutcome>((subscriber) => {
           subscribed += 1;
@@ -136,6 +143,7 @@ describe("withLoginDelay", () => {
     const outcome$ = new Subject<AuthOutcome>();
     const port = withLoginDelay(
       {
+        ...createUnavailableAccountFlows(),
         login: () => {
           return outcome$;
         },
@@ -156,6 +164,49 @@ describe("withLoginDelay", () => {
     vi.advanceTimersByTime(1_000);
     expect(seen).toEqual([OK]);
   });
+  it("the five account flows pass through undelayed and reach the inner port with the same arguments", () => {
+    const seen: Array<readonly unknown[]> = [];
+    const inner: AuthPort = {
+      ...createUnavailableAccountFlows(),
+      login: () => {
+        return of(DENIED);
+      },
+      register: (email: string, displayName: string) => {
+        seen.push([email, displayName]);
+        return of(FLOW_OK);
+      },
+    };
+
+    const port = withLoginDelay(inner, () => {
+      return 5_000;
+    });
+    const outcomes: AccountFlowOutcome[] = [];
+
+    port.register("a@b.co", "Ann").subscribe((o) => {
+      outcomes.push(o);
+    });
+    port.resendCode("a@b.co").subscribe((o) => {
+      outcomes.push(o);
+    });
+    port.confirmEmail("a@b.co", "12345678", "pw").subscribe((o) => {
+      outcomes.push(o);
+    });
+    port.requestPasswordReset("a@b.co").subscribe((o) => {
+      outcomes.push(o);
+    });
+    port.resetPassword("a@b.co", "12345678", "pw").subscribe((o) => {
+      outcomes.push(o);
+    });
+
+    expect(seen).toEqual([["a@b.co", "Ann"]]);
+    expect(outcomes).toEqual([
+      FLOW_OK,
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+      { ok: false, reason: "unavailable" },
+    ]);
+  });
 });
 
 const OK: AuthOutcome = {
@@ -173,10 +224,13 @@ const OK: AuthOutcome = {
   exp: 1,
 };
 
+const FLOW_OK: AccountFlowOutcome = { ok: true, status: "code_sent" };
+
 const DENIED: AuthOutcome = { ok: false, reason: "invalid" };
 
 function portEmitting(outcome: AuthOutcome): AuthPort {
   return {
+    ...createUnavailableAccountFlows(),
     login: () => {
       return of(outcome);
     },

@@ -1,7 +1,11 @@
 import { catchError, mergeMap, NEVER, type Observable, of } from "rxjs";
 
 import type { SessionStore, StoredSession } from "@rtc/core-api";
-import type { AuthOutcome, AuthPort } from "@rtc/domain";
+import {
+  type AuthOutcome,
+  type AuthPort,
+  createUnavailableAccountFlows,
+} from "@rtc/domain";
 
 import type { DataSource, DataSourceStore } from "./dataSource.js";
 
@@ -93,6 +97,7 @@ export function createRoutingAuthPort(deps: RoutingAuthPortDeps): AuthPort {
   }
 
   return {
+    ...createUnavailableAccountFlows(),
     login(username: string, password: string): Observable<AuthOutcome> {
       return deps.demo.login(username, password).pipe(
         catchError((): Observable<AuthOutcome> => {

@@ -1,3 +1,5 @@
+import type { AccountFlowStatus, AccountInputRule } from "@rtc/domain";
+
 export interface SessionUserDto {
   readonly name: string;
   readonly initials: string;
@@ -53,14 +55,6 @@ export interface ResetPasswordRequestDto {
   readonly password: string;
 }
 
-/** `password_unset`: the email is confirmed but the password could not be
- * stored; the user sets one through the reset flow. */
-export type AccountFlowStatus =
-  | "code_sent"
-  | "pending_approval"
-  | "password_changed"
-  | "password_unset";
-
 export interface AccountFlowResponseDto {
   readonly status: AccountFlowStatus;
 }
@@ -84,9 +78,8 @@ export type AccountErrorCode =
 
 export interface AccountErrorDto {
   readonly error: AccountErrorCode;
-  /** Which input rule failed, on `invalid_request` (a `PasswordRuleId`,
-   * `"email"` or `"display-name"`). */
-  readonly rule?: string;
+  /** Which input rule failed, on `invalid_request`. */
+  readonly rule?: AccountInputRule;
 }
 
 export function isRegisterRequestDto(
@@ -121,4 +114,40 @@ function hasStringFields(value: unknown, fields: readonly string[]): boolean {
   return fields.every((field) => {
     return typeof record[field] === "string";
   });
+}
+
+const ACCOUNT_FLOW_STATUSES: readonly string[] = [
+  "code_sent",
+  "pending_approval",
+  "password_changed",
+  "password_unset",
+];
+
+/** A success body: `{status}` with one of the four words. */
+export function isAccountFlowResponseDto(
+  value: unknown,
+): value is AccountFlowResponseDto {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).status === "string" &&
+    ACCOUNT_FLOW_STATUSES.includes(
+      (value as Record<string, unknown>).status as string,
+    )
+  );
+}
+
+/** A failure body: `{error}` with a string, `rule` absent or a string. The
+ * client maps the words it knows and reads anything else as unavailable. */
+export function isAccountErrorDto(value: unknown): value is AccountErrorDto {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return (
+    typeof record.error === "string" &&
+    (record.rule === undefined || typeof record.rule === "string")
+  );
 }

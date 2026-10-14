@@ -2,7 +2,9 @@
 
 export type { AccessLevel } from "./auth/accessLevel.js";
 export {
+  type AccountInputRule,
   initialsOf,
+  isAccountInputRule,
   isConfirmationCode,
   isValidDisplayName,
   isValidEmail,
@@ -212,7 +214,15 @@ export {
 } from "./jarvis/panelSpec.js";
 export type { AdminPort } from "./ports/adminPort.js";
 export type { AnalyticsPort } from "./ports/analyticsPort.js";
-export type { AuthOutcome, AuthPort } from "./ports/authPort.js";
+export type {
+  AccountFlowFailure,
+  AccountFlowOutcome,
+  AccountFlowPort,
+  AccountFlowStatus,
+  AuthFailureReason,
+  AuthOutcome,
+  AuthPort,
+} from "./ports/authPort.js";
 export type { BlotterPort } from "./ports/blotterPort.js";
 export type { ConnectionEventsPort } from "./ports/connectionEventsPort.js";
 export type { DealerPort } from "./ports/dealerPort.js";
@@ -314,6 +324,7 @@ export {
   aggregateCandle,
   ConnectionEventsSimulator,
   CreditRfqSimulator,
+  createUnavailableAccountFlows,
   DEALERS_CATALOG,
   DEFAULT_TRADER_NAME,
   DealerSimulator,

@@ -37,6 +37,7 @@ import {
   type ConnectionEventsPort,
   type CreateRfqRequest,
   type CurrencyPair,
+  createUnavailableAccountFlows,
   DEFAULT_LOGIN_WAIT_VARIANT,
   type Dealer,
   type DealerPort,
@@ -916,6 +917,7 @@ export function scriptPorts(
 
   const auth = countCalls<AuthPort>(
     {
+      ...createUnavailableAccountFlows(),
       login: (username: string, password: string): Observable<AuthOutcome> => {
         return logins.open({ username, password });
       },

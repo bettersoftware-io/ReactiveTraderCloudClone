@@ -10,6 +10,7 @@ import type {
 import {
   type AuthOutcome,
   type AuthPort,
+  createUnavailableAccountFlows,
   DEFAULT_LOGIN_WAIT_VARIANT,
   type LoginWaitVariant,
   type SessionUser,
@@ -499,6 +500,7 @@ function createFakeAuthPort(outcome: AuthOutcome): FakeAuthPort {
   const calls: Array<readonly [string, string]> = [];
 
   return {
+    ...createUnavailableAccountFlows(),
     calls,
     login(username: string, password: string): ReturnType<AuthPort["login"]> {
       calls.push([username, password]);
@@ -529,6 +531,7 @@ function createDeferredAuthPort(): DeferredAuthPort {
 
   return {
     port: {
+      ...createUnavailableAccountFlows(),
       login(): Observable<AuthOutcome> {
         const subject = new Subject<AuthOutcome>();
         current = subject;

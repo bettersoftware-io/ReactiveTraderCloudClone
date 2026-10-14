@@ -1,7 +1,12 @@
 import { lastValueFrom, type Observable, of, throwError, toArray } from "rxjs";
 import { describe, expect, it, type Mock, vi } from "vitest";
 
-import type { AuthOutcome, AuthPort, SessionUser } from "@rtc/domain";
+import {
+  type AuthOutcome,
+  type AuthPort,
+  createUnavailableAccountFlows,
+  type SessionUser,
+} from "@rtc/domain";
 
 import { InMemoryDataSourceStore } from "./InMemoryDataSourceStore";
 import { InMemorySessionStore } from "./InMemorySessionStore";
@@ -246,6 +251,7 @@ function collect(source: Observable<AuthOutcome>): Promise<AuthOutcome[]> {
 
 function createPort(outcome: AuthOutcome): MockAuthPort {
   return {
+    ...createUnavailableAccountFlows(),
     login: vi.fn((): Observable<AuthOutcome> => {
       return of(outcome);
     }),

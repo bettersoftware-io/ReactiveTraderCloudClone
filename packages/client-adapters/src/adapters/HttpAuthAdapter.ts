@@ -1,6 +1,11 @@
 import { catchError, defer, from, type Observable, of } from "rxjs";
 
-import type { AuthOutcome, AuthPort } from "@rtc/domain";
+import {
+  type AccountFlowOutcome,
+  type AuthOutcome,
+  type AuthPort,
+  createUnavailableAccountFlows,
+} from "@rtc/domain";
 import type { LoginResponseDto } from "@rtc/shared";
 
 type FetchImpl = typeof fetch;
@@ -12,6 +17,8 @@ type FetchImpl = typeof fetch;
  */
 export class HttpAuthAdapter implements AuthPort {
   private readonly fetchImpl: FetchImpl;
+
+  private readonly flows = createUnavailableAccountFlows();
 
   constructor(
     private readonly httpBaseUrl: string,
@@ -32,6 +39,34 @@ export class HttpAuthAdapter implements AuthPort {
         return of<AuthOutcome>({ ok: false, reason: "unavailable" });
       }),
     );
+  }
+
+  register(email: string, displayName: string): Observable<AccountFlowOutcome> {
+    return this.flows.register(email, displayName);
+  }
+
+  resendCode(email: string): Observable<AccountFlowOutcome> {
+    return this.flows.resendCode(email);
+  }
+
+  confirmEmail(
+    email: string,
+    code: string,
+    password: string,
+  ): Observable<AccountFlowOutcome> {
+    return this.flows.confirmEmail(email, code, password);
+  }
+
+  requestPasswordReset(email: string): Observable<AccountFlowOutcome> {
+    return this.flows.requestPasswordReset(email);
+  }
+
+  resetPassword(
+    email: string,
+    code: string,
+    password: string,
+  ): Observable<AccountFlowOutcome> {
+    return this.flows.resetPassword(email, code, password);
   }
 
   private async postLogin(

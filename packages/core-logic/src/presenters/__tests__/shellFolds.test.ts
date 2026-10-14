@@ -42,8 +42,13 @@ describe("shellFolds", () => {
     ).toBe(LOGIN_WAIT_VARIANTS[0]);
   });
 
-  it("describeAuthFailure names each failure reason", () => {
-    expect(describeAuthFailure("invalid")).toBe("Invalid credentials");
-    expect(describeAuthFailure("unavailable")).toBe("Service unavailable");
+  it.each([
+    ["invalid", "Invalid credentials"],
+    ["unavailable", "Service unavailable"],
+    ["unconfirmed", "Email not confirmed"],
+    ["pending", "Account awaiting approval"],
+    ["blocked", "Account blocked"],
+  ] as const)("describeAuthFailure(%s) → %s", (reason, text) => {
+    expect(describeAuthFailure(reason)).toBe(text);
   });
 });

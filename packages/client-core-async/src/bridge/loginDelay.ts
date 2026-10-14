@@ -6,7 +6,7 @@
 import { type Observable, of, timer } from "rxjs";
 import { map, mergeMap } from "rxjs/operators";
 
-import type { AuthOutcome, AuthPort } from "@rtc/domain";
+import type { AccountFlowOutcome, AuthOutcome, AuthPort } from "@rtc/domain";
 
 /**
  * Wraps an `AuthPort` so its outcome is held back by an artificial delay,
@@ -18,6 +18,9 @@ import type { AuthOutcome, AuthPort } from "@rtc/domain";
  * covered for free, since it goes through the same `login()`; and it is
  * independent of which port it wraps, so the delay behaves identically in
  * simulator and WS-real mode.
+ *
+ * The five account flows pass through undelayed: the delay is a login-wait
+ * treatment, and a flow's answer renders as a form state, not a wait screen.
  *
  * Two deliberate details:
  *
@@ -50,6 +53,32 @@ export function withLoginDelay(
           );
         }),
       );
+    },
+    register(
+      email: string,
+      displayName: string,
+    ): Observable<AccountFlowOutcome> {
+      return inner.register(email, displayName);
+    },
+    resendCode(email: string): Observable<AccountFlowOutcome> {
+      return inner.resendCode(email);
+    },
+    confirmEmail(
+      email: string,
+      code: string,
+      password: string,
+    ): Observable<AccountFlowOutcome> {
+      return inner.confirmEmail(email, code, password);
+    },
+    requestPasswordReset(email: string): Observable<AccountFlowOutcome> {
+      return inner.requestPasswordReset(email);
+    },
+    resetPassword(
+      email: string,
+      code: string,
+      password: string,
+    ): Observable<AccountFlowOutcome> {
+      return inner.resetPassword(email, code, password);
     },
   };
 }

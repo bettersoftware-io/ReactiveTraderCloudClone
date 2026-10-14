@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isAccountErrorDto,
+  isAccountFlowResponseDto,
   isConfirmEmailRequestDto,
   isEmailRequestDto,
   isLoginRequestDto,
@@ -100,4 +102,27 @@ describe("account request guards reject non-objects and wrong types", () => {
       expect(guard({ ...valid, email: 1 })).toBe(false);
     },
   );
+});
+
+describe("isAccountFlowResponseDto", () => {
+  it("accepts a status word and rejects anything else", () => {
+    expect(isAccountFlowResponseDto({ status: "code_sent" })).toBe(true);
+    expect(isAccountFlowResponseDto({ status: "ok" })).toBe(false);
+    expect(isAccountFlowResponseDto(null)).toBe(false);
+  });
+});
+
+describe("isAccountErrorDto", () => {
+  it("accepts an error string with an absent or string rule", () => {
+    expect(isAccountErrorDto({ error: "invalid_request", rule: "email" })).toBe(
+      true,
+    );
+    expect(isAccountErrorDto({ error: "rate_limited" })).toBe(true);
+  });
+
+  it("rejects a non-string error or rule", () => {
+    expect(isAccountErrorDto({ error: 4 })).toBe(false);
+    expect(isAccountErrorDto({ error: "x", rule: 3 })).toBe(false);
+    expect(isAccountErrorDto(null)).toBe(false);
+  });
 });

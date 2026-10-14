@@ -30,6 +30,7 @@ import {
   CANDLE_HISTORY_TOTAL,
   type CandleTimeframe,
   ConnectionEventsSimulator,
+  createUnavailableAccountFlows,
   KNOWN_CURRENCY_PAIRS,
   PreferencesSimulator,
   type PriceTick,
@@ -1145,6 +1146,7 @@ const DEMO_USER: SessionUser = {
  * emission), matching react-bindings' authHooks.test.tsx fixture. */
 function createFakeAuthPort(): AuthPort {
   return {
+    ...createUnavailableAccountFlows(),
     login(username: string, password: string): Observable<AuthOutcome> {
       if (username === "demo" && password === "pw") {
         return of({ ok: true, token: "t", user: DEMO_USER, exp: 9_000_000 });
