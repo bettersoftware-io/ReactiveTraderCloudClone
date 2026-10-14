@@ -221,6 +221,7 @@ describe("LoginScreen account access — code phase", () => {
   it("names the address the code went to and asks only for the code when both are held", async () => {
     const page = mountAt(createCodeState());
 
+    expect(page.phase()).toBe("code");
     expect(page.codeSentTo()).toContain("ann@desk.io");
     expect(page.hasEmailField()).toBe(false);
     expect(page.hasNewPasswordField()).toBe(false);
@@ -236,6 +237,7 @@ describe("LoginScreen account access — code phase", () => {
   it("asks for a password with its checklist when none is held", async () => {
     const page = mountAt(createCodeState({ passwordHeld: false }));
 
+    expect(page.phase()).toBe("code");
     expect(page.hasNewPasswordField()).toBe(true);
     expect(page.newPasswordLabel()).toBe(ACCOUNT_ACCESS_COPY.passwordLabel);
     expect(page.checklist()).toHaveLength(PASSWORD_RULES.length);
@@ -250,6 +252,7 @@ describe("LoginScreen account access — code phase", () => {
   it("asks for the address too when none is held", async () => {
     const page = mountAt(createCodeState({ email: null, passwordHeld: false }));
 
+    expect(page.phase()).toBe("code");
     expect(page.hasEmailField()).toBe(true);
     expect(page.codeSentTo()).toBe("");
 
@@ -266,6 +269,7 @@ describe("LoginScreen account access — code phase", () => {
   it("shows the resent hint after a resend", () => {
     const page = mountAt(createCodeState({ resent: true }));
 
+    expect(page.phase()).toBe("code");
     expect(page.hasResent()).toBe(true);
   });
 
@@ -293,10 +297,20 @@ describe("LoginScreen account access — code phase", () => {
     expect(page.resendArgs()).toEqual(["ann@desk.io"]);
   });
 
+  it("returns to sign-in from Back to sign in", async () => {
+    const page = mountAt(createCodeState());
+
+    await page.goBack();
+
+    expect(page.navigations()).toEqual(["returnToSignIn"]);
+    expect(page.phase()).toBe("signIn");
+  });
+
   it("reads as a password reset in the reset flow", () => {
     const state = createCodeState({ flow: "reset", passwordHeld: false });
     const page = mountAt(state);
 
+    expect(page.phase()).toBe("code");
     expect(page.title()).toBe(describeAccountAccessTitle(state));
     expect(page.newPasswordLabel()).toBe(ACCOUNT_ACCESS_COPY.newPasswordLabel);
     expect(page.submitLabel()).toBe(ACCOUNT_ACCESS_COPY.setPasswordSubmit);
@@ -305,6 +319,7 @@ describe("LoginScreen account access — code phase", () => {
   it("takes the code as an eight-digit one-time code", () => {
     const page = mountAt(createCodeState());
 
+    expect(page.phase()).toBe("code");
     expect(page.codeAttribute("inputmode")).toBe("numeric");
     expect(page.codeAttribute("maxlength")).toBe("8");
     expect(page.codeAttribute("autocomplete")).toBe("one-time-code");
@@ -313,6 +328,7 @@ describe("LoginScreen account access — code phase", () => {
   it("disables the submit control and reads SENDING while busy", () => {
     const page = mountAt(createCodeState({ busy: true }));
 
+    expect(page.phase()).toBe("code");
     expect(page.isSubmitDisabled()).toBe(true);
     expect(page.submitLabel()).toBe(ACCOUNT_ACCESS_COPY.busySubmit);
   });
@@ -322,6 +338,7 @@ describe("LoginScreen account access — code phase", () => {
       createCodeState({ error: "That code is not valid or has expired" }),
     );
 
+    expect(page.phase()).toBe("code");
     expect(page.error()).toBe("That code is not valid or has expired");
   });
 });
@@ -330,6 +347,7 @@ describe("LoginScreen account access — request-reset phase", () => {
   it("asks for the address and requests a reset code for it", async () => {
     const page = mountAt(createRequestResetState());
 
+    expect(page.phase()).toBe("requestReset");
     expect(page.hasEmailField()).toBe(true);
     expect(page.submitLabel()).toBe(ACCOUNT_ACCESS_COPY.requestResetSubmit);
 
@@ -342,7 +360,43 @@ describe("LoginScreen account access — request-reset phase", () => {
   it("disables the submit control while busy", () => {
     const page = mountAt(createRequestResetState({ busy: true }));
 
+    expect(page.phase()).toBe("requestReset");
     expect(page.isSubmitDisabled()).toBe(true);
+  });
+
+  it("returns to sign-in from Back to sign in", async () => {
+    const page = mountAt(createRequestResetState());
+
+    await page.goBack();
+
+    expect(page.navigations()).toEqual(["returnToSignIn"]);
+    expect(page.phase()).toBe("signIn");
+  });
+});
+
+describe("LoginScreen account access — secrets stay out of the DOM's data", () => {
+  it("puts neither the password nor the code in any data-* attribute", async () => {
+    const register = mountAt(createRegisterState());
+
+    expect(register.phase()).toBe("register");
+
+    await register.typeNewPassword(STRONG);
+
+    expect(dataAttributesHolding(register, STRONG)).toEqual([]);
+
+    cleanupMounted();
+    const code = mountAt(createCodeState({ passwordHeld: false }));
+
+    expect(code.phase()).toBe("code");
+
+    await code.typeCode(CODE);
+
+    expect(dataAttributesHolding(code, CODE)).toEqual([]);
+
+    await code.typeNewPassword(STRONG);
+
+    expect(dataAttributesHolding(code, CODE)).toEqual([]);
+    expect(dataAttributesHolding(code, STRONG)).toEqual([]);
   });
 });
 
@@ -385,6 +439,18 @@ function mountAt(accountAccess: AccountAccessState): LoginScreenPage {
   return mount(LoginScreen, {
     auth: { status: "unauthenticated" },
     accountAccess,
+  });
+}
+
+/** Every `data-*` attribute on screen whose value contains `secret`, as
+ * `name="value"` — read generically, so a `data-pw` is caught as surely
+ * as a `data-password`. */
+function dataAttributesHolding(
+  page: LoginScreenPage,
+  secret: string,
+): string[] {
+  return page.dataAttributes().flatMap(([name, value]) => {
+    return value.includes(secret) ? [`${name}="${value}"`] : [];
   });
 }
 

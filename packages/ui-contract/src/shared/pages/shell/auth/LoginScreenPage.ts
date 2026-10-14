@@ -293,6 +293,22 @@ export class LoginScreenPage extends MountedComponent<Record<string, never>> {
     return this.textOf("login-submit");
   }
 
+  /** Every `data-*` attribute on the mounted root and its descendants, as
+   * `[name, value]` pairs — read from each element's attribute list, not by
+   * name, so no spelling of a leaked secret is missed. */
+  dataAttributes(): Array<[string, string]> {
+    return [this.root, ...Array.from(this.root.querySelectorAll("*"))]
+      .flatMap((element) => {
+        return Array.from(element.attributes);
+      })
+      .filter((attribute) => {
+        return attribute.name.startsWith("data-");
+      })
+      .map((attribute): [string, string] => {
+        return [attribute.name, attribute.value];
+      });
+  }
+
   /** Each input `register()` was invoked with, through the seam. */
   registerArgs(): RegistrationInput[] {
     return this.commandLog().accountRegister;
