@@ -549,7 +549,7 @@ the code to `/confirm-email`. It must render:
 `AccountErrorDto.rule` is a plain string in B2a (a `PasswordRuleId`, `email`,
 `display-name` or `password`); B2b types it.
 
-*Amended 2026-10-14 (B2b as built, PR #TBD-B2B).*
+*Amended 2026-10-14 (B2b as built, PR #1007).*
 
 - `AuthPresenter` gains `accounts` (the port's five account flows, a
   pass-through). A machine factory is handed presenters only (`CoreFactory`),
@@ -667,7 +667,7 @@ by our code after the request that sets it).
 | Stage | Ships | Usable alone |
 |---|---|---|
 | **B2a** | Migrations, `accounts/`, the six endpoints, token claims, upgrade re-check, limits, keep-alive, the probe script, privacy notice, docs (*amended 2026-10-04*: the identity on each connection moves to B2c) | Yes, with `curl`; approval in the Supabase dashboard |
-| **B2b** | `AuthPort` additions, `accountAccess` in three cores (one shared fold), login-screen modes in both clients at parity, eight visual scenarios, a real-server e2e; *as built, PR #TBD-B2B* | Yes; approval in the dashboard |
+| **B2b** | `AuthPort` additions, `accountAccess` in three cores (one shared fold), login-screen modes in both clients at parity, eight visual scenarios, a real-server e2e; *as built, PR #1007* | Yes; approval in the dashboard |
 | **B2c** | Admin effects, Users panel in three cores and both clients, `/mcp` admin gate (*amended 2026-10-04*: plus `SessionUser.access`, the identity on each connection, `sessionRegistry` and the status cache's invalidation) | Completes B2 |
 
 Each stage gets its own plan, review and PR train. B2a's token change is
