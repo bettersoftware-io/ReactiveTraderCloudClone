@@ -221,7 +221,9 @@ fly secrets set AUTH_TTL_MS="28800000" -a rtc-clone-server
 ```
 
 Only usernames present in `ROSTER` can ever log in, regardless of what's in
-`AUTH_USERS` (§3). See [`docs/DEPLOY.md`](DEPLOY.md#1-flyio-server) for the
+`AUTH_USERS` (§3) — so a rotation changes a persona's *password*, never its
+name, and `AUTH_USERS` may list fewer personas than the roster, or none
+([`security.md` §2.2](security.md#22-server-roster-personas--two-halves-one-of-them-fixed)). See [`docs/DEPLOY.md`](DEPLOY.md#1-flyio-server) for the
 full one-time setup.
 
 ### Vercel (web client host) — holds no passwords

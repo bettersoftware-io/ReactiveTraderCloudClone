@@ -453,6 +453,17 @@ The debug build also resolves the `@rtc/*` libraries to their **original TypeScr
 - **Server roster (source of truth):** `fly secrets set AUTH_USERS="user:pass,..." -a rtc-clone-server`
   — adds, removes, or changes credentials; no client-side value needs to
   change in step, since the client always authenticates fresh via `/login`.
+  **Only the password is yours to choose:** every username must be one of
+  the four personas in `packages/domain/src/auth/roster.ts`, because the
+  session token carries that persona's profile
+  ([`authentication.md` §3](authentication.md#3-the-four-roster-users--the-profile-dropdown)).
+  A made-up username is accepted at startup and answers `401` forever
+  (found the hard way on 2026-10-14). On the hybrid client a persona with
+  the committed password still runs the in-browser simulator for everyone;
+  the same persona with the private password reaches the server. The
+  roster may also be dropped entirely (`fly secrets unset AUTH_USERS`),
+  leaving registered accounts as the only live login. The whole picture:
+  [`security.md`](security.md).
 - **Session-signing secret:** `fly secrets set AUTH_SECRET=<new> -a rtc-clone-server`
   invalidates every outstanding session token immediately (users must log in
   again) — useful if a token were ever compromised. With accounts enabled the
