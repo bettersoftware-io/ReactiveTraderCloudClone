@@ -15,6 +15,7 @@ import {
   isValidEmail,
   normalizeDisplayName,
   normalizeEmail,
+  PASSWORD_RULES,
 } from "@rtc/domain";
 
 import {
@@ -89,11 +90,21 @@ export type AccountAccessEvent =
       readonly outcome: AccountFlowOutcome;
     };
 
+/** What a core does with one event: store `state` (emitting it when it is
+ * a new value), keep `held`, then — in this order — drop the request in
+ * flight when `cancelsInFlight`, and make `request` when it is not null. */
 export interface AccountAccessStep {
   readonly state: AccountAccessState;
   readonly held: AccountAccessHeld;
   /** The port call this event asks for, or null. A `settled` event never asks for one. */
   readonly request: AccountRequest | null;
+  /** True when the event was acted on: it moved the phase, refused its
+   * input locally or asks for a new request, so whatever request is in
+   * flight no longer belongs to the state. False for an event the phase
+   * ignores (the state and its `busy` are unchanged, so the request it
+   * reports must stay in flight) and for a `settled` event (its request is
+   * the one that just answered). A step with a `request` always cancels. */
+  readonly cancelsInFlight: boolean;
 }
 
 export type InputCheck =
@@ -160,8 +171,10 @@ export function callAccountFlow(
 }
 
 /** One step of the login screen's account flows: the next state, what the
- * machine now holds, and the port call to make (if any). The one fold all
- * three cores run, so a core is a store, a request slot and this. */
+ * machine now holds, whether the request in flight is dropped, and the port
+ * call to make (if any). The one fold all three cores run, so a core is a
+ * store, a request slot and this. An event the phase ignores returns the
+ * SAME `state` and `held` objects with `cancelsInFlight: false`. */
 export function stepAccountAccess(
   state: AccountAccessState,
   held: AccountAccessHeld,
@@ -196,23 +209,29 @@ export function stepAccountAccess(
         ? beginResend(state, held, event.email)
         : stay(state, held);
     case "settled":
-      return settle(state, held, event.request, event.outcome);
+      return {
+        ...settle(state, held, event.request, event.outcome),
+        cancelsInFlight: false,
+      };
   }
 }
 
+/** The event is ignored: nothing changes and nothing is cancelled. */
 function stay(
   state: AccountAccessState,
   held: AccountAccessHeld,
 ): AccountAccessStep {
-  return { state, held, request: null };
+  return { state, held, request: null, cancelsInFlight: false };
 }
 
+/** The event is acted on (a `settled` event's result is re-marked as not
+ * cancelling in `stepAccountAccess`). */
 function go(
   state: AccountAccessState,
   held: AccountAccessHeld,
   request: AccountRequest | null = null,
 ): AccountAccessStep {
-  return { state, held, request };
+  return { state, held, request, cancelsInFlight: true };
 }
 
 function codeStep(
@@ -372,9 +391,11 @@ function accept(value: string): InputCheck {
   return { ok: true, value };
 }
 
-/** A settled request lands only on the phase that made it: a request the
- * user navigated away from (the slot cancels it, but belt and braces)
- * changes nothing. */
+/** A settled request lands only on a state that is still waiting for it —
+ * busy, in the phase (and, at the code step, the flow) that made it. A
+ * request the user navigated away from changes nothing, even when the user
+ * has since come back to an idle form of the same phase (the slot cancels
+ * it, but belt and braces). */
 function settle(
   state: AccountAccessState,
   held: AccountAccessHeld,
@@ -383,7 +404,7 @@ function settle(
 ): AccountAccessStep {
   switch (request.kind) {
     case "register":
-      if (state.phase !== "register") {
+      if (state.phase !== "register" || !state.busy) {
         return stay(state, held);
       }
 
@@ -392,6 +413,10 @@ function settle(
         : refuseRegistration(describeAccountFailure(outcome, request.kind));
     case "requestPasswordReset":
       if (state.phase === "requestReset") {
+        if (!state.busy) {
+          return stay(state, held);
+        }
+
         return outcome.ok
           ? go(codeStep("reset", request.email, false), held)
           : go(
@@ -404,22 +429,30 @@ function settle(
             );
       }
 
-      return state.phase === "code"
+      return isAwaitingCodeStep(state, "reset")
         ? settleResend(state, held, request.kind, outcome)
         : stay(state, held);
     case "resendCode":
-      return state.phase === "code"
+      return isAwaitingCodeStep(state, "signup")
         ? settleResend(state, held, request.kind, outcome)
         : stay(state, held);
     case "confirmEmail":
-      return state.phase === "code"
+      return isAwaitingCodeStep(state, "signup")
         ? settleConfirmation(state, held, request.email, outcome)
         : stay(state, held);
     case "resetPassword":
-      return state.phase === "code"
+      return isAwaitingCodeStep(state, "reset")
         ? settleReset(state, held, request.email, outcome)
         : stay(state, held);
   }
+}
+
+/** A code step of this flow with a request of its own in flight. */
+function isAwaitingCodeStep(
+  state: AccountAccessState,
+  flow: AccountAccessFlow,
+): state is CodePhase {
+  return state.phase === "code" && state.busy && state.flow === flow;
 }
 
 function settleResend(
@@ -487,13 +520,11 @@ function settleReset(
       );
 }
 
-/** One of the password policy's own rules (`min-length` …), as opposed to
- * a field rule or the store's `password` refusal. */
+/** One of the password policy's own rules (`min-length` …), checked
+ * against the policy itself: a field rule, the store's `password` refusal
+ * and any rule added later are not, so they never drop the held password. */
 function isPasswordRule(rule: AccountInputRule | undefined): boolean {
-  return (
-    rule !== undefined &&
-    rule !== "email" &&
-    rule !== "display-name" &&
-    rule !== "password"
-  );
+  return PASSWORD_RULES.some((candidate) => {
+    return candidate.id === rule;
+  });
 }

@@ -177,19 +177,32 @@ export function describeAccountAccessContract(
       }
     });
 
-    it("the password never appears in any emitted state", async () => {
+    it("neither the password nor the code appears in any emitted state, refusals included", async () => {
       const h = makeHarness();
       const m = h.machines.accountAccess();
 
       try {
         const c = collect(m.state$);
         await reachSignupCodeStep(h.driver, m);
+        m.intents.submitCode({ code: "1234567" });
+        await settle();
+        expect(c.values.at(-1)).toMatchObject({ error: CODE_INPUT_ERROR });
+        m.intents.submitCode({ code: CODE });
+        await settle();
+        h.driver.resolveAccountCall({ ok: false, reason: "invalid_code" });
+        await settle();
+        expect(c.values.at(-1)).toMatchObject({
+          error: "That code is not valid or has expired",
+        });
         m.intents.submitCode({ code: CODE });
         await settle();
         h.driver.resolveAccountCall({ ok: true, status: "pending_approval" });
         await settle();
         expect(c.values.at(-1)?.phase).toBe("pendingApproval");
-        expect(JSON.stringify(c.values)).not.toContain(STRONG);
+        const emitted = JSON.stringify(c.values);
+        expect(emitted).not.toContain(STRONG);
+        expect(emitted).not.toContain("12345678");
+        expect(emitted).not.toContain("1234567");
         c.unsubscribe();
       } finally {
         m.dispose();
@@ -330,6 +343,7 @@ export function describeAccountAccessContract(
         });
         await settle();
         expect(c.values.at(-1)).toMatchObject({ error: CODE_INPUT_ERROR });
+        expect(h.driver.portCalls("auth.confirmEmail")).toBe(0);
         m.intents.submitCode({
           email: "not an address",
           code: CODE,
@@ -337,7 +351,7 @@ export function describeAccountAccessContract(
         });
         await settle();
         expect(c.values.at(-1)).toMatchObject({ error: EMAIL_INPUT_ERROR });
-        expect(h.driver.pendingAccountCalls()).toEqual([]);
+        expect(h.driver.portCalls("auth.confirmEmail")).toBe(0);
         m.intents.submitCode({
           email: " A@B.co ",
           code: CODE,
@@ -518,8 +532,9 @@ export function describeAccountAccessContract(
         expect(c.values.at(-1)).toEqual(SIGN_IN);
         expect(h.driver.pendingAccountCalls()).toEqual([]);
         const emitted = c.values.length;
-        // A no-op once the subscription is dropped; for a core that kept
-        // the queue entry, the answer must still land nowhere.
+        // Nothing is pending, so this resolve settles nothing; the length
+        // check then pins that no late answer reaches the state by any
+        // other path either.
         h.driver.resolveAccountCall(CODE_SENT);
         await settle();
         expect(c.values).toHaveLength(emitted);
@@ -555,6 +570,30 @@ export function describeAccountAccessContract(
         c.unsubscribe();
       } finally {
         m.dispose();
+        await h.teardown();
+      }
+    });
+
+    it("dispose cancels a request in flight, and its answer lands nowhere", async () => {
+      const h = makeHarness();
+      const m = h.machines.accountAccess();
+
+      try {
+        const c = collect(m.state$);
+        m.intents.startRegistration();
+        await settle();
+        m.intents.register(createRegistration());
+        await settle();
+        expect(h.driver.pendingAccountCalls()).toHaveLength(1);
+        const emitted = c.values.length;
+        m.dispose();
+        await settle();
+        expect(h.driver.pendingAccountCalls()).toEqual([]);
+        h.driver.resolveAccountCall(CODE_SENT);
+        await settle();
+        expect(c.values).toHaveLength(emitted);
+        c.unsubscribe();
+      } finally {
         await h.teardown();
       }
     });

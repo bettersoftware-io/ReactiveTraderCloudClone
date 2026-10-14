@@ -23,8 +23,8 @@ import type { AccountFlowOutcome, AccountFlowPort } from "@rtc/domain";
 const UNAVAILABLE: AccountFlowOutcome = { ok: false, reason: "unavailable" };
 
 /** The login screen's account flows: a `BehaviorSubject` fed by
- * `stepAccountAccess`, one request in flight at most (a new request or a
- * navigation unsubscribes the old one, so a late answer never lands), the
+ * `stepAccountAccess`, one request in flight at most (a step that
+ * `cancelsInFlight` unsubscribes it, so a late answer never lands), the
  * chosen password held in this closure and never emitted. An erroring port
  * stream reads as `unavailable`. */
 export function createAccountAccessMachine(
@@ -50,25 +50,24 @@ export function createAccountAccessMachine(
     }
 
     const step = stepAccountAccess(subject.value, held, event);
-    const changed = step.state !== subject.value;
     held = step.held;
 
-    if (changed) {
+    if (step.state !== subject.value) {
       subject.next(step.state);
     }
 
-    // An intent the phase ignores leaves the state (and its `busy`) as it
-    // was, so the request it reports stays in flight; one that moved the
-    // phase on, or refused its input locally, drops it.
+    // The fold decides: an intent the phase ignores keeps the request its
+    // `busy` state reports; one it acted on drops it before any new send.
+    if (step.cancelsInFlight) {
+      cancelRequest();
+    }
+
     if (step.request !== null) {
       send(step.request);
-    } else if (changed && event.kind !== "settled") {
-      cancelRequest();
     }
   }
 
   function send(request: AccountRequest): void {
-    cancelRequest();
     // A port that answers synchronously settles inside `subscribe`, before
     // the assignment: `inFlight` then stores an already-closed subscription,
     // and unsubscribing a closed subscription is a no-op.

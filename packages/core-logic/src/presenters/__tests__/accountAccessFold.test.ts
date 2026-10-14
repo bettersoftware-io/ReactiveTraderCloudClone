@@ -269,21 +269,25 @@ describe("stepAccountAccess — navigation", () => {
       state: { phase: "register", busy: false, error: null },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
     expect(stepAccountAccess(code, held, { kind: "startReset" })).toEqual({
       state: { phase: "requestReset", busy: false, error: null },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
     expect(stepAccountAccess(code, held, { kind: "startCodeEntry" })).toEqual({
       state: createCodePhase("signup"),
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
     expect(stepAccountAccess(code, held, { kind: "returnToSignIn" })).toEqual({
       state: ACCOUNT_ACCESS_IDLE,
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
   });
 
@@ -307,6 +311,7 @@ describe("stepAccountAccess — navigation", () => {
       expect(step.state).toBe(state);
       expect(step.held).toBe(held);
       expect(step.request).toBeNull();
+      expect(step.cancelsInFlight).toBe(false);
     }
   });
 });
@@ -324,6 +329,7 @@ describe("stepAccountAccess — register", () => {
       state: { phase: "register", busy: false, error: EMAIL_INPUT_ERROR },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
     expect(
       stepAccountAccess(register, NOTHING_HELD, {
@@ -358,6 +364,7 @@ describe("stepAccountAccess — register", () => {
         email: "ann@desk.io",
         displayName: "Ann Stark",
       },
+      cancelsInFlight: true,
     });
   });
 
@@ -377,6 +384,7 @@ describe("stepAccountAccess — register", () => {
       }),
       held,
       request: null,
+      cancelsInFlight: false,
     });
   });
 
@@ -403,6 +411,7 @@ describe("stepAccountAccess — register", () => {
       },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: false,
     });
   });
 });
@@ -422,6 +431,7 @@ describe("stepAccountAccess — reset request", () => {
         state: { phase: "requestReset", busy: true, error: null },
         held: { email: "ann@desk.io", password: null },
         request: { kind: "requestPasswordReset", email: "ann@desk.io" },
+        cancelsInFlight: true,
       });
     }
 
@@ -457,6 +467,7 @@ describe("stepAccountAccess — reset request", () => {
       state: createCodePhase("reset", { email: "ann@desk.io" }),
       held,
       request: null,
+      cancelsInFlight: false,
     });
     expect(
       stepAccountAccess(busy, held, {
@@ -468,6 +479,7 @@ describe("stepAccountAccess — reset request", () => {
       state: { phase: "requestReset", busy: false, error: UNAVAILABLE_TEXT },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: false,
     });
   });
 });
@@ -500,6 +512,7 @@ describe("stepAccountAccess — the code step", () => {
         code: "12345678",
         password: STRONG,
       },
+      cancelsInFlight: true,
     });
   });
 
@@ -520,6 +533,7 @@ describe("stepAccountAccess — the code step", () => {
         code: "12345678",
         password: STRONG,
       },
+      cancelsInFlight: true,
     });
   });
 
@@ -564,6 +578,7 @@ describe("stepAccountAccess — the code step", () => {
       state: { ...signup, busy: true, resent: false },
       held,
       request: { kind: "resendCode", email: "ann@desk.io" },
+      cancelsInFlight: true,
     });
     expect(
       stepAccountAccess(createCodePhase("reset"), NOTHING_HELD, {
@@ -580,6 +595,7 @@ describe("stepAccountAccess — the code step", () => {
       state: createCodePhase("signup", { error: EMAIL_INPUT_ERROR }),
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: true,
     });
   });
 
@@ -598,6 +614,7 @@ describe("stepAccountAccess — the code step", () => {
       state: { ...busy, busy: false, resent: true },
       held,
       request: null,
+      cancelsInFlight: false,
     });
     expect(
       stepAccountAccess(busy, held, {
@@ -641,6 +658,7 @@ describe("stepAccountAccess — the code step", () => {
       state: { phase: "pendingApproval", email: "a@b.co" },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: false,
     });
     expect(
       stepAccountAccess(busy, held, {
@@ -652,6 +670,7 @@ describe("stepAccountAccess — the code step", () => {
       state: { phase: "passwordUnset", email: "a@b.co" },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: false,
     });
   });
 
@@ -679,6 +698,7 @@ describe("stepAccountAccess — the code step", () => {
       },
       held: { email: "a@b.co", password: null },
       request: null,
+      cancelsInFlight: false,
     });
 
     for (const outcome of [
@@ -717,6 +737,7 @@ describe("stepAccountAccess — the code step", () => {
       state: { phase: "passwordChanged", email: "a@b.co" },
       held: NOTHING_HELD,
       request: null,
+      cancelsInFlight: false,
     });
     expect(
       stepAccountAccess(busy, held, {
@@ -733,11 +754,84 @@ describe("stepAccountAccess — the code step", () => {
       },
       held,
       request: null,
+      cancelsInFlight: false,
     });
   });
 });
 
-describe("stepAccountAccess — a settled request on another phase", () => {
+describe("stepAccountAccess — a settled request no state is waiting for", () => {
+  it("a stale register answer does not land on a register form opened again since", () => {
+    let state: AccountAccessState = {
+      phase: "register",
+      busy: false,
+      error: null,
+    };
+    let held: AccountAccessHeld = NOTHING_HELD;
+
+    for (const event of [
+      { kind: "register", input: createRegistration() },
+      { kind: "returnToSignIn" },
+      { kind: "startRegistration" },
+    ] as const) {
+      ({ state, held } = stepAccountAccess(state, held, event));
+    }
+
+    const step = stepAccountAccess(state, held, {
+      kind: "settled",
+      request: { kind: "register", email: "ann@desk.io", displayName: "Ann" },
+      outcome: SENT,
+    });
+
+    expect(step.state).toEqual({ phase: "register", busy: false, error: null });
+    expect(step.held).toBe(NOTHING_HELD);
+  });
+
+  it.each<[AccountRequest, AccountAccessState]>([
+    [
+      { kind: "register", email: "a@b.co", displayName: "Ann" },
+      { phase: "register", busy: false, error: null },
+    ],
+    [
+      { kind: "requestPasswordReset", email: "a@b.co" },
+      { phase: "requestReset", busy: false, error: null },
+    ],
+    [
+      { kind: "requestPasswordReset", email: "a@b.co" },
+      createCodePhase("signup", { email: "a@b.co", busy: true }),
+    ],
+    [
+      { kind: "resendCode", email: "a@b.co" },
+      createCodePhase("reset", { email: "a@b.co", busy: true }),
+    ],
+    [createConfirmation(), createCodePhase("reset", { busy: true })],
+    [createConfirmation(), createCodePhase("signup", { email: "a@b.co" })],
+    [
+      {
+        kind: "resetPassword",
+        email: "a@b.co",
+        code: "12345678",
+        password: STRONG,
+      },
+      createCodePhase("signup", { busy: true }),
+    ],
+  ])(
+    "%o settling on an idle form or the other flow's %o changes nothing",
+    (request, state) => {
+      const held: AccountAccessHeld = { email: "a@b.co", password: STRONG };
+
+      const step = stepAccountAccess(state, held, {
+        kind: "settled",
+        request,
+        outcome: SENT,
+      });
+
+      expect(step.state).toBe(state);
+      expect(step.held).toBe(held);
+      expect(step.request).toBeNull();
+      expect(step.cancelsInFlight).toBe(false);
+    },
+  );
+
   it.each<[AccountRequest, AccountAccessState]>([
     [
       { kind: "register", email: "a@b.co", displayName: "Ann" },
@@ -767,6 +861,7 @@ describe("stepAccountAccess — a settled request on another phase", () => {
     expect(step.state).toBe(state);
     expect(step.held).toBe(held);
     expect(step.request).toBeNull();
+    expect(step.cancelsInFlight).toBe(false);
   });
 });
 
